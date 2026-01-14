@@ -13,7 +13,7 @@ type IgSentimentResponse = {
 };
 
 export class IgProvider implements SentimentProviderInterface {
-  name = "IG" as const;
+  name = "MYFXBOOK" as const;
   private apiKey: string;
   private username: string;
   private password: string;
