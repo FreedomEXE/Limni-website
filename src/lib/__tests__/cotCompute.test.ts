@@ -1,0 +1,38 @@
+import { describe, expect, it } from "vitest";
+import { biasFromNet, derivePairDirections } from "../cotCompute";
+import type { CurrencySnapshot } from "../cotTypes";
+
+describe("biasFromNet", () => {
+  it("returns bullish when net is positive", () => {
+    expect(biasFromNet(10)).toBe("BULLISH");
+  });
+
+  it("returns bearish when net is negative", () => {
+    expect(biasFromNet(-5)).toBe("BEARISH");
+  });
+
+  it("returns neutral when net is zero", () => {
+    expect(biasFromNet(0)).toBe("NEUTRAL");
+  });
+});
+
+describe("derivePairDirections", () => {
+  it("creates directions only when biases oppose", () => {
+    const currencies: Record<string, CurrencySnapshot> = {
+      AUD: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
+      USD: { dealer_long: 20, dealer_short: 10, net: -10, bias: "BEARISH" },
+      EUR: { dealer_long: 20, dealer_short: 10, net: -10, bias: "BEARISH" },
+      JPY: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
+      CHF: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
+      CAD: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
+      GBP: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
+      NZD: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
+    };
+
+    const pairs = derivePairDirections(currencies);
+    expect(pairs.AUDUSD?.direction).toBe("LONG");
+    expect(pairs.EURJPY?.direction).toBe("SHORT");
+    expect(pairs.USDJPY?.direction).toBe("SHORT");
+    expect(pairs.AUDJPY).toBeUndefined();
+  });
+});
