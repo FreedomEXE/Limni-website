@@ -5,7 +5,9 @@ import { fetchCotRowsForDate, fetchLatestReportDate } from "./cotFetch";
 import { COT_MARKETS, COT_VARIANT, SUPPORTED_CURRENCIES } from "./cotMarkets";
 import type { CotSnapshot, CurrencySnapshot } from "./cotTypes";
 
-const SNAPSHOT_PATH = path.join(process.cwd(), "data", "cot_snapshot.json");
+// Use /tmp in production (Vercel), data/ locally
+const DATA_DIR = process.env.VERCEL ? "/tmp" : path.join(process.cwd(), "data");
+const SNAPSHOT_PATH = path.join(DATA_DIR, "cot_snapshot.json");
 
 async function ensureDataDir() {
   const dir = path.dirname(SNAPSHOT_PATH);

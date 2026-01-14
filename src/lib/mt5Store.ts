@@ -51,7 +51,9 @@ export type Mt5AccountSnapshot = {
   positions?: Mt5Position[];
 };
 
-const STORE_PATH = path.join(process.cwd(), "data", "mt5_accounts.json");
+// Use /tmp in production (Vercel), data/ locally
+const DATA_DIR = process.env.VERCEL ? "/tmp" : path.join(process.cwd(), "data");
+const STORE_PATH = path.join(DATA_DIR, "mt5_accounts.json");
 
 async function ensureDataDir() {
   const dir = path.dirname(STORE_PATH);

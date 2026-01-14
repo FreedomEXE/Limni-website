@@ -16,7 +16,9 @@ export type MarketSnapshot = {
   pairs: Record<string, PairPerformance | null>;
 };
 
-const SNAPSHOT_PATH = path.join(process.cwd(), "data", "market_snapshot.json");
+// Use /tmp in production (Vercel), data/ locally
+const DATA_DIR = process.env.VERCEL ? "/tmp" : path.join(process.cwd(), "data");
+const SNAPSHOT_PATH = path.join(DATA_DIR, "market_snapshot.json");
 
 async function ensureDataDir() {
   const dir = path.dirname(SNAPSHOT_PATH);

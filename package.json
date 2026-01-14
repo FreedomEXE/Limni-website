@@ -9,11 +9,14 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "sentiment:poll": "tsx scripts/sentiment-poller.ts"
+    "sentiment:poll": "tsx scripts/sentiment-poller.ts",
+    "db:migrate": "tsx db/migrate.ts"
   },
   "dependencies": {
+    "@types/pg": "^8.16.0",
     "luxon": "^3.7.2",
     "next": "16.1.1",
+    "pg": "^8.17.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
