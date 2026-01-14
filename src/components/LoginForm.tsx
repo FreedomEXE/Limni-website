@@ -1,0 +1,66 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
+
+type LoginFormProps = {
+  handleLogin: (formData: FormData) => void;
+};
+
+export default function LoginForm({ handleLogin }: LoginFormProps) {
+  const searchParams = useSearchParams();
+  const error = searchParams.get("error");
+
+  return (
+    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold text-slate-900">Limni</h1>
+        <p className="mt-2 text-sm text-slate-600">Trading Dashboard</p>
+      </div>
+
+      {error && (
+        <div className="mb-6 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+          Invalid username or password
+        </div>
+      )}
+
+      <form action={handleLogin} className="space-y-6">
+        <div>
+          <label htmlFor="username" className="block text-sm font-medium text-slate-700">
+            Username
+          </label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            required
+            autoComplete="username"
+            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            placeholder="Enter your username"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+            Password
+          </label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            autoComplete="current-password"
+            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            placeholder="Enter your password"
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="w-full rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 px-4 py-2 font-semibold text-white transition hover:from-teal-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+        >
+          Sign In
+        </button>
+      </form>
+    </div>
+  );
+}

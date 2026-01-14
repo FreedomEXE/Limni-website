@@ -56,10 +56,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="border-t border-slate-200/80 p-4">
-            <div className="rounded-lg bg-slate-100 p-3 text-xs text-slate-600">
-              <p className="font-semibold">System Status</p>
-              <p className="mt-1">All services operational</p>
-            </div>
+            <button
+              onClick={async () => {
+                await fetch("/api/auth/logout", { method: "POST" });
+                window.location.href = "/login";
+              }}
+              className="w-full rounded-lg bg-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+            >
+              Sign Out
+            </button>
           </div>
         </div>
       </aside>
