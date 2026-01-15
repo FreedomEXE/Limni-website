@@ -3,6 +3,8 @@ import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import { readMt5Accounts } from "@/lib/mt5Store";
 
+export const dynamic = "force-dynamic";
+
 const percentFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,

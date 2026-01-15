@@ -2,14 +2,14 @@ import { query, queryOne } from "./db";
 import { buildCurrencySnapshot, derivePairDirections } from "./cotCompute";
 import { fetchCotRowsForDate, fetchLatestReportDate } from "./cotFetch";
 import { COT_MARKETS, COT_VARIANT, SUPPORTED_CURRENCIES } from "./cotMarkets";
-import type { CotSnapshot, CurrencySnapshot } from "./cotTypes";
+import type { CotSnapshot, CurrencySnapshot, PairSnapshot } from "./cotTypes";
 
 export async function readSnapshot(): Promise<CotSnapshot | null> {
   try {
     const row = await queryOne<{
       report_date: string;
       currencies: Record<string, CurrencySnapshot>;
-      pairs: Record<string, { direction: number }>;
+      pairs: Record<string, PairSnapshot>;
       fetched_at: Date;
     }>(
       "SELECT report_date, currencies, pairs, fetched_at FROM cot_snapshots ORDER BY report_date DESC LIMIT 1"

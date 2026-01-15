@@ -3,6 +3,8 @@ import RefreshSentimentButton from "@/components/RefreshSentimentButton";
 import SentimentHeatmap from "@/components/SentimentHeatmap";
 import { getLatestAggregates, readSourceHealth } from "@/lib/sentiment/store";
 
+export const dynamic = "force-dynamic";
+
 const percentFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,

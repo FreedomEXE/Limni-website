@@ -7,6 +7,8 @@ import { readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import { getStoredPairPerformance } from "@/lib/pricePerformance";
 
+export const dynamic = "force-dynamic";
+
 const numberFormatter = new Intl.NumberFormat("en-US");
 
 function formatNumber(value: number) {

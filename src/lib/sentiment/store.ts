@@ -20,13 +20,19 @@ export async function readSnapshots(): Promise<ProviderSentiment[]> {
        ORDER BY timestamp_utc DESC`
     );
 
-    return rows.map((row) => ({
-      provider: row.provider as ProviderSentiment["provider"],
-      symbol: row.symbol,
-      long_pct: Number(row.long_pct),
-      short_pct: Number(row.short_pct),
-      timestamp_utc: row.timestamp_utc.toISOString(),
-    }));
+    return rows.map((row) => {
+      const longPct = Number(row.long_pct);
+      const shortPct = Number(row.short_pct);
+      return {
+        provider: row.provider as ProviderSentiment["provider"],
+        symbol: row.symbol,
+        long_pct: longPct,
+        short_pct: shortPct,
+        net: longPct - shortPct,
+        ratio: shortPct > 0 ? longPct / shortPct : 0,
+        timestamp_utc: row.timestamp_utc.toISOString(),
+      };
+    });
   } catch (error) {
     console.error("Error reading sentiment snapshots:", error);
     throw error;
@@ -72,12 +78,16 @@ export async function readAggregates(): Promise<SentimentAggregate[]> {
   try {
     const rows = await query<{
       symbol: string;
-      avg_long_pct: string;
-      avg_short_pct: string;
-      provider_count: number;
+      agg_long_pct: string;
+      agg_short_pct: string;
+      agg_net: string;
+      sources_used: string[];
+      confidence_score: string;
+      crowding_state: string;
+      flip_state: string;
       timestamp_utc: Date;
     }>(
-      `SELECT symbol, avg_long_pct, avg_short_pct, provider_count, timestamp_utc
+      `SELECT symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc
        FROM sentiment_aggregates
        WHERE timestamp_utc > NOW() - INTERVAL '7 days'
        ORDER BY timestamp_utc DESC`
@@ -85,9 +95,13 @@ export async function readAggregates(): Promise<SentimentAggregate[]> {
 
     return rows.map((row) => ({
       symbol: row.symbol,
-      avg_long_pct: Number(row.avg_long_pct),
-      avg_short_pct: Number(row.avg_short_pct),
-      provider_count: row.provider_count,
+      agg_long_pct: Number(row.agg_long_pct),
+      agg_short_pct: Number(row.agg_short_pct),
+      agg_net: Number(row.agg_net),
+      sources_used: row.sources_used as ProviderSentiment["provider"][],
+      confidence_score: Number(row.confidence_score),
+      crowding_state: row.crowding_state as SentimentAggregate["crowding_state"],
+      flip_state: row.flip_state as SentimentAggregate["flip_state"],
       timestamp_utc: row.timestamp_utc.toISOString(),
     }));
   } catch (error) {
@@ -109,13 +123,17 @@ export async function appendAggregates(
   try {
     for (const agg of newAggregates) {
       await query(
-        `INSERT INTO sentiment_aggregates (symbol, avg_long_pct, avg_short_pct, provider_count, timestamp_utc)
-         VALUES ($1, $2, $3, $4, $5)`,
+        `INSERT INTO sentiment_aggregates (symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           agg.symbol,
-          agg.avg_long_pct,
-          agg.avg_short_pct,
-          agg.provider_count,
+          agg.agg_long_pct,
+          agg.agg_short_pct,
+          agg.agg_net,
+          agg.sources_used,
+          agg.confidence_score,
+          agg.crowding_state,
+          agg.flip_state,
           new Date(agg.timestamp_utc),
         ]
       );
@@ -135,22 +153,30 @@ export async function getLatestAggregates(): Promise<SentimentAggregate[]> {
   try {
     const rows = await query<{
       symbol: string;
-      avg_long_pct: string;
-      avg_short_pct: string;
-      provider_count: number;
+      agg_long_pct: string;
+      agg_short_pct: string;
+      agg_net: string;
+      sources_used: string[];
+      confidence_score: string;
+      crowding_state: string;
+      flip_state: string;
       timestamp_utc: Date;
     }>(
       `SELECT DISTINCT ON (symbol)
-         symbol, avg_long_pct, avg_short_pct, provider_count, timestamp_utc
+         symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc
        FROM sentiment_aggregates
        ORDER BY symbol, timestamp_utc DESC`
     );
 
     return rows.map((row) => ({
       symbol: row.symbol,
-      avg_long_pct: Number(row.avg_long_pct),
-      avg_short_pct: Number(row.avg_short_pct),
-      provider_count: row.provider_count,
+      agg_long_pct: Number(row.agg_long_pct),
+      agg_short_pct: Number(row.agg_short_pct),
+      agg_net: Number(row.agg_net),
+      sources_used: row.sources_used as ProviderSentiment["provider"][],
+      confidence_score: Number(row.confidence_score),
+      crowding_state: row.crowding_state as SentimentAggregate["crowding_state"],
+      flip_state: row.flip_state as SentimentAggregate["flip_state"],
       timestamp_utc: row.timestamp_utc.toISOString(),
     }));
   } catch (error) {

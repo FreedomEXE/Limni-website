@@ -6,7 +6,7 @@ import PositionsTable from "@/components/PositionsTable";
 import DashboardLayout from "@/components/DashboardLayout";
 import RefreshButton from "@/components/RefreshButton";
 
-export const revalidate = 0; // Disable caching for this page
+export const dynamic = "force-dynamic";
 
 const percentFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
