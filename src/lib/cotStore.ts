@@ -1,34 +1,57 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { query, queryOne } from "./db";
 import { buildCurrencySnapshot, derivePairDirections } from "./cotCompute";
 import { fetchCotRowsForDate, fetchLatestReportDate } from "./cotFetch";
 import { COT_MARKETS, COT_VARIANT, SUPPORTED_CURRENCIES } from "./cotMarkets";
 import type { CotSnapshot, CurrencySnapshot } from "./cotTypes";
 
-// Use /tmp in production (Vercel), data/ locally
-const DATA_DIR = process.env.VERCEL ? "/tmp" : path.join(process.cwd(), "data");
-const SNAPSHOT_PATH = path.join(DATA_DIR, "cot_snapshot.json");
-
-async function ensureDataDir() {
-  const dir = path.dirname(SNAPSHOT_PATH);
-  await fs.mkdir(dir, { recursive: true });
-}
-
 export async function readSnapshot(): Promise<CotSnapshot | null> {
   try {
-    const raw = await fs.readFile(SNAPSHOT_PATH, "utf-8");
-    return JSON.parse(raw) as CotSnapshot;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+    const row = await queryOne<{
+      report_date: string;
+      currencies: Record<string, CurrencySnapshot>;
+      pairs: Record<string, { direction: number }>;
+      fetched_at: Date;
+    }>(
+      "SELECT report_date, currencies, pairs, fetched_at FROM cot_snapshots ORDER BY report_date DESC LIMIT 1"
+    );
+
+    if (!row) {
       return null;
     }
+
+    return {
+      report_date: row.report_date,
+      last_refresh_utc: row.fetched_at.toISOString(),
+      currencies: row.currencies,
+      pairs: row.pairs,
+    };
+  } catch (error) {
+    console.error("Error reading COT snapshot from database:", error);
     throw error;
   }
 }
 
 export async function writeSnapshot(snapshot: CotSnapshot): Promise<void> {
-  await ensureDataDir();
-  await fs.writeFile(SNAPSHOT_PATH, JSON.stringify(snapshot, null, 2), "utf-8");
+  try {
+    await query(
+      `INSERT INTO cot_snapshots (report_date, currencies, pairs, fetched_at)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (report_date)
+       DO UPDATE SET
+         currencies = EXCLUDED.currencies,
+         pairs = EXCLUDED.pairs,
+         fetched_at = EXCLUDED.fetched_at`,
+      [
+        snapshot.report_date,
+        JSON.stringify(snapshot.currencies),
+        JSON.stringify(snapshot.pairs),
+        new Date(snapshot.last_refresh_utc),
+      ]
+    );
+  } catch (error) {
+    console.error("Error writing COT snapshot to database:", error);
+    throw error;
+  }
 }
 
 export async function refreshSnapshot(): Promise<CotSnapshot> {

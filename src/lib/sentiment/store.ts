@@ -1,40 +1,34 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { query } from "../db";
 import type {
   ProviderSentiment,
   SentimentAggregate,
   SourceHealth,
 } from "./types";
 
-const SNAPSHOTS_PATH = path.join(
-  process.cwd(),
-  "data",
-  "sentiment_snapshots.json",
-);
-const AGGREGATES_PATH = path.join(
-  process.cwd(),
-  "data",
-  "sentiment_aggregates.json",
-);
-const SOURCES_PATH = path.join(
-  process.cwd(),
-  "data",
-  "sentiment_sources.json",
-);
-
-async function ensureDataDir() {
-  const dir = path.join(process.cwd(), "data");
-  await fs.mkdir(dir, { recursive: true });
-}
-
 export async function readSnapshots(): Promise<ProviderSentiment[]> {
   try {
-    const raw = await fs.readFile(SNAPSHOTS_PATH, "utf-8");
-    return JSON.parse(raw) as ProviderSentiment[];
+    const rows = await query<{
+      provider: string;
+      symbol: string;
+      long_pct: string;
+      short_pct: string;
+      timestamp_utc: Date;
+    }>(
+      `SELECT provider, symbol, long_pct, short_pct, timestamp_utc
+       FROM sentiment_data
+       WHERE timestamp_utc > NOW() - INTERVAL '24 hours'
+       ORDER BY timestamp_utc DESC`
+    );
+
+    return rows.map((row) => ({
+      provider: row.provider as ProviderSentiment["provider"],
+      symbol: row.symbol,
+      long_pct: Number(row.long_pct),
+      short_pct: Number(row.short_pct),
+      timestamp_utc: row.timestamp_utc.toISOString(),
+    }));
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
-    }
+    console.error("Error reading sentiment snapshots:", error);
     throw error;
   }
 }
@@ -42,33 +36,62 @@ export async function readSnapshots(): Promise<ProviderSentiment[]> {
 export async function writeSnapshots(
   snapshots: ProviderSentiment[],
 ): Promise<void> {
-  await ensureDataDir();
-  await fs.writeFile(SNAPSHOTS_PATH, JSON.stringify(snapshots, null, 2), "utf-8");
+  // Deprecated - use appendSnapshots instead
+  await appendSnapshots(snapshots);
 }
 
 export async function appendSnapshots(
   newSnapshots: ProviderSentiment[],
 ): Promise<void> {
-  const existing = await readSnapshots();
-  const maxAge = Date.now() - 24 * 60 * 60 * 1000;
+  try {
+    for (const snapshot of newSnapshots) {
+      await query(
+        `INSERT INTO sentiment_data (provider, symbol, long_pct, short_pct, timestamp_utc)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          snapshot.provider,
+          snapshot.symbol,
+          snapshot.long_pct,
+          snapshot.short_pct,
+          new Date(snapshot.timestamp_utc),
+        ]
+      );
+    }
 
-  const filtered = existing.filter((s) => {
-    const timestamp = new Date(s.timestamp_utc).getTime();
-    return timestamp > maxAge;
-  });
-
-  const combined = [...filtered, ...newSnapshots];
-  await writeSnapshots(combined);
+    // Clean up old data (keep last 24 hours)
+    await query(
+      "DELETE FROM sentiment_data WHERE timestamp_utc < NOW() - INTERVAL '24 hours'"
+    );
+  } catch (error) {
+    console.error("Error appending sentiment snapshots:", error);
+    throw error;
+  }
 }
 
 export async function readAggregates(): Promise<SentimentAggregate[]> {
   try {
-    const raw = await fs.readFile(AGGREGATES_PATH, "utf-8");
-    return JSON.parse(raw) as SentimentAggregate[];
+    const rows = await query<{
+      symbol: string;
+      avg_long_pct: string;
+      avg_short_pct: string;
+      provider_count: number;
+      timestamp_utc: Date;
+    }>(
+      `SELECT symbol, avg_long_pct, avg_short_pct, provider_count, timestamp_utc
+       FROM sentiment_aggregates
+       WHERE timestamp_utc > NOW() - INTERVAL '7 days'
+       ORDER BY timestamp_utc DESC`
+    );
+
+    return rows.map((row) => ({
+      symbol: row.symbol,
+      avg_long_pct: Number(row.avg_long_pct),
+      avg_short_pct: Number(row.avg_short_pct),
+      provider_count: row.provider_count,
+      timestamp_utc: row.timestamp_utc.toISOString(),
+    }));
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
-    }
+    console.error("Error reading sentiment aggregates:", error);
     throw error;
   }
 }
@@ -76,64 +99,78 @@ export async function readAggregates(): Promise<SentimentAggregate[]> {
 export async function writeAggregates(
   aggregates: SentimentAggregate[],
 ): Promise<void> {
-  await ensureDataDir();
-  await fs.writeFile(
-    AGGREGATES_PATH,
-    JSON.stringify(aggregates, null, 2),
-    "utf-8",
-  );
+  // Deprecated - use appendAggregates instead
+  await appendAggregates(aggregates);
 }
 
 export async function appendAggregates(
   newAggregates: SentimentAggregate[],
 ): Promise<void> {
-  const existing = await readAggregates();
-  const maxAge = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  try {
+    for (const agg of newAggregates) {
+      await query(
+        `INSERT INTO sentiment_aggregates (symbol, avg_long_pct, avg_short_pct, provider_count, timestamp_utc)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          agg.symbol,
+          agg.avg_long_pct,
+          agg.avg_short_pct,
+          agg.provider_count,
+          new Date(agg.timestamp_utc),
+        ]
+      );
+    }
 
-  const filtered = existing.filter((a) => {
-    const timestamp = new Date(a.timestamp_utc).getTime();
-    return timestamp > maxAge;
-  });
-
-  const combined = [...filtered, ...newAggregates];
-  await writeAggregates(combined);
+    // Clean up old data (keep last 7 days)
+    await query(
+      "DELETE FROM sentiment_aggregates WHERE timestamp_utc < NOW() - INTERVAL '7 days'"
+    );
+  } catch (error) {
+    console.error("Error appending sentiment aggregates:", error);
+    throw error;
+  }
 }
 
 export async function getLatestAggregates(): Promise<SentimentAggregate[]> {
-  const all = await readAggregates();
-  if (all.length === 0) {
-    return [];
+  try {
+    const rows = await query<{
+      symbol: string;
+      avg_long_pct: string;
+      avg_short_pct: string;
+      provider_count: number;
+      timestamp_utc: Date;
+    }>(
+      `SELECT DISTINCT ON (symbol)
+         symbol, avg_long_pct, avg_short_pct, provider_count, timestamp_utc
+       FROM sentiment_aggregates
+       ORDER BY symbol, timestamp_utc DESC`
+    );
+
+    return rows.map((row) => ({
+      symbol: row.symbol,
+      avg_long_pct: Number(row.avg_long_pct),
+      avg_short_pct: Number(row.avg_short_pct),
+      provider_count: row.provider_count,
+      timestamp_utc: row.timestamp_utc.toISOString(),
+    }));
+  } catch (error) {
+    console.error("Error getting latest sentiment aggregates:", error);
+    throw error;
   }
-
-  const bySymbol = new Map<string, SentimentAggregate>();
-
-  for (const agg of all) {
-    const existing = bySymbol.get(agg.symbol);
-    if (!existing || new Date(agg.timestamp_utc) > new Date(existing.timestamp_utc)) {
-      bySymbol.set(agg.symbol, agg);
-    }
-  }
-
-  return Array.from(bySymbol.values());
 }
 
 export async function readSourceHealth(): Promise<SourceHealth[]> {
-  try {
-    const raw = await fs.readFile(SOURCES_PATH, "utf-8");
-    return JSON.parse(raw) as SourceHealth[];
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
-    }
-    throw error;
-  }
+  // For now, return empty array - source health tracking not yet implemented in DB
+  // TODO: Add sentiment_source_health table and implement this
+  return [];
 }
 
 export async function writeSourceHealth(
   sources: SourceHealth[],
 ): Promise<void> {
-  await ensureDataDir();
-  await fs.writeFile(SOURCES_PATH, JSON.stringify(sources, null, 2), "utf-8");
+  // For now, no-op - source health tracking not yet implemented in DB
+  // TODO: Add sentiment_source_health table and implement this
+  console.log("writeSourceHealth not yet implemented for PostgreSQL");
 }
 
 export async function updateSourceHealth(
@@ -141,38 +178,7 @@ export async function updateSourceHealth(
   success: boolean,
   error?: string,
 ): Promise<void> {
-  const sources = await readSourceHealth();
-  const index = sources.findIndex((s) => s.name === name);
-
-  const now = new Date().toISOString();
-
-  if (index >= 0) {
-    if (success) {
-      sources[index] = {
-        ...sources[index],
-        status: "HEALTHY",
-        last_success_at: now,
-        last_error: "",
-        consecutive_failures: 0,
-      };
-    } else {
-      const failures = sources[index]!.consecutive_failures + 1;
-      sources[index] = {
-        ...sources[index],
-        status: failures >= 3 ? "DOWN" : "DEGRADED",
-        last_error: error || "Unknown error",
-        consecutive_failures: failures,
-      };
-    }
-  } else {
-    sources.push({
-      name: name as never,
-      status: success ? "HEALTHY" : "DEGRADED",
-      last_success_at: success ? now : "",
-      last_error: error || "",
-      consecutive_failures: success ? 0 : 1,
-    });
-  }
-
-  await writeSourceHealth(sources);
+  // For now, no-op - source health tracking not yet implemented in DB
+  // TODO: Add sentiment_source_health table and implement this
+  console.log("updateSourceHealth not yet implemented for PostgreSQL");
 }
