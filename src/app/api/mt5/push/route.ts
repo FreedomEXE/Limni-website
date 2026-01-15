@@ -27,6 +27,17 @@ function parseBool(value: unknown) {
   return false;
 }
 
+export async function GET() {
+  return NextResponse.json({
+    error: "Method not allowed. Use POST to push MT5 data.",
+    expected_method: "POST",
+    expected_headers: {
+      "Content-Type": "application/json",
+      "x-mt5-token": "your_token_here"
+    }
+  }, { status: 405 });
+}
+
 export async function POST(request: Request) {
   const token =
     request.headers.get("x-admin-token") ??

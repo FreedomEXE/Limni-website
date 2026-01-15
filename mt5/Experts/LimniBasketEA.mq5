@@ -6,7 +6,7 @@
 
 #include <Trade/Trade.mqh>
 
-input string ApiUrl = "http://127.0.0.1:3001/api/cot/latest";
+input string ApiUrl = "https://limni-website.vercel.app/api/cot/latest";
 input int ApiPollIntervalSeconds = 60;
 input int AddIntervalMinutes = 60;
 input double BasketLotCapPer100k = 10.0;
@@ -27,8 +27,8 @@ input int DashboardLineHeight = 18;
 input int DashboardPadding = 10;
 input int DashboardFontSize = 10;
 input bool PushAccountStats = true;
-input string PushUrl = "http://127.0.0.1:3001/api/mt5/push";
-input string PushToken = "";
+input string PushUrl = "https://limni-website.vercel.app/api/mt5/push";
+input string PushToken = "2121";
 input int PushIntervalSeconds = 30;
 input string AccountLabel = "";
 
@@ -1808,7 +1808,7 @@ bool HttpPostJson(const string url, const string payload, string &response)
   string headers;
   string request_headers = "Content-Type: application/json\r\n";
   if(PushToken != "")
-    request_headers += "x-admin-token: " + PushToken + "\r\n";
+    request_headers += "x-mt5-token: " + PushToken + "\r\n";
 
   int len = StringToCharArray(payload, data, 0, WHOLE_ARRAY, CP_UTF8);
   if(len > 0 && data[len - 1] == 0)
