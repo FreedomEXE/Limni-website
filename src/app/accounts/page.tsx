@@ -64,7 +64,15 @@ function formatTimestamp(value: string) {
 }
 
 export default async function AccountsPage() {
-  const accounts = await readMt5Accounts();
+  let accounts: Awaited<ReturnType<typeof readMt5Accounts>> = [];
+  try {
+    accounts = await readMt5Accounts();
+  } catch (error) {
+    console.error(
+      "Accounts load failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
   const totalEquity = accounts.reduce(
     (sum, account) => sum + (Number.isFinite(account.equity) ? account.equity : 0),
     0,

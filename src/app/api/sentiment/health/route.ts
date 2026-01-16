@@ -6,6 +6,8 @@ import {
 } from "@/lib/sentiment/store";
 import { FX_PAIRS } from "@/lib/sentiment/symbols";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   try {
     const [sources, aggregates, snapshots] = await Promise.all([

@@ -6,6 +6,7 @@ import { COT_VARIANT } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import { getStoredPairPerformance } from "@/lib/pricePerformance";
+import type { PairPerformance } from "@/lib/priceStore";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,6 @@ export default async function DashboardPage() {
     ...row,
     performance: performance[pair] ?? null,
   }));
-
   return (
     <DashboardLayout>
       <div className="space-y-8">

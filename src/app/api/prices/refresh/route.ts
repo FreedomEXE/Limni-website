@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { readSnapshot } from "@/lib/cotStore";
 import { refreshMarketSnapshot } from "@/lib/pricePerformance";
 
+export const runtime = "nodejs";
+
 function getToken(request: Request) {
   const headerToken = request.headers.get("x-admin-token");
   if (headerToken) {

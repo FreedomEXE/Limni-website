@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { upsertMt5Account } from "@/lib/mt5Store";
 import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
 
+export const runtime = "nodejs";
+
 function parseNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;

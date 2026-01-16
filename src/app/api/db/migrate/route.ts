@@ -3,6 +3,8 @@ import { Pool } from "pg";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   // Check admin token
   const token = request.headers.get("x-admin-token") ?? "";

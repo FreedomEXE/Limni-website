@@ -3,6 +3,8 @@ import { evaluateFreshness } from "@/lib/cotFreshness";
 import { readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   const snapshot = await readSnapshot();
 

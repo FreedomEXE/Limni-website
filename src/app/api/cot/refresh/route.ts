@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { evaluateFreshness } from "@/lib/cotFreshness";
 import { refreshSnapshot } from "@/lib/cotStore";
 
+export const runtime = "nodejs";
+
 function getToken(request: Request) {
   const headerToken = request.headers.get("x-admin-token");
   if (headerToken) {

@@ -2,6 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import RefreshSentimentButton from "@/components/RefreshSentimentButton";
 import SentimentHeatmap from "@/components/SentimentHeatmap";
 import { getLatestAggregates, readSourceHealth } from "@/lib/sentiment/store";
+import type { SentimentAggregate, SourceHealth } from "@/lib/sentiment/types";
 
 export const dynamic = "force-dynamic";
 
@@ -36,11 +37,19 @@ function sourceTone(status: string) {
 }
 
 export default async function SentimentPage() {
-  const [aggregates, sources] = await Promise.all([
-    getLatestAggregates(),
-    readSourceHealth(),
-  ]);
-
+  let aggregates: SentimentAggregate[] = [];
+  let sources: SourceHealth[] = [];
+  try {
+    [aggregates, sources] = await Promise.all([
+      getLatestAggregates(),
+      readSourceHealth(),
+    ]);
+  } catch (error) {
+    console.error(
+      "Sentiment load failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
   const sortedAggregates = aggregates.sort((a, b) =>
     a.symbol.localeCompare(b.symbol),
   );

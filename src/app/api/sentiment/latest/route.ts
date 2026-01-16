@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getLatestAggregates } from "@/lib/sentiment/store";
 
+export const runtime = "nodejs";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const symbolsParam = searchParams.get("symbols");

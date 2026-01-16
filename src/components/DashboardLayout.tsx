@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "COT Bias", icon: "📊" },
   { href: "/sentiment", label: "Sentiment", icon: "📈" },
   { href: "/accounts", label: "Accounts", icon: "🔗" },
+  { href: "/status", label: "Status", icon: "??" },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {

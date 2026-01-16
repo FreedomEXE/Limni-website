@@ -121,8 +121,15 @@ type AccountPageProps = {
 
 export default async function AccountPage({ params }: AccountPageProps) {
   const { accountId } = await params;
-  const account = await getMt5AccountById(accountId);
-
+  let account = null;
+  try {
+    account = await getMt5AccountById(accountId);
+  } catch (error) {
+    console.error(
+      "Account load failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
   if (!account) {
     notFound();
   }
@@ -130,6 +137,12 @@ export default async function AccountPage({ params }: AccountPageProps) {
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        {!account ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-6 text-sm text-rose-700">
+            Account data could not be loaded. Check database connectivity and MT5
+            push status.
+          </div>
+        ) : null}
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
             <Link
@@ -140,29 +153,30 @@ export default async function AccountPage({ params }: AccountPageProps) {
             </Link>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-semibold text-slate-900">
-                {account.label}
+                {account?.label ?? "Account"}
               </h1>
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(
-                  account.status,
+                  account?.status ?? "PAUSED",
                 )}`}
               >
-                {account.status}
+                {account?.status ?? "UNKNOWN"}
               </span>
             </div>
             <p className="text-sm text-[color:var(--muted)]">
-              {account.broker || "Unknown broker"} -{" "}
-              {account.server || "Unknown server"}
+              {account?.broker || "Unknown broker"} -{" "}
+              {account?.server || "Unknown server"}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3 text-sm text-[color:var(--muted)] shadow-sm">
-              Last sync {formatDateTime(account.last_sync_utc)}
+              Last sync {formatDateTime(account?.last_sync_utc ?? "")}
             </div>
             <RefreshButton />
           </div>
         </header>
 
+        {account ? (
         <section className="grid gap-4 md:grid-cols-4">
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -400,6 +414,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
             equity={account.equity}
           />
         </section>
+        ) : null}
       </div>
     </DashboardLayout>
   );

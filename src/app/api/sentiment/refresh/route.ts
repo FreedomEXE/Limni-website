@@ -10,6 +10,8 @@ import {
 import type { ProviderSentiment } from "@/lib/sentiment/types";
 import { FX_PAIRS } from "@/lib/sentiment/symbols";
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   const token = request.headers.get("x-admin-token") ?? "";
   const expectedToken = process.env.ADMIN_TOKEN ?? "";
