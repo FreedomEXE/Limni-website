@@ -295,7 +295,7 @@ export async function upsertMt5Account(
       await client.query(
         `INSERT INTO mt5_snapshots (
           account_id, equity, balance, open_positions, basket_pnl_pct,
-          weekly_pnl_pct, snapshot_time
+          weekly_pnl_pct, snapshot_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           snapshot.account_id,
@@ -305,7 +305,7 @@ export async function upsertMt5Account(
           snapshot.basket_pnl_pct,
           snapshot.weekly_pnl_pct,
           new Date(snapshot.last_sync_utc),
-        ]
+        ],
       );
     });
 
