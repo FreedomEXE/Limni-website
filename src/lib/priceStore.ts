@@ -44,19 +44,35 @@ export async function writeMarketSnapshot(
   snapshot: MarketSnapshot,
 ): Promise<void> {
   try {
-    await query(
-      `INSERT INTO market_snapshots (week_open_utc, last_refresh_utc, pairs)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (week_open_utc)
-       DO UPDATE SET
-         last_refresh_utc = EXCLUDED.last_refresh_utc,
-         pairs = EXCLUDED.pairs`,
-      [
-        new Date(snapshot.week_open_utc),
-        new Date(snapshot.last_refresh_utc),
-        JSON.stringify(snapshot.pairs),
-      ]
+    const weekOpen = new Date(snapshot.week_open_utc);
+    const existing = await queryOne<{ id: number }>(
+      "SELECT id FROM market_snapshots WHERE week_open_utc = $1 LIMIT 1",
+      [weekOpen],
     );
+
+    if (existing?.id) {
+      await query(
+        `UPDATE market_snapshots
+         SET last_refresh_utc = $1,
+             pairs = $2
+         WHERE id = $3`,
+        [
+          new Date(snapshot.last_refresh_utc),
+          JSON.stringify(snapshot.pairs),
+          existing.id,
+        ],
+      );
+    } else {
+      await query(
+        `INSERT INTO market_snapshots (week_open_utc, last_refresh_utc, pairs)
+         VALUES ($1, $2, $3)`,
+        [
+          weekOpen,
+          new Date(snapshot.last_refresh_utc),
+          JSON.stringify(snapshot.pairs),
+        ],
+      );
+    }
   } catch (error) {
     console.error("Error writing market snapshot to database:", error);
     throw error;
