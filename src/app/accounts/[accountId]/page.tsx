@@ -177,7 +177,8 @@ export default async function AccountPage({ params }: AccountPageProps) {
         </header>
 
         {account ? (
-        <section className="grid gap-4 md:grid-cols-4">
+          <>
+            <section className="grid gap-4 md:grid-cols-4">
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Equity
@@ -414,6 +415,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
             equity={account.equity}
           />
         </section>
+          </>
         ) : null}
       </div>
     </DashboardLayout>
