@@ -1,4 +1,5 @@
 export type AssetClass = "fx" | "indices" | "crypto" | "commodities";
+export type CotSource = "tff" | "legacy" | "disaggregated";
 
 export type MarketDefinition = {
   id: string;
@@ -10,6 +11,8 @@ export type AssetClassDefinition = {
   id: AssetClass;
   label: string;
   biasLabel: string;
+  positionLabel: string;
+  source: CotSource;
   markets: Record<string, MarketDefinition>;
 };
 
@@ -18,6 +21,8 @@ export const COT_ASSET_CLASSES: Record<AssetClass, AssetClassDefinition> = {
     id: "fx",
     label: "FX",
     biasLabel: "Currency",
+    positionLabel: "Dealer",
+    source: "tff",
     markets: {
       AUD: { id: "AUD", label: "AUD", marketNames: ["AUSTRALIAN DOLLAR"] },
       CAD: { id: "CAD", label: "CAD", marketNames: ["CANADIAN DOLLAR"] },
@@ -33,6 +38,8 @@ export const COT_ASSET_CLASSES: Record<AssetClass, AssetClassDefinition> = {
     id: "indices",
     label: "Indices",
     biasLabel: "Index",
+    positionLabel: "Dealer",
+    source: "tff",
     markets: {
       USD: { id: "USD", label: "USD", marketNames: ["USD INDEX"] },
       SPX: {
@@ -56,6 +63,8 @@ export const COT_ASSET_CLASSES: Record<AssetClass, AssetClassDefinition> = {
     id: "crypto",
     label: "Crypto",
     biasLabel: "Crypto",
+    positionLabel: "Dealer",
+    source: "tff",
     markets: {
       USD: { id: "USD", label: "USD", marketNames: ["USD INDEX"] },
       BTC: { id: "BTC", label: "Bitcoin", marketNames: ["BITCOIN"] },
@@ -70,6 +79,8 @@ export const COT_ASSET_CLASSES: Record<AssetClass, AssetClassDefinition> = {
     id: "commodities",
     label: "Commodities",
     biasLabel: "Commodity",
+    positionLabel: "Producer/Merchant",
+    source: "disaggregated",
     markets: {
       USD: { id: "USD", label: "USD", marketNames: ["USD INDEX"] },
       XAU: { id: "XAU", label: "Gold", marketNames: ["GOLD"] },

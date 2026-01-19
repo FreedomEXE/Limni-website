@@ -5,10 +5,12 @@ import {
   derivePairDirectionsByBase,
 } from "./cotCompute";
 import { fetchCotRowsForDate, fetchLatestReportDate } from "./cotFetch";
+import type { CotRow } from "./cotFetch";
 import {
   COT_VARIANT,
   getAssetClassDefinition,
   type AssetClass,
+  type CotSource,
 } from "./cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "./cotPairs";
 import type { CotSnapshot, MarketSnapshot, PairSnapshot } from "./cotTypes";
@@ -114,7 +116,8 @@ export async function refreshSnapshotForClass(
   assetClass: AssetClass = "fx",
   reportDate?: string,
 ): Promise<CotSnapshot> {
-  const resolvedReportDate = reportDate ?? (await fetchLatestReportDate());
+  const resolvedReportDate =
+    reportDate ?? (await fetchLatestReportDate(assetDefinition.source));
   const assetDefinition = getAssetClassDefinition(assetClass);
   const marketDefs = Object.values(assetDefinition.markets);
   const marketNames = marketDefs.flatMap((market) => market.marketNames);
@@ -122,6 +125,7 @@ export async function refreshSnapshotForClass(
     resolvedReportDate,
     marketNames,
     COT_VARIANT,
+    assetDefinition.source,
   );
 
   const byMarket = new Map(
@@ -146,11 +150,10 @@ export async function refreshSnapshotForClass(
       continue;
     }
 
-    const dealerLong = Number(row.comm_positions_long_all);
-    const dealerShort = Number(row.comm_positions_short_all);
+    const [dealerLong, dealerShort] = getPositions(row, assetDefinition.source);
 
     if (!Number.isFinite(dealerLong) || !Number.isFinite(dealerShort)) {
-      throw new Error(`Invalid dealer data for ${market.id}`);
+      throw new Error(`Invalid position data for ${market.id}`);
     }
 
     currencies[market.id] = buildMarketSnapshot(dealerLong, dealerShort);
@@ -188,4 +191,25 @@ export async function refreshAllSnapshots(
   );
   const snapshots = await Promise.all(entries);
   return Object.fromEntries(snapshots) as Record<AssetClass, CotSnapshot>;
+}
+
+function getPositions(row: CotRow, source: CotSource): [number, number] {
+  if (source === "tff") {
+    return [
+      Number(row.dealer_positions_long_all),
+      Number(row.dealer_positions_short_all),
+    ];
+  }
+
+  if (source === "legacy") {
+    return [
+      Number(row.comm_positions_long_all),
+      Number(row.comm_positions_short_all),
+    ];
+  }
+
+  return [
+    Number(row.prod_merc_positions_long),
+    Number(row.prod_merc_positions_short),
+  ];
 }

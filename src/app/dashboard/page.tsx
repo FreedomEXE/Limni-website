@@ -144,8 +144,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 Bias Dashboard
               </h1>
               <p className="text-sm text-slate-600">
-                Commercial positioning from CFTC Legacy COT ({COT_VARIANT}) with
-                room to layer more bias inputs over time.
+                {assetDefinition.positionLabel} positioning from CFTC COT ({COT_VARIANT})
+                with room to layer more bias inputs over time.
               </p>
             </div>
           </div>
@@ -238,7 +238,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 {assetDefinition.biasLabel} bias
               </h2>
               <p className="text-sm text-[color:var(--muted)]">
-                Commercial short minus commercial long.
+                {assetDefinition.positionLabel} short minus {assetDefinition.positionLabel} long.
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -246,8 +246,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <thead className="text-xs uppercase text-[color:var(--muted)]">
                   <tr>
                     <th className="py-2">{assetDefinition.biasLabel}</th>
-                    <th className="py-2">Dealer long</th>
-                    <th className="py-2">Dealer short</th>
+                    <th className="py-2">{assetDefinition.positionLabel} long</th>
+                    <th className="py-2">{assetDefinition.positionLabel} short</th>
                     <th className="py-2">Net</th>
                     <th className="py-2">Bias</th>
                   </tr>
