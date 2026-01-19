@@ -11,9 +11,11 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "COT Bias", icon: "📊" },
-  { href: "/sentiment", label: "Sentiment", icon: "📈" },
-  { href: "/accounts", label: "Accounts", icon: "🔗" },
+  { href: "/dashboard", label: "Bias", icon: "??" },
+  { href: "/sentiment", label: "Sentiment", icon: "??" },
+  { href: "/antikythera", label: "Antikythera", icon: "??" },
+  { href: "/automation", label: "Automation", icon: "??" },
+  { href: "/accounts", label: "Accounts", icon: "??" },
   { href: "/status", label: "Status", icon: "??" },
 ];
 

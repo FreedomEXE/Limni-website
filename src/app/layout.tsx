@@ -15,8 +15,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Limni COT Bias Dashboard",
-  description: "Weekly COT dealer bias with a trading readiness gate.",
+  title: "Limni Trading Intelligence",
+  description: "Bias, sentiment, and signal intelligence for Limni.",
 };
 
 export default function RootLayout({

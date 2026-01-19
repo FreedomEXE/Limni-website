@@ -16,6 +16,7 @@ type PerformanceResult = {
 type PerformanceOptions = {
   assetClass?: AssetClass;
   reportDate?: string;
+  isLatestReport?: boolean;
 };
 
 const MAJOR_PAIRS = [
@@ -56,20 +57,23 @@ type WeekWindow = {
   isHistorical: boolean;
 };
 
-const NON_FX_SYMBOLS: Record<Exclude<AssetClass, "fx">, Record<string, string>> = {
+const NON_FX_SYMBOLS: Record<
+  Exclude<AssetClass, "fx">,
+  Record<string, string[]>
+> = {
   indices: {
-    SPX: "SPX",
-    NDX: "NDX",
-    NIKKEI: "N225",
+    SPX: ["SPX", "SPX500", "US500"],
+    NDX: ["NDX", "NAS100"],
+    NIKKEI: ["N225", "NI225", "JP225"],
   },
   crypto: {
-    BTC: "BTC/USD",
-    ETH: "ETH/USD",
+    BTC: ["BTC/USD", "BTCUSD"],
+    ETH: ["ETH/USD", "ETHUSD"],
   },
   commodities: {
-    XAU: "XAU/USD",
-    XAG: "XAG/USD",
-    WTI: "WTI",
+    XAU: ["XAU/USD", "XAUUSD", "GOLD"],
+    XAG: ["XAG/USD", "XAGUSD", "SILVER"],
+    WTI: ["WTI", "USOIL", "CL"],
   },
 };
 
@@ -119,8 +123,12 @@ function getSundayOpenUtc(now: DateTime): DateTime {
   return open.toUTC();
 }
 
-function getWeekWindow(now: DateTime, reportDate?: string): WeekWindow {
-  if (!reportDate) {
+function getWeekWindow(
+  now: DateTime,
+  reportDate?: string,
+  isLatestReport = false,
+): WeekWindow {
+  if (!reportDate || isLatestReport) {
     return { openUtc: getSundayOpenUtc(now), closeUtc: now, isHistorical: false };
   }
 
@@ -372,10 +380,13 @@ function buildUsdValues(
   return values;
 }
 
-function getNonFxSymbol(pair: string, assetClass: Exclude<AssetClass, "fx">): string | null {
+function getNonFxSymbols(
+  pair: string,
+  assetClass: Exclude<AssetClass, "fx">,
+): string[] {
   const symbolMap = NON_FX_SYMBOLS[assetClass];
   const base = Object.keys(symbolMap).find((key) => pair.startsWith(key));
-  return base ? symbolMap[base] : null;
+  return base ? symbolMap[base] : [];
 }
 
 async function buildNonFxPerformance(
@@ -389,43 +400,51 @@ async function buildNonFxPerformance(
   let missing = 0;
 
   for (const [pair, info] of Object.entries(pairs)) {
-    const symbol = getNonFxSymbol(pair, assetClass);
-    if (!symbol) {
+    const symbols = getNonFxSymbols(pair, assetClass);
+    if (symbols.length === 0) {
       performance[pair] = null;
       missing += 1;
       continue;
     }
 
-    try {
-      const values = await fetchTimeSeries(symbol, apiKey, { outputsize });
-      const { value: openValue, time: openTime } = findOpenValue(
-        values,
-        window.openUtc,
-      );
-      const { value: closeValue, time: closeTime } = findCloseValue(
-        values,
-        window.closeUtc,
-      );
-      const open = parseValue(openValue.open);
-      const current = parseValue(closeValue.close);
-      const directionFactor = info.direction === "LONG" ? 1 : -1;
-      const rawDelta = current - open;
-      const percent = (rawDelta / open) * 100;
-      const rawPips = rawDelta / pipSize(pair, assetClass);
-      const pips = rawPips * directionFactor;
+    let resolved = false;
+    for (const symbol of symbols) {
+      try {
+        const values = await fetchTimeSeries(symbol, apiKey, { outputsize });
+        const { value: openValue, time: openTime } = findOpenValue(
+          values,
+          window.openUtc,
+        );
+        const { value: closeValue, time: closeTime } = findCloseValue(
+          values,
+          window.closeUtc,
+        );
+        const open = parseValue(openValue.open);
+        const current = parseValue(closeValue.close);
+        const directionFactor = info.direction === "LONG" ? 1 : -1;
+        const rawDelta = current - open;
+        const percent = (rawDelta / open) * 100;
+        const rawPips = rawDelta / pipSize(pair, assetClass);
+        const pips = rawPips * directionFactor;
 
-      performance[pair] = {
-        open,
-        current,
-        percent,
-        pips,
-        open_time_utc: toIsoString(openTime),
-        current_time_utc: toIsoString(closeTime),
-      };
-    } catch (error) {
+        performance[pair] = {
+          open,
+          current,
+          percent,
+          pips,
+          open_time_utc: toIsoString(openTime),
+          current_time_utc: toIsoString(closeTime),
+        };
+        resolved = true;
+        break;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    if (!resolved) {
       performance[pair] = null;
       missing += 1;
-      console.error(error);
     }
   }
 
@@ -433,9 +452,12 @@ async function buildNonFxPerformance(
   const closeLabel = formatUtcLabel(toIsoString(window.closeUtc));
   const baseNote =
     missing > 0
-      ? `Missing prices for ${missing}/${totalPairs}. Close ${closeLabel}.`
-      : `Close ${closeLabel}.`;
-  const note = `${baseNote} Historical performance uses weekly close.`;
+      ? `Missing prices for ${missing}/${totalPairs}.`
+      : `Prices ready.`;
+  const timingNote = window.isHistorical
+    ? `Close ${closeLabel}. Historical performance uses weekly close.`
+    : `Latest ${closeLabel}.`;
+  const note = `${baseNote} ${timingNote}`;
 
   return { performance, note };
 }
@@ -447,7 +469,7 @@ export async function getPairPerformance(
   const apiKey = process.env.PRICE_API_KEY;
   const assetClass = options?.assetClass ?? "fx";
   const now = DateTime.utc();
-  const window = getWeekWindow(now, options?.reportDate);
+  const window = getWeekWindow(now, options?.reportDate, options?.isLatestReport);
   const weekOpenIso = toIsoString(window.openUtc);
   const currentWeekOpenIso = toIsoString(getSundayOpenUtc(now));
   const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
@@ -545,10 +567,13 @@ export async function getPairPerformance(
 
   const totalPairs = Object.keys(pairs).length;
   const closeLabel = formatUtcLabel(toIsoString(window.closeUtc));
+  const timingNote = window.isHistorical
+    ? `Close ${closeLabel}.`
+    : `Latest ${closeLabel}.`;
   const baseNote =
     missing > 0
-      ? `Missing prices for ${missing}/${totalPairs}. Close ${closeLabel}.`
-      : `Close ${closeLabel}.`;
+      ? `Missing prices for ${missing}/${totalPairs}. ${timingNote}`
+      : `${timingNote}`;
   const note = `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
 
   return { performance, note };

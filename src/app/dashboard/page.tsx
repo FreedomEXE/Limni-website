@@ -95,11 +95,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const pairRows = Object.entries(data.pairs).sort(([a], [b]) =>
     a.localeCompare(b),
   );
+  const isLatestReport =
+    !selectedReportDate ||
+    (availableDates.length > 0 && availableDates[0] === selectedReportDate);
   const perfResult =
     pairRows.length > 0
       ? await getPairPerformance(data.pairs, {
           assetClass,
           reportDate: selectedReportDate,
+          isLatestReport,
         })
       : { performance: {}, note: "No pairs to price." };
   const pairRowsWithPerf = pairRows.map(([pair, row]) => ({
@@ -137,11 +141,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
             <div>
               <h1 className="text-3xl font-semibold text-slate-900">
-                COT Bias Dashboard
+                Bias Dashboard
               </h1>
               <p className="text-sm text-slate-600">
                 Commercial positioning from CFTC Legacy COT ({COT_VARIANT}) with
-                a trading readiness gate.
+                room to layer more bias inputs over time.
               </p>
             </div>
           </div>

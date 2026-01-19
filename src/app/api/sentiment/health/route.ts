@@ -4,7 +4,7 @@ import {
   readSourceHealth,
   readSnapshots,
 } from "@/lib/sentiment/store";
-import { FX_PAIRS } from "@/lib/sentiment/symbols";
+import { ALL_SENTIMENT_SYMBOLS } from "@/lib/sentiment/symbols";
 
 export const runtime = "nodejs";
 
@@ -17,7 +17,9 @@ export async function GET() {
     ]);
 
     const coveredSymbols = new Set(aggregates.map((a) => a.symbol));
-    const missingSymbols = FX_PAIRS.filter((s) => !coveredSymbols.has(s));
+    const missingSymbols = ALL_SENTIMENT_SYMBOLS.filter(
+      (s) => !coveredSymbols.has(s),
+    );
 
     const recentSnapshots = snapshots.filter((s) => {
       const age = Date.now() - new Date(s.timestamp_utc).getTime();
@@ -35,7 +37,7 @@ export async function GET() {
     return NextResponse.json({
       sources,
       coverage: {
-        total_pairs: FX_PAIRS.length,
+        total_pairs: ALL_SENTIMENT_SYMBOLS.length,
         covered_pairs: coveredSymbols.size,
         missing_pairs: missingSymbols,
       },

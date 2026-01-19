@@ -8,7 +8,7 @@ import {
   updateSourceHealth,
 } from "@/lib/sentiment/store";
 import type { ProviderSentiment } from "@/lib/sentiment/types";
-import { FX_PAIRS } from "@/lib/sentiment/symbols";
+import { ALL_SENTIMENT_SYMBOLS } from "@/lib/sentiment/symbols";
 
 export const runtime = "nodejs";
 
@@ -33,7 +33,9 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const snapshots = await provider.fetchSentiment(Array.from(FX_PAIRS));
+        const snapshots = await provider.fetchSentiment(
+          Array.from(ALL_SENTIMENT_SYMBOLS),
+        );
         allSnapshots.push(...snapshots);
         await updateSourceHealth(provider.name, true);
         console.log(`[Sentiment] ${provider.name} fetched ${snapshots.length} snapshots`);
