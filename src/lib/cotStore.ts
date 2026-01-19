@@ -113,7 +113,7 @@ export async function refreshSnapshotForClass(
   const resolvedReportDate = reportDate ?? (await fetchLatestReportDate());
   const assetDefinition = getAssetClassDefinition(assetClass);
   const marketDefs = Object.values(assetDefinition.markets);
-  const marketNames = marketDefs.map((market) => market.marketName);
+  const marketNames = marketDefs.flatMap((market) => market.marketNames);
   const rows = await fetchCotRowsForDate(
     resolvedReportDate,
     marketNames,
@@ -128,7 +128,14 @@ export async function refreshSnapshotForClass(
   const missing: string[] = [];
 
   for (const market of marketDefs) {
-    const row = byMarket.get(market.marketName);
+    let row = null as typeof rows[number] | null;
+    for (const name of market.marketNames) {
+      const candidate = byMarket.get(name);
+      if (candidate) {
+        row = candidate;
+        break;
+      }
+    }
 
     if (!row) {
       missing.push(market.id);

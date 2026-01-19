@@ -62,12 +62,15 @@ function buildResponse(
 }
 
 type DashboardPageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?:
+    | Record<string, string | string[] | undefined>
+    | Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const assetParam = searchParams?.asset;
-  const reportParam = searchParams?.report;
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const assetParam = resolvedSearchParams?.asset;
+  const reportParam = resolvedSearchParams?.report;
   const assetClass = getAssetClass(
     Array.isArray(assetParam) ? assetParam[0] : assetParam,
   );
