@@ -75,7 +75,8 @@ CREATE INDEX IF NOT EXISTS idx_mt5_snapshots_account_time ON mt5_snapshots(accou
 -- COT Snapshots (weekly data)
 CREATE TABLE IF NOT EXISTS cot_snapshots (
   id SERIAL PRIMARY KEY,
-  report_date DATE NOT NULL UNIQUE,
+  report_date DATE NOT NULL,
+  asset_class VARCHAR(20) NOT NULL DEFAULT 'fx',
   variant VARCHAR(20) DEFAULT 'FutOnly',
   currencies JSONB NOT NULL,
   pairs JSONB NOT NULL,
@@ -83,7 +84,17 @@ CREATE TABLE IF NOT EXISTS cot_snapshots (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE cot_snapshots
+  ADD COLUMN IF NOT EXISTS asset_class VARCHAR(20) NOT NULL DEFAULT 'fx';
+ALTER TABLE cot_snapshots
+  ALTER COLUMN variant SET DEFAULT 'FutOnly';
+ALTER TABLE cot_snapshots
+  DROP CONSTRAINT IF EXISTS cot_snapshots_report_date_key;
+ALTER TABLE cot_snapshots
+  ADD CONSTRAINT cot_snapshots_report_date_asset_variant_key UNIQUE (report_date, asset_class, variant);
+
 CREATE INDEX IF NOT EXISTS idx_cot_snapshots_date ON cot_snapshots(report_date DESC);
+CREATE INDEX IF NOT EXISTS idx_cot_snapshots_asset_date ON cot_snapshots(asset_class, report_date DESC);
 
 -- Market Price Snapshots
 CREATE TABLE IF NOT EXISTS market_snapshots (
@@ -141,5 +152,7 @@ END;
 $$ language 'plpgsql';
 
 -- Apply triggers
+DROP TRIGGER IF EXISTS update_mt5_accounts_updated_at ON mt5_accounts;
+DROP TRIGGER IF EXISTS update_mt5_positions_updated_at ON mt5_positions;
 CREATE TRIGGER update_mt5_accounts_updated_at BEFORE UPDATE ON mt5_accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_mt5_positions_updated_at BEFORE UPDATE ON mt5_positions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

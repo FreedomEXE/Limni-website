@@ -1,5 +1,5 @@
-import type { Bias, CurrencySnapshot, PairSnapshot } from "./cotTypes";
-import { PAIRS } from "./cotPairs";
+import type { Bias, MarketSnapshot, PairSnapshot } from "./cotTypes";
+import type { PairDefinition } from "./cotPairs";
 
 export function biasFromNet(net: number): Bias {
   if (net > 0) {
@@ -11,10 +11,10 @@ export function biasFromNet(net: number): Bias {
   return "NEUTRAL";
 }
 
-export function buildCurrencySnapshot(
+export function buildMarketSnapshot(
   dealerLong: number,
   dealerShort: number,
-): CurrencySnapshot {
+): MarketSnapshot {
   const net = dealerShort - dealerLong;
   return {
     dealer_long: dealerLong,
@@ -25,13 +25,14 @@ export function buildCurrencySnapshot(
 }
 
 export function derivePairDirections(
-  currencies: Record<string, CurrencySnapshot>,
+  markets: Record<string, MarketSnapshot>,
+  pairDefs: PairDefinition[],
 ): Record<string, PairSnapshot> {
   const pairs: Record<string, PairSnapshot> = {};
 
-  for (const pairDef of PAIRS) {
-    const base = currencies[pairDef.base];
-    const quote = currencies[pairDef.quote];
+  for (const pairDef of pairDefs) {
+    const base = markets[pairDef.base];
+    const quote = markets[pairDef.quote];
 
     if (!base || !quote) {
       continue;

@@ -1,7 +1,9 @@
+import type { AssetClass } from "./cotMarkets";
+
 export type Bias = "BULLISH" | "BEARISH" | "NEUTRAL";
 export type Direction = "LONG" | "SHORT";
 
-export type CurrencySnapshot = {
+export type MarketSnapshot = {
   dealer_long: number;
   dealer_short: number;
   net: number;
@@ -17,7 +19,9 @@ export type PairSnapshot = {
 export type CotSnapshot = {
   report_date: string;
   last_refresh_utc: string;
-  currencies: Record<string, CurrencySnapshot>;
+  asset_class: AssetClass;
+  variant: string;
+  currencies: Record<string, MarketSnapshot>;
   pairs: Record<string, PairSnapshot>;
 };
 

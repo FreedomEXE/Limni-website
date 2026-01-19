@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { biasFromNet, derivePairDirections } from "../cotCompute";
-import type { CurrencySnapshot } from "../cotTypes";
+import { PAIRS_BY_ASSET_CLASS } from "../cotPairs";
+import type { MarketSnapshot } from "../cotTypes";
 
 describe("biasFromNet", () => {
   it("returns bullish when net is positive", () => {
@@ -18,7 +19,7 @@ describe("biasFromNet", () => {
 
 describe("derivePairDirections", () => {
   it("creates directions only when biases oppose", () => {
-    const currencies: Record<string, CurrencySnapshot> = {
+    const markets: Record<string, MarketSnapshot> = {
       AUD: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
       USD: { dealer_long: 20, dealer_short: 10, net: -10, bias: "BEARISH" },
       EUR: { dealer_long: 20, dealer_short: 10, net: -10, bias: "BEARISH" },
@@ -29,7 +30,7 @@ describe("derivePairDirections", () => {
       NZD: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
     };
 
-    const pairs = derivePairDirections(currencies);
+    const pairs = derivePairDirections(markets, PAIRS_BY_ASSET_CLASS.fx);
     expect(pairs.AUDUSD?.direction).toBe("LONG");
     expect(pairs.EURJPY?.direction).toBe("SHORT");
     expect(pairs.USDJPY?.direction).toBe("SHORT");

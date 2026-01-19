@@ -1,10 +1,10 @@
-const CFTC_BASE_URL = "https://publicreporting.cftc.gov/resource/udgc-27he.json";
+const CFTC_BASE_URL = "https://publicreporting.cftc.gov/resource/6dca-aqww.json";
 
 export type CotRow = {
   contract_market_name: string;
   report_date_as_yyyy_mm_dd: string;
-  dealer_positions_long_all: string;
-  dealer_positions_short_all: string;
+  comm_positions_long_all: string;
+  comm_positions_short_all: string;
   futonly_or_combined: string;
 };
 
@@ -53,7 +53,7 @@ export async function fetchCotRowsForDate(
   const url = new URL(CFTC_BASE_URL);
   url.searchParams.set(
     "$select",
-    "contract_market_name,report_date_as_yyyy_mm_dd,dealer_positions_long_all,dealer_positions_short_all,futonly_or_combined",
+    "contract_market_name,report_date_as_yyyy_mm_dd,comm_positions_long_all,comm_positions_short_all,futonly_or_combined",
   );
   url.searchParams.set("$where", where);
   url.searchParams.set("$limit", "500");

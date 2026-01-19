@@ -2,16 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { AssetClass } from "@/lib/cotMarkets";
 
 type ActionState = "cot" | "prices" | null;
 type MessageState = { type: "success" | "error"; text: string } | null;
 
 type RefreshControlProps = {
   lastRefreshUtc?: string | null;
+  assetClass?: AssetClass;
 };
 
 export default function RefreshControl({
   lastRefreshUtc,
+  assetClass,
 }: RefreshControlProps) {
   const router = useRouter();
   const [token, setToken] = useState("");
@@ -78,7 +81,12 @@ export default function RefreshControl({
           />
           <button
             type="button"
-            onClick={() => handleRefresh("/api/cot/refresh", "cot")}
+            onClick={() =>
+              handleRefresh(
+                assetClass ? `/api/cot/refresh?asset=${assetClass}` : "/api/cot/refresh",
+                "cot",
+              )
+            }
             disabled={loadingAction !== null}
             className="inline-flex items-center justify-center rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:bg-slate-300"
           >

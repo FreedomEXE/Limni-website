@@ -2,7 +2,38 @@ import { Pool } from "pg";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+async function loadEnvFile() {
+  try {
+    const envPath = path.resolve(process.cwd(), ".env");
+    const contents = await fs.readFile(envPath, "utf-8");
+    for (const line of contents.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) {
+        continue;
+      }
+      const [rawKey, ...rest] = trimmed.split("=");
+      const key = rawKey.trim();
+      if (!key || process.env[key]) {
+        continue;
+      }
+      let value = rest.join("=").trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] = value;
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      console.warn("⚠️ Could not read .env file:", error);
+    }
+  }
+}
+
 async function runMigration() {
+  await loadEnvFile();
   const databaseUrl = process.env.DATABASE_URL;
   
   if (!databaseUrl) {
@@ -10,9 +41,15 @@ async function runMigration() {
     process.exit(1);
   }
 
+  const shouldUseSsl =
+    process.env.DB_SSL === "true" ||
+    process.env.DB_SSL === "1" ||
+    process.env.NODE_ENV === "production" ||
+    databaseUrl.includes("render.com");
+
   const pool = new Pool({
     connectionString: databaseUrl,
-    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+    ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
   });
 
   try {

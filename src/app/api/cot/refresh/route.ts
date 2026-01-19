@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { evaluateFreshness } from "@/lib/cotFreshness";
-import { refreshSnapshot } from "@/lib/cotStore";
+import {
+  refreshAllSnapshots,
+  refreshSnapshotForClass,
+} from "@/lib/cotStore";
+import { getAssetClass } from "@/lib/cotMarkets";
 
 export const runtime = "nodejs";
 
@@ -34,7 +38,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const snapshot = await refreshSnapshot();
+    const url = new URL(request.url);
+    const assetParam = url.searchParams.get("asset");
+    const assetClass = assetParam ? getAssetClass(assetParam) : null;
+    const snapshot = assetClass
+      ? await refreshSnapshotForClass(assetClass)
+      : (await refreshAllSnapshots())["fx"];
     const freshness = evaluateFreshness(
       snapshot.report_date,
       snapshot.last_refresh_utc,

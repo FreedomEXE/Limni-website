@@ -1,27 +1,58 @@
 import { query, queryOne } from "./db";
-import { buildCurrencySnapshot, derivePairDirections } from "./cotCompute";
+import { buildMarketSnapshot, derivePairDirections } from "./cotCompute";
 import { fetchCotRowsForDate, fetchLatestReportDate } from "./cotFetch";
-import { COT_MARKETS, COT_VARIANT, SUPPORTED_CURRENCIES } from "./cotMarkets";
-import type { CotSnapshot, CurrencySnapshot, PairSnapshot } from "./cotTypes";
+import {
+  COT_VARIANT,
+  getAssetClassDefinition,
+  type AssetClass,
+} from "./cotMarkets";
+import { PAIRS_BY_ASSET_CLASS } from "./cotPairs";
+import type { CotSnapshot, MarketSnapshot, PairSnapshot } from "./cotTypes";
 
-export async function readSnapshot(): Promise<CotSnapshot | null> {
+type ReadSnapshotOptions = {
+  assetClass?: AssetClass;
+  reportDate?: string;
+};
+
+export async function readSnapshot(
+  options: ReadSnapshotOptions = {},
+): Promise<CotSnapshot | null> {
   try {
+    const assetClass = options.assetClass ?? "fx";
+    const params = [assetClass, COT_VARIANT];
+    let queryText =
+      "SELECT report_date, asset_class, variant, currencies, pairs, fetched_at FROM cot_snapshots WHERE asset_class = $1 AND variant = $2";
+
+    if (options.reportDate) {
+      params.push(options.reportDate);
+      queryText += " AND report_date = $3";
+    } else {
+      queryText += " ORDER BY report_date DESC LIMIT 1";
+    }
+
     const row = await queryOne<{
-      report_date: string;
-      currencies: Record<string, CurrencySnapshot>;
+      report_date: string | Date;
+      asset_class: string;
+      variant: string;
+      currencies: Record<string, MarketSnapshot>;
       pairs: Record<string, PairSnapshot>;
       fetched_at: Date;
-    }>(
-      "SELECT report_date, currencies, pairs, fetched_at FROM cot_snapshots ORDER BY report_date DESC LIMIT 1"
-    );
+    }>(queryText, params);
 
     if (!row) {
       return null;
     }
 
+    const reportDate =
+      row.report_date instanceof Date
+        ? row.report_date.toISOString().slice(0, 10)
+        : row.report_date;
+
     return {
-      report_date: row.report_date,
+      report_date: reportDate,
       last_refresh_utc: row.fetched_at.toISOString(),
+      asset_class: (row.asset_class ?? assetClass) as AssetClass,
+      variant: row.variant ?? COT_VARIANT,
       currencies: row.currencies,
       pairs: row.pairs,
     };
@@ -34,15 +65,17 @@ export async function readSnapshot(): Promise<CotSnapshot | null> {
 export async function writeSnapshot(snapshot: CotSnapshot): Promise<void> {
   try {
     await query(
-      `INSERT INTO cot_snapshots (report_date, currencies, pairs, fetched_at)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (report_date)
+      `INSERT INTO cot_snapshots (report_date, asset_class, variant, currencies, pairs, fetched_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (report_date, asset_class, variant)
        DO UPDATE SET
          currencies = EXCLUDED.currencies,
          pairs = EXCLUDED.pairs,
          fetched_at = EXCLUDED.fetched_at`,
       [
         snapshot.report_date,
+        snapshot.asset_class,
+        snapshot.variant,
         JSON.stringify(snapshot.currencies),
         JSON.stringify(snapshot.pairs),
         new Date(snapshot.last_refresh_utc),
@@ -54,51 +87,93 @@ export async function writeSnapshot(snapshot: CotSnapshot): Promise<void> {
   }
 }
 
-export async function refreshSnapshot(): Promise<CotSnapshot> {
-  const reportDate = await fetchLatestReportDate();
-  const marketNames = SUPPORTED_CURRENCIES.map(
-    (currency) => COT_MARKETS[currency].marketName,
+export async function listSnapshotDates(
+  assetClass: AssetClass = "fx",
+): Promise<string[]> {
+  try {
+    const rows = await query<{ report_date: string | Date }>(
+      "SELECT report_date FROM cot_snapshots WHERE asset_class = $1 AND variant = $2 ORDER BY report_date DESC",
+      [assetClass, COT_VARIANT],
+    );
+    return rows.map((row) =>
+      row.report_date instanceof Date
+        ? row.report_date.toISOString().slice(0, 10)
+        : row.report_date,
+    );
+  } catch (error) {
+    console.error("Error listing COT snapshot dates:", error);
+    throw error;
+  }
+}
+
+export async function refreshSnapshotForClass(
+  assetClass: AssetClass = "fx",
+  reportDate?: string,
+): Promise<CotSnapshot> {
+  const resolvedReportDate = reportDate ?? (await fetchLatestReportDate());
+  const assetDefinition = getAssetClassDefinition(assetClass);
+  const marketDefs = Object.values(assetDefinition.markets);
+  const marketNames = marketDefs.map((market) => market.marketName);
+  const rows = await fetchCotRowsForDate(
+    resolvedReportDate,
+    marketNames,
+    COT_VARIANT,
   );
-  const rows = await fetchCotRowsForDate(reportDate, marketNames, COT_VARIANT);
 
   const byMarket = new Map(
     rows.map((row) => [row.contract_market_name, row]),
   );
 
-  const currencies: Record<string, CurrencySnapshot> = {};
+  const currencies: Record<string, MarketSnapshot> = {};
   const missing: string[] = [];
 
-  for (const currency of SUPPORTED_CURRENCIES) {
-    const marketName = COT_MARKETS[currency].marketName;
-    const row = byMarket.get(marketName);
+  for (const market of marketDefs) {
+    const row = byMarket.get(market.marketName);
 
     if (!row) {
-      missing.push(currency);
+      missing.push(market.id);
       continue;
     }
 
-    const dealerLong = Number(row.dealer_positions_long_all);
-    const dealerShort = Number(row.dealer_positions_short_all);
+    const dealerLong = Number(row.comm_positions_long_all);
+    const dealerShort = Number(row.comm_positions_short_all);
 
     if (!Number.isFinite(dealerLong) || !Number.isFinite(dealerShort)) {
-      throw new Error(`Invalid dealer data for ${currency}`);
+      throw new Error(`Invalid dealer data for ${market.id}`);
     }
 
-    currencies[currency] = buildCurrencySnapshot(dealerLong, dealerShort);
+    currencies[market.id] = buildMarketSnapshot(dealerLong, dealerShort);
   }
 
   if (missing.length > 0) {
-    throw new Error(`Missing COT rows for: ${missing.join(", ")}`);
+    throw new Error(
+      `Missing COT rows for ${assetDefinition.label}: ${missing.join(", ")}`,
+    );
   }
 
-  const pairs = derivePairDirections(currencies);
+  const pairs = derivePairDirections(
+    currencies,
+    PAIRS_BY_ASSET_CLASS[assetClass],
+  );
   const snapshot: CotSnapshot = {
-    report_date: reportDate,
+    report_date: resolvedReportDate,
     last_refresh_utc: new Date().toISOString(),
+    asset_class: assetClass,
+    variant: COT_VARIANT,
     currencies,
     pairs,
   };
 
   await writeSnapshot(snapshot);
   return snapshot;
+}
+
+export async function refreshAllSnapshots(
+  reportDate?: string,
+): Promise<Record<AssetClass, CotSnapshot>> {
+  const entries = (Object.keys(PAIRS_BY_ASSET_CLASS) as AssetClass[]).map(
+    async (assetClass) => [assetClass, await refreshSnapshotForClass(assetClass, reportDate)] as const,
+  );
+  const snapshots = await Promise.all(entries);
+  return Object.fromEntries(snapshots) as Record<AssetClass, CotSnapshot>;
 }
