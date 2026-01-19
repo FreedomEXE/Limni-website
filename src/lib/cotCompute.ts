@@ -66,3 +66,27 @@ export function derivePairDirections(
 
   return pairs;
 }
+
+export function derivePairDirectionsByBase(
+  markets: Record<string, MarketSnapshot>,
+  pairDefs: PairDefinition[],
+): Record<string, PairSnapshot> {
+  const pairs: Record<string, PairSnapshot> = {};
+
+  for (const pairDef of pairDefs) {
+    const base = markets[pairDef.base];
+    const quote = markets[pairDef.quote];
+
+    if (!base || base.bias === "NEUTRAL") {
+      continue;
+    }
+
+    pairs[pairDef.pair] = {
+      direction: base.bias === "BULLISH" ? "LONG" : "SHORT",
+      base_bias: base.bias,
+      quote_bias: quote?.bias ?? "NEUTRAL",
+    };
+  }
+
+  return pairs;
+}

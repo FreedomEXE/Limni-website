@@ -11,7 +11,7 @@ import {
 } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
-import { getStoredPairPerformance } from "@/lib/pricePerformance";
+import { getPairPerformance } from "@/lib/pricePerformance";
 
 export const dynamic = "force-dynamic";
 
@@ -96,15 +96,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     a.localeCompare(b),
   );
   const perfResult =
-    assetClass === "fx" && pairRows.length > 0
-      ? await getStoredPairPerformance(data.pairs)
-      : {
-          performance: {},
-          note:
-            assetClass === "fx"
-              ? "Price data not refreshed yet."
-              : "Price performance is only available for FX pairs.",
-        };
+    pairRows.length > 0
+      ? await getPairPerformance(data.pairs, {
+          assetClass,
+          reportDate: selectedReportDate,
+        })
+      : { performance: {}, note: "No pairs to price." };
   const pairRowsWithPerf = pairRows.map(([pair, row]) => ({
     pair,
     ...row,

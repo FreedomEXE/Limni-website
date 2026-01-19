@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { biasFromNet, derivePairDirections } from "../cotCompute";
+import { biasFromNet, derivePairDirections, derivePairDirectionsByBase } from "../cotCompute";
 import { PAIRS_BY_ASSET_CLASS } from "../cotPairs";
 import type { MarketSnapshot } from "../cotTypes";
 
@@ -35,5 +35,20 @@ describe("derivePairDirections", () => {
     expect(pairs.EURJPY?.direction).toBe("SHORT");
     expect(pairs.USDJPY?.direction).toBe("SHORT");
     expect(pairs.AUDJPY).toBeUndefined();
+  });
+});
+
+describe("derivePairDirectionsByBase", () => {
+  it("creates directions based on base bias only", () => {
+    const markets: Record<string, MarketSnapshot> = {
+      SPX: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
+      USD: { dealer_long: 10, dealer_short: 10, net: 0, bias: "NEUTRAL" },
+    };
+
+    const pairs = derivePairDirectionsByBase(markets, [
+      { pair: "SPXUSD", base: "SPX", quote: "USD" },
+    ]);
+    expect(pairs.SPXUSD?.direction).toBe("LONG");
+    expect(pairs.SPXUSD?.quote_bias).toBe("NEUTRAL");
   });
 });

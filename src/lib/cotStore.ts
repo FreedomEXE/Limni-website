@@ -1,5 +1,9 @@
 import { query, queryOne } from "./db";
-import { buildMarketSnapshot, derivePairDirections } from "./cotCompute";
+import {
+  buildMarketSnapshot,
+  derivePairDirections,
+  derivePairDirectionsByBase,
+} from "./cotCompute";
 import { fetchCotRowsForDate, fetchLatestReportDate } from "./cotFetch";
 import {
   COT_VARIANT,
@@ -158,10 +162,11 @@ export async function refreshSnapshotForClass(
     );
   }
 
-  const pairs = derivePairDirections(
-    currencies,
-    PAIRS_BY_ASSET_CLASS[assetClass],
-  );
+  const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
+  const pairs =
+    assetClass === "fx"
+      ? derivePairDirections(currencies, pairDefs)
+      : derivePairDirectionsByBase(currencies, pairDefs);
   const snapshot: CotSnapshot = {
     report_date: resolvedReportDate,
     last_refresh_utc: new Date().toISOString(),

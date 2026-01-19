@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import type { AssetClass } from "./cotMarkets";
 import type { PairSnapshot } from "./cotTypes";
 import {
   readMarketSnapshot,
@@ -10,6 +11,11 @@ import {
 type PerformanceResult = {
   performance: Record<string, PairPerformance | null>;
   note: string;
+};
+
+type PerformanceOptions = {
+  assetClass?: AssetClass;
+  reportDate?: string;
 };
 
 const MAJOR_PAIRS = [
@@ -44,6 +50,29 @@ type UsdValue = {
   current_time_utc: string;
 };
 
+type WeekWindow = {
+  openUtc: DateTime;
+  closeUtc: DateTime;
+  isHistorical: boolean;
+};
+
+const NON_FX_SYMBOLS: Record<Exclude<AssetClass, "fx">, Record<string, string>> = {
+  indices: {
+    SPX: "SPX",
+    NDX: "NDX",
+    NIKKEI: "N225",
+  },
+  crypto: {
+    BTC: "BTC/USD",
+    ETH: "ETH/USD",
+  },
+  commodities: {
+    XAU: "XAU/USD",
+    XAG: "XAG/USD",
+    WTI: "WTI",
+  },
+};
+
 function parseValue(value: string): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
@@ -56,7 +85,10 @@ function toIsoString(value: DateTime): string {
   return value.toISO() ?? new Date().toISOString();
 }
 
-function pipSize(pair: string): number {
+function pipSize(pair: string, assetClass: AssetClass): number {
+  if (assetClass !== "fx") {
+    return 1;
+  }
   return pair.includes("JPY") ? 0.01 : 0.0001;
 }
 
@@ -87,23 +119,58 @@ function getSundayOpenUtc(now: DateTime): DateTime {
   return open.toUTC();
 }
 
-async function fetchTimeSeries(
-  pair: string,
-  apiKey: string,
-): Promise<TimeSeriesValue[]> {
+function getWeekWindow(now: DateTime, reportDate?: string): WeekWindow {
+  if (!reportDate) {
+    return { openUtc: getSundayOpenUtc(now), closeUtc: now, isHistorical: false };
+  }
+
+  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+  if (!report.isValid) {
+    return { openUtc: getSundayOpenUtc(now), closeUtc: now, isHistorical: false };
+  }
+
+  const daysSinceSunday = report.weekday % 7;
+  const sunday = report
+    .minus({ days: daysSinceSunday })
+    .set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
+
+  const fridayOffset = (5 - report.weekday + 7) % 7;
+  const friday = report
+    .plus({ days: fridayOffset })
+    .set({ hour: 17, minute: 0, second: 0, millisecond: 0 });
+
+  const openUtc = sunday.toUTC();
+  const closeUtc = friday.toUTC();
+  const isHistorical = closeUtc.toMillis() < now.toMillis();
+
+  return {
+    openUtc,
+    closeUtc: isHistorical ? closeUtc : now,
+    isHistorical,
+  };
+}
+
+function fxSymbol(pair: string): string {
   const base = pair.slice(0, 3);
   const quote = pair.slice(3);
-  const symbol = `${base}/${quote}`;
+  return `${base}/${quote}`;
+}
+
+async function fetchTimeSeries(
+  symbol: string,
+  apiKey: string,
+  options?: { interval?: string; outputsize?: number },
+): Promise<TimeSeriesValue[]> {
   const url = new URL("https://api.twelvedata.com/time_series");
   url.searchParams.set("symbol", symbol);
-  url.searchParams.set("interval", "1h");
-  url.searchParams.set("outputsize", "500");
+  url.searchParams.set("interval", options?.interval ?? "1h");
+  url.searchParams.set("outputsize", String(options?.outputsize ?? 500));
   url.searchParams.set("timezone", "UTC");
   url.searchParams.set("apikey", apiKey);
 
   const response = await fetch(url.toString(), { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`Price fetch failed (${pair}).`);
+    throw new Error(`Price fetch failed (${symbol}).`);
   }
 
   const data = (await response.json()) as {
@@ -113,11 +180,11 @@ async function fetchTimeSeries(
   };
 
   if (data.status === "error") {
-    throw new Error(data.message ?? `Price error for ${pair}.`);
+    throw new Error(data.message ?? `Price error for ${symbol}.`);
   }
 
   if (!data.values || data.values.length === 0) {
-    throw new Error(`No price data for ${pair}.`);
+    throw new Error(`No price data for ${symbol}.`);
   }
 
   return data.values;
@@ -150,34 +217,64 @@ function findOpenValue(
   return { value: fallback, time: fallbackTime };
 }
 
+function findCloseValue(
+  values: TimeSeriesValue[],
+  closeTimeUtc: DateTime,
+): { value: TimeSeriesValue; time: DateTime } {
+  const closeMillis = closeTimeUtc.toMillis();
+  let fallback = values[0];
+  let fallbackTime = DateTime.fromFormat(
+    fallback.datetime,
+    "yyyy-MM-dd HH:mm:ss",
+    { zone: "UTC" },
+  );
+
+  for (const candidate of values) {
+    const candidateTime = DateTime.fromFormat(
+      candidate.datetime,
+      "yyyy-MM-dd HH:mm:ss",
+      { zone: "UTC" },
+    );
+    if (candidateTime.toMillis() <= closeMillis) {
+      return { value: candidate, time: candidateTime };
+    }
+    fallback = candidate;
+    fallbackTime = candidateTime;
+  }
+
+  return { value: fallback, time: fallbackTime };
+}
+
 async function fetchMajorPrices(
   apiKey: string,
   weekOpenUtc: DateTime,
+  weekCloseUtc: DateTime,
+  outputsize: number,
 ): Promise<Record<MajorPair, MajorPrice | null>> {
   const prices = {} as Record<MajorPair, MajorPrice | null>;
 
   for (const pair of MAJOR_PAIRS) {
     try {
-      const values = await fetchTimeSeries(pair, apiKey);
-      const latest = values[0];
-      const latestTime = DateTime.fromFormat(
-        latest.datetime,
-        "yyyy-MM-dd HH:mm:ss",
-        { zone: "UTC" },
-      );
+      const values = await fetchTimeSeries(fxSymbol(pair), apiKey, {
+        outputsize,
+      });
       const { value: openValue, time: openTime } = findOpenValue(
         values,
         weekOpenUtc,
       );
+      const { value: closeValue, time: closeTime } = findCloseValue(
+        values,
+        weekCloseUtc,
+      );
 
       const open = parseValue(openValue.open);
-      const current = parseValue(latest.close);
+      const current = parseValue(closeValue.close);
 
       prices[pair] = {
         open,
         current,
         open_time_utc: toIsoString(openTime),
-        current_time_utc: toIsoString(latestTime),
+        current_time_utc: toIsoString(closeTime),
       };
     } catch (error) {
       prices[pair] = null;
@@ -275,42 +372,183 @@ function buildUsdValues(
   return values;
 }
 
-export async function getStoredPairPerformance(
+function getNonFxSymbol(pair: string, assetClass: Exclude<AssetClass, "fx">): string | null {
+  const symbolMap = NON_FX_SYMBOLS[assetClass];
+  const base = Object.keys(symbolMap).find((key) => pair.startsWith(key));
+  return base ? symbolMap[base] : null;
+}
+
+async function buildNonFxPerformance(
   pairs: Record<string, PairSnapshot>,
+  assetClass: Exclude<AssetClass, "fx">,
+  window: WeekWindow,
+  apiKey: string,
 ): Promise<PerformanceResult> {
-  const snapshot = await readMarketSnapshot();
-  if (!snapshot) {
-    return { performance: {}, note: "Price data not refreshed yet." };
-  }
-
-  const now = DateTime.utc();
-  const weekOpenUtc = toIsoString(getSundayOpenUtc(now));
-  if (snapshot.week_open_utc !== weekOpenUtc) {
-    return {
-      performance: {},
-      note: `Price snapshot is for week of ${formatUtcLabel(
-        snapshot.week_open_utc,
-      )}. Refresh prices.`,
-    };
-  }
-
   const performance: Record<string, PairPerformance | null> = {};
+  const outputsize = window.isHistorical ? 2000 : 500;
   let missing = 0;
-  for (const pair of Object.keys(pairs)) {
-    const value = snapshot.pairs[pair] ?? null;
-    if (!value) {
+
+  for (const [pair, info] of Object.entries(pairs)) {
+    const symbol = getNonFxSymbol(pair, assetClass);
+    if (!symbol) {
+      performance[pair] = null;
       missing += 1;
+      continue;
     }
-    performance[pair] = value;
+
+    try {
+      const values = await fetchTimeSeries(symbol, apiKey, { outputsize });
+      const { value: openValue, time: openTime } = findOpenValue(
+        values,
+        window.openUtc,
+      );
+      const { value: closeValue, time: closeTime } = findCloseValue(
+        values,
+        window.closeUtc,
+      );
+      const open = parseValue(openValue.open);
+      const current = parseValue(closeValue.close);
+      const directionFactor = info.direction === "LONG" ? 1 : -1;
+      const rawDelta = current - open;
+      const percent = (rawDelta / open) * 100;
+      const rawPips = rawDelta / pipSize(pair, assetClass);
+      const pips = rawPips * directionFactor;
+
+      performance[pair] = {
+        open,
+        current,
+        percent,
+        pips,
+        open_time_utc: toIsoString(openTime),
+        current_time_utc: toIsoString(closeTime),
+      };
+    } catch (error) {
+      performance[pair] = null;
+      missing += 1;
+      console.error(error);
+    }
   }
 
   const totalPairs = Object.keys(pairs).length;
+  const closeLabel = formatUtcLabel(toIsoString(window.closeUtc));
   const baseNote =
     missing > 0
-      ? `Missing prices for ${missing}/${totalPairs}. Last refresh ${formatUtcLabel(
-          snapshot.last_refresh_utc,
-        )}.`
-      : `Last refresh ${formatUtcLabel(snapshot.last_refresh_utc)}.`;
+      ? `Missing prices for ${missing}/${totalPairs}. Close ${closeLabel}.`
+      : `Close ${closeLabel}.`;
+  const note = `${baseNote} Historical performance uses weekly close.`;
+
+  return { performance, note };
+}
+
+export async function getPairPerformance(
+  pairs: Record<string, PairSnapshot>,
+  options?: PerformanceOptions,
+): Promise<PerformanceResult> {
+  const apiKey = process.env.PRICE_API_KEY;
+  const assetClass = options?.assetClass ?? "fx";
+  const now = DateTime.utc();
+  const window = getWeekWindow(now, options?.reportDate);
+  const weekOpenIso = toIsoString(window.openUtc);
+  const currentWeekOpenIso = toIsoString(getSundayOpenUtc(now));
+  const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
+
+  if (assetClass !== "fx") {
+    if (!apiKey) {
+      return { performance: {}, note: "PRICE_API_KEY is not configured." };
+    }
+    return buildNonFxPerformance(pairs, assetClass, window, apiKey);
+  }
+
+  if (isCurrentWeek) {
+    const snapshot = await readMarketSnapshot(weekOpenIso);
+    if (snapshot) {
+      const performance: Record<string, PairPerformance | null> = {};
+      let missing = 0;
+      for (const pair of Object.keys(pairs)) {
+        const value = snapshot.pairs[pair] ?? null;
+        if (!value) {
+          missing += 1;
+        }
+        performance[pair] = value;
+      }
+
+      const totalPairs = Object.keys(pairs).length;
+      const baseNote =
+        missing > 0
+          ? `Missing prices for ${missing}/${totalPairs}. Last refresh ${formatUtcLabel(
+              snapshot.last_refresh_utc,
+            )}.`
+          : `Last refresh ${formatUtcLabel(snapshot.last_refresh_utc)}.`;
+      const note = `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
+
+      return { performance, note };
+    }
+  }
+
+  if (!apiKey) {
+    return { performance: {}, note: "PRICE_API_KEY is not configured." };
+  }
+
+  const outputsize = window.isHistorical ? 2000 : 500;
+  const majors = await fetchMajorPrices(
+    apiKey,
+    window.openUtc,
+    window.closeUtc,
+    outputsize,
+  );
+  const usdValues = buildUsdValues(
+    majors,
+    weekOpenIso,
+    toIsoString(window.closeUtc),
+  );
+
+  const performance: Record<string, PairPerformance | null> = {};
+  let missing = 0;
+  for (const [pair, info] of Object.entries(pairs)) {
+    const base = pair.slice(0, 3);
+    const quote = pair.slice(3);
+    const baseValue = usdValues[base];
+    const quoteValue = usdValues[quote];
+
+    if (!baseValue || !quoteValue) {
+      performance[pair] = null;
+      missing += 1;
+      continue;
+    }
+
+    const open = baseValue.open / quoteValue.open;
+    const current = baseValue.current / quoteValue.current;
+    const directionFactor = info.direction === "LONG" ? 1 : -1;
+    const rawDelta = current - open;
+    const percent = (rawDelta / open) * 100;
+    const rawPips = rawDelta / pipSize(pair, assetClass);
+    const pips = rawPips * directionFactor;
+
+    performance[pair] = {
+      open,
+      current,
+      percent,
+      pips,
+      open_time_utc: weekOpenIso,
+      current_time_utc: toIsoString(window.closeUtc),
+    };
+  }
+
+  if (isCurrentWeek) {
+    const snapshot: MarketSnapshot = {
+      week_open_utc: weekOpenIso,
+      last_refresh_utc: toIsoString(now),
+      pairs: performance,
+    };
+    await writeMarketSnapshot(snapshot);
+  }
+
+  const totalPairs = Object.keys(pairs).length;
+  const closeLabel = formatUtcLabel(toIsoString(window.closeUtc));
+  const baseNote =
+    missing > 0
+      ? `Missing prices for ${missing}/${totalPairs}. Close ${closeLabel}.`
+      : `Close ${closeLabel}.`;
   const note = `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
 
   return { performance, note };
@@ -331,7 +569,7 @@ export async function refreshMarketSnapshot(
   const weekOpenTime = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
   const weekOpenBase = weekOpenTime.isValid ? weekOpenTime : now;
   const cacheSeconds = Number(process.env.PRICE_CACHE_SECONDS ?? "300");
-  const snapshot = await readMarketSnapshot();
+  const snapshot = await readMarketSnapshot(weekOpenUtc);
 
   if (
     snapshot &&
@@ -346,7 +584,7 @@ export async function refreshMarketSnapshot(
     }
   }
 
-  const majors = await fetchMajorPrices(apiKey, weekOpenBase);
+  const majors = await fetchMajorPrices(apiKey, weekOpenBase, now, 500);
   const usdValues = buildUsdValues(majors, weekOpenUtc, nowIso);
 
   const performance: Record<string, PairPerformance | null> = {};
@@ -366,7 +604,7 @@ export async function refreshMarketSnapshot(
     const directionFactor = info.direction === "LONG" ? 1 : -1;
     const rawDelta = current - open;
     const percent = (rawDelta / open) * 100;
-    const rawPips = rawDelta / pipSize(pair);
+    const rawPips = rawDelta / pipSize(pair, "fx");
     const pips = rawPips * directionFactor;
 
     performance[pair] = {

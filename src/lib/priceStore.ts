@@ -15,15 +15,19 @@ export type MarketSnapshot = {
   pairs: Record<string, PairPerformance | null>;
 };
 
-export async function readMarketSnapshot(): Promise<MarketSnapshot | null> {
+export async function readMarketSnapshot(
+  weekOpenUtc?: string,
+): Promise<MarketSnapshot | null> {
   try {
+    const queryText = weekOpenUtc
+      ? "SELECT week_open_utc, last_refresh_utc, pairs FROM market_snapshots WHERE week_open_utc = $1 ORDER BY last_refresh_utc DESC LIMIT 1"
+      : "SELECT week_open_utc, last_refresh_utc, pairs FROM market_snapshots ORDER BY week_open_utc DESC LIMIT 1";
+    const params = weekOpenUtc ? [new Date(weekOpenUtc)] : undefined;
     const row = await queryOne<{
       week_open_utc: Date;
       last_refresh_utc: Date;
       pairs: Record<string, PairPerformance | null>;
-    }>(
-      "SELECT week_open_utc, last_refresh_utc, pairs FROM market_snapshots ORDER BY week_open_utc DESC LIMIT 1"
-    );
+    }>(queryText, params);
 
     if (!row) {
       return null;
