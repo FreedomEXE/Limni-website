@@ -38,17 +38,17 @@ export const PAIRS_BY_ASSET_CLASS: Record<AssetClass, PairDefinition[]> = {
     { pair: "CHFJPY", base: "CHF", quote: "JPY" },
   ],
   indices: [
-    { pair: "SPX/NDX", base: "SPX", quote: "NDX" },
-    { pair: "SPX/NIKKEI", base: "SPX", quote: "NIKKEI" },
-    { pair: "NDX/NIKKEI", base: "NDX", quote: "NIKKEI" },
+    { pair: "SPXUSD", base: "SPX", quote: "USD" },
+    { pair: "NDXUSD", base: "NDX", quote: "USD" },
+    { pair: "NIKKEIUSD", base: "NIKKEI", quote: "USD" },
   ],
   crypto: [
-    { pair: "BTC/ETH", base: "BTC", quote: "ETH" },
-    { pair: "ETH/BTC", base: "ETH", quote: "BTC" },
+    { pair: "BTCUSD", base: "BTC", quote: "USD" },
+    { pair: "ETHUSD", base: "ETH", quote: "USD" },
   ],
   commodities: [
-    { pair: "XAU/XAG", base: "XAU", quote: "XAG" },
-    { pair: "XAU/WTI", base: "XAU", quote: "WTI" },
-    { pair: "XAG/WTI", base: "XAG", quote: "WTI" },
+    { pair: "XAUUSD", base: "XAU", quote: "USD" },
+    { pair: "XAGUSD", base: "XAG", quote: "USD" },
+    { pair: "WTIUSD", base: "WTI", quote: "USD" },
   ],
 };

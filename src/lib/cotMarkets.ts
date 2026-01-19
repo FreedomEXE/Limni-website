@@ -34,6 +34,7 @@ export const COT_ASSET_CLASSES: Record<AssetClass, AssetClassDefinition> = {
     label: "Indices",
     biasLabel: "Index",
     markets: {
+      USD: { id: "USD", label: "USD", marketNames: ["USD INDEX"] },
       SPX: {
         id: "SPX",
         label: "S&P 500",
@@ -56,6 +57,7 @@ export const COT_ASSET_CLASSES: Record<AssetClass, AssetClassDefinition> = {
     label: "Crypto",
     biasLabel: "Crypto",
     markets: {
+      USD: { id: "USD", label: "USD", marketNames: ["USD INDEX"] },
       BTC: { id: "BTC", label: "Bitcoin", marketNames: ["BITCOIN"] },
       ETH: {
         id: "ETH",
@@ -69,6 +71,7 @@ export const COT_ASSET_CLASSES: Record<AssetClass, AssetClassDefinition> = {
     label: "Commodities",
     biasLabel: "Commodity",
     markets: {
+      USD: { id: "USD", label: "USD", marketNames: ["USD INDEX"] },
       XAU: { id: "XAU", label: "Gold", marketNames: ["GOLD"] },
       XAG: { id: "XAG", label: "Silver", marketNames: ["SILVER"] },
       WTI: {

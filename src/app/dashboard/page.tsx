@@ -89,9 +89,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const assetClasses = listAssetClasses();
   const marketLabels = assetDefinition.markets;
 
-  const currencyRows = Object.entries(data.currencies).sort(([a], [b]) =>
-    a.localeCompare(b),
-  );
+  const currencyRows = Object.entries(data.currencies)
+    .filter(([currency]) => assetClass === "fx" || currency !== "USD")
+    .sort(([a], [b]) => a.localeCompare(b));
   const pairRows = Object.entries(data.pairs).sort(([a], [b]) =>
     a.localeCompare(b),
   );
