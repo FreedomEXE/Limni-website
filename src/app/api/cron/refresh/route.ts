@@ -11,9 +11,13 @@ function isAuthorized(request: Request) {
     return true;
   }
   const headerSecret = request.headers.get("x-cron-secret");
+  const authHeader = request.headers.get("authorization");
+  const bearerSecret = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length)
+    : null;
   const url = new URL(request.url);
   const querySecret = url.searchParams.get("secret");
-  return headerSecret === secret || querySecret === secret;
+  return headerSecret === secret || querySecret === secret || bearerSecret === secret;
 }
 
 export async function GET(request: Request) {
