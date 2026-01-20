@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAssetClass } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
 import { refreshMarketSnapshot } from "@/lib/pricePerformance";
 
@@ -33,7 +34,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const cotSnapshot = await readSnapshot();
+  const { searchParams } = new URL(request.url);
+  const assetParam = searchParams.get("asset") ?? undefined;
+  const assetClass = getAssetClass(assetParam);
+  const cotSnapshot = await readSnapshot({ assetClass });
   if (!cotSnapshot) {
     return NextResponse.json(
       { error: "COT snapshot missing. Refresh COT data first." },
@@ -42,7 +46,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const snapshot = await refreshMarketSnapshot(cotSnapshot.pairs);
+    const snapshot = await refreshMarketSnapshot(cotSnapshot.pairs, {
+      assetClass,
+    });
     const missingPairs = Object.values(snapshot.pairs).filter(
       (value) => value === null,
     ).length;
@@ -50,6 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ...snapshot,
+        asset_class: assetClass,
         missing_pairs: missingPairs,
         total_pairs: Object.keys(cotSnapshot.pairs).length,
       },

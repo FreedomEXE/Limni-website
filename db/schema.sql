@@ -91,6 +91,8 @@ ALTER TABLE cot_snapshots
 ALTER TABLE cot_snapshots
   DROP CONSTRAINT IF EXISTS cot_snapshots_report_date_key;
 ALTER TABLE cot_snapshots
+  DROP CONSTRAINT IF EXISTS cot_snapshots_report_date_asset_variant_key;
+ALTER TABLE cot_snapshots
   ADD CONSTRAINT cot_snapshots_report_date_asset_variant_key UNIQUE (report_date, asset_class, variant);
 
 CREATE INDEX IF NOT EXISTS idx_cot_snapshots_date ON cot_snapshots(report_date DESC);
@@ -100,12 +102,21 @@ CREATE INDEX IF NOT EXISTS idx_cot_snapshots_asset_date ON cot_snapshots(asset_c
 CREATE TABLE IF NOT EXISTS market_snapshots (
   id SERIAL PRIMARY KEY,
   week_open_utc TIMESTAMP NOT NULL,
+  asset_class VARCHAR(20) NOT NULL DEFAULT 'fx',
   pairs JSONB NOT NULL,
   last_refresh_utc TIMESTAMP NOT NULL DEFAULT NOW(),
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE market_snapshots
+  ADD COLUMN IF NOT EXISTS asset_class VARCHAR(20) NOT NULL DEFAULT 'fx';
+ALTER TABLE market_snapshots
+  DROP CONSTRAINT IF EXISTS market_snapshots_week_open_utc_key;
+ALTER TABLE market_snapshots
+  ADD CONSTRAINT market_snapshots_week_open_asset_key UNIQUE (week_open_utc, asset_class);
+
 CREATE INDEX IF NOT EXISTS idx_market_snapshots_week ON market_snapshots(week_open_utc DESC);
+CREATE INDEX IF NOT EXISTS idx_market_snapshots_asset_week ON market_snapshots(asset_class, week_open_utc DESC);
 
 -- Sentiment Data
 CREATE TABLE IF NOT EXISTS sentiment_data (

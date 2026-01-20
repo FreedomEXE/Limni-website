@@ -68,6 +68,43 @@ export async function readSnapshot(
   }
 }
 
+export async function readSnapshotHistory(
+  assetClass: AssetClass = "fx",
+  limit = 104,
+): Promise<CotSnapshot[]> {
+  try {
+    const rows = await query<{
+      report_date: string | Date;
+      asset_class: string;
+      variant: string;
+      currencies: Record<string, MarketSnapshot>;
+      pairs: Record<string, PairSnapshot>;
+      fetched_at: Date;
+    }>(
+      "SELECT report_date, asset_class, variant, currencies, pairs, fetched_at FROM cot_snapshots WHERE asset_class = $1 AND variant = $2 ORDER BY report_date DESC LIMIT $3",
+      [assetClass, COT_VARIANT, limit],
+    );
+
+    return rows.map((row) => {
+      const reportDate =
+        row.report_date instanceof Date
+          ? row.report_date.toISOString().slice(0, 10)
+          : row.report_date;
+      return {
+        report_date: reportDate,
+        last_refresh_utc: row.fetched_at.toISOString(),
+        asset_class: (row.asset_class ?? assetClass) as AssetClass,
+        variant: row.variant ?? COT_VARIANT,
+        currencies: row.currencies,
+        pairs: row.pairs,
+      };
+    });
+  } catch (error) {
+    console.error("Error reading COT snapshot history:", error);
+    throw error;
+  }
+}
+
 export async function writeSnapshot(snapshot: CotSnapshot): Promise<void> {
   try {
     await query(

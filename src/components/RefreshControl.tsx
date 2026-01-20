@@ -94,7 +94,12 @@ export default function RefreshControl({
           </button>
           <button
             type="button"
-            onClick={() => handleRefresh("/api/prices/refresh", "prices")}
+            onClick={() =>
+              handleRefresh(
+                assetClass ? `/api/prices/refresh?asset=${assetClass}` : "/api/prices/refresh",
+                "prices",
+              )
+            }
             disabled={loadingAction !== null}
             className="inline-flex items-center justify-center rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-sm font-semibold text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[color:var(--accent-strong)] disabled:cursor-not-allowed disabled:text-slate-400"
           >

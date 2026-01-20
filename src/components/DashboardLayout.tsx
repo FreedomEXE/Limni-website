@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import type { ReactNode } from "react";
 
 type NavItem = {
@@ -11,8 +12,6 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Bias", icon: "??" },
-  { href: "/sentiment", label: "Sentiment", icon: "??" },
   { href: "/antikythera", label: "Antikythera", icon: "??" },
   { href: "/automation", label: "Automation", icon: "??" },
   { href: "/accounts", label: "Accounts", icon: "??" },
@@ -21,20 +20,40 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      <aside className="w-64 border-r border-slate-200/80 bg-white/50 backdrop-blur-sm">
+      <aside
+        className={`border-r border-slate-200/80 bg-white/50 backdrop-blur-sm transition-all duration-200 ${
+          isCollapsed ? "w-20" : "w-64"
+        }`}
+      >
         <div className="sticky top-0 flex h-screen flex-col">
-          <div className="border-b border-slate-200/80 p-6">
-            <div className="flex items-center gap-3">
+          <div className="border-b border-slate-200/80 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-sm">
                 <span className="text-lg font-bold">L</span>
               </div>
-              <div>
-                <h1 className="text-sm font-semibold text-slate-900">Limni Labs</h1>
-                <p className="text-xs text-slate-500">Trading Intelligence</p>
+              {!isCollapsed ? (
+                <div>
+                  <h1 className="text-sm font-semibold text-slate-900">
+                    Limni Labs
+                  </h1>
+                  <p className="text-xs text-slate-500">Trading Intelligence</p>
+                </div>
+              ) : null}
               </div>
+              <button
+                type="button"
+                onClick={() => setIsCollapsed((prev) => !prev)}
+                className="rounded-md border border-slate-200/80 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+                title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+              >
+                {isCollapsed ? ">>" : "<<"}
+              </button>
             </div>
           </div>
 
@@ -52,7 +71,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   }`}
                 >
                   <span className="text-lg">{item.icon}</span>
-                  <span>{item.label}</span>
+                  {!isCollapsed ? <span>{item.label}</span> : null}
                 </Link>
               );
             })}

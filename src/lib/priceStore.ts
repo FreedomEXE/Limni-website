@@ -1,4 +1,5 @@
 import { query, queryOne } from "./db";
+import type { AssetClass } from "./cotMarkets";
 
 export type PairPerformance = {
   open: number;
@@ -12,20 +13,25 @@ export type PairPerformance = {
 export type MarketSnapshot = {
   week_open_utc: string;
   last_refresh_utc: string;
+  asset_class: AssetClass;
   pairs: Record<string, PairPerformance | null>;
 };
 
 export async function readMarketSnapshot(
   weekOpenUtc?: string,
+  assetClass: AssetClass = "fx",
 ): Promise<MarketSnapshot | null> {
   try {
     const queryText = weekOpenUtc
-      ? "SELECT week_open_utc, last_refresh_utc, pairs FROM market_snapshots WHERE week_open_utc = $1 ORDER BY last_refresh_utc DESC LIMIT 1"
-      : "SELECT week_open_utc, last_refresh_utc, pairs FROM market_snapshots ORDER BY week_open_utc DESC LIMIT 1";
-    const params = weekOpenUtc ? [new Date(weekOpenUtc)] : undefined;
+      ? "SELECT week_open_utc, last_refresh_utc, asset_class, pairs FROM market_snapshots WHERE asset_class = $1 AND week_open_utc = $2 ORDER BY last_refresh_utc DESC LIMIT 1"
+      : "SELECT week_open_utc, last_refresh_utc, asset_class, pairs FROM market_snapshots WHERE asset_class = $1 ORDER BY week_open_utc DESC LIMIT 1";
+    const params = weekOpenUtc
+      ? [assetClass, new Date(weekOpenUtc)]
+      : [assetClass];
     const row = await queryOne<{
       week_open_utc: Date;
       last_refresh_utc: Date;
+      asset_class: AssetClass;
       pairs: Record<string, PairPerformance | null>;
     }>(queryText, params);
 
@@ -36,6 +42,7 @@ export async function readMarketSnapshot(
     return {
       week_open_utc: row.week_open_utc.toISOString(),
       last_refresh_utc: row.last_refresh_utc.toISOString(),
+      asset_class: row.asset_class,
       pairs: row.pairs,
     };
   } catch (error) {
@@ -50,8 +57,8 @@ export async function writeMarketSnapshot(
   try {
     const weekOpen = new Date(snapshot.week_open_utc);
     const existing = await queryOne<{ id: number }>(
-      "SELECT id FROM market_snapshots WHERE week_open_utc = $1 LIMIT 1",
-      [weekOpen],
+      "SELECT id FROM market_snapshots WHERE asset_class = $1 AND week_open_utc = $2 LIMIT 1",
+      [snapshot.asset_class, weekOpen],
     );
 
     if (existing?.id) {
@@ -68,11 +75,12 @@ export async function writeMarketSnapshot(
       );
     } else {
       await query(
-        `INSERT INTO market_snapshots (week_open_utc, last_refresh_utc, pairs)
-         VALUES ($1, $2, $3)`,
+        `INSERT INTO market_snapshots (week_open_utc, last_refresh_utc, asset_class, pairs)
+         VALUES ($1, $2, $3, $4)`,
         [
           weekOpen,
           new Date(snapshot.last_refresh_utc),
+          snapshot.asset_class,
           JSON.stringify(snapshot.pairs),
         ],
       );

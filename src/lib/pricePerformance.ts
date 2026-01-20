@@ -389,6 +389,131 @@ function getNonFxSymbols(
   return base ? symbolMap[base] : [];
 }
 
+function buildFxPerformanceValue(
+  pair: string,
+  open: number,
+  current: number,
+  direction: PairSnapshot["direction"],
+  openTimeIso: string,
+  currentTimeIso: string,
+): PairPerformance {
+  const rawDelta = current - open;
+  const percent = (rawDelta / open) * 100;
+  const directionFactor = direction === "LONG" ? 1 : -1;
+  const rawPips = rawDelta / pipSize(pair, "fx");
+  const pips = rawPips * directionFactor;
+
+  return {
+    open,
+    current,
+    percent,
+    pips,
+    open_time_utc: openTimeIso,
+    current_time_utc: currentTimeIso,
+  };
+}
+
+async function fetchFxDirectPerformance(
+  pair: string,
+  info: PairSnapshot,
+  window: WeekWindow,
+  apiKey: string,
+  outputsize: number,
+): Promise<PairPerformance | null> {
+  try {
+    const values = await fetchTimeSeries(fxSymbol(pair), apiKey, { outputsize });
+    const { value: openValue, time: openTime } = findOpenValue(
+      values,
+      window.openUtc,
+    );
+    const { value: closeValue, time: closeTime } = findCloseValue(
+      values,
+      window.closeUtc,
+    );
+    const open = parseValue(openValue.open);
+    const current = parseValue(closeValue.close);
+
+    return buildFxPerformanceValue(
+      pair,
+      open,
+      current,
+      info.direction,
+      toIsoString(openTime),
+      toIsoString(closeTime),
+    );
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+async function buildFxPerformance(
+  pairs: Record<string, PairSnapshot>,
+  window: WeekWindow,
+  apiKey: string,
+  options?: { allowDirectFallback?: boolean },
+): Promise<{ performance: Record<string, PairPerformance | null>; missing: number }> {
+  const outputsize = window.isHistorical ? 2000 : 500;
+  const majors = await fetchMajorPrices(
+    apiKey,
+    window.openUtc,
+    window.closeUtc,
+    outputsize,
+  );
+  const usdValues = buildUsdValues(
+    majors,
+    toIsoString(window.openUtc),
+    toIsoString(window.closeUtc),
+  );
+
+  const performance: Record<string, PairPerformance | null> = {};
+  let missing = 0;
+  const unresolved: Array<[string, PairSnapshot]> = [];
+
+  for (const [pair, info] of Object.entries(pairs)) {
+    const base = pair.slice(0, 3);
+    const quote = pair.slice(3);
+    const baseValue = usdValues[base];
+    const quoteValue = usdValues[quote];
+
+    if (!baseValue || !quoteValue) {
+      performance[pair] = null;
+      missing += 1;
+      unresolved.push([pair, info]);
+      continue;
+    }
+
+    const open = baseValue.open / quoteValue.open;
+    const current = baseValue.current / quoteValue.current;
+    performance[pair] = buildFxPerformanceValue(
+      pair,
+      open,
+      current,
+      info.direction,
+      toIsoString(window.openUtc),
+      toIsoString(window.closeUtc),
+    );
+  }
+
+  if (options?.allowDirectFallback && unresolved.length > 0) {
+    for (const [pair, info] of unresolved) {
+      const direct = await fetchFxDirectPerformance(
+        pair,
+        info,
+        window,
+        apiKey,
+        outputsize,
+      );
+      if (direct) {
+        performance[pair] = direct;
+        missing -= 1;
+      }
+    }
+  }
+
+  return { performance, missing };
+}
+
 async function buildNonFxPerformance(
   pairs: Record<string, PairSnapshot>,
   assetClass: Exclude<AssetClass, "fx">,
@@ -474,16 +599,10 @@ export async function getPairPerformance(
   const currentWeekOpenIso = toIsoString(getSundayOpenUtc(now));
   const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
 
-  if (assetClass !== "fx") {
-    if (!apiKey) {
-      return { performance: {}, note: "PRICE_API_KEY is not configured." };
-    }
-    return buildNonFxPerformance(pairs, assetClass, window, apiKey);
-  }
-
   if (isCurrentWeek) {
-    const snapshot = await readMarketSnapshot(weekOpenIso);
+    const snapshot = await readMarketSnapshot(weekOpenIso, assetClass);
     if (snapshot) {
+      const totalPairs = Object.keys(pairs).length;
       const performance: Record<string, PairPerformance | null> = {};
       let missing = 0;
       for (const pair of Object.keys(pairs)) {
@@ -494,16 +613,26 @@ export async function getPairPerformance(
         performance[pair] = value;
       }
 
-      const totalPairs = Object.keys(pairs).length;
-      const baseNote =
-        missing > 0
-          ? `Missing prices for ${missing}/${totalPairs}. Last refresh ${formatUtcLabel(
-              snapshot.last_refresh_utc,
-            )}.`
-          : `Last refresh ${formatUtcLabel(snapshot.last_refresh_utc)}.`;
-      const note = `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
+      const cacheSeconds = Number(process.env.PRICE_CACHE_SECONDS ?? "300");
+      const ageSeconds =
+        (now.toMillis() - DateTime.fromISO(snapshot.last_refresh_utc).toMillis()) /
+        1000;
+      const isFresh =
+        Number.isFinite(ageSeconds) && ageSeconds <= cacheSeconds && missing === 0;
 
-      return { performance, note };
+      if (isFresh || !apiKey) {
+        const baseNote =
+          missing > 0
+            ? `Missing prices for ${missing}/${totalPairs}. Last refresh ${formatUtcLabel(
+                snapshot.last_refresh_utc,
+              )}.`
+            : `Last refresh ${formatUtcLabel(snapshot.last_refresh_utc)}.`;
+        const note =
+          assetClass === "fx"
+            ? `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
+            : `${baseNote} Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
+        return { performance, note };
+      }
     }
   }
 
@@ -511,55 +640,29 @@ export async function getPairPerformance(
     return { performance: {}, note: "PRICE_API_KEY is not configured." };
   }
 
-  const outputsize = window.isHistorical ? 2000 : 500;
-  const majors = await fetchMajorPrices(
-    apiKey,
-    window.openUtc,
-    window.closeUtc,
-    outputsize,
-  );
-  const usdValues = buildUsdValues(
-    majors,
-    weekOpenIso,
-    toIsoString(window.closeUtc),
-  );
-
-  const performance: Record<string, PairPerformance | null> = {};
-  let missing = 0;
-  for (const [pair, info] of Object.entries(pairs)) {
-    const base = pair.slice(0, 3);
-    const quote = pair.slice(3);
-    const baseValue = usdValues[base];
-    const quoteValue = usdValues[quote];
-
-    if (!baseValue || !quoteValue) {
-      performance[pair] = null;
-      missing += 1;
-      continue;
+  if (assetClass !== "fx") {
+    const result = await buildNonFxPerformance(pairs, assetClass, window, apiKey);
+    if (isCurrentWeek) {
+      const snapshot: MarketSnapshot = {
+        week_open_utc: weekOpenIso,
+        last_refresh_utc: toIsoString(now),
+        asset_class: assetClass,
+        pairs: result.performance,
+      };
+      await writeMarketSnapshot(snapshot);
     }
-
-    const open = baseValue.open / quoteValue.open;
-    const current = baseValue.current / quoteValue.current;
-    const directionFactor = info.direction === "LONG" ? 1 : -1;
-    const rawDelta = current - open;
-    const percent = (rawDelta / open) * 100;
-    const rawPips = rawDelta / pipSize(pair, assetClass);
-    const pips = rawPips * directionFactor;
-
-    performance[pair] = {
-      open,
-      current,
-      percent,
-      pips,
-      open_time_utc: weekOpenIso,
-      current_time_utc: toIsoString(window.closeUtc),
-    };
+    return result;
   }
+
+  const { performance, missing } = await buildFxPerformance(pairs, window, apiKey, {
+    allowDirectFallback: true,
+  });
 
   if (isCurrentWeek) {
     const snapshot: MarketSnapshot = {
       week_open_utc: weekOpenIso,
       last_refresh_utc: toIsoString(now),
+      asset_class: assetClass,
       pairs: performance,
     };
     await writeMarketSnapshot(snapshot);
@@ -569,7 +672,9 @@ export async function getPairPerformance(
   const closeLabel = formatUtcLabel(toIsoString(window.closeUtc));
   const timingNote = window.isHistorical
     ? `Close ${closeLabel}.`
-    : `Latest ${closeLabel}.`;
+    : isCurrentWeek
+      ? `Last refresh ${formatUtcLabel(toIsoString(now))}.`
+      : `Latest ${closeLabel}.`;
   const baseNote =
     missing > 0
       ? `Missing prices for ${missing}/${totalPairs}. ${timingNote}`
@@ -581,20 +686,21 @@ export async function getPairPerformance(
 
 export async function refreshMarketSnapshot(
   pairs: Record<string, PairSnapshot>,
-  options?: { force?: boolean },
+  options?: { force?: boolean; assetClass?: AssetClass },
 ): Promise<MarketSnapshot> {
   const apiKey = process.env.PRICE_API_KEY;
   if (!apiKey) {
     throw new Error("PRICE_API_KEY is not configured.");
   }
 
+  const assetClass = options?.assetClass ?? "fx";
   const now = DateTime.utc();
   const nowIso = toIsoString(now);
   const weekOpenUtc = toIsoString(getSundayOpenUtc(now));
   const weekOpenTime = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
   const weekOpenBase = weekOpenTime.isValid ? weekOpenTime : now;
   const cacheSeconds = Number(process.env.PRICE_CACHE_SECONDS ?? "300");
-  const snapshot = await readMarketSnapshot(weekOpenUtc);
+  const snapshot = await readMarketSnapshot(weekOpenUtc, assetClass);
 
   if (
     snapshot &&
@@ -609,42 +715,22 @@ export async function refreshMarketSnapshot(
     }
   }
 
-  const majors = await fetchMajorPrices(apiKey, weekOpenBase, now, 500);
-  const usdValues = buildUsdValues(majors, weekOpenUtc, nowIso);
-
-  const performance: Record<string, PairPerformance | null> = {};
-  for (const [pair, info] of Object.entries(pairs)) {
-    const base = pair.slice(0, 3);
-    const quote = pair.slice(3);
-    const baseValue = usdValues[base];
-    const quoteValue = usdValues[quote];
-
-    if (!baseValue || !quoteValue) {
-      performance[pair] = null;
-      continue;
-    }
-
-    const open = baseValue.open / quoteValue.open;
-    const current = baseValue.current / quoteValue.current;
-    const directionFactor = info.direction === "LONG" ? 1 : -1;
-    const rawDelta = current - open;
-    const percent = (rawDelta / open) * 100;
-    const rawPips = rawDelta / pipSize(pair, "fx");
-    const pips = rawPips * directionFactor;
-
-    performance[pair] = {
-      open,
-      current,
-      percent,
-      pips,
-      open_time_utc: weekOpenUtc,
-      current_time_utc: nowIso,
-    };
-  }
+  const window: WeekWindow = {
+    openUtc: weekOpenBase,
+    closeUtc: now,
+    isHistorical: false,
+  };
+  const { performance } =
+    assetClass === "fx"
+      ? await buildFxPerformance(pairs, window, apiKey, {
+          allowDirectFallback: true,
+        })
+      : await buildNonFxPerformance(pairs, assetClass, window, apiKey);
 
   const nextSnapshot: MarketSnapshot = {
     week_open_utc: weekOpenUtc,
     last_refresh_utc: nowIso,
+    asset_class: assetClass,
     pairs: performance,
   };
 

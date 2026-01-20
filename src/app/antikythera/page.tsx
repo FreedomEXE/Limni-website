@@ -1,60 +1,13 @@
+import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import { fetchLiquidationSummary } from "@/lib/coinank";
-import { readSnapshot } from "@/lib/cotStore";
+import { buildAntikytheraSignals } from "@/lib/antikythera";
+import { listAssetClasses } from "@/lib/cotMarkets";
+import { readSnapshot, readSnapshotHistory } from "@/lib/cotStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 
 export const dynamic = "force-dynamic";
-
-type Signal = {
-  pair: string;
-  direction: "LONG" | "SHORT";
-  reasons: string[];
-  confidence: number;
-};
-
-function buildFxSignals(
-  pairs: Record<string, { direction: "LONG" | "SHORT" }>,
-  sentiment: SentimentAggregate[],
-): Signal[] {
-  const bySymbol = new Map(sentiment.map((item) => [item.symbol, item]));
-  const results: Signal[] = [];
-
-  for (const [pair, info] of Object.entries(pairs)) {
-    const agg = bySymbol.get(pair);
-    if (!agg) {
-      continue;
-    }
-
-    const reasons: string[] = [];
-
-    if (info.direction === "LONG" && agg.crowding_state === "CROWDED_SHORT") {
-      reasons.push("COT bias favors long positioning");
-      reasons.push("Retail crowding skewed short");
-    } else if (
-      info.direction === "SHORT" &&
-      agg.crowding_state === "CROWDED_LONG"
-    ) {
-      reasons.push("COT bias favors short positioning");
-      reasons.push("Retail crowding skewed long");
-    }
-
-    if (agg.flip_state !== "NONE") {
-      reasons.push(`Sentiment flip: ${agg.flip_state.replace("_", " ")}`);
-    }
-
-    if (reasons.length > 0) {
-      results.push({
-        pair,
-        direction: info.direction,
-        reasons,
-        confidence: agg.confidence_score,
-      });
-    }
-  }
-
-  return results.sort((a, b) => b.confidence - a.confidence).slice(0, 8);
-}
 
 function formatTime(value: string) {
   const parsed = new Date(value);
@@ -65,16 +18,35 @@ function formatTime(value: string) {
 }
 
 export default async function AntikytheraPage() {
-  let fxSnapshot: Awaited<ReturnType<typeof readSnapshot>> = null;
+  const assetClasses = listAssetClasses();
+  const assetIds = assetClasses.map((asset) => asset.id);
+  const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
+  const histories = new Map<string, Awaited<ReturnType<typeof readSnapshotHistory>>>();
   let sentiment: SentimentAggregate[] = [];
   let btcLiq: Awaited<ReturnType<typeof fetchLiquidationSummary>> | null = null;
   let ethLiq: Awaited<ReturnType<typeof fetchLiquidationSummary>> | null = null;
 
   try {
-    [fxSnapshot, sentiment] = await Promise.all([
-      readSnapshot({ assetClass: "fx" }),
+    const [snapshotResults, historyResults, sentimentResult] = await Promise.all([
+      Promise.all(
+        assetIds.map((assetClass) =>
+          readSnapshot({ assetClass }),
+        ),
+      ),
+      Promise.all(
+        assetIds.map((assetClass) =>
+          readSnapshotHistory(assetClass, 104),
+        ),
+      ),
       getLatestAggregates(),
     ]);
+    snapshotResults.forEach((snapshot, index) => {
+      snapshots.set(assetIds[index], snapshot);
+    });
+    historyResults.forEach((history, index) => {
+      histories.set(assetIds[index], history);
+    });
+    sentiment = sentimentResult;
   } catch (error) {
     console.error(
       "Antikythera data load failed:",
@@ -98,48 +70,90 @@ export default async function AntikytheraPage() {
     (item): item is NonNullable<typeof item> => Boolean(item),
   );
 
-  const signals = fxSnapshot
-    ? buildFxSignals(fxSnapshot.pairs, sentiment)
-    : [];
+  const signalGroups = assetClasses.map((asset) => {
+    const snapshot = snapshots.get(asset.id) ?? null;
+    const history = histories.get(asset.id) ?? [];
+    const signals =
+      snapshot && history.length > 0
+        ? buildAntikytheraSignals({
+            assetClass: asset.id,
+            snapshot,
+            history,
+            sentiment,
+          })
+        : [];
+    return { asset, signals, hasHistory: history.length > 0 };
+  });
+
+  const allSignals = signalGroups.flatMap((group) =>
+    group.signals.map((signal) => ({
+      ...signal,
+      assetId: group.asset.id,
+      assetLabel: group.asset.label,
+    })),
+  );
+  const topSignals = [...allSignals]
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 6);
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header>
-          <h1 className="text-3xl font-semibold text-slate-900">Antikythera</h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Condensed signals blending bias, sentiment, and liquidation cues.
-          </p>
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold text-slate-900">Antikythera</h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Signal-first intelligence blending bias, sentiment, and liquidation cues.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/dashboard"
+              className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 transition hover:border-teal-500 hover:text-teal-700"
+            >
+              Bias map
+            </Link>
+            <Link
+              href="/sentiment"
+              className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 transition hover:border-teal-500 hover:text-teal-700"
+            >
+              Sentiment map
+            </Link>
+          </div>
         </header>
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Top FX Signals
-            </h2>
-            <p className="text-sm text-[color:var(--muted)]">
-              COT bias aligned with extreme retail sentiment.
-            </p>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Top Signals
+              </h2>
+              <p className="text-sm text-[color:var(--muted)]">
+                Highest-conviction setups across all asset classes.
+              </p>
+            </div>
+            <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              {topSignals.length} active
+            </span>
           </div>
-          {signals.length === 0 ? (
+          {topSignals.length === 0 ? (
             <p className="text-sm text-[color:var(--muted)]">
-              No aligned FX signals yet. Refresh bias and sentiment data to
-              populate this list.
+              No aligned signals yet. Check Bias and Sentiment maps for context.
             </p>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {signals.map((signal) => (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {topSignals.map((signal) => (
                 <div
-                  key={`${signal.pair}-${signal.direction}`}
-                  className="rounded-xl border border-slate-200 bg-white/80 p-4"
+                  key={`${signal.assetId}-${signal.pair}-${signal.direction}`}
+                  className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                        {signal.pair}
+                        {signal.assetLabel}
                       </p>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {signal.direction}
+                      <p className="mt-2 text-lg font-semibold text-slate-900">
+                        {signal.pair} • {signal.direction}
                       </p>
                     </div>
                     <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
@@ -155,6 +169,140 @@ export default async function AntikytheraPage() {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Signal Heatmap
+              </h2>
+              <p className="text-sm text-[color:var(--muted)]">
+                Where the strongest signals cluster by asset class.
+              </p>
+            </div>
+            <div className="grid gap-3">
+              {signalGroups.map((group) => {
+                const topSignal = group.signals[0];
+                return (
+                  <div
+                    key={group.asset.id}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/70 px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {group.asset.label}
+                      </p>
+                      <p className="text-xs text-[color:var(--muted)]">
+                        {group.signals.length} active signals
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-slate-500">
+                      {topSignal
+                        ? `${topSignal.pair} ${topSignal.direction}`
+                        : group.hasHistory
+                          ? "No aligned signals"
+                          : "Not enough history"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Signal Drivers
+              </h2>
+              <p className="text-sm text-[color:var(--muted)]">
+                Fast context from Bias, Sentiment, and Liquidity flows.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <Link
+                href="/dashboard"
+                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700 transition hover:border-teal-500 hover:text-teal-700"
+              >
+                <span>Bias map</span>
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  View
+                </span>
+              </Link>
+              <Link
+                href="/sentiment"
+                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700 transition hover:border-teal-500 hover:text-teal-700"
+              >
+                <span>Sentiment map</span>
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  View
+                </span>
+              </Link>
+              <div className="rounded-lg border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700">
+                Liquidation clusters update for BTC + ETH below.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Signals by Asset
+            </h2>
+            <p className="text-sm text-[color:var(--muted)]">
+              Detailed signal lists for each asset class.
+            </p>
+          </div>
+          <div className="space-y-6">
+            {signalGroups.map((group) => (
+              <div key={group.asset.id}>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    {group.asset.label}
+                  </h3>
+                  {!group.hasHistory ? (
+                    <span className="text-xs text-slate-400">
+                      Not enough history
+                    </span>
+                  ) : null}
+                </div>
+                {group.signals.length === 0 ? (
+                  <p className="text-sm text-[color:var(--muted)]">
+                    No aligned signals yet.
+                  </p>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {group.signals.map((signal) => (
+                      <div
+                        key={`${group.asset.id}-${signal.pair}-${signal.direction}`}
+                        className="rounded-xl border border-slate-200 bg-white/80 p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                              {signal.pair}
+                            </p>
+                            <p className="text-lg font-semibold text-slate-900">
+                              {signal.direction}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                            {signal.confidence.toFixed(0)}%
+                          </span>
+                        </div>
+                        <ul className="mt-3 space-y-1 text-sm text-slate-600">
+                          {signal.reasons.map((reason) => (
+                            <li key={reason}>- {reason}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
