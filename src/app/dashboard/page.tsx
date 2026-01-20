@@ -320,7 +320,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="flex w-full flex-col gap-3 md:w-auto md:items-end">
             <RefreshControl
               lastRefreshUtc={isAll ? combinedRefresh : data.last_refresh_utc}
-              assetClass={isAll ? "all" : assetClass}
             />
           </div>
         </header>
