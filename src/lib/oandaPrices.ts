@@ -65,8 +65,8 @@ export async function fetchOandaCandle(
   );
   url.searchParams.set("price", "M");
   url.searchParams.set("granularity", "H1");
-  url.searchParams.set("from", fromUtc.toISO());
-  url.searchParams.set("to", toUtc.toISO());
+  url.searchParams.set("from", fromUtc.toISO() ?? "");
+  url.searchParams.set("to", toUtc.toISO() ?? "");
 
   const response = await fetch(url.toString(), {
     headers: getAuthHeaders(),
