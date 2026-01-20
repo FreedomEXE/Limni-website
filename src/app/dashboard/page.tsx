@@ -87,66 +87,182 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const assetParam = resolvedSearchParams?.asset;
   const reportParam = resolvedSearchParams?.report;
   const biasParam = resolvedSearchParams?.bias;
+  const rawAsset = Array.isArray(assetParam) ? assetParam[0] : assetParam;
+  const isAll = rawAsset === "all";
   const assetClass = getAssetClass(
-    Array.isArray(assetParam) ? assetParam[0] : assetParam,
+    rawAsset,
   );
   const biasMode = getBiasMode(
     Array.isArray(biasParam) ? biasParam[0] : biasParam,
   );
   const reportDate =
     Array.isArray(reportParam) ? reportParam[0] : reportParam;
-  const availableDates = await listSnapshotDates(assetClass);
-  const selectedReportDate = reportDate && availableDates.includes(reportDate)
-    ? reportDate
-    : availableDates[0];
-  const snapshot = await readSnapshot({
-    assetClass,
-    reportDate: selectedReportDate,
-  });
+  const assetClasses = listAssetClasses();
+  const tabAssets = [
+    { id: "all", label: "ALL" },
+    ...assetClasses.map((asset) => ({ id: asset.id, label: asset.label })),
+  ];
+  const availableDates = isAll ? [] : await listSnapshotDates(assetClass);
+  const selectedReportDate = isAll
+    ? undefined
+    : reportDate && availableDates.includes(reportDate)
+      ? reportDate
+      : availableDates[0];
+  const snapshot = isAll
+    ? null
+    : await readSnapshot({
+        assetClass,
+        reportDate: selectedReportDate,
+      });
   const data = buildResponse(snapshot, assetClass);
   const assetDefinition = getAssetClassDefinition(assetClass);
-  const assetClasses = listAssetClasses();
-  const marketLabels = assetDefinition.markets;
-  const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
 
-  const currencyRows = Object.entries(data.currencies)
-    .map(([currency, snapshot]) => {
-      const resolved = resolveMarketBias(snapshot, biasMode);
-      return resolved
-        ? {
-            currency,
-            long: resolved.long,
-            short: resolved.short,
-            net: resolved.net,
-            bias: resolved.bias,
+  const currencyRows = [] as Array<{
+    assetLabel: string;
+    currency: string;
+    label: string;
+    long: number;
+    short: number;
+    net: number;
+    bias: string;
+  }>;
+  const pairRowsWithPerf = [] as Array<{
+    pair: string;
+    direction: "LONG" | "SHORT";
+    performance: Awaited<ReturnType<typeof getPairPerformance>>["performance"][string] | null;
+  }>;
+  let pairNote = "No pairs to price.";
+  let missingPairs: string[] = [];
+
+  if (isAll) {
+    const snapshots = await Promise.all(
+      assetClasses.map((asset) => readSnapshot({ assetClass: asset.id })),
+    );
+    const snapshotEntries = assetClasses
+      .map((asset, index) => ({
+        asset,
+        snapshot: snapshots[index],
+      }))
+      .filter((entry) => Boolean(entry.snapshot));
+
+    for (const entry of snapshotEntries) {
+      const entrySnapshot = entry.snapshot!;
+      const marketLabels = entry.asset.markets;
+      const pairDefs = PAIRS_BY_ASSET_CLASS[entry.asset.id];
+      const resolvedCurrencyRows = Object.entries(entrySnapshot.currencies)
+        .map(([currency, snapshotValue]) => {
+          const resolved = resolveMarketBias(snapshotValue, biasMode);
+          if (!resolved) {
+            return null;
           }
-        : null;
-    })
-    .filter((row): row is NonNullable<typeof row> => Boolean(row))
-    .sort((a, b) => a.currency.localeCompare(b.currency));
-  const derivedPairs =
-    assetClass === "fx"
-      ? derivePairDirections(data.currencies, pairDefs, biasMode)
-      : derivePairDirectionsByBase(data.currencies, pairDefs, biasMode);
-  const pairRows = Object.entries(derivedPairs).sort(([a], [b]) =>
-    a.localeCompare(b),
-  );
-  const isLatestReport =
-    !selectedReportDate ||
-    (availableDates.length > 0 && availableDates[0] === selectedReportDate);
-  const perfResult =
-    pairRows.length > 0
-      ? await getPairPerformance(data.pairs, {
-          assetClass,
-          reportDate: selectedReportDate,
-          isLatestReport,
-        })
-      : { performance: {}, note: "No pairs to price." };
-  const pairRowsWithPerf = pairRows.map(([pair, row]) => ({
-    pair,
-    ...row,
-    performance: perfResult.performance[pair] ?? null,
-  }));
+          if (entry.asset.id !== "fx" && currency === "USD") {
+            return null;
+          }
+        return {
+          assetLabel: entry.asset.label,
+          currency,
+          long: resolved.long,
+          short: resolved.short,
+          net: resolved.net,
+          bias: resolved.bias,
+          label: marketLabels[currency]?.label ?? currency,
+        };
+      })
+        .filter((row): row is NonNullable<typeof row> => Boolean(row));
+
+      resolvedCurrencyRows.forEach((row) => {
+        currencyRows.push({
+          assetLabel: entry.asset.label,
+          currency: row.currency,
+          label: row.label,
+          long: row.long,
+          short: row.short,
+          net: row.net,
+          bias: row.bias,
+        });
+      });
+
+      const derivedPairs =
+        entry.asset.id === "fx"
+          ? derivePairDirections(entrySnapshot.currencies, pairDefs, biasMode)
+          : derivePairDirectionsByBase(entrySnapshot.currencies, pairDefs, biasMode);
+      const perfResult = await getPairPerformance(derivedPairs, {
+        assetClass: entry.asset.id,
+        reportDate: entrySnapshot.report_date,
+        isLatestReport: true,
+      });
+      Object.entries(derivedPairs).forEach(([pair, row]) => {
+        pairRowsWithPerf.push({
+          pair: `${pair} (${entry.asset.label})`,
+          direction: row.direction,
+          performance: perfResult.performance[pair] ?? null,
+        });
+      });
+      missingPairs = missingPairs.concat(
+        perfResult.missingPairs.map((pair) => `${pair} (${entry.asset.label})`),
+      );
+    }
+
+    currencyRows.sort((a, b) =>
+      `${a.assetLabel}-${a.currency}`.localeCompare(`${b.assetLabel}-${b.currency}`),
+    );
+    pairRowsWithPerf.sort((a, b) => a.pair.localeCompare(b.pair));
+    pairNote =
+      "Combined view across asset classes. Refresh prices per asset class to reduce missing data.";
+  } else {
+    const marketLabels = assetDefinition.markets;
+    const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
+    Object.entries(data.currencies)
+      .map(([currency, snapshotValue]) => {
+        const resolved = resolveMarketBias(snapshotValue, biasMode);
+        return resolved
+          ? {
+              assetLabel: assetDefinition.label,
+              currency,
+              label: marketLabels[currency]?.label ?? currency,
+              long: resolved.long,
+              short: resolved.short,
+              net: resolved.net,
+              bias: resolved.bias,
+            }
+          : null;
+      })
+      .filter((row): row is NonNullable<typeof row> => Boolean(row))
+      .filter((row) => assetClass === "fx" || row.currency !== "USD")
+      .sort((a, b) => a.currency.localeCompare(b.currency))
+      .forEach((row) => currencyRows.push(row));
+
+    const derivedPairs =
+      assetClass === "fx"
+        ? derivePairDirections(data.currencies, pairDefs, biasMode)
+        : derivePairDirectionsByBase(data.currencies, pairDefs, biasMode);
+    const pairRows = Object.entries(derivedPairs).sort(([a], [b]) =>
+      a.localeCompare(b),
+    );
+    const isLatestReport =
+      !selectedReportDate ||
+      (availableDates.length > 0 && availableDates[0] === selectedReportDate);
+    const perfResult =
+      pairRows.length > 0
+        ? await getPairPerformance(derivedPairs, {
+            assetClass,
+            reportDate: selectedReportDate,
+            isLatestReport,
+          })
+        : { performance: {}, note: "No pairs to price.", missingPairs: [] };
+    pairNote = perfResult.note;
+    missingPairs = perfResult.missingPairs;
+    pairRows.forEach(([pair, row]) => {
+      pairRowsWithPerf.push({
+        pair,
+        ...row,
+        performance: perfResult.performance[pair] ?? null,
+      });
+    });
+  }
+
+  const displayAssetLabel = isAll ? "All Assets" : assetDefinition.label;
+  const biasLabel = isAll ? "Asset" : assetDefinition.biasLabel;
 
   return (
     <DashboardLayout>
@@ -154,12 +270,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              {assetClasses.map((asset) => {
-                const href =
-                  selectedReportDate
-                    ? `/dashboard?asset=${asset.id}&report=${selectedReportDate}`
-                    : `/dashboard?asset=${asset.id}`;
-                const isActive = asset.id === assetClass;
+              {tabAssets.map((asset) => {
+                const href = selectedReportDate
+                  ? `/dashboard?asset=${asset.id}&report=${selectedReportDate}&bias=${biasMode}`
+                  : `/dashboard?asset=${asset.id}&bias=${biasMode}`;
+                const isActive = asset.id === (isAll ? "all" : assetClass);
                 return (
                   <Link
                     key={asset.id}
@@ -187,7 +302,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="flex w-full flex-col gap-3 md:w-auto md:items-end">
             <RefreshControl
               lastRefreshUtc={data.last_refresh_utc}
-              assetClass={assetClass}
+              assetClass={isAll ? "all" : assetClass}
             />
           </div>
         </header>
@@ -198,7 +313,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               Asset class
             </p>
             <p className="mt-1 text-lg font-semibold text-slate-900">
-              {assetDefinition.label}
+              {displayAssetLabel}
             </p>
           </div>
           <form
@@ -206,7 +321,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             method="get"
             className="flex flex-wrap items-center gap-3"
           >
-            <input type="hidden" name="asset" value={assetClass} />
+            <input type="hidden" name="asset" value={isAll ? "all" : assetClass} />
             <input type="hidden" name="bias" value={biasMode} />
             <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Report week
@@ -214,9 +329,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <select
               name="report"
               defaultValue={selectedReportDate ?? ""}
+              disabled={isAll}
               className="rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-sm text-slate-900"
             >
-              {availableDates.length === 0 ? (
+              {isAll ? (
+                <option value="">Latest per asset class</option>
+              ) : availableDates.length === 0 ? (
                 <option value="">No snapshots</option>
               ) : (
                 availableDates.map((date) => (
@@ -297,7 +415,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-slate-900">
-                {assetDefinition.biasLabel} bias
+                {biasLabel} bias
               </h2>
               <p className="text-sm text-[color:var(--muted)]">
                 {biasMode === "blended"
@@ -315,7 +433,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <table className="min-w-full text-left text-sm">
                 <thead className="text-xs uppercase text-[color:var(--muted)]">
                   <tr>
-                    <th className="py-2">{assetDefinition.biasLabel}</th>
+                    {isAll ? <th className="py-2">Asset</th> : null}
+                    <th className="py-2">{biasLabel}</th>
                     <th className="py-2">
                       {biasMode === "blended"
                         ? "Blended long"
@@ -344,7 +463,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   ) : (
                     currencyRows.map((row) => (
                       <tr
-                        key={row.currency}
+                        key={`${row.assetLabel}-${row.currency}`}
                         className={`border-t border-[var(--panel-border)] ${
                           row.bias === "BULLISH"
                             ? "bg-emerald-50/60"
@@ -353,8 +472,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                               : ""
                         }`}
                       >
+                        {isAll ? (
+                          <td className="py-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+                            {row.assetLabel}
+                          </td>
+                        ) : null}
                         <td className="py-2 font-semibold">
-                          {marketLabels[row.currency]?.label ?? row.currency}
+                          {row.label}
                         </td>
                         <td className="py-2">
                           {formatNumber(row.long)}
@@ -382,7 +506,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           </div>
 
-          <PairPerformanceTable rows={pairRowsWithPerf} note={perfResult.note} />
+          <PairPerformanceTable
+            rows={pairRowsWithPerf}
+            note={pairNote}
+            missingPairs={missingPairs}
+          />
         </section>
       </div>
     </DashboardLayout>

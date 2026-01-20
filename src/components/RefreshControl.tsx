@@ -9,7 +9,7 @@ type MessageState = { type: "success" | "error"; text: string } | null;
 
 type RefreshControlProps = {
   lastRefreshUtc?: string | null;
-  assetClass?: AssetClass;
+  assetClass?: AssetClass | "all";
 };
 
 export default function RefreshControl({
@@ -83,7 +83,9 @@ export default function RefreshControl({
             type="button"
             onClick={() =>
               handleRefresh(
-                assetClass ? `/api/cot/refresh?asset=${assetClass}` : "/api/cot/refresh",
+                assetClass
+                  ? `/api/cot/refresh?asset=${assetClass}`
+                  : "/api/cot/refresh",
                 "cot",
               )
             }
@@ -96,7 +98,9 @@ export default function RefreshControl({
             type="button"
             onClick={() =>
               handleRefresh(
-                assetClass ? `/api/prices/refresh?asset=${assetClass}` : "/api/prices/refresh",
+                assetClass
+                  ? `/api/prices/refresh?asset=${assetClass}`
+                  : "/api/prices/refresh",
                 "prices",
               )
             }

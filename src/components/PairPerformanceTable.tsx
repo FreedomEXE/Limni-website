@@ -12,6 +12,7 @@ type PairRow = {
 type PairPerformanceTableProps = {
   rows: PairRow[];
   note?: string;
+  missingPairs?: string[];
 };
 
 function formatSigned(value: number, decimals: number, suffix = "") {
@@ -32,6 +33,7 @@ function valueTone(value: number) {
 export default function PairPerformanceTable({
   rows,
   note,
+  missingPairs,
 }: PairPerformanceTableProps) {
   const totals = rows.reduce(
     (acc, row) => {
@@ -162,6 +164,11 @@ export default function PairPerformanceTable({
       <p className="mt-3 text-xs text-[color:var(--muted)]">
         {note ?? "Performance is relative to Sunday 7:00 PM ET open."}
       </p>
+      {missingPairs && missingPairs.length > 0 ? (
+        <div className="mt-3 rounded-lg border border-amber-200/80 bg-amber-50/60 px-3 py-2 text-xs text-amber-800">
+          Missing prices for: {missingPairs.join(", ")}
+        </div>
+      ) : null}
     </div>
   );
 }

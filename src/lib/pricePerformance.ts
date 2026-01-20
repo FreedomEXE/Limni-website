@@ -11,6 +11,7 @@ import {
 type PerformanceResult = {
   performance: Record<string, PairPerformance | null>;
   note: string;
+  missingPairs: string[];
 };
 
 type PerformanceOptions = {
@@ -253,6 +254,23 @@ function findCloseValue(
   return { value: fallback, time: fallbackTime };
 }
 
+async function fetchTimeSeriesWithFallbacks(
+  symbol: string,
+  apiKey: string,
+  outputsize: number,
+): Promise<TimeSeriesValue[]> {
+  const intervals = ["1h", "4h", "1day"];
+  let lastError: Error | null = null;
+  for (const interval of intervals) {
+    try {
+      return await fetchTimeSeries(symbol, apiKey, { interval, outputsize });
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+  throw lastError ?? new Error(`No price data for ${symbol}.`);
+}
+
 async function fetchMajorPrices(
   apiKey: string,
   weekOpenUtc: DateTime,
@@ -263,9 +281,11 @@ async function fetchMajorPrices(
 
   for (const pair of MAJOR_PAIRS) {
     try {
-      const values = await fetchTimeSeries(fxSymbol(pair), apiKey, {
+      const values = await fetchTimeSeriesWithFallbacks(
+        fxSymbol(pair),
+        apiKey,
         outputsize,
-      });
+      );
       const { value: openValue, time: openTime } = findOpenValue(
         values,
         weekOpenUtc,
@@ -425,7 +445,11 @@ async function fetchFxDirectPerformance(
   outputsize: number,
 ): Promise<PairPerformance | null> {
   try {
-    const values = await fetchTimeSeries(fxSymbol(pair), apiKey, { outputsize });
+    const values = await fetchTimeSeriesWithFallbacks(
+      fxSymbol(pair),
+      apiKey,
+      outputsize,
+    );
     const { value: openValue, time: openTime } = findOpenValue(
       values,
       window.openUtc,
@@ -456,7 +480,11 @@ async function buildFxPerformance(
   window: WeekWindow,
   apiKey: string,
   options?: { allowDirectFallback?: boolean },
-): Promise<{ performance: Record<string, PairPerformance | null>; missing: number }> {
+): Promise<{
+  performance: Record<string, PairPerformance | null>;
+  missing: number;
+  missingPairs: string[];
+}> {
   const outputsize = window.isHistorical ? 2000 : 500;
   const majors = await fetchMajorPrices(
     apiKey,
@@ -472,6 +500,7 @@ async function buildFxPerformance(
 
   const performance: Record<string, PairPerformance | null> = {};
   let missing = 0;
+  const missingPairs: string[] = [];
   const unresolved: Array<[string, PairSnapshot]> = [];
 
   for (const [pair, info] of Object.entries(pairs)) {
@@ -483,6 +512,7 @@ async function buildFxPerformance(
     if (!baseValue || !quoteValue) {
       performance[pair] = null;
       missing += 1;
+      missingPairs.push(pair);
       unresolved.push([pair, info]);
       continue;
     }
@@ -511,11 +541,15 @@ async function buildFxPerformance(
       if (direct) {
         performance[pair] = direct;
         missing -= 1;
+        const index = missingPairs.indexOf(pair);
+        if (index >= 0) {
+          missingPairs.splice(index, 1);
+        }
       }
     }
   }
 
-  return { performance, missing };
+  return { performance, missing, missingPairs };
 }
 
 async function buildNonFxPerformance(
@@ -527,19 +561,25 @@ async function buildNonFxPerformance(
   const performance: Record<string, PairPerformance | null> = {};
   const outputsize = window.isHistorical ? 2000 : 500;
   let missing = 0;
+  const missingPairs: string[] = [];
 
   for (const [pair, info] of Object.entries(pairs)) {
     const symbols = getNonFxSymbols(pair, assetClass);
     if (symbols.length === 0) {
       performance[pair] = null;
       missing += 1;
+      missingPairs.push(pair);
       continue;
     }
 
     let resolved = false;
     for (const symbol of symbols) {
       try {
-        const values = await fetchTimeSeries(symbol, apiKey, { outputsize });
+        const values = await fetchTimeSeriesWithFallbacks(
+          symbol,
+          apiKey,
+          outputsize,
+        );
         const { value: openValue, time: openTime } = findOpenValue(
           values,
           window.openUtc,
@@ -574,6 +614,7 @@ async function buildNonFxPerformance(
     if (!resolved) {
       performance[pair] = null;
       missing += 1;
+      missingPairs.push(pair);
     }
   }
 
@@ -588,7 +629,7 @@ async function buildNonFxPerformance(
     : `Latest ${closeLabel}.`;
   const note = `${baseNote} ${timingNote}`;
 
-  return { performance, note };
+  return { performance, note, missingPairs };
 }
 
 export async function getPairPerformance(
@@ -609,10 +650,12 @@ export async function getPairPerformance(
       const totalPairs = Object.keys(pairs).length;
       const performance: Record<string, PairPerformance | null> = {};
       let missing = 0;
+      const missingPairs: string[] = [];
       for (const pair of Object.keys(pairs)) {
         const value = snapshot.pairs[pair] ?? null;
         if (!value) {
           missing += 1;
+          missingPairs.push(pair);
         }
         performance[pair] = value;
       }
@@ -635,13 +678,17 @@ export async function getPairPerformance(
           assetClass === "fx"
             ? `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
             : `${baseNote} Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
-        return { performance, note };
+        return { performance, note, missingPairs };
       }
     }
   }
 
   if (!apiKey) {
-    return { performance: {}, note: "PRICE_API_KEY is not configured." };
+    return {
+      performance: {},
+      note: "PRICE_API_KEY is not configured.",
+      missingPairs: [],
+    };
   }
 
   if (assetClass !== "fx") {
@@ -658,9 +705,14 @@ export async function getPairPerformance(
     return result;
   }
 
-  const { performance, missing } = await buildFxPerformance(pairs, window, apiKey, {
-    allowDirectFallback: true,
-  });
+  const { performance, missing, missingPairs } = await buildFxPerformance(
+    pairs,
+    window,
+    apiKey,
+    {
+      allowDirectFallback: true,
+    },
+  );
 
   if (isCurrentWeek) {
     const snapshot: MarketSnapshot = {
@@ -685,7 +737,7 @@ export async function getPairPerformance(
       : `${timingNote}`;
   const note = `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
 
-  return { performance, note };
+  return { performance, note, missingPairs };
 }
 
 export async function refreshMarketSnapshot(

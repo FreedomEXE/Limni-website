@@ -41,9 +41,12 @@ export async function POST(request: Request) {
     const url = new URL(request.url);
     const assetParam = url.searchParams.get("asset");
     const assetClass = assetParam ? getAssetClass(assetParam) : null;
-    const snapshot = assetClass
-      ? await refreshSnapshotForClass(assetClass)
-      : (await refreshAllSnapshots())["fx"];
+    const snapshot =
+      assetParam === "all"
+        ? (await refreshAllSnapshots())["fx"]
+        : assetClass
+          ? await refreshSnapshotForClass(assetClass)
+          : (await refreshAllSnapshots())["fx"];
     const freshness = evaluateFreshness(
       snapshot.report_date,
       snapshot.last_refresh_utc,

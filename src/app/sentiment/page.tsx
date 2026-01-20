@@ -6,6 +6,7 @@ import { fetchLiquidationSummary } from "@/lib/coinank";
 import { getLatestAggregates, readSourceHealth } from "@/lib/sentiment/store";
 import {
   SENTIMENT_ASSET_CLASSES,
+  ALL_SENTIMENT_SYMBOLS,
   type SentimentAssetClass,
 } from "@/lib/sentiment/symbols";
 import type { SentimentAggregate, SourceHealth } from "@/lib/sentiment/types";
@@ -69,7 +70,12 @@ type SentimentPageProps = {
     | Promise<Record<string, string | string[] | undefined>>;
 };
 
-function getAssetClass(value?: string | null): SentimentAssetClass {
+type SentimentView = SentimentAssetClass | "all";
+
+function getAssetClass(value?: string | null): SentimentView {
+  if (value === "all") {
+    return "all";
+  }
   if (value && value in SENTIMENT_ASSET_CLASSES) {
     return value as SentimentAssetClass;
   }
@@ -112,7 +118,10 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
       );
     }
   }
-  const symbols = SENTIMENT_ASSET_CLASSES[assetClass].symbols;
+  const symbols =
+    assetClass === "all"
+      ? ALL_SENTIMENT_SYMBOLS
+      : SENTIMENT_ASSET_CLASSES[assetClass].symbols;
   const filteredAggregates = aggregates.filter((agg) =>
     symbols.includes(agg.symbol),
   );
@@ -133,23 +142,25 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
       <div className="space-y-8">
         <header>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            {Object.entries(SENTIMENT_ASSET_CLASSES).map(([id, info]) => {
-              const href = `/sentiment?asset=${id}`;
-              const isActive = id === assetClass;
-              return (
-                <Link
-                  key={id}
-                  href={href}
-                  className={`rounded-full px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-                    isActive
-                      ? "bg-slate-900 text-white"
-                      : "border border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent-strong)]"
-                  }`}
-                >
-                  {info.label}
-                </Link>
-              );
-            })}
+            {[{ id: "all", label: "ALL" }, ...Object.entries(SENTIMENT_ASSET_CLASSES).map(([id, info]) => ({ id, label: info.label }))].map(
+              (item) => {
+                const href = `/sentiment?asset=${item.id}`;
+                const isActive = item.id === assetClass;
+                return (
+                  <Link
+                    key={item.id}
+                    href={href}
+                    className={`rounded-full px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
+                      isActive
+                        ? "bg-slate-900 text-white"
+                        : "border border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent-strong)]"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              },
+            )}
           </div>
           <h1 className="text-3xl font-semibold text-slate-900">
             Retail Sentiment

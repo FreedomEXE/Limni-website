@@ -158,8 +158,13 @@ export async function refreshSnapshotForClass(
   const dealerSource: CotSource = "tff";
   const commercialSource: CotSource =
     assetClass === "commodities" ? "disaggregated" : "legacy";
+  const dealerLatest = await fetchLatestReportDate(dealerSource);
+  const commercialLatest = await fetchLatestReportDate(commercialSource);
   const resolvedReportDate =
-    reportDate ?? (await fetchLatestReportDate(dealerSource));
+    reportDate ??
+    [dealerLatest, commercialLatest]
+      .filter(Boolean)
+      .sort()[0];
   const marketDefs = Object.values(assetDefinition.markets);
   const marketNames = marketDefs.flatMap((market) => market.marketNames);
   const dealerRows = await fetchCotRowsForDate(
@@ -185,6 +190,7 @@ export async function refreshSnapshotForClass(
   const currencies: Record<string, MarketSnapshot> = {};
   const missing: string[] = [];
   const missingCommercial: string[] = [];
+  const missingDealer: string[] = [];
 
   for (const market of marketDefs) {
     let dealerRow = null as typeof dealerRows[number] | null;
@@ -203,12 +209,27 @@ export async function refreshSnapshotForClass(
       }
     }
 
-    if (!dealerRow) {
+    if (!dealerRow && !commercialRow) {
       missing.push(market.id);
       continue;
     }
+    if (!dealerRow) {
+      missingDealer.push(market.id);
+    }
 
-    const [dealerLong, dealerShort] = getPositions(dealerRow, dealerSource);
+    let dealerLong: number;
+    let dealerShort: number;
+    if (dealerRow) {
+      [dealerLong, dealerShort] = getPositions(dealerRow, dealerSource);
+    } else if (commercialRow) {
+      [dealerLong, dealerShort] = getPositions(
+        commercialRow,
+        commercialSource,
+      );
+    } else {
+      continue;
+    }
+
     let commercialLong: number | null = null;
     let commercialShort: number | null = null;
     if (commercialRow) {
@@ -235,7 +256,7 @@ export async function refreshSnapshotForClass(
   }
 
   if (missing.length > 0) {
-    throw new Error(
+    console.warn(
       `Missing COT rows for ${assetDefinition.label}: ${missing.join(", ")}`,
     );
   }
@@ -243,6 +264,12 @@ export async function refreshSnapshotForClass(
   if (missingCommercial.length > 0) {
     console.warn(
       `Missing commercial rows for ${assetDefinition.label}: ${missingCommercial.join(", ")}`,
+    );
+  }
+
+  if (missingDealer.length > 0) {
+    console.warn(
+      `Missing dealer rows for ${assetDefinition.label}: ${missingDealer.join(", ")}`,
     );
   }
 
