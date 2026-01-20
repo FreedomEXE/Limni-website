@@ -23,6 +23,15 @@ export type ModelPerformance = {
   priced: number;
   total: number;
   note: string;
+  returns: Array<{ pair: string; percent: number }>;
+  stats: {
+    avg_return: number;
+    median_return: number;
+    win_rate: number;
+    volatility: number;
+    best_pair: { pair: string; percent: number } | null;
+    worst_pair: { pair: string; percent: number } | null;
+  };
 };
 
 const NEUTRAL_BIAS: Bias = "NEUTRAL";
@@ -148,7 +157,22 @@ export async function computeModelPerformance(options: {
   });
   const total = Object.keys(pairs).length;
   if (total === 0) {
-    return { model, percent: 0, priced: 0, total: 0, note: "No pairs." };
+    return {
+      model,
+      percent: 0,
+      priced: 0,
+      total: 0,
+      note: "No pairs.",
+      returns: [],
+      stats: {
+        avg_return: 0,
+        median_return: 0,
+        win_rate: 0,
+        volatility: 0,
+        best_pair: null,
+        worst_pair: null,
+      },
+    };
   }
 
   const perf =
@@ -159,6 +183,7 @@ export async function computeModelPerformance(options: {
       isLatestReport: true,
     }));
 
+  const returns: Array<{ pair: string; percent: number }> = [];
   let percent = 0;
   let priced = 0;
   for (const [pair, info] of Object.entries(pairs)) {
@@ -166,9 +191,61 @@ export async function computeModelPerformance(options: {
     if (!result) {
       continue;
     }
-    percent += result.percent * directionFactor(info.direction);
+    const adjusted = result.percent * directionFactor(info.direction);
+    percent += adjusted;
+    returns.push({ pair, percent: adjusted });
     priced += 1;
   }
 
-  return { model, percent, priced, total, note: perf.note };
+  return {
+    model,
+    percent,
+    priced,
+    total,
+    note: perf.note,
+    returns,
+    stats: computeReturnStats(returns),
+  };
+}
+
+export function computeReturnStats(
+  returns: Array<{ pair: string; percent: number }>,
+) {
+  if (returns.length === 0) {
+    return {
+      avg_return: 0,
+      median_return: 0,
+      win_rate: 0,
+      volatility: 0,
+      best_pair: null,
+      worst_pair: null,
+    };
+  }
+  const values = returns.map((item) => item.percent).sort((a, b) => a - b);
+  const sum = values.reduce((acc, value) => acc + value, 0);
+  const avg = sum / values.length;
+  const mid = Math.floor(values.length / 2);
+  const median =
+    values.length % 2 === 0
+      ? (values[mid - 1] + values[mid]) / 2
+      : values[mid];
+  const wins = values.filter((value) => value > 0).length;
+  const winRate = (wins / values.length) * 100;
+  const variance =
+    values.reduce((acc, value) => acc + (value - avg) ** 2, 0) / values.length;
+  const volatility = Math.sqrt(variance);
+  const bestPair = returns.reduce((best, current) =>
+    current.percent > best.percent ? current : best,
+  );
+  const worstPair = returns.reduce((worst, current) =>
+    current.percent < worst.percent ? current : worst,
+  );
+  return {
+    avg_return: avg,
+    median_return: median,
+    win_rate: winRate,
+    volatility,
+    best_pair: bestPair,
+    worst_pair: worstPair,
+  };
 }

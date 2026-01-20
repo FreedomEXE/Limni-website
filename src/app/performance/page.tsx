@@ -4,11 +4,13 @@ import { readSnapshot } from "@/lib/cotStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
+  computeReturnStats,
   type PerformanceModel,
 } from "@/lib/performanceLab";
 import { getPairPerformance } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
+import PerformanceGrid from "@/components/performance/PerformanceGrid";
 
 export const dynamic = "force-dynamic";
 
@@ -19,21 +21,6 @@ const MODEL_LABELS: Record<PerformanceModel, string> = {
   sentiment: "Sentiment",
   antikythera: "Antikythera",
 };
-
-function formatPercent(value: number) {
-  const sign = value > 0 ? "+" : value < 0 ? "" : "";
-  return `${sign}${value.toFixed(2)}%`;
-}
-
-function tone(value: number) {
-  if (value > 0) {
-    return "text-emerald-700";
-  }
-  if (value < 0) {
-    return "text-rose-700";
-  }
-  return "text-slate-500";
-}
 
 export default async function PerformancePage() {
   const assetClasses = listAssetClasses();
@@ -98,6 +85,8 @@ export default async function PerformancePage() {
     let percent = 0;
     let priced = 0;
     let total = 0;
+    const returns: Array<{ pair: string; percent: number }> = [];
+    let note = "Combined across assets.";
     for (const asset of perAsset) {
       const result = asset.results.find((item) => item.model === model);
       if (!result) {
@@ -106,8 +95,20 @@ export default async function PerformancePage() {
       percent += result.percent;
       priced += result.priced;
       total += result.total;
+      returns.push(...result.returns);
+      if (result.note) {
+        note = result.note;
+      }
     }
-    return { model, percent, priced, total };
+    return {
+      model,
+      percent,
+      priced,
+      total,
+      note,
+      returns,
+      stats: computeReturnStats(returns),
+    };
   });
   const anyPriced = totals.some((result) => result.priced > 0);
   return (
@@ -122,86 +123,26 @@ export default async function PerformancePage() {
           </div>
         </header>
 
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Combined Basket
-              </h2>
-              <p className="text-sm text-[color:var(--muted)]">
-                All asset classes aggregated.
-              </p>
-            </div>
-            <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              Latest week
-            </span>
+        {!anyPriced ? (
+          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-xs text-amber-800">
+            No priced pairs yet. Prices populate when the scheduled refresh runs.
           </div>
-          {!anyPriced ? (
-            <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-xs text-amber-800">
-              No priced pairs yet. Prices populate when the scheduled refresh runs.
-            </div>
-          ) : null}
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            {totals.map((result) => (
-              <div
-                key={result.model}
-                className="rounded-xl border border-slate-200 bg-white/80 p-4"
-              >
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                  {MODEL_LABELS[result.model]}
-                </p>
-                <p className={`mt-2 text-xl font-semibold ${tone(result.percent)}`}>
-                  {formatPercent(result.percent)}
-                </p>
-                <p className="mt-2 text-xs text-[color:var(--muted)]">
-                  {result.priced}/{result.total} priced
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="space-y-6">
-          {perAsset.map((asset) => (
-            <div
-              key={asset.asset.id}
-              className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
-            >
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">
-                  {asset.asset.label} Basket
-                </h2>
-                <p className="text-sm text-[color:var(--muted)]">
-                  Filter performance for this asset class.
-                </p>
-              </div>
-              {asset.results.length === 0 ? (
-                <p className="text-sm text-[color:var(--muted)]">
-                  No snapshots available.
-                </p>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                  {asset.results.map((result) => (
-                    <div
-                      key={`${asset.asset.id}-${result.model}`}
-                      className="rounded-xl border border-slate-200 bg-white/80 p-4"
-                    >
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                        {MODEL_LABELS[result.model]}
-                      </p>
-                      <p className={`mt-2 text-xl font-semibold ${tone(result.percent)}`}>
-                        {formatPercent(result.percent)}
-                      </p>
-                      <p className="mt-2 text-xs text-[color:var(--muted)]">
-                        {result.priced}/{result.total} priced
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </section>
+        ) : null}
+        <PerformanceGrid
+          combined={{
+            id: "combined",
+            label: "Combined Basket",
+            description: "All asset classes aggregated.",
+            models: totals,
+          }}
+          perAsset={perAsset.map((asset) => ({
+            id: asset.asset.id,
+            label: asset.asset.label,
+            description: "Filter performance for this asset class.",
+            models: asset.results,
+          }))}
+          labels={MODEL_LABELS}
+        />
       </div>
     </DashboardLayout>
   );
