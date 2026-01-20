@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import RefreshControl from "@/components/RefreshControl";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot, readSnapshotHistory } from "@/lib/cotStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
@@ -95,15 +96,25 @@ export default async function PerformancePage() {
     return { model, percent, priced, total };
   });
   const anyPriced = totals.some((result) => result.priced > 0);
+  const refreshTimes = snapshotResults
+    .map((snapshot) => snapshot?.last_refresh_utc)
+    .filter((value): value is string => Boolean(value))
+    .sort();
+  const latestRefresh = refreshTimes.length > 0 ? refreshTimes.at(-1) ?? "" : "";
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header>
-          <h1 className="text-3xl font-semibold text-slate-900">Performance Lab</h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Compare weekly basket performance across filters using percent-only scoring.
-          </p>
+        <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold text-slate-900">Performance Lab</h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Compare weekly basket performance across filters using percent-only scoring.
+            </p>
+          </div>
+          <div className="w-full md:w-auto">
+            <RefreshControl lastRefreshUtc={latestRefresh} assetClass="all" />
+          </div>
         </header>
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">

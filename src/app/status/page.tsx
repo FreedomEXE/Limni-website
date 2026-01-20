@@ -1,10 +1,12 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import StatusPanel from "@/components/StatusPanel";
 import { getAppDiagnostics } from "@/lib/diagnostics";
+import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
 import { readMarketSnapshot } from "@/lib/priceStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
 import { readMt5Accounts } from "@/lib/mt5Store";
+import { getPriceSymbolCandidates } from "@/lib/pricePerformance";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,21 @@ export default async function StatusPage() {
   let marketSnapshot = null;
   let sentimentAggregates = [];
   let accounts = [];
+  let priceSnapshots: Array<{
+    assetLabel: string;
+    assetId: string;
+    lastRefreshUtc: string | null;
+    missingPairs: string[];
+  }> = [];
+  let priceDebug: Array<{
+    assetLabel: string;
+    assetId: string;
+    reportDate: string | null;
+    missingPairs: Array<{
+      pair: string;
+      symbols: string[];
+    }>;
+  }> = [];
 
   try {
     cotSnapshot = await readSnapshot();
@@ -54,6 +71,48 @@ export default async function StatusPage() {
     accounts = await readMt5Accounts();
   } catch (error) {
     accountsError = error instanceof Error ? error.message : String(error);
+  }
+
+  try {
+    priceSnapshots = await Promise.all(
+      listAssetClasses().map(async (asset) => {
+        const snapshot = await readMarketSnapshot(undefined, asset.id);
+        const missingPairs = snapshot
+          ? Object.entries(snapshot.pairs)
+              .filter(([, value]) => value === null)
+              .map(([pair]) => pair)
+          : [];
+        return {
+          assetLabel: asset.label,
+          assetId: asset.id,
+          lastRefreshUtc: snapshot?.last_refresh_utc ?? null,
+          missingPairs,
+        };
+      }),
+    );
+  } catch (error) {
+    priceError = error instanceof Error ? error.message : String(error);
+  }
+
+  try {
+    priceDebug = await Promise.all(
+      listAssetClasses().map(async (asset) => {
+        const snapshot = await readSnapshot({ assetClass: asset.id });
+        const pairs = snapshot ? Object.keys(snapshot.pairs) : [];
+        const missingPairs = pairs.map((pair) => ({
+          pair,
+          symbols: getPriceSymbolCandidates(pair, asset.id),
+        }));
+        return {
+          assetLabel: asset.label,
+          assetId: asset.id,
+          reportDate: snapshot?.report_date ?? null,
+          missingPairs,
+        };
+      }),
+    );
+  } catch (error) {
+    priceError = error instanceof Error ? error.message : String(error);
   }
 
   const issues = getAppDiagnostics({
@@ -144,6 +203,98 @@ export default async function StatusPage() {
               ) : null}
             </div>
           ))}
+        </section>
+
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">Price Debug</h2>
+            <p className="text-sm text-[color:var(--muted)]">
+              Missing price symbols by asset class with the current symbol candidates.
+            </p>
+          </div>
+          {priceSnapshots.length === 0 ? (
+            <p className="text-sm text-[color:var(--muted)]">No price snapshots.</p>
+          ) : (
+            <div className="space-y-4">
+              {priceSnapshots.map((snapshot) => (
+                <div
+                  key={snapshot.assetId}
+                  className="rounded-xl border border-slate-200 bg-white/80 p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {snapshot.assetLabel}
+                    </p>
+                    <span className="text-xs text-slate-500">
+                      {snapshot.lastRefreshUtc
+                        ? new Date(snapshot.lastRefreshUtc).toLocaleString()
+                        : "No refresh yet"}
+                    </span>
+                  </div>
+                  {snapshot.missingPairs.length === 0 ? (
+                    <p className="mt-2 text-sm text-emerald-700">
+                      No missing prices detected.
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-rose-700">
+                      Missing: {snapshot.missingPairs.join(", ")}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Price Debug Details
+            </h2>
+            <p className="text-sm text-[color:var(--muted)]">
+              Symbol candidates used for each pair (per asset class snapshot).
+            </p>
+          </div>
+          {priceDebug.length === 0 ? (
+            <p className="text-sm text-[color:var(--muted)]">No COT snapshots.</p>
+          ) : (
+            <div className="space-y-4">
+              {priceDebug.map((asset) => (
+                <div
+                  key={asset.assetId}
+                  className="rounded-xl border border-slate-200 bg-white/80 p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {asset.assetLabel}
+                    </p>
+                    <span className="text-xs text-slate-500">
+                      {asset.reportDate ?? "No report date"}
+                    </span>
+                  </div>
+                  <div className="mt-3 max-h-64 overflow-y-auto text-xs text-slate-600">
+                    {asset.missingPairs.length === 0 ? (
+                      <p>No pairs available.</p>
+                    ) : (
+                      asset.missingPairs.map((pair) => (
+                        <div
+                          key={`${asset.assetId}-${pair.pair}`}
+                          className="border-t border-slate-100 py-2"
+                        >
+                          <span className="font-semibold text-slate-800">
+                            {pair.pair}
+                          </span>
+                          <span className="ml-2 text-slate-500">
+                            {pair.symbols.join(", ")}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </DashboardLayout>
