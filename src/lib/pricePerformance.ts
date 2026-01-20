@@ -78,6 +78,32 @@ const NON_FX_SYMBOLS: Record<
   },
 };
 
+const SYMBOL_OVERRIDES: Partial<Record<string, string[]>> = {
+  EURUSD: ["EUR/USD", "EURUSD"],
+  AUDUSD: ["AUD/USD", "AUDUSD"],
+  USDJPY: ["USD/JPY", "USDJPY"],
+  EURGBP: ["EUR/GBP", "EURGBP"],
+  EURCHF: ["EUR/CHF", "EURCHF"],
+  EURNZD: ["EUR/NZD", "EURNZD"],
+  EURCAD: ["EUR/CAD", "EURCAD"],
+  GBPJPY: ["GBP/JPY", "GBPJPY"],
+  GBPAUD: ["GBP/AUD", "GBPAUD"],
+  AUDCHF: ["AUD/CHF", "AUDCHF"],
+  AUDCAD: ["AUD/CAD", "AUDCAD"],
+  AUDNZD: ["AUD/NZD", "AUDNZD"],
+  NZDJPY: ["NZD/JPY", "NZDJPY"],
+  CADJPY: ["CAD/JPY", "CADJPY"],
+  CHFJPY: ["CHF/JPY", "CHFJPY"],
+  SPXUSD: ["SPX", "SPX500", "US500", "SPXUSD"],
+  NDXUSD: ["NDX", "NAS100", "NDXUSD"],
+  NIKKEIUSD: ["N225", "NI225", "JP225", "NKY", "NIKKEI", "NIKKEIUSD"],
+  BTCUSD: ["BTC/USD", "BTCUSD"],
+  ETHUSD: ["ETH/USD", "ETHUSD"],
+  XAUUSD: ["XAU/USD", "XAUUSD", "GOLD"],
+  XAGUSD: ["XAG/USD", "XAGUSD", "SILVER"],
+  WTIUSD: ["WTI", "USOIL", "CL", "WTIUSD"],
+};
+
 function parseValue(value: string): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
@@ -271,6 +297,22 @@ async function fetchTimeSeriesWithFallbacks(
   throw lastError ?? new Error(`No price data for ${symbol}.`);
 }
 
+async function fetchFirstAvailableTimeSeries(
+  symbols: string[],
+  apiKey: string,
+  outputsize: number,
+): Promise<TimeSeriesValue[]> {
+  let lastError: Error | null = null;
+  for (const symbol of symbols) {
+    try {
+      return await fetchTimeSeriesWithFallbacks(symbol, apiKey, outputsize);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+  throw lastError ?? new Error("No price data for candidates.");
+}
+
 async function fetchMajorPrices(
   apiKey: string,
   weekOpenUtc: DateTime,
@@ -281,8 +323,8 @@ async function fetchMajorPrices(
 
   for (const pair of MAJOR_PAIRS) {
     try {
-      const values = await fetchTimeSeriesWithFallbacks(
-        fxSymbol(pair),
+      const values = await fetchFirstAvailableTimeSeries(
+        getPriceSymbolCandidates(pair, "fx"),
         apiKey,
         outputsize,
       );
@@ -404,6 +446,10 @@ function getNonFxSymbols(
   pair: string,
   assetClass: Exclude<AssetClass, "fx">,
 ): string[] {
+  const override = SYMBOL_OVERRIDES[pair];
+  if (override && override.length > 0) {
+    return override;
+  }
   const symbolMap = NON_FX_SYMBOLS[assetClass];
   const base = Object.keys(symbolMap).find((key) => pair.startsWith(key));
   if (!base) {
@@ -417,8 +463,12 @@ export function getPriceSymbolCandidates(
   pair: string,
   assetClass: AssetClass,
 ): string[] {
+  const override = SYMBOL_OVERRIDES[pair];
+  if (override && override.length > 0) {
+    return override;
+  }
   if (assetClass === "fx") {
-    return [fxSymbol(pair)];
+    return [fxSymbol(pair), pair];
   }
   return getNonFxSymbols(pair, assetClass);
 }
@@ -455,8 +505,8 @@ async function fetchFxDirectPerformance(
   outputsize: number,
 ): Promise<PairPerformance | null> {
   try {
-    const values = await fetchTimeSeriesWithFallbacks(
-      fxSymbol(pair),
+    const values = await fetchFirstAvailableTimeSeries(
+      getPriceSymbolCandidates(pair, "fx"),
       apiKey,
       outputsize,
     );
@@ -574,7 +624,7 @@ async function buildNonFxPerformance(
   const missingPairs: string[] = [];
 
   for (const [pair, info] of Object.entries(pairs)) {
-    const symbols = getNonFxSymbols(pair, assetClass);
+    const symbols = getPriceSymbolCandidates(pair, assetClass);
     if (symbols.length === 0) {
       performance[pair] = null;
       missing += 1;
