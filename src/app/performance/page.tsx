@@ -1,7 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import RefreshControl from "@/components/RefreshControl";
 import { listAssetClasses } from "@/lib/cotMarkets";
-import { readSnapshot, readSnapshotHistory } from "@/lib/cotStore";
+import { ensureSnapshotForClass, readSnapshotHistory } from "@/lib/cotStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
@@ -43,12 +43,12 @@ export default async function PerformancePage() {
     "sentiment",
   ];
 
-  const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
+  const snapshots = new Map<string, Awaited<ReturnType<typeof ensureSnapshotForClass>>>();
   const histories = new Map<string, Awaited<ReturnType<typeof readSnapshotHistory>>>();
   const sentiment = await getLatestAggregates();
 
   const [snapshotResults, historyResults] = await Promise.all([
-    Promise.all(assetClasses.map((asset) => readSnapshot({ assetClass: asset.id }))),
+    Promise.all(assetClasses.map((asset) => ensureSnapshotForClass(asset.id))),
     Promise.all(assetClasses.map((asset) => readSnapshotHistory(asset.id, 104))),
   ]);
   snapshotResults.forEach((snapshot, index) => {

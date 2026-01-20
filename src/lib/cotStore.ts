@@ -15,6 +15,7 @@ import {
 } from "./cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "./cotPairs";
 import type { CotSnapshot, MarketSnapshot, PairSnapshot } from "./cotTypes";
+import { DateTime } from "luxon";
 
 type ReadSnapshotOptions = {
   assetClass?: AssetClass;
@@ -67,6 +68,28 @@ export async function readSnapshot(
     console.error("Error reading COT snapshot from database:", error);
     throw error;
   }
+}
+
+export async function ensureSnapshotForClass(
+  assetClass: AssetClass = "fx",
+): Promise<CotSnapshot | null> {
+  const snapshot = await readSnapshot({ assetClass });
+  if (!snapshot) {
+    return refreshSnapshotForClass(assetClass);
+  }
+  const refreshSeconds = Number(process.env.COT_REFRESH_SECONDS ?? "43200");
+  if (!snapshot.last_refresh_utc) {
+    return refreshSnapshotForClass(assetClass);
+  }
+  const refreshedAt = DateTime.fromISO(snapshot.last_refresh_utc);
+  if (!refreshedAt.isValid) {
+    return refreshSnapshotForClass(assetClass);
+  }
+  const ageSeconds = DateTime.utc().diff(refreshedAt, "seconds").seconds;
+  if (Number.isFinite(ageSeconds) && ageSeconds > refreshSeconds) {
+    return refreshSnapshotForClass(assetClass);
+  }
+  return snapshot;
 }
 
 export async function readSnapshotHistory(

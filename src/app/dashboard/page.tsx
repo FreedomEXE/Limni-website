@@ -17,7 +17,7 @@ import {
   BIAS_WEIGHTS,
 } from "@/lib/cotCompute";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
-import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
+import { ensureSnapshotForClass, listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import { getPairPerformance } from "@/lib/pricePerformance";
 
@@ -108,10 +108,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       : availableDates[0];
   const snapshot = isAll
     ? null
-    : await readSnapshot({
-        assetClass,
-        reportDate: selectedReportDate,
-      });
+    : selectedReportDate
+      ? await readSnapshot({
+          assetClass,
+          reportDate: selectedReportDate,
+        })
+      : await ensureSnapshotForClass(assetClass);
   const data = buildResponse(snapshot, assetClass);
   const assetDefinition = getAssetClassDefinition(assetClass);
 
@@ -138,7 +140,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   if (isAll) {
     const snapshots = await Promise.all(
-      assetClasses.map((asset) => readSnapshot({ assetClass: asset.id })),
+      assetClasses.map((asset) => ensureSnapshotForClass(asset.id)),
     );
     const snapshotEntries = assetClasses
       .map((asset, index) => ({

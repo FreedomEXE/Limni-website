@@ -8,12 +8,29 @@ import {
   type PairPerformance,
 } from "./priceStore";
 import { fetchOandaCandle } from "./oandaPrices";
+import { fetchBitgetCandleRange } from "./bitget";
 
 type PerformanceResult = {
   performance: Record<string, PairPerformance | null>;
   note: string;
   missingPairs: string[];
 };
+
+type PriceSources = {
+  hasPriceApiKey: boolean;
+  hasOanda: boolean;
+  hasCmc: boolean;
+  hasBitget: boolean;
+};
+
+function getPriceSources(): PriceSources {
+  return {
+    hasPriceApiKey: Boolean(process.env.PRICE_API_KEY),
+    hasOanda: Boolean(process.env.OANDA_API_KEY) && Boolean(process.env.OANDA_ACCOUNT_ID),
+    hasCmc: Boolean(process.env.COINMARKETCAP_API_KEY),
+    hasBitget: true,
+  };
+}
 
 class PriceCreditsError extends Error {
   constructor(message: string) {
@@ -237,12 +254,33 @@ async function fetchCoinMarketCapQuote(symbol: string) {
 async function fetchCryptoFallbackPrices(
   pair: string,
   window: WeekWindow,
+  direction: PairSnapshot["direction"],
 ): Promise<PairPerformance | null> {
   const base = pair.slice(0, 3);
   const quote = pair.slice(3);
   if (quote !== "USD") {
     return null;
   }
+  if (base !== "BTC" && base !== "ETH") {
+    return null;
+  }
+  const candle = await fetchBitgetCandleRange(base, window);
+  if (candle) {
+    const rawDelta = candle.close - candle.open;
+    const percent = (rawDelta / candle.open) * 100;
+    const directionFactor = direction === "LONG" ? 1 : -1;
+    const rawPips = rawDelta / pipSize(pair, "crypto");
+    const pips = rawPips * directionFactor;
+    return {
+      open: candle.open,
+      current: candle.close,
+      percent,
+      pips,
+      open_time_utc: candle.openTime,
+      current_time_utc: candle.closeTime,
+    };
+  }
+
   const current = await fetchCoinMarketCapQuote(base);
   return {
     open: current,
@@ -626,13 +664,47 @@ async function fetchFxDirectPerformance(
 async function buildFxPerformance(
   pairs: Record<string, PairSnapshot>,
   window: WeekWindow,
-  apiKey: string,
+  apiKey?: string,
   options?: { allowDirectFallback?: boolean },
 ): Promise<{
   performance: Record<string, PairPerformance | null>;
   missing: number;
   missingPairs: string[];
 }> {
+  if (!apiKey) {
+    const performance: Record<string, PairPerformance | null> = {};
+    let missing = 0;
+    const missingPairs: string[] = [];
+    for (const [pair, info] of Object.entries(pairs)) {
+      try {
+        const oandaResult = await fetchOandaCandle(
+          fxSymbol(pair),
+          window.openUtc,
+          window.closeUtc,
+        );
+        if (!oandaResult) {
+          performance[pair] = null;
+          missing += 1;
+          missingPairs.push(pair);
+          continue;
+        }
+        performance[pair] = buildFxPerformanceValue(
+          pair,
+          oandaResult.open,
+          oandaResult.close,
+          info.direction,
+          oandaResult.openTime,
+          oandaResult.closeTime,
+        );
+      } catch (error) {
+        console.error(error);
+        performance[pair] = null;
+        missing += 1;
+        missingPairs.push(pair);
+      }
+    }
+    return { performance, missing, missingPairs };
+  }
   const outputsize = window.isHistorical ? 2000 : 500;
   const majors = await fetchMajorPrices(
     apiKey,
@@ -704,7 +776,7 @@ async function buildNonFxPerformance(
   pairs: Record<string, PairSnapshot>,
   assetClass: Exclude<AssetClass, "fx">,
   window: WeekWindow,
-  apiKey: string,
+  apiKey?: string,
 ): Promise<PerformanceResult> {
   const performance: Record<string, PairPerformance | null> = {};
   const outputsize = window.isHistorical ? 2000 : 500;
@@ -712,8 +784,8 @@ async function buildNonFxPerformance(
   const missingPairs: string[] = [];
 
   for (const [pair, info] of Object.entries(pairs)) {
-    const symbols = getPriceSymbolCandidates(pair, assetClass);
-    if (symbols.length === 0) {
+    const symbols = apiKey ? getPriceSymbolCandidates(pair, assetClass) : [];
+    if (apiKey && symbols.length === 0) {
       performance[pair] = null;
       missing += 1;
       missingPairs.push(pair);
@@ -721,64 +793,93 @@ async function buildNonFxPerformance(
     }
 
     let resolved = false;
-    for (const symbol of symbols) {
+    if (apiKey) {
+      for (const symbol of symbols) {
+        try {
+          const values = await fetchTimeSeriesWithFallbacks(
+            symbol,
+            apiKey,
+            outputsize,
+          );
+          const { value: openValue, time: openTime } = findOpenValue(
+            values,
+            window.openUtc,
+          );
+          const { value: closeValue, time: closeTime } = findCloseValue(
+            values,
+            window.closeUtc,
+          );
+          const open = parseValue(openValue.open);
+          const current = parseValue(closeValue.close);
+          const directionFactor = info.direction === "LONG" ? 1 : -1;
+          const rawDelta = current - open;
+          const percent = (rawDelta / open) * 100;
+          const rawPips = rawDelta / pipSize(pair, assetClass);
+          const pips = rawPips * directionFactor;
+
+          performance[pair] = {
+            open,
+            current,
+            percent,
+            pips,
+            open_time_utc: toIsoString(openTime),
+            current_time_utc: toIsoString(closeTime),
+          };
+          resolved = true;
+          break;
+        } catch (error) {
+          if (error instanceof PriceCreditsError) {
+            throw error;
+          }
+          console.error(error);
+        }
+      }
+    }
+
+    if (!resolved) {
       try {
-        const values = await fetchTimeSeriesWithFallbacks(
-          symbol,
-          apiKey,
-          outputsize,
-        );
-        const { value: openValue, time: openTime } = findOpenValue(
-          values,
+        const oandaResult = await fetchOandaCandle(
+          pair,
           window.openUtc,
-        );
-        const { value: closeValue, time: closeTime } = findCloseValue(
-          values,
           window.closeUtc,
         );
-        const open = parseValue(openValue.open);
-        const current = parseValue(closeValue.close);
-        const directionFactor = info.direction === "LONG" ? 1 : -1;
-        const rawDelta = current - open;
-        const percent = (rawDelta / open) * 100;
-        const rawPips = rawDelta / pipSize(pair, assetClass);
-        const pips = rawPips * directionFactor;
-
-        performance[pair] = {
-          open,
-          current,
-          percent,
-          pips,
-          open_time_utc: toIsoString(openTime),
-          current_time_utc: toIsoString(closeTime),
-        };
-        resolved = true;
-        break;
-      } catch (error) {
-        if (error instanceof PriceCreditsError) {
-          throw error;
+        if (oandaResult) {
+          const directionFactor = info.direction === "LONG" ? 1 : -1;
+          const rawDelta = oandaResult.close - oandaResult.open;
+          const percent = (rawDelta / oandaResult.open) * 100;
+          const rawPips = rawDelta / pipSize(pair, assetClass);
+          const pips = rawPips * directionFactor;
+          performance[pair] = {
+            open: oandaResult.open,
+            current: oandaResult.close,
+            percent,
+            pips,
+            open_time_utc: oandaResult.openTime,
+            current_time_utc: oandaResult.closeTime,
+          };
+          resolved = true;
         }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    if (!resolved && assetClass === "crypto") {
+      try {
+        const fallback = await fetchCryptoFallbackPrices(pair, window, info.direction);
+        if (fallback) {
+          performance[pair] = fallback;
+          resolved = true;
+        }
+      } catch (error) {
         console.error(error);
       }
     }
 
     if (!resolved) {
-      if (assetClass === "crypto") {
-        try {
-          const fallback = await fetchCryptoFallbackPrices(pair, window);
-          if (fallback) {
-            performance[pair] = fallback;
-            resolved = true;
-          }
-        } catch (error) {
-          console.error(error);
-        }
-      }
-      if (!resolved) {
-        performance[pair] = null;
-        missing += 1;
-        missingPairs.push(pair);
-      }
+      performance[pair] = null;
+      missing += 1;
+      missingPairs.push(pair);
     }
   }
 
@@ -800,15 +901,16 @@ export async function getPairPerformance(
   pairs: Record<string, PairSnapshot>,
   options?: PerformanceOptions,
 ): Promise<PerformanceResult> {
-  try {
-    const apiKey = process.env.PRICE_API_KEY;
-    const assetClass = options?.assetClass ?? "fx";
-    const now = DateTime.utc();
-    const window = getWeekWindow(now, options?.reportDate, options?.isLatestReport);
-    const weekOpenIso = toIsoString(window.openUtc);
-    const currentWeekOpenIso = toIsoString(getSundayOpenUtc(now));
-    const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
+  const apiKey = process.env.PRICE_API_KEY;
+  const sources = getPriceSources();
+  const assetClass = options?.assetClass ?? "fx";
+  const now = DateTime.utc();
+  const window = getWeekWindow(now, options?.reportDate, options?.isLatestReport);
+  const weekOpenIso = toIsoString(window.openUtc);
+  const currentWeekOpenIso = toIsoString(getSundayOpenUtc(now));
+  const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
 
+  try {
     if (isCurrentWeek) {
       const snapshot = await readMarketSnapshot(weekOpenIso, assetClass);
       if (snapshot) {
@@ -832,26 +934,29 @@ export async function getPairPerformance(
         const isFresh =
           Number.isFinite(ageSeconds) && ageSeconds <= cacheSeconds && missing === 0;
 
-        if (isFresh || !apiKey) {
+        if (isFresh || (!apiKey && !sources.hasOanda && !sources.hasCmc)) {
           const baseNote =
             missing > 0
               ? `Missing prices for ${missing}/${totalPairs}. Last refresh ${formatUtcLabel(
                   snapshot.last_refresh_utc,
                 )}.`
               : `Last refresh ${formatUtcLabel(snapshot.last_refresh_utc)}.`;
-          const note =
-            assetClass === "fx"
-              ? `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
-              : `${baseNote} Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
+            const sourceNote = apiKey
+              ? "Derived from majors."
+              : "Derived from direct OANDA pricing.";
+            const note =
+              assetClass === "fx"
+                ? `${baseNote} ${sourceNote} Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
+                : `${baseNote} Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
           return { performance, note, missingPairs };
         }
       }
     }
 
-    if (!apiKey) {
+    if (!apiKey && !sources.hasOanda && !sources.hasCmc) {
       return {
         performance: {},
-        note: "PRICE_API_KEY is not configured.",
+        note: "No price source configured.",
         missingPairs: [],
       };
     }
@@ -900,11 +1005,57 @@ export async function getPairPerformance(
     missing > 0
       ? `Missing prices for ${missing}/${totalPairs}. ${timingNote}`
       : `${timingNote}`;
-  const note = `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
+    const sourceNote = apiKey
+      ? "Derived from majors."
+      : "Derived from direct OANDA pricing.";
+    const note = `${baseNote} ${sourceNote} Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
 
     return { performance, note, missingPairs };
   } catch (error) {
     if (error instanceof PriceCreditsError) {
+      if (sources.hasOanda || sources.hasCmc) {
+        if (assetClass !== "fx") {
+          const result = await buildNonFxPerformance(pairs, assetClass, window);
+          if (isCurrentWeek) {
+            const snapshot: MarketSnapshot = {
+              week_open_utc: weekOpenIso,
+              last_refresh_utc: toIsoString(now),
+              asset_class: assetClass,
+              pairs: result.performance,
+            };
+            await writeMarketSnapshot(snapshot);
+          }
+          return result;
+        }
+
+        const { performance, missingPairs } = await buildFxPerformance(
+          pairs,
+          window,
+          undefined,
+        );
+        if (isCurrentWeek) {
+          const snapshot: MarketSnapshot = {
+            week_open_utc: weekOpenIso,
+            last_refresh_utc: toIsoString(now),
+            asset_class: assetClass,
+            pairs: performance,
+          };
+          await writeMarketSnapshot(snapshot);
+        }
+        const totalPairs = Object.keys(pairs).length;
+        const closeLabel = formatUtcLabel(toIsoString(window.closeUtc));
+        const timingNote = window.isHistorical
+          ? `Close ${closeLabel}.`
+          : isCurrentWeek
+            ? `Last refresh ${formatUtcLabel(toIsoString(now))}.`
+            : `Latest ${closeLabel}.`;
+        const baseNote =
+          missingPairs.length > 0
+            ? `Missing prices for ${missingPairs.length}/${totalPairs}. ${timingNote}`
+            : `${timingNote}`;
+        const note = `${baseNote} Derived from direct OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
+        return { performance, note, missingPairs };
+      }
       return {
         performance: {},
         note: "Price API credits exhausted. Try again after the daily reset.",
@@ -920,8 +1071,9 @@ export async function refreshMarketSnapshot(
   options?: { force?: boolean; assetClass?: AssetClass },
 ): Promise<MarketSnapshot> {
   const apiKey = process.env.PRICE_API_KEY;
-  if (!apiKey) {
-    throw new Error("PRICE_API_KEY is not configured.");
+  const sources = getPriceSources();
+  if (!apiKey && !sources.hasOanda && !sources.hasCmc) {
+    throw new Error("No price source configured.");
   }
 
   const assetClass = options?.assetClass ?? "fx";
@@ -948,12 +1100,26 @@ export async function refreshMarketSnapshot(
     closeUtc: now,
     isHistorical: false,
   };
-  const { performance } =
-    assetClass === "fx"
-      ? await buildFxPerformance(pairs, window, apiKey, {
-          allowDirectFallback: true,
-        })
-      : await buildNonFxPerformance(pairs, assetClass, window, apiKey);
+  let performance: Record<string, PairPerformance | null> = {};
+  try {
+    const result =
+      assetClass === "fx"
+        ? await buildFxPerformance(pairs, window, apiKey, {
+            allowDirectFallback: true,
+          })
+        : await buildNonFxPerformance(pairs, assetClass, window, apiKey);
+    performance = "performance" in result ? result.performance : result;
+  } catch (error) {
+    if (error instanceof PriceCreditsError && sources.hasOanda) {
+      const result =
+        assetClass === "fx"
+          ? await buildFxPerformance(pairs, window, undefined)
+          : await buildNonFxPerformance(pairs, assetClass, window);
+      performance = "performance" in result ? result.performance : result;
+    } else {
+      throw error;
+    }
+  }
 
   const nextSnapshot: MarketSnapshot = {
     week_open_utc: weekOpenUtc,

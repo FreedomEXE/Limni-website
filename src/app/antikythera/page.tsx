@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { fetchLiquidationSummary } from "@/lib/coinank";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
-import { readSnapshot, readSnapshotHistory } from "@/lib/cotStore";
+import { ensureSnapshotForClass } from "@/lib/cotStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 
@@ -20,31 +20,22 @@ function formatTime(value: string) {
 export default async function AntikytheraPage() {
   const assetClasses = listAssetClasses();
   const assetIds = assetClasses.map((asset) => asset.id);
-  const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
-  const histories = new Map<string, Awaited<ReturnType<typeof readSnapshotHistory>>>();
+  const snapshots = new Map<string, Awaited<ReturnType<typeof ensureSnapshotForClass>>>();
   let sentiment: SentimentAggregate[] = [];
   let btcLiq: Awaited<ReturnType<typeof fetchLiquidationSummary>> | null = null;
   let ethLiq: Awaited<ReturnType<typeof fetchLiquidationSummary>> | null = null;
 
   try {
-    const [snapshotResults, historyResults, sentimentResult] = await Promise.all([
+    const [snapshotResults, sentimentResult] = await Promise.all([
       Promise.all(
         assetIds.map((assetClass) =>
-          readSnapshot({ assetClass }),
-        ),
-      ),
-      Promise.all(
-        assetIds.map((assetClass) =>
-          readSnapshotHistory(assetClass, 104),
+          ensureSnapshotForClass(assetClass),
         ),
       ),
       getLatestAggregates(),
     ]);
     snapshotResults.forEach((snapshot, index) => {
       snapshots.set(assetIds[index], snapshot);
-    });
-    historyResults.forEach((history, index) => {
-      histories.set(assetIds[index], history);
     });
     sentiment = sentimentResult;
   } catch (error) {
@@ -72,17 +63,16 @@ export default async function AntikytheraPage() {
 
   const signalGroups = assetClasses.map((asset) => {
     const snapshot = snapshots.get(asset.id) ?? null;
-    const history = histories.get(asset.id) ?? [];
     const signals =
-      snapshot && history.length > 0
+      snapshot
         ? buildAntikytheraSignals({
             assetClass: asset.id,
             snapshot,
-            history,
+            history: [],
             sentiment,
           })
         : [];
-    return { asset, signals, hasHistory: history.length > 0 };
+    return { asset, signals, hasHistory: Boolean(snapshot) };
   });
 
   const allSignals = signalGroups.flatMap((group) =>

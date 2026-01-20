@@ -1,3 +1,5 @@
+import { DateTime } from "luxon";
+
 type BitgetFundingRateResponse = {
   code?: string;
   msg?: string;
@@ -25,6 +27,12 @@ type BitgetTickerResponse = {
     lastPr?: string;
     ts?: string;
   };
+};
+
+type BitgetCandleResponse = {
+  code?: string;
+  msg?: string;
+  data?: string[][];
 };
 
 const BASE_URL = "https://api.bitget.com";
@@ -81,5 +89,47 @@ export async function fetchBitgetFuturesSnapshot(
     fundingTime: funding.data?.fundingTime ?? null,
     openInterest: toNumber(openInterest.data?.openInterest),
     openInterestTime: openInterest.data?.ts ?? null,
+  };
+}
+
+export async function fetchBitgetCandleRange(
+  symbolBase: "BTC" | "ETH",
+  window: { openUtc: DateTime; closeUtc: DateTime },
+): Promise<{ open: number; close: number; openTime: string; closeTime: string } | null> {
+  const productType = getProductType();
+  const symbol = `${symbolBase}USDT`;
+  const url = new URL(`${BASE_URL}/api/v2/mix/market/candles`);
+  url.searchParams.set("symbol", symbol);
+  url.searchParams.set("productType", productType);
+  url.searchParams.set("granularity", "3600");
+  url.searchParams.set("startTime", String(window.openUtc.toMillis()));
+  url.searchParams.set("endTime", String(window.closeUtc.toMillis()));
+
+  const response = await fetchJson<BitgetCandleResponse>(url.toString());
+  if (response.code && response.code !== "00000") {
+    return null;
+  }
+  const rows = response.data ?? [];
+  if (rows.length === 0) {
+    return null;
+  }
+  const parsed = rows
+    .map((row) => ({
+      ts: Number(row[0]),
+      open: Number(row[1]),
+      close: Number(row[4]),
+    }))
+    .filter((row) => Number.isFinite(row.ts) && Number.isFinite(row.open) && Number.isFinite(row.close))
+    .sort((a, b) => a.ts - b.ts);
+  if (parsed.length === 0) {
+    return null;
+  }
+  const first = parsed[0];
+  const last = parsed[parsed.length - 1];
+  return {
+    open: first.open,
+    close: last.close,
+    openTime: new Date(first.ts).toISOString(),
+    closeTime: new Date(last.ts).toISOString(),
   };
 }
