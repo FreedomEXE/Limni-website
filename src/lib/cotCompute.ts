@@ -28,21 +28,27 @@ export function buildMarketSnapshot(
   const dealerBias = biasFromNet(dealerNet);
   const commercialNet =
     typeof commercialLong === "number" && typeof commercialShort === "number"
-      ? commercialShort - commercialLong
+      ? commercialLong - commercialShort
       : null;
   const commercialBias =
     typeof commercialNet === "number" ? biasFromNet(commercialNet) : null;
-  const blendedLong =
-    typeof commercialLong === "number"
-      ? dealerLong * BIAS_WEIGHTS.dealer +
-        commercialLong * BIAS_WEIGHTS.commercial
-      : dealerLong;
-  const blendedShort =
-    typeof commercialShort === "number"
-      ? dealerShort * BIAS_WEIGHTS.dealer +
-        commercialShort * BIAS_WEIGHTS.commercial
-      : dealerShort;
-  const blendedNet = blendedShort - blendedLong;
+  const dealerTotal = dealerLong + dealerShort;
+  const commercialTotal =
+    typeof commercialLong === "number" && typeof commercialShort === "number"
+      ? commercialLong + commercialShort
+      : null;
+  const blendedNet =
+    typeof commercialNet === "number"
+      ? dealerNet * BIAS_WEIGHTS.dealer +
+        commercialNet * BIAS_WEIGHTS.commercial
+      : dealerNet;
+  const blendedTotal =
+    typeof commercialTotal === "number"
+      ? dealerTotal * BIAS_WEIGHTS.dealer +
+        commercialTotal * BIAS_WEIGHTS.commercial
+      : dealerTotal;
+  const blendedShort = (blendedTotal + blendedNet) / 2;
+  const blendedLong = blendedTotal - blendedShort;
   const blendedBias = biasFromNet(blendedNet);
 
   return {
@@ -65,43 +71,34 @@ export function resolveMarketBias(
   market: MarketSnapshot,
   mode: BiasMode,
 ): { long: number; short: number; net: number; bias: Bias } | null {
-  const dealerNet =
-    typeof market.dealer_net === "number"
-      ? market.dealer_net
-      : market.dealer_short - market.dealer_long;
-  const dealerBias =
-    market.dealer_bias ?? biasFromNet(dealerNet);
+  const dealerNet = market.dealer_short - market.dealer_long;
+  const dealerBias = biasFromNet(dealerNet);
   const commercialNet =
-    typeof market.commercial_net === "number"
-      ? market.commercial_net
-      : typeof market.commercial_long === "number" &&
-          typeof market.commercial_short === "number"
-        ? market.commercial_short - market.commercial_long
-        : null;
+    typeof market.commercial_long === "number" &&
+    typeof market.commercial_short === "number"
+      ? market.commercial_long - market.commercial_short
+      : null;
   const commercialBias =
-    commercialNet === null
-      ? null
-      : market.commercial_bias ?? biasFromNet(commercialNet);
-  const blendedLong =
-    typeof market.blended_long === "number"
-      ? market.blended_long
-      : typeof market.commercial_long === "number"
-        ? market.dealer_long * BIAS_WEIGHTS.dealer +
-          market.commercial_long * BIAS_WEIGHTS.commercial
-        : market.dealer_long;
-  const blendedShort =
-    typeof market.blended_short === "number"
-      ? market.blended_short
-      : typeof market.commercial_short === "number"
-        ? market.dealer_short * BIAS_WEIGHTS.dealer +
-          market.commercial_short * BIAS_WEIGHTS.commercial
-        : market.dealer_short;
+    commercialNet === null ? null : biasFromNet(commercialNet);
+  const dealerTotal = market.dealer_long + market.dealer_short;
+  const commercialTotal =
+    typeof market.commercial_long === "number" &&
+    typeof market.commercial_short === "number"
+      ? market.commercial_long + market.commercial_short
+      : null;
   const blendedNet =
-    typeof market.blended_net === "number"
-      ? market.blended_net
-      : blendedShort - blendedLong;
-  const blendedBias =
-    market.blended_bias ?? biasFromNet(blendedNet);
+    commercialNet !== null
+      ? dealerNet * BIAS_WEIGHTS.dealer +
+        commercialNet * BIAS_WEIGHTS.commercial
+      : dealerNet;
+  const blendedTotal =
+    commercialTotal !== null
+      ? dealerTotal * BIAS_WEIGHTS.dealer +
+        commercialTotal * BIAS_WEIGHTS.commercial
+      : dealerTotal;
+  const blendedShort = (blendedTotal + blendedNet) / 2;
+  const blendedLong = blendedTotal - blendedShort;
+  const blendedBias = biasFromNet(blendedNet);
 
   if (mode === "dealer") {
     return {

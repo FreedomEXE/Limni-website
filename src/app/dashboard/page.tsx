@@ -308,7 +308,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     )}% commercial).`
                   : biasMode === "dealer"
                     ? "Dealer short minus Dealer long."
-                    : "Commercial short minus Commercial long."}
+                    : "Commercial long minus Commercial short."}
               </p>
             </div>
             <div className="overflow-x-auto">
