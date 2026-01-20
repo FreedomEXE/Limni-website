@@ -49,7 +49,6 @@ function sentimentAlignment(
 export function buildAntikytheraSignals(options: {
   assetClass: AssetClass;
   snapshot: CotSnapshot;
-  history: CotSnapshot[];
   sentiment: SentimentAggregate[];
   maxSignals?: number;
 }) {

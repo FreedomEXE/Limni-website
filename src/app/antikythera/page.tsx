@@ -3,7 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { fetchLiquidationSummary } from "@/lib/coinank";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
-import { ensureSnapshotForClass } from "@/lib/cotStore";
+import { readSnapshot } from "@/lib/cotStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 
@@ -20,7 +20,7 @@ function formatTime(value: string) {
 export default async function AntikytheraPage() {
   const assetClasses = listAssetClasses();
   const assetIds = assetClasses.map((asset) => asset.id);
-  const snapshots = new Map<string, Awaited<ReturnType<typeof ensureSnapshotForClass>>>();
+  const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
   let sentiment: SentimentAggregate[] = [];
   let btcLiq: Awaited<ReturnType<typeof fetchLiquidationSummary>> | null = null;
   let ethLiq: Awaited<ReturnType<typeof fetchLiquidationSummary>> | null = null;
@@ -29,7 +29,7 @@ export default async function AntikytheraPage() {
     const [snapshotResults, sentimentResult] = await Promise.all([
       Promise.all(
         assetIds.map((assetClass) =>
-          ensureSnapshotForClass(assetClass),
+          readSnapshot({ assetClass }),
         ),
       ),
       getLatestAggregates(),
@@ -68,7 +68,6 @@ export default async function AntikytheraPage() {
         ? buildAntikytheraSignals({
             assetClass: asset.id,
             snapshot,
-            history: [],
             sentiment,
           })
         : [];

@@ -9,7 +9,7 @@ export default function RefreshControl({ lastRefreshUtc }: RefreshControlProps) 
     <div className="w-full max-w-sm rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
       <div className="flex flex-col gap-2">
         <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          Auto refresh
+          Scheduled refresh
         </p>
         <p className="text-sm text-[color:var(--muted)]">
           COT last:{" "}
@@ -18,7 +18,7 @@ export default function RefreshControl({ lastRefreshUtc }: RefreshControlProps) 
             : "No refresh yet"}
         </p>
         <p className="text-xs text-[color:var(--muted)]">
-          Data refreshes automatically on page load.
+          Data refreshes via background jobs.
         </p>
       </div>
     </div>

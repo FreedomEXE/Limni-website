@@ -1,12 +1,14 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import RefreshControl from "@/components/RefreshControl";
 import { listAssetClasses } from "@/lib/cotMarkets";
-import { ensureSnapshotForClass, readSnapshotHistory } from "@/lib/cotStore";
+import { readSnapshot } from "@/lib/cotStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
   type PerformanceModel,
 } from "@/lib/performanceLab";
+import { getPairPerformance } from "@/lib/pricePerformance";
+import type { PairSnapshot } from "@/lib/cotTypes";
+import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 
 export const dynamic = "force-dynamic";
 
@@ -43,36 +45,48 @@ export default async function PerformancePage() {
     "sentiment",
   ];
 
-  const snapshots = new Map<string, Awaited<ReturnType<typeof ensureSnapshotForClass>>>();
-  const histories = new Map<string, Awaited<ReturnType<typeof readSnapshotHistory>>>();
+  const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
   const sentiment = await getLatestAggregates();
 
-  const [snapshotResults, historyResults] = await Promise.all([
-    Promise.all(assetClasses.map((asset) => ensureSnapshotForClass(asset.id))),
-    Promise.all(assetClasses.map((asset) => readSnapshotHistory(asset.id, 104))),
+  const [snapshotResults] = await Promise.all([
+    Promise.all(assetClasses.map((asset) => readSnapshot({ assetClass: asset.id }))),
   ]);
   snapshotResults.forEach((snapshot, index) => {
     snapshots.set(assetClasses[index].id, snapshot);
   });
-  historyResults.forEach((history, index) => {
-    histories.set(assetClasses[index].id, history);
-  });
+
+  function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
+    const pairDefs = PAIRS_BY_ASSET_CLASS[assetId as keyof typeof PAIRS_BY_ASSET_CLASS] ?? [];
+    const pairs: Record<string, PairSnapshot> = {};
+    for (const pair of pairDefs) {
+      pairs[pair.pair] = {
+        direction: "LONG",
+        base_bias: "NEUTRAL",
+        quote_bias: "NEUTRAL",
+      };
+    }
+    return pairs;
+  }
 
   const perAsset = await Promise.all(
     assetClasses.map(async (asset) => {
       const snapshot = snapshots.get(asset.id);
-      const history = histories.get(asset.id) ?? [];
       if (!snapshot) {
         return { asset, results: [] as Awaited<ReturnType<typeof computeModelPerformance>>[] };
       }
+      const performance = await getPairPerformance(buildAllPairs(asset.id), {
+        assetClass: asset.id,
+        reportDate: snapshot.report_date,
+        isLatestReport: true,
+      });
       const results = await Promise.all(
         models.map((model) =>
           computeModelPerformance({
             model,
             assetClass: asset.id,
             snapshot,
-            history,
             sentiment,
+            performance,
           }),
         ),
       );
@@ -96,12 +110,6 @@ export default async function PerformancePage() {
     return { model, percent, priced, total };
   });
   const anyPriced = totals.some((result) => result.priced > 0);
-  const refreshTimes = snapshotResults
-    .map((snapshot) => snapshot?.last_refresh_utc)
-    .filter((value): value is string => Boolean(value))
-    .sort();
-  const latestRefresh = refreshTimes.length > 0 ? refreshTimes.at(-1) ?? "" : "";
-
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -111,9 +119,6 @@ export default async function PerformancePage() {
             <p className="mt-2 text-sm text-slate-600">
               Compare weekly basket performance across filters using percent-only scoring.
             </p>
-          </div>
-          <div className="w-full md:w-auto">
-            <RefreshControl lastRefreshUtc={latestRefresh} assetClass="all" />
           </div>
         </header>
 
@@ -133,7 +138,7 @@ export default async function PerformancePage() {
           </div>
           {!anyPriced ? (
             <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-xs text-amber-800">
-              No priced pairs yet. Run “Refresh prices” on ALL to populate snapshots.
+              No priced pairs yet. Prices populate when the scheduled refresh runs.
             </div>
           ) : null}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">

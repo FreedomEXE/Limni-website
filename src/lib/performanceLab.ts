@@ -97,13 +97,11 @@ function buildBiasPairs(
 function buildAntikytheraPairs(
   assetClass: AssetClass,
   snapshot: CotSnapshot,
-  history: CotSnapshot[],
   sentiment: SentimentAggregate[],
 ): Record<string, PairSnapshot> {
   const signals = buildAntikytheraSignals({
     assetClass,
     snapshot,
-    history,
     sentiment,
     maxSignals: 50,
   });
@@ -118,17 +116,16 @@ function buildModelPairs(options: {
   model: PerformanceModel;
   assetClass: AssetClass;
   snapshot: CotSnapshot;
-  history: CotSnapshot[];
   sentiment: SentimentAggregate[];
 }): Record<string, PairSnapshot> {
-  const { model, assetClass, snapshot, history, sentiment } = options;
+  const { model, assetClass, snapshot, sentiment } = options;
 
   if (model === "sentiment") {
     return buildSentimentPairs(assetClass, sentiment);
   }
 
   if (model === "antikythera") {
-    return buildAntikytheraPairs(assetClass, snapshot, history, sentiment);
+    return buildAntikytheraPairs(assetClass, snapshot, sentiment);
   }
 
   const biasMode: BiasMode = model;
@@ -139,15 +136,14 @@ export async function computeModelPerformance(options: {
   model: PerformanceModel;
   assetClass: AssetClass;
   snapshot: CotSnapshot;
-  history: CotSnapshot[];
   sentiment: SentimentAggregate[];
+  performance?: Awaited<ReturnType<typeof getPairPerformance>>;
 }): Promise<ModelPerformance> {
-  const { model, assetClass, snapshot, history, sentiment } = options;
+  const { model, assetClass, snapshot, sentiment, performance } = options;
   const pairs = buildModelPairs({
     model,
     assetClass,
     snapshot,
-    history,
     sentiment,
   });
   const total = Object.keys(pairs).length;
@@ -155,11 +151,13 @@ export async function computeModelPerformance(options: {
     return { model, percent: 0, priced: 0, total: 0, note: "No pairs." };
   }
 
-  const perf = await getPairPerformance(pairs, {
-    assetClass,
-    reportDate: snapshot.report_date,
-    isLatestReport: true,
-  });
+  const perf =
+    performance ??
+    (await getPairPerformance(pairs, {
+      assetClass,
+      reportDate: snapshot.report_date,
+      isLatestReport: true,
+    }));
 
   let percent = 0;
   let priced = 0;
