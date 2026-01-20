@@ -153,9 +153,9 @@ export async function refreshSnapshotForClass(
   assetClass: AssetClass = "fx",
   reportDate?: string,
 ): Promise<CotSnapshot> {
+  const assetDefinition = getAssetClassDefinition(assetClass);
   const resolvedReportDate =
     reportDate ?? (await fetchLatestReportDate(assetDefinition.source));
-  const assetDefinition = getAssetClassDefinition(assetClass);
   const marketDefs = Object.values(assetDefinition.markets);
   const marketNames = marketDefs.flatMap((market) => market.marketNames);
   const rows = await fetchCotRowsForDate(
