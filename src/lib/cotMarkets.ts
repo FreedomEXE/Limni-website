@@ -41,7 +41,6 @@ export const COT_ASSET_CLASSES: Record<AssetClass, AssetClassDefinition> = {
     positionLabel: "Dealer",
     source: "tff",
     markets: {
-      USD: { id: "USD", label: "USD", marketNames: ["USD INDEX"] },
       SPX: {
         id: "SPX",
         label: "S&P 500",
@@ -66,7 +65,6 @@ export const COT_ASSET_CLASSES: Record<AssetClass, AssetClassDefinition> = {
     positionLabel: "Dealer",
     source: "tff",
     markets: {
-      USD: { id: "USD", label: "USD", marketNames: ["USD INDEX"] },
       BTC: { id: "BTC", label: "Bitcoin", marketNames: ["BITCOIN"] },
       ETH: {
         id: "ETH",
@@ -82,7 +80,6 @@ export const COT_ASSET_CLASSES: Record<AssetClass, AssetClassDefinition> = {
     positionLabel: "Producer/Merchant",
     source: "disaggregated",
     markets: {
-      USD: { id: "USD", label: "USD", marketNames: ["USD INDEX"] },
       XAU: { id: "XAU", label: "Gold", marketNames: ["GOLD"] },
       XAG: { id: "XAG", label: "Silver", marketNames: ["SILVER"] },
       WTI: {

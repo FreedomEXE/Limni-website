@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { biasFromNet, derivePairDirections, derivePairDirectionsByBase } from "../cotCompute";
+import {
+  biasFromNet,
+  buildMarketSnapshot,
+  derivePairDirections,
+  derivePairDirectionsByBase,
+} from "../cotCompute";
 import { PAIRS_BY_ASSET_CLASS } from "../cotPairs";
 import type { MarketSnapshot } from "../cotTypes";
 
@@ -20,17 +25,17 @@ describe("biasFromNet", () => {
 describe("derivePairDirections", () => {
   it("creates directions only when biases oppose", () => {
     const markets: Record<string, MarketSnapshot> = {
-      AUD: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
-      USD: { dealer_long: 20, dealer_short: 10, net: -10, bias: "BEARISH" },
-      EUR: { dealer_long: 20, dealer_short: 10, net: -10, bias: "BEARISH" },
-      JPY: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
-      CHF: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
-      CAD: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
-      GBP: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
-      NZD: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
+      AUD: buildMarketSnapshot(10, 20, null, null),
+      USD: buildMarketSnapshot(20, 10, null, null),
+      EUR: buildMarketSnapshot(20, 10, null, null),
+      JPY: buildMarketSnapshot(10, 20, null, null),
+      CHF: buildMarketSnapshot(10, 20, null, null),
+      CAD: buildMarketSnapshot(10, 20, null, null),
+      GBP: buildMarketSnapshot(10, 20, null, null),
+      NZD: buildMarketSnapshot(10, 20, null, null),
     };
 
-    const pairs = derivePairDirections(markets, PAIRS_BY_ASSET_CLASS.fx);
+    const pairs = derivePairDirections(markets, PAIRS_BY_ASSET_CLASS.fx, "dealer");
     expect(pairs.AUDUSD?.direction).toBe("LONG");
     expect(pairs.EURJPY?.direction).toBe("SHORT");
     expect(pairs.USDJPY?.direction).toBe("SHORT");
@@ -41,13 +46,13 @@ describe("derivePairDirections", () => {
 describe("derivePairDirectionsByBase", () => {
   it("creates directions based on base bias only", () => {
     const markets: Record<string, MarketSnapshot> = {
-      SPX: { dealer_long: 10, dealer_short: 20, net: 10, bias: "BULLISH" },
-      USD: { dealer_long: 10, dealer_short: 10, net: 0, bias: "NEUTRAL" },
+      SPX: buildMarketSnapshot(10, 20, null, null),
+      USD: buildMarketSnapshot(10, 10, null, null),
     };
 
     const pairs = derivePairDirectionsByBase(markets, [
       { pair: "SPXUSD", base: "SPX", quote: "USD" },
-    ]);
+    ], "dealer");
     expect(pairs.SPXUSD?.direction).toBe("LONG");
     expect(pairs.SPXUSD?.quote_bias).toBe("NEUTRAL");
   });

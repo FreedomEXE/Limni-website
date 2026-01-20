@@ -2,6 +2,12 @@ import type { AssetClass } from "./cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "./cotPairs";
 import type { CotSnapshot } from "./cotTypes";
 import type { SentimentAggregate } from "./sentiment/types";
+import {
+  derivePairDirections,
+  derivePairDirectionsByBase,
+  resolveMarketBias,
+  type BiasMode,
+} from "./cotCompute";
 
 export type AntikytheraSignal = {
   pair: string;
@@ -43,6 +49,7 @@ function zscore(value: number, values: number[]) {
 function computeZscores(
   history: CotSnapshot[],
   lookback: number,
+  mode: BiasMode,
 ): Record<string, number> {
   const sliced = history.slice(0, Math.min(history.length, lookback));
   if (sliced.length === 0) {
@@ -54,9 +61,14 @@ function computeZscores(
 
   for (const currency of Object.keys(latest)) {
     const values = sliced
-      .map((snapshot) => snapshot.currencies[currency]?.net)
+      .map((snapshot) => {
+        const market = snapshot.currencies[currency];
+        const resolved = market ? resolveMarketBias(market, mode) : null;
+        return resolved?.net;
+      })
       .filter((value): value is number => typeof value === "number");
-    const latestValue = latest[currency]?.net;
+    const latestResolved = resolveMarketBias(latest[currency], mode);
+    const latestValue = latestResolved?.net;
     if (typeof latestValue !== "number" || values.length === 0) {
       continue;
     }
@@ -115,17 +127,22 @@ export function buildAntikytheraSignals(options: {
   maxSignals?: number;
 }) {
   const { assetClass, snapshot, history, sentiment, maxSignals = 8 } = options;
+  const biasMode: BiasMode = "blended";
   const thresholds = THRESHOLDS[assetClass];
-  const regimeZ = computeZscores(history, 104);
-  const timingZ = computeZscores(history, 26);
+  const regimeZ = computeZscores(history, 104, biasMode);
+  const timingZ = computeZscores(history, 26, biasMode);
   const sentimentMap = new Map(sentiment.map((item) => [item.symbol, item]));
 
   const signals: AntikytheraSignal[] = [];
 
   const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
+  const derivedPairs =
+    assetClass === "fx"
+      ? derivePairDirections(snapshot.currencies, pairDefs, biasMode)
+      : derivePairDirectionsByBase(snapshot.currencies, pairDefs, biasMode);
 
   for (const pairDef of pairDefs) {
-    const info = snapshot.pairs[pairDef.pair];
+    const info = derivedPairs[pairDef.pair];
     if (!info) {
       continue;
     }
@@ -147,11 +164,16 @@ export function buildAntikytheraSignals(options: {
       sentimentMap.get(pairDef.pair),
     );
 
-    const score = regimeScore + timingScore + sentimentResult.score;
-    if (score < 4) {
+    const alignedCount = [
+      regimeScore > 0,
+      timingScore > 0,
+      sentimentResult.score > 0,
+    ].filter(Boolean).length;
+    if (alignedCount < 2) {
       continue;
     }
 
+    const score = regimeScore + timingScore + sentimentResult.score;
     const reasons: string[] = [];
     if (regimeScore > 0) {
       reasons.push(formatReason("Regime", regimeValue));

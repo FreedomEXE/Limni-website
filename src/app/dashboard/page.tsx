@@ -9,6 +9,14 @@ import {
   getAssetClassDefinition,
   listAssetClasses,
 } from "@/lib/cotMarkets";
+import {
+  derivePairDirections,
+  derivePairDirectionsByBase,
+  resolveMarketBias,
+  type BiasMode,
+  BIAS_WEIGHTS,
+} from "@/lib/cotCompute";
+import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import { getPairPerformance } from "@/lib/pricePerformance";
@@ -67,12 +75,23 @@ type DashboardPageProps = {
     | Promise<Record<string, string | string[] | undefined>>;
 };
 
+function getBiasMode(value?: string): BiasMode {
+  if (value === "dealer" || value === "commercial" || value === "blended") {
+    return value;
+  }
+  return "blended";
+}
+
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const assetParam = resolvedSearchParams?.asset;
   const reportParam = resolvedSearchParams?.report;
+  const biasParam = resolvedSearchParams?.bias;
   const assetClass = getAssetClass(
     Array.isArray(assetParam) ? assetParam[0] : assetParam,
+  );
+  const biasMode = getBiasMode(
+    Array.isArray(biasParam) ? biasParam[0] : biasParam,
   );
   const reportDate =
     Array.isArray(reportParam) ? reportParam[0] : reportParam;
@@ -88,11 +107,28 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const assetDefinition = getAssetClassDefinition(assetClass);
   const assetClasses = listAssetClasses();
   const marketLabels = assetDefinition.markets;
+  const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
 
   const currencyRows = Object.entries(data.currencies)
-    .filter(([currency]) => assetClass === "fx" || currency !== "USD")
-    .sort(([a], [b]) => a.localeCompare(b));
-  const pairRows = Object.entries(data.pairs).sort(([a], [b]) =>
+    .map(([currency, snapshot]) => {
+      const resolved = resolveMarketBias(snapshot, biasMode);
+      return resolved
+        ? {
+            currency,
+            long: resolved.long,
+            short: resolved.short,
+            net: resolved.net,
+            bias: resolved.bias,
+          }
+        : null;
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
+  const derivedPairs =
+    assetClass === "fx"
+      ? derivePairDirections(data.currencies, pairDefs, biasMode)
+      : derivePairDirectionsByBase(data.currencies, pairDefs, biasMode);
+  const pairRows = Object.entries(derivedPairs).sort(([a], [b]) =>
     a.localeCompare(b),
   );
   const isLatestReport =
@@ -144,8 +180,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 Bias Dashboard
               </h1>
               <p className="text-sm text-slate-600">
-                {assetDefinition.positionLabel} positioning from CFTC COT ({COT_VARIANT})
-                with room to layer more bias inputs over time.
+                Weighted blend of dealer and commercial positioning from CFTC COT ({COT_VARIANT}). Sentiment is not included.
               </p>
             </div>
           </div>
@@ -172,6 +207,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             className="flex flex-wrap items-center gap-3"
           >
             <input type="hidden" name="asset" value={assetClass} />
+            <input type="hidden" name="bias" value={biasMode} />
             <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Report week
             </label>
@@ -190,6 +226,32 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 ))
               )}
             </select>
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Bias mode
+            </span>
+            <div className="flex items-center gap-2">
+              {(["blended", "dealer", "commercial"] as BiasMode[]).map((mode) => {
+                const href = new URLSearchParams();
+                href.set("asset", assetClass);
+                if (selectedReportDate) {
+                  href.set("report", selectedReportDate);
+                }
+                href.set("bias", mode);
+                return (
+                  <Link
+                    key={mode}
+                    href={`/dashboard?${href.toString()}`}
+                    className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
+                      biasMode === mode
+                        ? "bg-slate-900 text-white"
+                        : "border border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent-strong)]"
+                    }`}
+                  >
+                    {mode}
+                  </Link>
+                );
+              })}
+            </div>
             <button
               type="submit"
               className="inline-flex items-center justify-center rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
@@ -238,7 +300,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 {assetDefinition.biasLabel} bias
               </h2>
               <p className="text-sm text-[color:var(--muted)]">
-                {assetDefinition.positionLabel} short minus {assetDefinition.positionLabel} long.
+                {biasMode === "blended"
+                  ? `Blended bias (${Math.round(
+                      BIAS_WEIGHTS.dealer * 100,
+                    )}% dealer / ${Math.round(
+                      BIAS_WEIGHTS.commercial * 100,
+                    )}% commercial).`
+                  : biasMode === "dealer"
+                    ? "Dealer short minus Dealer long."
+                    : "Commercial short minus Commercial long."}
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -246,8 +316,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <thead className="text-xs uppercase text-[color:var(--muted)]">
                   <tr>
                     <th className="py-2">{assetDefinition.biasLabel}</th>
-                    <th className="py-2">{assetDefinition.positionLabel} long</th>
-                    <th className="py-2">{assetDefinition.positionLabel} short</th>
+                    <th className="py-2">
+                      {biasMode === "blended"
+                        ? "Blended long"
+                        : biasMode === "dealer"
+                          ? "Dealer long"
+                          : "Commercial long"}
+                    </th>
+                    <th className="py-2">
+                      {biasMode === "blended"
+                        ? "Blended short"
+                        : biasMode === "dealer"
+                          ? "Dealer short"
+                          : "Commercial short"}
+                    </th>
                     <th className="py-2">Net</th>
                     <th className="py-2">Bias</th>
                   </tr>
@@ -260,9 +342,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       </td>
                     </tr>
                   ) : (
-                    currencyRows.map(([currency, row]) => (
+                    currencyRows.map((row) => (
                       <tr
-                        key={currency}
+                        key={row.currency}
                         className={`border-t border-[var(--panel-border)] ${
                           row.bias === "BULLISH"
                             ? "bg-emerald-50/60"
@@ -272,13 +354,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                         }`}
                       >
                         <td className="py-2 font-semibold">
-                          {marketLabels[currency]?.label ?? currency}
+                          {marketLabels[row.currency]?.label ?? row.currency}
                         </td>
                         <td className="py-2">
-                          {formatNumber(row.dealer_long)}
+                          {formatNumber(row.long)}
                         </td>
                         <td className="py-2">
-                          {formatNumber(row.dealer_short)}
+                          {formatNumber(row.short)}
                         </td>
                         <td className="py-2">{formatNumber(row.net)}</td>
                         <td

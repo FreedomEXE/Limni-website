@@ -3,6 +3,7 @@ import {
   buildMarketSnapshot,
   derivePairDirections,
   derivePairDirectionsByBase,
+  type BiasMode,
 } from "./cotCompute";
 import { fetchCotRowsForDate, fetchLatestReportDate } from "./cotFetch";
 import type { CotRow } from "./cotFetch";
@@ -154,46 +155,83 @@ export async function refreshSnapshotForClass(
   reportDate?: string,
 ): Promise<CotSnapshot> {
   const assetDefinition = getAssetClassDefinition(assetClass);
+  const dealerSource: CotSource = "tff";
+  const commercialSource: CotSource =
+    assetClass === "commodities" ? "disaggregated" : "legacy";
   const resolvedReportDate =
-    reportDate ?? (await fetchLatestReportDate(assetDefinition.source));
+    reportDate ?? (await fetchLatestReportDate(dealerSource));
   const marketDefs = Object.values(assetDefinition.markets);
   const marketNames = marketDefs.flatMap((market) => market.marketNames);
-  const rows = await fetchCotRowsForDate(
+  const dealerRows = await fetchCotRowsForDate(
     resolvedReportDate,
     marketNames,
     COT_VARIANT,
-    assetDefinition.source,
+    dealerSource,
+  );
+  const commercialRows = await fetchCotRowsForDate(
+    resolvedReportDate,
+    marketNames,
+    COT_VARIANT,
+    commercialSource,
   );
 
-  const byMarket = new Map(
-    rows.map((row) => [row.contract_market_name, row]),
+  const dealerByMarket = new Map(
+    dealerRows.map((row) => [row.contract_market_name, row]),
+  );
+  const commercialByMarket = new Map(
+    commercialRows.map((row) => [row.contract_market_name, row]),
   );
 
   const currencies: Record<string, MarketSnapshot> = {};
   const missing: string[] = [];
+  const missingCommercial: string[] = [];
 
   for (const market of marketDefs) {
-    let row = null as typeof rows[number] | null;
+    let dealerRow = null as typeof dealerRows[number] | null;
+    let commercialRow = null as typeof commercialRows[number] | null;
     for (const name of market.marketNames) {
-      const candidate = byMarket.get(name);
-      if (candidate) {
-        row = candidate;
+      const dealerCandidate = dealerByMarket.get(name);
+      if (dealerCandidate) {
+        dealerRow = dealerCandidate;
+      }
+      const commercialCandidate = commercialByMarket.get(name);
+      if (commercialCandidate) {
+        commercialRow = commercialCandidate;
+      }
+      if (dealerRow && commercialRow) {
         break;
       }
     }
 
-    if (!row) {
+    if (!dealerRow) {
       missing.push(market.id);
       continue;
     }
 
-    const [dealerLong, dealerShort] = getPositions(row, assetDefinition.source);
+    const [dealerLong, dealerShort] = getPositions(dealerRow, dealerSource);
+    let commercialLong: number | null = null;
+    let commercialShort: number | null = null;
+    if (commercialRow) {
+      const [commLong, commShort] = getPositions(
+        commercialRow,
+        commercialSource,
+      );
+      commercialLong = commLong;
+      commercialShort = commShort;
+    } else {
+      missingCommercial.push(market.id);
+    }
 
     if (!Number.isFinite(dealerLong) || !Number.isFinite(dealerShort)) {
       throw new Error(`Invalid position data for ${market.id}`);
     }
 
-    currencies[market.id] = buildMarketSnapshot(dealerLong, dealerShort);
+    currencies[market.id] = buildMarketSnapshot(
+      dealerLong,
+      dealerShort,
+      commercialLong,
+      commercialShort,
+    );
   }
 
   if (missing.length > 0) {
@@ -202,11 +240,18 @@ export async function refreshSnapshotForClass(
     );
   }
 
+  if (missingCommercial.length > 0) {
+    console.warn(
+      `Missing commercial rows for ${assetDefinition.label}: ${missingCommercial.join(", ")}`,
+    );
+  }
+
+  const biasMode: BiasMode = "blended";
   const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
   const pairs =
     assetClass === "fx"
-      ? derivePairDirections(currencies, pairDefs)
-      : derivePairDirectionsByBase(currencies, pairDefs);
+      ? derivePairDirections(currencies, pairDefs, biasMode)
+      : derivePairDirectionsByBase(currencies, pairDefs, biasMode);
   const snapshot: CotSnapshot = {
     report_date: resolvedReportDate,
     last_refresh_utc: new Date().toISOString(),

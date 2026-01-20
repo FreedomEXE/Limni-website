@@ -62,9 +62,9 @@ const NON_FX_SYMBOLS: Record<
   Record<string, string[]>
 > = {
   indices: {
-    SPX: ["SPX", "SPX500", "US500"],
-    NDX: ["NDX", "NAS100"],
-    NIKKEI: ["N225", "NI225", "JP225"],
+    SPX: ["SPX", "SPX500", "US500", "SPXUSD"],
+    NDX: ["NDX", "NAS100", "NDXUSD"],
+    NIKKEI: ["N225", "NI225", "JP225", "NKY", "NIKKEI", "NIKKEIUSD"],
   },
   crypto: {
     BTC: ["BTC/USD", "BTCUSD"],
@@ -73,7 +73,7 @@ const NON_FX_SYMBOLS: Record<
   commodities: {
     XAU: ["XAU/USD", "XAUUSD", "GOLD"],
     XAG: ["XAG/USD", "XAGUSD", "SILVER"],
-    WTI: ["WTI", "USOIL", "CL"],
+    WTI: ["WTI", "USOIL", "CL", "WTIUSD"],
   },
 };
 
@@ -386,7 +386,11 @@ function getNonFxSymbols(
 ): string[] {
   const symbolMap = NON_FX_SYMBOLS[assetClass];
   const base = Object.keys(symbolMap).find((key) => pair.startsWith(key));
-  return base ? symbolMap[base] : [];
+  if (!base) {
+    return [];
+  }
+  const symbols = symbolMap[base];
+  return symbols.includes(pair) ? symbols : [pair, ...symbols];
 }
 
 function buildFxPerformanceValue(

@@ -238,6 +238,15 @@ export default async function AntikytheraPage() {
                   View
                 </span>
               </Link>
+              <Link
+                href="/performance"
+                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700 transition hover:border-teal-500 hover:text-teal-700"
+              >
+                <span>Performance lab</span>
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  View
+                </span>
+              </Link>
               <div className="rounded-lg border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700">
                 Liquidation clusters update for BTC + ETH below.
               </div>

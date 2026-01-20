@@ -6,8 +6,16 @@ export type Direction = "LONG" | "SHORT";
 export type MarketSnapshot = {
   dealer_long: number;
   dealer_short: number;
-  net: number;
-  bias: Bias;
+  dealer_net: number;
+  dealer_bias: Bias;
+  commercial_long: number | null;
+  commercial_short: number | null;
+  commercial_net: number | null;
+  commercial_bias: Bias | null;
+  blended_long: number;
+  blended_short: number;
+  blended_net: number;
+  blended_bias: Bias;
 };
 
 export type PairSnapshot = {
