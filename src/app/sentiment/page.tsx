@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import RefreshSentimentButton from "@/components/RefreshSentimentButton";
 import SentimentHeatmap from "@/components/SentimentHeatmap";
 import { fetchLiquidationSummary } from "@/lib/coinank";
+import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { getLatestAggregates, readSourceHealth } from "@/lib/sentiment/store";
 import {
   SENTIMENT_ASSET_CLASSES,
@@ -93,6 +94,9 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
   let liquidationSummaries: Array<
     Awaited<ReturnType<typeof fetchLiquidationSummary>>
   > = [];
+  let bitgetSnapshots: Array<
+    Awaited<ReturnType<typeof fetchBitgetFuturesSnapshot>>
+  > = [];
   try {
     [aggregates, sources] = await Promise.all([
       getLatestAggregates(),
@@ -114,6 +118,17 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
     } catch (error) {
       console.error(
         "Coinank liquidation load failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    try {
+      bitgetSnapshots = await Promise.all([
+        fetchBitgetFuturesSnapshot("BTC"),
+        fetchBitgetFuturesSnapshot("ETH"),
+      ]);
+    } catch (error) {
+      console.error(
+        "Bitget snapshot load failed:",
         error instanceof Error ? error.message : String(error),
       );
     }
@@ -297,6 +312,70 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                         </div>
                       )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : null}
+
+        {assetClass === "crypto" ? (
+          <section className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Bitget Futures Pulse
+              </h2>
+              <p className="text-sm text-slate-600">
+                Funding + open interest snapshots for BTC/ETH perpetuals.
+              </p>
+            </div>
+            {bitgetSnapshots.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                No Bitget data available yet.
+              </p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {bitgetSnapshots.map((snapshot) => (
+                  <div
+                    key={snapshot.symbol}
+                    className="rounded-xl border border-slate-200 bg-white/90 p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-slate-900">
+                        {snapshot.symbol}
+                      </h3>
+                      <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                        {snapshot.productType}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-sm text-slate-700">
+                      <div className="flex items-center justify-between">
+                        <span>Last price</span>
+                        <span className="font-semibold">
+                          {snapshot.lastPrice ?? "--"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Funding rate</span>
+                        <span className="font-semibold">
+                          {snapshot.fundingRate !== null
+                            ? snapshot.fundingRate.toFixed(6)
+                            : "--"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Open interest</span>
+                        <span className="font-semibold">
+                          {snapshot.openInterest ?? "--"}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-xs text-slate-500">
+                      Updated{" "}
+                      {snapshot.lastPriceTime
+                        ? formatTime(snapshot.lastPriceTime)
+                        : "unknown"}
+                    </p>
                   </div>
                 ))}
               </div>

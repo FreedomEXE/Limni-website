@@ -7,12 +7,30 @@ import {
   type MarketSnapshot,
   type PairPerformance,
 } from "./priceStore";
+import { fetchOandaCandle } from "./oandaPrices";
 
 type PerformanceResult = {
   performance: Record<string, PairPerformance | null>;
   note: string;
   missingPairs: string[];
 };
+
+class PriceCreditsError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PriceCreditsError";
+  }
+}
+
+function isCreditsError(message?: string, status?: number) {
+  if (status === 429) {
+    return true;
+  }
+  if (!message) {
+    return false;
+  }
+  return message.toLowerCase().includes("api credits");
+}
 
 type PerformanceOptions = {
   assetClass?: AssetClass;
@@ -94,14 +112,14 @@ const SYMBOL_OVERRIDES: Partial<Record<string, string[]>> = {
   NZDJPY: ["NZD/JPY", "NZDJPY"],
   CADJPY: ["CAD/JPY", "CADJPY"],
   CHFJPY: ["CHF/JPY", "CHFJPY"],
-  SPXUSD: ["SPX", "SPX500", "US500", "SPXUSD"],
-  NDXUSD: ["NDX", "NAS100", "NDXUSD"],
-  NIKKEIUSD: ["N225", "NI225", "JP225", "NKY", "NIKKEI", "NIKKEIUSD"],
+  SPXUSD: ["SPX", "SPX500", "US500", "SPXUSD", "SPX500_USD"],
+  NDXUSD: ["NDX", "NAS100", "NDXUSD", "NAS100_USD"],
+  NIKKEIUSD: ["N225", "NI225", "JP225", "NKY", "NIKKEI", "NIKKEIUSD", "JP225_USD"],
   BTCUSD: ["BTC/USD", "BTCUSD"],
   ETHUSD: ["ETH/USD", "ETHUSD"],
-  XAUUSD: ["XAU/USD", "XAUUSD", "GOLD"],
-  XAGUSD: ["XAG/USD", "XAGUSD", "SILVER"],
-  WTIUSD: ["WTI", "USOIL", "CL", "WTIUSD"],
+  XAUUSD: ["XAU/USD", "XAUUSD", "GOLD", "XAU_USD"],
+  XAGUSD: ["XAG/USD", "XAGUSD", "SILVER", "XAG_USD"],
+  WTIUSD: ["WTI", "USOIL", "CL", "WTIUSD", "WTICO_USD"],
 };
 
 function parseValue(value: string): number {
@@ -191,6 +209,51 @@ function fxSymbol(pair: string): string {
   return `${base}/${quote}`;
 }
 
+async function fetchCoinMarketCapQuote(symbol: string) {
+  const apiKey = process.env.COINMARKETCAP_API_KEY ?? "";
+  if (!apiKey) {
+    throw new Error("COINMARKETCAP_API_KEY is not configured.");
+  }
+  const url = new URL("https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest");
+  url.searchParams.set("symbol", symbol);
+  url.searchParams.set("convert", "USD");
+
+  const response = await fetch(url.toString(), {
+    headers: { "X-CMC_PRO_API_KEY": apiKey },
+  });
+  if (!response.ok) {
+    throw new Error(`CoinMarketCap price fetch failed (${symbol}).`);
+  }
+  const data = (await response.json()) as {
+    data?: Record<string, { quote?: { USD?: { price?: number } } }>;
+  };
+  const price = data.data?.[symbol]?.quote?.USD?.price;
+  if (!Number.isFinite(price)) {
+    throw new Error(`CoinMarketCap missing price for ${symbol}.`);
+  }
+  return price as number;
+}
+
+async function fetchCryptoFallbackPrices(
+  pair: string,
+  window: WeekWindow,
+): Promise<PairPerformance | null> {
+  const base = pair.slice(0, 3);
+  const quote = pair.slice(3);
+  if (quote !== "USD") {
+    return null;
+  }
+  const current = await fetchCoinMarketCapQuote(base);
+  return {
+    open: current,
+    current,
+    percent: 0,
+    pips: 0,
+    open_time_utc: toIsoString(window.openUtc),
+    current_time_utc: toIsoString(window.closeUtc),
+  };
+}
+
 async function fetchTimeSeries(
   symbol: string,
   apiKey: string,
@@ -204,15 +267,19 @@ async function fetchTimeSeries(
   url.searchParams.set("apikey", apiKey);
 
   const response = await fetch(url.toString(), { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`Price fetch failed (${symbol}).`);
-  }
-
   const data = (await response.json()) as {
     status?: string;
     message?: string;
     values?: TimeSeriesValue[];
   };
+
+  if (!response.ok || data.status === "error") {
+    const message = data.message ?? `Price error for ${symbol}.`;
+    if (isCreditsError(message, response.status)) {
+      throw new PriceCreditsError(message);
+    }
+    throw new Error(message);
+  }
 
   if (data.status === "error") {
     throw new Error(data.message ?? `Price error for ${symbol}.`);
@@ -291,6 +358,9 @@ async function fetchTimeSeriesWithFallbacks(
     try {
       return await fetchTimeSeries(symbol, apiKey, { interval, outputsize });
     } catch (error) {
+      if (error instanceof PriceCreditsError) {
+        throw error;
+      }
       lastError = error instanceof Error ? error : new Error(String(error));
     }
   }
@@ -347,6 +417,9 @@ async function fetchMajorPrices(
         current_time_utc: toIsoString(closeTime),
       };
     } catch (error) {
+      if (error instanceof PriceCreditsError) {
+        throw error;
+      }
       prices[pair] = null;
       console.error(error);
     }
@@ -530,6 +603,21 @@ async function fetchFxDirectPerformance(
       toIsoString(closeTime),
     );
   } catch (error) {
+    const oandaResult = await fetchOandaCandle(
+      fxSymbol(pair),
+      window.openUtc,
+      window.closeUtc,
+    );
+    if (oandaResult) {
+      return buildFxPerformanceValue(
+        pair,
+        oandaResult.open,
+        oandaResult.close,
+        info.direction,
+        oandaResult.openTime,
+        oandaResult.closeTime,
+      );
+    }
     console.error(error);
     return null;
   }
@@ -667,14 +755,30 @@ async function buildNonFxPerformance(
         resolved = true;
         break;
       } catch (error) {
+        if (error instanceof PriceCreditsError) {
+          throw error;
+        }
         console.error(error);
       }
     }
 
     if (!resolved) {
-      performance[pair] = null;
-      missing += 1;
-      missingPairs.push(pair);
+      if (assetClass === "crypto") {
+        try {
+          const fallback = await fetchCryptoFallbackPrices(pair, window);
+          if (fallback) {
+            performance[pair] = fallback;
+            resolved = true;
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      if (!resolved) {
+        performance[pair] = null;
+        missing += 1;
+        missingPairs.push(pair);
+      }
     }
   }
 
@@ -696,60 +800,61 @@ export async function getPairPerformance(
   pairs: Record<string, PairSnapshot>,
   options?: PerformanceOptions,
 ): Promise<PerformanceResult> {
-  const apiKey = process.env.PRICE_API_KEY;
-  const assetClass = options?.assetClass ?? "fx";
-  const now = DateTime.utc();
-  const window = getWeekWindow(now, options?.reportDate, options?.isLatestReport);
-  const weekOpenIso = toIsoString(window.openUtc);
-  const currentWeekOpenIso = toIsoString(getSundayOpenUtc(now));
-  const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
+  try {
+    const apiKey = process.env.PRICE_API_KEY;
+    const assetClass = options?.assetClass ?? "fx";
+    const now = DateTime.utc();
+    const window = getWeekWindow(now, options?.reportDate, options?.isLatestReport);
+    const weekOpenIso = toIsoString(window.openUtc);
+    const currentWeekOpenIso = toIsoString(getSundayOpenUtc(now));
+    const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
 
-  if (isCurrentWeek) {
-    const snapshot = await readMarketSnapshot(weekOpenIso, assetClass);
-    if (snapshot) {
-      const totalPairs = Object.keys(pairs).length;
-      const performance: Record<string, PairPerformance | null> = {};
-      let missing = 0;
-      const missingPairs: string[] = [];
-      for (const pair of Object.keys(pairs)) {
-        const value = snapshot.pairs[pair] ?? null;
-        if (!value) {
-          missing += 1;
-          missingPairs.push(pair);
+    if (isCurrentWeek) {
+      const snapshot = await readMarketSnapshot(weekOpenIso, assetClass);
+      if (snapshot) {
+        const totalPairs = Object.keys(pairs).length;
+        const performance: Record<string, PairPerformance | null> = {};
+        let missing = 0;
+        const missingPairs: string[] = [];
+        for (const pair of Object.keys(pairs)) {
+          const value = snapshot.pairs[pair] ?? null;
+          if (!value) {
+            missing += 1;
+            missingPairs.push(pair);
+          }
+          performance[pair] = value;
         }
-        performance[pair] = value;
-      }
 
-      const cacheSeconds = Number(process.env.PRICE_CACHE_SECONDS ?? "300");
-      const ageSeconds =
-        (now.toMillis() - DateTime.fromISO(snapshot.last_refresh_utc).toMillis()) /
-        1000;
-      const isFresh =
-        Number.isFinite(ageSeconds) && ageSeconds <= cacheSeconds && missing === 0;
+        const cacheSeconds = Number(process.env.PRICE_CACHE_SECONDS ?? "300");
+        const ageSeconds =
+          (now.toMillis() - DateTime.fromISO(snapshot.last_refresh_utc).toMillis()) /
+          1000;
+        const isFresh =
+          Number.isFinite(ageSeconds) && ageSeconds <= cacheSeconds && missing === 0;
 
-      if (isFresh || !apiKey) {
-        const baseNote =
-          missing > 0
-            ? `Missing prices for ${missing}/${totalPairs}. Last refresh ${formatUtcLabel(
-                snapshot.last_refresh_utc,
-              )}.`
-            : `Last refresh ${formatUtcLabel(snapshot.last_refresh_utc)}.`;
-        const note =
-          assetClass === "fx"
-            ? `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
-            : `${baseNote} Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
-        return { performance, note, missingPairs };
+        if (isFresh || !apiKey) {
+          const baseNote =
+            missing > 0
+              ? `Missing prices for ${missing}/${totalPairs}. Last refresh ${formatUtcLabel(
+                  snapshot.last_refresh_utc,
+                )}.`
+              : `Last refresh ${formatUtcLabel(snapshot.last_refresh_utc)}.`;
+          const note =
+            assetClass === "fx"
+              ? `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
+              : `${baseNote} Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
+          return { performance, note, missingPairs };
+        }
       }
     }
-  }
 
-  if (!apiKey) {
-    return {
-      performance: {},
-      note: "PRICE_API_KEY is not configured.",
-      missingPairs: [],
-    };
-  }
+    if (!apiKey) {
+      return {
+        performance: {},
+        note: "PRICE_API_KEY is not configured.",
+        missingPairs: [],
+      };
+    }
 
   if (assetClass !== "fx") {
     const result = await buildNonFxPerformance(pairs, assetClass, window, apiKey);
@@ -797,7 +902,17 @@ export async function getPairPerformance(
       : `${timingNote}`;
   const note = `${baseNote} Derived from majors. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
 
-  return { performance, note, missingPairs };
+    return { performance, note, missingPairs };
+  } catch (error) {
+    if (error instanceof PriceCreditsError) {
+      return {
+        performance: {},
+        note: "Price API credits exhausted. Try again after the daily reset.",
+        missingPairs: Object.keys(pairs),
+      };
+    }
+    throw error;
+  }
 }
 
 export async function refreshMarketSnapshot(
@@ -818,15 +933,12 @@ export async function refreshMarketSnapshot(
   const cacheSeconds = Number(process.env.PRICE_CACHE_SECONDS ?? "300");
   const snapshot = await readMarketSnapshot(weekOpenUtc, assetClass);
 
-  if (
-    snapshot &&
-    snapshot.week_open_utc === weekOpenUtc &&
-    options?.force !== true
-  ) {
+  if (snapshot && snapshot.week_open_utc === weekOpenUtc && options?.force !== true) {
     const ageSeconds =
       (now.toMillis() - DateTime.fromISO(snapshot.last_refresh_utc).toMillis()) /
       1000;
-    if (Number.isFinite(ageSeconds) && ageSeconds <= cacheSeconds) {
+    const hasMissing = Object.values(snapshot.pairs).some((value) => value === null);
+    if (Number.isFinite(ageSeconds) && ageSeconds <= cacheSeconds && !hasMissing) {
       return snapshot;
     }
   }

@@ -240,6 +240,11 @@ export default async function StatusPage() {
                       Missing: {snapshot.missingPairs.join(", ")}
                     </p>
                   )}
+                  {snapshot.missingPairs.length > 0 ? (
+                    <p className="mt-2 text-xs text-amber-700">
+                      All missing? Check PRICE_API_KEY credits or symbol mapping.
+                    </p>
+                  ) : null}
                 </div>
               ))}
             </div>
