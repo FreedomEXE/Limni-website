@@ -413,6 +413,16 @@ function getNonFxSymbols(
   return symbols.includes(pair) ? symbols : [pair, ...symbols];
 }
 
+export function getPriceSymbolCandidates(
+  pair: string,
+  assetClass: AssetClass,
+): string[] {
+  if (assetClass === "fx") {
+    return [fxSymbol(pair)];
+  }
+  return getNonFxSymbols(pair, assetClass);
+}
+
 function buildFxPerformanceValue(
   pair: string,
   open: number,

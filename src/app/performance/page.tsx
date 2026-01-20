@@ -94,6 +94,7 @@ export default async function PerformancePage() {
     }
     return { model, percent, priced, total };
   });
+  const anyPriced = totals.some((result) => result.priced > 0);
 
   return (
     <DashboardLayout>
@@ -119,6 +120,11 @@ export default async function PerformancePage() {
               Latest week
             </span>
           </div>
+          {!anyPriced ? (
+            <div className="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-xs text-amber-800">
+              No priced pairs yet. Run “Refresh prices” on ALL to populate snapshots.
+            </div>
+          ) : null}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             {totals.map((result) => (
               <div

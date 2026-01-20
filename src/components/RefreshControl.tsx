@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AssetClass } from "@/lib/cotMarkets";
 
 type ActionState = "cot" | "prices" | null;
@@ -20,6 +20,19 @@ export default function RefreshControl({
   const [token, setToken] = useState("");
   const [loadingAction, setLoadingAction] = useState<ActionState>(null);
   const [message, setMessage] = useState<MessageState>(null);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("limni.adminToken");
+    if (stored) {
+      setToken(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      window.localStorage.setItem("limni.adminToken", token);
+    }
+  }, [token]);
 
   const handleRefresh = async (
     endpoint: string,

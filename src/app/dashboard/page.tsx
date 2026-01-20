@@ -88,10 +88,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const reportParam = resolvedSearchParams?.report;
   const biasParam = resolvedSearchParams?.bias;
   const rawAsset = Array.isArray(assetParam) ? assetParam[0] : assetParam;
-  const isAll = rawAsset === "all";
-  const assetClass = getAssetClass(
-    rawAsset,
-  );
+  const isAll = rawAsset === "all" || !rawAsset;
+  const assetClass = getAssetClass(rawAsset);
   const biasMode = getBiasMode(
     Array.isArray(biasParam) ? biasParam[0] : biasParam,
   );
@@ -133,6 +131,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }>;
   let pairNote = "No pairs to price.";
   let missingPairs: string[] = [];
+  let combinedReportDate = data.report_date;
+  let combinedRefresh = data.last_refresh_utc;
+  let combinedTradingAllowed = data.trading_allowed;
+  let combinedReason = data.reason;
 
   if (isAll) {
     const snapshots = await Promise.all(
@@ -209,6 +211,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     pairRowsWithPerf.sort((a, b) => a.pair.localeCompare(b.pair));
     pairNote =
       "Combined view across asset classes. Refresh prices per asset class to reduce missing data.";
+    const reportDates = snapshotEntries
+      .map((entry) => entry.snapshot?.report_date)
+      .filter((value): value is string => Boolean(value));
+    combinedReportDate = reportDates.length > 0 ? reportDates.sort().at(-1) ?? "" : "";
+    const refreshDates = snapshotEntries
+      .map((entry) => entry.snapshot?.last_refresh_utc)
+      .filter((value): value is string => Boolean(value));
+    combinedRefresh = refreshDates.length > 0 ? refreshDates.sort().at(-1) ?? "" : "";
+    combinedTradingAllowed = snapshotEntries.some(
+      (entry) => entry.snapshot && entry.snapshot.currencies && Object.keys(entry.snapshot.currencies).length > 0,
+    );
+    combinedReason = snapshotEntries.length > 0
+      ? "Composite view across asset classes."
+      : "no snapshot available";
   } else {
     const marketLabels = assetDefinition.markets;
     const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
@@ -301,7 +317,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </div>
           <div className="flex w-full flex-col gap-3 md:w-auto md:items-end">
             <RefreshControl
-              lastRefreshUtc={data.last_refresh_utc}
+              lastRefreshUtc={isAll ? combinedRefresh : data.last_refresh_utc}
               assetClass={isAll ? "all" : assetClass}
             />
           </div>
@@ -323,27 +339,32 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           >
             <input type="hidden" name="asset" value={isAll ? "all" : assetClass} />
             <input type="hidden" name="bias" value={biasMode} />
-            <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Report week
-            </label>
-            <select
-              name="report"
-              defaultValue={selectedReportDate ?? ""}
-              disabled={isAll}
-              className="rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-sm text-slate-900"
-            >
-              {isAll ? (
-                <option value="">Latest per asset class</option>
-              ) : availableDates.length === 0 ? (
-                <option value="">No snapshots</option>
-              ) : (
-                availableDates.map((date) => (
-                  <option key={date} value={date}>
-                    {formatDate(date)}
-                  </option>
-                ))
-              )}
-            </select>
+            {!isAll ? (
+              <>
+                <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Report week
+                </label>
+                <select
+                  name="report"
+                  defaultValue={selectedReportDate ?? ""}
+                  className="rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-sm text-slate-900"
+                >
+                  {availableDates.length === 0 ? (
+                    <option value="">No snapshots</option>
+                  ) : (
+                    availableDates.map((date) => (
+                      <option key={date} value={date}>
+                        {formatDate(date)}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </>
+            ) : (
+              <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Latest across assets
+              </div>
+            )}
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Bias mode
             </span>
@@ -370,12 +391,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 );
               })}
             </div>
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
-            >
-              View
-            </button>
+            {!isAll ? (
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
+              >
+                View
+              </button>
+            ) : null}
           </form>
         </div>
 
@@ -385,7 +408,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               Report date
             </p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">
-              {formatDate(data.report_date)}
+              {formatDate(combinedReportDate)}
             </p>
           </div>
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
@@ -394,19 +417,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </p>
             <p
               className={`mt-2 text-2xl font-semibold ${
-                data.trading_allowed ? "text-emerald-700" : "text-rose-700"
+                combinedTradingAllowed ? "text-emerald-700" : "text-rose-700"
               }`}
             >
-              {data.trading_allowed ? "Yes" : "No"}
+              {combinedTradingAllowed ? "Yes" : "No"}
             </p>
-            <p className="text-sm text-[color:var(--muted)]">{data.reason}</p>
+            <p className="text-sm text-[color:var(--muted)]">{combinedReason}</p>
           </div>
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Last refresh
             </p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">
-              {formatDate(data.last_refresh_utc)}
+              {formatDate(combinedRefresh)}
             </p>
           </div>
         </section>
