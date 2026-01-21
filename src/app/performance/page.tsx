@@ -126,7 +126,7 @@ export default async function PerformancePage() {
         </header>
 
         {!anyPriced ? (
-          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-xs text-amber-800">
+          <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-3 text-xs text-[var(--accent-strong)]">
             No priced pairs yet. Prices populate when the scheduled refresh runs.
           </div>
         ) : null}

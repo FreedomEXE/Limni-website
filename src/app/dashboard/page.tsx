@@ -348,7 +348,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <select
                   name="report"
                   defaultValue={selectedReportDate ?? ""}
-                  className="rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-sm text-[var(--foreground)]"
+                  className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
                 >
                   {availableDates.length === 0 ? (
                     <option value="">No snapshots</option>

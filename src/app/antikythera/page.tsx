@@ -30,14 +30,14 @@ function signalTier(confidence: number) {
     return {
       label: "Strong",
       badge:
-        "border-[var(--panel-border)] bg-white/80 text-[var(--foreground)]/80",
+        "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)]/80",
       card: "border-[var(--panel-border)] bg-[var(--panel)]",
     };
   }
   return {
     label: "Developing",
     badge:
-      "border-[var(--panel-border)] bg-white/80 text-[color:var(--muted)]",
+      "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[color:var(--muted)]",
     card: "border-[var(--panel-border)] bg-[var(--panel)]",
   };
 }
@@ -125,13 +125,13 @@ export default async function AntikytheraPage() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/dashboard"
-              className="rounded-full border border-[var(--panel-border)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               Bias map
             </Link>
             <Link
               href="/sentiment"
-              className="rounded-full border border-[var(--panel-border)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               Sentiment map
             </Link>
@@ -209,7 +209,7 @@ export default async function AntikytheraPage() {
                 return (
                   <div
                     key={group.asset.id}
-                    className={`flex items-center justify-between rounded-lg border px-4 py-3 ${tier ? tier.card : "border-[var(--panel-border)] bg-white/70"}`}
+                    className={`flex items-center justify-between rounded-lg border px-4 py-3 ${tier ? tier.card : "border-[var(--panel-border)] bg-[var(--panel)]/70"}`}
                   >
                     <div>
                       <p className="text-sm font-semibold text-[var(--foreground)]">
@@ -244,7 +244,7 @@ export default async function AntikytheraPage() {
             <div className="space-y-3">
               <Link
                 href="/dashboard"
-                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-white/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
                 <span>Bias map</span>
                 <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -253,7 +253,7 @@ export default async function AntikytheraPage() {
               </Link>
               <Link
                 href="/sentiment"
-                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-white/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
                 <span>Sentiment map</span>
                 <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -262,14 +262,14 @@ export default async function AntikytheraPage() {
               </Link>
               <Link
                 href="/performance"
-                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-white/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
                 <span>Performance lab</span>
                 <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   View
                 </span>
               </Link>
-              <div className="rounded-lg border border-[var(--panel-border)] bg-white/70 px-4 py-3 text-sm text-[var(--foreground)]/80">
+              <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[var(--foreground)]/80">
                 Liquidation clusters update for BTC + ETH below.
               </div>
             </div>

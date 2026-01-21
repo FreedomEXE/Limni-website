@@ -19,7 +19,7 @@ type HealthItem = {
 
 const toneMap = {
   ok: "bg-emerald-100 text-emerald-700",
-  warning: "bg-amber-100 text-amber-700",
+  warning: "bg-[var(--accent)]/10 text-[var(--accent-strong)]",
   error: "bg-rose-100 text-rose-700",
 };
 
@@ -241,7 +241,7 @@ export default async function StatusPage() {
                     </p>
                   )}
                   {snapshot.missingPairs.length > 0 ? (
-                    <p className="mt-2 text-xs text-amber-700">
+                    <p className="mt-2 text-xs text-[var(--accent-strong)]">
                       All missing? Check PRICE_API_KEY credits or symbol mapping.
                     </p>
                   ) : null}

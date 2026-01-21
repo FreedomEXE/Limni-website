@@ -165,7 +165,7 @@ export default function PairPerformanceTable({
         {note ?? "Performance is relative to Sunday 7:00 PM ET open."}
       </p>
       {missingPairs && missingPairs.length > 0 ? (
-        <div className="mt-3 rounded-lg border border-amber-200/80 bg-amber-50/60 px-3 py-2 text-xs text-amber-800">
+        <div className="mt-3 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-xs text-[var(--accent-strong)]">
           Missing prices for: {missingPairs.join(", ")}
         </div>
       ) : null}

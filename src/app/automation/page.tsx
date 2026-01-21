@@ -13,7 +13,7 @@ export default function AutomationPage() {
               Bot downloads and quick-reference details for Limni automation.
             </p>
           </div>
-          <span className="rounded-full border border-[var(--panel-border)] bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
             Release roster
           </span>
         </header>
@@ -42,7 +42,7 @@ export default function AutomationPage() {
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Crypto Perp Bot (Bitget)
               </h2>
-              <span className="rounded-full border border-[var(--panel-border)] bg-white/70 px-3 py-1 text-xs font-semibold text-[color:var(--muted)]">
+              <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-xs font-semibold text-[color:var(--muted)]">
                 In build
               </span>
             </div>
@@ -60,7 +60,7 @@ export default function AutomationPage() {
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Solana Meme Bot
               </h2>
-              <span className="rounded-full border border-[var(--panel-border)] bg-white/70 px-3 py-1 text-xs font-semibold text-[color:var(--muted)]">
+              <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-xs font-semibold text-[color:var(--muted)]">
                 Later
               </span>
             </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Libre_Baskerville, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
+import ThemeInit from "@/components/ThemeInit";
 
 const sourceSans = Source_Sans_3({
   variable: "--font-source-sans",
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body
         className={`${sourceSans.variable} ${libreBaskerville.variable} ${plexMono.variable} antialiased`}
       >
+        <ThemeInit />
         {children}
       </body>
     </html>

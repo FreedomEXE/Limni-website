@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type NavItem = {
   href: string;
@@ -27,18 +28,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen bg-[var(--background)]">
       <aside
         className={`border-r border-[var(--panel-border)] bg-[var(--panel)]/90 backdrop-blur-sm transition-all duration-200 ${
-          isCollapsed ? "w-20" : "w-64"
+          isCollapsed ? "w-24" : "w-72"
         }`}
       >
         <div className="sticky top-0 flex h-screen flex-col">
           <div className="border-b border-[var(--panel-border)]/80 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-full border border-[var(--panel-border)] bg-white/80 text-[var(--foreground)] shadow-sm">
+            <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
+              <div className={`flex items-center ${isCollapsed ? "flex-col gap-2" : "gap-3"}`}>
+                <div className="flex size-12 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)] shadow-sm">
                   <img
                     src="/limni-icon.svg"
                     alt="Limni"
-                    className="size-7 text-[var(--foreground)]"
+                    className="size-8"
                   />
                 </div>
                 {!isCollapsed ? (
@@ -46,24 +47,37 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     <img
                       src="/limni-wordmark.svg"
                       alt="Limni wordmark"
-                      className="h-6 text-[var(--foreground)]"
+                      className="h-7"
                     />
-                    <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                    <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
                       Navigating Markets with Intelligence
                     </p>
                   </div>
                 ) : null}
               </div>
+              {!isCollapsed ? (
+                <button
+                  type="button"
+                  onClick={() => setIsCollapsed((prev) => !prev)}
+                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+                  aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+                  title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+                >
+                  {isCollapsed ? ">>" : "<<"}
+                </button>
+              ) : null}
+            </div>
+            {isCollapsed ? (
               <button
                 type="button"
                 onClick={() => setIsCollapsed((prev) => !prev)}
-                className="rounded-full border border-[var(--panel-border)] bg-white/80 px-2 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-                aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
-                title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+                className="mt-3 w-full rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+                aria-label="Expand navigation"
+                title="Expand navigation"
               >
-                {isCollapsed ? ">>" : "<<"}
+                >>
               </button>
-            </div>
+            ) : null}
           </div>
 
           <nav className="flex-1 space-y-1 p-4">
@@ -73,13 +87,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                  className={`group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"} rounded-2xl py-3 text-sm font-semibold transition ${
                     isActive
                       ? "border border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                      : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-white/70"
+                      : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
                   }`}
                 >
-                  <span className="flex size-9 items-center justify-center rounded-xl border border-[var(--panel-border)] text-[11px] font-semibold tracking-[0.2em] text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
+                  <span className="flex size-10 items-center justify-center rounded-2xl border border-[var(--panel-border)] text-[11px] font-semibold tracking-[0.2em] text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
                     {item.icon}
                   </span>
                   {!isCollapsed ? (
@@ -91,14 +105,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="border-t border-[var(--panel-border)] p-4">
+            <div className="space-y-3">
+              <ThemeToggle compact={isCollapsed} />
+            </div>
             <button
               onClick={async () => {
                 await fetch("/api/auth/logout", { method: "POST" });
                 window.location.href = "/login";
               }}
-              className="w-full rounded-2xl border border-[var(--panel-border)] bg-white/80 px-4 py-3 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+              className="mt-3 w-full rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
             >
-              Sign Out
+              {isCollapsed ? "Out" : "Sign Out"}
             </button>
           </div>
         </div>

@@ -67,7 +67,7 @@ function statusTone(status: string) {
     return "bg-emerald-100 text-emerald-700";
   }
   if (status === "DEMO") {
-    return "bg-sky-100 text-sky-700";
+    return "bg-[var(--panel-border)]/50 text-[var(--foreground)]/70";
   }
   return "bg-rose-100 text-rose-700";
 }
@@ -77,7 +77,7 @@ function basketTone(state: string) {
     return "text-emerald-700";
   }
   if (state === "READY") {
-    return "text-sky-700";
+    return "text-[var(--foreground)]/70";
   }
   if (state === "PAUSED") {
     return "text-rose-700";
@@ -169,7 +169,7 @@ export default function AccountsDirectory({
 
         {showConnect ? (
           <div className="mt-6 grid gap-4 text-sm text-[color:var(--muted)] md:grid-cols-3">
-            <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-white/70 p-4">
+            <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Push URL
               </p>
@@ -177,7 +177,7 @@ export default function AccountsDirectory({
                 {pushUrl}
               </p>
             </div>
-            <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-white/70 p-4">
+            <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Token status
               </p>
@@ -193,7 +193,7 @@ export default function AccountsDirectory({
                 in the EA settings.
               </p>
             </div>
-            <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-white/70 p-4">
+            <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Checklist
               </p>
@@ -219,7 +219,7 @@ export default function AccountsDirectory({
                   className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                     statusFilter === status
                       ? "bg-[var(--accent)] text-white"
-                      : "bg-white text-[color:var(--muted)] hover:bg-white/80"
+                      : "bg-[var(--panel)] text-[color:var(--muted)] hover:bg-[var(--panel)]/80"
                   }`}
                 >
                   {status}
@@ -232,13 +232,13 @@ export default function AccountsDirectory({
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search label, broker, or account..."
-              className="w-full rounded-lg border border-[var(--panel-border)] bg-white/70 px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[color:var(--muted)] focus:border-[var(--accent)] focus:outline-none lg:w-64"
+              className="w-full rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[color:var(--muted)] focus:border-[var(--accent)] focus:outline-none lg:w-64"
             />
             <div className="flex items-center gap-2">
               <select
                 value={sortKey}
                 onChange={(event) => setSortKey(event.target.value as SortKey)}
-                className="rounded-lg border border-[var(--panel-border)] bg-white/70 px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
+                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
               >
                 {sortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -249,7 +249,7 @@ export default function AccountsDirectory({
               <button
                 type="button"
                 onClick={() => setSortDescending((value) => !value)}
-                className="rounded-lg border border-[var(--panel-border)] bg-white/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)]"
+                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)]"
               >
                 {sortDescending ? "Desc" : "Asc"}
               </button>
@@ -263,7 +263,7 @@ export default function AccountsDirectory({
 
         <div className="grid gap-5 md:grid-cols-2">
           {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[var(--panel-border)] bg-white/70 p-6 text-sm text-[color:var(--muted)]">
+            <div className="rounded-2xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/70 p-6 text-sm text-[color:var(--muted)]">
               No MT5 accounts matched your filters.
             </div>
           ) : (
@@ -271,7 +271,7 @@ export default function AccountsDirectory({
               <Link
                 key={account.account_id}
                 href={`/accounts/${account.account_id}`}
-                className="group rounded-2xl border border-[var(--panel-border)] bg-white/70 p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)]"
+                className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)]"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>

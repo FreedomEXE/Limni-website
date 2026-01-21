@@ -28,7 +28,7 @@ function statusTone(status: string) {
     return "bg-emerald-100 text-emerald-700";
   }
   if (status === "DEMO") {
-    return "bg-sky-100 text-sky-700";
+    return "bg-[var(--panel-border)]/50 text-[var(--foreground)]/70";
   }
   return "bg-rose-100 text-rose-700";
 }
@@ -38,7 +38,7 @@ function basketTone(state: string) {
     return "text-emerald-700";
   }
   if (state === "READY") {
-    return "text-sky-700";
+    return "text-[var(--foreground)]/70";
   }
   if (state === "PAUSED") {
     return "text-rose-700";
@@ -138,7 +138,7 @@ export default async function AccountsPage() {
 
         <section className="grid gap-5 md:grid-cols-2">
           {accounts.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[var(--panel-border)] bg-white/70 p-6 text-sm text-[color:var(--muted)]">
+            <div className="rounded-2xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/70 p-6 text-sm text-[color:var(--muted)]">
               No MT5 accounts connected yet. Add the push URL and token in your
               EA settings to start streaming account snapshots.
             </div>
@@ -224,7 +224,7 @@ export default async function AccountsPage() {
                   >
                     Max DD {formatPercent(account.max_drawdown_pct)}
                   </span>
-                  <span className="rounded-full border border-[var(--panel-border)] bg-white/70 px-3 py-1 text-[color:var(--muted)]">
+                  <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-[color:var(--muted)]">
                     Risk used {formatPercent(account.risk_used_pct)}
                   </span>
                 </div>

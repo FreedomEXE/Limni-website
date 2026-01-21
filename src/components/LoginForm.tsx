@@ -40,7 +40,7 @@ export default function LoginForm({ handleLogin }: LoginFormProps) {
             name="username"
             required
             autoComplete="username"
-            className="mt-1 block w-full rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-[var(--foreground)] placeholder-slate-400 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+            className="mt-1 block w-full rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-[var(--foreground)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
             placeholder="Enter your username"
           />
         </div>
@@ -55,7 +55,7 @@ export default function LoginForm({ handleLogin }: LoginFormProps) {
             name="password"
             required
             autoComplete="current-password"
-            className="mt-1 block w-full rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-[var(--foreground)] placeholder-slate-400 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+            className="mt-1 block w-full rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-[var(--foreground)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
             placeholder="Enter your password"
           />
         </div>

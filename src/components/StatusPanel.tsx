@@ -6,7 +6,7 @@ type StatusPanelProps = {
 
 const toneStyles = {
   error: "border-rose-200 bg-rose-50/80 text-rose-800",
-  warning: "border-amber-200 bg-amber-50/80 text-amber-800",
+  warning: "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent-strong)]",
 };
 
 export default function StatusPanel({ issues }: StatusPanelProps) {

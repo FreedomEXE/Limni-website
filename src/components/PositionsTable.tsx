@@ -116,7 +116,7 @@ export default function PositionsTable({ positions, currency, equity }: Position
 
   if (!positions || positions.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-white/60 p-8 text-center text-sm text-[color:var(--muted)]">
+      <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/60 p-8 text-center text-sm text-[color:var(--muted)]">
         <p className="font-semibold">No open positions</p>
         <p className="mt-2">Positions will appear here when trades are opened.</p>
       </div>
@@ -132,22 +132,22 @@ export default function PositionsTable({ positions, currency, equity }: Position
     <div className="space-y-4">
       {/* Summary stats */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-[var(--panel-border)] bg-white/80 p-4">
+        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Total P&L</p>
           <p className={`mt-1 text-xl font-semibold ${totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
             {formatCurrency(totalProfit, currency)}
           </p>
         </div>
-        <div className="rounded-lg border border-[var(--panel-border)] bg-white/80 p-4">
+        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Pairs traded</p>
           <p className="mt-1 text-xl font-semibold text-[var(--foreground)]">{groups.length}</p>
         </div>
-        <div className="rounded-lg border border-[var(--panel-border)] bg-white/80 p-4">
+        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Total risk (SL)</p>
-          <p className="mt-1 text-xl font-semibold text-amber-700">
+          <p className="mt-1 text-xl font-semibold text-[var(--accent-strong)]">
             {formatCurrency(totalRisk, currency)}
           </p>
-          <p className="mt-0.5 text-sm text-amber-600">
+          <p className="mt-0.5 text-sm text-[var(--accent)]">
             {totalRiskPct.toFixed(2)}% of equity
           </p>
         </div>
@@ -158,18 +158,18 @@ export default function PositionsTable({ positions, currency, equity }: Position
         {groups.map((group) => (
           <div
             key={group.symbol}
-            className="rounded-xl border border-[var(--panel-border)] bg-white/90 shadow-sm transition-all hover:shadow-md"
+            className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/90 shadow-sm transition-all hover:shadow-md"
           >
             {/* Group header */}
             <button
               type="button"
               onClick={() => setSelectedGroup(selectedGroup === group.symbol ? null : group.symbol)}
-              className="w-full p-4 text-left transition hover:bg-white/60"
+              className="w-full p-4 text-left transition hover:bg-[var(--panel)]/60"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <h3 className="text-lg font-semibold text-[var(--foreground)]">{group.symbol}</h3>
-                  <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[var(--foreground)]/80">
+                  <span className="rounded-full bg-[var(--panel)]/70 px-3 py-1 text-xs font-semibold text-[var(--foreground)]/80">
                     {group.positions.length} position{group.positions.length > 1 ? 's' : ''}
                   </span>
                   <span className={`text-sm font-medium ${
@@ -187,10 +187,10 @@ export default function PositionsTable({ positions, currency, equity }: Position
                   </div>
                   <div className="text-right">
                     <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Risk</p>
-                    <p className={`text-lg font-semibold ${group.riskPct > 1.0 ? 'text-rose-700' : 'text-amber-700'}`}>
+                    <p className={`text-lg font-semibold ${group.riskPct > 1.0 ? 'text-rose-700' : 'text-[var(--accent-strong)]'}`}>
                       {formatCurrency(group.riskAmount, currency)}
                     </p>
-                    <p className={`text-xs ${group.riskPct > 1.0 ? 'text-rose-600 font-semibold' : 'text-amber-600'}`}>
+                    <p className={`text-xs ${group.riskPct > 1.0 ? 'text-rose-600 font-semibold' : 'text-[var(--accent)]'}`}>
                       {group.riskPct.toFixed(2)}% {group.riskPct > 1.0 ? '!' : ''}
                     </p>
                   </div>
@@ -210,14 +210,14 @@ export default function PositionsTable({ positions, currency, equity }: Position
 
             {/* Individual positions */}
             {selectedGroup === group.symbol && (
-              <div className="border-t border-[var(--panel-border)] bg-white/60 p-4">
+              <div className="border-t border-[var(--panel-border)] bg-[var(--panel)]/60 p-4">
                 <div className="space-y-2">
                   {group.positions.map((pos) => (
                     <div
                       key={pos.ticket}
                       onMouseEnter={() => setHoveredPosition(pos.ticket)}
                       onMouseLeave={() => setHoveredPosition(null)}
-                      className="relative rounded-lg border border-[var(--panel-border)] bg-white p-3 transition-all hover:border-[var(--accent)] hover:shadow-sm"
+                      className="relative rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] p-3 transition-all hover:border-[var(--accent)] hover:shadow-sm"
                     >
                       <div className="grid grid-cols-7 gap-3 text-sm">
                         <div>
@@ -265,7 +265,7 @@ export default function PositionsTable({ positions, currency, equity }: Position
 
                       {/* Hover card with chart placeholder */}
                       {hoveredPosition === pos.ticket && (
-                        <div className="absolute left-full top-0 z-10 ml-2 w-64 rounded-lg border border-[var(--panel-border)] bg-white p-3 shadow-lg">
+                        <div className="absolute left-full top-0 z-10 ml-2 w-64 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] p-3 shadow-lg">
                           <div className="mb-2 flex items-center justify-between">
                             <p className="text-sm font-semibold text-[var(--foreground)]">{pos.symbol}</p>
                             <p className="text-xs text-[color:var(--muted)]">#{pos.ticket}</p>

@@ -45,7 +45,7 @@ function sourceTone(status: string) {
     return "bg-emerald-100 text-emerald-700";
   }
   if (status === "DEGRADED") {
-    return "bg-amber-100 text-amber-700";
+    return "bg-[var(--accent)]/10 text-[var(--accent-strong)]";
   }
   return "bg-rose-100 text-rose-700";
 }
@@ -215,7 +215,9 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
             <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
               Recent flips
             </p>
-            <p className="mt-2 text-2xl font-semibold text-amber-600">{flips}</p>
+            <p className="mt-2 text-2xl font-semibold text-[var(--accent-strong)]">
+              {flips}
+            </p>
           </div>
         </section>
 
@@ -287,7 +289,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                           {summary.recentClusters.map((cluster) => (
                             <div
                               key={`${cluster.exchange}-${cluster.timestamp}-${cluster.notional}`}
-                              className="flex items-center justify-between rounded-lg border border-[var(--panel-border)]/40 bg-white/70 px-3 py-2"
+                              className="flex items-center justify-between rounded-lg border border-[var(--panel-border)]/40 bg-[var(--panel)]/70 px-3 py-2"
                             >
                               <div>
                                 <p className="font-semibold text-[var(--foreground)]">
@@ -408,7 +410,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                   {sortedAggregates.map((agg) => (
                     <tr
                       key={agg.symbol}
-                      className="border-t border-[var(--panel-border)]/40 hover:bg-white/70"
+                      className="border-t border-[var(--panel-border)]/40 hover:bg-[var(--panel)]/70"
                     >
                       <td className="py-2 font-semibold">{agg.symbol}</td>
                       <td className="py-2">{agg.agg_long_pct.toFixed(1)}%</td>

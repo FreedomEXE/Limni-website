@@ -8,6 +8,21 @@
   --accent: #006b5e;
   --accent-strong: #005247;
   --muted: #5b6473;
+  --glow: rgba(0, 107, 94, 0.14);
+  --shadow: rgba(10, 26, 47, 0.08);
+}
+
+[data-theme="dark"] {
+  --background: #0a1a2f;
+  --foreground: #f5f3ee;
+  --panel: #0f243d;
+  --panel-border: #1f3a55;
+  --accent: #00a488;
+  --accent-strong: #00c4a0;
+  --muted: #b8c0cc;
+  --glow: rgba(0, 196, 160, 0.2);
+  --shadow: rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -20,12 +35,20 @@
 
 body {
   background:
-    radial-gradient(900px 420px at -10% -10%, rgba(0, 107, 94, 0.12) 0%, transparent 60%),
-    radial-gradient(900px 420px at 110% -10%, rgba(10, 26, 47, 0.08) 0%, transparent 55%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(245, 243, 238, 0.65)),
+    radial-gradient(1000px 520px at -10% -10%, var(--glow) 0%, transparent 60%),
+    radial-gradient(900px 420px at 110% -10%, var(--shadow) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(245, 243, 238, 0.5)),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(1000px 520px at -10% -10%, rgba(0, 196, 160, 0.18) 0%, transparent 60%),
+    radial-gradient(900px 420px at 110% -10%, rgba(0, 0, 0, 0.5) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(10, 26, 47, 0.85), rgba(10, 26, 47, 0.92)),
+    var(--background);
 }
 
 h1,

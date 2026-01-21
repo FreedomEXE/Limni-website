@@ -67,7 +67,7 @@ function getPerformanceTier(percent: number, winRate: number): PerformanceTier {
     return {
       label: "Positive",
       accent: "text-[var(--accent-strong)]",
-      card: "border-[var(--panel-border)] bg-white/80",
+      card: "border-[var(--panel-border)] bg-[var(--panel)]/80",
       emoji: "+",
     };
   }
@@ -75,7 +75,7 @@ function getPerformanceTier(percent: number, winRate: number): PerformanceTier {
     return {
       label: "Neutral",
       accent: "text-[color:var(--muted)]",
-      card: "border-[var(--panel-border)] bg-white/70",
+      card: "border-[var(--panel-border)] bg-[var(--panel)]/70",
       emoji: "-",
     };
   }
@@ -98,9 +98,9 @@ function getConfidenceBadge(performance: ModelPerformance) {
     return { label: "High Confidence", badge: "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent-strong)]", icon: "***" };
   }
   if (score >= 50) {
-    return { label: "Medium Confidence", badge: "border-[var(--panel-border)] bg-white/70 text-[var(--foreground)]/80", icon: "**" };
+    return { label: "Medium Confidence", badge: "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80", icon: "**" };
   }
-  return { label: "Low Confidence", badge: "border-[var(--panel-border)] bg-white/70 text-[color:var(--muted)]", icon: "*" };
+  return { label: "Low Confidence", badge: "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]", icon: "*" };
 }
 
 function MetricPill({ label, value, good }: { label: string; value: string; good: boolean }) {
@@ -109,7 +109,7 @@ function MetricPill({ label, value, good }: { label: string; value: string; good
       className={`rounded-lg border px-2 py-1.5 ${
         good
           ? "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-          : "border-[var(--panel-border)] bg-white/70 text-[color:var(--muted)]"
+          : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]"
       }`}
     >
       <div className="text-[10px] uppercase tracking-wider opacity-70">{label}</div>
@@ -268,7 +268,7 @@ export default function PerformanceGrid({
                   event.stopPropagation();
                   setActive(null);
                 }}
-                className="rounded-full border border-[var(--panel-border)] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
               >
                 Close
               </button>
@@ -283,7 +283,7 @@ export default function PerformanceGrid({
 
           <div className="grid gap-6 p-6 lg:grid-cols-2">
             <div className="space-y-4">
-              <div className="rounded-xl border border-[var(--panel-border)] bg-white/70 p-4">
+              <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Executive summary
                 </p>
@@ -295,7 +295,7 @@ export default function PerformanceGrid({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[var(--panel-border)] bg-white p-4">
+              <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Account simulation
                 </p>
@@ -308,7 +308,7 @@ export default function PerformanceGrid({
                       className={`rounded-full border px-3 py-1 ${
                         accountSize === size
                           ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                          : "border-[var(--panel-border)] bg-white text-[color:var(--muted)]"
+                          : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)]"
                       }`}
                     >
                       ${size.toLocaleString()}
@@ -325,7 +325,7 @@ export default function PerformanceGrid({
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-xl border border-[var(--panel-border)] bg-white/70 p-4">
+              <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Return distribution
                 </p>
@@ -333,7 +333,7 @@ export default function PerformanceGrid({
                   <MiniHistogram returns={performance.returns} />
                 </div>
               </div>
-              <div className="rounded-xl border border-[var(--panel-border)] bg-white p-4">
+              <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Outliers
                 </p>

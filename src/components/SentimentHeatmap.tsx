@@ -11,7 +11,7 @@ function getCrowdingColor(state: string): string {
     case "CROWDED_SHORT":
       return "bg-emerald-500";
     default:
-      return "bg-amber-200";
+      return "bg-[var(--panel-border)]/60";
   }
 }
 
@@ -37,7 +37,7 @@ export default function SentimentHeatmap({
             Crowding indicators across FX pairs
           </p>
         </div>
-        <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-[var(--panel-border)] bg-white/70">
+        <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/70">
           <div className="text-center">
             <p className="text-sm font-medium text-[var(--foreground)]">No sentiment data yet</p>
             <p className="mt-1 text-xs text-[var(--muted)]">
@@ -112,7 +112,7 @@ export default function SentimentHeatmap({
             <span>Crowded Short</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="size-3 rounded bg-amber-200 opacity-100" />
+            <div className="size-3 rounded bg-[var(--panel-border)]/60 opacity-100" />
             <span>Neutral</span>
           </div>
         </div>

@@ -97,7 +97,7 @@ function statusTone(status: string) {
     return "bg-emerald-100 text-emerald-700";
   }
   if (status === "DEMO") {
-    return "bg-sky-100 text-sky-700";
+    return "bg-[var(--panel-border)]/50 text-[var(--foreground)]/70";
   }
   return "bg-rose-100 text-rose-700";
 }
@@ -107,7 +107,7 @@ function basketTone(state: string) {
     return "text-emerald-700";
   }
   if (state === "READY") {
-    return "text-sky-700";
+    return "text-[var(--foreground)]/70";
   }
   if (state === "PAUSED") {
     return "text-rose-700";
@@ -328,7 +328,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                 </p>
               </div>
             </div>
-            <div className="mt-4 rounded-xl border border-dashed border-[var(--panel-border)] bg-white/60 p-3 text-xs text-[color:var(--muted)]">
+            <div className="mt-4 rounded-xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/60 p-3 text-xs text-[color:var(--muted)]">
               {account.last_api_error || "No API errors reported."}
             </div>
           </div>
