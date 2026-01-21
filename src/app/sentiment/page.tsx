@@ -5,6 +5,7 @@ import SentimentHeatmap from "@/components/SentimentHeatmap";
 import { fetchLiquidationSummary } from "@/lib/coinank";
 import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { getLatestAggregates, readSourceHealth } from "@/lib/sentiment/store";
+import { getSessionRole } from "@/lib/auth";
 import {
   SENTIMENT_ASSET_CLASSES,
   ALL_SENTIMENT_SYMBOLS,
@@ -85,6 +86,8 @@ function getAssetClass(value?: string | null): SentimentView {
 
 export default async function SentimentPage({ searchParams }: SentimentPageProps) {
   const resolvedSearchParams = await Promise.resolve(searchParams);
+  const role = await getSessionRole();
+  const canRefresh = role === "admin";
   const assetParam = resolvedSearchParams?.asset;
   const assetClass = getAssetClass(
     Array.isArray(assetParam) ? assetParam[0] : assetParam,
@@ -482,7 +485,13 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
               )}
             </div>
             <div className="mt-4 border-t border-[var(--panel-border)] pt-4">
-              <RefreshSentimentButton />
+              {canRefresh ? (
+                <RefreshSentimentButton />
+              ) : (
+                <p className="text-xs text-[var(--muted)]">
+                  Read-only access: refresh requires an admin login.
+                </p>
+              )}
             </div>
           </div>
         </section>

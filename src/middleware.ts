@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE_NAME = "limni_session";
-const SESSION_SECRET = "authenticated";
+const SESSION_SECRETS = new Set(["admin", "viewer", "authenticated"]);
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
 
   // Check if user is authenticated
   const session = request.cookies.get(SESSION_COOKIE_NAME);
-  const isAuthenticated = session?.value === SESSION_SECRET;
+  const isAuthenticated = session?.value ? SESSION_SECRETS.has(session.value) : false;
 
   if (!isAuthenticated) {
     const loginUrl = new URL("/login", request.url);
