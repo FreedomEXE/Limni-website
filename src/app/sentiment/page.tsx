@@ -37,7 +37,7 @@ function crowdingTone(state: string) {
   if (state === "CROWDED_SHORT") {
     return "text-emerald-700";
   }
-  return "text-slate-500";
+  return "text-[var(--muted)]";
 }
 
 function sourceTone(status: string) {
@@ -177,42 +177,42 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
               },
             )}
           </div>
-          <h1 className="text-3xl font-semibold text-slate-900">
+          <h1 className="text-3xl font-semibold text-[var(--foreground)]">
             Retail Sentiment
           </h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-[var(--muted)]">
             Aggregated positioning data from IG, OANDA, and Myfxbook. Identify
             crowding and path risk across FX pairs.
           </p>
         </header>
 
         <section className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
               Pairs tracked
             </p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
               {filteredAggregates.length}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
               Crowded long
             </p>
             <p className="mt-2 text-2xl font-semibold text-rose-700">
               {crowdedLong}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
               Crowded short
             </p>
             <p className="mt-2 text-2xl font-semibold text-emerald-700">
               {crowdedShort}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
               Recent flips
             </p>
             <p className="mt-2 text-2xl font-semibold text-amber-600">{flips}</p>
@@ -222,25 +222,25 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
         <SentimentHeatmap aggregates={sortedAggregates} />
 
         {assetClass === "crypto" ? (
-          <section className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
             <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-lg font-semibold text-[var(--foreground)]">
                   Liquidation Pulse (Coinank)
                 </h2>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-[var(--muted)]">
                   Recent liquidation clusters for BTC and ETH.
                 </p>
               </div>
               {liquidationSummaries.length > 0 ? (
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
                   Updated {formatTime(liquidationSummaries[0].lastUpdated)}
                 </p>
               ) : null}
             </div>
 
             {liquidationSummaries.length === 0 ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-[var(--muted)]">
                 No liquidation data available yet.
               </p>
             ) : (
@@ -248,10 +248,10 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                 {liquidationSummaries.map((summary) => (
                   <div
                     key={summary.baseCoin}
-                    className="rounded-xl border border-slate-200 bg-white/90 p-4"
+                    className="rounded-xl border border-[var(--panel-border)] bg-white/90 p-4"
                   >
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-slate-900">
+                      <h3 className="text-sm font-semibold text-[var(--foreground)]">
                         {summary.baseCoin}
                       </h3>
                       <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
@@ -275,22 +275,22 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                       </div>
                     </div>
                     <div className="mt-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                      <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
                         Largest clusters
                       </p>
                       {summary.recentClusters.length === 0 ? (
-                        <p className="mt-2 text-sm text-slate-500">
+                        <p className="mt-2 text-sm text-[var(--muted)]">
                           No recent clusters in lookback window.
                         </p>
                       ) : (
-                        <div className="mt-2 space-y-2 text-xs text-slate-600">
+                        <div className="mt-2 space-y-2 text-xs text-[var(--muted)]">
                           {summary.recentClusters.map((cluster) => (
                             <div
                               key={`${cluster.exchange}-${cluster.timestamp}-${cluster.notional}`}
-                              className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+                              className="flex items-center justify-between rounded-lg border border-slate-100 bg-white/70 px-3 py-2"
                             >
                               <div>
-                                <p className="font-semibold text-slate-900">
+                                <p className="font-semibold text-[var(--foreground)]">
                                   {cluster.exchange} {cluster.contract ?? ""}
                                 </p>
                                 <p>{formatTime(cluster.timestamp)}</p>
@@ -320,17 +320,17 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
         ) : null}
 
         {assetClass === "crypto" ? (
-          <section className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Bitget Futures Pulse
               </h2>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-[var(--muted)]">
                 Funding + open interest snapshots for BTC/ETH perpetuals.
               </p>
             </div>
             {bitgetSnapshots.length === 0 ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-[var(--muted)]">
                 No Bitget data available yet.
               </p>
             ) : (
@@ -338,13 +338,13 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                 {bitgetSnapshots.map((snapshot) => (
                   <div
                     key={snapshot.symbol}
-                    className="rounded-xl border border-slate-200 bg-white/90 p-4"
+                    className="rounded-xl border border-[var(--panel-border)] bg-white/90 p-4"
                   >
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-slate-900">
+                      <h3 className="text-sm font-semibold text-[var(--foreground)]">
                         {snapshot.symbol}
                       </h3>
-                      <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                      <span className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
                         {snapshot.productType}
                       </span>
                     </div>
@@ -370,7 +370,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                         </span>
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-slate-500">
+                    <p className="mt-3 text-xs text-[var(--muted)]">
                       Updated{" "}
                       {snapshot.lastPriceTime
                         ? formatTime(snapshot.lastPriceTime)
@@ -384,18 +384,18 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
         ) : null}
 
         <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Sentiment Details
               </h2>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-[var(--muted)]">
                 Detailed positioning and confidence scores
               </p>
             </div>
             <div className="max-h-[500px] overflow-y-auto">
               <table className="min-w-full text-left text-sm">
-                <thead className="sticky top-0 bg-white/80 text-xs uppercase text-slate-500 backdrop-blur-sm">
+                <thead className="sticky top-0 bg-[var(--panel)] text-xs uppercase text-[var(--muted)] backdrop-blur-sm">
                   <tr>
                     <th className="py-2">Pair</th>
                     <th className="py-2">Long %</th>
@@ -404,11 +404,11 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                     <th className="py-2">Conf</th>
                   </tr>
                 </thead>
-                <tbody className="text-slate-900">
+                <tbody className="text-[var(--foreground)]">
                   {sortedAggregates.map((agg) => (
                     <tr
                       key={agg.symbol}
-                      className="border-t border-slate-100 hover:bg-slate-50"
+                      className="border-t border-slate-100 hover:bg-white/70"
                     >
                       <td className="py-2 font-semibold">{agg.symbol}</td>
                       <td className="py-2">{agg.agg_long_pct.toFixed(1)}%</td>
@@ -428,28 +428,28 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Data Sources
               </h2>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-[var(--muted)]">
                 Provider health and last update times
               </p>
             </div>
             <div className="space-y-4">
               {sources.length === 0 ? (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-[var(--muted)]">
                   No source data yet. Trigger a manual refresh to fetch sentiment.
                 </p>
               ) : (
                 sources.map((source) => (
                   <div
                     key={source.name}
-                    className="rounded-lg border border-slate-200 p-4"
+                    className="rounded-lg border border-[var(--panel-border)] p-4"
                   >
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-slate-900">
+                      <h3 className="font-semibold text-[var(--foreground)]">
                         {source.name}
                       </h3>
                       <span
@@ -460,7 +460,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                         {source.status}
                       </span>
                     </div>
-                    <div className="mt-2 text-xs text-slate-600">
+                    <div className="mt-2 text-xs text-[var(--muted)]">
                       {source.last_success_at ? (
                         <p>
                           Last success:{" "}
@@ -479,7 +479,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                 ))
               )}
             </div>
-            <div className="mt-4 border-t border-slate-200 pt-4">
+            <div className="mt-4 border-t border-[var(--panel-border)] pt-4">
               <RefreshSentimentButton />
             </div>
           </div>

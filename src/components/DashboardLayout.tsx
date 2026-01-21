@@ -12,11 +12,11 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/antikythera", label: "Antikythera", icon: "??" },
-  { href: "/automation", label: "Automation", icon: "??" },
-  { href: "/performance", label: "Performance Lab", icon: "??" },
-  { href: "/accounts", label: "Accounts", icon: "??" },
-  { href: "/status", label: "Status", icon: "??" },
+  { href: "/antikythera", label: "Antikythera", icon: "A" },
+  { href: "/automation", label: "Automation", icon: "R" },
+  { href: "/performance", label: "Performance Lab", icon: "P" },
+  { href: "/accounts", label: "Accounts", icon: "C" },
+  { href: "/status", label: "Status", icon: "S" },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -24,32 +24,34 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+    <div className="flex min-h-screen bg-[var(--background)]">
       <aside
-        className={`border-r border-slate-200/80 bg-white/50 backdrop-blur-sm transition-all duration-200 ${
+        className={`border-r border-[var(--panel-border)] bg-[var(--panel)]/80 backdrop-blur-sm transition-all duration-200 ${
           isCollapsed ? "w-20" : "w-64"
         }`}
       >
         <div className="sticky top-0 flex h-screen flex-col">
-          <div className="border-b border-slate-200/80 p-4">
+          <div className="border-b border-[var(--panel-border)] p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-sm">
-                <span className="text-lg font-bold">L</span>
-              </div>
-              {!isCollapsed ? (
-                <div>
-                  <h1 className="text-sm font-semibold text-slate-900">
-                    Limni Labs
-                  </h1>
-                  <p className="text-xs text-slate-500">Trading Intelligence</p>
+                <div className="flex size-10 items-center justify-center rounded-full border-2 border-[var(--accent)] text-[var(--accent)]">
+                  <span className="text-lg font-bold">L</span>
                 </div>
-              ) : null}
+                {!isCollapsed ? (
+                  <div>
+                    <h1 className="text-sm font-semibold text-[var(--foreground)]">
+                      LIMNI
+                    </h1>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                      Navigating markets with intelligence
+                    </p>
+                  </div>
+                ) : null}
               </div>
               <button
                 type="button"
                 onClick={() => setIsCollapsed((prev) => !prev)}
-                className="rounded-md border border-slate-200/80 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                className="rounded-md border border-[var(--panel-border)] bg-white/80 px-2 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
                 aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
                 title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
               >
@@ -65,26 +67,30 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition ${
+                  className={`group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
                     isActive
-                      ? "bg-teal-50 text-teal-700"
-                      : "text-slate-700 hover:bg-slate-100"
+                      ? "border border-[var(--accent)] bg-emerald-50/80 text-[var(--accent-strong)]"
+                      : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-white/70"
                   }`}
                 >
-                  <span className="text-lg">{item.icon}</span>
-                  {!isCollapsed ? <span>{item.label}</span> : null}
+                  <span className="flex size-8 items-center justify-center rounded-lg border border-[var(--panel-border)] text-xs font-semibold text-[var(--muted)] group-hover:border-[var(--accent)]">
+                    {item.icon}
+                  </span>
+                  {!isCollapsed ? (
+                    <span className="tracking-tight">{item.label}</span>
+                  ) : null}
                 </Link>
               );
             })}
           </nav>
 
-          <div className="border-t border-slate-200/80 p-4">
+          <div className="border-t border-[var(--panel-border)] p-4">
             <button
               onClick={async () => {
                 await fetch("/api/auth/logout", { method: "POST" });
                 window.location.href = "/login";
               }}
-              className="w-full rounded-lg bg-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+              className="w-full rounded-lg border border-[var(--panel-border)] bg-white/80 px-4 py-3 text-sm font-medium text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
             >
               Sign Out
             </button>

@@ -171,8 +171,8 @@ export default async function StatusPage() {
     <DashboardLayout>
       <div className="space-y-8">
         <header>
-          <h1 className="text-3xl font-semibold text-slate-900">System Status</h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <h1 className="text-3xl font-semibold text-[var(--foreground)]">System Status</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">
             Diagnostics for deployments, data sources, and MT5 connectivity.
           </p>
         </header>
@@ -186,7 +186,7 @@ export default async function StatusPage() {
               className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-5 shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+                <p className="text-sm font-semibold text-[var(--foreground)]">{item.name}</p>
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${toneMap[item.status]}`}
                 >
@@ -197,7 +197,7 @@ export default async function StatusPage() {
                 {item.detail}
               </p>
               {item.hint ? (
-                <p className="mt-2 text-xs font-semibold text-slate-700">
+                <p className="mt-2 text-xs font-semibold text-[var(--foreground)]">
                   Fix: {item.hint}
                 </p>
               ) : null}
@@ -207,7 +207,7 @@ export default async function StatusPage() {
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">Price Debug</h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Price Debug</h2>
             <p className="text-sm text-[color:var(--muted)]">
               Missing price symbols by asset class with the current symbol candidates.
             </p>
@@ -219,13 +219,13 @@ export default async function StatusPage() {
               {priceSnapshots.map((snapshot) => (
                 <div
                   key={snapshot.assetId}
-                  className="rounded-xl border border-slate-200 bg-white/80 p-4"
+                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4"
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-900">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">
                       {snapshot.assetLabel}
                     </p>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-[var(--muted)]">
                       {snapshot.lastRefreshUtc
                         ? new Date(snapshot.lastRefreshUtc).toLocaleString()
                         : "No refresh yet"}
@@ -253,7 +253,7 @@ export default async function StatusPage() {
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Price Debug Details
             </h2>
             <p className="text-sm text-[color:var(--muted)]">
@@ -267,17 +267,17 @@ export default async function StatusPage() {
               {priceDebug.map((asset) => (
                 <div
                   key={asset.assetId}
-                  className="rounded-xl border border-slate-200 bg-white/80 p-4"
+                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4"
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-900">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">
                       {asset.assetLabel}
                     </p>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-[var(--muted)]">
                       {asset.reportDate ?? "No report date"}
                     </span>
                   </div>
-                  <div className="mt-3 max-h-64 overflow-y-auto text-xs text-slate-600">
+                  <div className="mt-3 max-h-64 overflow-y-auto text-xs text-[var(--muted)]">
                     {asset.missingPairs.length === 0 ? (
                       <p>No pairs available.</p>
                     ) : (
@@ -289,7 +289,7 @@ export default async function StatusPage() {
                           <span className="font-semibold text-slate-800">
                             {pair.pair}
                           </span>
-                          <span className="ml-2 text-slate-500">
+                          <span className="ml-2 text-[var(--muted)]">
                             {pair.symbols.join(", ")}
                           </span>
                         </div>

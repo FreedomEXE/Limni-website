@@ -22,16 +22,16 @@ export default function RefreshSentimentButton() {
 
       if (response.ok) {
         setMessage(
-          `✓ Refreshed! Collected ${data.snapshots_collected} snapshots, computed ${data.aggregates_computed} aggregates.`,
+          `Refreshed. Collected ${data.snapshots_collected} snapshots, computed ${data.aggregates_computed} aggregates.`,
         );
         setTimeout(() => {
           window.location.reload();
         }, 1500);
       } else {
-        setMessage(`✗ Error: ${data.error || "Refresh failed"}`);
+        setMessage(`Error: ${data.error || "Refresh failed"}`);
       }
     } catch (error) {
-      setMessage(`✗ Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setMessage(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setLoading(false);
     }
@@ -43,12 +43,12 @@ export default function RefreshSentimentButton() {
         type="button"
         onClick={handleRefresh}
         disabled={loading}
-        className="w-full rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:bg-slate-400"
+        className="w-full rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:bg-slate-400"
       >
         {loading ? "Refreshing..." : "Refresh sentiment data"}
       </button>
       {message && (
-        <p className="mt-2 text-xs text-slate-600">{message}</p>
+        <p className="mt-2 text-xs text-[var(--muted)]">{message}</p>
       )}
     </div>
   );

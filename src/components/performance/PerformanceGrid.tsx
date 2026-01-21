@@ -245,8 +245,14 @@ export default function PerformanceGrid({
     const sharpeProxy =
       stats.volatility > 0 ? stats.avg_return / stats.volatility : 0;
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-6">
-        <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-6"
+        onClick={() => setActive(null)}
+      >
+        <div
+          className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
           <div className={`relative bg-gradient-to-br from-white to-slate-50 p-6 ${tier.accent}`}>
             <div className="absolute right-6 top-6 text-6xl opacity-10">{tier.emoji}</div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
@@ -258,7 +264,10 @@ export default function PerformanceGrid({
               </h3>
               <button
                 type="button"
-                onClick={() => setActive(null)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setActive(null);
+                }}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 transition hover:border-teal-500 hover:text-teal-700"
               >
                 Close

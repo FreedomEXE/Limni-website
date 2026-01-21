@@ -7,11 +7,11 @@ type SentimentHeatmapProps = {
 function getCrowdingColor(state: string): string {
   switch (state) {
     case "CROWDED_LONG":
-      return "bg-rose-500";
+      return "bg-rose-400";
     case "CROWDED_SHORT":
       return "bg-emerald-500";
     default:
-      return "bg-slate-300";
+      return "bg-amber-200";
   }
 }
 
@@ -28,19 +28,19 @@ export default function SentimentHeatmap({
 }: SentimentHeatmapProps) {
   if (aggregates.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">
             Retail Sentiment Heatmap
           </h2>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-[var(--muted)]">
             Crowding indicators across FX pairs
           </p>
         </div>
-        <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50">
+        <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-[var(--panel-border)] bg-white/70">
           <div className="text-center">
-            <p className="text-sm font-medium text-slate-700">No sentiment data yet</p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="text-sm font-medium text-[var(--foreground)]">No sentiment data yet</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
               Trigger a manual refresh or start the sentiment poller
             </p>
           </div>
@@ -52,12 +52,12 @@ export default function SentimentHeatmap({
   const sorted = [...aggregates].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+    <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-slate-900">
+        <h2 className="text-lg font-semibold text-[var(--foreground)]">
           Retail Sentiment Heatmap
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-[var(--muted)]">
           Crowding indicators across FX pairs
         </p>
       </div>
@@ -66,7 +66,7 @@ export default function SentimentHeatmap({
         {sorted.map((agg) => (
           <div
             key={agg.symbol}
-            className="group relative overflow-hidden rounded-lg border border-slate-200"
+            className="group relative overflow-hidden rounded-lg border border-[var(--panel-border)]"
           >
             <div
               className={`flex flex-col items-center justify-center p-4 transition ${getCrowdingColor(
@@ -78,13 +78,13 @@ export default function SentimentHeatmap({
                 {agg.agg_long_pct.toFixed(0)}% L
               </div>
               {agg.flip_state !== "NONE" && (
-                <div className="mt-1 text-[10px] text-yellow-300">
-                  {agg.flip_state === "FLIPPED_UP" ? "↑" : "↓"} FLIP
+                <div className="mt-1 text-[10px] text-slate-100">
+                  {agg.flip_state === "FLIPPED_UP" ? "UP" : "DOWN"} FLIP
                 </div>
               )}
             </div>
 
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 opacity-0 transition group-hover:opacity-100">
+            <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
               <div className="text-center text-xs text-white">
                 <p className="font-semibold">{agg.symbol}</p>
                 <p className="mt-1">Long: {agg.agg_long_pct.toFixed(1)}%</p>
@@ -101,10 +101,10 @@ export default function SentimentHeatmap({
         ))}
       </div>
 
-      <div className="mt-6 flex items-center justify-between border-t border-slate-200 pt-4">
-        <div className="flex gap-4 text-xs text-slate-600">
+      <div className="mt-6 flex items-center justify-between border-t border-[var(--panel-border)] pt-4">
+        <div className="flex gap-4 text-xs text-[var(--muted)]">
           <div className="flex items-center gap-2">
-            <div className="size-3 rounded bg-rose-500 opacity-100" />
+            <div className="size-3 rounded bg-rose-400 opacity-100" />
             <span>Crowded Long</span>
           </div>
           <div className="flex items-center gap-2">
@@ -112,12 +112,12 @@ export default function SentimentHeatmap({
             <span>Crowded Short</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="size-3 rounded bg-slate-300 opacity-100" />
+            <div className="size-3 rounded bg-amber-200 opacity-100" />
             <span>Neutral</span>
           </div>
         </div>
         {aggregates[0] && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-[var(--muted)]">
             Updated {new Date(aggregates[0].timestamp_utc).toLocaleTimeString()}
           </p>
         )}

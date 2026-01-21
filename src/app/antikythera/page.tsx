@@ -17,6 +17,28 @@ function formatTime(value: string) {
   return parsed.toLocaleString();
 }
 
+function signalTier(confidence: number) {
+  if (confidence >= 85) {
+    return {
+      label: "High confidence",
+      badge: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      card: "border-emerald-200 bg-emerald-50/60",
+    };
+  }
+  if (confidence >= 75) {
+    return {
+      label: "Strong",
+      badge: "bg-sky-100 text-sky-800 border-sky-200",
+      card: "border-sky-200 bg-sky-50/60",
+    };
+  }
+  return {
+    label: "Developing",
+    badge: "bg-amber-100 text-amber-800 border-amber-200",
+    card: "border-amber-200 bg-amber-50/60",
+  };
+}
+
 export default async function AntikytheraPage() {
   const assetClasses = listAssetClasses();
   const assetIds = assetClasses.map((asset) => asset.id);
@@ -131,31 +153,36 @@ export default async function AntikytheraPage() {
             </p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {topSignals.map((signal) => (
-                <div
-                  key={`${signal.assetId}-${signal.pair}-${signal.direction}`}
-                  className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                        {signal.assetLabel}
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-slate-900">
-                        {signal.pair} • {signal.direction}
-                      </p>
+              {topSignals.map((signal) => {
+                const tier = signalTier(signal.confidence);
+                return (
+                  <div
+                    key={`${signal.assetId}-${signal.pair}-${signal.direction}`}
+                    className={`rounded-xl border p-4 shadow-sm ${tier.card}`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                          {signal.assetLabel}
+                        </p>
+                        <p className="mt-2 text-lg font-semibold text-slate-900">
+                          {signal.pair} - {signal.direction}
+                        </p>
+                      </div>
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${tier.badge}`}
+                      >
+                        {signal.confidence.toFixed(0)}% {tier.label}
+                      </span>
                     </div>
-                    <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
-                      {signal.confidence.toFixed(0)}%
-                    </span>
+                    <ul className="mt-3 space-y-1 text-sm text-slate-600">
+                      {signal.reasons.map((reason) => (
+                        <li key={reason}>- {reason}</li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="mt-3 space-y-1 text-sm text-slate-600">
-                    {signal.reasons.map((reason) => (
-                      <li key={reason}>- {reason}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
@@ -173,10 +200,11 @@ export default async function AntikytheraPage() {
             <div className="grid gap-3">
               {signalGroups.map((group) => {
                 const topSignal = group.signals[0];
+                const tier = topSignal ? signalTier(topSignal.confidence) : null;
                 return (
                   <div
                     key={group.asset.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/70 px-4 py-3"
+                    className={`flex items-center justify-between rounded-lg border px-4 py-3 ${tier ? tier.card : "border-slate-200 bg-white/70"}`}
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-900">
@@ -271,31 +299,36 @@ export default async function AntikytheraPage() {
                   </p>
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2">
-                    {group.signals.map((signal) => (
-                      <div
-                        key={`${group.asset.id}-${signal.pair}-${signal.direction}`}
-                        className="rounded-xl border border-slate-200 bg-white/80 p-4"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                              {signal.pair}
-                            </p>
-                            <p className="text-lg font-semibold text-slate-900">
-                              {signal.direction}
-                            </p>
+                    {group.signals.map((signal) => {
+                      const tier = signalTier(signal.confidence);
+                      return (
+                        <div
+                          key={`${group.asset.id}-${signal.pair}-${signal.direction}`}
+                          className={`rounded-xl border p-4 ${tier.card}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                                {signal.pair}
+                              </p>
+                              <p className="text-lg font-semibold text-slate-900">
+                                {signal.direction}
+                              </p>
+                            </div>
+                            <span
+                              className={`rounded-full border px-3 py-1 text-xs font-semibold ${tier.badge}`}
+                            >
+                              {signal.confidence.toFixed(0)}% {tier.label}
+                            </span>
                           </div>
-                          <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
-                            {signal.confidence.toFixed(0)}%
-                          </span>
+                          <ul className="mt-3 space-y-1 text-sm text-slate-600">
+                            {signal.reasons.map((reason) => (
+                              <li key={reason}>- {reason}</li>
+                            ))}
+                          </ul>
                         </div>
-                        <ul className="mt-3 space-y-1 text-sm text-slate-600">
-                          {signal.reasons.map((reason) => (
-                            <li key={reason}>- {reason}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

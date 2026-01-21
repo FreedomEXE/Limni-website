@@ -11,10 +11,15 @@ export default function LoginForm({ handleLogin }: LoginFormProps) {
   const error = searchParams.get("error");
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
+    <div className="w-full max-w-md rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-8 shadow-xl">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-slate-900">Limni</h1>
-        <p className="mt-2 text-sm text-slate-600">Trading Dashboard</p>
+        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full border-2 border-[var(--accent)] text-[var(--accent)]">
+          <span className="text-2xl font-semibold">L</span>
+        </div>
+        <h1 className="text-3xl font-semibold text-[var(--foreground)]">LIMNI</h1>
+        <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+          Navigating Markets with Intelligence
+        </p>
       </div>
 
       {error && (
@@ -25,7 +30,7 @@ export default function LoginForm({ handleLogin }: LoginFormProps) {
 
       <form action={handleLogin} className="space-y-6">
         <div>
-          <label htmlFor="username" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="username" className="block text-sm font-medium text-[var(--foreground)]">
             Username
           </label>
           <input
@@ -34,13 +39,13 @@ export default function LoginForm({ handleLogin }: LoginFormProps) {
             name="username"
             required
             autoComplete="username"
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            className="mt-1 block w-full rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-[var(--foreground)] placeholder-slate-400 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
             placeholder="Enter your username"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="password" className="block text-sm font-medium text-[var(--foreground)]">
             Password
           </label>
           <input
@@ -49,14 +54,14 @@ export default function LoginForm({ handleLogin }: LoginFormProps) {
             name="password"
             required
             autoComplete="current-password"
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            className="mt-1 block w-full rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-[var(--foreground)] placeholder-slate-400 focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
             placeholder="Enter your password"
           />
         </div>
 
         <button
           type="submit"
-          className="w-full rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 px-4 py-2 font-semibold text-white transition hover:from-teal-700 hover:to-cyan-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+          className="w-full rounded-lg bg-[var(--accent)] px-4 py-2 font-semibold text-white transition hover:bg-[var(--accent-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2"
         >
           Sign In
         </button>

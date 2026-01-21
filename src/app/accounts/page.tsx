@@ -63,6 +63,13 @@ function formatTimestamp(value: string) {
   });
 }
 
+function pillTone(value: number, positive = true) {
+  if (positive) {
+    return value >= 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800";
+  }
+  return value <= 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800";
+}
+
 export default async function AccountsPage() {
   let accounts: Awaited<ReturnType<typeof readMt5Accounts>> = [];
   try {
@@ -198,6 +205,28 @@ export default async function AccountsPage() {
                     </p>
                     <p className="mt-1 font-semibold">{account.open_positions}</p>
                   </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                  <span
+                    className={`rounded-full border px-3 py-1 ${pillTone(
+                      account.win_rate_pct,
+                      true,
+                    )}`}
+                  >
+                    Win rate {formatPercent(account.win_rate_pct)}
+                  </span>
+                  <span
+                    className={`rounded-full border px-3 py-1 ${pillTone(
+                      account.max_drawdown_pct,
+                      false,
+                    )}`}
+                  >
+                    Max DD {formatPercent(account.max_drawdown_pct)}
+                  </span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
+                    Risk used {formatPercent(account.risk_used_pct)}
+                  </span>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.25em] text-[color:var(--muted)]">

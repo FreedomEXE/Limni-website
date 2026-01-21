@@ -25,7 +25,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
       <LoginForm handleLogin={handleLogin} />
     </div>
   );
