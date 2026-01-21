@@ -75,7 +75,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 aria-label="Expand navigation"
                 title="Expand navigation"
               >
-                >>
+                &gt;&gt;
               </button>
             ) : null}
           </div>
