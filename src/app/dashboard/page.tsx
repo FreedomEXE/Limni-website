@@ -299,7 +299,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     href={href}
                     className={`rounded-full px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
                       isActive
-                        ? "bg-slate-900 text-white"
+                        ? "bg-[var(--foreground)] text-[var(--background)]"
                         : "border border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent-strong)]"
                     }`}
                   >
@@ -309,10 +309,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               })}
             </div>
             <div>
-              <h1 className="text-3xl font-semibold text-slate-900">
+              <h1 className="text-3xl font-semibold text-[var(--foreground)]">
                 Bias Dashboard
               </h1>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-[color:var(--muted)]">
                 Weighted blend of dealer and commercial positioning from CFTC COT ({COT_VARIANT}). Sentiment is not included.
               </p>
             </div>
@@ -329,7 +329,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Asset class
             </p>
-            <p className="mt-1 text-lg font-semibold text-slate-900">
+            <p className="mt-1 text-lg font-semibold text-[var(--foreground)]">
               {displayAssetLabel}
             </p>
           </div>
@@ -348,7 +348,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <select
                   name="report"
                   defaultValue={selectedReportDate ?? ""}
-                  className="rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-sm text-slate-900"
+                  className="rounded-lg border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-sm text-[var(--foreground)]"
                 >
                   {availableDates.length === 0 ? (
                     <option value="">No snapshots</option>
@@ -383,7 +383,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     href={`/dashboard?${href.toString()}`}
                     className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
                       biasMode === mode
-                        ? "bg-slate-900 text-white"
+                        ? "bg-[var(--foreground)] text-[var(--background)]"
                         : "border border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent-strong)]"
                     }`}
                   >
@@ -408,7 +408,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Report date
             </p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
               {formatDate(combinedReportDate)}
             </p>
           </div>
@@ -429,7 +429,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Last refresh
             </p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
               {formatDate(combinedRefresh)}
             </p>
           </div>
@@ -438,7 +438,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 {biasLabel} bias
               </h2>
               <p className="text-sm text-[color:var(--muted)]">
@@ -477,7 +477,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     <th className="py-2">Bias</th>
                   </tr>
                 </thead>
-                <tbody className="text-slate-900">
+                <tbody className="text-[var(--foreground)]">
                   {currencyRows.length === 0 ? (
                     <tr>
                       <td className="py-3 text-sm text-[color:var(--muted)]">
@@ -497,7 +497,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                         }`}
                       >
                         {isAll ? (
-                          <td className="py-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+                          <td className="py-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                             {row.assetLabel}
                           </td>
                         ) : null}
@@ -517,7 +517,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                               ? "text-emerald-700"
                               : row.bias === "BEARISH"
                                 ? "text-rose-700"
-                                : "text-slate-500"
+                                : "text-[color:var(--muted)]"
                           }`}
                         >
                           {row.bias}

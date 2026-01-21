@@ -284,9 +284,9 @@ export default async function StatusPage() {
                       asset.missingPairs.map((pair) => (
                         <div
                           key={`${asset.assetId}-${pair.pair}`}
-                          className="border-t border-slate-100 py-2"
+                          className="border-t border-[var(--panel-border)]/40 py-2"
                         >
-                          <span className="font-semibold text-slate-800">
+                          <span className="font-semibold text-[var(--foreground)]">
                             {pair.pair}
                           </span>
                           <span className="ml-2 text-[var(--muted)]">

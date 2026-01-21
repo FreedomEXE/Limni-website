@@ -112,7 +112,7 @@ function basketTone(state: string) {
   if (state === "PAUSED") {
     return "text-rose-700";
   }
-  return "text-slate-500";
+  return "text-[color:var(--muted)]";
 }
 
 type AccountPageProps = {
@@ -152,7 +152,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
               Back to accounts
             </Link>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold text-slate-900">
+              <h1 className="text-3xl font-semibold text-[var(--foreground)]">
                 {account?.label ?? "Account"}
               </h1>
               <span
@@ -183,7 +183,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Equity
             </p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
               {formatCurrency(account.equity, account.currency)}
             </p>
           </div>
@@ -191,7 +191,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Balance
             </p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
               {formatCurrency(account.balance, account.currency)}
             </p>
           </div>
@@ -227,7 +227,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
 
         <section className="grid gap-6 lg:grid-cols-3">
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Basket status
             </h2>
             <p className="text-sm text-[color:var(--muted)]">
@@ -282,7 +282,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
           </div>
 
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Operations</h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Operations</h2>
             <p className="text-sm text-[color:var(--muted)]">
               API health and scheduling.
             </p>
@@ -334,7 +334,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
           </div>
 
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Risk & margin</h2>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Risk & margin</h2>
             <p className="text-sm text-[color:var(--muted)]">
               Pair caps and account buffers.
             </p>
@@ -401,7 +401,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Open Positions
             </h2>
             <p className="text-sm text-[color:var(--muted)]">

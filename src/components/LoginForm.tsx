@@ -11,13 +11,14 @@ export default function LoginForm({ handleLogin }: LoginFormProps) {
   const error = searchParams.get("error");
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-8 shadow-xl">
+    <div className="w-full max-w-md rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)]/95 p-8 shadow-xl">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full border-2 border-[var(--accent)] text-[var(--accent)]">
-          <span className="text-2xl font-semibold">L</span>
-        </div>
-        <h1 className="text-3xl font-semibold text-[var(--foreground)]">LIMNI</h1>
-        <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+        <img
+          src="/limni-logo.svg"
+          alt="Limni"
+          className="mx-auto h-20 w-auto"
+        />
+        <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
           Navigating Markets with Intelligence
         </p>
       </div>
@@ -61,7 +62,7 @@ export default function LoginForm({ handleLogin }: LoginFormProps) {
 
         <button
           type="submit"
-          className="w-full rounded-lg bg-[var(--accent)] px-4 py-2 font-semibold text-white transition hover:bg-[var(--accent-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2"
+          className="w-full rounded-xl bg-[var(--accent)] px-4 py-2 font-semibold text-white transition hover:bg-[var(--accent-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2"
         >
           Sign In
         </button>

@@ -21,21 +21,24 @@ function signalTier(confidence: number) {
   if (confidence >= 85) {
     return {
       label: "High confidence",
-      badge: "bg-emerald-100 text-emerald-800 border-emerald-200",
-      card: "border-emerald-200 bg-emerald-50/60",
+      badge:
+        "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent-strong)]",
+      card: "border-[var(--accent)]/20 bg-[var(--panel)]",
     };
   }
   if (confidence >= 75) {
     return {
       label: "Strong",
-      badge: "bg-sky-100 text-sky-800 border-sky-200",
-      card: "border-sky-200 bg-sky-50/60",
+      badge:
+        "border-[var(--panel-border)] bg-white/80 text-[var(--foreground)]/80",
+      card: "border-[var(--panel-border)] bg-[var(--panel)]",
     };
   }
   return {
     label: "Developing",
-    badge: "bg-amber-100 text-amber-800 border-amber-200",
-    card: "border-amber-200 bg-amber-50/60",
+    badge:
+      "border-[var(--panel-border)] bg-white/80 text-[color:var(--muted)]",
+    card: "border-[var(--panel-border)] bg-[var(--panel)]",
   };
 }
 
@@ -112,21 +115,23 @@ export default async function AntikytheraPage() {
       <div className="space-y-8">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-900">Antikythera</h1>
-            <p className="mt-2 text-sm text-slate-600">
+            <h1 className="text-3xl font-semibold text-[var(--foreground)]">
+              Antikythera
+            </h1>
+            <p className="mt-2 text-sm text-[color:var(--muted)]">
               Signal-first intelligence blending bias, sentiment, and liquidation cues.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
               href="/dashboard"
-              className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 transition hover:border-teal-500 hover:text-teal-700"
+              className="rounded-full border border-[var(--panel-border)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               Bias map
             </Link>
             <Link
               href="/sentiment"
-              className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 transition hover:border-teal-500 hover:text-teal-700"
+              className="rounded-full border border-[var(--panel-border)] bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               Sentiment map
             </Link>
@@ -136,14 +141,14 @@ export default async function AntikytheraPage() {
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Top Signals
               </h2>
               <p className="text-sm text-[color:var(--muted)]">
                 Highest-conviction setups across all asset classes.
               </p>
             </div>
-            <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               {topSignals.length} active
             </span>
           </div>
@@ -162,10 +167,10 @@ export default async function AntikytheraPage() {
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                        <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                           {signal.assetLabel}
                         </p>
-                        <p className="mt-2 text-lg font-semibold text-slate-900">
+                        <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
                           {signal.pair} - {signal.direction}
                         </p>
                       </div>
@@ -175,7 +180,7 @@ export default async function AntikytheraPage() {
                         {signal.confidence.toFixed(0)}% {tier.label}
                       </span>
                     </div>
-                    <ul className="mt-3 space-y-1 text-sm text-slate-600">
+                    <ul className="mt-3 space-y-1 text-sm text-[color:var(--muted)]">
                       {signal.reasons.map((reason) => (
                         <li key={reason}>- {reason}</li>
                       ))}
@@ -190,7 +195,7 @@ export default async function AntikytheraPage() {
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Signal Heatmap
               </h2>
               <p className="text-sm text-[color:var(--muted)]">
@@ -204,17 +209,17 @@ export default async function AntikytheraPage() {
                 return (
                   <div
                     key={group.asset.id}
-                    className={`flex items-center justify-between rounded-lg border px-4 py-3 ${tier ? tier.card : "border-slate-200 bg-white/70"}`}
+                    className={`flex items-center justify-between rounded-lg border px-4 py-3 ${tier ? tier.card : "border-[var(--panel-border)] bg-white/70"}`}
                   >
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm font-semibold text-[var(--foreground)]">
                         {group.asset.label}
                       </p>
                       <p className="text-xs text-[color:var(--muted)]">
                         {group.signals.length} active signals
                       </p>
                     </div>
-                    <div className="text-right text-xs text-slate-500">
+                    <div className="text-right text-xs text-[color:var(--muted)]">
                       {topSignal
                         ? `${topSignal.pair} ${topSignal.direction}`
                         : group.hasHistory
@@ -229,7 +234,7 @@ export default async function AntikytheraPage() {
 
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Signal Drivers
               </h2>
               <p className="text-sm text-[color:var(--muted)]">
@@ -239,32 +244,32 @@ export default async function AntikytheraPage() {
             <div className="space-y-3">
               <Link
                 href="/dashboard"
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700 transition hover:border-teal-500 hover:text-teal-700"
+                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-white/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
                 <span>Bias map</span>
-                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   View
                 </span>
               </Link>
               <Link
                 href="/sentiment"
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700 transition hover:border-teal-500 hover:text-teal-700"
+                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-white/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
                 <span>Sentiment map</span>
-                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   View
                 </span>
               </Link>
               <Link
                 href="/performance"
-                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700 transition hover:border-teal-500 hover:text-teal-700"
+                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-white/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
                 <span>Performance lab</span>
-                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   View
                 </span>
               </Link>
-              <div className="rounded-lg border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-700">
+              <div className="rounded-lg border border-[var(--panel-border)] bg-white/70 px-4 py-3 text-sm text-[var(--foreground)]/80">
                 Liquidation clusters update for BTC + ETH below.
               </div>
             </div>
@@ -273,7 +278,7 @@ export default async function AntikytheraPage() {
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Signals by Asset
             </h2>
             <p className="text-sm text-[color:var(--muted)]">
@@ -284,11 +289,11 @@ export default async function AntikytheraPage() {
             {signalGroups.map((group) => (
               <div key={group.asset.id}>
                 <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
                     {group.asset.label}
                   </h3>
                   {!group.hasHistory ? (
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-[color:var(--muted)]">
                       Not enough history
                     </span>
                   ) : null}
@@ -308,10 +313,10 @@ export default async function AntikytheraPage() {
                         >
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                                 {signal.pair}
                               </p>
-                              <p className="text-lg font-semibold text-slate-900">
+                              <p className="text-lg font-semibold text-[var(--foreground)]">
                                 {signal.direction}
                               </p>
                             </div>
@@ -321,7 +326,7 @@ export default async function AntikytheraPage() {
                               {signal.confidence.toFixed(0)}% {tier.label}
                             </span>
                           </div>
-                          <ul className="mt-3 space-y-1 text-sm text-slate-600">
+                          <ul className="mt-3 space-y-1 text-sm text-[color:var(--muted)]">
                             {signal.reasons.map((reason) => (
                               <li key={reason}>- {reason}</li>
                             ))}
@@ -344,18 +349,18 @@ export default async function AntikytheraPage() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">
+                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
                     {summary.baseCoin} Liquidations
                   </h2>
                   <p className="text-sm text-[color:var(--muted)]">
                     Recent liquidation clusters from Coinank.
                   </p>
                 </div>
-                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Updated {formatTime(summary.lastUpdated)}
                 </span>
               </div>
-              <div className="mt-4 grid gap-3 text-sm text-slate-700">
+              <div className="mt-4 grid gap-3 text-sm text-[var(--foreground)]/80">
                 <div className="flex items-center justify-between">
                   <span>Long liquidations</span>
                   <span className="font-semibold text-rose-700">
@@ -364,12 +369,12 @@ export default async function AntikytheraPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Short liquidations</span>
-                  <span className="font-semibold text-emerald-700">
+                  <span className="font-semibold text-[var(--accent-strong)]">
                     {summary.totalShortUsd.toFixed(0)}
                   </span>
                 </div>
               </div>
-              <div className="mt-4 text-xs uppercase tracking-[0.2em] text-slate-500">
+              <div className="mt-4 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Dominant: {summary.dominantSide}
               </div>
             </div>

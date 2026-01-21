@@ -39,7 +39,7 @@ export default function StatusPanel({ issues }: StatusPanelProps) {
             <p className="font-semibold">{issue.title}</p>
             {issue.details && <p className="mt-1 text-xs">{issue.details}</p>}
             {issue.hint && (
-              <p className="mt-2 text-xs font-semibold text-slate-700">
+              <p className="mt-2 text-xs font-semibold text-[var(--foreground)]">
                 Fix: {issue.hint}
               </p>
             )}

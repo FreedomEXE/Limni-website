@@ -82,7 +82,7 @@ function basketTone(state: string) {
   if (state === "PAUSED") {
     return "text-rose-700";
   }
-  return "text-slate-500";
+  return "text-[color:var(--muted)]";
 }
 
 type AccountsDirectoryProps = {
@@ -150,7 +150,7 @@ export default function AccountsDirectory({
             <p className="text-xs uppercase tracking-[0.25em] text-[color:var(--muted)]">
               Connect an account
             </p>
-            <h2 className="text-xl font-semibold text-slate-900">
+            <h2 className="text-xl font-semibold text-[var(--foreground)]">
               MT5 push setup
             </h2>
             <p className="text-sm text-[color:var(--muted)]">
@@ -170,15 +170,15 @@ export default function AccountsDirectory({
         {showConnect ? (
           <div className="mt-6 grid gap-4 text-sm text-[color:var(--muted)] md:grid-cols-3">
             <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-white/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Push URL
               </p>
-              <p className="mt-2 break-all font-mono text-sm text-slate-900">
+              <p className="mt-2 break-all font-mono text-sm text-[var(--foreground)]">
                 {pushUrl}
               </p>
             </div>
             <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-white/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Token status
               </p>
               <p
@@ -194,7 +194,7 @@ export default function AccountsDirectory({
               </p>
             </div>
             <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-white/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Checklist
               </p>
               <ul className="mt-2 space-y-1 text-xs text-[color:var(--muted)]">
@@ -232,13 +232,13 @@ export default function AccountsDirectory({
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search label, broker, or account..."
-              className="w-full rounded-lg border border-[var(--panel-border)] bg-white/70 px-3 py-2 text-sm text-slate-900 placeholder:text-[color:var(--muted)] focus:border-[var(--accent)] focus:outline-none lg:w-64"
+              className="w-full rounded-lg border border-[var(--panel-border)] bg-white/70 px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[color:var(--muted)] focus:border-[var(--accent)] focus:outline-none lg:w-64"
             />
             <div className="flex items-center gap-2">
               <select
                 value={sortKey}
                 onChange={(event) => setSortKey(event.target.value as SortKey)}
-                className="rounded-lg border border-[var(--panel-border)] bg-white/70 px-3 py-2 text-sm text-slate-900 focus:border-[var(--accent)] focus:outline-none"
+                className="rounded-lg border border-[var(--panel-border)] bg-white/70 px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
               >
                 {sortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -275,7 +275,7 @@ export default function AccountsDirectory({
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">
+                    <h3 className="text-lg font-semibold text-[var(--foreground)]">
                       {account.label}
                     </h3>
                     <p className="text-sm text-[color:var(--muted)]">
@@ -292,7 +292,7 @@ export default function AccountsDirectory({
                   </span>
                 </div>
 
-                <div className="mt-4 grid gap-3 text-sm text-slate-900 sm:grid-cols-2">
+                <div className="mt-4 grid gap-3 text-sm text-[var(--foreground)] sm:grid-cols-2">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                       Equity

@@ -78,7 +78,7 @@ export default function SentimentHeatmap({
                 {agg.agg_long_pct.toFixed(0)}% L
               </div>
               {agg.flip_state !== "NONE" && (
-                <div className="mt-1 text-[10px] text-slate-100">
+                <div className="mt-1 text-[10px] text-white/80">
                   {agg.flip_state === "FLIPPED_UP" ? "UP" : "DOWN"} FLIP
                 </div>
               )}

@@ -27,7 +27,7 @@ function valueTone(value: number) {
   if (value < 0) {
     return "text-rose-700";
   }
-  return "text-slate-500";
+  return "text-[color:var(--muted)]";
 }
 
 export default function PairPerformanceTable({
@@ -52,7 +52,7 @@ export default function PairPerformanceTable({
     <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">
             Pair trade list
           </h2>
           <p className="text-sm text-[color:var(--muted)]">
@@ -70,7 +70,7 @@ export default function PairPerformanceTable({
               <th className="py-2">Pips</th>
             </tr>
           </thead>
-          <tbody className="text-slate-900">
+          <tbody className="text-[var(--foreground)]">
             {rows.length === 0 ? (
               <tr>
                 <td className="py-3 text-sm text-[color:var(--muted)]">
@@ -106,14 +106,14 @@ export default function PairPerformanceTable({
                     </td>
                     <td
                       className={`py-2 ${
-                        perf ? valueTone(perf.percent) : "text-slate-400"
+                        perf ? valueTone(perf.percent) : "text-[color:var(--muted)]"
                       }`}
                     >
                       {perf ? formatSigned(perf.percent, 2, "%") : "--"}
                     </td>
                     <td
                       className={`py-2 ${
-                        perf ? valueTone(perf.pips) : "text-slate-400"
+                        perf ? valueTone(perf.pips) : "text-[color:var(--muted)]"
                       }`}
                     >
                       {perf ? formatSigned(perf.pips, 1) : "--"}
@@ -142,7 +142,7 @@ export default function PairPerformanceTable({
                 </td>
                 <td
                   className={`py-2 font-semibold ${
-                    totals.count > 0 ? valueTone(totals.percent) : "text-slate-400"
+                    totals.count > 0 ? valueTone(totals.percent) : "text-[color:var(--muted)]"
                   }`}
                 >
                   {totals.count > 0
@@ -151,7 +151,7 @@ export default function PairPerformanceTable({
                 </td>
                 <td
                   className={`py-2 font-semibold ${
-                    totals.count > 0 ? valueTone(totals.pips) : "text-slate-400"
+                    totals.count > 0 ? valueTone(totals.pips) : "text-[color:var(--muted)]"
                   }`}
                 >
                   {totals.count > 0 ? formatSigned(totals.pips, 1) : "--"}

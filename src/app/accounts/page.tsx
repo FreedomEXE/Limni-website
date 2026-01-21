@@ -43,7 +43,7 @@ function basketTone(state: string) {
   if (state === "PAUSED") {
     return "text-rose-700";
   }
-  return "text-slate-500";
+  return "text-[color:var(--muted)]";
 }
 
 function formatTimestamp(value: string) {
@@ -93,17 +93,17 @@ export default async function AccountsPage() {
       <div className="space-y-8">
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold text-slate-900">
+            <h1 className="text-3xl font-semibold text-[var(--foreground)]">
               Connected Accounts
             </h1>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-[color:var(--muted)]">
               Monitor live baskets, exposure, and performance across every
               linked MT5 account.
             </p>
           </div>
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-700"
+            className="inline-flex items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
           >
             Connect account
           </button>
@@ -114,7 +114,7 @@ export default async function AccountsPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Accounts connected
             </p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
               {accounts.length}
             </p>
           </div>
@@ -122,7 +122,7 @@ export default async function AccountsPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Total equity
             </p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
               {formatCurrency(totalEquity, "USD")}
             </p>
           </div>
@@ -130,7 +130,7 @@ export default async function AccountsPage() {
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Active baskets
             </p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
               {activeBaskets}
             </p>
           </div>
@@ -151,7 +151,7 @@ export default async function AccountsPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900">
+                    <h2 className="text-lg font-semibold text-[var(--foreground)]">
                       {account.label}
                     </h2>
                     <p className="text-sm text-[color:var(--muted)]">
@@ -168,7 +168,7 @@ export default async function AccountsPage() {
                   </span>
                 </div>
 
-                <div className="mt-4 grid gap-3 text-sm text-slate-900 sm:grid-cols-2">
+                <div className="mt-4 grid gap-3 text-sm text-[var(--foreground)] sm:grid-cols-2">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                       Equity
@@ -224,7 +224,7 @@ export default async function AccountsPage() {
                   >
                     Max DD {formatPercent(account.max_drawdown_pct)}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">
+                  <span className="rounded-full border border-[var(--panel-border)] bg-white/70 px-3 py-1 text-[color:var(--muted)]">
                     Risk used {formatPercent(account.risk_used_pct)}
                   </span>
                 </div>

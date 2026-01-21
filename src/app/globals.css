@@ -1,29 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6efe4;
-  --foreground: #15282b;
-  --panel: #fffaf2;
-  --panel-border: #e4d8c6;
-  --accent: #1a7a5e;
-  --accent-strong: #145c47;
-  --muted: #5f5b52;
+  --background: #f5f3ee;
+  --foreground: #0a1a2f;
+  --panel: #fffdf8;
+  --panel-border: #c0c0c0;
+  --accent: #006b5e;
+  --accent-strong: #005247;
+  --muted: #5b6473;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-space-grotesk);
+  --font-sans: var(--font-source-sans);
+  --font-serif: var(--font-libre-baskerville);
   --font-mono: var(--font-plex-mono);
 }
 
 body {
   background:
-    radial-gradient(900px 420px at 0% -10%, #f4e2c6 0%, transparent 60%),
-    radial-gradient(900px 420px at 100% 0%, #cfe6dc 0%, transparent 55%),
+    radial-gradient(900px 420px at -10% -10%, rgba(0, 107, 94, 0.12) 0%, transparent 60%),
+    radial-gradient(900px 420px at 110% -10%, rgba(10, 26, 47, 0.08) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(245, 243, 238, 0.65)),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
 }
 
 @keyframes fade-in {

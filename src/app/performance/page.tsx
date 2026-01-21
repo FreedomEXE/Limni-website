@@ -116,8 +116,10 @@ export default async function PerformancePage() {
       <div className="space-y-8">
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-900">Performance Lab</h1>
-            <p className="mt-2 text-sm text-slate-600">
+            <h1 className="text-3xl font-semibold text-[var(--foreground)]">
+              Performance Lab
+            </h1>
+            <p className="mt-2 text-sm text-[color:var(--muted)]">
               Compare weekly basket performance across filters using percent-only scoring.
             </p>
           </div>

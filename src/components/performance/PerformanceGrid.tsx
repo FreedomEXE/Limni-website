@@ -30,7 +30,7 @@ function tone(value: number) {
   if (value < 0) {
     return "text-rose-700";
   }
-  return "text-slate-500";
+  return "text-[color:var(--muted)]";
 }
 
 function formatMoney(value: number) {
@@ -50,40 +50,40 @@ function getPerformanceTier(percent: number, winRate: number): PerformanceTier {
   if (percent > 5 && winRate > 60) {
     return {
       label: "Exceptional",
-      accent: "text-emerald-700",
-      card: "border-emerald-200 bg-emerald-50/70",
-      emoji: "🚀",
+      accent: "text-[var(--accent-strong)]",
+      card: "border-[var(--accent)]/30 bg-[var(--accent)]/10",
+      emoji: "+++",
     };
   }
   if (percent > 3 && winRate > 55) {
     return {
       label: "Strong",
-      accent: "text-teal-700",
-      card: "border-teal-200 bg-teal-50/70",
-      emoji: "📈",
+      accent: "text-[var(--foreground)]",
+      card: "border-[var(--panel-border)] bg-[var(--panel)]",
+      emoji: "++",
     };
   }
   if (percent > 0 && winRate > 50) {
     return {
       label: "Positive",
-      accent: "text-sky-700",
-      card: "border-sky-200 bg-sky-50/70",
-      emoji: "✓",
+      accent: "text-[var(--accent-strong)]",
+      card: "border-[var(--panel-border)] bg-white/80",
+      emoji: "+",
     };
   }
   if (percent > -2) {
     return {
       label: "Neutral",
-      accent: "text-amber-700",
-      card: "border-amber-200 bg-amber-50/70",
-      emoji: "−",
+      accent: "text-[color:var(--muted)]",
+      card: "border-[var(--panel-border)] bg-white/70",
+      emoji: "-",
     };
   }
   return {
     label: "Weak",
     accent: "text-rose-700",
     card: "border-rose-200 bg-rose-50/70",
-    emoji: "📉",
+    emoji: "--",
   };
 }
 
@@ -95,12 +95,12 @@ function getConfidenceBadge(performance: ModelPerformance) {
     (coverage > 0.8 ? 25 : 0) +
     (performance.percent > 0 ? 25 : 0);
   if (score >= 80) {
-    return { label: "High Confidence", badge: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: "⭐⭐⭐" };
+    return { label: "High Confidence", badge: "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent-strong)]", icon: "***" };
   }
   if (score >= 50) {
-    return { label: "Medium Confidence", badge: "bg-amber-100 text-amber-800 border-amber-200", icon: "⭐⭐" };
+    return { label: "Medium Confidence", badge: "border-[var(--panel-border)] bg-white/70 text-[var(--foreground)]/80", icon: "**" };
   }
-  return { label: "Low Confidence", badge: "bg-slate-100 text-slate-600 border-slate-200", icon: "⭐" };
+  return { label: "Low Confidence", badge: "border-[var(--panel-border)] bg-white/70 text-[color:var(--muted)]", icon: "*" };
 }
 
 function MetricPill({ label, value, good }: { label: string; value: string; good: boolean }) {
@@ -108,8 +108,8 @@ function MetricPill({ label, value, good }: { label: string; value: string; good
     <div
       className={`rounded-lg border px-2 py-1.5 ${
         good
-          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-          : "border-slate-200 bg-slate-50 text-slate-600"
+          ? "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+          : "border-[var(--panel-border)] bg-white/70 text-[color:var(--muted)]"
       }`}
     >
       <div className="text-[10px] uppercase tracking-wider opacity-70">{label}</div>
@@ -130,13 +130,13 @@ function WinRateDonut({ winRate }: { winRate: number }) {
         cy="28"
         r={radius}
         fill="none"
-        stroke={winRate >= 55 ? "#10b981" : "#f97316"}
+        stroke={winRate >= 55 ? "#006b5e" : "#b45309"}
         strokeWidth="6"
         strokeDasharray={`${dash} ${circumference - dash}`}
         strokeLinecap="round"
         transform="rotate(-90 28 28)"
       />
-      <text x="28" y="32" textAnchor="middle" className="text-xs font-semibold fill-slate-700">
+      <text x="28" y="32" textAnchor="middle" className="text-xs font-semibold fill-[var(--foreground)]">
         {winRate.toFixed(0)}%
       </text>
     </svg>
@@ -145,7 +145,7 @@ function WinRateDonut({ winRate }: { winRate: number }) {
 
 function MiniHistogram({ returns }: { returns: Array<{ pair: string; percent: number }> }) {
   if (returns.length === 0) {
-    return <div className="h-8 rounded bg-slate-100" />;
+    return <div className="h-8 rounded bg-[var(--panel-border)]/30" />;
   }
   const sample = returns.slice(0, 12);
   const max = Math.max(...sample.map((item) => Math.abs(item.percent)), 0.1);
@@ -192,14 +192,14 @@ function PerformanceCard({
       className={`group relative rounded-2xl border-2 p-4 text-left transition duration-300 hover:scale-[1.02] hover:shadow-xl animate-fade-in ${tier.card}`}
     >
       <div className="absolute right-4 top-3 text-4xl opacity-10">{tier.emoji}</div>
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+      <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
         {label}
       </p>
       <div className="mt-2 text-center">
         <div className={`text-3xl font-black ${tone(performance.percent)}`}>
           {formatPercent(performance.percent)}
         </div>
-        <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+        <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
           Total return
         </div>
       </div>
@@ -212,7 +212,7 @@ function PerformanceCard({
       <div className="mt-4 flex items-center justify-between gap-2">
         <WinRateDonut winRate={performance.stats.win_rate} />
         <div className="flex-1">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
             Return spread
           </p>
           <MiniHistogram returns={performance.returns} />
@@ -246,20 +246,20 @@ export default function PerformanceGrid({
       stats.volatility > 0 ? stats.avg_return / stats.volatility : 0;
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-6"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--foreground)]/30 p-6"
         onClick={() => setActive(null)}
       >
         <div
-          className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          className="w-full max-w-3xl overflow-hidden rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-2xl"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className={`relative bg-gradient-to-br from-white to-slate-50 p-6 ${tier.accent}`}>
+          <div className={`relative bg-gradient-to-br from-white to-[var(--panel)] p-6 ${tier.accent}`}>
             <div className="absolute right-6 top-6 text-6xl opacity-10">{tier.emoji}</div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               {active.sectionLabel}
             </p>
             <div className="mt-2 flex items-center justify-between">
-              <h3 className="text-2xl font-semibold text-slate-900">
+              <h3 className="text-2xl font-semibold text-[var(--foreground)]">
                 {active.modelLabel}
               </h3>
               <button
@@ -268,12 +268,12 @@ export default function PerformanceGrid({
                   event.stopPropagation();
                   setActive(null);
                 }}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 transition hover:border-teal-500 hover:text-teal-700"
+                className="rounded-full border border-[var(--panel-border)] bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
               >
                 Close
               </button>
             </div>
-            <div className="mt-4 text-5xl font-black text-slate-900">
+            <div className="mt-4 text-5xl font-black text-[var(--foreground)]">
               {formatPercent(performance.percent)}
             </div>
             <div className={`mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${badge.badge}`}>
@@ -283,8 +283,8 @@ export default function PerformanceGrid({
 
           <div className="grid gap-6 p-6 lg:grid-cols-2">
             <div className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              <div className="rounded-xl border border-[var(--panel-border)] bg-white/70 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Executive summary
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-3">
@@ -295,11 +295,11 @@ export default function PerformanceGrid({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              <div className="rounded-xl border border-[var(--panel-border)] bg-white p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Account simulation
                 </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
                   {ACCOUNT_SIZES.map((size) => (
                     <button
                       key={size}
@@ -307,17 +307,17 @@ export default function PerformanceGrid({
                       onClick={() => setAccountSize(size)}
                       className={`rounded-full border px-3 py-1 ${
                         accountSize === size
-                          ? "border-teal-500 bg-teal-50 text-teal-700"
-                          : "border-slate-200 bg-white text-slate-500"
+                          ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                          : "border-[var(--panel-border)] bg-white text-[color:var(--muted)]"
                       }`}
                     >
                       ${size.toLocaleString()}
                     </button>
                   ))}
                 </div>
-                <div className="mt-4 rounded-xl bg-slate-900 px-4 py-6 text-center text-white">
+                <div className="mt-4 rounded-xl bg-[var(--foreground)] px-4 py-6 text-center text-[var(--background)]">
                   <div className="text-3xl font-semibold">{formatMoney(pnl)}</div>
-                  <div className="text-xs uppercase tracking-[0.2em] text-slate-300">
+                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--background)]/70">
                     Simulated PnL
                   </div>
                 </div>
@@ -325,27 +325,27 @@ export default function PerformanceGrid({
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              <div className="rounded-xl border border-[var(--panel-border)] bg-white/70 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Return distribution
                 </p>
                 <div className="mt-4">
                   <MiniHistogram returns={performance.returns} />
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              <div className="rounded-xl border border-[var(--panel-border)] bg-white p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Outliers
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-emerald-700">
+                  <div className="rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 p-3">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--accent-strong)]">
                       Best
                     </p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">
+                    <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
                       {stats.best_pair ? stats.best_pair.pair : "N/A"}
                     </p>
-                    <p className="text-sm text-emerald-700">
+                    <p className="text-sm text-[var(--accent-strong)]">
                       {stats.best_pair ? formatPercent(stats.best_pair.percent) : "--"}
                     </p>
                   </div>
@@ -353,7 +353,7 @@ export default function PerformanceGrid({
                     <p className="text-xs uppercase tracking-[0.2em] text-rose-700">
                       Worst
                     </p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">
+                    <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
                       {stats.worst_pair ? stats.worst_pair.pair : "N/A"}
                     </p>
                     <p className="text-sm text-rose-700">
@@ -362,7 +362,7 @@ export default function PerformanceGrid({
                   </div>
                 </div>
               </div>
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-[color:var(--muted)]">
                 Assumptions: equal-weighted basket, single-week move, no fees or slippage.
               </div>
             </div>
@@ -377,14 +377,14 @@ export default function PerformanceGrid({
       <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
               {combined.label}
             </h2>
             <p className="text-sm text-[color:var(--muted)]">
               {combined.description}
             </p>
           </div>
-          <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+          <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
             Latest week
           </span>
         </div>
@@ -414,7 +414,7 @@ export default function PerformanceGrid({
             className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
           >
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 {section.label} Basket
               </h2>
               <p className="text-sm text-[color:var(--muted)]">

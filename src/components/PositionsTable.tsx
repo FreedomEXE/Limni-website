@@ -70,7 +70,7 @@ function groupPositionsBySymbol(positions: Mt5Position[], equity: number): Posit
           riskAmount += positionRisk;
         } else {
           // Fallback: estimate based on lot size
-          // For most pairs, 0.01 lot with 10% SL ≈ $130 risk
+          // For most pairs, 0.01 lot with 10% SL ~ $130 risk
           const slDistance = Math.abs(openPrice - stopLoss);
           const slPercentage = slDistance / openPrice;
           const estimatedRisk = pos.lots * 100000 * slPercentage * 0.01; // Rough estimate
@@ -116,7 +116,7 @@ export default function PositionsTable({ positions, currency, equity }: Position
 
   if (!positions || positions.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 bg-white/60 p-8 text-center text-sm text-slate-500">
+      <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-white/60 p-8 text-center text-sm text-[color:var(--muted)]">
         <p className="font-semibold">No open positions</p>
         <p className="mt-2">Positions will appear here when trades are opened.</p>
       </div>
@@ -132,18 +132,18 @@ export default function PositionsTable({ positions, currency, equity }: Position
     <div className="space-y-4">
       {/* Summary stats */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-white/80 p-4">
-          <p className="text-xs uppercase tracking-wider text-slate-500">Total P&L</p>
+        <div className="rounded-lg border border-[var(--panel-border)] bg-white/80 p-4">
+          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Total P&L</p>
           <p className={`mt-1 text-xl font-semibold ${totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
             {formatCurrency(totalProfit, currency)}
           </p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white/80 p-4">
-          <p className="text-xs uppercase tracking-wider text-slate-500">Pairs traded</p>
-          <p className="mt-1 text-xl font-semibold text-slate-900">{groups.length}</p>
+        <div className="rounded-lg border border-[var(--panel-border)] bg-white/80 p-4">
+          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Pairs traded</p>
+          <p className="mt-1 text-xl font-semibold text-[var(--foreground)]">{groups.length}</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white/80 p-4">
-          <p className="text-xs uppercase tracking-wider text-slate-500">Total risk (SL)</p>
+        <div className="rounded-lg border border-[var(--panel-border)] bg-white/80 p-4">
+          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Total risk (SL)</p>
           <p className="mt-1 text-xl font-semibold text-amber-700">
             {formatCurrency(totalRisk, currency)}
           </p>
@@ -158,44 +158,44 @@ export default function PositionsTable({ positions, currency, equity }: Position
         {groups.map((group) => (
           <div
             key={group.symbol}
-            className="rounded-xl border border-slate-200 bg-white/90 shadow-sm transition-all hover:shadow-md"
+            className="rounded-xl border border-[var(--panel-border)] bg-white/90 shadow-sm transition-all hover:shadow-md"
           >
             {/* Group header */}
             <button
               type="button"
               onClick={() => setSelectedGroup(selectedGroup === group.symbol ? null : group.symbol)}
-              className="w-full p-4 text-left transition hover:bg-slate-50/50"
+              className="w-full p-4 text-left transition hover:bg-white/60"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <h3 className="text-lg font-semibold text-slate-900">{group.symbol}</h3>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                  <h3 className="text-lg font-semibold text-[var(--foreground)]">{group.symbol}</h3>
+                  <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[var(--foreground)]/80">
                     {group.positions.length} position{group.positions.length > 1 ? 's' : ''}
                   </span>
                   <span className={`text-sm font-medium ${
-                    group.netExposure > 0 ? 'text-emerald-700' : group.netExposure < 0 ? 'text-rose-700' : 'text-slate-500'
+                    group.netExposure > 0 ? 'text-emerald-700' : group.netExposure < 0 ? 'text-rose-700' : 'text-[color:var(--muted)]'
                   }`}>
                     {group.netExposure > 0 ? `+${group.netExposure.toFixed(2)}` : group.netExposure.toFixed(2)} lots
                   </span>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-right">
-                    <p className="text-xs uppercase tracking-wider text-slate-500">P&L</p>
+                    <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">P&L</p>
                     <p className={`text-lg font-semibold ${group.totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                       {formatCurrency(group.totalProfit, currency)}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs uppercase tracking-wider text-slate-500">Risk</p>
+                    <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Risk</p>
                     <p className={`text-lg font-semibold ${group.riskPct > 1.0 ? 'text-rose-700' : 'text-amber-700'}`}>
                       {formatCurrency(group.riskAmount, currency)}
                     </p>
                     <p className={`text-xs ${group.riskPct > 1.0 ? 'text-rose-600 font-semibold' : 'text-amber-600'}`}>
-                      {group.riskPct.toFixed(2)}% {group.riskPct > 1.0 ? '⚠️' : ''}
+                      {group.riskPct.toFixed(2)}% {group.riskPct > 1.0 ? '!' : ''}
                     </p>
                   </div>
                   <svg
-                    className={`h-5 w-5 text-slate-400 transition-transform ${
+                    className={`h-5 w-5 text-[color:var(--muted)] transition-transform ${
                       selectedGroup === group.symbol ? 'rotate-180' : ''
                     }`}
                     fill="none"
@@ -210,22 +210,22 @@ export default function PositionsTable({ positions, currency, equity }: Position
 
             {/* Individual positions */}
             {selectedGroup === group.symbol && (
-              <div className="border-t border-slate-200 bg-slate-50/50 p-4">
+              <div className="border-t border-[var(--panel-border)] bg-white/60 p-4">
                 <div className="space-y-2">
                   {group.positions.map((pos) => (
                     <div
                       key={pos.ticket}
                       onMouseEnter={() => setHoveredPosition(pos.ticket)}
                       onMouseLeave={() => setHoveredPosition(null)}
-                      className="relative rounded-lg border border-slate-200 bg-white p-3 transition-all hover:border-teal-300 hover:shadow-sm"
+                      className="relative rounded-lg border border-[var(--panel-border)] bg-white p-3 transition-all hover:border-[var(--accent)] hover:shadow-sm"
                     >
                       <div className="grid grid-cols-7 gap-3 text-sm">
                         <div>
-                          <p className="text-xs uppercase tracking-wider text-slate-500">Ticket</p>
-                          <p className="font-mono text-slate-900">#{pos.ticket}</p>
+                          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Ticket</p>
+                          <p className="font-mono text-[var(--foreground)]">#{pos.ticket}</p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-wider text-slate-500">Type</p>
+                          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Type</p>
                           <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
                             pos.type === 'BUY' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
                           }`}>
@@ -233,26 +233,26 @@ export default function PositionsTable({ positions, currency, equity }: Position
                           </span>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-wider text-slate-500">Lots</p>
-                          <p className="font-semibold text-slate-900">{pos.lots.toFixed(2)}</p>
+                          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Lots</p>
+                          <p className="font-semibold text-[var(--foreground)]">{pos.lots.toFixed(2)}</p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-wider text-slate-500">Open price</p>
-                          <p className="font-mono text-slate-900">{formatPrice(pos.open_price, pos.symbol)}</p>
+                          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Open price</p>
+                          <p className="font-mono text-[var(--foreground)]">{formatPrice(pos.open_price, pos.symbol)}</p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-wider text-slate-500">Current</p>
-                          <p className="font-mono text-slate-900">{formatPrice(pos.current_price, pos.symbol)}</p>
+                          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Current</p>
+                          <p className="font-mono text-[var(--foreground)]">{formatPrice(pos.current_price, pos.symbol)}</p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-wider text-slate-500">P&L</p>
+                          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">P&L</p>
                           <p className={`font-semibold ${pos.profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                             {formatCurrency(pos.profit, currency)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs uppercase tracking-wider text-slate-500">Open time</p>
-                          <p className="text-xs text-slate-600">
+                          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Open time</p>
+                          <p className="text-xs text-[color:var(--muted)]">
                             {new Date(pos.open_time).toLocaleString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -265,13 +265,13 @@ export default function PositionsTable({ positions, currency, equity }: Position
 
                       {/* Hover card with chart placeholder */}
                       {hoveredPosition === pos.ticket && (
-                        <div className="absolute left-full top-0 z-10 ml-2 w-64 rounded-lg border border-slate-200 bg-white p-3 shadow-lg">
+                        <div className="absolute left-full top-0 z-10 ml-2 w-64 rounded-lg border border-[var(--panel-border)] bg-white p-3 shadow-lg">
                           <div className="mb-2 flex items-center justify-between">
-                            <p className="text-sm font-semibold text-slate-900">{pos.symbol}</p>
-                            <p className="text-xs text-slate-500">#{pos.ticket}</p>
+                            <p className="text-sm font-semibold text-[var(--foreground)]">{pos.symbol}</p>
+                            <p className="text-xs text-[color:var(--muted)]">#{pos.ticket}</p>
                           </div>
-                          <div className="h-32 rounded bg-gradient-to-br from-slate-50 to-slate-100 p-2">
-                            <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                          <div className="h-32 rounded bg-gradient-to-br from-white to-[var(--panel)] p-2">
+                            <div className="flex h-full items-center justify-center text-xs text-[color:var(--muted)]">
                               Chart visualization
                               <br />
                               (Coming soon)
@@ -279,24 +279,24 @@ export default function PositionsTable({ positions, currency, equity }: Position
                           </div>
                           <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                             <div>
-                              <p className="text-slate-500">SL</p>
-                              <p className="font-mono text-slate-900">
+                              <p className="text-[color:var(--muted)]">SL</p>
+                              <p className="font-mono text-[var(--foreground)]">
                                 {pos.stop_loss > 0 ? formatPrice(pos.stop_loss, pos.symbol) : 'None'}
                               </p>
                             </div>
                             <div>
-                              <p className="text-slate-500">TP</p>
-                              <p className="font-mono text-slate-900">
+                              <p className="text-[color:var(--muted)]">TP</p>
+                              <p className="font-mono text-[var(--foreground)]">
                                 {pos.take_profit > 0 ? formatPrice(pos.take_profit, pos.symbol) : 'None'}
                               </p>
                             </div>
                             <div>
-                              <p className="text-slate-500">Swap</p>
-                              <p className="text-slate-900">{formatCurrency(pos.swap, currency)}</p>
+                              <p className="text-[color:var(--muted)]">Swap</p>
+                              <p className="text-[var(--foreground)]">{formatCurrency(pos.swap, currency)}</p>
                             </div>
                             <div>
-                              <p className="text-slate-500">Commission</p>
-                              <p className="text-slate-900">{formatCurrency(pos.commission, currency)}</p>
+                              <p className="text-[color:var(--muted)]">Commission</p>
+                              <p className="text-[var(--foreground)]">{formatCurrency(pos.commission, currency)}</p>
                             </div>
                           </div>
                         </div>

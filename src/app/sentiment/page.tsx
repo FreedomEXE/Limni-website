@@ -167,7 +167,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                     href={href}
                     className={`rounded-full px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
                       isActive
-                        ? "bg-slate-900 text-white"
+                        ? "bg-[var(--foreground)] text-[var(--background)]"
                         : "border border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent-strong)]"
                     }`}
                   >
@@ -248,19 +248,19 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                 {liquidationSummaries.map((summary) => (
                   <div
                     key={summary.baseCoin}
-                    className="rounded-xl border border-[var(--panel-border)] bg-white/90 p-4"
+                    className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/90 p-4"
                   >
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-semibold text-[var(--foreground)]">
                         {summary.baseCoin}
                       </h3>
-                      <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                      <span className="rounded-full bg-[var(--foreground)] px-3 py-1 text-xs font-semibold text-[var(--background)]">
                         {summary.dominantSide === "flat"
                           ? "BALANCED"
                           : `${summary.dominantSide.toUpperCase()} LIQS`}
                       </span>
                     </div>
-                    <div className="mt-3 grid gap-2 text-sm text-slate-700">
+                    <div className="mt-3 grid gap-2 text-sm text-[var(--foreground)]/80">
                       <div className="flex items-center justify-between">
                         <span>Long liquidations</span>
                         <span className="font-semibold text-rose-700">
@@ -287,7 +287,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                           {summary.recentClusters.map((cluster) => (
                             <div
                               key={`${cluster.exchange}-${cluster.timestamp}-${cluster.notional}`}
-                              className="flex items-center justify-between rounded-lg border border-slate-100 bg-white/70 px-3 py-2"
+                              className="flex items-center justify-between rounded-lg border border-[var(--panel-border)]/40 bg-white/70 px-3 py-2"
                             >
                               <div>
                                 <p className="font-semibold text-[var(--foreground)]">
@@ -338,7 +338,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                 {bitgetSnapshots.map((snapshot) => (
                   <div
                     key={snapshot.symbol}
-                    className="rounded-xl border border-[var(--panel-border)] bg-white/90 p-4"
+                    className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/90 p-4"
                   >
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-semibold text-[var(--foreground)]">
@@ -348,7 +348,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                         {snapshot.productType}
                       </span>
                     </div>
-                    <div className="mt-3 grid gap-2 text-sm text-slate-700">
+                    <div className="mt-3 grid gap-2 text-sm text-[var(--foreground)]/80">
                       <div className="flex items-center justify-between">
                         <span>Last price</span>
                         <span className="font-semibold">
@@ -408,7 +408,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                   {sortedAggregates.map((agg) => (
                     <tr
                       key={agg.symbol}
-                      className="border-t border-slate-100 hover:bg-white/70"
+                      className="border-t border-[var(--panel-border)]/40 hover:bg-white/70"
                     >
                       <td className="py-2 font-semibold">{agg.symbol}</td>
                       <td className="py-2">{agg.agg_long_pct.toFixed(1)}%</td>

@@ -43,7 +43,7 @@ export default function RefreshSentimentButton() {
         type="button"
         onClick={handleRefresh}
         disabled={loading}
-        className="w-full rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:bg-slate-400"
+        className="w-full rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:bg-[var(--panel-border)]"
       >
         {loading ? "Refreshing..." : "Refresh sentiment data"}
       </button>
