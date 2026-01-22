@@ -13,9 +13,14 @@ export default function AutomationPage() {
               Bot downloads and quick-reference details for Limni automation.
             </p>
           </div>
-          <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Release roster
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Last refresh: Static content
+            </span>
+            <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Release roster
+            </span>
+          </div>
         </header>
 
         <section className="grid gap-4 lg:grid-cols-3">

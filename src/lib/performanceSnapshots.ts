@@ -18,7 +18,7 @@ export type PerformanceSnapshot = {
 };
 
 function formatWeekLabel(isoValue: string) {
-  const parsed = DateTime.fromISO(isoValue, { zone: "utc" });
+  const parsed = DateTime.fromISO(isoValue, { zone: "America/New_York" });
   if (!parsed.isValid) {
     return isoValue;
   }

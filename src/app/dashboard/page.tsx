@@ -4,6 +4,7 @@ import PairPerformanceTable from "@/components/PairPerformanceTable";
 import RefreshControl from "@/components/RefreshControl";
 import BiasHeatmap from "@/components/BiasHeatmap";
 import { evaluateFreshness } from "@/lib/cotFreshness";
+import { formatDateET, formatDateTimeET } from "@/lib/time";
 import {
   COT_VARIANT,
   getAssetClass,
@@ -28,21 +29,6 @@ const numberFormatter = new Intl.NumberFormat("en-US");
 
 function formatNumber(value: number) {
   return numberFormatter.format(value);
-}
-
-function formatDate(value?: string) {
-  if (!value) {
-    return "Unknown";
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  });
 }
 
 function buildResponse(
@@ -356,7 +342,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   ) : (
                     availableDates.map((date) => (
                       <option key={date} value={date}>
-                        {formatDate(date)}
+                        {formatDateET(date)}
                       </option>
                     ))
                   )}
@@ -410,7 +396,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               Report date
             </p>
             <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatDate(combinedReportDate)}
+              {formatDateET(combinedReportDate)}
             </p>
           </div>
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
@@ -431,7 +417,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               Last refresh
             </p>
             <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatDate(combinedRefresh)}
+              {formatDateTimeET(combinedRefresh)}
             </p>
           </div>
         </section>

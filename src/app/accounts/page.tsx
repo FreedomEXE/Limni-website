@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import DashboardLayout from "@/components/DashboardLayout";
 import { readMt5Accounts } from "@/lib/mt5Store";
+import { formatDateTimeET, latestIso } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -46,23 +47,6 @@ function basketTone(state: string) {
   return "text-[color:var(--muted)]";
 }
 
-function formatTimestamp(value: string) {
-  if (!value) {
-    return "Unknown";
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function pillTone(value: number, positive = true) {
   if (positive) {
     return value >= 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800";
@@ -87,6 +71,9 @@ export default async function AccountsPage() {
   const activeBaskets = accounts.filter(
     (account) => account.basket_state === "ACTIVE",
   ).length;
+  const latestSync = latestIso(
+    accounts.map((account) => account.last_sync_utc),
+  );
 
   return (
     <DashboardLayout>
@@ -101,12 +88,17 @@ export default async function AccountsPage() {
               linked MT5 account.
             </p>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-          >
-            Connect account
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Last refresh {latestSync ? formatDateTimeET(latestSync) : "No refresh yet"}
+            </span>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+            >
+              Connect account
+            </button>
+          </div>
         </header>
 
         <section className="grid gap-4 md:grid-cols-3">
@@ -230,7 +222,7 @@ export default async function AccountsPage() {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.25em] text-[color:var(--muted)]">
-                  <span>Last sync {formatTimestamp(account.last_sync_utc)}</span>
+                  <span>Last sync {formatDateTimeET(account.last_sync_utc)}</span>
                   <span className="text-[color:var(--accent-strong)]">
                     View details
                   </span>

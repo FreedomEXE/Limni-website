@@ -11,6 +11,8 @@ import { getPairPerformance } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
+import { readMarketSnapshot } from "@/lib/priceStore";
+import { formatDateTimeET, latestIso } from "@/lib/time";
 import {
   listPerformanceWeeks,
   readAllPerformanceSnapshots,
@@ -75,6 +77,22 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     }
   }
   const hasSnapshots = weekSnapshots.length > 0;
+  let latestPriceRefresh: string | null = null;
+  try {
+    const marketSnapshots = await Promise.all(
+      assetClasses.map((asset) =>
+        readMarketSnapshot(selectedWeek ?? undefined, asset.id),
+      ),
+    );
+    latestPriceRefresh = latestIso(
+      marketSnapshots.map((snapshot) => snapshot?.last_refresh_utc),
+    );
+  } catch (error) {
+    console.error(
+      "Market snapshot load failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 
   function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
     const pairDefs = PAIRS_BY_ASSET_CLASS[assetId as keyof typeof PAIRS_BY_ASSET_CLASS] ?? [];
@@ -293,6 +311,12 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Last refresh{" "}
+              {latestPriceRefresh
+                ? formatDateTimeET(latestPriceRefresh)
+                : "No refresh yet"}
+            </span>
             {weekOptions.length > 0 ? (
               <form action="/performance" method="get" className="flex items-center gap-3">
                 <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">

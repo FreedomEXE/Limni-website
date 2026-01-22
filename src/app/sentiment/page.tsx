@@ -6,6 +6,7 @@ import { fetchLiquidationSummary } from "@/lib/coinank";
 import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { getLatestAggregates, readSourceHealth } from "@/lib/sentiment/store";
 import { getSessionRole } from "@/lib/auth";
+import { formatDateTimeET, latestIso } from "@/lib/time";
 import {
   SENTIMENT_ASSET_CLASSES,
   ALL_SENTIMENT_SYMBOLS,
@@ -58,13 +59,6 @@ function formatUsd(value: number) {
   return usdFormatter.format(value);
 }
 
-function formatTime(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleString();
-}
 
 type SentimentPageProps = {
   searchParams?:
@@ -146,6 +140,16 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
   const sortedAggregates = filteredAggregates.sort((a, b) =>
     a.symbol.localeCompare(b.symbol),
   );
+  const latestAggregateTimestamp = latestIso(
+    filteredAggregates.map((agg) => agg.timestamp_utc),
+  );
+  const latestSourceTimestamp = latestIso(
+    sources.map((source) => source.last_success_at),
+  );
+  const latestSentimentRefresh = latestIso([
+    latestAggregateTimestamp,
+    latestSourceTimestamp,
+  ]);
 
   const crowdedLong = filteredAggregates.filter(
     (a) => a.crowding_state === "CROWDED_LONG",
@@ -158,7 +162,8 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header>
+        <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             {[{ id: "all", label: "ALL" }, ...Object.entries(SENTIMENT_ASSET_CLASSES).map(([id, info]) => ({ id, label: info.label }))].map(
               (item) => {
@@ -187,6 +192,13 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
             Aggregated positioning data from IG, OANDA, and Myfxbook. Identify
             crowding and path risk across FX pairs.
           </p>
+          </div>
+          <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+            Last refresh{" "}
+            {latestSentimentRefresh
+              ? formatDateTimeET(latestSentimentRefresh)
+              : "No refresh yet"}
+          </div>
         </header>
 
         <section className="grid gap-4 md:grid-cols-4">
@@ -239,7 +251,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
               </div>
               {liquidationSummaries.length > 0 ? (
                 <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                  Updated {formatTime(liquidationSummaries[0].lastUpdated)}
+                  Updated {formatDateTimeET(liquidationSummaries[0].lastUpdated)}
                 </p>
               ) : null}
             </div>
@@ -298,7 +310,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                                 <p className="font-semibold text-[var(--foreground)]">
                                   {cluster.exchange} {cluster.contract ?? ""}
                                 </p>
-                                <p>{formatTime(cluster.timestamp)}</p>
+                                <p>{formatDateTimeET(cluster.timestamp)}</p>
                               </div>
                               <div className="text-right">
                                 <p
@@ -378,7 +390,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                     <p className="mt-3 text-xs text-[var(--muted)]">
                       Updated{" "}
                       {snapshot.lastPriceTime
-                        ? formatTime(snapshot.lastPriceTime)
+                        ? formatDateTimeET(snapshot.lastPriceTime)
                         : "unknown"}
                     </p>
                   </div>
@@ -469,7 +481,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                       {source.last_success_at ? (
                         <p>
                           Last success:{" "}
-                          {new Date(source.last_success_at).toLocaleString()}
+                          {formatDateTimeET(source.last_success_at)}
                         </p>
                       ) : (
                         <p>No successful fetches yet</p>

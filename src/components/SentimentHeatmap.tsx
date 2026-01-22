@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
+import { formatDateTimeET, latestIso } from "@/lib/time";
 
 type SentimentHeatmapProps = {
   aggregates: SentimentAggregate[];
@@ -46,6 +47,9 @@ export default function SentimentHeatmap({
   }
 
   const sorted = [...aggregates].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  const latestAggregateTimestamp = latestIso(
+    aggregates.map((aggregate) => aggregate.timestamp_utc),
+  );
 
   return (
     <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
@@ -112,9 +116,9 @@ export default function SentimentHeatmap({
             <span>Neutral</span>
           </div>
         </div>
-        {aggregates[0] && (
+        {latestAggregateTimestamp && (
           <p className="text-xs text-[var(--muted)]">
-            Updated {new Date(aggregates[0].timestamp_utc).toLocaleTimeString()}
+            Updated {formatDateTimeET(latestAggregateTimestamp)}
           </p>
         )}
       </div>

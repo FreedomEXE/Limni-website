@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Mt5Position } from "@/lib/mt5Store";
+import { formatDateTimeET } from "@/lib/time";
 
 type PositionGroup = {
   symbol: string;
@@ -253,12 +254,7 @@ export default function PositionsTable({ positions, currency, equity }: Position
                         <div>
                           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Open time</p>
                           <p className="text-xs text-[color:var(--muted)]">
-                            {new Date(pos.open_time).toLocaleString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            {formatDateTimeET(pos.open_time)}
                           </p>
                         </div>
                       </div>

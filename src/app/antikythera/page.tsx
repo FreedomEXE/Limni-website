@@ -6,17 +6,10 @@ import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
+import { formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 
 export const dynamic = "force-dynamic";
-
-function formatTime(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleString();
-}
 
 export default async function AntikytheraPage() {
   const assetClasses = listAssetClasses();
@@ -85,6 +78,16 @@ export default async function AntikytheraPage() {
   const topSignals = [...allSignals]
     .sort((a, b) => b.confidence - a.confidence)
     .slice(0, 6);
+  const latestSnapshotRefresh = latestIso(
+    assetClasses.map((asset) => snapshots.get(asset.id)?.last_refresh_utc),
+  );
+  const latestSentimentRefresh = latestIso(
+    sentiment.map((item) => item.timestamp_utc),
+  );
+  const latestAntikytheraRefresh = latestIso([
+    latestSnapshotRefresh,
+    latestSentimentRefresh,
+  ]);
 
   return (
     <DashboardLayout>
@@ -98,7 +101,13 @@ export default async function AntikytheraPage() {
               Signal-first intelligence blending bias, sentiment, and liquidation cues.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Last refresh{" "}
+              {latestAntikytheraRefresh
+                ? formatDateTimeET(latestAntikytheraRefresh)
+                : "No refresh yet"}
+            </span>
             <Link
               href="/dashboard"
               className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
@@ -298,7 +307,7 @@ export default async function AntikytheraPage() {
                   </p>
                 </div>
                 <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Updated {formatTime(summary.lastUpdated)}
+                  Updated {formatDateTimeET(summary.lastUpdated)}
                 </span>
               </div>
               <div className="mt-4 grid gap-3 text-sm text-[var(--foreground)]/80">

@@ -4,6 +4,7 @@ import { getMt5AccountById } from "@/lib/mt5Store";
 import PositionsTable from "@/components/PositionsTable";
 import DashboardLayout from "@/components/DashboardLayout";
 import RefreshButton from "@/components/RefreshButton";
+import { formatDateET, formatDateTimeET } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -39,38 +40,6 @@ function formatPercent(value: number) {
   }
   const sign = value > 0 ? "+" : value < 0 ? "" : "";
   return `${sign}${percentFormatter.format(value)}%`;
-}
-
-function formatDate(value: string) {
-  if (!value) {
-    return "Unknown";
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  });
-}
-
-function formatDateTime(value: string) {
-  if (!value) {
-    return "Unknown";
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function formatDuration(seconds: number) {
@@ -163,7 +132,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
           </div>
           <div className="flex items-center gap-3">
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3 text-sm text-[color:var(--muted)] shadow-sm">
-              Last sync {formatDateTime(account?.last_sync_utc ?? "")}
+              Last sync {formatDateTimeET(account?.last_sync_utc ?? "")}
             </div>
             <RefreshButton />
           </div>
@@ -240,7 +209,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                   Report date
                 </p>
                 <p className="mt-1 font-semibold">
-                  {formatDate(account.report_date)}
+                  {formatDateET(account.report_date)}
                 </p>
               </div>
               <div>

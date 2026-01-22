@@ -1,5 +1,7 @@
 "use client";
 
+import { formatDateTimeET } from "@/lib/time";
+
 type RefreshControlProps = {
   lastRefreshUtc?: string | null;
 };
@@ -14,7 +16,7 @@ export default function RefreshControl({ lastRefreshUtc }: RefreshControlProps) 
         <p className="text-sm text-[color:var(--muted)]">
           COT last:{" "}
           {lastRefreshUtc && lastRefreshUtc.length > 0
-            ? lastRefreshUtc
+            ? formatDateTimeET(lastRefreshUtc)
             : "No refresh yet"}
         </p>
         <p className="text-xs text-[color:var(--muted)]">

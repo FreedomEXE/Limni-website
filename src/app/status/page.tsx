@@ -7,6 +7,7 @@ import { readMarketSnapshot } from "@/lib/priceStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
 import { readMt5Accounts } from "@/lib/mt5Store";
 import { getPriceSymbolCandidates } from "@/lib/pricePerformance";
+import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +122,18 @@ export default async function StatusPage() {
     sentimentError,
     accountsError,
   });
+  const latestSentimentTimestamp = latestIso(
+    sentimentAggregates.map((aggregate) => aggregate.timestamp_utc),
+  );
+  const latestAccountSync = latestIso(
+    accounts.map((account) => account.last_sync_utc),
+  );
+  const latestStatusRefresh = latestIso([
+    cotSnapshot?.last_refresh_utc ?? null,
+    marketSnapshot?.last_refresh_utc ?? null,
+    latestSentimentTimestamp,
+    latestAccountSync,
+  ]);
 
   const health: HealthItem[] = [
     {
@@ -170,11 +183,19 @@ export default async function StatusPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header>
-          <h1 className="text-3xl font-semibold text-[var(--foreground)]">System Status</h1>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Diagnostics for deployments, data sources, and MT5 connectivity.
-          </p>
+        <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold text-[var(--foreground)]">System Status</h1>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              Diagnostics for deployments, data sources, and MT5 connectivity.
+            </p>
+          </div>
+          <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+            Last refresh{" "}
+            {latestStatusRefresh
+              ? formatDateTimeET(latestStatusRefresh)
+              : "No refresh yet"}
+          </div>
         </header>
 
         <StatusPanel issues={issues} />
@@ -227,7 +248,7 @@ export default async function StatusPage() {
                     </p>
                     <span className="text-xs text-[var(--muted)]">
                       {snapshot.lastRefreshUtc
-                        ? new Date(snapshot.lastRefreshUtc).toLocaleString()
+                        ? formatDateTimeET(snapshot.lastRefreshUtc)
                         : "No refresh yet"}
                     </span>
                   </div>
@@ -274,7 +295,7 @@ export default async function StatusPage() {
                       {asset.assetLabel}
                     </p>
                     <span className="text-xs text-[var(--muted)]">
-                      {asset.reportDate ?? "No report date"}
+                      {asset.reportDate ? formatDateET(asset.reportDate) : "No report date"}
                     </span>
                   </div>
                   <div className="mt-3 max-h-64 overflow-y-auto text-xs text-[var(--muted)]">

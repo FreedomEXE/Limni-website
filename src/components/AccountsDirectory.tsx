@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 
 import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
+import { formatDateTimeET } from "@/lib/time";
 
 const percentFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -43,23 +44,6 @@ function formatPercent(value: number) {
   }
   const sign = value > 0 ? "+" : value < 0 ? "" : "";
   return `${sign}${percentFormatter.format(value)}%`;
-}
-
-function formatTimestamp(value: string) {
-  if (!value) {
-    return "Unknown";
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function statusTone(status: string) {
@@ -332,7 +316,7 @@ export default function AccountsDirectory({
                 </div>
 
                 <div className="mt-4 flex items-center justify-between text-xs uppercase tracking-[0.25em] text-[color:var(--muted)]">
-                  <span>Last sync {formatTimestamp(account.last_sync_utc)}</span>
+                  <span>Last sync {formatDateTimeET(account.last_sync_utc)}</span>
                   <span className="text-[color:var(--accent-strong)]">
                     View details
                   </span>
