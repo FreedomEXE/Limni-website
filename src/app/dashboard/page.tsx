@@ -458,11 +458,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               {currencyRows.length === 0 ? (
                 <p className="text-sm text-[color:var(--muted)]">No data yet.</p>
               ) : (
-                <BiasHeatmap
-                  rows={currencyRows}
-                  showAssetLabel={isAll}
-                  formatNumber={formatNumber}
-                />
+                <BiasHeatmap rows={currencyRows} showAssetLabel={isAll} />
               )}
             </div>
           </div>

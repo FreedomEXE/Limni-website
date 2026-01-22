@@ -80,7 +80,7 @@ export default function SentimentHeatmap({
               <div className="text-xs font-bold text-white">{agg.symbol}</div>
             </div>
 
-            <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
               <div className="text-center text-xs text-white">
                 <p className="font-semibold">{agg.symbol}</p>
                 <p className="mt-1">Long: {agg.agg_long_pct.toFixed(1)}%</p>

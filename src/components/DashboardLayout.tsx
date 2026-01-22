@@ -67,7 +67,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   <img
                     src="/limni-icon.svg"
                     alt="Limni"
-                    className="size-8"
+                    className="size-10 scale-125"
                   />
                 </div>
                 {!isCollapsed ? (
@@ -114,8 +114,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                       : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
                   }`}
                 >
-                  <span className="flex size-12 items-center justify-center overflow-hidden rounded-2xl border border-[var(--panel-border)] text-[11px] font-semibold tracking-[0.2em] text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
-                    <img src={item.icon} alt="" className="size-12 scale-110 object-cover" />
+                  <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] text-[11px] font-semibold tracking-[0.2em] text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
+                    <img src={item.icon} alt="" className="size-12 scale-150 object-cover" />
                   </span>
                   {!isCollapsed ? (
                     <span className="tracking-tight">{item.label}</span>

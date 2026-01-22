@@ -15,7 +15,6 @@ type BiasRow = {
 type BiasHeatmapProps = {
   rows: BiasRow[];
   showAssetLabel: boolean;
-  formatNumber: (value: number) => string;
 };
 
 function biasTileTone(bias: string) {
@@ -31,9 +30,10 @@ function biasTileTone(bias: string) {
 export default function BiasHeatmap({
   rows,
   showAssetLabel,
-  formatNumber,
 }: BiasHeatmapProps) {
   const [active, setActive] = useState<BiasRow | null>(null);
+  const numberFormatter = new Intl.NumberFormat("en-US");
+  const formatNumber = (value: number) => numberFormatter.format(value);
 
   return (
     <>
@@ -56,6 +56,14 @@ export default function BiasHeatmap({
                 </span>
               ) : null}
               <span className="mt-1 text-sm font-semibold">{row.label}</span>
+            </div>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+              <div className="text-center text-xs text-white">
+                <p className="font-semibold">{row.label}</p>
+                <p className="mt-1">Long: {formatNumber(row.long)}</p>
+                <p>Short: {formatNumber(row.short)}</p>
+                <p className="mt-1 text-[10px]">Net: {formatNumber(row.net)}</p>
+              </div>
             </div>
           </button>
         ))}

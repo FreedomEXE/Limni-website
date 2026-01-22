@@ -60,6 +60,18 @@ export default function SignalTiles({
                 </div>
                 <div className="mt-2 text-sm font-semibold">{signal.pair}</div>
               </div>
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+                <div className="text-center text-xs text-white">
+                  <p className="font-semibold">
+                    {signal.pair} {signal.direction}
+                  </p>
+                  <ul className="mt-2 space-y-1 text-[10px] text-white/80">
+                    {signal.reasons.slice(0, 3).map((reason) => (
+                      <li key={`${signal.pair}-${reason}`}>- {reason}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </button>
           ))}
         </div>
@@ -85,6 +97,16 @@ export default function SignalTiles({
                     {topSignal ? topSignal.pair : group.hasHistory ? "No aligned signals" : "Not enough history"}
                   </div>
                 </div>
+                {topSignal ? (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+                    <div className="text-center text-xs text-white">
+                      <p className="font-semibold">{group.label}</p>
+                      <p className="mt-1">
+                        {topSignal.pair} {topSignal.direction}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
               </button>
             );
           })}
@@ -109,6 +131,18 @@ export default function SignalTiles({
                   <div className="text-sm font-semibold">{signal.pair}</div>
                   <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">
                     {group.label}
+                  </div>
+                </div>
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+                  <div className="text-center text-xs text-white">
+                    <p className="font-semibold">
+                      {signal.pair} {signal.direction}
+                    </p>
+                    <ul className="mt-2 space-y-1 text-[10px] text-white/80">
+                      {signal.reasons.slice(0, 3).map((reason) => (
+                        <li key={`${signal.pair}-${reason}`}>- {reason}</li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
               </button>
