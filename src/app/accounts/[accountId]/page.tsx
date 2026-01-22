@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getMt5AccountById } from "@/lib/mt5Store";
@@ -145,12 +144,6 @@ export default async function AccountPage({ params }: AccountPageProps) {
         ) : null}
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
-            <Link
-              href="/accounts"
-              className="text-xs uppercase tracking-[0.25em] text-[color:var(--muted)] transition hover:text-[color:var(--accent-strong)]"
-            >
-              Back to accounts
-            </Link>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-semibold text-[var(--foreground)]">
                 {account?.label ?? "Account"}

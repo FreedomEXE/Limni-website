@@ -24,6 +24,12 @@ export type ModelPerformance = {
   total: number;
   note: string;
   returns: Array<{ pair: string; percent: number }>;
+  pair_details: Array<{
+    pair: string;
+    direction: Direction;
+    reason: string[];
+    percent: number | null;
+  }>;
   stats: {
     avg_return: number;
     median_return: number;
@@ -141,6 +147,44 @@ function buildModelPairs(options: {
   return buildBiasPairs(assetClass, snapshot, biasMode);
 }
 
+function sentimentReason(agg: SentimentAggregate | undefined, direction: Direction) {
+  if (!agg) {
+    return ["Sentiment signal"];
+  }
+  if (agg.flip_state === "FLIPPED_UP") {
+    return ["Sentiment flip up"];
+  }
+  if (agg.flip_state === "FLIPPED_DOWN") {
+    return ["Sentiment flip down"];
+  }
+  if (agg.crowding_state === "CROWDED_LONG") {
+    return ["Retail crowding long (fade)"];
+  }
+  if (agg.crowding_state === "CROWDED_SHORT") {
+    return ["Retail crowding short (fade)"];
+  }
+  return [`Sentiment ${direction.toLowerCase()} bias`];
+}
+
+function biasReason(
+  model: PerformanceModel,
+  assetClass: AssetClass,
+  info: PairSnapshot,
+) {
+  const label =
+    model === "blended"
+      ? "Blended"
+      : model === "dealer"
+        ? "Dealer"
+        : "Commercial";
+  if (assetClass === "fx") {
+    return [
+      `${label} bias: base ${info.base_bias.toLowerCase()} vs quote ${info.quote_bias.toLowerCase()}`,
+    ];
+  }
+  return [`${label} bias: base ${info.base_bias.toLowerCase()}`];
+}
+
 export async function computeModelPerformance(options: {
   model: PerformanceModel;
   assetClass: AssetClass;
@@ -149,12 +193,38 @@ export async function computeModelPerformance(options: {
   performance?: Awaited<ReturnType<typeof getPairPerformance>>;
 }): Promise<ModelPerformance> {
   const { model, assetClass, snapshot, sentiment, performance } = options;
-  const pairs = buildModelPairs({
-    model,
-    assetClass,
-    snapshot,
-    sentiment,
-  });
+  const sentimentMap = new Map(sentiment.map((item) => [item.symbol, item]));
+  let pairs: Record<string, PairSnapshot> = {};
+  const reasonMap = new Map<string, string[]>();
+
+  if (model === "sentiment") {
+    pairs = buildSentimentPairs(assetClass, sentiment);
+    Object.entries(pairs).forEach(([pair, info]) => {
+      const agg = sentimentMap.get(pair);
+      reasonMap.set(pair, sentimentReason(agg, info.direction));
+    });
+  } else if (model === "antikythera") {
+    const signals = buildAntikytheraSignals({
+      assetClass,
+      snapshot,
+      sentiment,
+      maxSignals: 50,
+    });
+    signals.forEach((signal) => {
+      pairs[signal.pair] = pairSnapshot(signal.direction);
+      reasonMap.set(signal.pair, signal.reasons);
+    });
+  } else {
+    pairs = buildModelPairs({
+      model,
+      assetClass,
+      snapshot,
+      sentiment,
+    });
+    Object.entries(pairs).forEach(([pair, info]) => {
+      reasonMap.set(pair, biasReason(model, assetClass, info));
+    });
+  }
   const total = Object.keys(pairs).length;
   if (total === 0) {
     return {
@@ -164,6 +234,7 @@ export async function computeModelPerformance(options: {
       total: 0,
       note: "No pairs.",
       returns: [],
+      pair_details: [],
       stats: {
         avg_return: 0,
         median_return: 0,
@@ -184,17 +255,30 @@ export async function computeModelPerformance(options: {
     }));
 
   const returns: Array<{ pair: string; percent: number }> = [];
+  const pairDetails: ModelPerformance["pair_details"] = [];
   let percent = 0;
   let priced = 0;
   for (const [pair, info] of Object.entries(pairs)) {
     const result = perf.performance[pair];
     if (!result) {
+      pairDetails.push({
+        pair,
+        direction: info.direction,
+        reason: reasonMap.get(pair) ?? ["Bias alignment"],
+        percent: null,
+      });
       continue;
     }
     const adjusted = result.percent * directionFactor(info.direction);
     percent += adjusted;
     returns.push({ pair, percent: adjusted });
     priced += 1;
+    pairDetails.push({
+      pair,
+      direction: info.direction,
+      reason: reasonMap.get(pair) ?? ["Bias alignment"],
+      percent: adjusted,
+    });
   }
 
   return {
@@ -204,6 +288,7 @@ export async function computeModelPerformance(options: {
     total,
     note: perf.note,
     returns,
+    pair_details: pairDetails,
     stats: computeReturnStats(returns),
   };
 }

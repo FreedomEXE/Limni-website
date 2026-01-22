@@ -118,6 +118,32 @@ ALTER TABLE market_snapshots
 CREATE INDEX IF NOT EXISTS idx_market_snapshots_week ON market_snapshots(week_open_utc DESC);
 CREATE INDEX IF NOT EXISTS idx_market_snapshots_asset_week ON market_snapshots(asset_class, week_open_utc DESC);
 
+-- Performance Lab Snapshots (weekly)
+CREATE TABLE IF NOT EXISTS performance_snapshots (
+  id SERIAL PRIMARY KEY,
+  week_open_utc TIMESTAMP NOT NULL,
+  asset_class VARCHAR(20) NOT NULL DEFAULT 'fx',
+  model VARCHAR(20) NOT NULL,
+  report_date DATE,
+  percent DECIMAL(10, 4) NOT NULL DEFAULT 0,
+  priced INTEGER NOT NULL DEFAULT 0,
+  total INTEGER NOT NULL DEFAULT 0,
+  note TEXT,
+  returns JSONB NOT NULL,
+  pair_details JSONB NOT NULL,
+  stats JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE performance_snapshots
+  DROP CONSTRAINT IF EXISTS performance_snapshots_week_asset_model_key;
+ALTER TABLE performance_snapshots
+  ADD CONSTRAINT performance_snapshots_week_asset_model_key UNIQUE (week_open_utc, asset_class, model);
+
+CREATE INDEX IF NOT EXISTS idx_performance_snapshots_week ON performance_snapshots(week_open_utc DESC);
+CREATE INDEX IF NOT EXISTS idx_performance_snapshots_asset_week ON performance_snapshots(asset_class, week_open_utc DESC);
+CREATE INDEX IF NOT EXISTS idx_performance_snapshots_model_week ON performance_snapshots(model, week_open_utc DESC);
+
 -- Sentiment Data
 CREATE TABLE IF NOT EXISTS sentiment_data (
   id SERIAL PRIMARY KEY,

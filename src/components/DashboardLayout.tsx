@@ -12,6 +12,11 @@ type NavItem = {
   icon: string;
 };
 
+type BackLink = {
+  href: string;
+  label: string;
+};
+
 const NAV_ITEMS: NavItem[] = [
   { href: "/antikythera", label: "Antikythera", icon: "A" },
   { href: "/automation", label: "Automation", icon: "R" },
@@ -20,9 +25,20 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/status", label: "Status", icon: "S" },
 ];
 
+function getBackLink(pathname: string): BackLink | null {
+  if (pathname.startsWith("/accounts/")) {
+    return { href: "/accounts", label: "Back to accounts" };
+  }
+  if (pathname !== "/antikythera") {
+    return { href: "/antikythera", label: "Back to overview" };
+  }
+  return null;
+}
+
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const backLink = getBackLink(pathname);
 
   return (
     <div className="flex min-h-screen bg-[var(--background)]">
@@ -122,7 +138,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="flex-1 overflow-x-hidden">
-        <div className="mx-auto max-w-7xl px-6 py-8">{children}</div>
+        <div className="mx-auto max-w-7xl px-6 py-8">
+          {backLink ? (
+            <div className="mb-4">
+              <Link
+                href={backLink.href}
+                className="text-xs uppercase tracking-[0.25em] text-[color:var(--muted)] transition hover:text-[color:var(--accent-strong)]"
+              >
+                {backLink.label}
+              </Link>
+            </div>
+          ) : null}
+          {children}
+        </div>
       </main>
     </div>
   );

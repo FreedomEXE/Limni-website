@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ModelPerformance, PerformanceModel } from "@/lib/performanceLab";
 
 type Section = {
@@ -233,6 +233,19 @@ export default function PerformanceGrid({
   const [active, setActive] = useState<ActiveCard | null>(null);
   const [accountSize, setAccountSize] = useState(100000);
 
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActive(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [active]);
+
   const modal = useMemo(() => {
     if (!active) {
       return null;
@@ -250,6 +263,8 @@ export default function PerformanceGrid({
         onClick={() => setActive(null)}
       >
         <div
+          role="dialog"
+          aria-modal="true"
           className="w-full max-w-3xl overflow-hidden rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-2xl"
           onClick={(event) => event.stopPropagation()}
         >
@@ -269,6 +284,7 @@ export default function PerformanceGrid({
                   setActive(null);
                 }}
                 className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                aria-label="Close details"
               >
                 Close
               </button>
@@ -331,6 +347,49 @@ export default function PerformanceGrid({
                 </p>
                 <div className="mt-4">
                   <MiniHistogram returns={performance.returns} />
+                </div>
+              </div>
+              <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Basket pairs
+                  </p>
+                  <span className="text-xs text-[color:var(--muted)]">
+                    {performance.pair_details.length} pairs
+                  </span>
+                </div>
+                <div className="mt-3 max-h-64 space-y-3 overflow-y-auto text-xs text-[color:var(--muted)]">
+                  {performance.pair_details.map((detail) => (
+                    <div
+                      key={detail.pair}
+                      className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold text-[var(--foreground)]">
+                          {detail.pair}
+                        </span>
+                        <span
+                          className={`text-xs font-semibold ${
+                            detail.direction === "LONG"
+                              ? "text-emerald-700"
+                              : "text-rose-700"
+                          }`}
+                        >
+                          {detail.direction}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-[color:var(--muted)]">
+                        {detail.percent === null
+                          ? "No price data yet."
+                          : `Return: ${formatPercent(detail.percent)}`}
+                      </div>
+                      <ul className="mt-1 text-[11px] text-[color:var(--muted)]">
+                        {detail.reason.map((item) => (
+                          <li key={`${detail.pair}-${item}`}>- {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">

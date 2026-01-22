@@ -17,29 +17,15 @@ function formatTime(value: string) {
   return parsed.toLocaleString();
 }
 
-function signalTier(confidence: number) {
+function signalTileTone(direction: "LONG" | "SHORT", confidence: number) {
+  const base = direction === "LONG" ? "bg-emerald-500" : "bg-rose-500";
   if (confidence >= 85) {
-    return {
-      label: "High confidence",
-      badge:
-        "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent-strong)]",
-      card: "border-[var(--accent)]/20 bg-[var(--panel)]",
-    };
+    return `${base} opacity-100`;
   }
   if (confidence >= 75) {
-    return {
-      label: "Strong",
-      badge:
-        "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)]/80",
-      card: "border-[var(--panel-border)] bg-[var(--panel)]",
-    };
+    return `${base} opacity-80`;
   }
-  return {
-    label: "Developing",
-    badge:
-      "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[color:var(--muted)]",
-    card: "border-[var(--panel-border)] bg-[var(--panel)]",
-  };
+  return `${base} opacity-60`;
 }
 
 export default async function AntikytheraPage() {
@@ -157,37 +143,45 @@ export default async function AntikytheraPage() {
               No aligned signals yet. Check Bias and Sentiment maps for context.
             </p>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {topSignals.map((signal) => {
-                const tier = signalTier(signal.confidence);
-                return (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+              {topSignals.map((signal) => (
+                <div
+                  key={`${signal.assetId}-${signal.pair}-${signal.direction}`}
+                  className="group relative overflow-hidden rounded-lg border border-[var(--panel-border)]"
+                >
                   <div
-                    key={`${signal.assetId}-${signal.pair}-${signal.direction}`}
-                    className={`rounded-xl border p-4 shadow-sm ${tier.card}`}
+                    className={`flex flex-col items-center justify-center p-4 text-white transition ${signalTileTone(
+                      signal.direction,
+                      signal.confidence,
+                    )}`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                          {signal.assetLabel}
-                        </p>
-                        <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-                          {signal.pair} - {signal.direction}
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${tier.badge}`}
-                      >
-                        {signal.confidence.toFixed(0)}% {tier.label}
-                      </span>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">
+                      {signal.assetLabel}
                     </div>
-                    <ul className="mt-3 space-y-1 text-sm text-[color:var(--muted)]">
-                      {signal.reasons.map((reason) => (
-                        <li key={reason}>- {reason}</li>
-                      ))}
-                    </ul>
+                    <div className="mt-2 text-sm font-semibold">
+                      {signal.pair}
+                    </div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">
+                      {signal.direction} {signal.confidence.toFixed(0)}%
+                    </div>
                   </div>
-                );
-              })}
+                  <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+                    <div className="text-center text-xs text-white">
+                      <p className="font-semibold">
+                        {signal.pair} {signal.direction}
+                      </p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/70">
+                        {signal.assetLabel}
+                      </p>
+                      <ul className="mt-2 space-y-1 text-[10px] text-white/80">
+                        {signal.reasons.map((reason) => (
+                          <li key={reason}>- {reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>
@@ -202,30 +196,48 @@ export default async function AntikytheraPage() {
                 Where the strongest signals cluster by asset class.
               </p>
             </div>
-            <div className="grid gap-3">
+            <div className="grid gap-3 md:grid-cols-2">
               {signalGroups.map((group) => {
                 const topSignal = group.signals[0];
-                const tier = topSignal ? signalTier(topSignal.confidence) : null;
+                const tone = topSignal
+                  ? signalTileTone(topSignal.direction, topSignal.confidence)
+                  : "bg-[var(--panel-border)]/60 opacity-50";
                 return (
                   <div
                     key={group.asset.id}
-                    className={`flex items-center justify-between rounded-lg border px-4 py-3 ${tier ? tier.card : "border-[var(--panel-border)] bg-[var(--panel)]/70"}`}
+                    className="group relative overflow-hidden rounded-lg border border-[var(--panel-border)]"
                   >
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--foreground)]">
+                    <div
+                      className={`flex flex-col items-start justify-center p-4 text-white transition ${tone}`}
+                    >
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">
                         {group.asset.label}
-                      </p>
-                      <p className="text-xs text-[color:var(--muted)]">
-                        {group.signals.length} active signals
-                      </p>
+                      </div>
+                      <div className="mt-2 text-sm font-semibold">
+                        {topSignal
+                          ? `${topSignal.pair} ${topSignal.direction}`
+                          : group.hasHistory
+                            ? "No aligned signals"
+                            : "Not enough history"}
+                      </div>
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">
+                        {group.signals.length} active
+                      </div>
                     </div>
-                    <div className="text-right text-xs text-[color:var(--muted)]">
-                      {topSignal
-                        ? `${topSignal.pair} ${topSignal.direction}`
-                        : group.hasHistory
-                          ? "No aligned signals"
-                          : "Not enough history"}
-                    </div>
+                    {group.signals.length > 0 ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+                        <div className="text-center text-xs text-white">
+                          <p className="font-semibold">{group.asset.label}</p>
+                          <ul className="mt-2 space-y-1 text-[10px] text-white/80">
+                            {group.signals.slice(0, 4).map((signal) => (
+                              <li key={`${group.asset.id}-${signal.pair}`}>
+                                {signal.pair} {signal.direction}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -303,37 +315,39 @@ export default async function AntikytheraPage() {
                     No aligned signals yet.
                   </p>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {group.signals.map((signal) => {
-                      const tier = signalTier(signal.confidence);
-                      return (
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                    {group.signals.map((signal) => (
+                      <div
+                        key={`${group.asset.id}-${signal.pair}-${signal.direction}`}
+                        className="group relative overflow-hidden rounded-lg border border-[var(--panel-border)]"
+                      >
                         <div
-                          key={`${group.asset.id}-${signal.pair}-${signal.direction}`}
-                          className={`rounded-xl border p-4 ${tier.card}`}
+                          className={`flex flex-col items-center justify-center p-4 text-white transition ${signalTileTone(
+                            signal.direction,
+                            signal.confidence,
+                          )}`}
                         >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                                {signal.pair}
-                              </p>
-                              <p className="text-lg font-semibold text-[var(--foreground)]">
-                                {signal.direction}
-                              </p>
-                            </div>
-                            <span
-                              className={`rounded-full border px-3 py-1 text-xs font-semibold ${tier.badge}`}
-                            >
-                              {signal.confidence.toFixed(0)}% {tier.label}
-                            </span>
+                          <div className="text-sm font-semibold">
+                            {signal.pair}
                           </div>
-                          <ul className="mt-3 space-y-1 text-sm text-[color:var(--muted)]">
-                            {signal.reasons.map((reason) => (
-                              <li key={reason}>- {reason}</li>
-                            ))}
-                          </ul>
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">
+                            {signal.direction} {signal.confidence.toFixed(0)}%
+                          </div>
                         </div>
-                      );
-                    })}
+                        <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+                          <div className="text-center text-xs text-white">
+                            <p className="font-semibold">
+                              {signal.pair} {signal.direction}
+                            </p>
+                            <ul className="mt-2 space-y-1 text-[10px] text-white/80">
+                              {signal.reasons.map((reason) => (
+                                <li key={reason}>- {reason}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

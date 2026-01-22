@@ -44,6 +44,24 @@ function formatDate(value?: string) {
   });
 }
 
+function biasTileTone(bias: string) {
+  if (bias === "BULLISH") {
+    return "bg-emerald-500";
+  }
+  if (bias === "BEARISH") {
+    return "bg-rose-500";
+  }
+  return "bg-[var(--panel-border)]/60";
+}
+
+function biasIntensity(net: number) {
+  const abs = Math.abs(net);
+  if (abs >= 150000) return "opacity-100";
+  if (abs >= 75000) return "opacity-80";
+  if (abs >= 25000) return "opacity-60";
+  return "opacity-40";
+}
+
 function buildResponse(
   snapshot: Awaited<ReturnType<typeof readSnapshot>>,
   assetClass: ReturnType<typeof getAssetClass>,
@@ -454,79 +472,48 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </p>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-xs uppercase text-[color:var(--muted)]">
-                  <tr>
-                    {isAll ? <th className="py-2">Asset</th> : null}
-                    <th className="py-2">{biasLabel}</th>
-                    <th className="py-2">
-                      {biasMode === "blended"
-                        ? "Blended long"
-                        : biasMode === "dealer"
-                          ? "Dealer long"
-                          : "Commercial long"}
-                    </th>
-                    <th className="py-2">
-                      {biasMode === "blended"
-                        ? "Blended short"
-                        : biasMode === "dealer"
-                          ? "Dealer short"
-                          : "Commercial short"}
-                    </th>
-                    <th className="py-2">Net</th>
-                    <th className="py-2">Bias</th>
-                  </tr>
-                </thead>
-                <tbody className="text-[var(--foreground)]">
-                  {currencyRows.length === 0 ? (
-                    <tr>
-                      <td className="py-3 text-sm text-[color:var(--muted)]">
-                        No data yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    currencyRows.map((row) => (
-                      <tr
-                        key={`${row.assetLabel}-${row.currency}`}
-                        className={`border-t border-[var(--panel-border)] ${
-                          row.bias === "BULLISH"
-                            ? "bg-emerald-50/60"
-                            : row.bias === "BEARISH"
-                              ? "bg-rose-50/60"
-                              : ""
-                        }`}
+              {currencyRows.length === 0 ? (
+                <p className="text-sm text-[color:var(--muted)]">No data yet.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+                  {currencyRows.map((row) => (
+                    <div
+                      key={`${row.assetLabel}-${row.currency}`}
+                      className="group relative overflow-hidden rounded-lg border border-[var(--panel-border)]"
+                    >
+                      <div
+                        className={`flex flex-col items-start justify-center p-4 text-white transition ${
+                          biasTileTone(row.bias)
+                        } ${biasIntensity(row.net)}`}
                       >
                         {isAll ? (
-                          <td className="py-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                          <span className="text-[10px] uppercase tracking-[0.2em] text-white/80">
                             {row.assetLabel}
-                          </td>
+                          </span>
                         ) : null}
-                        <td className="py-2 font-semibold">
+                        <span className="mt-1 text-sm font-semibold">
                           {row.label}
-                        </td>
-                        <td className="py-2">
-                          {formatNumber(row.long)}
-                        </td>
-                        <td className="py-2">
-                          {formatNumber(row.short)}
-                        </td>
-                        <td className="py-2">{formatNumber(row.net)}</td>
-                        <td
-                          className={`py-2 font-semibold ${
-                            row.bias === "BULLISH"
-                              ? "text-emerald-700"
-                              : row.bias === "BEARISH"
-                                ? "text-rose-700"
-                                : "text-[color:var(--muted)]"
-                          }`}
-                        >
+                        </span>
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-white/80">
                           {row.bias}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                        </span>
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+                        <div className="text-center text-xs text-white">
+                          <p className="font-semibold">{row.label}</p>
+                          <p className="mt-1">
+                            Long: {formatNumber(row.long)}
+                          </p>
+                          <p>Short: {formatNumber(row.short)}</p>
+                          <p className="mt-1 text-[10px]">
+                            Net: {formatNumber(row.net)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
