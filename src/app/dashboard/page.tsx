@@ -3,7 +3,6 @@ import DashboardLayout from "@/components/DashboardLayout";
 import PairPerformanceTable from "@/components/PairPerformanceTable";
 import RefreshControl from "@/components/RefreshControl";
 import BiasHeatmap from "@/components/BiasHeatmap";
-import BiasSummaryCards from "@/components/dashboard/BiasSummaryCards";
 import { evaluateFreshness } from "@/lib/cotFreshness";
 import {
   COT_VARIANT,
@@ -405,12 +404,37 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </form>
         </div>
 
-        <BiasSummaryCards
-          reportDate={formatDate(combinedReportDate)}
-          tradingAllowed={combinedTradingAllowed}
-          reason={combinedReason}
-          lastRefresh={formatDate(combinedRefresh)}
-        />
+        <section className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Report date
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+              {formatDate(combinedReportDate)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Trading allowed
+            </p>
+            <p
+              className={`mt-2 text-2xl font-semibold ${
+                combinedTradingAllowed ? "text-emerald-700" : "text-rose-700"
+              }`}
+            >
+              {combinedTradingAllowed ? "Yes" : "No"}
+            </p>
+            <p className="text-sm text-[color:var(--muted)]">{combinedReason}</p>
+          </div>
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Last refresh
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+              {formatDate(combinedRefresh)}
+            </p>
+          </div>
+        </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">

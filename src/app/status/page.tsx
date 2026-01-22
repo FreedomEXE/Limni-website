@@ -1,6 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import StatusPanel from "@/components/StatusPanel";
-import StatusCards from "@/components/status/StatusCards";
 import { getAppDiagnostics } from "@/lib/diagnostics";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
@@ -180,7 +179,31 @@ export default async function StatusPage() {
 
         <StatusPanel issues={issues} />
 
-        <StatusCards health={health} toneMap={toneMap} />
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {health.map((item) => (
+            <div
+              key={item.name}
+              className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-5 shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-[var(--foreground)]">{item.name}</p>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${toneMap[item.status]}`}
+                >
+                  {item.status.toUpperCase()}
+                </span>
+              </div>
+              <p className="mt-3 text-sm text-[color:var(--muted)]">
+                {item.detail}
+              </p>
+              {item.hint ? (
+                <p className="mt-2 text-xs font-semibold text-[var(--foreground)]">
+                  Fix: {item.hint}
+                </p>
+              ) : null}
+            </div>
+          ))}
+        </section>
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="mb-4">
