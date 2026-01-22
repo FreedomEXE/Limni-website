@@ -92,8 +92,17 @@ ALTER TABLE cot_snapshots
   DROP CONSTRAINT IF EXISTS cot_snapshots_report_date_key;
 ALTER TABLE cot_snapshots
   DROP CONSTRAINT IF EXISTS cot_snapshots_report_date_asset_variant_key;
-ALTER TABLE cot_snapshots
-  ADD CONSTRAINT cot_snapshots_report_date_asset_variant_key UNIQUE (report_date, asset_class, variant);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'cot_snapshots_report_date_asset_variant_key'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM pg_class WHERE relname = 'cot_snapshots_report_date_asset_variant_key'
+  ) THEN
+    ALTER TABLE cot_snapshots
+      ADD CONSTRAINT cot_snapshots_report_date_asset_variant_key UNIQUE (report_date, asset_class, variant);
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_cot_snapshots_date ON cot_snapshots(report_date DESC);
 CREATE INDEX IF NOT EXISTS idx_cot_snapshots_asset_date ON cot_snapshots(asset_class, report_date DESC);
@@ -112,8 +121,17 @@ ALTER TABLE market_snapshots
   ADD COLUMN IF NOT EXISTS asset_class VARCHAR(20) NOT NULL DEFAULT 'fx';
 ALTER TABLE market_snapshots
   DROP CONSTRAINT IF EXISTS market_snapshots_week_open_utc_key;
-ALTER TABLE market_snapshots
-  ADD CONSTRAINT market_snapshots_week_open_asset_key UNIQUE (week_open_utc, asset_class);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'market_snapshots_week_open_asset_key'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM pg_class WHERE relname = 'market_snapshots_week_open_asset_key'
+  ) THEN
+    ALTER TABLE market_snapshots
+      ADD CONSTRAINT market_snapshots_week_open_asset_key UNIQUE (week_open_utc, asset_class);
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_market_snapshots_week ON market_snapshots(week_open_utc DESC);
 CREATE INDEX IF NOT EXISTS idx_market_snapshots_asset_week ON market_snapshots(asset_class, week_open_utc DESC);
@@ -137,8 +155,17 @@ CREATE TABLE IF NOT EXISTS performance_snapshots (
 
 ALTER TABLE performance_snapshots
   DROP CONSTRAINT IF EXISTS performance_snapshots_week_asset_model_key;
-ALTER TABLE performance_snapshots
-  ADD CONSTRAINT performance_snapshots_week_asset_model_key UNIQUE (week_open_utc, asset_class, model);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'performance_snapshots_week_asset_model_key'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM pg_class WHERE relname = 'performance_snapshots_week_asset_model_key'
+  ) THEN
+    ALTER TABLE performance_snapshots
+      ADD CONSTRAINT performance_snapshots_week_asset_model_key UNIQUE (week_open_utc, asset_class, model);
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_performance_snapshots_week ON performance_snapshots(week_open_utc DESC);
 CREATE INDEX IF NOT EXISTS idx_performance_snapshots_asset_week ON performance_snapshots(asset_class, week_open_utc DESC);
