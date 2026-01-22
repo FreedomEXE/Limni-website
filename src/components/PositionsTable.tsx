@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Mt5Position } from "@/lib/mt5Store";
+import InfoModal from "@/components/InfoModal";
 
 type PositionGroup = {
   symbol: string;
@@ -113,6 +114,7 @@ function formatPrice(value: number, symbol: string) {
 export default function PositionsTable({ positions, currency, equity }: PositionsTableProps) {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
+  const [activeSummary, setActiveSummary] = useState<{ title: string; value: string } | null>(null);
 
   if (!positions || positions.length === 0) {
     return (
@@ -132,25 +134,45 @@ export default function PositionsTable({ positions, currency, equity }: Position
     <div className="space-y-4">
       {/* Summary stats */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+        <button
+          type="button"
+          onClick={() =>
+            setActiveSummary({
+              title: "Total P&L",
+              value: formatCurrency(totalProfit, currency),
+            })
+          }
+          className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4 text-left"
+        >
           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Total P&L</p>
-          <p className={`mt-1 text-xl font-semibold ${totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-            {formatCurrency(totalProfit, currency)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+          <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">View</p>
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setActiveSummary({
+              title: "Pairs traded",
+              value: String(groups.length),
+            })
+          }
+          className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4 text-left"
+        >
           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Pairs traded</p>
-          <p className="mt-1 text-xl font-semibold text-[var(--foreground)]">{groups.length}</p>
-        </div>
-        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+          <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">View</p>
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setActiveSummary({
+              title: "Total risk (SL)",
+              value: `${formatCurrency(totalRisk, currency)} (${totalRiskPct.toFixed(2)}% of equity)`,
+            })
+          }
+          className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4 text-left"
+        >
           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Total risk (SL)</p>
-          <p className="mt-1 text-xl font-semibold text-[var(--accent-strong)]">
-            {formatCurrency(totalRisk, currency)}
-          </p>
-          <p className="mt-0.5 text-sm text-[var(--accent)]">
-            {totalRiskPct.toFixed(2)}% of equity
-          </p>
-        </div>
+          <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">View</p>
+        </button>
       </div>
 
       {/* Grouped positions */}
@@ -309,6 +331,16 @@ export default function PositionsTable({ positions, currency, equity }: Position
           </div>
         ))}
       </div>
+      {activeSummary ? (
+        <InfoModal title={activeSummary.title} onClose={() => setActiveSummary(null)}>
+          <div className="flex items-center justify-between">
+            <span>Value</span>
+            <span className="font-semibold text-[var(--foreground)]">
+              {activeSummary.value}
+            </span>
+          </div>
+        </InfoModal>
+      ) : null}
     </div>
   );
 }

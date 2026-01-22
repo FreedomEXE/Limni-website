@@ -42,9 +42,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-[var(--background)]">
+      {isCollapsed ? (
+        <button
+          type="button"
+          onClick={() => setIsCollapsed(false)}
+          className="fixed left-4 top-6 z-50 rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/90 px-3 py-1 text-xs font-semibold text-[var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+          aria-label="Expand navigation"
+          title="Expand navigation"
+        >
+          &gt;&gt;
+        </button>
+      ) : null}
+
       <aside
-        className={`border-r border-[var(--panel-border)] bg-[var(--panel)]/90 backdrop-blur-sm transition-all duration-200 ${
-          isCollapsed ? "w-24" : "w-72"
+        className={`bg-[var(--panel)]/90 backdrop-blur-sm transition-all duration-200 ${
+          isCollapsed ? "w-0 overflow-hidden border-0" : "w-72 border-r border-[var(--panel-border)]"
         }`}
       >
         <div className="sticky top-0 flex h-screen flex-col">
@@ -102,8 +114,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                       : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
                   }`}
                 >
-                  <span className="flex size-10 items-center justify-center rounded-2xl border border-[var(--panel-border)] text-[11px] font-semibold tracking-[0.2em] text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
-                    <img src={item.icon} alt="" className="size-5" />
+                  <span className="flex size-12 items-center justify-center rounded-2xl border border-[var(--panel-border)] text-[11px] font-semibold tracking-[0.2em] text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
+                    <img src={item.icon} alt="" className="size-8" />
                   </span>
                   {!isCollapsed ? (
                     <span className="tracking-tight">{item.label}</span>

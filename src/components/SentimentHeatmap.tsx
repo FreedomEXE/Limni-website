@@ -78,11 +78,6 @@ export default function SentimentHeatmap({
               }}
             >
               <div className="text-xs font-bold text-white">{agg.symbol}</div>
-              {agg.flip_state !== "NONE" && (
-                <div className="mt-1 text-[10px] text-white/80">
-                  {agg.flip_state === "FLIPPED_UP" ? "UP" : "DOWN"} FLIP
-                </div>
-              )}
             </div>
 
             <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">

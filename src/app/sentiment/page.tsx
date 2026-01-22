@@ -2,6 +2,7 @@ import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import RefreshSentimentButton from "@/components/RefreshSentimentButton";
 import SentimentHeatmap from "@/components/SentimentHeatmap";
+import SentimentSummaryCards from "@/components/sentiment/SentimentSummaryCards";
 import { fetchLiquidationSummary } from "@/lib/coinank";
 import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { getLatestAggregates, readSourceHealth } from "@/lib/sentiment/store";
@@ -189,40 +190,12 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
           </p>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-              Pairs tracked
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {filteredAggregates.length}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-              Crowded long
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-rose-700">
-              {crowdedLong}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-              Crowded short
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-emerald-700">
-              {crowdedShort}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-              Recent flips
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--accent-strong)]">
-              {flips}
-            </p>
-          </div>
-        </section>
+        <SentimentSummaryCards
+          pairsTracked={filteredAggregates.length}
+          crowdedLong={crowdedLong}
+          crowdedShort={crowdedShort}
+          flips={flips}
+        />
 
         <SentimentHeatmap aggregates={sortedAggregates} />
 

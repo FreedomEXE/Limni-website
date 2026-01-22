@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ModelPerformance, PerformanceModel } from "@/lib/performanceLab";
+import InfoModal from "@/components/InfoModal";
 
 type Section = {
   id: string;
@@ -103,9 +104,21 @@ function getConfidenceBadge(performance: ModelPerformance) {
   return { label: "Low Confidence", badge: "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]", icon: "*" };
 }
 
-function MetricPill({ label, value, good }: { label: string; value: string; good: boolean }) {
+function MetricPill({
+  label,
+  value,
+  good,
+  onOpen,
+}: {
+  label: string;
+  value: string;
+  good: boolean;
+  onOpen: () => void;
+}) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onOpen}
       className={`rounded-lg border px-2 py-1.5 ${
         good
           ? "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
@@ -113,8 +126,8 @@ function MetricPill({ label, value, good }: { label: string; value: string; good
       }`}
     >
       <div className="text-[10px] uppercase tracking-wider opacity-70">{label}</div>
-      <div className="text-sm font-semibold">{value}</div>
-    </div>
+      <div className="text-[11px] font-semibold">View</div>
+    </button>
   );
 }
 
@@ -204,10 +217,50 @@ function PerformanceCard({
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <MetricPill label="Win Rate" value={`${performance.stats.win_rate.toFixed(0)}%`} good={performance.stats.win_rate > 55} />
-        <MetricPill label="Sharpe" value={sharpeProxy.toFixed(2)} good={sharpeProxy > 1} />
-        <MetricPill label="Coverage" value={`${Math.round(coverage * 100)}%`} good={coverage > 0.8} />
-        <MetricPill label="Volatility" value={`${performance.stats.volatility.toFixed(1)}%`} good={performance.stats.volatility < 2} />
+        <MetricPill
+          label="Win Rate"
+          value={`${performance.stats.win_rate.toFixed(0)}%`}
+          good={performance.stats.win_rate > 55}
+          onOpen={() =>
+            setActiveMetric({
+              label: "Win Rate",
+              value: `${performance.stats.win_rate.toFixed(0)}%`,
+            })
+          }
+        />
+        <MetricPill
+          label="Sharpe"
+          value={sharpeProxy.toFixed(2)}
+          good={sharpeProxy > 1}
+          onOpen={() =>
+            setActiveMetric({
+              label: "Sharpe",
+              value: sharpeProxy.toFixed(2),
+            })
+          }
+        />
+        <MetricPill
+          label="Coverage"
+          value={`${Math.round(coverage * 100)}%`}
+          good={coverage > 0.8}
+          onOpen={() =>
+            setActiveMetric({
+              label: "Coverage",
+              value: `${Math.round(coverage * 100)}%`,
+            })
+          }
+        />
+        <MetricPill
+          label="Volatility"
+          value={`${performance.stats.volatility.toFixed(1)}%`}
+          good={performance.stats.volatility < 2}
+          onOpen={() =>
+            setActiveMetric({
+              label: "Volatility",
+              value: `${performance.stats.volatility.toFixed(1)}%`,
+            })
+          }
+        />
       </div>
       <div className="mt-4 flex items-center justify-between gap-2">
         <WinRateDonut winRate={performance.stats.win_rate} />
@@ -232,6 +285,7 @@ export default function PerformanceGrid({
 }: PerformanceGridProps) {
   const [active, setActive] = useState<ActiveCard | null>(null);
   const [accountSize, setAccountSize] = useState(100000);
+  const [activeMetric, setActiveMetric] = useState<{ label: string; value: string } | null>(null);
 
   useEffect(() => {
     if (!active) {
@@ -308,10 +362,50 @@ export default function PerformanceGrid({
                   Executive summary
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-3">
-                  <MetricPill label="Win Rate" value={`${stats.win_rate.toFixed(0)}%`} good={stats.win_rate > 55} />
-                  <MetricPill label="Sharpe" value={sharpeProxy.toFixed(2)} good={sharpeProxy > 1} />
-                  <MetricPill label="Coverage" value={`${performance.priced}/${performance.total}`} good={performance.priced / performance.total > 0.8} />
-                  <MetricPill label="Volatility" value={`${stats.volatility.toFixed(2)}%`} good={stats.volatility < 2} />
+                  <MetricPill
+                    label="Win Rate"
+                    value={`${stats.win_rate.toFixed(0)}%`}
+                    good={stats.win_rate > 55}
+                    onOpen={() =>
+                      setActiveMetric({
+                        label: "Win Rate",
+                        value: `${stats.win_rate.toFixed(0)}%`,
+                      })
+                    }
+                  />
+                  <MetricPill
+                    label="Sharpe"
+                    value={sharpeProxy.toFixed(2)}
+                    good={sharpeProxy > 1}
+                    onOpen={() =>
+                      setActiveMetric({
+                        label: "Sharpe",
+                        value: sharpeProxy.toFixed(2),
+                      })
+                    }
+                  />
+                  <MetricPill
+                    label="Coverage"
+                    value={`${performance.priced}/${performance.total}`}
+                    good={performance.priced / performance.total > 0.8}
+                    onOpen={() =>
+                      setActiveMetric({
+                        label: "Coverage",
+                        value: `${performance.priced}/${performance.total}`,
+                      })
+                    }
+                  />
+                  <MetricPill
+                    label="Volatility"
+                    value={`${stats.volatility.toFixed(2)}%`}
+                    good={stats.volatility < 2}
+                    onOpen={() =>
+                      setActiveMetric({
+                        label: "Volatility",
+                        value: `${stats.volatility.toFixed(2)}%`,
+                      })
+                    }
+                  />
                 </div>
               </div>
 
@@ -511,6 +605,19 @@ export default function PerformanceGrid({
         ))}
       </section>
       {modal}
+      {activeMetric ? (
+        <InfoModal
+          title={activeMetric.label}
+          onClose={() => setActiveMetric(null)}
+        >
+          <div className="flex items-center justify-between">
+            <span>Value</span>
+            <span className="font-semibold text-[var(--foreground)]">
+              {activeMetric.value}
+            </span>
+          </div>
+        </InfoModal>
+      ) : null}
     </>
   );
 }

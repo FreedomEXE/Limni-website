@@ -2,6 +2,8 @@ import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import PairPerformanceTable from "@/components/PairPerformanceTable";
 import RefreshControl from "@/components/RefreshControl";
+import BiasHeatmap from "@/components/BiasHeatmap";
+import BiasSummaryCards from "@/components/dashboard/BiasSummaryCards";
 import { evaluateFreshness } from "@/lib/cotFreshness";
 import {
   COT_VARIANT,
@@ -42,16 +44,6 @@ function formatDate(value?: string) {
     month: "short",
     day: "2-digit",
   });
-}
-
-function biasTileTone(bias: string) {
-  if (bias === "BULLISH") {
-    return "bg-emerald-500";
-  }
-  if (bias === "BEARISH") {
-    return "bg-rose-500";
-  }
-  return "bg-[var(--panel-border)]/60";
 }
 
 function buildResponse(
@@ -413,37 +405,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </form>
         </div>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Report date
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatDate(combinedReportDate)}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Trading allowed
-            </p>
-            <p
-              className={`mt-2 text-2xl font-semibold ${
-                combinedTradingAllowed ? "text-emerald-700" : "text-rose-700"
-              }`}
-            >
-              {combinedTradingAllowed ? "Yes" : "No"}
-            </p>
-            <p className="text-sm text-[color:var(--muted)]">{combinedReason}</p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Last refresh
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatDate(combinedRefresh)}
-            </p>
-          </div>
-        </section>
+        <BiasSummaryCards
+          reportDate={formatDate(combinedReportDate)}
+          tradingAllowed={combinedTradingAllowed}
+          reason={combinedReason}
+          lastRefresh={formatDate(combinedRefresh)}
+        />
 
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
@@ -467,44 +434,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               {currencyRows.length === 0 ? (
                 <p className="text-sm text-[color:var(--muted)]">No data yet.</p>
               ) : (
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-                  {currencyRows.map((row) => (
-                    <div
-                      key={`${row.assetLabel}-${row.currency}`}
-                      className="group relative overflow-hidden rounded-lg border border-[var(--panel-border)]"
-                    >
-                      <div
-                        className={`flex flex-col items-start justify-center p-4 text-white transition ${biasTileTone(
-                          row.bias,
-                        )}`}
-                      >
-                        {isAll ? (
-                          <span className="text-[10px] uppercase tracking-[0.2em] text-white/80">
-                            {row.assetLabel}
-                          </span>
-                        ) : null}
-                        <span className="mt-1 text-sm font-semibold">
-                          {row.label}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-[0.2em] text-white/80">
-                          {row.bias}
-                        </span>
-                      </div>
-                      <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
-                        <div className="text-center text-xs text-white">
-                          <p className="font-semibold">{row.label}</p>
-                          <p className="mt-1">
-                            Long: {formatNumber(row.long)}
-                          </p>
-                          <p>Short: {formatNumber(row.short)}</p>
-                          <p className="mt-1 text-[10px]">
-                            Net: {formatNumber(row.net)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <BiasHeatmap
+                  rows={currencyRows}
+                  showAssetLabel={isAll}
+                  formatNumber={formatNumber}
+                />
               )}
             </div>
           </div>
