@@ -54,14 +54,6 @@ function biasTileTone(bias: string) {
   return "bg-[var(--panel-border)]/60";
 }
 
-function biasIntensity(net: number) {
-  const abs = Math.abs(net);
-  if (abs >= 150000) return "opacity-100";
-  if (abs >= 75000) return "opacity-80";
-  if (abs >= 25000) return "opacity-60";
-  return "opacity-40";
-}
-
 function buildResponse(
   snapshot: Awaited<ReturnType<typeof readSnapshot>>,
   assetClass: ReturnType<typeof getAssetClass>,
@@ -482,9 +474,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       className="group relative overflow-hidden rounded-lg border border-[var(--panel-border)]"
                     >
                       <div
-                        className={`flex flex-col items-start justify-center p-4 text-white transition ${
-                          biasTileTone(row.bias)
-                        } ${biasIntensity(row.net)}`}
+                        className={`flex flex-col items-start justify-center p-4 text-white transition ${biasTileTone(
+                          row.bias,
+                        )}`}
                       >
                         {isAll ? (
                           <span className="text-[10px] uppercase tracking-[0.2em] text-white/80">

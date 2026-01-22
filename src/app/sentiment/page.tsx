@@ -75,7 +75,7 @@ type SentimentPageProps = {
 type SentimentView = SentimentAssetClass | "all";
 
 function getAssetClass(value?: string | null): SentimentView {
-  if (value === "all") {
+  if (!value || value === "all") {
     return "all";
   }
   if (value && value in SENTIMENT_ASSET_CLASSES) {

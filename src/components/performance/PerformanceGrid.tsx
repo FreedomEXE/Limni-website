@@ -283,6 +283,10 @@ export default function PerformanceGrid({
                   event.stopPropagation();
                   setActive(null);
                 }}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  setActive(null);
+                }}
                 className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
                 aria-label="Close details"
               >

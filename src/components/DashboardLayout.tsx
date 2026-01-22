@@ -18,11 +18,11 @@ type BackLink = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/antikythera", label: "Antikythera", icon: "A" },
-  { href: "/automation", label: "Automation", icon: "R" },
-  { href: "/performance", label: "Performance Lab", icon: "P" },
-  { href: "/accounts", label: "Accounts", icon: "C" },
-  { href: "/status", label: "Status", icon: "S" },
+  { href: "/antikythera", label: "Antikythera", icon: "/limni-icon.svg" },
+  { href: "/automation", label: "Automation", icon: "/limni-icon.svg" },
+  { href: "/performance", label: "Performance Lab", icon: "/limni-icon.svg" },
+  { href: "/accounts", label: "Accounts", icon: "/limni-icon.svg" },
+  { href: "/status", label: "Status", icon: "/limni-icon.svg" },
 ];
 
 function getBackLink(pathname: string): BackLink | null {
@@ -59,15 +59,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   />
                 </div>
                 {!isCollapsed ? (
-                  <div>
-                    <img
-                      src="/limni-wordmark.svg"
-                      alt="Limni wordmark"
-                      className="h-7"
-                    />
-                    <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                      Navigating Markets with Intelligence
-                    </p>
+                  <div className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--foreground)]">
+                    LIMNI LABS
                   </div>
                 ) : null}
               </div>
@@ -110,7 +103,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   }`}
                 >
                   <span className="flex size-10 items-center justify-center rounded-2xl border border-[var(--panel-border)] text-[11px] font-semibold tracking-[0.2em] text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
-                    {item.icon}
+                    <img src={item.icon} alt="" className="size-5" />
                   </span>
                   {!isCollapsed ? (
                     <span className="tracking-tight">{item.label}</span>

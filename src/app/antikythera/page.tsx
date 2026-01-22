@@ -19,13 +19,7 @@ function formatTime(value: string) {
 
 function signalTileTone(direction: "LONG" | "SHORT", confidence: number) {
   const base = direction === "LONG" ? "bg-emerald-500" : "bg-rose-500";
-  if (confidence >= 85) {
-    return `${base} opacity-100`;
-  }
-  if (confidence >= 75) {
-    return `${base} opacity-80`;
-  }
-  return `${base} opacity-60`;
+  return base;
 }
 
 export default async function AntikytheraPage() {
@@ -162,7 +156,7 @@ export default async function AntikytheraPage() {
                       {signal.pair}
                     </div>
                     <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">
-                      {signal.direction} {signal.confidence.toFixed(0)}%
+                      {signal.direction}
                     </div>
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
@@ -327,13 +321,13 @@ export default async function AntikytheraPage() {
                             signal.confidence,
                           )}`}
                         >
-                          <div className="text-sm font-semibold">
-                            {signal.pair}
-                          </div>
-                          <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">
-                            {signal.direction} {signal.confidence.toFixed(0)}%
-                          </div>
+                        <div className="text-sm font-semibold">
+                          {signal.pair}
                         </div>
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-white/80">
+                          {signal.direction}
+                        </div>
+                      </div>
                         <div className="absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
                           <div className="text-center text-xs text-white">
                             <p className="font-semibold">
