@@ -185,11 +185,13 @@ function PerformanceCard({
   label,
   performance,
   onOpen,
+  onMetricOpen,
   style,
 }: {
   label: string;
   performance: ModelPerformance;
   onOpen: () => void;
+  onMetricOpen: (metric: { label: string; value: string }) => void;
   style?: CSSProperties;
 }) {
   const tier = getPerformanceTier(performance.percent, performance.stats.win_rate);
@@ -222,7 +224,7 @@ function PerformanceCard({
           value={`${performance.stats.win_rate.toFixed(0)}%`}
           good={performance.stats.win_rate > 55}
           onOpen={() =>
-            setActiveMetric({
+            onMetricOpen({
               label: "Win Rate",
               value: `${performance.stats.win_rate.toFixed(0)}%`,
             })
@@ -233,7 +235,7 @@ function PerformanceCard({
           value={sharpeProxy.toFixed(2)}
           good={sharpeProxy > 1}
           onOpen={() =>
-            setActiveMetric({
+            onMetricOpen({
               label: "Sharpe",
               value: sharpeProxy.toFixed(2),
             })
@@ -244,7 +246,7 @@ function PerformanceCard({
           value={`${Math.round(coverage * 100)}%`}
           good={coverage > 0.8}
           onOpen={() =>
-            setActiveMetric({
+            onMetricOpen({
               label: "Coverage",
               value: `${Math.round(coverage * 100)}%`,
             })
@@ -255,7 +257,7 @@ function PerformanceCard({
           value={`${performance.stats.volatility.toFixed(1)}%`}
           good={performance.stats.volatility < 2}
           onOpen={() =>
-            setActiveMetric({
+            onMetricOpen({
               label: "Volatility",
               value: `${performance.stats.volatility.toFixed(1)}%`,
             })
@@ -558,6 +560,7 @@ export default function PerformanceGrid({
                   performance: result,
                 })
               }
+              onMetricOpen={setActiveMetric}
               style={{ animationDelay: `${index * 50}ms` }}
             />
           ))}
@@ -596,6 +599,7 @@ export default function PerformanceGrid({
                         performance: result,
                       })
                     }
+                    onMetricOpen={setActiveMetric}
                     style={{ animationDelay: `${index * 50}ms` }}
                   />
                 ))}
