@@ -4,16 +4,38 @@ import SignalTiles from "@/components/antikythera/SignalTiles";
 import { fetchLiquidationSummary } from "@/lib/coinank";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
-import { readSnapshot } from "@/lib/cotStore";
+import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
-import { formatDateTimeET, latestIso } from "@/lib/time";
+import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function AntikytheraPage() {
+type AntikytheraPageProps = {
+  searchParams?:
+    | Record<string, string | string[] | undefined>
+    | Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function AntikytheraPage({ searchParams }: AntikytheraPageProps) {
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const reportParam = resolvedSearchParams?.report;
+  const reportDate =
+    Array.isArray(reportParam) ? reportParam[0] : reportParam;
   const assetClasses = listAssetClasses();
   const assetIds = assetClasses.map((asset) => asset.id);
+  const availableDates = await Promise.all(
+    assetClasses.map((asset) => listSnapshotDates(asset.id)),
+  ).then((lists) => {
+    if (lists.length === 0) {
+      return [];
+    }
+    return lists.reduce((acc, list) => acc.filter((date) => list.includes(date)));
+  });
+  const selectedReportDate =
+    reportDate && availableDates.includes(reportDate)
+      ? reportDate
+      : availableDates[0];
   const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
   let sentiment: SentimentAggregate[] = [];
   let btcLiq: Awaited<ReturnType<typeof fetchLiquidationSummary>> | null = null;
@@ -23,7 +45,9 @@ export default async function AntikytheraPage() {
     const [snapshotResults, sentimentResult] = await Promise.all([
       Promise.all(
         assetIds.map((assetClass) =>
-          readSnapshot({ assetClass }),
+          selectedReportDate
+            ? readSnapshot({ assetClass, reportDate: selectedReportDate })
+            : readSnapshot({ assetClass }),
         ),
       ),
       getLatestAggregates(),
@@ -108,6 +132,27 @@ export default async function AntikytheraPage() {
                 ? formatDateTimeET(latestAntikytheraRefresh)
                 : "No refresh yet"}
             </span>
+            {availableDates.length > 0 ? (
+              <form action="/antikythera" method="get" className="flex items-center gap-2">
+                <select
+                  name="report"
+                  defaultValue={selectedReportDate ?? ""}
+                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  {availableDates.map((date) => (
+                    <option key={date} value={date}>
+                      {formatDateET(date)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  View
+                </button>
+              </form>
+            ) : null}
             <Link
               href="/dashboard"
               className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"

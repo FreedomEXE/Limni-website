@@ -48,6 +48,15 @@ export function weekLabelFromOpen(isoValue: string) {
   return `Week of ${formatWeekLabel(isoValue)}`;
 }
 
+export function isWeekOpenUtc(isoValue: string) {
+  const parsed = DateTime.fromISO(isoValue, { zone: "utc" });
+  if (!parsed.isValid) {
+    return false;
+  }
+  const expected = getWeekOpenUtc(parsed);
+  return expected === isoValue;
+}
+
 export async function writePerformanceSnapshots(
   snapshots: PerformanceSnapshot[],
 ): Promise<void> {

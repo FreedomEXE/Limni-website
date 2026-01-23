@@ -10,7 +10,8 @@ input string ApiUrl = "https://limni-website.vercel.app/api/cot/latest";
 input int ApiPollIntervalSeconds = 60;
 input int AddIntervalMinutes = 60;
 input double BasketLotCapPer100k = 10.0;
-input double LotSizePerAdd = 0.01;
+// Increased to 0.05 to reach 10 lots under a 200-trade cap.
+input double LotSizePerAdd = 0.05;
 input double MaxRiskPercent = 1.0;
 input double StopLossPercent = 3.0;
 input double TrailingStartPct = 1.5;
@@ -31,6 +32,7 @@ input string PushUrl = "https://limni-website.vercel.app/api/mt5/push";
 input string PushToken = "2121";
 input int PushIntervalSeconds = 30;
 input string AccountLabel = "";
+input int ClosedHistoryDays = 30;
 
 enum EAState
 {
@@ -155,6 +157,7 @@ bool SendAccountSnapshot();
 bool HttpPostJson(const string url, const string payload, string &response);
 string BuildAccountPayload();
 string BuildPositionsArray();
+string BuildClosedPositionsArray();
 string JsonEscape(const string value);
 string BoolToJson(bool value);
 string FormatIsoUtc(datetime value);
@@ -1965,7 +1968,8 @@ string BuildAccountPayload()
   payload += "\"next_add_seconds\":" + IntegerToString(nextAddSeconds) + ",";
   payload += "\"next_poll_seconds\":" + IntegerToString(nextPollSeconds) + ",";
   payload += "\"last_sync_utc\":\"" + FormatIsoUtc(TimeGMT()) + "\",";
-  payload += "\"positions\":" + BuildPositionsArray();
+  payload += "\"positions\":" + BuildPositionsArray() + ",";
+  payload += "\"closed_positions\":" + BuildClosedPositionsArray();
   payload += "}";
   return payload;
 }
@@ -2018,6 +2022,159 @@ string BuildPositionsArray()
     result += "\"open_time\":\"" + FormatIsoUtc(openTime) + "\",";
     result += "\"magic_number\":" + IntegerToString((int)magic) + ",";
     result += "\"comment\":\"" + JsonEscape(comment) + "\"";
+    result += "}";
+  }
+
+  result += "]";
+  return result;
+}
+
+//+------------------------------------------------------------------+
+string BuildClosedPositionsArray()
+{
+  datetime from = TimeGMT() - (ClosedHistoryDays * 86400);
+  datetime to = TimeGMT();
+  if(!HistorySelect(from, to))
+    return "[]";
+
+  long posIds[];
+  double posProfit[];
+  double posSwap[];
+  double posCommission[];
+  double posVolume[];
+  double posOpenPrice[];
+  double posClosePrice[];
+  datetime posOpenTime[];
+  datetime posCloseTime[];
+  string posSymbol[];
+  int posType[];
+  long posMagic[];
+  string posComment[];
+
+  ArrayResize(posIds, 0);
+  int deals = HistoryDealsTotal();
+  for(int i = 0; i < deals; i++)
+  {
+    ulong dealTicket = HistoryDealGetTicket(i);
+    if(dealTicket == 0)
+      continue;
+    if((long)HistoryDealGetInteger(dealTicket, DEAL_MAGIC) != MagicNumber)
+      continue;
+
+    long posId = (long)HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID);
+    int entry = (int)HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
+    int type = (int)HistoryDealGetInteger(dealTicket, DEAL_TYPE);
+    double price = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
+    double volume = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
+    double profit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+    double swap = HistoryDealGetDouble(dealTicket, DEAL_SWAP);
+    double commission = HistoryDealGetDouble(dealTicket, DEAL_COMMISSION);
+    datetime time = (datetime)HistoryDealGetInteger(dealTicket, DEAL_TIME);
+    long magic = (long)HistoryDealGetInteger(dealTicket, DEAL_MAGIC);
+    string comment = HistoryDealGetString(dealTicket, DEAL_COMMENT);
+
+    int idx = -1;
+    for(int j = 0; j < ArraySize(posIds); j++)
+    {
+      if(posIds[j] == posId)
+      {
+        idx = j;
+        break;
+      }
+    }
+
+    if(idx < 0)
+    {
+      int size = ArraySize(posIds);
+      ArrayResize(posIds, size + 1);
+      ArrayResize(posProfit, size + 1);
+      ArrayResize(posSwap, size + 1);
+      ArrayResize(posCommission, size + 1);
+      ArrayResize(posVolume, size + 1);
+      ArrayResize(posOpenPrice, size + 1);
+      ArrayResize(posClosePrice, size + 1);
+      ArrayResize(posOpenTime, size + 1);
+      ArrayResize(posCloseTime, size + 1);
+      ArrayResize(posSymbol, size + 1);
+      ArrayResize(posType, size + 1);
+      ArrayResize(posMagic, size + 1);
+      ArrayResize(posComment, size + 1);
+      posIds[size] = posId;
+      posProfit[size] = 0.0;
+      posSwap[size] = 0.0;
+      posCommission[size] = 0.0;
+      posVolume[size] = 0.0;
+      posOpenPrice[size] = 0.0;
+      posClosePrice[size] = 0.0;
+      posOpenTime[size] = 0;
+      posCloseTime[size] = 0;
+      posSymbol[size] = HistoryDealGetString(dealTicket, DEAL_SYMBOL);
+      posType[size] = 0;
+      posMagic[size] = magic;
+      posComment[size] = comment;
+      idx = size;
+    }
+
+    if(entry == DEAL_ENTRY_IN)
+    {
+      if(posOpenTime[idx] == 0 || time < posOpenTime[idx])
+      {
+        posOpenTime[idx] = time;
+        posOpenPrice[idx] = price;
+        posType[idx] = type;
+        if(posSymbol[idx] == "")
+          posSymbol[idx] = HistoryDealGetString(dealTicket, DEAL_SYMBOL);
+      }
+    }
+    if(entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_OUT_BY)
+    {
+      posProfit[idx] += profit;
+      posSwap[idx] += swap;
+      posCommission[idx] += commission;
+      posVolume[idx] += volume;
+      if(posType[idx] == 0)
+        posType[idx] = type;
+      if(time > posCloseTime[idx])
+      {
+        posCloseTime[idx] = time;
+        posClosePrice[idx] = price;
+        posComment[idx] = comment;
+        if(posSymbol[idx] == "")
+          posSymbol[idx] = HistoryDealGetString(dealTicket, DEAL_SYMBOL);
+      }
+    }
+  }
+
+  string result = "[";
+  bool first = true;
+  for(int i = 0; i < ArraySize(posIds); i++)
+  {
+    if(posCloseTime[i] == 0 || posVolume[i] <= 0.0)
+      continue;
+
+    string symbol = posSymbol[i];
+    if(symbol == "")
+      symbol = "UNKNOWN";
+    string typeStr = (posType[i] == DEAL_TYPE_BUY ? "BUY" : "SELL");
+
+    if(!first)
+      result += ",";
+    first = false;
+
+    result += "{";
+    result += "\"ticket\":" + IntegerToString((int)posIds[i]) + ",";
+    result += "\"symbol\":\"" + JsonEscape(symbol) + "\",";
+    result += "\"type\":\"" + typeStr + "\",";
+    result += "\"lots\":" + DoubleToString(posVolume[i], 2) + ",";
+    result += "\"open_price\":" + DoubleToString(posOpenPrice[i], 5) + ",";
+    result += "\"close_price\":" + DoubleToString(posClosePrice[i], 5) + ",";
+    result += "\"profit\":" + DoubleToString(posProfit[i], 2) + ",";
+    result += "\"swap\":" + DoubleToString(posSwap[i], 2) + ",";
+    result += "\"commission\":" + DoubleToString(posCommission[i], 2) + ",";
+    result += "\"open_time\":\"" + FormatIsoUtc(posOpenTime[i]) + "\",";
+    result += "\"close_time\":\"" + FormatIsoUtc(posCloseTime[i]) + "\",";
+    result += "\"magic_number\":" + IntegerToString((int)posMagic[i]) + ",";
+    result += "\"comment\":\"" + JsonEscape(posComment[i]) + "\"";
     result += "}";
   }
 

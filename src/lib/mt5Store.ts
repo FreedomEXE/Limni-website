@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import { query, queryOne, transaction } from "./db";
 
 export type Mt5Position = {
@@ -13,6 +14,22 @@ export type Mt5Position = {
   swap: number;
   commission: number;
   open_time: string;
+  magic_number: number;
+  comment: string;
+};
+
+export type Mt5ClosedPosition = {
+  ticket: number;
+  symbol: string;
+  type: "BUY" | "SELL";
+  lots: number;
+  open_price: number;
+  close_price: number;
+  profit: number;
+  swap: number;
+  commission: number;
+  open_time: string;
+  close_time: string;
   magic_number: number;
   comment: string;
 };
@@ -48,6 +65,27 @@ export type Mt5AccountSnapshot = {
   next_poll_seconds: number;
   last_sync_utc: string;
   positions?: Mt5Position[];
+  closed_positions?: Mt5ClosedPosition[];
+};
+
+export type Mt5ClosedSummary = {
+  week_open_utc: string;
+  trades: number;
+  wins: number;
+  losses: number;
+  net_profit: number;
+  gross_profit: number;
+  gross_loss: number;
+  avg_net: number;
+};
+
+export type Mt5ChangeLogEntry = {
+  week_open_utc: string;
+  account_id: string | null;
+  strategy: string | null;
+  title: string;
+  notes: string | null;
+  created_at: string;
 };
 
 export async function readMt5Accounts(): Promise<Mt5AccountSnapshot[]> {
@@ -291,6 +329,36 @@ export async function upsertMt5Account(
         }
       }
 
+      if (snapshot.closed_positions && snapshot.closed_positions.length > 0) {
+        for (const pos of snapshot.closed_positions) {
+          await client.query(
+            `INSERT INTO mt5_closed_positions (
+              account_id, ticket, symbol, type, lots, open_price, close_price,
+              profit, swap, commission, open_time, close_time, magic_number, comment
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+            )
+            ON CONFLICT (account_id, ticket, close_time) DO NOTHING`,
+            [
+              snapshot.account_id,
+              pos.ticket,
+              pos.symbol,
+              pos.type,
+              pos.lots,
+              pos.open_price,
+              pos.close_price,
+              pos.profit,
+              pos.swap,
+              pos.commission,
+              new Date(pos.open_time),
+              new Date(pos.close_time),
+              pos.magic_number,
+              pos.comment,
+            ],
+          );
+        }
+      }
+
       // Create historical snapshot
       await client.query(
         `INSERT INTO mt5_snapshots (
@@ -314,6 +382,242 @@ export async function upsertMt5Account(
     console.error("Error upserting MT5 account:", error);
     throw error;
   }
+}
+
+function weekOpenUtcForTimestamp(timestamp: string): string {
+  const parsed = DateTime.fromISO(timestamp, { zone: "utc" });
+  if (!parsed.isValid) {
+    return timestamp;
+  }
+  const nyTime = parsed.setZone("America/New_York");
+  const daysSinceSunday = nyTime.weekday % 7;
+  let sunday = nyTime.minus({ days: daysSinceSunday });
+
+  if (daysSinceSunday === 0 && nyTime.hour < 19) {
+    sunday = sunday.minus({ days: 7 });
+  }
+
+  const open = sunday.set({
+    hour: 19,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+
+  return open.toUTC().toISO() ?? timestamp;
+}
+
+export async function readMt5ClosedPositions(
+  accountId: string,
+  limit = 200,
+): Promise<Mt5ClosedPosition[]> {
+  const rows = await query<{
+    ticket: number;
+    symbol: string;
+    type: string;
+    lots: string;
+    open_price: string;
+    close_price: string;
+    profit: string;
+    swap: string;
+    commission: string;
+    open_time: Date;
+    close_time: Date;
+    magic_number: number;
+    comment: string;
+  }>(
+    `SELECT ticket, symbol, type, lots, open_price, close_price, profit, swap,
+        commission, open_time, close_time, magic_number, comment
+     FROM mt5_closed_positions
+     WHERE account_id = $1
+     ORDER BY close_time DESC
+     LIMIT $2`,
+    [accountId, limit],
+  );
+
+  return rows.map((row) => ({
+    ticket: row.ticket,
+    symbol: row.symbol,
+    type: row.type as "BUY" | "SELL",
+    lots: Number(row.lots),
+    open_price: Number(row.open_price),
+    close_price: Number(row.close_price),
+    profit: Number(row.profit),
+    swap: Number(row.swap),
+    commission: Number(row.commission),
+    open_time: row.open_time.toISOString(),
+    close_time: row.close_time.toISOString(),
+    magic_number: row.magic_number,
+    comment: row.comment,
+  }));
+}
+
+export async function readMt5ClosedPositionsByWeek(
+  accountId: string,
+  weekOpenUtc: string,
+  limit = 500,
+): Promise<Mt5ClosedPosition[]> {
+  const start = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  if (!start.isValid) {
+    return [];
+  }
+  const end = start.plus({ days: 7 });
+  const rows = await query<{
+    ticket: number;
+    symbol: string;
+    type: string;
+    lots: string;
+    open_price: string;
+    close_price: string;
+    profit: string;
+    swap: string;
+    commission: string;
+    open_time: Date;
+    close_time: Date;
+    magic_number: number;
+    comment: string;
+  }>(
+    `SELECT ticket, symbol, type, lots, open_price, close_price, profit, swap,
+        commission, open_time, close_time, magic_number, comment
+     FROM mt5_closed_positions
+     WHERE account_id = $1
+       AND close_time >= $2
+       AND close_time < $3
+     ORDER BY close_time DESC
+     LIMIT $4`,
+    [accountId, start.toJSDate(), end.toJSDate(), limit],
+  );
+
+  return rows.map((row) => ({
+    ticket: row.ticket,
+    symbol: row.symbol,
+    type: row.type as "BUY" | "SELL",
+    lots: Number(row.lots),
+    open_price: Number(row.open_price),
+    close_price: Number(row.close_price),
+    profit: Number(row.profit),
+    swap: Number(row.swap),
+    commission: Number(row.commission),
+    open_time: row.open_time.toISOString(),
+    close_time: row.close_time.toISOString(),
+    magic_number: row.magic_number,
+    comment: row.comment,
+  }));
+}
+
+export async function readMt5ClosedSummary(
+  accountId: string,
+  weeks = 12,
+): Promise<Mt5ClosedSummary[]> {
+  const safeWeeks =
+    Number.isFinite(weeks) && weeks > 0 ? Math.min(weeks, 104) : 12;
+  const rows = await query<{
+    profit: string;
+    swap: string;
+    commission: string;
+    close_time: Date;
+  }>(
+    `SELECT profit, swap, commission, close_time
+     FROM mt5_closed_positions
+     WHERE account_id = $1
+       AND close_time >= NOW() - make_interval(weeks => $2)
+     ORDER BY close_time DESC`,
+    [accountId, safeWeeks],
+  );
+
+  const byWeek = new Map<string, Mt5ClosedSummary>();
+
+  for (const row of rows) {
+    const closeTime = row.close_time.toISOString();
+    const weekOpen = weekOpenUtcForTimestamp(closeTime);
+    const net = Number(row.profit) + Number(row.swap) + Number(row.commission);
+    const current = byWeek.get(weekOpen) ?? {
+      week_open_utc: weekOpen,
+      trades: 0,
+      wins: 0,
+      losses: 0,
+      net_profit: 0,
+      gross_profit: 0,
+      gross_loss: 0,
+      avg_net: 0,
+    };
+
+    current.trades += 1;
+    current.net_profit += net;
+    if (net >= 0) {
+      current.wins += 1;
+      current.gross_profit += net;
+    } else {
+      current.losses += 1;
+      current.gross_loss += Math.abs(net);
+    }
+    current.avg_net = current.trades > 0 ? current.net_profit / current.trades : 0;
+    byWeek.set(weekOpen, current);
+  }
+
+  return Array.from(byWeek.values()).sort((a, b) =>
+    b.week_open_utc.localeCompare(a.week_open_utc),
+  );
+}
+
+export async function readMt5ClosedNetForWeek(
+  accountId: string,
+  weekOpenUtc: string,
+): Promise<{ net: number; trades: number }> {
+  const start = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  if (!start.isValid) {
+    return { net: 0, trades: 0 };
+  }
+  const end = start.plus({ days: 7 });
+  const row = await queryOne<{
+    net: string | null;
+    trades: string | null;
+  }>(
+    `SELECT
+      COALESCE(SUM(profit + swap + commission), 0) AS net,
+      COUNT(*)::text AS trades
+     FROM mt5_closed_positions
+     WHERE account_id = $1
+       AND close_time >= $2
+       AND close_time < $3`,
+    [accountId, start.toJSDate(), end.toJSDate()],
+  );
+  return {
+    net: row?.net ? Number(row.net) : 0,
+    trades: row?.trades ? Number(row.trades) : 0,
+  };
+}
+
+export async function readMt5ChangeLog(
+  accountId: string | null = null,
+  weeks = 12,
+): Promise<Mt5ChangeLogEntry[]> {
+  const safeWeeks =
+    Number.isFinite(weeks) && weeks > 0 ? Math.min(weeks, 104) : 12;
+  const rows = await query<{
+    week_open_utc: Date;
+    account_id: string | null;
+    strategy: string | null;
+    title: string;
+    notes: string | null;
+    created_at: Date;
+  }>(
+    `SELECT week_open_utc, account_id, strategy, title, notes, created_at
+     FROM mt5_change_log
+     WHERE ($1::varchar IS NULL OR account_id = $1)
+       AND week_open_utc >= NOW() - make_interval(weeks => $2)
+     ORDER BY week_open_utc DESC, created_at DESC`,
+    [accountId, safeWeeks],
+  );
+
+  return rows.map((row) => ({
+    week_open_utc: row.week_open_utc.toISOString(),
+    account_id: row.account_id,
+    strategy: row.strategy,
+    title: row.title,
+    notes: row.notes,
+    created_at: row.created_at.toISOString(),
+  }));
 }
 
 export async function getMt5AccountById(

@@ -95,6 +95,9 @@ export async function POST(request: Request) {
     last_sync_utc:
       parseString(payload.last_sync_utc) || new Date().toISOString(),
     positions: Array.isArray(payload.positions) ? payload.positions : undefined,
+    closed_positions: Array.isArray(payload.closed_positions)
+      ? payload.closed_positions
+      : undefined,
   };
 
   await upsertMt5Account(snapshot);

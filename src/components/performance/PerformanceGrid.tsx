@@ -14,6 +14,15 @@ type PerformanceGridProps = {
   combined: Section;
   perAsset: Section[];
   labels: Record<PerformanceModel, string>;
+  calibration?: {
+    accountId: string;
+    accountLabel: string;
+    weekOpenUtc: string;
+    weekLabel: string;
+    accountSize: number;
+    netPnl: number;
+    trades: number;
+  };
 };
 
 const ACCOUNT_SIZES = [10000, 50000, 100000, 250000, 500000, 1000000];
@@ -180,11 +189,15 @@ function PerformanceCard({
   label,
   performance,
   onOpen,
+  calibrationSize,
+  calibrationLabel,
   style,
 }: {
   label: string;
   performance: ModelPerformance;
   onOpen: () => void;
+  calibrationSize?: number;
+  calibrationLabel?: string;
   style?: CSSProperties;
 }) {
   const tier = getPerformanceTier(performance.percent, performance.stats.win_rate);
@@ -192,6 +205,10 @@ function PerformanceCard({
   const coverage = performance.total > 0 ? performance.priced / performance.total : 0;
   const sharpeProxy =
     performance.stats.volatility > 0 ? performance.stats.avg_return / performance.stats.volatility : 0;
+  const calibrationPnl =
+    calibrationSize && Number.isFinite(calibrationSize)
+      ? (calibrationSize * performance.percent) / 100
+      : null;
   return (
     <button
       type="button"
@@ -245,6 +262,11 @@ function PerformanceCard({
       <div className={`mt-4 rounded-full border px-3 py-1 text-center text-xs font-semibold ${badge.badge}`}>
         {badge.icon} {badge.label}
       </div>
+      {calibrationPnl !== null ? (
+        <div className="mt-3 text-center text-xs text-[color:var(--muted)]">
+          {calibrationLabel ? `${calibrationLabel}: ` : ""} {formatMoney(calibrationPnl)}
+        </div>
+      ) : null}
     </button>
   );
 }
@@ -253,9 +275,18 @@ export default function PerformanceGrid({
   combined,
   perAsset,
   labels,
+  calibration,
 }: PerformanceGridProps) {
   const [active, setActive] = useState<ActiveCard | null>(null);
-  const [accountSize, setAccountSize] = useState(100000);
+  const [accountSize, setAccountSize] = useState(
+    calibration?.accountSize ?? 100000,
+  );
+
+  useEffect(() => {
+    if (calibration?.accountSize) {
+      setAccountSize(calibration.accountSize);
+    }
+  }, [calibration?.accountSize]);
 
   useEffect(() => {
     if (!active) {
@@ -281,6 +312,10 @@ export default function PerformanceGrid({
     const tier = getPerformanceTier(performance.percent, performance.stats.win_rate);
     const sharpeProxy =
       stats.volatility > 0 ? stats.avg_return / stats.volatility : 0;
+    const calibrationPnl =
+      calibration && calibration.accountSize
+        ? (calibration.accountSize * performance.percent) / 100
+        : null;
     return (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--foreground)]/30 p-6"
@@ -367,6 +402,19 @@ export default function PerformanceGrid({
                       ${size.toLocaleString()}
                     </button>
                   ))}
+                  {calibration ? (
+                    <button
+                      type="button"
+                      onClick={() => setAccountSize(calibration.accountSize)}
+                      className={`rounded-full border px-3 py-1 ${
+                        Math.abs(accountSize - calibration.accountSize) < 1
+                          ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                          : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)]"
+                      }`}
+                    >
+                      MT5 ${calibration.accountSize.toFixed(0)}
+                    </button>
+                  ) : null}
                 </div>
                 <div className="mt-4 rounded-xl bg-[var(--foreground)] px-4 py-6 text-center text-[var(--background)]">
                   <div className="text-3xl font-semibold">{formatMoney(pnl)}</div>
@@ -375,6 +423,28 @@ export default function PerformanceGrid({
                   </div>
                 </div>
               </div>
+              {calibration ? (
+                <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4 text-sm text-[color:var(--muted)]">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    MT5 calibration
+                  </p>
+                  <p className="mt-2 text-sm text-[var(--foreground)]">
+                    {calibration.accountLabel} · {calibration.weekLabel}
+                  </p>
+                  <p className="mt-2 text-xs">
+                    Closed trades: {calibration.trades} · Net{" "}
+                    {formatMoney(calibration.netPnl)}
+                  </p>
+                  <p className="mt-1 text-xs">
+                    Implied size: ${calibration.accountSize.toFixed(0)}
+                  </p>
+                  {calibrationPnl !== null ? (
+                    <p className="mt-2 text-xs text-[color:var(--muted)]">
+                      MT5 sized PnL: {formatMoney(calibrationPnl)}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="space-y-4">
@@ -466,7 +536,7 @@ export default function PerformanceGrid({
         </div>
       </div>
     );
-  }, [active, accountSize]);
+  }, [active, accountSize, calibration]);
 
   return (
     <>
@@ -497,6 +567,8 @@ export default function PerformanceGrid({
                   performance: result,
                 })
               }
+              calibrationSize={calibration?.accountSize}
+              calibrationLabel={calibration ? "MT5 sized" : undefined}
               style={{ animationDelay: `${index * 50}ms` }}
             />
           ))}
@@ -535,6 +607,8 @@ export default function PerformanceGrid({
                         performance: result,
                       })
                     }
+                    calibrationSize={calibration?.accountSize}
+                    calibrationLabel={calibration ? "MT5 sized" : undefined}
                     style={{ animationDelay: `${index * 50}ms` }}
                   />
                 ))}

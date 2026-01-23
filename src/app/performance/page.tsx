@@ -13,10 +13,12 @@ import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
 import { readMarketSnapshot } from "@/lib/priceStore";
 import { formatDateTimeET, latestIso } from "@/lib/time";
+import { readMt5Accounts, readMt5ClosedNetForWeek } from "@/lib/mt5Store";
 import {
   listPerformanceWeeks,
   readAllPerformanceSnapshots,
   readPerformanceSnapshotsByWeek,
+  isWeekOpenUtc,
   weekLabelFromOpen,
 } from "@/lib/performanceSnapshots";
 
@@ -43,6 +45,7 @@ function formatWeekOption(value: string) {
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const weekParam = resolvedSearchParams?.week;
+  const accountParam = resolvedSearchParams?.account;
   const assetClasses = listAssetClasses();
   const models: PerformanceModel[] = [
     "antikythera",
@@ -65,6 +68,23 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     typeof weekParam === "string" && weekOptions.includes(weekParam)
       ? weekParam
       : weekOptions[0] ?? null;
+  const validWeek = selectedWeek ? isWeekOpenUtc(selectedWeek) : false;
+  const calibrationWeek = validWeek ? selectedWeek : null;
+  const accountId =
+    typeof accountParam === "string" ? accountParam : undefined;
+  let accounts: Awaited<ReturnType<typeof readMt5Accounts>> = [];
+  try {
+    accounts = await readMt5Accounts();
+  } catch (error) {
+    console.error(
+      "MT5 account list failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  const selectedAccount =
+    accountId && accounts.find((account) => account.account_id === accountId)
+      ? accounts.find((account) => account.account_id === accountId) ?? null
+      : null;
   let weekSnapshots: Awaited<ReturnType<typeof readPerformanceSnapshotsByWeek>> = [];
   if (selectedWeek) {
     try {
@@ -298,6 +318,47 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       avgWeekly: avg,
     };
   });
+
+  let calibration:
+    | {
+        accountId: string;
+        accountLabel: string;
+        weekOpenUtc: string;
+        weekLabel: string;
+        accountSize: number;
+        netPnl: number;
+        trades: number;
+      }
+    | null = null;
+  if (calibrationWeek && selectedAccount && totals.length > 0) {
+    const dealer = totals.find((item) => item.model === "dealer");
+    const minPercent = 0.5;
+    if (dealer && Math.abs(dealer.percent) >= minPercent) {
+      try {
+        const closed = await readMt5ClosedNetForWeek(
+          selectedAccount.account_id,
+          calibrationWeek,
+        );
+        if (closed.trades > 0) {
+          const size = Math.abs(closed.net) / (Math.abs(dealer.percent) / 100);
+          calibration = {
+            accountId: selectedAccount.account_id,
+            accountLabel: selectedAccount.label,
+            weekOpenUtc: calibrationWeek,
+            weekLabel: weekLabelFromOpen(calibrationWeek),
+            accountSize: size,
+            netPnl: closed.net,
+            trades: closed.trades,
+          };
+        }
+      } catch (error) {
+        console.error(
+          "Closed trade calibration failed:",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
+  }
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -318,7 +379,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 : "No refresh yet"}
             </span>
             {weekOptions.length > 0 ? (
-              <form action="/performance" method="get" className="flex items-center gap-3">
+              <form action="/performance" method="get" className="flex flex-wrap items-center gap-3">
                 <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Week
                 </label>
@@ -333,6 +394,25 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                     </option>
                   ))}
                 </select>
+                {accounts.length > 0 ? (
+                  <>
+                    <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                      Account
+                    </label>
+                    <select
+                      name="account"
+                      defaultValue={selectedAccount?.account_id ?? ""}
+                      className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
+                    >
+                      <option value="">Select account</option>
+                      {accounts.map((account) => (
+                        <option key={account.account_id} value={account.account_id}>
+                          {account.label}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : null}
                 <button
                   type="submit"
                   className="inline-flex items-center justify-center rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
@@ -353,6 +433,17 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             No priced pairs yet. Prices populate when the scheduled refresh runs.
           </div>
         ) : null}
+        {!validWeek && weekParam ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs text-rose-700">
+            Invalid week value. Select a valid week from the dropdown.
+          </div>
+        ) : null}
+        {accounts.length > 0 && !selectedAccount ? (
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-xs text-[color:var(--muted)]">
+            Select an MT5 account to enable MT5-sized calibration.
+          </div>
+        ) : null}
+
         <PerformanceGrid
           combined={{
             id: "combined",
@@ -369,6 +460,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             models: asset.results,
           }))}
           labels={MODEL_LABELS}
+          calibration={calibration ?? undefined}
         />
 
         {historyRows.length > 0 ? (

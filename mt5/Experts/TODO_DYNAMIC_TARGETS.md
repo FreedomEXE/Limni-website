@@ -4,13 +4,13 @@
 
 Some brokers (especially demo accounts and prop firms) have a maximum position limit (commonly 200 positions). With the current EA settings:
 
-- `LotSizePerAdd = 0.01`
+- `LotSizePerAdd = 0.05`
 - `BasketLotCapPer100k = 10.0` (target: 10 lots max)
 - 14 pairs trading
 - ~14 positions per pair = **196 total positions**
 
 **Current setup hits the 200 position limit**, which means:
-- **Actual exposure: ~2 lots** (196 × 0.01 = 1.96 lots)
+- **Actual exposure: ~10 lots** (200 × 0.05 = 10.0 lots)
 - **Target profit: $1,500** (designed for 10 lots)
 - **Problem: Can't reach profit target** with only 2 lots deployed
 
@@ -67,7 +67,7 @@ double GetTrailingStep() {
 
 1. ✅ **Adapts automatically** to broker limitations
 2. ✅ **Maintains basket logic** - no need to close trades early
-3. ✅ **Keeps 0.01 lot size** - more granular scaling and diversification
+3. ✅ **Uses 0.05 lot size** - aligns 200 trade cap with 10 lot exposure
 4. ✅ **Faster turnover** with lower targets = more weekly baskets
 5. ✅ **Works with any broker** - whether limit is 200, 500, or unlimited
 

@@ -87,10 +87,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     { id: "all", label: "ALL" },
     ...assetClasses.map((asset) => ({ id: asset.id, label: asset.label })),
   ];
-  const availableDates = isAll ? [] : await listSnapshotDates(assetClass);
-  const selectedReportDate = isAll
-    ? undefined
-    : reportDate && availableDates.includes(reportDate)
+  const availableDates = isAll
+    ? await Promise.all(
+        assetClasses.map((asset) => listSnapshotDates(asset.id)),
+      ).then((lists) => {
+        if (lists.length === 0) {
+          return [];
+        }
+        return lists.reduce((acc, list) => acc.filter((date) => list.includes(date)));
+      })
+    : await listSnapshotDates(assetClass);
+  const selectedReportDate =
+    reportDate && availableDates.includes(reportDate)
       ? reportDate
       : availableDates[0];
   const snapshot = isAll
@@ -127,7 +135,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   if (isAll) {
     const snapshots = await Promise.all(
-      assetClasses.map((asset) => readSnapshot({ assetClass: asset.id })),
+      assetClasses.map((asset) =>
+        selectedReportDate
+          ? readSnapshot({ assetClass: asset.id, reportDate: selectedReportDate })
+          : readSnapshot({ assetClass: asset.id }),
+      ),
     );
     const snapshotEntries = assetClasses
       .map((asset, index) => ({
@@ -327,32 +339,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           >
             <input type="hidden" name="asset" value={isAll ? "all" : assetClass} />
             <input type="hidden" name="bias" value={biasMode} />
-            {!isAll ? (
-              <>
-                <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Report week
-                </label>
-                <select
-                  name="report"
-                  defaultValue={selectedReportDate ?? ""}
-                  className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
-                >
-                  {availableDates.length === 0 ? (
-                    <option value="">No snapshots</option>
-                  ) : (
-                    availableDates.map((date) => (
-                      <option key={date} value={date}>
-                        {formatDateET(date)}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </>
-            ) : (
-              <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Latest across assets
-              </div>
-            )}
+            <>
+              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Report week
+              </label>
+              <select
+                name="report"
+                defaultValue={selectedReportDate ?? ""}
+                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
+              >
+                {availableDates.length === 0 ? (
+                  <option value="">No snapshots</option>
+                ) : (
+                  availableDates.map((date) => (
+                    <option key={date} value={date}>
+                      {formatDateET(date)}
+                    </option>
+                  ))
+                )}
+              </select>
+            </>
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Bias mode
             </span>
@@ -379,7 +385,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 );
               })}
             </div>
-            {!isAll ? (
+            {availableDates.length > 0 ? (
               <button
                 type="submit"
                 className="inline-flex items-center justify-center rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"

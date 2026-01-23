@@ -72,6 +72,42 @@ CREATE TABLE IF NOT EXISTS mt5_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_mt5_snapshots_account_time ON mt5_snapshots(account_id, snapshot_at DESC);
 
+-- MT5 Closed Positions (historical trade archive)
+CREATE TABLE IF NOT EXISTS mt5_closed_positions (
+  id SERIAL PRIMARY KEY,
+  account_id VARCHAR(50) NOT NULL REFERENCES mt5_accounts(account_id) ON DELETE CASCADE,
+  ticket BIGINT NOT NULL,
+  symbol VARCHAR(20) NOT NULL,
+  type VARCHAR(10) NOT NULL,
+  lots DECIMAL(10, 2) NOT NULL,
+  open_price DECIMAL(12, 5) NOT NULL,
+  close_price DECIMAL(12, 5) NOT NULL,
+  profit DECIMAL(12, 2) DEFAULT 0,
+  swap DECIMAL(12, 2) DEFAULT 0,
+  commission DECIMAL(12, 2) DEFAULT 0,
+  open_time TIMESTAMP NOT NULL,
+  close_time TIMESTAMP NOT NULL,
+  magic_number BIGINT,
+  comment TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(account_id, ticket, close_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mt5_closed_positions_account_time ON mt5_closed_positions(account_id, close_time DESC);
+
+-- MT5 EA Change Log (manual notes per week)
+CREATE TABLE IF NOT EXISTS mt5_change_log (
+  id SERIAL PRIMARY KEY,
+  week_open_utc TIMESTAMP NOT NULL,
+  account_id VARCHAR(50),
+  strategy VARCHAR(30),
+  title VARCHAR(120) NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mt5_change_log_week ON mt5_change_log(week_open_utc DESC);
+
 -- COT Snapshots (weekly data)
 CREATE TABLE IF NOT EXISTS cot_snapshots (
   id SERIAL PRIMARY KEY,

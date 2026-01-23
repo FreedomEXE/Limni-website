@@ -43,10 +43,10 @@ export default function BiasHeatmap({
             key={`${row.assetLabel}-${row.currency}`}
             type="button"
             onClick={() => setActive(row)}
-            className="group relative overflow-hidden rounded-lg border border-[var(--panel-border)] text-left"
+            className="group relative min-h-[88px] overflow-hidden rounded-lg border border-[var(--panel-border)] text-left"
           >
             <div
-              className={`flex flex-col items-start justify-center p-4 text-white transition ${biasTileTone(
+              className={`flex h-full flex-col items-start justify-center p-4 text-white transition ${biasTileTone(
                 row.bias,
               )}`}
             >
