@@ -365,7 +365,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <div className="flex items-center gap-2">
               {(["blended", "dealer", "commercial"] as BiasMode[]).map((mode) => {
                 const href = new URLSearchParams();
-                href.set("asset", assetClass);
+                href.set("asset", isAll ? "all" : assetClass);
                 if (selectedReportDate) {
                   href.set("report", selectedReportDate);
                 }

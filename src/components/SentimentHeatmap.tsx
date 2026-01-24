@@ -66,10 +66,10 @@ export default function SentimentHeatmap({
         {sorted.map((agg) => (
           <div
             key={agg.symbol}
-            className="group relative overflow-hidden rounded-lg border border-[var(--panel-border)]"
+            className="group relative min-h-[96px] overflow-hidden rounded-lg border border-[var(--panel-border)]"
           >
             <div
-              className={`flex flex-col items-center justify-center p-4 transition ${getCrowdingColor(
+              className={`flex h-full flex-col items-center justify-center px-4 py-3 transition ${getCrowdingColor(
                 agg.crowding_state,
               )}`}
               role="button"

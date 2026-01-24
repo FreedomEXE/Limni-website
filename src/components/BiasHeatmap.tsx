@@ -43,19 +43,19 @@ export default function BiasHeatmap({
             key={`${row.assetLabel}-${row.currency}`}
             type="button"
             onClick={() => setActive(row)}
-            className="group relative min-h-[88px] overflow-hidden rounded-lg border border-[var(--panel-border)] text-left"
+            className="group relative min-h-[96px] overflow-hidden rounded-lg border border-[var(--panel-border)] text-left"
           >
             <div
-              className={`flex h-full flex-col items-start justify-center p-4 text-white transition ${biasTileTone(
+              className={`flex h-full flex-col items-start justify-center px-4 py-3 text-white transition ${biasTileTone(
                 row.bias,
               )}`}
             >
               {showAssetLabel ? (
-                <span className="text-[10px] uppercase tracking-[0.2em] text-white/80">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-white/80 leading-none">
                   {row.assetLabel}
                 </span>
               ) : null}
-              <span className="mt-1 text-sm font-semibold">{row.label}</span>
+              <span className="mt-2 text-sm font-semibold leading-tight">{row.label}</span>
             </div>
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
               <div className="text-center text-xs text-white">
