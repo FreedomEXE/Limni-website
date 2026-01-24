@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 
 import {
   getMt5AccountById,
+  getMt5WeekOpenUtc,
+  isMt5WeekOpenUtc,
   readMt5ClosedPositions,
   readMt5ClosedPositionsByWeek,
   readMt5ClosedSummary,
@@ -13,7 +15,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import RefreshButton from "@/components/RefreshButton";
 import { DateTime } from "luxon";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
-import { getWeekOpenUtc, isWeekOpenUtc, weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 
 export const dynamic = "force-dynamic";
 
@@ -104,7 +106,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const weekParam = resolvedSearchParams?.week;
   const requestedWeek = Array.isArray(weekParam) ? weekParam[0] : weekParam;
-  const selectedWeek = requestedWeek && isWeekOpenUtc(requestedWeek) ? requestedWeek : null;
+  const selectedWeek = requestedWeek && isMt5WeekOpenUtc(requestedWeek) ? requestedWeek : null;
   let account = null;
   let closedPositions: Awaited<ReturnType<typeof readMt5ClosedPositions>> = [];
   let closedSummary: Awaited<ReturnType<typeof readMt5ClosedSummary>> = [];
@@ -117,7 +119,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     closedPositions = selectedWeek
       ? await readMt5ClosedPositionsByWeek(accountId, selectedWeek, 500)
       : await readMt5ClosedPositions(accountId, 200);
-    const weekOpen = getWeekOpenUtc();
+    const weekOpen = getMt5WeekOpenUtc();
     const weekEnd = DateTime.fromISO(weekOpen, { zone: "utc" }).plus({ days: 7 }).toISO();
     if (weekEnd) {
       weeklyDrawdown = await readMt5DrawdownRange(accountId, weekOpen, weekEnd);

@@ -51,7 +51,7 @@ function reportWeekOpenUtc(reportDate: string): string | null {
   const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
   const sunday = report
     .plus({ days: daysUntilSunday })
-    .set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
+    .set({ hour: 17, minute: 0, second: 0, millisecond: 0 });
   return sunday.toUTC().toISO();
 }
 

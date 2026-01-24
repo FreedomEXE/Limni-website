@@ -167,18 +167,42 @@ function formatUtcLabel(isoValue: string) {
   return parsed.toFormat("MMM dd, yyyy HH:mm 'UTC'");
 }
 
-function getSundayOpenUtc(now: DateTime): DateTime {
+function getCryptoWeekOpenUtc(now: DateTime): DateTime {
+  return now.setZone("America/New_York").startOf("week").toUTC();
+}
+
+type SessionSpec = {
+  openHour: number;
+  openMinute?: number;
+  closeHour: number;
+  closeMinute?: number;
+};
+
+function getSessionSpec(assetClass: Exclude<AssetClass, "crypto">): SessionSpec {
+  if (assetClass === "fx") {
+    return { openHour: 17, closeHour: 17 };
+  }
+  return { openHour: 18, closeHour: 17 };
+}
+
+function getSundaySessionOpenUtc(now: DateTime, spec: SessionSpec): DateTime {
   const nyNow = now.setZone("America/New_York");
   const daysSinceSunday = nyNow.weekday % 7;
   let sunday = nyNow.minus({ days: daysSinceSunday });
+  const openToday = sunday.set({
+    hour: spec.openHour,
+    minute: spec.openMinute ?? 0,
+    second: 0,
+    millisecond: 0,
+  });
 
-  if (daysSinceSunday === 0 && nyNow.hour < 19) {
+  if (daysSinceSunday === 0 && nyNow.toMillis() < openToday.toMillis()) {
     sunday = sunday.minus({ days: 7 });
   }
 
   const open = sunday.set({
-    hour: 19,
-    minute: 0,
+    hour: spec.openHour,
+    minute: spec.openMinute ?? 0,
     second: 0,
     millisecond: 0,
   });
@@ -186,8 +210,38 @@ function getSundayOpenUtc(now: DateTime): DateTime {
   return open.toUTC();
 }
 
-function getCryptoWeekOpenUtc(now: DateTime): DateTime {
-  return now.setZone("utc").startOf("week");
+function getReportWindowUtc(
+  reportDate: string,
+  spec: SessionSpec,
+): { openUtc: DateTime; closeUtc: DateTime } {
+  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+  if (!report.isValid) {
+    const openUtc = getSundaySessionOpenUtc(DateTime.utc(), spec);
+    return {
+      openUtc,
+      closeUtc: openUtc.plus({ days: 5 }),
+    };
+  }
+
+  const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
+  const sunday = report
+    .plus({ days: daysUntilSunday })
+    .set({
+      hour: spec.openHour,
+      minute: spec.openMinute ?? 0,
+      second: 0,
+      millisecond: 0,
+    });
+  const friday = sunday
+    .plus({ days: 5 })
+    .set({
+      hour: spec.closeHour,
+      minute: spec.closeMinute ?? 0,
+      second: 0,
+      millisecond: 0,
+    });
+
+  return { openUtc: sunday.toUTC(), closeUtc: friday.toUTC() };
 }
 
 function getWeekWindow(
@@ -235,30 +289,15 @@ function getWeekWindow(
     };
   }
 
+  const spec = getSessionSpec(assetClass);
+
   if (!reportDate || isLatestReport) {
-    const openUtc = getSundayOpenUtc(now);
+    const openUtc = getSundaySessionOpenUtc(now, spec);
     const isPreOpen = now.toMillis() < openUtc.toMillis();
     return { openUtc, closeUtc: isPreOpen ? openUtc : now, isHistorical: false, isPreOpen };
   }
 
-  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
-  if (!report.isValid) {
-    const openUtc = getSundayOpenUtc(now);
-    const isPreOpen = now.toMillis() < openUtc.toMillis();
-    return { openUtc, closeUtc: isPreOpen ? openUtc : now, isHistorical: false, isPreOpen };
-  }
-
-  const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
-  const sunday = report
-    .plus({ days: daysUntilSunday })
-    .set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
-
-  const friday = sunday
-    .plus({ days: 5 })
-    .set({ hour: 17, minute: 0, second: 0, millisecond: 0 });
-
-  const openUtc = sunday.toUTC();
-  const closeUtc = friday.toUTC();
+  const { openUtc, closeUtc } = getReportWindowUtc(reportDate, spec);
   const isHistorical = closeUtc.toMillis() < now.toMillis();
   const isPreOpen = now.toMillis() < openUtc.toMillis();
 
@@ -834,6 +873,24 @@ async function buildNonFxPerformance(
   const missingPairs: string[] = [];
 
   for (const [pair, info] of Object.entries(pairs)) {
+    let resolved = false;
+
+    if (assetClass === "crypto") {
+      try {
+        const fallback = await fetchCryptoFallbackPrices(pair, window, info.direction);
+        if (fallback) {
+          performance[pair] = fallback;
+          resolved = true;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    if (resolved) {
+      continue;
+    }
+
     const symbols = apiKey ? getPriceSymbolCandidates(pair, assetClass) : [];
     if (apiKey && symbols.length === 0) {
       performance[pair] = null;
@@ -842,7 +899,6 @@ async function buildNonFxPerformance(
       continue;
     }
 
-    let resolved = false;
     if (apiKey) {
       for (const symbol of symbols) {
         try {
@@ -914,18 +970,6 @@ async function buildNonFxPerformance(
       }
     }
 
-    if (!resolved && assetClass === "crypto") {
-      try {
-        const fallback = await fetchCryptoFallbackPrices(pair, window, info.direction);
-        if (fallback) {
-          performance[pair] = fallback;
-          resolved = true;
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
     if (!resolved) {
       performance[pair] = null;
       missing += 1;
@@ -965,7 +1009,7 @@ export async function getPairPerformance(
   const currentWeekOpenIso =
     assetClass === "crypto"
       ? toIsoString(getCryptoWeekOpenUtc(now))
-      : toIsoString(getSundayOpenUtc(now));
+      : toIsoString(getSundaySessionOpenUtc(now, getSessionSpec(assetClass)));
   const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
   const isPreOpen = window.isPreOpen;
 
@@ -1158,7 +1202,9 @@ export async function refreshMarketSnapshot(
   const now = DateTime.utc();
   const nowIso = toIsoString(now);
   const weekOpenUtc = toIsoString(
-    assetClass === "crypto" ? getCryptoWeekOpenUtc(now) : getSundayOpenUtc(now),
+    assetClass === "crypto"
+      ? getCryptoWeekOpenUtc(now)
+      : getSundaySessionOpenUtc(now, getSessionSpec(assetClass)),
   );
   const weekOpenTime = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
   const weekOpenBase = weekOpenTime.isValid ? weekOpenTime : now;

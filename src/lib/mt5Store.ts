@@ -407,6 +407,33 @@ function weekOpenUtcForTimestamp(timestamp: string): string {
   return open.toUTC().toISO() ?? timestamp;
 }
 
+export function isMt5WeekOpenUtc(isoValue: string): boolean {
+  const parsed = DateTime.fromISO(isoValue, { zone: "utc" });
+  if (!parsed.isValid) {
+    return false;
+  }
+  return weekOpenUtcForTimestamp(isoValue) === isoValue;
+}
+
+export function getMt5WeekOpenUtc(now = DateTime.utc()): string {
+  const nyTime = now.setZone("America/New_York");
+  const daysSinceSunday = nyTime.weekday % 7;
+  let sunday = nyTime.minus({ days: daysSinceSunday });
+
+  if (daysSinceSunday === 0 && nyTime.hour < 19) {
+    sunday = sunday.minus({ days: 7 });
+  }
+
+  const open = sunday.set({
+    hour: 19,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+
+  return open.toUTC().toISO() ?? now.toUTC().toISO();
+}
+
 export async function readMt5ClosedPositions(
   accountId: string,
   limit = 200,

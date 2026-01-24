@@ -162,7 +162,8 @@ export default function PairPerformanceTable({
         </table>
       </div>
       <p className="mt-3 text-xs text-[color:var(--muted)]">
-        {note ?? "Performance is relative to Sunday 7:00 PM ET open."}
+        {note ??
+          "Performance uses exchange weekly sessions (FX 5:00 PM ET, indices/commodities 6:00 PM ET, crypto Monday 12:00 AM ET)."}
       </p>
       {missingPairs && missingPairs.length > 0 ? (
         <div className="mt-3 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-xs text-[var(--accent-strong)]">
