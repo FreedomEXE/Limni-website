@@ -5,13 +5,15 @@ import {
   readMt5ClosedPositions,
   readMt5ClosedPositionsByWeek,
   readMt5ClosedSummary,
+  readMt5DrawdownRange,
   readMt5ChangeLog,
 } from "@/lib/mt5Store";
 import PositionsTable from "@/components/PositionsTable";
 import DashboardLayout from "@/components/DashboardLayout";
 import RefreshButton from "@/components/RefreshButton";
+import { DateTime } from "luxon";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
-import { isWeekOpenUtc, weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import { getWeekOpenUtc, isWeekOpenUtc, weekLabelFromOpen } from "@/lib/performanceSnapshots";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +109,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   let closedPositions: Awaited<ReturnType<typeof readMt5ClosedPositions>> = [];
   let closedSummary: Awaited<ReturnType<typeof readMt5ClosedSummary>> = [];
   let changeLog: Awaited<ReturnType<typeof readMt5ChangeLog>> = [];
+  let weeklyDrawdown = 0;
   try {
     account = await getMt5AccountById(accountId);
     closedSummary = await readMt5ClosedSummary(accountId, 12);
@@ -114,6 +117,11 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     closedPositions = selectedWeek
       ? await readMt5ClosedPositionsByWeek(accountId, selectedWeek, 500)
       : await readMt5ClosedPositions(accountId, 200);
+    const weekOpen = getWeekOpenUtc();
+    const weekEnd = DateTime.fromISO(weekOpen, { zone: "utc" }).plus({ days: 7 }).toISO();
+    if (weekEnd) {
+      weeklyDrawdown = await readMt5DrawdownRange(accountId, weekOpen, weekEnd);
+    }
   } catch (error) {
     console.error(
       "Account load failed:",
@@ -340,10 +348,10 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Max drawdown
+                  Max drawdown (week)
                 </p>
                 <p className="mt-1 font-semibold">
-                  {formatPercent(account.max_drawdown_pct)}
+                  {formatPercent(weeklyDrawdown)}
                 </p>
               </div>
               <div>
@@ -384,6 +392,14 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
                 </p>
                 <p className="mt-1 font-semibold">
                   {formatPercent(account.win_rate_pct)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Max drawdown (all)
+                </p>
+                <p className="mt-1 font-semibold">
+                  {formatPercent(account.max_drawdown_pct)}
                 </p>
               </div>
             </div>

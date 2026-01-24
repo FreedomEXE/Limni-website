@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { readMt5ClosedPositions } from "@/lib/mt5Store";
 
@@ -49,12 +49,16 @@ function toCsv(rows: Awaited<ReturnType<typeof readMt5ClosedPositions>>) {
   return lines.join("\n");
 }
 
+type RouteParams = {
+  accountId: string;
+};
+
 export async function GET(
-  request: Request,
-  { params }: { params: { accountId: string } },
+  request: NextRequest,
+  { params }: { params: Promise<RouteParams> },
 ) {
-  const { accountId } = params;
-  const { searchParams } = new URL(request.url);
+  const { accountId } = await params;
+  const { searchParams } = request.nextUrl;
   const limitParam = searchParams.get("limit");
   const format = searchParams.get("format") ?? "json";
   const limit = limitParam ? Number.parseInt(limitParam, 10) : 500;

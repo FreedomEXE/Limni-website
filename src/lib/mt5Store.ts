@@ -588,6 +588,48 @@ export async function readMt5ClosedNetForWeek(
   };
 }
 
+export async function readMt5DrawdownRange(
+  accountId: string,
+  startIso: string,
+  endIso: string,
+): Promise<number> {
+  const start = DateTime.fromISO(startIso, { zone: "utc" });
+  const end = DateTime.fromISO(endIso, { zone: "utc" });
+  if (!start.isValid || !end.isValid || end <= start) {
+    return 0;
+  }
+
+  const rows = await query<{ equity: string }>(
+    `SELECT equity
+     FROM mt5_snapshots
+     WHERE account_id = $1
+       AND snapshot_at >= $2
+       AND snapshot_at < $3
+     ORDER BY snapshot_at ASC`,
+    [accountId, start.toJSDate(), end.toJSDate()],
+  );
+
+  let peak = 0;
+  let maxDrawdown = 0;
+  for (const row of rows) {
+    const equity = Number(row.equity);
+    if (!Number.isFinite(equity) || equity <= 0) {
+      continue;
+    }
+    if (equity > peak) {
+      peak = equity;
+    }
+    if (peak > 0) {
+      const dd = ((peak - equity) / peak) * 100;
+      if (dd > maxDrawdown) {
+        maxDrawdown = dd;
+      }
+    }
+  }
+
+  return maxDrawdown;
+}
+
 export async function readMt5ChangeLog(
   accountId: string | null = null,
   weeks = 12,
