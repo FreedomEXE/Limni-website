@@ -31,6 +31,8 @@ export async function login(username: string, password: string): Promise<boolean
   const validPassword = process.env.AUTH_PASSWORD || "password";
   const viewerUsername = process.env.AUTH_VIEWER_USERNAME;
   const viewerPassword = process.env.AUTH_VIEWER_PASSWORD;
+  const viewerUsernameAlt = process.env.AUTH_VIEWER_USERNAME_ALT;
+  const viewerPasswordAlt = process.env.AUTH_VIEWER_PASSWORD_ALT;
 
   if (username === validUsername && password === validPassword) {
     const cookieStore = await cookies();
@@ -49,6 +51,23 @@ export async function login(username: string, password: string): Promise<boolean
     viewerPassword &&
     username === viewerUsername &&
     password === viewerPassword
+  ) {
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE_NAME, SESSION_SECRET_VIEWER, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    });
+    return true;
+  }
+
+  if (
+    viewerUsernameAlt &&
+    viewerPasswordAlt &&
+    username === viewerUsernameAlt &&
+    password === viewerPasswordAlt
   ) {
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, SESSION_SECRET_VIEWER, {
