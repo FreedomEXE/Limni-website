@@ -197,17 +197,41 @@ function getWeekWindow(
   assetClass: AssetClass,
 ): WeekWindow {
   if (assetClass === "crypto") {
-    const anchor = reportDate
-      ? DateTime.fromISO(reportDate, { zone: "utc" })
-      : now.setZone("utc");
-    const openUtc = anchor.isValid ? anchor.startOf("week") : now.startOf("week");
-    const closeUtc = openUtc.plus({ days: 7 }).minus({ seconds: 1 });
+    if (!reportDate || isLatestReport) {
+      const openUtc = getCryptoWeekOpenUtc(now);
+      const isPreOpen = now.toMillis() < openUtc.toMillis();
+      return {
+        openUtc,
+        closeUtc: isPreOpen ? openUtc : now,
+        isHistorical: false,
+        isPreOpen,
+      };
+    }
+
+    const reportLocal = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+    if (!reportLocal.isValid) {
+      const openUtc = getCryptoWeekOpenUtc(now);
+      const isPreOpen = now.toMillis() < openUtc.toMillis();
+      return {
+        openUtc,
+        closeUtc: isPreOpen ? openUtc : now,
+        isHistorical: false,
+        isPreOpen,
+      };
+    }
+
+    const openLocal = reportLocal.startOf("week").plus({ weeks: 1 });
+    const closeLocal = openLocal.plus({ weeks: 1 }).minus({ milliseconds: 1 });
+    const openUtc = openLocal.toUTC();
+    const closeUtc = closeLocal.toUTC();
     const isHistorical = closeUtc.toMillis() < now.toMillis();
+    const isPreOpen = now.toMillis() < openUtc.toMillis();
+
     return {
       openUtc,
-      closeUtc: isHistorical ? closeUtc : now,
+      closeUtc: isHistorical ? closeUtc : isPreOpen ? openUtc : now,
       isHistorical,
-      isPreOpen: false,
+      isPreOpen,
     };
   }
 
@@ -938,7 +962,10 @@ export async function getPairPerformance(
     assetClass,
   );
   const weekOpenIso = toIsoString(window.openUtc);
-  const currentWeekOpenIso = toIsoString(getSundayOpenUtc(now));
+  const currentWeekOpenIso =
+    assetClass === "crypto"
+      ? toIsoString(getCryptoWeekOpenUtc(now))
+      : toIsoString(getSundayOpenUtc(now));
   const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
   const isPreOpen = window.isPreOpen;
 
@@ -956,7 +983,7 @@ export async function getPairPerformance(
     });
     return {
       performance,
-      note: "Week has not started yet. Returns will populate after Sunday 7:00 PM ET (crypto excluded).",
+      note: "Week has not started yet. Returns will populate after the report week opens.",
       missingPairs: [],
     };
   }
