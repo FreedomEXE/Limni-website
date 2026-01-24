@@ -873,21 +873,22 @@ async function buildNonFxPerformance(
   const missingPairs: string[] = [];
 
   for (const [pair, info] of Object.entries(pairs)) {
-    let resolved = false;
-
     if (assetClass === "crypto") {
       try {
         const fallback = await fetchCryptoFallbackPrices(pair, window, info.direction);
         if (fallback) {
           performance[pair] = fallback;
-          resolved = true;
+        } else {
+          performance[pair] = null;
+          missing += 1;
+          missingPairs.push(pair);
         }
       } catch (error) {
         console.error(error);
+        performance[pair] = null;
+        missing += 1;
+        missingPairs.push(pair);
       }
-    }
-
-    if (resolved) {
       continue;
     }
 
@@ -899,6 +900,7 @@ async function buildNonFxPerformance(
       continue;
     }
 
+    let resolved = false;
     if (apiKey) {
       for (const symbol of symbols) {
         try {
