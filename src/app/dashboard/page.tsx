@@ -192,7 +192,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       const perfResult = await getPairPerformance(derivedPairs, {
         assetClass: entry.asset.id,
         reportDate: entrySnapshot.report_date,
-        isLatestReport: true,
+        isLatestReport: false,
       });
       Object.entries(derivedPairs).forEach(([pair, row]) => {
         pairRowsWithPerf.push({
@@ -264,7 +264,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         ? await getPairPerformance(derivedPairs, {
             assetClass,
             reportDate: selectedReportDate,
-            isLatestReport,
+            isLatestReport: false,
           })
         : { performance: {}, note: "No pairs to price.", missingPairs: [] };
     pairNote = perfResult.note;

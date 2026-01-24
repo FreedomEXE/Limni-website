@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { listAssetClasses } from "@/lib/cotMarkets";
-import { readSnapshot } from "@/lib/cotStore";
+import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
@@ -12,7 +12,8 @@ import type { PairSnapshot } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
 import { readMarketSnapshot } from "@/lib/priceStore";
-import { formatDateTimeET, latestIso } from "@/lib/time";
+import { DateTime } from "luxon";
+import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 import { readMt5Accounts, readMt5ClosedNetForWeek } from "@/lib/mt5Store";
 import {
   listPerformanceWeeks,
@@ -42,6 +43,18 @@ function formatWeekOption(value: string) {
   return weekLabelFromOpen(value);
 }
 
+function reportWeekOpenUtc(reportDate: string): string | null {
+  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+  if (!report.isValid) {
+    return null;
+  }
+  const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
+  const sunday = report
+    .plus({ days: daysUntilSunday })
+    .set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
+  return sunday.toUTC().toISO();
+}
+
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const weekParam = resolvedSearchParams?.week;
@@ -56,6 +69,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   ];
 
   let weekOptions: string[] = [];
+  let reportOptions: string[] = [];
   try {
     weekOptions = await listPerformanceWeeks();
   } catch (error) {
@@ -64,12 +78,39 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       error instanceof Error ? error.message : String(error),
     );
   }
+  if (weekOptions.length === 0) {
+    try {
+      reportOptions = await Promise.all(
+        assetClasses.map((asset) => listSnapshotDates(asset.id)),
+      ).then((lists) => {
+        if (lists.length === 0) {
+          return [];
+        }
+        return lists.reduce((acc, list) => acc.filter((date) => list.includes(date)));
+      });
+    } catch (error) {
+      console.error(
+        "COT snapshot list failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
   const selectedWeek =
     typeof weekParam === "string" && weekOptions.includes(weekParam)
       ? weekParam
       : weekOptions[0] ?? null;
+  const reportParam = resolvedSearchParams?.report;
+  const selectedReport =
+    typeof reportParam === "string" && reportOptions.includes(reportParam)
+      ? reportParam
+      : reportOptions[0] ?? null;
   const validWeek = selectedWeek ? isWeekOpenUtc(selectedWeek) : false;
-  const calibrationWeek = validWeek ? selectedWeek : null;
+  const reportWeek = selectedReport ? reportWeekOpenUtc(selectedReport) : null;
+  const calibrationWeek = validWeek
+    ? selectedWeek
+    : reportWeek && isWeekOpenUtc(reportWeek)
+      ? reportWeek
+      : null;
   const accountId =
     typeof accountParam === "string" ? accountParam : undefined;
   let accounts: Awaited<ReturnType<typeof readMt5Accounts>> = [];
@@ -209,7 +250,11 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
     const sentiment = await getLatestAggregates();
     const snapshotResults = await Promise.all(
-      assetClasses.map((asset) => readSnapshot({ assetClass: asset.id })),
+      assetClasses.map((asset) =>
+        selectedReport
+          ? readSnapshot({ assetClass: asset.id, reportDate: selectedReport })
+          : readSnapshot({ assetClass: asset.id }),
+      ),
     );
     snapshotResults.forEach((snapshot, index) => {
       snapshots.set(assetClasses[index].id, snapshot);
@@ -224,7 +269,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         const performance = await getPairPerformance(buildAllPairs(asset.id), {
           assetClass: asset.id,
           reportDate: snapshot.report_date,
-          isLatestReport: true,
+          isLatestReport: false,
         });
         const results = await Promise.all(
           models.map((model) =>
@@ -420,6 +465,48 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                   View
                 </button>
               </form>
+            ) : reportOptions.length > 0 ? (
+              <form action="/performance" method="get" className="flex flex-wrap items-center gap-3">
+                <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Report week
+                </label>
+                <select
+                  name="report"
+                  defaultValue={selectedReport ?? undefined}
+                  className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
+                >
+                  {reportOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {formatDateET(option)}
+                    </option>
+                  ))}
+                </select>
+                {accounts.length > 0 ? (
+                  <>
+                    <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                      Account
+                    </label>
+                    <select
+                      name="account"
+                      defaultValue={selectedAccount?.account_id ?? ""}
+                      className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
+                    >
+                      <option value="">Select account</option>
+                      {accounts.map((account) => (
+                        <option key={account.account_id} value={account.account_id}>
+                          {account.label}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : null}
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
+                >
+                  View
+                </button>
+              </form>
             ) : (
               <div className="text-xs text-[color:var(--muted)]">
                 No weekly snapshots yet.
@@ -450,7 +537,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             label: "Combined Basket",
             description: selectedWeek
               ? `All asset classes aggregated. ${weekLabelFromOpen(selectedWeek)}.`
-              : "All asset classes aggregated.",
+              : selectedReport
+                ? `All asset classes aggregated. Report week ${selectedReport}.`
+                : "All asset classes aggregated.",
             models: totals,
           }}
           perAsset={perAsset.map((asset) => ({

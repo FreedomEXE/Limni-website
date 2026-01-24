@@ -91,6 +91,7 @@ type WeekWindow = {
   openUtc: DateTime;
   closeUtc: DateTime;
   isHistorical: boolean;
+  isPreOpen: boolean;
 };
 
 const NON_FX_SYMBOLS: Record<
@@ -191,32 +192,43 @@ function getWeekWindow(
   isLatestReport = false,
 ): WeekWindow {
   if (!reportDate || isLatestReport) {
-    return { openUtc: getSundayOpenUtc(now), closeUtc: now, isHistorical: false };
+    return {
+      openUtc: getSundayOpenUtc(now),
+      closeUtc: now,
+      isHistorical: false,
+      isPreOpen: false,
+    };
   }
 
   const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
   if (!report.isValid) {
-    return { openUtc: getSundayOpenUtc(now), closeUtc: now, isHistorical: false };
+    return {
+      openUtc: getSundayOpenUtc(now),
+      closeUtc: now,
+      isHistorical: false,
+      isPreOpen: false,
+    };
   }
 
-  const daysSinceSunday = report.weekday % 7;
+  const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
   const sunday = report
-    .minus({ days: daysSinceSunday })
+    .plus({ days: daysUntilSunday })
     .set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
 
-  const fridayOffset = (5 - report.weekday + 7) % 7;
-  const friday = report
-    .plus({ days: fridayOffset })
+  const friday = sunday
+    .plus({ days: 5 })
     .set({ hour: 17, minute: 0, second: 0, millisecond: 0 });
 
   const openUtc = sunday.toUTC();
   const closeUtc = friday.toUTC();
   const isHistorical = closeUtc.toMillis() < now.toMillis();
+  const isPreOpen = now.toMillis() < openUtc.toMillis();
 
   return {
     openUtc,
-    closeUtc: isHistorical ? closeUtc : now,
+    closeUtc: isHistorical ? closeUtc : isPreOpen ? openUtc : now,
     isHistorical,
+    isPreOpen,
   };
 }
 
@@ -909,6 +921,26 @@ export async function getPairPerformance(
   const weekOpenIso = toIsoString(window.openUtc);
   const currentWeekOpenIso = toIsoString(getSundayOpenUtc(now));
   const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
+  const isPreOpen = window.isPreOpen && assetClass !== "crypto";
+
+  if (isPreOpen) {
+    const performance: Record<string, PairPerformance | null> = {};
+    Object.keys(pairs).forEach((pair) => {
+      performance[pair] = {
+        open: 0,
+        current: 0,
+        percent: 0,
+        pips: 0,
+        open_time_utc: weekOpenIso,
+        current_time_utc: weekOpenIso,
+      };
+    });
+    return {
+      performance,
+      note: "Week has not started yet. Returns will populate after Sunday 7:00 PM ET (crypto excluded).",
+      missingPairs: [],
+    };
+  }
 
   try {
     if (isCurrentWeek) {
