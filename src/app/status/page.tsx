@@ -5,6 +5,8 @@ import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
 import { readMarketSnapshot } from "@/lib/priceStore";
 import { getLatestAggregates } from "@/lib/sentiment/store";
+import type { SentimentAggregate } from "@/lib/sentiment/types";
+import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
 import { readMt5Accounts } from "@/lib/mt5Store";
 import { getPriceSymbolCandidates } from "@/lib/pricePerformance";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
@@ -32,8 +34,8 @@ export default async function StatusPage() {
 
   let cotSnapshot = null;
   let marketSnapshot = null;
-  let sentimentAggregates = [];
-  let accounts = [];
+  let sentimentAggregates: SentimentAggregate[] = [];
+  let accounts: Mt5AccountSnapshot[] = [];
   let priceSnapshots: Array<{
     assetLabel: string;
     assetId: string;
