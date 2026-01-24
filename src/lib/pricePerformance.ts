@@ -1131,6 +1131,7 @@ export async function refreshMarketSnapshot(
     openUtc: weekOpenBase,
     closeUtc: now,
     isHistorical: false,
+    isPreOpen: now.toMillis() < weekOpenBase.toMillis(),
   };
   let performance: Record<string, PairPerformance | null> = {};
   try {
