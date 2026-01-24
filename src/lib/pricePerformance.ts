@@ -186,28 +186,42 @@ function getSundayOpenUtc(now: DateTime): DateTime {
   return open.toUTC();
 }
 
+function getCryptoWeekOpenUtc(now: DateTime): DateTime {
+  return now.setZone("utc").startOf("week");
+}
+
 function getWeekWindow(
   now: DateTime,
-  reportDate?: string,
-  isLatestReport = false,
+  reportDate: string | undefined,
+  isLatestReport: boolean,
+  assetClass: AssetClass,
 ): WeekWindow {
-  if (!reportDate || isLatestReport) {
+  if (assetClass === "crypto") {
+    const anchor = reportDate
+      ? DateTime.fromISO(reportDate, { zone: "utc" })
+      : now.setZone("utc");
+    const openUtc = anchor.isValid ? anchor.startOf("week") : now.startOf("week");
+    const closeUtc = openUtc.plus({ days: 7 }).minus({ seconds: 1 });
+    const isHistorical = closeUtc.toMillis() < now.toMillis();
     return {
-      openUtc: getSundayOpenUtc(now),
-      closeUtc: now,
-      isHistorical: false,
+      openUtc,
+      closeUtc: isHistorical ? closeUtc : now,
+      isHistorical,
       isPreOpen: false,
     };
   }
 
+  if (!reportDate || isLatestReport) {
+    const openUtc = getSundayOpenUtc(now);
+    const isPreOpen = now.toMillis() < openUtc.toMillis();
+    return { openUtc, closeUtc: isPreOpen ? openUtc : now, isHistorical: false, isPreOpen };
+  }
+
   const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
   if (!report.isValid) {
-    return {
-      openUtc: getSundayOpenUtc(now),
-      closeUtc: now,
-      isHistorical: false,
-      isPreOpen: false,
-    };
+    const openUtc = getSundayOpenUtc(now);
+    const isPreOpen = now.toMillis() < openUtc.toMillis();
+    return { openUtc, closeUtc: isPreOpen ? openUtc : now, isHistorical: false, isPreOpen };
   }
 
   const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
@@ -917,11 +931,16 @@ export async function getPairPerformance(
   const sources = getPriceSources();
   const assetClass = options?.assetClass ?? "fx";
   const now = DateTime.utc();
-  const window = getWeekWindow(now, options?.reportDate, options?.isLatestReport);
+  const window = getWeekWindow(
+    now,
+    options?.reportDate,
+    options?.isLatestReport ?? false,
+    assetClass,
+  );
   const weekOpenIso = toIsoString(window.openUtc);
   const currentWeekOpenIso = toIsoString(getSundayOpenUtc(now));
   const isCurrentWeek = weekOpenIso === currentWeekOpenIso;
-  const isPreOpen = window.isPreOpen && assetClass !== "crypto";
+  const isPreOpen = window.isPreOpen;
 
   if (isPreOpen) {
     const performance: Record<string, PairPerformance | null> = {};
@@ -1111,7 +1130,9 @@ export async function refreshMarketSnapshot(
   const assetClass = options?.assetClass ?? "fx";
   const now = DateTime.utc();
   const nowIso = toIsoString(now);
-  const weekOpenUtc = toIsoString(getSundayOpenUtc(now));
+  const weekOpenUtc = toIsoString(
+    assetClass === "crypto" ? getCryptoWeekOpenUtc(now) : getSundayOpenUtc(now),
+  );
   const weekOpenTime = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
   const weekOpenBase = weekOpenTime.isValid ? weekOpenTime : now;
   const cacheSeconds = Number(process.env.PRICE_CACHE_SECONDS ?? "300");
@@ -1131,7 +1152,7 @@ export async function refreshMarketSnapshot(
     openUtc: weekOpenBase,
     closeUtc: now,
     isHistorical: false,
-    isPreOpen: now.toMillis() < weekOpenBase.toMillis(),
+    isPreOpen: assetClass === "crypto" ? false : now.toMillis() < weekOpenBase.toMillis(),
   };
   let performance: Record<string, PairPerformance | null> = {};
   try {
