@@ -98,12 +98,16 @@ export async function fetchBitgetCandleRange(
 ): Promise<{ open: number; close: number; openTime: string; closeTime: string } | null> {
   const productType = getProductType();
   const symbol = `${symbolBase}USDT`;
+  const weekDurationMs = window.closeUtc.toMillis() - window.openUtc.toMillis();
+  const hoursInWeek = Math.ceil(weekDurationMs / (1000 * 60 * 60));
+  const requiredLimit = Math.max(hoursInWeek + 24, 200);
   const url = new URL(`${BASE_URL}/api/v2/mix/market/candles`);
   url.searchParams.set("symbol", symbol);
   url.searchParams.set("productType", productType);
   url.searchParams.set("granularity", "3600");
   url.searchParams.set("startTime", String(window.openUtc.toMillis()));
   url.searchParams.set("endTime", String(window.closeUtc.toMillis()));
+  url.searchParams.set("limit", String(Math.min(requiredLimit, 1000)));
 
   const response = await fetchJson<BitgetCandleResponse>(url.toString());
   if (response.code && response.code !== "00000") {
@@ -113,6 +117,8 @@ export async function fetchBitgetCandleRange(
   if (rows.length === 0) {
     return null;
   }
+  const openMs = window.openUtc.toMillis();
+  const closeMs = window.closeUtc.toMillis();
   const parsed = rows
     .map((row) => ({
       ts: Number(row[0]),
@@ -120,6 +126,7 @@ export async function fetchBitgetCandleRange(
       close: Number(row[4]),
     }))
     .filter((row) => Number.isFinite(row.ts) && Number.isFinite(row.open) && Number.isFinite(row.close))
+    .filter((row) => row.ts >= openMs && row.ts <= closeMs)
     .sort((a, b) => a.ts - b.ts);
   if (parsed.length === 0) {
     return null;
