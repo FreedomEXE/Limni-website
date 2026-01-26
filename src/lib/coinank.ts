@@ -31,6 +31,7 @@ export type LiquidationSummary = {
   dominantSide: "long" | "short" | "flat";
   recentClusters: LiquidationCluster[];
   referencePrice?: number | null;
+  priceSource?: "Bitget Futures" | "CMC Spot" | null;
   largestAbove?: LiquidationCluster | null;
   largestBelow?: LiquidationCluster | null;
   lastUpdated: string;
@@ -88,6 +89,7 @@ async function coinankGet<T>(path: string, params: Record<string, string>) {
 export async function fetchLiquidationSummary(
   baseCoin: "BTC" | "ETH",
   referencePrice?: number | null,
+  priceSource?: "Bitget Futures" | "CMC Spot" | null,
 ): Promise<LiquidationSummary> {
   const orders = await coinankGet<LiquidationOrder[]>(
     "/api/liquidation/orders",
@@ -168,6 +170,7 @@ export async function fetchLiquidationSummary(
     dominantSide,
     recentClusters,
     referencePrice,
+    priceSource,
     largestAbove,
     largestBelow,
     lastUpdated: new Date().toISOString(),

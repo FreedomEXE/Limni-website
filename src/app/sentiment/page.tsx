@@ -4,6 +4,7 @@ import RefreshSentimentButton from "@/components/RefreshSentimentButton";
 import SentimentHeatmap from "@/components/SentimentHeatmap";
 import { fetchLiquidationSummary } from "@/lib/coinank";
 import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
+import { fetchCryptoSpotPrice } from "@/lib/cryptoPrices";
 import { getLatestAggregates, readSourceHealth } from "@/lib/sentiment/store";
 import { getSessionRole } from "@/lib/auth";
 import { formatDateTimeET, latestIso } from "@/lib/time";
@@ -132,15 +133,27 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
       );
     }
     try {
-      const priceMap = new Map(
-        bitgetSnapshots.map((snapshot) => [
-          snapshot.symbol.startsWith("BTC") ? "BTC" : "ETH",
-          snapshot.lastPrice,
-        ]),
-      );
+      const priceMap = new Map<"BTC" | "ETH", { price: number; source: "Bitget Futures" | "CMC Spot" }>();
+
+      for (const snapshot of bitgetSnapshots) {
+        const base = snapshot.symbol.startsWith("BTC") ? "BTC" : "ETH";
+        if (Number.isFinite(snapshot.lastPrice) && snapshot.lastPrice !== null) {
+          priceMap.set(base, { price: snapshot.lastPrice, source: "Bitget Futures" });
+        }
+      }
+
+      for (const base of ["BTC", "ETH"] as const) {
+        if (!priceMap.has(base)) {
+          const spot = await fetchCryptoSpotPrice(base);
+          if (Number.isFinite(spot ?? NaN)) {
+            priceMap.set(base, { price: spot as number, source: "CMC Spot" });
+          }
+        }
+      }
+
       liquidationSummaries = await Promise.all([
-        fetchLiquidationSummary("BTC", priceMap.get("BTC")),
-        fetchLiquidationSummary("ETH", priceMap.get("ETH")),
+        fetchLiquidationSummary("BTC", priceMap.get("BTC")?.price, priceMap.get("BTC")?.source),
+        fetchLiquidationSummary("ETH", priceMap.get("ETH")?.price, priceMap.get("ETH")?.source),
       ]);
     } catch (error) {
       console.error(
@@ -317,9 +330,16 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                       <div className="mt-2 rounded-lg border border-[var(--panel-border)]/40 bg-[var(--panel)]/70 px-3 py-2 text-xs text-[var(--muted)]">
                         <div className="flex items-center justify-between">
                           <span>Reference price</span>
-                          <span className="font-semibold text-[var(--foreground)]">
-                            {formatPrice(summary.referencePrice)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-[var(--foreground)]">
+                              {formatPrice(summary.referencePrice)}
+                            </span>
+                            {summary.priceSource && (
+                              <span className="rounded bg-[var(--panel-border)]/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-[var(--muted)]">
+                                {summary.priceSource}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="mt-2 grid gap-2 md:grid-cols-2">
                           <div className="flex items-center justify-between">
