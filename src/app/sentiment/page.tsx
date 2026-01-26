@@ -27,6 +27,12 @@ const usdFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
+const priceFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 2,
+});
+
 function formatPercent(value: number) {
   const sign = value > 0 ? "+" : value < 0 ? "" : "";
   return `${sign}${percentFormatter.format(value)}`;
@@ -57,6 +63,13 @@ function formatUsd(value: number) {
     return "--";
   }
   return usdFormatter.format(value);
+}
+
+function formatPrice(value: number | null | undefined) {
+  if (!Number.isFinite(value ?? NaN)) {
+    return "--";
+  }
+  return priceFormatter.format(value as number);
 }
 
 
@@ -108,17 +121,6 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
 
   if (assetClass === "crypto") {
     try {
-      liquidationSummaries = await Promise.all([
-        fetchLiquidationSummary("BTC"),
-        fetchLiquidationSummary("ETH"),
-      ]);
-    } catch (error) {
-      console.error(
-        "Coinank liquidation load failed:",
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-    try {
       bitgetSnapshots = await Promise.all([
         fetchBitgetFuturesSnapshot("BTC"),
         fetchBitgetFuturesSnapshot("ETH"),
@@ -126,6 +128,23 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
     } catch (error) {
       console.error(
         "Bitget snapshot load failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    try {
+      const priceMap = new Map(
+        bitgetSnapshots.map((snapshot) => [
+          snapshot.symbol.startsWith("BTC") ? "BTC" : "ETH",
+          snapshot.lastPrice,
+        ]),
+      );
+      liquidationSummaries = await Promise.all([
+        fetchLiquidationSummary("BTC", priceMap.get("BTC")),
+        fetchLiquidationSummary("ETH", priceMap.get("ETH")),
+      ]);
+    } catch (error) {
+      console.error(
+        "Coinank liquidation load failed:",
         error instanceof Error ? error.message : String(error),
       );
     }
@@ -295,6 +314,36 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                       <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
                         Largest clusters
                       </p>
+                      <div className="mt-2 rounded-lg border border-[var(--panel-border)]/40 bg-[var(--panel)]/70 px-3 py-2 text-xs text-[var(--muted)]">
+                        <div className="flex items-center justify-between">
+                          <span>Reference price</span>
+                          <span className="font-semibold text-[var(--foreground)]">
+                            {formatPrice(summary.referencePrice)}
+                          </span>
+                        </div>
+                        <div className="mt-2 grid gap-2 md:grid-cols-2">
+                          <div className="flex items-center justify-between">
+                            <span>Largest above</span>
+                            <span className="font-semibold text-[var(--foreground)]">
+                              {summary.largestAbove
+                                ? `${formatPrice(summary.largestAbove.price)} · ${formatUsd(
+                                    summary.largestAbove.notional,
+                                  )}`
+                                : "--"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Largest below</span>
+                            <span className="font-semibold text-[var(--foreground)]">
+                              {summary.largestBelow
+                                ? `${formatPrice(summary.largestBelow.price)} · ${formatUsd(
+                                    summary.largestBelow.notional,
+                                  )}`
+                                : "--"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                       {summary.recentClusters.length === 0 ? (
                         <p className="mt-2 text-sm text-[var(--muted)]">
                           No recent clusters in lookback window.

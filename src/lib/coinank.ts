@@ -30,6 +30,9 @@ export type LiquidationSummary = {
   totalShortUsd: number;
   dominantSide: "long" | "short" | "flat";
   recentClusters: LiquidationCluster[];
+  referencePrice?: number | null;
+  largestAbove?: LiquidationCluster | null;
+  largestBelow?: LiquidationCluster | null;
   lastUpdated: string;
 };
 
@@ -84,6 +87,7 @@ async function coinankGet<T>(path: string, params: Record<string, string>) {
 
 export async function fetchLiquidationSummary(
   baseCoin: "BTC" | "ETH",
+  referencePrice?: number | null,
 ): Promise<LiquidationSummary> {
   const orders = await coinankGet<LiquidationOrder[]>(
     "/api/liquidation/orders",
@@ -120,13 +124,13 @@ export async function fetchLiquidationSummary(
         ? "long"
         : "short";
 
-  const recentClusters = recentOrders
-    .filter((order) => Number(order.tradeTurnover ?? 0) > 0 && order.posSide)
-    .sort(
-      (a, b) =>
-        Number(b.tradeTurnover ?? 0) - Number(a.tradeTurnover ?? 0),
+  const allClusters = recentOrders
+    .filter(
+      (order) =>
+        Number(order.tradeTurnover ?? 0) > 0 &&
+        Number.isFinite(order.price ?? NaN) &&
+        order.posSide,
     )
-    .slice(0, 5)
     .map((order) => ({
       exchange: order.exchangeName ?? "Unknown",
       side: order.posSide ?? "long",
@@ -136,12 +140,36 @@ export async function fetchLiquidationSummary(
       contract: order.contractCode ?? null,
     }));
 
+  const recentClusters = allClusters
+    .sort((a, b) => b.notional - a.notional)
+    .slice(0, 5);
+
+  let largestAbove: LiquidationCluster | null = null;
+  let largestBelow: LiquidationCluster | null = null;
+  if (Number.isFinite(referencePrice ?? NaN)) {
+    const above = allClusters.filter((cluster) => (cluster.price ?? 0) > (referencePrice ?? 0));
+    const below = allClusters.filter((cluster) => (cluster.price ?? 0) < (referencePrice ?? 0));
+    if (above.length > 0) {
+      largestAbove = above.reduce((best, current) =>
+        current.notional > best.notional ? current : best,
+      );
+    }
+    if (below.length > 0) {
+      largestBelow = below.reduce((best, current) =>
+        current.notional > best.notional ? current : best,
+      );
+    }
+  }
+
   return {
     baseCoin,
     totalLongUsd,
     totalShortUsd,
     dominantSide,
     recentClusters,
+    referencePrice,
+    largestAbove,
+    largestBelow,
     lastUpdated: new Date().toISOString(),
   };
 }
