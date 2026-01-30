@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from .data_sources import build_bias_store, load_ohlcv, localize_df, load_spread_config
-from .pairs import load_fx_pairs_from_ts
+from .pairs import load_all_pairs_from_ts
 from .utils import pip_size
 from .execution import apply_spread_slippage
 
@@ -67,7 +67,7 @@ def run_daily_bias(
     cfg: DailyBiasConfig,
 ) -> list[DailyTrade]:
     store = build_bias_store(cot_path, cot_dir, "data/sentiment_aggregates.json", "data/sentiment_snapshots.json")
-    pairs = load_fx_pairs_from_ts(pairs_source)
+    pairs = load_all_pairs_from_ts(pairs_source)
     spread_map = load_spread_config(spread_path)
 
     trades: list[DailyTrade] = []

@@ -10,7 +10,7 @@ from pathlib import Path
 from research.scalp_bot.backtest import run_backtest
 from research.scalp_bot.config import BacktestConfig, DataConfig, SentimentConfig, SpreadConfig
 from research.scalp_bot.data_sources import build_bias_store, load_spread_config
-from research.scalp_bot.pairs import load_fx_pairs_from_ts
+from research.scalp_bot.pairs import load_all_pairs_from_ts
 from research.scalp_bot.report import compute_stats, trades_to_df, write_outputs
 
 
@@ -64,7 +64,7 @@ def main() -> None:
         spread_path=args.spread_path,
     )
 
-    pairs = [p.pair for p in load_fx_pairs_from_ts(args.pairs_source)]
+    pairs = [p.pair for p in load_all_pairs_from_ts(args.pairs_source)]
     bias_store = build_bias_store(
         data_cfg.cot_path,
         data_cfg.cot_dir,

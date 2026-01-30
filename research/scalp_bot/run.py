@@ -16,7 +16,7 @@ from .audit import run_audit
 from .backtest import run_backtest
 from .config import BacktestConfig, DataConfig, GridConfig, SentimentConfig, SpreadConfig
 from .data_sources import build_bias_store, load_spread_config
-from .pairs import filter_pairs, load_fx_pairs_from_ts
+from .pairs import filter_pairs, load_all_pairs_from_ts
 from .report import trades_to_df, write_outputs, write_summary, compute_stats
 from .data_sources import load_ohlcv
 
@@ -42,6 +42,15 @@ def build_config(args) -> tuple[BacktestConfig, DataConfig]:
         use_prior_day_ref=args.use_prior_day_ref,
         sentiment=sentiment,
         spread=spread,
+    )
+    cfg = replace(
+        cfg,
+        entry=replace(
+            cfg.entry,
+            model=args.entry_model,
+            adr_lookback_days=args.adr_lookback_days,
+            adr_pullback_pct=args.adr_pullback_pct,
+        ),
     )
 
     data_cfg = DataConfig(
@@ -197,6 +206,9 @@ def main() -> None:
     parser.add_argument("--sentiment-threshold", type=float, default=55.0)
     parser.add_argument("--allow-second-window", action="store_true")
     parser.add_argument("--use-prior-day-ref", action="store_true")
+    parser.add_argument("--entry-model", default="sweep", choices=["sweep", "adr_pullback"])
+    parser.add_argument("--adr-lookback-days", type=int, default=20)
+    parser.add_argument("--adr-pullback-pct", type=float, default=0.35)
     parser.add_argument("--output-dir", default="research/scalp_bot/output")
     parser.add_argument("--data-root", default="data")
     parser.add_argument("--ohlc-root", default="data/ohlc")
@@ -218,7 +230,7 @@ def main() -> None:
     end = parse_date(args.end)
 
     cfg, data_cfg = build_config(args)
-    all_pairs = load_fx_pairs_from_ts(data_cfg.pairs_source)
+    all_pairs = load_all_pairs_from_ts(data_cfg.pairs_source)
     selected = [p.strip().upper() for p in args.pairs.split(",") if p.strip()] or None
     pairs = [p.pair for p in filter_pairs(all_pairs, selected)]
 

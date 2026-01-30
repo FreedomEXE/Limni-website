@@ -157,3 +157,72 @@ def detect_sweep_signal(
         )
 
     return None
+
+
+def detect_adr_pullback_signal(
+    df: pd.DataFrame,
+    entry_start: datetime,
+    entry_end: datetime,
+    day_open: float,
+    adr_value: float,
+    pullback_pct: float,
+    direction: str,
+    prefiltered: bool = False,
+) -> SweepSignal | None:
+    if pd is None:
+        raise RuntimeError("pandas is required. Install research/scalp_bot/requirements.txt")
+    window = df if prefiltered else df[(df["time"] >= entry_start) & (df["time"] <= entry_end)].copy()
+    if window.empty:
+        return None
+    if adr_value <= 0:
+        return None
+
+    pullback_level = (
+        day_open - adr_value * pullback_pct
+        if direction == "long"
+        else day_open + adr_value * pullback_pct
+    )
+
+    pullback_index = None
+    for idx, row in window.iterrows():
+        if direction == "long":
+            if row["low"] <= pullback_level:
+                pullback_index = idx
+                break
+        else:
+            if row["high"] >= pullback_level:
+                pullback_index = idx
+                break
+
+    if pullback_index is None:
+        return None
+
+    post = window.loc[window.index > pullback_index]
+    if post.empty:
+        return None
+
+    confirm_index = None
+    for idx, row in post.iterrows():
+        if row["time"] < entry_start:
+            continue
+        if direction == "long":
+            if row["close"] >= day_open:
+                confirm_index = idx
+                break
+        else:
+            if row["close"] <= day_open:
+                confirm_index = idx
+                break
+
+    if confirm_index is None:
+        return None
+
+    window_slice = window.loc[pullback_index:confirm_index]
+    return SweepSignal(
+        direction=direction,
+        sweep_time=window.loc[pullback_index, "time"].to_pydatetime(),
+        sweep_high=float(window_slice["high"].max()),
+        sweep_low=float(window_slice["low"].min()),
+        confirm_time=window.loc[confirm_index, "time"].to_pydatetime(),
+        confirm_index=int(confirm_index),
+    )

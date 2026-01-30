@@ -3,9 +3,34 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+import json
+from pathlib import Path
+
+
+_PIP_MAP_CACHE: dict[str, float] | None = None
+
+
+def _load_pip_map() -> dict[str, float]:
+    global _PIP_MAP_CACHE
+    if _PIP_MAP_CACHE is not None:
+        return _PIP_MAP_CACHE
+    path = Path("data/pip_config.json")
+    if path.exists():
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                _PIP_MAP_CACHE = {k.upper(): float(v) for k, v in payload.items()}
+                return _PIP_MAP_CACHE
+        except json.JSONDecodeError:
+            pass
+    _PIP_MAP_CACHE = {}
+    return _PIP_MAP_CACHE
 
 
 def pip_size(pair: str) -> float:
+    pip_map = _load_pip_map()
+    if pair in pip_map:
+        return pip_map[pair]
     return 0.01 if "JPY" in pair else 0.0001
 
 

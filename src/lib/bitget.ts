@@ -66,7 +66,7 @@ export type BitgetFuturesSnapshot = {
 };
 
 export async function fetchBitgetFuturesSnapshot(
-  symbolBase: "BTC" | "ETH",
+  symbolBase: "BTC" | "ETH" | "SOL",
 ): Promise<BitgetFuturesSnapshot> {
   const productType = getProductType();
   const symbol = `${symbolBase}USDT`;
@@ -93,7 +93,7 @@ export async function fetchBitgetFuturesSnapshot(
 }
 
 export async function fetchBitgetCandleRange(
-  symbolBase: "BTC" | "ETH",
+  symbolBase: "BTC" | "ETH" | "SOL",
   window: { openUtc: DateTime; closeUtc: DateTime },
 ): Promise<{ open: number; close: number; openTime: string; closeTime: string } | null> {
   const productType = getProductType();
@@ -139,4 +139,21 @@ export async function fetchBitgetCandleRange(
     openTime: new Date(first.ts).toISOString(),
     closeTime: new Date(last.ts).toISOString(),
   };
+}
+
+export async function fetchBitgetPriceChange(
+  symbolBase: "BTC" | "ETH" | "SOL",
+  hours: number,
+): Promise<{ open: number; close: number; percent: number } | null> {
+  if (hours <= 0) {
+    return null;
+  }
+  const closeUtc = DateTime.utc();
+  const openUtc = closeUtc.minus({ hours });
+  const candle = await fetchBitgetCandleRange(symbolBase, { openUtc, closeUtc });
+  if (!candle || candle.open === 0) {
+    return null;
+  }
+  const percent = ((candle.close - candle.open) / candle.open) * 100;
+  return { open: candle.open, close: candle.close, percent };
 }

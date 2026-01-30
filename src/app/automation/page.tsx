@@ -1,3 +1,4 @@
+import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   loadDailyBiasSummary,
@@ -98,23 +99,26 @@ export default async function AutomationPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <Link
+            href="/automation/solana-meme-bot"
+            className="rounded-2xl border border-[var(--accent)]/40 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Solana Meme Bot
               </h2>
-              <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-xs font-semibold text-[color:var(--muted)]">
-                Later
+              <span className="rounded-full border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-1 text-xs font-semibold text-[var(--accent-strong)]">
+                Tracking
               </span>
             </div>
             <p className="mt-2 text-sm text-[color:var(--muted)]">
               High-volatility meme strategy targeting Solana launches.
             </p>
             <div className="mt-4 grid gap-2 text-xs text-[var(--foreground)]/70">
-              <span>Launch sniper logic</span>
-              <span>Liquidity gate</span>
+              <span>Recoup + moonbag logic</span>
+              <span>Live signal stream</span>
             </div>
-          </div>
+          </Link>
         </section>
 
         <section className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">

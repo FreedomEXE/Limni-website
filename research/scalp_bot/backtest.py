@@ -12,7 +12,7 @@ except ModuleNotFoundError:  # pragma: no cover - runtime dependency
 from .config import BacktestConfig, DataConfig
 from .data_sources import BiasStore, load_ohlcv, localize_df
 from .execution import TradeResult, simulate_trade
-from .signals import detect_sweep_signal
+from .signals import detect_sweep_signal, detect_adr_pullback_signal
 from .utils import SessionRef, pip_size, session_bounds
 
 
@@ -88,6 +88,28 @@ def run_backtest(
         df = df[(df["time"].dt.date >= start) & (df["time"].dt.date <= end)].reset_index(drop=True)
         if df.empty:
             continue
+
+        day_stats = None
+        if cfg.entry.model == "adr_pullback":
+            day_df = df.copy()
+            day_df["day"] = day_df["time"].dt.date
+            daily = (
+                day_df.groupby("day")
+                .agg(open=("open", "first"), high=("high", "max"), low=("low", "min"))
+                .reset_index()
+            )
+            if not daily.empty:
+                daily["range"] = daily["high"] - daily["low"]
+                daily["adr"] = daily["range"].rolling(cfg.entry.adr_lookback_days).mean().shift(1)
+                day_stats = {
+                    row["day"]: {
+                        "open": float(row["open"]),
+                        "high": float(row["high"]),
+                        "low": float(row["low"]),
+                        "adr": float(row["adr"]) if pd.notna(row["adr"]) else None,
+                    }
+                    for _, row in daily.iterrows()
+                }
         times_utc = (
             df["time"]
             .dt.tz_convert("UTC")
@@ -109,23 +131,37 @@ def run_backtest(
                 continue
 
             entry_window_start, entry_window_end = _session_window(cfg, cfg.session, day)
-            # Build Asia reference using indexed slices
-            offset_days = 2 if cfg.use_prior_day_ref else 1
-            asia_date = day - timedelta(days=offset_days)
-            asia_start, asia_end = session_bounds(cfg.sessions.asia.start, cfg.sessions.asia.end, asia_date, cfg.sessions.timezone)
-            asia_start_ns = pd.Timestamp(asia_start).tz_convert("UTC").value
-            asia_end_ns = pd.Timestamp(asia_end).tz_convert("UTC").value
-            asia_start_idx = times_utc.searchsorted(asia_start_ns)
-            asia_end_idx = times_utc.searchsorted(asia_end_ns, side="right")
-            asia_window = df.iloc[asia_start_idx:asia_end_idx]
-            if asia_window.empty:
-                continue
-            session_ref = SessionRef(
-                ref_high=float(asia_window["high"].max()),
-                ref_low=float(asia_window["low"].min()),
-                start=asia_start,
-                end=asia_end,
-            )
+            if cfg.entry.model == "sweep":
+                # Build Asia reference using indexed slices
+                offset_days = 2 if cfg.use_prior_day_ref else 1
+                asia_date = day - timedelta(days=offset_days)
+                asia_start, asia_end = session_bounds(cfg.sessions.asia.start, cfg.sessions.asia.end, asia_date, cfg.sessions.timezone)
+                asia_start_ns = pd.Timestamp(asia_start).tz_convert("UTC").value
+                asia_end_ns = pd.Timestamp(asia_end).tz_convert("UTC").value
+                asia_start_idx = times_utc.searchsorted(asia_start_ns)
+                asia_end_idx = times_utc.searchsorted(asia_end_ns, side="right")
+                asia_window = df.iloc[asia_start_idx:asia_end_idx]
+                if asia_window.empty:
+                    continue
+                session_ref = SessionRef(
+                    ref_high=float(asia_window["high"].max()),
+                    ref_low=float(asia_window["low"].min()),
+                    start=asia_start,
+                    end=asia_end,
+                )
+            else:
+                if not day_stats or day not in day_stats:
+                    continue
+                adr_value = day_stats[day].get("adr")
+                if adr_value is None:
+                    continue
+                day_open = day_stats[day]["open"]
+                session_ref = SessionRef(
+                    ref_high=day_open,
+                    ref_low=day_open,
+                    start=entry_window_start,
+                    end=entry_window_end,
+                )
 
             sentiment = bias_store.sentiment_at(pair, entry_window_start)
             if sentiment is None:
@@ -141,7 +177,23 @@ def run_backtest(
             entry_start_idx = times_utc.searchsorted(entry_start_ns)
             entry_end_idx = times_utc.searchsorted(entry_end_ns, side="right")
             entry_window = df.iloc[entry_start_idx:entry_end_idx]
-            signal = detect_sweep_signal(entry_window, entry_window_start, entry_window_end, session_ref, cfg.entry, pip, trade_dir, prefiltered=True)
+            if cfg.entry.model == "sweep":
+                signal = detect_sweep_signal(entry_window, entry_window_start, entry_window_end, session_ref, cfg.entry, pip, trade_dir, prefiltered=True)
+            else:
+                day_start = datetime.combine(day, time(0, 0), tzinfo=entry_window_start.tzinfo)
+                day_start_ns = pd.Timestamp(day_start).tz_convert("UTC").value
+                day_start_idx = times_utc.searchsorted(day_start_ns)
+                adr_window = df.iloc[day_start_idx:entry_end_idx]
+                signal = detect_adr_pullback_signal(
+                    adr_window,
+                    entry_window_start,
+                    entry_window_end,
+                    day_stats[day]["open"],
+                    day_stats[day]["adr"],
+                    cfg.entry.adr_pullback_pct,
+                    trade_dir,
+                    prefiltered=True,
+                )
             if signal is None and cfg.allow_second_window:
                 entry_window_start, entry_window_end = _session_window(cfg, "ny", day)
                 entry_start_ns = pd.Timestamp(entry_window_start).tz_convert("UTC").value
@@ -149,7 +201,19 @@ def run_backtest(
                 entry_start_idx = times_utc.searchsorted(entry_start_ns)
                 entry_end_idx = times_utc.searchsorted(entry_end_ns, side="right")
                 entry_window = df.iloc[entry_start_idx:entry_end_idx]
-                signal = detect_sweep_signal(entry_window, entry_window_start, entry_window_end, session_ref, cfg.entry, pip, trade_dir, prefiltered=True)
+                if cfg.entry.model == "sweep":
+                    signal = detect_sweep_signal(entry_window, entry_window_start, entry_window_end, session_ref, cfg.entry, pip, trade_dir, prefiltered=True)
+                else:
+                    signal = detect_adr_pullback_signal(
+                        entry_window,
+                        entry_window_start,
+                        entry_window_end,
+                        day_stats[day]["open"],
+                        day_stats[day]["adr"],
+                        cfg.entry.adr_pullback_pct,
+                        trade_dir,
+                        prefiltered=True,
+                    )
 
             if signal is None:
                 continue

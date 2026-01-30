@@ -10,7 +10,7 @@ import pandas as pd
 
 from .config import BacktestConfig, DataConfig, SentimentConfig, SpreadConfig
 from .data_sources import build_bias_store, load_spread_config, load_ohlcv, localize_df
-from .pairs import filter_pairs, load_fx_pairs_from_ts
+from .pairs import filter_pairs, load_all_pairs_from_ts
 from .report import compute_stats, trades_to_df, write_summary
 from .signals import detect_sweep_signal
 from .utils import SessionRef, pip_size, session_bounds
@@ -52,7 +52,7 @@ def build_cache(pairs, data_cfg, cfg, start, end):
     return cache
 
 
-def run_backtest_cached(pairs, cache, bias_store, cfg, start, end):
+def run_backtest_cached(pairs, cache, bias_store, cfg, start, end, day_step: int = 1):
     trades = []
     for pair in pairs:
         if pair not in cache:
@@ -151,7 +151,7 @@ def run_backtest_cached(pairs, cache, bias_store, cfg, start, end):
             )
             if result:
                 trades.append(result)
-            current = current + timedelta(days=1)
+            current = current + timedelta(days=day_step)
     return trades
 
 
@@ -173,6 +173,7 @@ def main() -> None:
     parser.add_argument("--spread-path", default="data/spread_config.json")
     parser.add_argument("--default-spread", type=float, default=1.5)
     parser.add_argument("--output-dir", default="research/scalp_bot/output_grid_small")
+    parser.add_argument("--day-step", type=int, default=1, help="Evaluate every Nth day to speed grid search")
 
     args = parser.parse_args()
     start = parse_date(args.start)
@@ -198,7 +199,7 @@ def main() -> None:
         spread_path=args.spread_path,
     )
 
-    all_pairs = load_fx_pairs_from_ts(args.pairs_source)
+    all_pairs = load_all_pairs_from_ts(args.pairs_source)
     selected = [p.strip().upper() for p in args.pairs.split(",") if p.strip()] or None
     pairs = [p.pair for p in filter_pairs(all_pairs, selected)]
 
@@ -223,7 +224,7 @@ def main() -> None:
                             risk=replace(cfg.risk, max_stop_pips=max_stop, tp_pips=tp, be_trigger_pips=None),
                             sentiment=replace(cfg.sentiment, threshold_long_pct=threshold, threshold_short_pct=threshold),
                         )
-                        trades = run_backtest_cached(pairs, cache, bias_store, iter_cfg, start, end)
+                        trades = run_backtest_cached(pairs, cache, bias_store, iter_cfg, start, end, day_step=args.day_step)
                         df = trades_to_df(trades)
                         stats = compute_stats(df)
                         grid_results.append(
@@ -262,7 +263,7 @@ def main() -> None:
 
         for name, risk_cfg in be_variants:
             iter_cfg = replace(base_cfg, risk=risk_cfg)
-            trades = run_backtest_cached(pairs, cache, bias_store, iter_cfg, start, end)
+            trades = run_backtest_cached(pairs, cache, bias_store, iter_cfg, start, end, day_step=args.day_step)
             df = trades_to_df(trades)
             report_path = out_dir / f"top{idx}_{name}.md"
             write_summary(df, iter_cfg.account, iter_cfg.execution, iter_cfg.spread, iter_cfg.risk, iter_cfg.sentiment, report_path)

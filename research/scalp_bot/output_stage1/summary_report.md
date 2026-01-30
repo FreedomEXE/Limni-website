@@ -4,43 +4,51 @@
 - Spread model: default 1.50 pips (per-pair overrides applied if present)
 - Slippage: 0.20 pips per side
 - Time stop: london
+- Sentiment missing policy: allow
 
 ## Overall stats
-- Trades: 3
-- Net R: -0.74
-- Profit factor: 0.52
-- Max drawdown (R): -1.13
-- Win rate: 33.3%
-- Avg R/trade: -0.25
-- Max consecutive losses: 2
+- Trades: 49
+- Net R: -0.01
+- Profit factor: 1.00
+- Max drawdown (R): -6.92
+- Win rate: 46.9%
+- Avg R/trade: -0.00
+- Max consecutive losses: 8
 
 ## Stats by pair
-| pair   |   count |       sum |      mean |
-|:-------|--------:|----------:|----------:|
-| EURUSD |       3 | -0.737285 | -0.245762 |
+| pair   |   count |      sum |      mean |
+|:-------|--------:|---------:|----------:|
+| EURUSD |      19 | -6.9876  | -0.367769 |
+| GBPUSD |      27 |  5.34281 |  0.197882 |
+| USDJPY |       3 |  1.6303  |  0.543435 |
 
 ## Stats by month
-| month   |   count |       sum |      mean |
-|:--------|--------:|----------:|----------:|
-| 2026-01 |       3 | -0.737285 | -0.245762 |
+| month   |   count |       sum |       mean |
+|:--------|--------:|----------:|-----------:|
+| 2024-07 |      12 | -1.04867  | -0.0873891 |
+| 2024-08 |       7 | -0.895437 | -0.12792   |
+| 2024-09 |       8 |  2.86368  |  0.35796   |
+| 2024-10 |       6 |  2.15973  |  0.359955  |
+| 2024-11 |      10 | -4.07736  | -0.407736  |
+| 2024-12 |       6 |  0.983575 |  0.163929  |
 
 ## Notes
 - Dollar PnL uses dynamic risk sizing based on account equity and R multiples.
 
 ## Spread/slippage sensitivity
-- base: trades=3, net_r=-0.74, profit_factor=0.52, max_dd_r=-1.13
-- tight: trades=3, net_r=-0.53, profit_factor=0.63, max_dd_r=-1.08
-- wide: trades=3, net_r=-0.93, profit_factor=0.44, max_dd_r=-1.16
+- base: trades=49, net_r=-0.01, profit_factor=1.00, max_dd_r=-6.92
+- tight: trades=49, net_r=0.43, profit_factor=1.02, max_dd_r=-6.56
+- wide: trades=49, net_r=-2.03, profit_factor=0.91, max_dd_r=-8.58
 
 ## Data Coverage
 - Pairs requested: 3
 - Pairs found: 3
-- % days skipped due to missing COT: 91.53%
-- % days skipped due to missing sentiment: 2.21%
+- % days skipped due to missing COT: 0.00%
+- % days skipped due to missing sentiment: 71.20%
 
 ### Coverage by pair
 | pair   |   bars | start      | end        |   trades |
 |:-------|-------:|:-----------|:-----------|---------:|
-| EURUSD |  36275 | 2025-08-01 | 2026-01-28 |        3 |
-| GBPUSD |  36265 | 2025-08-01 | 2026-01-28 |        0 |
-| USDJPY |  36265 | 2025-08-01 | 2026-01-28 |        0 |
+| EURUSD |  37687 | 2024-07-01 | 2024-12-31 |       19 |
+| GBPUSD |  37685 | 2024-07-01 | 2024-12-31 |       27 |
+| USDJPY |  37673 | 2024-07-01 | 2024-12-31 |        3 |

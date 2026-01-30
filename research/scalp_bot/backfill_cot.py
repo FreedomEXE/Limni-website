@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-from .pairs import load_fx_pairs_from_ts
+from .pairs import load_all_pairs_from_ts
 
 CFTC_BASE_TFF = "https://publicreporting.cftc.gov/resource/gpe5-46if.json"
 CFTC_BASE_LEGACY = "https://publicreporting.cftc.gov/resource/6dca-aqww.json"
@@ -187,7 +187,7 @@ def main() -> None:
 
     pair_defs = [
         {"pair": p.pair, "base": p.base, "quote": p.quote}
-        for p in load_fx_pairs_from_ts(args.pairs_source)
+        for p in load_all_pairs_from_ts(args.pairs_source)
     ]
 
     out_dir = Path(args.out_dir)

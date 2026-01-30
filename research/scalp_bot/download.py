@@ -13,7 +13,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-from .pairs import filter_pairs, load_fx_pairs_from_ts
+from .pairs import filter_pairs, load_all_pairs_from_ts, load_pairs_for_asset
 
 
 PRACTICE_URL = "https://api-fxpractice.oanda.com"
@@ -170,6 +170,7 @@ def main() -> None:
     parser.add_argument("--tf", default="M5")
     parser.add_argument("--pairs", default="")
     parser.add_argument("--pairs-source", default="src/lib/cotPairs.ts")
+    parser.add_argument("--asset-class", default="all", choices=["all", "fx", "indices", "crypto", "commodities"])
     parser.add_argument("--out", default="data/ohlc")
     parser.add_argument("--env", default="practice", choices=["practice", "live"])
     parser.add_argument("--sleep", type=float, default=0.2)
@@ -189,7 +190,10 @@ def main() -> None:
     start = parse_date(args.start)
     end = parse_date(args.end)
 
-    all_pairs = load_fx_pairs_from_ts(args.pairs_source)
+    if args.asset_class == "all":
+        all_pairs = load_all_pairs_from_ts(args.pairs_source)
+    else:
+        all_pairs = load_pairs_for_asset(args.pairs_source, args.asset_class)
     selected = [p.strip().upper() for p in args.pairs.split(",") if p.strip()] or None
     pairs = [p.pair for p in filter_pairs(all_pairs, selected)]
 

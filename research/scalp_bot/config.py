@@ -30,12 +30,15 @@ class SentimentConfig:
 
 @dataclass(frozen=True)
 class EntryConfig:
+    model: Literal["sweep", "adr_pullback"] = "sweep"
     sweep_buffer_pips: float = 1.0
     displacement_min_body_pips: float = 3.0
     displacement_close_pct: float = 0.30
     swing_lookback_bars: int = 20
     confirmation: Literal["displacement", "structure"] = "displacement"
     entry_timing: Literal["next_open", "confirm_close"] = "next_open"
+    adr_lookback_days: int = 20
+    adr_pullback_pct: float = 0.35
 
 
 @dataclass(frozen=True)
