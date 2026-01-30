@@ -12,7 +12,8 @@ from urllib.error import HTTPError
 
 from .pairs import load_fx_pairs_from_ts
 
-CFTC_BASE = "https://publicreporting.cftc.gov/resource/gpe5-46if.json"
+CFTC_BASE_TFF = "https://publicreporting.cftc.gov/resource/gpe5-46if.json"
+CFTC_BASE_LEGACY = "https://publicreporting.cftc.gov/resource/6dca-aqww.json"
 
 FX_MARKETS = {
     "AUD": ["AUSTRALIAN DOLLAR"],
@@ -23,6 +24,23 @@ FX_MARKETS = {
     "JPY": ["JAPANESE YEN"],
     "NZD": ["NZ DOLLAR"],
     "USD": ["USD INDEX"],
+}
+
+INDEX_MARKETS = {
+    "SPX": ["E-MINI S&P 500", "S&P 500 Consolidated"],
+    "NDX": ["NASDAQ-100 Consolidated", "NASDAQ MINI"],
+    "NIKKEI": ["NIKKEI STOCK AVERAGE", "NIKKEI STOCK AVERAGE YEN DENOM"],
+}
+
+CRYPTO_MARKETS = {
+    "BTC": ["BITCOIN"],
+    "ETH": ["ETHER CASH SETTLED"],
+}
+
+COMMODITY_MARKETS = {
+    "XAU": ["GOLD"],
+    "XAG": ["SILVER"],
+    "WTI": ["CRUDE OIL, LIGHT SWEET-WTI", "WTI FINANCIAL CRUDE OIL"],
 }
 
 
@@ -49,7 +67,7 @@ def list_report_dates(start: str, end: str, token: str | None) -> list[str]:
         "$where": where,
         "$limit": "50000",
     }
-    url = f"{CFTC_BASE}?{urlencode(params)}"
+    url = f"{CFTC_BASE_TFF}?{urlencode(params)}"
     rows = _request_json(url, token)
     dates = sorted({row["report_date_as_yyyy_mm_dd"].split("T")[0] for row in rows if row.get("report_date_as_yyyy_mm_dd")})
     return dates
@@ -58,6 +76,12 @@ def list_report_dates(start: str, end: str, token: str | None) -> list[str]:
 def fetch_rows(report_date: str, variant: str, token: str | None) -> list[dict]:
     names = []
     for values in FX_MARKETS.values():
+        names.extend(values)
+    for values in INDEX_MARKETS.values():
+        names.extend(values)
+    for values in CRYPTO_MARKETS.values():
+        names.extend(values)
+    for values in COMMODITY_MARKETS.values():
         names.extend(values)
     names_list = ", ".join([f"'{name.replace("'", "''")}'" for name in names])
     where = (
@@ -69,8 +93,9 @@ def fetch_rows(report_date: str, variant: str, token: str | None) -> list[dict]:
         "$where": where,
         "$limit": "500",
     }
-    url = f"{CFTC_BASE}?{urlencode(params)}"
-    return _request_json(url, token)
+    url = f"{CFTC_BASE_TFF}?{urlencode(params)}"
+    tff = _request_json(url, token)
+    return tff
 
 
 def build_snapshot(report_date: str, rows: list[dict], pair_defs) -> dict:
@@ -88,6 +113,25 @@ def build_snapshot(report_date: str, rows: list[dict], pair_defs) -> dict:
         dealer_net = dealer_short - dealer_long
         bias = "BULLISH" if dealer_net > 0 else "BEARISH" if dealer_net < 0 else "NEUTRAL"
         markets[currency] = {
+            "dealer_long": dealer_long,
+            "dealer_short": dealer_short,
+            "net": dealer_net,
+            "bias": bias,
+        }
+
+    for symbol, market_names in {**INDEX_MARKETS, **CRYPTO_MARKETS, **COMMODITY_MARKETS}.items():
+        row = next((r for r in rows if r.get("contract_market_name") in market_names), None)
+        if not row:
+            continue
+        long_raw = row.get("dealer_positions_long_all")
+        short_raw = row.get("dealer_positions_short_all")
+        if long_raw is None or short_raw is None:
+            continue
+        dealer_long = int(float(long_raw))
+        dealer_short = int(float(short_raw))
+        dealer_net = dealer_short - dealer_long
+        bias = "BULLISH" if dealer_net > 0 else "BEARISH" if dealer_net < 0 else "NEUTRAL"
+        markets[symbol] = {
             "dealer_long": dealer_long,
             "dealer_short": dealer_short,
             "net": dealer_net,

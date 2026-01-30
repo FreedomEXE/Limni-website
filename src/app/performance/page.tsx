@@ -1,13 +1,14 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
-import { getLatestAggregates } from "@/lib/sentiment/store";
+import { getLatestAggregates, readAggregates } from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
   computeReturnStats,
+  buildSentimentPairsWithHistory,
   type PerformanceModel,
 } from "@/lib/performanceLab";
-import { getPairPerformance } from "@/lib/pricePerformance";
+import { getPairPerformance, getPairPerformanceForWindows, getPerformanceWindow } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
@@ -248,7 +249,10 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     anyPriced = totals.some((result) => result.priced > 0);
   } else {
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
-    const sentiment = await getLatestAggregates();
+    const [latestSentiment, sentimentHistory] = await Promise.all([
+      getLatestAggregates(),
+      readAggregates(),
+    ]);
     const snapshotResults = await Promise.all(
       assetClasses.map((asset) =>
         selectedReport
@@ -271,17 +275,54 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           reportDate: snapshot.report_date,
           isLatestReport: false,
         });
-        const results = await Promise.all(
-          models.map((model) =>
-            computeModelPerformance({
-              model,
+        const window = getPerformanceWindow({
+          assetClass: asset.id,
+          reportDate: snapshot.report_date,
+          isLatestReport: false,
+        });
+
+        const results = [];
+        for (const model of models) {
+          if (model === "sentiment") {
+            const sentimentPairs = buildSentimentPairsWithHistory({
               assetClass: asset.id,
-              snapshot,
-              sentiment,
-              performance,
-            }),
-          ),
-        );
+              sentimentHistory,
+              weekOpenUtc: window.openUtc,
+              weekCloseUtc: window.closeUtc,
+            });
+            const sentimentPerformance = await getPairPerformanceForWindows(
+              sentimentPairs.pairs,
+              Object.fromEntries(
+                Object.entries(sentimentPairs.windows).map(([pair, windowInfo]) => [
+                  pair,
+                  { openUtc: windowInfo.openUtc, closeUtc: windowInfo.closeUtc },
+                ]),
+              ),
+              { assetClass: asset.id },
+            );
+            results.push(
+              await computeModelPerformance({
+                model,
+                assetClass: asset.id,
+                snapshot,
+                sentiment: latestSentiment,
+                performance: sentimentPerformance,
+                pairsOverride: sentimentPairs.pairs,
+                reasonOverrides: sentimentPairs.reasonOverrides,
+              }),
+            );
+          } else {
+            results.push(
+              await computeModelPerformance({
+                model,
+                assetClass: asset.id,
+                snapshot,
+                sentiment: latestSentiment,
+                performance,
+              }),
+            );
+          }
+        }
         return { asset, results };
       }),
     );

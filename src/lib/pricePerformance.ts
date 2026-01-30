@@ -309,6 +309,17 @@ function getWeekWindow(
   };
 }
 
+export function getPerformanceWindow(options?: PerformanceOptions): WeekWindow {
+  const assetClass = options?.assetClass ?? "fx";
+  const now = DateTime.utc();
+  return getWeekWindow(
+    now,
+    options?.reportDate,
+    options?.isLatestReport ?? false,
+    assetClass,
+  );
+}
+
 function fxSymbol(pair: string): string {
   const base = pair.slice(0, 3);
   const quote = pair.slice(3);
@@ -695,6 +706,174 @@ function buildFxPerformanceValue(
     open_time_utc: openTimeIso,
     current_time_utc: currentTimeIso,
   };
+}
+
+function buildPerformanceValue(
+  pair: string,
+  assetClass: AssetClass,
+  open: number,
+  current: number,
+  direction: PairSnapshot["direction"],
+  openTimeIso: string,
+  currentTimeIso: string,
+): PairPerformance {
+  const rawDelta = current - open;
+  const percent = (rawDelta / open) * 100;
+  const directionFactor = direction === "LONG" ? 1 : -1;
+  const rawPips = rawDelta / pipSize(pair, assetClass);
+  const pips = rawPips * directionFactor;
+
+  return {
+    open,
+    current,
+    percent,
+    pips,
+    open_time_utc: openTimeIso,
+    current_time_utc: currentTimeIso,
+  };
+}
+
+async function fetchPairPerformanceWindow(
+  pair: string,
+  assetClass: AssetClass,
+  info: PairSnapshot,
+  window: { openUtc: DateTime; closeUtc: DateTime },
+  apiKey?: string,
+): Promise<PairPerformance | null> {
+  if (window.closeUtc.toMillis() <= window.openUtc.toMillis()) {
+    return null;
+  }
+
+  if (assetClass === "crypto") {
+    try {
+      const base = pair.slice(0, 3) as "BTC" | "ETH";
+      if (base === "BTC" || base === "ETH") {
+        const candle = await fetchBitgetCandleRange(base, window);
+        if (candle) {
+          return buildPerformanceValue(
+            pair,
+            assetClass,
+            candle.open,
+            candle.close,
+            info.direction,
+            candle.openTime,
+            candle.closeTime,
+          );
+        }
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (apiKey) {
+    try {
+      const values = await fetchFirstAvailableTimeSeries(
+        getPriceSymbolCandidates(pair, assetClass),
+        apiKey,
+        2000,
+      );
+      const { value: openValue, time: openTime } = findOpenValue(
+        values,
+        window.openUtc,
+      );
+      const { value: closeValue, time: closeTime } = findCloseValue(
+        values,
+        window.closeUtc,
+      );
+      const open = parseValue(openValue.open);
+      const current = parseValue(closeValue.close);
+      return buildPerformanceValue(
+        pair,
+        assetClass,
+        open,
+        current,
+        info.direction,
+        toIsoString(openTime),
+        toIsoString(closeTime),
+      );
+    } catch (error) {
+      if (error instanceof PriceCreditsError) {
+        throw error;
+      }
+      console.error(error);
+    }
+  }
+
+  try {
+    const oandaResult = await fetchOandaCandle(
+      assetClass === "fx" ? fxSymbol(pair) : pair,
+      window.openUtc,
+      window.closeUtc,
+    );
+    if (oandaResult) {
+      return buildPerformanceValue(
+        pair,
+        assetClass,
+        oandaResult.open,
+        oandaResult.close,
+        info.direction,
+        oandaResult.openTime,
+        oandaResult.closeTime,
+      );
+    }
+  } catch (error) {
+    console.error(error);
+  }
+
+  return null;
+}
+
+export async function getPairPerformanceForWindows(
+  pairs: Record<string, PairSnapshot>,
+  windows: Record<string, { openUtc: DateTime; closeUtc: DateTime }>,
+  options?: { assetClass?: AssetClass },
+): Promise<PerformanceResult> {
+  const apiKey = process.env.PRICE_API_KEY;
+  const assetClass = options?.assetClass ?? "fx";
+  const performance: Record<string, PairPerformance | null> = {};
+  let missing = 0;
+  const missingPairs: string[] = [];
+
+  for (const [pair, info] of Object.entries(pairs)) {
+    const window = windows[pair];
+    if (!window) {
+      performance[pair] = null;
+      missing += 1;
+      missingPairs.push(pair);
+      continue;
+    }
+    try {
+      const result = await fetchPairPerformanceWindow(
+        pair,
+        assetClass,
+        info,
+        window,
+        apiKey,
+      );
+      if (!result) {
+        performance[pair] = null;
+        missing += 1;
+        missingPairs.push(pair);
+      } else {
+        performance[pair] = result;
+      }
+    } catch (error) {
+      console.error(error);
+      performance[pair] = null;
+      missing += 1;
+      missingPairs.push(pair);
+    }
+  }
+
+  const totalPairs = Object.keys(pairs).length;
+  const baseNote =
+    missing > 0
+      ? `Missing prices for ${missing}/${totalPairs}.`
+      : "Prices ready.";
+  const note = `${baseNote} Sentiment windows applied.`;
+
+  return { performance, note, missingPairs };
 }
 
 async function fetchFxDirectPerformance(

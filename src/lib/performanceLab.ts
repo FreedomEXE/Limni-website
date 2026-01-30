@@ -1,6 +1,7 @@
 import type { AssetClass } from "./cotMarkets";
 import type { Bias, Direction, PairSnapshot, CotSnapshot } from "./cotTypes";
 import type { SentimentAggregate } from "./sentiment/types";
+import { DateTime } from "luxon";
 import { PAIRS_BY_ASSET_CLASS } from "./cotPairs";
 import { getPairPerformance } from "./pricePerformance";
 import {
@@ -67,6 +68,10 @@ function sentimentDirection(agg?: SentimentAggregate): Direction | null {
     return "SHORT";
   }
 
+  if (agg.flip_state === "FLIPPED_NEUTRAL") {
+    return null;
+  }
+
   if (agg.crowding_state === "CROWDED_LONG") {
     return "SHORT";
   }
@@ -76,6 +81,123 @@ function sentimentDirection(agg?: SentimentAggregate): Direction | null {
   }
 
   return null;
+}
+
+type SentimentWindow = {
+  openUtc: DateTime;
+  closeUtc: DateTime;
+  direction: Direction;
+  reason?: string[];
+};
+
+export function buildSentimentPairsWithHistory(options: {
+  assetClass: AssetClass;
+  sentimentHistory: SentimentAggregate[];
+  weekOpenUtc: DateTime;
+  weekCloseUtc: DateTime;
+}): {
+  pairs: Record<string, PairSnapshot>;
+  windows: Record<string, SentimentWindow>;
+  reasonOverrides: Map<string, string[]>;
+} {
+  const { assetClass, sentimentHistory, weekOpenUtc, weekCloseUtc } = options;
+  const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
+  const historyBySymbol = new Map<string, SentimentAggregate[]>();
+
+  for (const agg of sentimentHistory) {
+    if (!historyBySymbol.has(agg.symbol)) {
+      historyBySymbol.set(agg.symbol, []);
+    }
+    historyBySymbol.get(agg.symbol)?.push(agg);
+  }
+
+  for (const list of historyBySymbol.values()) {
+    list.sort((a, b) => new Date(a.timestamp_utc).getTime() - new Date(b.timestamp_utc).getTime());
+  }
+
+  const pairs: Record<string, PairSnapshot> = {};
+  const windows: Record<string, SentimentWindow> = {};
+  const reasonOverrides = new Map<string, string[]>();
+
+  for (const pairDef of pairDefs) {
+    const history = historyBySymbol.get(pairDef.pair);
+    if (!history || history.length === 0) {
+      continue;
+    }
+
+    const openMs = weekOpenUtc.toMillis();
+    const closeMs = weekCloseUtc.toMillis();
+    const historyWithTimes = history.map((agg) => ({
+      agg,
+      time: DateTime.fromISO(agg.timestamp_utc, { zone: "utc" }),
+    })).filter((entry) => entry.time.isValid && entry.time.toMillis() <= closeMs);
+
+    if (historyWithTimes.length === 0) {
+      continue;
+    }
+
+    const beforeOpen = historyWithTimes
+      .filter((entry) => entry.time.toMillis() <= openMs)
+      .at(-1);
+
+    let activeDirection = beforeOpen ? sentimentDirection(beforeOpen.agg) : null;
+    let openTime = weekOpenUtc;
+    let closeTime = weekCloseUtc;
+    let reason: string[] | undefined;
+
+    if (!activeDirection) {
+      const firstDirectional = historyWithTimes.find(
+        (entry) => entry.time.toMillis() >= openMs && sentimentDirection(entry.agg),
+      );
+      if (!firstDirectional) {
+        continue;
+      }
+      activeDirection = sentimentDirection(firstDirectional.agg);
+      if (!activeDirection) {
+        continue;
+      }
+      openTime = firstDirectional.time;
+      reason = [`Sentiment activated ${activeDirection.toLowerCase()}`];
+    }
+
+    const firstChange = historyWithTimes.find((entry) => {
+      if (entry.time.toMillis() <= openTime.toMillis()) {
+        return false;
+      }
+      const direction = sentimentDirection(entry.agg);
+      return direction !== activeDirection;
+    });
+
+    if (firstChange) {
+      closeTime = firstChange.time;
+      const nextDirection = sentimentDirection(firstChange.agg);
+      if (!reason) {
+        reason = [];
+      }
+      if (!nextDirection) {
+        reason.push("Sentiment neutralized");
+      } else {
+        reason.push(`Sentiment flipped to ${nextDirection.toLowerCase()}`);
+      }
+    }
+
+    if (closeTime.toMillis() <= openTime.toMillis()) {
+      continue;
+    }
+
+    pairs[pairDef.pair] = pairSnapshot(activeDirection);
+    windows[pairDef.pair] = {
+      openUtc: openTime,
+      closeUtc: closeTime,
+      direction: activeDirection,
+      reason,
+    };
+    if (reason && reason.length > 0) {
+      reasonOverrides.set(pairDef.pair, reason);
+    }
+  }
+
+  return { pairs, windows, reasonOverrides };
 }
 
 function buildSentimentPairs(
@@ -157,6 +279,9 @@ function sentimentReason(agg: SentimentAggregate | undefined, direction: Directi
   if (agg.flip_state === "FLIPPED_DOWN") {
     return ["Sentiment flip down"];
   }
+  if (agg.flip_state === "FLIPPED_NEUTRAL") {
+    return ["Sentiment neutralized"];
+  }
   if (agg.crowding_state === "CROWDED_LONG") {
     return ["Retail crowding long (fade)"];
   }
@@ -191,15 +316,22 @@ export async function computeModelPerformance(options: {
   snapshot: CotSnapshot;
   sentiment: SentimentAggregate[];
   performance?: Awaited<ReturnType<typeof getPairPerformance>>;
+  pairsOverride?: Record<string, PairSnapshot>;
+  reasonOverrides?: Map<string, string[]>;
 }): Promise<ModelPerformance> {
-  const { model, assetClass, snapshot, sentiment, performance } = options;
+  const { model, assetClass, snapshot, sentiment, performance, pairsOverride, reasonOverrides } = options;
   const sentimentMap = new Map(sentiment.map((item) => [item.symbol, item]));
   let pairs: Record<string, PairSnapshot> = {};
   const reasonMap = new Map<string, string[]>();
 
   if (model === "sentiment") {
-    pairs = buildSentimentPairs(assetClass, sentiment);
+    pairs = pairsOverride ?? buildSentimentPairs(assetClass, sentiment);
     Object.entries(pairs).forEach(([pair, info]) => {
+      const override = reasonOverrides?.get(pair);
+      if (override && override.length > 0) {
+        reasonMap.set(pair, override);
+        return;
+      }
       const agg = sentimentMap.get(pair);
       reasonMap.set(pair, sentimentReason(agg, info.direction));
     });

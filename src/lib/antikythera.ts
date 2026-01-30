@@ -36,7 +36,7 @@ function sentimentAlignment(
     return { aligned: true, reasons: ["Retail crowding skewed long"] };
   }
 
-  if (agg.flip_state !== "NONE") {
+  if (agg.flip_state === "FLIPPED_UP" || agg.flip_state === "FLIPPED_DOWN") {
     return {
       aligned: true,
       reasons: [`Sentiment flip: ${agg.flip_state.replace("_", " ")}`],

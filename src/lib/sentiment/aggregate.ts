@@ -187,5 +187,9 @@ function determineFlipState(
     return "FLIPPED_UP";
   }
 
+  if (prevCrowding !== currentCrowding) {
+    return "FLIPPED_NEUTRAL";
+  }
+
   return "NONE";
 }

@@ -1,7 +1,7 @@
 export type SentimentProvider = "FOREXCLIENTSENTIMENT" | "OANDA" | "MYFXBOOK";
 
 export type CrowdingState = "CROWDED_LONG" | "CROWDED_SHORT" | "NEUTRAL";
-export type FlipState = "FLIPPED_UP" | "FLIPPED_DOWN" | "NONE";
+export type FlipState = "FLIPPED_UP" | "FLIPPED_DOWN" | "FLIPPED_NEUTRAL" | "NONE";
 
 export type ProviderSentiment = {
   symbol: string;
