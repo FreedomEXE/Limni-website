@@ -8,6 +8,7 @@ import SummaryCards from "@/components/SummaryCards";
 import MiniBiasStrip from "@/components/MiniBiasStrip";
 import { evaluateFreshness } from "@/lib/cotFreshness";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
+import { DateTime } from "luxon";
 import {
   COT_VARIANT,
   getAssetClass,
@@ -269,6 +270,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const biasLabel = isAll ? "Asset" : assetDefinition.biasLabel;
+  const reportWeekLabel = (() => {
+    if (!selectedReportDate) {
+      return "";
+    }
+    const report = DateTime.fromISO(selectedReportDate, { zone: "America/New_York" });
+    if (!report.isValid) {
+      return formatDateET(selectedReportDate);
+    }
+    const daysUntilMonday = (8 - report.weekday) % 7;
+    const monday = report
+      .plus({ days: daysUntilMonday })
+      .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+    return formatDateET(monday.toUTC().toISO());
+  })();
   const viewParams = new URLSearchParams();
   viewParams.set("asset", isAll ? "all" : assetClass);
   if (selectedReportDate) {
@@ -341,7 +356,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 ))}
               </select>
               <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Report week
+                Trading week
               </label>
               <select
                 name="report"
@@ -350,7 +365,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               >
                 {availableDates.map((date) => (
                   <option key={date} value={date}>
-                    {formatDateET(date)}
+                    {(() => {
+                      const report = DateTime.fromISO(date, { zone: "America/New_York" });
+                      if (!report.isValid) {
+                        return formatDateET(date);
+                      }
+                      const daysUntilMonday = (8 - report.weekday) % 7;
+                      const monday = report
+                        .plus({ days: daysUntilMonday })
+                        .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+                      return formatDateET(monday.toUTC().toISO());
+                    })()}
                   </option>
                 ))}
               </select>
@@ -374,6 +399,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </form>
             <ViewToggle value={view} items={viewItems} />
           </div>
+          {selectedReportDate ? (
+            <div className="mt-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              COT report date {formatDateET(selectedReportDate)}
+              {reportWeekLabel ? ` · Trading week ${reportWeekLabel}` : ""}
+            </div>
+          ) : null}
 
           <div className="mt-6 space-y-6">
             <div>

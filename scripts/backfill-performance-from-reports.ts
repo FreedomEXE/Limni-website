@@ -13,9 +13,7 @@ import {
   getPerformanceWindow,
 } from "../src/lib/pricePerformance";
 import { writePerformanceSnapshots } from "../src/lib/performanceSnapshots";
-import { readAggregates } from "../src/lib/sentiment/store";
-import type { SentimentAggregate } from "../src/lib/sentiment/types";
-import { DateTime as LuxonDateTime } from "luxon";
+import { readAggregates, getAggregatesAsOf } from "../src/lib/sentiment/store";
 
 type ReportRow = {
   asset_class: string;
@@ -34,51 +32,7 @@ function reportWeekOpenUtc(reportDate: string): string | null {
   return monday.toUTC().toISO();
 }
 
-function buildLockedSentimentForWeek(options: {
-  sentimentHistory: SentimentAggregate[];
-  weekOpenUtc: LuxonDateTime;
-  weekCloseUtc: LuxonDateTime;
-}): SentimentAggregate[] {
-  const { sentimentHistory, weekOpenUtc, weekCloseUtc } = options;
-  const closeMs = weekCloseUtc.toMillis();
-  const openMs = weekOpenUtc.toMillis();
-  const bySymbol = new Map<string, { agg: SentimentAggregate; time: LuxonDateTime }[]>();
-
-  for (const agg of sentimentHistory) {
-    const time = LuxonDateTime.fromISO(agg.timestamp_utc, { zone: "utc" });
-    if (!time.isValid || time.toMillis() > closeMs) {
-      continue;
-    }
-    if (!bySymbol.has(agg.symbol)) {
-      bySymbol.set(agg.symbol, []);
-    }
-    bySymbol.get(agg.symbol)?.push({ agg, time });
-  }
-
-  const locked: SentimentAggregate[] = [];
-  for (const [symbol, list] of bySymbol.entries()) {
-    const sorted = list.sort((a, b) => a.time.toMillis() - b.time.toMillis());
-    if (sorted.length === 0) {
-      continue;
-    }
-    const latest = sorted[sorted.length - 1].agg;
-    const firstFlip = sorted.find(
-      (entry) => entry.time.toMillis() >= openMs && entry.agg.flip_state !== "NONE",
-    );
-    if (firstFlip) {
-      locked.push({
-        ...latest,
-        crowding_state: "NEUTRAL",
-        flip_state: "FLIPPED_NEUTRAL",
-        timestamp_utc: firstFlip.agg.timestamp_utc,
-      });
-    } else {
-      locked.push(latest);
-    }
-  }
-
-  return locked;
-}
+// Sentiment is snapshotted as-of the trading week open (Monday 00:00 ET).
 
 async function listReportDatesByAsset(): Promise<Map<string, Set<string>>> {
   const assetClasses = listAssetClasses().map((asset) => asset.id);
@@ -137,12 +91,7 @@ async function main() {
       continue;
     }
     const weekOpen = DateTime.fromISO(weekOpenIso, { zone: "utc" });
-    const weekClose = weekOpen.plus({ days: 5, hours: 23, minutes: 59, seconds: 59 });
-    const latestSentiment = buildLockedSentimentForWeek({
-      sentimentHistory,
-      weekOpenUtc: weekOpen,
-      weekCloseUtc: weekClose,
-    });
+    const latestSentiment = await getAggregatesAsOf(weekOpenIso);
 
     const payload = [];
     for (const asset of assetClasses) {

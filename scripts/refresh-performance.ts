@@ -1,6 +1,6 @@
 import { listAssetClasses } from "../src/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "../src/lib/cotStore";
-import { getLatestAggregatesLocked, readAggregates } from "../src/lib/sentiment/store";
+import { getAggregatesAsOf, readAggregates } from "../src/lib/sentiment/store";
 import {
   computeModelPerformance,
   buildSentimentPairsWithHistory,
@@ -53,7 +53,7 @@ async function main() {
 
   const weekOpenUtc = getWeekOpenUtc();
   const [latestSentiment, sentimentHistory] = await Promise.all([
-    getLatestAggregatesLocked(),
+    getAggregatesAsOf(weekOpenUtc),
     readAggregates(),
   ]);
   const snapshots = await Promise.all(

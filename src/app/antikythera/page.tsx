@@ -6,7 +6,7 @@ import SummaryCards from "@/components/SummaryCards";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
-import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
+import { getAggregatesAsOf, getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { refreshAppData } from "@/lib/appRefresh";
@@ -53,20 +53,16 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
   let sentiment: SentimentAggregate[] = [];
 
   try {
-    const [snapshotResults, sentimentResult] = await Promise.all([
-      Promise.all(
-        assetIds.map((assetClass) =>
-          selectedReportDate
-            ? readSnapshot({ assetClass, reportDate: selectedReportDate })
-            : readSnapshot({ assetClass }),
-        ),
+    const snapshotResults = await Promise.all(
+      assetIds.map((assetClass) =>
+        selectedReportDate
+          ? readSnapshot({ assetClass, reportDate: selectedReportDate })
+          : readSnapshot({ assetClass }),
       ),
-      getLatestAggregatesLocked(),
-    ]);
+    );
     snapshotResults.forEach((snapshot, index) => {
       snapshots.set(assetIds[index], snapshot);
     });
-    sentiment = sentimentResult;
   } catch (error) {
     console.error(
       "Antikythera data load failed:",
@@ -142,6 +138,30 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       console.error("Antikythera performance load failed:", error);
     }
   }
+  try {
+    sentiment = selectedWeek
+      ? await getAggregatesAsOf(selectedWeek)
+      : await getLatestAggregatesLocked();
+  } catch (error) {
+    console.error(
+      "Antikythera sentiment load failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  const reportWeekLabel = (() => {
+    if (!selectedReportDate) {
+      return "";
+    }
+    const report = DateTime.fromISO(selectedReportDate, { zone: "America/New_York" });
+    if (!report.isValid) {
+      return formatDateET(selectedReportDate);
+    }
+    const daysUntilMonday = (8 - report.weekday) % 7;
+    const monday = report
+      .plus({ days: daysUntilMonday })
+      .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+    return formatDateET(monday.toUTC().toISO());
+  })();
   const viewParams = new URLSearchParams();
   if (selectedReportDate) {
     viewParams.set("report", selectedReportDate);
@@ -209,7 +229,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
               <form action="/antikythera" method="get" className="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="view" value={view} />
                 <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Report week
+                  Trading week
                 </label>
                 <select
                   name="report"
@@ -218,7 +238,17 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
                 >
                   {availableDates.map((date) => (
                     <option key={date} value={date}>
-                      {formatDateET(date)}
+                      {(() => {
+                        const report = DateTime.fromISO(date, { zone: "America/New_York" });
+                        if (!report.isValid) {
+                          return formatDateET(date);
+                        }
+                        const daysUntilMonday = (8 - report.weekday) % 7;
+                        const monday = report
+                          .plus({ days: daysUntilMonday })
+                          .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+                        return formatDateET(monday.toUTC().toISO());
+                      })()}
                     </option>
                   ))}
                 </select>
@@ -247,6 +277,12 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
             </div>
             <ViewToggle value={view} items={viewItems} />
           </div>
+          {selectedReportDate ? (
+            <div className="mt-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              COT report date {formatDateET(selectedReportDate)}
+              {reportWeekLabel ? ` · Trading week ${reportWeekLabel}` : ""}
+            </div>
+          ) : null}
 
           <div className="mt-6">
             <SignalHeatmap
