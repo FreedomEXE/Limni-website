@@ -9,7 +9,7 @@ import {
 import {
   getPairPerformanceForWindows,
 } from "../src/lib/pricePerformance";
-import { writePerformanceSnapshots } from "../src/lib/performanceSnapshots";
+import { writePerformanceSnapshots, type PerformanceSnapshot } from "../src/lib/performanceSnapshots";
 import { listAssetClasses } from "../src/lib/cotMarkets";
 import type { SentimentAggregate } from "../src/lib/sentiment/types";
 
@@ -107,7 +107,7 @@ async function main() {
       weekCloseUtc: weekClose,
     });
 
-    const payload = [];
+    const payload: PerformanceSnapshot[] = [];
     for (const asset of assetClasses) {
       const reportDate = reportDates.get(asset.id) ?? null;
       const snapshot = reportDate
