@@ -103,6 +103,7 @@ async function listReportDatesByAsset(): Promise<Map<string, Set<string>>> {
 
 async function main() {
   const assetClasses = listAssetClasses();
+  const minReportDate = process.env.PERFORMANCE_MIN_REPORT_DATE ?? "";
   const models: PerformanceModel[] = [
     "antikythera",
     "blended",
@@ -117,14 +118,18 @@ async function main() {
       Array.from(reportDatesByAsset.values()).flatMap((set) => Array.from(set)),
     ),
   ).sort((a, b) => b.localeCompare(a));
+  const filteredDates =
+    minReportDate && minReportDate.length > 0
+      ? allDates.filter((date) => date >= minReportDate)
+      : allDates;
 
-  if (allDates.length === 0) {
+  if (filteredDates.length === 0) {
     console.log("No report dates found.");
     return;
   }
 
   const sentimentHistory = await readAggregates();
-  const targetDates = allDates.slice(0, 3);
+  const targetDates = filteredDates.slice(0, 3);
 
   for (const reportDate of targetDates) {
     const weekOpenIso = reportWeekOpenUtc(reportDate);
