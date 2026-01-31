@@ -31,7 +31,6 @@ function getDatabaseHost(value: string) {
 export function getAppDiagnostics(options: DiagnosticsOptions = {}): StatusIssue[] {
   const issues: StatusIssue[] = [];
   const dbUrl = process.env.DATABASE_URL ?? "";
-  const priceKey = process.env.PRICE_API_KEY ?? "";
   const adminToken = process.env.ADMIN_TOKEN ?? "";
   const mt5Token = process.env.MT5_PUSH_TOKEN ?? "";
 
@@ -61,12 +60,12 @@ export function getAppDiagnostics(options: DiagnosticsOptions = {}): StatusIssue
     }
   }
 
-  if (!priceKey) {
+  if (!process.env.OANDA_API_KEY || !process.env.OANDA_ACCOUNT_ID) {
     issues.push({
       severity: "warning",
-      title: "PRICE_API_KEY missing",
-      details: "Price performance refresh is disabled.",
-      hint: "Add PRICE_API_KEY to Vercel (TwelveData).",
+      title: "OANDA pricing not configured",
+      details: "Price performance refresh requires OANDA API credentials.",
+      hint: "Set OANDA_API_KEY and OANDA_ACCOUNT_ID in Vercel.",
     });
   }
 
@@ -120,7 +119,7 @@ export function getAppDiagnostics(options: DiagnosticsOptions = {}): StatusIssue
       severity: "warning",
       title: "Price performance unavailable",
       details: sanitizeError(options.priceError),
-      hint: "Check PRICE_API_KEY and API quota.",
+      hint: "Check OANDA credentials and instrument availability.",
     });
   }
 

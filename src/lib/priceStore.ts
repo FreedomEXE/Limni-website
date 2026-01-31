@@ -23,7 +23,12 @@ export async function readMarketSnapshot(
 ): Promise<MarketSnapshot | null> {
   try {
     const queryText = weekOpenUtc
-      ? "SELECT week_open_utc, last_refresh_utc, asset_class, pairs FROM market_snapshots WHERE asset_class = $1 AND week_open_utc = $2 ORDER BY last_refresh_utc DESC LIMIT 1"
+      ? `SELECT week_open_utc, last_refresh_utc, asset_class, pairs
+         FROM market_snapshots
+         WHERE asset_class = $1
+           AND week_open_utc BETWEEN $2::timestamptz - INTERVAL '36 hours' AND $2::timestamptz + INTERVAL '36 hours'
+         ORDER BY ABS(EXTRACT(EPOCH FROM (week_open_utc - $2::timestamptz))) ASC
+         LIMIT 1`
       : "SELECT week_open_utc, last_refresh_utc, asset_class, pairs FROM market_snapshots WHERE asset_class = $1 ORDER BY week_open_utc DESC LIMIT 1";
     const params = weekOpenUtc
       ? [assetClass, new Date(weekOpenUtc)]

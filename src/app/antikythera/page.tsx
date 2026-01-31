@@ -1,13 +1,17 @@
-import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
-import SignalTiles from "@/components/antikythera/SignalTiles";
-import { fetchLiquidationSummary } from "@/lib/coinank";
+import PageTabs from "@/components/PageTabs";
+import SignalHeatmap from "@/components/SignalHeatmap";
+import ViewToggle from "@/components/ViewToggle";
+import SummaryCards from "@/components/SummaryCards";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
-import { getLatestAggregates } from "@/lib/sentiment/store";
+import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
+import { refreshAppData } from "@/lib/appRefresh";
+import { listPerformanceWeeks, readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
+import { DateTime } from "luxon";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +22,21 @@ type AntikytheraPageProps = {
 };
 
 export default async function AntikytheraPage({ searchParams }: AntikytheraPageProps) {
+  try {
+    await refreshAppData();
+  } catch (error) {
+    console.error("App refresh failed:", error);
+  }
+
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const reportParam = resolvedSearchParams?.report;
+  const assetParam = resolvedSearchParams?.asset;
+  const viewParam = resolvedSearchParams?.view;
   const reportDate =
     Array.isArray(reportParam) ? reportParam[0] : reportParam;
+  const selectedAsset = Array.isArray(assetParam) ? assetParam[0] : assetParam;
+  const view =
+    viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
   const assetClasses = listAssetClasses();
   const assetIds = assetClasses.map((asset) => asset.id);
   const availableDates = await Promise.all(
@@ -38,8 +53,6 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       : availableDates[0];
   const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
   let sentiment: SentimentAggregate[] = [];
-  let btcLiq: Awaited<ReturnType<typeof fetchLiquidationSummary>> | null = null;
-  let ethLiq: Awaited<ReturnType<typeof fetchLiquidationSummary>> | null = null;
 
   try {
     const [snapshotResults, sentimentResult] = await Promise.all([
@@ -50,7 +63,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
             : readSnapshot({ assetClass }),
         ),
       ),
-      getLatestAggregates(),
+      getLatestAggregatesLocked(),
     ]);
     snapshotResults.forEach((snapshot, index) => {
       snapshots.set(assetIds[index], snapshot);
@@ -62,22 +75,6 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       error instanceof Error ? error.message : String(error),
     );
   }
-
-  try {
-    [btcLiq, ethLiq] = await Promise.all([
-      fetchLiquidationSummary("BTC"),
-      fetchLiquidationSummary("ETH"),
-    ]);
-  } catch (error) {
-    console.error(
-      "Antikythera liquidation load failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
-
-  const liquidationSummaries = [btcLiq, ethLiq].filter(
-    (item): item is NonNullable<typeof item> => Boolean(item),
-  );
 
   const signalGroups = assetClasses.map((asset) => {
     const snapshot = snapshots.get(asset.id) ?? null;
@@ -99,9 +96,9 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       assetLabel: group.asset.label,
     })),
   );
-  const topSignals = [...allSignals]
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 6);
+  const filteredSignals = selectedAsset && selectedAsset !== "all"
+    ? allSignals.filter((signal) => signal.assetId === selectedAsset)
+    : allSignals;
   const latestSnapshotRefresh = latestIso(
     assetClasses.map((asset) => snapshots.get(asset.id)?.last_refresh_utc),
   );
@@ -112,28 +109,94 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
     latestSnapshotRefresh,
     latestSentimentRefresh,
   ]);
+  const weeks = await listPerformanceWeeks();
+  let selectedWeek = weeks[0] ?? null;
+  if (selectedReportDate) {
+    const report = DateTime.fromISO(selectedReportDate, { zone: "America/New_York" });
+    if (report.isValid) {
+      const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
+      const sunday = report
+        .plus({ days: daysUntilSunday })
+        .set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
+      const weekIso = sunday.toUTC().toISO();
+      if (weekIso && weeks.includes(weekIso)) {
+        selectedWeek = weekIso;
+      }
+    }
+  }
+  let performanceByPair: Record<string, number | null> = {};
+  if (selectedWeek) {
+    try {
+      const weekSnapshots = await readPerformanceSnapshotsByWeek(selectedWeek);
+      const assetLabelMap = new Map(
+        assetClasses.map((asset) => [asset.id, asset.label]),
+      );
+      weekSnapshots
+        .filter((row) => row.model === "antikythera")
+        .forEach((row) => {
+          row.pair_details.forEach((detail) => {
+            const assetLabel = assetLabelMap.get(row.asset_class) ?? row.asset_class;
+            const key = `${detail.pair} (${assetLabel})`;
+            performanceByPair[key] = detail.percent ?? null;
+          });
+        });
+    } catch (error) {
+      console.error("Antikythera performance load failed:", error);
+    }
+  }
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-              Antikythera
-            </h1>
-            <p className="mt-2 text-sm text-[color:var(--muted)]">
-              Signal-first intelligence blending bias, sentiment, and liquidation cues.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Last refresh{" "}
-              {latestAntikytheraRefresh
-                ? formatDateTimeET(latestAntikytheraRefresh)
-                : "No refresh yet"}
-            </span>
-            {availableDates.length > 0 ? (
-              <form action="/antikythera" method="get" className="flex items-center gap-2">
+        <header className="space-y-4">
+          <h1 className="text-3xl font-semibold text-[var(--foreground)]">
+            Antikythera
+          </h1>
+          <PageTabs />
+        </header>
+
+        <SummaryCards
+          title="Antikythera"
+          cards={[
+            {
+              id: "signals",
+              label: "Signals tracked",
+              value: String(allSignals.length),
+              details: [
+                { label: "FX", value: String(signalGroups.find((g) => g.asset.id === "fx")?.signals.length ?? 0) },
+                { label: "Indices", value: String(signalGroups.find((g) => g.asset.id === "indices")?.signals.length ?? 0) },
+                { label: "Crypto", value: String(signalGroups.find((g) => g.asset.id === "crypto")?.signals.length ?? 0) },
+                { label: "Commodities", value: String(signalGroups.find((g) => g.asset.id === "commodities")?.signals.length ?? 0) },
+              ],
+            },
+            {
+              id: "long",
+              label: "Long signals",
+              value: String(allSignals.filter((s) => s.direction === "LONG").length),
+              tone: "positive",
+            },
+            {
+              id: "short",
+              label: "Short signals",
+              value: String(allSignals.filter((s) => s.direction === "SHORT").length),
+              tone: "negative",
+            },
+            {
+              id: "sentiment",
+              label: "Sentiment aligned",
+              value: String(allSignals.filter((s) => s.reasons.some((r) => r.toLowerCase().includes("sentiment"))).length),
+            },
+          ]}
+        />
+
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <form action="/antikythera" method="get" className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="view" value={view} />
+                <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Report week
+                </label>
                 <select
                   name="report"
                   defaultValue={selectedReportDate ?? ""}
@@ -145,6 +208,21 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
                     </option>
                   ))}
                 </select>
+                <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Asset class
+                </label>
+                <select
+                  name="asset"
+                  defaultValue={selectedAsset ?? "all"}
+                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  <option value="all">ALL</option>
+                  {assetClasses.map((asset) => (
+                    <option key={asset.id} value={asset.id}>
+                      {asset.label}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="submit"
                   className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
@@ -152,234 +230,42 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
                   View
                 </button>
               </form>
-            ) : null}
-            <Link
-              href="/dashboard"
-              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            >
-              Bias map
-            </Link>
-            <Link
-              href="/sentiment"
-              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            >
-              Sentiment map
-            </Link>
-          </div>
-        </header>
-
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Top Signals
-              </h2>
-              <p className="text-sm text-[color:var(--muted)]">
-                Highest-conviction setups across all asset classes.
-              </p>
             </div>
-            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {topSignals.length} active
-            </span>
+            <ViewToggle
+              value={view}
+              onChange={(next) => {
+                const params = new URLSearchParams();
+                if (selectedReportDate) {
+                  params.set("report", selectedReportDate);
+                }
+                if (selectedAsset) {
+                  params.set("asset", selectedAsset);
+                }
+                params.set("view", next);
+                window.location.href = `/antikythera?${params.toString()}`;
+              }}
+            />
           </div>
-          {topSignals.length === 0 ? (
-            <p className="text-sm text-[color:var(--muted)]">
-              No aligned signals yet. Check Bias and Sentiment maps for context.
-            </p>
-          ) : (
-            <SignalTiles
-              topSignals={topSignals.map((signal) => ({
-                assetLabel: signal.assetLabel,
+
+          <div className="mt-6">
+            <SignalHeatmap
+              signals={filteredSignals.map((signal) => ({
                 pair: signal.pair,
                 direction: signal.direction,
+                assetLabel: signal.assetLabel,
                 reasons: signal.reasons,
-                confidence: signal.confidence,
               }))}
-              groups={signalGroups.map((group) => ({
-                id: group.asset.id,
-                label: group.asset.label,
-                hasHistory: group.hasHistory,
-                signals: group.signals.map((signal) => ({
-                  assetLabel: group.asset.label,
-                  pair: signal.pair,
-                  direction: signal.direction,
-                  reasons: signal.reasons,
-                  confidence: signal.confidence,
-                })),
-              }))}
-              showGroups={false}
-              showSignals={false}
-            />
-          )}
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Signal Heatmap
-              </h2>
-              <p className="text-sm text-[color:var(--muted)]">
-                Where the strongest signals cluster by asset class.
-              </p>
-            </div>
-            <SignalTiles
-              topSignals={[]}
-              groups={signalGroups.map((group) => ({
-                id: group.asset.id,
-                label: group.asset.label,
-                hasHistory: group.hasHistory,
-                signals: group.signals.map((signal) => ({
-                  assetLabel: group.asset.label,
-                  pair: signal.pair,
-                  direction: signal.direction,
-                  reasons: signal.reasons,
-                  confidence: signal.confidence,
-                })),
-              }))}
-              showTop={false}
-              showSignals={false}
+              view={view}
+              performanceByPair={performanceByPair}
             />
           </div>
-
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Signal Drivers
-              </h2>
-              <p className="text-sm text-[color:var(--muted)]">
-                Fast context from Bias, Sentiment, and Liquidity flows.
-              </p>
-            </div>
-            <div className="space-y-3">
-              <Link
-                href="/dashboard"
-                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                <span>Bias map</span>
-                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  View
-                </span>
-              </Link>
-              <Link
-                href="/sentiment"
-                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                <span>Sentiment map</span>
-                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  View
-                </span>
-              </Link>
-              <Link
-                href="/performance"
-                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[var(--foreground)]/80 transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                <span>Performance lab</span>
-                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  View
-                </span>
-              </Link>
-              <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[var(--foreground)]/80">
-                Liquidation clusters update for BTC + ETH below.
-              </div>
-            </div>
-          </div>
         </section>
 
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Signals by Asset
-            </h2>
-            <p className="text-sm text-[color:var(--muted)]">
-              Detailed signal lists for each asset class.
-            </p>
-          </div>
-          {signalGroups.map((group) => (
-            <div key={group.asset.id} className="mb-6 last:mb-0">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  {group.asset.label}
-                </h3>
-                {!group.hasHistory ? (
-                  <span className="text-xs text-[color:var(--muted)]">
-                    Not enough history
-                  </span>
-                ) : null}
-              </div>
-              {group.signals.length === 0 ? (
-                <p className="text-sm text-[color:var(--muted)]">
-                  No aligned signals yet.
-                </p>
-              ) : (
-                <SignalTiles
-                  topSignals={[]}
-                  groups={[
-                    {
-                      id: group.asset.id,
-                      label: group.asset.label,
-                      hasHistory: group.hasHistory,
-                      signals: group.signals.map((signal) => ({
-                        assetLabel: group.asset.label,
-                        pair: signal.pair,
-                        direction: signal.direction,
-                        reasons: signal.reasons,
-                        confidence: signal.confidence,
-                      })),
-                    },
-                  ]}
-                  showTop={false}
-                  showGroups={false}
-                />
-              )}
-            </div>
-          ))}
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-2">
-          {liquidationSummaries.map((summary) => (
-            <div
-              key={summary.baseCoin}
-              className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                    {summary.baseCoin} Liquidations
-                  </h2>
-                  <p className="text-sm text-[color:var(--muted)]">
-                    Recent liquidation clusters from Coinank.
-                  </p>
-                </div>
-                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Updated {formatDateTimeET(summary.lastUpdated)}
-                </span>
-              </div>
-              <div className="mt-4 grid gap-3 text-sm text-[var(--foreground)]/80">
-                <div className="flex items-center justify-between">
-                  <span>Long liquidations</span>
-                  <span className="font-semibold text-rose-700">
-                    {summary.totalLongUsd.toFixed(0)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Short liquidations</span>
-                  <span className="font-semibold text-[var(--accent-strong)]">
-                    {summary.totalShortUsd.toFixed(0)}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-4 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Dominant: {summary.dominantSide}
-              </div>
-            </div>
-          ))}
-          {liquidationSummaries.length === 0 ? (
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 text-sm text-[color:var(--muted)] shadow-sm">
-              Liquidation data unavailable. Check Coinank connectivity.
-            </div>
-          ) : null}
-        </section>
+        <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          {latestAntikytheraRefresh
+            ? `Last refresh ${formatDateTimeET(latestAntikytheraRefresh)}`
+            : "No refresh yet"}
+        </div>
       </div>
     </DashboardLayout>
   );

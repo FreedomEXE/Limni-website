@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
-import { getLatestAggregates, readAggregates } from "@/lib/sentiment/store";
+import { getLatestAggregatesLocked, readAggregates } from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
   buildSentimentPairsWithHistory,
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
   const weekOpenUtc = getWeekOpenUtc();
   const [latestSentiment, sentimentHistory] = await Promise.all([
-    getLatestAggregates(),
+    getLatestAggregatesLocked(),
     readAggregates(),
   ]);
   const snapshots = await Promise.all(

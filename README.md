@@ -84,7 +84,7 @@ The `COT_VARIANT` env var controls which rows are used:
 
 Pair performance uses Twelve Data hourly candles for the 7 FX majors, then
 derives all crosses to measure change from the most recent Sunday 7:00 PM ET
-open. Set `PRICE_API_KEY` to enable it.
+open. Set `OANDA_API_KEY` and `OANDA_ACCOUNT_ID` to enable it.
 
 Majors fetched:
 - EURUSD, GBPUSD, AUDUSD, NZDUSD, USDJPY, USDCHF, USDCAD

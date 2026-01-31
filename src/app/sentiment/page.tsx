@@ -1,78 +1,26 @@
-import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
-import RefreshSentimentButton from "@/components/RefreshSentimentButton";
 import SentimentHeatmap from "@/components/SentimentHeatmap";
+import PageTabs from "@/components/PageTabs";
+import ViewToggle from "@/components/ViewToggle";
+import SummaryCards from "@/components/SummaryCards";
 import { fetchLiquidationSummary } from "@/lib/coinank";
 import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { fetchCryptoSpotPrice } from "@/lib/cryptoPrices";
-import { getLatestAggregates, readSourceHealth } from "@/lib/sentiment/store";
-import { getSessionRole } from "@/lib/auth";
+import {
+  getAggregatesForWeekLocked,
+  getLatestAggregatesLocked,
+} from "@/lib/sentiment/store";
 import { formatDateTimeET, latestIso } from "@/lib/time";
 import {
   SENTIMENT_ASSET_CLASSES,
   ALL_SENTIMENT_SYMBOLS,
   type SentimentAssetClass,
 } from "@/lib/sentiment/symbols";
-import type { SentimentAggregate, SourceHealth } from "@/lib/sentiment/types";
+import type { SentimentAggregate } from "@/lib/sentiment/types";
+import { refreshAppData } from "@/lib/appRefresh";
+import { listPerformanceWeeks, readPerformanceSnapshotsByWeek, weekLabelFromOpen } from "@/lib/performanceSnapshots";
 
 export const dynamic = "force-dynamic";
-
-const percentFormatter = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-
-const usdFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
-
-const priceFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2,
-});
-
-function formatPercent(value: number) {
-  const sign = value > 0 ? "+" : value < 0 ? "" : "";
-  return `${sign}${percentFormatter.format(value)}`;
-}
-
-function crowdingTone(state: string) {
-  if (state === "CROWDED_LONG") {
-    return "text-rose-700";
-  }
-  if (state === "CROWDED_SHORT") {
-    return "text-emerald-700";
-  }
-  return "text-[var(--muted)]";
-}
-
-function sourceTone(status: string) {
-  if (status === "HEALTHY") {
-    return "bg-emerald-100 text-emerald-700";
-  }
-  if (status === "DEGRADED") {
-    return "bg-[var(--accent)]/10 text-[var(--accent-strong)]";
-  }
-  return "bg-rose-100 text-rose-700";
-}
-
-function formatUsd(value: number) {
-  if (!Number.isFinite(value)) {
-    return "--";
-  }
-  return usdFormatter.format(value);
-}
-
-function formatPrice(value: number | null | undefined) {
-  if (!Number.isFinite(value ?? NaN)) {
-    return "--";
-  }
-  return priceFormatter.format(value as number);
-}
-
 
 type SentimentPageProps = {
   searchParams?:
@@ -93,26 +41,31 @@ function getAssetClass(value?: string | null): SentimentView {
 }
 
 export default async function SentimentPage({ searchParams }: SentimentPageProps) {
+  try {
+    await refreshAppData();
+  } catch (error) {
+    console.error("App refresh failed:", error);
+  }
+
   const resolvedSearchParams = await Promise.resolve(searchParams);
-  const role = await getSessionRole();
-  const canRefresh = role === "admin";
   const assetParam = resolvedSearchParams?.asset;
+  const weekParam = resolvedSearchParams?.week;
+  const viewParam = resolvedSearchParams?.view;
   const assetClass = getAssetClass(
     Array.isArray(assetParam) ? assetParam[0] : assetParam,
   );
+  const view =
+    viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
+  const weekValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
+
+  const weeks = await listPerformanceWeeks();
+  const selectedWeek = weekValue && weeks.includes(weekValue) ? weekValue : weeks[0] ?? null;
+
   let aggregates: SentimentAggregate[] = [];
-  let sources: SourceHealth[] = [];
-  let liquidationSummaries: Array<
-    Awaited<ReturnType<typeof fetchLiquidationSummary>>
-  > = [];
-  let bitgetSnapshots: Array<
-    Awaited<ReturnType<typeof fetchBitgetFuturesSnapshot>>
-  > = [];
   try {
-    [aggregates, sources] = await Promise.all([
-      getLatestAggregates(),
-      readSourceHealth(),
-    ]);
+    aggregates = selectedWeek
+      ? await getAggregatesForWeekLocked(selectedWeek)
+      : await getLatestAggregatesLocked();
   } catch (error) {
     console.error(
       "Sentiment load failed:",
@@ -120,6 +73,53 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
     );
   }
 
+  const symbols =
+    assetClass === "all"
+      ? ALL_SENTIMENT_SYMBOLS
+      : SENTIMENT_ASSET_CLASSES[assetClass].symbols;
+  const filteredAggregates = aggregates.filter((agg) =>
+    symbols.includes(agg.symbol),
+  );
+  const sortedAggregates = filteredAggregates.sort((a, b) =>
+    a.symbol.localeCompare(b.symbol),
+  );
+  const latestAggregateTimestamp = latestIso(
+    filteredAggregates.map((agg) => agg.timestamp_utc),
+  );
+
+  const crowdedLong = filteredAggregates.filter(
+    (a) => a.crowding_state === "CROWDED_LONG",
+  ).length;
+  const crowdedShort = filteredAggregates.filter(
+    (a) => a.crowding_state === "CROWDED_SHORT",
+  ).length;
+  const neutral = filteredAggregates.filter(
+    (a) => a.crowding_state === "NEUTRAL",
+  ).length;
+  const flips = filteredAggregates.filter((a) => a.flip_state !== "NONE").length;
+
+  let performanceByPair: Record<string, number | null> = {};
+  if (selectedWeek) {
+    try {
+      const weekSnapshots = await readPerformanceSnapshotsByWeek(selectedWeek);
+      weekSnapshots
+        .filter((row) => row.model === "sentiment")
+        .forEach((row) => {
+          row.pair_details.forEach((detail) => {
+            performanceByPair[detail.pair] = detail.percent ?? null;
+          });
+        });
+    } catch (error) {
+      console.error("Sentiment performance load failed:", error);
+    }
+  }
+
+  let liquidationSummaries: Array<
+    Awaited<ReturnType<typeof fetchLiquidationSummary>>
+  > = [];
+  let bitgetSnapshots: Array<
+    Awaited<ReturnType<typeof fetchBitgetFuturesSnapshot>>
+  > = [];
   if (assetClass === "crypto") {
     try {
       bitgetSnapshots = await Promise.all([
@@ -162,420 +162,136 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
       );
     }
   }
-  const symbols =
-    assetClass === "all"
-      ? ALL_SENTIMENT_SYMBOLS
-      : SENTIMENT_ASSET_CLASSES[assetClass].symbols;
-  const filteredAggregates = aggregates.filter((agg) =>
-    symbols.includes(agg.symbol),
-  );
-  const sortedAggregates = filteredAggregates.sort((a, b) =>
-    a.symbol.localeCompare(b.symbol),
-  );
-  const latestAggregateTimestamp = latestIso(
-    filteredAggregates.map((agg) => agg.timestamp_utc),
-  );
-  const latestSourceTimestamp = latestIso(
-    sources.map((source) => source.last_success_at),
-  );
-  const latestSentimentRefresh = latestIso([
-    latestAggregateTimestamp,
-    latestSourceTimestamp,
-  ]);
-
-  const crowdedLong = filteredAggregates.filter(
-    (a) => a.crowding_state === "CROWDED_LONG",
-  ).length;
-  const crowdedShort = filteredAggregates.filter(
-    (a) => a.crowding_state === "CROWDED_SHORT",
-  ).length;
-  const flips = filteredAggregates.filter((a) => a.flip_state !== "NONE").length;
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            {[{ id: "all", label: "ALL" }, ...Object.entries(SENTIMENT_ASSET_CLASSES).map(([id, info]) => ({ id, label: info.label }))].map(
-              (item) => {
-                const href = `/sentiment?asset=${item.id}`;
-                const isActive = item.id === assetClass;
-                return (
-                  <Link
-                    key={item.id}
-                    href={href}
-                    className={`rounded-full px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-                      isActive
-                        ? "bg-[var(--foreground)] text-[var(--background)]"
-                        : "border border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent-strong)]"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              },
-            )}
-          </div>
-          <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-            Retail Sentiment
-          </h1>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Aggregated positioning data from IG, OANDA, and Myfxbook. Identify
-            crowding and path risk across FX pairs.
-          </p>
-          </div>
-          <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-            Last refresh{" "}
-            {latestSentimentRefresh
-              ? formatDateTimeET(latestSentimentRefresh)
-              : "No refresh yet"}
-          </div>
+        <header className="space-y-4">
+          <h1 className="text-3xl font-semibold text-[var(--foreground)]">Sentiment</h1>
+          <PageTabs />
         </header>
 
-        <section className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-              Pairs tracked
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {filteredAggregates.length}
-            </p>
+        <SummaryCards
+          title="Sentiment"
+          cards={[
+            { id: "pairs", label: "Pairs tracked", value: String(filteredAggregates.length) },
+            { id: "long", label: "Crowded long", value: String(crowdedLong), tone: "negative" },
+            { id: "short", label: "Crowded short", value: String(crowdedShort), tone: "positive" },
+            { id: "neutral", label: "Neutral", value: String(neutral) },
+            { id: "flips", label: "Flips", value: String(flips) },
+          ]}
+        />
+
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <form action="/sentiment" method="get" className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="view" value={view} />
+              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Week
+              </label>
+              <select
+                name="week"
+                defaultValue={selectedWeek ?? ""}
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                {weeks.map((week) => (
+                  <option key={week} value={week}>
+                    {weekLabelFromOpen(week)}
+                  </option>
+                ))}
+              </select>
+              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Asset class
+              </label>
+              <select
+                name="asset"
+                defaultValue={assetClass}
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <option value="all">ALL</option>
+                {Object.entries(SENTIMENT_ASSET_CLASSES).map(([id, info]) => (
+                  <option key={id} value={id}>
+                    {info.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                View
+              </button>
+            </form>
+            <ViewToggle
+              value={view}
+              onChange={(next) => {
+                const params = new URLSearchParams();
+                if (selectedWeek) {
+                  params.set("week", selectedWeek);
+                }
+                params.set("asset", assetClass);
+                params.set("view", next);
+                window.location.href = `/sentiment?${params.toString()}`;
+              }}
+            />
           </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-              Crowded long
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-rose-700">
-              {crowdedLong}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-              Crowded short
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-emerald-700">
-              {crowdedShort}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm backdrop-blur-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-              Recent flips
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--accent-strong)]">
-              {flips}
-            </p>
+
+          <div className="mt-6">
+            <SentimentHeatmap
+              aggregates={sortedAggregates}
+              view={view}
+              performanceByPair={performanceByPair}
+            />
           </div>
         </section>
 
-        <SentimentHeatmap aggregates={sortedAggregates} />
-
-        {assetClass === "crypto" ? (
-          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
-            <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                  Liquidation Pulse (Coinank)
-                </h2>
-                <p className="text-sm text-[var(--muted)]">
-                  Recent liquidation clusters for BTC and ETH.
-                </p>
-              </div>
-              {liquidationSummaries.length > 0 ? (
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                  Updated {formatDateTimeET(liquidationSummaries[0].lastUpdated)}
-                </p>
-              ) : null}
-            </div>
-
-            {liquidationSummaries.length === 0 ? (
-              <p className="text-sm text-[var(--muted)]">
-                No liquidation data available yet.
-              </p>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {liquidationSummaries.map((summary) => (
-                  <div
-                    key={summary.baseCoin}
-                    className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/90 p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-[var(--foreground)]">
-                        {summary.baseCoin}
-                      </h3>
-                      <span className="rounded-full bg-[var(--foreground)] px-3 py-1 text-xs font-semibold text-[var(--background)]">
-                        {summary.dominantSide === "flat"
-                          ? "BALANCED"
-                          : `${summary.dominantSide.toUpperCase()} LIQS`}
-                      </span>
-                    </div>
-                    <div className="mt-3 grid gap-2 text-sm text-[var(--foreground)]/80">
-                      <div className="flex items-center justify-between">
-                        <span>Long liquidations</span>
-                        <span className="font-semibold text-rose-700">
-                          {formatUsd(summary.totalLongUsd)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Short liquidations</span>
-                        <span className="font-semibold text-emerald-700">
-                          {formatUsd(summary.totalShortUsd)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                        Largest clusters
-                      </p>
-                      <div className="mt-2 rounded-lg border border-[var(--panel-border)]/40 bg-[var(--panel)]/70 px-3 py-2 text-xs text-[var(--muted)]">
-                        <div className="flex items-center justify-between">
-                          <span>Reference price</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-[var(--foreground)]">
-                              {formatPrice(summary.referencePrice)}
-                            </span>
-                            {summary.priceSource && (
-                              <span className="rounded bg-[var(--panel-border)]/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-[var(--muted)]">
-                                {summary.priceSource}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="mt-2 grid gap-2 md:grid-cols-2">
-                          <div className="flex items-center justify-between">
-                            <span>Largest above</span>
-                            <span className="font-semibold text-[var(--foreground)]">
-                              {summary.largestAbove
-                                ? `${formatPrice(summary.largestAbove.price)} · ${formatUsd(
-                                    summary.largestAbove.notional,
-                                  )}`
-                                : "--"}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span>Largest below</span>
-                            <span className="font-semibold text-[var(--foreground)]">
-                              {summary.largestBelow
-                                ? `${formatPrice(summary.largestBelow.price)} · ${formatUsd(
-                                    summary.largestBelow.notional,
-                                  )}`
-                                : "--"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      {summary.recentClusters.length === 0 ? (
-                        <p className="mt-2 text-sm text-[var(--muted)]">
-                          No recent clusters in lookback window.
-                        </p>
-                      ) : (
-                        <div className="mt-2 space-y-2 text-xs text-[var(--muted)]">
-                          {summary.recentClusters.map((cluster) => (
-                            <div
-                              key={`${cluster.exchange}-${cluster.timestamp}-${cluster.notional}`}
-                              className="flex items-center justify-between rounded-lg border border-[var(--panel-border)]/40 bg-[var(--panel)]/70 px-3 py-2"
-                            >
-                              <div>
-                                <p className="font-semibold text-[var(--foreground)]">
-                                  {cluster.exchange} {cluster.contract ?? ""}
-                                </p>
-                                <p>{formatDateTimeET(cluster.timestamp)}</p>
-                              </div>
-                              <div className="text-right">
-                                <p
-                                  className={`font-semibold ${
-                                    cluster.side === "long"
-                                      ? "text-rose-700"
-                                      : "text-emerald-700"
-                                  }`}
-                                >
-                                  {cluster.side.toUpperCase()}
-                                </p>
-                                <p>{formatUsd(cluster.notional)}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        ) : null}
-
-        {assetClass === "crypto" ? (
-          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Bitget Futures Pulse
-              </h2>
-              <p className="text-sm text-[var(--muted)]">
-                Funding + open interest snapshots for BTC/ETH perpetuals.
-              </p>
-            </div>
-            {bitgetSnapshots.length === 0 ? (
-              <p className="text-sm text-[var(--muted)]">
-                No Bitget data available yet.
-              </p>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {bitgetSnapshots.map((snapshot) => (
-                  <div
-                    key={snapshot.symbol}
-                    className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/90 p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-[var(--foreground)]">
-                        {snapshot.symbol}
-                      </h3>
-                      <span className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                        {snapshot.productType}
-                      </span>
-                    </div>
-                    <div className="mt-3 grid gap-2 text-sm text-[var(--foreground)]/80">
-                      <div className="flex items-center justify-between">
-                        <span>Last price</span>
-                        <span className="font-semibold">
-                          {snapshot.lastPrice ?? "--"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Funding rate</span>
-                        <span className="font-semibold">
-                          {snapshot.fundingRate !== null
-                            ? snapshot.fundingRate.toFixed(6)
-                            : "--"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Open interest</span>
-                        <span className="font-semibold">
-                          {snapshot.openInterest ?? "--"}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="mt-3 text-xs text-[var(--muted)]">
-                      Updated{" "}
-                      {snapshot.lastPriceTime
-                        ? formatDateTimeET(snapshot.lastPriceTime)
-                        : "unknown"}
+        {assetClass === "crypto" && liquidationSummaries.length > 0 ? (
+          <section className="grid gap-6 lg:grid-cols-2">
+            {liquidationSummaries.map((summary) => (
+              <div
+                key={summary.baseCoin}
+                className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                      {summary.baseCoin} Liquidations
+                    </h2>
+                    <p className="text-sm text-[color:var(--muted)]">
+                      Recent liquidation clusters from Coinank.
                     </p>
                   </div>
-                ))}
+                  <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Updated {formatDateTimeET(summary.lastUpdated)}
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3 text-sm text-[var(--foreground)]/80">
+                  <div className="flex items-center justify-between">
+                    <span>Long liquidations</span>
+                    <span className="font-semibold text-rose-700">
+                      {summary.totalLongUsd.toFixed(0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Short liquidations</span>
+                    <span className="font-semibold text-[var(--accent-strong)]">
+                      {summary.totalShortUsd.toFixed(0)}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-4 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Dominant: {summary.dominantSide}
+                </div>
               </div>
-            )}
+            ))}
           </section>
         ) : null}
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Sentiment Details
-              </h2>
-              <p className="text-sm text-[var(--muted)]">
-                Detailed positioning and confidence scores
-              </p>
-            </div>
-            <div className="max-h-[500px] overflow-y-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="sticky top-0 bg-[var(--panel)] text-xs uppercase text-[var(--muted)] backdrop-blur-sm">
-                  <tr>
-                    <th className="py-2">Pair</th>
-                    <th className="py-2">Long %</th>
-                    <th className="py-2">Net</th>
-                    <th className="py-2">State</th>
-                    <th className="py-2">Conf</th>
-                  </tr>
-                </thead>
-                <tbody className="text-[var(--foreground)]">
-                  {sortedAggregates.map((agg) => (
-                    <tr
-                      key={agg.symbol}
-                      className="border-t border-[var(--panel-border)]/40 hover:bg-[var(--panel)]/70"
-                    >
-                      <td className="py-2 font-semibold">{agg.symbol}</td>
-                      <td className="py-2">{agg.agg_long_pct.toFixed(1)}%</td>
-                      <td className="py-2">{formatPercent(agg.agg_net)}</td>
-                      <td
-                        className={`py-2 text-xs font-semibold ${crowdingTone(
-                          agg.crowding_state,
-                        )}`}
-                      >
-                        {agg.crowding_state.replace("_", " ")}
-                      </td>
-                      <td className="py-2 text-xs">{agg.confidence_score}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Data Sources
-              </h2>
-              <p className="text-sm text-[var(--muted)]">
-                Provider health and last update times
-              </p>
-            </div>
-            <div className="space-y-4">
-              {sources.length === 0 ? (
-                <p className="text-sm text-[var(--muted)]">
-                  No source data yet. Trigger a manual refresh to fetch sentiment.
-                </p>
-              ) : (
-                sources.map((source) => (
-                  <div
-                    key={source.name}
-                    className="rounded-lg border border-[var(--panel-border)] p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-[var(--foreground)]">
-                        {source.name}
-                      </h3>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${sourceTone(
-                          source.status,
-                        )}`}
-                      >
-                        {source.status}
-                      </span>
-                    </div>
-                    <div className="mt-2 text-xs text-[var(--muted)]">
-                      {source.last_success_at ? (
-                        <p>
-                          Last success:{" "}
-                          {formatDateTimeET(source.last_success_at)}
-                        </p>
-                      ) : (
-                        <p>No successful fetches yet</p>
-                      )}
-                      {source.last_error && (
-                        <p className="mt-1 text-rose-600">
-                          Error: {source.last_error}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="mt-4 border-t border-[var(--panel-border)] pt-4">
-              {canRefresh ? (
-                <RefreshSentimentButton />
-              ) : (
-                <p className="text-xs text-[var(--muted)]">
-                  Read-only access: refresh requires an admin login.
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
+        <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          {latestAggregateTimestamp
+            ? `Last refresh ${formatDateTimeET(latestAggregateTimestamp)}`
+            : "No refresh yet"}
+        </div>
       </div>
     </DashboardLayout>
   );

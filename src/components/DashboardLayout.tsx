@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -12,10 +12,6 @@ type NavItem = {
   icon: string;
 };
 
-type BackLink = {
-  href: string;
-  label: string;
-};
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/antikythera", label: "Antikythera", icon: "/limni-icon.svg" },
@@ -25,20 +21,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/status", label: "Status", icon: "/limni-icon.svg" },
 ];
 
-function getBackLink(pathname: string): BackLink | null {
-  if (pathname.startsWith("/accounts/")) {
-    return { href: "/accounts", label: "Back to accounts" };
-  }
-  if (pathname !== "/antikythera") {
-    return { href: "/antikythera", label: "Back to overview" };
-  }
-  return null;
-}
-
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const backLink = getBackLink(pathname);
+  const showBack = pathname !== "/antikythera";
 
   return (
     <div className="flex min-h-screen bg-[var(--background)]">
@@ -144,14 +131,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       <main className="flex-1 overflow-x-hidden">
         <div className="mx-auto max-w-7xl px-6 py-8">
-          {backLink ? (
+          {showBack ? (
             <div className="mb-4">
-              <Link
-                href={backLink.href}
+              <button
+                type="button"
+                onClick={() => router.back()}
                 className="text-xs uppercase tracking-[0.25em] text-[color:var(--muted)] transition hover:text-[color:var(--accent-strong)]"
               >
-                {backLink.label}
-              </Link>
+                Back
+              </button>
             </div>
           ) : null}
           {children}

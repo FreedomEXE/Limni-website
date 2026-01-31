@@ -30,12 +30,12 @@ export function getWeekOpenUtc(now = DateTime.utc()): string {
   const daysSinceSunday = nyNow.weekday % 7;
   let sunday = nyNow.minus({ days: daysSinceSunday });
 
-  if (daysSinceSunday === 0 && nyNow.hour < 17) {
+  if (daysSinceSunday === 0 && nyNow.hour < 19) {
     sunday = sunday.minus({ days: 7 });
   }
 
   const open = sunday.set({
-    hour: 17,
+    hour: 19,
     minute: 0,
     second: 0,
     millisecond: 0,

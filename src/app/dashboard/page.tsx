@@ -1,8 +1,11 @@
-import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import PairPerformanceTable from "@/components/PairPerformanceTable";
-import RefreshControl from "@/components/RefreshControl";
 import BiasHeatmap from "@/components/BiasHeatmap";
+import PairHeatmap from "@/components/PairHeatmap";
+import PageTabs from "@/components/PageTabs";
+import ViewToggle from "@/components/ViewToggle";
+import SummaryCards from "@/components/SummaryCards";
+import MiniBiasStrip from "@/components/MiniBiasStrip";
 import { evaluateFreshness } from "@/lib/cotFreshness";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
 import {
@@ -16,20 +19,14 @@ import {
   derivePairDirectionsByBase,
   resolveMarketBias,
   type BiasMode,
-  BIAS_WEIGHTS,
 } from "@/lib/cotCompute";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import { getPairPerformance } from "@/lib/pricePerformance";
+import { refreshAppData } from "@/lib/appRefresh";
 
 export const dynamic = "force-dynamic";
-
-const numberFormatter = new Intl.NumberFormat("en-US");
-
-function formatNumber(value: number) {
-  return numberFormatter.format(value);
-}
 
 function buildResponse(
   snapshot: Awaited<ReturnType<typeof readSnapshot>>,
@@ -63,30 +60,35 @@ type DashboardPageProps = {
 };
 
 function getBiasMode(value?: string): BiasMode {
-  if (value === "dealer" || value === "commercial" || value === "blended") {
+  if (value === "dealer" || value === "commercial") {
     return value;
   }
-  return "blended";
+  return "dealer";
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  try {
+    await refreshAppData();
+  } catch (error) {
+    console.error("App refresh failed:", error);
+  }
+
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const assetParam = resolvedSearchParams?.asset;
   const reportParam = resolvedSearchParams?.report;
   const biasParam = resolvedSearchParams?.bias;
+  const viewParam = resolvedSearchParams?.view;
   const rawAsset = Array.isArray(assetParam) ? assetParam[0] : assetParam;
   const isAll = rawAsset === "all" || !rawAsset;
   const assetClass = getAssetClass(rawAsset);
   const biasMode = getBiasMode(
     Array.isArray(biasParam) ? biasParam[0] : biasParam,
   );
+  const view =
+    viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
   const reportDate =
     Array.isArray(reportParam) ? reportParam[0] : reportParam;
   const assetClasses = listAssetClasses();
-  const tabAssets = [
-    { id: "all", label: "ALL" },
-    ...assetClasses.map((asset) => ({ id: asset.id, label: asset.label })),
-  ];
   const availableDates = isAll
     ? await Promise.all(
         assetClasses.map((asset) => listSnapshotDates(asset.id)),
@@ -128,10 +130,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }>;
   let pairNote = "No pairs to price.";
   let missingPairs: string[] = [];
-  let combinedReportDate = data.report_date;
   let combinedRefresh = data.last_refresh_utc;
-  let combinedTradingAllowed = data.trading_allowed;
-  let combinedReason = data.reason;
 
   if (isAll) {
     const snapshots = await Promise.all(
@@ -215,17 +214,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     const reportDates = snapshotEntries
       .map((entry) => entry.snapshot?.report_date)
       .filter((value): value is string => Boolean(value));
-    combinedReportDate = reportDates.length > 0 ? reportDates.sort().at(-1) ?? "" : "";
     const refreshDates = snapshotEntries
       .map((entry) => entry.snapshot?.last_refresh_utc)
       .filter((value): value is string => Boolean(value));
     combinedRefresh = refreshDates.length > 0 ? refreshDates.sort().at(-1) ?? "" : "";
-    combinedTradingAllowed = snapshotEntries.some(
-      (entry) => entry.snapshot && entry.snapshot.currencies && Object.keys(entry.snapshot.currencies).length > 0,
-    );
-    combinedReason = snapshotEntries.length > 0
-      ? "Composite view across asset classes."
-      : "no snapshot available";
   } else {
     const marketLabels = assetDefinition.markets;
     const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
@@ -278,189 +270,148 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     });
   }
 
-  const displayAssetLabel = isAll ? "All Assets" : assetDefinition.label;
   const biasLabel = isAll ? "Asset" : assetDefinition.biasLabel;
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {tabAssets.map((asset) => {
-                const href = selectedReportDate
-                  ? `/dashboard?asset=${asset.id}&report=${selectedReportDate}&bias=${biasMode}`
-                  : `/dashboard?asset=${asset.id}&bias=${biasMode}`;
-                const isActive = asset.id === (isAll ? "all" : assetClass);
-                return (
-                  <Link
-                    key={asset.id}
-                    href={href}
-                    className={`rounded-full px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-                      isActive
-                        ? "bg-[var(--foreground)] text-[var(--background)]"
-                        : "border border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent-strong)]"
-                    }`}
-                  >
-                    {asset.label}
-                  </Link>
-                );
-              })}
-            </div>
-            <div>
-              <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-                Bias Dashboard
-              </h1>
-              <p className="text-sm text-[color:var(--muted)]">
-                Weighted blend of dealer and commercial positioning from CFTC COT ({COT_VARIANT}). Sentiment is not included.
-              </p>
-            </div>
-          </div>
-          <div className="flex w-full flex-col gap-3 md:w-auto md:items-end">
-            <RefreshControl
-              lastRefreshUtc={isAll ? combinedRefresh : data.last_refresh_utc}
-            />
-          </div>
+        <header className="space-y-4">
+          <h1 className="text-3xl font-semibold text-[var(--foreground)]">Bias</h1>
+          <PageTabs />
         </header>
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Asset class
-            </p>
-            <p className="mt-1 text-lg font-semibold text-[var(--foreground)]">
-              {displayAssetLabel}
-            </p>
-          </div>
-          <form
-            action="/dashboard"
-            method="get"
-            className="flex flex-wrap items-center gap-3"
-          >
-            <input type="hidden" name="asset" value={isAll ? "all" : assetClass} />
-            <input type="hidden" name="bias" value={biasMode} />
-            <>
+        <SummaryCards
+          title="Bias"
+          cards={[
+            {
+              id: "pairs",
+              label: "Pairs tracked",
+              value: String(pairRowsWithPerf.length),
+            },
+            {
+              id: "long",
+              label: "Long signals",
+              value: String(pairRowsWithPerf.filter((row) => row.direction === "LONG").length),
+              tone: "positive",
+            },
+            {
+              id: "short",
+              label: "Short signals",
+              value: String(pairRowsWithPerf.filter((row) => row.direction === "SHORT").length),
+              tone: "negative",
+            },
+            {
+              id: "neutral",
+              label: "Neutral/ignored",
+              value: String(Math.max(0, currencyRows.length - pairRowsWithPerf.length)),
+            },
+          ]}
+        />
+
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <form action="/dashboard" method="get" className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="view" value={view} />
+              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Asset class
+              </label>
+              <select
+                name="asset"
+                defaultValue={isAll ? "all" : assetClass}
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <option value="all">ALL</option>
+                {assetClasses.map((asset) => (
+                  <option key={asset.id} value={asset.id}>
+                    {asset.label}
+                  </option>
+                ))}
+              </select>
               <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Report week
               </label>
               <select
                 name="report"
                 defaultValue={selectedReportDate ?? ""}
-                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
-                {availableDates.length === 0 ? (
-                  <option value="">No snapshots</option>
-                ) : (
-                  availableDates.map((date) => (
-                    <option key={date} value={date}>
-                      {formatDateET(date)}
-                    </option>
-                  ))
-                )}
+                {availableDates.map((date) => (
+                  <option key={date} value={date}>
+                    {formatDateET(date)}
+                  </option>
+                ))}
               </select>
-            </>
-            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Bias mode
-            </span>
-            <div className="flex items-center gap-2">
-              {(["blended", "dealer", "commercial"] as BiasMode[]).map((mode) => {
-                const href = new URLSearchParams();
-                href.set("asset", isAll ? "all" : assetClass);
-                if (selectedReportDate) {
-                  href.set("report", selectedReportDate);
-                }
-                href.set("bias", mode);
-                return (
-                  <Link
-                    key={mode}
-                    href={`/dashboard?${href.toString()}`}
-                    className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-                      biasMode === mode
-                        ? "bg-[var(--foreground)] text-[var(--background)]"
-                        : "border border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)] hover:text-[color:var(--accent-strong)]"
-                    }`}
-                  >
-                    {mode}
-                  </Link>
-                );
-              })}
-            </div>
-            {availableDates.length > 0 ? (
+              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Bias mode
+              </label>
+              <select
+                name="bias"
+                defaultValue={biasMode}
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <option value="dealer">DEALER</option>
+                <option value="commercial">COMMERCIAL</option>
+              </select>
               <button
                 type="submit"
-                className="inline-flex items-center justify-center rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
                 View
               </button>
-            ) : null}
-          </form>
-        </div>
+            </form>
+            <ViewToggle
+              value={view}
+              onChange={(next) => {
+                const params = new URLSearchParams();
+                params.set("asset", isAll ? "all" : assetClass);
+                if (selectedReportDate) {
+                  params.set("report", selectedReportDate);
+                }
+                params.set("bias", biasMode);
+                params.set("view", next);
+                window.location.href = `/dashboard?${params.toString()}`;
+              }}
+            />
+          </div>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Report date
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatDateET(combinedReportDate)}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Trading allowed
-            </p>
-            <p
-              className={`mt-2 text-2xl font-semibold ${
-                combinedTradingAllowed ? "text-emerald-700" : "text-rose-700"
-              }`}
-            >
-              {combinedTradingAllowed ? "Yes" : "No"}
-            </p>
-            <p className="text-sm text-[color:var(--muted)]">{combinedReason}</p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Last refresh
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatDateTimeET(combinedRefresh)}
-            </p>
-          </div>
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                {biasLabel} bias
+          <div className="mt-6 space-y-6">
+            <div>
+              <h2 className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                {biasLabel} bias strip
               </h2>
-              <p className="text-sm text-[color:var(--muted)]">
-                {biasMode === "blended"
-                  ? `Blended bias (${Math.round(
-                      BIAS_WEIGHTS.dealer * 100,
-                    )}% dealer / ${Math.round(
-                      BIAS_WEIGHTS.commercial * 100,
-                    )}% commercial).`
-                  : biasMode === "dealer"
-                    ? "Dealer short minus Dealer long."
-                    : "Commercial long minus Commercial short."}
-              </p>
+              <div className="mt-3">
+                <MiniBiasStrip
+                  items={currencyRows.map((row) => ({
+                    id: `${row.assetLabel}-${row.currency}`,
+                    label: row.label,
+                    bias: row.bias,
+                  }))}
+                />
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              {currencyRows.length === 0 ? (
-                <p className="text-sm text-[color:var(--muted)]">No data yet.</p>
-              ) : (
-                <BiasHeatmap rows={currencyRows} showAssetLabel={isAll} />
-              )}
+
+            <div>
+              <h2 className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Pair view
+              </h2>
+              <div className="mt-3">
+                {view === "heatmap" ? (
+                  <PairHeatmap rows={pairRowsWithPerf} />
+                ) : (
+                  <PairPerformanceTable
+                    rows={pairRowsWithPerf}
+                    note={pairNote}
+                    missingPairs={missingPairs}
+                  />
+                )}
+              </div>
             </div>
           </div>
-
-          <PairPerformanceTable
-            rows={pairRowsWithPerf}
-            note={pairNote}
-            missingPairs={missingPairs}
-          />
         </section>
+
+        <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          {combinedRefresh ? `Last refresh ${formatDateTimeET(combinedRefresh)}` : "No refresh yet"}
+        </div>
       </div>
     </DashboardLayout>
   );

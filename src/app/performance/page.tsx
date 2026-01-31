@@ -1,7 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
-import { getLatestAggregates, readAggregates } from "@/lib/sentiment/store";
+import { getLatestAggregatesLocked, readAggregates } from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
   computeReturnStats,
@@ -23,6 +23,7 @@ import {
   isWeekOpenUtc,
   weekLabelFromOpen,
 } from "@/lib/performanceSnapshots";
+import { refreshAppData } from "@/lib/appRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -52,11 +53,16 @@ function reportWeekOpenUtc(reportDate: string): string | null {
   const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
   const sunday = report
     .plus({ days: daysUntilSunday })
-    .set({ hour: 17, minute: 0, second: 0, millisecond: 0 });
+    .set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
   return sunday.toUTC().toISO();
 }
 
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
+  try {
+    await refreshAppData();
+  } catch (error) {
+    console.error("App refresh failed:", error);
+  }
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const weekParam = resolvedSearchParams?.week;
   const accountParam = resolvedSearchParams?.account;
@@ -250,7 +256,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   } else {
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
     const [latestSentiment, sentimentHistory] = await Promise.all([
-      getLatestAggregates(),
+      getLatestAggregatesLocked(),
       readAggregates(),
     ]);
     const snapshotResults = await Promise.all(

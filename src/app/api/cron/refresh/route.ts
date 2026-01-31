@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot, refreshAllSnapshots } from "@/lib/cotStore";
 import { refreshMarketSnapshot } from "@/lib/pricePerformance";
+import { refreshSentiment } from "@/lib/sentiment/refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
     string,
     { cot: "ok" | "error"; prices: "ok" | "skipped" | "error"; message?: string }
   > = {};
+  let sentiment: { ok: boolean; snapshots: number; aggregates: number; flips: number } | null = null;
 
   try {
     await refreshAllSnapshots();
@@ -63,9 +65,27 @@ export async function GET(request: Request) {
     }
   }
 
+  try {
+    const sentimentResult = await refreshSentiment();
+    sentiment = {
+      ok: sentimentResult.ok,
+      snapshots: sentimentResult.snapshots,
+      aggregates: sentimentResult.aggregates,
+      flips: sentimentResult.flips.length,
+    };
+  } catch (error) {
+    sentiment = {
+      ok: false,
+      snapshots: 0,
+      aggregates: 0,
+      flips: 0,
+    };
+  }
+
   return NextResponse.json({
     startedAt,
     finishedAt: new Date().toISOString(),
     results,
+    sentiment,
   });
 }

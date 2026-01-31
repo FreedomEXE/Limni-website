@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import PairModal from "@/components/PairModal";
 
 type BiasRow = {
   assetLabel: string;
@@ -69,68 +70,19 @@ export default function BiasHeatmap({
         ))}
       </div>
 
-      {active && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--foreground)]/30 p-6"
-          onClick={() => setActive(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                  Bias detail
-                </p>
-                <h3 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                  {active.label}
-                </h3>
-                {showAssetLabel ? (
-                  <p className="mt-1 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                    {active.assetLabel}
-                  </p>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                onClick={() => setActive(null)}
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-              >
-                Close
-              </button>
-            </div>
-            <div className="mt-4 space-y-2 text-sm text-[color:var(--muted)]">
-              <div className="flex items-center justify-between">
-                <span>Bias</span>
-                <span className="font-semibold text-[var(--foreground)]">
-                  {active.bias}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Long</span>
-                <span className="font-semibold text-[var(--foreground)]">
-                  {formatNumber(active.long)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Short</span>
-                <span className="font-semibold text-[var(--foreground)]">
-                  {formatNumber(active.short)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Net</span>
-                <span className="font-semibold text-[var(--foreground)]">
-                  {formatNumber(active.net)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {active ? (
+        <PairModal
+          title={active.label}
+          subtitle={showAssetLabel ? active.assetLabel : undefined}
+          onClose={() => setActive(null)}
+          details={[
+            { label: "Bias", value: active.bias },
+            { label: "Long", value: formatNumber(active.long) },
+            { label: "Short", value: formatNumber(active.short) },
+            { label: "Net", value: formatNumber(active.net) },
+          ]}
+        />
+      ) : null}
     </>
   );
 }

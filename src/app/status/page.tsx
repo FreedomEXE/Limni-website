@@ -4,7 +4,7 @@ import { getAppDiagnostics } from "@/lib/diagnostics";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
 import { readMarketSnapshot } from "@/lib/priceStore";
-import { getLatestAggregates } from "@/lib/sentiment/store";
+import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
 import { readMt5Accounts } from "@/lib/mt5Store";
@@ -65,7 +65,7 @@ export default async function StatusPage() {
   }
 
   try {
-    sentimentAggregates = await getLatestAggregates();
+    sentimentAggregates = await getLatestAggregatesLocked();
   } catch (error) {
     sentimentError = error instanceof Error ? error.message : String(error);
   }
@@ -265,7 +265,7 @@ export default async function StatusPage() {
                   )}
                   {snapshot.missingPairs.length > 0 ? (
                     <p className="mt-2 text-xs text-[var(--accent-strong)]">
-                      All missing? Check PRICE_API_KEY credits or symbol mapping.
+                      All missing? Check OANDA credentials or instrument mapping.
                     </p>
                   ) : null}
                 </div>

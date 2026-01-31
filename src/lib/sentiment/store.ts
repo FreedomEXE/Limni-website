@@ -1,4 +1,6 @@
 import { query } from "../db";
+import { DateTime } from "luxon";
+import { getWeekOpenUtc } from "../performanceSnapshots";
 import type {
   ProviderSentiment,
   SentimentAggregate,
@@ -7,6 +9,8 @@ import type {
 
 export async function readSnapshots(): Promise<ProviderSentiment[]> {
   try {
+    const retentionHours = Number(process.env.SENTIMENT_SNAPSHOT_RETENTION_HOURS ?? "24");
+    const hours = Number.isFinite(retentionHours) && retentionHours > 0 ? retentionHours : 24;
     const rows = await query<{
       provider: string;
       symbol: string;
@@ -16,7 +20,7 @@ export async function readSnapshots(): Promise<ProviderSentiment[]> {
     }>(
       `SELECT provider, symbol, long_pct, short_pct, timestamp_utc
        FROM sentiment_data
-       WHERE timestamp_utc > NOW() - INTERVAL '24 hours'
+       WHERE timestamp_utc > NOW() - INTERVAL '${hours} hours'
        ORDER BY timestamp_utc DESC`
     );
 
@@ -64,9 +68,11 @@ export async function appendSnapshots(
       );
     }
 
-    // Clean up old data (keep last 24 hours)
+    const retentionHours = Number(process.env.SENTIMENT_SNAPSHOT_RETENTION_HOURS ?? "24");
+    const hours = Number.isFinite(retentionHours) && retentionHours > 0 ? retentionHours : 24;
+    // Clean up old data
     await query(
-      "DELETE FROM sentiment_data WHERE timestamp_utc < NOW() - INTERVAL '24 hours'"
+      `DELETE FROM sentiment_data WHERE timestamp_utc < NOW() - INTERVAL '${hours} hours'`
     );
   } catch (error) {
     console.error("Error appending sentiment snapshots:", error);
@@ -76,6 +82,8 @@ export async function appendSnapshots(
 
 export async function readAggregates(): Promise<SentimentAggregate[]> {
   try {
+    const retentionDays = Number(process.env.SENTIMENT_RETENTION_DAYS ?? "365");
+    const days = Number.isFinite(retentionDays) && retentionDays > 0 ? retentionDays : 365;
     const rows = await query<{
       symbol: string;
       agg_long_pct: string;
@@ -89,7 +97,7 @@ export async function readAggregates(): Promise<SentimentAggregate[]> {
     }>(
       `SELECT symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc
        FROM sentiment_aggregates
-       WHERE timestamp_utc > NOW() - INTERVAL '7 days'
+       WHERE timestamp_utc > NOW() - INTERVAL '${days} days'
        ORDER BY timestamp_utc DESC`
     );
 
@@ -139,9 +147,11 @@ export async function appendAggregates(
       );
     }
 
-    // Clean up old data (keep last 7 days)
+    const retentionDays = Number(process.env.SENTIMENT_RETENTION_DAYS ?? "365");
+    const days = Number.isFinite(retentionDays) && retentionDays > 0 ? retentionDays : 365;
+    // Clean up old data
     await query(
-      "DELETE FROM sentiment_aggregates WHERE timestamp_utc < NOW() - INTERVAL '7 days'"
+      `DELETE FROM sentiment_aggregates WHERE timestamp_utc < NOW() - INTERVAL '${days} days'`
     );
   } catch (error) {
     console.error("Error appending sentiment aggregates:", error);
@@ -183,6 +193,112 @@ export async function getLatestAggregates(): Promise<SentimentAggregate[]> {
     console.error("Error getting latest sentiment aggregates:", error);
     throw error;
   }
+}
+
+export async function getLatestAggregatesLocked(): Promise<SentimentAggregate[]> {
+  const aggregates = await readAggregates();
+  if (aggregates.length === 0) {
+    return [];
+  }
+
+  const weekOpenUtc = getWeekOpenUtc();
+  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  const weekOpenMs = weekOpen.isValid ? weekOpen.toMillis() : Date.now();
+
+  const bySymbol = new Map<string, SentimentAggregate[]>();
+  for (const agg of aggregates) {
+    if (!bySymbol.has(agg.symbol)) {
+      bySymbol.set(agg.symbol, []);
+    }
+    bySymbol.get(agg.symbol)?.push(agg);
+  }
+
+  const locked: SentimentAggregate[] = [];
+  for (const [symbol, list] of bySymbol.entries()) {
+    const sorted = list
+      .map((agg) => ({
+        agg,
+        ts: DateTime.fromISO(agg.timestamp_utc, { zone: "utc" }),
+      }))
+      .filter((entry) => entry.ts.isValid)
+      .sort((a, b) => a.ts.toMillis() - b.ts.toMillis());
+
+    if (sorted.length === 0) {
+      continue;
+    }
+
+    const latest = sorted[sorted.length - 1].agg;
+    const firstFlip = sorted.find(
+      (entry) =>
+        entry.ts.toMillis() >= weekOpenMs && entry.agg.flip_state !== "NONE",
+    );
+
+    if (firstFlip) {
+      locked.push({
+        ...latest,
+        crowding_state: "NEUTRAL",
+        flip_state: "FLIPPED_NEUTRAL",
+        timestamp_utc: firstFlip.agg.timestamp_utc,
+      });
+    } else {
+      locked.push(latest);
+    }
+  }
+
+  return locked;
+}
+
+export async function getAggregatesForWeekLocked(
+  weekOpenUtc: string,
+): Promise<SentimentAggregate[]> {
+  const aggregates = await readAggregates();
+  if (aggregates.length === 0) {
+    return [];
+  }
+
+  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  if (!weekOpen.isValid) {
+    return [];
+  }
+  const weekClose = weekOpen.plus({ days: 5, hours: 23, minutes: 59, seconds: 59 });
+  const openMs = weekOpen.toMillis();
+  const closeMs = weekClose.toMillis();
+
+  const bySymbol = new Map<string, { agg: SentimentAggregate; time: DateTime }[]>();
+  for (const agg of aggregates) {
+    const time = DateTime.fromISO(agg.timestamp_utc, { zone: "utc" });
+    if (!time.isValid || time.toMillis() > closeMs) {
+      continue;
+    }
+    if (!bySymbol.has(agg.symbol)) {
+      bySymbol.set(agg.symbol, []);
+    }
+    bySymbol.get(agg.symbol)?.push({ agg, time });
+  }
+
+  const locked: SentimentAggregate[] = [];
+  for (const [symbol, list] of bySymbol.entries()) {
+    const sorted = list.sort((a, b) => a.time.toMillis() - b.time.toMillis());
+    if (sorted.length === 0) {
+      continue;
+    }
+    const latest = sorted[sorted.length - 1].agg;
+    const firstFlip = sorted.find(
+      (entry) => entry.time.toMillis() >= openMs && entry.agg.flip_state !== "NONE",
+    );
+    if (firstFlip) {
+      locked.push({
+        ...latest,
+        crowding_state: "NEUTRAL",
+        flip_state: "FLIPPED_NEUTRAL",
+        timestamp_utc: firstFlip.agg.timestamp_utc,
+      });
+    } else {
+      locked.push(latest);
+    }
+  }
+
+  return locked;
 }
 
 export async function readSourceHealth(): Promise<SourceHealth[]> {

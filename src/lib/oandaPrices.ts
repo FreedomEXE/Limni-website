@@ -36,7 +36,7 @@ const OANDA_OVERRIDES: Record<string, string> = {
   WTIUSD: "WTICO_USD",
 };
 
-function mapToOandaInstrument(symbol: string) {
+export function getOandaInstrument(symbol: string) {
   const override = OANDA_OVERRIDES[symbol];
   if (override) {
     return override;
@@ -59,41 +59,60 @@ export async function fetchOandaCandle(
   if (!accountId) {
     throw new Error("OANDA_ACCOUNT_ID is not configured.");
   }
-  const instrument = mapToOandaInstrument(symbol);
-  const url = new URL(
-    `${getOandaBaseUrl()}/v3/instruments/${instrument}/candles`,
-  );
+  const instrument = getOandaInstrument(symbol);
+  const url = new URL(`${getOandaBaseUrl()}/v3/instruments/${instrument}/candles`);
   url.searchParams.set("price", "M");
   url.searchParams.set("granularity", "H1");
   url.searchParams.set("from", fromUtc.toISO() ?? "");
   url.searchParams.set("to", toUtc.toISO() ?? "");
 
-  const response = await fetch(url.toString(), {
-    headers: getAuthHeaders(),
-  });
-  if (!response.ok) {
-    throw new Error(`OANDA price fetch failed (${instrument}).`);
+  const maxAttempts = 3;
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(url.toString(), {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const body = await response.text();
+        const message = `OANDA price fetch failed (${instrument}) [${response.status}]: ${body}`;
+        if (response.status >= 500 || response.status === 429) {
+          throw new Error(message);
+        }
+        throw new Error(message);
+      }
+      const data = (await response.json()) as OandaCandlesResponse;
+      const candles = data.candles ?? [];
+      const complete = candles.filter((candle) => candle.complete && candle.mid);
+      if (complete.length === 0) {
+        return null;
+      }
+      const openCandle = complete[0];
+      const closeCandle = complete[complete.length - 1];
+      if (!openCandle.mid || !closeCandle.mid) {
+        return null;
+      }
+      const open = Number(openCandle.mid.o);
+      const close = Number(closeCandle.mid.c);
+      if (!Number.isFinite(open) || !Number.isFinite(close)) {
+        return null;
+      }
+      return {
+        open,
+        close,
+        openTime: openCandle.time,
+        closeTime: closeCandle.time,
+      };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+        continue;
+      }
+    }
   }
-  const data = (await response.json()) as OandaCandlesResponse;
-  const candles = data.candles ?? [];
-  const complete = candles.filter((candle) => candle.complete && candle.mid);
-  if (complete.length === 0) {
-    return null;
+  if (lastError) {
+    throw lastError;
   }
-  const openCandle = complete[0];
-  const closeCandle = complete[complete.length - 1];
-  if (!openCandle.mid || !closeCandle.mid) {
-    return null;
-  }
-  const open = Number(openCandle.mid.o);
-  const close = Number(closeCandle.mid.c);
-  if (!Number.isFinite(open) || !Number.isFinite(close)) {
-    return null;
-  }
-  return {
-    open,
-    close,
-    openTime: openCandle.time,
-    closeTime: closeCandle.time,
-  };
+  return null;
 }

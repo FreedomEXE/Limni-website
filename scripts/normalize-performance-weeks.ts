@@ -1,0 +1,93 @@
+import { DateTime } from "luxon";
+import { query } from "../src/lib/db";
+import { writePerformanceSnapshots, getWeekOpenUtc } from "../src/lib/performanceSnapshots";
+
+type Row = {
+  week_open_utc: Date;
+  asset_class: string;
+  model: string;
+  report_date: Date | null;
+  percent: string;
+  priced: number;
+  total: number;
+  note: string | null;
+  returns: any;
+  pair_details: any;
+  stats: any;
+};
+
+function toIso(value: Date) {
+  return value.toISOString();
+}
+
+function canonicalWeekOpen(weekOpenUtc: Date) {
+  const parsed = DateTime.fromJSDate(weekOpenUtc, { zone: "utc" });
+  return getWeekOpenUtc(parsed);
+}
+
+function scoreRow(row: Row) {
+  return (row.priced ?? 0) * 1000 + (row.total ?? 0);
+}
+
+async function main() {
+  const rows = await query<Row>(
+    `SELECT week_open_utc, asset_class, model, report_date, percent, priced, total, note, returns, pair_details, stats
+     FROM performance_snapshots`,
+  );
+
+  if (rows.length === 0) {
+    console.log("No performance snapshots to normalize.");
+    return;
+  }
+
+  const originalWeeks = Array.from(
+    new Set(rows.map((row) => toIso(row.week_open_utc))),
+  );
+
+  const merged = new Map<string, Row>();
+  for (const row of rows) {
+    const canonical = canonicalWeekOpen(row.week_open_utc);
+    const key = `${canonical}::${row.asset_class}::${row.model}`;
+    const existing = merged.get(key);
+    if (!existing || scoreRow(row) > scoreRow(existing)) {
+      merged.set(key, row);
+    }
+  }
+
+  const payload = Array.from(merged.entries()).map(([key, row]) => {
+    const [week_open_utc, asset_class, model] = key.split("::");
+    return {
+      week_open_utc,
+      asset_class: asset_class as any,
+      model: model as any,
+      report_date: row.report_date ? row.report_date.toISOString().slice(0, 10) : null,
+      percent: Number(row.percent),
+      priced: row.priced,
+      total: row.total,
+      note: row.note ?? "",
+      returns: row.returns ?? [],
+      pair_details: row.pair_details ?? [],
+      stats: row.stats ?? {
+        avg_return: 0,
+        median_return: 0,
+        win_rate: 0,
+        volatility: 0,
+        best_pair: null,
+        worst_pair: null,
+      },
+    };
+  });
+
+  await query(
+    "DELETE FROM performance_snapshots WHERE week_open_utc = ANY($1::timestamptz[])",
+    [originalWeeks],
+  );
+  await writePerformanceSnapshots(payload);
+
+  console.log(`Normalized ${rows.length} snapshots into ${payload.length} snapshots.`);
+}
+
+main().catch((error) => {
+  console.error("Normalize failed:", error);
+  process.exit(1);
+});
