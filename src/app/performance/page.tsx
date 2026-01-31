@@ -58,11 +58,9 @@ function reportWeekOpenUtc(reportDate: string): string | null {
 }
 
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
-  try {
-    await refreshAppData();
-  } catch (error) {
+  refreshAppData().catch((error) => {
     console.error("App refresh failed:", error);
-  }
+  });
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const weekParam = resolvedSearchParams?.week;
   const accountParam = resolvedSearchParams?.account;

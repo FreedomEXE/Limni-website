@@ -22,11 +22,9 @@ type AntikytheraPageProps = {
 };
 
 export default async function AntikytheraPage({ searchParams }: AntikytheraPageProps) {
-  try {
-    await refreshAppData();
-  } catch (error) {
+  refreshAppData().catch((error) => {
     console.error("App refresh failed:", error);
-  }
+  });
 
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const reportParam = resolvedSearchParams?.report;
@@ -144,6 +142,22 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       console.error("Antikythera performance load failed:", error);
     }
   }
+  const viewParams = new URLSearchParams();
+  if (selectedReportDate) {
+    viewParams.set("report", selectedReportDate);
+  }
+  if (selectedAsset) {
+    viewParams.set("asset", selectedAsset);
+  }
+  const viewItems = (["heatmap", "list"] as const).map((option) => {
+    const params = new URLSearchParams(viewParams);
+    params.set("view", option);
+    return {
+      value: option,
+      label: option,
+      href: `/antikythera?${params.toString()}`,
+    };
+  });
 
   return (
     <DashboardLayout>
@@ -231,20 +245,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
                 </button>
               </form>
             </div>
-            <ViewToggle
-              value={view}
-              onChange={(next) => {
-                const params = new URLSearchParams();
-                if (selectedReportDate) {
-                  params.set("report", selectedReportDate);
-                }
-                if (selectedAsset) {
-                  params.set("asset", selectedAsset);
-                }
-                params.set("view", next);
-                window.location.href = `/antikythera?${params.toString()}`;
-              }}
-            />
+            <ViewToggle value={view} items={viewItems} />
           </div>
 
           <div className="mt-6">

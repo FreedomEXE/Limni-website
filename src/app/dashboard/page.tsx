@@ -67,11 +67,9 @@ function getBiasMode(value?: string): BiasMode {
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  try {
-    await refreshAppData();
-  } catch (error) {
+  refreshAppData().catch((error) => {
     console.error("App refresh failed:", error);
-  }
+  });
 
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const assetParam = resolvedSearchParams?.asset;
@@ -271,6 +269,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const biasLabel = isAll ? "Asset" : assetDefinition.biasLabel;
+  const viewParams = new URLSearchParams();
+  viewParams.set("asset", isAll ? "all" : assetClass);
+  if (selectedReportDate) {
+    viewParams.set("report", selectedReportDate);
+  }
+  viewParams.set("bias", biasMode);
+  const viewItems = (["heatmap", "list"] as const).map((option) => {
+    const params = new URLSearchParams(viewParams);
+    params.set("view", option);
+    return {
+      value: option,
+      label: option,
+      href: `/dashboard?${params.toString()}`,
+    };
+  });
 
   return (
     <DashboardLayout>
@@ -359,19 +372,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 View
               </button>
             </form>
-            <ViewToggle
-              value={view}
-              onChange={(next) => {
-                const params = new URLSearchParams();
-                params.set("asset", isAll ? "all" : assetClass);
-                if (selectedReportDate) {
-                  params.set("report", selectedReportDate);
-                }
-                params.set("bias", biasMode);
-                params.set("view", next);
-                window.location.href = `/dashboard?${params.toString()}`;
-              }}
-            />
+            <ViewToggle value={view} items={viewItems} />
           </div>
 
           <div className="mt-6 space-y-6">

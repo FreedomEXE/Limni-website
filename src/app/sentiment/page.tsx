@@ -41,11 +41,9 @@ function getAssetClass(value?: string | null): SentimentView {
 }
 
 export default async function SentimentPage({ searchParams }: SentimentPageProps) {
-  try {
-    await refreshAppData();
-  } catch (error) {
+  refreshAppData().catch((error) => {
     console.error("App refresh failed:", error);
-  }
+  });
 
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const assetParam = resolvedSearchParams?.asset;
@@ -113,6 +111,20 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
       console.error("Sentiment performance load failed:", error);
     }
   }
+  const viewParams = new URLSearchParams();
+  if (selectedWeek) {
+    viewParams.set("week", selectedWeek);
+  }
+  viewParams.set("asset", assetClass);
+  const viewItems = (["heatmap", "list"] as const).map((option) => {
+    const params = new URLSearchParams(viewParams);
+    params.set("view", option);
+    return {
+      value: option,
+      label: option,
+      href: `/sentiment?${params.toString()}`,
+    };
+  });
 
   let liquidationSummaries: Array<
     Awaited<ReturnType<typeof fetchLiquidationSummary>>
@@ -222,18 +234,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
                 View
               </button>
             </form>
-            <ViewToggle
-              value={view}
-              onChange={(next) => {
-                const params = new URLSearchParams();
-                if (selectedWeek) {
-                  params.set("week", selectedWeek);
-                }
-                params.set("asset", assetClass);
-                params.set("view", next);
-                window.location.href = `/sentiment?${params.toString()}`;
-              }}
-            />
+            <ViewToggle value={view} items={viewItems} />
           </div>
 
           <div className="mt-6">
