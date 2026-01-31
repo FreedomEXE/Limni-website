@@ -166,6 +166,7 @@ def detect_adr_pullback_signal(
     day_open: float,
     adr_value: float,
     pullback_pct: float,
+    reclaim_pct: float,
     direction: str,
     prefiltered: bool = False,
 ) -> SweepSignal | None:
@@ -202,15 +203,21 @@ def detect_adr_pullback_signal(
         return None
 
     confirm_index = None
+    reclaim_level = (
+        day_open - adr_value * reclaim_pct
+        if direction == "long"
+        else day_open + adr_value * reclaim_pct
+    )
+
     for idx, row in post.iterrows():
         if row["time"] < entry_start:
             continue
         if direction == "long":
-            if row["close"] >= day_open:
+            if row["close"] >= reclaim_level:
                 confirm_index = idx
                 break
         else:
-            if row["close"] <= day_open:
+            if row["close"] <= reclaim_level:
                 confirm_index = idx
                 break
 
@@ -226,3 +233,53 @@ def detect_adr_pullback_signal(
         confirm_time=window.loc[confirm_index, "time"].to_pydatetime(),
         confirm_index=int(confirm_index),
     )
+
+
+@dataclass(frozen=True)
+class BollingerSignal:
+    direction: str
+    touch_time: datetime
+    confirm_index: int
+    upper: float
+    lower: float
+
+
+def detect_bollinger_signal(
+    df: pd.DataFrame,
+    entry_start: datetime,
+    entry_end: datetime,
+    direction: str,
+    prefiltered: bool = False,
+) -> BollingerSignal | None:
+    if pd is None:
+        raise RuntimeError("pandas is required. Install research/scalp_bot/requirements.txt")
+    window = df if prefiltered else df[(df["time"] >= entry_start) & (df["time"] <= entry_end)].copy()
+    if window.empty:
+        return None
+    if "bb_upper" not in window.columns or "bb_lower" not in window.columns:
+        return None
+
+    for idx, row in window.iterrows():
+        upper = row["bb_upper"]
+        lower = row["bb_lower"]
+        if not pd.notna(upper) or not pd.notna(lower):
+            continue
+        if direction == "short":
+            if row["high"] >= upper:
+                return BollingerSignal(
+                    direction=direction,
+                    touch_time=row["time"].to_pydatetime(),
+                    confirm_index=int(idx),
+                    upper=float(upper),
+                    lower=float(lower),
+                )
+        else:
+            if row["low"] <= lower:
+                return BollingerSignal(
+                    direction=direction,
+                    touch_time=row["time"].to_pydatetime(),
+                    confirm_index=int(idx),
+                    upper=float(upper),
+                    lower=float(lower),
+                )
+    return None

@@ -140,12 +140,16 @@ function formatPercent(value: number | null) {
 
 async function loadSummary(): Promise<TrenchbotSummary | null> {
   try {
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL ??
-      process.env.BASE_URL ??
-      "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/solana-meme-bot/summary`, {
+    const apiUrl =
+      process.env.TRENCHBOT_API_URL ??
+      `${process.env.NEXT_PUBLIC_BASE_URL ?? process.env.BASE_URL ?? "http://localhost:3000"}/api/solana-meme-bot/summary`;
+    const headers: Record<string, string> = {};
+    if (process.env.TRENCHBOT_API_TOKEN) {
+      headers["x-api-key"] = process.env.TRENCHBOT_API_TOKEN;
+    }
+    const response = await fetch(apiUrl, {
       cache: "no-store",
+      headers,
     });
     if (!response.ok) {
       return null;

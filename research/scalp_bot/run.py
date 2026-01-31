@@ -43,6 +43,7 @@ def build_config(args) -> tuple[BacktestConfig, DataConfig]:
         sentiment=sentiment,
         spread=spread,
     )
+    entry_timing = "confirm_close" if args.entry_model == "bollinger" else cfg.entry.entry_timing
     cfg = replace(
         cfg,
         entry=replace(
@@ -50,8 +51,14 @@ def build_config(args) -> tuple[BacktestConfig, DataConfig]:
             model=args.entry_model,
             adr_lookback_days=args.adr_lookback_days,
             adr_pullback_pct=args.adr_pullback_pct,
+            adr_reclaim_pct=args.adr_reclaim_pct,
+            max_trade_weekday=args.max_trade_weekday,
+            bb_length=args.bb_length,
+            bb_std=args.bb_std,
+            entry_timing=entry_timing,
         ),
     )
+    cfg = replace(cfg, risk=replace(cfg.risk, time_stop_session=args.time_stop_session))
 
     data_cfg = DataConfig(
         data_root=args.data_root,
@@ -206,9 +213,14 @@ def main() -> None:
     parser.add_argument("--sentiment-threshold", type=float, default=55.0)
     parser.add_argument("--allow-second-window", action="store_true")
     parser.add_argument("--use-prior-day-ref", action="store_true")
-    parser.add_argument("--entry-model", default="sweep", choices=["sweep", "adr_pullback"])
+    parser.add_argument("--entry-model", default="sweep", choices=["sweep", "adr_pullback", "bollinger"])
     parser.add_argument("--adr-lookback-days", type=int, default=20)
     parser.add_argument("--adr-pullback-pct", type=float, default=0.35)
+    parser.add_argument("--adr-reclaim-pct", type=float, default=0.10)
+    parser.add_argument("--max-trade-weekday", type=int, default=4, help="0=Mon ... 6=Sun")
+    parser.add_argument("--bb-length", type=int, default=20)
+    parser.add_argument("--bb-std", type=float, default=2.0)
+    parser.add_argument("--time-stop-session", default="london", choices=["london", "ny", "none"])
     parser.add_argument("--output-dir", default="research/scalp_bot/output")
     parser.add_argument("--data-root", default="data")
     parser.add_argument("--ohlc-root", default="data/ohlc")

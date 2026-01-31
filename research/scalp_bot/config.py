@@ -30,7 +30,7 @@ class SentimentConfig:
 
 @dataclass(frozen=True)
 class EntryConfig:
-    model: Literal["sweep", "adr_pullback"] = "sweep"
+    model: Literal["sweep", "adr_pullback", "bollinger"] = "sweep"
     sweep_buffer_pips: float = 1.0
     displacement_min_body_pips: float = 3.0
     displacement_close_pct: float = 0.30
@@ -39,6 +39,10 @@ class EntryConfig:
     entry_timing: Literal["next_open", "confirm_close"] = "next_open"
     adr_lookback_days: int = 20
     adr_pullback_pct: float = 0.35
+    adr_reclaim_pct: float = 0.10
+    max_trade_weekday: int = 4
+    bb_length: int = 20
+    bb_std: float = 2.0
 
 
 @dataclass(frozen=True)
