@@ -76,25 +76,21 @@ export function buildAntikytheraSignals(options: {
       sentimentMap.get(pairDef.pair),
     );
     const hasSentiment = Boolean(sentimentMap.get(pairDef.pair));
+    const requireSentiment = assetClass !== "indices";
+    if (requireSentiment && (!hasSentiment || !sentimentResult.aligned)) {
+      continue;
+    }
 
     const reasons: string[] = ["Blended COT bias aligned"];
-    if (hasSentiment) {
-      if (sentimentResult.aligned) {
-        reasons.push(...sentimentResult.reasons);
-      } else {
-        reasons.push("Sentiment not aligned");
-      }
+    if (hasSentiment && sentimentResult.aligned) {
+      reasons.push(...sentimentResult.reasons);
     }
 
     signals.push({
       pair: pairDef.pair,
       direction,
       reasons,
-      confidence: hasSentiment
-        ? sentimentResult.aligned
-          ? 85
-          : 55
-        : 65,
+      confidence: hasSentiment && sentimentResult.aligned ? 85 : 65,
     });
   }
 
