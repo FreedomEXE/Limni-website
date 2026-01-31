@@ -16,13 +16,25 @@ type Row = {
   stats: any;
 };
 
-function toIso(value: Date) {
-  return value.toISOString();
-}
-
 function canonicalWeekOpen(weekOpenUtc: Date) {
-  const parsed = DateTime.fromJSDate(weekOpenUtc, { zone: "utc" });
-  return getWeekOpenUtc(parsed);
+  const parsed = DateTime.fromJSDate(weekOpenUtc, { zone: "utc" }).setZone(
+    "America/New_York",
+  );
+  if (!parsed.isValid) {
+    return getWeekOpenUtc();
+  }
+
+  const weekday = parsed.weekday; // 1=Mon ... 7=Sun
+  let monday = parsed;
+  if (weekday === 7) {
+    monday = parsed.plus({ days: 1 });
+  } else {
+    const daysSinceMonday = (weekday + 6) % 7;
+    monday = parsed.minus({ days: daysSinceMonday });
+  }
+
+  const open = monday.set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+  return open.toUTC().toISO() ?? getWeekOpenUtc();
 }
 
 function scoreRow(row: Row) {
@@ -39,10 +51,6 @@ async function main() {
     console.log("No performance snapshots to normalize.");
     return;
   }
-
-  const originalWeeks = Array.from(
-    new Set(rows.map((row) => toIso(row.week_open_utc))),
-  );
 
   const merged = new Map<string, Row>();
   for (const row of rows) {
@@ -78,10 +86,7 @@ async function main() {
     };
   });
 
-  await query(
-    "DELETE FROM performance_snapshots WHERE week_open_utc = ANY($1::timestamptz[])",
-    [originalWeeks],
-  );
+  await query("DELETE FROM performance_snapshots");
   await writePerformanceSnapshots(payload);
 
   console.log(`Normalized ${rows.length} snapshots into ${payload.length} snapshots.`);

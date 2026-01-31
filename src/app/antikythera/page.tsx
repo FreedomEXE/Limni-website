@@ -114,11 +114,11 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
   if (selectedReportDate) {
     const report = DateTime.fromISO(selectedReportDate, { zone: "America/New_York" });
     if (report.isValid) {
-      const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
-      const sunday = report
-        .plus({ days: daysUntilSunday })
-        .set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
-      const weekIso = sunday.toUTC().toISO();
+      const daysUntilMonday = (8 - report.weekday) % 7;
+      const monday = report
+        .plus({ days: daysUntilMonday })
+        .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+      const weekIso = monday.toUTC().toISO();
       if (weekIso && weeks.includes(weekIso)) {
         selectedWeek = weekIso;
       }

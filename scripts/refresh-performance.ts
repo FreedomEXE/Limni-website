@@ -1,5 +1,5 @@
 import { listAssetClasses } from "../src/lib/cotMarkets";
-import { readSnapshot } from "../src/lib/cotStore";
+import { listSnapshotDates, readSnapshot } from "../src/lib/cotStore";
 import { getLatestAggregatesLocked, readAggregates } from "../src/lib/sentiment/store";
 import {
   computeModelPerformance,
@@ -14,6 +14,19 @@ import {
 import type { PairSnapshot } from "../src/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "../src/lib/cotPairs";
 import { getWeekOpenUtc, writePerformanceSnapshots } from "../src/lib/performanceSnapshots";
+import { DateTime } from "luxon";
+
+function reportWeekOpenUtc(reportDate: string): string | null {
+  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+  if (!report.isValid) {
+    return null;
+  }
+  const daysUntilMonday = (8 - report.weekday) % 7;
+  const monday = report
+    .plus({ days: daysUntilMonday })
+    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+  return monday.toUTC().toISO();
+}
 
 function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
   const pairDefs = PAIRS_BY_ASSET_CLASS[assetId as keyof typeof PAIRS_BY_ASSET_CLASS] ?? [];
@@ -120,6 +133,54 @@ async function main() {
 
   await writePerformanceSnapshots(payload);
   console.log(`Wrote ${payload.length} performance snapshots for week ${weekOpenUtc}`);
+
+  const reportLists = await Promise.all(
+    assetClasses.map((asset) => listSnapshotDates(asset.id)),
+  );
+  const latestReport = reportLists
+    .flat()
+    .sort((a, b) => b.localeCompare(a))[0];
+  if (latestReport) {
+    const futureWeek = reportWeekOpenUtc(latestReport);
+    if (futureWeek && futureWeek > weekOpenUtc) {
+      const futurePayload = [];
+      for (const asset of assetClasses) {
+        const snapshot = await readSnapshot({ assetClass: asset.id, reportDate: latestReport });
+        if (!snapshot) {
+          continue;
+        }
+        for (const model of models) {
+          futurePayload.push({
+            week_open_utc: futureWeek,
+            asset_class: asset.id,
+            model,
+            report_date: snapshot.report_date ?? null,
+            percent: 0,
+            priced: 0,
+            total: 0,
+            note: "Week has not started yet. Returns will populate after the report week opens.",
+            returns: [],
+            pair_details: [],
+            stats: {
+              avg_return: 0,
+              median_return: 0,
+              win_rate: 0,
+              volatility: 0,
+              best_pair: null,
+              worst_pair: null,
+            },
+          });
+        }
+      }
+
+      if (futurePayload.length > 0) {
+        await writePerformanceSnapshots(futurePayload);
+        console.log(
+          `Wrote ${futurePayload.length} placeholder snapshots for week ${futureWeek}`,
+        );
+      }
+    }
+  }
 }
 
 main().catch((error) => {

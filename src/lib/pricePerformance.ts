@@ -111,7 +111,21 @@ function formatUtcLabel(isoValue: string) {
 }
 
 function getCryptoWeekOpenUtc(now: DateTime): DateTime {
-  return getSundaySessionOpenUtc(now, { openHour: 17 });
+  const nyNow = now.setZone("America/New_York");
+  const daysSinceSunday = nyNow.weekday % 7;
+  let sunday = nyNow.minus({ days: daysSinceSunday });
+  const openToday = sunday.set({
+    hour: 0,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+
+  if (daysSinceSunday === 0 && nyNow.toMillis() < openToday.toMillis()) {
+    sunday = sunday.minus({ days: 7 });
+  }
+
+  return openToday.toUTC();
 }
 
 function getSessionSpec(assetClass: Exclude<AssetClass, "crypto">): SessionSpec {
@@ -119,6 +133,24 @@ function getSessionSpec(assetClass: Exclude<AssetClass, "crypto">): SessionSpec 
     return { openHour: 17, closeHour: 17 };
   }
   return { openHour: 18, closeHour: 17 };
+}
+
+function getCryptoReportWindowUtc(
+  reportDate: string,
+): { openUtc: DateTime; closeUtc: DateTime } {
+  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+  if (!report.isValid) {
+    const openUtc = getCryptoWeekOpenUtc(DateTime.utc());
+    return { openUtc, closeUtc: openUtc.plus({ weeks: 1 }) };
+  }
+
+  const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
+  const sunday = report
+    .plus({ days: daysUntilSunday })
+    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+  const nextSunday = sunday.plus({ weeks: 1 });
+
+  return { openUtc: sunday.toUTC(), closeUtc: nextSunday.toUTC() };
 }
 
 function getSundaySessionOpenUtc(now: DateTime, spec: SessionSpec): DateTime {
@@ -198,22 +230,7 @@ function getWeekWindow(
       };
     }
 
-    const reportLocal = DateTime.fromISO(reportDate, { zone: "America/New_York" });
-    if (!reportLocal.isValid) {
-      const openUtc = getCryptoWeekOpenUtc(now);
-      const isPreOpen = now.toMillis() < openUtc.toMillis();
-      return {
-        openUtc,
-        closeUtc: isPreOpen ? openUtc : now,
-        isHistorical: false,
-        isPreOpen,
-      };
-    }
-
-    const openLocal = reportLocal.startOf("week").plus({ weeks: 1 });
-    const closeLocal = openLocal.plus({ weeks: 1 }).minus({ milliseconds: 1 });
-    const openUtc = openLocal.toUTC();
-    const closeUtc = closeLocal.toUTC();
+    const { openUtc, closeUtc } = getCryptoReportWindowUtc(reportDate);
     const isHistorical = closeUtc.toMillis() < now.toMillis();
     const isPreOpen = now.toMillis() < openUtc.toMillis();
 

@@ -27,15 +27,17 @@ function formatWeekLabel(isoValue: string) {
 
 export function getWeekOpenUtc(now = DateTime.utc()): string {
   const nyNow = now.setZone("America/New_York");
-  const daysSinceSunday = nyNow.weekday % 7;
-  let sunday = nyNow.minus({ days: daysSinceSunday });
-
-  if (daysSinceSunday === 0 && nyNow.hour < 19) {
-    sunday = sunday.minus({ days: 7 });
+  const weekday = nyNow.weekday; // 1=Mon ... 7=Sun
+  let monday = nyNow;
+  if (weekday === 7) {
+    monday = nyNow.plus({ days: 1 });
+  } else {
+    const daysSinceMonday = (weekday + 6) % 7;
+    monday = nyNow.minus({ days: daysSinceMonday });
   }
 
-  const open = sunday.set({
-    hour: 19,
+  const open = monday.set({
+    hour: 0,
     minute: 0,
     second: 0,
     millisecond: 0,

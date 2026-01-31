@@ -13,11 +13,14 @@ export function getPool(): Pool {
       throw new Error("DATABASE_URL environment variable not set");
     }
 
+    const requiresSsl =
+      process.env.NODE_ENV === "production" ||
+      databaseUrl.includes("render.com") ||
+      databaseUrl.includes("sslmode=require");
+
     pool = new Pool({
       connectionString: databaseUrl,
-      ssl: process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: false }
-        : false,
+      ssl: requiresSsl ? { rejectUnauthorized: false } : false,
       max: 10, // Maximum number of clients in the pool
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,

@@ -27,11 +27,11 @@ function reportWeekOpenUtc(reportDate: string): string | null {
   if (!report.isValid) {
     return null;
   }
-  const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
-  const sunday = report
-    .plus({ days: daysUntilSunday })
-    .set({ hour: 17, minute: 0, second: 0, millisecond: 0 });
-  return sunday.toUTC().toISO();
+  const daysUntilMonday = (8 - report.weekday) % 7;
+  const monday = report
+    .plus({ days: daysUntilMonday })
+    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+  return monday.toUTC().toISO();
 }
 
 function buildLockedSentimentForWeek(options: {
