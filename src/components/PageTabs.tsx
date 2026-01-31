@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/antikythera", label: "Antikythera" },
+  { href: "/antikythera", label: "Data" },
   { href: "/dashboard", label: "Bias" },
   { href: "/sentiment", label: "Sentiment" },
 ];

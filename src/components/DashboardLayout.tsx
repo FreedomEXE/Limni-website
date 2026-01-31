@@ -14,9 +14,9 @@ type NavItem = {
 
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/antikythera", label: "Antikythera", icon: "/limni-icon.svg" },
+  { href: "/antikythera", label: "Data", icon: "/limni-icon.svg" },
+  { href: "/performance", label: "Performance", icon: "/limni-icon.svg" },
   { href: "/automation", label: "Automation", icon: "/limni-icon.svg" },
-  { href: "/performance", label: "Performance Lab", icon: "/limni-icon.svg" },
   { href: "/accounts", label: "Accounts", icon: "/limni-icon.svg" },
   { href: "/status", label: "Status", icon: "/limni-icon.svg" },
 ];
@@ -25,7 +25,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const showBack = pathname !== "/antikythera";
+  const showBack =
+    (pathname.startsWith("/accounts/") && pathname !== "/accounts") ||
+    (pathname.startsWith("/automation/") && pathname !== "/automation");
 
   return (
     <div className="flex min-h-screen bg-[var(--background)]">
