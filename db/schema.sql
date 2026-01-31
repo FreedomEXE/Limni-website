@@ -172,6 +172,27 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_market_snapshots_week ON market_snapshots(week_open_utc DESC);
 CREATE INDEX IF NOT EXISTS idx_market_snapshots_asset_week ON market_snapshots(asset_class, week_open_utc DESC);
 
+-- Solana Meme Regime Daily Snapshots
+CREATE TABLE IF NOT EXISTS solana_meme_regime_daily (
+  day_utc DATE PRIMARY KEY,
+  sol_price DECIMAL(18, 6),
+  sol_change_24h DECIMAL(10, 4),
+  sol_change_7d DECIMAL(10, 4),
+  meme_volume_1h DECIMAL(20, 2),
+  meme_change_1h DECIMAL(10, 4),
+  meme_change_6h DECIMAL(10, 4),
+  meme_mcap_median DECIMAL(20, 2),
+  meme_holders_median DECIMAL(12, 2),
+  sample_tokens INTEGER DEFAULT 0,
+  label VARCHAR(12) NOT NULL,
+  score INTEGER NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sol_meme_regime_day ON solana_meme_regime_daily(day_utc DESC);
+
 -- Performance Lab Snapshots (weekly)
 CREATE TABLE IF NOT EXISTS performance_snapshots (
   id SERIAL PRIMARY KEY,

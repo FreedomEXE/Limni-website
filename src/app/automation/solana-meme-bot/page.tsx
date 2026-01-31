@@ -1,5 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { fetchBitgetFuturesSnapshot, fetchBitgetPriceChange } from "@/lib/bitget";
+import { getRecentRegimeDays, upsertRegimeDay } from "@/lib/market-regime";
+import type { RegimeRecord } from "@/lib/market-regime";
 
 type TrenchbotToken = {
   token_address: string;
@@ -258,7 +260,7 @@ export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
     return bag.moonbag_sold_at == null;
   });
   const solanaStats = {
-    price: solSnapshot?.lastPrice ?? null,
+    price: solSnapshot?.lastPrice ?? sol24h?.close ?? null,
     change24h: sol24h?.percent ?? null,
     change7d: sol7d?.percent ?? null,
     volume1h: summary?.solana.volume1h_total ?? null,
@@ -268,6 +270,27 @@ export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
     holdersMedian: summary?.solana.holders_median ?? null,
     sampleTokens: summary?.solana.sample_tokens_24h ?? 0,
   };
+  const dayUtc = new Date().toISOString().slice(0, 10);
+  let regimeDays: RegimeRecord[] = [];
+  if (summary) {
+    try {
+      await upsertRegimeDay({
+        dayUtc,
+        solPrice: solanaStats.price,
+        solChange24h: solanaStats.change24h,
+        solChange7d: solanaStats.change7d,
+        memeVolume1h: solanaStats.volume1h,
+        memeChange1h: solanaStats.change1h,
+        memeChange6h: solanaStats.change6h,
+        memeMcapMedian: solanaStats.marketcapMedian,
+        memeHoldersMedian: solanaStats.holdersMedian,
+        sampleTokens: solanaStats.sampleTokens,
+      });
+      regimeDays = await getRecentRegimeDays(10);
+    } catch {
+      regimeDays = [];
+    }
+  }
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -362,6 +385,35 @@ export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
             </div>
             <div className="mt-5 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4 text-xs text-[color:var(--muted)]">
               Suggested: run daily, review weekly, then decide if filters help.
+            </div>
+            <div className="mt-5 space-y-3">
+              <div className="flex items-center justify-between rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                <span>Today</span>
+                <span className="font-semibold text-[var(--foreground)]">
+                  {regimeDays[0]?.label ?? "—"}
+                </span>
+              </div>
+              {regimeDays.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2 text-xs text-[color:var(--muted)]">
+                  {regimeDays.slice(0, 6).map((day) => (
+                    <div
+                      key={day.dayUtc}
+                      className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="uppercase tracking-[0.2em]">{day.dayUtc}</span>
+                        <span className="font-semibold text-[var(--foreground)]">
+                          {day.label}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-[color:var(--muted)]">
+                  Regime history will appear after the first summary sync.
+                </p>
+              )}
             </div>
           </div>
 
