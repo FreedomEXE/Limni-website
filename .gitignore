@@ -53,3 +53,12 @@ scraper/*.log
 
 # Debug
 *.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Research outputs
+research/scalp_bot/output*/
