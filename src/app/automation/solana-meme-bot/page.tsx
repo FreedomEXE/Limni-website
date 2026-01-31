@@ -138,7 +138,18 @@ function formatPercent(value: number | null) {
   return `${value.toFixed(1)}%`;
 }
 
-async function loadSummary(): Promise<TrenchbotSummary | null> {
+type SummaryError = {
+  message: string;
+  status?: number;
+  url?: string;
+};
+
+type SummaryResult = {
+  summary: TrenchbotSummary | null;
+  error?: SummaryError;
+};
+
+async function loadSummary(): Promise<SummaryResult> {
   try {
     const apiUrl =
       process.env.TRENCHBOT_API_URL ??
@@ -152,11 +163,22 @@ async function loadSummary(): Promise<TrenchbotSummary | null> {
       headers,
     });
     if (!response.ok) {
-      return null;
+      let message = `Summary request failed (${response.status})`;
+      try {
+        const data = await response.json();
+        if (data?.error) {
+          message = String(data.error);
+        }
+      } catch {
+        // ignore json parse errors
+      }
+      return { summary: null, error: { message, status: response.status, url: apiUrl } };
     }
-    return (await response.json()) as TrenchbotSummary;
-  } catch {
-    return null;
+    return { summary: (await response.json()) as TrenchbotSummary };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Summary request failed (unknown error)";
+    return { summary: null, error: { message } };
   }
 }
 
@@ -176,12 +198,14 @@ type PageProps = {
 };
 
 export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
-  const [summary, solSnapshot, sol24h, sol7d] = await Promise.all([
+  const [summaryResult, solSnapshot, sol24h, sol7d] = await Promise.all([
     loadSummary(),
     safe(fetchBitgetFuturesSnapshot("SOL")),
     safe(fetchBitgetPriceChange("SOL", 24)),
     safe(fetchBitgetPriceChange("SOL", 24 * 7)),
   ]);
+  const summary = summaryResult.summary;
+  const summaryError = summaryResult.error;
   const equity = computeEquity(summary);
   const roi =
     summary && equity != null && summary.sim.start_balance > 0
@@ -268,6 +292,30 @@ export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
             </span>
           </div>
         </header>
+        {!summary && summaryError ? (
+          <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-700">
+                Summary fetch failed
+              </p>
+              <p>{summaryError.message}</p>
+              {summaryError.status ? (
+                <p className="text-xs text-amber-800">
+                  HTTP status: {summaryError.status}
+                </p>
+              ) : null}
+              {summaryError.url ? (
+                <p className="text-xs text-amber-800 break-all">
+                  URL: {summaryError.url}
+                </p>
+              ) : null}
+              <p className="text-xs text-amber-800">
+                Check TRENCHBOT_API_URL, TRENCHBOT_API_TOKEN, and that the trenchbot
+                web service is running.
+              </p>
+            </div>
+          </section>
+        ) : null}
 
         <section className="grid gap-4 lg:grid-cols-[1.4fr,1fr,1fr]">
           <div className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">

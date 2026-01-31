@@ -83,7 +83,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
     return { asset, signals, hasHistory: Boolean(snapshot) };
   });
 
-  const allSignals = signalGroups.flatMap((group) =>
+  let allSignals = signalGroups.flatMap((group) =>
     group.signals.map((signal) => ({
       ...signal,
       assetId: group.asset.id,
@@ -125,6 +125,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       const assetLabelMap = new Map(
         assetClasses.map((asset) => [asset.id, asset.label]),
       );
+      const snapshotSignals: typeof allSignals = [];
       weekSnapshots
         .filter((row) => row.model === "antikythera")
         .forEach((row) => {
@@ -132,8 +133,19 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
             const assetLabel = assetLabelMap.get(row.asset_class) ?? row.asset_class;
             const key = `${detail.pair} (${assetLabel})`;
             performanceByPair[key] = detail.percent ?? null;
+            snapshotSignals.push({
+              pair: detail.pair,
+              direction: detail.direction,
+              reasons: detail.reason,
+              confidence: 65,
+              assetId: row.asset_class,
+              assetLabel,
+            });
           });
         });
+      if (snapshotSignals.length > 0) {
+        allSignals = snapshotSignals;
+      }
     } catch (error) {
       console.error("Antikythera performance load failed:", error);
     }

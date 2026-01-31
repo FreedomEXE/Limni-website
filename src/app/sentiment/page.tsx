@@ -7,7 +7,7 @@ import { fetchLiquidationSummary } from "@/lib/coinank";
 import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { fetchCryptoSpotPrice } from "@/lib/cryptoPrices";
 import {
-  getAggregatesForWeekLocked,
+  getAggregatesAsOf,
   getLatestAggregatesLocked,
 } from "@/lib/sentiment/store";
 import { formatDateTimeET, latestIso } from "@/lib/time";
@@ -62,7 +62,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
   let aggregates: SentimentAggregate[] = [];
   try {
     aggregates = selectedWeek
-      ? await getAggregatesForWeekLocked(selectedWeek)
+      ? await getAggregatesAsOf(selectedWeek)
       : await getLatestAggregatesLocked();
   } catch (error) {
     console.error(

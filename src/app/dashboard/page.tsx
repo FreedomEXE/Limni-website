@@ -26,6 +26,8 @@ import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import { getPairPerformance } from "@/lib/pricePerformance";
 import { refreshAppData } from "@/lib/appRefresh";
+import { readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
+import type { PairSnapshot } from "@/lib/cotTypes";
 
 export const dynamic = "force-dynamic";
 
@@ -112,6 +114,27 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       : await readSnapshot({ assetClass });
   const data = buildResponse(snapshot, assetClass);
   const assetDefinition = getAssetClassDefinition(assetClass);
+  const reportWeekIso = selectedReportDate
+    ? (() => {
+        const report = DateTime.fromISO(selectedReportDate, { zone: "America/New_York" });
+        if (!report.isValid) {
+          return null;
+        }
+        const daysUntilMonday = (8 - report.weekday) % 7;
+        const monday = report
+          .plus({ days: daysUntilMonday })
+          .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+        return monday.toUTC().toISO();
+      })()
+    : null;
+  let weekSnapshots: Awaited<ReturnType<typeof readPerformanceSnapshotsByWeek>> = [];
+  if (reportWeekIso) {
+    try {
+      weekSnapshots = await readPerformanceSnapshotsByWeek(reportWeekIso);
+    } catch (error) {
+      console.error("Performance snapshot load failed:", error);
+    }
+  }
 
   const currencyRows = [] as Array<{
     assetLabel: string;
@@ -183,8 +206,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         });
       });
 
-      const derivedPairs =
-        entry.asset.id === "fx"
+      const snapshotRow = weekSnapshots.find(
+        (row) => row.asset_class === entry.asset.id && row.model === biasMode,
+      );
+      const derivedPairs: Record<string, PairSnapshot> = snapshotRow
+        ? Object.fromEntries(
+            snapshotRow.pair_details.map((detail) => [
+              detail.pair,
+              {
+                direction: detail.direction,
+                base_bias: "NEUTRAL",
+                quote_bias: "NEUTRAL",
+              },
+            ]),
+          )
+        : entry.asset.id === "fx"
           ? derivePairDirections(entrySnapshot.currencies, pairDefs, biasMode)
           : derivePairDirectionsByBase(entrySnapshot.currencies, pairDefs, biasMode);
       const perfResult = await getPairPerformance(derivedPairs, {
@@ -240,16 +276,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .sort((a, b) => a.currency.localeCompare(b.currency))
       .forEach((row) => currencyRows.push(row));
 
-    const derivedPairs =
-      assetClass === "fx"
+    const snapshotRow = weekSnapshots.find(
+      (row) => row.asset_class === assetClass && row.model === biasMode,
+    );
+    const derivedPairs: Record<string, PairSnapshot> = snapshotRow
+      ? Object.fromEntries(
+          snapshotRow.pair_details.map((detail) => [
+            detail.pair,
+            {
+              direction: detail.direction,
+              base_bias: "NEUTRAL",
+              quote_bias: "NEUTRAL",
+            },
+          ]),
+        )
+      : assetClass === "fx"
         ? derivePairDirections(data.currencies, pairDefs, biasMode)
         : derivePairDirectionsByBase(data.currencies, pairDefs, biasMode);
     const pairRows = Object.entries(derivedPairs).sort(([a], [b]) =>
       a.localeCompare(b),
     );
-    const isLatestReport =
-      !selectedReportDate ||
-      (availableDates.length > 0 && availableDates[0] === selectedReportDate);
     const perfResult =
       pairRows.length > 0
         ? await getPairPerformance(derivedPairs, {
