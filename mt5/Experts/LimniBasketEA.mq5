@@ -6,7 +6,9 @@
 
 #include <Trade/Trade.mqh>
 
-input string ApiUrl = "https://limni-website.vercel.app/api/cot/baskets/latest?asset=all";
+input string ApiUrl = "https://limni-website.vercel.app/api/cot/baskets/latest";
+input string AssetFilter = "all";
+input bool ResetStateOnInit = false;
 input int ApiPollIntervalSeconds = 60;
 input double BasketLotCapPer100k = 10.0;
 input string ReferenceSymbol = "EURUSD";
@@ -62,6 +64,8 @@ bool g_apiOk = false;
 EAState g_state = STATE_IDLE;
 datetime g_weekStartGmt = 0;
 datetime g_lastPoll = 0;
+datetime g_lastApiSuccess = 0;
+bool g_loadedFromCache = false;
 string g_refBrokerSymbol = "";
 double g_refAtr = 0.0;
 double g_refPipValue = 0.0;
@@ -112,6 +116,7 @@ bool g_dashboardReady = false;
 // Forward declarations
 void PollApiIfDue();
 bool FetchApi(string &json);
+string BuildApiUrl();
 bool ParseApiResponse(const string json, bool &allowed, string &reportDate,
                       string &symbols[], int &dirs[], string &models[], string &assetClasses[]);
 bool ParsePairsArray(const string json, string &symbols[], int &dirs[], string &models[], string &assetClasses[]);
@@ -150,6 +155,7 @@ void LoadState();
 void SaveState();
 void LoadApiCache();
 void SaveApiCache(const string json);
+void ResetState();
 void SyncLastAddTimes();
 void Log(const string message);
 string TruncateForLog(const string value, int maxLen);
@@ -185,8 +191,15 @@ int OnInit()
   g_trade.SetDeviationInPoints(SlippagePoints);
 
   g_weekStartGmt = GetWeekStartGmt(TimeGMT());
-  LoadState();
-  LoadApiCache();
+  if(ResetStateOnInit)
+  {
+    ResetState();
+  }
+  else
+  {
+    LoadState();
+    LoadApiCache();
+  }
   SyncLastAddTimes();
   InitDashboard();
 
@@ -281,6 +294,8 @@ void PollApiIfDue()
   g_apiOk = true;
   g_tradingAllowed = allowed;
   g_reportDate = reportDate;
+  g_lastApiSuccess = TimeCurrent();
+  g_loadedFromCache = false;
   g_lastApiError = "";
   g_lastApiErrorTime = 0;
 
@@ -323,6 +338,19 @@ void PollApiIfDue()
                    g_reportDate,
                    ArraySize(g_apiSymbols)));
 }
+
+string BuildApiUrl()
+{
+  string url = ApiUrl;
+  if(StringFind(url, "http") != 0)
+    return url;
+  if(StringFind(url, "asset=") >= 0)
+    return url;
+  if(AssetFilter == "")
+    return url;
+  string sep = StringFind(url, "?") >= 0 ? "&" : "?";
+  return url + sep + "asset=" + AssetFilter;
+}
 //+------------------------------------------------------------------+
 bool FetchApi(string &json)
 {
@@ -334,7 +362,8 @@ bool FetchApi(string &json)
   string request_headers = "Accept: application/json\r\n"
                            "Accept-Encoding: identity\r\n"
                            "Connection: close\r\n";
-  int status = WebRequest("GET", ApiUrl, request_headers, timeout, data, result, headers);
+  string url = BuildApiUrl();
+  int status = WebRequest("GET", url, request_headers, timeout, data, result, headers);
   if(status == -1)
   {
     int err = GetLastError();
@@ -1359,6 +1388,8 @@ void LoadApiCache()
     g_apiOk = true;
     g_tradingAllowed = allowed;
     g_reportDate = reportDate;
+    g_lastApiSuccess = TimeCurrent();
+    g_loadedFromCache = true;
     int count = ArraySize(symbols);
     ArrayResize(g_apiSymbols, count);
     ArrayResize(g_directions, count);
@@ -1388,6 +1419,39 @@ void SaveApiCache(const string json)
     return;
   FileWriteString(handle, json);
   FileClose(handle);
+}
+
+void ResetState()
+{
+  g_state = STATE_IDLE;
+  g_baselineEquity = 0.0;
+  g_lockedProfitPct = 0.0;
+  g_trailingActive = false;
+  g_closeRequested = false;
+  g_forceSlUpdate = true;
+  g_weekPeakEquity = 0.0;
+  g_maxDrawdownPct = 0.0;
+  g_lastAtrWeekStart = 0;
+  g_lastApiSuccess = 0;
+  g_loadedFromCache = false;
+  g_reportDate = "";
+  g_tradingAllowed = false;
+  g_apiOk = false;
+  g_lastApiError = "";
+  g_lastApiErrorTime = 0;
+
+  GlobalVariableDel(GV_WEEK_START);
+  GlobalVariableDel(GV_STATE);
+  GlobalVariableDel(GV_BASELINE);
+  GlobalVariableDel(GV_LOCKED);
+  GlobalVariableDel(GV_TRAIL);
+  GlobalVariableDel(GV_CLOSE);
+  GlobalVariableDel(GV_LAST_EQUITY);
+  GlobalVariableDel(GV_WEEK_PEAK);
+  GlobalVariableDel(GV_MAX_DD);
+
+  FileDelete(CACHE_FILE, FILE_COMMON);
+  Log("State reset on init.");
 }
 
 void SyncLastAddTimes()
@@ -1430,7 +1494,7 @@ void InitDashboard()
   if(!ShowDashboard)
     return;
 
-  const int lineCount = 11;
+  const int lineCount = 13;
   ArrayResize(g_dashboardLines, lineCount);
   for(int i = 0; i < lineCount; i++)
     g_dashboardLines[i] = StringFormat("LimniDash_line_%d", i);
@@ -1583,7 +1647,7 @@ void UpdateDashboard()
   else if(g_state == STATE_PAUSED)
     stateColor = warnColor;
 
-  string apiLine = StringFormat("API: %s | Allowed: %s",
+  string apiLine = StringFormat("API: %s  |  Allowed: %s",
                                 g_apiOk ? "OK" : "Fail",
                                 g_tradingAllowed ? "Yes" : "No");
   color apiColor = badColor;
@@ -1593,11 +1657,25 @@ void UpdateDashboard()
     apiColor = warnColor;
 
   string reportText = (g_reportDate == "" ? "--" : g_reportDate);
-  string pairsLine = StringFormat("Pairs: %d   Open pairs: %d", totalPairs, openPairs);
-  string positionLine = StringFormat("Positions: %d   Lots: %.2f", openPositions, totalLots);
-  string equityLine = StringFormat("Equity: %.2f   Balance: %.2f",
+  string cacheLine = g_loadedFromCache ? "Cache: Yes" : "Cache: No";
+  if(g_lastApiSuccess > 0)
+  {
+    int age = (int)(now - g_lastApiSuccess);
+    cacheLine = StringFormat("Last API: %s ago", FormatDuration(age));
+    if(g_loadedFromCache)
+      cacheLine += " (cache)";
+  }
+
+  string weekLine = StringFormat("Week start: %s  |  Asset: %s",
+                                 FormatTimeValue(g_weekStartGmt),
+                                 AssetFilter == "" ? "--" : AssetFilter);
+  string pairsLine = StringFormat("Pairs: %d  |  Open pairs: %d", totalPairs, openPairs);
+  string positionLine = StringFormat("Positions: %d  |  Lots: %.2f  |  Trades: %d",
+                                     openPositions, totalLots, OrdersInLastMinute());
+  string equityLine = StringFormat("Equity: %.2f  |  Balance: %.2f  |  Free: %.2f",
                                    AccountInfoDouble(ACCOUNT_EQUITY),
-                                   AccountInfoDouble(ACCOUNT_BALANCE));
+                                   AccountInfoDouble(ACCOUNT_BALANCE),
+                                   AccountInfoDouble(ACCOUNT_MARGIN_FREE));
 
   string pnlText = "--";
   double pnlPct = 0.0;
@@ -1608,16 +1686,15 @@ void UpdateDashboard()
     pnlText = StringFormat("%+.2f%%", pnlPct);
     pnlColor = (pnlPct >= 0.0 ? goodColor : badColor);
   }
-  string pnlLine = StringFormat("PnL: %s   Locked: %.2f%%", pnlText, g_lockedProfitPct);
+  string trailText = g_trailingActive ? "On" : "Off";
+  string pnlLine = StringFormat("PnL: %s  |  Locked: %.2f%%  |  Trail: %s", pnlText, g_lockedProfitPct, trailText);
 
   string ddLine = StringFormat("Max DD: %.2f%%", g_maxDrawdownPct);
   color ddColor = (g_maxDrawdownPct <= 0.0 ? goodColor : badColor);
 
-  string lotLine = "Lot (EURUSD ref): --";
-  if(g_refAtr > 0.0 && g_refPipValue > 0.0)
-    lotLine = StringFormat("Lot (EURUSD ref): %.2f", ReferenceLot);
-
-  string nextAddLine = "Next add: --";
+  string lotLine = StringFormat("Ref lot: %.2f %s  |  ATR: %d", ReferenceLot, ReferenceSymbol, AtrPeriod);
+  string multLine = StringFormat("Mult: FX %.2f  Crypto %.2f  Cmds %.2f  Ind %.2f",
+                                 FxLotMultiplier, CryptoLotMultiplier, CommoditiesLotMultiplier, IndicesLotMultiplier);
 
   int pollRemaining = ApiPollIntervalSeconds;
   if(g_lastPoll > 0)
@@ -1642,12 +1719,14 @@ void UpdateDashboard()
   SetLabelText(DASH_TITLE, "Limni Basket EA", C'15,23,42');
   SetLabelText(g_dashboardLines[0], StringFormat("State: %s", stateText), stateColor);
   SetLabelText(g_dashboardLines[1], apiLine, apiColor);
-  SetLabelText(g_dashboardLines[2], StringFormat("Report date: %s", reportText), dimColor);
-  SetLabelText(g_dashboardLines[3], pairsLine, textColor);
-  SetLabelText(g_dashboardLines[4], positionLine, textColor);
-  SetLabelText(g_dashboardLines[5], equityLine, textColor);
-  SetLabelText(g_dashboardLines[6], pnlLine, pnlColor);
-  SetLabelText(g_dashboardLines[7], ddLine, ddColor);
+  SetLabelText(g_dashboardLines[2], cacheLine, dimColor);
+  SetLabelText(g_dashboardLines[3], StringFormat("Report: %s", reportText), dimColor);
+  SetLabelText(g_dashboardLines[4], weekLine, dimColor);
+  SetLabelText(g_dashboardLines[5], pairsLine, textColor);
+  SetLabelText(g_dashboardLines[6], positionLine, textColor);
+  SetLabelText(g_dashboardLines[7], equityLine, textColor);
+  SetLabelText(g_dashboardLines[8], pnlLine, pnlColor);
+  SetLabelText(g_dashboardLines[9], ddLine, ddColor);
   string modelLine = StringFormat("Models: A %d  B %d  D %d  C %d  S %d",
                                   CountSignalsByModel("antikythera"),
                                   CountSignalsByModel("blended"),
@@ -1655,9 +1734,9 @@ void UpdateDashboard()
                                   CountSignalsByModel("commercial"),
                                   CountSignalsByModel("sentiment"));
 
-  SetLabelText(g_dashboardLines[8], lotLine, dimColor);
-  SetLabelText(g_dashboardLines[9], modelLine, dimColor);
-  SetLabelText(g_dashboardLines[10], pollLine + "   |   " + errorLine, errorColor);
+  SetLabelText(g_dashboardLines[10], lotLine, dimColor);
+  SetLabelText(g_dashboardLines[11], multLine + "  |  " + modelLine, dimColor);
+  SetLabelText(g_dashboardLines[12], pollLine + "  |  " + errorLine, errorColor);
 }
 
 //+------------------------------------------------------------------+
