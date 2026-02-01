@@ -6,16 +6,19 @@
 
 #include <Trade/Trade.mqh>
 
-input string ApiUrl = "https://limni-website.vercel.app/api/cot/latest";
+input string ApiUrl = "https://limni-website.vercel.app/api/cot/baskets/latest?asset=all";
 input int ApiPollIntervalSeconds = 60;
-input int AddIntervalMinutes = 60;
 input double BasketLotCapPer100k = 10.0;
-// Increased to 0.05 to reach 10 lots under a 200-trade cap.
-input double LotSizePerAdd = 0.05;
-input double MaxRiskPercent = 1.0;
-input double StopLossPercent = 3.0;
-input double TrailingStartPct = 1.5;
-input double TrailingStepPct = 0.5;
+input string ReferenceSymbol = "EURUSD";
+input double ReferenceLot = 0.10;
+input int AtrPeriod = 14;
+input double FxLotMultiplier = 1.0;
+input double CryptoLotMultiplier = 1.0;
+input double CommoditiesLotMultiplier = 1.0;
+input double IndicesLotMultiplier = 1.0;
+input double EquityTrailStartPct = 2.0;
+input double EquityTrailOffsetPct = 1.0;
+input int MaxOpenPositions = 200;
 input int SlippagePoints = 10;
 input long MagicNumber = 912401;
 input int MaxOrdersPerMinute = 20;
@@ -59,6 +62,10 @@ bool g_apiOk = false;
 EAState g_state = STATE_IDLE;
 datetime g_weekStartGmt = 0;
 datetime g_lastPoll = 0;
+string g_refBrokerSymbol = "";
+double g_refAtr = 0.0;
+double g_refPipValue = 0.0;
+datetime g_lastAtrWeekStart = 0;
 
 double g_baselineEquity = 0.0;
 double g_lockedProfitPct = 0.0;
@@ -72,6 +79,8 @@ double g_maxDrawdownPct = 0.0;
 string g_apiSymbols[];
 string g_brokerSymbols[];
 int g_directions[];
+string g_models[];
+string g_assetClasses[];
 datetime g_lastAddTimes[];
 
 datetime g_orderTimes[];
@@ -104,27 +113,30 @@ bool g_dashboardReady = false;
 void PollApiIfDue();
 bool FetchApi(string &json);
 bool ParseApiResponse(const string json, bool &allowed, string &reportDate,
-                      string &symbols[], int &dirs[]);
-bool ParsePairsArray(const string json, string &symbols[], int &dirs[]);
-bool ParsePairsObject(const string json, string &symbols[], int &dirs[]);
+                      string &symbols[], int &dirs[], string &models[], string &assetClasses[]);
+bool ParsePairsArray(const string json, string &symbols[], int &dirs[], string &models[], string &assetClasses[]);
+bool ParsePairsObject(const string json, string &symbols[], int &dirs[], string &models[], string &assetClasses[]);
 bool ExtractStringValue(const string json, const string key, string &value);
 bool ExtractBoolValue(const string json, const string key, bool &value);
 bool ResolveSymbol(const string apiSymbol, string &resolved);
-bool IsTradableForex(const string symbol);
+bool IsTradableSymbol(const string symbol);
 int DirectionFromString(const string value);
 string DirectionToString(int dir);
 double NormalizeVolume(const string symbol, double volume);
+double GetAtrValue(const string symbol);
+double GetPipValue(const string symbol);
+bool EnsureAtrCache();
+double GetLotForSymbol(const string symbol, const string assetClass);
+double GetAssetMultiplier(const string assetClass);
 double GetBasketLotCap();
 double GetTotalBasketLots();
 bool HasOpenPositions();
+bool HasPositionForModel(const string symbol, const string model);
 void UpdateState();
 void ManageBasket();
 void TryAddPositions();
-bool PlaceOrder(const string symbol, int direction, double volume);
+bool PlaceOrder(const string symbol, int direction, double volume, const string model);
 bool GetSymbolStats(const string symbol, SymbolStats &stats);
-bool CalculateStopLoss(const string symbol, const SymbolStats &stats, double &sl);
-bool UpdateSymbolStopLoss(const string symbol, const SymbolStats &stats);
-void UpdateStopsIfNeeded();
 void CloseAllPositions();
 bool ClosePositionByTicket(ulong ticket);
 void CloseSymbolPositions(const string symbol);
@@ -150,6 +162,7 @@ string FormatDuration(int seconds);
 string FormatTimeValue(datetime value);
 int CountOpenPositions();
 int CountOpenPairs();
+int CountSignalsByModel(const string model);
 void UpdateDrawdown();
 void GetWeeklyTradeStats(int &tradeCount, double &winRatePct);
 void PushStatsIfDue();
@@ -209,6 +222,7 @@ void OnTimer()
       g_forceSlUpdate = true;
       g_weekPeakEquity = 0.0;
       g_maxDrawdownPct = 0.0;
+      g_lastAtrWeekStart = 0;
       SaveState();
       Log("New week detected. State reset to IDLE.");
     }
@@ -250,7 +264,9 @@ void PollApiIfDue()
   string reportDate = "";
   string symbols[];
   int dirs[];
-  if(!ParseApiResponse(json, allowed, reportDate, symbols, dirs))
+  string models[];
+  string assetClasses[];
+  if(!ParseApiResponse(json, allowed, reportDate, symbols, dirs, models, assetClasses))
   {
     g_apiOk = false;
     g_lastApiError = "parse failed";
@@ -272,6 +288,8 @@ void PollApiIfDue()
   ArrayResize(g_apiSymbols, 0);
   ArrayResize(g_brokerSymbols, 0);
   ArrayResize(g_directions, 0);
+  ArrayResize(g_models, 0);
+  ArrayResize(g_assetClasses, 0);
   ArrayResize(g_lastAddTimes, 0);
 
   for(int i = 0; i < count; i++)
@@ -287,10 +305,14 @@ void PollApiIfDue()
     ArrayResize(g_apiSymbols, idx + 1);
     ArrayResize(g_brokerSymbols, idx + 1);
     ArrayResize(g_directions, idx + 1);
+    ArrayResize(g_models, idx + 1);
+    ArrayResize(g_assetClasses, idx + 1);
     ArrayResize(g_lastAddTimes, idx + 1);
     g_apiSymbols[idx] = symbols[i];
     g_brokerSymbols[idx] = resolved;
     g_directions[idx] = dirs[i];
+    g_models[idx] = (i < ArraySize(models) ? models[i] : "blended");
+    g_assetClasses[idx] = (i < ArraySize(assetClasses) ? assetClasses[i] : "fx");
     g_lastAddTimes[idx] = 0;
   }
 
@@ -338,20 +360,22 @@ bool FetchApi(string &json)
 
 //+------------------------------------------------------------------+
 bool ParseApiResponse(const string json, bool &allowed, string &reportDate,
-                      string &symbols[], int &dirs[])
+                      string &symbols[], int &dirs[], string &models[], string &assetClasses[])
 {
   allowed = false;
   reportDate = "";
   ArrayResize(symbols, 0);
   ArrayResize(dirs, 0);
+  ArrayResize(models, 0);
+  ArrayResize(assetClasses, 0);
 
   if(!ExtractBoolValue(json, "trading_allowed", allowed))
     return false;
   ExtractStringValue(json, "report_date", reportDate);
 
-  if(!ParsePairsArray(json, symbols, dirs))
+  if(!ParsePairsArray(json, symbols, dirs, models, assetClasses))
   {
-    if(!ParsePairsObject(json, symbols, dirs))
+    if(!ParsePairsObject(json, symbols, dirs, models, assetClasses))
       return false;
   }
 
@@ -359,7 +383,7 @@ bool ParseApiResponse(const string json, bool &allowed, string &reportDate,
 }
 
 //+------------------------------------------------------------------+
-bool ParsePairsArray(const string json, string &symbols[], int &dirs[])
+bool ParsePairsArray(const string json, string &symbols[], int &dirs[], string &models[], string &assetClasses[])
 {
   int keyPos = StringFind(json, "\"pairs\"");
   if(keyPos < 0)
@@ -418,6 +442,10 @@ bool ParsePairsArray(const string json, string &symbols[], int &dirs[])
     string obj = StringSubstr(arrayBody, objStart, objEnd - objStart + 1);
     string symbol = "";
     string direction = "";
+    string model = "";
+    string assetClass = "";
+    ExtractStringValue(obj, "model", model);
+    ExtractStringValue(obj, "asset_class", assetClass);
     if(ExtractStringValue(obj, "symbol", symbol) &&
        ExtractStringValue(obj, "direction", direction))
     {
@@ -427,8 +455,12 @@ bool ParsePairsArray(const string json, string &symbols[], int &dirs[])
         int size = ArraySize(symbols);
         ArrayResize(symbols, size + 1);
         ArrayResize(dirs, size + 1);
+        ArrayResize(models, size + 1);
+        ArrayResize(assetClasses, size + 1);
         symbols[size] = symbol;
         dirs[size] = dir;
+        models[size] = (model == "" ? "blended" : model);
+        assetClasses[size] = (assetClass == "" ? "fx" : assetClass);
       }
     }
 
@@ -439,7 +471,7 @@ bool ParsePairsArray(const string json, string &symbols[], int &dirs[])
 }
 
 //+------------------------------------------------------------------+
-bool ParsePairsObject(const string json, string &symbols[], int &dirs[])
+bool ParsePairsObject(const string json, string &symbols[], int &dirs[], string &models[], string &assetClasses[])
 {
   int keyPos = StringFind(json, "\"pairs\"");
   if(keyPos < 0)
@@ -507,6 +539,10 @@ bool ParsePairsObject(const string json, string &symbols[], int &dirs[])
 
     string nested = StringSubstr(body, nestedStart, nestedEnd - nestedStart + 1);
     string direction = "";
+    string model = "";
+    string assetClass = "";
+    ExtractStringValue(nested, "model", model);
+    ExtractStringValue(nested, "asset_class", assetClass);
     if(ExtractStringValue(nested, "direction", direction))
     {
       int dir = DirectionFromString(direction);
@@ -515,8 +551,12 @@ bool ParsePairsObject(const string json, string &symbols[], int &dirs[])
         int size = ArraySize(symbols);
         ArrayResize(symbols, size + 1);
         ArrayResize(dirs, size + 1);
+        ArrayResize(models, size + 1);
+        ArrayResize(assetClasses, size + 1);
         symbols[size] = key;
         dirs[size] = dir;
+        models[size] = (model == "" ? "blended" : model);
+        assetClasses[size] = (assetClass == "" ? "fx" : assetClass);
       }
     }
 
@@ -598,7 +638,7 @@ bool ResolveSymbol(const string apiSymbol, string &resolved)
 {
   string target = apiSymbol;
   StringToUpper(target);
-  if(SymbolSelect(target, true) && IsTradableForex(target))
+  if(SymbolSelect(target, true) && IsTradableSymbol(target))
   {
     resolved = target;
     return true;
@@ -612,7 +652,7 @@ bool ResolveSymbol(const string apiSymbol, string &resolved)
     StringToUpper(symUpper);
     if(StringFind(symUpper, target) < 0)
       continue;
-    if(!IsTradableForex(sym))
+    if(!IsTradableSymbol(sym))
       continue;
     string base = SymbolInfoString(sym, SYMBOL_CURRENCY_BASE);
     string quote = SymbolInfoString(sym, SYMBOL_CURRENCY_PROFIT);
@@ -633,7 +673,7 @@ bool ResolveSymbol(const string apiSymbol, string &resolved)
       continue;
     if(!SymbolSelect(sym, true))
       continue;
-    if(!IsTradableForex(sym))
+    if(!IsTradableSymbol(sym))
       continue;
     string base = SymbolInfoString(sym, SYMBOL_CURRENCY_BASE);
     string quote = SymbolInfoString(sym, SYMBOL_CURRENCY_PROFIT);
@@ -648,12 +688,9 @@ bool ResolveSymbol(const string apiSymbol, string &resolved)
 }
 
 //+------------------------------------------------------------------+
-bool IsTradableForex(const string symbol)
+bool IsTradableSymbol(const string symbol)
 {
   if((int)SymbolInfoInteger(symbol, SYMBOL_TRADE_MODE) != SYMBOL_TRADE_MODE_FULL)
-    return false;
-  int calcMode = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_CALC_MODE);
-  if(calcMode != SYMBOL_CALC_MODE_FOREX && calcMode != SYMBOL_CALC_MODE_FOREX_NO_LEVERAGE)
     return false;
   return true;
 }
@@ -672,6 +709,86 @@ double NormalizeVolume(const string symbol, double volume)
   double normalized = steps * step;
   int digits = (int)MathRound(-MathLog10(step));
   return NormalizeDouble(normalized, digits);
+}
+
+double GetAtrValue(const string symbol)
+{
+  int handle = iATR(symbol, PERIOD_D1, AtrPeriod);
+  if(handle == INVALID_HANDLE)
+    return 0.0;
+  double buffer[];
+  ArraySetAsSeries(buffer, true);
+  int copied = CopyBuffer(handle, 0, 0, 1, buffer);
+  IndicatorRelease(handle);
+  if(copied < 1)
+    return 0.0;
+  return buffer[0];
+}
+
+double GetPipValue(const string symbol)
+{
+  double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+  double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+  if(tickValue <= 0.0 || tickSize <= 0.0)
+    return 0.0;
+
+  string sym = symbol;
+  StringToUpper(sym);
+  bool isJpy = (StringFind(sym, "JPY") >= 0);
+  double pipSize = isJpy ? 0.01 : 0.0001;
+  return (pipSize / tickSize) * tickValue;
+}
+
+bool EnsureAtrCache()
+{
+  if(g_lastAtrWeekStart == g_weekStartGmt && g_refAtr > 0.0 && g_refPipValue > 0.0)
+    return true;
+
+  string resolved = "";
+  if(!ResolveSymbol(ReferenceSymbol, resolved))
+  {
+    Log(StringFormat("Reference symbol %s not tradable.", ReferenceSymbol));
+    return false;
+  }
+  g_refBrokerSymbol = resolved;
+  g_refAtr = GetAtrValue(g_refBrokerSymbol);
+  g_refPipValue = GetPipValue(g_refBrokerSymbol);
+  g_lastAtrWeekStart = g_weekStartGmt;
+
+  if(g_refAtr <= 0.0 || g_refPipValue <= 0.0)
+  {
+    Log("Reference ATR/pip value not available.");
+    return false;
+  }
+  return true;
+}
+
+double GetLotForSymbol(const string symbol, const string assetClass)
+{
+  if(!EnsureAtrCache())
+    return NormalizeVolume(symbol, ReferenceLot);
+
+  double atr = GetAtrValue(symbol);
+  double pipValue = GetPipValue(symbol);
+  if(atr <= 0.0 || pipValue <= 0.0)
+    return NormalizeVolume(symbol, ReferenceLot);
+
+  double multiplier = GetAssetMultiplier(assetClass);
+  double lot = ReferenceLot * (g_refAtr / atr) * (g_refPipValue / pipValue) * multiplier;
+  return NormalizeVolume(symbol, lot);
+}
+
+double GetAssetMultiplier(const string assetClass)
+{
+  string normalized = assetClass;
+  StringToLower(normalized);
+  if(normalized == "crypto")
+    return CryptoLotMultiplier;
+  if(normalized == "commodities")
+    return CommoditiesLotMultiplier;
+  if(normalized == "indices")
+    return IndicesLotMultiplier;
+  return FxLotMultiplier;
 }
 
 //+------------------------------------------------------------------+
@@ -712,6 +829,28 @@ bool HasOpenPositions()
     if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
       continue;
     return true;
+  }
+  return false;
+}
+
+bool HasPositionForModel(const string symbol, const string model)
+{
+  int count = PositionsTotal();
+  string tag = "LimniBasket " + model;
+  for(int i = 0; i < count; i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+    if(PositionGetString(POSITION_SYMBOL) != symbol)
+      continue;
+    string comment = PositionGetString(POSITION_COMMENT);
+    if(StringFind(comment, tag) >= 0)
+      return true;
   }
   return false;
 }
@@ -801,19 +940,19 @@ void ManageBasket()
   double profitPct = (equity - g_baselineEquity) / g_baselineEquity * 100.0;
   bool wasTrailing = g_trailingActive;
 
-  if(profitPct >= TrailingStartPct)
+  if(profitPct >= EquityTrailStartPct)
   {
     g_trailingActive = true;
     if(!wasTrailing)
-      Log(StringFormat("Trailing activated at %.2f%%", profitPct));
-    double steps = MathFloor((profitPct - TrailingStartPct) / TrailingStepPct);
-    double lockStart = TrailingStartPct - TrailingStepPct;
-    double newLocked = lockStart + steps * TrailingStepPct;
+      Log(StringFormat("Equity trail activated at %.2f%%", profitPct));
+
+    double peakProfitPct = (g_weekPeakEquity - g_baselineEquity) / g_baselineEquity * 100.0;
+    double newLocked = peakProfitPct - EquityTrailOffsetPct;
     if(newLocked > g_lockedProfitPct)
     {
       g_lockedProfitPct = newLocked;
       SaveState();
-      Log(StringFormat("Trailing lock updated: %.2f%%", g_lockedProfitPct));
+      Log(StringFormat("Equity trail lock updated: %.2f%%", g_lockedProfitPct));
     }
   }
 
@@ -821,21 +960,18 @@ void ManageBasket()
   {
     g_closeRequested = true;
     SaveState();
-    Log(StringFormat("Basket hit lock %.2f%%. Closing all positions.", g_lockedProfitPct));
+    Log(StringFormat("Equity trail hit %.2f%%. Closing all positions and pausing.", g_lockedProfitPct));
     CloseAllPositions();
   }
-
-  UpdateStopsIfNeeded();
 }
 //+------------------------------------------------------------------+
 void TryAddPositions()
 {
-  if(!g_apiOk || !g_tradingAllowed)
+  if(!g_apiOk || !g_tradingAllowed || g_closeRequested)
     return;
 
   double cap = GetBasketLotCap();
   double totalLots = GetTotalBasketLots();
-  datetime now = TimeCurrent();
 
   for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
   {
@@ -844,11 +980,14 @@ void TryAddPositions()
     if(symbol == "" || direction == 0)
       continue;
 
-    if(totalLots + LotSizePerAdd > cap)
+    if(CountOpenPositions() >= MaxOpenPositions)
       return;
 
-    datetime lastAdd = g_lastAddTimes[i];
-    if(lastAdd > 0 && (now - lastAdd) < AddIntervalMinutes * 60)
+    if(totalLots >= cap)
+      return;
+
+    string model = (i < ArraySize(g_models) ? g_models[i] : "blended");
+    if(HasPositionForModel(symbol, model))
       continue;
 
     if(OrdersInLastMinute() >= MaxOrdersPerMinute)
@@ -857,56 +996,34 @@ void TryAddPositions()
       return;
     }
 
-    double vol = NormalizeVolume(symbol, LotSizePerAdd);
+    string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
+    double vol = GetLotForSymbol(symbol, assetClass);
     if(vol <= 0.0)
     {
-      Log(StringFormat("Volume %.2f not valid for %s", LotSizePerAdd, symbol));
+      Log(StringFormat("Volume %.2f not valid for %s", vol, symbol));
       continue;
     }
 
-    if(!PlaceOrder(symbol, direction, vol))
+    if(!PlaceOrder(symbol, direction, vol, model))
       continue;
 
     totalLots += vol;
-    g_lastAddTimes[i] = now;
-    GlobalVariableSet("Limni_LastAdd_" + symbol, (double)now);
     MarkOrderTimestamp();
-    g_forceSlUpdate = true;
   }
 }
 
 //+------------------------------------------------------------------+
-bool PlaceOrder(const string symbol, int direction, double volume)
+bool PlaceOrder(const string symbol, int direction, double volume, const string model)
 {
-  SymbolStats stats;
-  bool hasStats = GetSymbolStats(symbol, stats);
-  if(hasStats && stats.valid && stats.direction != direction)
-  {
-    Log(StringFormat("Mixed directions on %s. Skipping add.", symbol));
-    return false;
-  }
-
   double price = direction > 0 ? SymbolInfoDouble(symbol, SYMBOL_ASK)
                                : SymbolInfoDouble(symbol, SYMBOL_BID);
 
-  SymbolStats entryStats;
-  entryStats.avg_price = price;
-  entryStats.direction = direction;
-  entryStats.valid = true;
-
-  double sl = 0.0;
-  if(!CalculateStopLoss(symbol, entryStats, sl))
-  {
-    Log(StringFormat("Cannot set SL within risk for %s. Order skipped.", symbol));
-    return false;
-  }
-
-  string comment = "LimniBasket " + g_reportDate;
+  string comment = "LimniBasket " + model + " " + g_reportDate;
   bool result = false;
   if(direction > 0)
-    result = g_trade.Buy(volume, symbol, price, sl, 0.0, comment);
+    result = g_trade.Buy(volume, symbol, price, 0.0, 0.0, comment);
   else
-    result = g_trade.Sell(volume, symbol, price, sl, 0.0, comment);
+    result = g_trade.Sell(volume, symbol, price, 0.0, 0.0, comment);
 
   if(!result)
   {
@@ -915,12 +1032,7 @@ bool PlaceOrder(const string symbol, int direction, double volume)
     return false;
   }
 
-  Log(StringFormat("Order placed %s %s vol=%.2f", symbol, DirectionToString(direction), volume));
-  SymbolStats actual;
-  if(GetSymbolStats(symbol, actual))
-    UpdateSymbolStopLoss(symbol, actual);
-  else
-    UpdateSymbolStopLoss(symbol, entryStats);
+  Log(StringFormat("Order placed %s %s vol=%.2f model=%s", symbol, DirectionToString(direction), volume, model));
   return true;
 }
 //+------------------------------------------------------------------+
@@ -972,128 +1084,19 @@ bool GetSymbolStats(const string symbol, SymbolStats &stats)
 bool CalculateStopLoss(const string symbol, const SymbolStats &stats, double &sl)
 {
   sl = 0.0;
-  if(!stats.valid || stats.direction == 0)
-    return false;
-
-  int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
-  double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
-  double bid = SymbolInfoDouble(symbol, SYMBOL_BID);
-  double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
-  if(stats.avg_price <= 0.0)
-    return false;
-
-  // Simple percentage-based stop loss
-  double stopPct = StopLossPercent / 100.0;
-  if(stopPct <= 0.0 || stopPct >= 1.0)
-    return false;
-
-  sl = stats.direction > 0 ? stats.avg_price * (1.0 - stopPct)
-                           : stats.avg_price * (1.0 + stopPct);
-  if(stats.direction > 0 && sl <= 0.0)
-    sl = point;
-  sl = NormalizeDouble(sl, digits);
-
-  double minStop = SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL) * point;
-  if(minStop > 0.0)
-  {
-    if(stats.direction > 0 && (bid - sl) < minStop)
-      return false;
-    if(stats.direction < 0 && (sl - ask) < minStop)
-      return false;
-  }
-
   return true;
 }
 
 //+------------------------------------------------------------------+
 bool UpdateSymbolStopLoss(const string symbol, const SymbolStats &stats)
 {
-  double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
-  int count = PositionsTotal();
-  for(int i = 0; i < count; i++)
-  {
-    ulong ticket = PositionGetTicket(i);
-    if(ticket == 0)
-      continue;
-    if(!PositionSelectByTicket(ticket))
-      continue;
-    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
-      continue;
-    if(PositionGetString(POSITION_SYMBOL) != symbol)
-      continue;
-    int type = (int)PositionGetInteger(POSITION_TYPE);
-    int dir = (type == POSITION_TYPE_BUY) ? 1 : -1;
-    double entry = PositionGetDouble(POSITION_PRICE_OPEN);
-
-    SymbolStats entryStats;
-    entryStats.avg_price = entry;
-    entryStats.direction = dir;
-    entryStats.valid = true;
-
-    double sl = 0.0;
-    if(!CalculateStopLoss(symbol, entryStats, sl))
-      return false;
-    double currentSl = PositionGetDouble(POSITION_SL);
-    if(MathAbs(currentSl - sl) < point * 0.5)
-      continue;
-
-    MqlTradeRequest req;
-    MqlTradeResult res;
-    ZeroMemory(req);
-    ZeroMemory(res);
-    req.action = TRADE_ACTION_SLTP;
-    req.position = ticket;
-    req.symbol = symbol;
-    req.sl = sl;
-    req.tp = 0.0;
-    if(!OrderSend(req, res))
-    {
-      Log(StringFormat("SL update failed %s ticket=%llu err=%d",
-                       symbol, ticket, GetLastError()));
-    }
-  }
-
   return true;
 }
 
 //+------------------------------------------------------------------+
 void UpdateStopsIfNeeded()
 {
-  if(!HasOpenPositions())
-    return;
-
-  double equity = AccountInfoDouble(ACCOUNT_EQUITY);
-  bool equityChanged = false;
-  if(g_lastEquityForSl <= 0.0)
-    equityChanged = true;
-  else
-  {
-    double diffPct = MathAbs(equity - g_lastEquityForSl) / g_lastEquityForSl * 100.0;
-    if(diffPct >= 0.1)
-      equityChanged = true;
-  }
-
-  if(!equityChanged && !g_forceSlUpdate)
-    return;
-
-  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
-  {
-    string symbol = g_brokerSymbols[i];
-    SymbolStats stats;
-    if(GetSymbolStats(symbol, stats))
-    {
-      if(!UpdateSymbolStopLoss(symbol, stats))
-      {
-        Log(StringFormat("Risk SL not possible for %s. Closing symbol positions.", symbol));
-        CloseSymbolPositions(symbol);
-      }
-    }
-  }
-
-  g_lastEquityForSl = equity;
-  g_forceSlUpdate = false;
-  SaveState();
-  Log("Stop losses recalculated.");
+  return;
 }
 //+------------------------------------------------------------------+
 void CloseAllPositions()
@@ -1349,7 +1352,9 @@ void LoadApiCache()
   string reportDate = "";
   string symbols[];
   int dirs[];
-  if(ParseApiResponse(json, allowed, reportDate, symbols, dirs))
+  string models[];
+  string assetClasses[];
+  if(ParseApiResponse(json, allowed, reportDate, symbols, dirs, models, assetClasses))
   {
     g_apiOk = true;
     g_tradingAllowed = allowed;
@@ -1358,12 +1363,16 @@ void LoadApiCache()
     ArrayResize(g_apiSymbols, count);
     ArrayResize(g_directions, count);
     ArrayResize(g_brokerSymbols, count);
+    ArrayResize(g_models, count);
+    ArrayResize(g_assetClasses, count);
     ArrayResize(g_lastAddTimes, count);
     for(int i = 0; i < count; i++)
     {
       string resolved = "";
       g_apiSymbols[i] = symbols[i];
       g_directions[i] = dirs[i];
+      g_models[i] = (i < ArraySize(models) ? models[i] : "blended");
+      g_assetClasses[i] = (i < ArraySize(assetClasses) ? assetClasses[i] : "fx");
       if(ResolveSymbol(symbols[i], resolved))
         g_brokerSymbols[i] = resolved;
       g_lastAddTimes[i] = 0;
@@ -1421,7 +1430,7 @@ void InitDashboard()
   if(!ShowDashboard)
     return;
 
-  const int lineCount = 10;
+  const int lineCount = 11;
   ArrayResize(g_dashboardLines, lineCount);
   for(int i = 0; i < lineCount; i++)
     g_dashboardLines[i] = StringFormat("LimniDash_line_%d", i);
@@ -1604,30 +1613,11 @@ void UpdateDashboard()
   string ddLine = StringFormat("Max DD: %.2f%%", g_maxDrawdownPct);
   color ddColor = (g_maxDrawdownPct <= 0.0 ? goodColor : badColor);
 
-  string nextAddText = "n/a";
-  if(g_state == STATE_ACTIVE && totalPairs > 0)
-  {
-    datetime earliest = 0;
-    bool found = false;
-    for(int i = 0; i < totalPairs; i++)
-    {
-      if(g_brokerSymbols[i] == "")
-        continue;
-      datetime lastAdd = g_lastAddTimes[i];
-      datetime candidate = (lastAdd == 0 ? now : lastAdd + AddIntervalMinutes * 60);
-      if(!found || candidate < earliest)
-      {
-        earliest = candidate;
-        found = true;
-      }
-    }
-    if(found)
-    {
-      int seconds = (int)(earliest - now);
-      nextAddText = (seconds <= 0 ? "now" : FormatDuration(seconds));
-    }
-  }
-  string nextAddLine = StringFormat("Next add: %s   Interval: %dm", nextAddText, AddIntervalMinutes);
+  string lotLine = "Lot (EURUSD ref): --";
+  if(g_refAtr > 0.0 && g_refPipValue > 0.0)
+    lotLine = StringFormat("Lot (EURUSD ref): %.2f", ReferenceLot);
+
+  string nextAddLine = "Next add: --";
 
   int pollRemaining = ApiPollIntervalSeconds;
   if(g_lastPoll > 0)
@@ -1658,8 +1648,16 @@ void UpdateDashboard()
   SetLabelText(g_dashboardLines[5], equityLine, textColor);
   SetLabelText(g_dashboardLines[6], pnlLine, pnlColor);
   SetLabelText(g_dashboardLines[7], ddLine, ddColor);
-  SetLabelText(g_dashboardLines[8], nextAddLine, dimColor);
-  SetLabelText(g_dashboardLines[9], pollLine + "   |   " + errorLine, errorColor);
+  string modelLine = StringFormat("Models: A %d  B %d  D %d  C %d  S %d",
+                                  CountSignalsByModel("antikythera"),
+                                  CountSignalsByModel("blended"),
+                                  CountSignalsByModel("dealer"),
+                                  CountSignalsByModel("commercial"),
+                                  CountSignalsByModel("sentiment"));
+
+  SetLabelText(g_dashboardLines[8], lotLine, dimColor);
+  SetLabelText(g_dashboardLines[9], modelLine, dimColor);
+  SetLabelText(g_dashboardLines[10], pollLine + "   |   " + errorLine, errorColor);
 }
 
 //+------------------------------------------------------------------+
@@ -1736,6 +1734,17 @@ int CountOpenPairs()
       continue;
     SymbolStats stats;
     if(GetSymbolStats(symbol, stats))
+      count++;
+  }
+  return count;
+}
+
+int CountSignalsByModel(const string model)
+{
+  int count = 0;
+  for(int i = 0; i < ArraySize(g_models); i++)
+  {
+    if(g_models[i] == model)
       count++;
   }
   return count;
@@ -1924,14 +1933,14 @@ string BuildAccountPayload()
   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
   double margin = AccountInfoDouble(ACCOUNT_MARGIN);
-  double freeMargin = AccountInfoDouble(ACCOUNT_FREEMARGIN);
+  double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
   int openPositions = CountOpenPositions();
   int openPairs = CountOpenPairs();
   double totalLots = GetTotalBasketLots();
   double pnlPct = 0.0;
   if(g_baselineEquity > 0.0)
     pnlPct = (equity - g_baselineEquity) / g_baselineEquity * 100.0;
-  double riskUsed = openPairs * MaxRiskPercent;
+  double riskUsed = 0.0;
   int nextAddSeconds = GetNextAddSeconds();
   int nextPollSeconds = GetNextPollSeconds();
   int tradeCount = 0;
@@ -2220,27 +2229,7 @@ string AccountStatusToString()
 //+------------------------------------------------------------------+
 int GetNextAddSeconds()
 {
-  if(g_state != STATE_ACTIVE || ArraySize(g_brokerSymbols) == 0)
-    return -1;
-
-  datetime now = TimeCurrent();
-  datetime earliest = 0;
-  bool found = false;
-  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
-  {
-    if(g_brokerSymbols[i] == "")
-      continue;
-    datetime lastAdd = g_lastAddTimes[i];
-    datetime candidate = (lastAdd == 0 ? now : lastAdd + AddIntervalMinutes * 60);
-    if(!found || candidate < earliest)
-    {
-      earliest = candidate;
-      found = true;
-    }
-  }
-  if(!found)
-    return -1;
-  return (int)(earliest - now);
+  return -1;
 }
 
 //+------------------------------------------------------------------+

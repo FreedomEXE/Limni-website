@@ -382,9 +382,15 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   });
   const allTimeStats = models.map((model) => {
     const weekMap = weekTotalsByModel.get(model) ?? new Map();
-    const nowWeekOpen = getWeekOpenUtc();
+    const nowUtc = DateTime.utc().toMillis();
     const weekReturns = Array.from(weekMap.entries())
-      .filter(([week]) => week <= nowWeekOpen)
+      .filter(([week]) => {
+        const parsed = DateTime.fromISO(week, { zone: "utc" });
+        if (!parsed.isValid) {
+          return false;
+        }
+        return parsed.toMillis() <= nowUtc;
+      })
       .map(([week, value]) => ({
         week,
         value,
