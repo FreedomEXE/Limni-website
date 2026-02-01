@@ -8,6 +8,7 @@ import {
   type PairPerformance,
 } from "./priceStore";
 import { fetchOandaCandle, getOandaInstrument } from "./oandaPrices";
+import { fetchBitgetCandleRange } from "./bitget";
 
 type PerformanceResult = {
   performance: Record<string, PairPerformance | null>;
@@ -85,6 +86,10 @@ function hasOandaPricing(): boolean {
   return Boolean(process.env.OANDA_API_KEY) && Boolean(process.env.OANDA_ACCOUNT_ID);
 }
 
+function hasCryptoPricing(): boolean {
+  return true;
+}
+
 function pipSize(pair: string, assetClass: AssetClass): number {
   if (assetClass !== "fx") {
     return 1;
@@ -111,21 +116,8 @@ function formatUtcLabel(isoValue: string) {
 }
 
 function getCryptoWeekOpenUtc(now: DateTime): DateTime {
-  const nyNow = now.setZone("America/New_York");
-  const daysSinceSunday = nyNow.weekday % 7;
-  let sunday = nyNow.minus({ days: daysSinceSunday });
-  const openToday = sunday.set({
-    hour: 0,
-    minute: 0,
-    second: 0,
-    millisecond: 0,
-  });
-
-  if (daysSinceSunday === 0 && nyNow.toMillis() < openToday.toMillis()) {
-    sunday = sunday.minus({ days: 7 });
-  }
-
-  return openToday.toUTC();
+  const utcNow = now.setZone("utc");
+  return utcNow.startOf("week");
 }
 
 function getSessionSpec(assetClass: Exclude<AssetClass, "crypto">): SessionSpec {
@@ -138,19 +130,15 @@ function getSessionSpec(assetClass: Exclude<AssetClass, "crypto">): SessionSpec 
 function getCryptoReportWindowUtc(
   reportDate: string,
 ): { openUtc: DateTime; closeUtc: DateTime } {
-  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+  const report = DateTime.fromISO(reportDate, { zone: "utc" });
   if (!report.isValid) {
     const openUtc = getCryptoWeekOpenUtc(DateTime.utc());
     return { openUtc, closeUtc: openUtc.plus({ weeks: 1 }) };
   }
+  const nextMonday = report.startOf("week").plus({ weeks: 1 });
+  const close = nextMonday.plus({ weeks: 1 });
 
-  const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
-  const sunday = report
-    .plus({ days: daysUntilSunday })
-    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-  const nextSunday = sunday.plus({ weeks: 1 });
-
-  return { openUtc: sunday.toUTC(), closeUtc: nextSunday.toUTC() };
+  return { openUtc: nextMonday.toUTC(), closeUtc: close.toUTC() };
 }
 
 function getSundaySessionOpenUtc(now: DateTime, spec: SessionSpec): DateTime {
@@ -330,6 +318,16 @@ function buildPerformanceValue(
   };
 }
 
+function getCryptoBase(pair: string): "BTC" | "ETH" | null {
+  if (pair.startsWith("BTC")) {
+    return "BTC";
+  }
+  if (pair.startsWith("ETH")) {
+    return "ETH";
+  }
+  return null;
+}
+
 async function fetchPairPerformanceWindow(
   pair: string,
   assetClass: AssetClass,
@@ -341,6 +339,26 @@ async function fetchPairPerformanceWindow(
   }
 
   try {
+    if (assetClass === "crypto") {
+      const base = getCryptoBase(pair);
+      if (!base) {
+        return null;
+      }
+      const bitgetResult = await fetchBitgetCandleRange(base, window);
+      if (bitgetResult) {
+        return buildPerformanceValue(
+          pair,
+          assetClass,
+          bitgetResult.open,
+          bitgetResult.close,
+          info.direction,
+          bitgetResult.openTime,
+          bitgetResult.closeTime,
+        );
+      }
+      return null;
+    }
+
     const oandaResult = await fetchOandaCandle(
       assetClass === "fx" ? fxSymbol(pair) : pair,
       window.openUtc,
@@ -369,10 +387,10 @@ export async function getPairPerformanceForWindows(
   windows: Record<string, { openUtc: DateTime; closeUtc: DateTime }>,
   options?: { assetClass?: AssetClass },
 ): Promise<PerformanceResult> {
-  if (!hasOandaPricing()) {
+  if (options?.assetClass === "crypto" ? !hasCryptoPricing() : !hasOandaPricing()) {
     return {
       performance: {},
-      note: "OANDA pricing not configured.",
+      note: options?.assetClass === "crypto" ? "Crypto pricing not configured." : "OANDA pricing not configured.",
       missingPairs: Object.keys(pairs),
     };
   }
@@ -417,7 +435,8 @@ export async function getPairPerformanceForWindows(
     missing > 0
       ? `Missing prices for ${missing}/${totalPairs}.`
       : "Prices ready.";
-  const note = `${baseNote} Sentiment windows applied.`;
+  const pricingNote = assetClass === "crypto" ? "Bitget pricing." : "OANDA pricing.";
+  const note = `${baseNote} Sentiment windows applied. ${pricingNote}`;
 
   return { performance, note, missingPairs };
 }
@@ -479,22 +498,41 @@ async function buildNonFxPerformance(
   for (const [pair, info] of Object.entries(pairs)) {
     let resolved = false;
     try {
-      const oandaResult = await fetchOandaCandle(
-        pair,
-        window.openUtc,
-        window.closeUtc,
-      );
-      if (oandaResult) {
-        performance[pair] = buildPerformanceValue(
+      if (assetClass === "crypto") {
+        const base = getCryptoBase(pair);
+        if (base) {
+          const bitgetResult = await fetchBitgetCandleRange(base, window);
+          if (bitgetResult) {
+            performance[pair] = buildPerformanceValue(
+              pair,
+              assetClass,
+              bitgetResult.open,
+              bitgetResult.close,
+              info.direction,
+              bitgetResult.openTime,
+              bitgetResult.closeTime,
+            );
+            resolved = true;
+          }
+        }
+      } else {
+        const oandaResult = await fetchOandaCandle(
           pair,
-          assetClass,
-          oandaResult.open,
-          oandaResult.close,
-          info.direction,
-          oandaResult.openTime,
-          oandaResult.closeTime,
+          window.openUtc,
+          window.closeUtc,
         );
-        resolved = true;
+        if (oandaResult) {
+          performance[pair] = buildPerformanceValue(
+            pair,
+            assetClass,
+            oandaResult.open,
+            oandaResult.close,
+            info.direction,
+            oandaResult.openTime,
+            oandaResult.closeTime,
+          );
+          resolved = true;
+        }
       }
     } catch (error) {
       console.error(error);
@@ -516,7 +554,8 @@ async function buildNonFxPerformance(
   const timingNote = window.isHistorical
     ? `Close ${closeLabel}. Historical performance uses weekly close.`
     : `Latest ${closeLabel}.`;
-  const note = `${baseNote} ${timingNote}`;
+  const pricingNote = assetClass === "crypto" ? "Bitget pricing." : "OANDA pricing.";
+  const note = `${baseNote} ${timingNote} ${pricingNote}`;
 
   return { performance, note, missingPairs };
 }
@@ -525,10 +564,10 @@ export async function getPairPerformance(
   pairs: Record<string, PairSnapshot>,
   options?: PerformanceOptions,
 ): Promise<PerformanceResult> {
-  if (!hasOandaPricing()) {
+  if (options?.assetClass === "crypto" ? !hasCryptoPricing() : !hasOandaPricing()) {
     return {
       performance: {},
-      note: "OANDA pricing not configured.",
+      note: options?.assetClass === "crypto" ? "Crypto pricing not configured." : "OANDA pricing not configured.",
       missingPairs: Object.keys(pairs),
     };
   }
@@ -599,8 +638,8 @@ export async function getPairPerformance(
               )}.`
             : `Last refresh ${formatUtcLabel(snapshot.last_refresh_utc)}.`;
         const note =
-          assetClass === "fx"
-            ? `${baseNote} Derived from OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
+          assetClass === "crypto"
+            ? `${baseNote} Derived from Bitget pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
             : `${baseNote} Derived from OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
         return { performance, note, missingPairs };
       }
@@ -647,7 +686,10 @@ export async function getPairPerformance(
     missing > 0
       ? `Missing prices for ${missing}/${totalPairs}. ${timingNote}`
       : `${timingNote}`;
-  const note = `${baseNote} Derived from OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
+  const note =
+    assetClass === "crypto"
+      ? `${baseNote} Derived from Bitget pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
+      : `${baseNote} Derived from OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
 
   return { performance, note, missingPairs };
 }
@@ -656,8 +698,12 @@ export async function refreshMarketSnapshot(
   pairs: Record<string, PairSnapshot>,
   options?: { force?: boolean; assetClass?: AssetClass },
 ): Promise<MarketSnapshot> {
-  if (!hasOandaPricing()) {
-    throw new Error("OANDA pricing not configured.");
+  if (options?.assetClass === "crypto" ? !hasCryptoPricing() : !hasOandaPricing()) {
+    throw new Error(
+      options?.assetClass === "crypto"
+        ? "Crypto pricing not configured."
+        : "OANDA pricing not configured.",
+    );
   }
 
   const assetClass = options?.assetClass ?? "fx";

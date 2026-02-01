@@ -127,10 +127,12 @@ export function buildSentimentPairsWithHistory(options: {
 
     const openMs = weekOpenUtc.toMillis();
     const closeMs = weekCloseUtc.toMillis();
-    const historyWithTimes = history.map((agg) => ({
-      agg,
-      time: DateTime.fromISO(agg.timestamp_utc, { zone: "utc" }),
-    })).filter((entry) => entry.time.isValid && entry.time.toMillis() <= closeMs);
+    const historyWithTimes = history
+      .map((agg) => ({
+        agg,
+        time: DateTime.fromISO(agg.timestamp_utc, { zone: "utc" }),
+      }))
+      .filter((entry) => entry.time.isValid);
 
     if (historyWithTimes.length === 0) {
       continue;
@@ -146,9 +148,12 @@ export function buildSentimentPairsWithHistory(options: {
     let reason: string[] | undefined;
 
     if (!activeDirection) {
-      const firstDirectional = historyWithTimes.find(
-        (entry) => entry.time.toMillis() >= openMs && sentimentDirection(entry.agg),
-      );
+      const firstDirectional = historyWithTimes.find((entry) => {
+        if (entry.time.toMillis() < openMs) {
+          return false;
+        }
+        return sentimentDirection(entry.agg);
+      });
       if (!firstDirectional) {
         continue;
       }
@@ -156,8 +161,10 @@ export function buildSentimentPairsWithHistory(options: {
       if (!activeDirection) {
         continue;
       }
-      openTime = firstDirectional.time;
-      reason = [`Sentiment activated ${activeDirection.toLowerCase()}`];
+      openTime = weekOpenUtc;
+      reason = [
+        `Sentiment snapshot ${firstDirectional.time.toUTC().toISO() ?? "after week open"}`,
+      ];
     }
 
     const firstChange = historyWithTimes.find((entry) => {
@@ -179,6 +186,10 @@ export function buildSentimentPairsWithHistory(options: {
       } else {
         reason.push(`Sentiment flipped to ${nextDirection.toLowerCase()}`);
       }
+    }
+
+    if (closeTime.toMillis() > closeMs) {
+      closeTime = weekCloseUtc;
     }
 
     if (closeTime.toMillis() <= openTime.toMillis()) {
