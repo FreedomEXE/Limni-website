@@ -28,10 +28,10 @@ input bool ShowDashboard = true;
 input int DashboardCorner = 0;
 input int DashboardX = 18;
 input int DashboardY = 18;
-input int DashboardWidth = 360;
-input int DashboardLineHeight = 18;
-input int DashboardPadding = 10;
-input int DashboardFontSize = 10;
+input int DashboardWidth = 560;
+input int DashboardLineHeight = 24;
+input int DashboardPadding = 14;
+input int DashboardFontSize = 13;
 input bool PushAccountStats = true;
 input string PushUrl = "https://limni-website.vercel.app/api/mt5/push";
 input string PushToken = "2121";
@@ -367,12 +367,16 @@ bool FetchApi(string &json)
   if(status == -1)
   {
     int err = GetLastError();
+    g_lastApiError = StringFormat("webrequest %d", err);
+    g_lastApiErrorTime = TimeCurrent();
     Log(StringFormat("WebRequest failed: %d", err));
     return false;
   }
 
   if(status != 200)
   {
+    g_lastApiError = StringFormat("http %d", status);
+    g_lastApiErrorTime = TimeCurrent();
     Log(StringFormat("API HTTP status %d", status));
     return false;
   }
