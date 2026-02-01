@@ -72,7 +72,7 @@ function getBiasMode(value?: string): BiasMode {
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const role = await getSessionRole();
-  if (role === "admin") {
+  if (role) {
     try {
       await refreshAppData();
     } catch (error) {

@@ -60,7 +60,7 @@ function reportWeekOpenUtc(reportDate: string): string | null {
 
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
   const role = await getSessionRole();
-  if (role === "admin") {
+  if (role) {
     try {
       await refreshAppData();
     } catch (error) {

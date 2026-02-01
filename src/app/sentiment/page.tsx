@@ -44,7 +44,7 @@ function getAssetClass(value?: string | null): SentimentView {
 
 export default async function SentimentPage({ searchParams }: SentimentPageProps) {
   const role = await getSessionRole();
-  if (role === "admin") {
+  if (role) {
     try {
       await refreshAppData();
     } catch (error) {

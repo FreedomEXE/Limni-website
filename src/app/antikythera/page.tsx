@@ -24,7 +24,7 @@ type AntikytheraPageProps = {
 
 export default async function AntikytheraPage({ searchParams }: AntikytheraPageProps) {
   const role = await getSessionRole();
-  if (role === "admin") {
+  if (role) {
     try {
       await refreshAppData();
     } catch (error) {
@@ -76,39 +76,6 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
     );
   }
 
-  const signalGroups = assetClasses.map((asset) => {
-    const snapshot = snapshots.get(asset.id) ?? null;
-    const signals =
-      snapshot
-        ? buildAntikytheraSignals({
-            assetClass: asset.id,
-            snapshot,
-            sentiment,
-          })
-        : [];
-    return { asset, signals, hasHistory: Boolean(snapshot) };
-  });
-
-  let allSignals = signalGroups.flatMap((group) =>
-    group.signals.map((signal) => ({
-      ...signal,
-      assetId: group.asset.id,
-      assetLabel: group.asset.label,
-    })),
-  );
-  const filteredSignals = selectedAsset && selectedAsset !== "all"
-    ? allSignals.filter((signal) => signal.assetId === selectedAsset)
-    : allSignals;
-  const latestSnapshotRefresh = latestIso(
-    assetClasses.map((asset) => snapshots.get(asset.id)?.last_refresh_utc),
-  );
-  const latestSentimentRefresh = latestIso(
-    sentiment.map((item) => item.timestamp_utc),
-  );
-  const latestAntikytheraRefresh = latestIso([
-    latestSnapshotRefresh,
-    latestSentimentRefresh,
-  ]);
   const weeks = await listPerformanceWeeks();
   let selectedWeek = weeks[0] ?? null;
   if (selectedReportDate) {
@@ -124,7 +91,39 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       }
     }
   }
+  try {
+    if (selectedWeek) {
+      const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
+      const close = open.isValid ? open.plus({ days: 7 }) : open;
+      sentiment = open.isValid
+        ? await getAggregatesForWeekStart(open.toUTC().toISO() ?? selectedWeek, close.toUTC().toISO() ?? selectedWeek)
+        : await getLatestAggregatesLocked();
+    } else {
+      sentiment = await getLatestAggregatesLocked();
+    }
+  } catch (error) {
+    console.error(
+      "Antikythera sentiment load failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
   let performanceByPair: Record<string, number | null> = {};
+  let allSignals = assetClasses.flatMap((asset) => {
+    const snapshot = snapshots.get(asset.id) ?? null;
+    const signals =
+      snapshot
+        ? buildAntikytheraSignals({
+            assetClass: asset.id,
+            snapshot,
+            sentiment,
+          })
+        : [];
+    return signals.map((signal) => ({
+      ...signal,
+      assetId: asset.id,
+      assetLabel: asset.label,
+    }));
+  });
   if (selectedWeek) {
     try {
       const weekSnapshots = await readPerformanceSnapshotsByWeek(selectedWeek);
@@ -156,22 +155,31 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       console.error("Antikythera performance load failed:", error);
     }
   }
-  try {
-    if (selectedWeek) {
-      const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
-      const close = open.isValid ? open.plus({ days: 7 }) : open;
-      sentiment = open.isValid
-        ? await getAggregatesForWeekStart(open.toUTC().toISO() ?? selectedWeek, close.toUTC().toISO() ?? selectedWeek)
-        : await getLatestAggregatesLocked();
-    } else {
-      sentiment = await getLatestAggregatesLocked();
-    }
-  } catch (error) {
-    console.error(
-      "Antikythera sentiment load failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
+  const signalGroups = assetClasses.map((asset) => ({
+    asset,
+    signals: allSignals
+      .filter((signal) => signal.assetId === asset.id)
+      .map((signal) => ({
+        pair: signal.pair,
+        direction: signal.direction,
+        reasons: signal.reasons,
+        confidence: signal.confidence,
+      })),
+    hasHistory: Boolean(snapshots.get(asset.id)),
+  }));
+  const filteredSignals = selectedAsset && selectedAsset !== "all"
+    ? allSignals.filter((signal) => signal.assetId === selectedAsset)
+    : allSignals;
+  const latestSnapshotRefresh = latestIso(
+    assetClasses.map((asset) => snapshots.get(asset.id)?.last_refresh_utc),
+  );
+  const latestSentimentRefresh = latestIso(
+    sentiment.map((item) => item.timestamp_utc),
+  );
+  const latestAntikytheraRefresh = latestIso([
+    latestSnapshotRefresh,
+    latestSentimentRefresh,
+  ]);
   const reportWeekLabel = (() => {
     if (!selectedReportDate) {
       return "";

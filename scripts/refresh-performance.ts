@@ -56,6 +56,8 @@ async function main() {
   const weekCloseIso = weekOpen.isValid
     ? weekOpen.plus({ days: 7 }).toUTC().toISO() ?? weekOpenUtc
     : weekOpenUtc;
+  const nowUtc = DateTime.utc();
+  const isFutureWeek = weekOpen.isValid && weekOpen.toMillis() > nowUtc.toMillis();
   const [latestSentiment, sentimentHistory] = await Promise.all([
     getAggregatesForWeekStart(weekOpenUtc, weekCloseIso),
     readAggregates(),
@@ -70,11 +72,13 @@ async function main() {
     if (!snapshot) {
       continue;
     }
-    const performance = await getPairPerformance(buildAllPairs(asset.id), {
-      assetClass: asset.id,
-      reportDate: snapshot.report_date,
-      isLatestReport: true,
-    });
+    const performance = isFutureWeek
+      ? { performance: {}, note: "Week has not started yet.", missingPairs: [] }
+      : await getPairPerformance(buildAllPairs(asset.id), {
+          assetClass: asset.id,
+          reportDate: snapshot.report_date,
+          isLatestReport: true,
+        });
     const window = getPerformanceWindow({
       assetClass: asset.id,
       reportDate: snapshot.report_date,
@@ -90,16 +94,18 @@ async function main() {
           weekOpenUtc: window.openUtc,
           weekCloseUtc: window.closeUtc,
         });
-        const sentimentPerformance = await getPairPerformanceForWindows(
-          sentimentPairs.pairs,
-          Object.fromEntries(
-            Object.entries(sentimentPairs.windows).map(([pair, windowInfo]) => [
-              pair,
-              { openUtc: windowInfo.openUtc, closeUtc: windowInfo.closeUtc },
-            ]),
-          ),
-          { assetClass: asset.id },
-        );
+        const sentimentPerformance = isFutureWeek
+          ? { performance: {}, note: "Week has not started yet.", missingPairs: [] }
+          : await getPairPerformanceForWindows(
+              sentimentPairs.pairs,
+              Object.fromEntries(
+                Object.entries(sentimentPairs.windows).map(([pair, windowInfo]) => [
+                  pair,
+                  { openUtc: windowInfo.openUtc, closeUtc: windowInfo.closeUtc },
+                ]),
+              ),
+              { assetClass: asset.id },
+            );
         result = await computeModelPerformance({
           model,
           assetClass: asset.id,

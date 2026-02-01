@@ -23,7 +23,7 @@ export function getPool(): Pool {
       ssl: requiresSsl ? { rejectUnauthorized: false } : false,
       max: 10, // Maximum number of clients in the pool
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 10000,
     });
 
     pool.on("error", (err) => {
