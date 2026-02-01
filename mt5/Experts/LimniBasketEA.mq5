@@ -7,6 +7,7 @@
 #include <Trade/Trade.mqh>
 
 input string ApiUrl = "https://limni-website.vercel.app/api/cot/baskets/latest";
+input string ApiUrlFallback = "";
 input string AssetFilter = "all";
 input bool ResetStateOnInit = false;
 input int ApiPollIntervalSeconds = 60;
@@ -28,10 +29,13 @@ input bool ShowDashboard = true;
 input int DashboardCorner = 0;
 input int DashboardX = 18;
 input int DashboardY = 18;
-input int DashboardWidth = 560;
-input int DashboardLineHeight = 24;
-input int DashboardPadding = 14;
-input int DashboardFontSize = 13;
+input int DashboardWidth = 1200;
+input int DashboardLineHeight = 32;
+input int DashboardPadding = 24;
+input int DashboardFontSize = 17;
+input int DashboardTitleSize = 22;
+input int DashboardAccentWidth = 12;
+input int DashboardShadowOffset = 8;
 input bool PushAccountStats = true;
 input string PushUrl = "https://limni-website.vercel.app/api/mt5/push";
 input string PushToken = "2121";
@@ -112,11 +116,19 @@ string g_lastApiError = "";
 datetime g_lastApiErrorTime = 0;
 string g_dashboardLines[];
 bool g_dashboardReady = false;
+int g_dashWidth = 0;
+int g_dashLineHeight = 0;
+int g_dashPadding = 0;
+int g_dashFontSize = 0;
+int g_dashTitleSize = 0;
+int g_dashAccentWidth = 0;
+int g_dashShadowOffset = 0;
 
 // Forward declarations
 void PollApiIfDue();
 bool FetchApi(string &json);
 string BuildApiUrl();
+string BuildPushUrl();
 bool ParseApiResponse(const string json, bool &allowed, string &reportDate,
                       string &symbols[], int &dirs[], string &models[], string &assetClasses[]);
 bool ParsePairsArray(const string json, string &symbols[], int &dirs[], string &models[], string &assetClasses[]);
@@ -166,6 +178,8 @@ void SetLabelText(const string name, const string text, color textColor);
 string StateToString(EAState state);
 string FormatDuration(int seconds);
 string FormatTimeValue(datetime value);
+string CompactText(const string value, int maxLen);
+string EnsureTrailingSlash(const string url);
 int CountOpenPositions();
 int CountOpenPairs();
 int CountSignalsByModel(const string model);
@@ -267,8 +281,11 @@ void PollApiIfDue()
   if(!FetchApi(json))
   {
     g_apiOk = false;
-    g_lastApiError = "fetch failed";
-    g_lastApiErrorTime = TimeCurrent();
+    if(g_lastApiError == "")
+    {
+      g_lastApiError = "fetch failed";
+      g_lastApiErrorTime = TimeCurrent();
+    }
     Log("API fetch failed. Pausing new entries.");
     return;
   }
@@ -351,6 +368,19 @@ string BuildApiUrl()
   string sep = StringFind(url, "?") >= 0 ? "&" : "?";
   return url + sep + "asset=" + AssetFilter;
 }
+
+string BuildPushUrl()
+{
+  if(PushUrl != "")
+    return PushUrl;
+
+  string api = BuildApiUrl();
+  int apiIdx = StringFind(api, "/api/");
+  if(apiIdx < 0)
+    return api;
+  string base = StringSubstr(api, 0, apiIdx);
+  return base + "/api/mt5/push";
+}
 //+------------------------------------------------------------------+
 bool FetchApi(string &json)
 {
@@ -361,9 +391,27 @@ bool FetchApi(string &json)
   int timeout = 8000;
   string request_headers = "Accept: application/json\r\n"
                            "Accept-Encoding: identity\r\n"
-                           "Connection: close\r\n";
+                           "Connection: close\r\n"
+                           "User-Agent: MT5-LimniBasket/2.1\r\n";
   string url = BuildApiUrl();
   int status = WebRequest("GET", url, request_headers, timeout, data, result, headers);
+  if(status == 404)
+  {
+    string altUrl = EnsureTrailingSlash(url);
+    if(altUrl != url)
+      status = WebRequest("GET", altUrl, request_headers, timeout, data, result, headers);
+    if(status == 404 && ApiUrlFallback != "" && ApiUrlFallback != url)
+    {
+      string fallbackUrl = ApiUrlFallback;
+      status = WebRequest("GET", fallbackUrl, request_headers, timeout, data, result, headers);
+      if(status == 404)
+      {
+        string altFallback = EnsureTrailingSlash(fallbackUrl);
+        if(altFallback != fallbackUrl)
+          status = WebRequest("GET", altFallback, request_headers, timeout, data, result, headers);
+      }
+    }
+  }
   if(status == -1)
   {
     int err = GetLastError();
@@ -377,7 +425,7 @@ bool FetchApi(string &json)
   {
     g_lastApiError = StringFormat("http %d", status);
     g_lastApiErrorTime = TimeCurrent();
-    Log(StringFormat("API HTTP status %d", status));
+    Log(StringFormat("API HTTP status %d (%s)", status, TruncateForLog(url, 120)));
     return false;
   }
 
@@ -1498,24 +1546,34 @@ void InitDashboard()
   if(!ShowDashboard)
     return;
 
-  const int lineCount = 13;
+  DestroyDashboard();
+
+  g_dashWidth = MathMax(DashboardWidth, 1100);
+  g_dashLineHeight = MathMax(DashboardLineHeight, 30);
+  g_dashPadding = MathMax(DashboardPadding, 20);
+  g_dashFontSize = MathMax(DashboardFontSize, 16);
+  g_dashTitleSize = MathMax(DashboardTitleSize, 20);
+  g_dashAccentWidth = MathMax(DashboardAccentWidth, 10);
+  g_dashShadowOffset = MathMax(DashboardShadowOffset, 6);
+
+  const int lineCount = 20;
   ArrayResize(g_dashboardLines, lineCount);
   for(int i = 0; i < lineCount; i++)
     g_dashboardLines[i] = StringFormat("LimniDash_line_%d", i);
 
-  int headerHeight = DashboardLineHeight + 10;
-  int height = DashboardPadding * 2 + headerHeight + lineCount * DashboardLineHeight;
-  int accentWidth = 5;
-  int contentX = DashboardX + DashboardPadding + accentWidth;
-  int contentWidth = DashboardWidth - (DashboardPadding * 2) - accentWidth;
+  int headerHeight = g_dashLineHeight + 12;
+  int height = g_dashPadding * 2 + headerHeight + lineCount * g_dashLineHeight;
+  int accentWidth = g_dashAccentWidth;
+  int contentX = DashboardX + g_dashPadding + accentWidth;
+  int contentWidth = g_dashWidth - (g_dashPadding * 2) - accentWidth;
 
   if(ObjectFind(0, DASH_SHADOW) < 0)
   {
     ObjectCreate(0, DASH_SHADOW, OBJ_RECTANGLE_LABEL, 0, 0, 0);
     ObjectSetInteger(0, DASH_SHADOW, OBJPROP_CORNER, DashboardCorner);
-    ObjectSetInteger(0, DASH_SHADOW, OBJPROP_XDISTANCE, DashboardX + 4);
-    ObjectSetInteger(0, DASH_SHADOW, OBJPROP_YDISTANCE, DashboardY + 4);
-    ObjectSetInteger(0, DASH_SHADOW, OBJPROP_XSIZE, DashboardWidth);
+    ObjectSetInteger(0, DASH_SHADOW, OBJPROP_XDISTANCE, DashboardX + g_dashShadowOffset);
+    ObjectSetInteger(0, DASH_SHADOW, OBJPROP_YDISTANCE, DashboardY + g_dashShadowOffset);
+    ObjectSetInteger(0, DASH_SHADOW, OBJPROP_XSIZE, g_dashWidth);
     ObjectSetInteger(0, DASH_SHADOW, OBJPROP_YSIZE, height);
     ObjectSetInteger(0, DASH_SHADOW, OBJPROP_COLOR, C'203,213,225');
     ObjectSetInteger(0, DASH_SHADOW, OBJPROP_BGCOLOR, C'203,213,225');
@@ -1531,7 +1589,7 @@ void InitDashboard()
     ObjectSetInteger(0, DASH_BG, OBJPROP_CORNER, DashboardCorner);
     ObjectSetInteger(0, DASH_BG, OBJPROP_XDISTANCE, DashboardX);
     ObjectSetInteger(0, DASH_BG, OBJPROP_YDISTANCE, DashboardY);
-    ObjectSetInteger(0, DASH_BG, OBJPROP_XSIZE, DashboardWidth);
+    ObjectSetInteger(0, DASH_BG, OBJPROP_XSIZE, g_dashWidth);
     ObjectSetInteger(0, DASH_BG, OBJPROP_YSIZE, height);
     ObjectSetInteger(0, DASH_BG, OBJPROP_COLOR, C'226,232,240');
     ObjectSetInteger(0, DASH_BG, OBJPROP_BGCOLOR, C'255,255,255');
@@ -1562,7 +1620,7 @@ void InitDashboard()
     ObjectCreate(0, DASH_DIVIDER, OBJ_RECTANGLE_LABEL, 0, 0, 0);
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_CORNER, DashboardCorner);
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_XDISTANCE, contentX);
-    ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_YDISTANCE, DashboardY + DashboardPadding + headerHeight - 4);
+    ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + headerHeight - 6);
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_XSIZE, contentWidth);
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_YSIZE, 1);
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_COLOR, C'226,232,240');
@@ -1578,8 +1636,8 @@ void InitDashboard()
     ObjectCreate(0, DASH_TITLE, OBJ_LABEL, 0, 0, 0);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_CORNER, DashboardCorner);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_XDISTANCE, contentX);
-    ObjectSetInteger(0, DASH_TITLE, OBJPROP_YDISTANCE, DashboardY + DashboardPadding + 1);
-    ObjectSetInteger(0, DASH_TITLE, OBJPROP_FONTSIZE, DashboardFontSize + 3);
+    ObjectSetInteger(0, DASH_TITLE, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + 1);
+    ObjectSetInteger(0, DASH_TITLE, OBJPROP_FONTSIZE, g_dashTitleSize);
     ObjectSetString(0, DASH_TITLE, OBJPROP_FONT, "Segoe UI Semibold");
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_SELECTABLE, false);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_HIDDEN, true);
@@ -1597,9 +1655,9 @@ void InitDashboard()
       0,
       name,
       OBJPROP_YDISTANCE,
-      DashboardY + DashboardPadding + headerHeight + i * DashboardLineHeight
+      DashboardY + g_dashPadding + headerHeight + i * g_dashLineHeight
     );
-    ObjectSetInteger(0, name, OBJPROP_FONTSIZE, DashboardFontSize);
+    ObjectSetInteger(0, name, OBJPROP_FONTSIZE, g_dashFontSize);
     ObjectSetString(0, name, OBJPROP_FONT, "Segoe UI");
     ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
     ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
@@ -1612,8 +1670,6 @@ void InitDashboard()
 //+------------------------------------------------------------------+
 void DestroyDashboard()
 {
-  if(!g_dashboardReady)
-    return;
   ObjectDelete(0, DASH_SHADOW);
   ObjectDelete(0, DASH_BG);
   ObjectDelete(0, DASH_ACCENT);
@@ -1660,6 +1716,7 @@ void UpdateDashboard()
   else if(g_apiOk)
     apiColor = warnColor;
 
+  string urlLine = "URL: " + CompactText(BuildApiUrl(), 120);
   string reportText = (g_reportDate == "" ? "--" : g_reportDate);
   string cacheLine = g_loadedFromCache ? "Cache: Yes" : "Cache: No";
   if(g_lastApiSuccess > 0)
@@ -1674,7 +1731,7 @@ void UpdateDashboard()
                                  FormatTimeValue(g_weekStartGmt),
                                  AssetFilter == "" ? "--" : AssetFilter);
   string pairsLine = StringFormat("Pairs: %d  |  Open pairs: %d", totalPairs, openPairs);
-  string positionLine = StringFormat("Positions: %d  |  Lots: %.2f  |  Trades: %d",
+  string positionLine = StringFormat("Positions: %d  |  Lots: %.2f  |  Orders/min: %d",
                                      openPositions, totalLots, OrdersInLastMinute());
   string equityLine = StringFormat("Equity: %.2f  |  Balance: %.2f  |  Free: %.2f",
                                    AccountInfoDouble(ACCOUNT_EQUITY),
@@ -1720,27 +1777,44 @@ void UpdateDashboard()
   }
   string errorLine = StringFormat("Last error: %s", errorText);
 
-  SetLabelText(DASH_TITLE, "Limni Basket EA", C'15,23,42');
-  SetLabelText(g_dashboardLines[0], StringFormat("State: %s", stateText), stateColor);
-  SetLabelText(g_dashboardLines[1], apiLine, apiColor);
-  SetLabelText(g_dashboardLines[2], cacheLine, dimColor);
-  SetLabelText(g_dashboardLines[3], StringFormat("Report: %s", reportText), dimColor);
-  SetLabelText(g_dashboardLines[4], weekLine, dimColor);
-  SetLabelText(g_dashboardLines[5], pairsLine, textColor);
-  SetLabelText(g_dashboardLines[6], positionLine, textColor);
-  SetLabelText(g_dashboardLines[7], equityLine, textColor);
-  SetLabelText(g_dashboardLines[8], pnlLine, pnlColor);
-  SetLabelText(g_dashboardLines[9], ddLine, ddColor);
+  double capLots = GetBasketLotCap();
   string modelLine = StringFormat("Models: A %d  B %d  D %d  C %d  S %d",
                                   CountSignalsByModel("antikythera"),
                                   CountSignalsByModel("blended"),
                                   CountSignalsByModel("dealer"),
                                   CountSignalsByModel("commercial"),
                                   CountSignalsByModel("sentiment"));
+  string capLine = StringFormat("Lot cap: %.2f  |  Total lots: %.2f", capLots, totalLots);
+  string peakLine = g_weekPeakEquity > 0.0
+                      ? StringFormat("Peak equity: %.2f", g_weekPeakEquity)
+                      : "Peak equity: --";
 
-  SetLabelText(g_dashboardLines[10], lotLine, dimColor);
-  SetLabelText(g_dashboardLines[11], multLine + "  |  " + modelLine, dimColor);
-  SetLabelText(g_dashboardLines[12], pollLine + "  |  " + errorLine, errorColor);
+  color headingColor = C'15,118,110';
+
+  SetLabelText(DASH_TITLE, "Limni Basket EA", C'15,23,42');
+  SetLabelText(g_dashboardLines[0], "SYSTEM", headingColor);
+  SetLabelText(g_dashboardLines[1], StringFormat("State: %s  |  Trading: %s", stateText, g_tradingAllowed ? "Allowed" : "Blocked"), stateColor);
+  SetLabelText(g_dashboardLines[2], apiLine, apiColor);
+  SetLabelText(g_dashboardLines[3], urlLine, dimColor);
+  SetLabelText(g_dashboardLines[4], cacheLine, dimColor);
+  SetLabelText(g_dashboardLines[5], StringFormat("Report: %s", reportText), dimColor);
+  SetLabelText(g_dashboardLines[6], weekLine, dimColor);
+
+  SetLabelText(g_dashboardLines[7], "POSITIONS", headingColor);
+  SetLabelText(g_dashboardLines[8], pairsLine, textColor);
+  SetLabelText(g_dashboardLines[9], positionLine, textColor);
+  SetLabelText(g_dashboardLines[10], capLine, textColor);
+  SetLabelText(g_dashboardLines[11], modelLine, dimColor);
+
+  SetLabelText(g_dashboardLines[12], "ACCOUNT", headingColor);
+  SetLabelText(g_dashboardLines[13], equityLine, textColor);
+  SetLabelText(g_dashboardLines[14], pnlLine, pnlColor);
+  SetLabelText(g_dashboardLines[15], ddLine + "  |  " + peakLine, ddColor);
+
+  SetLabelText(g_dashboardLines[16], "SIZING", headingColor);
+  SetLabelText(g_dashboardLines[17], lotLine, dimColor);
+  SetLabelText(g_dashboardLines[18], multLine, dimColor);
+  SetLabelText(g_dashboardLines[19], pollLine + "  |  " + errorLine, errorColor);
 }
 
 //+------------------------------------------------------------------+
@@ -1785,6 +1859,31 @@ string FormatTimeValue(datetime value)
   if(value <= 0)
     return "--";
   return TimeToString(value, TIME_DATE | TIME_SECONDS);
+}
+
+string CompactText(const string value, int maxLen)
+{
+  if(maxLen <= 3)
+    return value;
+  int len = StringLen(value);
+  if(len <= maxLen)
+    return value;
+  return StringSubstr(value, 0, maxLen - 3) + "...";
+}
+
+string EnsureTrailingSlash(const string url)
+{
+  int qpos = StringFind(url, "?");
+  string base = url;
+  string query = "";
+  if(qpos >= 0)
+  {
+    base = StringSubstr(url, 0, qpos);
+    query = StringSubstr(url, qpos);
+  }
+  if(StringLen(base) > 0 && StringSubstr(base, StringLen(base) - 1, 1) != "/")
+    base += "/";
+  return base + query;
 }
 
 //+------------------------------------------------------------------+
@@ -1890,7 +1989,8 @@ bool SendAccountSnapshot()
   if(payload == "")
     return false;
   string response = "";
-  if(!HttpPostJson(PushUrl, payload, response))
+  string url = BuildPushUrl();
+  if(!HttpPostJson(url, payload, response))
     return false;
   return true;
 }
@@ -1901,7 +2001,8 @@ bool HttpPostJson(const string url, const string payload, string &response)
   uchar result[];
   uchar data[];
   string headers;
-  string request_headers = "Content-Type: application/json\r\n";
+  string request_headers = "Content-Type: application/json\r\n"
+                           "User-Agent: MT5-LimniBasket/2.1\r\n";
   if(PushToken != "")
     request_headers += "x-mt5-token: " + PushToken + "\r\n";
 
@@ -1912,6 +2013,12 @@ bool HttpPostJson(const string url, const string payload, string &response)
   ResetLastError();
   int timeout = 8000;
   int status = WebRequest("POST", url, request_headers, timeout, data, result, headers);
+  if(status == 404)
+  {
+    string altUrl = EnsureTrailingSlash(url);
+    if(altUrl != url)
+      status = WebRequest("POST", altUrl, request_headers, timeout, data, result, headers);
+  }
   if(status == -1)
   {
     Log(StringFormat("Snapshot WebRequest failed: %d", GetLastError()));
@@ -1919,7 +2026,7 @@ bool HttpPostJson(const string url, const string payload, string &response)
   }
   if(status != 200)
   {
-    Log(StringFormat("Snapshot HTTP status %d", status));
+    Log(StringFormat("Snapshot HTTP status %d (%s)", status, TruncateForLog(url, 120)));
     return false;
   }
 
