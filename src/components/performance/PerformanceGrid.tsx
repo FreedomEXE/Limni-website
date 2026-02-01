@@ -26,6 +26,22 @@ type PerformanceGridProps = {
 };
 
 const ACCOUNT_SIZES = [10000, 50000, 100000, 250000, 500000, 1000000];
+const MODEL_ORDER: PerformanceModel[] = [
+  "antikythera",
+  "blended",
+  "dealer",
+  "commercial",
+  "sentiment",
+];
+
+function sortModels(models: ModelPerformance[]) {
+  const order = new Map(MODEL_ORDER.map((model, index) => [model, index]));
+  return [...models].sort((a, b) => {
+    const aIndex = order.get(a.model) ?? MODEL_ORDER.length;
+    const bIndex = order.get(b.model) ?? MODEL_ORDER.length;
+    return aIndex - bIndex;
+  });
+}
 
 function formatPercent(value: number) {
   const sign = value > 0 ? "+" : value < 0 ? "" : "";
@@ -281,6 +297,19 @@ export default function PerformanceGrid({
   const [accountSize, setAccountSize] = useState(
     calibration?.accountSize ?? 100000,
   );
+  const sections = useMemo(() => {
+    return [combined, ...perAsset].map((section) => ({
+      ...section,
+      models: sortModels(section.models),
+    }));
+  }, [combined, perAsset]);
+  const [selectedSectionId, setSelectedSectionId] = useState(sections[0]?.id ?? "combined");
+
+  useEffect(() => {
+    if (!sections.find((section) => section.id === selectedSectionId)) {
+      setSelectedSectionId(sections[0]?.id ?? "combined");
+    }
+  }, [sections, selectedSectionId]);
 
   useEffect(() => {
     if (calibration?.accountSize) {
@@ -541,81 +570,58 @@ export default function PerformanceGrid({
   return (
     <>
       <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              {combined.label}
-            </h2>
-            <p className="text-sm text-[color:var(--muted)]">
-              {combined.description}
-            </p>
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">
+            Basket performance
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => setSelectedSectionId(section.id)}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+                  selectedSectionId === section.id
+                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)]"
+                }`}
+              >
+                {section.id === "combined" ? "All" : section.label}
+              </button>
+            ))}
           </div>
-          <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Latest week
-          </span>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {combined.models.map((result, index) => (
-            <PerformanceCard
-              key={`combined-${result.model}`}
-              label={labels[result.model]}
-              performance={result}
-              onOpen={() =>
-                setActive({
-                  sectionLabel: combined.label,
-                  modelLabel: labels[result.model],
-                  performance: result,
-                })
-              }
-              calibrationSize={calibration?.accountSize}
-              calibrationLabel={calibration ? "MT5 sized" : undefined}
-              style={{ animationDelay: `${index * 50}ms` }}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-6">
-        {perAsset.map((section) => (
-          <div
-            key={section.id}
-            className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
-          >
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                {section.label} Basket
-              </h2>
-              <p className="text-sm text-[color:var(--muted)]">
-                {section.description}
-              </p>
+        {sections.map((section) =>
+          section.id === selectedSectionId ? (
+            <div key={section.id}>
+              {section.models.length === 0 ? (
+                <p className="text-sm text-[color:var(--muted)]">
+                  No snapshots available.
+                </p>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                  {section.models.map((result, index) => (
+                    <PerformanceCard
+                      key={`${section.id}-${result.model}`}
+                      label={labels[result.model]}
+                      performance={result}
+                      onOpen={() =>
+                        setActive({
+                          sectionLabel: section.label,
+                          modelLabel: labels[result.model],
+                          performance: result,
+                        })
+                      }
+                      calibrationSize={calibration?.accountSize}
+                      calibrationLabel={calibration ? "MT5 sized" : undefined}
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-            {section.models.length === 0 ? (
-              <p className="text-sm text-[color:var(--muted)]">
-                No snapshots available.
-              </p>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                {section.models.map((result, index) => (
-                  <PerformanceCard
-                    key={`${section.id}-${result.model}`}
-                    label={labels[result.model]}
-                    performance={result}
-                    onOpen={() =>
-                      setActive({
-                        sectionLabel: section.label,
-                        modelLabel: labels[result.model],
-                        performance: result,
-                      })
-                    }
-                    calibrationSize={calibration?.accountSize}
-                    calibrationLabel={calibration ? "MT5 sized" : undefined}
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+          ) : null,
+        )}
       </section>
       {modal}
     </>
