@@ -7,6 +7,8 @@ import {
 import { buildUniversalBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 
+export const dynamic = "force-dynamic";
+
 export default async function AutomationResearchPage() {
   const scalpSummary = await loadScalpBotSummary();
   const stage3Summary = await loadScalpBotStage3Summary();
