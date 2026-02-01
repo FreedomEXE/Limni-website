@@ -21,6 +21,7 @@ import {
   readPerformanceSnapshotsByWeek,
   isWeekOpenUtc,
   weekLabelFromOpen,
+  getWeekOpenUtc,
 } from "@/lib/performanceSnapshots";
 import { refreshAppData } from "@/lib/appRefresh";
 import { getSessionRole } from "@/lib/auth";
