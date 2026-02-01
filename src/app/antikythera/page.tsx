@@ -10,6 +10,7 @@ import { getAggregatesForWeekStart, getLatestAggregatesLocked } from "@/lib/sent
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { refreshAppData } from "@/lib/appRefresh";
+import { getSessionRole } from "@/lib/auth";
 import { listPerformanceWeeks, readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import { DateTime } from "luxon";
 
@@ -22,9 +23,14 @@ type AntikytheraPageProps = {
 };
 
 export default async function AntikytheraPage({ searchParams }: AntikytheraPageProps) {
-  refreshAppData().catch((error) => {
-    console.error("App refresh failed:", error);
-  });
+  const role = await getSessionRole();
+  if (role === "admin") {
+    try {
+      await refreshAppData();
+    } catch (error) {
+      console.error("App refresh failed:", error);
+    }
+  }
 
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const reportParam = resolvedSearchParams?.report;

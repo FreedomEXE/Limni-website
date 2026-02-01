@@ -18,6 +18,7 @@ import {
 } from "@/lib/sentiment/symbols";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { refreshAppData } from "@/lib/appRefresh";
+import { getSessionRole } from "@/lib/auth";
 import { listPerformanceWeeks, readPerformanceSnapshotsByWeek, weekLabelFromOpen } from "@/lib/performanceSnapshots";
 
 export const dynamic = "force-dynamic";
@@ -41,9 +42,14 @@ function getAssetClass(value?: string | null): SentimentView {
 }
 
 export default async function SentimentPage({ searchParams }: SentimentPageProps) {
-  refreshAppData().catch((error) => {
-    console.error("App refresh failed:", error);
-  });
+  const role = await getSessionRole();
+  if (role === "admin") {
+    try {
+      await refreshAppData();
+    } catch (error) {
+      console.error("App refresh failed:", error);
+    }
+  }
 
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const assetParam = resolvedSearchParams?.asset;

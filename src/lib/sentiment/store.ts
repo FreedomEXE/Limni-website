@@ -384,6 +384,10 @@ export async function getAggregatesForWeekStart(
     }
   }
 
+  if (snapshot.length === 0) {
+    return getLatestAggregatesLocked();
+  }
+
   return snapshot;
 }
 

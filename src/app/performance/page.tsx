@@ -24,6 +24,7 @@ import {
   weekLabelFromOpen,
 } from "@/lib/performanceSnapshots";
 import { refreshAppData } from "@/lib/appRefresh";
+import { getSessionRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -58,9 +59,14 @@ function reportWeekOpenUtc(reportDate: string): string | null {
 }
 
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
-  refreshAppData().catch((error) => {
-    console.error("App refresh failed:", error);
-  });
+  const role = await getSessionRole();
+  if (role === "admin") {
+    try {
+      await refreshAppData();
+    } catch (error) {
+      console.error("App refresh failed:", error);
+    }
+  }
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const weekParam = resolvedSearchParams?.week;
   const accountParam = resolvedSearchParams?.account;
