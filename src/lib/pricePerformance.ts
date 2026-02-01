@@ -686,10 +686,7 @@ export async function getPairPerformance(
     missing > 0
       ? `Missing prices for ${missing}/${totalPairs}. ${timingNote}`
       : `${timingNote}`;
-  const note =
-    assetClass === "crypto"
-      ? `${baseNote} Derived from Bitget pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
-      : `${baseNote} Derived from OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
+  const note = `${baseNote} Derived from OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
 
   return { performance, note, missingPairs };
 }
