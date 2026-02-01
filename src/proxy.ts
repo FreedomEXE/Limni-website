@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 const SESSION_COOKIE_NAME = "limni_session";
 const SESSION_SECRETS = new Set(["admin", "viewer", "authenticated"]);
 
-export default function proxy(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow login page and API routes without auth
