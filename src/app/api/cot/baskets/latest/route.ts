@@ -126,7 +126,7 @@ export async function GET(request: Request) {
       maxSignals: 200,
     });
     pairs.push(
-      ...antikytheraSignals.map((signal) => ({
+      ...antikytheraSignals.map((signal): BasketPair => ({
         symbol: signal.pair,
         direction: signal.direction,
         model: "antikythera",
