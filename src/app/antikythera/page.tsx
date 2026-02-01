@@ -6,7 +6,7 @@ import SummaryCards from "@/components/SummaryCards";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
-import { getAggregatesAsOf, getLatestAggregatesLocked } from "@/lib/sentiment/store";
+import { getAggregatesForWeekStart, getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { refreshAppData } from "@/lib/appRefresh";
@@ -151,9 +151,15 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
     }
   }
   try {
-    sentiment = selectedWeek
-      ? await getAggregatesAsOf(selectedWeek)
-      : await getLatestAggregatesLocked();
+    if (selectedWeek) {
+      const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
+      const close = open.isValid ? open.plus({ days: 7 }) : open;
+      sentiment = open.isValid
+        ? await getAggregatesForWeekStart(open.toUTC().toISO() ?? selectedWeek, close.toUTC().toISO() ?? selectedWeek)
+        : await getLatestAggregatesLocked();
+    } else {
+      sentiment = await getLatestAggregatesLocked();
+    }
   } catch (error) {
     console.error(
       "Antikythera sentiment load failed:",

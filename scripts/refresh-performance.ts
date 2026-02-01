@@ -1,6 +1,6 @@
 import { listAssetClasses } from "../src/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "../src/lib/cotStore";
-import { getAggregatesAsOf, readAggregates } from "../src/lib/sentiment/store";
+import { getAggregatesForWeekStart, readAggregates } from "../src/lib/sentiment/store";
 import {
   computeModelPerformance,
   buildSentimentPairsWithHistory,
@@ -52,8 +52,12 @@ async function main() {
   ];
 
   const weekOpenUtc = getWeekOpenUtc();
+  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  const weekCloseIso = weekOpen.isValid
+    ? weekOpen.plus({ days: 7 }).toUTC().toISO() ?? weekOpenUtc
+    : weekOpenUtc;
   const [latestSentiment, sentimentHistory] = await Promise.all([
-    getAggregatesAsOf(weekOpenUtc),
+    getAggregatesForWeekStart(weekOpenUtc, weekCloseIso),
     readAggregates(),
   ]);
   const snapshots = await Promise.all(

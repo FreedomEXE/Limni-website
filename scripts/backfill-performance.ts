@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import { query } from "../src/lib/db";
 import { readSnapshot } from "../src/lib/cotStore";
-import { readAggregates, getAggregatesAsOf } from "../src/lib/sentiment/store";
+import { readAggregates, getAggregatesForWeekStart } from "../src/lib/sentiment/store";
 import {
   computeModelPerformance,
   buildSentimentPairsWithHistory,
@@ -56,7 +56,8 @@ async function main() {
     const rawWeekClose = weekOpen.plus({ days: 5, hours: 23, minutes: 59, seconds: 59 });
     const weekClose = rawWeekClose.toMillis() > now.toMillis() ? now : rawWeekClose;
     const reportDates = await listWeekReports(weekOpenUtc);
-    const latestSentiment = await getAggregatesAsOf(weekOpenUtc);
+    const weekCloseIso = weekOpen.plus({ days: 7 }).toUTC().toISO() ?? weekOpenUtc;
+    const latestSentiment = await getAggregatesForWeekStart(weekOpenUtc, weekCloseIso);
 
     const payload: PerformanceSnapshot[] = [];
     for (const asset of assetClasses) {

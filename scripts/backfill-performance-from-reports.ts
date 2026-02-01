@@ -13,7 +13,7 @@ import {
   getPerformanceWindow,
 } from "../src/lib/pricePerformance";
 import { writePerformanceSnapshots } from "../src/lib/performanceSnapshots";
-import { readAggregates, getAggregatesAsOf } from "../src/lib/sentiment/store";
+import { readAggregates, getAggregatesForWeekStart } from "../src/lib/sentiment/store";
 
 type ReportRow = {
   asset_class: string;
@@ -91,7 +91,8 @@ async function main() {
       continue;
     }
     const weekOpen = DateTime.fromISO(weekOpenIso, { zone: "utc" });
-    const latestSentiment = await getAggregatesAsOf(weekOpenIso);
+    const weekCloseIso = weekOpen.plus({ days: 7 }).toUTC().toISO() ?? weekOpenIso;
+    const latestSentiment = await getAggregatesForWeekStart(weekOpenIso, weekCloseIso);
 
     const payload = [];
     for (const asset of assetClasses) {

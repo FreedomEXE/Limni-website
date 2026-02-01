@@ -339,6 +339,54 @@ export async function getAggregatesAsOf(
   return snapshot;
 }
 
+export async function getAggregatesForWeekStart(
+  weekOpenUtc: string,
+  weekCloseUtc: string,
+): Promise<SentimentAggregate[]> {
+  const aggregates = await readAggregates();
+  if (aggregates.length === 0) {
+    return [];
+  }
+  const open = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  const close = DateTime.fromISO(weekCloseUtc, { zone: "utc" });
+  if (!open.isValid) {
+    return [];
+  }
+  const openMs = open.toMillis();
+  const closeMs = close.isValid ? close.toMillis() : openMs;
+  const bySymbol = new Map<string, { agg: SentimentAggregate; time: DateTime }[]>();
+
+  for (const agg of aggregates) {
+    const time = DateTime.fromISO(agg.timestamp_utc, { zone: "utc" });
+    if (!time.isValid || time.toMillis() > closeMs) {
+      continue;
+    }
+    if (!bySymbol.has(agg.symbol)) {
+      bySymbol.set(agg.symbol, []);
+    }
+    bySymbol.get(agg.symbol)?.push({ agg, time });
+  }
+
+  const snapshot: SentimentAggregate[] = [];
+  for (const [symbol, list] of bySymbol.entries()) {
+    const sorted = list.sort((a, b) => a.time.toMillis() - b.time.toMillis());
+    if (sorted.length === 0) {
+      continue;
+    }
+    const firstAfterOpen = sorted.find((entry) => entry.time.toMillis() >= openMs);
+    if (firstAfterOpen) {
+      snapshot.push(firstAfterOpen.agg);
+      continue;
+    }
+    const latestBeforeOpen = sorted.at(-1);
+    if (latestBeforeOpen) {
+      snapshot.push(latestBeforeOpen.agg);
+    }
+  }
+
+  return snapshot;
+}
+
 export async function readSourceHealth(): Promise<SourceHealth[]> {
   // For now, return empty array - source health tracking not yet implemented in DB
   // TODO: Add sentiment_source_health table and implement this
