@@ -7,10 +7,11 @@ import { fetchLiquidationSummary } from "@/lib/coinank";
 import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { fetchCryptoSpotPrice } from "@/lib/cryptoPrices";
 import {
-  getAggregatesAsOf,
+  getAggregatesForWeekStart,
   getLatestAggregatesLocked,
 } from "@/lib/sentiment/store";
 import { formatDateTimeET, latestIso } from "@/lib/time";
+import { DateTime } from "luxon";
 import {
   SENTIMENT_ASSET_CLASSES,
   ALL_SENTIMENT_SYMBOLS,
@@ -67,9 +68,18 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
 
   let aggregates: SentimentAggregate[] = [];
   try {
-    aggregates = selectedWeek
-      ? await getAggregatesAsOf(selectedWeek)
-      : await getLatestAggregatesLocked();
+    if (selectedWeek) {
+      const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
+      const close = open.isValid ? open.plus({ days: 7 }) : open;
+      aggregates = open.isValid
+        ? await getAggregatesForWeekStart(
+            open.toUTC().toISO() ?? selectedWeek,
+            close.toUTC().toISO() ?? selectedWeek,
+          )
+        : await getLatestAggregatesLocked();
+    } else {
+      aggregates = await getLatestAggregatesLocked();
+    }
   } catch (error) {
     console.error(
       "Sentiment load failed:",
