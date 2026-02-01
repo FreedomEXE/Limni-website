@@ -11,6 +11,7 @@ import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type BasketPair = {
   symbol: string;

@@ -4,6 +4,7 @@ import { upsertMt5Account } from "@/lib/mt5Store";
 import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function parseNumber(value: unknown, fallback = 0) {
   const parsed = Number(value);
