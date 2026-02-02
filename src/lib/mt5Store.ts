@@ -726,7 +726,7 @@ export async function getMt5AccountById(
       next_add_seconds: number;
       next_poll_seconds: number;
       last_sync_utc: Date;
-      recent_logs: string[] | null;
+      recent_logs?: string[] | null;
     }>("SELECT * FROM mt5_accounts WHERE account_id = $1", [accountId]);
 
     if (!account) {
