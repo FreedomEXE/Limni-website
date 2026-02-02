@@ -109,6 +109,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     typeof weekParam === "string" && weekOptions.includes(weekParam)
       ? weekParam
       : weekOptions[0] ?? null;
+  const currentWeekOpenUtc = getWeekOpenUtc();
+  const isCurrentWeekSelected =
+    selectedWeek != null && selectedWeek === currentWeekOpenUtc;
   const reportParam = resolvedSearchParams?.report;
   const selectedReport =
     typeof reportParam === "string" && reportOptions.includes(reportParam)
@@ -170,7 +173,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   let totals: Array<Awaited<ReturnType<typeof computeModelPerformance>>> = [];
   let anyPriced = false;
 
-  if (hasSnapshots) {
+  if (hasSnapshots && !isCurrentWeekSelected) {
     const byAsset = new Map<string, Awaited<ReturnType<typeof computeModelPerformance>>[]>();
     weekSnapshots.forEach((snapshot) => {
       const modelLabel = snapshot.model;
@@ -249,9 +252,11 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     ]);
     const snapshotResults = await Promise.all(
       assetClasses.map((asset) =>
-        selectedReport
-          ? readSnapshot({ assetClass: asset.id, reportDate: selectedReport })
-          : readSnapshot({ assetClass: asset.id }),
+        isCurrentWeekSelected
+          ? readSnapshot({ assetClass: asset.id })
+          : selectedReport
+            ? readSnapshot({ assetClass: asset.id, reportDate: selectedReport })
+            : readSnapshot({ assetClass: asset.id }),
       ),
     );
     snapshotResults.forEach((snapshot, index) => {
@@ -264,15 +269,16 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         if (!snapshot) {
           return { asset, results: [] as Awaited<ReturnType<typeof computeModelPerformance>>[] };
         }
+        const useLatestReport = isCurrentWeekSelected;
         const performance = await getPairPerformance(buildAllPairs(asset.id), {
           assetClass: asset.id,
           reportDate: snapshot.report_date,
-          isLatestReport: false,
+          isLatestReport: useLatestReport,
         });
         const window = getPerformanceWindow({
           assetClass: asset.id,
           reportDate: snapshot.report_date,
-          isLatestReport: false,
+          isLatestReport: useLatestReport,
         });
 
         const results = [];
@@ -384,13 +390,21 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const allTimeStats = models.map((model) => {
     const weekMap = weekTotalsByModel.get(model) ?? new Map();
     const nowUtc = DateTime.utc().toMillis();
+    const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
+    const currentWeekMillis = currentWeekStart.isValid
+      ? currentWeekStart.toMillis()
+      : nowUtc;
     const weekReturns = Array.from(weekMap.entries())
       .filter(([week]) => {
         const parsed = DateTime.fromISO(week, { zone: "utc" });
         if (!parsed.isValid) {
           return false;
         }
-        return parsed.toMillis() <= nowUtc;
+        const weekMillis = parsed.toMillis();
+        if (weekMillis >= currentWeekMillis) {
+          return false;
+        }
+        return weekMillis <= nowUtc;
       })
       .map(([week, value]) => ({
         week,

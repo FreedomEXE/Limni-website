@@ -125,9 +125,9 @@ export function buildSentimentPairsWithHistory(options: {
 
   for (const pairDef of pairDefs) {
     const history = historyBySymbol.get(pairDef.pair);
+    const fallback = fallbackMap.get(pairDef.pair);
+    const fallbackDirection = sentimentDirection(fallback);
     if (!history || history.length === 0) {
-      const fallback = fallbackMap.get(pairDef.pair);
-      const fallbackDirection = sentimentDirection(fallback);
       if (!fallbackDirection) {
         continue;
       }
@@ -152,6 +152,16 @@ export function buildSentimentPairsWithHistory(options: {
       .filter((entry) => entry.time.isValid);
 
     if (historyWithTimes.length === 0) {
+      if (fallbackDirection) {
+        pairs[pairDef.pair] = pairSnapshot(fallbackDirection);
+        windows[pairDef.pair] = {
+          openUtc: weekOpenUtc,
+          closeUtc: weekCloseUtc,
+          direction: fallbackDirection,
+          reason: ["Latest sentiment snapshot (invalid history window)"],
+        };
+        reasonOverrides.set(pairDef.pair, ["Latest sentiment snapshot (invalid history window)"]);
+      }
       continue;
     }
 
@@ -172,10 +182,30 @@ export function buildSentimentPairsWithHistory(options: {
         return sentimentDirection(entry.agg);
       });
       if (!firstDirectional) {
+        if (fallbackDirection) {
+          pairs[pairDef.pair] = pairSnapshot(fallbackDirection);
+          windows[pairDef.pair] = {
+            openUtc: weekOpenUtc,
+            closeUtc: weekCloseUtc,
+            direction: fallbackDirection,
+            reason: ["Latest sentiment snapshot (no directional history)"],
+          };
+          reasonOverrides.set(pairDef.pair, ["Latest sentiment snapshot (no directional history)"]);
+        }
         continue;
       }
       activeDirection = sentimentDirection(firstDirectional.agg);
       if (!activeDirection) {
+        if (fallbackDirection) {
+          pairs[pairDef.pair] = pairSnapshot(fallbackDirection);
+          windows[pairDef.pair] = {
+            openUtc: weekOpenUtc,
+            closeUtc: weekCloseUtc,
+            direction: fallbackDirection,
+            reason: ["Latest sentiment snapshot (directional history missing)"],
+          };
+          reasonOverrides.set(pairDef.pair, ["Latest sentiment snapshot (directional history missing)"]);
+        }
         continue;
       }
       openTime = weekOpenUtc;
@@ -210,6 +240,16 @@ export function buildSentimentPairsWithHistory(options: {
     }
 
     if (closeTime.toMillis() <= openTime.toMillis()) {
+      if (fallbackDirection) {
+        pairs[pairDef.pair] = pairSnapshot(fallbackDirection);
+        windows[pairDef.pair] = {
+          openUtc: weekOpenUtc,
+          closeUtc: weekCloseUtc,
+          direction: fallbackDirection,
+          reason: ["Latest sentiment snapshot (invalid window)"],
+        };
+        reasonOverrides.set(pairDef.pair, ["Latest sentiment snapshot (invalid window)"]);
+      }
       continue;
     }
 

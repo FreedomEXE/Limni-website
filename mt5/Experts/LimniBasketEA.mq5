@@ -38,8 +38,9 @@ input int DashboardFontSize = 17;
 input int DashboardTitleSize = 22;
 input int DashboardAccentWidth = 12;
 input int DashboardShadowOffset = 8;
-input int DashboardColumnGap = 22;
+input int DashboardColumnGap = 36;
 input int LotMapMaxLines = 22;
+input int DashboardUrlMaxLen = 84;
 input bool PushAccountStats = true;
 input string PushUrl = "https://limni-website-nine.vercel.app/api/mt5/push";
 input string PushToken = "2121";
@@ -1952,7 +1953,7 @@ void UpdateDashboard()
   else if(g_apiOk)
     apiColor = warnColor;
 
-  string urlLine = "URL: " + CompactText(BuildApiUrl(), 120);
+  string urlLine = "URL: " + CompactText(BuildApiUrl(), DashboardUrlMaxLen);
   string reportText = (g_reportDate == "" ? "--" : g_reportDate);
   string cacheLine = g_loadedFromCache ? "Cache: Yes" : "Cache: No";
   if(g_lastApiSuccess > 0)
