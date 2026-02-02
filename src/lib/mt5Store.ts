@@ -66,6 +66,7 @@ export type Mt5AccountSnapshot = {
   last_sync_utc: string;
   positions?: Mt5Position[];
   closed_positions?: Mt5ClosedPosition[];
+  recent_logs?: string[];
 };
 
 export type Mt5ClosedSummary = {
@@ -224,10 +225,10 @@ export async function upsertMt5Account(
           locked_profit_pct, basket_pnl_pct, weekly_pnl_pct, risk_used_pct,
           trade_count_week, win_rate_pct, max_drawdown_pct, report_date,
           api_ok, trading_allowed, last_api_error, next_add_seconds,
-          next_poll_seconds, last_sync_utc
+          next_poll_seconds, last_sync_utc, recent_logs
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
         )
         ON CONFLICT (account_id) DO UPDATE SET
           label = EXCLUDED.label,
@@ -258,6 +259,7 @@ export async function upsertMt5Account(
           next_add_seconds = EXCLUDED.next_add_seconds,
           next_poll_seconds = EXCLUDED.next_poll_seconds,
           last_sync_utc = EXCLUDED.last_sync_utc,
+          recent_logs = EXCLUDED.recent_logs,
           updated_at = NOW()`,
         [
           snapshot.account_id,
@@ -289,6 +291,7 @@ export async function upsertMt5Account(
           snapshot.next_add_seconds,
           snapshot.next_poll_seconds,
           new Date(snapshot.last_sync_utc),
+          snapshot.recent_logs ? JSON.stringify(snapshot.recent_logs) : null,
         ]
       );
 

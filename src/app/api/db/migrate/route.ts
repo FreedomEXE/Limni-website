@@ -37,6 +37,12 @@ export async function POST(request: Request) {
     const schema = await fs.readFile(schemaPath, "utf-8");
     await pool.query(schema);
 
+    // Add recent_logs column if it doesn't exist (migration for existing tables)
+    await pool.query(`
+      ALTER TABLE mt5_accounts
+      ADD COLUMN IF NOT EXISTS recent_logs JSONB
+    `);
+
     // Get list of created tables
     const result = await pool.query(`
       SELECT table_name 

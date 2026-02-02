@@ -99,6 +99,9 @@ export async function POST(request: Request) {
     closed_positions: Array.isArray(payload.closed_positions)
       ? payload.closed_positions
       : undefined,
+    recent_logs: Array.isArray(payload.recent_logs)
+      ? (payload.recent_logs as string[]).slice(0, 100)
+      : undefined,
   };
 
   await upsertMt5Account(snapshot);
