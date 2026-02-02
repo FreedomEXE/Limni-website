@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Mt5Position } from "@/lib/mt5Store";
+import { formatCurrencySafe } from "@/lib/formatters";
 import { formatDateTimeET } from "@/lib/time";
 
 type PositionGroup = {
@@ -98,14 +99,6 @@ function groupPositionsBySymbol(positions: Mt5Position[], equity: number): Posit
   return result.sort((a, b) => b.totalProfit - a.totalProfit);
 }
 
-function formatCurrency(value: number, currency: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
 function formatPrice(value: number, symbol: string) {
   const isJPY = symbol.includes("JPY");
   return value.toFixed(isJPY ? 3 : 5);
@@ -136,7 +129,7 @@ export default function PositionsTable({ positions, currency, equity }: Position
         <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Total P&L</p>
           <p className={`mt-1 text-xl font-semibold ${totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-            {formatCurrency(totalProfit, currency)}
+            {formatCurrencySafe(totalProfit, currency)}
           </p>
         </div>
         <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
@@ -146,7 +139,7 @@ export default function PositionsTable({ positions, currency, equity }: Position
         <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Total risk (SL)</p>
           <p className="mt-1 text-xl font-semibold text-[var(--accent-strong)]">
-            {formatCurrency(totalRisk, currency)}
+            {formatCurrencySafe(totalRisk, currency)}
           </p>
           <p className="mt-0.5 text-sm text-[var(--accent)]">
             {totalRiskPct.toFixed(2)}% of equity
@@ -183,13 +176,13 @@ export default function PositionsTable({ positions, currency, equity }: Position
                   <div className="text-right">
                     <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">P&L</p>
                     <p className={`text-lg font-semibold ${group.totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                      {formatCurrency(group.totalProfit, currency)}
+                      {formatCurrencySafe(group.totalProfit, currency)}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Risk</p>
                     <p className={`text-lg font-semibold ${group.riskPct > 1.0 ? 'text-rose-700' : 'text-[var(--accent-strong)]'}`}>
-                      {formatCurrency(group.riskAmount, currency)}
+                      {formatCurrencySafe(group.riskAmount, currency)}
                     </p>
                     <p className={`text-xs ${group.riskPct > 1.0 ? 'text-rose-600 font-semibold' : 'text-[var(--accent)]'}`}>
                       {group.riskPct.toFixed(2)}% {group.riskPct > 1.0 ? '!' : ''}
@@ -248,7 +241,7 @@ export default function PositionsTable({ positions, currency, equity }: Position
                         <div>
                           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">P&L</p>
                           <p className={`font-semibold ${pos.profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                            {formatCurrency(pos.profit, currency)}
+                            {formatCurrencySafe(pos.profit, currency)}
                           </p>
                         </div>
                         <div>
@@ -288,11 +281,11 @@ export default function PositionsTable({ positions, currency, equity }: Position
                             </div>
                             <div>
                               <p className="text-[color:var(--muted)]">Swap</p>
-                              <p className="text-[var(--foreground)]">{formatCurrency(pos.swap, currency)}</p>
+                              <p className="text-[var(--foreground)]">{formatCurrencySafe(pos.swap, currency)}</p>
                             </div>
                             <div>
                               <p className="text-[color:var(--muted)]">Commission</p>
-                              <p className="text-[var(--foreground)]">{formatCurrency(pos.commission, currency)}</p>
+                              <p className="text-[var(--foreground)]">{formatCurrencySafe(pos.commission, currency)}</p>
                             </div>
                           </div>
                         </div>

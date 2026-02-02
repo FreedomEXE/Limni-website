@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import DashboardLayout from "@/components/DashboardLayout";
+import { formatCurrencySafe } from "@/lib/formatters";
 import { readMt5Accounts } from "@/lib/mt5Store";
 import { formatDateTimeET, latestIso } from "@/lib/time";
 
@@ -10,14 +11,6 @@ const percentFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-
-function formatCurrency(value: number, currency: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
 
 function formatPercent(value: number) {
   const sign = value > 0 ? "+" : value < 0 ? "" : "";
@@ -115,7 +108,7 @@ export default async function AccountsPage() {
               Total equity
             </p>
             <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatCurrency(totalEquity, "USD")}
+              {formatCurrencySafe(totalEquity, "USD")}
             </p>
           </div>
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
@@ -166,7 +159,7 @@ export default async function AccountsPage() {
                       Equity
                     </p>
                     <p className="mt-1 font-semibold">
-                      {formatCurrency(account.equity, account.currency)}
+                      {formatCurrencySafe(account.equity, account.currency)}
                     </p>
                   </div>
                   <div>

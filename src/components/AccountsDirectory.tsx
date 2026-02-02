@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
+import { formatCurrencySafe } from "@/lib/formatters";
 import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
 import { formatDateTimeET } from "@/lib/time";
 
@@ -20,23 +21,6 @@ const sortOptions = [
 
 type SortKey = (typeof sortOptions)[number]["value"];
 type StatusFilter = "ALL" | "LIVE" | "DEMO" | "PAUSED";
-
-function formatCurrency(value: number, currency: string) {
-  const safeCurrency = currency || "USD";
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: safeCurrency,
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
-}
 
 function formatPercent(value: number) {
   if (!Number.isFinite(value)) {
@@ -282,7 +266,7 @@ export default function AccountsDirectory({
                       Equity
                     </p>
                     <p className="mt-1 font-semibold">
-                      {formatCurrency(account.equity, account.currency)}
+                      {formatCurrencySafe(account.equity, account.currency)}
                     </p>
                   </div>
                   <div>

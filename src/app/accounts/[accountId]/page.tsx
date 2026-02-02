@@ -14,6 +14,7 @@ import PositionsTable from "@/components/PositionsTable";
 import DashboardLayout from "@/components/DashboardLayout";
 import RefreshButton from "@/components/RefreshButton";
 import { DateTime } from "luxon";
+import { formatCurrencySafe } from "@/lib/formatters";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 
@@ -30,23 +31,6 @@ const percentFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
-
-function formatCurrency(value: number, currency: string) {
-  const safeCurrency = currency || "USD";
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: safeCurrency,
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
-}
 
 function formatPercent(value: number) {
   if (!Number.isFinite(value)) {
@@ -185,7 +169,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               Equity
             </p>
             <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatCurrency(account.equity, account.currency)}
+              {formatCurrencySafe(account.equity, account.currency)}
             </p>
           </div>
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
@@ -193,7 +177,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               Balance
             </p>
             <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatCurrency(account.balance, account.currency)}
+              {formatCurrencySafe(account.balance, account.currency)}
             </p>
           </div>
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
@@ -361,7 +345,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
                   Baseline equity
                 </p>
                 <p className="mt-1 font-semibold">
-                  {formatCurrency(account.baseline_equity, account.currency)}
+                  {formatCurrencySafe(account.baseline_equity, account.currency)}
                 </p>
               </div>
               <div>
@@ -377,7 +361,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
                   Margin
                 </p>
                 <p className="mt-1 font-semibold">
-                  {formatCurrency(account.margin, account.currency)}
+                  {formatCurrencySafe(account.margin, account.currency)}
                 </p>
               </div>
               <div>
@@ -385,7 +369,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
                   Free margin
                 </p>
                 <p className="mt-1 font-semibold">
-                  {formatCurrency(account.free_margin, account.currency)}
+                  {formatCurrencySafe(account.free_margin, account.currency)}
                 </p>
               </div>
               <div>
@@ -501,19 +485,19 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
                             : "text-[var(--foreground)]"
                       }`}
                     >
-                      {formatCurrency(week.net_profit, account.currency)}
+                      {formatCurrencySafe(week.net_profit, account.currency)}
                     </p>
                     <div className="mt-2 space-y-1 text-xs text-[color:var(--muted)]">
                       <p>{week.trades} trades</p>
                       <p>Win rate {winRate.toFixed(0)}%</p>
-                      <p>Avg net {formatCurrency(week.avg_net, account.currency)}</p>
+                      <p>Avg net {formatCurrencySafe(week.avg_net, account.currency)}</p>
                       {deltaNet !== null ? (
                         <p
                           className={
                             deltaNet >= 0 ? "text-emerald-700" : "text-rose-700"
                           }
                         >
-                          vs prev {formatCurrency(deltaNet, account.currency)}
+                          vs prev {formatCurrencySafe(deltaNet, account.currency)}
                         </p>
                       ) : null}
                     </div>
@@ -652,7 +636,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
                             net >= 0 ? "text-emerald-700" : "text-rose-700"
                           }`}
                         >
-                          {formatCurrency(net, account.currency)}
+                          {formatCurrencySafe(net, account.currency)}
                         </td>
                         <td className="py-2 text-xs text-[color:var(--muted)]">
                           {trade.open_price.toFixed(5)}
