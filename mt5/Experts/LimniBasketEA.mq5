@@ -855,9 +855,6 @@ bool IsAllowedSymbol(const string symbol)
     if(g_allowedKeyPrefixes[i] && StringFind(key, allowed) == 0)
       return true;
   }
-  Print("DEBUG: Symbol ", symbol, " normalized to ", key, " not found in ", ArraySize(g_allowedKeys), " allowed keys");
-  for(int i = 0; i < MathMin(5, ArraySize(g_allowedKeys)); i++)
-    Print("  Sample allowed key [", i, "]: ", g_allowedKeys[i], " (prefix=", g_allowedKeyPrefixes[i], ")");
   return false;
 }
 
@@ -1001,15 +998,9 @@ double NormalizeVolume(const string symbol, double volume)
   }
 
   if(volume < minVol)
-  {
-    Print("DEBUG: Volume ", volume, " below min ", minVol, " for ", symbol, " - using min");
     volume = minVol;
-  }
   if(volume > maxVol)
-  {
-    Print("DEBUG: Volume ", volume, " above max ", maxVol, " for ", symbol, " - using max");
     volume = maxVol;
-  }
 
   double steps = MathFloor(volume / step + 1e-9);
   double normalized = steps * step;
@@ -1018,12 +1009,8 @@ double NormalizeVolume(const string symbol, double volume)
 
   // Final validation
   if(normalized < minVol)
-  {
-    Print("WARNING: Normalized volume ", normalized, " still below min ", minVol, " for ", symbol, " - forcing to min");
     normalized = minVol;
-  }
 
-  Print("DEBUG: ", symbol, " volume: raw=", volume, " normalized=", normalized, " (min=", minVol, " step=", step, ")");
   return normalized;
 }
 
