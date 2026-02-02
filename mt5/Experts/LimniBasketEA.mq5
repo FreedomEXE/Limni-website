@@ -990,15 +990,39 @@ double NormalizeVolume(const string symbol, double volume)
   double minVol = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
   double maxVol = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
   double step = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+
+  // Validate symbol info
+  if(minVol <= 0.0 || maxVol <= 0.0 || step <= 0.0)
+  {
+    Print("ERROR: Invalid volume specs for ", symbol, " - min:", minVol, " max:", maxVol, " step:", step);
+    return 0.0;
+  }
+
   if(volume < minVol)
+  {
+    Print("DEBUG: Volume ", volume, " below min ", minVol, " for ", symbol, " - using min");
     volume = minVol;
+  }
   if(volume > maxVol)
+  {
+    Print("DEBUG: Volume ", volume, " above max ", maxVol, " for ", symbol, " - using max");
     volume = maxVol;
+  }
 
   double steps = MathFloor(volume / step + 1e-9);
   double normalized = steps * step;
   int digits = (int)MathRound(-MathLog10(step));
-  return NormalizeDouble(normalized, digits);
+  normalized = NormalizeDouble(normalized, digits);
+
+  // Final validation
+  if(normalized < minVol)
+  {
+    Print("WARNING: Normalized volume ", normalized, " still below min ", minVol, " for ", symbol, " - forcing to min");
+    normalized = minVol;
+  }
+
+  Print("DEBUG: ", symbol, " volume: raw=", volume, " normalized=", normalized, " (min=", minVol, " step=", step, ")");
+  return normalized;
 }
 
 double GetAtrValue(const string symbol)
