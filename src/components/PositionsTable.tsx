@@ -104,6 +104,42 @@ function formatPrice(value: number, symbol: string) {
   return value.toFixed(isJPY ? 3 : 5);
 }
 
+function calculateOnePercentImpact(pos: Mt5Position): number {
+  const openPrice = pos.open_price;
+  const currentPrice = pos.current_price;
+  const currentProfit = pos.profit;
+
+  // Calculate current % move
+  const priceMove = currentPrice - openPrice;
+  const movePct = (priceMove / openPrice) * 100;
+
+  // If there's meaningful movement, use it to calculate profit per 1%
+  if (Math.abs(movePct) > 0.001) {
+    const profitPerPercent = currentProfit / movePct;
+    return profitPerPercent;
+  }
+
+  // Fallback: estimate based on typical contract sizes
+  // Standard lot (1.0) = 100,000 units for forex
+  // 1% move on 1 standard lot ≈ $1,000 for major pairs
+  const isIndex = pos.symbol.includes("SPX") || pos.symbol.includes("NDX") || pos.symbol.includes("JPN");
+  const isCrypto = pos.symbol.includes("BTC") || pos.symbol.includes("ETH");
+
+  if (isIndex) {
+    // For indices, 1% of contract value = lots × current_price × contract_multiplier × 0.01
+    // SPX500/NDX100 typically 1 lot = $1 per point, so 1% ≈ price × 0.01 per lot
+    return pos.lots * currentPrice * 0.01;
+  } else if (isCrypto) {
+    // Crypto: 1 lot = 1 coin typically
+    return pos.lots * currentPrice * 0.01;
+  } else {
+    // FX/Commodities: rough estimate $10 per pip, ~100 pips = 1%
+    const estimatedPipsPerPercent = 100;
+    const estimatedDollarPerPip = 10 * pos.lots / 0.01; // Scale by lot size
+    return estimatedDollarPerPip * estimatedPipsPerPercent * 0.01;
+  }
+}
+
 export default function PositionsTable({ positions, currency, equity }: PositionsTableProps) {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
@@ -213,7 +249,7 @@ export default function PositionsTable({ positions, currency, equity }: Position
                       onMouseLeave={() => setHoveredPosition(null)}
                       className="relative rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] p-3 transition-all hover:border-[var(--accent)] hover:shadow-sm"
                     >
-                      <div className="grid grid-cols-7 gap-3 text-sm">
+                      <div className="grid grid-cols-8 gap-3 text-sm">
                         <div>
                           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Ticket</p>
                           <p className="font-mono text-[var(--foreground)]">#{pos.ticket}</p>
@@ -242,6 +278,12 @@ export default function PositionsTable({ positions, currency, equity }: Position
                           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">P&L</p>
                           <p className={`font-semibold ${pos.profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                             {formatCurrencySafe(pos.profit, currency)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">1% move</p>
+                          <p className="font-semibold text-blue-600">
+                            {formatCurrencySafe(calculateOnePercentImpact(pos), currency)}
                           </p>
                         </div>
                         <div>
