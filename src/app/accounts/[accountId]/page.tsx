@@ -408,6 +408,37 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
           </div>
         </section>
 
+        {account.recent_logs && account.recent_logs.length > 0 && (
+          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                EA Logs
+              </h2>
+              <p className="text-sm text-[color:var(--muted)]">
+                Last {account.recent_logs.length} messages from the Expert Advisor
+              </p>
+            </div>
+            <div className="max-h-96 overflow-y-auto rounded-xl border border-[var(--panel-border)] bg-[var(--background)] p-4">
+              <div className="space-y-1 font-mono text-xs">
+                {account.recent_logs.map((log, idx) => (
+                  <div
+                    key={idx}
+                    className={`${
+                      log.includes("Error") || log.includes("ERROR") || log.includes("failed")
+                        ? "text-rose-600"
+                        : log.includes("WARNING") || log.includes("Skipped")
+                        ? "text-amber-600"
+                        : "text-[var(--muted)]"
+                    }`}
+                  >
+                    {log}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">

@@ -726,6 +726,7 @@ export async function getMt5AccountById(
       next_add_seconds: number;
       next_poll_seconds: number;
       last_sync_utc: Date;
+      recent_logs: string | null;
     }>("SELECT * FROM mt5_accounts WHERE account_id = $1", [accountId]);
 
     if (!account) {
@@ -782,6 +783,9 @@ export async function getMt5AccountById(
       next_add_seconds: account.next_add_seconds,
       next_poll_seconds: account.next_poll_seconds,
       last_sync_utc: account.last_sync_utc.toISOString(),
+      recent_logs: account.recent_logs
+        ? (JSON.parse(account.recent_logs) as string[])
+        : undefined,
       positions: positions.map((pos) => ({
         ticket: pos.ticket,
         symbol: pos.symbol,
