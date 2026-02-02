@@ -161,6 +161,7 @@ function getModelColor(model: string): string {
 export default function PositionsTable({ positions, currency, equity }: PositionsTableProps) {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<"pnl" | "symbol">("pnl");
 
   if (!positions || positions.length === 0) {
     return (
@@ -172,6 +173,15 @@ export default function PositionsTable({ positions, currency, equity }: Position
   }
 
   const groups = groupPositionsBySymbol(positions, equity);
+
+  // Apply sorting
+  const sortedGroups = [...groups].sort((a, b) => {
+    if (sortBy === "symbol") {
+      return a.symbol.localeCompare(b.symbol);
+    }
+    return b.totalProfit - a.totalProfit; // P&L descending
+  });
+
   const totalProfit = positions.reduce((sum, p) => sum + p.profit, 0);
   const totalRisk = groups.reduce((sum, g) => sum + g.riskAmount, 0);
   const totalRiskPct = equity > 0 ? (totalRisk / equity) * 100 : 0;
@@ -201,9 +211,38 @@ export default function PositionsTable({ positions, currency, equity }: Position
         </div>
       </div>
 
+      {/* Sort controls */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-[color:var(--muted)]">Sort by:</span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setSortBy("pnl")}
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+              sortBy === "pnl"
+                ? "bg-[var(--accent)] text-white"
+                : "bg-[var(--panel)] text-[color:var(--muted)] hover:bg-[var(--panel)]/80"
+            }`}
+          >
+            P&L
+          </button>
+          <button
+            type="button"
+            onClick={() => setSortBy("symbol")}
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+              sortBy === "symbol"
+                ? "bg-[var(--accent)] text-white"
+                : "bg-[var(--panel)] text-[color:var(--muted)] hover:bg-[var(--panel)]/80"
+            }`}
+          >
+            Symbol
+          </button>
+        </div>
+      </div>
+
       {/* Grouped positions */}
       <div className="space-y-3">
-        {groups.map((group) => (
+        {sortedGroups.map((group) => (
           <div
             key={group.symbol}
             className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/90 shadow-sm transition-all hover:shadow-md"
