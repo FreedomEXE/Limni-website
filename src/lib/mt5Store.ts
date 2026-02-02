@@ -16,6 +16,9 @@ export type Mt5Position = {
   open_time: string;
   magic_number: number;
   comment: string;
+  min_volume?: number;
+  max_volume?: number;
+  volume_step?: number;
 };
 
 export type Mt5ClosedPosition = {

@@ -2695,6 +2695,11 @@ string BuildPositionsArray()
       result += ",";
     firstPos = false;
 
+    // Get broker specs for this symbol
+    double minVol = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+    double maxVol = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
+    double volStep = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+
     result += "{";
     result += "\"ticket\":" + IntegerToString((long)ticket) + ",";
     result += "\"symbol\":\"" + JsonEscape(symbol) + "\",";
@@ -2709,7 +2714,10 @@ string BuildPositionsArray()
     result += "\"commission\":" + DoubleToString(commission, 2) + ",";
     result += "\"open_time\":\"" + FormatIsoUtc(openTime) + "\",";
     result += "\"magic_number\":" + IntegerToString((int)magic) + ",";
-    result += "\"comment\":\"" + JsonEscape(comment) + "\"";
+    result += "\"comment\":\"" + JsonEscape(comment) + "\",";
+    result += "\"min_volume\":" + DoubleToString(minVol, 2) + ",";
+    result += "\"max_volume\":" + DoubleToString(maxVol, 2) + ",";
+    result += "\"volume_step\":" + DoubleToString(volStep, 2);
     result += "}";
   }
 

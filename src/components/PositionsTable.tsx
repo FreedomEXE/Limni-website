@@ -158,6 +158,56 @@ function getModelColor(model: string): string {
   }
 }
 
+function calculateMinAccountSize(positions: Mt5Position[], currentEquity: number): {
+  minAccount: number;
+  constraintSymbol: string;
+  constraintData: { symbol: string; currentLot: number; minLot: number; requiredEquity: number }[];
+} {
+  const symbolData = new Map<string, { lots: number; minVol: number }>();
+
+  // Aggregate positions by symbol
+  for (const pos of positions) {
+    if (!pos.min_volume || pos.min_volume <= 0) continue;
+
+    const existing = symbolData.get(pos.symbol);
+    if (existing) {
+      existing.lots += pos.lots;
+    } else {
+      symbolData.set(pos.symbol, { lots: pos.lots, minVol: pos.min_volume });
+    }
+  }
+
+  let maxRequiredEquity = 0;
+  let constraintSymbol = "";
+  const constraintData: { symbol: string; currentLot: number; minLot: number; requiredEquity: number }[] = [];
+
+  for (const [symbol, data] of symbolData) {
+    // Required equity = (minLot / currentLot) × currentEquity
+    const requiredEquity = (data.minVol / data.lots) * currentEquity;
+
+    constraintData.push({
+      symbol,
+      currentLot: data.lots,
+      minLot: data.minVol,
+      requiredEquity,
+    });
+
+    if (requiredEquity > maxRequiredEquity) {
+      maxRequiredEquity = requiredEquity;
+      constraintSymbol = symbol;
+    }
+  }
+
+  // Sort by required equity descending
+  constraintData.sort((a, b) => b.requiredEquity - a.requiredEquity);
+
+  return {
+    minAccount: maxRequiredEquity,
+    constraintSymbol,
+    constraintData: constraintData.slice(0, 10), // Top 10 constraints
+  };
+}
+
 export default function PositionsTable({ positions, currency, equity }: PositionsTableProps) {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
@@ -185,6 +235,10 @@ export default function PositionsTable({ positions, currency, equity }: Position
   const totalProfit = positions.reduce((sum, p) => sum + p.profit, 0);
   const totalRisk = groups.reduce((sum, g) => sum + g.riskAmount, 0);
   const totalRiskPct = equity > 0 ? (totalRisk / equity) * 100 : 0;
+
+  // Calculate minimum account size
+  const minAccountCalc = calculateMinAccountSize(positions, equity);
+  const hasMinVolData = positions.some(p => p.min_volume && p.min_volume > 0);
 
   return (
     <div className="space-y-4">
@@ -239,6 +293,59 @@ export default function PositionsTable({ positions, currency, equity }: Position
           </button>
         </div>
       </div>
+
+      {/* Minimum Account Size Calculator */}
+      {hasMinVolData && minAccountCalc.minAccount > 0 && (
+        <div className="rounded-xl border border-[var(--panel-border)] bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-4">
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">
+              Minimum Account Size Analysis
+            </h3>
+            <p className="text-xs text-[color:var(--muted)] mt-1">
+              Based on current positions and broker minimum lot sizes
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-white/50 dark:bg-black/20 p-3">
+              <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
+                Minimum Account Size
+              </p>
+              <p className="mt-1 text-2xl font-bold text-blue-600">
+                {formatCurrencySafe(minAccountCalc.minAccount, currency)}
+              </p>
+              <p className="text-xs text-[color:var(--muted)] mt-1">
+                Constraint: <span className="font-semibold">{minAccountCalc.constraintSymbol}</span>
+              </p>
+            </div>
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-white/50 dark:bg-black/20 p-3">
+              <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">
+                Current Equity
+              </p>
+              <p className="mt-1 text-2xl font-bold text-[var(--foreground)]">
+                {formatCurrencySafe(equity, currency)}
+              </p>
+              <p className="text-xs text-[color:var(--muted)] mt-1">
+                Scale factor: <span className="font-semibold">{(equity / minAccountCalc.minAccount).toFixed(2)}x</span>
+              </p>
+            </div>
+          </div>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs font-semibold text-blue-600 hover:text-blue-700">
+              View top constraints
+            </summary>
+            <div className="mt-2 space-y-1 text-xs">
+              {minAccountCalc.constraintData.map((item, idx) => (
+                <div key={item.symbol} className="flex justify-between py-1 border-b border-blue-100 dark:border-blue-900">
+                  <span className="font-mono">{item.symbol}</span>
+                  <span className="text-[color:var(--muted)]">
+                    {item.currentLot.toFixed(2)} lots → min {item.minLot.toFixed(2)} = {formatCurrencySafe(item.requiredEquity, currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </details>
+        </div>
+      )}
 
       {/* Grouped positions */}
       <div className="space-y-3">
