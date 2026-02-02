@@ -283,6 +283,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               sentimentHistory,
               weekOpenUtc: window.openUtc,
               weekCloseUtc: window.closeUtc,
+              fallbackAggregates: latestSentiment,
             });
             const sentimentPerformance = await getPairPerformanceForWindows(
               sentimentPairs.pairs,

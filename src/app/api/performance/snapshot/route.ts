@@ -101,6 +101,7 @@ export async function POST(request: Request) {
           sentimentHistory,
           weekOpenUtc: window.openUtc,
           weekCloseUtc: window.closeUtc,
+          fallbackAggregates: latestSentiment,
         });
         const sentimentPerformance = await getPairPerformanceForWindows(
           sentimentPairs.pairs,

@@ -95,14 +95,18 @@ export function buildSentimentPairsWithHistory(options: {
   sentimentHistory: SentimentAggregate[];
   weekOpenUtc: DateTime;
   weekCloseUtc: DateTime;
+  fallbackAggregates?: SentimentAggregate[];
 }): {
   pairs: Record<string, PairSnapshot>;
   windows: Record<string, SentimentWindow>;
   reasonOverrides: Map<string, string[]>;
 } {
-  const { assetClass, sentimentHistory, weekOpenUtc, weekCloseUtc } = options;
+  const { assetClass, sentimentHistory, weekOpenUtc, weekCloseUtc, fallbackAggregates } = options;
   const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
   const historyBySymbol = new Map<string, SentimentAggregate[]>();
+  const fallbackMap = new Map(
+    (fallbackAggregates ?? []).map((agg) => [agg.symbol, agg]),
+  );
 
   for (const agg of sentimentHistory) {
     if (!historyBySymbol.has(agg.symbol)) {
@@ -122,6 +126,19 @@ export function buildSentimentPairsWithHistory(options: {
   for (const pairDef of pairDefs) {
     const history = historyBySymbol.get(pairDef.pair);
     if (!history || history.length === 0) {
+      const fallback = fallbackMap.get(pairDef.pair);
+      const fallbackDirection = sentimentDirection(fallback);
+      if (!fallbackDirection) {
+        continue;
+      }
+      pairs[pairDef.pair] = pairSnapshot(fallbackDirection);
+      windows[pairDef.pair] = {
+        openUtc: weekOpenUtc,
+        closeUtc: weekCloseUtc,
+        direction: fallbackDirection,
+        reason: ["Latest sentiment snapshot (no history in window)"],
+      };
+      reasonOverrides.set(pairDef.pair, ["Latest sentiment snapshot (no history in window)"]);
       continue;
     }
 

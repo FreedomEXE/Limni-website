@@ -6,7 +6,7 @@
 
 #include <Trade/Trade.mqh>
 
-input string ApiUrl = "https://limni-website.vercel.app/api/cot/baskets/latest";
+input string ApiUrl = "https://limni-website-nine.vercel.app/api/cot/baskets/latest";
 input string ApiUrlFallback = "";
 input string AssetFilter = "all";
 input bool ResetStateOnInit = false;
@@ -15,12 +15,14 @@ input double BasketLotCapPer100k = 10.0;
 input string ReferenceSymbol = "EURUSD";
 input double ReferenceLot = 0.10;
 input int AtrPeriod = 14;
+input string SymbolAliases = "SPXUSD=US500,NDXUSD=NAS100,NIKKEIUSD=JP225,WTIUSD=USOIL,BTCUSD=BTCUSD,ETHUSD=ETHUSD";
 input double FxLotMultiplier = 1.0;
 input double CryptoLotMultiplier = 1.0;
 input double CommoditiesLotMultiplier = 1.0;
 input double IndicesLotMultiplier = 1.0;
 input double EquityTrailStartPct = 2.0;
 input double EquityTrailOffsetPct = 1.0;
+input bool AllowNonFullTradeModeForListing = true;
 input int MaxOpenPositions = 200;
 input int SlippagePoints = 10;
 input long MagicNumber = 912401;
@@ -36,8 +38,10 @@ input int DashboardFontSize = 17;
 input int DashboardTitleSize = 22;
 input int DashboardAccentWidth = 12;
 input int DashboardShadowOffset = 8;
+input int DashboardColumnGap = 22;
+input int LotMapMaxLines = 22;
 input bool PushAccountStats = true;
-input string PushUrl = "https://limni-website.vercel.app/api/mt5/push";
+input string PushUrl = "https://limni-website-nine.vercel.app/api/mt5/push";
 input string PushToken = "2121";
 input int PushIntervalSeconds = 30;
 input string AccountLabel = "";
@@ -110,11 +114,14 @@ string DASH_BG = "LimniDash_bg";
 string DASH_SHADOW = "LimniDash_shadow";
 string DASH_ACCENT = "LimniDash_accent";
 string DASH_DIVIDER = "LimniDash_divider";
+string DASH_COL_DIVIDER = "LimniDash_col_divider";
 string DASH_TITLE = "LimniDash_title";
+string DASH_MAP_TITLE = "LimniDash_map_title";
 
 string g_lastApiError = "";
 datetime g_lastApiErrorTime = 0;
 string g_dashboardLines[];
+string g_dashboardRightLines[];
 bool g_dashboardReady = false;
 int g_dashWidth = 0;
 int g_dashLineHeight = 0;
@@ -123,6 +130,12 @@ int g_dashFontSize = 0;
 int g_dashTitleSize = 0;
 int g_dashAccentWidth = 0;
 int g_dashShadowOffset = 0;
+int g_dashColumnGap = 0;
+int g_dashLeftWidth = 0;
+int g_dashRightWidth = 0;
+int g_dashLeftX = 0;
+int g_dashRightX = 0;
+string g_lastLotPreviewKey = "";
 
 // Forward declarations
 void PollApiIfDue();
@@ -137,6 +150,9 @@ bool ExtractStringValue(const string json, const string key, string &value);
 bool ExtractBoolValue(const string json, const string key, bool &value);
 bool ResolveSymbol(const string apiSymbol, string &resolved);
 bool IsTradableSymbol(const string symbol);
+string NormalizeSymbolKey(const string value);
+bool TryResolveAlias(const string apiSymbol, string &resolved);
+bool ResolveSymbolByNormalizedKey(const string targetKey, string &resolved, bool requireFull);
 int DirectionFromString(const string value);
 string DirectionToString(int dir);
 double NormalizeVolume(const string symbol, double volume);
@@ -160,6 +176,7 @@ void CloseSymbolPositions(const string symbol);
 void MarkOrderTimestamp();
 int OrdersInLastMinute();
 datetime GetWeekStartGmt(datetime nowGmt);
+datetime GetCryptoWeekStartGmt(datetime nowGmt);
 bool IsUsdDstUtc(datetime nowGmt);
 bool IsUsdDstLocal(int year, int mon, int day, int hour);
 int NthSunday(int year, int mon, int nth);
@@ -170,6 +187,7 @@ void SaveApiCache(const string json);
 void ResetState();
 void SyncLastAddTimes();
 void Log(const string message);
+void LogLotPreview(bool force);
 string TruncateForLog(const string value, int maxLen);
 void InitDashboard();
 void UpdateDashboard();
@@ -349,6 +367,8 @@ void PollApiIfDue()
   }
 
   SyncLastAddTimes();
+
+  LogLotPreview(false);
 
   Log(StringFormat("API ok. trading_allowed=%s, report_date=%s, pairs=%d",
                    g_tradingAllowed ? "true" : "false",
@@ -719,11 +739,90 @@ bool ResolveSymbol(const string apiSymbol, string &resolved)
 {
   string target = apiSymbol;
   StringToUpper(target);
+  if(TryResolveAlias(target, resolved))
+    return true;
   if(SymbolSelect(target, true) && IsTradableSymbol(target))
   {
     resolved = target;
     return true;
   }
+  if(AllowNonFullTradeModeForListing && SymbolSelect(target, true))
+  {
+    resolved = target;
+    return true;
+  }
+
+  string targetKey = NormalizeSymbolKey(target);
+  bool requireFull = !AllowNonFullTradeModeForListing;
+  if(ResolveSymbolByNormalizedKey(targetKey, resolved, requireFull))
+    return true;
+
+  return false;
+}
+
+string NormalizeSymbolKey(const string value)
+{
+  string out = "";
+  int len = StringLen(value);
+  for(int i = 0; i < len; i++)
+  {
+    string ch = StringSubstr(value, i, 1);
+    int code = StringGetCharacter(ch, 0);
+    if((code >= 48 && code <= 57) || (code >= 65 && code <= 90))
+      out += ch;
+  }
+  return out;
+}
+
+bool TryResolveAlias(const string apiSymbol, string &resolved)
+{
+  if(SymbolAliases == "")
+    return false;
+  string aliases = SymbolAliases;
+  StringReplace(aliases, " ", "");
+  int start = 0;
+  while(start < StringLen(aliases))
+  {
+    int comma = StringFind(aliases, ",", start);
+    if(comma < 0)
+      comma = StringLen(aliases);
+    string pair = StringSubstr(aliases, start, comma - start);
+    int eq = StringFind(pair, "=");
+    if(eq > 0)
+    {
+      string key = StringSubstr(pair, 0, eq);
+      string val = StringSubstr(pair, eq + 1);
+      StringToUpper(key);
+      if(key == apiSymbol)
+      {
+        string candidate = val;
+        if(SymbolSelect(candidate, true) && IsTradableSymbol(candidate))
+        {
+          resolved = candidate;
+          return true;
+        }
+        if(AllowNonFullTradeModeForListing && SymbolSelect(candidate, true))
+        {
+          resolved = candidate;
+          return true;
+        }
+        string candidateKey = NormalizeSymbolKey(candidate);
+        bool requireFull = !AllowNonFullTradeModeForListing;
+        if(ResolveSymbolByNormalizedKey(candidateKey, resolved, requireFull))
+          return true;
+      }
+    }
+    start = comma + 1;
+  }
+  return false;
+}
+
+bool ResolveSymbolByNormalizedKey(const string targetKey, string &resolved, bool requireFull)
+{
+  if(targetKey == "")
+    return false;
+  int bestScore = 2147483647;
+  string bestSymbol = "";
 
   int total = SymbolsTotal(true);
   for(int i = 0; i < total; i++)
@@ -731,16 +830,19 @@ bool ResolveSymbol(const string apiSymbol, string &resolved)
     string sym = SymbolName(i, true);
     string symUpper = sym;
     StringToUpper(symUpper);
-    if(StringFind(symUpper, target) < 0)
+    string symKey = NormalizeSymbolKey(symUpper);
+    if(symKey == "")
       continue;
-    if(!IsTradableSymbol(sym))
+    if(StringFind(symKey, targetKey) < 0 && StringFind(targetKey, symKey) < 0)
       continue;
-    string base = SymbolInfoString(sym, SYMBOL_CURRENCY_BASE);
-    string quote = SymbolInfoString(sym, SYMBOL_CURRENCY_PROFIT);
-    if(base == StringSubstr(target, 0, 3) && quote == StringSubstr(target, 3, 3))
+    if(requireFull && !IsTradableSymbol(sym))
+      continue;
+
+    int score = MathAbs(StringLen(symKey) - StringLen(targetKey));
+    if(score < bestScore)
     {
-      resolved = sym;
-      return true;
+      bestScore = score;
+      bestSymbol = sym;
     }
   }
 
@@ -750,21 +852,29 @@ bool ResolveSymbol(const string apiSymbol, string &resolved)
     string sym = SymbolName(i, false);
     string symUpper = sym;
     StringToUpper(symUpper);
-    if(StringFind(symUpper, target) < 0)
+    string symKey = NormalizeSymbolKey(symUpper);
+    if(symKey == "")
+      continue;
+    if(StringFind(symKey, targetKey) < 0 && StringFind(targetKey, symKey) < 0)
       continue;
     if(!SymbolSelect(sym, true))
       continue;
-    if(!IsTradableSymbol(sym))
+    if(requireFull && !IsTradableSymbol(sym))
       continue;
-    string base = SymbolInfoString(sym, SYMBOL_CURRENCY_BASE);
-    string quote = SymbolInfoString(sym, SYMBOL_CURRENCY_PROFIT);
-    if(base == StringSubstr(target, 0, 3) && quote == StringSubstr(target, 3, 3))
+
+    int score = MathAbs(StringLen(symKey) - StringLen(targetKey));
+    if(score < bestScore)
     {
-      resolved = sym;
-      return true;
+      bestScore = score;
+      bestSymbol = sym;
     }
   }
 
+  if(bestSymbol != "")
+  {
+    resolved = bestSymbol;
+    return true;
+  }
   return false;
 }
 
@@ -782,7 +892,7 @@ double NormalizeVolume(const string symbol, double volume)
   double maxVol = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
   double step = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
   if(volume < minVol)
-    return 0.0;
+    volume = minVol;
   if(volume > maxVol)
     volume = maxVol;
 
@@ -808,7 +918,9 @@ double GetAtrValue(const string symbol)
 
 double GetPipValue(const string symbol)
 {
-  double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+  double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE_PROFIT);
+  if(tickValue <= 0.0)
+    tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
   double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
   if(tickValue <= 0.0 || tickSize <= 0.0)
     return 0.0;
@@ -1053,6 +1165,8 @@ void TryAddPositions()
 
   double cap = GetBasketLotCap();
   double totalLots = GetTotalBasketLots();
+  datetime nowGmt = TimeGMT();
+  datetime cryptoStartGmt = GetCryptoWeekStartGmt(nowGmt);
 
   for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
   {
@@ -1078,6 +1192,15 @@ void TryAddPositions()
     }
 
     string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
+    string normalizedClass = assetClass;
+    StringToLower(normalizedClass);
+    if(normalizedClass == "crypto" && nowGmt < cryptoStartGmt)
+      continue;
+    if(!IsTradableSymbol(symbol))
+    {
+      Log(StringFormat("Symbol %s not tradable now. Skipping.", symbol));
+      continue;
+    }
     double vol = GetLotForSymbol(symbol, assetClass);
     if(vol <= 0.0)
     {
@@ -1280,6 +1403,30 @@ datetime GetWeekStartGmt(datetime nowGmt)
   MqlDateTime sundayStruct;
   TimeToStruct(sunday, sundayStruct);
   sundayStruct.hour = 19;
+  sundayStruct.min = 0;
+  sundayStruct.sec = 0;
+  datetime sundayEt = StructToTime(sundayStruct);
+
+  bool dstLocal = IsUsdDstLocal(sundayStruct.year, sundayStruct.mon,
+                                sundayStruct.day, sundayStruct.hour);
+  int localOffset = dstLocal ? -4 : -5;
+  datetime sundayUtc = sundayEt - localOffset * 3600;
+  return sundayUtc;
+}
+
+// Crypto week starts at Sunday 00:00 ET (weekly close), then trades from that point.
+datetime GetCryptoWeekStartGmt(datetime nowGmt)
+{
+  bool dst = IsUsdDstUtc(nowGmt);
+  int offset = dst ? -4 : -5;
+  datetime etNow = nowGmt + offset * 3600;
+  MqlDateTime et;
+  TimeToStruct(etNow, et);
+  int daysSinceSunday = et.day_of_week;
+  datetime sunday = etNow - daysSinceSunday * 86400;
+  MqlDateTime sundayStruct;
+  TimeToStruct(sunday, sundayStruct);
+  sundayStruct.hour = 0;
   sundayStruct.min = 0;
   sundayStruct.sec = 0;
   datetime sundayEt = StructToTime(sundayStruct);
@@ -1533,6 +1680,26 @@ void Log(const string message)
   Print(TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS), " | ", message);
 }
 
+void LogLotPreview(bool force)
+{
+  if(!g_apiOk)
+    return;
+  string key = g_reportDate + "|" + IntegerToString((int)g_weekStartGmt) + "|" + IntegerToString(ArraySize(g_brokerSymbols));
+  if(!force && key == g_lastLotPreviewKey)
+    return;
+  g_lastLotPreviewKey = key;
+  Log("Lot preview (ATR-weighted, per pair):");
+  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
+  {
+    string symbol = g_brokerSymbols[i];
+    if(symbol == "")
+      continue;
+    string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
+    double lot = GetLotForSymbol(symbol, assetClass);
+    Log(StringFormat("  %s | %s | lot=%.2f", symbol, assetClass, lot));
+  }
+}
+
 string TruncateForLog(const string value, int maxLen)
 {
   if(StringLen(value) <= maxLen)
@@ -1555,17 +1722,34 @@ void InitDashboard()
   g_dashTitleSize = MathMax(DashboardTitleSize, 20);
   g_dashAccentWidth = MathMax(DashboardAccentWidth, 10);
   g_dashShadowOffset = MathMax(DashboardShadowOffset, 6);
+  g_dashColumnGap = MathMax(DashboardColumnGap, 12);
 
   const int lineCount = 20;
+  const int mapLines = MathMax(6, LotMapMaxLines);
   ArrayResize(g_dashboardLines, lineCount);
   for(int i = 0; i < lineCount; i++)
     g_dashboardLines[i] = StringFormat("LimniDash_line_%d", i);
+  ArrayResize(g_dashboardRightLines, mapLines);
+  for(int i = 0; i < mapLines; i++)
+    g_dashboardRightLines[i] = StringFormat("LimniDash_map_%d", i);
 
   int headerHeight = g_dashLineHeight + 12;
-  int height = g_dashPadding * 2 + headerHeight + lineCount * g_dashLineHeight;
+  int rows = lineCount > mapLines ? lineCount : mapLines;
+  int height = g_dashPadding * 2 + headerHeight + rows * g_dashLineHeight;
   int accentWidth = g_dashAccentWidth;
   int contentX = DashboardX + g_dashPadding + accentWidth;
   int contentWidth = g_dashWidth - (g_dashPadding * 2) - accentWidth;
+  g_dashLeftWidth = (contentWidth - g_dashColumnGap) * 2 / 3;
+  if(g_dashLeftWidth < 520)
+    g_dashLeftWidth = 520;
+  g_dashRightWidth = contentWidth - g_dashLeftWidth - g_dashColumnGap;
+  if(g_dashRightWidth < 240)
+  {
+    g_dashRightWidth = 240;
+    g_dashLeftWidth = contentWidth - g_dashRightWidth - g_dashColumnGap;
+  }
+  g_dashLeftX = contentX;
+  g_dashRightX = contentX + g_dashLeftWidth + g_dashColumnGap;
 
   if(ObjectFind(0, DASH_SHADOW) < 0)
   {
@@ -1619,9 +1803,9 @@ void InitDashboard()
   {
     ObjectCreate(0, DASH_DIVIDER, OBJ_RECTANGLE_LABEL, 0, 0, 0);
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_CORNER, DashboardCorner);
-    ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_XDISTANCE, contentX);
+    ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_XDISTANCE, g_dashLeftX);
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + headerHeight - 6);
-    ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_XSIZE, contentWidth);
+    ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_XSIZE, g_dashLeftWidth);
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_YSIZE, 1);
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_COLOR, C'226,232,240');
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_BGCOLOR, C'226,232,240');
@@ -1631,16 +1815,44 @@ void InitDashboard()
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_HIDDEN, true);
   }
 
+  if(ObjectFind(0, DASH_COL_DIVIDER) < 0)
+  {
+    ObjectCreate(0, DASH_COL_DIVIDER, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_CORNER, DashboardCorner);
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_XDISTANCE, g_dashRightX - (g_dashColumnGap / 2));
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + headerHeight - 6);
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_XSIZE, 1);
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_YSIZE, height - headerHeight);
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_COLOR, C'226,232,240');
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_BGCOLOR, C'226,232,240');
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_BACK, false);
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_SELECTABLE, false);
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_HIDDEN, true);
+  }
+
   if(ObjectFind(0, DASH_TITLE) < 0)
   {
     ObjectCreate(0, DASH_TITLE, OBJ_LABEL, 0, 0, 0);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_CORNER, DashboardCorner);
-    ObjectSetInteger(0, DASH_TITLE, OBJPROP_XDISTANCE, contentX);
+    ObjectSetInteger(0, DASH_TITLE, OBJPROP_XDISTANCE, g_dashLeftX);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + 1);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_FONTSIZE, g_dashTitleSize);
     ObjectSetString(0, DASH_TITLE, OBJPROP_FONT, "Segoe UI Semibold");
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_SELECTABLE, false);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_HIDDEN, true);
+  }
+
+  if(ObjectFind(0, DASH_MAP_TITLE) < 0)
+  {
+    ObjectCreate(0, DASH_MAP_TITLE, OBJ_LABEL, 0, 0, 0);
+    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_CORNER, DashboardCorner);
+    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_XDISTANCE, g_dashRightX);
+    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + 1);
+    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_FONTSIZE, g_dashTitleSize - 2);
+    ObjectSetString(0, DASH_MAP_TITLE, OBJPROP_FONT, "Segoe UI Semibold");
+    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_SELECTABLE, false);
+    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_HIDDEN, true);
   }
 
   for(int i = 0; i < lineCount; i++)
@@ -1650,7 +1862,27 @@ void InitDashboard()
       continue;
     ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
     ObjectSetInteger(0, name, OBJPROP_CORNER, DashboardCorner);
-    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, contentX);
+    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, g_dashLeftX);
+    ObjectSetInteger(
+      0,
+      name,
+      OBJPROP_YDISTANCE,
+      DashboardY + g_dashPadding + headerHeight + i * g_dashLineHeight
+    );
+    ObjectSetInteger(0, name, OBJPROP_FONTSIZE, g_dashFontSize);
+    ObjectSetString(0, name, OBJPROP_FONT, "Segoe UI");
+    ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+    ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+  }
+
+  for(int i = 0; i < mapLines; i++)
+  {
+    const string name = g_dashboardRightLines[i];
+    if(ObjectFind(0, name) >= 0)
+      continue;
+    ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+    ObjectSetInteger(0, name, OBJPROP_CORNER, DashboardCorner);
+    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, g_dashRightX);
     ObjectSetInteger(
       0,
       name,
@@ -1674,9 +1906,13 @@ void DestroyDashboard()
   ObjectDelete(0, DASH_BG);
   ObjectDelete(0, DASH_ACCENT);
   ObjectDelete(0, DASH_DIVIDER);
+  ObjectDelete(0, DASH_COL_DIVIDER);
   ObjectDelete(0, DASH_TITLE);
+  ObjectDelete(0, DASH_MAP_TITLE);
   for(int i = 0; i < ArraySize(g_dashboardLines); i++)
     ObjectDelete(0, g_dashboardLines[i]);
+  for(int i = 0; i < ArraySize(g_dashboardRightLines); i++)
+    ObjectDelete(0, g_dashboardRightLines[i]);
   g_dashboardReady = false;
 }
 
@@ -1792,6 +2028,7 @@ void UpdateDashboard()
   color headingColor = C'15,118,110';
 
   SetLabelText(DASH_TITLE, "Limni Basket EA", C'15,23,42');
+  SetLabelText(DASH_MAP_TITLE, "LOT MAP", headingColor);
   SetLabelText(g_dashboardLines[0], "SYSTEM", headingColor);
   SetLabelText(g_dashboardLines[1], StringFormat("State: %s  |  Trading: %s", stateText, g_tradingAllowed ? "Allowed" : "Blocked"), stateColor);
   SetLabelText(g_dashboardLines[2], apiLine, apiColor);
@@ -1815,6 +2052,40 @@ void UpdateDashboard()
   SetLabelText(g_dashboardLines[17], lotLine, dimColor);
   SetLabelText(g_dashboardLines[18], multLine, dimColor);
   SetLabelText(g_dashboardLines[19], pollLine + "  |  " + errorLine, errorColor);
+
+  int mapCount = ArraySize(g_dashboardRightLines);
+  int totalSymbols = ArraySize(g_brokerSymbols);
+  int displayCount = mapCount;
+  bool hasOverflow = (totalSymbols > mapCount);
+  if(hasOverflow && mapCount > 1)
+    displayCount = mapCount - 1;
+
+  for(int i = 0; i < mapCount; i++)
+  {
+    if(i < displayCount)
+    {
+      string symbol = g_brokerSymbols[i];
+      if(symbol == "")
+      {
+        SetLabelText(g_dashboardRightLines[i], "--", dimColor);
+        continue;
+      }
+      string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
+      double lot = GetLotForSymbol(symbol, assetClass);
+      SetLabelText(g_dashboardRightLines[i],
+                   StringFormat("%-10s  %s  %.2f", symbol, CompactText(assetClass, 8), lot),
+                   textColor);
+    }
+    else if(i == mapCount - 1 && hasOverflow)
+    {
+      int remaining = totalSymbols - displayCount;
+      SetLabelText(g_dashboardRightLines[i], StringFormat("... +%d more", remaining), dimColor);
+    }
+    else
+    {
+      SetLabelText(g_dashboardRightLines[i], " ", dimColor);
+    }
+  }
 }
 
 //+------------------------------------------------------------------+
