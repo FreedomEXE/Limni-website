@@ -12,12 +12,12 @@ input string AssetFilter = "all";
 input bool ResetStateOnInit = false;
 input int ApiPollIntervalSeconds = 60;
 input double BasketLotCapPer100k = 10.0;
-input string ReferenceSymbol = "EURUSD";
+input string ReferenceSymbol = "EURUSD.i";
 input double ReferenceLot = 0.10;
 input int AtrPeriod = 14;
-input string SymbolAliases = "SPXUSD=US500,NDXUSD=NAS100,NIKKEIUSD=JP225,WTIUSD=USOIL,BTCUSD=BTC,ETHUSD=ETH";
+input string SymbolAliases = "SPXUSD=SPX500,NDXUSD=NDX100,NIKKEIUSD=JPN225,WTIUSD=USOUSD,BTCUSD=BTCUSD,ETHUSD=ETHUSD";
 input bool EnforceAllowedSymbols = true;
-input string AllowedSymbols = "EURUSD,GBPUSD,USDJPY,USDCHF,USDCAD,AUDUSD,NZDUSD,EURGBP,EURJPY,EURCHF,EURAUD,EURNZD,EURCAD,GBPJPY,GBPCHF,GBPAUD,GBPNZD,GBPCAD,AUDJPY,AUDCHF,AUDCAD,AUDNZD,NZDJPY,NZDCHF,NZDCAD,CADJPY,CADCHF,CHFJPY,XAUUSD,XAGUSD,WTIUSD,USOIL,XTIUSD,BTCUSD,ETHUSD,BTC,ETH";
+input string AllowedSymbols = "EURUSD*,GBPUSD*,USDJPY*,USDCHF*,USDCAD*,AUDUSD*,NZDUSD*,EURGBP*,EURJPY*,EURCHF*,EURAUD*,EURNZD*,EURCAD*,GBPJPY*,GBPCHF*,GBPAUD*,GBPNZD*,GBPCAD*,AUDJPY*,AUDCHF*,AUDCAD*,AUDNZD*,NZDJPY*,NZDCHF*,NZDCAD*,CADJPY*,CADCHF*,CHFJPY*,XAUUSD*,XAGUSD*,WTIUSD*,USOUSD*,SPXUSD*,NDXUSD*,NIKKEIUSD*,SPX500*,NDX100*,JPN225*,BTCUSD*,ETHUSD*";
 input double FxLotMultiplier = 1.0;
 input double CryptoLotMultiplier = 1.0;
 input double CommoditiesLotMultiplier = 1.0;
@@ -838,7 +838,9 @@ bool IsAllowedSymbol(const string symbol)
   BuildAllowedKeys();
   if(ArraySize(g_allowedKeys) == 0)
     return true;
-  string key = NormalizeSymbolKey(symbol);
+  string upper = symbol;
+  StringToUpper(upper);
+  string key = NormalizeSymbolKey(upper);
   if(key == "")
     return false;
   for(int i = 0; i < ArraySize(g_allowedKeys); i++)
@@ -851,6 +853,9 @@ bool IsAllowedSymbol(const string symbol)
     if(g_allowedKeyPrefixes[i] && StringFind(key, allowed) == 0)
       return true;
   }
+  Print("DEBUG: Symbol ", symbol, " normalized to ", key, " not found in ", ArraySize(g_allowedKeys), " allowed keys");
+  for(int i = 0; i < MathMin(5, ArraySize(g_allowedKeys)); i++)
+    Print("  Sample allowed key [", i, "]: ", g_allowedKeys[i], " (prefix=", g_allowedKeyPrefixes[i], ")");
   return false;
 }
 
@@ -2149,10 +2154,12 @@ void UpdateDashboard()
 
   int mapCount = ArraySize(g_dashboardRightLines);
   int totalSymbols = ArraySize(g_brokerSymbols);
-  int displayCount = mapCount;
   bool hasOverflow = (totalSymbols > mapCount);
+  int displayCount = totalSymbols;
   if(hasOverflow && mapCount > 1)
     displayCount = mapCount - 1;
+  else
+    displayCount = MathMin(displayCount, mapCount);
 
   for(int i = 0; i < mapCount; i++)
   {
