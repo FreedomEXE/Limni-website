@@ -193,13 +193,15 @@ async function safe<T>(promise: Promise<T>): Promise<T | null> {
 }
 
 type PageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     sort?: string;
     moon?: string;
-  };
+  }>;
 };
 
 export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+
   const [summaryResult, solSnapshot, sol24h, sol7d] = await Promise.all([
     loadSummary(),
     safe(fetchBitgetFuturesSnapshot("SOL")),
@@ -230,8 +232,8 @@ export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
   const topMoonbags = [...moonbags]
     .sort((a, b) => (b.max_multiple ?? 0) - (a.max_multiple ?? 0))
     .slice(0, 4);
-  const sortMode = searchParams?.sort ?? "time";
-  const moonFilter = searchParams?.moon ?? "open";
+  const sortMode = params?.sort ?? "time";
+  const moonFilter = params?.moon ?? "open";
   const recent = [...rawRecent].sort((a, b) => {
     if (sortMode === "max") {
       return (b.max_multiple ?? 0) - (a.max_multiple ?? 0);
