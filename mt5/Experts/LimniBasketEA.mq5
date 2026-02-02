@@ -12,9 +12,6 @@ input string AssetFilter = "all";
 input bool ResetStateOnInit = false;
 input int ApiPollIntervalSeconds = 60;
 input double BasketLotCapPer100k = 10.0;
-input string ReferenceSymbol = "EURUSD.i";
-input double ReferenceLot = 0.10;
-input int AtrPeriod = 14;
 input string SymbolAliases = "SPXUSD=SPX500,NDXUSD=NDX100,NIKKEIUSD=JPN225,WTIUSD=USOUSD,BTCUSD=BTCUSD,ETHUSD=ETHUSD";
 input bool EnforceAllowedSymbols = false;
 input string AllowedSymbols = "EURUSD*,GBPUSD*,USDJPY*,USDCHF*,USDCAD*,AUDUSD*,NZDUSD*,EURGBP*,EURJPY*,EURCHF*,EURAUD*,EURNZD*,EURCAD*,GBPJPY*,GBPCHF*,GBPAUD*,GBPNZD*,GBPCAD*,AUDJPY*,AUDCHF*,AUDCAD*,AUDNZD*,NZDJPY*,NZDCHF*,NZDCAD*,CADJPY*,CADCHF*,CHFJPY*,XAUUSD*,XAGUSD*,WTIUSD*,USOUSD*,SPXUSD*,NDXUSD*,NIKKEIUSD*,SPX500*,NDX100*,JPN225*,BTCUSD*,ETHUSD*";
@@ -22,8 +19,11 @@ input double FxLotMultiplier = 1.0;
 input double CryptoLotMultiplier = 1.0;
 input double CommoditiesLotMultiplier = 1.0;
 input double IndicesLotMultiplier = 1.0;
-input double EquityTrailStartPct = 2.0;
-input double EquityTrailOffsetPct = 1.0;
+input bool LogSizingDetails = true;
+input int SizingLogCooldownSeconds = 300;
+input double SizingLogDeviationThresholdPct = 5.0;
+input double EquityTrailStartPct = 20.0;
+input double EquityTrailOffsetPct = 10.0;
 input bool AllowNonFullTradeModeForListing = true;
 input int MaxOpenPositions = 200;
 input int SlippagePoints = 10;
@@ -77,17 +77,11 @@ datetime g_weekStartGmt = 0;
 datetime g_lastPoll = 0;
 datetime g_lastApiSuccess = 0;
 bool g_loadedFromCache = false;
-string g_refBrokerSymbol = "";
-double g_refAtr = 0.0;
-double g_refPipValue = 0.0;
-datetime g_lastAtrWeekStart = 0;
 
 double g_baselineEquity = 0.0;
 double g_lockedProfitPct = 0.0;
-double g_lastEquityForSl = 0.0;
 bool g_trailingActive = false;
 bool g_closeRequested = false;
-bool g_forceSlUpdate = false;
 double g_weekPeakEquity = 0.0;
 double g_maxDrawdownPct = 0.0;
 
@@ -96,7 +90,6 @@ string g_brokerSymbols[];
 int g_directions[];
 string g_models[];
 string g_assetClasses[];
-datetime g_lastAddTimes[];
 
 datetime g_orderTimes[];
 datetime g_lastPush = 0;
@@ -109,7 +102,6 @@ string GV_BASELINE = "Limni_Baseline";
 string GV_LOCKED = "Limni_Locked";
 string GV_TRAIL = "Limni_TrailActive";
 string GV_CLOSE = "Limni_CloseRequested";
-string GV_LAST_EQUITY = "Limni_LastEquity";
 string GV_WEEK_PEAK = "Limni_WeekPeak";
 string GV_MAX_DD = "Limni_MaxDD";
 string CACHE_FILE = "LimniCotCache.json";
@@ -138,7 +130,6 @@ int g_dashLeftWidth = 0;
 int g_dashRightWidth = 0;
 int g_dashLeftX = 0;
 int g_dashRightX = 0;
-string g_lastLotPreviewKey = "";
 string g_allowedKeys[];
 bool g_allowedKeyPrefixes[];
 bool g_allowedKeysReady = false;
@@ -163,13 +154,19 @@ bool TryResolveAlias(const string apiSymbol, string &resolved);
 bool ResolveSymbolByNormalizedKey(const string targetKey, string &resolved, bool requireFull);
 void BuildAllowedKeys();
 bool IsAllowedSymbol(const string symbol);
+bool IsIndexSymbol(const string symbol);
 int DirectionFromString(const string value);
 string DirectionToString(int dir);
 double NormalizeVolume(const string symbol, double volume);
-double GetAtrValue(const string symbol);
-double GetPipValue(const string symbol);
-bool EnsureAtrCache();
 double GetLotForSymbol(const string symbol, const string assetClass);
+double GetOneToOneLotForSymbol(const string symbol, const string assetClass);
+double CalculateMarginRequired(const string symbol, double lots);
+bool ComputeOneToOneLot(const string symbol, const string assetClass, double &targetLot,
+                        double &finalLot, double &deviationPct, double &equityPerSymbol,
+                        double &marginRequired);
+bool ShouldLogSizing(const string symbol, int cooldownSeconds);
+void LogSizing(const string symbol, double targetLot, double finalLot,
+               double deviationPct, double equityPerSymbol, double marginRequired);
 double GetAssetMultiplier(const string assetClass);
 double GetBasketLotCap();
 double GetTotalBasketLots();
@@ -195,9 +192,12 @@ void SaveState();
 void LoadApiCache();
 void SaveApiCache(const string json);
 void ResetState();
-void SyncLastAddTimes();
 void Log(const string message);
-void LogLotPreview(bool force);
+void LogTradeError(const string message);
+bool ShouldLogIndexSkip(const string symbol, const string reasonKey, int cooldownSeconds);
+void LogIndexSkip(const string symbol, const string reason, const string reasonKey);
+void LogIndexSkipsForAll(const string reason, const string reasonKey);
+void LogMissingIndexPairs(const string &symbols[]);
 string TruncateForLog(const string value, int maxLen);
 void InitDashboard();
 void UpdateDashboard();
@@ -243,7 +243,6 @@ int OnInit()
     LoadState();
     LoadApiCache();
   }
-  SyncLastAddTimes();
   InitDashboard();
 
   EventSetTimer(10);
@@ -275,10 +274,8 @@ void OnTimer()
       g_lockedProfitPct = 0.0;
       g_trailingActive = false;
       g_closeRequested = false;
-      g_forceSlUpdate = true;
       g_weekPeakEquity = 0.0;
       g_maxDrawdownPct = 0.0;
-      g_lastAtrWeekStart = 0;
       SaveState();
       Log("New week detected. State reset to IDLE.");
     }
@@ -336,6 +333,8 @@ void PollApiIfDue()
     return;
   }
 
+  LogMissingIndexPairs(symbols);
+
   SaveApiCache(json);
   g_apiOk = true;
   g_tradingAllowed = allowed;
@@ -351,19 +350,20 @@ void PollApiIfDue()
   ArrayResize(g_directions, 0);
   ArrayResize(g_models, 0);
   ArrayResize(g_assetClasses, 0);
-  ArrayResize(g_lastAddTimes, 0);
 
   for(int i = 0; i < count; i++)
   {
     string resolved = "";
     if(!IsAllowedSymbol(symbols[i]))
     {
-      Log(StringFormat("Symbol %s not in allowed list. Skipped.", symbols[i]));
+      if(IsIndexSymbol(symbols[i]))
+        LogTradeError(StringFormat("Index pair %s not in allowed list. Skipped.", symbols[i]));
       continue;
     }
     if(!ResolveSymbol(symbols[i], resolved))
     {
-      Log(StringFormat("Symbol %s not tradable or not found. Skipped.", symbols[i]));
+      if(IsIndexSymbol(symbols[i]))
+        LogTradeError(StringFormat("Index pair %s not tradable or not found. Skipped.", symbols[i]));
       continue;
     }
 
@@ -373,18 +373,12 @@ void PollApiIfDue()
     ArrayResize(g_directions, idx + 1);
     ArrayResize(g_models, idx + 1);
     ArrayResize(g_assetClasses, idx + 1);
-    ArrayResize(g_lastAddTimes, idx + 1);
     g_apiSymbols[idx] = symbols[i];
     g_brokerSymbols[idx] = resolved;
     g_directions[idx] = dirs[i];
     g_models[idx] = (i < ArraySize(models) ? models[i] : "blended");
     g_assetClasses[idx] = (i < ArraySize(assetClasses) ? assetClasses[i] : "fx");
-    g_lastAddTimes[idx] = 0;
   }
-
-  SyncLastAddTimes();
-
-  LogLotPreview(false);
 
   Log(StringFormat("API ok. trading_allowed=%s, report_date=%s, pairs=%d",
                    g_tradingAllowed ? "true" : "false",
@@ -858,6 +852,26 @@ bool IsAllowedSymbol(const string symbol)
   return false;
 }
 
+bool IsIndexSymbol(const string symbol)
+{
+  string upper = symbol;
+  StringToUpper(upper);
+  string key = NormalizeSymbolKey(upper);
+  return (StringFind(key, "SPX") >= 0 ||
+          StringFind(key, "SP500") >= 0 ||
+          StringFind(key, "SPX500") >= 0 ||
+          StringFind(key, "US500") >= 0 ||
+          StringFind(key, "NDX") >= 0 ||
+          StringFind(key, "NDX100") >= 0 ||
+          StringFind(key, "NAS100") >= 0 ||
+          StringFind(key, "US100") >= 0 ||
+          StringFind(key, "NIKKEI") >= 0 ||
+          StringFind(key, "NIKKEI225") >= 0 ||
+          StringFind(key, "NIK225") >= 0 ||
+          StringFind(key, "JPN225") >= 0 ||
+          StringFind(key, "JP225") >= 0);
+}
+
 string NormalizeSymbolKey(const string value)
 {
   string out = "";
@@ -1014,73 +1028,105 @@ double NormalizeVolume(const string symbol, double volume)
   return normalized;
 }
 
-double GetAtrValue(const string symbol)
+double GetLotForSymbol(const string symbol, const string assetClass)
 {
-  int handle = iATR(symbol, PERIOD_D1, AtrPeriod);
-  if(handle == INVALID_HANDLE)
-    return 0.0;
-  double buffer[];
-  ArraySetAsSeries(buffer, true);
-  int copied = CopyBuffer(handle, 0, 0, 1, buffer);
-  IndicatorRelease(handle);
-  if(copied < 1)
-    return 0.0;
-  return buffer[0];
+  return GetOneToOneLotForSymbol(symbol, assetClass);
 }
 
-double GetPipValue(const string symbol)
+double GetOneToOneLotForSymbol(const string symbol, const string assetClass)
 {
+  double targetLot = 0.0;
+  double finalLot = 0.0;
+  double deviationPct = 0.0;
+  double equityPerSymbol = 0.0;
+  double marginRequired = 0.0;
+  if(!ComputeOneToOneLot(symbol, assetClass, targetLot, finalLot, deviationPct,
+                         equityPerSymbol, marginRequired))
+    return 0.0;
+  return finalLot;
+}
+
+double CalculateMarginRequired(const string symbol, double lots)
+{
+  if(lots <= 0.0)
+    return 0.0;
+  double price = SymbolInfoDouble(symbol, SYMBOL_ASK);
+  if(price <= 0.0)
+    price = SymbolInfoDouble(symbol, SYMBOL_BID);
+  if(price <= 0.0)
+    price = SymbolInfoDouble(symbol, SYMBOL_LAST);
+  if(price <= 0.0)
+    return 0.0;
+  double margin = 0.0;
+  if(!OrderCalcMargin(ORDER_TYPE_BUY, symbol, lots, price, margin))
+    return 0.0;
+  return margin;
+}
+
+bool ComputeOneToOneLot(const string symbol, const string assetClass, double &targetLot,
+                        double &finalLot, double &deviationPct, double &equityPerSymbol,
+                        double &marginRequired)
+{
+  targetLot = 0.0;
+  finalLot = 0.0;
+  deviationPct = 0.0;
+  equityPerSymbol = 0.0;
+  marginRequired = 0.0;
+
+  double price = SymbolInfoDouble(symbol, SYMBOL_BID);
+  if(price <= 0.0)
+    price = SymbolInfoDouble(symbol, SYMBOL_ASK);
+  if(price <= 0.0)
+    price = SymbolInfoDouble(symbol, SYMBOL_LAST);
+
+  double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
   double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE_PROFIT);
   if(tickValue <= 0.0)
     tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
-  double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
-  if(tickValue <= 0.0 || tickSize <= 0.0)
-    return 0.0;
 
-  string sym = symbol;
-  StringToUpper(sym);
-  bool isJpy = (StringFind(sym, "JPY") >= 0);
-  double pipSize = isJpy ? 0.01 : 0.0001;
-  return (pipSize / tickSize) * tickValue;
-}
-
-bool EnsureAtrCache()
-{
-  if(g_lastAtrWeekStart == g_weekStartGmt && g_refAtr > 0.0 && g_refPipValue > 0.0)
-    return true;
-
-  string resolved = "";
-  if(!ResolveSymbol(ReferenceSymbol, resolved))
-  {
-    Log(StringFormat("Reference symbol %s not tradable.", ReferenceSymbol));
+  if(price <= 0.0 || tickSize <= 0.0 || tickValue <= 0.0)
     return false;
-  }
-  g_refBrokerSymbol = resolved;
-  g_refAtr = GetAtrValue(g_refBrokerSymbol);
-  g_refPipValue = GetPipValue(g_refBrokerSymbol);
-  g_lastAtrWeekStart = g_weekStartGmt;
 
-  if(g_refAtr <= 0.0 || g_refPipValue <= 0.0)
-  {
-    Log("Reference ATR/pip value not available.");
+  double baseEquity = g_baselineEquity;
+  if(baseEquity <= 0.0)
+    baseEquity = AccountInfoDouble(ACCOUNT_BALANCE);
+  equityPerSymbol = baseEquity;
+
+  double baseLot = equityPerSymbol * tickSize / (price * tickValue);
+  double multiplier = GetAssetMultiplier(assetClass);
+  targetLot = baseLot * multiplier;
+  if(targetLot <= 0.0)
     return false;
-  }
+
+  marginRequired = CalculateMarginRequired(symbol, targetLot);
+  finalLot = NormalizeVolume(symbol, targetLot);
+  if(finalLot <= 0.0)
+    return false;
+
+  if(targetLot > 0.0)
+    deviationPct = (finalLot - targetLot) / targetLot * 100.0;
   return true;
 }
 
-double GetLotForSymbol(const string symbol, const string assetClass)
+bool ShouldLogSizing(const string symbol, int cooldownSeconds)
 {
-  if(!EnsureAtrCache())
-    return NormalizeVolume(symbol, ReferenceLot);
+  string key = "Limni_Size_" + symbol;
+  datetime now = TimeCurrent();
+  if(GlobalVariableCheck(key))
+  {
+    datetime last = (datetime)GlobalVariableGet(key);
+    if(last > 0 && (now - last) < cooldownSeconds)
+      return false;
+  }
+  GlobalVariableSet(key, (double)now);
+  return true;
+}
 
-  double atr = GetAtrValue(symbol);
-  double pipValue = GetPipValue(symbol);
-  if(atr <= 0.0 || pipValue <= 0.0)
-    return NormalizeVolume(symbol, ReferenceLot);
-
-  double multiplier = GetAssetMultiplier(assetClass);
-  double lot = ReferenceLot * (g_refAtr / atr) * (g_refPipValue / pipValue) * multiplier;
-  return NormalizeVolume(symbol, lot);
+void LogSizing(const string symbol, double targetLot, double finalLot,
+               double deviationPct, double equityPerSymbol, double marginRequired)
+{
+  Log(StringFormat("Sizing %s target=%.4f final=%.4f dev=%+.2f%% slice=%.2f margin=%.2f",
+                   symbol, targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired));
 }
 
 double GetAssetMultiplier(const string assetClass)
@@ -1184,12 +1230,10 @@ void UpdateState()
     if(g_apiOk && g_tradingAllowed)
     {
       g_state = STATE_ACTIVE;
-      g_baselineEquity = AccountInfoDouble(ACCOUNT_EQUITY);
+      g_baselineEquity = AccountInfoDouble(ACCOUNT_BALANCE);
       g_lockedProfitPct = 0.0;
       g_trailingActive = false;
       g_closeRequested = false;
-      g_lastEquityForSl = g_baselineEquity;
-      g_forceSlUpdate = true;
       SaveState();
       Log("State -> ACTIVE (API allows trading).");
     }
@@ -1279,6 +1323,26 @@ void TryAddPositions()
   double totalLots = GetTotalBasketLots();
   datetime nowGmt = TimeGMT();
   datetime cryptoStartGmt = GetCryptoWeekStartGmt(nowGmt);
+  int openPositions = CountOpenPositions();
+
+  if(openPositions >= MaxOpenPositions)
+  {
+    LogIndexSkipsForAll("max open positions reached", "max_positions");
+    return;
+  }
+
+  if(totalLots >= cap)
+  {
+    LogIndexSkipsForAll("basket lot cap reached", "lot_cap");
+    return;
+  }
+
+  if(OrdersInLastMinute() >= MaxOrdersPerMinute)
+  {
+    LogIndexSkipsForAll("order rate limit reached", "rate_limit");
+    LogTradeError("Order rate limit reached. Skipping adds.");
+    return;
+  }
 
   for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
   {
@@ -1287,21 +1351,9 @@ void TryAddPositions()
     if(symbol == "" || direction == 0)
       continue;
 
-    if(CountOpenPositions() >= MaxOpenPositions)
-      return;
-
-    if(totalLots >= cap)
-      return;
-
     string model = (i < ArraySize(g_models) ? g_models[i] : "blended");
     if(HasPositionForModel(symbol, model))
       continue;
-
-    if(OrdersInLastMinute() >= MaxOrdersPerMinute)
-    {
-      Log("Order rate limit reached. Skipping adds.");
-      return;
-    }
 
     string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
     string normalizedClass = assetClass;
@@ -1310,27 +1362,39 @@ void TryAddPositions()
       continue;
     if(!IsTradableSymbol(symbol))
     {
-      // Log indices trade mode errors
-      if(StringFind(symbol, "SPX") >= 0 || StringFind(symbol, "NDX") >= 0 || StringFind(symbol, "JPN") >= 0)
-      {
-        int tradeMode = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_MODE);
-        Log(StringFormat("ERROR: %s not tradable - trade_mode=%d (need FULL=4)", symbol, tradeMode));
-      }
+      int tradeMode = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_MODE);
+      if(IsIndexSymbol(symbol))
+        LogIndexSkip(symbol, StringFormat("not tradable (trade_mode=%d)", tradeMode), "not_tradable");
+      LogTradeError(StringFormat("%s not tradable - trade_mode=%d (need FULL=4)", symbol, tradeMode));
       continue;
     }
-    double vol = GetLotForSymbol(symbol, assetClass);
+    double targetLot = 0.0;
+    double finalLot = 0.0;
+    double deviationPct = 0.0;
+    double equityPerSymbol = 0.0;
+    double marginRequired = 0.0;
+    bool ok = ComputeOneToOneLot(symbol, assetClass, targetLot, finalLot,
+                                 deviationPct, equityPerSymbol, marginRequired);
+    double vol = finalLot;
     if(vol <= 0.0)
     {
-      // Log indices volume errors
-      if(StringFind(symbol, "SPX") >= 0 || StringFind(symbol, "NDX") >= 0 || StringFind(symbol, "JPN") >= 0)
-      {
-        Log(StringFormat("ERROR: %s invalid volume=%.2f", symbol, vol));
-      }
+      if(IsIndexSymbol(symbol))
+        LogIndexSkip(symbol, StringFormat("invalid volume %.2f", vol), "invalid_volume");
+      LogTradeError(StringFormat("%s invalid volume=%.2f", symbol, vol));
       continue;
+    }
+    if(LogSizingDetails && ok && ShouldLogSizing(symbol, SizingLogCooldownSeconds))
+    {
+      if(MathAbs(deviationPct) >= SizingLogDeviationThresholdPct)
+        LogSizing(symbol, targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired);
     }
 
     if(!PlaceOrder(symbol, direction, vol, model))
+    {
+      if(IsIndexSymbol(symbol))
+        LogIndexSkip(symbol, "order send failed", "order_failed");
       continue;
+    }
 
     totalLots += vol;
     MarkOrderTimestamp();
@@ -1353,15 +1417,9 @@ bool PlaceOrder(const string symbol, int direction, double volume, const string 
   if(!result)
   {
     int errorCode = GetLastError();
-    Log(StringFormat("ERROR: Order failed %s %s vol=%.2f code=%d",
-                     symbol, DirectionToString(direction), volume, errorCode));
+    LogTradeError(StringFormat("Order failed %s %s vol=%.2f code=%d",
+                               symbol, DirectionToString(direction), volume, errorCode));
     return false;
-  }
-
-  // Success - only log for indices
-  if(StringFind(symbol, "SPX") >= 0 || StringFind(symbol, "NDX") >= 0 || StringFind(symbol, "JPN") >= 0)
-  {
-    Log(StringFormat("SUCCESS: %s %s vol=%.2f", symbol, DirectionToString(direction), volume));
   }
   return true;
 }
@@ -1410,24 +1468,6 @@ bool GetSymbolStats(const string symbol, SymbolStats &stats)
   return stats.valid;
 }
 
-//+------------------------------------------------------------------+
-bool CalculateStopLoss(const string symbol, const SymbolStats &stats, double &sl)
-{
-  sl = 0.0;
-  return true;
-}
-
-//+------------------------------------------------------------------+
-bool UpdateSymbolStopLoss(const string symbol, const SymbolStats &stats)
-{
-  return true;
-}
-
-//+------------------------------------------------------------------+
-void UpdateStopsIfNeeded()
-{
-  return;
-}
 //+------------------------------------------------------------------+
 void CloseAllPositions()
 {
@@ -1660,7 +1700,6 @@ void LoadState()
       g_lockedProfitPct = GlobalVariableGet(GV_LOCKED);
       g_trailingActive = (GlobalVariableGet(GV_TRAIL) > 0.5);
       g_closeRequested = (GlobalVariableGet(GV_CLOSE) > 0.5);
-      g_lastEquityForSl = GlobalVariableGet(GV_LAST_EQUITY);
       if(GlobalVariableCheck(GV_WEEK_PEAK))
         g_weekPeakEquity = GlobalVariableGet(GV_WEEK_PEAK);
       if(GlobalVariableCheck(GV_MAX_DD))
@@ -1674,7 +1713,6 @@ void LoadState()
   g_lockedProfitPct = 0.0;
   g_trailingActive = false;
   g_closeRequested = false;
-  g_lastEquityForSl = 0.0;
   g_weekPeakEquity = 0.0;
   g_maxDrawdownPct = 0.0;
 }
@@ -1687,7 +1725,6 @@ void SaveState()
   GlobalVariableSet(GV_LOCKED, g_lockedProfitPct);
   GlobalVariableSet(GV_TRAIL, g_trailingActive ? 1.0 : 0.0);
   GlobalVariableSet(GV_CLOSE, g_closeRequested ? 1.0 : 0.0);
-  GlobalVariableSet(GV_LAST_EQUITY, g_lastEquityForSl);
   GlobalVariableSet(GV_WEEK_PEAK, g_weekPeakEquity);
   GlobalVariableSet(GV_MAX_DD, g_maxDrawdownPct);
 }
@@ -1721,7 +1758,6 @@ void LoadApiCache()
     ArrayResize(g_brokerSymbols, count);
     ArrayResize(g_models, count);
     ArrayResize(g_assetClasses, count);
-    ArrayResize(g_lastAddTimes, count);
     for(int i = 0; i < count; i++)
     {
       string resolved = "";
@@ -1731,7 +1767,6 @@ void LoadApiCache()
       g_assetClasses[i] = (i < ArraySize(assetClasses) ? assetClasses[i] : "fx");
       if(ResolveSymbol(symbols[i], resolved))
         g_brokerSymbols[i] = resolved;
-      g_lastAddTimes[i] = 0;
     }
     Log("Loaded cached API response.");
   }
@@ -1753,10 +1788,8 @@ void ResetState()
   g_lockedProfitPct = 0.0;
   g_trailingActive = false;
   g_closeRequested = false;
-  g_forceSlUpdate = true;
   g_weekPeakEquity = 0.0;
   g_maxDrawdownPct = 0.0;
-  g_lastAtrWeekStart = 0;
   g_lastApiSuccess = 0;
   g_loadedFromCache = false;
   g_reportDate = "";
@@ -1771,34 +1804,11 @@ void ResetState()
   GlobalVariableDel(GV_LOCKED);
   GlobalVariableDel(GV_TRAIL);
   GlobalVariableDel(GV_CLOSE);
-  GlobalVariableDel(GV_LAST_EQUITY);
   GlobalVariableDel(GV_WEEK_PEAK);
   GlobalVariableDel(GV_MAX_DD);
 
   FileDelete(CACHE_FILE, FILE_COMMON);
   Log("State reset on init.");
-}
-
-void SyncLastAddTimes()
-{
-  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
-  {
-    string symbol = g_brokerSymbols[i];
-    datetime stored = 0;
-    string key = "Limni_LastAdd_" + symbol;
-    if(GlobalVariableCheck(key))
-      stored = (datetime)GlobalVariableGet(key);
-
-    SymbolStats stats;
-    datetime latestOpen = 0;
-    if(GetSymbolStats(symbol, stats))
-      latestOpen = stats.last_open;
-
-    if(latestOpen > stored)
-      stored = latestOpen;
-
-    g_lastAddTimes[i] = stored;
-  }
 }
 
 void Log(const string message)
@@ -1811,13 +1821,81 @@ void Log(const string message)
   g_logBufferIndex = (g_logBufferIndex + 1) % 100;
 }
 
-void LogLotPreview(bool force)
+void LogTradeError(const string message)
 {
-  // Verbose logging disabled - only log errors during trade execution
-  if(!g_apiOk)
+  Log("TRADE ERROR: " + message);
+}
+
+bool ShouldLogIndexSkip(const string symbol, const string reasonKey, int cooldownSeconds)
+{
+  string key = "Limni_Skip_" + symbol + "_" + reasonKey;
+  datetime now = TimeCurrent();
+  if(GlobalVariableCheck(key))
+  {
+    datetime last = (datetime)GlobalVariableGet(key);
+    if(last > 0 && (now - last) < cooldownSeconds)
+      return false;
+  }
+  GlobalVariableSet(key, (double)now);
+  return true;
+}
+
+void LogIndexSkip(const string symbol, const string reason, const string reasonKey)
+{
+  if(!IsIndexSymbol(symbol))
     return;
-  string key = g_reportDate + "|" + IntegerToString((int)g_weekStartGmt) + "|" + IntegerToString(ArraySize(g_brokerSymbols));
-  g_lastLotPreviewKey = key;
+  if(!ShouldLogIndexSkip(symbol, reasonKey, 300))
+    return;
+  LogTradeError(StringFormat("Index %s skipped: %s", symbol, reason));
+}
+
+void LogIndexSkipsForAll(const string reason, const string reasonKey)
+{
+  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
+  {
+    string symbol = g_brokerSymbols[i];
+    if(symbol == "")
+      continue;
+    if(IsIndexSymbol(symbol))
+      LogIndexSkip(symbol, reason, reasonKey);
+  }
+}
+
+void LogMissingIndexPairs(const string &symbols[])
+{
+  bool hasSpx = false;
+  bool hasNdx = false;
+  bool hasNikkei = false;
+
+  for(int i = 0; i < ArraySize(symbols); i++)
+  {
+    string sym = symbols[i];
+    StringToUpper(sym);
+    string key = NormalizeSymbolKey(sym);
+    if(StringFind(key, "SPX") >= 0 ||
+       StringFind(key, "SP500") >= 0 ||
+       StringFind(key, "SPX500") >= 0 ||
+       StringFind(key, "US500") >= 0)
+      hasSpx = true;
+    if(StringFind(key, "NDX") >= 0 ||
+       StringFind(key, "NDX100") >= 0 ||
+       StringFind(key, "NAS100") >= 0 ||
+       StringFind(key, "US100") >= 0)
+      hasNdx = true;
+    if(StringFind(key, "NIKKEI") >= 0 ||
+       StringFind(key, "NIKKEI225") >= 0 ||
+       StringFind(key, "NIK225") >= 0 ||
+       StringFind(key, "JPN225") >= 0 ||
+       StringFind(key, "JP225") >= 0)
+      hasNikkei = true;
+  }
+
+  if(!hasSpx)
+    LogTradeError("Index pair SPX missing from API response.");
+  if(!hasNdx)
+    LogTradeError("Index pair NDX missing from API response.");
+  if(!hasNikkei)
+    LogTradeError("Index pair NIKKEI missing from API response.");
 }
 
 string TruncateForLog(const string value, int maxLen)
@@ -2109,7 +2187,8 @@ void UpdateDashboard()
   string ddLine = StringFormat("Max DD: %.2f%%", g_maxDrawdownPct);
   color ddColor = (g_maxDrawdownPct <= 0.0 ? goodColor : badColor);
 
-  string lotLine = StringFormat("Ref lot: %.2f %s  |  ATR: %d", ReferenceLot, ReferenceSymbol, AtrPeriod);
+  double baseEquity = g_baselineEquity > 0.0 ? g_baselineEquity : AccountInfoDouble(ACCOUNT_BALANCE);
+  string lotLine = StringFormat("Sizing: 1:1  |  Base: %.2f", baseEquity);
   string multLine = StringFormat("Mult: FX %.2f  Crypto %.2f  Cmds %.2f  Ind %.2f",
                                  FxLotMultiplier, CryptoLotMultiplier, CommoditiesLotMultiplier, IndicesLotMultiplier);
 
