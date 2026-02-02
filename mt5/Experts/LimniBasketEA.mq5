@@ -1323,13 +1323,22 @@ void TryAddPositions()
       continue;
     if(!IsTradableSymbol(symbol))
     {
-      Log(StringFormat("Symbol %s not tradable now. Skipping.", symbol));
+      // Log indices trade mode errors
+      if(StringFind(symbol, "SPX") >= 0 || StringFind(symbol, "NDX") >= 0 || StringFind(symbol, "JPN") >= 0)
+      {
+        int tradeMode = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_MODE);
+        Log(StringFormat("ERROR: %s not tradable - trade_mode=%d (need FULL=4)", symbol, tradeMode));
+      }
       continue;
     }
     double vol = GetLotForSymbol(symbol, assetClass);
     if(vol <= 0.0)
     {
-      Log(StringFormat("Volume %.2f not valid for %s", vol, symbol));
+      // Log indices volume errors
+      if(StringFind(symbol, "SPX") >= 0 || StringFind(symbol, "NDX") >= 0 || StringFind(symbol, "JPN") >= 0)
+      {
+        Log(StringFormat("ERROR: %s invalid volume=%.2f", symbol, vol));
+      }
       continue;
     }
 
@@ -1356,12 +1365,17 @@ bool PlaceOrder(const string symbol, int direction, double volume, const string 
 
   if(!result)
   {
-    Log(StringFormat("Order failed %s %s vol=%.2f. Error=%d",
-                     symbol, DirectionToString(direction), volume, GetLastError()));
+    int errorCode = GetLastError();
+    Log(StringFormat("ERROR: Order failed %s %s vol=%.2f code=%d",
+                     symbol, DirectionToString(direction), volume, errorCode));
     return false;
   }
 
-  Log(StringFormat("Order placed %s %s vol=%.2f model=%s", symbol, DirectionToString(direction), volume, model));
+  // Success - only log for indices
+  if(StringFind(symbol, "SPX") >= 0 || StringFind(symbol, "NDX") >= 0 || StringFind(symbol, "JPN") >= 0)
+  {
+    Log(StringFormat("SUCCESS: %s %s vol=%.2f", symbol, DirectionToString(direction), volume));
+  }
   return true;
 }
 //+------------------------------------------------------------------+
@@ -1812,22 +1826,11 @@ void Log(const string message)
 
 void LogLotPreview(bool force)
 {
+  // Verbose logging disabled - only log errors during trade execution
   if(!g_apiOk)
     return;
   string key = g_reportDate + "|" + IntegerToString((int)g_weekStartGmt) + "|" + IntegerToString(ArraySize(g_brokerSymbols));
-  if(!force && key == g_lastLotPreviewKey)
-    return;
   g_lastLotPreviewKey = key;
-  Log("Lot preview (ATR-weighted, per pair):");
-  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
-  {
-    string symbol = g_brokerSymbols[i];
-    if(symbol == "")
-      continue;
-    string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
-    double lot = GetLotForSymbol(symbol, assetClass);
-    Log(StringFormat("  %s | %s | lot=%.2f", symbol, assetClass, lot));
-  }
 }
 
 string TruncateForLog(const string value, int maxLen)
