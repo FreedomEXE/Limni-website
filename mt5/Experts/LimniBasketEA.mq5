@@ -142,6 +142,8 @@ string g_lastLotPreviewKey = "";
 string g_allowedKeys[];
 bool g_allowedKeyPrefixes[];
 bool g_allowedKeysReady = false;
+string g_logBuffer[100];
+int g_logBufferIndex = 0;
 
 // Forward declarations
 void PollApiIfDue();
@@ -1800,7 +1802,12 @@ void SyncLastAddTimes()
 
 void Log(const string message)
 {
-  Print(TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS), " | ", message);
+  string timestamped = TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + " | " + message;
+  Print(timestamped);
+
+  // Add to circular buffer for website push
+  g_logBuffer[g_logBufferIndex] = timestamped;
+  g_logBufferIndex = (g_logBufferIndex + 1) % 100;
 }
 
 void LogLotPreview(bool force)
@@ -2564,7 +2571,24 @@ string BuildAccountPayload()
   payload += "\"next_poll_seconds\":" + IntegerToString(nextPollSeconds) + ",";
   payload += "\"last_sync_utc\":\"" + FormatIsoUtc(TimeGMT()) + "\",";
   payload += "\"positions\":" + BuildPositionsArray() + ",";
-  payload += "\"closed_positions\":" + BuildClosedPositionsArray();
+  payload += "\"closed_positions\":" + BuildClosedPositionsArray() + ",";
+
+  // Add recent logs
+  payload += "\"recent_logs\":[";
+  bool firstLog = true;
+  for(int i = 0; i < 100; i++)
+  {
+    int idx = (g_logBufferIndex + i) % 100;
+    if(g_logBuffer[idx] != "")
+    {
+      if(!firstLog)
+        payload += ",";
+      payload += "\"" + JsonEscape(g_logBuffer[idx]) + "\"";
+      firstLog = false;
+    }
+  }
+  payload += "]";
+
   payload += "}";
   return payload;
 }
