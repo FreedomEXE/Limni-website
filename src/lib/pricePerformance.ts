@@ -400,35 +400,41 @@ export async function getPairPerformanceForWindows(
   let missing = 0;
   const missingPairs: string[] = [];
 
-  for (const [pair, info] of Object.entries(pairs)) {
-    const window = windows[pair];
-    if (!window) {
-      performance[pair] = null;
-      missing += 1;
-      missingPairs.push(pair);
-      continue;
-    }
-    try {
-      const result = await fetchPairPerformanceWindow(
-        pair,
-        assetClass,
-        info,
-        window,
-      );
+  // Parallelize API calls instead of sequential for loop
+  const results = await Promise.allSettled(
+    Object.entries(pairs).map(async ([pair, info]) => {
+      const window = windows[pair];
+      if (!window) {
+        return { pair, result: null, reason: "no_window" };
+      }
+      try {
+        const result = await fetchPairPerformanceWindow(
+          pair,
+          assetClass,
+          info,
+          window,
+        );
+        return { pair, result, reason: result ? "success" : "no_data" };
+      } catch (error) {
+        console.error(error);
+        return { pair, result: null, reason: "error" };
+      }
+    })
+  );
+
+  results.forEach((promiseResult) => {
+    if (promiseResult.status === "fulfilled") {
+      const { pair, result } = promiseResult.value;
+      performance[pair] = result;
       if (!result) {
-        performance[pair] = null;
         missing += 1;
         missingPairs.push(pair);
-      } else {
-        performance[pair] = result;
       }
-    } catch (error) {
-      console.error(error);
-      performance[pair] = null;
+    } else {
+      // This shouldn't happen with allSettled, but handle it anyway
       missing += 1;
-      missingPairs.push(pair);
     }
-  }
+  });
 
   const totalPairs = Object.keys(pairs).length;
   const baseNote =
@@ -453,35 +459,47 @@ async function buildFxPerformance(
   let missing = 0;
   const missingPairs: string[] = [];
 
-  for (const [pair, info] of Object.entries(pairs)) {
-    try {
-      const oandaResult = await fetchOandaCandle(
-        fxSymbol(pair),
-        window.openUtc,
-        window.closeUtc,
-      );
-      if (!oandaResult) {
-        performance[pair] = null;
+  // Parallelize API calls instead of sequential for loop
+  const results = await Promise.allSettled(
+    Object.entries(pairs).map(async ([pair, info]) => {
+      try {
+        const oandaResult = await fetchOandaCandle(
+          fxSymbol(pair),
+          window.openUtc,
+          window.closeUtc,
+        );
+        if (!oandaResult) {
+          return { pair, result: null };
+        }
+        const result = buildPerformanceValue(
+          pair,
+          "fx",
+          oandaResult.open,
+          oandaResult.close,
+          info.direction,
+          oandaResult.openTime,
+          oandaResult.closeTime,
+        );
+        return { pair, result };
+      } catch (error) {
+        console.error(error);
+        return { pair, result: null };
+      }
+    })
+  );
+
+  results.forEach((promiseResult) => {
+    if (promiseResult.status === "fulfilled") {
+      const { pair, result } = promiseResult.value;
+      performance[pair] = result;
+      if (!result) {
         missing += 1;
         missingPairs.push(pair);
-        continue;
       }
-      performance[pair] = buildPerformanceValue(
-        pair,
-        "fx",
-        oandaResult.open,
-        oandaResult.close,
-        info.direction,
-        oandaResult.openTime,
-        oandaResult.closeTime,
-      );
-    } catch (error) {
-      console.error(error);
-      performance[pair] = null;
+    } else {
       missing += 1;
-      missingPairs.push(pair);
     }
-  }
+  });
 
   return { performance, missing, missingPairs };
 }
@@ -495,55 +513,66 @@ async function buildNonFxPerformance(
   let missing = 0;
   const missingPairs: string[] = [];
 
-  for (const [pair, info] of Object.entries(pairs)) {
-    let resolved = false;
-    try {
-      if (assetClass === "crypto") {
-        const base = getCryptoBase(pair);
-        if (base) {
-          const bitgetResult = await fetchBitgetCandleRange(base, window);
-          if (bitgetResult) {
-            performance[pair] = buildPerformanceValue(
+  // Parallelize API calls instead of sequential for loop
+  const results = await Promise.allSettled(
+    Object.entries(pairs).map(async ([pair, info]) => {
+      try {
+        if (assetClass === "crypto") {
+          const base = getCryptoBase(pair);
+          if (base) {
+            const bitgetResult = await fetchBitgetCandleRange(base, window);
+            if (bitgetResult) {
+              const result = buildPerformanceValue(
+                pair,
+                assetClass,
+                bitgetResult.open,
+                bitgetResult.close,
+                info.direction,
+                bitgetResult.openTime,
+                bitgetResult.closeTime,
+              );
+              return { pair, result };
+            }
+          }
+        } else {
+          const oandaResult = await fetchOandaCandle(
+            pair,
+            window.openUtc,
+            window.closeUtc,
+          );
+          if (oandaResult) {
+            const result = buildPerformanceValue(
               pair,
               assetClass,
-              bitgetResult.open,
-              bitgetResult.close,
+              oandaResult.open,
+              oandaResult.close,
               info.direction,
-              bitgetResult.openTime,
-              bitgetResult.closeTime,
+              oandaResult.openTime,
+              oandaResult.closeTime,
             );
-            resolved = true;
+            return { pair, result };
           }
         }
-      } else {
-        const oandaResult = await fetchOandaCandle(
-          pair,
-          window.openUtc,
-          window.closeUtc,
-        );
-        if (oandaResult) {
-          performance[pair] = buildPerformanceValue(
-            pair,
-            assetClass,
-            oandaResult.open,
-            oandaResult.close,
-            info.direction,
-            oandaResult.openTime,
-            oandaResult.closeTime,
-          );
-          resolved = true;
-        }
+        return { pair, result: null };
+      } catch (error) {
+        console.error(error);
+        return { pair, result: null };
       }
-    } catch (error) {
-      console.error(error);
-    }
+    })
+  );
 
-    if (!resolved) {
-      performance[pair] = null;
+  results.forEach((promiseResult) => {
+    if (promiseResult.status === "fulfilled") {
+      const { pair, result } = promiseResult.value;
+      performance[pair] = result;
+      if (!result) {
+        missing += 1;
+        missingPairs.push(pair);
+      }
+    } else {
       missing += 1;
-      missingPairs.push(pair);
     }
-  }
+  });
 
   const totalPairs = Object.keys(pairs).length;
   const closeLabel = formatUtcLabel(toIsoString(window.closeUtc));
@@ -607,22 +636,24 @@ export async function getPairPerformance(
     };
   }
 
-  if (isCurrentWeek) {
-    const snapshot = await readMarketSnapshot(weekOpenIso, assetClass);
-    if (snapshot) {
-      const totalPairs = Object.keys(pairs).length;
-      const performance: Record<string, PairPerformance | null> = {};
-      let missing = 0;
-      const missingPairs: string[] = [];
-      for (const pair of Object.keys(pairs)) {
-        const value = snapshot.pairs[pair] ?? null;
-        if (!value) {
-          missing += 1;
-          missingPairs.push(pair);
-        }
-        performance[pair] = value;
+  // Always try to use cached pricing data from DB first
+  const snapshot = await readMarketSnapshot(weekOpenIso, assetClass);
+  if (snapshot) {
+    const totalPairs = Object.keys(pairs).length;
+    const performance: Record<string, PairPerformance | null> = {};
+    let missing = 0;
+    const missingPairs: string[] = [];
+    for (const pair of Object.keys(pairs)) {
+      const value = snapshot.pairs[pair] ?? null;
+      if (!value) {
+        missing += 1;
+        missingPairs.push(pair);
       }
+      performance[pair] = value;
+    }
 
+    // For current week, check if cache is fresh
+    if (isCurrentWeek) {
       const cacheSeconds = Number(process.env.PRICE_CACHE_SECONDS ?? "300");
       const ageSeconds =
         (now.toMillis() - DateTime.fromISO(snapshot.last_refresh_utc).toMillis()) /
@@ -643,7 +674,33 @@ export async function getPairPerformance(
             : `${baseNote} Derived from OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
         return { performance, note, missingPairs };
       }
+    } else {
+      // For historical weeks, ALWAYS use cached data (never fetch from APIs)
+      const baseNote =
+        missing > 0
+          ? `Historical data. Missing prices for ${missing}/${totalPairs}. Snapshot from ${formatUtcLabel(
+              snapshot.last_refresh_utc,
+            )}.`
+          : `Historical data. Snapshot from ${formatUtcLabel(snapshot.last_refresh_utc)}.`;
+      const note =
+        assetClass === "crypto"
+          ? `${baseNote} Derived from Bitget pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
+          : `${baseNote} Derived from OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
+      return { performance, note, missingPairs };
     }
+  }
+
+  // If no cached data exists for historical weeks, return empty result
+  if (!isCurrentWeek) {
+    const performance: Record<string, PairPerformance | null> = {};
+    Object.keys(pairs).forEach((pair) => {
+      performance[pair] = null;
+    });
+    return {
+      performance,
+      note: "Historical pricing data not available. Run background refresh to populate.",
+      missingPairs: Object.keys(pairs),
+    };
   }
 
   if (assetClass !== "fx") {
