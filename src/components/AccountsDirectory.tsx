@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { formatCurrencySafe } from "@/lib/formatters";
 import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
+import { deleteAccount } from "@/app/actions/deleteAccount";
 
 type AccountsDirectoryProps = {
   accounts: Mt5AccountSnapshot[];
@@ -64,22 +65,17 @@ export default function AccountsDirectory({ accounts }: AccountsDirectoryProps) 
     setDeletingId(accountId);
 
     try {
-      const response = await fetch(`/api/mt5/accounts/${accountId}`, {
-        method: "DELETE",
-        headers: {
-          "x-admin-token": process.env.NEXT_PUBLIC_ADMIN_TOKEN || "",
-        },
-      });
+      const result = await deleteAccount(accountId);
 
-      if (!response.ok) {
-        throw new Error("Failed to delete account");
+      if (!result.success) {
+        throw new Error(result.error || "Failed to delete account");
       }
 
       // Refresh the page to show updated list
       window.location.reload();
     } catch (error) {
       console.error("Delete failed:", error);
-      alert("Failed to delete account. Check console for details.");
+      alert(`Failed to delete account: ${error instanceof Error ? error.message : "Unknown error"}`);
       setDeletingId(null);
     }
   }
