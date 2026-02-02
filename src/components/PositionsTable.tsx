@@ -140,6 +140,24 @@ function calculateOnePercentImpact(pos: Mt5Position): number {
   }
 }
 
+function extractModel(comment: string): string {
+  // Format: "LimniBasket {model} {report_date}"
+  const match = comment.match(/LimniBasket\s+(\w+)/i);
+  return match ? match[1] : "";
+}
+
+function getModelColor(model: string): string {
+  const normalized = model.toLowerCase();
+  switch (normalized) {
+    case "antikythera": return "text-purple-600";
+    case "blended": return "text-blue-600";
+    case "commercial": return "text-emerald-600";
+    case "dealer": return "text-amber-600";
+    case "sentiment": return "text-rose-600";
+    default: return "text-gray-600";
+  }
+}
+
 export default function PositionsTable({ positions, currency, equity }: PositionsTableProps) {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
@@ -249,10 +267,16 @@ export default function PositionsTable({ positions, currency, equity }: Position
                       onMouseLeave={() => setHoveredPosition(null)}
                       className="relative rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] p-3 transition-all hover:border-[var(--accent)] hover:shadow-sm"
                     >
-                      <div className="grid grid-cols-8 gap-3 text-sm">
+                      <div className="grid grid-cols-9 gap-3 text-sm">
                         <div>
                           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Ticket</p>
                           <p className="font-mono text-[var(--foreground)]">#{pos.ticket}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Model</p>
+                          <p className={`text-xs font-semibold ${getModelColor(extractModel(pos.comment))}`}>
+                            {extractModel(pos.comment) || "—"}
+                          </p>
                         </div>
                         <div>
                           <p className="text-xs uppercase tracking-wider text-[color:var(--muted)]">Type</p>
