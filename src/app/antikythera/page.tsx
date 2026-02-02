@@ -9,12 +9,10 @@ import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import { getAggregatesForWeekStart, getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
-import { refreshAppData } from "@/lib/appRefresh";
-import { getSessionRole } from "@/lib/auth";
 import { listPerformanceWeeks, readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import { DateTime } from "luxon";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 type AntikytheraPageProps = {
   searchParams?:
@@ -23,15 +21,6 @@ type AntikytheraPageProps = {
 };
 
 export default async function AntikytheraPage({ searchParams }: AntikytheraPageProps) {
-  const role = await getSessionRole();
-  if (role) {
-    try {
-      await refreshAppData();
-    } catch (error) {
-      console.error("App refresh failed:", error);
-    }
-  }
-
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const reportParam = resolvedSearchParams?.report;
   const assetParam = resolvedSearchParams?.asset;

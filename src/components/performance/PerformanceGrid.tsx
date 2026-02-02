@@ -14,6 +14,25 @@ type PerformanceGridProps = {
   combined: Section;
   perAsset: Section[];
   labels: Record<PerformanceModel, string>;
+  allTime: {
+    combined: Array<{
+      model: PerformanceModel;
+      totalPercent: number;
+      weeks: number;
+      winRate: number;
+      avgWeekly: number;
+    }>;
+    perAsset: Record<
+      string,
+      Array<{
+        model: PerformanceModel;
+        totalPercent: number;
+        weeks: number;
+        winRate: number;
+        avgWeekly: number;
+      }>
+    >;
+  };
   calibration?: {
     accountId: string;
     accountLabel: string;
@@ -291,6 +310,7 @@ export default function PerformanceGrid({
   combined,
   perAsset,
   labels,
+  allTime,
   calibration,
 }: PerformanceGridProps) {
   const [active, setActive] = useState<ActiveCard | null>(null);
@@ -304,6 +324,12 @@ export default function PerformanceGrid({
     }));
   }, [combined, perAsset]);
   const [selectedSectionId, setSelectedSectionId] = useState(sections[0]?.id ?? "combined");
+  const selectedAllTime =
+    selectedSectionId === "combined"
+      ? allTime.combined
+      : allTime.perAsset[selectedSectionId] ?? allTime.combined;
+  const selectedSection =
+    sections.find((section) => section.id === selectedSectionId) ?? sections[0];
 
   useEffect(() => {
     if (!sections.find((section) => section.id === selectedSectionId)) {
@@ -623,6 +649,47 @@ export default function PerformanceGrid({
           ) : null,
         )}
       </section>
+      {selectedAllTime.length > 0 ? (
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
+              All-time performance
+            </h2>
+            <p className="text-sm text-[color:var(--muted)]">
+              Aggregated weekly totals for{" "}
+              {selectedSection?.id === "combined" ? "all asset classes" : selectedSection?.label}.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {selectedAllTime.map((stat) => (
+              <div
+                key={`alltime-${selectedSectionId}-${stat.model}`}
+                className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4 text-left"
+              >
+                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  {labels[stat.model]}
+                </p>
+                <p
+                  className={`mt-2 text-2xl font-semibold ${
+                    stat.totalPercent > 0
+                      ? "text-emerald-700"
+                      : stat.totalPercent < 0
+                        ? "text-rose-700"
+                        : "text-[var(--foreground)]"
+                  }`}
+                >
+                  {stat.totalPercent.toFixed(2)}%
+                </p>
+                <div className="mt-2 space-y-1 text-xs text-[color:var(--muted)]">
+                  <p>{stat.weeks} weeks tracked</p>
+                  <p>Win rate {stat.winRate.toFixed(0)}%</p>
+                  <p>Avg weekly {stat.avgWeekly.toFixed(2)}%</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
       {modal}
     </>
   );

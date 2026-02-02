@@ -15,7 +15,9 @@ input double BasketLotCapPer100k = 10.0;
 input string ReferenceSymbol = "EURUSD";
 input double ReferenceLot = 0.10;
 input int AtrPeriod = 14;
-input string SymbolAliases = "SPXUSD=US500,NDXUSD=NAS100,NIKKEIUSD=JP225,WTIUSD=USOIL,BTCUSD=BTCUSD,ETHUSD=ETHUSD";
+input string SymbolAliases = "SPXUSD=US500,NDXUSD=NAS100,NIKKEIUSD=JP225,WTIUSD=USOIL,BTCUSD=BTC,ETHUSD=ETH";
+input bool EnforceAllowedSymbols = true;
+input string AllowedSymbols = "EURUSD,GBPUSD,USDJPY,USDCHF,USDCAD,AUDUSD,NZDUSD,EURGBP,EURJPY,EURCHF,EURAUD,EURNZD,EURCAD,GBPJPY,GBPCHF,GBPAUD,GBPNZD,GBPCAD,AUDJPY,AUDCHF,AUDCAD,AUDNZD,NZDJPY,NZDCHF,NZDCAD,CADJPY,CADCHF,CHFJPY,XAUUSD,XAGUSD,WTIUSD,USOIL,XTIUSD,BTCUSD,ETHUSD,BTC,ETH";
 input double FxLotMultiplier = 1.0;
 input double CryptoLotMultiplier = 1.0;
 input double CommoditiesLotMultiplier = 1.0;
@@ -137,6 +139,9 @@ int g_dashRightWidth = 0;
 int g_dashLeftX = 0;
 int g_dashRightX = 0;
 string g_lastLotPreviewKey = "";
+string g_allowedKeys[];
+bool g_allowedKeyPrefixes[];
+bool g_allowedKeysReady = false;
 
 // Forward declarations
 void PollApiIfDue();
@@ -154,6 +159,8 @@ bool IsTradableSymbol(const string symbol);
 string NormalizeSymbolKey(const string value);
 bool TryResolveAlias(const string apiSymbol, string &resolved);
 bool ResolveSymbolByNormalizedKey(const string targetKey, string &resolved, bool requireFull);
+void BuildAllowedKeys();
+bool IsAllowedSymbol(const string symbol);
 int DirectionFromString(const string value);
 string DirectionToString(int dir);
 double NormalizeVolume(const string symbol, double volume);
@@ -223,6 +230,7 @@ int OnInit()
   g_trade.SetExpertMagicNumber(MagicNumber);
   g_trade.SetDeviationInPoints(SlippagePoints);
 
+  BuildAllowedKeys();
   g_weekStartGmt = GetWeekStartGmt(TimeGMT());
   if(ResetStateOnInit)
   {
@@ -346,6 +354,11 @@ void PollApiIfDue()
   for(int i = 0; i < count; i++)
   {
     string resolved = "";
+    if(!IsAllowedSymbol(symbols[i]))
+    {
+      Log(StringFormat("Symbol %s not in allowed list. Skipped.", symbols[i]));
+      continue;
+    }
     if(!ResolveSymbol(symbols[i], resolved))
     {
       Log(StringFormat("Symbol %s not tradable or not found. Skipped.", symbols[i]));
@@ -741,23 +754,103 @@ bool ResolveSymbol(const string apiSymbol, string &resolved)
   string target = apiSymbol;
   StringToUpper(target);
   if(TryResolveAlias(target, resolved))
+  {
+    if(!IsAllowedSymbol(resolved))
+      return false;
     return true;
+  }
   if(SymbolSelect(target, true) && IsTradableSymbol(target))
   {
     resolved = target;
+    if(!IsAllowedSymbol(resolved))
+      return false;
     return true;
   }
   if(AllowNonFullTradeModeForListing && SymbolSelect(target, true))
   {
     resolved = target;
+    if(!IsAllowedSymbol(resolved))
+      return false;
     return true;
   }
 
   string targetKey = NormalizeSymbolKey(target);
   bool requireFull = !AllowNonFullTradeModeForListing;
   if(ResolveSymbolByNormalizedKey(targetKey, resolved, requireFull))
+  {
+    if(!IsAllowedSymbol(resolved))
+      return false;
     return true;
+  }
 
+  return false;
+}
+
+void BuildAllowedKeys()
+{
+  if(!EnforceAllowedSymbols || g_allowedKeysReady)
+    return;
+  ArrayResize(g_allowedKeys, 0);
+  ArrayResize(g_allowedKeyPrefixes, 0);
+  if(AllowedSymbols == "")
+  {
+    g_allowedKeysReady = true;
+    return;
+  }
+  string raw = AllowedSymbols;
+  StringReplace(raw, " ", "");
+  int start = 0;
+  while(start < StringLen(raw))
+  {
+    int comma = StringFind(raw, ",", start);
+    if(comma < 0)
+      comma = StringLen(raw);
+    string token = StringSubstr(raw, start, comma - start);
+    if(token != "")
+    {
+      bool prefix = false;
+      int tokenLen = StringLen(token);
+      if(tokenLen > 0 && StringSubstr(token, tokenLen - 1, 1) == "*")
+      {
+        prefix = true;
+        token = StringSubstr(token, 0, tokenLen - 1);
+      }
+      StringToUpper(token);
+      string key = NormalizeSymbolKey(token);
+      if(key != "")
+      {
+        int size = ArraySize(g_allowedKeys);
+        ArrayResize(g_allowedKeys, size + 1);
+        ArrayResize(g_allowedKeyPrefixes, size + 1);
+        g_allowedKeys[size] = key;
+        g_allowedKeyPrefixes[size] = prefix;
+      }
+    }
+    start = comma + 1;
+  }
+  g_allowedKeysReady = true;
+}
+
+bool IsAllowedSymbol(const string symbol)
+{
+  if(!EnforceAllowedSymbols)
+    return true;
+  BuildAllowedKeys();
+  if(ArraySize(g_allowedKeys) == 0)
+    return true;
+  string key = NormalizeSymbolKey(symbol);
+  if(key == "")
+    return false;
+  for(int i = 0; i < ArraySize(g_allowedKeys); i++)
+  {
+    string allowed = g_allowedKeys[i];
+    if(allowed == "")
+      continue;
+    if(key == allowed)
+      return true;
+    if(g_allowedKeyPrefixes[i] && StringFind(key, allowed) == 0)
+      return true;
+  }
   return false;
 }
 
@@ -1415,7 +1508,7 @@ datetime GetWeekStartGmt(datetime nowGmt)
   return sundayUtc;
 }
 
-// Crypto week starts at Sunday 00:00 ET (weekly close), then trades from that point.
+// Crypto week starts at Sunday 19:00 ET, aligned with FX session open.
 datetime GetCryptoWeekStartGmt(datetime nowGmt)
 {
   bool dst = IsUsdDstUtc(nowGmt);
@@ -1427,7 +1520,7 @@ datetime GetCryptoWeekStartGmt(datetime nowGmt)
   datetime sunday = etNow - daysSinceSunday * 86400;
   MqlDateTime sundayStruct;
   TimeToStruct(sunday, sundayStruct);
-  sundayStruct.hour = 0;
+  sundayStruct.hour = 19;
   sundayStruct.min = 0;
   sundayStruct.sec = 0;
   datetime sundayEt = StructToTime(sundayStruct);

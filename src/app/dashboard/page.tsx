@@ -25,12 +25,10 @@ import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import { getPairPerformance } from "@/lib/pricePerformance";
-import { refreshAppData } from "@/lib/appRefresh";
-import { getSessionRole } from "@/lib/auth";
 import { readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import type { PairSnapshot } from "@/lib/cotTypes";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 function buildResponse(
   snapshot: Awaited<ReturnType<typeof readSnapshot>>,
@@ -71,15 +69,6 @@ function getBiasMode(value?: string): BiasMode {
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const role = await getSessionRole();
-  if (role) {
-    try {
-      await refreshAppData();
-    } catch (error) {
-      console.error("App refresh failed:", error);
-    }
-  }
-
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const assetParam = resolvedSearchParams?.asset;
   const reportParam = resolvedSearchParams?.report;

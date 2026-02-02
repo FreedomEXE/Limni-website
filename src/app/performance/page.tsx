@@ -23,10 +23,8 @@ import {
   weekLabelFromOpen,
   getWeekOpenUtc,
 } from "@/lib/performanceSnapshots";
-import { refreshAppData } from "@/lib/appRefresh";
-import { getSessionRole } from "@/lib/auth";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 const MODEL_LABELS: Record<PerformanceModel, string> = {
   blended: "Blended",
@@ -59,14 +57,6 @@ function reportWeekOpenUtc(reportDate: string): string | null {
 }
 
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
-  const role = await getSessionRole();
-  if (role) {
-    try {
-      await refreshAppData();
-    } catch (error) {
-      console.error("App refresh failed:", error);
-    }
-  }
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const weekParam = resolvedSearchParams?.week;
   const assetClasses = listAssetClasses();
@@ -377,50 +367,63 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       error instanceof Error ? error.message : String(error),
     );
   }
-  const weekTotalsByModel = new Map<
-    PerformanceModel,
-    Map<string, number>
+  const nowUtc = DateTime.utc().toMillis();
+  const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
+  const currentWeekMillis = currentWeekStart.isValid
+    ? currentWeekStart.toMillis()
+    : nowUtc;
+
+  function buildAllTimeStats(rows: typeof historyRows) {
+    const weekTotalsByModel = new Map<
+      PerformanceModel,
+      Map<string, number>
+    >();
+    rows.forEach((row) => {
+      const modelWeeks = weekTotalsByModel.get(row.model) ?? new Map<string, number>();
+      const current = modelWeeks.get(row.week_open_utc) ?? 0;
+      modelWeeks.set(row.week_open_utc, current + row.percent);
+      weekTotalsByModel.set(row.model, modelWeeks);
+    });
+    return models.map((model) => {
+      const weekMap = weekTotalsByModel.get(model) ?? new Map();
+      const weekReturns = Array.from(weekMap.entries())
+        .filter(([week]) => {
+          const parsed = DateTime.fromISO(week, { zone: "utc" });
+          if (!parsed.isValid) {
+            return false;
+          }
+          const weekMillis = parsed.toMillis();
+          if (weekMillis >= currentWeekMillis) {
+            return false;
+          }
+          return weekMillis <= nowUtc;
+        })
+        .map(([week, value]) => ({
+          week,
+          value,
+        }));
+      const totalPercent = weekReturns.reduce((sum, item) => sum + item.value, 0);
+      const wins = weekReturns.filter((item) => item.value > 0).length;
+      const avg =
+        weekReturns.length > 0 ? totalPercent / weekReturns.length : 0;
+      return {
+        model,
+        totalPercent,
+        weeks: weekReturns.length,
+        winRate: weekReturns.length > 0 ? (wins / weekReturns.length) * 100 : 0,
+        avgWeekly: avg,
+      };
+    });
+  }
+
+  const allTimeCombined = buildAllTimeStats(historyRows);
+  const allTimeByAsset = new Map<
+    string,
+    ReturnType<typeof buildAllTimeStats>
   >();
-  historyRows.forEach((row) => {
-    const modelWeeks = weekTotalsByModel.get(row.model) ?? new Map<string, number>();
-    const current = modelWeeks.get(row.week_open_utc) ?? 0;
-    modelWeeks.set(row.week_open_utc, current + row.percent);
-    weekTotalsByModel.set(row.model, modelWeeks);
-  });
-  const allTimeStats = models.map((model) => {
-    const weekMap = weekTotalsByModel.get(model) ?? new Map();
-    const nowUtc = DateTime.utc().toMillis();
-    const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
-    const currentWeekMillis = currentWeekStart.isValid
-      ? currentWeekStart.toMillis()
-      : nowUtc;
-    const weekReturns = Array.from(weekMap.entries())
-      .filter(([week]) => {
-        const parsed = DateTime.fromISO(week, { zone: "utc" });
-        if (!parsed.isValid) {
-          return false;
-        }
-        const weekMillis = parsed.toMillis();
-        if (weekMillis >= currentWeekMillis) {
-          return false;
-        }
-        return weekMillis <= nowUtc;
-      })
-      .map(([week, value]) => ({
-        week,
-        value,
-      }));
-    const totalPercent = weekReturns.reduce((sum, item) => sum + item.value, 0);
-    const wins = weekReturns.filter((item) => item.value > 0).length;
-    const avg =
-      weekReturns.length > 0 ? totalPercent / weekReturns.length : 0;
-    return {
-      model,
-      totalPercent,
-      weeks: weekReturns.length,
-      winRate: weekReturns.length > 0 ? (wins / weekReturns.length) * 100 : 0,
-      avgWeekly: avg,
-    };
+  assetClasses.forEach((asset) => {
+    const rows = historyRows.filter((row) => row.asset_class === asset.id);
+    allTimeByAsset.set(asset.id, buildAllTimeStats(rows));
   });
 
   return (
@@ -517,53 +520,19 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           perAsset={perAsset.map((asset) => ({
             id: asset.asset.id,
             label: asset.asset.label,
-            description: "Filter performance for this asset class.",
-            models: asset.results,
-          }))}
+              description: "Filter performance for this asset class.",
+              models: asset.results,
+            }))}
           labels={MODEL_LABELS}
           calibration={undefined}
+          allTime={{
+            combined: allTimeCombined,
+            perAsset: Object.fromEntries(
+              assetClasses.map((asset) => [asset.id, allTimeByAsset.get(asset.id) ?? []]),
+            ),
+          }}
         />
 
-        {historyRows.length > 0 ? (
-          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                All-time performance
-              </h2>
-              <p className="text-sm text-[color:var(--muted)]">
-                Aggregated weekly totals across all tracked snapshots.
-              </p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              {allTimeStats.map((stat) => (
-                <div
-                  key={`alltime-${stat.model}`}
-                  className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4 text-left"
-                >
-                  <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    {MODEL_LABELS[stat.model]}
-                  </p>
-                  <p
-                    className={`mt-2 text-2xl font-semibold ${
-                      stat.totalPercent > 0
-                        ? "text-emerald-700"
-                        : stat.totalPercent < 0
-                          ? "text-rose-700"
-                          : "text-[var(--foreground)]"
-                    }`}
-                  >
-                    {stat.totalPercent.toFixed(2)}%
-                  </p>
-                  <div className="mt-2 space-y-1 text-xs text-[color:var(--muted)]">
-                    <p>{stat.weeks} weeks tracked</p>
-                    <p>Win rate {stat.winRate.toFixed(0)}%</p>
-                    <p>Avg weekly {stat.avgWeekly.toFixed(2)}%</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
       </div>
     </DashboardLayout>
   );

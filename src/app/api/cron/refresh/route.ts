@@ -44,43 +44,61 @@ export async function GET(request: Request) {
     return NextResponse.json({ startedAt, results });
   }
 
-  for (const asset of assetClasses) {
+  const priceTasks = assetClasses.map(async (asset) => {
     try {
       const snapshot = await readSnapshot({ assetClass: asset.id });
       if (!snapshot) {
-        results[asset.id] = { cot: "ok", prices: "skipped", message: "No snapshot." };
-        continue;
+        return {
+          assetId: asset.id,
+          result: { cot: "ok", prices: "skipped", message: "No snapshot." } as const,
+        };
       }
       await refreshMarketSnapshot(snapshot.pairs, {
         assetClass: asset.id,
         force: true,
       });
-      results[asset.id] = { cot: "ok", prices: "ok" };
+      return {
+        assetId: asset.id,
+        result: { cot: "ok", prices: "ok" } as const,
+      };
     } catch (error) {
-      results[asset.id] = {
-        cot: "ok",
-        prices: "error",
-        message: error instanceof Error ? error.message : String(error),
+      return {
+        assetId: asset.id,
+        result: {
+          cot: "ok",
+          prices: "error",
+          message: error instanceof Error ? error.message : String(error),
+        } as const,
       };
     }
-  }
+  });
 
-  try {
-    const sentimentResult = await refreshSentiment();
-    sentiment = {
-      ok: sentimentResult.ok,
-      snapshots: sentimentResult.snapshots,
-      aggregates: sentimentResult.aggregates,
-      flips: sentimentResult.flips.length,
-    };
-  } catch (error) {
-    sentiment = {
-      ok: false,
-      snapshots: 0,
-      aggregates: 0,
-      flips: 0,
-    };
-  }
+  const [priceResults, sentimentResult] = await Promise.all([
+    Promise.all(priceTasks),
+    (async () => {
+      try {
+        const result = await refreshSentiment();
+        return {
+          ok: result.ok,
+          snapshots: result.snapshots,
+          aggregates: result.aggregates,
+          flips: result.flips.length,
+        };
+      } catch {
+        return {
+          ok: false,
+          snapshots: 0,
+          aggregates: 0,
+          flips: 0,
+        };
+      }
+    })(),
+  ]);
+
+  priceResults.forEach(({ assetId, result }) => {
+    results[assetId] = result;
+  });
+  sentiment = sentimentResult;
 
   return NextResponse.json({
     startedAt,
