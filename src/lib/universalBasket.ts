@@ -14,8 +14,15 @@ export type UniversalWeekSimulation = {
   observed_peak_percent: number;
   simulated_locked_percent: number;
   trailing_hit: boolean;
+  trail_activated_at_utc: string | null;
+  trail_hit_at_utc: string | null;
   legs: number;
   priced_symbols: number;
+  equity_curve: Array<{
+    ts_utc: string;
+    equity_pct: number;
+    lock_pct: number | null;
+  }>;
 };
 
 export type UniversalBasketSummary = {
@@ -258,6 +265,9 @@ function simulateWeekFromSeries(
       locked: 0,
       trailingHit: false,
       finalReturn: 0,
+      trailActivatedAtMs: null as number | null,
+      trailHitAtMs: null as number | null,
+      curve: [] as Array<{ ts: number; equity: number; lock: number | null }>,
     };
   }
 
@@ -267,6 +277,10 @@ function simulateWeekFromSeries(
   let trailingHit = false;
   let finalReturn = 0;
   let lockedReturn: number | null = null;
+  let trailActivatedAtMs: number | null = null;
+  let trailHitAtMs: number | null = null;
+  const curve: Array<{ ts: number; equity: number; lock: number | null }> = [];
+  const minLockAfterActivation = trailStartPct - trailOffsetPct;
 
   for (const ts of timestamps) {
     let total = 0;
@@ -291,15 +305,25 @@ function simulateWeekFromSeries(
     }
     if (total >= trailStartPct) {
       trailingActive = true;
-      const nextLock = peak - trailOffsetPct;
+      if (trailActivatedAtMs === null) {
+        trailActivatedAtMs = ts;
+      }
+      const nextLock = Math.max(minLockAfterActivation, peak - trailOffsetPct);
       if (nextLock > lock) {
         lock = nextLock;
       }
     }
+    curve.push({
+      ts,
+      equity: total,
+      lock: Number.isFinite(lock) ? lock : null,
+    });
     if (trailingActive && Number.isFinite(lock) && total <= lock) {
       trailingHit = true;
-      lockedReturn = total;
-      finalReturn = total;
+      trailHitAtMs = ts;
+      // Assume ideal trailing-stop fill at lock level (no gap slippage).
+      lockedReturn = lock;
+      finalReturn = lock;
       break;
     }
     finalReturn = total;
@@ -314,7 +338,26 @@ function simulateWeekFromSeries(
     locked: lockedReturn,
     trailingHit,
     finalReturn,
+    trailActivatedAtMs,
+    trailHitAtMs,
+    curve,
   };
+}
+
+function compressCurve(
+  points: Array<{ ts: number; equity: number; lock: number | null }>,
+  maxPoints = 720,
+) {
+  if (points.length <= maxPoints) {
+    return points;
+  }
+  const compressed: Array<{ ts: number; equity: number; lock: number | null }> = [];
+  const step = (points.length - 1) / (maxPoints - 1);
+  for (let i = 0; i < maxPoints; i += 1) {
+    const index = Math.round(i * step);
+    compressed.push(points[Math.min(index, points.length - 1)]);
+  }
+  return compressed;
 }
 
 export async function buildUniversalBasketSummary(options?: {
@@ -378,6 +421,11 @@ export async function buildUniversalBasketSummary(options?: {
     const seriesByKey = new Map(validSeries.map((row) => [row.key, row]));
 
     const sim = simulateWeekFromSeries(seriesByKey, legs, trailStartPct, trailOffsetPct);
+    const curve = compressCurve(sim.curve).map((point) => ({
+      ts_utc: new Date(point.ts).toISOString(),
+      equity_pct: point.equity,
+      lock_pct: point.lock,
+    }));
     byWeek.push({
       week_open_utc: weekOpenUtc,
       week_label: weekLabelFromOpen(weekOpenUtc),
@@ -385,8 +433,13 @@ export async function buildUniversalBasketSummary(options?: {
       observed_peak_percent: sim.peak,
       simulated_locked_percent: sim.locked,
       trailing_hit: sim.trailingHit,
+      trail_activated_at_utc:
+        sim.trailActivatedAtMs === null ? null : new Date(sim.trailActivatedAtMs).toISOString(),
+      trail_hit_at_utc:
+        sim.trailHitAtMs === null ? null : new Date(sim.trailHitAtMs).toISOString(),
       legs: legs.length,
       priced_symbols: validSeries.length,
+      equity_curve: curve,
     });
   }
 

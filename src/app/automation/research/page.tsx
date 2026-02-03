@@ -4,6 +4,7 @@ import {
   loadScalpBotStage3Summary,
   loadScalpBotSummary,
 } from "@/lib/scalpBot";
+import EquityCurveChart from "@/components/research/EquityCurveChart";
 import { buildUniversalBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 
@@ -20,6 +21,7 @@ export default async function AutomationResearchPage() {
     limitWeeks: 3,
     includeCurrentWeek: false,
   });
+  const latestUniversalWeek = universalSummary.by_week[0] ?? null;
 
   const dailyMap = new Map(
     dailyBiasHourly?.daily.map((row) => [row.day, row.pnl_pips]) ?? [],
@@ -133,9 +135,46 @@ export default async function AutomationResearchPage() {
             </div>
           </div>
 
-          <div className="mt-4 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Peak is computed from H1 path simulation for each week.
-          </div>
+          {latestUniversalWeek ? (
+            <div className="mt-6 space-y-3">
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                      Trail activated
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--foreground)]">
+                      {latestUniversalWeek.trail_activated_at_utc
+                        ? formatDateTimeET(latestUniversalWeek.trail_activated_at_utc)
+                        : "Not activated"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                      Trail hit
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--foreground)]">
+                      {latestUniversalWeek.trail_hit_at_utc
+                        ? formatDateTimeET(latestUniversalWeek.trail_hit_at_utc)
+                        : "Not hit"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                      Curve points
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--foreground)]">
+                      {latestUniversalWeek.equity_curve.length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <EquityCurveChart
+                title={`${latestUniversalWeek.week_label} equity curve`}
+                points={latestUniversalWeek.equity_curve}
+              />
+            </div>
+          ) : null}
         </section>
         <section className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
