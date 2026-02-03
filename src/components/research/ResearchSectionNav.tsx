@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/automation/research/universal", label: "Universal" },
   { href: "/automation/research/baskets", label: "Other Baskets" },
+  { href: "/automation/research/symbols", label: "Symbols" },
 ];
 
 export default function ResearchSectionNav() {

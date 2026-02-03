@@ -94,6 +94,40 @@ export type PerModelBasketSummary = {
   }>;
 };
 
+export type SymbolResearchRow = {
+  symbol: string;
+  asset_classes: string[];
+  models: PerformanceModel[];
+  trades: number;
+  priced_trades: number;
+  total_percent: number;
+  avg_percent: number;
+  win_rate: number;
+  best_trade_percent: number | null;
+  worst_trade_percent: number | null;
+  weeks_traded: number;
+  weekly: Array<{
+    week_open_utc: string;
+    week_label: string;
+    percent: number;
+  }>;
+};
+
+export type SymbolResearchSummary = {
+  generated_at: string;
+  weeks: number;
+  model_filter: "all" | PerformanceModel;
+  total_trades: number;
+  priced_trades: number;
+  total_percent: number;
+  rows: SymbolResearchRow[];
+  equity_curve: Array<{
+    ts_utc: string;
+    equity_pct: number;
+    lock_pct: null;
+  }>;
+};
+
 type SimulationTimeframe = "M1" | "H1";
 
 function fxSymbol(pair: string): string {
@@ -722,5 +756,139 @@ export async function buildPerModelBasketSummary(options?: {
       timeframe,
     },
     models: summaries,
+  };
+}
+
+export async function buildSymbolResearchSummary(options?: {
+  modelFilter?: "all" | PerformanceModel;
+  includeCurrentWeek?: boolean;
+  limitWeeks?: number;
+}): Promise<SymbolResearchSummary> {
+  const modelFilter = options?.modelFilter ?? "all";
+  const includeCurrentWeek = options?.includeCurrentWeek ?? false;
+  const limitWeeks = options?.limitWeeks ?? 8;
+  const nowIso = DateTime.utc().toISO() ?? new Date().toISOString();
+  const currentWeekOpenUtc = getWeekOpenUtc();
+
+  const weekOptions = await listPerformanceWeeks(Math.max(limitWeeks * 2, 20));
+  const targetWeeks = weekOptions
+    .filter((week) => (includeCurrentWeek ? true : week !== currentWeekOpenUtc))
+    .slice(0, limitWeeks);
+
+  const symbolMap = new Map<
+    string,
+    {
+      assets: Set<string>;
+      models: Set<PerformanceModel>;
+      trades: number;
+      pricedTrades: number;
+      wins: number;
+      total: number;
+      best: number | null;
+      worst: number | null;
+      weekly: Map<string, number>;
+    }
+  >();
+  const weeklyTotals = new Map<string, number>();
+
+  for (const weekOpenUtc of targetWeeks) {
+    const rows = await readPerformanceSnapshotsByWeek(weekOpenUtc);
+    let weekTotal = 0;
+    for (const row of rows) {
+      if (modelFilter !== "all" && row.model !== modelFilter) {
+        continue;
+      }
+      for (const detail of row.pair_details) {
+        if (detail.direction !== "LONG" && detail.direction !== "SHORT") {
+          continue;
+        }
+        if (!symbolMap.has(detail.pair)) {
+          symbolMap.set(detail.pair, {
+            assets: new Set<string>(),
+            models: new Set<PerformanceModel>(),
+            trades: 0,
+            pricedTrades: 0,
+            wins: 0,
+            total: 0,
+            best: null,
+            worst: null,
+            weekly: new Map<string, number>(),
+          });
+        }
+        const entry = symbolMap.get(detail.pair)!;
+        entry.assets.add(row.asset_class);
+        entry.models.add(row.model);
+        entry.trades += 1;
+        if (detail.percent === null) {
+          continue;
+        }
+        entry.pricedTrades += 1;
+        entry.total += detail.percent;
+        if (detail.percent > 0) {
+          entry.wins += 1;
+        }
+        if (entry.best === null || detail.percent > entry.best) {
+          entry.best = detail.percent;
+        }
+        if (entry.worst === null || detail.percent < entry.worst) {
+          entry.worst = detail.percent;
+        }
+        entry.weekly.set(weekOpenUtc, (entry.weekly.get(weekOpenUtc) ?? 0) + detail.percent);
+        weekTotal += detail.percent;
+      }
+    }
+    weeklyTotals.set(weekOpenUtc, weekTotal);
+  }
+
+  const rows: SymbolResearchRow[] = Array.from(symbolMap.entries())
+    .map(([symbol, entry]) => {
+      const weekly = targetWeeks
+        .map((week) => ({
+          week_open_utc: week,
+          week_label: weekLabelFromOpen(week),
+          percent: entry.weekly.get(week) ?? 0,
+        }))
+        .filter((item) => item.percent !== 0);
+      return {
+        symbol,
+        asset_classes: Array.from(entry.assets.values()).sort(),
+        models: Array.from(entry.models.values()).sort(),
+        trades: entry.trades,
+        priced_trades: entry.pricedTrades,
+        total_percent: entry.total,
+        avg_percent: entry.pricedTrades > 0 ? entry.total / entry.pricedTrades : 0,
+        win_rate: entry.pricedTrades > 0 ? (entry.wins / entry.pricedTrades) * 100 : 0,
+        best_trade_percent: entry.best,
+        worst_trade_percent: entry.worst,
+        weeks_traded: weekly.length,
+        weekly,
+      };
+    })
+    .sort((a, b) => Math.abs(b.total_percent) - Math.abs(a.total_percent));
+
+  const curveWeeks = [...targetWeeks].reverse();
+  let cumulative = 0;
+  const equityCurve = curveWeeks.map((week) => {
+    cumulative += weeklyTotals.get(week) ?? 0;
+    return {
+      ts_utc: week,
+      equity_pct: cumulative,
+      lock_pct: null,
+    };
+  });
+
+  const totalTrades = rows.reduce((sum, row) => sum + row.trades, 0);
+  const pricedTrades = rows.reduce((sum, row) => sum + row.priced_trades, 0);
+  const totalPercent = rows.reduce((sum, row) => sum + row.total_percent, 0);
+
+  return {
+    generated_at: nowIso,
+    weeks: targetWeeks.length,
+    model_filter: modelFilter,
+    total_trades: totalTrades,
+    priced_trades: pricedTrades,
+    total_percent: totalPercent,
+    rows,
+    equity_curve: equityCurve,
   };
 }
