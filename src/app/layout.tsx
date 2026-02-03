@@ -24,6 +24,13 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Limni Trading Intelligence",
   description: "Bias, sentiment, and signal intelligence for Limni.",
+  icons: {
+    icon: [
+      { url: "/limni-icon.svg", type: "image/svg+xml" },
+      { url: "/limni-icon.svg", type: "image/svg+xml", sizes: "any" },
+    ],
+    apple: "/limni-icon.svg",
+  },
 };
 
 export default function RootLayout({
