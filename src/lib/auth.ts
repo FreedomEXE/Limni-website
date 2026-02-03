@@ -33,6 +33,8 @@ export async function login(username: string, password: string): Promise<boolean
   const viewerPassword = process.env.AUTH_VIEWER_PASSWORD;
   const viewerUsernameAlt = process.env.AUTH_VIEWER_USERNAME_ALT;
   const viewerPasswordAlt = process.env.AUTH_VIEWER_PASSWORD_ALT;
+  const viewerUsernameAlt2 = process.env.AUTH_VIEWER_USERNAME_ALT2;
+  const viewerPasswordAlt2 = process.env.AUTH_VIEWER_PASSWORD_ALT2;
 
   if (username === validUsername && password === validPassword) {
     const cookieStore = await cookies();
@@ -46,29 +48,17 @@ export async function login(username: string, password: string): Promise<boolean
     return true;
   }
 
-  if (
-    viewerUsername &&
-    viewerPassword &&
-    username === viewerUsername &&
-    password === viewerPassword
-  ) {
-    const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE_NAME, SESSION_SECRET_VIEWER, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: "/",
-    });
-    return true;
-  }
+  const viewerLogins = [
+    [viewerUsername, viewerPassword],
+    [viewerUsernameAlt, viewerPasswordAlt],
+    [viewerUsernameAlt2, viewerPasswordAlt2],
+  ];
 
-  if (
-    viewerUsernameAlt &&
-    viewerPasswordAlt &&
-    username === viewerUsernameAlt &&
-    password === viewerPasswordAlt
-  ) {
+  const isViewerMatch = viewerLogins.some(
+    ([u, p]) => !!u && !!p && username === u && password === p,
+  );
+
+  if (isViewerMatch) {
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, SESSION_SECRET_VIEWER, {
       httpOnly: true,
