@@ -1,6 +1,10 @@
 import { DateTime } from "luxon";
-import { fetchBitgetCandleSeries } from "@/lib/bitget";
-import { fetchOandaCandleSeries, getOandaInstrument } from "@/lib/oandaPrices";
+import { fetchBitgetCandleSeries, fetchBitgetMinuteSeries } from "@/lib/bitget";
+import {
+  fetchOandaCandleSeries,
+  fetchOandaMinuteSeries,
+  getOandaInstrument,
+} from "@/lib/oandaPrices";
 import { getWeekOpenUtc, listPerformanceWeeks, readPerformanceSnapshotsByWeek, weekLabelFromOpen } from "@/lib/performanceSnapshots";
 
 export type UniversalWeekSimulation = {
@@ -56,6 +60,8 @@ type UniversalLeg = {
   direction: 1 | -1;
   reportDate: string | null;
 };
+
+type SimulationTimeframe = "M1" | "H1";
 
 function fxSymbol(pair: string): string {
   if (pair.includes("/")) {
@@ -171,8 +177,9 @@ async function fetchSeriesForSymbol(input: {
   pair: string;
   reportDate: string | null;
   weekOpenUtc: string;
+  timeframe: SimulationTimeframe;
 }): Promise<SymbolSeries | null> {
-  const { assetClass, pair, reportDate, weekOpenUtc } = input;
+  const { assetClass, pair, reportDate, weekOpenUtc, timeframe } = input;
   const window = getWindowForAsset(assetClass, reportDate, weekOpenUtc);
   if (window.closeUtc.toMillis() <= window.openUtc.toMillis()) {
     return null;
@@ -184,7 +191,10 @@ async function fetchSeriesForSymbol(input: {
       if (!base) {
         return null;
       }
-      const candles = await fetchBitgetCandleSeries(base, window);
+      const candles =
+        timeframe === "M1"
+          ? await fetchBitgetMinuteSeries(base, window)
+          : await fetchBitgetCandleSeries(base, window);
       if (candles.length === 0) {
         return null;
       }
@@ -200,7 +210,18 @@ async function fetchSeriesForSymbol(input: {
     }
 
     const symbol = assetClass === "fx" ? fxSymbol(pair) : pair;
-    const candles = await fetchOandaCandleSeries(getOandaInstrument(symbol), window.openUtc, window.closeUtc);
+    const candles =
+      timeframe === "M1"
+        ? await fetchOandaMinuteSeries(
+            getOandaInstrument(symbol),
+            window.openUtc,
+            window.closeUtc,
+          )
+        : await fetchOandaCandleSeries(
+            getOandaInstrument(symbol),
+            window.openUtc,
+            window.closeUtc,
+          );
     if (candles.length === 0) {
       return null;
     }
@@ -241,10 +262,11 @@ function simulateWeekFromSeries(
   }
 
   let peak = 0;
-  let lock = 0;
+  let lock = Number.NEGATIVE_INFINITY;
   let trailingActive = false;
   let trailingHit = false;
   let finalReturn = 0;
+  let lockedReturn: number | null = null;
 
   for (const ts of timestamps) {
     let total = 0;
@@ -274,15 +296,22 @@ function simulateWeekFromSeries(
         lock = nextLock;
       }
     }
-    if (trailingActive && lock > 0 && total <= lock) {
+    if (trailingActive && Number.isFinite(lock) && total <= lock) {
       trailingHit = true;
+      lockedReturn = total;
+      finalReturn = total;
+      break;
     }
     finalReturn = total;
   }
 
+  if (lockedReturn === null) {
+    lockedReturn = finalReturn;
+  }
+
   return {
     peak,
-    locked: Math.max(0, lock),
+    locked: lockedReturn,
     trailingHit,
     finalReturn,
   };
@@ -293,11 +322,13 @@ export async function buildUniversalBasketSummary(options?: {
   trailOffsetPct?: number;
   includeCurrentWeek?: boolean;
   limitWeeks?: number;
+  timeframe?: SimulationTimeframe;
 }): Promise<UniversalBasketSummary> {
   const trailStartPct = options?.trailStartPct ?? 20;
   const trailOffsetPct = options?.trailOffsetPct ?? 10;
   const includeCurrentWeek = options?.includeCurrentWeek ?? false;
   const limitWeeks = options?.limitWeeks ?? 6;
+  const timeframe = options?.timeframe ?? "M1";
   const nowIso = DateTime.utc().toISO() ?? new Date().toISOString();
   const currentWeekOpenUtc = getWeekOpenUtc();
 
@@ -317,7 +348,13 @@ export async function buildUniversalBasketSummary(options?: {
     const legs = mapRowsToLegs(rows);
     const uniqueSymbols = new Map<
       string,
-      { assetClass: string; pair: string; reportDate: string | null; weekOpenUtc: string }
+      {
+        assetClass: string;
+        pair: string;
+        reportDate: string | null;
+        weekOpenUtc: string;
+        timeframe: SimulationTimeframe;
+      }
     >();
     for (const leg of legs) {
       const key = `${leg.assetClass}|${leg.pair}`;
@@ -327,6 +364,7 @@ export async function buildUniversalBasketSummary(options?: {
           pair: leg.pair,
           reportDate: leg.reportDate,
           weekOpenUtc,
+          timeframe,
         });
       }
     }
@@ -370,7 +408,7 @@ export async function buildUniversalBasketSummary(options?: {
     assumptions: {
       trail_start_pct: trailStartPct,
       trail_offset_pct: trailOffsetPct,
-      timeframe: "H1",
+      timeframe,
     },
     overall: {
       weeks,

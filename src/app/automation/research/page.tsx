@@ -15,7 +15,11 @@ export default async function AutomationResearchPage() {
   const dailyBiasSingle = await loadDailyBiasSummary("single");
   const dailyBiasHourly = await loadDailyBiasSummary("hourly");
   const dailyBiasWeekly = await loadDailyBiasSummary("weekly");
-  const universalSummary = await buildUniversalBasketSummary();
+  const universalSummary = await buildUniversalBasketSummary({
+    timeframe: "M1",
+    limitWeeks: 3,
+    includeCurrentWeek: false,
+  });
 
   const dailyMap = new Map(
     dailyBiasHourly?.daily.map((row) => [row.day, row.pnl_pips]) ?? [],
@@ -59,7 +63,8 @@ export default async function AutomationResearchPage() {
               <p className="mt-2 text-sm text-[color:var(--muted)]">
                 Historical weekly simulation for the full universal basket. Lock uses trail
                 start {universalSummary.assumptions.trail_start_pct.toFixed(0)}% and offset{" "}
-                {universalSummary.assumptions.trail_offset_pct.toFixed(0)}%.
+                {universalSummary.assumptions.trail_offset_pct.toFixed(0)}% on{" "}
+                {universalSummary.assumptions.timeframe} candles.
               </p>
             </div>
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
