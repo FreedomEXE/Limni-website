@@ -134,7 +134,11 @@ export async function GET(request: Request) {
         asset_class: asset,
       })),
     );
+  }
 
+  // Sentiment-only pairs should be emitted for requested asset classes
+  // even when there is no COT snapshot for that class (e.g. indices).
+  for (const asset of assetClasses) {
     const sentimentPairs = PAIRS_BY_ASSET_CLASS[asset]
       .map((pairDef) => {
         const direction = sentimentDirection(sentimentMap.get(pairDef.pair));
