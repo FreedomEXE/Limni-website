@@ -1,7 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
-import { getLatestAggregatesLocked, readAggregates } from "@/lib/sentiment/store";
+import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
   computeReturnStats,
@@ -41,18 +41,6 @@ type PerformancePageProps = {
 
 function formatWeekOption(value: string) {
   return weekLabelFromOpen(value);
-}
-
-function reportWeekOpenUtc(reportDate: string): string | null {
-  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
-  if (!report.isValid) {
-    return null;
-  }
-  const daysUntilMonday = (8 - report.weekday) % 7;
-  const monday = report
-    .plus({ days: daysUntilMonday })
-    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-  return monday.toUTC().toISO();
 }
 
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
@@ -107,12 +95,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       ? reportParam
       : reportOptions[0] ?? null;
   const validWeek = selectedWeek ? isWeekOpenUtc(selectedWeek) : false;
-  const reportWeek = selectedReport ? reportWeekOpenUtc(selectedReport) : null;
-  const calibrationWeek = validWeek
-    ? selectedWeek
-    : reportWeek && isWeekOpenUtc(reportWeek)
-      ? reportWeek
-      : null;
   let weekSnapshots: Awaited<ReturnType<typeof readPerformanceSnapshotsByWeek>> = [];
   if (selectedWeek) {
     try {
@@ -235,10 +217,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     anyPriced = totals.some((result) => result.priced > 0);
   } else {
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
-    const [latestSentiment, sentimentHistory] = await Promise.all([
-      getLatestAggregatesLocked(),
-      readAggregates(),
-    ]);
+    const latestSentiment = await getLatestAggregatesLocked();
     const snapshotResults = await Promise.all(
       assetClasses.map((asset) =>
         isCurrentWeekSelected

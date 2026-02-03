@@ -76,6 +76,15 @@ function sentimentDirection(agg?: SentimentAggregate): Direction | null {
     return "LONG";
   }
 
+  // Keep a directional fallback so sentiment performance never drops pairs
+  // solely due to a neutralized flip marker.
+  if (agg.agg_net > 0) {
+    return "LONG";
+  }
+  if (agg.agg_net < 0) {
+    return "SHORT";
+  }
+
   return null;
 }
 
@@ -139,7 +148,6 @@ export function buildSentimentPairsWithHistory(options: {
     }
 
     const openMs = weekOpenUtc.toMillis();
-    const closeMs = weekCloseUtc.toMillis();
     const historyWithTimes = history
       .map((agg) => ({
         agg,
