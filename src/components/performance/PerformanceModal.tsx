@@ -152,6 +152,9 @@ export default function PerformanceModal({
 }: PerformanceModalProps) {
   const [view, setView] = useState<ViewMode>("home");
   const [simulationMode, setSimulationMode] = useState<"hold" | "trailing">("hold");
+  const [notes, setNotes] = useState("");
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+
   const stats = performance.stats;
   const tier = getPerformanceTier(performance.percent, stats.win_rate);
   const badge = getConfidenceBadge(performance);
@@ -170,6 +173,20 @@ export default function PerformanceModal({
     calibration && calibration.accountSize
       ? (calibration.accountSize * performance.percent) / 100
       : null;
+
+  const notesKey = `limni-notes-${sectionLabel}-${modelLabel}`;
+
+  useEffect(() => {
+    const saved = localStorage.getItem(notesKey);
+    if (saved) {
+      setNotes(saved);
+    }
+  }, [notesKey]);
+
+  const saveNotes = () => {
+    localStorage.setItem(notesKey, notes);
+    setIsEditingNotes(false);
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -229,15 +246,6 @@ export default function PerformanceModal({
               <h3 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">
                 {modelLabel}
               </h3>
-              {view !== "home" && (
-                <button
-                  type="button"
-                  onClick={() => setView("home")}
-                  className="mt-2 text-xs text-[var(--accent-strong)] hover:underline"
-                >
-                  ← Back to overview
-                </button>
-              )}
             </div>
             <button
               type="button"
@@ -255,6 +263,77 @@ export default function PerformanceModal({
             {badge.icon} {badge.label}
           </div>
         </div>
+
+        {/* Navigation Bar */}
+        {view !== "home" && (
+          <div className="border-b border-[var(--panel-border)] bg-[var(--panel)]/80 px-6 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setView("home")}
+                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+              >
+                ← Home
+              </button>
+              <div className="h-4 w-px bg-[var(--panel-border)]" />
+              <button
+                type="button"
+                onClick={() => setView("summary")}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+                  view === "summary"
+                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-transparent text-[color:var(--muted)] hover:border-[var(--panel-border)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                L Summary
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("simulation")}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+                  view === "simulation"
+                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-transparent text-[color:var(--muted)] hover:border-[var(--panel-border)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                I Simulation
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("basket")}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+                  view === "basket"
+                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-transparent text-[color:var(--muted)] hover:border-[var(--panel-border)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                M Basket
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("research")}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+                  view === "research"
+                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-transparent text-[color:var(--muted)] hover:border-[var(--panel-border)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                N Research
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("notes")}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+                  view === "notes"
+                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-transparent text-[color:var(--muted)] hover:border-[var(--panel-border)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                I Notes
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="max-h-[70vh] overflow-y-auto p-6">
@@ -593,15 +672,61 @@ export default function PerformanceModal({
           {view === "notes" && (
             <div className="space-y-4">
               <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Weekly Summary
-                </p>
-                <div className="mt-4 rounded-lg border border-dashed border-[var(--panel-border)] bg-[var(--panel)] p-6 text-center text-[color:var(--muted)]">
-                  <p className="text-sm">No notes for this basket yet.</p>
-                  <p className="mt-2 text-xs">
-                    Future feature: Add weekly observations, key insights, and notable events.
+                <div className="flex items-center justify-between">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Weekly Summary
                   </p>
+                  {!isEditingNotes ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingNotes(true)}
+                      className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={saveNotes}
+                        className="rounded-lg border border-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[var(--accent-strong)] transition hover:bg-[var(--accent)]/20"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const saved = localStorage.getItem(notesKey);
+                          setNotes(saved ?? "");
+                          setIsEditingNotes(false);
+                        }}
+                        className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-wider text-[color:var(--muted)] transition hover:border-rose-400 hover:text-rose-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
+                {isEditingNotes ? (
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Add weekly observations, key insights, notable events, trading decisions, etc."
+                    className="mt-4 w-full rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] p-3 text-sm text-[var(--foreground)] placeholder:text-[color:var(--muted)] focus:border-[var(--accent)] focus:outline-none"
+                    rows={8}
+                  />
+                ) : notes ? (
+                  <div className="mt-4 whitespace-pre-wrap rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] p-3 text-sm text-[var(--foreground)]">
+                    {notes}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-lg border border-dashed border-[var(--panel-border)] bg-[var(--panel)] p-6 text-center text-[color:var(--muted)]">
+                    <p className="text-sm">No notes yet.</p>
+                    <p className="mt-2 text-xs">
+                      Click Edit to add weekly observations, key insights, and notable events.
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
