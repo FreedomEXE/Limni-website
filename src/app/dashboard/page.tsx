@@ -151,6 +151,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   let missingPairs: string[] = [];
   let combinedRefresh = data.last_refresh_utc;
 
+  // Calculate total pairs for counting purposes
+  const totalPairsCount = isAll
+    ? assetClasses.reduce((sum, asset) => sum + (PAIRS_BY_ASSET_CLASS[asset.id]?.length ?? 0), 0)
+    : PAIRS_BY_ASSET_CLASS[assetClass]?.length ?? 0;
+
   if (isAll) {
     const snapshots = await Promise.all(
       assetClasses.map((asset) =>
@@ -220,12 +225,27 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         : entry.asset.id === "fx"
           ? derivePairDirectionsWithNeutral(entrySnapshot.currencies, pairDefs, biasMode)
           : derivePairDirectionsByBaseWithNeutral(entrySnapshot.currencies, pairDefs, biasMode);
-      const perfResult = await getPairPerformance(derivedPairs, {
+
+      // Ensure all pairs are included (add missing ones as NEUTRAL)
+      const allPairs: Record<string, PairSnapshot> = {};
+      for (const pairDef of pairDefs) {
+        if (derivedPairs[pairDef.pair]) {
+          allPairs[pairDef.pair] = derivedPairs[pairDef.pair];
+        } else {
+          allPairs[pairDef.pair] = {
+            direction: "NEUTRAL",
+            base_bias: "NEUTRAL",
+            quote_bias: "NEUTRAL",
+          };
+        }
+      }
+
+      const perfResult = await getPairPerformance(allPairs, {
         assetClass: entry.asset.id,
         reportDate: entrySnapshot.report_date,
         isLatestReport: false,
       });
-      Object.entries(derivedPairs).forEach(([pair, row]) => {
+      Object.entries(allPairs).forEach(([pair, row]) => {
         pairRowsWithPerf.push({
           pair: `${pair} (${entry.asset.label})`,
           direction: row.direction,
@@ -290,12 +310,27 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       : assetClass === "fx"
         ? derivePairDirectionsWithNeutral(data.currencies, pairDefs, biasMode)
         : derivePairDirectionsByBaseWithNeutral(data.currencies, pairDefs, biasMode);
-    const pairRows = Object.entries(derivedPairs).sort(([a], [b]) =>
+
+    // Ensure all pairs are included (add missing ones as NEUTRAL)
+    const allPairs: Record<string, PairSnapshot> = {};
+    for (const pairDef of pairDefs) {
+      if (derivedPairs[pairDef.pair]) {
+        allPairs[pairDef.pair] = derivedPairs[pairDef.pair];
+      } else {
+        allPairs[pairDef.pair] = {
+          direction: "NEUTRAL",
+          base_bias: "NEUTRAL",
+          quote_bias: "NEUTRAL",
+        };
+      }
+    }
+
+    const pairRows = Object.entries(allPairs).sort(([a], [b]) =>
       a.localeCompare(b),
     );
     const perfResult =
       pairRows.length > 0
-        ? await getPairPerformance(derivedPairs, {
+        ? await getPairPerformance(allPairs, {
             assetClass,
             reportDate: selectedReportDate,
             isLatestReport: false,
@@ -353,11 +388,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
         <SummaryCards
           title="Bias"
+          centered={true}
           cards={[
             {
               id: "pairs",
               label: "Pairs tracked",
-              value: String(pairRowsWithPerf.length),
+              value: String(totalPairsCount),
             },
             {
               id: "long",

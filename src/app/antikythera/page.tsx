@@ -212,10 +212,11 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
 
         <SummaryCards
           title="Antikythera"
+          centered={true}
           cards={[
             {
               id: "signals",
-              label: "Signals tracked",
+              label: "Signals",
               value: String(allSignals.length),
               details: [
                 { label: "FX", value: String(signalGroups.find((g) => g.asset.id === "fx")?.signals.length ?? 0) },
@@ -235,11 +236,6 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
               label: "Short signals",
               value: String(allSignals.filter((s) => s.direction === "SHORT").length),
               tone: "negative",
-            },
-            {
-              id: "sentiment",
-              label: "Sentiment aligned",
-              value: String(allSignals.filter((s) => s.reasons.some((r) => r.toLowerCase().includes("sentiment"))).length),
             },
           ]}
         />

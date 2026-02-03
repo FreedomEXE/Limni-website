@@ -16,6 +16,7 @@ type SummaryCard = {
 type SummaryCardsProps = {
   title: string;
   cards: SummaryCard[];
+  centered?: boolean;
 };
 
 function toneClass(tone?: SummaryCard["tone"]) {
@@ -28,17 +29,17 @@ function toneClass(tone?: SummaryCard["tone"]) {
   return "text-[var(--foreground)]";
 }
 
-export default function SummaryCards({ title, cards }: SummaryCardsProps) {
+export default function SummaryCards({ title, cards, centered = false }: SummaryCardsProps) {
   const [active, setActive] = useState<SummaryCard | null>(null);
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className={centered ? "flex flex-wrap justify-center gap-4" : "grid gap-4 md:grid-cols-2 xl:grid-cols-5"}>
         {cards.map((card) => (
           <button
             key={card.id}
             type="button"
             onClick={() => setActive(card)}
-            className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 text-left shadow-sm transition hover:border-[var(--accent)]"
+            className={`rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 text-left shadow-sm transition hover:border-[var(--accent)] ${centered ? "min-w-[200px]" : ""}`}
           >
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               {card.label}
