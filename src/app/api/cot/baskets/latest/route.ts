@@ -6,7 +6,7 @@ import { getAssetClass, listAssetClasses } from "@/lib/cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { derivePairDirections, derivePairDirectionsByBase, type BiasMode } from "@/lib/cotCompute";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
-import { getAggregatesForWeekStart } from "@/lib/sentiment/store";
+import { getAggregatesForWeekStart, getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 
@@ -38,6 +38,13 @@ function sentimentDirection(agg?: SentimentAggregate): "LONG" | "SHORT" | null {
   }
   if (agg.crowding_state === "CROWDED_SHORT") {
     return "LONG";
+  }
+  // Fallback: if no flip/crowding signal, still emit directional bias from net sentiment.
+  if (agg.agg_net > 0) {
+    return "LONG";
+  }
+  if (agg.agg_net < 0) {
+    return "SHORT";
   }
   return null;
 }
@@ -109,7 +116,13 @@ export async function GET(request: Request) {
     weekOpenDt.toUTC().toISO() ?? weekOpen,
     weekClose.toUTC().toISO() ?? weekOpen,
   );
+  const latestSentiment = await getLatestAggregatesLocked();
   const sentimentMap = new Map(sentiment.map((agg) => [agg.symbol, agg]));
+  for (const agg of latestSentiment) {
+    if (!sentimentMap.has(agg.symbol)) {
+      sentimentMap.set(agg.symbol, agg);
+    }
+  }
 
   const pairs: BasketPair[] = [];
 
