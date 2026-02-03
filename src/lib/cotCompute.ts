@@ -201,3 +201,96 @@ export function derivePairDirectionsByBase(
 
   return pairs;
 }
+
+export function derivePairDirectionsWithNeutral(
+  markets: Record<string, MarketSnapshot>,
+  pairDefs: PairDefinition[],
+  mode: BiasMode = "dealer",
+): Record<string, PairSnapshot> {
+  const pairs: Record<string, PairSnapshot> = {};
+
+  for (const pairDef of pairDefs) {
+    const base = markets[pairDef.base];
+    const quote = markets[pairDef.quote];
+    const baseBias = base ? resolveMarketBias(base, mode) : null;
+    const quoteBias = quote ? resolveMarketBias(quote, mode) : null;
+
+    if (!baseBias || !quoteBias) {
+      continue;
+    }
+
+    // Include neutral pairs
+    if (baseBias.bias === "NEUTRAL" || quoteBias.bias === "NEUTRAL") {
+      pairs[pairDef.pair] = {
+        direction: "NEUTRAL" as any,
+        base_bias: baseBias.bias,
+        quote_bias: quoteBias.bias,
+      };
+      continue;
+    }
+
+    if (baseBias.bias === quoteBias.bias) {
+      pairs[pairDef.pair] = {
+        direction: "NEUTRAL" as any,
+        base_bias: baseBias.bias,
+        quote_bias: quoteBias.bias,
+      };
+      continue;
+    }
+
+    if (baseBias.bias === "BULLISH" && quoteBias.bias === "BEARISH") {
+      pairs[pairDef.pair] = {
+        direction: "LONG",
+        base_bias: baseBias.bias,
+        quote_bias: quoteBias.bias,
+      };
+      continue;
+    }
+
+    if (baseBias.bias === "BEARISH" && quoteBias.bias === "BULLISH") {
+      pairs[pairDef.pair] = {
+        direction: "SHORT",
+        base_bias: baseBias.bias,
+        quote_bias: quoteBias.bias,
+      };
+    }
+  }
+
+  return pairs;
+}
+
+export function derivePairDirectionsByBaseWithNeutral(
+  markets: Record<string, MarketSnapshot>,
+  pairDefs: PairDefinition[],
+  mode: BiasMode = "dealer",
+): Record<string, PairSnapshot> {
+  const pairs: Record<string, PairSnapshot> = {};
+
+  for (const pairDef of pairDefs) {
+    const base = markets[pairDef.base];
+    const quote = markets[pairDef.quote];
+    const baseBias = base ? resolveMarketBias(base, mode) : null;
+    const quoteBias = quote ? resolveMarketBias(quote, mode) : null;
+
+    if (!baseBias) {
+      continue;
+    }
+
+    if (baseBias.bias === "NEUTRAL") {
+      pairs[pairDef.pair] = {
+        direction: "NEUTRAL" as any,
+        base_bias: baseBias.bias,
+        quote_bias: quoteBias?.bias ?? "NEUTRAL",
+      };
+      continue;
+    }
+
+    pairs[pairDef.pair] = {
+      direction: baseBias.bias === "BULLISH" ? "LONG" : "SHORT",
+      base_bias: baseBias.bias,
+      quote_bias: quoteBias?.bias ?? "NEUTRAL",
+    };
+  }
+
+  return pairs;
+}

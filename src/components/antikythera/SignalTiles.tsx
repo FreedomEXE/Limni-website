@@ -5,7 +5,7 @@ import { useState } from "react";
 type Signal = {
   assetLabel: string;
   pair: string;
-  direction: "LONG" | "SHORT";
+  direction: "LONG" | "SHORT" | "NEUTRAL";
   reasons: string[];
   confidence: number;
 };
@@ -25,8 +25,14 @@ type SignalTilesProps = {
   showSignals?: boolean;
 };
 
-function signalTileTone(direction: "LONG" | "SHORT") {
-  return direction === "LONG" ? "bg-emerald-500" : "bg-rose-500";
+function signalTileTone(direction: "LONG" | "SHORT" | "NEUTRAL") {
+  if (direction === "LONG") {
+    return "bg-emerald-500";
+  }
+  if (direction === "SHORT") {
+    return "bg-rose-500";
+  }
+  return "bg-[var(--panel-border)]/60";
 }
 
 export default function SignalTiles({

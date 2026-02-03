@@ -10,7 +10,7 @@ import {
 
 export type AntikytheraSignal = {
   pair: string;
-  direction: "LONG" | "SHORT";
+  direction: "LONG" | "SHORT" | "NEUTRAL";
   reasons: string[];
   confidence: number;
 };
@@ -21,10 +21,10 @@ type SentimentResult = {
 };
 
 function sentimentAlignment(
-  direction: "LONG" | "SHORT",
+  direction: "LONG" | "SHORT" | "NEUTRAL",
   agg?: SentimentAggregate,
 ): SentimentResult {
-  if (!agg) {
+  if (!agg || direction === "NEUTRAL") {
     return { aligned: false, reasons: [] };
   }
 

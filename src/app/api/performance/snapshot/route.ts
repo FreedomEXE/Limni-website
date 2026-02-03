@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { DateTime } from "luxon";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
-import { getLatestAggregatesLocked, readAggregates } from "@/lib/sentiment/store";
+import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
-  buildSentimentPairsWithHistory,
   type PerformanceModel,
 } from "@/lib/performanceLab";
-import { getPairPerformance, getPairPerformanceForWindows, getPerformanceWindow } from "@/lib/pricePerformance";
+import { getPairPerformance } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import {
@@ -69,10 +68,7 @@ export async function POST(request: Request) {
   ];
 
   let responseWeekOpenUtc: string | null = null;
-  const [latestSentiment, sentimentHistory] = await Promise.all([
-    getLatestAggregatesLocked(),
-    readAggregates(),
-  ]);
+  const latestSentiment = await getLatestAggregatesLocked();
   const snapshots = await Promise.all(
     assetClasses.map((asset) => readSnapshot({ assetClass: asset.id })),
   );
@@ -99,50 +95,14 @@ export async function POST(request: Request) {
       reportDate: snapshot.report_date,
       isLatestReport: false,
     });
-    const window = getPerformanceWindow({
-      assetClass: asset.id,
-      reportDate: snapshot.report_date,
-      isLatestReport: false,
-    });
-
     for (const model of models) {
-      let result;
-      if (model === "sentiment") {
-        const sentimentPairs = buildSentimentPairsWithHistory({
-          assetClass: asset.id,
-          sentimentHistory,
-          weekOpenUtc: window.openUtc,
-          weekCloseUtc: window.closeUtc,
-          fallbackAggregates: latestSentiment,
-        });
-        const sentimentPerformance = await getPairPerformanceForWindows(
-          sentimentPairs.pairs,
-          Object.fromEntries(
-            Object.entries(sentimentPairs.windows).map(([pair, windowInfo]) => [
-              pair,
-              { openUtc: windowInfo.openUtc, closeUtc: windowInfo.closeUtc },
-            ]),
-          ),
-          { assetClass: asset.id },
-        );
-        result = await computeModelPerformance({
-          model,
-          assetClass: asset.id,
-          snapshot,
-          sentiment: latestSentiment,
-          performance: sentimentPerformance,
-          pairsOverride: sentimentPairs.pairs,
-          reasonOverrides: sentimentPairs.reasonOverrides,
-        });
-      } else {
-        result = await computeModelPerformance({
-          model,
-          assetClass: asset.id,
-          snapshot,
-          sentiment: latestSentiment,
-          performance,
-        });
-      }
+      const result = await computeModelPerformance({
+        model,
+        assetClass: asset.id,
+        snapshot,
+        sentiment: latestSentiment,
+        performance,
+      });
       payload.push({
         week_open_utc: reportWeekOpenUtc,
         asset_class: asset.id,

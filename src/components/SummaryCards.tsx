@@ -32,7 +32,7 @@ export default function SummaryCards({ title, cards }: SummaryCardsProps) {
   const [active, setActive] = useState<SummaryCard | null>(null);
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {cards.map((card) => (
           <button
             key={card.id}

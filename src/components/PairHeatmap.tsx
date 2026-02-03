@@ -16,7 +16,13 @@ type PairHeatmapProps = {
 };
 
 function tone(direction: Direction) {
-  return direction === "LONG" ? "bg-emerald-500" : "bg-rose-500";
+  if (direction === "LONG") {
+    return "bg-emerald-500";
+  }
+  if (direction === "SHORT") {
+    return "bg-rose-500";
+  }
+  return "bg-[var(--panel-border)]/60";
 }
 
 export default function PairHeatmap({ rows }: PairHeatmapProps) {
@@ -45,6 +51,18 @@ export default function PairHeatmap({ rows }: PairHeatmapProps) {
                 {row.direction}
               </span>
               <span className="mt-2 text-sm font-semibold leading-tight">{row.pair}</span>
+            </div>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+              <div className="text-center text-xs text-white">
+                <p className="font-semibold">{row.pair}</p>
+                <p className="mt-1">{row.direction}</p>
+                {row.performance ? (
+                  <p className="mt-1 text-[10px]">
+                    {row.performance.percent > 0 ? "+" : ""}
+                    {row.performance.percent.toFixed(2)}%
+                  </p>
+                ) : null}
+              </div>
             </div>
           </button>
         ))}

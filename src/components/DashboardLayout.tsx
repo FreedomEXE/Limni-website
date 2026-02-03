@@ -9,16 +9,16 @@ import ThemeToggle from "@/components/ThemeToggle";
 type NavItem = {
   href: string;
   label: string;
-  icon: string;
+  letter: string;
 };
 
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/antikythera", label: "Data", icon: "/limni-icon.svg" },
-  { href: "/performance", label: "Performance", icon: "/limni-icon.svg" },
-  { href: "/automation", label: "Automation", icon: "/limni-icon.svg" },
-  { href: "/accounts", label: "Accounts", icon: "/limni-icon.svg" },
-  { href: "/status", label: "Status", icon: "/limni-icon.svg" },
+  { href: "/antikythera", label: "Data", letter: "L" },
+  { href: "/performance", label: "Performance", letter: "I" },
+  { href: "/automation", label: "Automation", letter: "M" },
+  { href: "/accounts", label: "Accounts", letter: "N" },
+  { href: "/status", label: "Status", letter: "I" },
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -103,8 +103,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                       : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
                   }`}
                 >
-                  <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] text-[11px] font-semibold tracking-[0.2em] text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
-                    <img src={item.icon} alt="" className="size-12 scale-150 object-cover" />
+                  <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-base font-bold text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
+                    {item.letter}
                   </span>
                   {!isCollapsed ? (
                     <span className="tracking-tight">{item.label}</span>

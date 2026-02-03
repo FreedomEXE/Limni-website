@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 type BasketPair = {
   symbol: string;
-  direction: "LONG" | "SHORT";
+  direction: "LONG" | "SHORT" | "NEUTRAL";
   model: "antikythera" | "blended" | "dealer" | "commercial" | "sentiment";
   asset_class: ReturnType<typeof getAssetClass>;
 };

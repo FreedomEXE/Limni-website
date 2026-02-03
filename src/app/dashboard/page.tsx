@@ -142,7 +142,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }>;
   const pairRowsWithPerf = [] as Array<{
     pair: string;
-    direction: "LONG" | "SHORT";
+    direction: "LONG" | "SHORT" | "NEUTRAL";
     performance: Awaited<ReturnType<typeof getPairPerformance>>["performance"][string] | null;
   }>;
   let pairNote = "No pairs to price.";

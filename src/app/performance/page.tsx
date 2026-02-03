@@ -5,10 +5,9 @@ import { getLatestAggregatesLocked, readAggregates } from "@/lib/sentiment/store
 import {
   computeModelPerformance,
   computeReturnStats,
-  buildSentimentPairsWithHistory,
   type PerformanceModel,
 } from "@/lib/performanceLab";
-import { getPairPerformance, getPairPerformanceForWindows, getPerformanceWindow } from "@/lib/pricePerformance";
+import { getPairPerformance } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
@@ -193,7 +192,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       const returns: Array<{ pair: string; percent: number }> = [];
       const pairDetails: Array<{
         pair: string;
-        direction: "LONG" | "SHORT";
+        direction: "LONG" | "SHORT" | "NEUTRAL";
         reason: string[];
         percent: number | null;
       }> = [];
@@ -265,54 +264,18 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           reportDate: snapshot.report_date,
           isLatestReport: useLatestReport,
         });
-        const window = getPerformanceWindow({
-          assetClass: asset.id,
-          reportDate: snapshot.report_date,
-          isLatestReport: useLatestReport,
-        });
 
         const results = [];
         for (const model of models) {
-          if (model === "sentiment") {
-            const sentimentPairs = buildSentimentPairsWithHistory({
+          results.push(
+            await computeModelPerformance({
+              model,
               assetClass: asset.id,
-              sentimentHistory,
-              weekOpenUtc: window.openUtc,
-              weekCloseUtc: window.closeUtc,
-              fallbackAggregates: latestSentiment,
-            });
-            const sentimentPerformance = await getPairPerformanceForWindows(
-              sentimentPairs.pairs,
-              Object.fromEntries(
-                Object.entries(sentimentPairs.windows).map(([pair, windowInfo]) => [
-                  pair,
-                  { openUtc: windowInfo.openUtc, closeUtc: windowInfo.closeUtc },
-                ]),
-              ),
-              { assetClass: asset.id },
-            );
-            results.push(
-              await computeModelPerformance({
-                model,
-                assetClass: asset.id,
-                snapshot,
-                sentiment: latestSentiment,
-                performance: sentimentPerformance,
-                pairsOverride: sentimentPairs.pairs,
-                reasonOverrides: sentimentPairs.reasonOverrides,
-              }),
-            );
-          } else {
-            results.push(
-              await computeModelPerformance({
-                model,
-                assetClass: asset.id,
-                snapshot,
-                sentiment: latestSentiment,
-                performance,
-              }),
-            );
-          }
+              snapshot,
+              sentiment: latestSentiment,
+              performance,
+            }),
+          );
         }
         return { asset, results };
       }),
@@ -325,7 +288,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       const returns: Array<{ pair: string; percent: number }> = [];
       const pairDetails: Array<{
         pair: string;
-        direction: "LONG" | "SHORT";
+        direction: "LONG" | "SHORT" | "NEUTRAL";
         reason: string[];
         percent: number | null;
       }> = [];

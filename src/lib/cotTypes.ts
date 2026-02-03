@@ -1,7 +1,7 @@
 import type { AssetClass } from "./cotMarkets";
 
 export type Bias = "BULLISH" | "BEARISH" | "NEUTRAL";
-export type Direction = "LONG" | "SHORT";
+export type Direction = "LONG" | "SHORT" | "NEUTRAL";
 
 export type MarketSnapshot = {
   dealer_long: number;
