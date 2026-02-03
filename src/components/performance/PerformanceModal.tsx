@@ -23,15 +23,7 @@ type PerformanceModalProps = {
 
 const ACCOUNT_SIZES = [10000, 50000, 100000, 250000, 500000, 1000000];
 
-const PAGES = [
-  { id: "summary", label: "Executive Summary" },
-  { id: "simulation", label: "Account Simulation" },
-  { id: "trailing", label: "Trailing Stop Analysis" },
-  { id: "pairs", label: "Basket Pairs" },
-  { id: "outliers", label: "Outliers & Risk" },
-] as const;
-
-type PageId = typeof PAGES[number]["id"];
+type ViewMode = "home" | "summary" | "simulation" | "basket" | "research" | "notes";
 
 function formatPercent(value: number) {
   const sign = value > 0 ? "+" : value < 0 ? "" : "";
@@ -158,68 +150,95 @@ export default function PerformanceModal({
   setAccountSize,
   calibration,
 }: PerformanceModalProps) {
-  const [currentPage, setCurrentPage] = useState<PageId>("summary");
+  const [view, setView] = useState<ViewMode>("home");
+  const [simulationMode, setSimulationMode] = useState<"hold" | "trailing">("hold");
   const stats = performance.stats;
   const tier = getPerformanceTier(performance.percent, stats.win_rate);
   const badge = getConfidenceBadge(performance);
-  const pnl = (accountSize * performance.percent) / 100;
   const sharpeProxy = stats.volatility > 0 ? stats.avg_return / stats.volatility : 0;
+
+  const pnl = (accountSize * performance.percent) / 100;
+  const trailingPnl = performance.trailing
+    ? (accountSize * performance.trailing.locked_percent) / 100
+    : pnl;
+  const displayedPnl = simulationMode === "trailing" ? trailingPnl : pnl;
+  const displayedPercent = simulationMode === "trailing"
+    ? (performance.trailing?.locked_percent ?? performance.percent)
+    : performance.percent;
+
   const calibrationPnl =
     calibration && calibration.accountSize
       ? (calibration.accountSize * performance.percent) / 100
       : null;
 
-  const currentPageIndex = PAGES.findIndex((p) => p.id === currentPage);
-  const canGoNext = currentPageIndex < PAGES.length - 1;
-  const canGoPrev = currentPageIndex > 0;
-
-  const handleNext = () => {
-    if (canGoNext) {
-      setCurrentPage(PAGES[currentPageIndex + 1].id);
-    }
-  };
-
-  const handlePrev = () => {
-    if (canGoPrev) {
-      setCurrentPage(PAGES[currentPageIndex - 1].id);
-    }
-  };
-
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
-      } else if (event.key === "ArrowRight") {
-        handleNext();
-      } else if (event.key === "ArrowLeft") {
-        handlePrev();
+        if (view === "home") {
+          onClose();
+        } else {
+          setView("home");
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentPageIndex, onClose]);
+  }, [view, onClose]);
+
+  const HomeCard = ({
+    title,
+    icon,
+    description,
+    onClick
+  }: {
+    title: string;
+    icon: string;
+    description: string;
+    onClick: () => void;
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group rounded-2xl border-2 border-[var(--panel-border)] bg-[var(--panel)] p-6 text-left transition duration-200 hover:scale-[1.02] hover:border-[var(--accent)] hover:shadow-xl"
+    >
+      <div className="mb-3 text-4xl">{icon}</div>
+      <h3 className="text-lg font-semibold text-[var(--foreground)]">{title}</h3>
+      <p className="mt-2 text-sm text-[color:var(--muted)]">{description}</p>
+    </button>
+  );
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--foreground)]/30 p-6"
-      onClick={onClose}
+      onClick={() => view === "home" ? onClose() : setView("home")}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-4xl overflow-hidden rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-2xl"
+        className="w-full max-w-5xl overflow-hidden rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         {/* Header */}
         <div className={`relative bg-gradient-to-br from-white to-[var(--panel)] p-6 ${tier.accent}`}>
           <div className="absolute right-6 top-6 text-6xl opacity-10">{tier.emoji}</div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            {sectionLabel}
-          </p>
-          <div className="mt-2 flex items-center justify-between">
-            <h3 className="text-2xl font-semibold text-[var(--foreground)]">
-              {modelLabel}
-            </h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                {sectionLabel}
+              </p>
+              <h3 className="mt-1 text-2xl font-semibold text-[var(--foreground)]">
+                {modelLabel}
+              </h3>
+              {view !== "home" && (
+                <button
+                  type="button"
+                  onClick={() => setView("home")}
+                  className="mt-2 text-xs text-[var(--accent-strong)] hover:underline"
+                >
+                  ← Back to overview
+                </button>
+              )}
+            </div>
             <button
               type="button"
               onClick={onClose}
@@ -237,31 +256,48 @@ export default function PerformanceModal({
           </div>
         </div>
 
-        {/* Page Indicator */}
-        <div className="flex items-center justify-center gap-2 border-b border-[var(--panel-border)] bg-[var(--panel)]/50 px-6 py-3">
-          {PAGES.map((page, index) => (
-            <button
-              key={page.id}
-              type="button"
-              onClick={() => setCurrentPage(page.id)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-                currentPage === page.id
-                  ? "border border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                  : "text-[color:var(--muted)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              {index + 1}
-            </button>
-          ))}
-        </div>
-
-        {/* Content Area */}
+        {/* Content */}
         <div className="max-h-[70vh] overflow-y-auto p-6">
-          {currentPage === "summary" && (
+          {view === "home" && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <HomeCard
+                title="Summary"
+                icon="📊"
+                description="Executive summary with key performance metrics"
+                onClick={() => setView("summary")}
+              />
+              <HomeCard
+                title="Simulation"
+                icon="💰"
+                description="Account size simulation with trailing stop comparison"
+                onClick={() => setView("simulation")}
+              />
+              <HomeCard
+                title="Basket"
+                icon="🗂️"
+                description="All pairs in the basket with directions and returns"
+                onClick={() => setView("basket")}
+              />
+              <HomeCard
+                title="Research"
+                icon="🔬"
+                description="Outliers, risk metrics, and statistical analysis"
+                onClick={() => setView("research")}
+              />
+              <HomeCard
+                title="Notes"
+                icon="📝"
+                description="Weekly summary and key observations"
+                onClick={() => setView("notes")}
+              />
+            </div>
+          )}
+
+          {view === "summary" && (
             <div className="space-y-4">
               <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Executive summary
+                  Key Metrics
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <MetricPill
@@ -298,7 +334,7 @@ export default function PerformanceModal({
               </div>
               <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Return distribution
+                  Return Distribution
                 </p>
                 <div className="mt-4">
                   <MiniHistogram returns={performance.returns} />
@@ -307,11 +343,42 @@ export default function PerformanceModal({
             </div>
           )}
 
-          {currentPage === "simulation" && (
+          {view === "simulation" && (
             <div className="space-y-4">
               <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Account simulation
+                  Simulation Mode
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSimulationMode("hold")}
+                    className={`flex-1 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                      simulationMode === "hold"
+                        ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                        : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)]"
+                    }`}
+                  >
+                    Hold to End
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSimulationMode("trailing")}
+                    disabled={!performance.trailing}
+                    className={`flex-1 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                      simulationMode === "trailing"
+                        ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                        : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)]"
+                    } disabled:opacity-30 disabled:cursor-not-allowed`}
+                  >
+                    Trailing Stop {performance.trailing ? "" : "(N/A)"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Account Size
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
                   {ACCOUNT_SIZES.map((size) => (
@@ -342,149 +409,84 @@ export default function PerformanceModal({
                     </button>
                   ) : null}
                 </div>
-                <div className="mt-4 rounded-xl bg-[var(--foreground)] px-4 py-6 text-center text-[var(--background)]">
-                  <div className="text-3xl font-semibold">{formatMoney(pnl)}</div>
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--background)]/70">
-                    Simulated PnL
-                  </div>
+              </div>
+
+              <div className="rounded-xl bg-[var(--foreground)] px-4 py-6 text-center text-[var(--background)]">
+                <div className="text-4xl font-bold">{formatMoney(displayedPnl)}</div>
+                <div className="mt-1 text-sm opacity-70">
+                  {simulationMode === "trailing" ? "Trailing Stop" : "Hold to End"} · {formatPercent(displayedPercent)}
+                </div>
+                <div className="mt-1 text-xs uppercase tracking-[0.2em] opacity-50">
+                  Simulated PnL
                 </div>
               </div>
-              {calibration ? (
+
+              {simulationMode === "trailing" && performance.trailing && (
+                <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Trailing Stop Details
+                  </p>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <MetricPill
+                      label="Peak %"
+                      value={formatPercent(performance.trailing.peak_percent)}
+                      good={performance.trailing.peak_percent > performance.percent}
+                    />
+                    <MetricPill
+                      label="Max Drawdown"
+                      value={formatPercent(performance.trailing.max_drawdown)}
+                      good={performance.trailing.max_drawdown > -5}
+                    />
+                  </div>
+                  {performance.trailing.peak_day && (
+                    <p className="mt-3 text-xs text-[color:var(--muted)]">
+                      Peak reached: {performance.trailing.peak_day}
+                    </p>
+                  )}
+                  <div className="mt-3 text-sm text-[color:var(--muted)]">
+                    {performance.trailing.locked_percent > performance.percent ? (
+                      <p className="text-emerald-700">
+                        ✓ Trailing improved returns by {formatPercent(performance.trailing.locked_percent - performance.percent)}
+                      </p>
+                    ) : (
+                      <p>Hold-to-end was optimal</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {calibration && (
                 <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4 text-sm text-[color:var(--muted)]">
                   <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    MT5 calibration
+                    MT5 Calibration
                   </p>
                   <p className="mt-2 text-sm text-[var(--foreground)]">
                     {calibration.accountLabel} · {calibration.weekLabel}
                   </p>
                   <p className="mt-2 text-xs">
-                    Closed trades: {calibration.trades} · Net{" "}
-                    {formatMoney(calibration.netPnl)}
+                    Closed trades: {calibration.trades} · Net {formatMoney(calibration.netPnl)}
                   </p>
-                  <p className="mt-1 text-xs">
-                    Implied size: ${calibration.accountSize.toFixed(0)}
-                  </p>
-                  {calibrationPnl !== null ? (
-                    <p className="mt-2 text-xs text-[color:var(--muted)]">
+                  {calibrationPnl !== null && (
+                    <p className="mt-1 text-xs">
                       MT5 sized PnL: {formatMoney(calibrationPnl)}
                     </p>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          )}
-
-          {currentPage === "trailing" && (
-            <div className="space-y-4">
-              {performance.trailing ? (
-                <>
-                  <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                      Trailing Stop Analysis (20% lock / 10% offset)
-                    </p>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      <MetricPill
-                        label="Peak %"
-                        value={formatPercent(performance.trailing.peak_percent)}
-                        good={performance.trailing.peak_percent > performance.percent}
-                      />
-                      <MetricPill
-                        label="Locked %"
-                        value={formatPercent(performance.trailing.locked_percent)}
-                        good={performance.trailing.locked_percent > 0}
-                      />
-                      <MetricPill
-                        label="Max Drawdown"
-                        value={formatPercent(performance.trailing.max_drawdown)}
-                        good={performance.trailing.max_drawdown > -5}
-                      />
-                      <MetricPill
-                        label="Trailing Hit"
-                        value={performance.trailing.trailing_hit ? "Yes" : "No"}
-                        good={performance.trailing.trailing_hit}
-                      />
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                      Performance comparison
-                    </p>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 p-3">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                          Hold to End
-                        </p>
-                        <p className={`mt-2 text-2xl font-semibold ${tone(performance.percent)}`}>
-                          {formatPercent(performance.percent)}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 p-3">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[var(--accent-strong)]">
-                          Trailing Lock
-                        </p>
-                        <p className={`mt-2 text-2xl font-semibold ${tone(performance.trailing.locked_percent)}`}>
-                          {formatPercent(performance.trailing.locked_percent)}
-                        </p>
-                        {performance.trailing.peak_day ? (
-                          <p className="mt-1 text-xs text-[color:var(--muted)]">
-                            Peak: {performance.trailing.peak_day}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                      Insights
-                    </p>
-                    <div className="mt-3 space-y-2 text-sm text-[color:var(--muted)]">
-                      {performance.trailing.locked_percent > performance.percent ? (
-                        <p className="text-emerald-700">
-                          ✓ Trailing stop would have improved returns by {formatPercent(performance.trailing.locked_percent - performance.percent)}
-                        </p>
-                      ) : (
-                        <p>
-                          Hold-to-end was optimal for this week
-                        </p>
-                      )}
-                      {performance.trailing.peak_percent > performance.percent + 5 ? (
-                        <p>
-                          Peak was significantly higher at {formatPercent(performance.trailing.peak_percent)}, suggesting volatility
-                        </p>
-                      ) : null}
-                      {performance.trailing.max_drawdown < -10 ? (
-                        <p className="text-rose-700">
-                          Large drawdown of {formatPercent(performance.trailing.max_drawdown)} observed
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    Trailing Stop Analysis
-                  </p>
-                  <div className="mt-4 rounded-xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)] p-6 text-center text-[color:var(--muted)]">
-                    <p className="text-xs">Trailing stop data not available for this basket</p>
-                    <p className="mt-2 text-xs">Requires intraday price series for simulation</p>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          {currentPage === "pairs" && (
+          {view === "basket" && (
             <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Basket pairs
+                  All Pairs
                 </p>
                 <span className="text-xs text-[color:var(--muted)]">
                   {performance.pair_details.length} pairs
                 </span>
               </div>
-              <div className="mt-3 max-h-96 space-y-3 overflow-y-auto text-xs text-[color:var(--muted)]">
+              <div className="mt-3 max-h-[50vh] space-y-3 overflow-y-auto text-xs text-[color:var(--muted)]">
                 {performance.pair_details.map((detail) => (
                   <div
                     key={detail.pair}
@@ -498,7 +500,9 @@ export default function PerformanceModal({
                         className={`text-xs font-semibold ${
                           detail.direction === "LONG"
                             ? "text-emerald-700"
-                            : "text-rose-700"
+                            : detail.direction === "SHORT"
+                            ? "text-rose-700"
+                            : "text-[color:var(--muted)]"
                         }`}
                       >
                         {detail.direction}
@@ -520,7 +524,7 @@ export default function PerformanceModal({
             </div>
           )}
 
-          {currentPage === "outliers" && (
+          {view === "research" && (
             <div className="space-y-4">
               <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -529,7 +533,7 @@ export default function PerformanceModal({
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 p-3">
                     <p className="text-xs uppercase tracking-[0.2em] text-[var(--accent-strong)]">
-                      Best
+                      Best Performer
                     </p>
                     <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
                       {stats.best_pair ? stats.best_pair.pair : "N/A"}
@@ -540,7 +544,7 @@ export default function PerformanceModal({
                   </div>
                   <div className="rounded-lg border border-rose-200 bg-rose-50/70 p-3">
                     <p className="text-xs uppercase tracking-[0.2em] text-rose-700">
-                      Worst
+                      Worst Performer
                     </p>
                     <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
                       {stats.worst_pair ? stats.worst_pair.pair : "N/A"}
@@ -553,40 +557,68 @@ export default function PerformanceModal({
               </div>
               <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Risk Metrics
+                  Risk Analysis
                 </p>
-                <p className="mt-2 text-sm text-[color:var(--muted)]">
-                  Coming soon: Max drawdown, consecutive losses, and risk-adjusted metrics
-                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <MetricPill
+                    label="Volatility"
+                    value={`${stats.volatility.toFixed(2)}%`}
+                    good={stats.volatility < 2}
+                  />
+                  <MetricPill
+                    label="Sharpe Proxy"
+                    value={sharpeProxy.toFixed(2)}
+                    good={sharpeProxy > 1}
+                  />
+                  {performance.trailing && (
+                    <MetricPill
+                      label="Max Drawdown"
+                      value={formatPercent(performance.trailing.max_drawdown)}
+                      good={performance.trailing.max_drawdown > -5}
+                    />
+                  )}
+                  <MetricPill
+                    label="Win Rate"
+                    value={`${stats.win_rate.toFixed(0)}%`}
+                    good={stats.win_rate > 55}
+                  />
+                </div>
               </div>
               <div className="text-xs text-[color:var(--muted)]">
                 Assumptions: equal-weighted basket, single-week move, no fees or slippage.
               </div>
             </div>
           )}
-        </div>
 
-        {/* Navigation Footer */}
-        <div className="flex items-center justify-between border-t border-[var(--panel-border)] bg-[var(--panel)]/50 px-6 py-4">
-          <button
-            type="button"
-            onClick={handlePrev}
-            disabled={!canGoPrev}
-            className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)] disabled:opacity-30 disabled:hover:border-[var(--panel-border)] disabled:hover:text-[color:var(--muted)]"
-          >
-            ← Previous
-          </button>
-          <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            {PAGES[currentPageIndex].label}
-          </div>
-          <button
-            type="button"
-            onClick={handleNext}
-            disabled={!canGoNext}
-            className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)] disabled:opacity-30 disabled:hover:border-[var(--panel-border)] disabled:hover:text-[color:var(--muted)]"
-          >
-            Next →
-          </button>
+          {view === "notes" && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Weekly Summary
+                </p>
+                <div className="mt-4 rounded-lg border border-dashed border-[var(--panel-border)] bg-[var(--panel)] p-6 text-center text-[color:var(--muted)]">
+                  <p className="text-sm">No notes for this basket yet.</p>
+                  <p className="mt-2 text-xs">
+                    Future feature: Add weekly observations, key insights, and notable events.
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Key Observations
+                </p>
+                <div className="mt-3 space-y-2 text-sm text-[color:var(--muted)]">
+                  <p>• Model: {modelLabel}</p>
+                  <p>• Total return: {formatPercent(performance.percent)}</p>
+                  <p>• Pairs tracked: {performance.total} ({performance.priced} priced)</p>
+                  <p>• Win rate: {stats.win_rate.toFixed(0)}%</p>
+                  {performance.trailing && (
+                    <p>• Peak return: {formatPercent(performance.trailing.peak_percent)}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
