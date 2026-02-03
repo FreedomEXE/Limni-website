@@ -34,9 +34,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative flex min-h-screen bg-[var(--background)]">
-      {isCollapsed ? (
+      {isCollapsed && !isHoverExpanded ? (
         <div
-          className="fixed left-4 top-6 z-50"
+          className="fixed left-[246px] top-6 z-50"
           onMouseEnter={() => setIsHoverExpanded(true)}
           onMouseLeave={() => setIsHoverExpanded(false)}
         >
@@ -66,10 +66,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             setIsHoverExpanded(false);
           }
         }}
-        className={`bg-[var(--panel)]/90 backdrop-blur-sm transition-all duration-200 ${
-          isSidebarOpen ? "w-72 border-r border-[var(--panel-border)]" : "w-0 overflow-hidden border-0"
+        className={`fixed left-0 top-0 z-40 h-screen w-72 border-r border-[var(--panel-border)] bg-[var(--panel)]/90 backdrop-blur-sm transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
-        style={isPreviewing ? { position: "absolute", left: 0, top: 0, height: "100vh", zIndex: 40 } : undefined}
       >
         <div className="sticky top-0 flex h-screen flex-col">
           <div className="border-b border-[var(--panel-border)]/80 p-4">
