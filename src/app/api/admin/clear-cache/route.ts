@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     console.log(`Clearing cache for ${assetClass} week ${weekStart}...`);
 
-    const result = await query(
+    const result = await query<{ week_open_utc: string; model_name: string; performance_pct: number }>(
       `DELETE FROM market_snapshots
        WHERE week_open_utc >= $1
        AND week_open_utc < $1::timestamp + interval '7 days'
@@ -36,12 +36,12 @@ export async function POST(request: Request) {
       [weekStart, assetClass]
     );
 
-    console.log(`Deleted ${result.rows.length} cached snapshots`);
+    console.log(`Deleted ${result.length} cached snapshots`);
 
     return NextResponse.json({
       success: true,
-      deleted: result.rows.length,
-      snapshots: result.rows,
+      deleted: result.length,
+      snapshots: result,
     });
   } catch (error) {
     console.error("Error clearing cache:", error);
