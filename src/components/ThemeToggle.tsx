@@ -47,7 +47,7 @@ export default function ThemeToggle({ compact }: ThemeToggleProps) {
         compact ? "px-2 py-2 tracking-[0.1em]" : ""
       }`}
     >
-      {compact ? (theme === "light" ? "DM" : "LM") : theme === "light" ? "Dark mode" : "Light mode"}
+      {theme === "light" ? "Dark mode" : "Light mode"}
     </button>
   );
 }
