@@ -7,6 +7,7 @@ import { readMarketSnapshot } from "@/lib/priceStore";
 import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import { MyfxbookProvider } from "@/lib/sentiment/providers/myfxbook";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
+import { ALL_SENTIMENT_SYMBOLS } from "@/lib/sentiment/symbols";
 import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
 import { readMt5Accounts } from "@/lib/mt5Store";
 import { getPriceSymbolCandidates } from "@/lib/pricePerformance";
@@ -49,6 +50,15 @@ export default async function StatusPage() {
     apiMessage: string | null;
     symbolCount: number;
     symbols: string[];
+    mappedCount: number;
+    droppedCount: number;
+    mappings: Array<{
+      raw: string;
+      mapped: string;
+      wasMapped: boolean;
+      reason: string;
+      included: boolean;
+    }>;
     bodyExcerpt: string;
     fetchedAtUtc: string;
   } | null = null;
@@ -96,6 +106,12 @@ export default async function StatusPage() {
     const provider = new MyfxbookProvider();
     const result = await provider.fetchOutlookRaw();
     const symbols = result.parsed?.symbols?.map((symbol) => symbol.name) ?? [];
+    const symbolMappings = provider.getSymbolMappingDebug(
+      symbols,
+      Array.from(ALL_SENTIMENT_SYMBOLS),
+    );
+    const mappedCount = symbolMappings.filter((item) => item.included).length;
+    const droppedCount = symbolMappings.length - mappedCount;
     myfxbookDebug = {
       ok: result.http_status === 200 && !result.parsed?.error,
       httpStatus: result.http_status,
@@ -107,6 +123,15 @@ export default async function StatusPage() {
       apiMessage: result.parsed?.message ?? null,
       symbolCount: symbols.length,
       symbols,
+      mappedCount,
+      droppedCount,
+      mappings: symbolMappings.map((item) => ({
+        raw: item.raw_symbol,
+        mapped: item.mapped_symbol,
+        wasMapped: item.was_mapped,
+        reason: item.reason,
+        included: item.included,
+      })),
       bodyExcerpt: result.body_excerpt,
       fetchedAtUtc: new Date().toISOString(),
     };
@@ -347,6 +372,40 @@ export default async function StatusPage() {
                 <span className="font-semibold text-[var(--foreground)]">Symbols:</span>{" "}
                 {myfxbookDebug.symbolCount}
               </p>
+              <p className="text-[color:var(--muted)]">
+                <span className="font-semibold text-[var(--foreground)]">Mapped to tracked universe:</span>{" "}
+                {myfxbookDebug.mappedCount} |{" "}
+                <span className="font-semibold text-[var(--foreground)]">Dropped:</span>{" "}
+                {myfxbookDebug.droppedCount}
+              </p>
+              <div className="rounded-xl border border-[var(--panel-border)]/60 bg-[var(--panel)] p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  Symbol Mapping (Raw → Internal)
+                </p>
+                <div className="max-h-56 overflow-auto text-xs text-[var(--muted)]">
+                  {myfxbookDebug.mappings.length === 0 ? (
+                    <p>(none)</p>
+                  ) : (
+                    myfxbookDebug.mappings.map((item, index) => (
+                      <div
+                        key={`${item.raw}-${item.mapped}-${index}`}
+                        className="border-t border-[var(--panel-border)]/40 py-1"
+                      >
+                        <span className="font-semibold text-[var(--foreground)]">
+                          {item.raw}
+                        </span>
+                        {" -> "}
+                        <span className="font-semibold text-[var(--foreground)]">
+                          {item.mapped}
+                        </span>
+                        {item.wasMapped ? " (alias map)" : ""}
+                        {" | "}
+                        {item.included ? "kept" : `dropped (${item.reason})`}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
               <div className="rounded-xl border border-[var(--panel-border)]/60 bg-[var(--panel)] p-3">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
                   Rate Limit Headers

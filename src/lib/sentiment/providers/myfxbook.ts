@@ -19,6 +19,15 @@ export type MyfxbookOutlookResponse = {
   }>;
 };
 
+export type MyfxbookSymbolMappingDebug = {
+  raw_symbol: string;
+  normalized_symbol: string;
+  mapped_symbol: string;
+  was_mapped: boolean;
+  included: boolean;
+  reason: "tracked_symbol" | "not_tracked_symbol";
+};
+
 const MYFXBOOK_SYMBOL_MAP: Record<string, string> = {
   // Indices -> internal symbols
   US500: "SPXUSD",
@@ -53,6 +62,35 @@ export class MyfxbookProvider implements SentimentProviderInterface {
 
   async isAvailable(): Promise<boolean> {
     return !!(this.email && this.password);
+  }
+
+  private normalizeRawSymbol(rawSymbol: string): string {
+    return rawSymbol.replace("/", "").toUpperCase();
+  }
+
+  private mapSymbol(rawSymbol: string): string {
+    const normalized = this.normalizeRawSymbol(rawSymbol);
+    return MYFXBOOK_SYMBOL_MAP[normalized] ?? normalized;
+  }
+
+  getSymbolMappingDebug(
+    rawSymbols: string[],
+    trackedSymbols?: string[],
+  ): MyfxbookSymbolMappingDebug[] {
+    const trackedSet = trackedSymbols ? new Set(trackedSymbols) : null;
+    return rawSymbols.map((rawSymbol) => {
+      const normalized = this.normalizeRawSymbol(rawSymbol);
+      const mapped = this.mapSymbol(rawSymbol);
+      const included = trackedSet ? trackedSet.has(mapped) : true;
+      return {
+        raw_symbol: rawSymbol,
+        normalized_symbol: normalized,
+        mapped_symbol: mapped,
+        was_mapped: mapped !== normalized,
+        included,
+        reason: included ? "tracked_symbol" : "not_tracked_symbol",
+      };
+    });
   }
 
   private async getSession(): Promise<string> {
@@ -209,8 +247,7 @@ export class MyfxbookProvider implements SentimentProviderInterface {
       const results: ProviderSentiment[] = [];
 
       for (const item of data.symbols) {
-        const rawSymbol = item.name.replace("/", "").toUpperCase();
-        const mappedSymbol = MYFXBOOK_SYMBOL_MAP[rawSymbol] ?? rawSymbol;
+        const mappedSymbol = this.mapSymbol(item.name);
         if (symbols && !symbols.includes(mappedSymbol)) {
           continue;
         }
