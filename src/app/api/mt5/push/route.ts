@@ -30,6 +30,76 @@ function parseBool(value: unknown) {
   return false;
 }
 
+function parseDateIso(value: unknown, fallback = new Date().toISOString()) {
+  const raw = parseString(value);
+  if (!raw) {
+    return fallback;
+  }
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return fallback;
+  }
+  return parsed.toISOString();
+}
+
+function parseSide(value: unknown): "BUY" | "SELL" {
+  const side = parseString(value, "BUY").toUpperCase();
+  return side === "SELL" ? "SELL" : "BUY";
+}
+
+function parsePositions(value: unknown) {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value
+    .map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        ticket: parseNumber(row.ticket),
+        symbol: parseString(row.symbol),
+        type: parseSide(row.type),
+        lots: parseNumber(row.lots),
+        open_price: parseNumber(row.open_price),
+        current_price: parseNumber(row.current_price),
+        stop_loss: parseNumber(row.stop_loss),
+        take_profit: parseNumber(row.take_profit),
+        profit: parseNumber(row.profit),
+        swap: parseNumber(row.swap),
+        commission: parseNumber(row.commission),
+        open_time: parseDateIso(row.open_time),
+        magic_number: parseIntValue(row.magic_number),
+        comment: parseString(row.comment),
+      };
+    })
+    .filter((row) => row.symbol !== "" && row.ticket > 0);
+}
+
+function parseClosedPositions(value: unknown) {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value
+    .map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        ticket: parseNumber(row.ticket),
+        symbol: parseString(row.symbol),
+        type: parseSide(row.type),
+        lots: parseNumber(row.lots),
+        open_price: parseNumber(row.open_price),
+        close_price: parseNumber(row.close_price),
+        profit: parseNumber(row.profit),
+        swap: parseNumber(row.swap),
+        commission: parseNumber(row.commission),
+        open_time: parseDateIso(row.open_time),
+        close_time: parseDateIso(row.close_time),
+        magic_number: parseIntValue(row.magic_number),
+        comment: parseString(row.comment),
+      };
+    })
+    .filter((row) => row.symbol !== "" && row.ticket > 0);
+}
+
 export async function GET() {
   return NextResponse.json({
     error: "Method not allowed. Use POST to push MT5 data.",
@@ -95,15 +165,18 @@ export async function POST(request: Request) {
     next_poll_seconds: parseIntValue(payload.next_poll_seconds, -1),
     last_sync_utc:
       parseString(payload.last_sync_utc) || new Date().toISOString(),
-    positions: Array.isArray(payload.positions) ? payload.positions : undefined,
-    closed_positions: Array.isArray(payload.closed_positions)
-      ? payload.closed_positions
-      : undefined,
+    positions: parsePositions(payload.positions),
+    closed_positions: parseClosedPositions(payload.closed_positions),
     recent_logs: Array.isArray(payload.recent_logs)
       ? (payload.recent_logs as string[]).slice(0, 100)
       : undefined,
   };
 
   await upsertMt5Account(snapshot);
-  return NextResponse.json({ ok: true, account_id: snapshot.account_id });
+  return NextResponse.json({
+    ok: true,
+    account_id: snapshot.account_id,
+    positions_ingested: snapshot.positions?.length ?? 0,
+    closed_positions_ingested: snapshot.closed_positions?.length ?? 0,
+  });
 }

@@ -6,6 +6,7 @@ import {
   getOandaInstrument,
 } from "@/lib/oandaPrices";
 import { getWeekOpenUtc, listPerformanceWeeks, readPerformanceSnapshotsByWeek, weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import type { PerformanceModel } from "@/lib/performanceLab";
 
 export type UniversalWeekSimulation = {
   week_open_utc: string;
@@ -68,6 +69,31 @@ type UniversalLeg = {
   reportDate: string | null;
 };
 
+type SnapshotWeekRow = Awaited<ReturnType<typeof readPerformanceSnapshotsByWeek>>[number];
+
+export type TrailingSimulationSummary = {
+  peak_percent: number;
+  locked_percent: number;
+  trailing_hit: boolean;
+  peak_day: string | null;
+  max_drawdown: number;
+};
+
+export type PerModelBasketSummary = {
+  generated_at: string;
+  assumptions: {
+    trail_start_pct: number;
+    trail_offset_pct: number;
+    timeframe: string;
+  };
+  models: Array<{
+    model: PerformanceModel;
+    model_label: string;
+    overall: UniversalBasketSummary["overall"];
+    by_week: UniversalWeekSimulation[];
+  }>;
+};
+
 type SimulationTimeframe = "M1" | "H1";
 
 function fxSymbol(pair: string): string {
@@ -106,6 +132,13 @@ function mapRowsToLegs(rows: Awaited<ReturnType<typeof readPerformanceSnapshotsB
     }
   }
   return legs;
+}
+
+function mapRowsToLegsByModel(
+  rows: SnapshotWeekRow[],
+  model: PerformanceModel,
+) {
+  return mapRowsToLegs(rows.filter((row) => row.model === model));
 }
 
 function getWindowForAsset(assetClass: string, reportDate: string | null, weekOpenUtc: string) {
@@ -262,6 +295,7 @@ function simulateWeekFromSeries(
   if (timestamps.length === 0) {
     return {
       peak: 0,
+      peakTs: null as number | null,
       locked: 0,
       trailingHit: false,
       finalReturn: 0,
@@ -276,6 +310,7 @@ function simulateWeekFromSeries(
   let trailingActive = false;
   let trailingHit = false;
   let finalReturn = 0;
+  let peakTs: number | null = null;
   let lockedReturn: number | null = null;
   let trailActivatedAtMs: number | null = null;
   let trailHitAtMs: number | null = null;
@@ -302,6 +337,7 @@ function simulateWeekFromSeries(
 
     if (total > peak) {
       peak = total;
+      peakTs = ts;
     }
     if (total >= trailStartPct) {
       trailingActive = true;
@@ -335,6 +371,7 @@ function simulateWeekFromSeries(
 
   return {
     peak,
+    peakTs,
     locked: lockedReturn,
     trailingHit,
     finalReturn,
@@ -342,6 +379,25 @@ function simulateWeekFromSeries(
     trailHitAtMs,
     curve,
   };
+}
+
+function computeMaxDrawdownFromCurve(
+  curve: Array<{ ts: number; equity: number; lock: number | null }>,
+) {
+  let peak = Number.NEGATIVE_INFINITY;
+  let maxDrawdown = 0;
+  for (const point of curve) {
+    if (point.equity > peak) {
+      peak = point.equity;
+    }
+    if (Number.isFinite(peak)) {
+      const drawdown = peak - point.equity;
+      if (drawdown > maxDrawdown) {
+        maxDrawdown = drawdown;
+      }
+    }
+  }
+  return maxDrawdown;
 }
 
 function compressCurve(
@@ -474,5 +530,197 @@ export async function buildUniversalBasketSummary(options?: {
       worst_week: worstWeek,
     },
     by_week: byWeek,
+  };
+}
+
+const MODEL_LABELS: Record<PerformanceModel, string> = {
+  antikythera: "Antikythera",
+  blended: "Blended",
+  dealer: "Dealer",
+  commercial: "Commercial",
+  sentiment: "Sentiment",
+};
+
+export async function simulateTrailingForGroupsFromRows(options: {
+  weekOpenUtc: string;
+  groups: Array<{ key: string; rows: SnapshotWeekRow[] }>;
+  trailStartPct?: number;
+  trailOffsetPct?: number;
+  timeframe?: SimulationTimeframe;
+}) {
+  const trailStartPct = options.trailStartPct ?? 10;
+  const trailOffsetPct = options.trailOffsetPct ?? 5;
+  const timeframe = options.timeframe ?? "M1";
+  const result: Record<string, TrailingSimulationSummary> = {};
+  const legsByGroup = new Map<string, UniversalLeg[]>();
+  const uniqueSymbols = new Map<
+    string,
+    {
+      assetClass: string;
+      pair: string;
+      reportDate: string | null;
+      weekOpenUtc: string;
+      timeframe: SimulationTimeframe;
+    }
+  >();
+
+  for (const group of options.groups) {
+    const legs = mapRowsToLegs(group.rows);
+    legsByGroup.set(group.key, legs);
+    for (const leg of legs) {
+      const symbolKey = `${leg.assetClass}|${leg.pair}`;
+      if (!uniqueSymbols.has(symbolKey)) {
+        uniqueSymbols.set(symbolKey, {
+          assetClass: leg.assetClass,
+          pair: leg.pair,
+          reportDate: leg.reportDate,
+          weekOpenUtc: options.weekOpenUtc,
+          timeframe,
+        });
+      }
+    }
+  }
+
+  const seriesList = await runWithConcurrency(
+    Array.from(uniqueSymbols.values()),
+    8,
+    fetchSeriesForSymbol,
+  );
+  const validSeries = seriesList.filter((row): row is SymbolSeries => row !== null);
+  const seriesByKey = new Map(validSeries.map((row) => [row.key, row]));
+
+  for (const group of options.groups) {
+    const legs = legsByGroup.get(group.key) ?? [];
+    const sim = simulateWeekFromSeries(seriesByKey, legs, trailStartPct, trailOffsetPct);
+    const peakDay =
+      sim.peakTs === null
+        ? null
+        : DateTime.fromMillis(sim.peakTs, { zone: "utc" })
+            .setZone("America/New_York")
+            .toFormat("MMM dd, yyyy h:mm a 'ET'");
+    result[group.key] = {
+      peak_percent: sim.peak,
+      locked_percent: sim.locked,
+      trailing_hit: sim.trailingHit,
+      peak_day: peakDay,
+      max_drawdown: -computeMaxDrawdownFromCurve(sim.curve),
+    };
+  }
+
+  return result;
+}
+
+export async function buildPerModelBasketSummary(options?: {
+  trailStartPct?: number;
+  trailOffsetPct?: number;
+  includeCurrentWeek?: boolean;
+  limitWeeks?: number;
+  timeframe?: SimulationTimeframe;
+}): Promise<PerModelBasketSummary> {
+  const trailStartPct = options?.trailStartPct ?? 10;
+  const trailOffsetPct = options?.trailOffsetPct ?? 5;
+  const includeCurrentWeek = options?.includeCurrentWeek ?? false;
+  const limitWeeks = options?.limitWeeks ?? 8;
+  const timeframe = options?.timeframe ?? "M1";
+  const nowIso = DateTime.utc().toISO() ?? new Date().toISOString();
+  const currentWeekOpenUtc = getWeekOpenUtc();
+  const models: PerformanceModel[] = [
+    "antikythera",
+    "blended",
+    "dealer",
+    "commercial",
+    "sentiment",
+  ];
+
+  const weekOptions = await listPerformanceWeeks(Math.max(limitWeeks * 2, 20));
+  const targetWeeks = weekOptions
+    .filter((week) => (includeCurrentWeek ? true : week !== currentWeekOpenUtc))
+    .slice(0, limitWeeks);
+
+  const byModel = new Map<PerformanceModel, UniversalWeekSimulation[]>();
+  for (const model of models) {
+    byModel.set(model, []);
+  }
+
+  for (const weekOpenUtc of targetWeeks) {
+    const rows = await readPerformanceSnapshotsByWeek(weekOpenUtc);
+    if (rows.length === 0) {
+      continue;
+    }
+    const groups = models.map((model) => ({
+      key: model,
+      rows: rows.filter((row) => row.model === model),
+    }));
+    const trailingByModel = await simulateTrailingForGroupsFromRows({
+      weekOpenUtc,
+      groups,
+      trailStartPct,
+      trailOffsetPct,
+      timeframe,
+    });
+
+    for (const model of models) {
+      const modelRows = rows.filter((row) => row.model === model);
+      if (modelRows.length === 0) {
+        continue;
+      }
+      const trailing = trailingByModel[model];
+      const rawTotal = modelRows.reduce((sum, row) => sum + row.percent, 0);
+      const legs = mapRowsToLegsByModel(rows, model);
+      const modelWeek: UniversalWeekSimulation = {
+        week_open_utc: weekOpenUtc,
+        week_label: weekLabelFromOpen(weekOpenUtc),
+        total_percent: rawTotal,
+        observed_peak_percent: trailing?.peak_percent ?? rawTotal,
+        simulated_locked_percent: trailing?.locked_percent ?? rawTotal,
+        trailing_hit: trailing?.trailing_hit ?? false,
+        trail_activated_at_utc: null,
+        trail_hit_at_utc: null,
+        legs: legs.length,
+        priced_symbols: legs.length,
+        equity_curve: [],
+      };
+      byModel.get(model)?.push(modelWeek);
+    }
+  }
+
+  const summaries = models.map((model) => {
+    const weeks = byModel.get(model) ?? [];
+    const totalPercent = weeks.reduce((sum, row) => sum + row.total_percent, 0);
+    const totalLocked = weeks.reduce((sum, row) => sum + row.simulated_locked_percent, 0);
+    const wins = weeks.filter((row) => row.total_percent > 0).length;
+    const bestWeek =
+      weeks.length > 0
+        ? weeks.reduce((best, row) => (row.total_percent > best.total_percent ? row : best))
+        : null;
+    const worstWeek =
+      weeks.length > 0
+        ? weeks.reduce((worst, row) => (row.total_percent < worst.total_percent ? row : worst))
+        : null;
+    return {
+      model,
+      model_label: MODEL_LABELS[model],
+      overall: {
+        weeks: weeks.length,
+        total_percent: totalPercent,
+        avg_weekly_percent: weeks.length > 0 ? totalPercent / weeks.length : 0,
+        win_rate: weeks.length > 0 ? (wins / weeks.length) * 100 : 0,
+        simulated_locked_total_percent: totalLocked,
+        avg_simulated_locked_percent: weeks.length > 0 ? totalLocked / weeks.length : 0,
+        best_week: bestWeek,
+        worst_week: worstWeek,
+      },
+      by_week: weeks,
+    };
+  });
+
+  return {
+    generated_at: nowIso,
+    assumptions: {
+      trail_start_pct: trailStartPct,
+      trail_offset_pct: trailOffsetPct,
+      timeframe,
+    },
+    models: summaries,
   };
 }

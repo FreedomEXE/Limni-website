@@ -7,6 +7,7 @@ import {
   computeReturnStats,
   type PerformanceModel,
 } from "@/lib/performanceLab";
+import { simulateTrailingForGroupsFromRows } from "@/lib/universalBasket";
 import { getPairPerformance } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
@@ -145,6 +146,28 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   let anyPriced = false;
 
   if (hasSnapshots && !isCurrentWeekSelected) {
+    const groups = [
+      ...models.map((model) => ({
+        key: `combined:${model}`,
+        rows: weekSnapshots.filter((row) => row.model === model),
+      })),
+      ...assetClasses.flatMap((asset) =>
+        models.map((model) => ({
+          key: `${asset.id}:${model}`,
+          rows: weekSnapshots.filter(
+            (row) => row.asset_class === asset.id && row.model === model,
+          ),
+        })),
+      ),
+    ];
+    const trailingByGroup = await simulateTrailingForGroupsFromRows({
+      weekOpenUtc: selectedWeek,
+      groups,
+      trailStartPct: 10,
+      trailOffsetPct: 5,
+      timeframe: "M1",
+    });
+
     const byAsset = new Map<string, Awaited<ReturnType<typeof computeModelPerformance>>[]>();
     weekSnapshots.forEach((snapshot) => {
       const modelLabel = snapshot.model;
@@ -158,6 +181,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         returns: snapshot.returns,
         pair_details: snapshot.pair_details,
         stats: snapshot.stats,
+        trailing: trailingByGroup[`${snapshot.asset_class}:${snapshot.model}`],
       });
       byAsset.set(snapshot.asset_class, entry);
     });
@@ -212,6 +236,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         returns,
         pair_details: pairDetails,
         stats: computeReturnStats(returns),
+        trailing: trailingByGroup[`combined:${model}`],
       };
     });
     anyPriced = totals.some((result) => result.priced > 0);

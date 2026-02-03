@@ -4,15 +4,18 @@ import {
   getMt5AccountById,
   getMt5WeekOpenUtc,
   isMt5WeekOpenUtc,
+  readMt5ClosedNetForWeek,
   readMt5ClosedPositions,
   readMt5ClosedPositionsByWeek,
   readMt5ClosedSummary,
   readMt5DrawdownRange,
+  readMt5EquityCurveByRange,
   readMt5ChangeLog,
 } from "@/lib/mt5Store";
 import PositionsTable from "@/components/PositionsTable";
 import DashboardLayout from "@/components/DashboardLayout";
 import RefreshButton from "@/components/RefreshButton";
+import EquityCurveChart from "@/components/research/EquityCurveChart";
 import { DateTime } from "luxon";
 import { formatCurrencySafe } from "@/lib/formatters";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
@@ -96,6 +99,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   let closedSummary: Awaited<ReturnType<typeof readMt5ClosedSummary>> = [];
   let changeLog: Awaited<ReturnType<typeof readMt5ChangeLog>> = [];
   let weeklyDrawdown = 0;
+  let currentWeekNet = { net: 0, trades: 0 };
+  let equityCurvePoints: { ts_utc: string; equity_pct: number; lock_pct: number | null }[] = [];
   try {
     account = await getMt5AccountById(accountId);
     closedSummary = await readMt5ClosedSummary(accountId, 12);
@@ -107,6 +112,23 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     const weekEnd = DateTime.fromISO(weekOpen, { zone: "utc" }).plus({ days: 7 }).toISO();
     if (weekEnd) {
       weeklyDrawdown = await readMt5DrawdownRange(accountId, weekOpen, weekEnd);
+      currentWeekNet = await readMt5ClosedNetForWeek(accountId, weekOpen);
+      const snapshots = await readMt5EquityCurveByRange(accountId, weekOpen, weekEnd);
+      if (snapshots.length > 0) {
+        const startEquity = snapshots[0].equity;
+        const lockPct =
+          account && Number.isFinite(account.locked_profit_pct) && account.locked_profit_pct > 0
+            ? account.locked_profit_pct
+            : null;
+        equityCurvePoints = snapshots.map((point) => ({
+          ts_utc: point.snapshot_at,
+          equity_pct:
+            startEquity > 0
+              ? ((point.equity - startEquity) / startEquity) * 100
+              : 0,
+          lock_pct: lockPct,
+        }));
+      }
     }
   } catch (error) {
     console.error(
@@ -117,6 +139,31 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   if (!account) {
     notFound();
   }
+
+  const openFloatingPnl = (account.positions ?? []).reduce(
+    (acc, position) => acc + position.profit + position.swap + position.commission,
+    0,
+  );
+  const inferredStartBalance =
+    account.balance - currentWeekNet.net > 0 ? account.balance - currentWeekNet.net : account.balance;
+  const derivedWeeklyPnlPct =
+    inferredStartBalance > 0
+      ? (currentWeekNet.net / inferredStartBalance) * 100
+      : 0;
+  const derivedBasketPnlPct =
+    account.baseline_equity > 0
+      ? ((account.equity - account.baseline_equity) / account.baseline_equity) * 100
+      : derivedWeeklyPnlPct + (inferredStartBalance > 0 ? (openFloatingPnl / inferredStartBalance) * 100 : 0);
+
+  const weeklyPnlToShow =
+    Math.abs(account.weekly_pnl_pct) > 0.001 || currentWeekNet.trades === 0
+      ? account.weekly_pnl_pct
+      : derivedWeeklyPnlPct;
+  const basketPnlToShow =
+    Math.abs(account.basket_pnl_pct) > 0.001 ||
+    Math.abs(account.baseline_equity) > 0.001
+      ? account.basket_pnl_pct
+      : derivedBasketPnlPct;
 
   return (
     <DashboardLayout>
@@ -186,13 +233,18 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             </p>
             <p
               className={`mt-2 text-2xl font-semibold ${
-                account.weekly_pnl_pct >= 0
+                weeklyPnlToShow >= 0
                   ? "text-emerald-700"
                   : "text-rose-700"
               }`}
             >
-              {formatPercent(account.weekly_pnl_pct)}
+              {formatPercent(weeklyPnlToShow)}
             </p>
+            {Math.abs(account.weekly_pnl_pct) <= 0.001 && currentWeekNet.trades > 0 ? (
+              <p className="mt-1 text-xs text-[color:var(--muted)]">
+                Derived from closed trades ({currentWeekNet.trades}).
+              </p>
+            ) : null}
           </div>
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -200,13 +252,18 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             </p>
             <p
               className={`mt-2 text-2xl font-semibold ${
-                account.basket_pnl_pct >= 0
+                basketPnlToShow >= 0
                   ? "text-emerald-700"
                   : "text-rose-700"
               }`}
             >
-              {formatPercent(account.basket_pnl_pct)}
+              {formatPercent(basketPnlToShow)}
             </p>
+            {Math.abs(account.basket_pnl_pct) <= 0.001 ? (
+              <p className="mt-1 text-xs text-[color:var(--muted)]">
+                Inferred from baseline or weekly closed PnL.
+              </p>
+            ) : null}
           </div>
         </section>
 
@@ -392,36 +449,20 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
           </div>
         </section>
 
-        {account.recent_logs && account.recent_logs.length > 0 && (
-          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                EA Logs
-              </h2>
-              <p className="text-sm text-[color:var(--muted)]">
-                Last {account.recent_logs.length} messages from the Expert Advisor
-              </p>
-            </div>
-            <div className="max-h-96 overflow-y-auto rounded-xl border border-[var(--panel-border)] bg-[var(--background)] p-4">
-              <div className="space-y-1 font-mono text-xs">
-                {account.recent_logs.map((log, idx) => (
-                  <div
-                    key={idx}
-                    className={`${
-                      log.includes("Error") || log.includes("ERROR") || log.includes("failed")
-                        ? "text-rose-600"
-                        : log.includes("WARNING") || log.includes("Skipped")
-                        ? "text-amber-600"
-                        : "text-[var(--muted)]"
-                    }`}
-                  >
-                    {log}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">
+              Weekly equity curve
+            </h2>
+            <p className="text-sm text-[color:var(--muted)]">
+              Minute-level account snapshots for the current MT5 week.
+            </p>
+          </div>
+          <EquityCurveChart
+            title="Account equity % (week-to-date)"
+            points={equityCurvePoints}
+          />
+        </section>
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="mb-6">
@@ -455,9 +496,15 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             </div>
           ) : null}
           {closedSummary.length === 0 ? (
-            <p className="text-sm text-[color:var(--muted)]">
-              No closed trades yet. Enable closed_positions in the MT5 push payload.
-            </p>
+            <div className="space-y-2 text-sm text-[color:var(--muted)]">
+              <p>No closed trades stored yet.</p>
+              {account.trade_count_week > 0 ? (
+                <p className="text-amber-600">
+                  MT5 reports {account.trade_count_week} weekly trades, but no closed rows were saved.
+                  Verify that the push payload includes <code>closed_positions</code> and the push route accepts it.
+                </p>
+              ) : null}
+            </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {closedSummary.map((week, index) => {
@@ -511,45 +558,100 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              EA change log
+              EA journal
             </h2>
             <p className="text-sm text-[color:var(--muted)]">
-              Notes on weekly strategy tweaks for this account.
+              Collapsible runtime logs and weekly strategy notes.
             </p>
           </div>
-          {changeLog.length === 0 ? (
-            <p className="text-sm text-[color:var(--muted)]">
-              No change log entries yet. Add rows to mt5_change_log to track weekly improvements.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {changeLog.map((entry) => (
-                <div
-                  key={`${entry.week_open_utc}-${entry.created_at}-${entry.title}`}
-                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                      {weekLabelFromOpen(entry.week_open_utc)}
-                    </p>
-                    {entry.strategy ? (
-                      <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1 text-xs font-semibold text-[color:var(--muted)]">
-                        {entry.strategy}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
-                    {entry.title}
+          <div className="space-y-3">
+            <details className="group rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">EA runtime logs</p>
+                  <p className="text-xs text-[color:var(--muted)]">
+                    {account.recent_logs?.length ?? 0} recent messages
                   </p>
-                  {entry.notes ? (
-                    <p className="mt-1 text-sm text-[color:var(--muted)]">
-                      {entry.notes}
-                    </p>
-                  ) : null}
                 </div>
-              ))}
-            </div>
-          )}
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
+                <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
+              </summary>
+              <div className="mt-4">
+                {!account.recent_logs || account.recent_logs.length === 0 ? (
+                  <p className="text-sm text-[color:var(--muted)]">
+                    No runtime logs available from the latest MT5 snapshot.
+                  </p>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto rounded-xl border border-[var(--panel-border)] bg-[var(--background)] p-4">
+                    <div className="space-y-1 font-mono text-xs">
+                      {account.recent_logs.map((log, idx) => (
+                        <div
+                          key={idx}
+                          className={`${
+                            log.includes("Error") || log.includes("ERROR") || log.includes("failed")
+                              ? "text-rose-600"
+                              : log.includes("WARNING") || log.includes("Skipped")
+                              ? "text-amber-600"
+                              : "text-[var(--muted)]"
+                          }`}
+                        >
+                          {log}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </details>
+
+            <details className="group rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4" open>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">EA change log</p>
+                  <p className="text-xs text-[color:var(--muted)]">
+                    Weekly strategy tweaks for this account
+                  </p>
+                </div>
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
+                <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
+              </summary>
+              <div className="mt-4">
+                {changeLog.length === 0 ? (
+                  <p className="text-sm text-[color:var(--muted)]">
+                    No change log entries yet. Add rows to mt5_change_log to track weekly improvements.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {changeLog.map((entry) => (
+                      <div
+                        key={`${entry.week_open_utc}-${entry.created_at}-${entry.title}`}
+                        className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/90 p-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                            {weekLabelFromOpen(entry.week_open_utc)}
+                          </p>
+                          {entry.strategy ? (
+                            <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1 text-xs font-semibold text-[color:var(--muted)]">
+                              {entry.strategy}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+                          {entry.title}
+                        </p>
+                        {entry.notes ? (
+                          <p className="mt-1 text-sm text-[color:var(--muted)]">
+                            {entry.notes}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </details>
+          </div>
         </section>
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
@@ -589,9 +691,14 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             </div>
           </div>
           {closedPositions.length === 0 ? (
-            <p className="text-sm text-[color:var(--muted)]">
-              No closed positions stored yet.
-            </p>
+            <div className="space-y-2 text-sm text-[color:var(--muted)]">
+              <p>No closed positions stored yet.</p>
+              {account.trade_count_week > 0 ? (
+                <p className="text-amber-600">
+                  Weekly trade count is non-zero, so this likely means closed trade rows are not being ingested.
+                </p>
+              ) : null}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">

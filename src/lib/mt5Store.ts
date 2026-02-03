@@ -92,6 +92,14 @@ export type Mt5ChangeLogEntry = {
   created_at: string;
 };
 
+export type Mt5EquityPoint = {
+  snapshot_at: string;
+  equity: number;
+  balance: number;
+  basket_pnl_pct: number;
+  weekly_pnl_pct: number;
+};
+
 export async function readMt5Accounts(): Promise<Mt5AccountSnapshot[]> {
   try {
     const accounts = await query<{
@@ -661,6 +669,42 @@ export async function readMt5DrawdownRange(
   }
 
   return maxDrawdown;
+}
+
+export async function readMt5EquityCurveByRange(
+  accountId: string,
+  startIso: string,
+  endIso: string,
+): Promise<Mt5EquityPoint[]> {
+  const start = DateTime.fromISO(startIso, { zone: "utc" });
+  const end = DateTime.fromISO(endIso, { zone: "utc" });
+  if (!start.isValid || !end.isValid || end <= start) {
+    return [];
+  }
+
+  const rows = await query<{
+    equity: string;
+    balance: string;
+    basket_pnl_pct: string;
+    weekly_pnl_pct: string;
+    snapshot_at: Date;
+  }>(
+    `SELECT equity, balance, basket_pnl_pct, weekly_pnl_pct, snapshot_at
+     FROM mt5_snapshots
+     WHERE account_id = $1
+       AND snapshot_at >= $2
+       AND snapshot_at < $3
+     ORDER BY snapshot_at ASC`,
+    [accountId, start.toJSDate(), end.toJSDate()],
+  );
+
+  return rows.map((row) => ({
+    snapshot_at: row.snapshot_at.toISOString(),
+    equity: Number(row.equity),
+    balance: Number(row.balance),
+    basket_pnl_pct: Number(row.basket_pnl_pct),
+    weekly_pnl_pct: Number(row.weekly_pnl_pct),
+  }));
 }
 
 export async function readMt5ChangeLog(
