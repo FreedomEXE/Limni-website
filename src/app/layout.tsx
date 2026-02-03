@@ -22,7 +22,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Limni Trading Intelligence",
+  title: "Limni Labs",
   description: "Bias, sentiment, and signal intelligence for Limni.",
   icons: {
     icon: [
