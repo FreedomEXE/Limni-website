@@ -170,93 +170,33 @@ export function buildSentimentPairsWithHistory(options: {
       .at(-1);
 
     let activeDirection = beforeOpen ? sentimentDirection(beforeOpen.agg) : null;
-    let openTime = weekOpenUtc;
-    let closeTime = weekCloseUtc;
     let reason: string[] | undefined;
 
     if (!activeDirection) {
-      const firstDirectional = historyWithTimes.find((entry) => {
+      const firstDirectionalAfterOpen = historyWithTimes.find((entry) => {
         if (entry.time.toMillis() < openMs) {
           return false;
         }
         return sentimentDirection(entry.agg);
       });
-      if (!firstDirectional) {
-        if (fallbackDirection) {
-          pairs[pairDef.pair] = pairSnapshot(fallbackDirection);
-          windows[pairDef.pair] = {
-            openUtc: weekOpenUtc,
-            closeUtc: weekCloseUtc,
-            direction: fallbackDirection,
-            reason: ["Latest sentiment snapshot (no directional history)"],
-          };
-          reasonOverrides.set(pairDef.pair, ["Latest sentiment snapshot (no directional history)"]);
+      if (firstDirectionalAfterOpen) {
+        activeDirection = sentimentDirection(firstDirectionalAfterOpen.agg);
+        if (activeDirection) {
+          reason = [
+            `Sentiment snapshot ${firstDirectionalAfterOpen.time.toUTC().toISO() ?? "after week open"}`,
+          ];
         }
-        continue;
-      }
-      activeDirection = sentimentDirection(firstDirectional.agg);
-      if (!activeDirection) {
-        if (fallbackDirection) {
-          pairs[pairDef.pair] = pairSnapshot(fallbackDirection);
-          windows[pairDef.pair] = {
-            openUtc: weekOpenUtc,
-            closeUtc: weekCloseUtc,
-            direction: fallbackDirection,
-            reason: ["Latest sentiment snapshot (directional history missing)"],
-          };
-          reasonOverrides.set(pairDef.pair, ["Latest sentiment snapshot (directional history missing)"]);
-        }
-        continue;
-      }
-      openTime = weekOpenUtc;
-      reason = [
-        `Sentiment snapshot ${firstDirectional.time.toUTC().toISO() ?? "after week open"}`,
-      ];
-    }
-
-    const firstChange = historyWithTimes.find((entry) => {
-      if (entry.time.toMillis() <= openTime.toMillis()) {
-        return false;
-      }
-      const direction = sentimentDirection(entry.agg);
-      return direction !== activeDirection;
-    });
-
-    if (firstChange) {
-      closeTime = firstChange.time;
-      const nextDirection = sentimentDirection(firstChange.agg);
-      if (!reason) {
-        reason = [];
-      }
-      if (!nextDirection) {
-        reason.push("Sentiment neutralized");
-      } else {
-        reason.push(`Sentiment flipped to ${nextDirection.toLowerCase()}`);
       }
     }
 
-    if (closeTime.toMillis() > closeMs) {
-      closeTime = weekCloseUtc;
-    }
-
-    if (closeTime.toMillis() <= openTime.toMillis()) {
-      if (fallbackDirection) {
-        pairs[pairDef.pair] = pairSnapshot(fallbackDirection);
-        windows[pairDef.pair] = {
-          openUtc: weekOpenUtc,
-          closeUtc: weekCloseUtc,
-          direction: fallbackDirection,
-          reason: ["Latest sentiment snapshot (invalid window)"],
-        };
-        reasonOverrides.set(pairDef.pair, ["Latest sentiment snapshot (invalid window)"]);
-      }
+    if (!activeDirection) {
       continue;
     }
 
     pairs[pairDef.pair] = pairSnapshot(activeDirection);
     windows[pairDef.pair] = {
-      openUtc: openTime,
-      closeUtc: closeTime,
+      openUtc: weekOpenUtc,
+      closeUtc: weekCloseUtc,
       direction: activeDirection,
       reason,
     };

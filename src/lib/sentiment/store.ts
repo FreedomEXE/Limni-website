@@ -373,14 +373,16 @@ export async function getAggregatesForWeekStart(
     if (sorted.length === 0) {
       continue;
     }
+    const latestBeforeOpen = [...sorted]
+      .reverse()
+      .find((entry) => entry.time.toMillis() <= openMs);
+    if (latestBeforeOpen) {
+      snapshot.push(latestBeforeOpen.agg);
+      continue;
+    }
     const firstAfterOpen = sorted.find((entry) => entry.time.toMillis() >= openMs);
     if (firstAfterOpen) {
       snapshot.push(firstAfterOpen.agg);
-      continue;
-    }
-    const latestBeforeOpen = sorted.at(-1);
-    if (latestBeforeOpen) {
-      snapshot.push(latestBeforeOpen.agg);
     }
   }
 
