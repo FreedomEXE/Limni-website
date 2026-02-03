@@ -18,6 +18,8 @@ import {
 import {
   derivePairDirections,
   derivePairDirectionsByBase,
+  derivePairDirectionsWithNeutral,
+  derivePairDirectionsByBaseWithNeutral,
   resolveMarketBias,
   type BiasMode,
 } from "@/lib/cotCompute";
@@ -216,8 +218,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             ]),
           )
         : entry.asset.id === "fx"
-          ? derivePairDirections(entrySnapshot.currencies, pairDefs, biasMode)
-          : derivePairDirectionsByBase(entrySnapshot.currencies, pairDefs, biasMode);
+          ? derivePairDirectionsWithNeutral(entrySnapshot.currencies, pairDefs, biasMode)
+          : derivePairDirectionsByBaseWithNeutral(entrySnapshot.currencies, pairDefs, biasMode);
       const perfResult = await getPairPerformance(derivedPairs, {
         assetClass: entry.asset.id,
         reportDate: entrySnapshot.report_date,
@@ -286,8 +288,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           ]),
         )
       : assetClass === "fx"
-        ? derivePairDirections(data.currencies, pairDefs, biasMode)
-        : derivePairDirectionsByBase(data.currencies, pairDefs, biasMode);
+        ? derivePairDirectionsWithNeutral(data.currencies, pairDefs, biasMode)
+        : derivePairDirectionsByBaseWithNeutral(data.currencies, pairDefs, biasMode);
     const pairRows = Object.entries(derivedPairs).sort(([a], [b]) =>
       a.localeCompare(b),
     );
@@ -372,7 +374,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             {
               id: "neutral",
               label: "Neutral/ignored",
-              value: String(Math.max(0, currencyRows.length - pairRowsWithPerf.length)),
+              value: String(pairRowsWithPerf.filter((row) => row.direction === "NEUTRAL").length),
             },
           ]}
         />
