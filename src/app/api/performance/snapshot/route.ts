@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { DateTime } from "luxon";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
 import { getLatestAggregatesLocked, readAggregates } from "@/lib/sentiment/store";
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     "sentiment",
   ];
 
-  const weekOpenUtc = getWeekOpenUtc();
+  let responseWeekOpenUtc: string | null = null;
   const [latestSentiment, sentimentHistory] = await Promise.all([
     getLatestAggregatesLocked(),
     readAggregates(),
@@ -82,15 +83,26 @@ export async function POST(request: Request) {
     if (!snapshot) {
       continue;
     }
+    let reportWeekOpenUtc: string;
+    if (snapshot.report_date) {
+      const reportDate = DateTime.fromISO(snapshot.report_date, { zone: "America/New_York" });
+      reportWeekOpenUtc = reportDate.isValid ? getWeekOpenUtc(reportDate) : getWeekOpenUtc();
+    } else {
+      reportWeekOpenUtc = getWeekOpenUtc();
+    }
+    if (!responseWeekOpenUtc) {
+      responseWeekOpenUtc = reportWeekOpenUtc;
+    }
+
     const performance = await getPairPerformance(buildAllPairs(asset.id), {
       assetClass: asset.id,
       reportDate: snapshot.report_date,
-      isLatestReport: true,
+      isLatestReport: false,
     });
     const window = getPerformanceWindow({
       assetClass: asset.id,
       reportDate: snapshot.report_date,
-      isLatestReport: true,
+      isLatestReport: false,
     });
 
     for (const model of models) {
@@ -132,7 +144,7 @@ export async function POST(request: Request) {
         });
       }
       payload.push({
-        week_open_utc: weekOpenUtc,
+        week_open_utc: reportWeekOpenUtc,
         asset_class: asset.id,
         model,
         report_date: snapshot.report_date ?? null,
@@ -151,7 +163,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    week_open_utc: weekOpenUtc,
+    week_open_utc: responseWeekOpenUtc ?? getWeekOpenUtc(),
     snapshots_written: payload.length,
   });
 }

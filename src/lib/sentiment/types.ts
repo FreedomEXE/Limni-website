@@ -1,4 +1,4 @@
-export type SentimentProvider = "FOREXCLIENTSENTIMENT" | "OANDA" | "MYFXBOOK";
+export type SentimentProvider = "FOREXCLIENTSENTIMENT" | "OANDA" | "MYFXBOOK" | "IG";
 
 export type CrowdingState = "CROWDED_LONG" | "CROWDED_SHORT" | "NEUTRAL";
 export type FlipState = "FLIPPED_UP" | "FLIPPED_DOWN" | "FLIPPED_NEUTRAL" | "NONE";
@@ -51,6 +51,7 @@ export const DEFAULT_SENTIMENT_CONFIG: SentimentConfig = {
     FOREXCLIENTSENTIMENT: 0.33,
     OANDA: 0.33,
     MYFXBOOK: 1.0, // Using 1.0 since it's the only working source currently
+    IG: 1.0, // Primary source for indices sentiment
   },
   crowding_thresholds: {
     long: 65,

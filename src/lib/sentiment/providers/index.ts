@@ -13,15 +13,21 @@ export function getProvider(name: SentimentProvider): SentimentProviderInterface
       return new OandaProvider();
     case "MYFXBOOK":
       return new MyfxbookProvider();
+    case "IG":
+      return new IgProvider();
   }
 }
 
 export function getAllProviders(): SentimentProviderInterface[] {
-  // Use ForexClientSentiment, OANDA, and Myfxbook (all via scraper service)
+  // IG: Primary source for indices (SPX, NDX, NIKKEI) + FX/crypto/commodities
+  // Myfxbook: FX community outlook
+  // ForexClientSentiment: FX scraper
+  // OANDA: FX orderbook (currently disabled due to Cloudflare)
   return [
+    new IgProvider(),
+    new MyfxbookProvider(),
     new ForexClientSentimentProvider(),
     new OandaProvider(),
-    new MyfxbookProvider(),
   ];
 }
 
