@@ -10,6 +10,7 @@
   --muted: #5b6473;
   --glow: rgba(0, 107, 94, 0.14);
   --shadow: rgba(10, 26, 47, 0.08);
+  --logo-filter: none;
 }
 
 [data-theme="dark"] {
@@ -22,6 +23,7 @@
   --muted: #b8c0cc;
   --glow: rgba(0, 196, 160, 0.2);
   --shadow: rgba(0, 0, 0, 0.35);
+  --logo-filter: brightness(0) invert(1);
   color-scheme: dark;
 }
 
@@ -72,4 +74,9 @@ h4 {
 
 .animate-fade-in {
   animation: fade-in 0.4s ease-out both;
+}
+
+.logo-theme-aware {
+  filter: var(--logo-filter);
+  transition: filter 180ms ease;
 }

@@ -3,16 +3,42 @@ import EquityCurveChart from "@/components/research/EquityCurveChart";
 import ResearchSectionNav from "@/components/research/ResearchSectionNav";
 import { buildUniversalBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
+import { unstable_cache } from "next/cache";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
 
-export default async function UniversalResearchPage() {
-  const universalSummary = await buildUniversalBasketSummary({
-    timeframe: "M1",
-    limitWeeks: 8,
-    includeCurrentWeek: false,
-  });
-  const latestUniversalWeek = universalSummary.by_week[0] ?? null;
+type PageProps = {
+  searchParams?:
+    | Record<string, string | string[] | undefined>
+    | Promise<Record<string, string | string[] | undefined>>;
+};
+
+function pickParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function UniversalResearchPage({ searchParams }: PageProps) {
+  const params = await Promise.resolve(searchParams);
+  const weekParam = pickParam(params?.week);
+  const getUniversalSummary = unstable_cache(
+    async () =>
+      buildUniversalBasketSummary({
+        timeframe: "M1",
+        limitWeeks: 8,
+        includeCurrentWeek: false,
+      }),
+    ["research-universal-m1-8w"],
+    { revalidate: 900 },
+  );
+  const universalSummary = await getUniversalSummary();
+  const selectedWeek =
+    weekParam && universalSummary.by_week.some((row) => row.week_open_utc === weekParam)
+      ? weekParam
+      : (universalSummary.by_week[0]?.week_open_utc ?? null);
+  const selectedUniversalWeek =
+    selectedWeek
+      ? universalSummary.by_week.find((row) => row.week_open_utc === selectedWeek) ?? null
+      : null;
 
   return (
     <DashboardLayout>
@@ -38,6 +64,25 @@ export default async function UniversalResearchPage() {
               Updated {formatDateTimeET(universalSummary.generated_at)}
             </span>
           </div>
+          <form action="/automation/research/universal" method="get" className="mt-4 flex items-center gap-2">
+            <select
+              name="week"
+              defaultValue={selectedWeek ?? undefined}
+              className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
+            >
+              {universalSummary.by_week.map((row) => (
+                <option key={row.week_open_utc} value={row.week_open_utc}>
+                  {row.week_label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
+            >
+              View week
+            </button>
+          </form>
 
           <div className="mt-6 grid gap-4 md:grid-cols-5">
             <Metric label="Weeks" value={`${universalSummary.overall.weeks}`} />
@@ -49,6 +94,16 @@ export default async function UniversalResearchPage() {
             <Metric label="Avg weekly" value={`${universalSummary.overall.avg_weekly_percent.toFixed(2)}%`} />
             <Metric label="Win rate" value={`${universalSummary.overall.win_rate.toFixed(0)}%`} />
           </div>
+
+          {selectedUniversalWeek ? (
+            <div className="mt-6 grid gap-4 md:grid-cols-5">
+              <Metric label="Week" value={selectedUniversalWeek.week_label.replace("Week of ", "")} />
+              <Metric label="Raw %" value={`${selectedUniversalWeek.total_percent.toFixed(2)}%`} />
+              <Metric label="Peak %" value={`${selectedUniversalWeek.observed_peak_percent.toFixed(2)}%`} />
+              <Metric label="Locked %" value={`${selectedUniversalWeek.simulated_locked_percent.toFixed(2)}%`} />
+              <Metric label="Trail hit" value={selectedUniversalWeek.trailing_hit ? "Yes" : "No"} />
+            </div>
+          ) : null}
 
           <div className="mt-6 max-h-80 overflow-auto rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
             <table className="w-full text-left text-sm text-[var(--foreground)]">
@@ -73,11 +128,11 @@ export default async function UniversalResearchPage() {
             </table>
           </div>
 
-          {latestUniversalWeek ? (
+          {selectedUniversalWeek ? (
             <div className="mt-6">
               <EquityCurveChart
-                title={`${latestUniversalWeek.week_label} equity curve`}
-                points={latestUniversalWeek.equity_curve}
+                title={`${selectedUniversalWeek.week_label} equity curve`}
+                points={selectedUniversalWeek.equity_curve}
               />
             </div>
           ) : null}

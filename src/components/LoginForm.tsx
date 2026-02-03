@@ -16,7 +16,7 @@ export default function LoginForm({ handleLogin }: LoginFormProps) {
         <img
           src="/limni-logo.svg"
           alt="Limni"
-          className="mx-auto h-20 w-auto"
+          className="mx-auto h-20 w-auto logo-theme-aware"
         />
         <p className="mt-3 text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
           Navigating Markets with Intelligence

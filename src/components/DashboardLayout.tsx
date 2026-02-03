@@ -24,70 +24,81 @@ const NAV_ITEMS: NavItem[] = [
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isHoverExpanded, setIsHoverExpanded] = useState(false);
+  const isPreviewing = isCollapsed && isHoverExpanded;
+  const isSidebarOpen = !isCollapsed || isHoverExpanded;
   const showBack =
     (pathname.startsWith("/accounts/") && pathname !== "/accounts") ||
     (pathname.startsWith("/automation/") && pathname !== "/automation");
 
   return (
-    <div className="flex min-h-screen bg-[var(--background)]">
+    <div className="relative flex min-h-screen bg-[var(--background)]">
       {isCollapsed ? (
-        <button
-          type="button"
-          onClick={() => setIsCollapsed(false)}
-          className="fixed left-4 top-6 z-50 rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/90 px-3 py-1 text-xs font-semibold text-[var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-          aria-label="Expand navigation"
-          title="Expand navigation"
+        <div
+          className="fixed left-4 top-6 z-50"
+          onMouseEnter={() => setIsHoverExpanded(true)}
+          onMouseLeave={() => setIsHoverExpanded(false)}
         >
-          &gt;&gt;
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsCollapsed(false);
+              setIsHoverExpanded(false);
+            }}
+            className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/90 px-3 py-1 text-xs font-semibold text-[var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+            aria-label="Expand navigation"
+            title="Hover to preview navigation"
+          >
+            &gt;&gt;
+          </button>
+        </div>
       ) : null}
 
       <aside
+        onMouseEnter={() => {
+          if (isCollapsed) {
+            setIsHoverExpanded(true);
+          }
+        }}
+        onMouseLeave={() => {
+          if (isCollapsed) {
+            setIsHoverExpanded(false);
+          }
+        }}
         className={`bg-[var(--panel)]/90 backdrop-blur-sm transition-all duration-200 ${
-          isCollapsed ? "w-0 overflow-hidden border-0" : "w-72 border-r border-[var(--panel-border)]"
+          isSidebarOpen ? "w-72 border-r border-[var(--panel-border)]" : "w-0 overflow-hidden border-0"
         }`}
+        style={isPreviewing ? { position: "absolute", left: 0, top: 0, height: "100vh", zIndex: 40 } : undefined}
       >
         <div className="sticky top-0 flex h-screen flex-col">
           <div className="border-b border-[var(--panel-border)]/80 p-4">
-            <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
-              <div className={`flex items-center ${isCollapsed ? "flex-col gap-2" : "gap-3"}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
                 <div className="flex size-12 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)] shadow-sm">
                   <img
                     src="/limni-icon.svg"
                     alt="Limni"
-                    className="size-10 scale-125"
+                    className="size-10 scale-125 logo-theme-aware"
                   />
                 </div>
-                {!isCollapsed ? (
-                  <div className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--foreground)]">
-                    LIMNI LABS
-                  </div>
-                ) : null}
+                <div className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--foreground)]">
+                  LIMNI LABS
+                </div>
               </div>
-              {!isCollapsed ? (
-                <button
-                  type="button"
-                  onClick={() => setIsCollapsed((prev) => !prev)}
-                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-                  aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
-                  title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
-                >
-                  {isCollapsed ? ">>" : "<<"}
-                </button>
-              ) : null}
-            </div>
-            {isCollapsed ? (
               <button
                 type="button"
-                onClick={() => setIsCollapsed((prev) => !prev)}
-                className="mt-3 w-full rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-                aria-label="Expand navigation"
-                title="Expand navigation"
+                onClick={() => {
+                  setIsCollapsed((prev) => !prev);
+                  setIsHoverExpanded(false);
+                }}
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+                aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+                title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
               >
-                &gt;&gt;
+                {isCollapsed ? ">>" : "<<"}
               </button>
-            ) : null}
+            </div>
           </div>
 
           <nav className="flex-1 space-y-1 p-4">
@@ -97,7 +108,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"} rounded-2xl py-3 text-sm font-semibold transition ${
+                  className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                     isActive
                       ? "border border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
                       : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
@@ -106,9 +117,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-base font-bold text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
                     {item.letter}
                   </span>
-                  {!isCollapsed ? (
-                    <span className="tracking-tight">{item.label}</span>
-                  ) : null}
+                  <span className="tracking-tight">{item.label}</span>
                 </Link>
               );
             })}
@@ -125,7 +134,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               }}
               className="mt-3 w-full rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
             >
-              {isCollapsed ? "Out" : "Sign Out"}
+              Sign Out
             </button>
           </div>
         </div>

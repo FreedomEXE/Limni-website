@@ -2,17 +2,52 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ResearchSectionNav from "@/components/research/ResearchSectionNav";
 import { buildPerModelBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
+import { unstable_cache } from "next/cache";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
 
-export default async function BasketResearchPage() {
-  const summary = await buildPerModelBasketSummary({
-    timeframe: "M1",
-    limitWeeks: 8,
-    includeCurrentWeek: false,
-    trailStartPct: 10,
-    trailOffsetPct: 5,
+type PageProps = {
+  searchParams?:
+    | Record<string, string | string[] | undefined>
+    | Promise<Record<string, string | string[] | undefined>>;
+};
+
+function pickParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function BasketResearchPage({ searchParams }: PageProps) {
+  const params = await Promise.resolve(searchParams);
+  const weekParam = pickParam(params?.week);
+  const getBasketSummary = unstable_cache(
+    async () =>
+      buildPerModelBasketSummary({
+        timeframe: "M1",
+        limitWeeks: 8,
+        includeCurrentWeek: false,
+        trailStartPct: 10,
+        trailOffsetPct: 5,
+      }),
+    ["research-baskets-m1-8w-10-5"],
+    { revalidate: 900 },
+  );
+  const summary = await getBasketSummary();
+  const weekLabelMap = new Map<string, string>();
+  summary.models.forEach((model) => {
+    model.by_week.forEach((row) => {
+      if (!weekLabelMap.has(row.week_open_utc)) {
+        weekLabelMap.set(row.week_open_utc, row.week_label);
+      }
+    });
   });
+  const weekOptions = Array.from(weekLabelMap.entries()).map(([value, label]) => ({
+    value,
+    label,
+  }));
+  const selectedWeek =
+    weekParam && weekOptions.some((option) => option.value === weekParam)
+      ? weekParam
+      : (weekOptions[0]?.value ?? null);
 
   return (
     <DashboardLayout>
@@ -38,6 +73,27 @@ export default async function BasketResearchPage() {
               Updated {formatDateTimeET(summary.generated_at)}
             </span>
           </div>
+          {selectedWeek ? (
+            <form action="/automation/research/baskets" method="get" className="mt-4 flex items-center gap-2">
+              <select
+                name="week"
+                defaultValue={selectedWeek}
+                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
+              >
+                {weekOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
+              >
+                View week
+              </button>
+            </form>
+          ) : null}
 
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {summary.models.map((model) => (
@@ -52,6 +108,36 @@ export default async function BasketResearchPage() {
                   {model.overall.simulated_locked_total_percent.toFixed(2)}%
                 </p>
                 <div className="mt-3 space-y-1 text-sm text-[var(--foreground)]">
+                  {selectedWeek ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span>Selected week</span>
+                        <span>
+                          {model.by_week.find((row) => row.week_open_utc === selectedWeek)?.week_label ??
+                            "--"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Raw (week)</span>
+                        <span>
+                          {(
+                            model.by_week.find((row) => row.week_open_utc === selectedWeek)?.total_percent ?? 0
+                          ).toFixed(2)}
+                          %
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Locked (week)</span>
+                        <span>
+                          {(
+                            model.by_week.find((row) => row.week_open_utc === selectedWeek)
+                              ?.simulated_locked_percent ?? 0
+                          ).toFixed(2)}
+                          %
+                        </span>
+                      </div>
+                    </>
+                  ) : null}
                   <div className="flex items-center justify-between">
                     <span>Raw total</span>
                     <span>{model.overall.total_percent.toFixed(2)}%</span>
@@ -94,7 +180,9 @@ export default async function BasketResearchPage() {
                     {model.by_week.map((row) => (
                       <tr
                         key={`${model.model}-${row.week_open_utc}`}
-                        className="border-t border-[var(--panel-border)]/60"
+                        className={`border-t border-[var(--panel-border)]/60 ${
+                          selectedWeek === row.week_open_utc ? "bg-[var(--accent)]/10" : ""
+                        }`}
                       >
                         <td className="py-2">{row.week_label}</td>
                         <td className="py-2 text-right">{row.total_percent.toFixed(2)}%</td>

@@ -88,11 +88,30 @@ function basketTone(state: string) {
   return "text-[color:var(--muted)]";
 }
 
+function parseBasketFromComment(comment: string) {
+  if (!comment) {
+    return null;
+  }
+  const match = comment.match(/LimniBasket\s+([A-Za-z0-9_]+)/i);
+  return match?.[1]?.toLowerCase() ?? null;
+}
+
+function toQueryParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+  return value ?? null;
+}
+
 export default async function AccountPage({ params, searchParams }: AccountPageProps) {
   const { accountId } = await params;
   const resolvedSearchParams = await Promise.resolve(searchParams);
-  const weekParam = resolvedSearchParams?.week;
-  const requestedWeek = Array.isArray(weekParam) ? weekParam[0] : weekParam;
+  const requestedWeek = toQueryParam(resolvedSearchParams?.week);
+  const basketFilter = (toQueryParam(resolvedSearchParams?.basket) ?? "").toLowerCase();
+  const symbolFilter = (toQueryParam(resolvedSearchParams?.symbol) ?? "").toUpperCase();
+  const curveScopeParam = toQueryParam(resolvedSearchParams?.scope);
+  const curveScope =
+    curveScopeParam === "basket" || curveScopeParam === "symbol" ? curveScopeParam : "account";
   const selectedWeek = requestedWeek && isMt5WeekOpenUtc(requestedWeek) ? requestedWeek : null;
   let account = null;
   let closedPositions: Awaited<ReturnType<typeof readMt5ClosedPositions>> = [];
@@ -164,6 +183,86 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     Math.abs(account.baseline_equity) > 0.001
       ? account.basket_pnl_pct
       : derivedBasketPnlPct;
+
+  const basketOptions = Array.from(
+    new Set(
+      [
+        ...(account.positions ?? []).map((position) => parseBasketFromComment(position.comment)),
+        ...closedPositions.map((position) => parseBasketFromComment(position.comment)),
+      ].filter((value): value is string => value !== null),
+    ),
+  ).sort();
+
+  const symbolOptions = Array.from(
+    new Set(
+      [
+        ...(account.positions ?? []).map((position) => position.symbol),
+        ...closedPositions.map((position) => position.symbol),
+      ],
+    ),
+  ).sort();
+
+  const effectiveBasketFilter =
+    basketFilter && basketOptions.includes(basketFilter) ? basketFilter : "";
+  const effectiveSymbolFilter =
+    symbolFilter && symbolOptions.includes(symbolFilter) ? symbolFilter : "";
+
+  const filteredOpenPositions = (account.positions ?? []).filter((position) => {
+    const basket = parseBasketFromComment(position.comment);
+    if (effectiveBasketFilter && basket !== effectiveBasketFilter) {
+      return false;
+    }
+    if (effectiveSymbolFilter && position.symbol !== effectiveSymbolFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  const filteredClosedPositions = closedPositions.filter((position) => {
+    const basket = parseBasketFromComment(position.comment);
+    if (effectiveBasketFilter && basket !== effectiveBasketFilter) {
+      return false;
+    }
+    if (effectiveSymbolFilter && position.symbol !== effectiveSymbolFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  const tradeCurvePoints =
+    filteredClosedPositions.length === 0
+      ? []
+      : (() => {
+          const sorted = [...filteredClosedPositions].sort(
+            (a, b) =>
+              DateTime.fromISO(a.close_time, { zone: "utc" }).toMillis() -
+              DateTime.fromISO(b.close_time, { zone: "utc" }).toMillis(),
+          );
+          const totalNet = sorted.reduce(
+            (sum, row) => sum + row.profit + row.swap + row.commission,
+            0,
+          );
+          const inferredStart =
+            account.balance - totalNet > 0 ? account.balance - totalNet : account.balance;
+          let cumulative = 0;
+          return sorted.map((row) => {
+            cumulative += row.profit + row.swap + row.commission;
+            const pct = inferredStart > 0 ? (cumulative / inferredStart) * 100 : 0;
+            return {
+              ts_utc: row.close_time,
+              equity_pct: pct,
+              lock_pct: null,
+            };
+          });
+        })();
+
+  const curvePointsToShow = curveScope === "account" ? equityCurvePoints : tradeCurvePoints;
+  const curveTitle =
+    curveScope === "account"
+      ? "Account equity % (week-to-date)"
+      : curveScope === "basket"
+        ? `Closed-trade curve (basket: ${effectiveBasketFilter || "all"})`
+        : `Closed-trade curve (symbol: ${effectiveSymbolFilter || "all"})`;
 
   return (
     <DashboardLayout>
@@ -449,39 +548,108 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
           </div>
         </section>
 
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+        <details className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm" open>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4">
+            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
+              Weekly equity curve
+            </span>
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
+            <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
+          </summary>
+          <section className="border-t border-[var(--panel-border)] px-6 py-6">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Weekly equity curve
             </h2>
             <p className="text-sm text-[color:var(--muted)]">
-              Minute-level account snapshots for the current MT5 week.
+              Switch between account snapshots, basket-level closed-trade curves, and symbol-level curves.
             </p>
           </div>
+          <form action={`/accounts/${accountId}`} method="get" className="mb-4 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            {selectedWeek ? <input type="hidden" name="week" value={selectedWeek} /> : null}
+            <select
+              name="scope"
+              defaultValue={curveScope}
+              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+            >
+              <option value="account">Account</option>
+              <option value="basket">Basket</option>
+              <option value="symbol">Symbol</option>
+            </select>
+            <select
+              name="basket"
+              defaultValue={effectiveBasketFilter}
+              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+            >
+              <option value="">All baskets</option>
+              {basketOptions.map((basket) => (
+                <option key={basket} value={basket}>
+                  {basket}
+                </option>
+              ))}
+            </select>
+            <select
+              name="symbol"
+              defaultValue={effectiveSymbolFilter}
+              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+            >
+              <option value="">All symbols</option>
+              {symbolOptions.map((symbol) => (
+                <option key={symbol} value={symbol}>
+                  {symbol}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+            >
+              Apply
+            </button>
+          </form>
           <EquityCurveChart
-            title="Account equity % (week-to-date)"
-            points={equityCurvePoints}
+            title={curveTitle}
+            points={curvePointsToShow}
           />
-        </section>
+          </section>
+        </details>
 
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+        <details className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm" open>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4">
+            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
+              Open positions
+            </span>
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
+            <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
+          </summary>
+          <section className="border-t border-[var(--panel-border)] px-6 py-6">
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Open Positions
             </h2>
             <p className="text-sm text-[color:var(--muted)]">
-              {account.open_positions} active position{account.open_positions !== 1 ? 's' : ''} across {account.open_pairs} pair{account.open_pairs !== 1 ? 's' : ''}
+              {filteredOpenPositions.length} filtered position{filteredOpenPositions.length !== 1 ? 's' : ''}{" "}
+              ({account.open_positions} total)
             </p>
           </div>
 
           <PositionsTable
-            positions={account.positions || []}
+            positions={filteredOpenPositions}
             currency={account.currency}
             equity={account.equity}
           />
-        </section>
+          </section>
+        </details>
 
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+        <details className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm" open>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4">
+            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
+              Weekly trade history
+            </span>
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
+            <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
+          </summary>
+          <section className="border-t border-[var(--panel-border)] px-6 py-6">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Weekly trade history
@@ -553,108 +721,18 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               })}
             </div>
           )}
-        </section>
+          </section>
+        </details>
 
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              EA journal
-            </h2>
-            <p className="text-sm text-[color:var(--muted)]">
-              Collapsible runtime logs and weekly strategy notes.
-            </p>
-          </div>
-          <div className="space-y-3">
-            <details className="group rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">EA runtime logs</p>
-                  <p className="text-xs text-[color:var(--muted)]">
-                    {account.recent_logs?.length ?? 0} recent messages
-                  </p>
-                </div>
-                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
-                <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
-              </summary>
-              <div className="mt-4">
-                {!account.recent_logs || account.recent_logs.length === 0 ? (
-                  <p className="text-sm text-[color:var(--muted)]">
-                    No runtime logs available from the latest MT5 snapshot.
-                  </p>
-                ) : (
-                  <div className="max-h-80 overflow-y-auto rounded-xl border border-[var(--panel-border)] bg-[var(--background)] p-4">
-                    <div className="space-y-1 font-mono text-xs">
-                      {account.recent_logs.map((log, idx) => (
-                        <div
-                          key={idx}
-                          className={`${
-                            log.includes("Error") || log.includes("ERROR") || log.includes("failed")
-                              ? "text-rose-600"
-                              : log.includes("WARNING") || log.includes("Skipped")
-                              ? "text-amber-600"
-                              : "text-[var(--muted)]"
-                          }`}
-                        >
-                          {log}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </details>
-
-            <details className="group rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4" open>
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">EA change log</p>
-                  <p className="text-xs text-[color:var(--muted)]">
-                    Weekly strategy tweaks for this account
-                  </p>
-                </div>
-                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
-                <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
-              </summary>
-              <div className="mt-4">
-                {changeLog.length === 0 ? (
-                  <p className="text-sm text-[color:var(--muted)]">
-                    No change log entries yet. Add rows to mt5_change_log to track weekly improvements.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {changeLog.map((entry) => (
-                      <div
-                        key={`${entry.week_open_utc}-${entry.created_at}-${entry.title}`}
-                        className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/90 p-4"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                            {weekLabelFromOpen(entry.week_open_utc)}
-                          </p>
-                          {entry.strategy ? (
-                            <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1 text-xs font-semibold text-[color:var(--muted)]">
-                              {entry.strategy}
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
-                          {entry.title}
-                        </p>
-                        {entry.notes ? (
-                          <p className="mt-1 text-sm text-[color:var(--muted)]">
-                            {entry.notes}
-                          </p>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </details>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+        <details className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm" open>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4">
+            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
+              Closed positions
+            </span>
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
+            <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
+          </summary>
+          <section className="border-t border-[var(--panel-border)] px-6 py-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
@@ -667,6 +745,9 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               {closedSummary.length > 0 ? (
                 <form action={`/accounts/${accountId}`} method="get" className="flex items-center gap-2">
+                  <input type="hidden" name="scope" value={curveScope} />
+                  {effectiveBasketFilter ? <input type="hidden" name="basket" value={effectiveBasketFilter} /> : null}
+                  {effectiveSymbolFilter ? <input type="hidden" name="symbol" value={effectiveSymbolFilter} /> : null}
                   <select
                     name="week"
                     defaultValue={selectedWeek ?? ""}
@@ -687,10 +768,10 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
                   </button>
                 </form>
               ) : null}
-              <span>{closedPositions.length} records</span>
+              <span>{filteredClosedPositions.length} records</span>
             </div>
           </div>
-          {closedPositions.length === 0 ? (
+          {filteredClosedPositions.length === 0 ? (
             <div className="space-y-2 text-sm text-[color:var(--muted)]">
               <p>No closed positions stored yet.</p>
               {account.trade_count_week > 0 ? (
@@ -714,7 +795,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
                   </tr>
                 </thead>
                 <tbody className="text-[var(--foreground)]">
-                  {closedPositions.map((trade) => {
+                  {filteredClosedPositions.map((trade) => {
                     const net =
                       trade.profit + trade.swap + trade.commission;
                     return (
@@ -758,7 +839,116 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               </table>
             </div>
           )}
-        </section>
+          </section>
+        </details>
+
+        <details className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm" open>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4">
+            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
+              EA journal
+            </span>
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
+            <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
+          </summary>
+          <section className="border-t border-[var(--panel-border)] px-6 py-6">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                EA journal
+              </h2>
+              <p className="text-sm text-[color:var(--muted)]">
+                Collapsible runtime logs and weekly strategy notes.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <details className="group rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--foreground)]">EA runtime logs</p>
+                    <p className="text-xs text-[color:var(--muted)]">
+                      {account.recent_logs?.length ?? 0} recent messages
+                    </p>
+                  </div>
+                  <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
+                  <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
+                </summary>
+                <div className="mt-4">
+                  {!account.recent_logs || account.recent_logs.length === 0 ? (
+                    <p className="text-sm text-[color:var(--muted)]">
+                      No runtime logs available from the latest MT5 snapshot.
+                    </p>
+                  ) : (
+                    <div className="max-h-80 overflow-y-auto rounded-xl border border-[var(--panel-border)] bg-[var(--background)] p-4">
+                      <div className="space-y-1 font-mono text-xs">
+                        {account.recent_logs.map((log, idx) => (
+                          <div
+                            key={idx}
+                            className={`${
+                              log.includes("Error") || log.includes("ERROR") || log.includes("failed")
+                                ? "text-rose-600"
+                                : log.includes("WARNING") || log.includes("Skipped")
+                                  ? "text-amber-600"
+                                  : "text-[var(--muted)]"
+                            }`}
+                          >
+                            {log}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </details>
+
+              <details className="group rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4" open>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--foreground)]">EA change log</p>
+                    <p className="text-xs text-[color:var(--muted)]">
+                      Weekly strategy tweaks for this account
+                    </p>
+                  </div>
+                  <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
+                  <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
+                </summary>
+                <div className="mt-4">
+                  {changeLog.length === 0 ? (
+                    <p className="text-sm text-[color:var(--muted)]">
+                      No change log entries yet. Add rows to mt5_change_log to track weekly improvements.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {changeLog.map((entry) => (
+                        <div
+                          key={`${entry.week_open_utc}-${entry.created_at}-${entry.title}`}
+                          className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/90 p-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                              {weekLabelFromOpen(entry.week_open_utc)}
+                            </p>
+                            {entry.strategy ? (
+                              <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1 text-xs font-semibold text-[color:var(--muted)]">
+                                {entry.strategy}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+                            {entry.title}
+                          </p>
+                          {entry.notes ? (
+                            <p className="mt-1 text-sm text-[color:var(--muted)]">
+                              {entry.notes}
+                            </p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </details>
+            </div>
+          </section>
+        </details>
           </>
         ) : null}
       </div>

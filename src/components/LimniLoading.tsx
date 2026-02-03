@@ -11,7 +11,7 @@ export default function LimniLoading({
   const iconSize = compact ? 50 : 68;
 
   return (
-    <div className="flex min-h-[240px] w-full items-center justify-center py-8">
+    <div className="flex min-h-screen w-full items-center justify-center bg-[var(--background)] px-6 py-10">
       <div className="flex flex-col items-center gap-4">
         <div className={`relative ${sizeClass}`}>
           <div
@@ -29,7 +29,7 @@ export default function LimniLoading({
               alt="Limni loading"
               width={iconSize}
               height={iconSize}
-              className="select-none"
+              className="select-none logo-theme-aware"
               style={{ animation: "spin 2.2s linear infinite" }}
               priority
             />

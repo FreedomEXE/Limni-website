@@ -4,9 +4,11 @@ import EquityCurveChart from "@/components/research/EquityCurveChart";
 import ResearchSectionNav from "@/components/research/ResearchSectionNav";
 import { buildSymbolResearchSummary } from "@/lib/universalBasket";
 import type { PerformanceModel } from "@/lib/performanceLab";
+import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import { formatDateTimeET } from "@/lib/time";
+import { unstable_cache } from "next/cache";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 900;
 
 type PageProps = {
   searchParams?:
@@ -27,23 +29,56 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
   const modelParam = params?.model;
   const symbolParam = params?.symbol;
+  const weekParam = params?.week;
   const selectedModel =
     typeof modelParam === "string" &&
     MODEL_OPTIONS.some((item) => item.value === modelParam)
       ? (modelParam as "all" | PerformanceModel)
       : "all";
 
-  const summary = await buildSymbolResearchSummary({
-    modelFilter: selectedModel,
-    includeCurrentWeek: false,
-    limitWeeks: 8,
+  const getSymbolSummary = unstable_cache(
+    async (modelFilter: "all" | PerformanceModel) =>
+      buildSymbolResearchSummary({
+        modelFilter,
+        includeCurrentWeek: false,
+        limitWeeks: 8,
+      }),
+    [`research-symbols-m1-8w-${selectedModel}`],
+    { revalidate: 900 },
+  );
+  const summary = await getSymbolSummary(selectedModel);
+  const weekOptions = summary.equity_curve
+    .map((point) => point.ts_utc)
+    .slice()
+    .reverse()
+    .map((week) => ({ value: week, label: weekLabelFromOpen(week) }));
+  const selectedWeekRaw = typeof weekParam === "string" ? weekParam : Array.isArray(weekParam) ? weekParam[0] : undefined;
+  const selectedWeek =
+    selectedWeekRaw && weekOptions.some((option) => option.value === selectedWeekRaw)
+      ? selectedWeekRaw
+      : (weekOptions[0]?.value ?? null);
+
+  const rowWeekPercent = (symbol: string) => {
+    const row = summary.rows.find((item) => item.symbol === symbol);
+    if (!row || !selectedWeek) {
+      return 0;
+    }
+    return row.weekly.find((item) => item.week_open_utc === selectedWeek)?.percent ?? 0;
+  };
+
+  const displayRows = [...summary.rows].sort((a, b) => {
+    if (!selectedWeek) {
+      return Math.abs(b.total_percent) - Math.abs(a.total_percent);
+    }
+    return rowWeekPercent(b.symbol) - rowWeekPercent(a.symbol);
   });
+
   const selectedSymbol =
-    typeof symbolParam === "string" && summary.rows.some((row) => row.symbol === symbolParam)
+    typeof symbolParam === "string" && displayRows.some((row) => row.symbol === symbolParam)
       ? symbolParam
-      : summary.rows[0]?.symbol ?? null;
+      : displayRows[0]?.symbol ?? null;
   const symbolRow = selectedSymbol
-    ? summary.rows.find((row) => row.symbol === selectedSymbol) ?? null
+    ? displayRows.find((row) => row.symbol === selectedSymbol) ?? null
     : null;
   const symbolCurve = symbolRow
     ? symbolRow.weekly.map((row) => ({
@@ -81,11 +116,22 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
                   </option>
                 ))}
               </select>
+              <select
+                name="week"
+                defaultValue={selectedWeek ?? undefined}
+                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
+              >
+                {weekOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
               <button
                 type="submit"
                 className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
               >
-                View
+                Apply
               </button>
             </form>
           </div>
@@ -99,6 +145,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
             <Metric label="Symbols" value={`${summary.rows.length}`} />
             <Metric label="Trades" value={`${summary.priced_trades}/${summary.total_trades}`} />
             <Metric label="Total %" value={`${summary.total_percent.toFixed(2)}%`} />
+            <Metric label="Focused week" value={selectedWeek ? weekLabelFromOpen(selectedWeek).replace("Week of ", "") : "--"} />
           </div>
 
           <div className="mt-6">
@@ -124,6 +171,12 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
                 <Metric label="Win rate" value={`${symbolRow.win_rate.toFixed(0)}%`} />
                 <Metric label="Best trade" value={`${(symbolRow.best_trade_percent ?? 0).toFixed(2)}%`} />
                 <Metric label="Worst trade" value={`${(symbolRow.worst_trade_percent ?? 0).toFixed(2)}%`} />
+                <Metric
+                  label="Selected week %"
+                  value={`${(
+                    symbolRow.weekly.find((item) => item.week_open_utc === selectedWeek)?.percent ?? 0
+                  ).toFixed(2)}%`}
+                />
               </div>
               <div className="mt-4">
                 <EquityCurveChart title={`${symbolRow.symbol} weekly returns`} points={symbolCurve} />
@@ -137,23 +190,27 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
                 <tr>
                   <th className="py-2">Symbol</th>
                   <th className="py-2 text-right">Total %</th>
+                  <th className="py-2 text-right">Week %</th>
                   <th className="py-2 text-right">Avg %</th>
                   <th className="py-2 text-right">Win rate</th>
                   <th className="py-2 text-right">Trades</th>
                 </tr>
               </thead>
               <tbody>
-                {summary.rows.map((row) => (
+                {displayRows.map((row) => (
                   <tr key={row.symbol} className="border-t border-[var(--panel-border)]/60">
                     <td className="py-2">
                       <Link
-                        href={`/automation/research/symbols?model=${selectedModel}&symbol=${encodeURIComponent(row.symbol)}`}
+                        href={`/automation/research/symbols?model=${selectedModel}&week=${selectedWeek ?? ""}&symbol=${encodeURIComponent(row.symbol)}`}
                         className="font-semibold text-[var(--accent-strong)] hover:underline"
                       >
                         {row.symbol}
                       </Link>
                     </td>
                     <td className="py-2 text-right">{row.total_percent.toFixed(2)}%</td>
+                    <td className="py-2 text-right">
+                      {(row.weekly.find((item) => item.week_open_utc === selectedWeek)?.percent ?? 0).toFixed(2)}%
+                    </td>
                     <td className="py-2 text-right">{row.avg_percent.toFixed(2)}%</td>
                     <td className="py-2 text-right">{row.win_rate.toFixed(0)}%</td>
                     <td className="py-2 text-right">

@@ -373,14 +373,16 @@ function simulateWeekFromSeries(
       peak = total;
       peakTs = ts;
     }
-    if (total >= trailStartPct) {
-      trailingActive = true;
-      if (trailActivatedAtMs === null) {
-        trailActivatedAtMs = ts;
-      }
-      const nextLock = Math.max(minLockAfterActivation, peak - trailOffsetPct);
-      if (nextLock > lock) {
-        lock = nextLock;
+    if (!trailingHit) {
+      if (total >= trailStartPct) {
+        trailingActive = true;
+        if (trailActivatedAtMs === null) {
+          trailActivatedAtMs = ts;
+        }
+        const nextLock = Math.max(minLockAfterActivation, peak - trailOffsetPct);
+        if (nextLock > lock) {
+          lock = nextLock;
+        }
       }
     }
     curve.push({
@@ -388,13 +390,11 @@ function simulateWeekFromSeries(
       equity: total,
       lock: Number.isFinite(lock) ? lock : null,
     });
-    if (trailingActive && Number.isFinite(lock) && total <= lock) {
+    if (!trailingHit && trailingActive && Number.isFinite(lock) && total <= lock) {
       trailingHit = true;
       trailHitAtMs = ts;
       // Assume ideal trailing-stop fill at lock level (no gap slippage).
       lockedReturn = lock;
-      finalReturn = lock;
-      break;
     }
     finalReturn = total;
   }

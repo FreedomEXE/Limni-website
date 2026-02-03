@@ -31,6 +31,21 @@ function getToken(request: Request) {
   return null;
 }
 
+function isCronAuthorized(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return false;
+  }
+  const headerSecret = request.headers.get("x-cron-secret");
+  const authHeader = request.headers.get("authorization");
+  const bearerSecret = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length)
+    : null;
+  const url = new URL(request.url);
+  const querySecret = url.searchParams.get("secret");
+  return headerSecret === secret || querySecret === secret || bearerSecret === secret;
+}
+
 function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
   const pairDefs = PAIRS_BY_ASSET_CLASS[assetId as keyof typeof PAIRS_BY_ASSET_CLASS] ?? [];
   const pairs: Record<string, PairSnapshot> = {};
@@ -68,6 +83,116 @@ async function readSnapshotForWeek(
   return match ?? null;
 }
 
+async function listRecentWeeks(
+  assetClasses: ReturnType<typeof listAssetClasses>,
+  limit: number,
+) {
+  const weeks = new Set<string>();
+  const historyLists = await Promise.all(
+    assetClasses.map((asset) => readSnapshotHistory(asset.id, Math.max(limit * 3, 24))),
+  );
+  for (const history of historyLists) {
+    for (const item of history) {
+      if (!item.report_date) {
+        continue;
+      }
+      const reportDate = DateTime.fromISO(item.report_date, { zone: "America/New_York" });
+      if (!reportDate.isValid) {
+        continue;
+      }
+      weeks.add(getWeekOpenUtc(reportDate));
+    }
+  }
+  return Array.from(weeks.values())
+    .sort((a, b) => DateTime.fromISO(b, { zone: "utc" }).toMillis() - DateTime.fromISO(a, { zone: "utc" }).toMillis())
+    .slice(0, limit);
+}
+
+async function refreshSnapshots(options: {
+  forcedWeekOpenUtc?: string | null;
+  rollingWeeks: number;
+}) {
+  const adminToken = process.env.ADMIN_TOKEN;
+  const assetClasses = listAssetClasses();
+  const models: PerformanceModel[] = [
+    "antikythera",
+    "blended",
+    "dealer",
+    "commercial",
+    "sentiment",
+  ];
+  const latestSentiment = await getLatestAggregatesLocked();
+
+  const targetWeeks = options.forcedWeekOpenUtc
+    ? [options.forcedWeekOpenUtc]
+    : await listRecentWeeks(assetClasses, Math.max(1, options.rollingWeeks));
+
+  const payload = [];
+  for (const weekOpenUtc of targetWeeks) {
+    const snapshots = await Promise.all(
+      assetClasses.map((asset) =>
+        options.forcedWeekOpenUtc || targetWeeks.length > 1
+          ? readSnapshotForWeek(asset.id, weekOpenUtc)
+          : readSnapshot({ assetClass: asset.id }),
+      ),
+    );
+    for (const asset of assetClasses) {
+      const snapshot = snapshots.find((item) => item?.asset_class === asset.id) ?? null;
+      if (!snapshot) {
+        continue;
+      }
+      const reportWeekOpenUtc =
+        options.forcedWeekOpenUtc || targetWeeks.length > 1
+          ? weekOpenUtc
+          : snapshot.report_date
+            ? (() => {
+                const reportDate = DateTime.fromISO(snapshot.report_date, {
+                  zone: "America/New_York",
+                });
+                return reportDate.isValid ? getWeekOpenUtc(reportDate) : getWeekOpenUtc();
+              })()
+            : getWeekOpenUtc();
+
+      const performance = await getPairPerformance(buildAllPairs(asset.id), {
+        assetClass: asset.id,
+        reportDate: snapshot.report_date,
+        isLatestReport: false,
+      });
+
+      for (const model of models) {
+        const result = await computeModelPerformance({
+          model,
+          assetClass: asset.id,
+          snapshot,
+          sentiment: latestSentiment,
+          performance,
+        });
+        payload.push({
+          week_open_utc: reportWeekOpenUtc,
+          asset_class: asset.id,
+          model,
+          report_date: snapshot.report_date ?? null,
+          percent: result.percent,
+          priced: result.priced,
+          total: result.total,
+          note: result.note,
+          returns: result.returns,
+          pair_details: result.pair_details,
+          stats: result.stats,
+        });
+      }
+    }
+  }
+
+  await writePerformanceSnapshots(payload);
+
+  return {
+    week_open_utc: targetWeeks[0] ?? getWeekOpenUtc(),
+    weeks: targetWeeks,
+    snapshots_written: payload.length,
+  };
+}
+
 export async function POST(request: Request) {
   const adminToken = process.env.ADMIN_TOKEN;
   if (!adminToken) {
@@ -82,84 +207,50 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const assetClasses = listAssetClasses();
-  const models: PerformanceModel[] = [
-    "antikythera",
-    "blended",
-    "dealer",
-    "commercial",
-    "sentiment",
-  ];
   const { searchParams } = new URL(request.url);
   const forcedWeekOpenUtc = searchParams.get("week_open_utc");
-
-  let responseWeekOpenUtc: string | null = null;
-  const latestSentiment = await getLatestAggregatesLocked();
-  const snapshots = await Promise.all(
-    assetClasses.map((asset) =>
-      forcedWeekOpenUtc
-        ? readSnapshotForWeek(asset.id, forcedWeekOpenUtc)
-        : readSnapshot({ assetClass: asset.id }),
-    ),
-  );
-
-  const payload = [];
-  for (const asset of assetClasses) {
-    const snapshot = snapshots.find((item) => item?.asset_class === asset.id) ?? null;
-    if (!snapshot) {
-      continue;
-    }
-    let reportWeekOpenUtc: string;
-    if (forcedWeekOpenUtc) {
-      reportWeekOpenUtc = forcedWeekOpenUtc;
-    } else if (snapshot.report_date) {
-      const reportDate = DateTime.fromISO(snapshot.report_date, {
-        zone: "America/New_York",
-      });
-      reportWeekOpenUtc = reportDate.isValid
-        ? getWeekOpenUtc(reportDate)
-        : getWeekOpenUtc();
-    } else {
-      reportWeekOpenUtc = getWeekOpenUtc();
-    }
-    if (!responseWeekOpenUtc) {
-      responseWeekOpenUtc = reportWeekOpenUtc;
-    }
-
-    const performance = await getPairPerformance(buildAllPairs(asset.id), {
-      assetClass: asset.id,
-      reportDate: snapshot.report_date,
-      isLatestReport: false,
-    });
-    for (const model of models) {
-      const result = await computeModelPerformance({
-        model,
-        assetClass: asset.id,
-        snapshot,
-        sentiment: latestSentiment,
-        performance,
-      });
-      payload.push({
-        week_open_utc: reportWeekOpenUtc,
-        asset_class: asset.id,
-        model,
-        report_date: snapshot.report_date ?? null,
-        percent: result.percent,
-        priced: result.priced,
-        total: result.total,
-        note: result.note,
-        returns: result.returns,
-        pair_details: result.pair_details,
-        stats: result.stats,
-      });
-    }
-  }
-
-  await writePerformanceSnapshots(payload);
+  const weeksParam = searchParams.get("weeks");
+  const rollingWeeks = weeksParam ? Number.parseInt(weeksParam, 10) : 1;
+  const result = await refreshSnapshots({
+    forcedWeekOpenUtc,
+    rollingWeeks: Number.isFinite(rollingWeeks) && rollingWeeks > 0 ? rollingWeeks : 1,
+  });
 
   return NextResponse.json({
     ok: true,
-    week_open_utc: responseWeekOpenUtc ?? getWeekOpenUtc(),
-    snapshots_written: payload.length,
+    week_open_utc: result.week_open_utc,
+    refreshed_weeks: result.weeks,
+    snapshots_written: result.snapshots_written,
+  });
+}
+
+export async function GET(request: Request) {
+  const adminToken = process.env.ADMIN_TOKEN;
+  if (!adminToken) {
+    return NextResponse.json(
+      { error: "ADMIN_TOKEN is not configured." },
+      { status: 500 },
+    );
+  }
+
+  const token = getToken(request);
+  if (token !== adminToken && !isCronAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const forcedWeekOpenUtc = searchParams.get("week_open_utc");
+  const weeksParam = searchParams.get("weeks");
+  const rollingWeeks = weeksParam ? Number.parseInt(weeksParam, 10) : 6;
+  const result = await refreshSnapshots({
+    forcedWeekOpenUtc,
+    rollingWeeks: Number.isFinite(rollingWeeks) && rollingWeeks > 0 ? rollingWeeks : 6,
+  });
+
+  return NextResponse.json({
+    ok: true,
+    week_open_utc: result.week_open_utc,
+    refreshed_weeks: result.weeks,
+    snapshots_written: result.snapshots_written,
   });
 }
