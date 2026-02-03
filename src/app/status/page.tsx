@@ -5,6 +5,7 @@ import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
 import { readMarketSnapshot } from "@/lib/priceStore";
 import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
+import { MyfxbookProvider } from "@/lib/sentiment/providers/myfxbook";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
 import { readMt5Accounts } from "@/lib/mt5Store";
@@ -31,11 +32,26 @@ export default async function StatusPage() {
   let priceError: string | null = null;
   let sentimentError: string | null = null;
   let accountsError: string | null = null;
+  let myfxbookDebugError: string | null = null;
 
   let cotSnapshot = null;
   let marketSnapshot = null;
   let sentimentAggregates: SentimentAggregate[] = [];
   let accounts: Mt5AccountSnapshot[] = [];
+  let myfxbookDebug: {
+    ok: boolean;
+    httpStatus: number;
+    statusText: string;
+    latencyMs: number;
+    headers: Record<string, string>;
+    parseError: string | null;
+    apiError: boolean | null;
+    apiMessage: string | null;
+    symbolCount: number;
+    symbols: string[];
+    bodyExcerpt: string;
+    fetchedAtUtc: string;
+  } | null = null;
   let priceSnapshots: Array<{
     assetLabel: string;
     assetId: string;
@@ -74,6 +90,28 @@ export default async function StatusPage() {
     accounts = await readMt5Accounts();
   } catch (error) {
     accountsError = error instanceof Error ? error.message : String(error);
+  }
+
+  try {
+    const provider = new MyfxbookProvider();
+    const result = await provider.fetchOutlookRaw();
+    const symbols = result.parsed?.symbols?.map((symbol) => symbol.name) ?? [];
+    myfxbookDebug = {
+      ok: result.http_status === 200 && !result.parsed?.error,
+      httpStatus: result.http_status,
+      statusText: result.status_text,
+      latencyMs: result.latency_ms,
+      headers: result.headers,
+      parseError: result.parse_error,
+      apiError: result.parsed?.error ?? null,
+      apiMessage: result.parsed?.message ?? null,
+      symbolCount: symbols.length,
+      symbols,
+      bodyExcerpt: result.body_excerpt,
+      fetchedAtUtc: new Date().toISOString(),
+    };
+  } catch (error) {
+    myfxbookDebugError = error instanceof Error ? error.message : String(error);
   }
 
   try {
@@ -270,6 +308,61 @@ export default async function StatusPage() {
                   ) : null}
                 </div>
               ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Myfxbook Debug</h2>
+            <p className="text-sm text-[color:var(--muted)]">
+              Raw Myfxbook community outlook response (rate limit + parser diagnostics).
+            </p>
+          </div>
+          {myfxbookDebugError ? (
+            <p className="text-sm text-rose-700">{myfxbookDebugError}</p>
+          ) : !myfxbookDebug ? (
+            <p className="text-sm text-[color:var(--muted)]">No debug data.</p>
+          ) : (
+            <div className="space-y-3 text-sm">
+              <p className="text-[var(--foreground)]">
+                <span className="font-semibold">Status:</span>{" "}
+                {myfxbookDebug.ok ? "OK" : "NOT OK"} ({myfxbookDebug.httpStatus}{" "}
+                {myfxbookDebug.statusText}) | <span className="font-semibold">Latency:</span>{" "}
+                {myfxbookDebug.latencyMs}ms
+              </p>
+              <p className="text-[color:var(--muted)]">
+                <span className="font-semibold text-[var(--foreground)]">Fetched:</span>{" "}
+                {formatDateTimeET(myfxbookDebug.fetchedAtUtc)}
+              </p>
+              <p className="text-[color:var(--muted)]">
+                <span className="font-semibold text-[var(--foreground)]">API error:</span>{" "}
+                {String(myfxbookDebug.apiError)} |{" "}
+                <span className="font-semibold text-[var(--foreground)]">Message:</span>{" "}
+                {myfxbookDebug.apiMessage ?? "none"} |{" "}
+                <span className="font-semibold text-[var(--foreground)]">Parse error:</span>{" "}
+                {myfxbookDebug.parseError ?? "none"}
+              </p>
+              <p className="text-[color:var(--muted)]">
+                <span className="font-semibold text-[var(--foreground)]">Symbols:</span>{" "}
+                {myfxbookDebug.symbolCount}
+              </p>
+              <div className="rounded-xl border border-[var(--panel-border)]/60 bg-[var(--panel)] p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  Rate Limit Headers
+                </p>
+                <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs text-[var(--muted)]">
+                  {JSON.stringify(myfxbookDebug.headers, null, 2)}
+                </pre>
+              </div>
+              <div className="rounded-xl border border-[var(--panel-border)]/60 bg-[var(--panel)] p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  Body Excerpt
+                </p>
+                <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs text-[var(--muted)]">
+                  {myfxbookDebug.bodyExcerpt || "(empty)"}
+                </pre>
+              </div>
             </div>
           )}
         </section>
