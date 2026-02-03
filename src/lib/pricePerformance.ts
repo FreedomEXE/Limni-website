@@ -638,7 +638,10 @@ export async function getPairPerformance(
 
   // Always try to use cached pricing data from DB first
   const snapshot = await readMarketSnapshot(weekOpenIso, assetClass);
-  if (snapshot) {
+  const allowHistoricalRecalc = process.env.ALLOW_HISTORICAL_RECALC === "true";
+
+  // Skip cache for historical weeks if recalculation is forced
+  if (snapshot && !(allowHistoricalRecalc && !isCurrentWeek)) {
     const totalPairs = Object.keys(pairs).length;
     const performance: Record<string, PairPerformance | null> = {};
     let missing = 0;
@@ -690,8 +693,8 @@ export async function getPairPerformance(
     }
   }
 
-  // If no cached data exists for historical weeks, return empty result
-  if (!isCurrentWeek) {
+  // If no cached data exists for historical weeks and recalc is not forced, return empty result
+  if (!isCurrentWeek && !allowHistoricalRecalc) {
     const performance: Record<string, PairPerformance | null> = {};
     Object.keys(pairs).forEach((pair) => {
       performance[pair] = null;
@@ -705,7 +708,7 @@ export async function getPairPerformance(
 
   if (assetClass !== "fx") {
     const result = await buildNonFxPerformance(pairs, assetClass, window);
-    if (isCurrentWeek) {
+    if (isCurrentWeek || allowHistoricalRecalc) {
       const snapshot: MarketSnapshot = {
         week_open_utc: weekOpenIso,
         last_refresh_utc: toIsoString(now),
@@ -722,7 +725,7 @@ export async function getPairPerformance(
     window,
   );
 
-  if (isCurrentWeek) {
+  if (isCurrentWeek || allowHistoricalRecalc) {
     const snapshot: MarketSnapshot = {
       week_open_utc: weekOpenIso,
       last_refresh_utc: toIsoString(now),
