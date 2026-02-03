@@ -68,10 +68,6 @@ function sentimentDirection(agg?: SentimentAggregate): Direction | null {
     return "SHORT";
   }
 
-  if (agg.flip_state === "FLIPPED_NEUTRAL") {
-    return null;
-  }
-
   if (agg.crowding_state === "CROWDED_LONG") {
     return "SHORT";
   }
@@ -286,9 +282,6 @@ function sentimentReason(agg: SentimentAggregate | undefined, direction: Directi
   }
   if (agg.flip_state === "FLIPPED_DOWN") {
     return ["Sentiment flip down"];
-  }
-  if (agg.flip_state === "FLIPPED_NEUTRAL") {
-    return ["Sentiment neutralized"];
   }
   if (agg.crowding_state === "CROWDED_LONG") {
     return ["Retail crowding long (fade)"];

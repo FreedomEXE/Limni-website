@@ -9,7 +9,7 @@ type MyfxbookSessionCache = {
   expiresAt: number;
 };
 
-type MyfxbookOutlookResponse = {
+export type MyfxbookOutlookResponse = {
   error: boolean;
   message?: string;
   symbols?: Array<{
@@ -17,6 +17,31 @@ type MyfxbookOutlookResponse = {
     shortPercentage: number;
     longPercentage: number;
   }>;
+};
+
+const MYFXBOOK_SYMBOL_MAP: Record<string, string> = {
+  // Indices -> internal symbols
+  US500: "SPXUSD",
+  SP500: "SPXUSD",
+  SPX: "SPXUSD",
+  SPX500: "SPXUSD",
+  NAS100: "NDXUSD",
+  NDX: "NDXUSD",
+  NDX100: "NDXUSD",
+  US100: "NDXUSD",
+  JPN225: "NIKKEIUSD",
+  JP225: "NIKKEIUSD",
+  N225: "NIKKEIUSD",
+  NI225: "NIKKEIUSD",
+  NKY: "NIKKEIUSD",
+  NIKKEI: "NIKKEIUSD",
+  NIKKEI225: "NIKKEIUSD",
+  NIK225: "NIKKEIUSD",
+  // WTI crude oil -> internal symbol
+  USOIL: "WTIUSD",
+  WTI: "WTIUSD",
+  WTIUSD: "WTIUSD",
+  XTIUSD: "WTIUSD",
 };
 
 let sessionCache: MyfxbookSessionCache | null = null;
@@ -80,6 +105,74 @@ export class MyfxbookProvider implements SentimentProviderInterface {
     }
   }
 
+  async fetchOutlookRaw(): Promise<{
+    http_status: number;
+    status_text: string;
+    latency_ms: number;
+    headers: Record<string, string>;
+    parsed: MyfxbookOutlookResponse | null;
+    parse_error: string | null;
+    body_excerpt: string;
+  }> {
+    const startTime = Date.now();
+
+    if (!this.email || !this.password) {
+      throw new Error("Myfxbook credentials not configured (MYFXBOOK_EMAIL, MYFXBOOK_PASSWORD)");
+    }
+
+    const session = await this.getSession();
+    const outlookUrl = new URL("https://www.myfxbook.com/api/get-community-outlook.json");
+    outlookUrl.searchParams.set("session", session);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+      const response = await fetch(outlookUrl.toString(), {
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      const bodyText = await response.text();
+      let parsed: MyfxbookOutlookResponse | null = null;
+      let parseError: string | null = null;
+
+      try {
+        parsed = JSON.parse(bodyText) as MyfxbookOutlookResponse;
+      } catch (error) {
+        parseError = error instanceof Error ? error.message : "Failed to parse JSON";
+      }
+
+      const headers: Record<string, string> = {};
+      const headerKeys = ["retry-after", "x-ratelimit-limit", "x-ratelimit-remaining", "x-ratelimit-reset"];
+      for (const key of headerKeys) {
+        const value = response.headers.get(key);
+        if (value) {
+          headers[key] = value;
+        }
+      }
+
+      const latency = Date.now() - startTime;
+
+      return {
+        http_status: response.status,
+        status_text: response.statusText,
+        latency_ms: latency,
+        headers,
+        parsed,
+        parse_error: parseError,
+        body_excerpt: bodyText.slice(0, 2000),
+      };
+    } catch (error) {
+      clearTimeout(timeout);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Myfxbook outlook API timed out");
+      }
+      throw error;
+    }
+  }
+
   async fetchSentiment(symbols?: string[]): Promise<ProviderSentiment[]> {
     const startTime = Date.now();
 
@@ -116,15 +209,16 @@ export class MyfxbookProvider implements SentimentProviderInterface {
       const results: ProviderSentiment[] = [];
 
       for (const item of data.symbols) {
-        const symbol = item.name.replace("/", "");
-        if (symbols && !symbols.includes(symbol)) {
+        const rawSymbol = item.name.replace("/", "").toUpperCase();
+        const mappedSymbol = MYFXBOOK_SYMBOL_MAP[rawSymbol] ?? rawSymbol;
+        if (symbols && !symbols.includes(mappedSymbol)) {
           continue;
         }
 
         const normalized = normalizeSentiment(item.longPercentage, item.shortPercentage);
 
         results.push({
-          symbol,
+          symbol: mappedSymbol,
           long_pct: normalized.long_pct,
           short_pct: normalized.short_pct,
           net: normalized.net,
