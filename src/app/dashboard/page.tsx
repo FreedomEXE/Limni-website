@@ -485,40 +485,41 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           ) : null}
 
-          <div className="mt-6 space-y-6">
-            <div>
-              <h2 className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                {biasLabel} bias strip
-              </h2>
-              <div className="mt-3">
-                <MiniBiasStrip
-                  items={currencyRows.map((row) => ({
-                    id: `${row.assetLabel}-${row.currency}`,
-                    label: row.label,
-                    bias: row.bias,
-                  }))}
-                />
-              </div>
-            </div>
-
-            <div>
-              <h2 className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Pair view
-              </h2>
-              <div className="mt-3">
-                {view === "heatmap" ? (
-                  <PairHeatmap rows={pairRowsWithPerf} />
-                ) : (
-                  <PairPerformanceTable
-                    rows={pairRowsWithPerf}
-                    note={pairNote}
-                    missingPairs={missingPairs}
-                  />
-                )}
-              </div>
+          <div className="mt-6">
+            <h2 className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              {biasLabel} bias strip
+            </h2>
+            <div className="mt-3">
+              <MiniBiasStrip
+                items={currencyRows.map((row) => ({
+                  id: `${row.assetLabel}-${row.currency}`,
+                  label: row.label,
+                  bias: row.bias,
+                }))}
+              />
             </div>
           </div>
         </section>
+
+        {view === "heatmap" ? (
+          <PairHeatmap rows={pairRowsWithPerf} />
+        ) : (
+          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                Pair Performance
+              </h2>
+              <p className="text-sm text-[var(--muted)]">
+                List view of all pairs with performance data
+              </p>
+            </div>
+            <PairPerformanceTable
+              rows={pairRowsWithPerf}
+              note={pairNote}
+              missingPairs={missingPairs}
+            />
+          </section>
+        )}
 
         <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
           {combinedRefresh ? `Last refresh ${formatDateTimeET(combinedRefresh)}` : "No refresh yet"}

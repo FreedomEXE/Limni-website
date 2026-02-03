@@ -13,6 +13,8 @@ type PairRow = {
 
 type PairHeatmapProps = {
   rows: PairRow[];
+  title?: string;
+  description?: string;
 };
 
 function tone(direction: Direction) {
@@ -25,52 +27,109 @@ function tone(direction: Direction) {
   return "bg-[var(--panel-border)]/60";
 }
 
-export default function PairHeatmap({ rows }: PairHeatmapProps) {
+function cleanPairName(pair: string): string {
+  // Remove asset class suffixes like "(FX)", "(Crypto)", etc.
+  return pair.replace(/\s*\([^)]+\)\s*$/, '');
+}
+
+export default function PairHeatmap({ rows, title = "Bias Heatmap", description = "COT positioning bias across pairs" }: PairHeatmapProps) {
   const [active, setActive] = useState<PairRow | null>(null);
 
   if (rows.length === 0) {
-    return <p className="text-sm text-[color:var(--muted)]">No tradable pairs yet.</p>;
+    return (
+      <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">
+            {title}
+          </h2>
+          <p className="text-sm text-[var(--muted)]">
+            {description}
+          </p>
+        </div>
+        <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/70">
+          <div className="text-center">
+            <p className="text-sm font-medium text-[var(--foreground)]">No tradable pairs yet</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Pairs will appear when bias signals are available
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        {rows.map((row) => (
-          <button
-            key={row.pair}
-            type="button"
-            onClick={() => setActive(row)}
-            className="group relative min-h-[96px] overflow-hidden rounded-lg border border-[var(--panel-border)] text-left"
-          >
+    <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-[var(--foreground)]">
+          {title}
+        </h2>
+        <p className="text-sm text-[var(--muted)]">
+          {description}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-5 gap-3">
+        {rows.map((row) => {
+          const cleanName = cleanPairName(row.pair);
+          return (
             <div
-              className={`flex h-full flex-col items-start justify-center px-4 py-3 text-white transition ${tone(
-                row.direction,
-              )}`}
+              key={row.pair}
+              className="group relative min-h-[96px] overflow-hidden rounded-lg border border-[var(--panel-border)]"
             >
-              <span className="text-[10px] uppercase tracking-[0.2em] text-white/80 leading-none">
-                {row.direction}
-              </span>
-              <span className="mt-2 text-sm font-semibold leading-tight">{row.pair}</span>
-            </div>
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
-              <div className="text-center text-xs text-white">
-                <p className="font-semibold">{row.pair}</p>
-                <p className="mt-1">{row.direction}</p>
-                {row.performance ? (
-                  <p className="mt-1 text-[10px]">
-                    {row.performance.percent > 0 ? "+" : ""}
-                    {row.performance.percent.toFixed(2)}%
-                  </p>
-                ) : null}
+              <div
+                className={`flex h-full flex-col items-center justify-center px-4 py-3 transition ${tone(
+                  row.direction,
+                )}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => setActive(row)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    setActive(row);
+                  }
+                }}
+              >
+                <div className="text-xs font-bold text-white">{cleanName}</div>
+              </div>
+
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+                <div className="text-center text-xs text-white">
+                  <p className="font-semibold">{cleanName}</p>
+                  <p className="mt-1">{row.direction}</p>
+                  {row.performance ? (
+                    <p className="mt-1 text-[10px]">
+                      {row.performance.percent > 0 ? "+" : ""}
+                      {row.performance.percent.toFixed(2)}%
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </div>
-          </button>
-        ))}
+          );
+        })}
+      </div>
+
+      <div className="mt-6 flex items-center justify-between border-t border-[var(--panel-border)] pt-4">
+        <div className="flex gap-4 text-xs text-[var(--muted)]">
+          <div className="flex items-center gap-2">
+            <div className="size-3 rounded bg-emerald-500 opacity-100" />
+            <span>Long</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="size-3 rounded bg-rose-500 opacity-100" />
+            <span>Short</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="size-3 rounded bg-[var(--panel-border)]/60 opacity-100" />
+            <span>Neutral</span>
+          </div>
+        </div>
       </div>
 
       {active ? (
         <PairModal
-          title={`${active.pair} ${active.direction}`}
+          title={`${cleanPairName(active.pair)} ${active.direction}`}
           onClose={() => setActive(null)}
           details={[
             { label: "Direction", value: active.direction },
@@ -92,6 +151,6 @@ export default function PairHeatmap({ rows }: PairHeatmapProps) {
           }}
         />
       ) : null}
-    </>
+    </div>
   );
 }
