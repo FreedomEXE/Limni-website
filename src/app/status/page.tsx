@@ -52,6 +52,9 @@ export default async function StatusPage() {
     symbols: string[];
     mappedCount: number;
     droppedCount: number;
+    keptSymbols: string[];
+    criticalSymbols: string[];
+    criticalMissing: string[];
     mappings: Array<{
       raw: string;
       mapped: string;
@@ -112,6 +115,32 @@ export default async function StatusPage() {
     );
     const mappedCount = symbolMappings.filter((item) => item.included).length;
     const droppedCount = symbolMappings.length - mappedCount;
+    const keptSymbols = Array.from(
+      new Set(
+        symbolMappings
+          .filter((item) => item.included)
+          .map((item) => item.mapped_symbol),
+      ),
+    ).sort();
+    const criticalSymbols = [
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY",
+      "USDCHF",
+      "USDCAD",
+      "AUDUSD",
+      "NZDUSD",
+      "SPXUSD",
+      "NDXUSD",
+      "NIKKEIUSD",
+      "WTIUSD",
+      "XAUUSD",
+      "XAGUSD",
+      "BTCUSD",
+      "ETHUSD",
+    ];
+    const keptSet = new Set(keptSymbols);
+    const criticalMissing = criticalSymbols.filter((symbol) => !keptSet.has(symbol));
     myfxbookDebug = {
       ok: result.http_status === 200 && !result.parsed?.error,
       httpStatus: result.http_status,
@@ -125,6 +154,9 @@ export default async function StatusPage() {
       symbols,
       mappedCount,
       droppedCount,
+      keptSymbols,
+      criticalSymbols,
+      criticalMissing,
       mappings: symbolMappings.map((item) => ({
         raw: item.raw_symbol,
         mapped: item.mapped_symbol,
@@ -378,6 +410,20 @@ export default async function StatusPage() {
                 <span className="font-semibold text-[var(--foreground)]">Dropped:</span>{" "}
                 {myfxbookDebug.droppedCount}
               </p>
+              <div className="rounded-xl border border-[var(--panel-border)]/60 bg-[var(--panel)] p-3">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                  Critical Symbols Check
+                </p>
+                {myfxbookDebug.criticalMissing.length === 0 ? (
+                  <p className="text-xs text-emerald-700">
+                    All critical symbols are present in Myfxbook mapped output.
+                  </p>
+                ) : (
+                  <p className="text-xs text-rose-700">
+                    Missing critical symbols: {myfxbookDebug.criticalMissing.join(", ")}
+                  </p>
+                )}
+              </div>
               <div className="rounded-xl border border-[var(--panel-border)]/60 bg-[var(--panel)] p-3">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
                   Symbol Mapping (Raw → Internal)
