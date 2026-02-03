@@ -44,11 +44,17 @@ type SymbolSeries = {
   key: string;
   assetClass: string;
   pair: string;
-  weight: number;
   openTs: number;
   closeTs: number;
   openPrice: number;
   points: SeriesPoint[];
+};
+
+type UniversalLeg = {
+  assetClass: string;
+  pair: string;
+  direction: 1 | -1;
+  reportDate: string | null;
 };
 
 function fxSymbol(pair: string): string {
@@ -71,58 +77,22 @@ function getCryptoBase(pair: string): "BTC" | "ETH" | null {
   return null;
 }
 
-function mapRowsToWeights(rows: Awaited<ReturnType<typeof readPerformanceSnapshotsByWeek>>) {
-  const map = new Map<
-    string,
-    {
-      assetClass: string;
-      pair: string;
-      longVotes: number;
-      shortVotes: number;
-      reportDate: string | null;
-      legs: number;
-    }
-  >();
-
+function mapRowsToLegs(rows: Awaited<ReturnType<typeof readPerformanceSnapshotsByWeek>>) {
+  const legs: UniversalLeg[] = [];
   for (const row of rows) {
     for (const detail of row.pair_details) {
       if (detail.direction !== "LONG" && detail.direction !== "SHORT") {
         continue;
       }
-      const key = `${row.asset_class}|${detail.pair}`;
-      const entry = map.get(key) ?? {
+      legs.push({
         assetClass: row.asset_class,
         pair: detail.pair,
-        longVotes: 0,
-        shortVotes: 0,
         reportDate: row.report_date ?? null,
-        legs: 0,
-      };
-      if (detail.direction === "LONG") {
-        entry.longVotes += 1;
-      } else {
-        entry.shortVotes += 1;
-      }
-      entry.legs += 1;
-      if (!entry.reportDate && row.report_date) {
-        entry.reportDate = row.report_date;
-      }
-      map.set(key, entry);
+        direction: detail.direction === "LONG" ? 1 : -1,
+      });
     }
   }
-
-  return Array.from(map.values())
-    .map((row) => {
-      const netVotes = row.longVotes - row.shortVotes;
-      return {
-        assetClass: row.assetClass,
-        pair: row.pair,
-        weight: netVotes > 0 ? 1 : netVotes < 0 ? -1 : 0,
-        reportDate: row.reportDate,
-        legs: row.legs,
-      };
-    })
-    .filter((row) => row.weight !== 0);
+  return legs;
 }
 
 function getWindowForAsset(assetClass: string, reportDate: string | null, weekOpenUtc: string) {
@@ -199,11 +169,10 @@ async function runWithConcurrency<T, R>(
 async function fetchSeriesForSymbol(input: {
   assetClass: string;
   pair: string;
-  weight: number;
   reportDate: string | null;
   weekOpenUtc: string;
 }): Promise<SymbolSeries | null> {
-  const { assetClass, pair, weight, reportDate, weekOpenUtc } = input;
+  const { assetClass, pair, reportDate, weekOpenUtc } = input;
   const window = getWindowForAsset(assetClass, reportDate, weekOpenUtc);
   if (window.closeUtc.toMillis() <= window.openUtc.toMillis()) {
     return null;
@@ -223,7 +192,6 @@ async function fetchSeriesForSymbol(input: {
         key: `${assetClass}|${pair}`,
         assetClass,
         pair,
-        weight,
         openTs: window.openUtc.toMillis(),
         closeTs: window.closeUtc.toMillis(),
         openPrice: candles[0].open,
@@ -240,7 +208,6 @@ async function fetchSeriesForSymbol(input: {
       key: `${assetClass}|${pair}`,
       assetClass,
       pair,
-      weight,
       openTs: window.openUtc.toMillis(),
       closeTs: window.closeUtc.toMillis(),
       openPrice: candles[0].open,
@@ -252,10 +219,15 @@ async function fetchSeriesForSymbol(input: {
   }
 }
 
-function simulateWeekFromSeries(series: SymbolSeries[], trailStartPct: number, trailOffsetPct: number) {
+function simulateWeekFromSeries(
+  seriesByKey: Map<string, SymbolSeries>,
+  legs: UniversalLeg[],
+  trailStartPct: number,
+  trailOffsetPct: number,
+) {
   const timestamps = Array.from(
     new Set(
-      series.flatMap((row) => row.points.map((p) => p.ts)),
+      Array.from(seriesByKey.values()).flatMap((row) => row.points.map((p) => p.ts)),
     ),
   ).sort((a, b) => a - b);
 
@@ -276,7 +248,11 @@ function simulateWeekFromSeries(series: SymbolSeries[], trailStartPct: number, t
 
   for (const ts of timestamps) {
     let total = 0;
-    for (const row of series) {
+    for (const leg of legs) {
+      const row = seriesByKey.get(`${leg.assetClass}|${leg.pair}`);
+      if (!row) {
+        continue;
+      }
       if (ts < row.openTs || ts > row.closeTs || row.openPrice <= 0) {
         continue;
       }
@@ -285,7 +261,7 @@ function simulateWeekFromSeries(series: SymbolSeries[], trailStartPct: number, t
         continue;
       }
       const pct = ((close - row.openPrice) / row.openPrice) * 100;
-      total += pct * row.weight;
+      total += pct * leg.direction;
     }
 
     if (total > peak) {
@@ -338,23 +314,32 @@ export async function buildUniversalBasketSummary(options?: {
       continue;
     }
 
-    const symbols = mapRowsToWeights(rows);
-    const legs = symbols.reduce((sum, row) => sum + row.legs, 0);
+    const legs = mapRowsToLegs(rows);
+    const uniqueSymbols = new Map<
+      string,
+      { assetClass: string; pair: string; reportDate: string | null; weekOpenUtc: string }
+    >();
+    for (const leg of legs) {
+      const key = `${leg.assetClass}|${leg.pair}`;
+      if (!uniqueSymbols.has(key)) {
+        uniqueSymbols.set(key, {
+          assetClass: leg.assetClass,
+          pair: leg.pair,
+          reportDate: leg.reportDate,
+          weekOpenUtc,
+        });
+      }
+    }
 
     const seriesList = await runWithConcurrency(
-      symbols.map((row) => ({
-        assetClass: row.assetClass,
-        pair: row.pair,
-        weight: row.weight,
-        reportDate: row.reportDate,
-        weekOpenUtc,
-      })),
+      Array.from(uniqueSymbols.values()),
       8,
       fetchSeriesForSymbol,
     );
     const validSeries = seriesList.filter((row): row is SymbolSeries => row !== null);
+    const seriesByKey = new Map(validSeries.map((row) => [row.key, row]));
 
-    const sim = simulateWeekFromSeries(validSeries, trailStartPct, trailOffsetPct);
+    const sim = simulateWeekFromSeries(seriesByKey, legs, trailStartPct, trailOffsetPct);
     byWeek.push({
       week_open_utc: weekOpenUtc,
       week_label: weekLabelFromOpen(weekOpenUtc),
@@ -362,7 +347,7 @@ export async function buildUniversalBasketSummary(options?: {
       observed_peak_percent: sim.peak,
       simulated_locked_percent: sim.locked,
       trailing_hit: sim.trailingHit,
-      legs,
+      legs: legs.length,
       priced_symbols: validSeries.length,
     });
   }

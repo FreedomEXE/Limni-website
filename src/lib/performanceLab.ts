@@ -39,6 +39,13 @@ export type ModelPerformance = {
     best_pair: { pair: string; percent: number } | null;
     worst_pair: { pair: string; percent: number } | null;
   };
+  trailing?: {
+    peak_percent: number;
+    locked_percent: number;
+    trailing_hit: boolean;
+    peak_day: string | null;
+    max_drawdown: number;
+  };
 };
 
 const NEUTRAL_BIAS: Bias = "NEUTRAL";
