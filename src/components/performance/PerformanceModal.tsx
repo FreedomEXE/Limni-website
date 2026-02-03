@@ -262,31 +262,31 @@ export default function PerformanceModal({
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <HomeCard
                 title="Summary"
-                icon="📊"
+                icon="L"
                 description="Executive summary with key performance metrics"
                 onClick={() => setView("summary")}
               />
               <HomeCard
                 title="Simulation"
-                icon="💰"
+                icon="I"
                 description="Account size simulation with trailing stop comparison"
                 onClick={() => setView("simulation")}
               />
               <HomeCard
                 title="Basket"
-                icon="🗂️"
+                icon="M"
                 description="All pairs in the basket with directions and returns"
                 onClick={() => setView("basket")}
               />
               <HomeCard
                 title="Research"
-                icon="🔬"
+                icon="N"
                 description="Outliers, risk metrics, and statistical analysis"
                 onClick={() => setView("research")}
               />
               <HomeCard
                 title="Notes"
-                icon="📝"
+                icon="I"
                 description="Weekly summary and key observations"
                 onClick={() => setView("notes")}
               />
