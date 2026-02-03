@@ -179,3 +179,33 @@ export async function readAllPerformanceSnapshots(limit = 520) {
     percent: Number(row.percent),
   }));
 }
+
+export async function readUniversalWeeklyTotals(limit = 104): Promise<
+  Array<{
+    week_open_utc: string;
+    total_percent: number;
+    rows: number;
+  }>
+> {
+  const rows = await query<{
+    week_open_utc: Date;
+    total_percent: string;
+    rows: number;
+  }>(
+    `SELECT
+       week_open_utc,
+       SUM(percent) AS total_percent,
+       COUNT(*)::int AS rows
+     FROM performance_snapshots
+     GROUP BY week_open_utc
+     ORDER BY week_open_utc DESC
+     LIMIT $1`,
+    [limit],
+  );
+
+  return rows.map((row) => ({
+    week_open_utc: row.week_open_utc.toISOString(),
+    total_percent: Number(row.total_percent),
+    rows: row.rows,
+  }));
+}

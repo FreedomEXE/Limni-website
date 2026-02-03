@@ -1,304 +1,402 @@
 import { DateTime } from "luxon";
-import { readPerformanceSnapshotsByWeek, listPerformanceWeeks } from "@/lib/performanceSnapshots";
-import { readMarketSnapshot } from "@/lib/priceStore";
-import { listAssetClasses } from "@/lib/cotMarkets";
+import { fetchBitgetCandleSeries } from "@/lib/bitget";
+import { fetchOandaCandleSeries, getOandaInstrument } from "@/lib/oandaPrices";
+import { getWeekOpenUtc, listPerformanceWeeks, readPerformanceSnapshotsByWeek, weekLabelFromOpen } from "@/lib/performanceSnapshots";
 
-type UniversalWeek = {
-  week: string;
-  percent: number;
-  pips: number;
-  usd: number;
-  trades: number;
-};
-type UniversalMonth = {
-  month: string;
-  count: number;
-  percent: number;
-  pips: number;
-  usd: number;
-  avg_percent: number;
-  avg_pips: number;
-  avg_usd: number;
+export type UniversalWeekSimulation = {
+  week_open_utc: string;
+  week_label: string;
+  total_percent: number;
+  observed_peak_percent: number;
+  simulated_locked_percent: number;
+  trailing_hit: boolean;
+  legs: number;
+  priced_symbols: number;
 };
 
 export type UniversalBasketSummary = {
   generated_at: string;
+  assumptions: {
+    trail_start_pct: number;
+    trail_offset_pct: number;
+    timeframe: string;
+  };
   overall: {
     weeks: number;
     total_percent: number;
-    total_pips: number;
-    total_usd: number;
     avg_weekly_percent: number;
-    avg_weekly_pips: number;
-    avg_weekly_usd: number;
-    median_weekly_percent: number;
-    median_weekly_usd: number;
     win_rate: number;
-    max_drawdown_usd: number;
-    max_drawdown_percent: number;
-    trades: number;
-    profit_factor_usd: number | null;
-    volatility_percent: number;
-    volatility_usd: number;
-    best_week: UniversalWeek | null;
-    worst_week: UniversalWeek | null;
-    max_consecutive_wins: number;
-    max_consecutive_losses: number;
+    simulated_locked_total_percent: number;
+    avg_simulated_locked_percent: number;
+    best_week: UniversalWeekSimulation | null;
+    worst_week: UniversalWeekSimulation | null;
   };
-  by_week: UniversalWeek[];
-  by_month: UniversalMonth[];
+  by_week: UniversalWeekSimulation[];
 };
 
-const CONTRACT_SIZES: Record<string, number> = {
-  XAUUSD: 100,
-  XAGUSD: 5000,
-  WTIUSD: 1000,
-  SPXUSD: 1,
-  NDXUSD: 1,
-  NIKKEIUSD: 1,
-  BTCUSD: 1,
-  ETHUSD: 1,
+type SeriesPoint = {
+  ts: number;
+  open: number;
+  close: number;
 };
 
-const DEFAULT_LOTS: Record<string, number> = {
-  fx: 0.1,
-  commodities: 0.1,
-  indices: 0.1,
-  crypto: 0.01,
+type SymbolSeries = {
+  key: string;
+  assetClass: string;
+  pair: string;
+  weight: number;
+  openTs: number;
+  closeTs: number;
+  openPrice: number;
+  points: SeriesPoint[];
 };
 
-function pipSize(pair: string): number {
-  return pair.includes("JPY") ? 0.01 : 0.0001;
+function fxSymbol(pair: string): string {
+  if (pair.includes("/")) {
+    return pair;
+  }
+  if (pair.length === 6) {
+    return `${pair.slice(0, 3)}/${pair.slice(3)}`;
+  }
+  return pair;
 }
 
-function getFxConversionRate(
-  quotes: Record<string, number>,
-  quote: string,
-): number | null {
-  if (quote === "USD") {
-    return 1;
+function getCryptoBase(pair: string): "BTC" | "ETH" | null {
+  if (pair.startsWith("BTC")) {
+    return "BTC";
   }
-  const direct = `USD${quote}`;
-  if (quotes[direct]) {
-    return 1 / quotes[direct];
-  }
-  const inverse = `${quote}USD`;
-  if (quotes[inverse]) {
-    return quotes[inverse];
+  if (pair.startsWith("ETH")) {
+    return "ETH";
   }
   return null;
 }
 
-export async function buildUniversalBasketSummary(): Promise<UniversalBasketSummary> {
-  const nowUtc = DateTime.utc();
-  const assetClasses = listAssetClasses().map((asset) => asset.id);
-  const weekOptions = await listPerformanceWeeks();
-  const weekEntries: UniversalWeek[] = [];
-
-  for (const week of weekOptions) {
-    const parsedWeek = DateTime.fromISO(week, { zone: "utc" });
-    if (!parsedWeek.isValid || parsedWeek.toMillis() > nowUtc.toMillis()) {
-      continue;
+function mapRowsToWeights(rows: Awaited<ReturnType<typeof readPerformanceSnapshotsByWeek>>) {
+  const map = new Map<
+    string,
+    {
+      assetClass: string;
+      pair: string;
+      longVotes: number;
+      shortVotes: number;
+      reportDate: string | null;
+      legs: number;
     }
+  >();
 
-    const snapshots = await readPerformanceSnapshotsByWeek(week);
-    if (snapshots.length === 0) {
-      continue;
-    }
-
-    const marketSnapshots = new Map<string, Awaited<ReturnType<typeof readMarketSnapshot>>>();
-    for (const assetClass of assetClasses) {
-      const snap = await readMarketSnapshot(week, assetClass);
-      marketSnapshots.set(assetClass, snap);
-    }
-
-    let totalPercent = 0;
-    let totalPips = 0;
-    let totalUsd = 0;
-    let trades = 0;
-
-    const fxQuotes: Record<string, number> = {};
-    const fxMarket = marketSnapshots.get("fx");
-    if (fxMarket?.pairs) {
-      Object.entries(fxMarket.pairs).forEach(([pair, perf]) => {
-        if (perf && Number.isFinite(perf.open)) {
-          fxQuotes[pair] = perf.open;
-        }
-      });
-    }
-
-    for (const snapshot of snapshots) {
-      const marketSnapshot = marketSnapshots.get(snapshot.asset_class);
-      if (!marketSnapshot?.pairs) {
+  for (const row of rows) {
+    for (const detail of row.pair_details) {
+      if (detail.direction !== "LONG" && detail.direction !== "SHORT") {
         continue;
       }
-      const lots = DEFAULT_LOTS[snapshot.asset_class] ?? 0.1;
+      const key = `${row.asset_class}|${detail.pair}`;
+      const entry = map.get(key) ?? {
+        assetClass: row.asset_class,
+        pair: detail.pair,
+        longVotes: 0,
+        shortVotes: 0,
+        reportDate: row.report_date ?? null,
+        legs: 0,
+      };
+      if (detail.direction === "LONG") {
+        entry.longVotes += 1;
+      } else {
+        entry.shortVotes += 1;
+      }
+      entry.legs += 1;
+      if (!entry.reportDate && row.report_date) {
+        entry.reportDate = row.report_date;
+      }
+      map.set(key, entry);
+    }
+  }
 
-      for (const detail of snapshot.pair_details) {
-        const perf = marketSnapshot.pairs[detail.pair];
-        if (!perf) {
-          continue;
-        }
-        const directionFactor = detail.direction === "LONG" ? 1 : -1;
-        const signedPercent = perf.percent * directionFactor;
-        const signedPips = perf.pips * directionFactor;
+  return Array.from(map.values())
+    .map((row) => {
+      const netVotes = row.longVotes - row.shortVotes;
+      return {
+        assetClass: row.assetClass,
+        pair: row.pair,
+        weight: netVotes > 0 ? 1 : netVotes < 0 ? -1 : 0,
+        reportDate: row.reportDate,
+        legs: row.legs,
+      };
+    })
+    .filter((row) => row.weight !== 0);
+}
 
-        let usd = 0;
-        if (snapshot.asset_class === "fx") {
-          const quote = detail.pair.slice(3);
-          const pipValueQuote = pipSize(detail.pair) * 100000 * lots;
-          const conversion = getFxConversionRate(fxQuotes, quote) ?? 0;
-          usd = signedPips * pipValueQuote * conversion;
-        } else {
-          const contract = CONTRACT_SIZES[detail.pair] ?? 1;
-          const rawDelta = (perf.current - perf.open) * directionFactor;
-          usd = rawDelta * contract * lots;
-        }
-
-        totalPercent += signedPercent;
-        totalPips += signedPips;
-        totalUsd += usd;
-        trades += 1;
+function getWindowForAsset(assetClass: string, reportDate: string | null, weekOpenUtc: string) {
+  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  if (assetClass === "crypto") {
+    if (reportDate) {
+      const report = DateTime.fromISO(reportDate, { zone: "utc" });
+      if (report.isValid) {
+        const nextMonday = report.startOf("week").plus({ weeks: 1 });
+        return {
+          openUtc: nextMonday.toUTC(),
+          closeUtc: nextMonday.plus({ weeks: 1 }).toUTC(),
+        };
       }
     }
-
-    weekEntries.push({
-      week,
-      percent: totalPercent,
-      pips: totalPips,
-      usd: totalUsd,
-      trades,
-    });
+    return {
+      openUtc: weekOpen.isValid ? weekOpen : DateTime.utc().startOf("week"),
+      closeUtc: (weekOpen.isValid ? weekOpen : DateTime.utc().startOf("week")).plus({ weeks: 1 }),
+    };
   }
 
-  weekEntries.sort((a, b) => (a.week < b.week ? 1 : -1));
-
-  const byMonthMap = new Map<string, { count: number; percent: number; pips: number; usd: number }>();
-  for (const row of weekEntries) {
-    const monthKey = DateTime.fromISO(row.week, { zone: "utc" }).toFormat("yyyy-LL");
-    const entry = byMonthMap.get(monthKey) ?? { count: 0, percent: 0, pips: 0, usd: 0 };
-    entry.count += 1;
-    entry.percent += row.percent;
-    entry.pips += row.pips;
-    entry.usd += row.usd;
-    byMonthMap.set(monthKey, entry);
+  if (reportDate) {
+    const reportNy = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+    if (reportNy.isValid) {
+      const daysUntilSunday = (7 - (reportNy.weekday % 7)) % 7;
+      const sunday = reportNy
+        .plus({ days: daysUntilSunday })
+        .set({ hour: assetClass === "fx" ? 17 : 18, minute: 0, second: 0, millisecond: 0 });
+      const friday = sunday
+        .plus({ days: 5 })
+        .set({ hour: 17, minute: 0, second: 0, millisecond: 0 });
+      return { openUtc: sunday.toUTC(), closeUtc: friday.toUTC() };
+    }
   }
 
-  const by_month: UniversalMonth[] = Array.from(byMonthMap.entries())
-    .map(([month, entry]) => ({
-      month,
-      count: entry.count,
-      percent: entry.percent,
-      pips: entry.pips,
-      usd: entry.usd,
-      avg_percent: entry.count ? entry.percent / entry.count : 0,
-      avg_pips: entry.count ? entry.pips / entry.count : 0,
-      avg_usd: entry.count ? entry.usd / entry.count : 0,
-    }))
-    .sort((a, b) => b.month.localeCompare(a.month));
+  const fallback = weekOpen.isValid ? weekOpen : DateTime.utc().startOf("week");
+  return { openUtc: fallback, closeUtc: fallback.plus({ days: 5 }) };
+}
 
-  const totalPercent = weekEntries.reduce((sum, row) => sum + row.percent, 0);
-  const totalPips = weekEntries.reduce((sum, row) => sum + row.pips, 0);
-  const totalUsd = weekEntries.reduce((sum, row) => sum + row.usd, 0);
-  const totalTrades = weekEntries.reduce((sum, row) => sum + row.trades, 0);
-  const wins = weekEntries.filter((row) => row.percent > 0).length;
-  const weeks = weekEntries.length;
-  const percentValues = weekEntries.map((row) => row.percent).sort((a, b) => a - b);
-  const usdValues = weekEntries.map((row) => row.usd).sort((a, b) => a - b);
-  const medianPercent =
-    percentValues.length === 0
-      ? 0
-      : percentValues.length % 2 === 0
-        ? (percentValues[percentValues.length / 2 - 1] + percentValues[percentValues.length / 2]) / 2
-        : percentValues[Math.floor(percentValues.length / 2)];
-  const medianUsd =
-    usdValues.length === 0
-      ? 0
-      : usdValues.length % 2 === 0
-        ? (usdValues[usdValues.length / 2 - 1] + usdValues[usdValues.length / 2]) / 2
-        : usdValues[Math.floor(usdValues.length / 2)];
-  const avgPercent = weeks > 0 ? totalPercent / weeks : 0;
-  const avgUsd = weeks > 0 ? totalUsd / weeks : 0;
-  const variancePercent =
-    weeks > 0
-      ? weekEntries.reduce((sum, row) => sum + (row.percent - avgPercent) ** 2, 0) / weeks
-      : 0;
-  const varianceUsd =
-    weeks > 0
-      ? weekEntries.reduce((sum, row) => sum + (row.usd - avgUsd) ** 2, 0) / weeks
-      : 0;
-  const volatilityPercent = Math.sqrt(variancePercent);
-  const volatilityUsd = Math.sqrt(varianceUsd);
-  const grossWinUsd = weekEntries.filter((row) => row.usd > 0).reduce((sum, row) => sum + row.usd, 0);
-  const grossLossUsd = weekEntries.filter((row) => row.usd < 0).reduce((sum, row) => sum + Math.abs(row.usd), 0);
-  const profitFactorUsd = grossLossUsd > 0 ? grossWinUsd / grossLossUsd : null;
-  const bestWeek = weekEntries.length > 0 ? weekEntries.reduce((best, row) => (row.usd > best.usd ? row : best)) : null;
-  const worstWeek = weekEntries.length > 0 ? weekEntries.reduce((worst, row) => (row.usd < worst.usd ? row : worst)) : null;
-
-  let maxConsecutiveWins = 0;
-  let maxConsecutiveLosses = 0;
-  let currentWins = 0;
-  let currentLosses = 0;
-  for (const row of [...weekEntries].reverse()) {
-    if (row.usd > 0) {
-      currentWins += 1;
-      currentLosses = 0;
-    } else if (row.usd < 0) {
-      currentLosses += 1;
-      currentWins = 0;
+function getLatestClose(points: SeriesPoint[], ts: number): number | null {
+  let left = 0;
+  let right = points.length - 1;
+  let best = -1;
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    if (points[mid].ts <= ts) {
+      best = mid;
+      left = mid + 1;
     } else {
-      currentWins = 0;
-      currentLosses = 0;
-    }
-    if (currentWins > maxConsecutiveWins) {
-      maxConsecutiveWins = currentWins;
-    }
-    if (currentLosses > maxConsecutiveLosses) {
-      maxConsecutiveLosses = currentLosses;
+      right = mid - 1;
     }
   }
+  if (best < 0) {
+    return null;
+  }
+  return points[best].close;
+}
 
-  let peakUsd = 0;
-  let cumulativeUsd = 0;
-  let maxDdUsd = 0;
-  let maxDdPercent = 0;
-  for (const row of [...weekEntries].reverse()) {
-    cumulativeUsd += row.usd;
-    if (cumulativeUsd > peakUsd) {
-      peakUsd = cumulativeUsd;
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  task: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const safeLimit = Math.max(1, limit);
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += safeLimit) {
+    const chunk = items.slice(i, i + safeLimit);
+    const chunkResults = await Promise.all(chunk.map((item) => task(item)));
+    results.push(...chunkResults);
+  }
+  return results;
+}
+
+async function fetchSeriesForSymbol(input: {
+  assetClass: string;
+  pair: string;
+  weight: number;
+  reportDate: string | null;
+  weekOpenUtc: string;
+}): Promise<SymbolSeries | null> {
+  const { assetClass, pair, weight, reportDate, weekOpenUtc } = input;
+  const window = getWindowForAsset(assetClass, reportDate, weekOpenUtc);
+  if (window.closeUtc.toMillis() <= window.openUtc.toMillis()) {
+    return null;
+  }
+
+  try {
+    if (assetClass === "crypto") {
+      const base = getCryptoBase(pair);
+      if (!base) {
+        return null;
+      }
+      const candles = await fetchBitgetCandleSeries(base, window);
+      if (candles.length === 0) {
+        return null;
+      }
+      return {
+        key: `${assetClass}|${pair}`,
+        assetClass,
+        pair,
+        weight,
+        openTs: window.openUtc.toMillis(),
+        closeTs: window.closeUtc.toMillis(),
+        openPrice: candles[0].open,
+        points: candles.map((c): SeriesPoint => ({ ts: c.ts, open: c.open, close: c.close })),
+      };
     }
-    const dd = peakUsd - cumulativeUsd;
-    if (dd > maxDdUsd) {
-      maxDdUsd = dd;
-      maxDdPercent = peakUsd > 0 ? (dd / peakUsd) * 100 : 0;
+
+    const symbol = assetClass === "fx" ? fxSymbol(pair) : pair;
+    const candles = await fetchOandaCandleSeries(getOandaInstrument(symbol), window.openUtc, window.closeUtc);
+    if (candles.length === 0) {
+      return null;
     }
+    return {
+      key: `${assetClass}|${pair}`,
+      assetClass,
+      pair,
+      weight,
+      openTs: window.openUtc.toMillis(),
+      closeTs: window.closeUtc.toMillis(),
+      openPrice: candles[0].open,
+      points: candles.map((c): SeriesPoint => ({ ts: c.ts, open: c.open, close: c.close })),
+    };
+  } catch (error) {
+    console.error("Universal simulation series fetch failed:", assetClass, pair, error);
+    return null;
+  }
+}
+
+function simulateWeekFromSeries(series: SymbolSeries[], trailStartPct: number, trailOffsetPct: number) {
+  const timestamps = Array.from(
+    new Set(
+      series.flatMap((row) => row.points.map((p) => p.ts)),
+    ),
+  ).sort((a, b) => a - b);
+
+  if (timestamps.length === 0) {
+    return {
+      peak: 0,
+      locked: 0,
+      trailingHit: false,
+      finalReturn: 0,
+    };
+  }
+
+  let peak = 0;
+  let lock = 0;
+  let trailingActive = false;
+  let trailingHit = false;
+  let finalReturn = 0;
+
+  for (const ts of timestamps) {
+    let total = 0;
+    for (const row of series) {
+      if (ts < row.openTs || ts > row.closeTs || row.openPrice <= 0) {
+        continue;
+      }
+      const close = getLatestClose(row.points, ts);
+      if (close === null) {
+        continue;
+      }
+      const pct = ((close - row.openPrice) / row.openPrice) * 100;
+      total += pct * row.weight;
+    }
+
+    if (total > peak) {
+      peak = total;
+    }
+    if (total >= trailStartPct) {
+      trailingActive = true;
+      const nextLock = peak - trailOffsetPct;
+      if (nextLock > lock) {
+        lock = nextLock;
+      }
+    }
+    if (trailingActive && lock > 0 && total <= lock) {
+      trailingHit = true;
+    }
+    finalReturn = total;
   }
 
   return {
-    generated_at: nowUtc.toISO() ?? new Date().toISOString(),
+    peak,
+    locked: Math.max(0, lock),
+    trailingHit,
+    finalReturn,
+  };
+}
+
+export async function buildUniversalBasketSummary(options?: {
+  trailStartPct?: number;
+  trailOffsetPct?: number;
+  includeCurrentWeek?: boolean;
+  limitWeeks?: number;
+}): Promise<UniversalBasketSummary> {
+  const trailStartPct = options?.trailStartPct ?? 20;
+  const trailOffsetPct = options?.trailOffsetPct ?? 10;
+  const includeCurrentWeek = options?.includeCurrentWeek ?? false;
+  const limitWeeks = options?.limitWeeks ?? 6;
+  const nowIso = DateTime.utc().toISO() ?? new Date().toISOString();
+  const currentWeekOpenUtc = getWeekOpenUtc();
+
+  const weekOptions = await listPerformanceWeeks(Math.max(limitWeeks * 2, 20));
+  const targetWeeks = weekOptions
+    .filter((week) => (includeCurrentWeek ? true : week !== currentWeekOpenUtc))
+    .slice(0, limitWeeks);
+
+  const byWeek: UniversalWeekSimulation[] = [];
+
+  for (const weekOpenUtc of targetWeeks) {
+    const rows = await readPerformanceSnapshotsByWeek(weekOpenUtc);
+    if (rows.length === 0) {
+      continue;
+    }
+
+    const symbols = mapRowsToWeights(rows);
+    const legs = symbols.reduce((sum, row) => sum + row.legs, 0);
+
+    const seriesList = await runWithConcurrency(
+      symbols.map((row) => ({
+        assetClass: row.assetClass,
+        pair: row.pair,
+        weight: row.weight,
+        reportDate: row.reportDate,
+        weekOpenUtc,
+      })),
+      8,
+      fetchSeriesForSymbol,
+    );
+    const validSeries = seriesList.filter((row): row is SymbolSeries => row !== null);
+
+    const sim = simulateWeekFromSeries(validSeries, trailStartPct, trailOffsetPct);
+    byWeek.push({
+      week_open_utc: weekOpenUtc,
+      week_label: weekLabelFromOpen(weekOpenUtc),
+      total_percent: sim.finalReturn,
+      observed_peak_percent: sim.peak,
+      simulated_locked_percent: sim.locked,
+      trailing_hit: sim.trailingHit,
+      legs,
+      priced_symbols: validSeries.length,
+    });
+  }
+
+  const totalPercent = byWeek.reduce((sum, row) => sum + row.total_percent, 0);
+  const totalLocked = byWeek.reduce((sum, row) => sum + row.simulated_locked_percent, 0);
+  const weeks = byWeek.length;
+  const wins = byWeek.filter((row) => row.total_percent > 0).length;
+  const bestWeek =
+    weeks > 0
+      ? byWeek.reduce((best, row) => (row.total_percent > best.total_percent ? row : best))
+      : null;
+  const worstWeek =
+    weeks > 0
+      ? byWeek.reduce((worst, row) => (row.total_percent < worst.total_percent ? row : worst))
+      : null;
+
+  return {
+    generated_at: nowIso,
+    assumptions: {
+      trail_start_pct: trailStartPct,
+      trail_offset_pct: trailOffsetPct,
+      timeframe: "H1",
+    },
     overall: {
       weeks,
       total_percent: totalPercent,
-      total_pips: totalPips,
-      total_usd: totalUsd,
-      avg_weekly_percent: avgPercent,
-      avg_weekly_pips: weeks > 0 ? totalPips / weeks : 0,
-      avg_weekly_usd: avgUsd,
-      median_weekly_percent: medianPercent,
-      median_weekly_usd: medianUsd,
+      avg_weekly_percent: weeks > 0 ? totalPercent / weeks : 0,
       win_rate: weeks > 0 ? (wins / weeks) * 100 : 0,
-      max_drawdown_usd: maxDdUsd,
-      max_drawdown_percent: maxDdPercent,
-      trades: totalTrades,
-      profit_factor_usd: profitFactorUsd,
-      volatility_percent: volatilityPercent,
-      volatility_usd: volatilityUsd,
+      simulated_locked_total_percent: totalLocked,
+      avg_simulated_locked_percent: weeks > 0 ? totalLocked / weeks : 0,
       best_week: bestWeek,
       worst_week: worstWeek,
-      max_consecutive_wins: maxConsecutiveWins,
-      max_consecutive_losses: maxConsecutiveLosses,
     },
-    by_week: weekEntries,
-    by_month,
+    by_week: byWeek,
   };
 }

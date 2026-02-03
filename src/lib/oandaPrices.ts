@@ -11,6 +11,12 @@ type OandaCandlesResponse = {
   }>;
 };
 
+export type OandaHourlyCandle = {
+  ts: number;
+  open: number;
+  close: number;
+};
+
 function getOandaBaseUrl() {
   return process.env.OANDA_ENV === "live" ? LIVE_URL : PRACTICE_URL;
 }
@@ -115,4 +121,66 @@ export async function fetchOandaCandle(
     throw lastError;
   }
   return null;
+}
+
+export async function fetchOandaCandleSeries(
+  symbol: string,
+  fromUtc: DateTime,
+  toUtc: DateTime,
+): Promise<OandaHourlyCandle[]> {
+  const accountId = process.env.OANDA_ACCOUNT_ID ?? "";
+  if (!accountId) {
+    throw new Error("OANDA_ACCOUNT_ID is not configured.");
+  }
+  const instrument = getOandaInstrument(symbol);
+  const url = new URL(`${getOandaBaseUrl()}/v3/instruments/${instrument}/candles`);
+  url.searchParams.set("price", "M");
+  url.searchParams.set("granularity", "H1");
+  url.searchParams.set("from", fromUtc.toISO() ?? "");
+  url.searchParams.set("to", toUtc.toISO() ?? "");
+
+  const maxAttempts = 3;
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(url.toString(), {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const body = await response.text();
+        const message = `OANDA series fetch failed (${instrument}) [${response.status}]: ${body}`;
+        if (response.status >= 500 || response.status === 429) {
+          throw new Error(message);
+        }
+        throw new Error(message);
+      }
+
+      const data = (await response.json()) as OandaCandlesResponse;
+      const candles = data.candles ?? [];
+      return candles
+        .filter((candle) => candle.complete && candle.mid)
+        .map((candle) => ({
+          ts: DateTime.fromISO(candle.time, { zone: "utc" }).toMillis(),
+          open: Number(candle.mid?.o ?? NaN),
+          close: Number(candle.mid?.c ?? NaN),
+        }))
+        .filter(
+          (row) =>
+            Number.isFinite(row.ts) &&
+            Number.isFinite(row.open) &&
+            Number.isFinite(row.close),
+        )
+        .sort((a, b) => a.ts - b.ts);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+        continue;
+      }
+    }
+  }
+  if (lastError) {
+    throw lastError;
+  }
+  return [];
 }

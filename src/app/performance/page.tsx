@@ -22,6 +22,7 @@ import {
   weekLabelFromOpen,
   getWeekOpenUtc,
 } from "@/lib/performanceSnapshots";
+import { buildUniversalBasketSummary } from "@/lib/universalBasket";
 
 export const revalidate = 300;
 
@@ -368,6 +369,12 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     allTimeByAsset.set(asset.id, buildAllTimeStats(rows));
   });
 
+  const universalSummary = await buildUniversalBasketSummary({
+    trailStartPct: 20,
+    trailOffsetPct: 10,
+    includeCurrentWeek: false,
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -448,6 +455,39 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             Invalid week value. Select a valid week from the dropdown.
           </div>
         ) : null}
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Universal Lock Simulation
+              </h2>
+              <p className="mt-1 text-sm text-[var(--foreground)]">
+                All models + all asset classes. Historical weeks only.
+              </p>
+            </div>
+            <p className="text-xs text-[color:var(--muted)]">
+              Trail {universalSummary.assumptions.trail_start_pct.toFixed(0)}% / Offset {universalSummary.assumptions.trail_offset_pct.toFixed(0)}%
+            </p>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Weeks</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{universalSummary.overall.weeks}</p>
+            </div>
+            <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Total Return</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{universalSummary.overall.total_percent.toFixed(2)}%</p>
+            </div>
+            <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Sim Locked (Est.)</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{universalSummary.overall.simulated_locked_total_percent.toFixed(2)}%</p>
+            </div>
+            <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Win Rate</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{universalSummary.overall.win_rate.toFixed(0)}%</p>
+            </div>
+          </div>
+        </section>
         <PerformanceGrid
           combined={{
             id: "combined",

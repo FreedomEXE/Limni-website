@@ -35,6 +35,12 @@ type BitgetCandleResponse = {
   data?: string[][];
 };
 
+export type BitgetHourlyCandle = {
+  ts: number;
+  open: number;
+  close: number;
+};
+
 const BASE_URL = "https://api.bitget.com";
 
 function getProductType() {
@@ -141,6 +147,51 @@ export async function fetchBitgetCandleRange(
     openTime: new Date(first.ts).toISOString(),
     closeTime: new Date(last.ts).toISOString(),
   };
+}
+
+export async function fetchBitgetCandleSeries(
+  symbolBase: "BTC" | "ETH" | "SOL",
+  window: { openUtc: DateTime; closeUtc: DateTime },
+): Promise<BitgetHourlyCandle[]> {
+  const productType = getProductType();
+  const symbol = `${symbolBase}USDT`;
+  const weekDurationMs = window.closeUtc.toMillis() - window.openUtc.toMillis();
+  const hoursInWindow = Math.ceil(weekDurationMs / (1000 * 60 * 60));
+  const requiredLimit = Math.max(hoursInWindow + 24, 200);
+  const paddedOpen = window.openUtc.minus({ hours: 1 });
+  const paddedClose = window.closeUtc.plus({ hours: 1 });
+  const url = new URL(`${BASE_URL}/api/v2/mix/market/candles`);
+  url.searchParams.set("symbol", symbol);
+  url.searchParams.set("productType", productType);
+  url.searchParams.set("granularity", "3600");
+  url.searchParams.set("startTime", String(paddedOpen.toMillis()));
+  url.searchParams.set("endTime", String(paddedClose.toMillis()));
+  url.searchParams.set("limit", String(Math.min(requiredLimit, 1000)));
+
+  const response = await fetchJson<BitgetCandleResponse>(url.toString());
+  if (response.code && response.code !== "00000") {
+    return [];
+  }
+  const rows = response.data ?? [];
+  if (rows.length === 0) {
+    return [];
+  }
+  const openMs = window.openUtc.toMillis();
+  const closeMs = window.closeUtc.toMillis();
+  return rows
+    .map((row) => ({
+      ts: Number(row[0]),
+      open: Number(row[1]),
+      close: Number(row[4]),
+    }))
+    .filter(
+      (row) =>
+        Number.isFinite(row.ts) &&
+        Number.isFinite(row.open) &&
+        Number.isFinite(row.close),
+    )
+    .filter((row) => row.ts >= openMs && row.ts < closeMs)
+    .sort((a, b) => a.ts - b.ts);
 }
 
 export async function fetchBitgetPriceChange(

@@ -54,11 +54,12 @@ export default async function AutomationResearchPage() {
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-[var(--foreground)]">
-                Universal Basket (All Models)
+                Universal System (All Models) - Lock Simulation
               </h2>
               <p className="mt-2 text-sm text-[color:var(--muted)]">
-                Weekly totals combining Antikythera, Blended, Dealer, Commercial, and
-                Sentiment across all asset classes.
+                Historical weekly simulation for the full universal basket. Lock uses trail
+                start {universalSummary.assumptions.trail_start_pct.toFixed(0)}% and offset{" "}
+                {universalSummary.assumptions.trail_offset_pct.toFixed(0)}%.
               </p>
             </div>
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -68,222 +69,67 @@ export default async function AutomationResearchPage() {
 
           <div className="mt-6 grid gap-4 md:grid-cols-5">
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Weeks
-              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Weeks</p>
               <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
                 {universalSummary.overall.weeks}
               </p>
             </div>
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Total %
-              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Total return</p>
               <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
                 {universalSummary.overall.total_percent.toFixed(2)}%
               </p>
             </div>
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Total pips
-              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Sim locked total</p>
               <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                {universalSummary.overall.total_pips.toFixed(1)}
+                {universalSummary.overall.simulated_locked_total_percent.toFixed(2)}%
               </p>
             </div>
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Total $
-              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Avg weekly</p>
               <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                ${universalSummary.overall.total_usd.toFixed(0)}
+                {universalSummary.overall.avg_weekly_percent.toFixed(2)}%
               </p>
             </div>
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Win rate
-              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Win rate</p>
               <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
                 {universalSummary.overall.win_rate.toFixed(0)}%
               </p>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Weekly totals
-              </h3>
-              <div className="mt-4 max-h-72 overflow-auto">
-                <table className="w-full text-left text-sm text-[var(--foreground)]">
-                  <thead className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    <tr>
-                      <th className="py-2">Week</th>
-                      <th className="py-2 text-right">%</th>
-                      <th className="py-2 text-right">Pips</th>
-                      <th className="py-2 text-right">$</th>
+          <div className="mt-6 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Weekly simulation table
+            </h3>
+            <div className="mt-4 max-h-72 overflow-auto">
+              <table className="w-full text-left text-sm text-[var(--foreground)]">
+                <thead className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  <tr>
+                    <th className="py-2">Week</th>
+                    <th className="py-2 text-right">Raw %</th>
+                    <th className="py-2 text-right">Observed peak %</th>
+                    <th className="py-2 text-right">Sim locked %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {universalSummary.by_week.map((row) => (
+                    <tr key={row.week_open_utc} className="border-t border-[var(--panel-border)]/60">
+                      <td className="py-2">{row.week_label}</td>
+                      <td className="py-2 text-right">{row.total_percent.toFixed(2)}%</td>
+                      <td className="py-2 text-right">{row.observed_peak_percent.toFixed(2)}%</td>
+                      <td className="py-2 text-right">{row.simulated_locked_percent.toFixed(2)}%</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {universalSummary.by_week.map((row) => (
-                      <tr key={row.week} className="border-t border-[var(--panel-border)]/60">
-                        <td className="py-2">{row.week}</td>
-                        <td className="py-2 text-right">{row.percent.toFixed(2)}%</td>
-                        <td className="py-2 text-right">{row.pips.toFixed(1)}</td>
-                        <td className="py-2 text-right">${row.usd.toFixed(0)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Monthly totals
-              </h3>
-              <div className="mt-4 max-h-72 overflow-auto">
-                <table className="w-full text-left text-sm text-[var(--foreground)]">
-                  <thead className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    <tr>
-                      <th className="py-2">Month</th>
-                      <th className="py-2 text-right">Weeks</th>
-                      <th className="py-2 text-right">%</th>
-                      <th className="py-2 text-right">Pips</th>
-                      <th className="py-2 text-right">$</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {universalSummary.by_month.map((row) => (
-                      <tr key={row.month} className="border-t border-[var(--panel-border)]/60">
-                        <td className="py-2">{row.month}</td>
-                        <td className="py-2 text-right">{row.count}</td>
-                        <td className="py-2 text-right">{row.percent.toFixed(2)}%</td>
-                        <td className="py-2 text-right">{row.pips.toFixed(1)}</td>
-                        <td className="py-2 text-right">${row.usd.toFixed(0)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
+
           <div className="mt-4 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Assumptions: FX lot 0.10, metals/indices 0.10, crypto 0.01. Contract sizes: XAU 100, XAG 5000, WTI 1000, indices 1, crypto 1. FX USD conversion uses weekly opens.
-          </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Avg weekly %
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                {universalSummary.overall.avg_weekly_percent.toFixed(2)}%
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Avg weekly pips
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                {universalSummary.overall.avg_weekly_pips.toFixed(1)}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Avg weekly $
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                ${universalSummary.overall.avg_weekly_usd.toFixed(0)}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Max DD $
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                ${universalSummary.overall.max_drawdown_usd.toFixed(0)}
-              </p>
-              <p className="text-xs text-[color:var(--muted)]">
-                {universalSummary.overall.max_drawdown_percent.toFixed(1)}%
-              </p>
-            </div>
-          </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Median weekly %
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                {universalSummary.overall.median_weekly_percent.toFixed(2)}%
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Median weekly $
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                ${universalSummary.overall.median_weekly_usd.toFixed(0)}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Volatility %
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                {universalSummary.overall.volatility_percent.toFixed(2)}%
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Profit factor $
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                {universalSummary.overall.profit_factor_usd === null
-                  ? "—"
-                  : universalSummary.overall.profit_factor_usd.toFixed(2)}
-              </p>
-            </div>
-          </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Best / Worst Week
-              </h3>
-              <div className="mt-4 space-y-2 text-sm text-[var(--foreground)]">
-                {universalSummary.overall.best_week ? (
-                  <div className="flex items-center justify-between">
-                    <span>Best</span>
-                    <span className="font-semibold">
-                      {universalSummary.overall.best_week.week} · {universalSummary.overall.best_week.percent.toFixed(2)}% · ${universalSummary.overall.best_week.usd.toFixed(0)}
-                    </span>
-                  </div>
-                ) : (
-                  <div>No data</div>
-                )}
-                {universalSummary.overall.worst_week ? (
-                  <div className="flex items-center justify-between">
-                    <span>Worst</span>
-                    <span className="font-semibold">
-                      {universalSummary.overall.worst_week.week} · {universalSummary.overall.worst_week.percent.toFixed(2)}% · ${universalSummary.overall.worst_week.usd.toFixed(0)}
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Streaks
-              </h3>
-              <div className="mt-4 space-y-2 text-sm text-[var(--foreground)]">
-                <div className="flex items-center justify-between">
-                  <span>Max wins</span>
-                  <span className="font-semibold">{universalSummary.overall.max_consecutive_wins}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Max losses</span>
-                  <span className="font-semibold">{universalSummary.overall.max_consecutive_losses}</span>
-                </div>
-              </div>
-            </div>
+            Peak is computed from H1 path simulation for each week.
           </div>
         </section>
         <section className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
