@@ -8,6 +8,7 @@ import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { fetchCryptoSpotPrice } from "@/lib/cryptoPrices";
 import {
   getAggregatesForWeekStart,
+  getLatestAggregates,
   getLatestAggregatesLocked,
 } from "@/lib/sentiment/store";
 import { formatDateTimeET, latestIso } from "@/lib/time";
@@ -18,7 +19,12 @@ import {
   type SentimentAssetClass,
 } from "@/lib/sentiment/symbols";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
-import { listPerformanceWeeks, readPerformanceSnapshotsByWeek, weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import {
+  getWeekOpenUtc,
+  listPerformanceWeeks,
+  readPerformanceSnapshotsByWeek,
+  weekLabelFromOpen,
+} from "@/lib/performanceSnapshots";
 
 export const revalidate = 120;
 
@@ -54,10 +60,12 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
 
   const weeks = await listPerformanceWeeks();
   const selectedWeek = weekValue && weeks.includes(weekValue) ? weekValue : weeks[0] ?? null;
+  const currentWeekOpen = getWeekOpenUtc();
+  const isCurrentWeek = !selectedWeek || selectedWeek === currentWeekOpen;
 
   let aggregates: SentimentAggregate[] = [];
   try {
-    if (selectedWeek) {
+    if (selectedWeek && !isCurrentWeek) {
       const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
       const close = open.isValid ? open.plus({ days: 7 }) : open;
       aggregates = open.isValid
@@ -67,7 +75,8 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
           )
         : await getLatestAggregatesLocked();
     } else {
-      aggregates = await getLatestAggregatesLocked();
+      // Current week is live for manual trading visibility (hourly refresh + flips).
+      aggregates = await getLatestAggregates();
     }
   } catch (error) {
     console.error(
@@ -101,7 +110,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
   ).length;
   const flips = filteredAggregates.filter((a) => a.flip_state !== "NONE").length;
 
-  let performanceByPair: Record<string, number | null> = {};
+  const performanceByPair: Record<string, number | null> = {};
   if (selectedWeek) {
     try {
       const weekSnapshots = await readPerformanceSnapshotsByWeek(selectedWeek);
