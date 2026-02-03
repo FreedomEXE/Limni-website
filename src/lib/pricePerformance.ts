@@ -135,12 +135,11 @@ function getCryptoReportWindowUtc(
     const openUtc = getCryptoWeekOpenUtc(DateTime.utc());
     return { openUtc, closeUtc: openUtc.plus({ weeks: 1 }) };
   }
-  // Report dates are already within the target trading week.
-  // Using startOf("week") keeps week labels aligned with performance snapshots.
-  const weekOpen = report.startOf("week");
-  const close = weekOpen.plus({ weeks: 1 });
+  // Align crypto window with the trading week that starts after the report date.
+  const nextMonday = report.startOf("week").plus({ weeks: 1 });
+  const close = nextMonday.plus({ weeks: 1 });
 
-  return { openUtc: weekOpen.toUTC(), closeUtc: close.toUTC() };
+  return { openUtc: nextMonday.toUTC(), closeUtc: close.toUTC() };
 }
 
 function getSundaySessionOpenUtc(now: DateTime, spec: SessionSpec): DateTime {

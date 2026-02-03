@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { DateTime } from "luxon";
-import { listAssetClasses } from "@/lib/cotMarkets";
-import { readSnapshot } from "@/lib/cotStore";
+import { listAssetClasses, type AssetClass } from "@/lib/cotMarkets";
+import { readSnapshot, readSnapshotHistory } from "@/lib/cotStore";
 import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
@@ -44,6 +44,30 @@ function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
   return pairs;
 }
 
+function getTargetReportDateForWeek(weekOpenUtc: string): string | null {
+  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).setZone(
+    "America/New_York",
+  );
+  if (!weekOpen.isValid) {
+    return null;
+  }
+  return weekOpen.minus({ days: 6 }).toISODate();
+}
+
+async function readSnapshotForWeek(
+  assetClass: AssetClass,
+  weekOpenUtc: string,
+) {
+  const targetReportDate = getTargetReportDateForWeek(weekOpenUtc);
+  if (!targetReportDate) {
+    return null;
+  }
+
+  const history = await readSnapshotHistory(assetClass, 260);
+  const match = history.find((item) => item.report_date <= targetReportDate);
+  return match ?? null;
+}
+
 export async function POST(request: Request) {
   const adminToken = process.env.ADMIN_TOKEN;
   if (!adminToken) {
@@ -66,11 +90,17 @@ export async function POST(request: Request) {
     "commercial",
     "sentiment",
   ];
+  const { searchParams } = new URL(request.url);
+  const forcedWeekOpenUtc = searchParams.get("week_open_utc");
 
   let responseWeekOpenUtc: string | null = null;
   const latestSentiment = await getLatestAggregatesLocked();
   const snapshots = await Promise.all(
-    assetClasses.map((asset) => readSnapshot({ assetClass: asset.id })),
+    assetClasses.map((asset) =>
+      forcedWeekOpenUtc
+        ? readSnapshotForWeek(asset.id, forcedWeekOpenUtc)
+        : readSnapshot({ assetClass: asset.id }),
+    ),
   );
 
   const payload = [];
@@ -80,9 +110,15 @@ export async function POST(request: Request) {
       continue;
     }
     let reportWeekOpenUtc: string;
-    if (snapshot.report_date) {
-      const reportDate = DateTime.fromISO(snapshot.report_date, { zone: "America/New_York" });
-      reportWeekOpenUtc = reportDate.isValid ? getWeekOpenUtc(reportDate) : getWeekOpenUtc();
+    if (forcedWeekOpenUtc) {
+      reportWeekOpenUtc = forcedWeekOpenUtc;
+    } else if (snapshot.report_date) {
+      const reportDate = DateTime.fromISO(snapshot.report_date, {
+        zone: "America/New_York",
+      });
+      reportWeekOpenUtc = reportDate.isValid
+        ? getWeekOpenUtc(reportDate)
+        : getWeekOpenUtc();
     } else {
       reportWeekOpenUtc = getWeekOpenUtc();
     }
