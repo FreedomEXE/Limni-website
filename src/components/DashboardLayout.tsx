@@ -31,12 +31,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const showBack =
     (pathname.startsWith("/accounts/") && pathname !== "/accounts") ||
     (pathname.startsWith("/automation/") && pathname !== "/automation");
+  const isActiveRoute = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <div className="relative flex min-h-screen bg-[var(--background)]">
       {isCollapsed && !isHoverExpanded ? (
         <div
-          className="fixed left-[246px] top-6 z-50"
+          className="fixed left-[246px] top-6 z-50 hidden md:block"
           onMouseEnter={() => setIsHoverExpanded(true)}
           onMouseLeave={() => setIsHoverExpanded(false)}
         >
@@ -66,7 +68,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             setIsHoverExpanded(false);
           }
         }}
-        className={`fixed left-0 top-0 z-40 h-screen w-72 border-r border-[var(--panel-border)] bg-[var(--panel)]/90 backdrop-blur-sm transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        className={`fixed left-0 top-0 z-40 hidden h-screen w-72 border-r border-[var(--panel-border)] bg-[var(--panel)]/90 backdrop-blur-sm transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:block ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -102,7 +104,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
           <nav className="flex-1 space-y-1 p-4">
             {NAV_ITEMS.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = isActiveRoute(item.href);
               return (
                 <Link
                   key={item.href}
@@ -139,8 +141,30 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-hidden">
-        <div className="mx-auto max-w-7xl px-6 py-8">
+      <main className="flex-1 overflow-x-hidden pb-24 md:pb-0">
+        <div className="mx-auto max-w-7xl px-4 py-5 md:px-6 md:py-8">
+          <div className="mb-4 flex items-center justify-between md:hidden">
+            <div className="flex items-center gap-2">
+              <img src="/limni-icon.svg" alt="Limni" className="size-8 logo-theme-aware" />
+              <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--foreground)]">
+                Limni Labs
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-24">
+                <ThemeToggle compact />
+              </div>
+              <button
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                  window.location.href = "/login";
+                }}
+                className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+              >
+                Out
+              </button>
+            </div>
+          </div>
           {showBack ? (
             <div className="mb-4">
               <button
@@ -155,6 +179,36 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {children}
         </div>
       </main>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--panel-border)] bg-[var(--panel)]/95 backdrop-blur-sm md:hidden">
+        <nav className="mx-auto grid max-w-xl grid-cols-5 gap-1 p-2">
+          {NAV_ITEMS.map((item) => {
+            const isActive = isActiveRoute(item.href);
+            return (
+              <Link
+                key={`mobile-${item.href}`}
+                href={item.href}
+                className={`flex flex-col items-center justify-center rounded-xl px-1 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] transition ${
+                  isActive
+                    ? "bg-[var(--accent)]/15 text-[var(--accent-strong)]"
+                    : "text-[var(--muted)] hover:bg-[var(--panel)] hover:text-[var(--foreground)]"
+                }`}
+              >
+                <span
+                  className={`mb-1 flex size-7 items-center justify-center rounded-full border text-[11px] ${
+                    isActive
+                      ? "border-[var(--accent)]/40 bg-[var(--accent)]/15"
+                      : "border-[var(--panel-border)] bg-[var(--panel)]/80"
+                  }`}
+                >
+                  {item.letter}
+                </span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 }
