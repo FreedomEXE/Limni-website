@@ -25,26 +25,14 @@ const MODEL_OPTIONS: Array<{ value: "all" | PerformanceModel; label: string }> =
   { value: "sentiment", label: "Sentiment" },
 ];
 
-const VIEW_OPTIONS = [
-  { value: "all", label: "All symbols" },
-  { value: "symbol", label: "Single symbol" },
-  { value: "selection", label: "Multi-symbol" },
-] as const;
-
-type ChartView = (typeof VIEW_OPTIONS)[number]["value"];
-
 function pickParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
 function pickParams(value: string | string[] | undefined) {
-  if (Array.isArray(value)) {
-    return value;
-  }
-  if (typeof value === "string" && value.length > 0) {
-    return value.split(",").map((item) => item.trim()).filter(Boolean);
-  }
-  return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string" || value.length === 0) return [];
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
 }
 
 function maxDrawdown(points: Array<{ equity_pct: number }>) {
@@ -63,31 +51,34 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
   const modelParam = pickParam(params?.model);
   const weekParam = pickParam(params?.week);
-  const symbolParam = pickParam(params?.symbol);
-  const symbolsParam = pickParams(params?.symbols);
-  const viewParam = pickParam(params?.view);
+  const selectedSymbolsRaw = pickParams(params?.symbols);
 
   const selectedModel =
     modelParam && MODEL_OPTIONS.some((item) => item.value === modelParam)
       ? (modelParam as "all" | PerformanceModel)
       : "all";
-  const selectedView: ChartView =
-    viewParam && VIEW_OPTIONS.some((item) => item.value === viewParam)
-      ? (viewParam as ChartView)
-      : "all";
 
-  const getSymbolSummary = unstable_cache(
-    async (modelFilter: "all" | PerformanceModel) =>
+  const getSummary = unstable_cache(
+    async (model: "all" | PerformanceModel) =>
       buildSymbolResearchSummary({
-        modelFilter,
+        modelFilter: model,
         includeCurrentWeek: false,
         limitWeeks: 8,
       }),
     [`research-symbols-m1-8w-${selectedModel}`],
     { revalidate: 900 },
   );
-  const summary = await getSymbolSummary(selectedModel);
 
+  const [summaryAll, summaryA, summaryB, summaryD, summaryC, summaryS] = await Promise.all([
+    getSummary(selectedModel),
+    getSummary("antikythera"),
+    getSummary("blended"),
+    getSummary("dealer"),
+    getSummary("commercial"),
+    getSummary("sentiment"),
+  ]);
+
+  const summary = summaryAll;
   const weekOptions = summary.equity_curve
     .map((point) => point.ts_utc)
     .slice()
@@ -98,49 +89,40 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
       ? weekParam
       : (weekOptions[0]?.value ?? null);
 
-  const rowWeekPercent = (symbol: string) => {
-    const row = summary.rows.find((item) => item.symbol === symbol);
-    if (!row || !selectedWeek) return 0;
-    return row.weekly.find((item) => item.week_open_utc === selectedWeek)?.percent ?? 0;
-  };
+  const rowWeekPercent = (row: (typeof summary.rows)[number]) =>
+    row.weekly.find((item) => item.week_open_utc === selectedWeek)?.percent ?? 0;
+  const displayRows = [...summary.rows].sort((a, b) => rowWeekPercent(b) - rowWeekPercent(a));
 
-  const displayRows = [...summary.rows].sort((a, b) => rowWeekPercent(b.symbol) - rowWeekPercent(a.symbol));
-  const selectedSymbol =
-    symbolParam && displayRows.some((row) => row.symbol === symbolParam)
-      ? symbolParam
-      : displayRows[0]?.symbol ?? null;
-  const selectedSymbols = symbolsParam.filter((symbol) => displayRows.some((row) => row.symbol === symbol));
-  const selectedSymbolSet = new Set(selectedSymbols);
-  const symbolRow = selectedSymbol ? displayRows.find((row) => row.symbol === selectedSymbol) ?? null : null;
+  const selectedSymbols = selectedSymbolsRaw.filter((symbol) => displayRows.some((row) => row.symbol === symbol));
+  const selectedSet = new Set(selectedSymbols);
+  const symbolsForChart = selectedSymbols.length > 0 ? selectedSet : null;
 
-  const symbolCurve = symbolRow
-    ? symbolRow.weekly.map((row) => ({
-        ts_utc: row.week_open_utc,
-        equity_pct: row.percent,
+  const buildCurveForSummary = (modelSummary: typeof summary) => {
+    const points = weekOptions
+      .map((option) => ({
+        ts_utc: option.value,
+        equity_pct: modelSummary.rows.reduce((sum, row) => {
+          if (symbolsForChart && !symbolsForChart.has(row.symbol)) return sum;
+          return sum + (row.weekly.find((item) => item.week_open_utc === option.value)?.percent ?? 0);
+        }, 0),
         lock_pct: null,
       }))
-    : [];
+      .reverse();
+    return points;
+  };
 
-  const multiCurve = weekOptions
-    .map((option) => ({
-      ts_utc: option.value,
-      equity_pct: displayRows.reduce((sum, row) => {
-        if (!selectedSymbolSet.has(row.symbol)) return sum;
-        return sum + (row.weekly.find((item) => item.week_open_utc === option.value)?.percent ?? 0);
-      }, 0),
-      lock_pct: null,
-    }))
-    .reverse();
+  const series =
+    selectedModel === "all"
+      ? [
+          { id: "antikythera", label: "Antikythera", points: buildCurveForSummary(summaryA) },
+          { id: "blended", label: "Blended", points: buildCurveForSummary(summaryB) },
+          { id: "dealer", label: "Dealer", points: buildCurveForSummary(summaryD) },
+          { id: "commercial", label: "Commercial", points: buildCurveForSummary(summaryC) },
+          { id: "sentiment", label: "Sentiment", points: buildCurveForSummary(summaryS) },
+        ]
+      : [{ id: selectedModel, label: selectedModel, points: buildCurveForSummary(summary) }];
 
-  const chartPoints =
-    selectedView === "symbol" ? symbolCurve : selectedView === "selection" ? multiCurve : summary.equity_curve;
-  const chartTitle =
-    selectedView === "symbol"
-      ? `${selectedSymbol ?? "Selected symbol"} weekly returns`
-      : selectedView === "selection"
-        ? `Combined weekly returns (${selectedSymbols.join(", ") || "selection"})`
-        : `Cumulative by week (${selectedModel === "all" ? "all models" : selectedModel})`;
-  const chartDd = maxDrawdown(chartPoints);
+  const chartDd = Math.max(...series.map((row) => maxDrawdown(row.points)));
 
   return (
     <DashboardLayout>
@@ -155,7 +137,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
             <div>
               <h2 className="text-xl font-semibold text-[var(--foreground)]">Per-Symbol Breakdown</h2>
               <p className="mt-2 text-sm text-[color:var(--muted)]">
-                Analyze symbol-level behavior with one chart view at a time.
+                Select one or multiple symbols. One chart overlays model lines when all models are selected.
               </p>
             </div>
             <form action="/automation/research/symbols" method="get" className="flex items-center gap-2">
@@ -182,32 +164,10 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
                 ))}
               </select>
               <select
-                name="view"
-                defaultValue={selectedView}
-                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
-              >
-                {VIEW_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                name="symbol"
-                defaultValue={selectedSymbol ?? undefined}
-                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
-              >
-                {displayRows.map((row) => (
-                  <option key={row.symbol} value={row.symbol}>
-                    {row.symbol}
-                  </option>
-                ))}
-              </select>
-              <select
                 name="symbols"
                 multiple
                 defaultValue={selectedSymbols}
-                className="min-w-44 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-2 text-sm text-[var(--foreground)]"
+                className="min-w-48 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-2 text-sm text-[var(--foreground)]"
               >
                 {displayRows.map((row) => (
                   <option key={row.symbol} value={row.symbol}>
@@ -238,7 +198,14 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
           </div>
 
           <div className="mt-6">
-            <EquityCurveChart title={chartTitle} points={chartPoints} />
+            <EquityCurveChart
+              title={
+                selectedSymbols.length > 0
+                  ? `Selected symbols (${selectedSymbols.join(", ")})`
+                  : "All symbols"
+              }
+              series={series}
+            />
           </div>
 
           <div className="mt-6 max-h-96 overflow-auto rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
@@ -258,16 +225,14 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
                   <tr key={row.symbol} className="border-t border-[var(--panel-border)]/60">
                     <td className="py-2">
                       <Link
-                        href={`/automation/research/symbols?model=${selectedModel}&week=${selectedWeek ?? ""}&symbol=${encodeURIComponent(row.symbol)}&view=symbol`}
+                        href={`/automation/research/symbols?model=${selectedModel}&week=${selectedWeek ?? ""}&symbols=${encodeURIComponent(row.symbol)}`}
                         className="font-semibold text-[var(--accent-strong)] hover:underline"
                       >
                         {row.symbol}
                       </Link>
                     </td>
                     <td className="py-2 text-right">{row.total_percent.toFixed(2)}%</td>
-                    <td className="py-2 text-right">
-                      {(row.weekly.find((item) => item.week_open_utc === selectedWeek)?.percent ?? 0).toFixed(2)}%
-                    </td>
+                    <td className="py-2 text-right">{rowWeekPercent(row).toFixed(2)}%</td>
                     <td className="py-2 text-right">{row.avg_percent.toFixed(2)}%</td>
                     <td className="py-2 text-right">{row.win_rate.toFixed(0)}%</td>
                     <td className="py-2 text-right">

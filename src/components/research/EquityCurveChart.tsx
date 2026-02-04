@@ -1,21 +1,62 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
 type EquityPoint = {
   ts_utc: string;
   equity_pct: number;
   lock_pct: number | null;
 };
 
+type EquitySeries = {
+  id: string;
+  label: string;
+  color?: string;
+  points: EquityPoint[];
+};
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function nearestIndexByTs(points: EquityPoint[], tsMs: number) {
+  let best = 0;
+  let bestDiff = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < points.length; i += 1) {
+    const diff = Math.abs(new Date(points[i].ts_utc).getTime() - tsMs);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = i;
+    }
+  }
+  return best;
+}
+
+const SERIES_COLORS = ["#10b981", "#38bdf8", "#f59e0b", "#a78bfa", "#f43f5e"];
+
 export default function EquityCurveChart({
   points,
+  series,
   title,
 }: {
-  points: EquityPoint[];
+  points?: EquityPoint[];
+  series?: EquitySeries[];
   title: string;
 }) {
-  if (points.length === 0) {
+  const normalized = useMemo(() => {
+    if (series && series.length > 0) {
+      return series.filter((row) => row.points.length > 0).map((row, idx) => ({
+        ...row,
+        color: row.color ?? SERIES_COLORS[idx % SERIES_COLORS.length],
+      }));
+    }
+    if (points && points.length > 0) {
+      return [{ id: "primary", label: "Equity", color: SERIES_COLORS[0], points }];
+    }
+    return [];
+  }, [points, series]);
+
+  if (normalized.length === 0) {
     return (
       <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4 text-sm text-[color:var(--muted)]">
         No equity-curve data available.
@@ -23,74 +64,68 @@ export default function EquityCurveChart({
     );
   }
 
+  const primary = normalized[0].points;
   const width = 980;
   const height = 320;
-  const paddingX = 24;
+  const paddingX = 30;
   const paddingY = 20;
   const chartW = width - paddingX * 2;
   const chartH = height - paddingY * 2;
 
-  const values = points.flatMap((p) =>
-    p.lock_pct === null ? [p.equity_pct] : [p.equity_pct, p.lock_pct],
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  const allValues = normalized.flatMap((row) =>
+    row.points.flatMap((p) => (p.lock_pct === null ? [p.equity_pct] : [p.equity_pct, p.lock_pct])),
   );
-  const minValue = Math.min(...values);
-  const maxValue = Math.max(...values);
+  const minValue = Math.min(...allValues);
+  const maxValue = Math.max(...allValues);
   const span = Math.max(maxValue - minValue, 1e-6);
   const yMin = minValue - span * 0.08;
   const yMax = maxValue + span * 0.08;
   const ySpan = yMax - yMin;
 
   const toX = (index: number) =>
-    paddingX + (index / Math.max(points.length - 1, 1)) * chartW;
+    paddingX + (index / Math.max(primary.length - 1, 1)) * chartW;
   const toY = (value: number) =>
     paddingY + ((yMax - value) / ySpan) * chartH;
 
-  const equityPath = points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${toX(i).toFixed(2)} ${toY(p.equity_pct).toFixed(2)}`)
-    .join(" ");
-  const lockPath = points
-    .map((p, index) => ({ ...p, index }))
-    .filter((p) => p.lock_pct !== null)
-    .map((p, i) => {
-      return `${i === 0 ? "M" : "L"} ${toX(p.index).toFixed(2)} ${toY(p.lock_pct ?? 0).toFixed(2)}`;
-    })
-    .join(" ");
-
-  const first = points[0];
-  const last = points[points.length - 1];
-  const endChange = last.equity_pct - first.equity_pct;
-  const endColor = endChange >= 0 ? "#10b981" : "#f43f5e";
-  const zeroY = toY(0);
   let peakIndex = 0;
   let troughIndex = 0;
-  for (let i = 1; i < points.length; i += 1) {
-    if (points[i].equity_pct > points[peakIndex].equity_pct) {
-      peakIndex = i;
-    }
-    if (points[i].equity_pct < points[troughIndex].equity_pct) {
-      troughIndex = i;
-    }
+  for (let i = 1; i < primary.length; i += 1) {
+    if (primary[i].equity_pct > primary[peakIndex].equity_pct) peakIndex = i;
+    if (primary[i].equity_pct < primary[troughIndex].equity_pct) troughIndex = i;
   }
-
-  const xTicks = [0, 0.17, 0.33, 0.5, 0.67, 0.83, 1].map((ratio) => {
-    const index = Math.round(ratio * Math.max(points.length - 1, 1));
-    const ts = points[index]?.ts_utc ?? points[0].ts_utc;
-    const label = new Date(ts).toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    });
-    return { index, x: toX(index), label };
-  });
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
     const value = yMin + ySpan * ratio;
+    return { value, y: toY(value) };
+  });
+
+  const spanDays =
+    primary.length > 1
+      ? (new Date(primary[primary.length - 1].ts_utc).getTime() - new Date(primary[0].ts_utc).getTime()) / 86400000
+      : 0;
+  const tickFormat: Intl.DateTimeFormatOptions =
+    spanDays > 2
+      ? { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }
+      : { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" };
+  const xTicks = [0, 0.17, 0.33, 0.5, 0.67, 0.83, 1].map((ratio) => {
+    const index = Math.round(ratio * Math.max(primary.length - 1, 1));
     return {
-      value,
-      y: toY(value),
+      index,
+      x: toX(index),
+      label: new Date(primary[index]?.ts_utc ?? primary[0].ts_utc).toLocaleString("en-US", tickFormat),
     };
   });
+
+  const zeroY = toY(0);
+  const last = primary[primary.length - 1];
+  const first = primary[0];
+  const endChange = last.equity_pct - first.equity_pct;
+  const endColor = endChange >= 0 ? "#10b981" : "#f43f5e";
+
+  const hoverTsMs =
+    hoverIndex === null ? null : new Date(primary[hoverIndex].ts_utc).getTime();
 
   return (
     <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
@@ -103,153 +138,125 @@ export default function EquityCurveChart({
           {last.equity_pct.toFixed(2)}%
         </span>
       </div>
+      <div className="mb-2 flex flex-wrap items-center gap-3">
+        {normalized.map((row) => (
+          <div key={row.id} className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
+            {row.label}
+          </div>
+        ))}
+      </div>
       <div className="relative overflow-hidden rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-2">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-[260px] w-full">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="h-[280px] w-full"
+          onMouseMove={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            const localX = ((event.clientX - rect.left) / rect.width) * width;
+            const ratio = clamp((localX - paddingX) / chartW, 0, 1);
+            setHoverIndex(Math.round(ratio * Math.max(primary.length - 1, 1)));
+          }}
+          onMouseLeave={() => setHoverIndex(null)}
+        >
           <defs>
             <linearGradient id="equity-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.32" />
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.28" />
               <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
             </linearGradient>
-            <filter id="equity-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-            <clipPath id="below-zero-clip">
-              <rect x="0" y={zeroY} width={width} height={height - zeroY} />
-            </clipPath>
           </defs>
 
           {yTicks.map((tick) => (
             <g key={tick.y}>
-              <line
-                x1={paddingX}
-                y1={tick.y}
-                x2={width - paddingX}
-                y2={tick.y}
-                stroke="rgba(148,163,184,0.28)"
-                strokeWidth="1"
-              />
-              <text
-                x={clamp(paddingX - 8, 0, width)}
-                y={tick.y - 4}
-                fill="rgba(100,116,139,0.9)"
-                fontSize="10"
-                textAnchor="end"
-              >
+              <line x1={paddingX} y1={tick.y} x2={width - paddingX} y2={tick.y} stroke="rgba(148,163,184,0.28)" strokeWidth="1" />
+              <text x={paddingX - 8} y={tick.y - 4} fill="rgba(100,116,139,0.9)" fontSize="10" textAnchor="end">
                 {tick.value.toFixed(1)}%
               </text>
             </g>
           ))}
 
-          <line
-            x1={paddingX}
-            y1={zeroY}
-            x2={width - paddingX}
-            y2={zeroY}
-            stroke="rgba(239,68,68,0.55)"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-          />
+          <line x1={paddingX} y1={zeroY} x2={width - paddingX} y2={zeroY} stroke="rgba(239,68,68,0.55)" strokeWidth="1.5" strokeDasharray="4 4" />
 
           {xTicks.map((tick) => (
             <g key={`${tick.index}-${tick.label}`}>
-              <line
-                x1={tick.x}
-                y1={height - paddingY}
-                x2={tick.x}
-                y2={height - paddingY + 4}
-                stroke="rgba(148,163,184,0.45)"
-                strokeWidth="1"
-              />
-              <text
-                x={tick.x}
-                y={height - 2}
-                fill="rgba(100,116,139,0.9)"
-                fontSize="10"
-                textAnchor="middle"
-              >
+              <line x1={tick.x} y1={height - paddingY} x2={tick.x} y2={height - paddingY + 4} stroke="rgba(148,163,184,0.45)" strokeWidth="1" />
+              <text x={tick.x} y={height - 2} fill="rgba(100,116,139,0.9)" fontSize="10" textAnchor="middle">
                 {tick.label}
               </text>
             </g>
           ))}
 
-          {equityPath ? (
+          {normalized.map((row, rowIndex) => {
+            const path = row.points
+              .map((p, i) => `${i === 0 ? "M" : "L"} ${toX(i).toFixed(2)} ${toY(p.equity_pct).toFixed(2)}`)
+              .join(" ");
+            if (!path) return null;
+            const stroke = row.color ?? SERIES_COLORS[rowIndex % SERIES_COLORS.length];
+            return (
+              <path
+                key={row.id}
+                d={path}
+                fill="none"
+                stroke={stroke}
+                strokeWidth={rowIndex === 0 ? 3 : 2.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={rowIndex === 0 ? 1 : 0.9}
+              />
+            );
+          })}
+
+          {primary.length > 0 ? (
             <>
-              <path
-                d={`${equityPath} L ${toX(points.length - 1).toFixed(2)} ${(height - paddingY).toFixed(2)} L ${toX(0).toFixed(2)} ${(height - paddingY).toFixed(2)} Z`}
-                fill="url(#equity-fill)"
-              />
-              <path
-                d={equityPath}
-                fill="none"
-                stroke={endColor}
-                strokeWidth="3"
-                filter="url(#equity-glow)"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-              <path
-                d={equityPath}
-                fill="none"
-                stroke="#f43f5e"
-                strokeWidth="3"
-                clipPath="url(#below-zero-clip)"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                opacity="0.95"
-              />
+              <circle cx={toX(0)} cy={toY(primary[0].equity_pct)} r="4" fill="#38bdf8" />
+              <circle cx={toX(peakIndex)} cy={toY(primary[peakIndex].equity_pct)} r="4" fill="#22c55e" />
+              <circle cx={toX(troughIndex)} cy={toY(primary[troughIndex].equity_pct)} r="4" fill="#f43f5e" />
+              <circle cx={toX(primary.length - 1)} cy={toY(last.equity_pct)} r="4" fill="#e2e8f0" />
+              <text x={toX(0)} y={toY(primary[0].equity_pct) - 8} fill="#38bdf8" fontSize="10" textAnchor="middle">
+                Start
+              </text>
+              <text x={toX(peakIndex)} y={toY(primary[peakIndex].equity_pct) - 10} fill="#22c55e" fontSize="10" textAnchor="middle">
+                Peak {primary[peakIndex].equity_pct.toFixed(1)}%
+              </text>
+              <text x={toX(troughIndex)} y={toY(primary[troughIndex].equity_pct) + 16} fill="#f43f5e" fontSize="10" textAnchor="middle">
+                Low {primary[troughIndex].equity_pct.toFixed(1)}%
+              </text>
+              <text x={toX(primary.length - 1)} y={toY(last.equity_pct) - 8} fill="#e2e8f0" fontSize="10" textAnchor="end">
+                End {last.equity_pct.toFixed(1)}%
+              </text>
             </>
           ) : null}
 
-          {lockPath ? (
-            <path
-              d={lockPath}
-              fill="none"
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeDasharray="6 4"
-              strokeLinecap="round"
-            />
+          {hoverIndex !== null && hoverTsMs !== null ? (
+            <>
+              <line
+                x1={toX(hoverIndex)}
+                y1={paddingY}
+                x2={toX(hoverIndex)}
+                y2={height - paddingY}
+                stroke="rgba(148,163,184,0.6)"
+                strokeDasharray="4 4"
+                strokeWidth="1.2"
+              />
+              {normalized.map((row, idx) => {
+                const pointIndex = nearestIndexByTs(row.points, hoverTsMs);
+                const point = row.points[pointIndex];
+                if (!point) return null;
+                return (
+                  <g key={`${row.id}-hover`}>
+                    <circle cx={toX(pointIndex)} cy={toY(point.equity_pct)} r="4.5" fill={row.color ?? SERIES_COLORS[idx % SERIES_COLORS.length]} />
+                    <text
+                      x={toX(pointIndex) + 6}
+                      y={toY(point.equity_pct) - 6}
+                      fill={row.color ?? SERIES_COLORS[idx % SERIES_COLORS.length]}
+                      fontSize="10"
+                    >
+                      {point.equity_pct.toFixed(2)}%
+                    </text>
+                  </g>
+                );
+              })}
+            </>
           ) : null}
-
-          <circle cx={toX(0)} cy={toY(points[0].equity_pct)} r="4" fill="#38bdf8" />
-          <circle cx={toX(peakIndex)} cy={toY(points[peakIndex].equity_pct)} r="4" fill="#22c55e" />
-          <circle cx={toX(troughIndex)} cy={toY(points[troughIndex].equity_pct)} r="4" fill="#f43f5e" />
-          <circle cx={toX(points.length - 1)} cy={toY(last.equity_pct)} r="4" fill="#e2e8f0" />
-
-          <text x={toX(0)} y={toY(points[0].equity_pct) - 8} fill="#38bdf8" fontSize="10" textAnchor="middle">
-            Start
-          </text>
-          <text
-            x={toX(peakIndex)}
-            y={toY(points[peakIndex].equity_pct) - 10}
-            fill="#22c55e"
-            fontSize="10"
-            textAnchor="middle"
-          >
-            Peak {points[peakIndex].equity_pct.toFixed(1)}%
-          </text>
-          <text
-            x={toX(troughIndex)}
-            y={toY(points[troughIndex].equity_pct) + 16}
-            fill="#f43f5e"
-            fontSize="10"
-            textAnchor="middle"
-          >
-            Low {points[troughIndex].equity_pct.toFixed(1)}%
-          </text>
-          <text
-            x={toX(points.length - 1)}
-            y={toY(last.equity_pct) - 8}
-            fill="#e2e8f0"
-            fontSize="10"
-            textAnchor="end"
-          >
-            End {last.equity_pct.toFixed(1)}%
-          </text>
         </svg>
       </div>
     </div>
