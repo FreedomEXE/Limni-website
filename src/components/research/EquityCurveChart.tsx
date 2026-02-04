@@ -60,6 +60,29 @@ export default function EquityCurveChart({
   const last = points[points.length - 1];
   const endChange = last.equity_pct - first.equity_pct;
   const endColor = endChange >= 0 ? "#10b981" : "#f43f5e";
+  const zeroY = toY(0);
+  let peakIndex = 0;
+  let troughIndex = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    if (points[i].equity_pct > points[peakIndex].equity_pct) {
+      peakIndex = i;
+    }
+    if (points[i].equity_pct < points[troughIndex].equity_pct) {
+      troughIndex = i;
+    }
+  }
+
+  const xTicks = [0, 0.17, 0.33, 0.5, 0.67, 0.83, 1].map((ratio) => {
+    const index = Math.round(ratio * Math.max(points.length - 1, 1));
+    const ts = points[index]?.ts_utc ?? points[0].ts_utc;
+    const label = new Date(ts).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+    return { index, x: toX(index), label };
+  });
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
     const value = yMin + ySpan * ratio;
@@ -94,6 +117,9 @@ export default function EquityCurveChart({
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+            <clipPath id="below-zero-clip">
+              <rect x="0" y={zeroY} width={width} height={height - zeroY} />
+            </clipPath>
           </defs>
 
           {yTicks.map((tick) => (
@@ -118,6 +144,38 @@ export default function EquityCurveChart({
             </g>
           ))}
 
+          <line
+            x1={paddingX}
+            y1={zeroY}
+            x2={width - paddingX}
+            y2={zeroY}
+            stroke="rgba(239,68,68,0.55)"
+            strokeWidth="1.5"
+            strokeDasharray="4 4"
+          />
+
+          {xTicks.map((tick) => (
+            <g key={`${tick.index}-${tick.label}`}>
+              <line
+                x1={tick.x}
+                y1={height - paddingY}
+                x2={tick.x}
+                y2={height - paddingY + 4}
+                stroke="rgba(148,163,184,0.45)"
+                strokeWidth="1"
+              />
+              <text
+                x={tick.x}
+                y={height - 2}
+                fill="rgba(100,116,139,0.9)"
+                fontSize="10"
+                textAnchor="middle"
+              >
+                {tick.label}
+              </text>
+            </g>
+          ))}
+
           {equityPath ? (
             <>
               <path
@@ -133,6 +191,16 @@ export default function EquityCurveChart({
                 strokeLinejoin="round"
                 strokeLinecap="round"
               />
+              <path
+                d={equityPath}
+                fill="none"
+                stroke="#f43f5e"
+                strokeWidth="3"
+                clipPath="url(#below-zero-clip)"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                opacity="0.95"
+              />
             </>
           ) : null}
 
@@ -146,6 +214,42 @@ export default function EquityCurveChart({
               strokeLinecap="round"
             />
           ) : null}
+
+          <circle cx={toX(0)} cy={toY(points[0].equity_pct)} r="4" fill="#38bdf8" />
+          <circle cx={toX(peakIndex)} cy={toY(points[peakIndex].equity_pct)} r="4" fill="#22c55e" />
+          <circle cx={toX(troughIndex)} cy={toY(points[troughIndex].equity_pct)} r="4" fill="#f43f5e" />
+          <circle cx={toX(points.length - 1)} cy={toY(last.equity_pct)} r="4" fill="#e2e8f0" />
+
+          <text x={toX(0)} y={toY(points[0].equity_pct) - 8} fill="#38bdf8" fontSize="10" textAnchor="middle">
+            Start
+          </text>
+          <text
+            x={toX(peakIndex)}
+            y={toY(points[peakIndex].equity_pct) - 10}
+            fill="#22c55e"
+            fontSize="10"
+            textAnchor="middle"
+          >
+            Peak {points[peakIndex].equity_pct.toFixed(1)}%
+          </text>
+          <text
+            x={toX(troughIndex)}
+            y={toY(points[troughIndex].equity_pct) + 16}
+            fill="#f43f5e"
+            fontSize="10"
+            textAnchor="middle"
+          >
+            Low {points[troughIndex].equity_pct.toFixed(1)}%
+          </text>
+          <text
+            x={toX(points.length - 1)}
+            y={toY(last.equity_pct) - 8}
+            fill="#e2e8f0"
+            fontSize="10"
+            textAnchor="end"
+          >
+            End {last.equity_pct.toFixed(1)}%
+          </text>
         </svg>
       </div>
     </div>

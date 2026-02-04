@@ -17,6 +17,18 @@ function pickParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function maxDrawdown(points: Array<{ equity_pct: number }>) {
+  if (points.length === 0) return 0;
+  let peak = points[0].equity_pct;
+  let maxDd = 0;
+  for (const point of points) {
+    if (point.equity_pct > peak) peak = point.equity_pct;
+    const dd = peak - point.equity_pct;
+    if (dd > maxDd) maxDd = dd;
+  }
+  return maxDd;
+}
+
 export default async function UniversalResearchPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
   const weekParam = pickParam(params?.week);
@@ -39,6 +51,9 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
     selectedWeek
       ? universalSummary.by_week.find((row) => row.week_open_utc === selectedWeek) ?? null
       : null;
+  const selectedWeekDrawdown = selectedUniversalWeek
+    ? maxDrawdown(selectedUniversalWeek.equity_curve)
+    : 0;
 
   return (
     <DashboardLayout>
@@ -96,11 +111,12 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
           </div>
 
           {selectedUniversalWeek ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-5">
+            <div className="mt-6 grid gap-4 md:grid-cols-6">
               <Metric label="Week" value={selectedUniversalWeek.week_label.replace("Week of ", "")} />
               <Metric label="Raw %" value={`${selectedUniversalWeek.total_percent.toFixed(2)}%`} />
               <Metric label="Peak %" value={`${selectedUniversalWeek.observed_peak_percent.toFixed(2)}%`} />
               <Metric label="Locked %" value={`${selectedUniversalWeek.simulated_locked_percent.toFixed(2)}%`} />
+              <Metric label="Max DD %" value={`${selectedWeekDrawdown.toFixed(2)}%`} />
               <Metric label="Trail hit" value={selectedUniversalWeek.trailing_hit ? "Yes" : "No"} />
             </div>
           ) : null}

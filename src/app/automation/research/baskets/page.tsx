@@ -17,6 +17,18 @@ function pickParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function maxDrawdown(points: Array<{ equity_pct: number }>) {
+  if (points.length === 0) return 0;
+  let peak = points[0].equity_pct;
+  let maxDd = 0;
+  for (const point of points) {
+    if (point.equity_pct > peak) peak = point.equity_pct;
+    const dd = peak - point.equity_pct;
+    if (dd > maxDd) maxDd = dd;
+  }
+  return maxDd;
+}
+
 export default async function BasketResearchPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
   const weekParam = pickParam(params?.week);
@@ -65,6 +77,9 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
     selectedModel && selectedWeek
       ? selectedModel.by_week.find((row) => row.week_open_utc === selectedWeek) ?? null
       : null;
+  const selectedModelWeekDrawdown = selectedModelWeek
+    ? maxDrawdown(selectedModelWeek.equity_curve)
+    : 0;
 
   return (
     <DashboardLayout>
@@ -125,7 +140,7 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
 
           {selectedModel ? (
             <div className="mt-6 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <div className="grid gap-4 md:grid-cols-5">
+              <div className="grid gap-4 md:grid-cols-6">
                 <Metric label="Basket" value={selectedModel.model_label} />
                 <Metric
                   label="Raw % (week)"
@@ -138,6 +153,10 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
                 <Metric
                   label="Locked % (week)"
                   value={`${(selectedModelWeek?.simulated_locked_percent ?? 0).toFixed(2)}%`}
+                />
+                <Metric
+                  label="Max DD % (week)"
+                  value={`${selectedModelWeekDrawdown.toFixed(2)}%`}
                 />
                 <Metric
                   label="Trail hit"
@@ -163,7 +182,7 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
                   {model.model_label}
                 </p>
                 <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-                  {model.overall.simulated_locked_total_percent.toFixed(2)}%
+                  {model.overall.total_percent.toFixed(2)}%
                 </p>
                 <div className="mt-3 space-y-1 text-sm text-[var(--foreground)]">
                   {selectedWeek ? (
@@ -194,11 +213,20 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
                           %
                         </span>
                       </div>
+                      <div className="flex items-center justify-between">
+                        <span>Max DD (week)</span>
+                        <span>
+                          {maxDrawdown(
+                            model.by_week.find((row) => row.week_open_utc === selectedWeek)?.equity_curve ?? [],
+                          ).toFixed(2)}
+                          %
+                        </span>
+                      </div>
                     </>
                   ) : null}
                   <div className="flex items-center justify-between">
-                    <span>Raw total</span>
-                    <span>{model.overall.total_percent.toFixed(2)}%</span>
+                    <span>Locked total</span>
+                    <span>{model.overall.simulated_locked_total_percent.toFixed(2)}%</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Weeks</span>
