@@ -16,6 +16,20 @@ type PageProps = {
     | Promise<Record<string, string | string[] | undefined>>;
 };
 
+function pickParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function pickParams(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.length > 0) {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 const MODEL_OPTIONS: Array<{ value: "all" | PerformanceModel; label: string }> = [
   { value: "all", label: "All models" },
   { value: "antikythera", label: "Antikythera" },
@@ -29,6 +43,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
   const modelParam = params?.model;
   const symbolParam = params?.symbol;
+  const symbolsParam = params?.symbols;
   const weekParam = params?.week;
   const selectedModel =
     typeof modelParam === "string" &&
@@ -52,7 +67,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
     .slice()
     .reverse()
     .map((week) => ({ value: week, label: weekLabelFromOpen(week) }));
-  const selectedWeekRaw = typeof weekParam === "string" ? weekParam : Array.isArray(weekParam) ? weekParam[0] : undefined;
+  const selectedWeekRaw = pickParam(weekParam);
   const selectedWeek =
     selectedWeekRaw && weekOptions.some((option) => option.value === selectedWeekRaw)
       ? selectedWeekRaw
@@ -73,10 +88,17 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
     return rowWeekPercent(b.symbol) - rowWeekPercent(a.symbol);
   });
 
+  const selectedFromMulti = pickParams(symbolsParam).filter((symbol) =>
+    displayRows.some((row) => row.symbol === symbol),
+  );
+  const selectedSymbolRaw = pickParam(symbolParam);
   const selectedSymbol =
-    typeof symbolParam === "string" && displayRows.some((row) => row.symbol === symbolParam)
-      ? symbolParam
-      : displayRows[0]?.symbol ?? null;
+    selectedSymbolRaw && displayRows.some((row) => row.symbol === selectedSymbolRaw)
+      ? selectedSymbolRaw
+      : selectedFromMulti[0] ?? displayRows[0]?.symbol ?? null;
+  const selectedSymbols = selectedFromMulti.length > 0
+    ? selectedFromMulti
+    : (selectedSymbol ? [selectedSymbol] : []);
   const symbolRow = selectedSymbol
     ? displayRows.find((row) => row.symbol === selectedSymbol) ?? null
     : null;
@@ -87,6 +109,22 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
         lock_pct: null,
       }))
     : [];
+  const selectedSymbolSet = new Set(selectedSymbols);
+  const combinedSelectionCurve = weekOptions
+    .map((option) => {
+      const value = displayRows.reduce((sum, row) => {
+        if (!selectedSymbolSet.has(row.symbol)) {
+          return sum;
+        }
+        return sum + (row.weekly.find((item) => item.week_open_utc === option.value)?.percent ?? 0);
+      }, 0);
+      return {
+        ts_utc: option.value,
+        equity_pct: value,
+        lock_pct: null,
+      };
+    })
+    .reverse();
 
   return (
     <DashboardLayout>
@@ -183,6 +221,51 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
               </div>
             </div>
           ) : null}
+
+          <div className="mt-6 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Multi-symbol view
+                </h3>
+                <p className="mt-1 text-xs text-[color:var(--muted)]">
+                  Select one or more symbols to inspect combined weekly returns.
+                </p>
+              </div>
+              <form action="/automation/research/symbols" method="get" className="flex items-end gap-2">
+                <input type="hidden" name="model" value={selectedModel} />
+                {selectedWeek ? <input type="hidden" name="week" value={selectedWeek} /> : null}
+                <select
+                  name="symbols"
+                  multiple
+                  defaultValue={selectedSymbols}
+                  className="min-w-52 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-2 text-sm text-[var(--foreground)]"
+                >
+                  {displayRows.map((row) => (
+                    <option key={row.symbol} value={row.symbol}>
+                      {row.symbol}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
+                >
+                  View selection
+                </button>
+              </form>
+            </div>
+            <div className="mt-4">
+              <EquityCurveChart
+                title={
+                  selectedSymbols.length > 0
+                    ? `Combined weekly returns (${selectedSymbols.join(", ")})`
+                    : "Combined weekly returns"
+                }
+                points={combinedSelectionCurve}
+              />
+            </div>
+          </div>
 
           <div className="mt-6 max-h-96 overflow-auto rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
             <table className="w-full text-left text-sm text-[var(--foreground)]">

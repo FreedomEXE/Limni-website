@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import EquityCurveChart from "@/components/research/EquityCurveChart";
 import ResearchSectionNav from "@/components/research/ResearchSectionNav";
 import { buildPerModelBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
@@ -19,6 +20,7 @@ function pickParam(value: string | string[] | undefined) {
 export default async function BasketResearchPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
   const weekParam = pickParam(params?.week);
+  const modelParam = pickParam(params?.model);
   const getBasketSummary = unstable_cache(
     async () =>
       buildPerModelBasketSummary({
@@ -48,6 +50,21 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
     weekParam && weekOptions.some((option) => option.value === weekParam)
       ? weekParam
       : (weekOptions[0]?.value ?? null);
+  const modelOptions = summary.models.map((model) => ({
+    value: model.model,
+    label: model.model_label,
+  }));
+  const selectedModelKey =
+    modelParam && modelOptions.some((option) => option.value === modelParam)
+      ? modelParam
+      : (modelOptions[0]?.value ?? null);
+  const selectedModel = selectedModelKey
+    ? summary.models.find((model) => model.model === selectedModelKey) ?? null
+    : null;
+  const selectedModelWeek =
+    selectedModel && selectedWeek
+      ? selectedModel.by_week.find((row) => row.week_open_utc === selectedWeek) ?? null
+      : null;
 
   return (
     <DashboardLayout>
@@ -76,6 +93,17 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
           {selectedWeek ? (
             <form action="/automation/research/baskets" method="get" className="mt-4 flex items-center gap-2">
               <select
+                name="model"
+                defaultValue={selectedModelKey ?? undefined}
+                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
+              >
+                {modelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
                 name="week"
                 defaultValue={selectedWeek}
                 className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
@@ -93,6 +121,36 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
                 View week
               </button>
             </form>
+          ) : null}
+
+          {selectedModel ? (
+            <div className="mt-6 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+              <div className="grid gap-4 md:grid-cols-5">
+                <Metric label="Basket" value={selectedModel.model_label} />
+                <Metric
+                  label="Raw % (week)"
+                  value={`${(selectedModelWeek?.total_percent ?? 0).toFixed(2)}%`}
+                />
+                <Metric
+                  label="Peak % (week)"
+                  value={`${(selectedModelWeek?.observed_peak_percent ?? 0).toFixed(2)}%`}
+                />
+                <Metric
+                  label="Locked % (week)"
+                  value={`${(selectedModelWeek?.simulated_locked_percent ?? 0).toFixed(2)}%`}
+                />
+                <Metric
+                  label="Trail hit"
+                  value={selectedModelWeek?.trailing_hit ? "Yes" : "No"}
+                />
+              </div>
+              <div className="mt-4">
+                <EquityCurveChart
+                  title={`${selectedModel.model_label} ${selectedModelWeek?.week_label ?? "week"} equity curve`}
+                  points={selectedModelWeek?.equity_curve ?? []}
+                />
+              </div>
+            </div>
           ) : null}
 
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -197,5 +255,14 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
         </section>
       </div>
     </DashboardLayout>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{value}</p>
+    </div>
   );
 }

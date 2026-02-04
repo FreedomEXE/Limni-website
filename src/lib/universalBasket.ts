@@ -73,10 +73,16 @@ type SnapshotWeekRow = Awaited<ReturnType<typeof readPerformanceSnapshotsByWeek>
 
 export type TrailingSimulationSummary = {
   peak_percent: number;
+  hold_percent: number;
   locked_percent: number;
   trailing_hit: boolean;
   peak_day: string | null;
   max_drawdown: number;
+  equity_curve: Array<{
+    ts_utc: string;
+    equity_pct: number;
+    lock_pct: number | null;
+  }>;
 };
 
 export type PerModelBasketSummary = {
@@ -516,10 +522,11 @@ export async function buildUniversalBasketSummary(options?: {
       equity_pct: point.equity,
       lock_pct: point.lock,
     }));
+    const rawHoldTotal = rows.reduce((sum, row) => sum + row.percent, 0);
     byWeek.push({
       week_open_utc: weekOpenUtc,
       week_label: weekLabelFromOpen(weekOpenUtc),
-      total_percent: sim.finalReturn,
+      total_percent: rawHoldTotal,
       observed_peak_percent: sim.peak,
       simulated_locked_percent: sim.locked,
       trailing_hit: sim.trailingHit,
@@ -634,10 +641,16 @@ export async function simulateTrailingForGroupsFromRows(options: {
             .toFormat("MMM dd, yyyy h:mm a 'ET'");
     result[group.key] = {
       peak_percent: sim.peak,
+      hold_percent: sim.finalReturn,
       locked_percent: sim.locked,
       trailing_hit: sim.trailingHit,
       peak_day: peakDay,
       max_drawdown: -computeMaxDrawdownFromCurve(sim.curve),
+      equity_curve: compressCurve(sim.curve).map((point) => ({
+        ts_utc: new Date(point.ts).toISOString(),
+        equity_pct: point.equity,
+        lock_pct: point.lock,
+      })),
     };
   }
 
@@ -712,7 +725,7 @@ export async function buildPerModelBasketSummary(options?: {
         trail_hit_at_utc: null,
         legs: legs.length,
         priced_symbols: legs.length,
-        equity_curve: [],
+        equity_curve: trailing?.equity_curve ?? [],
       };
       byModel.get(model)?.push(modelWeek);
     }
