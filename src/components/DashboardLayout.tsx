@@ -21,6 +21,14 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/status", label: "Status", letter: "I" },
 ];
 
+const MOBILE_LABELS: Record<string, string> = {
+  "/antikythera": "Data",
+  "/performance": "Perf",
+  "/automation": "Auto",
+  "/accounts": "Accts",
+  "/status": "Status",
+};
+
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -143,28 +151,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       <main className="flex-1 overflow-x-hidden pb-24 md:pb-0">
         <div className="mx-auto max-w-7xl px-4 py-5 md:px-6 md:py-8">
-          <div className="mb-4 flex items-center justify-between md:hidden">
-            <div className="flex items-center gap-2">
-              <img src="/limni-icon.svg" alt="Limni" className="size-8 logo-theme-aware" />
-              <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--foreground)]">
-                Limni Labs
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-24">
-                <ThemeToggle compact />
-              </div>
-              <button
-                onClick={async () => {
-                  await fetch("/api/auth/logout", { method: "POST" });
-                  window.location.href = "/login";
-                }}
-                className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-              >
-                Out
-              </button>
-            </div>
-          </div>
           {showBack ? (
             <div className="mb-4">
               <button
@@ -188,7 +174,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Link
                 key={`mobile-${item.href}`}
                 href={item.href}
-                className={`flex flex-col items-center justify-center rounded-xl px-1 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] transition ${
+                className={`flex flex-col items-center justify-center rounded-xl px-1 py-2 text-[11px] font-semibold leading-tight transition ${
                   isActive
                     ? "bg-[var(--accent)]/15 text-[var(--accent-strong)]"
                     : "text-[var(--muted)] hover:bg-[var(--panel)] hover:text-[var(--foreground)]"
@@ -203,7 +189,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 >
                   {item.letter}
                 </span>
-                {item.label}
+                <span className="whitespace-nowrap">{MOBILE_LABELS[item.href] ?? item.label}</span>
               </Link>
             );
           })}
