@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
+import CotModeBanner from "@/components/CotModeBanner";
 
 type NavItem = {
   href: string;
@@ -162,6 +163,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </button>
             </div>
           ) : null}
+          <CotModeBanner />
           {children}
         </div>
       </main>

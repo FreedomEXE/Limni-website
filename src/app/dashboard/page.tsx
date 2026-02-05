@@ -386,36 +386,41 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <PageTabs />
         </header>
 
-        <SummaryCards
-          title="Bias"
-          centered={true}
-          cards={[
-            {
-              id: "pairs",
-              label: "Pairs tracked",
-              value: String(totalPairsCount),
-            },
-            {
-              id: "long",
-              label: "Long signals",
-              value: String(pairRowsWithPerf.filter((row) => row.direction === "LONG").length),
-              tone: "positive",
-            },
-            {
-              id: "short",
-              label: "Short signals",
-              value: String(pairRowsWithPerf.filter((row) => row.direction === "SHORT").length),
-              tone: "negative",
-            },
-            {
-              id: "neutral",
-              label: "Neutral/ignored",
-              value: String(pairRowsWithPerf.filter((row) => row.direction === "NEUTRAL").length),
-            },
-          ]}
-        />
+        <div data-cot-surface="true">
+          <SummaryCards
+            title="Bias"
+            centered={true}
+            cards={[
+              {
+                id: "pairs",
+                label: "Pairs tracked",
+                value: String(totalPairsCount),
+              },
+              {
+                id: "long",
+                label: "Long signals",
+                value: String(pairRowsWithPerf.filter((row) => row.direction === "LONG").length),
+                tone: "positive",
+              },
+              {
+                id: "short",
+                label: "Short signals",
+                value: String(pairRowsWithPerf.filter((row) => row.direction === "SHORT").length),
+                tone: "negative",
+              },
+              {
+                id: "neutral",
+                label: "Neutral/ignored",
+                value: String(pairRowsWithPerf.filter((row) => row.direction === "NEUTRAL").length),
+              },
+            ]}
+          />
+        </div>
 
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+        <section
+          data-cot-surface="true"
+          className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
+        >
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <form action="/dashboard" method="get" className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="view" value={view} />
@@ -502,9 +507,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </section>
 
         {view === "heatmap" ? (
-          <PairHeatmap rows={pairRowsWithPerf} />
+          <div data-cot-surface="true">
+            <PairHeatmap rows={pairRowsWithPerf} />
+          </div>
         ) : (
-          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
+          <section
+            data-cot-surface="true"
+            className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm"
+          >
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Pair Performance

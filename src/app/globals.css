@@ -80,3 +80,9 @@ h4 {
   filter: var(--logo-filter);
   transition: filter 180ms ease;
 }
+
+html[data-cot-mode="sentiment_only"] [data-cot-surface="true"] {
+  opacity: 0.42;
+  filter: grayscale(1);
+  pointer-events: none;
+}

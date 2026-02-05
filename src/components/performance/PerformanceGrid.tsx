@@ -227,6 +227,7 @@ function PerformanceCard({
   onOpen,
   calibrationSize,
   calibrationLabel,
+  isCotBased,
   style,
 }: {
   label: string;
@@ -234,6 +235,7 @@ function PerformanceCard({
   onOpen: () => void;
   calibrationSize?: number;
   calibrationLabel?: string;
+  isCotBased: boolean;
   style?: CSSProperties;
 }) {
   const tier = getPerformanceTier(performance.percent, performance.stats.win_rate);
@@ -250,6 +252,7 @@ function PerformanceCard({
       type="button"
       onClick={onOpen}
       style={style}
+      data-cot-surface={isCotBased ? "true" : undefined}
       className={`group relative rounded-2xl border-2 p-4 text-left transition duration-300 hover:scale-[1.02] hover:shadow-xl animate-fade-in ${tier.card}`}
     >
       <div className="absolute right-4 top-3 text-4xl opacity-10">{tier.emoji}</div>
@@ -407,6 +410,7 @@ export default function PerformanceGrid({
                       key={`${section.id}-${result.model}`}
                       label={labels[result.model]}
                       performance={result}
+                      isCotBased={result.model !== "sentiment"}
                       onOpen={() =>
                         setActive({
                           sectionLabel: section.label,
@@ -440,6 +444,7 @@ export default function PerformanceGrid({
             {selectedAllTime.map((stat) => (
               <div
                 key={`alltime-${selectedSectionId}-${stat.model}`}
+                data-cot-surface={stat.model !== "sentiment" ? "true" : undefined}
                 className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4 text-left"
               >
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">

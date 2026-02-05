@@ -132,7 +132,10 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
           <ResearchSectionNav />
         </header>
 
-        <section className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+        <section
+          data-cot-surface="true"
+          className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
+        >
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-[var(--foreground)]">Per-Symbol Breakdown</h2>

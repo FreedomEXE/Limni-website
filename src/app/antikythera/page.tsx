@@ -210,37 +210,42 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
           <PageTabs />
         </header>
 
-        <SummaryCards
-          title="Antikythera"
-          centered={true}
-          cards={[
-            {
-              id: "signals",
-              label: "Signals",
-              value: String(allSignals.length),
-              details: [
-                { label: "FX", value: String(signalGroups.find((g) => g.asset.id === "fx")?.signals.length ?? 0) },
-                { label: "Indices", value: String(signalGroups.find((g) => g.asset.id === "indices")?.signals.length ?? 0) },
-                { label: "Crypto", value: String(signalGroups.find((g) => g.asset.id === "crypto")?.signals.length ?? 0) },
-                { label: "Commodities", value: String(signalGroups.find((g) => g.asset.id === "commodities")?.signals.length ?? 0) },
-              ],
-            },
-            {
-              id: "long",
-              label: "Long signals",
-              value: String(allSignals.filter((s) => s.direction === "LONG").length),
-              tone: "positive",
-            },
-            {
-              id: "short",
-              label: "Short signals",
-              value: String(allSignals.filter((s) => s.direction === "SHORT").length),
-              tone: "negative",
-            },
-          ]}
-        />
+        <div data-cot-surface="true">
+          <SummaryCards
+            title="Antikythera"
+            centered={true}
+            cards={[
+              {
+                id: "signals",
+                label: "Signals",
+                value: String(allSignals.length),
+                details: [
+                  { label: "FX", value: String(signalGroups.find((g) => g.asset.id === "fx")?.signals.length ?? 0) },
+                  { label: "Indices", value: String(signalGroups.find((g) => g.asset.id === "indices")?.signals.length ?? 0) },
+                  { label: "Crypto", value: String(signalGroups.find((g) => g.asset.id === "crypto")?.signals.length ?? 0) },
+                  { label: "Commodities", value: String(signalGroups.find((g) => g.asset.id === "commodities")?.signals.length ?? 0) },
+                ],
+              },
+              {
+                id: "long",
+                label: "Long signals",
+                value: String(allSignals.filter((s) => s.direction === "LONG").length),
+                tone: "positive",
+              },
+              {
+                id: "short",
+                label: "Short signals",
+                value: String(allSignals.filter((s) => s.direction === "SHORT").length),
+                tone: "negative",
+              },
+            ]}
+          />
+        </div>
 
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+        <section
+          data-cot-surface="true"
+          className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
+        >
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <form action="/antikythera" method="get" className="flex flex-wrap items-center gap-2">
               <input type="hidden" name="view" value={view} />
@@ -300,16 +305,18 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
           ) : null}
         </section>
 
-        <SignalHeatmap
-          signals={filteredSignals.map((signal) => ({
-            pair: signal.pair,
-            direction: signal.direction,
-            assetLabel: signal.assetLabel,
-            reasons: signal.reasons,
-          }))}
-          view={view}
-          performanceByPair={performanceByPair}
-        />
+        <div data-cot-surface="true">
+          <SignalHeatmap
+            signals={filteredSignals.map((signal) => ({
+              pair: signal.pair,
+              direction: signal.direction,
+              assetLabel: signal.assetLabel,
+              reasons: signal.reasons,
+            }))}
+            view={view}
+            performanceByPair={performanceByPair}
+          />
+        </div>
 
         <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
           {latestAntikytheraRefresh
