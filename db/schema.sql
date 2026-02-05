@@ -264,6 +264,21 @@ CREATE TABLE IF NOT EXISTS sentiment_aggregates (
 
 CREATE INDEX IF NOT EXISTS idx_sentiment_agg_symbol_time ON sentiment_aggregates(symbol, timestamp_utc DESC);
 
+-- Weekly News Snapshots (ForexFactory-based macro events)
+CREATE TABLE IF NOT EXISTS news_weekly_snapshots (
+  id SERIAL PRIMARY KEY,
+  week_open_utc TIMESTAMP NOT NULL,
+  source VARCHAR(30) NOT NULL DEFAULT 'forexfactory',
+  announcements JSONB NOT NULL DEFAULT '[]'::jsonb,
+  calendar JSONB NOT NULL DEFAULT '[]'::jsonb,
+  fetched_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(week_open_utc, source)
+);
+
+CREATE INDEX IF NOT EXISTS idx_news_weekly_snapshots_week
+  ON news_weekly_snapshots(week_open_utc DESC);
+
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

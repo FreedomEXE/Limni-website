@@ -3,6 +3,7 @@ import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot, refreshAllSnapshots } from "@/lib/cotStore";
 import { refreshMarketSnapshot } from "@/lib/pricePerformance";
 import { refreshSentiment } from "@/lib/sentiment/refresh";
+import { refreshNewsSnapshot } from "@/lib/news/refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,9 @@ export async function GET(request: Request) {
     { cot: "ok" | "error"; prices: "ok" | "skipped" | "error"; message?: string }
   > = {};
   let sentiment: { ok: boolean; snapshots: number; aggregates: number; flips: number } | null = null;
+  let news:
+    | { ok: boolean; week_open_utc: string | null; announcements: number; calendar_events: number }
+    | null = null;
 
   try {
     await refreshAllSnapshots();
@@ -73,7 +77,7 @@ export async function GET(request: Request) {
     }
   });
 
-  const [priceResults, sentimentResult] = await Promise.all([
+  const [priceResults, sentimentResult, newsResult] = await Promise.all([
     Promise.all(priceTasks),
     (async () => {
       try {
@@ -93,17 +97,37 @@ export async function GET(request: Request) {
         };
       }
     })(),
+    (async () => {
+      try {
+        const result = await refreshNewsSnapshot();
+        return {
+          ok: result.ok,
+          week_open_utc: result.week_open_utc,
+          announcements: result.announcements,
+          calendar_events: result.calendar_events,
+        };
+      } catch {
+        return {
+          ok: false,
+          week_open_utc: null,
+          announcements: 0,
+          calendar_events: 0,
+        };
+      }
+    })(),
   ]);
 
   priceResults.forEach(({ assetId, result }) => {
     results[assetId] = result;
   });
   sentiment = sentimentResult;
+  news = newsResult;
 
   return NextResponse.json({
     startedAt,
     finishedAt: new Date().toISOString(),
     results,
     sentiment,
+    news,
   });
 }

@@ -20,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/automation", label: "Automation", letter: "M" },
   { href: "/accounts", label: "Accounts", letter: "N" },
   { href: "/status", label: "Status", letter: "I" },
+  { href: "/news", label: "News", letter: "N" },
 ];
 
 const MOBILE_LABELS: Record<string, string> = {
@@ -28,6 +29,7 @@ const MOBILE_LABELS: Record<string, string> = {
   "/automation": "Auto",
   "/accounts": "Accts",
   "/status": "Status",
+  "/news": "News",
 };
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -114,6 +116,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <nav className="flex-1 space-y-1 p-4">
             {NAV_ITEMS.map((item) => {
               const isActive = isActiveRoute(item.href);
+              const isNews = item.href === "/news";
               return (
                 <Link
                   key={item.href}
@@ -121,13 +124,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                     isActive
                       ? "border border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                      : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
+                      : isNews
+                        ? "border border-amber-400/40 bg-amber-500/10 text-amber-700 hover:border-amber-300/70 hover:bg-amber-500/15 dark:text-amber-200"
+                        : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
                   }`}
                 >
-                  <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-base font-bold text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
-                    {item.letter}
-                  </span>
-                  <span className="tracking-tight">{item.label}</span>
+                  {isNews ? (
+                    <span className="rounded-full border border-amber-400/50 bg-amber-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-current">
+                      News
+                    </span>
+                  ) : (
+                    <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-base font-bold text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
+                      {item.letter}
+                    </span>
+                  )}
+                  {!isNews ? <span className="tracking-tight">{item.label}</span> : null}
                 </Link>
               );
             })}
@@ -169,7 +180,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--panel-border)] bg-[var(--panel)]/95 backdrop-blur-sm md:hidden">
-        <nav className="mx-auto grid max-w-xl grid-cols-5 gap-1 p-2">
+        <nav className="mx-auto grid max-w-xl grid-cols-6 gap-1 p-2">
           {NAV_ITEMS.map((item) => {
             const isActive = isActiveRoute(item.href);
             return (
