@@ -12,6 +12,7 @@ import { getPairPerformance } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
+import PerformancePeriodSelector from "@/components/performance/PerformancePeriodSelector";
 import { readMarketSnapshot } from "@/lib/priceStore";
 import { DateTime } from "luxon";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
@@ -410,51 +411,23 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 : "No refresh yet"}
             </span>
             {weekOptions.length > 0 ? (
-              <form action="/performance" method="get" className="flex flex-wrap items-center gap-3">
-                <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Week
-                </label>
-                <select
-                  name="week"
-                  defaultValue={selectedWeek ?? undefined}
-                  className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
-                >
-                  {weekOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {formatWeekOption(option)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="submit"
-                  className="inline-flex items-center justify-center rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
-                >
-                  View
-                </button>
-              </form>
+              <PerformancePeriodSelector
+                mode="week"
+                options={weekOptions.map((option) => ({
+                  value: option,
+                  label: formatWeekOption(option),
+                }))}
+                selectedValue={selectedWeek ?? weekOptions[0]}
+              />
             ) : reportOptions.length > 0 ? (
-              <form action="/performance" method="get" className="flex flex-wrap items-center gap-3">
-                <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Report week
-                </label>
-                <select
-                  name="report"
-                  defaultValue={selectedReport ?? undefined}
-                  className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
-                >
-                  {reportOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {formatDateET(option)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="submit"
-                  className="inline-flex items-center justify-center rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
-                >
-                  View
-                </button>
-              </form>
+              <PerformancePeriodSelector
+                mode="report"
+                options={reportOptions.map((option) => ({
+                  value: option,
+                  label: formatDateET(option),
+                }))}
+                selectedValue={selectedReport ?? reportOptions[0]}
+              />
             ) : (
               <div className="text-xs text-[color:var(--muted)]">
                 No weekly snapshots yet.

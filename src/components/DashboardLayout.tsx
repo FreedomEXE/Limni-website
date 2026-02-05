@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
@@ -44,6 +44,35 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     (pathname.startsWith("/automation/") && pathname !== "/automation");
   const isActiveRoute = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
+
+  useEffect(() => {
+    const prefetchRoutes = () => {
+      NAV_ITEMS.forEach((item) => router.prefetch(item.href));
+      router.prefetch("/automation/research");
+      router.prefetch("/automation/research/universal");
+      router.prefetch("/automation/research/baskets");
+      router.prefetch("/automation/research/symbols");
+    };
+
+    const idleCallback = (window as Window & {
+      requestIdleCallback?: (cb: () => void) => number;
+    }).requestIdleCallback;
+
+    if (idleCallback) {
+      const id = idleCallback(prefetchRoutes);
+      return () => {
+        const cancelIdleCallback = (window as Window & {
+          cancelIdleCallback?: (id: number) => void;
+        }).cancelIdleCallback;
+        if (cancelIdleCallback) {
+          cancelIdleCallback(id);
+        }
+      };
+    }
+
+    const timer = window.setTimeout(prefetchRoutes, 250);
+    return () => window.clearTimeout(timer);
+  }, [router]);
 
   return (
     <div className="relative flex min-h-screen bg-[var(--background)]">
@@ -121,6 +150,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={true}
+                  onMouseEnter={() => router.prefetch(item.href)}
                   className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                     isActive
                       ? "border border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
@@ -187,6 +218,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Link
                 key={`mobile-${item.href}`}
                 href={item.href}
+                prefetch={true}
+                onTouchStart={() => router.prefetch(item.href)}
                 className={`flex flex-col items-center justify-center rounded-xl px-1 py-2 text-[11px] font-semibold leading-tight transition ${
                   isActive
                     ? "bg-[var(--accent)]/15 text-[var(--accent-strong)]"

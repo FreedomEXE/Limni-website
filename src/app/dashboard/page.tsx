@@ -1,11 +1,9 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import PairPerformanceTable from "@/components/PairPerformanceTable";
-import BiasHeatmap from "@/components/BiasHeatmap";
-import PairHeatmap from "@/components/PairHeatmap";
 import PageTabs from "@/components/PageTabs";
-import ViewToggle from "@/components/ViewToggle";
 import SummaryCards from "@/components/SummaryCards";
 import MiniBiasStrip from "@/components/MiniBiasStrip";
+import DashboardFilters from "@/components/dashboard/DashboardFilters";
+import DashboardPairsPanel from "@/components/dashboard/DashboardPairsPanel";
 import { evaluateFreshness } from "@/lib/cotFreshness";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
 import { DateTime } from "luxon";
@@ -82,6 +80,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const biasMode = getBiasMode(
     Array.isArray(biasParam) ? biasParam[0] : biasParam,
   );
+  const selectedBiasForFilter = biasMode === "commercial" ? "commercial" : "dealer";
   const view =
     viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
   const reportDate =
@@ -362,22 +361,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
     return formatDateET(monday.toUTC().toISO());
   })();
-  const viewParams = new URLSearchParams();
-  viewParams.set("asset", isAll ? "all" : assetClass);
-  if (selectedReportDate) {
-    viewParams.set("report", selectedReportDate);
-  }
-  viewParams.set("bias", biasMode);
-  const viewItems = (["heatmap", "list"] as const).map((option) => {
-    const params = new URLSearchParams(viewParams);
-    params.set("view", option);
-    return {
-      value: option,
-      label: option,
-      href: `/dashboard?${params.toString()}`,
-    };
-  });
-
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -422,66 +405,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
         >
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <form action="/dashboard" method="get" className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="view" value={view} />
-              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Asset class
-              </label>
-              <select
-                name="asset"
-                defaultValue={isAll ? "all" : assetClass}
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                <option value="all">ALL</option>
-                {assetClasses.map((asset) => (
-                  <option key={asset.id} value={asset.id}>
-                    {asset.label}
-                  </option>
-                ))}
-              </select>
-              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Trading week
-              </label>
-              <select
-                name="report"
-                defaultValue={selectedReportDate ?? ""}
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                {availableDates.map((date) => (
-                  <option key={date} value={date}>
-                    {(() => {
-                      const report = DateTime.fromISO(date, { zone: "America/New_York" });
-                      if (!report.isValid) {
-                        return formatDateET(date);
-                      }
-                      const daysUntilMonday = (8 - report.weekday) % 7;
-                      const monday = report
-                        .plus({ days: daysUntilMonday })
-                        .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-                      return formatDateET(monday.toUTC().toISO());
-                    })()}
-                  </option>
-                ))}
-              </select>
-              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Bias mode
-              </label>
-              <select
-                name="bias"
-                defaultValue={biasMode}
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                <option value="dealer">DEALER</option>
-                <option value="commercial">COMMERCIAL</option>
-              </select>
-              <button
-                type="submit"
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                View
-              </button>
-            </form>
-            <ViewToggle value={view} items={viewItems} />
+            <DashboardFilters
+              assetOptions={assetClasses.map((asset) => ({
+                id: asset.id,
+                label: asset.label,
+              }))}
+              reportOptions={availableDates.map((date) => {
+                const report = DateTime.fromISO(date, { zone: "America/New_York" });
+                if (!report.isValid) {
+                  return { value: date, label: formatDateET(date) };
+                }
+                const daysUntilMonday = (8 - report.weekday) % 7;
+                const monday = report
+                  .plus({ days: daysUntilMonday })
+                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+                return { value: date, label: formatDateET(monday.toUTC().toISO()) };
+              })}
+              selectedAsset={isAll ? "all" : assetClass}
+              selectedReport={selectedReportDate ?? ""}
+              selectedBias={selectedBiasForFilter}
+            />
           </div>
           {selectedReportDate ? (
             <div className="mt-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -506,30 +449,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </div>
         </section>
 
-        {view === "heatmap" ? (
-          <div data-cot-surface="true">
-            <PairHeatmap rows={pairRowsWithPerf} />
-          </div>
-        ) : (
-          <section
-            data-cot-surface="true"
-            className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm"
-          >
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Pair Performance
-              </h2>
-              <p className="text-sm text-[var(--muted)]">
-                List view of all pairs with performance data
-              </p>
-            </div>
-            <PairPerformanceTable
-              rows={pairRowsWithPerf}
-              note={pairNote}
-              missingPairs={missingPairs}
-            />
-          </section>
-        )}
+        <DashboardPairsPanel
+          initialView={view}
+          rows={pairRowsWithPerf}
+          note={pairNote}
+          missingPairs={missingPairs}
+        />
 
         <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
           {combinedRefresh ? `Last refresh ${formatDateTimeET(combinedRefresh)}` : "No refresh yet"}
