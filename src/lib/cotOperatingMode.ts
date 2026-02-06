@@ -66,11 +66,15 @@ export async function getCotOperatingModeSummary(): Promise<CotOperatingModeSumm
 
   const halted = healthyAssetClasses.length === 0;
   if (halted) {
+    const hasAnySnapshots = snapshots.some(item => item.snapshot !== null);
+    const reason = hasAnySnapshots
+      ? `COT data is stale (>10 days old). Visit /api/cot/refresh?token=${process.env.ADMIN_TOKEN} to update.`
+      : "No COT snapshots found in database. CFTC reporting may be halted, or database needs initial refresh.";
+
     return {
       mode: "sentiment_only",
       label: "Sentiment-only mode",
-      reason:
-        "No fresh COT snapshot is currently available across tracked asset classes.",
+      reason,
       updated_at_utc: updatedAt,
       stale_asset_classes: staleAssetClasses,
       healthy_asset_classes: healthyAssetClasses,

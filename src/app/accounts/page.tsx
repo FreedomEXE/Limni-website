@@ -68,7 +68,6 @@ export default async function AccountsPage() {
     win_rate_pct: null,
     max_drawdown_pct: null,
     source: "bitget",
-    href: "/accounts/bitget_perp_bot",
   };
 
   const oandaCard: AccountCard = {
@@ -88,7 +87,6 @@ export default async function AccountsPage() {
     win_rate_pct: null,
     max_drawdown_pct: null,
     source: "oanda",
-    href: "/accounts/oanda_universal_bot",
   };
 
   const accounts: AccountCard[] = [...mt5Cards, bitgetCard, oandaCard];
