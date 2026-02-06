@@ -68,7 +68,7 @@ async function fetchLatestSignals(): Promise<BasketSignal[]> {
   if (!APP_BASE_URL) {
     throw new Error("APP_BASE_URL is not configured for OANDA bot.");
   }
-  const url = new URL("/api/cot/baskets/latest", APP_BASE_URL);
+  const url = new URL("/bot/cot/baskets/latest", APP_BASE_URL);
   url.searchParams.set("asset", "all");
   const response = await fetch(url.toString(), { cache: "no-store" });
   if (!response.ok) {

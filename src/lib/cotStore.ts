@@ -47,22 +47,37 @@ export async function readSnapshot(
       fetched_at: Date;
     }>(queryText, params);
 
-    if (!row) {
+    let resolvedRow = row;
+    if (!resolvedRow && !options.reportDate) {
+      resolvedRow = await queryOne<{
+        report_date: string | Date;
+        asset_class: string;
+        variant: string;
+        currencies: Record<string, MarketSnapshot>;
+        pairs: Record<string, PairSnapshot>;
+        fetched_at: Date;
+      }>(
+        "SELECT report_date, asset_class, variant, currencies, pairs, fetched_at FROM cot_snapshots WHERE asset_class = $1 ORDER BY report_date DESC LIMIT 1",
+        [assetClass],
+      );
+    }
+
+    if (!resolvedRow) {
       return null;
     }
 
     const reportDate =
-      row.report_date instanceof Date
-        ? row.report_date.toISOString().slice(0, 10)
-        : row.report_date;
+      resolvedRow.report_date instanceof Date
+        ? resolvedRow.report_date.toISOString().slice(0, 10)
+        : resolvedRow.report_date;
 
     return {
       report_date: reportDate,
-      last_refresh_utc: row.fetched_at.toISOString(),
-      asset_class: (row.asset_class ?? assetClass) as AssetClass,
-      variant: row.variant ?? COT_VARIANT,
-      currencies: row.currencies,
-      pairs: row.pairs,
+      last_refresh_utc: resolvedRow.fetched_at.toISOString(),
+      asset_class: (resolvedRow.asset_class ?? assetClass) as AssetClass,
+      variant: resolvedRow.variant ?? COT_VARIANT,
+      currencies: resolvedRow.currencies,
+      pairs: resolvedRow.pairs,
     };
   } catch (error) {
     console.error("Error reading COT snapshot from database:", error);

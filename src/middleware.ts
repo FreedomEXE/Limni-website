@@ -7,8 +7,8 @@ const SESSION_SECRETS = new Set(["admin", "viewer", "authenticated"]);
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow login page and API routes without auth
-  if (pathname === "/login" || pathname.startsWith("/api/")) {
+  // Allow login page and API/bot routes without auth
+  if (pathname === "/login" || pathname.startsWith("/api/") || pathname.startsWith("/bot/")) {
     return NextResponse.next();
   }
 
@@ -34,6 +34,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public files (public folder)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.svg|.*\\.png|.*\\.jpg).*)",
+    "/((?!api|bot|_next/static|_next/image|favicon.ico|.*\\.svg|.*\\.png|.*\\.jpg).*)",
   ],
 };
