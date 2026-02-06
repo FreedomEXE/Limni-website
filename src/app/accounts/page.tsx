@@ -10,11 +10,13 @@ export const dynamic = "force-dynamic";
 type BitgetBotState = {
   entered?: boolean;
   entry_equity?: number | null;
+  current_equity?: number | null;
 };
 
 type OandaBotState = {
   entered?: boolean;
   entry_equity?: number | null;
+  current_equity?: number | null;
 };
 
 export default async function AccountsPage() {
@@ -58,8 +60,8 @@ export default async function AccountsPage() {
     server: process.env.BITGET_PRODUCT_TYPE ?? "USDT-FUTURES",
     status: bitgetState ? "LIVE" : "PAUSED",
     currency: "USD",
-    equity: typeof bitgetState?.state?.entry_equity === "number"
-      ? bitgetState?.state?.entry_equity
+    equity: typeof bitgetState?.state?.current_equity === "number"
+      ? bitgetState?.state?.current_equity
       : null,
     weekly_pnl_pct: null,
     basket_state: bitgetState?.state?.entered ? "ACTIVE" : "READY",
@@ -77,8 +79,8 @@ export default async function AccountsPage() {
     server: "v20 Hedging",
     status: oandaState ? "LIVE" : "PAUSED",
     currency: "USD",
-    equity: typeof oandaState?.state?.entry_equity === "number"
-      ? oandaState?.state?.entry_equity
+    equity: typeof oandaState?.state?.current_equity === "number"
+      ? oandaState?.state?.current_equity
       : null,
     weekly_pnl_pct: null,
     basket_state: oandaState?.state?.entered ? "ACTIVE" : "READY",

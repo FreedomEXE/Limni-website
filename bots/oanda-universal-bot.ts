@@ -27,6 +27,7 @@ type OandaBotState = {
   trailing_active: boolean;
   locked_pct: number | null;
   trail_hit_at: string | null;
+  current_equity: number | null;
 };
 
 const BOT_ID = "oanda_universal_bot";
@@ -252,7 +253,19 @@ async function tick() {
       trailing_active: false,
       locked_pct: null,
       trail_hit_at: null,
+      current_equity: null,
     };
+
+    // Fetch current account balance on every tick
+    try {
+      const summary = await fetchOandaAccountSummary();
+      const currentNav = Number(summary.NAV);
+      if (Number.isFinite(currentNav) && currentNav > 0) {
+        state.current_equity = currentNav;
+      }
+    } catch (error) {
+      log("Failed to fetch current NAV", { error: error instanceof Error ? error.message : String(error) });
+    }
 
     if (state.week_id !== weekId) {
       state.week_id = weekId;

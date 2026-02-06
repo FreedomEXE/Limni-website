@@ -30,6 +30,7 @@ type BitgetBotState = {
   locked_pct: number | null;
   trail_hit_at: string | null;
   last_direction: "LONG" | "SHORT" | null;
+  current_equity: number | null;
 };
 
 const BOT_ID = "bitget_perp_bot";
@@ -248,7 +249,19 @@ async function tick() {
       locked_pct: null,
       trail_hit_at: null,
       last_direction: null,
+      current_equity: null,
     };
+
+    // Fetch current account balance on every tick
+    try {
+      const account = await fetchBitgetAccount();
+      const currentEquity = Number(account?.usdtEquity ?? account?.equity ?? account?.available ?? "0");
+      if (Number.isFinite(currentEquity) && currentEquity > 0) {
+        state.current_equity = currentEquity;
+      }
+    } catch (error) {
+      log("Failed to fetch current equity", { error: error instanceof Error ? error.message : String(error) });
+    }
 
     if (state.week_id !== weekId) {
       state.week_id = weekId;
