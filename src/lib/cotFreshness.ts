@@ -20,7 +20,7 @@ export function evaluateFreshness(
   }
 
   const ageDays = (now.getTime() - report.getTime()) / MS_DAY;
-  if (ageDays > 10) {
+  if (ageDays > 14) {
     return { trading_allowed: false, reason: "report_date is stale" };
   }
 
