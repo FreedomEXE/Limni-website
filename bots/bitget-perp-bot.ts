@@ -92,7 +92,11 @@ async function fetchLatestSignals(): Promise<BasketSignal[]> {
   return payload.pairs ?? [];
 }
 
-function resolveAlignment(pairs: BasketSignal[]) {
+function resolveAlignment(
+  pairs: BasketSignal[],
+):
+  | { ok: true; direction: "LONG" | "SHORT" }
+  | { ok: false; reason: string } {
   const map = new Map<string, Map<BasketSignal["model"], BasketSignal["direction"]>>();
   for (const pair of pairs) {
     if (!SYMBOLS.includes(pair.symbol as typeof SYMBOLS[number])) {
