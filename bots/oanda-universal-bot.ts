@@ -126,7 +126,10 @@ async function buildSizing(signals: BasketSignal[]) {
     throw new Error("Invalid OANDA NAV.");
   }
 
-  const tradeSignals = signals.filter((signal) => signal.direction !== "NEUTRAL");
+  const tradeSignals = signals.filter(
+    (signal): signal is BasketSignal & { direction: "LONG" | "SHORT" } =>
+      signal.direction !== "NEUTRAL",
+  );
   const instrumentNames = tradeSignals.map((signal) => getOandaInstrument(signal.symbol));
   const pricing = await fetchOandaPricing(Array.from(new Set(instrumentNames)));
   const priceMap = buildPriceMap(pricing);
