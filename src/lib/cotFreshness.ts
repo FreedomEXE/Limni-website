@@ -37,8 +37,11 @@ export function evaluateFreshness(
   const refreshAgeHours = (now.getTime() - refresh.getTime()) / MS_HOUR;
   const refreshedRecently = refreshAgeHours <= 24;
   const refreshedAfterReport = refresh.getTime() >= report.getTime();
+  const reportDay = report.toISOString().slice(0, 10);
+  const refreshDay = refresh.toISOString().slice(0, 10);
+  const refreshedOnOrAfterReportDay = refreshDay >= reportDay;
 
-  if (!refreshedRecently && !refreshedAfterReport) {
+  if (!refreshedRecently && !refreshedAfterReport && !refreshedOnOrAfterReportDay) {
     return { trading_allowed: false, reason: "refresh is too old" };
   }
 
