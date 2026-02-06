@@ -201,8 +201,12 @@ export async function refreshSnapshotForClass(
   const resolvedReportDate =
     reportDate ??
     [dealerLatest, commercialLatest]
-      .filter(Boolean)
-      .sort()[0];
+      .filter((date): date is string => Boolean(date))
+      .sort()
+      .at(-1);
+  if (!resolvedReportDate) {
+    throw new Error("Unable to resolve COT report date.");
+  }
   const marketDefs = Object.values(assetDefinition.markets);
   const marketNames = marketDefs.flatMap((market) => market.marketNames);
   const dealerRows = await fetchCotRowsForDate(

@@ -64,6 +64,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
   const isCurrentWeek = !selectedWeek || selectedWeek === currentWeekOpen;
 
   let aggregates: SentimentAggregate[] = [];
+  let previousAggregates: SentimentAggregate[] = [];
   try {
     if (selectedWeek && !isCurrentWeek) {
       const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
@@ -74,9 +75,26 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
             close.toUTC().toISO() ?? selectedWeek,
           )
         : await getLatestAggregatesLocked();
+      const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
+      if (prevOpen && prevOpen.isValid) {
+        const prevClose = prevOpen.plus({ days: 7 });
+        previousAggregates = await getAggregatesForWeekStart(
+          prevOpen.toUTC().toISO() ?? selectedWeek,
+          prevClose.toUTC().toISO() ?? selectedWeek,
+        );
+      }
     } else {
       // Current week is live for manual trading visibility (hourly refresh + flips).
       aggregates = await getLatestAggregates();
+      const open = DateTime.fromISO(currentWeekOpen, { zone: "utc" });
+      const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
+      if (prevOpen && prevOpen.isValid) {
+        const prevClose = prevOpen.plus({ days: 7 });
+        previousAggregates = await getAggregatesForWeekStart(
+          prevOpen.toUTC().toISO() ?? currentWeekOpen,
+          prevClose.toUTC().toISO() ?? currentWeekOpen,
+        );
+      }
     }
   } catch (error) {
     console.error(
@@ -108,7 +126,33 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
   const neutral = filteredAggregates.filter(
     (a) => a.crowding_state === "NEUTRAL",
   ).length;
-  const flips = filteredAggregates.filter((a) => a.flip_state !== "NONE").length;
+  const previousBySymbol = new Map(
+    previousAggregates
+      .filter((agg) => symbols.includes(agg.symbol))
+      .map((agg) => [agg.symbol, agg.crowding_state]),
+  );
+  const flipDetails = filteredAggregates
+    .map((agg) => {
+      const prior = previousBySymbol.get(agg.symbol);
+      if (!prior || prior === agg.crowding_state) {
+        return null;
+      }
+      return {
+        label: agg.symbol,
+        value: `${prior.replace("CROWDED_", "")} → ${agg.crowding_state.replace("CROWDED_", "")}`,
+      };
+    })
+    .filter((detail): detail is { label: string; value: string } => Boolean(detail));
+  const flips = flipDetails.length;
+  const longDetails = sortedAggregates
+    .filter((agg) => agg.crowding_state === "CROWDED_LONG")
+    .map((agg) => ({ label: agg.symbol, value: "LONG" }));
+  const shortDetails = sortedAggregates
+    .filter((agg) => agg.crowding_state === "CROWDED_SHORT")
+    .map((agg) => ({ label: agg.symbol, value: "SHORT" }));
+  const neutralDetails = sortedAggregates
+    .filter((agg) => agg.crowding_state === "NEUTRAL")
+    .map((agg) => ({ label: agg.symbol, value: "NEUTRAL" }));
 
   const performanceByPair: Record<string, number | null> = {};
   if (selectedWeek) {
@@ -200,11 +244,41 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
         <SummaryCards
           title="Sentiment"
           cards={[
-            { id: "pairs", label: "Pairs tracked", value: String(filteredAggregates.length) },
-            { id: "long", label: "Crowded long", value: String(crowdedLong), tone: "negative" },
-            { id: "short", label: "Crowded short", value: String(crowdedShort), tone: "positive" },
-            { id: "neutral", label: "Neutral", value: String(neutral) },
-            { id: "flips", label: "Flips", value: String(flips) },
+            {
+              id: "pairs",
+              label: "Pairs tracked",
+              value: String(filteredAggregates.length),
+              details: sortedAggregates.map((agg) => ({
+                label: agg.symbol,
+                value: agg.crowding_state.replace("CROWDED_", ""),
+              })),
+            },
+            {
+              id: "long",
+              label: "Crowded long",
+              value: String(crowdedLong),
+              tone: "negative",
+              details: longDetails,
+            },
+            {
+              id: "short",
+              label: "Crowded short",
+              value: String(crowdedShort),
+              tone: "positive",
+              details: shortDetails,
+            },
+            {
+              id: "neutral",
+              label: "Neutral",
+              value: String(neutral),
+              details: neutralDetails,
+            },
+            {
+              id: "flips",
+              label: "Flips",
+              value: String(flips),
+              details: flipDetails,
+            },
           ]}
         />
 

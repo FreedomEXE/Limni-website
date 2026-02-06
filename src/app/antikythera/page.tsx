@@ -40,12 +40,18 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
     }
     return lists.reduce((acc, list) => acc.filter((date) => list.includes(date)));
   });
+  const orderedDates = [...availableDates].sort((a, b) => b.localeCompare(a));
   const selectedReportDate =
-    reportDate && availableDates.includes(reportDate)
+    reportDate && orderedDates.includes(reportDate)
       ? reportDate
-      : availableDates[0];
+      : orderedDates[0];
+  const previousReportDate =
+    selectedReportDate
+      ? orderedDates[orderedDates.indexOf(selectedReportDate) + 1] ?? null
+      : null;
   const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
   let sentiment: SentimentAggregate[] = [];
+  let previousSentiment: SentimentAggregate[] = [];
 
   try {
     const snapshotResults = await Promise.all(
@@ -87,6 +93,14 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       sentiment = open.isValid
         ? await getAggregatesForWeekStart(open.toUTC().toISO() ?? selectedWeek, close.toUTC().toISO() ?? selectedWeek)
         : await getLatestAggregatesLocked();
+      const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
+      if (prevOpen && prevOpen.isValid) {
+        const prevClose = prevOpen.plus({ days: 7 });
+        previousSentiment = await getAggregatesForWeekStart(
+          prevOpen.toUTC().toISO() ?? selectedWeek,
+          prevClose.toUTC().toISO() ?? selectedWeek,
+        );
+      }
     } else {
       sentiment = await getLatestAggregatesLocked();
     }
@@ -169,6 +183,63 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
     latestSnapshotRefresh,
     latestSentimentRefresh,
   ]);
+  const previousSignals: typeof allSignals = [];
+  if (previousReportDate) {
+    try {
+      const previousSnapshots = await Promise.all(
+        assetIds.map((assetClass) =>
+          readSnapshot({ assetClass, reportDate: previousReportDate }),
+        ),
+      );
+      previousSnapshots.forEach((snapshot, index) => {
+        if (!snapshot) {
+          return;
+        }
+        const asset = assetClasses[index];
+        const signals = buildAntikytheraSignals({
+          assetClass: asset.id,
+          snapshot,
+          sentiment: previousSentiment.length > 0 ? previousSentiment : sentiment,
+        });
+        signals.forEach((signal) => {
+          previousSignals.push({
+            ...signal,
+            assetId: asset.id,
+            assetLabel: asset.label,
+          });
+        });
+      });
+    } catch (error) {
+      console.error("Antikythera previous snapshot load failed:", error);
+    }
+  }
+  const previousMap = new Map(
+    previousSignals.map((signal) => [`${signal.pair} (${signal.assetLabel})`, signal.direction]),
+  );
+  const currentMap = new Map(
+    allSignals.map((signal) => [`${signal.pair} (${signal.assetLabel})`, signal.direction]),
+  );
+  const flipDetails = Array.from(currentMap.entries())
+    .map(([pair, direction]) => {
+      const prior = previousMap.get(pair);
+      if (!prior || prior === direction) {
+        return null;
+      }
+      return { label: pair, value: `${prior} → ${direction}` };
+    })
+    .filter((detail): detail is { label: string; value: string } => Boolean(detail));
+  const longDetails = allSignals
+    .filter((signal) => signal.direction === "LONG")
+    .map((signal) => ({
+      label: `${signal.pair} (${signal.assetLabel})`,
+      value: "LONG",
+    }));
+  const shortDetails = allSignals
+    .filter((signal) => signal.direction === "SHORT")
+    .map((signal) => ({
+      label: `${signal.pair} (${signal.assetLabel})`,
+      value: "SHORT",
+    }));
   const reportWeekLabel = (() => {
     if (!selectedReportDate) {
       return "";
@@ -231,12 +302,20 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
                 label: "Long signals",
                 value: String(allSignals.filter((s) => s.direction === "LONG").length),
                 tone: "positive",
+                details: longDetails,
               },
               {
                 id: "short",
                 label: "Short signals",
                 value: String(allSignals.filter((s) => s.direction === "SHORT").length),
                 tone: "negative",
+                details: shortDetails,
+              },
+              {
+                id: "flips",
+                label: "Flips",
+                value: String(flipDetails.length),
+                details: flipDetails,
               },
             ]}
           />

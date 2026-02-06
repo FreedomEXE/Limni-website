@@ -94,10 +94,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         return lists.reduce((acc, list) => acc.filter((date) => list.includes(date)));
       })
     : await listSnapshotDates(assetClass);
+  const orderedDates = [...availableDates].sort((a, b) => b.localeCompare(a));
   const selectedReportDate =
-    reportDate && availableDates.includes(reportDate)
+    reportDate && orderedDates.includes(reportDate)
       ? reportDate
-      : availableDates[0];
+      : orderedDates[0];
+  const previousReportDate =
+    selectedReportDate
+      ? orderedDates[orderedDates.indexOf(selectedReportDate) + 1] ?? null
+      : null;
   const snapshot = isAll
     ? null
     : selectedReportDate
@@ -356,6 +361,66 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
     return formatDateET(monday.toUTC().toISO());
   })();
+  const longDetails = pairRowsWithPerf
+    .filter((row) => row.direction === "LONG")
+    .map((row) => ({ label: row.pair, value: "LONG" }));
+  const shortDetails = pairRowsWithPerf
+    .filter((row) => row.direction === "SHORT")
+    .map((row) => ({ label: row.pair, value: "SHORT" }));
+  const neutralDetails = pairRowsWithPerf
+    .filter((row) => row.direction === "NEUTRAL")
+    .map((row) => ({ label: row.pair, value: "NEUTRAL" }));
+  const previousDirectionMap = new Map<string, "LONG" | "SHORT" | "NEUTRAL">();
+  if (previousReportDate) {
+    if (isAll) {
+      const previousSnapshots = await Promise.all(
+        assetClasses.map((asset) =>
+          readSnapshot({ assetClass: asset.id, reportDate: previousReportDate }),
+        ),
+      );
+      previousSnapshots.forEach((prevSnapshot, index) => {
+        if (!prevSnapshot) {
+          return;
+        }
+        const asset = assetClasses[index];
+        const pairDefs = PAIRS_BY_ASSET_CLASS[asset.id];
+        const derivedPairs =
+          asset.id === "fx"
+            ? derivePairDirectionsWithNeutral(prevSnapshot.currencies, pairDefs, biasMode)
+            : derivePairDirectionsByBaseWithNeutral(prevSnapshot.currencies, pairDefs, biasMode);
+        pairDefs.forEach((pairDef) => {
+          const direction = derivedPairs[pairDef.pair]?.direction ?? "NEUTRAL";
+          previousDirectionMap.set(`${pairDef.pair} (${asset.label})`, direction);
+        });
+      });
+    } else {
+      const previousSnapshot = await readSnapshot({
+        assetClass,
+        reportDate: previousReportDate,
+      });
+      if (previousSnapshot) {
+        const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
+        const derivedPairs =
+          assetClass === "fx"
+            ? derivePairDirectionsWithNeutral(previousSnapshot.currencies, pairDefs, biasMode)
+            : derivePairDirectionsByBaseWithNeutral(previousSnapshot.currencies, pairDefs, biasMode);
+        pairDefs.forEach((pairDef) => {
+          const direction = derivedPairs[pairDef.pair]?.direction ?? "NEUTRAL";
+          previousDirectionMap.set(pairDef.pair, direction);
+        });
+      }
+    }
+  }
+  const flipDetails = pairRowsWithPerf
+    .map((row) => {
+      const prior = previousDirectionMap.get(row.pair);
+      if (!prior || prior === row.direction) {
+        return null;
+      }
+      return { label: row.pair, value: `${prior} → ${row.direction}` };
+    })
+    .filter((detail): detail is { label: string; value: string } => Boolean(detail));
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -379,17 +444,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 label: "Long signals",
                 value: String(pairRowsWithPerf.filter((row) => row.direction === "LONG").length),
                 tone: "positive",
+                details: longDetails,
               },
               {
                 id: "short",
                 label: "Short signals",
                 value: String(pairRowsWithPerf.filter((row) => row.direction === "SHORT").length),
                 tone: "negative",
+                details: shortDetails,
               },
               {
                 id: "neutral",
                 label: "Neutral/ignored",
                 value: String(pairRowsWithPerf.filter((row) => row.direction === "NEUTRAL").length),
+                details: neutralDetails,
+              },
+              {
+                id: "flips",
+                label: "Flips",
+                value: String(flipDetails.length),
+                details: flipDetails,
               },
             ]}
           />

@@ -4,6 +4,7 @@ import { readSnapshot, refreshAllSnapshots } from "@/lib/cotStore";
 import { refreshMarketSnapshot } from "@/lib/pricePerformance";
 import { refreshSentiment } from "@/lib/sentiment/refresh";
 import { refreshNewsSnapshot } from "@/lib/news/refresh";
+import { refreshPerformanceSnapshots } from "@/lib/performanceRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,7 @@ export async function GET(request: Request) {
     }
   });
 
-  const [priceResults, sentimentResult, newsResult] = await Promise.all([
+  const [priceResults, sentimentResult, newsResult, performanceResult] = await Promise.all([
     Promise.all(priceTasks),
     (async () => {
       try {
@@ -115,6 +116,22 @@ export async function GET(request: Request) {
         };
       }
     })(),
+    (async () => {
+      try {
+        const result = await refreshPerformanceSnapshots({ rollingWeeks: 6 });
+        return {
+          ok: true,
+          weeks: result.weeks,
+          snapshots_written: result.snapshots_written,
+        };
+      } catch {
+        return {
+          ok: false,
+          weeks: [],
+          snapshots_written: 0,
+        };
+      }
+    })(),
   ]);
 
   priceResults.forEach(({ assetId, result }) => {
@@ -129,5 +146,6 @@ export async function GET(request: Request) {
     results,
     sentiment,
     news,
+    performance: performanceResult,
   });
 }
