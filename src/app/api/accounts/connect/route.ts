@@ -124,6 +124,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing provider" }, { status: 400 });
     }
 
+    const clean = (value?: string | null) => (typeof value === "string" ? value.trim() : value);
+
     if (body.provider === "mt5") {
       return NextResponse.json({
         ok: true,
@@ -132,23 +134,47 @@ export async function POST(request: Request) {
     }
 
     if (body.provider === "oanda") {
-      if (!body.apiKey || !body.accountId) {
+      const apiKey = clean(body.apiKey);
+      const accountId = clean(body.accountId);
+      if (!apiKey || !accountId) {
         return NextResponse.json(
           { error: "Missing OANDA credentials" },
           { status: 400 },
         );
       }
       const env = body.env === "practice" ? "practice" : "live";
-      const summary = await oandaRequest<{ account: Record<string, string> }>(
-        body.apiKey,
-        env,
-        `/v3/accounts/${body.accountId}/summary`,
-      );
-      const instruments = await oandaRequest<{ instruments: Array<{ name: string; type: string }> }>(
-        body.apiKey,
-        env,
-        `/v3/accounts/${body.accountId}/instruments`,
-      );
+      let summary: { account: Record<string, string> };
+      let instruments: { instruments: Array<{ name: string; type: string }> };
+      try {
+        summary = await oandaRequest<{ account: Record<string, string> }>(
+          apiKey,
+          env,
+          `/v3/accounts/${accountId}/summary`,
+        );
+        instruments = await oandaRequest<{ instruments: Array<{ name: string; type: string }> }>(
+          apiKey,
+          env,
+          `/v3/accounts/${accountId}/instruments`,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (env === "live" && message.includes("(401)")) {
+          try {
+            await oandaRequest<{ account: Record<string, string> }>(
+              apiKey,
+              "practice",
+              `/v3/accounts/${accountId}/summary`,
+            );
+            return NextResponse.json(
+              { error: "OANDA key appears to be PRACTICE-only. Switch Environment to Practice." },
+              { status: 400 },
+            );
+          } catch {
+            // fall through with original error
+          }
+        }
+        throw error;
+      }
 
       const instrumentSet = new Set(instruments.instruments.map((inst) => inst.name));
       const allPairs = [
@@ -168,7 +194,7 @@ export async function POST(request: Request) {
       });
 
       const missing = mapped.filter((row) => !row.available).map((row) => row.symbol);
-      const accountKey = buildAccountKey("oanda", body.accountId);
+      const accountKey = buildAccountKey("oanda", accountId);
       const analysis = {
         nav: Number(summary.account.NAV ?? summary.account.balance ?? 0),
         balance: Number(summary.account.balance ?? 0),
@@ -183,7 +209,7 @@ export async function POST(request: Request) {
       await upsertConnectedAccount({
         account_key: accountKey,
         provider: "oanda",
-        account_id: body.accountId,
+        account_id: accountId,
         label: body.label ?? "OANDA Universal Bot",
         status: env === "live" ? "LIVE" : "DEMO",
         bot_type: body.botType ?? "oanda_universal",
@@ -196,8 +222,8 @@ export async function POST(request: Request) {
         },
         analysis,
         secrets: {
-          apiKey: body.apiKey,
-          accountId: body.accountId,
+          apiKey,
+          accountId,
           env,
         },
       });
@@ -206,7 +232,10 @@ export async function POST(request: Request) {
     }
 
     if (body.provider === "bitget") {
-      if (!body.apiKey || !body.apiSecret || !body.apiPassphrase) {
+      const apiKey = clean(body.apiKey);
+      const apiSecret = clean(body.apiSecret);
+      const apiPassphrase = clean(body.apiPassphrase);
+      if (!apiKey || !apiSecret || !apiPassphrase) {
         return NextResponse.json(
           { error: "Missing Bitget credentials" },
           { status: 400 },
@@ -215,18 +244,19 @@ export async function POST(request: Request) {
       const productType = body.productType ?? "USDT-FUTURES";
       const account = await bitgetRequest<{ list?: Array<{ marginCoin: string; equity: string; usdtEquity?: string }> }>(
         {
-          apiKey: body.apiKey,
-          apiSecret: body.apiSecret,
-          apiPassphrase: body.apiPassphrase,
+          apiKey,
+          apiSecret,
+          apiPassphrase,
           method: "GET",
           path: "/api/v2/mix/account/accounts",
           query: { productType },
         },
       );
-      const usdt = (account.list ?? []).find((row) => row.marginCoin === "USDT");
+      const rows = account.list ?? [];
+      const preferred = rows.find((row) => row.marginCoin === "USDT") ?? rows[0];
       const accountKey = buildAccountKey("bitget");
       const analysis = {
-        equity: Number(usdt?.usdtEquity ?? usdt?.equity ?? 0),
+        equity: Number(preferred?.usdtEquity ?? preferred?.equity ?? 0),
         currency: "USDT",
         productType,
         leverage: body.leverage ?? 10,
@@ -251,9 +281,9 @@ export async function POST(request: Request) {
         },
         analysis,
         secrets: {
-          apiKey: body.apiKey,
-          apiSecret: body.apiSecret,
-          apiPassphrase: body.apiPassphrase,
+          apiKey,
+          apiSecret,
+          apiPassphrase,
           env: body.env ?? "live",
           productType,
           leverage: body.leverage ?? 10,

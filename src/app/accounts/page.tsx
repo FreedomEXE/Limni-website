@@ -105,7 +105,7 @@ export default async function AccountsPage() {
       win_rate_pct: null,
       max_drawdown_pct: null,
       source: account.provider as AccountCard["source"],
-      href: `/accounts/connected/${account.account_key}`,
+      href: `/accounts/connected/${encodeURIComponent(account.account_key)}`,
     };
   });
 

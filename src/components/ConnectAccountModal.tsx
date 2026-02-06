@@ -141,7 +141,12 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
             <button
               key={item}
               type="button"
-              onClick={() => setProvider(item)}
+              onClick={() => {
+                setProvider(item);
+                setError(null);
+                setResult(null);
+                setStepState({ validate: "idle", analyze: "idle", save: "idle" });
+              }}
               className={`rounded-full border px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${
                 provider === item
                   ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"

@@ -11,7 +11,8 @@ export default async function ConnectedAccountPage({
 }: {
   params: { accountKey: string };
 }) {
-  const account = await getConnectedAccount(params.accountKey);
+  const accountKey = decodeURIComponent(params.accountKey);
+  const account = await getConnectedAccount(accountKey);
   const botState =
     account?.provider === "oanda"
       ? await readBotState("oanda_universal_bot")
