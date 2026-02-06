@@ -212,7 +212,7 @@ async function enterPositions(direction: "LONG" | "SHORT") {
     throw new Error("Invalid Bitget equity.");
   }
 
-  const notionalPerSymbol = (equity * LEVERAGE) / SYMBOLS.length;
+  const notionalPerSymbol = (equity * leverage) / SYMBOLS.length;
   const side = direction === "LONG" ? "buy" : "sell";
   const entryPrices: Record<string, number> = {};
   const entryNotional: Record<string, number> = {};

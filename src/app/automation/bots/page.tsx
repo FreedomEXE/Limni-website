@@ -3,6 +3,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { readBotState } from "@/lib/botState";
 import { readMt5Accounts } from "@/lib/mt5Store";
 
+export const dynamic = "force-dynamic";
+
 type BotStatus = "ON" | "OFF" | "WAITING" | "READY";
 
 type BotBadge = {

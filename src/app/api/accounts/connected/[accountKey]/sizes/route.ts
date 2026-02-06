@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { DateTime } from "luxon";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { getOandaInstrument } from "@/lib/oandaPrices";
@@ -82,11 +82,12 @@ function convertToUsd(amount: number, currency: string, priceMap: Map<string, nu
 }
 
 export async function POST(
-  request: Request,
-  { params }: { params: { accountKey: string } },
+  request: NextRequest,
+  { params }: { params: Promise<{ accountKey: string }> },
 ) {
   try {
-    const record = await loadConnectedAccountSecretsByKey(params.accountKey);
+    const { accountKey } = await params;
+    const record = await loadConnectedAccountSecretsByKey(accountKey);
     if (!record) {
       return NextResponse.json({ error: "Account not found." }, { status: 404 });
     }

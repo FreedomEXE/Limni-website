@@ -14,14 +14,14 @@ export default async function ConnectedAccountPage({
   const account = await getConnectedAccount(params.accountKey);
   const botState =
     account?.provider === "oanda"
-      ? await readBotState<{ state?: { entered?: boolean } }>("oanda_universal_bot")
+      ? await readBotState("oanda_universal_bot")
       : account?.provider === "bitget"
-        ? await readBotState<{ state?: { entered?: boolean } }>("bitget_perp_bot")
+        ? await readBotState("bitget_perp_bot")
         : null;
   const readiness =
-    botState?.state?.entered === true
+    (botState as { state?: { entered?: boolean } } | null)?.state?.entered === true
       ? "ON"
-      : botState?.state
+      : (botState as { state?: unknown } | null)?.state
         ? "READY"
         : "OFF";
 

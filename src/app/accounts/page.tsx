@@ -37,7 +37,7 @@ export default async function AccountsPage() {
     readBotState<OandaBotState>("oanda_universal_bot"),
   ]);
 
-  let connectedAccounts = [];
+  let connectedAccounts: Awaited<ReturnType<typeof listConnectedAccounts>> = [];
   try {
     connectedAccounts = await listConnectedAccounts();
   } catch (error) {
