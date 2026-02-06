@@ -76,7 +76,10 @@ export default async function AutomationBotsPage() {
         </header>
 
         <section className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <Link
+            href="/accounts"
+            className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 MT5 Forex Basket EA
@@ -92,9 +95,12 @@ export default async function AutomationBotsPage() {
               <span>ATR-weighted sizing</span>
               <span>Global equity trail</span>
             </div>
-          </div>
+          </Link>
 
-          <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <Link
+            href="/accounts#bitget_perp_bot"
+            className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Crypto Perp Bot (Bitget)
@@ -110,9 +116,12 @@ export default async function AutomationBotsPage() {
               <span>10x leverage, unlevered trail</span>
               <span>All-model alignment filter</span>
             </div>
-          </div>
+          </Link>
 
-          <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <Link
+            href="/accounts#oanda_universal_bot"
+            className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 OANDA Universal Bot
@@ -128,7 +137,7 @@ export default async function AutomationBotsPage() {
               <span>Global equity trail</span>
               <span>Margin-aware scaling</span>
             </div>
-          </div>
+          </Link>
 
           <Link
             href="/automation/solana-meme-bot"

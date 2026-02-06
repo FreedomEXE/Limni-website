@@ -125,6 +125,7 @@ export default function AccountsDirectory({ accounts }: AccountsDirectoryProps) 
       {accounts.map((account) => (
         <div
           key={account.account_id}
+          id={account.account_id}
           className="group relative rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm transition hover:border-[var(--accent)]"
         >
           {account.source === "mt5" ? (
