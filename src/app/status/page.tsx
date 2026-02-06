@@ -10,6 +10,7 @@ import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { ALL_SENTIMENT_SYMBOLS } from "@/lib/sentiment/symbols";
 import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
 import { readMt5Accounts } from "@/lib/mt5Store";
+import { readBotState } from "@/lib/botState";
 import { getPriceSymbolCandidates } from "@/lib/pricePerformance";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 
@@ -27,6 +28,20 @@ const toneMap = {
   warning: "bg-[var(--accent)]/10 text-[var(--accent-strong)]",
   error: "bg-rose-100 text-rose-700",
 };
+
+const botToneMap = {
+  ON: "bg-emerald-100 text-emerald-700",
+  READY: "bg-sky-100 text-sky-700",
+  WAITING: "bg-amber-100 text-amber-700",
+  OFF: "bg-[var(--panel-border)]/40 text-[var(--foreground)]/70",
+};
+
+function isFresh(iso: string | null | undefined, minutes = 15) {
+  if (!iso) return false;
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return false;
+  return Date.now() - ts <= minutes * 60 * 1000;
+}
 
 export default async function StatusPage() {
   let dbError: string | null = null;
@@ -80,6 +95,10 @@ export default async function StatusPage() {
       symbols: string[];
     }>;
   }> = [];
+  const [bitgetState, oandaState] = await Promise.all([
+    readBotState("bitget_perp_bot"),
+    readBotState("oanda_universal_bot"),
+  ]);
 
   try {
     cotSnapshot = await readSnapshot();
@@ -231,6 +250,18 @@ export default async function StatusPage() {
     latestSentimentTimestamp,
     latestAccountSync,
   ]);
+  const mt5Status =
+    accounts.length === 0 ? "OFF" : isFresh(latestAccountSync, 15) ? "ON" : "OFF";
+  const bitgetStatus = !bitgetState
+    ? "OFF"
+    : bitgetState.state?.entered
+      ? "ON"
+      : "WAITING";
+  const oandaStatus = !oandaState
+    ? "OFF"
+    : oandaState.state?.entered
+      ? "ON"
+      : "READY";
 
   const health: HealthItem[] = [
     {
@@ -367,6 +398,64 @@ export default async function StatusPage() {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Automation Bots</h2>
+            <p className="text-sm text-[color:var(--muted)]">
+              Live heartbeat + readiness for trading bots.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-[var(--foreground)]">MT5 Basket EA</p>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${botToneMap[mt5Status]}`}>
+                  {mt5Status}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-[color:var(--muted)]">
+                Last sync{" "}
+                {latestAccountSync ? formatDateTimeET(latestAccountSync) : "No sync yet"}
+              </p>
+              <p className="mt-1 text-xs text-[color:var(--muted)]">
+                Accounts reporting: {accounts.length}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-[var(--foreground)]">Bitget Perp Bot</p>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${botToneMap[bitgetStatus]}`}>
+                  {bitgetStatus}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-[color:var(--muted)]">
+                Last heartbeat{" "}
+                {bitgetState?.updated_at ? formatDateTimeET(bitgetState.updated_at) : "No heartbeat yet"}
+              </p>
+              <p className="mt-1 text-xs text-[color:var(--muted)]">
+                Entered: {bitgetState?.state?.entered ? "Yes" : "No"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-[var(--foreground)]">OANDA Universal Bot</p>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${botToneMap[oandaStatus]}`}>
+                  {oandaStatus}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-[color:var(--muted)]">
+                Last heartbeat{" "}
+                {oandaState?.updated_at ? formatDateTimeET(oandaState.updated_at) : "No heartbeat yet"}
+              </p>
+              <p className="mt-1 text-xs text-[color:var(--muted)]">
+                Entered: {oandaState?.state?.entered ? "Yes" : "No"}
+              </p>
+            </div>
+          </div>
         </section>
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">

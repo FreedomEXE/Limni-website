@@ -14,8 +14,6 @@ import {
   listAssetClasses,
 } from "@/lib/cotMarkets";
 import {
-  derivePairDirections,
-  derivePairDirectionsByBase,
   derivePairDirectionsWithNeutral,
   derivePairDirectionsByBaseWithNeutral,
   resolveMarketBias,
@@ -262,9 +260,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     pairRowsWithPerf.sort((a, b) => a.pair.localeCompare(b.pair));
     pairNote =
       "Combined view across asset classes. Refresh prices per asset class to reduce missing data.";
-    const reportDates = snapshotEntries
-      .map((entry) => entry.snapshot?.report_date)
-      .filter((value): value is string => Boolean(value));
     const refreshDates = snapshotEntries
       .map((entry) => entry.snapshot?.last_refresh_utc)
       .filter((value): value is string => Boolean(value));

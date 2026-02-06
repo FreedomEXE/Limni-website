@@ -264,6 +264,13 @@ CREATE TABLE IF NOT EXISTS sentiment_aggregates (
 
 CREATE INDEX IF NOT EXISTS idx_sentiment_agg_symbol_time ON sentiment_aggregates(symbol, timestamp_utc DESC);
 
+-- Bot State (for Render workers)
+CREATE TABLE IF NOT EXISTS bot_states (
+  bot_id VARCHAR(64) PRIMARY KEY,
+  state JSONB NOT NULL,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Weekly News Snapshots (ForexFactory-based macro events)
 CREATE TABLE IF NOT EXISTS news_weekly_snapshots (
   id SERIAL PRIMARY KEY,

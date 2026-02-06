@@ -96,7 +96,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       error instanceof Error ? error.message : String(error),
     );
   }
-  let performanceByPair: Record<string, number | null> = {};
+  const performanceByPair: Record<string, number | null> = {};
   let allSignals = assetClasses.flatMap((asset) => {
     const snapshot = snapshots.get(asset.id) ?? null;
     const signals =

@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "sentiment:poll": "tsx scripts/sentiment-poller.ts",
-    "db:migrate": "tsx db/migrate.ts"
+    "db:migrate": "tsx db/migrate.ts",
+    "bot:bitget": "tsx bots/bitget-perp-bot.ts",
+    "bot:oanda": "tsx bots/oanda-universal-bot.ts"
   },
   "dependencies": {
     "@types/pg": "^8.16.0",

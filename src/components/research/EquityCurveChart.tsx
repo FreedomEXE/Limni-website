@@ -43,6 +43,7 @@ export default function EquityCurveChart({
   series?: EquitySeries[];
   title: string;
 }) {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const normalized = useMemo(() => {
     if (series && series.length > 0) {
       return series.filter((row) => row.points.length > 0).map((row, idx) => ({
@@ -71,8 +72,6 @@ export default function EquityCurveChart({
   const paddingY = 20;
   const chartW = width - paddingX * 2;
   const chartH = height - paddingY * 2;
-
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   const allValues = normalized.flatMap((row) =>
     row.points.flatMap((p) => (p.lock_pct === null ? [p.equity_pct] : [p.equity_pct, p.lock_pct])),

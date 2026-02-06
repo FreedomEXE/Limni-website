@@ -37,21 +37,21 @@ export function getPool(): Pool {
 /**
  * Execute a query and return rows
  */
-export async function query<T = any>(
+export async function query<T = unknown>(
   text: string,
-  params?: any[]
+  params?: readonly unknown[]
 ): Promise<T[]> {
   const pool = getPool();
-  const result = await pool.query(text, params);
+  const result = await pool.query(text, params as unknown[]);
   return result.rows;
 }
 
 /**
  * Execute a query and return a single row (or null)
  */
-export async function queryOne<T = any>(
+export async function queryOne<T = unknown>(
   text: string,
-  params?: any[]
+  params?: readonly unknown[]
 ): Promise<T | null> {
   const rows = await query<T>(text, params);
   return rows.length > 0 ? rows[0] : null;

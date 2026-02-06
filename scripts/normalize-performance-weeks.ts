@@ -1,6 +1,8 @@
 import { DateTime } from "luxon";
 import { query } from "../src/lib/db";
 import { writePerformanceSnapshots, getWeekOpenUtc } from "../src/lib/performanceSnapshots";
+import type { AssetClass } from "../src/lib/cotMarkets";
+import type { ModelPerformance, PerformanceModel } from "../src/lib/performanceLab";
 
 type Row = {
   week_open_utc: Date;
@@ -11,9 +13,9 @@ type Row = {
   priced: number;
   total: number;
   note: string | null;
-  returns: any;
-  pair_details: any;
-  stats: any;
+  returns: ModelPerformance["returns"] | null;
+  pair_details: ModelPerformance["pair_details"] | null;
+  stats: ModelPerformance["stats"] | null;
 };
 
 function canonicalWeekOpen(weekOpenUtc: Date) {
@@ -66,8 +68,8 @@ async function main() {
     const [week_open_utc, asset_class, model] = key.split("::");
     return {
       week_open_utc,
-      asset_class: asset_class as any,
-      model: model as any,
+      asset_class: asset_class as AssetClass,
+      model: model as PerformanceModel,
       report_date: row.report_date ? row.report_date.toISOString().slice(0, 10) : null,
       percent: Number(row.percent),
       priced: row.priced,

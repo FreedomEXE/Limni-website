@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ModelPerformance } from "@/lib/performanceLab";
 
 type PerformanceModalProps = {
@@ -34,12 +34,6 @@ function formatMoney(value: number) {
   const sign = value > 0 ? "+" : value < 0 ? "-" : "";
   const abs = Math.abs(value);
   return `${sign}$${abs.toFixed(0)}`;
-}
-
-function tone(value: number) {
-  if (value > 0) return "text-emerald-700";
-  if (value < 0) return "text-rose-700";
-  return "text-[color:var(--muted)]";
 }
 
 function getPerformanceTier(percent: number, winRate: number) {
@@ -141,6 +135,30 @@ function MiniHistogram({ returns }: { returns: Array<{ pair: string; percent: nu
   );
 }
 
+function HomeCard({
+  title,
+  icon,
+  description,
+  onClick,
+}: {
+  title: string;
+  icon: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group rounded-2xl border-2 border-[var(--panel-border)] bg-[var(--panel)] p-6 text-left transition duration-200 hover:scale-[1.02] hover:border-[var(--accent)] hover:shadow-xl"
+    >
+      <div className="mb-3 text-4xl">{icon}</div>
+      <h3 className="text-lg font-semibold text-[var(--foreground)]">{title}</h3>
+      <p className="mt-2 text-sm text-[color:var(--muted)]">{description}</p>
+    </button>
+  );
+}
+
 export default function PerformanceModal({
   sectionLabel,
   modelLabel,
@@ -150,9 +168,18 @@ export default function PerformanceModal({
   setAccountSize,
   calibration,
 }: PerformanceModalProps) {
+  const notesKey = useMemo(
+    () => `limni-notes-${sectionLabel}-${modelLabel}`,
+    [sectionLabel, modelLabel],
+  );
   const [view, setView] = useState<ViewMode>("home");
   const [simulationMode, setSimulationMode] = useState<"hold" | "trailing">("hold");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(() => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+    return localStorage.getItem(notesKey) ?? "";
+  });
   const [isEditingNotes, setIsEditingNotes] = useState(false);
 
   const stats = performance.stats;
@@ -174,15 +201,6 @@ export default function PerformanceModal({
       ? (calibration.accountSize * performance.percent) / 100
       : null;
 
-  const notesKey = `limni-notes-${sectionLabel}-${modelLabel}`;
-
-  useEffect(() => {
-    const saved = localStorage.getItem(notesKey);
-    if (saved) {
-      setNotes(saved);
-    }
-  }, [notesKey]);
-
   const saveNotes = () => {
     localStorage.setItem(notesKey, notes);
     setIsEditingNotes(false);
@@ -201,28 +219,6 @@ export default function PerformanceModal({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [view, onClose]);
-
-  const HomeCard = ({
-    title,
-    icon,
-    description,
-    onClick
-  }: {
-    title: string;
-    icon: string;
-    description: string;
-    onClick: () => void;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group rounded-2xl border-2 border-[var(--panel-border)] bg-[var(--panel)] p-6 text-left transition duration-200 hover:scale-[1.02] hover:border-[var(--accent)] hover:shadow-xl"
-    >
-      <div className="mb-3 text-4xl">{icon}</div>
-      <h3 className="text-lg font-semibold text-[var(--foreground)]">{title}</h3>
-      <p className="mt-2 text-sm text-[color:var(--muted)]">{description}</p>
-    </button>
-  );
 
   return (
     <div

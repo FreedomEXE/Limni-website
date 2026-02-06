@@ -222,7 +222,7 @@ export function derivePairDirectionsWithNeutral(
     // Include neutral pairs
     if (baseBias.bias === "NEUTRAL" || quoteBias.bias === "NEUTRAL") {
       pairs[pairDef.pair] = {
-        direction: "NEUTRAL" as any,
+        direction: "NEUTRAL",
         base_bias: baseBias.bias,
         quote_bias: quoteBias.bias,
       };
@@ -231,7 +231,7 @@ export function derivePairDirectionsWithNeutral(
 
     if (baseBias.bias === quoteBias.bias) {
       pairs[pairDef.pair] = {
-        direction: "NEUTRAL" as any,
+        direction: "NEUTRAL",
         base_bias: baseBias.bias,
         quote_bias: quoteBias.bias,
       };
@@ -278,7 +278,7 @@ export function derivePairDirectionsByBaseWithNeutral(
 
     if (baseBias.bias === "NEUTRAL") {
       pairs[pairDef.pair] = {
-        direction: "NEUTRAL" as any,
+        direction: "NEUTRAL",
         base_bias: baseBias.bias,
         quote_bias: quoteBias?.bias ?? "NEUTRAL",
       };

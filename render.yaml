@@ -1,0 +1,58 @@
+services:
+  - type: worker
+    name: limni-bitget-perp-bot
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm run bot:bitget
+    envVars:
+      - key: APP_BASE_URL
+        value: https://your-app.onrender.com
+      - key: DATABASE_URL
+        sync: false
+      - key: BITGET_API_KEY
+        sync: false
+      - key: BITGET_API_SECRET
+        sync: false
+      - key: BITGET_API_PASSPHRASE
+        sync: false
+      - key: BITGET_ENV
+        value: live
+      - key: BITGET_PRODUCT_TYPE
+        value: USDT-FUTURES
+      - key: BITGET_LEVERAGE
+        value: "10"
+      - key: BITGET_TRAIL_START_PCT
+        value: "20"
+      - key: BITGET_TRAIL_OFFSET_PCT
+        value: "10"
+      - key: BOT_TICK_SECONDS
+        value: "30"
+
+  - type: worker
+    name: limni-oanda-universal-bot
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm run bot:oanda
+    envVars:
+      - key: APP_BASE_URL
+        value: https://your-app.onrender.com
+      - key: DATABASE_URL
+        sync: false
+      - key: OANDA_API_KEY
+        sync: false
+      - key: OANDA_ACCOUNT_ID
+        sync: false
+      - key: OANDA_ENV
+        value: live
+      - key: OANDA_TRADING_ENABLED
+        value: "false"
+      - key: OANDA_TRAIL_START_PCT
+        value: "20"
+      - key: OANDA_TRAIL_OFFSET_PCT
+        value: "10"
+      - key: OANDA_MARGIN_BUFFER
+        value: "0.1"
+      - key: BOT_TICK_SECONDS
+        value: "30"

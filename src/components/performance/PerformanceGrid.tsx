@@ -45,7 +45,6 @@ type PerformanceGridProps = {
   };
 };
 
-const ACCOUNT_SIZES = [10000, 50000, 100000, 250000, 500000, 1000000];
 const MODEL_ORDER: PerformanceModel[] = [
   "antikythera",
   "blended",
@@ -318,34 +317,27 @@ export default function PerformanceGrid({
   calibration,
 }: PerformanceGridProps) {
   const [active, setActive] = useState<ActiveCard | null>(null);
-  const [accountSize, setAccountSize] = useState(
-    calibration?.accountSize ?? 100000,
-  );
   const sections = useMemo(() => {
     return [combined, ...perAsset].map((section) => ({
       ...section,
       models: sortModels(section.models),
     }));
   }, [combined, perAsset]);
-  const [selectedSectionId, setSelectedSectionId] = useState(sections[0]?.id ?? "combined");
+  const [selectedSectionId, setSelectedSectionId] = useState(
+    sections[0]?.id ?? "combined",
+  );
+  const [accountSize, setAccountSize] = useState(
+    calibration?.accountSize ?? 100000,
+  );
+  const resolvedSectionId = sections.find((section) => section.id === selectedSectionId)
+    ? selectedSectionId
+    : sections[0]?.id ?? "combined";
   const selectedAllTime =
-    selectedSectionId === "combined"
+    resolvedSectionId === "combined"
       ? allTime.combined
-      : allTime.perAsset[selectedSectionId] ?? allTime.combined;
+      : allTime.perAsset[resolvedSectionId] ?? allTime.combined;
   const selectedSection =
-    sections.find((section) => section.id === selectedSectionId) ?? sections[0];
-
-  useEffect(() => {
-    if (!sections.find((section) => section.id === selectedSectionId)) {
-      setSelectedSectionId(sections[0]?.id ?? "combined");
-    }
-  }, [sections, selectedSectionId]);
-
-  useEffect(() => {
-    if (calibration?.accountSize) {
-      setAccountSize(calibration.accountSize);
-    }
-  }, [calibration?.accountSize]);
+    sections.find((section) => section.id === resolvedSectionId) ?? sections[0];
 
   useEffect(() => {
     if (!active) {
@@ -386,7 +378,7 @@ export default function PerformanceGrid({
                 type="button"
                 onClick={() => setSelectedSectionId(section.id)}
                 className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-                  selectedSectionId === section.id
+                  resolvedSectionId === section.id
                     ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
                     : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)]"
                 }`}
