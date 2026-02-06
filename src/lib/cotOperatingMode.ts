@@ -48,6 +48,7 @@ export async function getCotOperatingModeSummary(): Promise<CotOperatingModeSumm
 
   for (const item of snapshots) {
     if (!item.snapshot) {
+      console.log(`[COT Operating Mode] ${item.asset}: No snapshot found in database`);
       staleAssetClasses.push(item.asset);
       continue;
     }
@@ -55,6 +56,7 @@ export async function getCotOperatingModeSummary(): Promise<CotOperatingModeSumm
       item.snapshot.report_date,
       item.snapshot.last_refresh_utc,
     );
+    console.log(`[COT Operating Mode] ${item.asset}: report_date=${item.snapshot.report_date}, trading_allowed=${freshness.trading_allowed}, reason=${freshness.reason}`);
     if (freshness.trading_allowed) {
       healthyAssetClasses.push(item.asset);
     } else {
