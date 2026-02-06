@@ -135,7 +135,7 @@ async function computeOrderSize(symbol: string, notionalUsd: number) {
     throw new Error(`Missing contract info for ${symbol}`);
   }
   const snapshot = await fetchBitgetFuturesSnapshot(symbol.startsWith("BTC") ? "BTC" : "ETH");
-  const price = snapshot.lastPrice;
+  const price = Number(snapshot.lastPrice ?? NaN);
   if (!Number.isFinite(price) || price <= 0) {
     throw new Error(`Invalid price for ${symbol}`);
   }
