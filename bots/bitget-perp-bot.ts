@@ -329,13 +329,13 @@ async function tick() {
           fetchBitgetFuturesSnapshot("ETH"),
         ]);
         const priceMap = new Map<string, number>([
-          ["BTCUSDT", snapshots[0].lastPrice],
-          ["ETHUSDT", snapshots[1].lastPrice],
+          ["BTCUSDT", Number(snapshots[0]?.lastPrice ?? NaN)],
+          ["ETHUSDT", Number(snapshots[1]?.lastPrice ?? NaN)],
         ]);
         let weighted = 0;
         for (const [symbol, entryPrice] of entries) {
           const current = priceMap.get(symbol);
-          if (!current) {
+          if (!Number.isFinite(current) || current <= 0) {
             continue;
           }
           const direction = state.last_direction === "LONG" ? 1 : -1;
