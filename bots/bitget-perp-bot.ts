@@ -9,6 +9,10 @@ import {
   setBitgetPositionMode,
 } from "@/lib/bitgetTrade";
 import { readBotState, writeBotState } from "@/lib/botState";
+import {
+  loadConnectedAccountSecrets,
+  updateConnectedAccountAnalysis,
+} from "@/lib/connectedAccounts";
 
 type BasketSignal = {
   symbol: string;
@@ -34,11 +38,13 @@ type BitgetBotState = {
 };
 
 const BOT_ID = "bitget_perp_bot";
-const TICK_SECONDS = Number(process.env.BOT_TICK_SECONDS ?? "30");
-const APP_BASE_URL = process.env.APP_BASE_URL ?? "";
-const LEVERAGE = Number(process.env.BITGET_LEVERAGE ?? "10");
-const TRAIL_START_PCT = Number(process.env.BITGET_TRAIL_START_PCT ?? "20");
-const TRAIL_OFFSET_PCT = Number(process.env.BITGET_TRAIL_OFFSET_PCT ?? "10");
+let tickSeconds = Number(process.env.BOT_TICK_SECONDS ?? "30");
+let appBaseUrl = process.env.APP_BASE_URL ?? "";
+let leverage = Number(process.env.BITGET_LEVERAGE ?? "10");
+let trailStartPct = Number(process.env.BITGET_TRAIL_START_PCT ?? "20");
+let trailOffsetPct = Number(process.env.BITGET_TRAIL_OFFSET_PCT ?? "10");
+let linkedAccountKey: string | null = null;
+let linkedAccountBase: Record<string, unknown> | null = null;
 
 const SYMBOLS = ["BTCUSDT", "ETHUSDT"] as const;
 const REQUIRED_MODELS: BasketSignal["model"][] = [
@@ -76,10 +82,10 @@ function getWeekWindowUtc(now = DateTime.utc()) {
 }
 
 async function fetchLatestSignals(): Promise<BasketSignal[]> {
-  if (!APP_BASE_URL) {
+  if (!appBaseUrl) {
     throw new Error("APP_BASE_URL is not configured for Bitget bot.");
   }
-  const url = new URL("/bot/cot/baskets/latest", APP_BASE_URL);
+  const url = new URL("/bot/cot/baskets/latest", appBaseUrl);
   url.searchParams.set("asset", "crypto");
   const response = await fetch(url.toString(), { cache: "no-store" });
   if (!response.ok) {
@@ -197,7 +203,7 @@ async function closeAllPositions(direction: "LONG" | "SHORT") {
 async function enterPositions(direction: "LONG" | "SHORT") {
   await setBitgetPositionMode("one_way_mode");
   for (const symbol of SYMBOLS) {
-    await setBitgetLeverage(symbol, LEVERAGE);
+    await setBitgetLeverage(symbol, leverage);
   }
 
   const account = await fetchBitgetAccount();
@@ -258,6 +264,14 @@ async function tick() {
       const currentEquity = Number(account?.usdtEquity ?? account?.equity ?? account?.available ?? "0");
       if (Number.isFinite(currentEquity) && currentEquity > 0) {
         state.current_equity = currentEquity;
+        if (linkedAccountKey) {
+          await updateConnectedAccountAnalysis(linkedAccountKey, {
+            ...(linkedAccountBase ?? {}),
+            equity: currentEquity,
+            currency: "USDT",
+            fetched_at: DateTime.utc().toISO(),
+          });
+        }
       }
     } catch (error) {
       log("Failed to fetch current equity", { error: error instanceof Error ? error.message : String(error) });
@@ -367,10 +381,10 @@ async function tick() {
     const profitPct = unleveredPct;
     const peakPct = state.peak_unlevered_pct ?? profitPct;
 
-    if (profitPct >= TRAIL_START_PCT) {
+    if (profitPct >= trailStartPct) {
       state.trailing_active = true;
-      const minLock = TRAIL_START_PCT - TRAIL_OFFSET_PCT;
-      const nextLock = Math.max(minLock, peakPct - TRAIL_OFFSET_PCT);
+      const minLock = trailStartPct - trailOffsetPct;
+      const nextLock = Math.max(minLock, peakPct - trailOffsetPct);
       if (!state.locked_pct || nextLock > state.locked_pct) {
         state.locked_pct = nextLock;
       }
@@ -397,13 +411,59 @@ async function tick() {
 
 async function main() {
   log("Bitget perp bot starting...");
+  await hydrateConnectedAccount();
   await tick();
   setInterval(() => {
     void tick();
-  }, TICK_SECONDS * 1000);
+  }, tickSeconds * 1000);
 }
 
 main().catch((error) => {
   console.error("Bitget bot failed to start:", error);
   process.exit(1);
 });
+
+async function hydrateConnectedAccount() {
+  try {
+    const record = await loadConnectedAccountSecrets({
+      provider: "bitget",
+      botType: "bitget_perp",
+    });
+    if (!record) {
+      return;
+    }
+    linkedAccountKey = record.account.account_key;
+    linkedAccountBase = (record.account.analysis ?? {}) as Record<string, unknown>;
+    const secrets = record.secrets as Record<string, unknown>;
+    if (typeof secrets.apiKey === "string") {
+      process.env.BITGET_API_KEY = secrets.apiKey;
+    }
+    if (typeof secrets.apiSecret === "string") {
+      process.env.BITGET_API_SECRET = secrets.apiSecret;
+    }
+    if (typeof secrets.apiPassphrase === "string") {
+      process.env.BITGET_API_PASSPHRASE = secrets.apiPassphrase;
+    }
+    if (typeof secrets.env === "string") {
+      process.env.BITGET_ENV = secrets.env;
+    }
+    if (typeof secrets.productType === "string") {
+      process.env.BITGET_PRODUCT_TYPE = secrets.productType;
+    }
+    if (typeof secrets.leverage === "number") {
+      leverage = secrets.leverage;
+    } else if (typeof secrets.leverage === "string") {
+      leverage = Number(secrets.leverage);
+    }
+    if (typeof record.account.trail_start_pct === "number") {
+      trailStartPct = record.account.trail_start_pct;
+    }
+    if (typeof record.account.trail_offset_pct === "number") {
+      trailOffsetPct = record.account.trail_offset_pct;
+    }
+  } catch (error) {
+    log("Failed to load connected account secrets.", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}

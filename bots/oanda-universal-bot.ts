@@ -10,6 +10,10 @@ import {
   buildClientTag,
 } from "@/lib/oandaTrade";
 import { readBotState, writeBotState } from "@/lib/botState";
+import {
+  loadConnectedAccountSecrets,
+  updateConnectedAccountAnalysis,
+} from "@/lib/connectedAccounts";
 
 type BasketSignal = {
   symbol: string;
@@ -31,12 +35,14 @@ type OandaBotState = {
 };
 
 const BOT_ID = "oanda_universal_bot";
-const TICK_SECONDS = Number(process.env.BOT_TICK_SECONDS ?? "30");
-const APP_BASE_URL = process.env.APP_BASE_URL ?? "";
-const TRAIL_START_PCT = Number(process.env.OANDA_TRAIL_START_PCT ?? "20");
-const TRAIL_OFFSET_PCT = Number(process.env.OANDA_TRAIL_OFFSET_PCT ?? "10");
-const MARGIN_BUFFER = Number(process.env.OANDA_MARGIN_BUFFER ?? "0.1");
-const TRADING_ENABLED = process.env.OANDA_TRADING_ENABLED === "true";
+let tickSeconds = Number(process.env.BOT_TICK_SECONDS ?? "30");
+let appBaseUrl = process.env.APP_BASE_URL ?? "";
+let trailStartPct = Number(process.env.OANDA_TRAIL_START_PCT ?? "20");
+let trailOffsetPct = Number(process.env.OANDA_TRAIL_OFFSET_PCT ?? "10");
+let marginBuffer = Number(process.env.OANDA_MARGIN_BUFFER ?? "0.1");
+let tradingEnabled = process.env.OANDA_TRADING_ENABLED === "true";
+let linkedAccountKey: string | null = null;
+let linkedAccountBase: Record<string, unknown> | null = null;
 
 let running = false;
 
@@ -66,10 +72,10 @@ function getWeekWindowUtc(now = DateTime.utc()) {
 }
 
 async function fetchLatestSignals(): Promise<BasketSignal[]> {
-  if (!APP_BASE_URL) {
+  if (!appBaseUrl) {
     throw new Error("APP_BASE_URL is not configured for OANDA bot.");
   }
-  const url = new URL("/bot/cot/baskets/latest", APP_BASE_URL);
+  const url = new URL("/bot/cot/baskets/latest", appBaseUrl);
   url.searchParams.set("asset", "all");
   const response = await fetch(url.toString(), { cache: "no-store" });
   if (!response.ok) {
@@ -181,7 +187,7 @@ async function buildSizing(signals: BasketSignal[]) {
     });
   }
 
-  const buffer = nav * (1 - MARGIN_BUFFER);
+  const buffer = nav * (1 - marginBuffer);
   const scale = totalMargin > 0 ? Math.min(1, buffer / totalMargin) : 1;
   if (skipped > 0) {
     log("Skipped instruments (missing price/spec/FX conversion).", { skipped });
@@ -209,7 +215,7 @@ async function enterTrades(signals: BasketSignal[]) {
   if (sizing.plan.length === 0) {
     throw new Error("No tradable instruments for OANDA.");
   }
-  if (!TRADING_ENABLED) {
+  if (!tradingEnabled) {
     log("OANDA_TRADING_ENABLED=false; skipping live orders.", {
       trades: sizing.plan.length,
       scale: sizing.scale,
@@ -262,6 +268,15 @@ async function tick() {
       const currentNav = Number(summary.NAV);
       if (Number.isFinite(currentNav) && currentNav > 0) {
         state.current_equity = currentNav;
+        if (linkedAccountKey) {
+          await updateConnectedAccountAnalysis(linkedAccountKey, {
+            ...(linkedAccountBase ?? {}),
+            nav: currentNav,
+            balance: Number(summary.balance ?? summary.NAV ?? 0),
+            currency: summary.currency ?? "USD",
+            fetched_at: DateTime.utc().toISO(),
+          });
+        }
       }
     } catch (error) {
       log("Failed to fetch current NAV", { error: error instanceof Error ? error.message : String(error) });
@@ -333,10 +348,10 @@ async function tick() {
         ? ((state.peak_equity - state.entry_equity) / state.entry_equity) * 100
         : profitPct;
 
-    if (profitPct >= TRAIL_START_PCT) {
+    if (profitPct >= trailStartPct) {
       state.trailing_active = true;
-      const minLock = TRAIL_START_PCT - TRAIL_OFFSET_PCT;
-      const nextLock = Math.max(minLock, peakPct - TRAIL_OFFSET_PCT);
+      const minLock = trailStartPct - trailOffsetPct;
+      const nextLock = Math.max(minLock, peakPct - trailOffsetPct);
       if (!state.locked_pct || nextLock > state.locked_pct) {
         state.locked_pct = nextLock;
       }
@@ -363,13 +378,60 @@ async function tick() {
 
 async function main() {
   log("OANDA universal bot starting...");
+  await hydrateConnectedAccount();
   await tick();
   setInterval(() => {
     void tick();
-  }, TICK_SECONDS * 1000);
+  }, tickSeconds * 1000);
 }
 
 main().catch((error) => {
   console.error("OANDA bot failed to start:", error);
   process.exit(1);
 });
+
+async function hydrateConnectedAccount() {
+  try {
+    const record = await loadConnectedAccountSecrets({
+      provider: "oanda",
+      botType: "oanda_universal",
+    });
+    if (!record) {
+      return;
+    }
+    linkedAccountKey = record.account.account_key;
+    linkedAccountBase = (record.account.analysis ?? {}) as Record<string, unknown>;
+    const secrets = record.secrets as Record<string, unknown>;
+    if (typeof secrets.apiKey === "string") {
+      process.env.OANDA_API_KEY = secrets.apiKey;
+    }
+    if (typeof secrets.accountId === "string") {
+      process.env.OANDA_ACCOUNT_ID = secrets.accountId;
+    }
+    if (typeof secrets.env === "string") {
+      process.env.OANDA_ENV = secrets.env;
+    }
+    if (typeof record.account.trail_start_pct === "number") {
+      trailStartPct = record.account.trail_start_pct;
+    }
+    if (typeof record.account.trail_offset_pct === "number") {
+      trailOffsetPct = record.account.trail_offset_pct;
+    }
+    if (typeof record.account.config === "object" && record.account.config) {
+      const config = record.account.config as Record<string, unknown>;
+      if (typeof config.marginBuffer === "number") {
+        marginBuffer = config.marginBuffer;
+      }
+      if (typeof config.tradingEnabled === "boolean") {
+        tradingEnabled = config.tradingEnabled;
+      }
+      if (typeof config.appBaseUrl === "string") {
+        appBaseUrl = config.appBaseUrl;
+      }
+    }
+  } catch (error) {
+    log("Failed to load connected account secrets.", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}

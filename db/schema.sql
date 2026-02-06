@@ -271,6 +271,32 @@ CREATE TABLE IF NOT EXISTS bot_states (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Connected Broker Accounts (server-managed)
+CREATE TABLE IF NOT EXISTS connected_accounts (
+  account_key VARCHAR(64) PRIMARY KEY,
+  provider VARCHAR(20) NOT NULL,
+  account_id VARCHAR(64),
+  label VARCHAR(120),
+  status VARCHAR(20) DEFAULT 'READY',
+  bot_type VARCHAR(30) NOT NULL,
+  risk_mode VARCHAR(20) DEFAULT '1:1',
+  trail_mode VARCHAR(20) DEFAULT 'trail',
+  trail_start_pct DECIMAL(6, 2) DEFAULT 20,
+  trail_offset_pct DECIMAL(6, 2) DEFAULT 10,
+  config JSONB,
+  secrets JSONB,
+  analysis JSONB,
+  last_sync_utc TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_connected_accounts_provider
+  ON connected_accounts(provider);
+
+CREATE INDEX IF NOT EXISTS idx_connected_accounts_status
+  ON connected_accounts(status);
+
 -- Weekly News Snapshots (ForexFactory-based macro events)
 CREATE TABLE IF NOT EXISTS news_weekly_snapshots (
   id SERIAL PRIMARY KEY,
@@ -298,5 +324,7 @@ $$ language 'plpgsql';
 -- Apply triggers
 DROP TRIGGER IF EXISTS update_mt5_accounts_updated_at ON mt5_accounts;
 DROP TRIGGER IF EXISTS update_mt5_positions_updated_at ON mt5_positions;
+DROP TRIGGER IF EXISTS update_connected_accounts_updated_at ON connected_accounts;
 CREATE TRIGGER update_mt5_accounts_updated_at BEFORE UPDATE ON mt5_accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_mt5_positions_updated_at BEFORE UPDATE ON mt5_positions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_connected_accounts_updated_at BEFORE UPDATE ON connected_accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

@@ -1,8 +1,10 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import AccountsDirectory, { type AccountCard } from "@/components/AccountsDirectory";
+import ConnectAccountButton from "@/components/ConnectAccountButton";
 import { formatCurrencySafe } from "@/lib/formatters";
 import { readBotState } from "@/lib/botState";
 import { readMt5Accounts } from "@/lib/mt5Store";
+import { listConnectedAccounts } from "@/lib/connectedAccounts";
 import { formatDateTimeET, latestIso } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +37,16 @@ export default async function AccountsPage() {
     readBotState<OandaBotState>("oanda_universal_bot"),
   ]);
 
+  let connectedAccounts = [];
+  try {
+    connectedAccounts = await listConnectedAccounts();
+  } catch (error) {
+    console.error(
+      "Connected accounts load failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+
   const mt5Cards: AccountCard[] = mt5Accounts.map((account) => ({
     account_id: account.account_id,
     label: account.label,
@@ -53,45 +65,51 @@ export default async function AccountsPage() {
     href: `/accounts/${account.account_id}`,
   }));
 
-  const bitgetCard: AccountCard = {
-    account_id: "bitget_perp_bot",
-    label: "Bitget Perp Bot",
-    broker: "Bitget",
-    server: process.env.BITGET_PRODUCT_TYPE ?? "USDT-FUTURES",
-    status: bitgetState ? "LIVE" : "PAUSED",
-    currency: "USD",
-    equity: typeof bitgetState?.state?.current_equity === "number"
-      ? bitgetState?.state?.current_equity
-      : null,
-    weekly_pnl_pct: null,
-    basket_state: bitgetState?.state?.entered ? "ACTIVE" : "READY",
-    open_positions: null,
-    open_pairs: null,
-    win_rate_pct: null,
-    max_drawdown_pct: null,
-    source: "bitget",
-  };
+  const connectedCards: AccountCard[] = connectedAccounts.map((account) => {
+    const botState =
+      account.provider === "bitget"
+        ? bitgetState
+        : account.provider === "oanda"
+          ? oandaState
+          : null;
+    const analysis = account.analysis as Record<string, unknown> | null;
+    const analysisEquity =
+      typeof analysis?.equity === "number"
+        ? (analysis.equity as number)
+        : typeof analysis?.nav === "number"
+          ? (analysis.nav as number)
+          : null;
+    return {
+      account_id: account.account_key,
+      label: account.label ?? `${account.provider.toUpperCase()} account`,
+      broker:
+        account.provider === "bitget"
+          ? "Bitget"
+          : account.provider === "oanda"
+            ? "OANDA FxTrade"
+            : "MT5",
+      server:
+        (analysis?.productType as string) ??
+        (analysis?.env as string) ??
+        "Connected",
+      status: account.status ?? (account.provider === "oanda" ? "LIVE" : "LIVE"),
+      currency: (analysis?.currency as string) ?? "USD",
+      equity:
+        typeof botState?.state?.current_equity === "number"
+          ? botState?.state?.current_equity
+          : analysisEquity,
+      weekly_pnl_pct: null,
+      basket_state: botState?.state?.entered ? "ACTIVE" : "READY",
+      open_positions: null,
+      open_pairs: typeof analysis?.mapped_count === "number" ? (analysis.mapped_count as number) : null,
+      win_rate_pct: null,
+      max_drawdown_pct: null,
+      source: account.provider as AccountCard["source"],
+      href: `/accounts/connected/${account.account_key}`,
+    };
+  });
 
-  const oandaCard: AccountCard = {
-    account_id: "oanda_universal_bot",
-    label: "OANDA Universal Bot",
-    broker: "OANDA FxTrade",
-    server: "v20 Hedging",
-    status: oandaState ? "LIVE" : "PAUSED",
-    currency: "USD",
-    equity: typeof oandaState?.state?.current_equity === "number"
-      ? oandaState?.state?.current_equity
-      : null,
-    weekly_pnl_pct: null,
-    basket_state: oandaState?.state?.entered ? "ACTIVE" : "READY",
-    open_positions: null,
-    open_pairs: null,
-    win_rate_pct: null,
-    max_drawdown_pct: null,
-    source: "oanda",
-  };
-
-  const accounts: AccountCard[] = [...mt5Cards, bitgetCard, oandaCard];
+  const accounts: AccountCard[] = [...mt5Cards, ...connectedCards];
   const totalEquity = accounts.reduce(
     (sum, account) => sum + (Number.isFinite(account.equity ?? NaN) ? (account.equity ?? 0) : 0),
     0,
@@ -103,6 +121,7 @@ export default async function AccountsPage() {
     ...mt5Accounts.map((account) => account.last_sync_utc),
     bitgetState?.updated_at ?? null,
     oandaState?.updated_at ?? null,
+    ...connectedAccounts.map((account) => account.last_sync_utc ?? null),
   ]);
 
   return (
@@ -118,9 +137,12 @@ export default async function AccountsPage() {
               linked account and automation bot.
             </p>
           </div>
-          <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Last refresh {latestSync ? formatDateTimeET(latestSync) : "No refresh yet"}
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <ConnectAccountButton />
+            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Last refresh {latestSync ? formatDateTimeET(latestSync) : "No refresh yet"}
+            </span>
+          </div>
         </header>
 
         <section className="grid gap-4 md:grid-cols-3">
