@@ -335,7 +335,7 @@ async function tick() {
         let weighted = 0;
         for (const [symbol, entryPrice] of entries) {
           const current = priceMap.get(symbol);
-          if (!Number.isFinite(current) || current <= 0) {
+          if (current === undefined || !Number.isFinite(current) || current <= 0) {
             continue;
           }
           const direction = state.last_direction === "LONG" ? 1 : -1;
