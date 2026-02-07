@@ -4,6 +4,11 @@ import ResearchSectionNav from "@/components/research/ResearchSectionNav";
 import { buildUniversalBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
+import WeekSelector from "@/components/accounts/WeekSelector";
+import KpiGroup from "@/components/metrics/KpiGroup";
+import KpiCard from "@/components/metrics/KpiCard";
+import DebugReadout from "@/components/DebugReadout";
+import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
 
 export const revalidate = 900;
 
@@ -43,6 +48,7 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
     { revalidate: 900 },
   );
   const universalSummary = await getUniversalSummary();
+  const currentWeekOpenUtc = getWeekOpenUtc();
   const selectedWeek =
     weekParam && universalSummary.by_week.some((row) => row.week_open_utc === weekParam)
       ? weekParam
@@ -82,51 +88,68 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
               Updated {formatDateTimeET(universalSummary.generated_at)}
             </span>
           </div>
-          <form action="/automation/research/universal" method="get" className="mt-4 flex items-center gap-2">
-            <select
-              name="week"
-              defaultValue={selectedWeek ?? undefined}
-              className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
-            >
-              {universalSummary.by_week.map((row) => (
-                <option key={row.week_open_utc} value={row.week_open_utc}>
-                  {row.week_label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
-            >
-              View week
-            </button>
-          </form>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-5">
-            <Metric label="Weeks" value={`${universalSummary.overall.weeks}`} />
-            <Metric label="Total return" value={`${universalSummary.overall.total_percent.toFixed(2)}%`} />
-            <Metric
-              label="Locked total"
-              value={`${universalSummary.overall.simulated_locked_total_percent.toFixed(2)}%`}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <WeekSelector
+              weekOptions={universalSummary.by_week.map((row) => row.week_open_utc)}
+              currentWeek={currentWeekOpenUtc}
+              selectedWeek={selectedWeek ?? ""}
             />
-            <Metric label="Avg weekly" value={`${universalSummary.overall.avg_weekly_percent.toFixed(2)}%`} />
-            <Metric label="Win rate" value={`${universalSummary.overall.win_rate.toFixed(0)}%`} />
+            <DebugReadout
+              items={[
+                { label: "Scope", value: "research:universal" },
+                { label: "Window", value: selectedWeek ?? "--" },
+                { label: "Series", value: "equity_curve" },
+              ]}
+            />
           </div>
 
-          {selectedUniversalWeek ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-6">
-              <Metric label="Week" value={selectedUniversalWeek.week_label.replace("Week of ", "")} />
-              <Metric label="Raw %" value={`${selectedUniversalWeek.total_percent.toFixed(2)}%`} />
-              <Metric label="Peak %" value={`${selectedUniversalWeek.observed_peak_percent.toFixed(2)}%`} />
-              <Metric label="Locked %" value={`${selectedUniversalWeek.simulated_locked_percent.toFixed(2)}%`} />
-              <Metric label="Max DD %" value={`${selectedWeekDrawdown.toFixed(2)}%`} />
-              <Metric label="Trail hit" value={selectedUniversalWeek.trailing_hit ? "Yes" : "No"} />
-            </div>
-          ) : null}
+          <div className="mt-6 space-y-6">
+            <KpiGroup title="Performance" description="Overall results and headline weekly stats.">
+              <KpiCard
+                label="Total return"
+                value={`${universalSummary.overall.total_percent.toFixed(2)}%`}
+                tone={universalSummary.overall.total_percent >= 0 ? "positive" : "negative"}
+                emphasis="primary"
+              />
+              <KpiCard
+                label="Avg weekly"
+                value={`${universalSummary.overall.avg_weekly_percent.toFixed(2)}%`}
+              />
+              <KpiCard label="Win rate" value={`${universalSummary.overall.win_rate.toFixed(0)}%`} />
+            </KpiGroup>
+
+            <KpiGroup title="Risk" description="Drawdown and trailing lock behavior.">
+              <KpiCard
+                label="Locked total"
+                value={`${universalSummary.overall.simulated_locked_total_percent.toFixed(2)}%`}
+              />
+              <KpiCard label="Weeks" value={`${universalSummary.overall.weeks}`} />
+              <KpiCard
+                label="Trail start"
+                value={`${universalSummary.assumptions.trail_start_pct.toFixed(0)}%`}
+              />
+            </KpiGroup>
+
+            {selectedUniversalWeek ? (
+              <KpiGroup title="Selected Week" description="Week-specific stats for the chosen window.">
+                <KpiCard label="Week" value={selectedUniversalWeek.week_label.replace("Week of ", "")} />
+                <KpiCard label="Raw %" value={`${selectedUniversalWeek.total_percent.toFixed(2)}%`} />
+                <KpiCard
+                  label="Max DD %"
+                  value={`${selectedWeekDrawdown.toFixed(2)}%`}
+                  tone={selectedWeekDrawdown > 0 ? "negative" : "neutral"}
+                />
+              </KpiGroup>
+            ) : (
+              <div className="rounded-xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/60 p-4 text-sm text-[color:var(--muted)]">
+                New week — no data yet. This section will populate once the week starts.
+              </div>
+            )}
+          </div>
 
           <div className="mt-6 max-h-80 overflow-auto rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
             <table className="w-full text-left text-sm text-[var(--foreground)]">
-              <thead className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              <thead className="sticky top-0 bg-[var(--panel)]/95 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 <tr>
                   <th className="py-2">Week</th>
                   <th className="py-2 text-right">Raw %</th>
@@ -135,37 +158,41 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
                 </tr>
               </thead>
               <tbody>
-                {universalSummary.by_week.map((row) => (
-                  <tr key={row.week_open_utc} className="border-t border-[var(--panel-border)]/60">
-                    <td className="py-2">{row.week_label}</td>
-                    <td className="py-2 text-right">{row.total_percent.toFixed(2)}%</td>
-                    <td className="py-2 text-right">{row.observed_peak_percent.toFixed(2)}%</td>
-                    <td className="py-2 text-right">{row.simulated_locked_percent.toFixed(2)}%</td>
-                  </tr>
-                ))}
+                {(() => {
+                  const sorted = [...universalSummary.by_week].sort((a, b) => b.total_percent - a.total_percent);
+                  const top = new Set(sorted.slice(0, 2).map((row) => row.week_open_utc));
+                  const bottom = new Set(sorted.slice(-2).map((row) => row.week_open_utc));
+                  return universalSummary.by_week.map((row) => (
+                    <tr
+                      key={row.week_open_utc}
+                      className={`border-t border-[var(--panel-border)]/60 ${
+                        top.has(row.week_open_utc)
+                          ? "bg-emerald-50/60"
+                          : bottom.has(row.week_open_utc)
+                            ? "bg-rose-50/60"
+                            : ""
+                      }`}
+                    >
+                      <td className="py-2">{row.week_label}</td>
+                      <td className="py-2 text-right">{row.total_percent.toFixed(2)}%</td>
+                      <td className="py-2 text-right">{row.observed_peak_percent.toFixed(2)}%</td>
+                      <td className="py-2 text-right">{row.simulated_locked_percent.toFixed(2)}%</td>
+                    </tr>
+                  ));
+                })()}
               </tbody>
             </table>
           </div>
 
-          {selectedUniversalWeek ? (
-            <div className="mt-6">
-              <EquityCurveChart
-                title={`${selectedUniversalWeek.week_label} equity curve`}
-                points={selectedUniversalWeek.equity_curve}
-              />
-            </div>
-          ) : null}
+          <div className="mt-6">
+            <EquityCurveChart
+              title={`${selectedUniversalWeek?.week_label ?? "Selected week"} equity curve`}
+              points={selectedUniversalWeek?.equity_curve ?? []}
+              interactive
+            />
+          </div>
         </section>
       </div>
     </DashboardLayout>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{value}</p>
-    </div>
   );
 }

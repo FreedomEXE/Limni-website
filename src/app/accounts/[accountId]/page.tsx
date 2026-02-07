@@ -18,6 +18,9 @@ import DashboardLayout from "@/components/DashboardLayout";
 import RefreshButton from "@/components/RefreshButton";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
 import AccountSection from "@/components/accounts/AccountSection";
+import KpiGroup from "@/components/metrics/KpiGroup";
+import KpiCard from "@/components/metrics/KpiCard";
+import DebugReadout from "@/components/DebugReadout";
 import { DateTime } from "luxon";
 import { formatCurrencySafe } from "@/lib/formatters";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
@@ -465,62 +468,63 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
 
         {account ? (
           <>
-            <section className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Equity
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatCurrencySafe(account.equity, account.currency)}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Balance
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatCurrencySafe(account.balance, account.currency)}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Weekly PnL
-            </p>
-            <p
-              className={`mt-2 text-2xl font-semibold ${
-                weeklyPnlToShow >= 0
-                  ? "text-emerald-700"
-                  : "text-rose-700"
-              }`}
-            >
-              {formatPercent(weeklyPnlToShow)}
-            </p>
-            {Math.abs(account.weekly_pnl_pct) <= 0.001 && currentWeekNet.trades > 0 ? (
-              <p className="mt-1 text-xs text-[color:var(--muted)]">
-                Derived from closed trades ({currentWeekNet.trades}).
-              </p>
-            ) : null}
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Basket PnL
-            </p>
-            <p
-              className={`mt-2 text-2xl font-semibold ${
-                basketPnlToShow >= 0
-                  ? "text-emerald-700"
-                  : "text-rose-700"
-              }`}
-            >
-              {formatPercent(basketPnlToShow)}
-            </p>
-            {Math.abs(account.basket_pnl_pct) <= 0.001 ? (
-              <p className="mt-1 text-xs text-[color:var(--muted)]">
-                Inferred from baseline or weekly closed PnL.
-              </p>
-            ) : null}
-          </div>
-        </section>
+        <div className="space-y-6">
+          <KpiGroup title="Performance" description="Primary performance metrics for the selected week.">
+            <KpiCard
+              label="Weekly PnL"
+              value={formatPercent(weeklyPnlToShow)}
+              tone={weeklyPnlToShow >= 0 ? "positive" : "negative"}
+              emphasis="primary"
+              hint={
+                Math.abs(account.weekly_pnl_pct) <= 0.001 && currentWeekNet.trades > 0
+                  ? `Derived from closed trades (${currentWeekNet.trades}).`
+                  : undefined
+              }
+            />
+            <KpiCard
+              label="Basket PnL"
+              value={formatPercent(basketPnlToShow)}
+              tone={basketPnlToShow >= 0 ? "positive" : "negative"}
+            />
+            <KpiCard
+              label="Equity"
+              value={formatCurrencySafe(account.equity, account.currency)}
+            />
+          </KpiGroup>
+
+          <KpiGroup title="Risk" description="Weekly drawdown and risk exposure.">
+            <KpiCard
+              label="Max DD (week)"
+              value={formatPercent(weeklyDrawdown)}
+              tone={weeklyDrawdown > 0 ? "negative" : "neutral"}
+            />
+            <KpiCard
+              label="Risk used"
+              value={formatPercent(account.risk_used_pct)}
+              tone={account.risk_used_pct > 2 ? "negative" : "accent"}
+            />
+            <KpiCard
+              label="Max DD (all)"
+              value={formatPercent(account.max_drawdown_pct)}
+              tone={account.max_drawdown_pct > 5 ? "negative" : "neutral"}
+            />
+          </KpiGroup>
+
+          <KpiGroup title="Context" description="Activity and baseline context.">
+            <KpiCard
+              label="Trades this week"
+              value={`${account.trade_count_week}`}
+            />
+            <KpiCard
+              label="Open positions"
+              value={`${account.open_positions}`}
+            />
+            <KpiCard
+              label="Win rate"
+              value={formatPercent(account.win_rate_pct)}
+            />
+          </KpiGroup>
+        </div>
 
         <section className="grid gap-6 lg:grid-cols-3">
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
@@ -712,6 +716,15 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             <p className="text-sm text-[color:var(--muted)]">
               Switch between account snapshots, basket-level closed-trade curves, and symbol-level curves.
             </p>
+          </div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <DebugReadout
+              items={[
+                { label: "Scope", value: "account" },
+                { label: "Window", value: selectedWeek ?? getWeekOpenUtc() },
+                { label: "Series", value: curveScope },
+              ]}
+            />
           </div>
           <form
             action={`/accounts/${accountId}`}

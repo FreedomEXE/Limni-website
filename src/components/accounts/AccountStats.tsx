@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import type { AccountWeekStats } from "@/lib/accountStats";
 import { formatCurrencySafe } from "@/lib/formatters";
 import type { WeekOption } from "@/lib/weekState";
+import KpiCard from "@/components/metrics/KpiCard";
+import KpiGroup from "@/components/metrics/KpiGroup";
 
 type AccountStatsProps = {
   accountKey: string;
@@ -40,26 +42,23 @@ function StatCardSkeleton() {
 function StatCard({
   label,
   value,
-  colorClass,
+  tone,
+  emphasis,
   loading,
+  hint,
 }: {
   label: string;
   value: string;
-  colorClass?: string;
+  tone?: "positive" | "negative" | "neutral" | "accent";
+  emphasis?: "primary" | "secondary";
   loading?: boolean;
+  hint?: string;
 }) {
   if (loading) {
     return <StatCardSkeleton />;
   }
 
-  return (
-    <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm transition-all duration-200 hover:shadow-md">
-      <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">{label}</p>
-      <p className={`mt-2 text-2xl font-semibold ${colorClass ?? "text-[var(--foreground)]"}`}>
-        {value}
-      </p>
-    </div>
-  );
+  return <KpiCard label={label} value={value} tone={tone} emphasis={emphasis} hint={hint} />;
 }
 
 /**
@@ -155,33 +154,35 @@ export default function AccountStats({ accountKey, initialStats }: AccountStatsP
         </span>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard
-          label="Equity"
-          value={formatCurrencySafe(stats.equity, stats.currency)}
-          loading={loading}
-        />
+      <div className="space-y-6">
+        <KpiGroup title="Performance" description="Week-specific returns and basket impact">
+          <StatCard
+            label={stats.weekOpenUtc === "all" ? "Total PnL" : "Weekly PnL"}
+            value={formatPercent(stats.weeklyPnlPct)}
+            tone={stats.weeklyPnlPct >= 0 ? "positive" : "negative"}
+            emphasis="primary"
+            loading={loading}
+          />
+          <StatCard
+            label="Basket PnL"
+            value={formatPercent(stats.basketPnlPct)}
+            tone={stats.basketPnlPct >= 0 ? "positive" : "negative"}
+            loading={loading}
+          />
+        </KpiGroup>
 
-        <StatCard
-          label="Balance"
-          value={formatCurrencySafe(stats.balance, stats.currency)}
-          loading={loading}
-        />
-
-        <StatCard
-          label={stats.weekOpenUtc === "all" ? "Total PnL" : "Weekly PnL"}
-          value={formatPercent(stats.weeklyPnlPct)}
-          colorClass={stats.weeklyPnlPct >= 0 ? "text-emerald-700" : "text-rose-700"}
-          loading={loading}
-        />
-
-        <StatCard
-          label="Basket PnL"
-          value={formatPercent(stats.basketPnlPct)}
-          colorClass={stats.basketPnlPct >= 0 ? "text-emerald-700" : "text-rose-700"}
-          loading={loading}
-        />
+        <KpiGroup title="Context" description="Account totals and available equity">
+          <StatCard
+            label="Equity"
+            value={formatCurrencySafe(stats.equity, stats.currency)}
+            loading={loading}
+          />
+          <StatCard
+            label="Balance"
+            value={formatCurrencySafe(stats.balance, stats.currency)}
+            loading={loading}
+          />
+        </KpiGroup>
       </div>
 
       {/* Optional: Error banner (non-intrusive) */}

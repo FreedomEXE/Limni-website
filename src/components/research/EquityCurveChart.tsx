@@ -38,12 +38,16 @@ export default function EquityCurveChart({
   points,
   series,
   title,
+  interactive = true,
 }: {
   points?: EquityPoint[];
   series?: EquitySeries[];
   title: string;
+  interactive?: boolean;
 }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [visibleSeries, setVisibleSeries] = useState<string[] | null>(null);
+  const [mode, setMode] = useState<"compare" | "isolate">("compare");
   const normalized = useMemo(() => {
     if (series && series.length > 0) {
       return series.filter((row) => row.points.length > 0).map((row, idx) => ({
@@ -65,7 +69,19 @@ export default function EquityCurveChart({
     );
   }
 
-  const primary = normalized[0].points;
+  const resolvedVisible =
+    visibleSeries ?? (normalized.length > 0 ? normalized.map((row) => row.id) : []);
+  const displaySeries = normalized.filter((row) => resolvedVisible.includes(row.id));
+
+  if (displaySeries.length === 0) {
+    return (
+      <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4 text-sm text-[color:var(--muted)]">
+        No equity-curve data available.
+      </div>
+    );
+  }
+
+  const primary = displaySeries[0].points;
   const width = 980;
   const height = 320;
   const paddingX = 30;
@@ -145,6 +161,21 @@ export default function EquityCurveChart({
   const hoverTsMs =
     hoverIndex === null ? null : new Date(primary[hoverIndex].ts_utc).getTime();
 
+  const toggleSeries = (id: string) => {
+    if (!interactive) return;
+    setVisibleSeries((prev) => {
+      const current = prev ?? normalized.map((row) => row.id);
+      if (mode === "isolate") {
+        return current.length === 1 && current[0] === id ? normalized.map((row) => row.id) : [id];
+      }
+      if (current.includes(id)) {
+        const next = current.filter((item) => item !== id);
+        return next.length > 0 ? next : current;
+      }
+      return [...current, id];
+    });
+  };
+
   return (
     <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -156,13 +187,56 @@ export default function EquityCurveChart({
           {last.equity_pct.toFixed(2)}%
         </span>
       </div>
-      <div className="mb-2 flex flex-wrap items-center gap-3">
-        {normalized.map((row) => (
-          <div key={row.id} className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
-            {row.label}
-          </div>
-        ))}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {interactive ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setMode("compare")}
+                className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                  mode === "compare"
+                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-[var(--panel-border)] text-[color:var(--muted)]"
+                }`}
+              >
+                Compare
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("isolate")}
+                className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                  mode === "isolate"
+                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-[var(--panel-border)] text-[color:var(--muted)]"
+                }`}
+              >
+                Isolate
+              </button>
+            </>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {normalized.map((row) => {
+            const active = resolvedVisible.includes(row.id);
+            return (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => toggleSeries(row.id)}
+                className={`flex items-center gap-2 text-xs ${
+                  active ? "text-[var(--foreground)]" : "text-[color:var(--muted)]"
+                }`}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: row.color, opacity: active ? 1 : 0.3 }}
+                />
+                {row.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div className="relative overflow-hidden rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-2">
         <svg
@@ -203,7 +277,7 @@ export default function EquityCurveChart({
             </g>
           ))}
 
-          {normalized.map((row, rowIndex) => {
+          {displaySeries.map((row, rowIndex) => {
             const path = row.points
               .map((p, i) => `${i === 0 ? "M" : "L"} ${toX(i).toFixed(2)} ${toY(p.equity_pct).toFixed(2)}`)
               .join(" ");
@@ -255,7 +329,7 @@ export default function EquityCurveChart({
                 strokeDasharray="4 4"
                 strokeWidth="1.2"
               />
-              {normalized.map((row, idx) => {
+              {displaySeries.map((row, idx) => {
                 const pointIndex = nearestIndexByTs(row.points, hoverTsMs);
                 const point = row.points[pointIndex];
                 if (!point) return null;

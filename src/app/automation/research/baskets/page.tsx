@@ -1,9 +1,15 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
 import ResearchSectionNav from "@/components/research/ResearchSectionNav";
+import WeekSelector from "@/components/accounts/WeekSelector";
+import QueryBuilder from "@/components/filters/QueryBuilder";
+import KpiGroup from "@/components/metrics/KpiGroup";
+import KpiCard from "@/components/metrics/KpiCard";
+import DebugReadout from "@/components/DebugReadout";
 import { buildPerModelBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
+import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
 
 export const revalidate = 900;
 
@@ -46,6 +52,7 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
     { revalidate: 900 },
   );
   const summary = await getBasketSummary();
+  const currentWeekOpenUtc = getWeekOpenUtc();
   const weekLabelMap = new Map<string, string>();
   summary.models.forEach((model) => {
     model.by_week.forEach((row) => {
@@ -108,68 +115,72 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
               Updated {formatDateTimeET(summary.generated_at)}
             </span>
           </div>
-          {selectedWeek ? (
-            <form action="/automation/research/baskets" method="get" className="mt-4 flex items-center gap-2">
-              <select
-                name="model"
-                defaultValue={selectedModelKey ?? undefined}
-                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
-              >
-                {modelOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                name="week"
-                defaultValue={selectedWeek}
-                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
-              >
-                {weekOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
-              >
-                View week
-              </button>
-            </form>
-          ) : null}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <WeekSelector
+              weekOptions={weekOptions.map((option) => option.value)}
+              currentWeek={currentWeekOpenUtc}
+              selectedWeek={selectedWeek ?? ""}
+            />
+            <DebugReadout
+              items={[
+                { label: "Scope", value: "research:baskets" },
+                { label: "Window", value: selectedWeek ?? "--" },
+                { label: "Series", value: "equity_curve" },
+              ]}
+            />
+          </div>
+
+          <div className="mt-4">
+            <QueryBuilder
+              title="Basket filters"
+              mode={(modelParam as "isolate" | "compare") || "compare"}
+              weekParam={selectedWeek}
+              sections={[
+                {
+                  label: "Models",
+                  paramKey: "model",
+                  options: modelOptions,
+                  selected: selectedModelKey ? [selectedModelKey] : [],
+                  multiple: false,
+                },
+              ]}
+            />
+          </div>
 
           {selectedModel ? (
             <div className="mt-6 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <div className="grid gap-4 md:grid-cols-6">
-                <Metric label="Basket" value={selectedModel.model_label} />
-                <Metric
+              <KpiGroup title="Performance" description="Selected model performance for the chosen week.">
+                <KpiCard label="Basket" value={selectedModel.model_label} />
+                <KpiCard
                   label="Raw % (week)"
                   value={`${(selectedModelWeek?.total_percent ?? 0).toFixed(2)}%`}
                 />
-                <Metric
-                  label="Peak % (week)"
-                  value={`${(selectedModelWeek?.observed_peak_percent ?? 0).toFixed(2)}%`}
-                />
-                <Metric
+                <KpiCard
                   label="Locked % (week)"
                   value={`${(selectedModelWeek?.simulated_locked_percent ?? 0).toFixed(2)}%`}
                 />
-                <Metric
+              </KpiGroup>
+              <div className="mt-4" />
+              <KpiGroup title="Risk" description="Drawdown and trail behavior.">
+                <KpiCard
+                  label="Peak % (week)"
+                  value={`${(selectedModelWeek?.observed_peak_percent ?? 0).toFixed(2)}%`}
+                />
+                <KpiCard
                   label="Max DD % (week)"
                   value={`${selectedModelWeekDrawdown.toFixed(2)}%`}
+                  tone={selectedModelWeekDrawdown > 0 ? "negative" : "neutral"}
                 />
-                <Metric
+                <KpiCard
                   label="Trail hit"
                   value={selectedModelWeek?.trailing_hit ? "Yes" : "No"}
                 />
-              </div>
+              </KpiGroup>
               <div className="mt-4">
                 <EquityCurveChart
                   title={`${selectedModel.model_label} ${selectedModelWeek?.week_label ?? "week"} equity curve`}
                   points={selectedModelWeek?.equity_curve ?? []}
+                  interactive
                 />
               </div>
             </div>
@@ -258,7 +269,7 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
               </h3>
               <div className="mt-4 max-h-64 overflow-auto">
                 <table className="w-full text-left text-sm text-[var(--foreground)]">
-                  <thead className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  <thead className="sticky top-0 bg-[var(--panel)]/95 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                     <tr>
                       <th className="py-2">Week</th>
                       <th className="py-2 text-right">Raw %</th>
@@ -266,18 +277,29 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {model.by_week.map((row) => (
-                      <tr
-                        key={`${model.model}-${row.week_open_utc}`}
-                        className={`border-t border-[var(--panel-border)]/60 ${
-                          selectedWeek === row.week_open_utc ? "bg-[var(--accent)]/10" : ""
-                        }`}
-                      >
-                        <td className="py-2">{row.week_label}</td>
-                        <td className="py-2 text-right">{row.total_percent.toFixed(2)}%</td>
-                        <td className="py-2 text-right">{row.simulated_locked_percent.toFixed(2)}%</td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const sorted = [...model.by_week].sort((a, b) => b.total_percent - a.total_percent);
+                      const top = new Set(sorted.slice(0, 2).map((row) => row.week_open_utc));
+                      const bottom = new Set(sorted.slice(-2).map((row) => row.week_open_utc));
+                      return model.by_week.map((row) => (
+                        <tr
+                          key={`${model.model}-${row.week_open_utc}`}
+                          className={`border-t border-[var(--panel-border)]/60 ${
+                            selectedWeek === row.week_open_utc
+                              ? "bg-[var(--accent)]/10"
+                              : top.has(row.week_open_utc)
+                                ? "bg-emerald-50/60"
+                                : bottom.has(row.week_open_utc)
+                                  ? "bg-rose-50/60"
+                                  : ""
+                          }`}
+                        >
+                          <td className="py-2">{row.week_label}</td>
+                          <td className="py-2 text-right">{row.total_percent.toFixed(2)}%</td>
+                          <td className="py-2 text-right">{row.simulated_locked_percent.toFixed(2)}%</td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>
@@ -286,14 +308,5 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
         </section>
       </div>
     </DashboardLayout>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{value}</p>
-    </div>
   );
 }

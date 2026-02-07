@@ -5,6 +5,7 @@ import CollapsibleSection from "@/components/accounts/CollapsibleSection";
 import WeekSelector from "@/components/accounts/WeekSelector";
 import AccountStats from "@/components/accounts/AccountStats";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
+import DebugReadout from "@/components/DebugReadout";
 import { readBotState } from "@/lib/botState";
 import { getConnectedAccount, listConnectedAccounts } from "@/lib/connectedAccounts";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
@@ -290,33 +291,46 @@ export default async function ConnectedAccountPage({
         {/* Reactive Stats Grid */}
         <AccountStats accountKey={account.account_key} initialStats={stats} />
 
-        {/* Account Details Grid */}
-        <section className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Bot Type</p>
-            <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-              {account.bot_type}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Risk Mode</p>
-            <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-              {account.risk_mode ?? "—"}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Trail Mode</p>
-            <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-              {account.trail_mode ?? "—"}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Last Sync</p>
-            <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-              {account.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—"}
-            </p>
-          </div>
-        </section>
+        <CollapsibleSection
+          title="Account Details"
+          subtitle="Bot configuration and last sync status"
+          defaultOpen={true}
+        >
+          <section className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Bot Type
+              </p>
+              <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
+                {account.bot_type}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Risk Mode
+              </p>
+              <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
+                {account.risk_mode ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Trail Mode
+              </p>
+              <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
+                {account.trail_mode ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Last Sync
+              </p>
+              <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
+                {account.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—"}
+              </p>
+            </div>
+          </section>
+        </CollapsibleSection>
 
         {/* Basket Status - Collapsible */}
         <CollapsibleSection
@@ -420,6 +434,25 @@ export default async function ConnectedAccountPage({
               selectedWeek === "all" ? "All-time equity curve" : "Weekly equity curve (%)"
             }
           />
+          <div className="mt-4">
+            <DebugReadout
+              title="Chart + KPI Window"
+              items={[
+                {
+                  label: "Scope",
+                  value: `${account.provider}:${account.account_key}`,
+                },
+                {
+                  label: "Window",
+                  value: selectedWeek === "all" ? "all-time" : selectedWeek,
+                },
+                {
+                  label: "Series",
+                  value: "account_equity_curve",
+                },
+              ]}
+            />
+          </div>
         </CollapsibleSection>
 
         {/* Planned Trades - Collapsible */}

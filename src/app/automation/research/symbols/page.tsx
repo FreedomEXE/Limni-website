@@ -2,11 +2,17 @@ import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
 import ResearchSectionNav from "@/components/research/ResearchSectionNav";
+import WeekSelector from "@/components/accounts/WeekSelector";
+import QueryBuilder from "@/components/filters/QueryBuilder";
+import KpiGroup from "@/components/metrics/KpiGroup";
+import KpiCard from "@/components/metrics/KpiCard";
+import DebugReadout from "@/components/DebugReadout";
 import { buildSymbolResearchSummary } from "@/lib/universalBasket";
 import type { PerformanceModel } from "@/lib/performanceLab";
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
+import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
 
 export const revalidate = 900;
 
@@ -51,6 +57,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
   const modelParam = pickParam(params?.model);
   const weekParam = pickParam(params?.week);
+  const modeParam = pickParam(params?.mode);
   const selectedSymbolsRaw = pickParams(params?.symbols);
 
   const selectedModel =
@@ -79,6 +86,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
   ]);
 
   const summary = summaryAll;
+  const currentWeekOpenUtc = getWeekOpenUtc();
   const weekOptions = summary.equity_curve
     .map((point) => point.ts_utc)
     .slice()
@@ -92,6 +100,8 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
   const rowWeekPercent = (row: (typeof summary.rows)[number]) =>
     row.weekly.find((item) => item.week_open_utc === selectedWeek)?.percent ?? 0;
   const displayRows = [...summary.rows].sort((a, b) => rowWeekPercent(b) - rowWeekPercent(a));
+  const topSymbols = new Set(displayRows.slice(0, 3).map((row) => row.symbol));
+  const bottomSymbols = new Set(displayRows.slice(-3).map((row) => row.symbol));
 
   const selectedSymbols = selectedSymbolsRaw.filter((symbol) => displayRows.some((row) => row.symbol === symbol));
   const selectedSet = new Set(selectedSymbols);
@@ -123,6 +133,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
       : [{ id: selectedModel, label: selectedModel, points: buildCurveForSummary(summary) }];
 
   const chartDd = Math.max(...series.map((row) => maxDrawdown(row.points)));
+  const selectedMode = modeParam === "isolate" ? "isolate" : "compare";
 
   return (
     <DashboardLayout>
@@ -143,61 +154,68 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
                 Select one or multiple symbols. One chart overlays model lines when all models are selected.
               </p>
             </div>
-            <form action="/automation/research/symbols" method="get" className="flex items-center gap-2">
-              <select
-                name="model"
-                defaultValue={selectedModel}
-                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
-              >
-                {MODEL_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                name="week"
-                defaultValue={selectedWeek ?? undefined}
-                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-sm text-[var(--foreground)]"
-              >
-                {weekOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                name="symbols"
-                multiple
-                defaultValue={selectedSymbols}
-                className="min-w-48 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-2 text-sm text-[var(--foreground)]"
-              >
-                {displayRows.map((row) => (
-                  <option key={row.symbol} value={row.symbol}>
-                    {row.symbol}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="rounded-lg bg-[var(--accent)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-[var(--accent-strong)]"
-              >
-                Apply
-              </button>
-            </form>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <WeekSelector
+              weekOptions={weekOptions.map((option) => option.value)}
+              currentWeek={currentWeekOpenUtc}
+              selectedWeek={selectedWeek ?? ""}
+            />
+            <DebugReadout
+              items={[
+                { label: "Scope", value: "research:symbols" },
+                { label: "Window", value: selectedWeek ?? "--" },
+                { label: "Series", value: "equity_curve" },
+              ]}
+            />
+          </div>
+
+          <div className="mt-4">
+            <QueryBuilder
+              title="Analysis query"
+              mode={selectedMode}
+              weekParam={selectedWeek}
+              sections={[
+                {
+                  label: "Models",
+                  paramKey: "model",
+                  options: MODEL_OPTIONS.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  })),
+                  selected: selectedModel ? [selectedModel] : [],
+                  multiple: false,
+                },
+                {
+                  label: "Symbols",
+                  paramKey: "symbols",
+                  options: displayRows.map((row) => ({ value: row.symbol, label: row.symbol })),
+                  selected: selectedSymbols,
+                  multiple: true,
+                },
+              ]}
+            />
           </div>
 
           <div className="mt-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
             Updated {formatDateTimeET(summary.generated_at)}
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-6">
-            <Metric label="Weeks" value={`${summary.weeks}`} />
-            <Metric label="Symbols" value={`${summary.rows.length}`} />
-            <Metric label="Trades" value={`${summary.priced_trades}/${summary.total_trades}`} />
-            <Metric label="Total %" value={`${summary.total_percent.toFixed(2)}%`} />
-            <Metric label="Focused week" value={selectedWeek ? weekLabelFromOpen(selectedWeek).replace("Week of ", "") : "--"} />
-            <Metric label="Chart DD %" value={`${chartDd.toFixed(2)}%`} />
+          <div className="mt-6 space-y-6">
+            <KpiGroup title="Performance" description="Headline performance stats for selected filters.">
+              <KpiCard label="Total %" value={`${summary.total_percent.toFixed(2)}%`} emphasis="primary" />
+              <KpiCard label="Weeks" value={`${summary.weeks}`} />
+              <KpiCard label="Symbols" value={`${summary.rows.length}`} />
+            </KpiGroup>
+            <KpiGroup title="Risk" description="Drawdown and exposure context for the chart.">
+              <KpiCard label="Chart DD %" value={`${chartDd.toFixed(2)}%`} tone="negative" />
+              <KpiCard label="Trades" value={`${summary.priced_trades}/${summary.total_trades}`} />
+              <KpiCard
+                label="Focused week"
+                value={selectedWeek ? weekLabelFromOpen(selectedWeek).replace("Week of ", "") : "--"}
+              />
+            </KpiGroup>
           </div>
 
           <div className="mt-6">
@@ -208,12 +226,13 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
                   : "All symbols"
               }
               series={series}
+              interactive
             />
           </div>
 
           <div className="mt-6 max-h-96 overflow-auto rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
             <table className="w-full text-left text-sm text-[var(--foreground)]">
-              <thead className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              <thead className="sticky top-0 bg-[var(--panel)]/95 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 <tr>
                   <th className="py-2">Symbol</th>
                   <th className="py-2 text-right">Total %</th>
@@ -224,8 +243,16 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
                 </tr>
               </thead>
               <tbody>
-                {displayRows.map((row) => (
-                  <tr key={row.symbol} className="border-t border-[var(--panel-border)]/60">
+                {displayRows.map((row) => {
+                  const isTop = topSymbols.has(row.symbol);
+                  const isBottom = bottomSymbols.has(row.symbol);
+                  return (
+                  <tr
+                    key={row.symbol}
+                    className={`border-t border-[var(--panel-border)]/60 ${
+                      isTop ? "bg-emerald-50/60" : isBottom ? "bg-rose-50/60" : ""
+                    }`}
+                  >
                     <td className="py-2">
                       <Link
                         href={`/automation/research/symbols?model=${selectedModel}&week=${selectedWeek ?? ""}&symbols=${encodeURIComponent(row.symbol)}`}
@@ -242,21 +269,12 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
                       {row.priced_trades}/{row.trades}
                     </td>
                   </tr>
-                ))}
+                );})}
               </tbody>
             </table>
           </div>
         </section>
       </div>
     </DashboardLayout>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">{value}</p>
-    </div>
   );
 }
