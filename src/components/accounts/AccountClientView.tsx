@@ -9,6 +9,7 @@ import EquityCurveChart from "@/components/research/EquityCurveChart";
 import DebugReadout from "@/components/DebugReadout";
 import SummaryCard from "@/components/accounts/SummaryCard";
 import AccountDrawer, { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
+import type { PlannedPair } from "@/lib/plannedTrades";
 import type { WeekOption } from "@/lib/weekState";
 
 type HeaderConfig = {
@@ -21,6 +22,40 @@ type HeaderConfig = {
   currentWeek: string;
   selectedWeek: WeekOption;
   onBackHref: string;
+};
+
+type DrawerData = {
+  plannedPairs: Array<{
+    symbol: string;
+    assetClass: string;
+    net: number;
+    legsCount: number;
+  }>;
+  mappingRows: Array<{
+    symbol: string;
+    instrument: string;
+    available: boolean;
+  }>;
+  openPositions: Array<{
+    symbol: string;
+    side: string;
+    lots: number;
+    pnl: number;
+  }>;
+  closedGroups: Array<{
+    symbol: string;
+    side: string;
+    net: number;
+    lots: number;
+  }>;
+  journalRows: Array<{
+    label: string;
+    value: string;
+  }>;
+  kpiRows: Array<{
+    label: string;
+    value: string;
+  }>;
 };
 
 type AccountClientViewProps = {
@@ -50,7 +85,7 @@ type AccountClientViewProps = {
     kpiWeekKey: string;
     equityWeekKey: string;
   };
-  drawerConfigs: Partial<Record<Exclude<DrawerMode, null>, DrawerConfig>>;
+  drawerData: DrawerData;
 };
 
 const TABS = [
@@ -69,7 +104,7 @@ export default function AccountClientView({
   overview,
   equity,
   debug,
-  drawerConfigs,
+  drawerData,
 }: AccountClientViewProps) {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("overview");
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
@@ -86,6 +121,182 @@ export default function AccountClientView({
       </span>
     );
   }, [header.statusLabel, header.statusToneClass]);
+
+  const drawerConfigs: Partial<Record<Exclude<DrawerMode, null>, DrawerConfig>> = useMemo(() => {
+    return {
+      positions: {
+        title: "Open Positions",
+        subtitle: "Live positions for this account",
+        columns: [
+          { key: "symbol", label: "Symbol" },
+          { key: "side", label: "Side" },
+          { key: "lots", label: "Size" },
+          { key: "pnl", label: "P&L" },
+        ],
+        rows: drawerData.openPositions.map((row, index) => ({
+          id: `${row.symbol}-${index}`,
+          status: "open",
+          searchText: `${row.symbol} ${row.side}`,
+          sortValue: row.pnl,
+          cells: [
+            <span key="symbol" className="font-semibold">
+              {row.symbol}
+            </span>,
+            <span key="side" className={row.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>
+              {row.side}
+            </span>,
+            <span key="lots" className="text-xs text-[color:var(--muted)]">
+              {row.lots.toFixed(2)} lots
+            </span>,
+            <span key="pnl" className={row.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>
+              {row.pnl.toFixed(2)}
+            </span>,
+          ],
+        })),
+        showFilters: true,
+        emptyState: "No open positions in this week.",
+      },
+      planned: {
+        title: "Planned Trades",
+        subtitle: "Upcoming basket signals",
+        columns: [
+          { key: "symbol", label: "Symbol" },
+          { key: "asset", label: "Asset" },
+          { key: "net", label: "Net" },
+          { key: "legs", label: "Legs" },
+        ],
+        rows: drawerData.plannedPairs.map((pair, index) => ({
+          id: `${pair.symbol}-${index}`,
+          status: "pending",
+          searchText: `${pair.symbol} ${pair.assetClass}`,
+          sortValue: pair.net,
+          cells: [
+            <span key="symbol" className="font-semibold">
+              {pair.symbol}
+            </span>,
+            <span key="asset" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              {pair.assetClass}
+            </span>,
+            <span key="net" className={pair.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
+              Net {pair.net}
+            </span>,
+            <span key="legs" className="text-xs text-[color:var(--muted)]">
+              {pair.legsCount} legs
+            </span>,
+          ],
+        })),
+        showFilters: true,
+        emptyState: "No planned trades for this week.",
+      },
+      closed: {
+        title: "Closed Trades",
+        subtitle: "Grouped closed positions",
+        columns: [
+          { key: "symbol", label: "Symbol" },
+          { key: "side", label: "Side" },
+          { key: "net", label: "Net PnL" },
+          { key: "lots", label: "Lots" },
+        ],
+        rows: drawerData.closedGroups.map((group, index) => ({
+          id: `${group.symbol}-${index}`,
+          status: "closed",
+          searchText: `${group.symbol} ${group.side}`,
+          sortValue: group.net,
+          cells: [
+            <span key="symbol" className="font-semibold">
+              {group.symbol}
+            </span>,
+            <span key="side" className={group.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>
+              {group.side}
+            </span>,
+            <span key="net" className={group.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
+              {group.net.toFixed(2)}
+            </span>,
+            <span key="lots" className="text-xs text-[color:var(--muted)]">
+              {group.lots.toFixed(2)} lots
+            </span>,
+          ],
+        })),
+        showFilters: true,
+        emptyState: "No closed trades recorded for this week.",
+      },
+      journal: {
+        title: "Journal",
+        subtitle: "Automation logs and weekly notes",
+        columns: [
+          { key: "label", label: "Type" },
+          { key: "value", label: "Entry" },
+        ],
+        rows: drawerData.journalRows.map((row, index) => ({
+          id: `${row.label}-${index}`,
+          cells: [
+            <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              {row.label}
+            </span>,
+            <span key="value" className="text-xs text-[var(--foreground)]">
+              {row.value}
+            </span>,
+          ],
+        })),
+        showFilters: false,
+        emptyState: "No journal entries yet.",
+      },
+      mapping: {
+        title: "Mapping & Settings",
+        subtitle: "Instrument mapping and tools",
+        columns: [
+          { key: "symbol", label: "Symbol" },
+          { key: "instrument", label: "Instrument" },
+          { key: "status", label: "Status" },
+        ],
+        rows: drawerData.mappingRows.map((row, index) => ({
+          id: `${row.symbol}-${index}`,
+          status: row.available ? "open" : "closed",
+          searchText: `${row.symbol} ${row.instrument}`,
+          cells: [
+            <span key="symbol" className="font-semibold">
+              {row.symbol}
+            </span>,
+            <span key="instrument" className="text-xs text-[color:var(--muted)]">
+              {row.instrument}
+            </span>,
+            <span
+              key="status"
+              className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                row.available
+                  ? "bg-emerald-500/10 text-emerald-600"
+                  : "bg-rose-500/10 text-rose-600"
+              }`}
+            >
+              {row.available ? "Available" : "Missing"}
+            </span>,
+          ],
+        })),
+        showFilters: true,
+        emptyState: "No mapping data available.",
+      },
+      kpi: {
+        title: "KPI Details",
+        subtitle: "Expanded performance and risk metrics",
+        columns: [
+          { key: "label", label: "Metric" },
+          { key: "value", label: "Value" },
+        ],
+        rows: drawerData.kpiRows.map((row, index) => ({
+          id: `${row.label}-${index}`,
+          cells: [
+            <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              {row.label}
+            </span>,
+            <span key="value" className="font-semibold">
+              {row.value}
+            </span>,
+          ],
+        })),
+        showFilters: false,
+      },
+    };
+  }, [drawerData]);
 
   return (
     <PageShell

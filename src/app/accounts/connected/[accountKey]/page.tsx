@@ -4,7 +4,6 @@ import WeekSelector from "@/components/accounts/WeekSelector";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
 import AccountClientView from "@/components/accounts/AccountClientView";
 import { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
-import VirtualizedListTable from "@/components/common/VirtualizedListTable";
 import { getConnectedAccount, listConnectedAccounts } from "@/lib/connectedAccounts";
 import { formatDateTimeET } from "@/lib/time";
 import { buildBasketSignals } from "@/lib/basketSignals";
@@ -280,181 +279,6 @@ export default async function ConnectedAccountPage({
 
   const accountCurrency = stats.currency;
 
-  const plannedRows =
-    plannedPairs.length === 0
-      ? []
-      : plannedPairs.map((pair, index) => ({
-          id: `${pair.symbol}-${index}`,
-          status: "pending",
-          searchText: `${pair.symbol} ${pair.assetClass}`,
-          sortValue: pair.net,
-          cells: [
-            <span key="symbol" className="font-semibold">
-              {pair.symbol}
-            </span>,
-            <span key="asset" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {pair.assetClass}
-            </span>,
-            <span key="net" className={pair.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
-              Net {pair.net}
-            </span>,
-            <span key="legs" className="text-xs text-[color:var(--muted)]">
-              {pair.legs.length} legs
-            </span>,
-          ],
-        }));
-
-  const mappingRows = mappedRows.map((row, index) => ({
-    id: `${row.symbol}-${index}`,
-    status: row.available ? "open" : "closed",
-    searchText: `${row.symbol} ${row.instrument}`,
-    cells: [
-      <span key="symbol" className="font-semibold">
-        {row.symbol}
-      </span>,
-      <span key="instrument" className="text-xs text-[color:var(--muted)]">
-        {row.instrument}
-      </span>,
-      <span
-        key="status"
-        className={`rounded-full px-2 py-1 text-xs font-semibold ${
-          row.available
-            ? "bg-emerald-500/10 text-emerald-600"
-            : "bg-rose-500/10 text-rose-600"
-        }`}
-      >
-        {row.available ? "Available" : "Missing"}
-      </span>,
-    ],
-  }));
-
-  const kpiRows = [
-    { id: "equity", label: "Equity", value: formatCurrencySafe(stats.equity, accountCurrency) },
-    { id: "balance", label: "Balance", value: formatCurrencySafe(stats.balance, accountCurrency) },
-    { id: "basket", label: "Basket PnL", value: formatPercent(stats.basketPnlPct) },
-    {
-      id: "locked",
-      label: "Locked Profit",
-      value: stats.lockedProfitPct !== null ? formatPercent(stats.lockedProfitPct) : "—",
-    },
-    { id: "leverage", label: "Leverage", value: stats.leverage ? `${stats.leverage}x` : "—" },
-    { id: "margin", label: "Margin", value: stats.margin ? formatCurrencySafe(stats.margin, accountCurrency) : "—" },
-    { id: "free", label: "Free Margin", value: stats.freeMargin ? formatCurrencySafe(stats.freeMargin, accountCurrency) : "—" },
-    { id: "risk", label: "Risk Used", value: stats.riskUsedPct ? formatPercent(stats.riskUsedPct) : "—" },
-  ];
-
-  const drawerConfigs: Partial<Record<Exclude<DrawerMode, null>, DrawerConfig>> = {
-    positions: {
-      title: "Open Positions",
-      subtitle: "Live positions for this account",
-      columns: [
-        { key: "symbol", label: "Symbol" },
-        { key: "status", label: "Status" },
-        { key: "note", label: "Notes" },
-      ],
-      rows: [],
-      showFilters: true,
-      emptyState: "No live positions available for this account yet.",
-    },
-    planned: {
-      title: "Planned Trades",
-      subtitle: "Upcoming basket positions",
-      columns: [
-        { key: "symbol", label: "Symbol" },
-        { key: "asset", label: "Asset" },
-        { key: "net", label: "Net" },
-        { key: "legs", label: "Legs" },
-      ],
-      rows: plannedRows,
-      showFilters: true,
-      emptyState: "No planned trades for this week.",
-    },
-    closed: {
-      title: "Closed Trades",
-      subtitle: "Historical trade groups for this account",
-      columns: [
-        { key: "symbol", label: "Symbol" },
-        { key: "status", label: "Status" },
-        { key: "note", label: "Notes" },
-      ],
-      rows: [],
-      showFilters: true,
-      emptyState: "No closed trades stored yet.",
-    },
-    journal: {
-      title: "Journal",
-      subtitle: "Automation logs and weekly notes",
-      columns: [
-        { key: "item", label: "Entry" },
-        { key: "detail", label: "Detail" },
-      ],
-      rows: [],
-      showFilters: false,
-      emptyState: "No journal entries yet.",
-    },
-    mapping: {
-      title: "Mapping & Settings",
-      subtitle: "Instrument mapping and account tools",
-      columns: [
-        { key: "symbol", label: "Symbol" },
-        { key: "instrument", label: "Instrument" },
-        { key: "status", label: "Status" },
-      ],
-      rows: mappingRows,
-      showFilters: true,
-      content: (
-        <div className="space-y-6">
-          <VirtualizedListTable
-            columns={[
-              { key: "symbol", label: "Symbol" },
-              { key: "instrument", label: "Instrument" },
-              { key: "status", label: "Status" },
-            ]}
-            rows={mappingRows}
-            height={320}
-            renderRow={(row) => (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-                {row.cells.map((cell, index) => (
-                  <div key={`${row.id}-${index}`}>{cell}</div>
-                ))}
-              </div>
-            )}
-            emptyState="No mapping data available."
-          />
-          {account.provider === "oanda" ? (
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                OANDA sizing
-              </p>
-              <div className="mt-3 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-                <ConnectedAccountSizing accountKey={account.account_key} />
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ),
-    },
-    kpi: {
-      title: "KPI Details",
-      subtitle: "Expanded performance and risk metrics",
-      columns: [
-        { key: "label", label: "Metric" },
-        { key: "value", label: "Value" },
-      ],
-      rows: kpiRows.map((row) => ({
-        id: row.id,
-        cells: [
-          <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            {row.label}
-          </span>,
-          <span key="value" className="font-semibold">
-            {row.value}
-          </span>,
-        ],
-      })),
-      showFilters: false,
-    },
-  };
 
   return (
     <DashboardLayout>
@@ -492,7 +316,44 @@ export default async function ConnectedAccountPage({
           kpiWeekKey: stats.weekOpenUtc,
           equityWeekKey: selectedWeek === "all" ? "all" : String(selectedWeek),
         }}
-        drawerConfigs={drawerConfigs}
+        drawerData={{
+          plannedPairs: plannedPairs.map((pair) => ({
+            symbol: pair.symbol,
+            assetClass: pair.assetClass,
+            net: pair.net,
+            legsCount: pair.legs.length,
+          })),
+          mappingRows: mappedRows.map((row) => ({
+            symbol: row.symbol,
+            instrument: row.instrument,
+            available: row.available,
+          })),
+          openPositions: [],
+          closedGroups: [],
+          journalRows: [],
+          kpiRows: [
+            { label: "Equity", value: formatCurrencySafe(stats.equity, accountCurrency) },
+            { label: "Balance", value: formatCurrencySafe(stats.balance, accountCurrency) },
+            { label: "Basket PnL", value: formatPercent(stats.basketPnlPct) },
+            {
+              label: "Locked Profit",
+              value: stats.lockedProfitPct !== null ? formatPercent(stats.lockedProfitPct) : "—",
+            },
+            { label: "Leverage", value: stats.leverage ? `${stats.leverage}x` : "—" },
+            {
+              label: "Margin",
+              value: stats.margin ? formatCurrencySafe(stats.margin, accountCurrency) : "—",
+            },
+            {
+              label: "Free Margin",
+              value: stats.freeMargin ? formatCurrencySafe(stats.freeMargin, accountCurrency) : "—",
+            },
+            {
+              label: "Risk Used",
+              value: stats.riskUsedPct ? formatPercent(stats.riskUsedPct) : "—",
+            },
+          ],
+        }}
       />
     </DashboardLayout>
   );

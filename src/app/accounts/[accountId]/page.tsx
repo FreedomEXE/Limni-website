@@ -400,190 +400,16 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   };
 
   const plannedPairs = basketSignals ? groupSignals(basketSignals.pairs) : [];
-  const plannedRows = plannedPairs.map((pair, index) => ({
-    id: `${pair.symbol}-${index}`,
-    status: "pending",
-    searchText: `${pair.symbol} ${pair.assetClass}`,
-    sortValue: pair.net,
-    cells: [
-      <span key="symbol" className="font-semibold">
-        {pair.symbol}
-      </span>,
-      <span key="asset" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-        {pair.assetClass}
-      </span>,
-      <span key="net" className={pair.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
-        Net {pair.net}
-      </span>,
-      <span key="legs" className="text-xs text-[color:var(--muted)]">
-        {pair.legs.length} legs
-      </span>,
-    ],
-  }));
-
-  const openRows = filteredOpenPositions.map((pos, index) => {
-    const pnl = pos.profit + pos.swap + pos.commission;
-    return {
-      id: `${pos.ticket}-${index}`,
-      status: "open",
-      searchText: `${pos.symbol} ${pos.comment ?? ""}`,
-      sortValue: pnl,
-      cells: [
-        <span key="symbol" className="font-semibold">
-          {pos.symbol}
-        </span>,
-        <span key="type" className={pos.type === "BUY" ? "text-emerald-700" : "text-rose-700"}>
-          {pos.type}
-        </span>,
-        <span key="lots" className="text-xs text-[color:var(--muted)]">
-          {pos.lots.toFixed(2)} lots
-        </span>,
-        <span key="pnl" className={pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>
-          {formatCurrencySafe(pnl, account.currency)}
-        </span>,
-      ],
-    };
-  });
-
-  const closedRows = closedGroups.map((group) => ({
-    id: group.key,
-    status: "closed",
-    searchText: `${group.symbol} ${group.basket}`,
-    sortValue: group.net,
-    cells: [
-      <span key="symbol" className="font-semibold">
-        {group.symbol}
-      </span>,
-      <span key="type" className={group.type === "BUY" ? "text-emerald-700" : "text-rose-700"}>
-        {group.type}
-      </span>,
-      <span key="net" className={group.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
-        {formatCurrencySafe(group.net, account.currency)}
-      </span>,
-      <span key="lots" className="text-xs text-[color:var(--muted)]">
-        {group.lots.toFixed(2)} lots
-      </span>,
-    ],
-  }));
-
   const journalRows = [
-    ...(account.recent_logs ?? []).map((log, index) => ({
-      id: `log-${index}`,
-      cells: [
-        <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          Runtime
-        </span>,
-        <span key="value" className="text-xs text-[var(--foreground)]">
-          {log}
-        </span>,
-      ],
+    ...(account.recent_logs ?? []).map((log) => ({
+      label: "Runtime",
+      value: log,
     })),
     ...changeLog.map((entry) => ({
-      id: `change-${entry.week_open_utc}-${entry.created_at}`,
-      cells: [
-        <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          {entry.strategy ?? "Change"}
-        </span>,
-        <span key="value" className="text-xs text-[var(--foreground)]">
-          {entry.title}
-        </span>,
-      ],
+      label: entry.strategy ?? "Change",
+      value: entry.title,
     })),
   ];
-
-  const kpiRows = [
-    { id: "equity", label: "Equity", value: formatCurrencySafe(account.equity, account.currency) },
-    { id: "balance", label: "Balance", value: formatCurrencySafe(account.balance, account.currency) },
-    { id: "basket", label: "Basket PnL", value: formatPercent(basketPnlToShow) },
-    { id: "risk", label: "Risk Used", value: formatPercent(account.risk_used_pct) },
-    { id: "drawdown", label: "Max DD (all)", value: formatPercent(account.max_drawdown_pct) },
-    { id: "margin", label: "Margin", value: formatCurrencySafe(account.margin, account.currency) },
-    { id: "free", label: "Free Margin", value: formatCurrencySafe(account.free_margin, account.currency) },
-  ];
-
-  const drawerConfigs: Partial<Record<Exclude<DrawerMode, null>, DrawerConfig>> = {
-    positions: {
-      title: "Open Positions",
-      subtitle: "Live positions for this account",
-      columns: [
-        { key: "symbol", label: "Symbol" },
-        { key: "type", label: "Side" },
-        { key: "lots", label: "Size" },
-        { key: "pnl", label: "P&L" },
-      ],
-      rows: openRows,
-      showFilters: true,
-      emptyState: "No open positions in this week.",
-    },
-    planned: {
-      title: "Planned Trades",
-      subtitle: "Upcoming basket signals",
-      columns: [
-        { key: "symbol", label: "Symbol" },
-        { key: "asset", label: "Asset" },
-        { key: "net", label: "Net" },
-        { key: "legs", label: "Legs" },
-      ],
-      rows: plannedRows,
-      showFilters: true,
-      emptyState: "No planned trades for this week.",
-    },
-    closed: {
-      title: "Closed Trades",
-      subtitle: "Grouped closed positions",
-      columns: [
-        { key: "symbol", label: "Symbol" },
-        { key: "type", label: "Side" },
-        { key: "net", label: "Net PnL" },
-        { key: "lots", label: "Lots" },
-      ],
-      rows: closedRows,
-      showFilters: true,
-      emptyState: "No closed trades recorded for this week.",
-    },
-    journal: {
-      title: "Journal",
-      subtitle: "Automation logs and weekly notes",
-      columns: [
-        { key: "label", label: "Type" },
-        { key: "value", label: "Entry" },
-      ],
-      rows: journalRows,
-      showFilters: false,
-      emptyState: "No journal entries yet.",
-    },
-    mapping: {
-      title: "Mapping & Settings",
-      subtitle: "Account settings and mapping",
-      columns: [
-        { key: "label", label: "Item" },
-        { key: "value", label: "Value" },
-      ],
-      rows: [],
-      showFilters: false,
-      emptyState: "No mapping data for MT5 accounts.",
-    },
-    kpi: {
-      title: "KPI Details",
-      subtitle: "Expanded performance and risk metrics",
-      columns: [
-        { key: "label", label: "Metric" },
-        { key: "value", label: "Value" },
-      ],
-      rows: kpiRows.map((row) => ({
-        id: row.id,
-        cells: [
-          <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            {row.label}
-          </span>,
-          <span key="value" className="font-semibold">
-            {row.value}
-          </span>,
-        ],
-      })),
-      showFilters: false,
-    },
-  };
 
   const maxDrawdownPct = computeMaxDrawdown(equityCurvePoints);
 
@@ -626,7 +452,46 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
           kpiWeekKey: statsWeekOpenUtc,
           equityWeekKey: statsWeekOpenUtc,
         }}
-        drawerConfigs={drawerConfigs}
+        drawerData={{
+          plannedPairs: plannedPairs.map((pair) => ({
+            symbol: pair.symbol,
+            assetClass: pair.assetClass,
+            net: pair.net,
+            legsCount: pair.legs.length,
+          })),
+          mappingRows: [],
+          openPositions: filteredOpenPositions.map((pos) => ({
+            symbol: pos.symbol,
+            side: pos.type,
+            lots: pos.lots,
+            pnl: pos.profit + pos.swap + pos.commission,
+          })),
+          closedGroups: closedGroups.map((group) => ({
+            symbol: group.symbol,
+            side: group.type,
+            net: group.net,
+            lots: group.lots,
+          })),
+          journalRows: [
+            ...(account.recent_logs ?? []).map((log) => ({
+              label: "Runtime",
+              value: log,
+            })),
+            ...changeLog.map((entry) => ({
+              label: entry.strategy ?? "Change",
+              value: entry.title,
+            })),
+          ],
+          kpiRows: [
+            { label: "Equity", value: formatCurrencySafe(account.equity, account.currency) },
+            { label: "Balance", value: formatCurrencySafe(account.balance, account.currency) },
+            { label: "Basket PnL", value: formatPercent(basketPnlToShow) },
+            { label: "Risk Used", value: formatPercent(account.risk_used_pct) },
+            { label: "Max DD (all)", value: formatPercent(account.max_drawdown_pct) },
+            { label: "Margin", value: formatCurrencySafe(account.margin, account.currency) },
+            { label: "Free Margin", value: formatCurrencySafe(account.free_margin, account.currency) },
+          ],
+        }}
       />
     </DashboardLayout>
   );
