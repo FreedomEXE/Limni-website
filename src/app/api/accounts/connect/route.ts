@@ -255,9 +255,9 @@ export async function POST(request: Request) {
         );
       }
       const productType = body.productType ?? "USDT-FUTURES";
-      const account = await bitgetRequest<{
-        list?: Array<{ marginCoin: string; equity: string; usdtEquity?: string; available?: string }>;
-      }>(
+      const account = await bitgetRequest<
+        Array<{ marginCoin: string; equity: string; usdtEquity?: string; available?: string }>
+      >(
         {
           apiKey,
           apiSecret,
@@ -267,7 +267,7 @@ export async function POST(request: Request) {
           query: { productType },
         },
       );
-      const rows = account.list ?? [];
+      const rows = Array.isArray(account) ? account : [];
       const preferred =
         rows.find((row) => row.marginCoin?.toUpperCase() === "USDT") ?? rows[0];
       const envValue = body.env ?? "live";

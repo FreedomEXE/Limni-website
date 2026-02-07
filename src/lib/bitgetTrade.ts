@@ -172,12 +172,12 @@ export async function fetchBitgetContracts(
 
 export async function fetchBitgetAccount(): Promise<BitgetAccount | null> {
   const productType = getBitgetProductType();
-  const data = await request<{ list: BitgetAccount[] }>({
+  const data = await request<BitgetAccount[]>({
     method: "GET",
     path: "/api/v2/mix/account/accounts",
     query: { productType },
   });
-  const list = data.list ?? [];
+  const list = Array.isArray(data) ? data : [];
   const account =
     list.find((row) => row.marginCoin?.toUpperCase() === "USDT") ?? list[0];
   return account ?? null;
