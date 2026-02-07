@@ -115,7 +115,7 @@ export default async function ConnectedAccountPage({
           : 0;
 
   const basketSignals = await buildBasketSignals();
-  let plannedPairs = [];
+  let plannedPairs: import("@/lib/plannedTrades").PlannedPair[] = [];
   let plannedNote: string | null = null;
   if (account.provider === "bitget") {
     const filtered = filterForBitget(basketSignals.pairs);
