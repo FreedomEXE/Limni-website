@@ -121,7 +121,7 @@ export default async function ConnectedAccountPage({
     const filtered = filterForBitget(basketSignals.pairs);
     const planned = buildBitgetPlannedTrades(filtered);
     plannedPairs = planned.pairs;
-    plannedNote = planned.note;
+    plannedNote = planned.note ?? null;
   } else if (account.provider === "oanda") {
     const filtered = filterForOanda(basketSignals.pairs);
     plannedPairs = groupSignals(filtered);
