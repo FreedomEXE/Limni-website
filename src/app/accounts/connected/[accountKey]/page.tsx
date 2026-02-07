@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function ConnectedAccountPage({
   params,
 }: {
-  params: { accountKey: string };
+  params: { accountKey: string } | Promise<{ accountKey: string }>;
 }) {
-  const rawParam = params?.accountKey ?? "";
+  const resolvedParams = await Promise.resolve(params);
+  const rawParam = resolvedParams?.accountKey ?? "";
   const decodeSafe = (value: string) => {
     try {
       return decodeURIComponent(value);
@@ -76,14 +77,6 @@ export default async function ConnectedAccountPage({
         : "OFF";
 
   if (!account) {
-    const debugRows = await listConnectedAccounts();
-    const debugKeys = debugRows.map((item) => ({
-      account_key: item.account_key,
-      provider: item.provider,
-      account_id: item.account_id,
-      label: item.label,
-      updated_at: item.updated_at,
-    }));
     return (
       <DashboardLayout>
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6">
@@ -93,17 +86,6 @@ export default async function ConnectedAccountPage({
           <p className="mt-2 text-sm text-[color:var(--muted)]">
             This connected account is no longer available.
           </p>
-          <div className="mt-4 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-3 text-xs text-[color:var(--muted)]">
-            <p className="uppercase tracking-[0.2em]">Debug</p>
-            <p className="mt-2">Raw param: {rawParam || "∅"}</p>
-            <p>Decoded once: {decodedOnce || "∅"}</p>
-            <p>Decoded twice: {decodedTwice || "∅"}</p>
-            <p>Candidate keys: {candidates.join(", ") || "∅"}</p>
-            <p className="mt-2">Connected accounts:</p>
-            <pre className="mt-2 whitespace-pre-wrap break-words">
-              {JSON.stringify(debugKeys, null, 2)}
-            </pre>
-          </div>
         </div>
       </DashboardLayout>
     );
