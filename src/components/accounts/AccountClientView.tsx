@@ -123,6 +123,7 @@ export default function AccountClientView({
       }
       kpis={
         <AccountKpiRow
+          key={debug.selectedWeekKey}
           weeklyPnlPct={kpi.weeklyPnlPct}
           maxDrawdownPct={kpi.maxDrawdownPct}
           tradesThisWeek={kpi.tradesThisWeek}
@@ -155,6 +156,16 @@ export default function AccountClientView({
         </div>
       }
     >
+      <div className="mb-3">
+        <DebugReadout
+          title="KPI Debug"
+          items={[
+            { label: "Selected", value: debug.selectedWeekKey },
+            { label: "KPI", value: debug.kpiWeekKey },
+            { label: "Equity", value: debug.equityWeekKey },
+          ]}
+        />
+      </div>
       {activeTab === "overview" ? (
         <div className="space-y-4">
           <MiniSparkline points={equity.points} />

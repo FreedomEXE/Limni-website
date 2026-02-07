@@ -75,6 +75,9 @@ export async function getAccountStatsForWeek(
 ): Promise<AccountWeekStats> {
   const account = await getConnectedAccount(accountKey);
   if (!account) {
+    console.log(
+      `[AccountStats] account=${accountKey} week=${weekOpenUtc} source=missing_account snapshotCount=0`
+    );
     return extractStatsFromAnalysis(null, weekOpenUtc === "all" ? "all" : weekOpenUtc);
   }
 
@@ -86,6 +89,9 @@ export async function getAccountStatsForWeek(
   // For now, we'll use the current account.analysis data
   // TODO: Implement week-specific snapshot fetching from database
   // const snapshots = await readAccountSnapshotsByWeek(accountKey, weekOpenUtc);
+  console.log(
+    `[AccountStats] account=${accountKey} week=${weekOpenUtc} source=analysis snapshotCount=0`
+  );
 
   return extractStatsFromAnalysis(account.analysis, weekOpenUtc);
 }
@@ -105,11 +111,17 @@ export async function getAccountAllTimeStats(
     account = await getConnectedAccount(accountKey);
   }
   if (!account) {
+    console.log(
+      `[AccountStats] account=${accountKey} week=all source=missing_account snapshotCount=0`
+    );
     return extractStatsFromAnalysis(null, "all");
   }
 
   // For all-time stats, we aggregate from current analysis
   // TODO: Implement proper all-time aggregation from historical snapshots
+  console.log(
+    `[AccountStats] account=${accountKey} week=all source=analysis snapshotCount=0`
+  );
   const stats = extractStatsFromAnalysis(account.analysis, "all");
 
   // For all-time view, calculate cumulative metrics

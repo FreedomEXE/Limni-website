@@ -25,6 +25,7 @@ import { formatCurrencySafe } from "@/lib/formatters";
 import { getAccountStatsForWeek } from "@/lib/accountStats";
 import { buildAccountEquityCurve } from "@/lib/accountEquityCurve";
 import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
+import { unstable_noStore } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -149,6 +150,7 @@ export default async function ConnectedAccountPage({
   params,
   searchParams,
 }: ConnectedAccountPageProps) {
+  unstable_noStore();
   const resolvedParams = await Promise.resolve(params);
   const rawParam = resolvedParams?.accountKey ?? "";
 

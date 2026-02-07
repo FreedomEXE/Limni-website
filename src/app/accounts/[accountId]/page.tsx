@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { unstable_noStore } from "next/cache";
 
 import {
   getMt5AccountById,
@@ -123,7 +124,23 @@ function extendToWindow(
   return [...points, { ...last, ts_utc: windowEndUtc }];
 }
 
+function computeMaxDrawdown(points: { equity_pct: number }[]) {
+  let peak = Number.NEGATIVE_INFINITY;
+  let maxDrawdown = 0;
+  for (const point of points) {
+    if (point.equity_pct > peak) {
+      peak = point.equity_pct;
+    }
+    const drawdown = peak - point.equity_pct;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  }
+  return maxDrawdown;
+}
+
 export default async function AccountPage({ params, searchParams }: AccountPageProps) {
+  unstable_noStore();
   const { accountId } = await params;
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const requestedWeek = toQueryParam(resolvedSearchParams?.week);
@@ -193,6 +210,9 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
       weeklyDrawdown = await readMt5DrawdownRange(accountId, weekOpen, weekEnd);
       currentWeekNet = await readMt5ClosedNetForWeek(accountId, weekOpen);
       const snapshots = await readMt5EquityCurveByRange(accountId, weekOpen, weekEnd);
+      console.log(
+        `[MT5 KPI] account=${accountId} week=${weekOpen} equitySnapshots=${snapshots.length}`
+      );
       if (snapshots.length > 0) {
         const startEquity = snapshots[0].equity;
         const lockPct =
@@ -565,6 +585,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     },
   };
 
+  const maxDrawdownPct = computeMaxDrawdown(equityCurvePoints);
+
   return (
     <DashboardLayout>
       <AccountClientView
@@ -581,7 +603,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
         }}
         kpi={{
           weeklyPnlPct: weeklyPnlToShow,
-          maxDrawdownPct: weeklyDrawdown,
+          maxDrawdownPct,
           tradesThisWeek: account.trade_count_week,
           equity: account.equity,
           balance: account.balance,
