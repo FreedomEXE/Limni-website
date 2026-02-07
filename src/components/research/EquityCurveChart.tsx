@@ -88,11 +88,30 @@ export default function EquityCurveChart({
   const toY = (value: number) =>
     paddingY + ((yMax - value) / ySpan) * chartH;
 
+  // FIXED: Proper peak/drawdown calculation
+  // Track running peak and calculate max drawdown (peak → trough sequence)
   let peakIndex = 0;
   let troughIndex = 0;
-  for (let i = 1; i < primary.length; i += 1) {
-    if (primary[i].equity_pct > primary[peakIndex].equity_pct) peakIndex = i;
-    if (primary[i].equity_pct < primary[troughIndex].equity_pct) troughIndex = i;
+  let maxDrawdown = 0;
+  let runningPeak = primary[0]?.equity_pct ?? 0;
+  let runningPeakIndex = 0;
+
+  for (let i = 0; i < primary.length; i += 1) {
+    const current = primary[i].equity_pct;
+
+    // Update absolute peak
+    if (current > runningPeak) {
+      runningPeak = current;
+      runningPeakIndex = i;
+      peakIndex = i;
+    }
+
+    // Calculate drawdown from running peak
+    const drawdown = runningPeak - current;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+      troughIndex = i; // Trough is the lowest point after the peak
+    }
   }
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {

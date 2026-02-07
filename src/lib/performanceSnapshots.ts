@@ -2,6 +2,8 @@ import { DateTime } from "luxon";
 import { query } from "./db";
 import type { AssetClass } from "./cotMarkets";
 import type { PerformanceModel, ModelPerformance } from "./performanceLab";
+import { getConnectedAccount } from "./connectedAccounts";
+import { deduplicateWeeks, getNextWeekOpen, type WeekOption } from "./weekState";
 
 export type PerformanceSnapshot = {
   week_open_utc: string;
@@ -208,4 +210,69 @@ export async function readUniversalWeeklyTotals(limit = 104): Promise<
     total_percent: Number(row.total_percent),
     rows: row.rows,
   }));
+}
+
+/**
+ * Get list of weeks filtered by account creation date
+ * Only returns weeks that occurred after the account was connected
+ *
+ * @param accountKey - The connected account key
+ * @param limit - Maximum number of weeks to return (default: 4)
+ * @returns Array of week ISO strings, sorted newest first
+ */
+export async function listWeeksForAccount(
+  accountKey: string,
+  limit: number = 4
+): Promise<string[]> {
+  try {
+    // Get account creation date
+    const account = await getConnectedAccount(accountKey);
+    const createdAt = DateTime.fromISO(account.created_at, { zone: "utc" });
+
+    if (!createdAt.isValid) {
+      console.error(`Invalid account creation date for ${accountKey}`);
+      return [];
+    }
+
+    // Query weeks AFTER account creation
+    const rows = await query<{ week_open_utc: Date }>(
+      `SELECT DISTINCT week_open_utc
+       FROM performance_snapshots
+       WHERE week_open_utc >= $1
+       ORDER BY week_open_utc DESC
+       LIMIT $2`,
+      [createdAt.toJSDate(), limit]
+    );
+
+    const historicalWeeks = rows.map((row) => row.week_open_utc.toISOString());
+
+    // Always include current and upcoming week
+    const currentWeek = getWeekOpenUtc();
+    const nextWeek = getNextWeekOpen(currentWeek);
+
+    // Combine and deduplicate
+    const allWeeks = [nextWeek, currentWeek, ...historicalWeeks];
+    return deduplicateWeeks(allWeeks).slice(0, limit);
+  } catch (error) {
+    console.error(`Failed to list weeks for account ${accountKey}:`, error);
+    // Fallback to current week only
+    return [getWeekOpenUtc()];
+  }
+}
+
+/**
+ * Get week options for account, optionally including "all" for all-time view
+ *
+ * @param accountKey - The connected account key
+ * @param includeAll - Whether to include "all" option (default: true)
+ * @param limit - Maximum number of weeks to return (default: 4)
+ * @returns Array of week options including "all" if requested
+ */
+export async function listWeekOptionsForAccount(
+  accountKey: string,
+  includeAll: boolean = true,
+  limit: number = 4
+): Promise<WeekOption[]> {
+  const weeks = await listWeeksForAccount(accountKey, limit);
+  return includeAll ? ["all", ...weeks] : weeks;
 }

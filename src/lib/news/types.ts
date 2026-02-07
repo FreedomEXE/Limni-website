@@ -5,6 +5,7 @@ export type NewsEvent = {
   date: string;
   time: string;
   datetime_utc: string | null;
+  actual: string | null;
   forecast: string | null;
   previous: string | null;
   url: string | null;

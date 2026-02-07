@@ -4,6 +4,8 @@ import { formatDateTimeET } from "@/lib/time";
 import { listNewsWeeks, readNewsWeeklySnapshot } from "@/lib/news/store";
 import { refreshNewsSnapshot } from "@/lib/news/refresh";
 import NewsContentTabs from "@/components/news/NewsContentTabs";
+import { getNextWeekOpen } from "@/lib/weekState";
+import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
 
 export const revalidate = 300;
 
@@ -35,8 +37,19 @@ export default async function NewsPage({ searchParams }: PageProps) {
     weeks = await listNewsWeeks(52);
   }
 
+  const currentWeekOpenUtc = getWeekOpenUtc();
+  const nextWeekOpenUtc = getNextWeekOpen(currentWeekOpenUtc);
+  const weekOptions = Array.from(
+    new Set([nextWeekOpenUtc, currentWeekOpenUtc, ...weeks].filter(Boolean)),
+  );
   const selectedWeek =
-    weekParam && weeks.includes(weekParam) ? weekParam : (weeks[0] ?? null);
+    weekParam && weekOptions.includes(weekParam)
+      ? weekParam
+      : weekOptions.includes(nextWeekOpenUtc)
+        ? nextWeekOpenUtc
+        : weekOptions.includes(currentWeekOpenUtc)
+          ? currentWeekOpenUtc
+          : weekOptions[0] ?? null;
   const snapshot = selectedWeek ? await readNewsWeeklySnapshot(selectedWeek) : null;
 
   const announcements = snapshot?.announcements ?? [];
@@ -66,7 +79,7 @@ export default async function NewsPage({ searchParams }: PageProps) {
                 defaultValue={selectedWeek ?? undefined}
                 className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
               >
-                {weeks.map((week) => (
+                {weekOptions.map((week) => (
                   <option key={week} value={week}>
                     {weekLabel(week)}
                   </option>

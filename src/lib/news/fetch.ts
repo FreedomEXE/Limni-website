@@ -68,6 +68,7 @@ function parseForexFactoryXml(xml: string): NewsEvent[] {
     const date = extractTag(block, "date");
     const time = extractTag(block, "time");
     const impactRaw = extractTag(block, "impact");
+    const actualRaw = extractTag(block, "actual");
     const forecastRaw = extractTag(block, "forecast");
     const previousRaw = extractTag(block, "previous");
     const urlRaw = extractTag(block, "url");
@@ -79,6 +80,7 @@ function parseForexFactoryXml(xml: string): NewsEvent[] {
       date,
       time: time || "Tentative",
       datetime_utc: toUtcIso(date, time),
+      actual: actualRaw || null,
       forecast: forecastRaw || null,
       previous: previousRaw || null,
       url: urlRaw || null,
