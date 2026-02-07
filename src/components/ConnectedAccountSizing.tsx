@@ -8,10 +8,13 @@ type SizingRow = {
   instrument: string;
   available: boolean;
   units?: number;
+  rawUnits?: number;
   price?: number;
   notionalUsdPerUnit?: number;
   marginRate?: number | null;
   marginUsd?: number | null;
+  minUnits?: number;
+  minNavUsd?: number;
   reason?: string;
 };
 
@@ -102,6 +105,12 @@ export default function ConnectedAccountSizing({ accountKey }: { accountKey: str
                     ? `${(row.marginRate * 100).toFixed(2)}%`
                     : "--"}
                 </span>
+                {row.available && row.units === 0 && row.minNavUsd ? (
+                  <span className="col-span-2 text-amber-600 md:col-span-6">
+                    1:1 size below minimum trade unit. Requires ≈ {row.minNavUsd.toFixed(2)} USD NAV
+                    {row.minUnits ? ` (min ${row.minUnits} units)` : ""}.
+                  </span>
+                ) : null}
                 {!row.available && row.reason ? (
                   <span className="col-span-2 text-rose-600 md:col-span-6">
                     {row.reason}

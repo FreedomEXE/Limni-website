@@ -1,8 +1,11 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import ConnectedAccountSizing from "@/components/ConnectedAccountSizing";
+import PlannedTradesPanel from "@/components/PlannedTradesPanel";
 import { readBotState } from "@/lib/botState";
 import { getConnectedAccount, listConnectedAccounts } from "@/lib/connectedAccounts";
 import { formatDateTimeET } from "@/lib/time";
+import { buildBasketSignals } from "@/lib/basketSignals";
+import { buildBitgetPlannedTrades, filterForBitget, filterForOanda, groupSignals } from "@/lib/plannedTrades";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +96,36 @@ export default async function ConnectedAccountPage({
 
   const analysis = (account.analysis ?? {}) as Record<string, unknown>;
   const mapped = Array.isArray(analysis.mapped) ? (analysis.mapped as Array<{ symbol: string; instrument: string; available: boolean }>) : [];
+  const fallbackMapped =
+    account.provider === "bitget"
+      ? [
+          { symbol: "BTCUSD", instrument: "BTCUSDT", available: true },
+          { symbol: "ETHUSD", instrument: "ETHUSDT", available: true },
+        ]
+      : [];
+  const mappedRows = mapped.length > 0 ? mapped : fallbackMapped;
+
+  const accountBalance =
+    typeof analysis.nav === "number"
+      ? (analysis.nav as number)
+      : typeof analysis.balance === "number"
+        ? (analysis.balance as number)
+        : typeof analysis.equity === "number"
+          ? (analysis.equity as number)
+          : 0;
+
+  const basketSignals = await buildBasketSignals();
+  let plannedPairs = [];
+  let plannedNote: string | null = null;
+  if (account.provider === "bitget") {
+    const filtered = filterForBitget(basketSignals.pairs);
+    const planned = buildBitgetPlannedTrades(filtered);
+    plannedPairs = planned.pairs;
+    plannedNote = planned.note;
+  } else if (account.provider === "oanda") {
+    const filtered = filterForOanda(basketSignals.pairs);
+    plannedPairs = groupSignals(filtered);
+  }
 
   return (
     <DashboardLayout>
@@ -150,16 +183,16 @@ export default async function ConnectedAccountPage({
               Instrument Mapping
             </h2>
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {mapped.length} tracked
+              {mappedRows.length} tracked
             </span>
           </div>
           <div className="mt-4 grid gap-2 text-sm">
-            {mapped.length === 0 ? (
+            {mappedRows.length === 0 ? (
               <p className="text-[color:var(--muted)]">
                 No instrument mapping data available yet.
               </p>
             ) : (
-              mapped.map((row) => (
+              mappedRows.map((row) => (
                 <div
                   key={row.symbol}
                   className="flex items-center justify-between rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"
@@ -176,6 +209,15 @@ export default async function ConnectedAccountPage({
             )}
           </div>
         </section>
+
+        <PlannedTradesPanel
+          title="Planned trades (this week)"
+          weekOpenUtc={basketSignals.week_open_utc}
+          currency={typeof analysis.currency === "string" ? (analysis.currency as string) : "USD"}
+          accountBalance={accountBalance}
+          pairs={plannedPairs}
+          note={plannedNote}
+        />
 
         {account.provider === "oanda" ? (
           <ConnectedAccountSizing accountKey={account.account_key} />

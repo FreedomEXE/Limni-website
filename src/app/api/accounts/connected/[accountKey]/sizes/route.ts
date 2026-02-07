@@ -126,7 +126,6 @@ export async function POST(
     const allPairs = [
       ...PAIRS_BY_ASSET_CLASS.fx,
       ...PAIRS_BY_ASSET_CLASS.indices,
-      ...PAIRS_BY_ASSET_CLASS.crypto,
       ...PAIRS_BY_ASSET_CLASS.commodities,
     ].map((pair) => pair.pair);
 
@@ -170,16 +169,21 @@ export async function POST(
       const units = Math.max(0, Number(rawUnits.toFixed(Math.max(0, precision))));
       const marginRate = Number(spec.marginRate ?? "0");
       const marginUsd = Number.isFinite(marginRate) ? nav * marginRate : null;
+      const minUnits = precision <= 0 ? 1 : Number((1 / 10 ** precision).toFixed(precision));
+      const minNavUsd = notionalUsdPerUnit * minUnits;
 
       return {
         symbol,
         instrument,
         available: true,
         units,
+        rawUnits,
         price,
         notionalUsdPerUnit,
         marginRate: Number.isFinite(marginRate) ? marginRate : null,
         marginUsd,
+        minUnits,
+        minNavUsd,
       };
     });
 

@@ -187,7 +187,6 @@ export async function POST(request: Request) {
       const allPairs = [
         ...PAIRS_BY_ASSET_CLASS.fx,
         ...PAIRS_BY_ASSET_CLASS.indices,
-        ...PAIRS_BY_ASSET_CLASS.crypto,
         ...PAIRS_BY_ASSET_CLASS.commodities,
       ].map((pair) => pair.pair);
 

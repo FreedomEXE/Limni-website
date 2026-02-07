@@ -20,6 +20,34 @@ type SentimentResult = {
   reasons: string[];
 };
 
+function sentimentDirection(agg?: SentimentAggregate): "LONG" | "SHORT" | null {
+  if (!agg) {
+    return null;
+  }
+  if (agg.flip_state === "FLIPPED_UP") {
+    return "LONG";
+  }
+  if (agg.flip_state === "FLIPPED_DOWN") {
+    return "SHORT";
+  }
+  if (agg.flip_state === "FLIPPED_NEUTRAL") {
+    return null;
+  }
+  if (agg.crowding_state === "CROWDED_LONG") {
+    return "SHORT";
+  }
+  if (agg.crowding_state === "CROWDED_SHORT") {
+    return "LONG";
+  }
+  if (agg.agg_net > 0) {
+    return "LONG";
+  }
+  if (agg.agg_net < 0) {
+    return "SHORT";
+  }
+  return null;
+}
+
 function sentimentAlignment(
   direction: "LONG" | "SHORT" | "NEUTRAL",
   agg?: SentimentAggregate,
@@ -28,19 +56,19 @@ function sentimentAlignment(
     return { aligned: false, reasons: [] };
   }
 
-  if (direction === "LONG" && agg.crowding_state === "CROWDED_SHORT") {
-    return { aligned: true, reasons: ["Retail crowding skewed short"] };
-  }
-
-  if (direction === "SHORT" && agg.crowding_state === "CROWDED_LONG") {
-    return { aligned: true, reasons: ["Retail crowding skewed long"] };
-  }
-
-  if (agg.flip_state === "FLIPPED_UP" || agg.flip_state === "FLIPPED_DOWN") {
-    return {
-      aligned: true,
-      reasons: [`Sentiment flip: ${agg.flip_state.replace("_", " ")}`],
-    };
+  const alignedDirection = sentimentDirection(agg);
+  if (alignedDirection && alignedDirection === direction) {
+    const reasons: string[] = [];
+    if (agg.flip_state === "FLIPPED_UP" || agg.flip_state === "FLIPPED_DOWN") {
+      reasons.push(`Sentiment flip: ${agg.flip_state.replace("_", " ")}`);
+    } else if (agg.crowding_state === "CROWDED_LONG") {
+      reasons.push("Retail crowding skewed long (fade)");
+    } else if (agg.crowding_state === "CROWDED_SHORT") {
+      reasons.push("Retail crowding skewed short (fade)");
+    } else {
+      reasons.push("Sentiment bias aligned");
+    }
+    return { aligned: true, reasons };
   }
 
   return { aligned: false, reasons: [] };
@@ -76,8 +104,8 @@ export function buildAntikytheraSignals(options: {
       sentimentMap.get(pairDef.pair),
     );
     const hasSentiment = Boolean(sentimentMap.get(pairDef.pair));
-    const requireSentiment = assetClass !== "indices";
-    if (requireSentiment && (!hasSentiment || !sentimentResult.aligned)) {
+    const requireSentiment = true;
+    if (!hasSentiment || !sentimentResult.aligned) {
       continue;
     }
 

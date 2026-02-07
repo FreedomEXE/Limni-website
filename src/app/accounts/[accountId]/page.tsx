@@ -13,6 +13,7 @@ import {
   readMt5ChangeLog,
 } from "@/lib/mt5Store";
 import PositionsTable from "@/components/PositionsTable";
+import PlannedTradesPanel from "@/components/PlannedTradesPanel";
 import DashboardLayout from "@/components/DashboardLayout";
 import RefreshButton from "@/components/RefreshButton";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
@@ -20,6 +21,8 @@ import { DateTime } from "luxon";
 import { formatCurrencySafe } from "@/lib/formatters";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import { buildBasketSignals } from "@/lib/basketSignals";
+import { groupSignals } from "@/lib/plannedTrades";
 
 export const dynamic = "force-dynamic";
 
@@ -120,6 +123,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   let weeklyDrawdown = 0;
   let currentWeekNet = { net: 0, trades: 0 };
   let equityCurvePoints: { ts_utc: string; equity_pct: number; lock_pct: number | null }[] = [];
+  let basketSignals: Awaited<ReturnType<typeof buildBasketSignals>> | null = null;
   try {
     account = await getMt5AccountById(accountId);
     closedSummary = await readMt5ClosedSummary(accountId, 12);
@@ -149,6 +153,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
         }));
       }
     }
+    basketSignals = await buildBasketSignals();
   } catch (error) {
     console.error(
       "Account load failed:",
@@ -632,6 +637,19 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               ({account.open_positions} total)
             </p>
           </div>
+
+          {basketSignals ? (
+            <div className="mb-6">
+              <PlannedTradesPanel
+                title="Planned trades (this week)"
+                weekOpenUtc={basketSignals.week_open_utc}
+                currency={account.currency}
+                accountBalance={account.equity}
+                pairs={groupSignals(basketSignals.pairs)}
+                note={basketSignals.trading_allowed ? null : basketSignals.reason}
+              />
+            </div>
+          ) : null}
 
           <PositionsTable
             positions={filteredOpenPositions}
