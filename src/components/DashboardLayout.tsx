@@ -255,6 +255,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     );
   };
 
+  useEffect(() => {
+    if (subNavItems.length === 0) return;
+    subNavItems.forEach((item) => {
+      router.prefetch(item.href);
+    });
+  }, [router, subNavItems]);
+
   const sidebarHeader = (
     <div className="border-b border-[var(--panel-border)]/80 p-4">
       <div className="flex items-center justify-between">

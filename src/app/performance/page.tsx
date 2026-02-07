@@ -50,6 +50,15 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const weekParam = resolvedSearchParams?.week;
   const weekParamValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
+  const viewParam = resolvedSearchParams?.view;
+  const viewParamValue = Array.isArray(viewParam) ? viewParam[0] : viewParam;
+  const view =
+    viewParamValue === "simulation" ||
+    viewParamValue === "basket" ||
+    viewParamValue === "research" ||
+    viewParamValue === "notes"
+      ? viewParamValue
+      : "summary";
   const assetClasses = listAssetClasses();
   const models: PerformanceModel[] = [
     "antikythera",
@@ -658,6 +667,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               assetClasses.map((asset) => [asset.id, allTimeByAsset.get(asset.id) ?? []]),
             ),
           }}
+          view={view}
           showAllTime={false}
         />
 

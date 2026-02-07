@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import type { ModelPerformance, PerformanceModel } from "@/lib/performanceLab";
-import PerformanceModal from "./PerformanceModal";
 
 type Section = {
   id: string;
@@ -15,6 +14,7 @@ type PerformanceGridProps = {
   combined: Section;
   perAsset: Section[];
   labels: Record<PerformanceModel, string>;
+  view?: "summary" | "simulation" | "basket" | "research" | "notes";
   allTime: {
     combined: Array<{
       model: PerformanceModel;
@@ -215,16 +215,10 @@ function MiniHistogram({ returns }: { returns: Array<{ pair: string; percent: nu
   );
 }
 
-type ActiveCard = {
-  sectionLabel: string;
-  modelLabel: string;
-  performance: ModelPerformance;
-};
-
 function PerformanceCard({
   label,
   performance,
-  onOpen,
+  view = "summary",
   calibrationSize,
   calibrationLabel,
   isCotBased,
@@ -232,7 +226,7 @@ function PerformanceCard({
 }: {
   label: string;
   performance: ModelPerformance;
-  onOpen: () => void;
+  view?: "summary" | "simulation" | "basket" | "research" | "notes";
   calibrationSize?: number;
   calibrationLabel?: string;
   isCotBased: boolean;
@@ -243,70 +237,173 @@ function PerformanceCard({
   const coverage = performance.total > 0 ? performance.priced / performance.total : 0;
   const sharpeProxy =
     performance.stats.volatility > 0 ? performance.stats.avg_return / performance.stats.volatility : 0;
+  const displayPercent =
+    view === "simulation" && performance.trailing
+      ? performance.trailing.locked_percent
+      : performance.percent;
+  const displayNote = performance.note || "Notes will appear here.";
   const calibrationPnl =
     calibrationSize && Number.isFinite(calibrationSize)
       ? (calibrationSize * performance.percent) / 100
       : null;
+  const topPairs = performance.pair_details.slice(0, 4);
   return (
-    <button
-      type="button"
-      onClick={onOpen}
+    <div
       style={style}
       data-cot-surface={isCotBased ? "true" : undefined}
-      className={`group relative rounded-2xl border-2 p-4 text-left transition duration-300 hover:scale-[1.02] hover:shadow-xl animate-fade-in ${tier.card}`}
+      className={`relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in ${tier.card}`}
     >
       <div className="absolute right-4 top-3 text-4xl opacity-10">{tier.emoji}</div>
       <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
         {label}
       </p>
       <div className="mt-2 text-center">
-        <div className={`text-3xl font-black ${tone(performance.percent)}`}>
-          {formatPercent(performance.percent)}
+        <div className={`text-3xl font-black ${tone(displayPercent)}`}>
+          {formatPercent(displayPercent)}
         </div>
         <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          Total return
+          {view === "simulation" ? "Locked return" : "Total return"}
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <MetricPill
-          label="Win Rate"
-          value={`${performance.stats.win_rate.toFixed(0)}%`}
-          good={performance.stats.win_rate > 55}
-        />
-        <MetricPill
-          label="Sharpe"
-          value={sharpeProxy.toFixed(2)}
-          good={sharpeProxy > 1}
-        />
-        <MetricPill
-          label="Coverage"
-          value={`${Math.round(coverage * 100)}%`}
-          good={coverage > 0.8}
-        />
-        <MetricPill
-          label="Volatility"
-          value={`${performance.stats.volatility.toFixed(1)}%`}
-          good={performance.stats.volatility < 2}
-        />
-      </div>
-      <div className="mt-4 flex items-center justify-between gap-2">
-        <WinRateDonut winRate={performance.stats.win_rate} />
-        <div className="flex-1">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Return spread
-          </p>
-          <MiniHistogram returns={performance.returns} />
+
+      {view === "summary" ? (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <MetricPill
+              label="Win Rate"
+              value={`${performance.stats.win_rate.toFixed(0)}%`}
+              good={performance.stats.win_rate > 55}
+            />
+            <MetricPill
+              label="Sharpe"
+              value={sharpeProxy.toFixed(2)}
+              good={sharpeProxy > 1}
+            />
+            <MetricPill
+              label="Coverage"
+              value={`${Math.round(coverage * 100)}%`}
+              good={coverage > 0.8}
+            />
+            <MetricPill
+              label="Volatility"
+              value={`${performance.stats.volatility.toFixed(1)}%`}
+              good={performance.stats.volatility < 2}
+            />
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-2">
+            <WinRateDonut winRate={performance.stats.win_rate} />
+            <div className="flex-1">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Return spread
+              </p>
+              <MiniHistogram returns={performance.returns} />
+            </div>
+          </div>
+          <div className={`mt-4 rounded-full border px-3 py-1 text-center text-xs font-semibold ${badge.badge}`}>
+            {badge.icon} {badge.label}
+          </div>
+        </>
+      ) : null}
+
+      {view === "simulation" ? (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <MetricPill
+            label="Peak"
+            value={`${performance.trailing?.peak_percent?.toFixed(2) ?? performance.percent.toFixed(2)}%`}
+            good={(performance.trailing?.peak_percent ?? performance.percent) > 0}
+          />
+          <MetricPill
+            label="Locked"
+            value={`${performance.trailing?.locked_percent?.toFixed(2) ?? performance.percent.toFixed(2)}%`}
+            good={(performance.trailing?.locked_percent ?? performance.percent) > 0}
+          />
+          <MetricPill
+            label="Trail Hit"
+            value={performance.trailing?.trailing_hit ? "Yes" : "No"}
+            good={Boolean(performance.trailing?.trailing_hit)}
+          />
+          <MetricPill
+            label="Max DD"
+            value={`${performance.trailing?.max_drawdown?.toFixed(2) ?? "0.00"}%`}
+            good={(performance.trailing?.max_drawdown ?? 0) < 5}
+          />
         </div>
-      </div>
-      <div className={`mt-4 rounded-full border px-3 py-1 text-center text-xs font-semibold ${badge.badge}`}>
-        {badge.icon} {badge.label}
-      </div>
+      ) : null}
+
+      {view === "basket" ? (
+        <div className="mt-4 space-y-2 text-xs text-[color:var(--muted)]">
+          <div className="flex items-center justify-between">
+            <span className="uppercase tracking-[0.2em]">Top pairs</span>
+            <span>{performance.priced}/{performance.total} priced</span>
+          </div>
+          {topPairs.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[var(--panel-border)] px-3 py-2 text-[color:var(--muted)]">
+              No pair details available.
+            </div>
+          ) : (
+            topPairs.map((pair) => (
+              <div key={`${pair.pair}-${pair.direction}`} className="flex items-center justify-between">
+                <span className="font-semibold text-[var(--foreground)]">{pair.pair}</span>
+                <span className={pair.direction === "LONG" ? "text-emerald-600" : pair.direction === "SHORT" ? "text-rose-600" : ""}>
+                  {pair.direction}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      ) : null}
+
+      {view === "research" ? (
+        <div className="mt-4 space-y-3 text-xs text-[color:var(--muted)]">
+          <div className="grid grid-cols-2 gap-2">
+            <MetricPill
+              label="Win Rate"
+              value={`${performance.stats.win_rate.toFixed(0)}%`}
+              good={performance.stats.win_rate > 55}
+            />
+            <MetricPill
+              label="Avg Return"
+              value={`${performance.stats.avg_return.toFixed(2)}%`}
+              good={performance.stats.avg_return > 0}
+            />
+            <MetricPill
+              label="Volatility"
+              value={`${performance.stats.volatility.toFixed(2)}%`}
+              good={performance.stats.volatility < 2}
+            />
+            <MetricPill
+              label="Median"
+              value={`${performance.stats.median_return.toFixed(2)}%`}
+              good={performance.stats.median_return > 0}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Best</span>
+            <span className="font-semibold text-[var(--foreground)]">
+              {performance.stats.best_pair?.pair ?? "—"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Worst</span>
+            <span className="font-semibold text-[var(--foreground)]">
+              {performance.stats.worst_pair?.pair ?? "—"}
+            </span>
+          </div>
+        </div>
+      ) : null}
+
+      {view === "notes" ? (
+        <div className="mt-4 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-3 text-xs text-[var(--foreground)]">
+          {displayNote}
+        </div>
+      ) : null}
+
       {calibrationPnl !== null ? (
         <div className="mt-3 text-center text-xs text-[color:var(--muted)]">
           {calibrationLabel ? `${calibrationLabel}: ` : ""} {formatMoney(calibrationPnl)}
         </div>
       ) : null}
-    </button>
+    </div>
   );
 }
 
@@ -316,9 +413,9 @@ export default function PerformanceGrid({
   labels,
   allTime,
   calibration,
+  view = "summary",
   showAllTime = true,
 }: PerformanceGridProps) {
-  const [active, setActive] = useState<ActiveCard | null>(null);
   const sections = useMemo(() => {
     return [combined, ...perAsset].map((section) => ({
       ...section,
@@ -327,9 +424,6 @@ export default function PerformanceGrid({
   }, [combined, perAsset]);
   const [selectedSectionId, setSelectedSectionId] = useState(
     sections[0]?.id ?? "combined",
-  );
-  const [accountSize, setAccountSize] = useState(
-    calibration?.accountSize ?? 100000,
   );
   const resolvedSectionId = sections.find((section) => section.id === selectedSectionId)
     ? selectedSectionId
@@ -340,31 +434,6 @@ export default function PerformanceGrid({
       : allTime.perAsset[resolvedSectionId] ?? allTime.combined;
   const selectedSection =
     sections.find((section) => section.id === resolvedSectionId) ?? sections[0];
-
-  useEffect(() => {
-    if (!active) {
-      return;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setActive(null);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [active]);
-
-  const modal = active ? (
-    <PerformanceModal
-      sectionLabel={active.sectionLabel}
-      modelLabel={active.modelLabel}
-      performance={active.performance}
-      onClose={() => setActive(null)}
-      accountSize={accountSize}
-      setAccountSize={setAccountSize}
-      calibration={calibration}
-    />
-  ) : null;
 
   return (
     <>
@@ -404,14 +473,8 @@ export default function PerformanceGrid({
                       key={`${section.id}-${result.model}`}
                       label={labels[result.model]}
                       performance={result}
+                      view={view}
                       isCotBased={result.model !== "sentiment"}
-                      onOpen={() =>
-                        setActive({
-                          sectionLabel: section.label,
-                          modelLabel: labels[result.model],
-                          performance: result,
-                        })
-                      }
                       calibrationSize={calibration?.accountSize}
                       calibrationLabel={calibration ? "MT5 sized" : undefined}
                       style={{ animationDelay: `${index * 50}ms` }}
@@ -465,7 +528,6 @@ export default function PerformanceGrid({
           </div>
         </section>
       ) : null}
-      {modal}
     </>
   );
 }
