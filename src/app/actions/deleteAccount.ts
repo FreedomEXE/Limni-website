@@ -20,3 +20,17 @@ export async function deleteAccount(accountId: string) {
     };
   }
 }
+
+export async function deleteConnectedAccount(accountKey: string) {
+  try {
+    await query("DELETE FROM connected_accounts WHERE account_key = $1", [accountKey]);
+    revalidatePath("/accounts");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting connected account:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete connected account"
+    };
+  }
+}

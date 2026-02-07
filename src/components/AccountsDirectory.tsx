@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatCurrencySafe } from "@/lib/formatters";
-import { deleteAccount } from "@/app/actions/deleteAccount";
+import { deleteAccount, deleteConnectedAccount } from "@/app/actions/deleteAccount";
 
 type AccountsDirectoryProps = {
   accounts: AccountCard[];
@@ -97,7 +97,11 @@ function pillTone(value: number, positive = true) {
 export default function AccountsDirectory({ accounts }: AccountsDirectoryProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  async function handleDelete(accountId: string, accountLabel: string) {
+  async function handleDelete(
+    accountId: string,
+    accountLabel: string,
+    source: AccountCard["source"],
+  ) {
     if (!confirm(`Delete account "${accountLabel}"? This cannot be undone.`)) {
       return;
     }
@@ -105,17 +109,21 @@ export default function AccountsDirectory({ accounts }: AccountsDirectoryProps) 
     setDeletingId(accountId);
 
     try {
-      const result = await deleteAccount(accountId);
+      const result =
+        source === "mt5"
+          ? await deleteAccount(accountId)
+          : await deleteConnectedAccount(accountId);
 
       if (!result.success) {
         throw new Error(result.error || "Failed to delete account");
       }
 
-      // Refresh the page to show updated list
       window.location.reload();
     } catch (error) {
       console.error("Delete failed:", error);
-      alert(`Failed to delete account: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Failed to delete account: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
       setDeletingId(null);
     }
   }
@@ -137,29 +145,43 @@ export default function AccountsDirectory({ accounts }: AccountsDirectoryProps) 
           id={account.account_id}
           className="group relative rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm transition hover:border-[var(--accent)]"
         >
-          {account.source === "mt5" ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                handleDelete(account.account_id, account.label);
-              }}
-              disabled={deletingId === account.account_id}
-              className="absolute right-4 top-4 rounded-lg p-2 text-rose-600 opacity-0 transition hover:bg-rose-50 group-hover:opacity-100 disabled:opacity-50"
-              title="Delete account"
-            >
-              {deletingId === account.account_id ? (
-                <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              )}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              handleDelete(account.account_id, account.label, account.source);
+            }}
+            disabled={deletingId === account.account_id}
+            className="absolute right-4 top-4 rounded-lg p-2 text-rose-600 opacity-0 transition hover:bg-rose-50 group-hover:opacity-100 disabled:opacity-50"
+            title="Delete account"
+          >
+            {deletingId === account.account_id ? (
+              <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            )}
+          </button>
 
           {account.href ? (
             <Link href={account.href} className="block">
@@ -184,19 +206,19 @@ function AccountCardContent({ account }: { account: AccountCard }) {
           <h2 className="text-lg font-semibold text-[var(--foreground)]">
             {account.label}
           </h2>
-                <p className="text-sm text-[color:var(--muted)]">
-                  {account.broker || "Unknown broker"} -{" "}
-                  {account.server || "Unknown server"}
-                </p>
-              </div>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(
-                  account.status
-                )}`}
-              >
-                {account.status}
-          </span>
+          <p className="text-sm text-[color:var(--muted)]">
+            {account.broker || "Unknown broker"} -{" "}
+            {account.server || "Unknown server"}
+          </p>
         </div>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(
+            account.status,
+          )}`}
+        >
+          {account.status}
+        </span>
+      </div>
 
       <div className="mt-4 grid gap-3 text-sm text-[var(--foreground)] sm:grid-cols-2">
         <div>
@@ -233,9 +255,7 @@ function AccountCardContent({ account }: { account: AccountCard }) {
           <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
             Open positions
           </p>
-          <p className="mt-1 font-semibold">
-            {account.open_positions ?? 0}
-          </p>
+          <p className="mt-1 font-semibold">{account.open_positions ?? 0}</p>
         </div>
       </div>
 

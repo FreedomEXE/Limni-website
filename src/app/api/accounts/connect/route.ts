@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { getOandaInstrument } from "@/lib/oandaPrices";
 import { upsertConnectedAccount } from "@/lib/connectedAccounts";
+import { query } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,12 @@ function buildAccountKey(provider: string, accountId?: string) {
     return `${provider}:${accountId}`;
   }
   return `${provider}:${crypto.randomUUID()}`;
+}
+
+function buildBitgetAccountId(options: { apiKey: string; env: string; productType: string }) {
+  const seed = `${options.apiKey.trim()}|${options.env}|${options.productType}`;
+  const hash = crypto.createHash("sha256").update(seed).digest("hex").slice(0, 16);
+  return `bitget_${hash}`;
 }
 
 async function oandaRequest<T>(
@@ -228,6 +235,12 @@ export async function POST(request: Request) {
         },
       });
 
+      await query(
+        `DELETE FROM connected_accounts
+         WHERE provider = $1 AND account_id = $2 AND account_key <> $3`,
+        ["oanda", accountId, accountKey],
+      );
+
       return NextResponse.json({ ok: true, accountKey, analysis });
     }
 
@@ -242,7 +255,9 @@ export async function POST(request: Request) {
         );
       }
       const productType = body.productType ?? "USDT-FUTURES";
-      const account = await bitgetRequest<{ list?: Array<{ marginCoin: string; equity: string; usdtEquity?: string }> }>(
+      const account = await bitgetRequest<{
+        list?: Array<{ marginCoin: string; equity: string; usdtEquity?: string; available?: string }>;
+      }>(
         {
           apiKey,
           apiSecret,
@@ -254,9 +269,18 @@ export async function POST(request: Request) {
       );
       const rows = account.list ?? [];
       const preferred = rows.find((row) => row.marginCoin === "USDT") ?? rows[0];
-      const accountKey = buildAccountKey("bitget");
+      const envValue = body.env ?? "live";
+      const accountId = buildBitgetAccountId({
+        apiKey,
+        env: envValue,
+        productType,
+      });
+      const accountKey = buildAccountKey("bitget", accountId);
+      const analysisEquity = Number(
+        preferred?.usdtEquity ?? preferred?.equity ?? preferred?.available ?? "0",
+      );
       const analysis = {
-        equity: Number(preferred?.usdtEquity ?? preferred?.equity ?? 0),
+        equity: Number.isFinite(analysisEquity) ? analysisEquity : 0,
         currency: "USDT",
         productType,
         leverage: body.leverage ?? 10,
@@ -266,7 +290,7 @@ export async function POST(request: Request) {
       await upsertConnectedAccount({
         account_key: accountKey,
         provider: "bitget",
-        account_id: null,
+        account_id: accountId,
         label: body.label ?? "Bitget Perp Bot",
         status: body.env === "demo" ? "DEMO" : "LIVE",
         bot_type: body.botType ?? "bitget_perp",
@@ -275,7 +299,7 @@ export async function POST(request: Request) {
         trail_start_pct: body.trailStartPct ?? 20,
         trail_offset_pct: body.trailOffsetPct ?? 10,
         config: {
-          env: body.env ?? "live",
+          env: envValue,
           productType,
           leverage: body.leverage ?? 10,
         },
@@ -284,11 +308,17 @@ export async function POST(request: Request) {
           apiKey,
           apiSecret,
           apiPassphrase,
-          env: body.env ?? "live",
+          env: envValue,
           productType,
           leverage: body.leverage ?? 10,
         },
       });
+
+      await query(
+        `DELETE FROM connected_accounts
+         WHERE provider = $1 AND account_id = $2 AND account_key <> $3`,
+        ["bitget", accountId, accountKey],
+      );
 
       return NextResponse.json({ ok: true, accountKey, analysis });
     }

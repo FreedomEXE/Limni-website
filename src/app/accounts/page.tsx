@@ -122,6 +122,10 @@ export default async function AccountsPage() {
     bitgetState?.updated_at ?? null,
     oandaState?.updated_at ?? null,
     ...connectedAccounts.map((account) => account.last_sync_utc ?? null),
+    ...connectedAccounts.map((account) => {
+      const analysis = account.analysis as Record<string, unknown> | null;
+      return typeof analysis?.fetched_at === "string" ? (analysis.fetched_at as string) : null;
+    }),
   ]);
 
   return (

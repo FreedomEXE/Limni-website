@@ -35,7 +35,14 @@ export async function listConnectedAccounts(): Promise<ConnectedAccount[]> {
      FROM connected_accounts
      ORDER BY created_at DESC`,
   );
-  return rows.map((row) => ({
+  const deduped = new Map<string, ConnectedAccountRow>();
+  for (const row of rows) {
+    const key = `${row.provider}:${row.account_id ?? row.account_key}`;
+    if (!deduped.has(key)) {
+      deduped.set(key, row);
+    }
+  }
+  return Array.from(deduped.values()).map((row) => ({
     ...row,
     last_sync_utc: row.last_sync_utc ? row.last_sync_utc.toISOString() : null,
     created_at: row.created_at.toISOString(),
@@ -52,12 +59,29 @@ export async function getConnectedAccount(accountKey: string): Promise<Connected
      WHERE account_key = $1`,
     [accountKey],
   );
-  if (!row) return null;
+  let resolved = row;
+  if (!resolved && accountKey.includes(":")) {
+    const [provider, ...rest] = accountKey.split(":");
+    const accountId = rest.join(":");
+    if (provider && accountId) {
+      resolved = await queryOne<ConnectedAccountRow>(
+        `SELECT account_key, provider, account_id, label, status, bot_type,
+                risk_mode, trail_mode, trail_start_pct, trail_offset_pct,
+                config, analysis, last_sync_utc, created_at, updated_at
+         FROM connected_accounts
+         WHERE provider = $1 AND account_id = $2
+         ORDER BY updated_at DESC
+         LIMIT 1`,
+        [provider, accountId],
+      );
+    }
+  }
+  if (!resolved) return null;
   return {
-    ...row,
-    last_sync_utc: row.last_sync_utc ? row.last_sync_utc.toISOString() : null,
-    created_at: row.created_at.toISOString(),
-    updated_at: row.updated_at.toISOString(),
+    ...resolved,
+    last_sync_utc: resolved.last_sync_utc ? resolved.last_sync_utc.toISOString() : null,
+    created_at: resolved.created_at.toISOString(),
+    updated_at: resolved.updated_at.toISOString(),
   };
 }
 
