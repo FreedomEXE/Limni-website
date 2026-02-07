@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import type { NewsEvent } from "@/lib/news/types";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
 import { DateTime } from "luxon";
 
 type NewsContentTabsProps = {
   selectedWeek: string | null;
-  initialView: "announcements" | "calendar";
+  view: "announcements" | "calendar" | "impact";
   announcements: NewsEvent[];
   calendar: NewsEvent[];
 };
@@ -59,21 +58,21 @@ function impactTone(impact: NewsEvent["impact"]) {
 
 export default function NewsContentTabs({
   selectedWeek,
-  initialView,
+  view,
   announcements,
   calendar,
 }: NewsContentTabsProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [view, setView] = useState<"announcements" | "calendar">(initialView);
+  const filteredCalendar = useMemo(() => {
+    if (view !== "impact") return calendar;
+    return calendar.filter((event) => event.impact === "High" || event.impact === "Medium");
+  }, [calendar, view]);
 
   const groupedCalendar = useMemo(() => {
     const groups = new Map<
       string,
       { key: string; label: string; ts: number; events: NewsEvent[] }
     >();
-    for (const event of calendar) {
+    for (const event of filteredCalendar) {
       const date = resolveEventDate(event);
       const key = date ? date.toFormat("yyyy-LL-dd") : event.date || "unknown";
       if (!groups.has(key)) {
@@ -87,57 +86,10 @@ export default function NewsContentTabs({
       groups.get(key)!.events.push(event);
     }
     return Array.from(groups.values()).sort((a, b) => a.ts - b.ts);
-  }, [calendar]);
-
-  const week = selectedWeek ?? "";
-  const tabHref = useMemo(
-    () => ({
-      announcements: `${pathname}?week=${encodeURIComponent(week)}&view=announcements`,
-      calendar: `${pathname}?week=${encodeURIComponent(week)}&view=calendar`,
-    }),
-    [pathname, week],
-  );
-
-  const switchView = (nextView: "announcements" | "calendar") => {
-    if (nextView === view) return;
-    setView(nextView);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", nextView);
-    if (week) {
-      params.set("week", week);
-    }
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  };
+  }, [filteredCalendar]);
 
   return (
     <>
-      <div className="mt-4 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => switchView("announcements")}
-          title={tabHref.announcements}
-          className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-            view === "announcements"
-              ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-              : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)]"
-          }`}
-        >
-          Announcements
-        </button>
-        <button
-          type="button"
-          onClick={() => switchView("calendar")}
-          title={tabHref.calendar}
-          className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-            view === "calendar"
-              ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-              : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)]"
-          }`}
-        >
-          Calendar
-        </button>
-      </div>
-
       {view === "announcements" ? (
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Announcements</h2>
@@ -172,12 +124,14 @@ export default function NewsContentTabs({
         </section>
       ) : (
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Economic Calendar</h2>
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">
+            {view === "impact" ? "High Impact Calendar" : "Economic Calendar"}
+          </h2>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
             Full week event list from ForexFactory.
           </p>
           <div className="mt-4 max-h-[72vh] overflow-auto rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70">
-            {calendar.length === 0 ? (
+            {filteredCalendar.length === 0 ? (
               <div className="px-4 py-6 text-sm text-[color:var(--muted)]">
                 No calendar events found for this week.
               </div>

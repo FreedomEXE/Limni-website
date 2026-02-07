@@ -13,9 +13,7 @@ import {
   readMt5ChangeLog,
 } from "@/lib/mt5Store";
 import DashboardLayout from "@/components/DashboardLayout";
-import EquityCurveChart from "@/components/research/EquityCurveChart";
 import AccountClientView from "@/components/accounts/AccountClientView";
-import { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
 import { DateTime } from "luxon";
 import { formatCurrencySafe } from "@/lib/formatters";
 import { formatDateTimeET } from "@/lib/time";
@@ -144,8 +142,16 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const { accountId } = await params;
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const requestedWeek = toQueryParam(resolvedSearchParams?.week);
+  const viewParam = toQueryParam(resolvedSearchParams?.view);
   const basketFilter = (toQueryParam(resolvedSearchParams?.basket) ?? "").toLowerCase();
   const symbolFilter = (toQueryParam(resolvedSearchParams?.symbol) ?? "").toUpperCase();
+  const activeView =
+    viewParam &&
+    ["overview", "equity", "positions", "planned", "history", "journal", "settings"].includes(
+      viewParam,
+    )
+      ? (viewParam as "overview" | "equity" | "positions" | "planned" | "history" | "journal" | "settings")
+      : "overview";
   const desiredWeeks = 4;
   const currentWeekOpenUtc = getWeekOpenUtc();
   const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
@@ -384,21 +390,6 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   })();
 
 
-  const baseHref = `/accounts/${accountId}`;
-  const activeTab = ["overview", "equity", "positions", "planned", "history", "journal", "settings"].includes(
-    toQueryParam(resolvedSearchParams?.tab) ?? ""
-  )
-    ? (toQueryParam(resolvedSearchParams?.tab) as string)
-    : "overview";
-  const drawerMode: DrawerMode =
-    typeof resolvedSearchParams?.drawer === "string"
-      ? (resolvedSearchParams.drawer as DrawerMode)
-      : null;
-  const baseQuery: Record<string, string | undefined> = {
-    week: selectedWeek ?? undefined,
-    tab: activeTab,
-  };
-
   const plannedPairs = basketSignals ? groupSignals(basketSignals.pairs) : [];
   const journalRows = [
     ...(account.recent_logs ?? []).map((log) => ({
@@ -416,6 +407,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   return (
     <DashboardLayout>
       <AccountClientView
+        activeView={activeView}
         header={{
           title: account?.label ?? "Account",
           providerLabel: "MT5",

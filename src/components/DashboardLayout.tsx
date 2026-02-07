@@ -1,246 +1,356 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
 
 type NavItem = {
+  key: string;
   href: string;
   label: string;
   letter: string;
 };
 
+type SubNavItem = {
+  href: string;
+  label: string;
+};
 
-const NAV_ITEMS: NavItem[] = [
-  { href: "/antikythera", label: "Data", letter: "L" },
-  { href: "/performance", label: "Performance", letter: "I" },
-  { href: "/automation", label: "Automation", letter: "M" },
-  { href: "/accounts", label: "Accounts", letter: "N" },
-  { href: "/status", label: "Status", letter: "I" },
-  { href: "/news", label: "News", letter: "N" },
+const TOP_LEVEL: NavItem[] = [
+  { key: "data", href: "/antikythera", label: "Data", letter: "L" },
+  { key: "performance", href: "/performance", label: "Performance", letter: "I" },
+  { key: "automation", href: "/automation", label: "Automation", letter: "M" },
+  { key: "accounts", href: "/accounts", label: "Accounts", letter: "N" },
+  { key: "status", href: "/status", label: "Status", letter: "I" },
+  { key: "news", href: "/news", label: "News", letter: "N" },
 ];
 
-const MOBILE_LABELS: Record<string, string> = {
-  "/antikythera": "Data",
-  "/performance": "Perf",
-  "/automation": "Auto",
-  "/accounts": "Accts",
-  "/status": "Status",
-  "/news": "News",
+const SECTION_LABELS: Record<string, string> = {
+  data: "Data",
+  performance: "Performance",
+  automation: "Automation",
+  accounts: "Accounts",
+  status: "Status",
+  news: "News",
 };
+
+function resolveSection(pathname: string) {
+  if (pathname.startsWith("/antikythera") || pathname.startsWith("/dashboard") || pathname.startsWith("/sentiment")) {
+    return "data";
+  }
+  if (pathname.startsWith("/performance")) return "performance";
+  if (pathname.startsWith("/automation")) return "automation";
+  if (pathname.startsWith("/accounts")) return "accounts";
+  if (pathname.startsWith("/news")) return "news";
+  if (pathname.startsWith("/status")) return "status";
+  return null;
+}
+
+function parseHref(href: string) {
+  const [path, query] = href.split("?");
+  const params = new URLSearchParams(query ?? "");
+  return { path, params };
+}
+
+function isActiveHref(
+  href: string,
+  pathname: string,
+  viewParam: string | null,
+  defaultView?: string | null,
+) {
+  const { path, params } = parseHref(href);
+  if (path !== pathname) {
+    return false;
+  }
+  const expectedView = params.get("view");
+  if (!expectedView) {
+    return true;
+  }
+  const resolvedView = viewParam ?? defaultView ?? null;
+  return resolvedView === expectedView;
+}
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const [isHoverExpanded, setIsHoverExpanded] = useState(false);
-  const isPreviewing = isCollapsed && isHoverExpanded;
-  const isSidebarOpen = !isCollapsed || isHoverExpanded;
-  const showBack =
-    (pathname.startsWith("/accounts/") && pathname !== "/accounts") ||
-    (pathname.startsWith("/automation/") && pathname !== "/automation");
-  const isActiveRoute = (href: string) =>
-    pathname === href || pathname.startsWith(`${href}/`);
+  const searchParams = useSearchParams();
+  const activeSection = resolveSection(pathname);
+  const viewParam = searchParams.get("view");
+  const [navMode, setNavMode] = useState<"root" | "section">(
+    activeSection ? "section" : "root",
+  );
+  const [rootLockSection, setRootLockSection] = useState<string | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    const prefetchRoutes = () => {
-      NAV_ITEMS.forEach((item) => router.prefetch(item.href));
-      router.prefetch("/automation/research");
-      router.prefetch("/automation/research/universal");
-      router.prefetch("/automation/research/baskets");
-      router.prefetch("/automation/research/symbols");
-    };
+    if (!activeSection) {
+      setNavMode("root");
+      setRootLockSection(null);
+      return;
+    }
+    if (rootLockSection && rootLockSection === activeSection) {
+      setNavMode("root");
+      return;
+    }
+    setNavMode("section");
+    setRootLockSection(null);
+  }, [activeSection, rootLockSection]);
 
-    const idleCallback = (window as Window & {
-      requestIdleCallback?: (cb: () => void) => number;
-    }).requestIdleCallback;
+  const accountBasePath = useMemo(() => {
+    if (pathname.startsWith("/accounts/connected/")) {
+      return pathname;
+    }
+    if (pathname.startsWith("/accounts/") && pathname !== "/accounts") {
+      return pathname;
+    }
+    return "/accounts";
+  }, [pathname]);
 
-    if (idleCallback) {
-      const id = idleCallback(prefetchRoutes);
-      return () => {
-        const cancelIdleCallback = (window as Window & {
-          cancelIdleCallback?: (id: number) => void;
-        }).cancelIdleCallback;
-        if (cancelIdleCallback) {
-          cancelIdleCallback(id);
-        }
-      };
+  const subNavItems = useMemo<SubNavItem[]>(() => {
+    if (!activeSection) return [];
+    if (activeSection === "data") {
+      return [
+        { href: "/antikythera", label: "Antikythera" },
+        { href: "/dashboard", label: "Bias" },
+        { href: "/sentiment", label: "Sentiment" },
+      ];
+    }
+    if (activeSection === "performance") {
+      return [
+        { href: "/performance?view=summary", label: "Summary" },
+        { href: "/performance?view=simulation", label: "Simulation" },
+        { href: "/performance?view=basket", label: "Basket" },
+        { href: "/performance?view=research", label: "Research" },
+        { href: "/performance?view=notes", label: "Notes" },
+      ];
+    }
+    if (activeSection === "automation") {
+      return [
+        { href: "/automation/bots", label: "Bots" },
+        { href: "/automation/research/universal", label: "Research · Universal" },
+        { href: "/automation/research/baskets", label: "Research · Baskets" },
+        { href: "/automation/research/symbols", label: "Research · Symbols" },
+      ];
+    }
+    if (activeSection === "accounts") {
+      if (accountBasePath === "/accounts") {
+        return [{ href: "/accounts", label: "All Accounts" }];
+      }
+      return [
+        { href: `${accountBasePath}?view=overview`, label: "Overview" },
+        { href: `${accountBasePath}?view=equity`, label: "Equity" },
+        { href: `${accountBasePath}?view=positions`, label: "Positions" },
+        { href: `${accountBasePath}?view=planned`, label: "Planned" },
+        { href: `${accountBasePath}?view=history`, label: "History" },
+        { href: `${accountBasePath}?view=journal`, label: "Journal" },
+        { href: `${accountBasePath}?view=settings`, label: "Settings" },
+      ];
+    }
+    if (activeSection === "news") {
+      return [
+        { href: "/news?view=calendar", label: "Calendar" },
+        { href: "/news?view=announcements", label: "Announcements" },
+        { href: "/news?view=impact", label: "Impact" },
+      ];
+    }
+    if (activeSection === "status") {
+      return [{ href: "/status", label: "System Status" }];
+    }
+    return [];
+  }, [activeSection, accountBasePath]);
+
+  const handleOpenSection = (sectionKey: string) => {
+    setNavMode("section");
+    setRootLockSection(null);
+    setMobileOpen(false);
+    const target = TOP_LEVEL.find((item) => item.key === sectionKey);
+    if (target) {
+      router.push(target.href);
+    }
+  };
+
+  const handleRootToggle = () => {
+    if (activeSection) {
+      setNavMode("root");
+      setRootLockSection(activeSection);
+    } else {
+      setNavMode("root");
+      setRootLockSection(null);
+    }
+  };
+
+  const renderNavContent = () => {
+    if (navMode === "root") {
+      return (
+        <nav className="flex-1 space-y-1 p-4">
+          {TOP_LEVEL.map((item) => {
+            const isActive = activeSection === item.key;
+            const isNews = item.key === "news";
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => handleOpenSection(item.key)}
+                className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                  isActive
+                    ? "border border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : isNews
+                      ? "border border-amber-400/40 bg-amber-500/10 text-amber-700 hover:border-amber-300/70 hover:bg-amber-500/15 dark:text-amber-200"
+                      : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
+                }`}
+              >
+                {isNews ? (
+                  <span className="rounded-full border border-amber-400/50 bg-amber-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-current">
+                    News
+                  </span>
+                ) : (
+                  <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-base font-bold text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
+                    {item.letter}
+                  </span>
+                )}
+                {!isNews ? <span className="tracking-tight">{item.label}</span> : null}
+              </button>
+            );
+          })}
+        </nav>
+      );
     }
 
-    const timer = window.setTimeout(prefetchRoutes, 250);
-    return () => window.clearTimeout(timer);
-  }, [router]);
+    return (
+      <nav className="flex-1 space-y-2 p-4">
+        {subNavItems.map((item) => {
+          const defaultView =
+            activeSection === "performance"
+              ? "summary"
+              : activeSection === "news"
+                ? "calendar"
+                : activeSection === "accounts"
+                  ? "overview"
+                  : null;
+          const isActive = isActiveHref(item.href, pathname, viewParam, defaultView);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                isActive
+                  ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                  : "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)]/80 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+              }`}
+            >
+              <span className="tracking-tight">{item.label}</span>
+              {isActive ? (
+                <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-strong)]">
+                  Active
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  };
+
+  const sidebarHeader = (
+    <div className="border-b border-[var(--panel-border)]/80 p-4">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={handleRootToggle}
+          className="flex items-center gap-3"
+        >
+          <div className="flex size-12 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)] shadow-sm">
+            <img src="/limni-icon.svg" alt="Limni" className="size-10 scale-125 logo-theme-aware" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--foreground)]">
+              LIMNI LABS
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              {navMode === "section" && activeSection ? SECTION_LABELS[activeSection] : "Navigation"}
+            </div>
+          </div>
+        </button>
+        {navMode === "section" ? (
+          <button
+            type="button"
+            onClick={handleRootToggle}
+            className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+          >
+            Back
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
 
   return (
     <div className="relative flex min-h-screen bg-[var(--background)]">
-      {isCollapsed && !isHoverExpanded ? (
-        <div
-          className="fixed left-[246px] top-6 z-50 hidden md:block"
-          onMouseEnter={() => setIsHoverExpanded(true)}
-          onMouseLeave={() => setIsHoverExpanded(false)}
-        >
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-80 border-r border-[var(--panel-border)] bg-[var(--panel)]/90 backdrop-blur-sm md:flex md:flex-col">
+        {sidebarHeader}
+        {renderNavContent()}
+        <div className="border-t border-[var(--panel-border)] p-4">
+          <div className="space-y-3">
+            <ThemeToggle compact={false} />
+          </div>
           <button
-            type="button"
-            onClick={() => {
-              setIsCollapsed(false);
-              setIsHoverExpanded(false);
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              window.location.href = "/login";
             }}
-            className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/90 px-3 py-1 text-xs font-semibold text-[var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-            aria-label="Expand navigation"
-            title="Hover to preview navigation"
+            className="mt-3 w-full rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
           >
-            &gt;&gt;
+            Sign Out
           </button>
-        </div>
-      ) : null}
-
-      <aside
-        onMouseEnter={() => {
-          if (isCollapsed) {
-            setIsHoverExpanded(true);
-          }
-        }}
-        onMouseLeave={() => {
-          if (isCollapsed) {
-            setIsHoverExpanded(false);
-          }
-        }}
-        className={`fixed left-0 top-0 z-40 hidden h-screen w-72 border-r border-[var(--panel-border)] bg-[var(--panel)]/90 backdrop-blur-sm transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:block ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="sticky top-0 flex h-screen flex-col">
-          <div className="border-b border-[var(--panel-border)]/80 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)] shadow-sm">
-                  <img
-                    src="/limni-icon.svg"
-                    alt="Limni"
-                    className="size-10 scale-125 logo-theme-aware"
-                  />
-                </div>
-                <div className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--foreground)]">
-                  LIMNI LABS
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCollapsed((prev) => !prev);
-                  setIsHoverExpanded(false);
-                }}
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-1 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-                aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
-                title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
-              >
-                {isCollapsed ? ">>" : "<<"}
-              </button>
-            </div>
-          </div>
-
-          <nav className="flex-1 space-y-1 p-4">
-            {NAV_ITEMS.map((item) => {
-              const isActive = isActiveRoute(item.href);
-              const isNews = item.href === "/news";
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch={true}
-                  onMouseEnter={() => router.prefetch(item.href)}
-                  className={`group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
-                    isActive
-                      ? "border border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                      : isNews
-                        ? "border border-amber-400/40 bg-amber-500/10 text-amber-700 hover:border-amber-300/70 hover:bg-amber-500/15 dark:text-amber-200"
-                        : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
-                  }`}
-                >
-                  {isNews ? (
-                    <span className="rounded-full border border-amber-400/50 bg-amber-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-current">
-                      News
-                    </span>
-                  ) : (
-                    <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-base font-bold text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
-                      {item.letter}
-                    </span>
-                  )}
-                  {!isNews ? <span className="tracking-tight">{item.label}</span> : null}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="border-t border-[var(--panel-border)] p-4">
-            <div className="space-y-3">
-              <ThemeToggle compact={isCollapsed} />
-            </div>
-            <button
-              onClick={async () => {
-                await fetch("/api/auth/logout", { method: "POST" });
-                window.location.href = "/login";
-              }}
-              className="mt-3 w-full rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-            >
-              Sign Out
-            </button>
-          </div>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-hidden pb-24 md:pb-0">
-        <div className="mx-auto max-w-7xl px-4 py-5 md:px-6 md:py-8">
-          {showBack ? (
-            <div className="mb-4">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="text-xs uppercase tracking-[0.25em] text-[color:var(--muted)] transition hover:text-[color:var(--accent-strong)]"
-              >
-                Back
-              </button>
+      <div className="md:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="fixed left-4 top-4 z-50 rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/90 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+        >
+          Menu
+        </button>
+        {mobileOpen ? (
+          <div className="fixed inset-0 z-50 flex">
+            <div className="h-full w-80 border-r border-[var(--panel-border)] bg-[var(--panel)]/95 backdrop-blur-sm">
+              {sidebarHeader}
+              {renderNavContent()}
+              <div className="border-t border-[var(--panel-border)] p-4">
+                <ThemeToggle compact={false} />
+                <button
+                  onClick={async () => {
+                    await fetch("/api/auth/logout", { method: "POST" });
+                    window.location.href = "/login";
+                  }}
+                  className="mt-3 w-full rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-sm font-semibold text-[var(--muted)]"
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
-          ) : null}
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="flex-1 bg-black/40"
+              aria-label="Close navigation"
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <main className="flex-1 overflow-x-hidden pb-24 md:pb-0 md:pl-80">
+        <div className="mx-auto max-w-7xl px-4 py-5 md:px-6 md:py-8">
           <CotModeBanner />
           {children}
         </div>
       </main>
-
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--panel-border)] bg-[var(--panel)]/95 backdrop-blur-sm md:hidden">
-        <nav className="mx-auto grid max-w-xl grid-cols-6 gap-1 p-2">
-          {NAV_ITEMS.map((item) => {
-            const isActive = isActiveRoute(item.href);
-            return (
-              <Link
-                key={`mobile-${item.href}`}
-                href={item.href}
-                prefetch={true}
-                onTouchStart={() => router.prefetch(item.href)}
-                className={`flex flex-col items-center justify-center rounded-xl px-1 py-2 text-[11px] font-semibold leading-tight transition ${
-                  isActive
-                    ? "bg-[var(--accent)]/15 text-[var(--accent-strong)]"
-                    : "text-[var(--muted)] hover:bg-[var(--panel)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                <span
-                  className={`mb-1 flex size-7 items-center justify-center rounded-full border text-[11px] ${
-                    isActive
-                      ? "border-[var(--accent)]/40 bg-[var(--accent)]/15"
-                      : "border-[var(--panel-border)] bg-[var(--panel)]/80"
-                  }`}
-                >
-                  {item.letter}
-                </span>
-                <span className="whitespace-nowrap">{MOBILE_LABELS[item.href] ?? item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
     </div>
   );
 }

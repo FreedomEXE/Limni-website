@@ -8,9 +8,10 @@ import MiniSparkline from "@/components/visuals/MiniSparkline";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
 import DebugReadout from "@/components/DebugReadout";
 import SummaryCard from "@/components/accounts/SummaryCard";
-import AccountDrawer, { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
-import type { PlannedPair } from "@/lib/plannedTrades";
+import FilterBar from "@/components/common/FilterBar";
+import VirtualizedListTable from "@/components/common/VirtualizedListTable";
 import type { WeekOption } from "@/lib/weekState";
+import type { ReactNode } from "react";
 
 type HeaderConfig = {
   title: string;
@@ -59,6 +60,7 @@ type DrawerData = {
 };
 
 type AccountClientViewProps = {
+  activeView: "overview" | "equity" | "positions" | "planned" | "history" | "journal" | "settings";
   header: HeaderConfig;
   kpi: {
     weeklyPnlPct: number;
@@ -86,28 +88,22 @@ type AccountClientViewProps = {
     equityWeekKey: string;
   };
   drawerData: DrawerData;
+  settingsExtras?: ReactNode;
 };
 
-const TABS = [
-  "overview",
-  "equity",
-  "positions",
-  "planned",
-  "history",
-  "journal",
-  "settings",
-] as const;
-
 export default function AccountClientView({
+  activeView,
   header,
   kpi,
   overview,
   equity,
   debug,
   drawerData,
+  settingsExtras,
 }: AccountClientViewProps) {
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("overview");
-  const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("recent");
 
   const statusBadge = useMemo(() => {
     if (!header.statusLabel) return null;
@@ -122,181 +118,30 @@ export default function AccountClientView({
     );
   }, [header.statusLabel, header.statusToneClass]);
 
-  const drawerConfigs: Partial<Record<Exclude<DrawerMode, null>, DrawerConfig>> = useMemo(() => {
-    return {
-      positions: {
-        title: "Open Positions",
-        subtitle: "Live positions for this account",
-        columns: [
-          { key: "symbol", label: "Symbol" },
-          { key: "side", label: "Side" },
-          { key: "lots", label: "Size" },
-          { key: "pnl", label: "P&L" },
-        ],
-        rows: drawerData.openPositions.map((row, index) => ({
-          id: `${row.symbol}-${index}`,
-          status: "open",
-          searchText: `${row.symbol} ${row.side}`,
-          sortValue: row.pnl,
-          cells: [
-            <span key="symbol" className="font-semibold">
-              {row.symbol}
-            </span>,
-            <span key="side" className={row.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>
-              {row.side}
-            </span>,
-            <span key="lots" className="text-xs text-[color:var(--muted)]">
-              {row.lots.toFixed(2)} lots
-            </span>,
-            <span key="pnl" className={row.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>
-              {row.pnl.toFixed(2)}
-            </span>,
-          ],
-        })),
-        showFilters: true,
-        emptyState: "No open positions in this week.",
-      },
-      planned: {
-        title: "Planned Trades",
-        subtitle: "Upcoming basket signals",
-        columns: [
-          { key: "symbol", label: "Symbol" },
-          { key: "asset", label: "Asset" },
-          { key: "net", label: "Net" },
-          { key: "legs", label: "Legs" },
-        ],
-        rows: drawerData.plannedPairs.map((pair, index) => ({
-          id: `${pair.symbol}-${index}`,
-          status: "pending",
-          searchText: `${pair.symbol} ${pair.assetClass}`,
-          sortValue: pair.net,
-          cells: [
-            <span key="symbol" className="font-semibold">
-              {pair.symbol}
-            </span>,
-            <span key="asset" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {pair.assetClass}
-            </span>,
-            <span key="net" className={pair.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
-              Net {pair.net}
-            </span>,
-            <span key="legs" className="text-xs text-[color:var(--muted)]">
-              {pair.legsCount} legs
-            </span>,
-          ],
-        })),
-        showFilters: true,
-        emptyState: "No planned trades for this week.",
-      },
-      closed: {
-        title: "Closed Trades",
-        subtitle: "Grouped closed positions",
-        columns: [
-          { key: "symbol", label: "Symbol" },
-          { key: "side", label: "Side" },
-          { key: "net", label: "Net PnL" },
-          { key: "lots", label: "Lots" },
-        ],
-        rows: drawerData.closedGroups.map((group, index) => ({
-          id: `${group.symbol}-${index}`,
-          status: "closed",
-          searchText: `${group.symbol} ${group.side}`,
-          sortValue: group.net,
-          cells: [
-            <span key="symbol" className="font-semibold">
-              {group.symbol}
-            </span>,
-            <span key="side" className={group.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>
-              {group.side}
-            </span>,
-            <span key="net" className={group.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
-              {group.net.toFixed(2)}
-            </span>,
-            <span key="lots" className="text-xs text-[color:var(--muted)]">
-              {group.lots.toFixed(2)} lots
-            </span>,
-          ],
-        })),
-        showFilters: true,
-        emptyState: "No closed trades recorded for this week.",
-      },
-      journal: {
-        title: "Journal",
-        subtitle: "Automation logs and weekly notes",
-        columns: [
-          { key: "label", label: "Type" },
-          { key: "value", label: "Entry" },
-        ],
-        rows: drawerData.journalRows.map((row, index) => ({
-          id: `${row.label}-${index}`,
-          cells: [
-            <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {row.label}
-            </span>,
-            <span key="value" className="text-xs text-[var(--foreground)]">
-              {row.value}
-            </span>,
-          ],
-        })),
-        showFilters: false,
-        emptyState: "No journal entries yet.",
-      },
-      mapping: {
-        title: "Mapping & Settings",
-        subtitle: "Instrument mapping and tools",
-        columns: [
-          { key: "symbol", label: "Symbol" },
-          { key: "instrument", label: "Instrument" },
-          { key: "status", label: "Status" },
-        ],
-        rows: drawerData.mappingRows.map((row, index) => ({
-          id: `${row.symbol}-${index}`,
-          status: row.available ? "open" : "closed",
-          searchText: `${row.symbol} ${row.instrument}`,
-          cells: [
-            <span key="symbol" className="font-semibold">
-              {row.symbol}
-            </span>,
-            <span key="instrument" className="text-xs text-[color:var(--muted)]">
-              {row.instrument}
-            </span>,
-            <span
-              key="status"
-              className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                row.available
-                  ? "bg-emerald-500/10 text-emerald-600"
-                  : "bg-rose-500/10 text-rose-600"
-              }`}
-            >
-              {row.available ? "Available" : "Missing"}
-            </span>,
-          ],
-        })),
-        showFilters: true,
-        emptyState: "No mapping data available.",
-      },
-      kpi: {
-        title: "KPI Details",
-        subtitle: "Expanded performance and risk metrics",
-        columns: [
-          { key: "label", label: "Metric" },
-          { key: "value", label: "Value" },
-        ],
-        rows: drawerData.kpiRows.map((row, index) => ({
-          id: `${row.label}-${index}`,
-          cells: [
-            <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {row.label}
-            </span>,
-            <span key="value" className="font-semibold">
-              {row.value}
-            </span>,
-          ],
-        })),
-        showFilters: false,
-      },
-    };
-  }, [drawerData]);
+  const searchLower = search.toLowerCase();
+  const filterRows = <T extends { status?: string; searchText?: string; sortValue?: number }>(
+    rows: T[],
+  ) => {
+    const filtered = rows.filter((row) => {
+      if (statusFilter !== "all" && row.status && row.status !== statusFilter) {
+        return false;
+      }
+      if (searchLower && row.searchText && !row.searchText.toLowerCase().includes(searchLower)) {
+        return false;
+      }
+      return true;
+    });
+    if (sort === "best") {
+      return [...filtered].sort((a, b) => (b.sortValue ?? 0) - (a.sortValue ?? 0));
+    }
+    if (sort === "worst") {
+      return [...filtered].sort((a, b) => (a.sortValue ?? 0) - (b.sortValue ?? 0));
+    }
+    if (sort === "oldest") {
+      return [...filtered].reverse();
+    }
+    return filtered;
+  };
 
   return (
     <PageShell
@@ -342,29 +187,7 @@ export default function AccountClientView({
           balance={kpi.balance}
           currency={kpi.currency}
           scopeLabel={kpi.scopeLabel}
-          onOpenDetails={() => setDrawerMode("kpi")}
         />
-      }
-      tabs={
-        <div className="flex flex-wrap gap-2">
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-                  isActive
-                    ? "border-[var(--accent)]/50 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                    : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-                }`}
-              >
-                {tab}
-              </button>
-            );
-          })}
-        </div>
       }
     >
       <div className="mb-3">
@@ -377,7 +200,8 @@ export default function AccountClientView({
           ]}
         />
       </div>
-      {activeTab === "overview" ? (
+
+      {activeView === "overview" ? (
         <div className="space-y-4">
           <MiniSparkline points={equity.points} />
           <div className="grid gap-4 md:grid-cols-3">
@@ -385,49 +209,22 @@ export default function AccountClientView({
               label="Open Positions"
               value={overview.openPositions}
               hint="Live positions right now"
-              action={
-                <button
-                  type="button"
-                  onClick={() => setDrawerMode("positions")}
-                  className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                >
-                  View drawer
-                </button>
-              }
             />
             <SummaryCard
               label="Planned Trades"
               value={overview.plannedCount}
               hint={overview.plannedNote ?? "Upcoming basket trades"}
-              action={
-                <button
-                  type="button"
-                  onClick={() => setDrawerMode("planned")}
-                  className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                >
-                  View drawer
-                </button>
-              }
             />
             <SummaryCard
               label="Mappings"
               value={overview.mappingCount}
               hint="Instrument availability"
-              action={
-                <button
-                  type="button"
-                  onClick={() => setDrawerMode("mapping")}
-                  className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                >
-                  View drawer
-                </button>
-              }
             />
           </div>
         </div>
       ) : null}
 
-      {activeTab === "equity" ? (
+      {activeView === "equity" ? (
         <div className="space-y-4">
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -449,92 +246,194 @@ export default function AccountClientView({
         </div>
       ) : null}
 
-      {activeTab === "positions" ? (
-        <SummaryCard
-          label="Open Positions"
-          value={overview.openPositions}
-          hint="Live positions right now"
-          action={
-            <button
-              type="button"
-              onClick={() => setDrawerMode("positions")}
-              className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-            >
-              Open drawer
-            </button>
-          }
-        />
+      {activeView === "positions" ? (
+        <div className="space-y-4">
+          <FilterBar
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            search={search}
+            onSearchChange={setSearch}
+            sort={sort}
+            onSortChange={setSort}
+          />
+          <VirtualizedListTable
+            columns={[
+              { key: "symbol", label: "Symbol" },
+              { key: "side", label: "Side" },
+              { key: "lots", label: "Size" },
+              { key: "pnl", label: "P&L" },
+            ]}
+            rows={filterRows(
+              drawerData.openPositions.map((row) => ({
+                ...row,
+                status: "open",
+                searchText: `${row.symbol} ${row.side}`,
+                sortValue: row.pnl,
+              }))
+            )}
+            emptyState="No open positions in this week."
+            renderRow={(row) => (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                <span className="font-semibold">{row.symbol}</span>
+                <span className={row.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>
+                  {row.side}
+                </span>
+                <span className="text-xs text-[color:var(--muted)]">{row.lots.toFixed(2)} lots</span>
+                <span className={row.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                  {row.pnl.toFixed(2)}
+                </span>
+              </div>
+            )}
+          />
+        </div>
       ) : null}
 
-      {activeTab === "planned" ? (
-        <SummaryCard
-          label="Planned Trades"
-          value={overview.plannedCount}
-          hint={overview.plannedNote ?? "Upcoming basket trades"}
-          action={
-            <button
-              type="button"
-              onClick={() => setDrawerMode("planned")}
-              className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-            >
-              Open drawer
-            </button>
-          }
-        />
+      {activeView === "planned" ? (
+        <div className="space-y-4">
+          <FilterBar
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            search={search}
+            onSearchChange={setSearch}
+            sort={sort}
+            onSortChange={setSort}
+          />
+          <VirtualizedListTable
+            columns={[
+              { key: "symbol", label: "Symbol" },
+              { key: "asset", label: "Asset" },
+              { key: "net", label: "Net" },
+              { key: "legs", label: "Legs" },
+            ]}
+            rows={filterRows(
+              drawerData.plannedPairs.map((pair) => ({
+                ...pair,
+                status: "pending",
+                searchText: `${pair.symbol} ${pair.assetClass}`,
+                sortValue: pair.net,
+              }))
+            )}
+            emptyState="No planned trades for this week."
+            renderRow={(row) => (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                <span className="font-semibold">{row.symbol}</span>
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  {row.assetClass}
+                </span>
+                <span className={row.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                  Net {row.net}
+                </span>
+                <span className="text-xs text-[color:var(--muted)]">{row.legsCount} legs</span>
+              </div>
+            )}
+          />
+        </div>
       ) : null}
 
-      {activeTab === "history" ? (
-        <SummaryCard
-          label="Closed Trades"
-          value="—"
-          hint="Historical trade groups"
-          action={
-            <button
-              type="button"
-              onClick={() => setDrawerMode("closed")}
-              className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-            >
-              Open drawer
-            </button>
-          }
-        />
+      {activeView === "history" ? (
+        <div className="space-y-4">
+          <FilterBar
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            search={search}
+            onSearchChange={setSearch}
+            sort={sort}
+            onSortChange={setSort}
+          />
+          <VirtualizedListTable
+            columns={[
+              { key: "symbol", label: "Symbol" },
+              { key: "side", label: "Side" },
+              { key: "net", label: "Net PnL" },
+              { key: "lots", label: "Lots" },
+            ]}
+            rows={filterRows(
+              drawerData.closedGroups.map((group) => ({
+                ...group,
+                status: "closed",
+                searchText: `${group.symbol} ${group.side}`,
+                sortValue: group.net,
+              }))
+            )}
+            emptyState="No closed trades recorded for this week."
+            renderRow={(row) => (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                <span className="font-semibold">{row.symbol}</span>
+                <span className={row.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>
+                  {row.side}
+                </span>
+                <span className={row.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                  {row.net.toFixed(2)}
+                </span>
+                <span className="text-xs text-[color:var(--muted)]">{row.lots.toFixed(2)} lots</span>
+              </div>
+            )}
+          />
+        </div>
       ) : null}
 
-      {activeTab === "journal" ? (
-        <SummaryCard
-          label="Journal"
-          value={overview.journalCount ?? "—"}
-          hint="Automation notes and logs"
-          action={
-            <button
-              type="button"
-              onClick={() => setDrawerMode("journal")}
-              className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-            >
-              Open drawer
-            </button>
-          }
-        />
+      {activeView === "journal" ? (
+        <div className="space-y-4">
+          <VirtualizedListTable
+            columns={[
+              { key: "label", label: "Type" },
+              { key: "value", label: "Entry" },
+            ]}
+            rows={drawerData.journalRows}
+            emptyState="No journal entries yet."
+            renderRow={(row) => (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  {row.label}
+                </span>
+                <span className="text-xs text-[var(--foreground)]">{row.value}</span>
+              </div>
+            )}
+          />
+        </div>
       ) : null}
 
-      {activeTab === "settings" ? (
-        <SummaryCard
-          label="Mapping & Settings"
-          value={overview.mappingCount}
-          hint="Instrument mapping and tools"
-          action={
-            <button
-              type="button"
-              onClick={() => setDrawerMode("mapping")}
-              className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-            >
-              Open drawer
-            </button>
-          }
-        />
+      {activeView === "settings" ? (
+        <div className="space-y-4">
+          <FilterBar
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            search={search}
+            onSearchChange={setSearch}
+            sort={sort}
+            onSortChange={setSort}
+          />
+          <VirtualizedListTable
+            columns={[
+              { key: "symbol", label: "Symbol" },
+              { key: "instrument", label: "Instrument" },
+              { key: "status", label: "Status" },
+            ]}
+            rows={filterRows(
+              drawerData.mappingRows.map((row) => ({
+                ...row,
+                status: row.available ? "open" : "closed",
+                searchText: `${row.symbol} ${row.instrument}`,
+              }))
+            )}
+            emptyState="No mapping data available."
+            renderRow={(row) => (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                <span className="font-semibold">{row.symbol}</span>
+                <span className="text-xs text-[color:var(--muted)]">{row.instrument}</span>
+                <span
+                  className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                    row.available ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+                  }`}
+                >
+                  {row.available ? "Available" : "Missing"}
+                </span>
+              </div>
+            )}
+          />
+          {settingsExtras ? <div>{settingsExtras}</div> : null}
+        </div>
       ) : null}
-
-      <AccountDrawer mode={drawerMode} configs={drawerConfigs} onClose={() => setDrawerMode(null)} />
     </PageShell>
   );
 }

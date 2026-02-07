@@ -1,5 +1,4 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import PageTabs from "@/components/PageTabs";
 import SignalHeatmap from "@/components/SignalHeatmap";
 import ViewToggle from "@/components/ViewToggle";
 import SummaryCards from "@/components/SummaryCards";
@@ -267,7 +266,6 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">
             Antikythera
           </h1>
-          <PageTabs />
         </header>
 
         <div data-cot-surface="true">

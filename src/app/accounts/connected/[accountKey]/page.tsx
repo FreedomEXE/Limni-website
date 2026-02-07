@@ -1,9 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import ConnectedAccountSizing from "@/components/ConnectedAccountSizing";
-import WeekSelector from "@/components/accounts/WeekSelector";
-import EquityCurveChart from "@/components/research/EquityCurveChart";
 import AccountClientView from "@/components/accounts/AccountClientView";
-import { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
 import { getConnectedAccount, listConnectedAccounts } from "@/lib/connectedAccounts";
 import { formatDateTimeET } from "@/lib/time";
 import { buildBasketSignals } from "@/lib/basketSignals";
@@ -203,15 +200,23 @@ export default async function ConnectedAccountPage({
   // Determine selected week
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const weekParam = resolvedSearchParams?.week;
+  const weekParamValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
   const viewParam = resolvedSearchParams?.view;
+  const activeView =
+    typeof viewParam === "string" &&
+    ["overview", "equity", "positions", "planned", "history", "journal", "settings"].includes(
+      viewParam,
+    )
+      ? (viewParam as "overview" | "equity" | "positions" | "planned" | "history" | "journal" | "settings")
+      : "overview";
   const selectedWeek: WeekOption =
-    viewParam === "all"
+    weekParamValue === "all"
       ? "all"
-      : typeof weekParam === "string" && weekOptionsWithUpcoming.includes(weekParam)
-        ? weekParam
-        : hoursToNext !== null && hoursToNext <= 48 && nextWeekOpenUtc
-          ? nextWeekOpenUtc
-          : getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc);
+      : typeof weekParamValue === "string" && weekOptionsWithUpcoming.includes(weekParamValue)
+        ? weekParamValue
+      : hoursToNext !== null && hoursToNext <= 48 && nextWeekOpenUtc
+        ? nextWeekOpenUtc
+        : getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc);
 
   // Fetch week-specific data
   const stats = await getAccountStatsForWeek(account.account_key, selectedWeek);
@@ -278,11 +283,14 @@ export default async function ConnectedAccountPage({
   }
 
   const accountCurrency = stats.currency;
+  const settingsExtras =
+    account.provider === "oanda" ? <ConnectedAccountSizing accountKey={account.account_key} /> : null;
 
 
   return (
     <DashboardLayout>
       <AccountClientView
+        activeView={activeView}
         header={{
           title: account.label ?? account.account_key,
           providerLabel: account.provider.toUpperCase(),
@@ -354,6 +362,7 @@ export default async function ConnectedAccountPage({
             },
           ],
         }}
+        settingsExtras={settingsExtras}
       />
     </DashboardLayout>
   );

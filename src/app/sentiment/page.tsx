@@ -1,6 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import SentimentHeatmap from "@/components/SentimentHeatmap";
-import PageTabs from "@/components/PageTabs";
 import ViewToggle from "@/components/ViewToggle";
 import SummaryCards from "@/components/SummaryCards";
 import { fetchLiquidationSummary } from "@/lib/coinank";
@@ -239,7 +238,6 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
       <div className="space-y-8">
         <header className="space-y-4">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">Sentiment</h1>
-          <PageTabs />
         </header>
 
         <SummaryCards

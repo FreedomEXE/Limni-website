@@ -1,7 +1,6 @@
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
-import ResearchSectionNav from "@/components/research/ResearchSectionNav";
 import WeekSelector from "@/components/accounts/WeekSelector";
 import QueryBuilder from "@/components/filters/QueryBuilder";
 import KpiGroup from "@/components/metrics/KpiGroup";
@@ -140,7 +139,6 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
       <div className="space-y-8">
         <header className="space-y-4">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">Research</h1>
-          <ResearchSectionNav />
         </header>
 
         <section

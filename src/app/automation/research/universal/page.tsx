@@ -1,6 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
-import ResearchSectionNav from "@/components/research/ResearchSectionNav";
 import { buildUniversalBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
@@ -66,7 +65,6 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
       <div className="space-y-8">
         <header className="space-y-4">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">Research</h1>
-          <ResearchSectionNav />
         </header>
 
         <section

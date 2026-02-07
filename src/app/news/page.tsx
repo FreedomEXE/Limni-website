@@ -29,7 +29,8 @@ export default async function NewsPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
   const weekParam = pickParam(params?.week);
   const viewParam = pickParam(params?.view);
-  const view = viewParam === "calendar" ? "calendar" : "announcements";
+  const view =
+    viewParam === "announcements" || viewParam === "impact" ? viewParam : "calendar";
 
   let weeks = await listNewsWeeks(52);
   if (weeks.length === 0) {
@@ -106,7 +107,7 @@ export default async function NewsPage({ searchParams }: PageProps) {
         </section>
         <NewsContentTabs
           selectedWeek={selectedWeek}
-          initialView={view}
+          view={view}
           announcements={announcements}
           calendar={calendar}
         />

@@ -45,11 +45,9 @@ export default function WeekSelector({
       const params = new URLSearchParams(searchParams);
 
       if (newWeek === "all") {
-        params.delete("week");
-        params.set("view", "all");
+        params.set("week", "all");
       } else {
         params.set("week", newWeek);
-        params.delete("view");
       }
 
       // Navigate with new params

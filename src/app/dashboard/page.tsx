@@ -1,5 +1,4 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import PageTabs from "@/components/PageTabs";
 import SummaryCards from "@/components/SummaryCards";
 import MiniBiasStrip from "@/components/MiniBiasStrip";
 import DashboardFilters from "@/components/dashboard/DashboardFilters";
@@ -427,7 +426,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <div className="space-y-8">
         <header className="space-y-4">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">Bias</h1>
-          <PageTabs />
         </header>
 
         <div data-cot-surface="true">

@@ -43,6 +43,7 @@ type PerformanceGridProps = {
     netPnl: number;
     trades: number;
   };
+  showAllTime?: boolean;
 };
 
 const MODEL_ORDER: PerformanceModel[] = [
@@ -315,6 +316,7 @@ export default function PerformanceGrid({
   labels,
   allTime,
   calibration,
+  showAllTime = true,
 }: PerformanceGridProps) {
   const [active, setActive] = useState<ActiveCard | null>(null);
   const sections = useMemo(() => {
@@ -421,7 +423,7 @@ export default function PerformanceGrid({
           ) : null,
         )}
       </section>
-      {selectedAllTime.length > 0 ? (
+      {showAllTime && selectedAllTime.length > 0 ? (
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
