@@ -105,14 +105,12 @@ export default function ConnectedAccountSizing({ accountKey }: { accountKey: str
                     ? `${(row.marginRate * 100).toFixed(2)}%`
                     : "--"}
                 </span>
-                {row.available && row.units === 0 && row.minNavUsd ? (
-                  <span className="col-span-2 text-amber-600 md:col-span-6">
-                    1:1 size below minimum trade unit. Requires ≈ {row.minNavUsd.toFixed(2)} USD NAV
-                    {row.minUnits ? ` (min ${row.minUnits} units)` : ""}.
-                  </span>
-                ) : null}
-                {!row.available && row.reason ? (
-                  <span className="col-span-2 text-rose-600 md:col-span-6">
+                {row.reason ? (
+                  <span
+                    className={`col-span-2 md:col-span-6 ${
+                      row.available ? "text-amber-600" : "text-rose-600"
+                    }`}
+                  >
                     {row.reason}
                   </span>
                 ) : null}

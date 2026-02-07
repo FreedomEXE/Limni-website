@@ -1,5 +1,6 @@
 import type { BasketSignal } from "@/lib/basketSignals";
 import type { PerformanceModel } from "@/lib/performanceLab";
+import type { PerformanceSnapshot } from "@/lib/performanceSnapshots";
 
 export const UNIVERSAL_MODELS: PerformanceModel[] = [
   "antikythera",
@@ -126,4 +127,15 @@ export function buildBitgetPlannedTrades(pairs: BasketSignal[]) {
     BITGET_REQUIRED_MODELS.includes(pair.model),
   );
   return { pairs: groupSignals(filtered, BITGET_REQUIRED_MODELS), note: null };
+}
+
+export function signalsFromSnapshots(rows: PerformanceSnapshot[]): BasketSignal[] {
+  return rows.flatMap((row) =>
+    row.pair_details.map((detail) => ({
+      symbol: detail.pair,
+      direction: detail.direction,
+      model: row.model,
+      asset_class: row.asset_class,
+    })),
+  );
 }

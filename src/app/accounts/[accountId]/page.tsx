@@ -17,12 +17,18 @@ import PlannedTradesPanel from "@/components/PlannedTradesPanel";
 import DashboardLayout from "@/components/DashboardLayout";
 import RefreshButton from "@/components/RefreshButton";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
+import AccountSection from "@/components/accounts/AccountSection";
 import { DateTime } from "luxon";
 import { formatCurrencySafe } from "@/lib/formatters";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
-import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import {
+  getWeekOpenUtc,
+  listPerformanceWeeks,
+  readPerformanceSnapshotsByWeek,
+  weekLabelFromOpen,
+} from "@/lib/performanceSnapshots";
 import { buildBasketSignals } from "@/lib/basketSignals";
-import { groupSignals } from "@/lib/plannedTrades";
+import { groupSignals, signalsFromSnapshots } from "@/lib/plannedTrades";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +121,42 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const curveScopeParam = toQueryParam(resolvedSearchParams?.scope);
   const curveScope =
     curveScopeParam === "basket" || curveScopeParam === "symbol" ? curveScopeParam : "account";
-  const selectedWeek = requestedWeek && isMt5WeekOpenUtc(requestedWeek) ? requestedWeek : null;
+  const desiredWeeks = 4;
+  const currentWeekOpenUtc = getWeekOpenUtc();
+  const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
+  const nextWeekOpenUtc = currentWeekStart.isValid
+    ? currentWeekStart.plus({ days: 7 }).toUTC().toISO()
+    : null;
+  let weekOptions: string[] = [];
+  try {
+    const recentWeeks = await listPerformanceWeeks(desiredWeeks);
+    const ordered: string[] = [];
+    const seen = new Set<string>();
+    if (nextWeekOpenUtc && recentWeeks.length > 0) {
+      ordered.push(nextWeekOpenUtc);
+      seen.add(nextWeekOpenUtc);
+    }
+    for (const week of recentWeeks) {
+      if (!seen.has(week)) {
+        ordered.push(week);
+        seen.add(week);
+      }
+    }
+    weekOptions = ordered.slice(0, desiredWeeks);
+  } catch (error) {
+    console.error(
+      "Performance week list failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  const selectedWeek =
+    requestedWeek && weekOptions.includes(requestedWeek)
+      ? requestedWeek
+      : weekOptions.includes(currentWeekOpenUtc)
+        ? currentWeekOpenUtc
+        : weekOptions[0] ?? currentWeekOpenUtc;
+  const isSelectedMt5Week = selectedWeek ? isMt5WeekOpenUtc(selectedWeek) : false;
+  const statsWeekOpenUtc = isSelectedMt5Week ? selectedWeek : getMt5WeekOpenUtc();
   let account = null;
   let closedPositions: Awaited<ReturnType<typeof readMt5ClosedPositions>> = [];
   let closedSummary: Awaited<ReturnType<typeof readMt5ClosedSummary>> = [];
@@ -128,10 +169,10 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     account = await getMt5AccountById(accountId);
     closedSummary = await readMt5ClosedSummary(accountId, 12);
     changeLog = await readMt5ChangeLog(accountId, 12);
-    closedPositions = selectedWeek
+    closedPositions = isSelectedMt5Week
       ? await readMt5ClosedPositionsByWeek(accountId, selectedWeek, 500)
-      : await readMt5ClosedPositions(accountId, 200);
-    const weekOpen = getMt5WeekOpenUtc();
+      : [];
+    const weekOpen = statsWeekOpenUtc;
     const weekEnd = DateTime.fromISO(weekOpen, { zone: "utc" }).plus({ days: 7 }).toISO();
     if (weekEnd) {
       weeklyDrawdown = await readMt5DrawdownRange(accountId, weekOpen, weekEnd);
@@ -154,6 +195,30 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
       }
     }
     basketSignals = await buildBasketSignals();
+    if (selectedWeek && selectedWeek !== currentWeekOpenUtc) {
+      let usedHistory = false;
+      try {
+        const history = await readPerformanceSnapshotsByWeek(selectedWeek);
+        if (history.length > 0) {
+          basketSignals = {
+            ...basketSignals,
+            week_open_utc: selectedWeek,
+            pairs: signalsFromSnapshots(history),
+          };
+          usedHistory = true;
+        }
+      } catch (error) {
+        console.error(
+          "Performance snapshot load failed:",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+      if (!usedHistory) {
+        basketSignals = { ...basketSignals, week_open_utc: selectedWeek };
+      }
+    } else {
+      basketSignals = { ...basketSignals, week_open_utc: selectedWeek };
+    }
   } catch (error) {
     console.error(
       "Account load failed:",
@@ -234,6 +299,54 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     return true;
   });
 
+  const closedGroups = (() => {
+    const groups = new Map<
+      string,
+      {
+        key: string;
+        symbol: string;
+        type: "BUY" | "SELL";
+        basket: string;
+        openDate: string;
+        trades: typeof filteredClosedPositions;
+        net: number;
+        lots: number;
+        closeTimeMin: string;
+        closeTimeMax: string;
+      }
+    >();
+    for (const trade of filteredClosedPositions) {
+      const basket = parseBasketFromComment(trade.comment) ?? "unknown";
+      const openDate = trade.open_time.slice(0, 10);
+      const key = `${basket}|${trade.symbol}|${trade.type}|${openDate}`;
+      const net = trade.profit + trade.swap + trade.commission;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.trades.push(trade);
+        existing.net += net;
+        existing.lots += trade.lots;
+        existing.closeTimeMin =
+          existing.closeTimeMin < trade.close_time ? existing.closeTimeMin : trade.close_time;
+        existing.closeTimeMax =
+          existing.closeTimeMax > trade.close_time ? existing.closeTimeMax : trade.close_time;
+      } else {
+        groups.set(key, {
+          key,
+          symbol: trade.symbol,
+          type: trade.type,
+          basket,
+          openDate,
+          trades: [trade],
+          net,
+          lots: trade.lots,
+          closeTimeMin: trade.close_time,
+          closeTimeMax: trade.close_time,
+        });
+      }
+    }
+    return Array.from(groups.values()).sort((a, b) => b.net - a.net);
+  })();
+
   const tradeCurvePoints =
     filteredClosedPositions.length === 0
       ? []
@@ -269,6 +382,17 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
         ? `Closed-trade curve (basket: ${effectiveBasketFilter || "all"})`
         : `Closed-trade curve (symbol: ${effectiveSymbolFilter || "all"})`;
 
+  const openNetLotsBySymbol = filteredOpenPositions.reduce((acc, pos) => {
+    const sign = pos.type === "BUY" ? 1 : -1;
+    acc[pos.symbol] = (acc[pos.symbol] ?? 0) + pos.lots * sign;
+    return acc;
+  }, {} as Record<string, number>);
+  const openSymbols = Object.fromEntries(
+    Object.entries(openNetLotsBySymbol)
+      .filter(([, value]) => Math.abs(value) > 0)
+      .map(([symbol]) => [symbol, true]),
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -296,6 +420,33 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               {account?.broker || "Unknown broker"} -{" "}
               {account?.server || "Unknown server"}
             </p>
+            <form
+              action={`/accounts/${accountId}`}
+              method="get"
+              className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]"
+            >
+              {curveScope ? <input type="hidden" name="scope" value={curveScope} /> : null}
+              {effectiveBasketFilter ? <input type="hidden" name="basket" value={effectiveBasketFilter} /> : null}
+              {effectiveSymbolFilter ? <input type="hidden" name="symbol" value={effectiveSymbolFilter} /> : null}
+              <label>Week</label>
+              <select
+                name="week"
+                defaultValue={selectedWeek ?? ""}
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+              >
+                {weekOptions.map((week) => (
+                  <option key={week} value={week}>
+                    {weekLabelFromOpen(week)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+              >
+                View
+              </button>
+            </form>
           </div>
           <div className="flex items-center gap-3">
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3 text-sm text-[color:var(--muted)] shadow-sm">
@@ -553,15 +704,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
           </div>
         </section>
 
-        <details className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm" open>
-          <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4">
-            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
-              Weekly equity curve
-            </span>
-            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
-            <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
-          </summary>
-          <section className="border-t border-[var(--panel-border)] px-6 py-6">
+        <AccountSection title="Weekly equity curve">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Weekly equity curve
@@ -570,7 +713,11 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               Switch between account snapshots, basket-level closed-trade curves, and symbol-level curves.
             </p>
           </div>
-          <form action={`/accounts/${accountId}`} method="get" className="mb-4 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <form
+            action={`/accounts/${accountId}`}
+            method="get"
+            className="mb-4 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]"
+          >
             {selectedWeek ? <input type="hidden" name="week" value={selectedWeek} /> : null}
             <select
               name="scope"
@@ -612,22 +759,10 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               Apply
             </button>
           </form>
-          <EquityCurveChart
-            title={curveTitle}
-            points={curvePointsToShow}
-          />
-          </section>
-        </details>
+          <EquityCurveChart title={curveTitle} points={curvePointsToShow} />
+        </AccountSection>
 
-        <details className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm" open>
-          <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4">
-            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
-              Open positions
-            </span>
-            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
-            <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
-          </summary>
-          <section className="border-t border-[var(--panel-border)] px-6 py-6">
+        <AccountSection title="Open positions">
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Open Positions
@@ -641,12 +776,15 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
           {basketSignals ? (
             <div className="mb-6">
               <PlannedTradesPanel
-                title="Planned trades (this week)"
+                title="Open positions"
                 weekOpenUtc={basketSignals.week_open_utc}
                 currency={account.currency}
                 accountBalance={account.equity}
                 pairs={groupSignals(basketSignals.pairs)}
                 note={basketSignals.trading_allowed ? null : basketSignals.reason}
+                sizeBySymbol={openNetLotsBySymbol}
+                sizeLabel="lots"
+                openSymbols={openSymbols}
               />
             </div>
           ) : null}
@@ -656,18 +794,9 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             currency={account.currency}
             equity={account.equity}
           />
-          </section>
-        </details>
+        </AccountSection>
 
-        <details className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm" open>
-          <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4">
-            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
-              Weekly trade history
-            </span>
-            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
-            <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
-          </summary>
-          <section className="border-t border-[var(--panel-border)] px-6 py-6">
+        <AccountSection title="Weekly trade history">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-[var(--foreground)]">
               Weekly trade history
@@ -676,11 +805,6 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               Closed position results grouped by trading week.
             </p>
           </div>
-          {requestedWeek && !selectedWeek ? (
-            <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs text-rose-700">
-              Invalid week value. Select a valid week from the dropdown.
-            </div>
-          ) : null}
           {closedSummary.length === 0 ? (
             <div className="space-y-2 text-sm text-[color:var(--muted)]">
               <p>No closed trades stored yet.</p>
@@ -739,18 +863,9 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               })}
             </div>
           )}
-          </section>
-        </details>
+        </AccountSection>
 
-        <details className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm" open>
-          <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4">
-            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
-              Closed positions
-            </span>
-            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
-            <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
-          </summary>
-          <section className="border-t border-[var(--panel-border)] px-6 py-6">
+        <AccountSection title="Closed positions">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
@@ -761,31 +876,6 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {closedSummary.length > 0 ? (
-                <form action={`/accounts/${accountId}`} method="get" className="flex items-center gap-2">
-                  <input type="hidden" name="scope" value={curveScope} />
-                  {effectiveBasketFilter ? <input type="hidden" name="basket" value={effectiveBasketFilter} /> : null}
-                  {effectiveSymbolFilter ? <input type="hidden" name="symbol" value={effectiveSymbolFilter} /> : null}
-                  <select
-                    name="week"
-                    defaultValue={selectedWeek ?? ""}
-                    className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-                  >
-                    <option value="">All weeks</option>
-                    {closedSummary.map((week) => (
-                      <option key={week.week_open_utc} value={week.week_open_utc}>
-                        {weekLabelFromOpen(week.week_open_utc)}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="submit"
-                    className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-                  >
-                    View
-                  </button>
-                </form>
-              ) : null}
               <span>{filteredClosedPositions.length} records</span>
             </div>
           </div>
@@ -799,79 +889,101 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               ) : null}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="sticky top-0 bg-[var(--panel)] text-xs uppercase text-[var(--muted)]">
-                  <tr>
-                    <th className="py-2">Close time</th>
-                    <th className="py-2">Pair</th>
-                    <th className="py-2">Type</th>
-                    <th className="py-2">Lots</th>
-                    <th className="py-2">Net P&L</th>
-                    <th className="py-2">Open</th>
-                    <th className="py-2">Close</th>
-                  </tr>
-                </thead>
-                <tbody className="text-[var(--foreground)]">
-                  {filteredClosedPositions.map((trade) => {
-                    const net =
-                      trade.profit + trade.swap + trade.commission;
-                    return (
-                      <tr
-                        key={`${trade.ticket}-${trade.close_time}`}
-                        className="border-t border-[var(--panel-border)]/40"
+            <div className="space-y-3">
+              {closedGroups.map((group) => (
+                <details
+                  key={group.key}
+                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-[var(--foreground)]">
+                        {group.symbol}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                          group.type === "BUY"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-rose-100 text-rose-700"
+                        }`}
                       >
-                        <td className="py-2 text-xs text-[color:var(--muted)]">
-                          {formatDateTimeET(trade.close_time)}
-                        </td>
-                        <td className="py-2 font-semibold">{trade.symbol}</td>
-                        <td className="py-2">
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                              trade.type === "BUY"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-rose-100 text-rose-700"
-                            }`}
-                          >
-                            {trade.type}
-                          </span>
-                        </td>
-                        <td className="py-2">{trade.lots.toFixed(2)}</td>
-                        <td
-                          className={`py-2 font-semibold ${
-                            net >= 0 ? "text-emerald-700" : "text-rose-700"
-                          }`}
-                        >
-                          {formatCurrencySafe(net, account.currency)}
-                        </td>
-                        <td className="py-2 text-xs text-[color:var(--muted)]">
-                          {trade.open_price.toFixed(5)}
-                        </td>
-                        <td className="py-2 text-xs text-[color:var(--muted)]">
-                          {trade.close_price.toFixed(5)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        {group.type}
+                      </span>
+                      <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                        {group.basket}
+                      </span>
+                      <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                        {group.trades.length} trades
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={`text-sm font-semibold ${
+                          group.net >= 0 ? "text-emerald-700" : "text-rose-700"
+                        }`}
+                      >
+                        {formatCurrencySafe(group.net, account.currency)}
+                      </p>
+                      <p className="text-xs text-[color:var(--muted)]">
+                        {group.lots.toFixed(2)} lots · {group.openDate}
+                      </p>
+                    </div>
+                  </summary>
+                  <div className="border-t border-[var(--panel-border)] px-4 py-3">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-left text-sm">
+                        <thead className="sticky top-0 bg-[var(--panel)] text-xs uppercase text-[var(--muted)]">
+                          <tr>
+                            <th className="py-2">Close time</th>
+                            <th className="py-2">Lots</th>
+                            <th className="py-2">Net P&L</th>
+                            <th className="py-2">Open</th>
+                            <th className="py-2">Close</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-[var(--foreground)]">
+                          {group.trades.map((trade) => {
+                            const net =
+                              trade.profit + trade.swap + trade.commission;
+                            return (
+                              <tr
+                                key={`${trade.ticket}-${trade.close_time}`}
+                                className="border-t border-[var(--panel-border)]/40"
+                              >
+                                <td className="py-2 text-xs text-[color:var(--muted)]">
+                                  {formatDateTimeET(trade.close_time)}
+                                </td>
+                                <td className="py-2">{trade.lots.toFixed(2)}</td>
+                                <td
+                                  className={`py-2 font-semibold ${
+                                    net >= 0 ? "text-emerald-700" : "text-rose-700"
+                                  }`}
+                                >
+                                  {formatCurrencySafe(net, account.currency)}
+                                </td>
+                                <td className="py-2 text-xs text-[color:var(--muted)]">
+                                  {trade.open_price.toFixed(5)}
+                                </td>
+                                <td className="py-2 text-xs text-[color:var(--muted)]">
+                                  {trade.close_price.toFixed(5)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </details>
+              ))}
             </div>
           )}
-          </section>
-        </details>
+        </AccountSection>
 
-        <details className="group rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm" open>
-          <summary className="flex cursor-pointer list-none items-center justify-between px-6 py-4">
-            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]">
-              EA journal
-            </span>
-            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
-            <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
-          </summary>
-          <section className="border-t border-[var(--panel-border)] px-6 py-6">
+        <AccountSection title="Journal">
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                EA journal
+                Journal
               </h2>
               <p className="text-sm text-[color:var(--muted)]">
                 Collapsible runtime logs and weekly strategy notes.
@@ -965,8 +1077,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
                 </div>
               </details>
             </div>
-          </section>
-        </details>
+        </AccountSection>
           </>
         ) : null}
       </div>
