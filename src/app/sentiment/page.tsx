@@ -26,7 +26,8 @@ import {
   weekLabelFromOpen,
 } from "@/lib/performanceSnapshots";
 
-export const revalidate = 120;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type SentimentPageProps = {
   searchParams?:

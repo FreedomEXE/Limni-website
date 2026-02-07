@@ -6,6 +6,7 @@ import {
   computeModelPerformance,
   computeReturnStats,
   type PerformanceModel,
+  type ModelPerformance,
 } from "@/lib/performanceLab";
 import { simulateTrailingForGroupsFromRows } from "@/lib/universalBasket";
 import { getPairPerformance } from "@/lib/pricePerformance";
@@ -25,7 +26,8 @@ import {
   getWeekOpenUtc,
 } from "@/lib/performanceSnapshots";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const MODEL_LABELS: Record<PerformanceModel, string> = {
   blended: "Blended",
@@ -57,10 +59,29 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     "sentiment",
   ];
 
+  const desiredWeeks = 4;
   let weekOptions: string[] = [];
+  const currentWeekOpenUtc = getWeekOpenUtc();
+  const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
+  const nextWeekOpenUtc = currentWeekStart.isValid
+    ? currentWeekStart.plus({ days: 7 }).toUTC().toISO()
+    : null;
   let reportOptions: string[] = [];
   try {
-    weekOptions = await listPerformanceWeeks();
+    const recentWeeks = await listPerformanceWeeks(desiredWeeks);
+    const ordered: string[] = [];
+    const seen = new Set<string>();
+    if (nextWeekOpenUtc && recentWeeks.length > 0) {
+      ordered.push(nextWeekOpenUtc);
+      seen.add(nextWeekOpenUtc);
+    }
+    for (const week of recentWeeks) {
+      if (!seen.has(week)) {
+        ordered.push(week);
+        seen.add(week);
+      }
+    }
+    weekOptions = ordered.slice(0, desiredWeeks);
   } catch (error) {
     console.error(
       "Performance snapshot list failed:",
@@ -87,10 +108,21 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const selectedWeek =
     typeof weekParam === "string" && weekOptions.includes(weekParam)
       ? weekParam
-      : weekOptions[0] ?? null;
-  const currentWeekOpenUtc = getWeekOpenUtc();
+      : weekOptions.includes(currentWeekOpenUtc)
+        ? currentWeekOpenUtc
+        : weekOptions[0] ?? null;
   const isCurrentWeekSelected =
     selectedWeek != null && selectedWeek === currentWeekOpenUtc;
+  const isFutureWeekSelected = (() => {
+    if (!selectedWeek) {
+      return false;
+    }
+    const parsed = DateTime.fromISO(selectedWeek, { zone: "utc" });
+    if (!parsed.isValid || !currentWeekStart.isValid) {
+      return false;
+    }
+    return parsed.toMillis() > currentWeekStart.toMillis();
+  })();
   const reportParam = resolvedSearchParams?.report;
   const selectedReport =
     typeof reportParam === "string" && reportOptions.includes(reportParam)
@@ -109,6 +141,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     }
   }
   const hasSnapshots = weekSnapshots.length > 0;
+  const isWaitingWeek = isFutureWeekSelected || (isCurrentWeekSelected && !hasSnapshots);
   let latestPriceRefresh: string | null = null;
   try {
     const marketSnapshots = await Promise.all(
@@ -146,7 +179,32 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   let totals: Array<Awaited<ReturnType<typeof computeModelPerformance>>> = [];
   let anyPriced = false;
 
-  if (hasSnapshots && !isCurrentWeekSelected) {
+  const emptyModel = (model: PerformanceModel): ModelPerformance => ({
+    model,
+    percent: 0,
+    priced: 0,
+    total: 0,
+    note: "Waiting for pricing.",
+    returns: [],
+    pair_details: [],
+    stats: {
+      avg_return: 0,
+      median_return: 0,
+      win_rate: 0,
+      volatility: 0,
+      best_pair: null,
+      worst_pair: null,
+    },
+  });
+
+  if (isWaitingWeek) {
+    perAsset = assetClasses.map((asset) => ({
+      asset,
+      results: models.map((model) => emptyModel(model)),
+    }));
+    totals = models.map((model) => emptyModel(model));
+    anyPriced = false;
+  } else if (hasSnapshots) {
     const groups = [
       ...models.map((model) => ({
         key: `combined:${model}`,
@@ -336,7 +394,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     );
   }
   const nowUtc = DateTime.utc().toMillis();
-  const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
   const currentWeekMillis = currentWeekStart.isValid
     ? currentWeekStart.toMillis()
     : nowUtc;

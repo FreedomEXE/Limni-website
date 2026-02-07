@@ -26,7 +26,8 @@ import { getPairPerformance } from "@/lib/pricePerformance";
 import { readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import type { PairSnapshot } from "@/lib/cotTypes";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function buildResponse(
   snapshot: Awaited<ReturnType<typeof readSnapshot>>,

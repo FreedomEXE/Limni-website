@@ -80,7 +80,32 @@ export async function getConnectedAccount(accountKey: string): Promise<Connected
          LIMIT 1`,
         [provider, accountId],
       );
+      if (!resolved) {
+        resolved = await queryOne<ConnectedAccountRow>(
+          `SELECT account_key, provider, account_id, label, status, bot_type,
+                  risk_mode, trail_mode, trail_start_pct, trail_offset_pct,
+                  config, analysis, last_sync_utc, created_at, updated_at
+           FROM connected_accounts
+           WHERE provider = $1 AND account_key = $2
+           ORDER BY updated_at DESC
+           LIMIT 1`,
+          [provider, accountId],
+        );
+      }
     }
+  }
+  if (!resolved && accountKey) {
+    resolved = await queryOne<ConnectedAccountRow>(
+      `SELECT account_key, provider, account_id, label, status, bot_type,
+              risk_mode, trail_mode, trail_start_pct, trail_offset_pct,
+              config, analysis, last_sync_utc, created_at, updated_at
+       FROM connected_accounts
+       WHERE account_id = $1
+          OR account_key = $1
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+      [accountKey],
+    );
   }
   if (!resolved) return null;
   return {

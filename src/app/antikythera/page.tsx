@@ -12,7 +12,8 @@ import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { listPerformanceWeeks, readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import { DateTime } from "luxon";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type AntikytheraPageProps = {
   searchParams?:

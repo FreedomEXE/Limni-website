@@ -5,6 +5,7 @@ import { refreshMarketSnapshot } from "@/lib/pricePerformance";
 import { refreshSentiment } from "@/lib/sentiment/refresh";
 import { refreshNewsSnapshot } from "@/lib/news/refresh";
 import { refreshPerformanceSnapshots } from "@/lib/performanceRefresh";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -145,6 +146,19 @@ export async function GET(request: Request) {
   });
   sentiment = sentimentResult;
   news = newsResult;
+
+  try {
+    revalidatePath("/dashboard");
+    revalidatePath("/performance");
+    revalidatePath("/sentiment");
+    revalidatePath("/antikythera");
+    revalidatePath("/accounts");
+  } catch (error) {
+    console.error(
+      "Revalidate paths failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 
   return NextResponse.json({
     startedAt,
