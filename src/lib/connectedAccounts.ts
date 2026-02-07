@@ -42,12 +42,18 @@ export async function listConnectedAccounts(): Promise<ConnectedAccount[]> {
       deduped.set(key, row);
     }
   }
-  return Array.from(deduped.values()).map((row) => ({
-    ...row,
-    last_sync_utc: row.last_sync_utc ? row.last_sync_utc.toISOString() : null,
-    created_at: row.created_at.toISOString(),
-    updated_at: row.updated_at.toISOString(),
-  }));
+  return Array.from(deduped.values()).map((row) => {
+    const normalizedKey = row.account_id
+      ? `${row.provider}:${row.account_id}`
+      : row.account_key;
+    return {
+      ...row,
+      account_key: normalizedKey,
+      last_sync_utc: row.last_sync_utc ? row.last_sync_utc.toISOString() : null,
+      created_at: row.created_at.toISOString(),
+      updated_at: row.updated_at.toISOString(),
+    };
+  });
 }
 
 export async function getConnectedAccount(accountKey: string): Promise<ConnectedAccount | null> {

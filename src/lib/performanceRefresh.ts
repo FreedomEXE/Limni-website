@@ -94,6 +94,21 @@ export async function refreshPerformanceSnapshots(options: {
     ? [options.forcedWeekOpenUtc]
     : await listRecentWeeks(assetClasses, Math.max(1, options.rollingWeeks));
 
+  if (!options.forcedWeekOpenUtc && targetWeeks.length > 0) {
+    const latestSnapshot = await readSnapshot({ assetClass: assetClasses[0].id });
+    if (latestSnapshot?.report_date) {
+      const reportDate = DateTime.fromISO(latestSnapshot.report_date, {
+        zone: "America/New_York",
+      });
+      if (reportDate.isValid) {
+        const latestWeek = getWeekOpenUtc(reportDate);
+        if (!targetWeeks.includes(latestWeek)) {
+          targetWeeks.unshift(latestWeek);
+        }
+      }
+    }
+  }
+
   const payload = [];
   for (const weekOpenUtc of targetWeeks) {
     const snapshots = await Promise.all(

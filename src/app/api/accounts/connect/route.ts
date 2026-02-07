@@ -268,7 +268,8 @@ export async function POST(request: Request) {
         },
       );
       const rows = account.list ?? [];
-      const preferred = rows.find((row) => row.marginCoin === "USDT") ?? rows[0];
+      const preferred =
+        rows.find((row) => row.marginCoin?.toUpperCase() === "USDT") ?? rows[0];
       const envValue = body.env ?? "live";
       const accountId = buildBitgetAccountId({
         apiKey,

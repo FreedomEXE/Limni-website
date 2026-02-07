@@ -177,7 +177,9 @@ export async function fetchBitgetAccount(): Promise<BitgetAccount | null> {
     path: "/api/v2/mix/account/accounts",
     query: { productType },
   });
-  const account = (data.list ?? []).find((row) => row.marginCoin === "USDT");
+  const list = data.list ?? [];
+  const account =
+    list.find((row) => row.marginCoin?.toUpperCase() === "USDT") ?? list[0];
   return account ?? null;
 }
 
