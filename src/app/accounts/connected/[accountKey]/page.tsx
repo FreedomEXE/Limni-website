@@ -11,7 +11,7 @@ export default async function ConnectedAccountPage({
 }: {
   params: { accountKey: string };
 }) {
-  const rawParam = params.accountKey;
+  const rawParam = params?.accountKey ?? "";
   const decodeSafe = (value: string) => {
     try {
       return decodeURIComponent(value);
@@ -24,9 +24,13 @@ export default async function ConnectedAccountPage({
   const decodedTwice = decodeSafe(decodedOnce);
   const candidates = Array.from(
     new Set(
-      [rawParam, decodedOnce, decodedTwice, rawParam.replace(/%3A/gi, ":"), decodedOnce.replace(/%3A/gi, ":")].filter(
-        (value) => Boolean(value && value.trim()),
-      ),
+      [
+        rawParam,
+        decodedOnce,
+        decodedTwice,
+        rawParam ? rawParam.replace(/%3A/gi, ":") : "",
+        decodedOnce ? decodedOnce.replace(/%3A/gi, ":") : "",
+      ].filter((value) => Boolean(value && value.trim())),
     ),
   );
 
