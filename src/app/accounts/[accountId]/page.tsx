@@ -13,13 +13,8 @@ import {
 } from "@/lib/mt5Store";
 import DashboardLayout from "@/components/DashboardLayout";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
-import DebugReadout from "@/components/DebugReadout";
-import PageShell from "@/components/shell/PageShell";
-import TabbedSection from "@/components/tabs/TabbedSection";
-import AccountKpiRow from "@/components/accounts/AccountKpiRow";
-import MiniSparkline from "@/components/visuals/MiniSparkline";
-import AccountDrawer, { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
-import SummaryCard from "@/components/accounts/SummaryCard";
+import AccountClientView from "@/components/accounts/AccountClientView";
+import { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
 import { DateTime } from "luxon";
 import { formatCurrencySafe } from "@/lib/formatters";
 import { formatDateTimeET } from "@/lib/time";
@@ -31,7 +26,6 @@ import {
 } from "@/lib/performanceSnapshots";
 import { buildBasketSignals } from "@/lib/basketSignals";
 import { groupSignals, signalsFromSnapshots } from "@/lib/plannedTrades";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -115,15 +109,18 @@ function toQueryParam(value: string | string[] | undefined) {
   return value ?? null;
 }
 
-function buildHref(baseHref: string, query: Record<string, string | undefined>) {
-  const params = new URLSearchParams();
-  Object.entries(query).forEach(([key, value]) => {
-    if (value) {
-      params.set(key, value);
-    }
-  });
-  const qs = params.toString();
-  return qs ? `${baseHref}?${qs}` : baseHref;
+function extendToWindow(
+  points: { ts_utc: string; equity_pct: number; lock_pct: number | null }[],
+  windowEndUtc: string | null
+) {
+  if (!windowEndUtc || points.length === 0) {
+    return points;
+  }
+  const last = points[points.length - 1];
+  if (DateTime.fromISO(last.ts_utc, { zone: "utc" }) >= DateTime.fromISO(windowEndUtc, { zone: "utc" })) {
+    return points;
+  }
+  return [...points, { ...last, ts_utc: windowEndUtc }];
 }
 
 export default async function AccountPage({ params, searchParams }: AccountPageProps) {
@@ -160,12 +157,19 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
       error instanceof Error ? error.message : String(error),
     );
   }
+  const nowUtc = DateTime.utc();
+  const hoursToNext =
+    nextWeekOpenUtc
+      ? DateTime.fromISO(nextWeekOpenUtc, { zone: "utc" }).diff(nowUtc, "hours").hours
+      : null;
   const selectedWeek =
     requestedWeek && weekOptions.includes(requestedWeek)
       ? requestedWeek
-      : weekOptions.includes(currentWeekOpenUtc)
-        ? currentWeekOpenUtc
-        : weekOptions[0] ?? currentWeekOpenUtc;
+      : hoursToNext !== null && hoursToNext <= 48 && nextWeekOpenUtc && weekOptions.includes(nextWeekOpenUtc)
+        ? nextWeekOpenUtc
+        : weekOptions.includes(currentWeekOpenUtc)
+          ? currentWeekOpenUtc
+          : weekOptions[0] ?? currentWeekOpenUtc;
   const isSelectedMt5Week = selectedWeek ? isMt5WeekOpenUtc(selectedWeek) : false;
   const statsWeekOpenUtc = isSelectedMt5Week ? selectedWeek : getMt5WeekOpenUtc();
   let account = null;
@@ -203,6 +207,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
               : 0,
           lock_pct: lockPct,
         }));
+        equityCurvePoints = extendToWindow(equityCurvePoints, weekEnd);
       }
     }
     basketSignals = await buildBasketSignals();
@@ -562,240 +567,45 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
 
   return (
     <DashboardLayout>
-      <PageShell
-        header={
-          <header className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href="/accounts"
-                className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-              >
-                Back
-              </Link>
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Account
-                </p>
-                <h1 className="text-xl font-semibold text-[var(--foreground)]">
-                  {account?.label ?? "Account"}
-                </h1>
-              </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(account?.status ?? "PAUSED")}`}>
-                {account?.status ?? "UNKNOWN"}
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <form action={baseHref} method="get" className="flex items-center gap-2">
-                <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Week</label>
-                <select
-                  name="week"
-                  defaultValue={selectedWeek ?? ""}
-                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-                >
-                  {weekOptions.map((week) => (
-                    <option key={week} value={week}>
-                      {weekLabelFromOpen(week)}
-                    </option>
-                  ))}
-                </select>
-                <input type="hidden" name="tab" value={activeTab} />
-                <button
-                  type="submit"
-                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-                >
-                  View
-                </button>
-              </form>
-              <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Last sync {formatDateTimeET(account?.last_sync_utc ?? "")}
-              </span>
-            </div>
-          </header>
-        }
-        kpis={
-          <AccountKpiRow
-            weeklyPnlPct={weeklyPnlToShow}
-            maxDrawdownPct={weeklyDrawdown}
-            tradesThisWeek={account.trade_count_week}
-            equity={account.equity}
-            balance={account.balance}
-            currency={account.currency}
-            scopeLabel="Week • Account"
-            detailsHref={buildHref(baseHref, { ...baseQuery, drawer: "kpi" })}
-          />
-        }
-        tabs={
-          <TabbedSection
-            tabs={[
-              { id: "overview", label: "Overview" },
-              { id: "equity", label: "Equity" },
-              { id: "positions", label: "Positions" },
-              { id: "planned", label: "Planned" },
-              { id: "history", label: "History" },
-              { id: "journal", label: "Journal" },
-              { id: "settings", label: "Settings" },
-            ]}
-            active={activeTab}
-            baseHref={baseHref}
-            query={baseQuery}
-          />
-        }
-      >
-        {activeTab === "overview" ? (
-          <div className="space-y-4">
-            <MiniSparkline points={equityCurvePoints} />
-            <div className="grid gap-4 md:grid-cols-3">
-              <SummaryCard
-                label="Open Positions"
-                value={filteredOpenPositions.length}
-                hint="Live positions right now"
-                action={
-                  <Link
-                    href={buildHref(baseHref, { ...baseQuery, drawer: "positions" })}
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                  >
-                    View drawer
-                  </Link>
-                }
-              />
-              <SummaryCard
-                label="Planned Trades"
-                value={plannedPairs.length}
-                hint="Upcoming basket signals"
-                action={
-                  <Link
-                    href={buildHref(baseHref, { ...baseQuery, drawer: "planned" })}
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                  >
-                    View drawer
-                  </Link>
-                }
-              />
-              <SummaryCard
-                label="Journal"
-                value={journalRows.length}
-                hint="Latest notes and logs"
-                action={
-                  <Link
-                    href={buildHref(baseHref, { ...baseQuery, drawer: "journal" })}
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                  >
-                    View drawer
-                  </Link>
-                }
-              />
-            </div>
-          </div>
-        ) : null}
-
-        {activeTab === "equity" ? (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Query summary
-              </p>
-              <p className="mt-1 text-sm text-[color:var(--muted)]">
-                Week {selectedWeek ?? getWeekOpenUtc()} · Account MT5
-              </p>
-            </div>
-            <EquityCurveChart
-              title="Weekly equity curve (%)"
-              points={equityCurvePoints}
-              interactive
-            />
-            <DebugReadout
-              title="Chart + KPI Window"
-              items={[
-                { label: "Scope", value: `mt5:${accountId}` },
-                { label: "Window", value: selectedWeek ?? getWeekOpenUtc() },
-                { label: "Series", value: "mt5_equity_curve" },
-              ]}
-            />
-          </div>
-        ) : null}
-
-        {activeTab === "positions" ? (
-          <SummaryCard
-            label="Open Positions"
-            value={filteredOpenPositions.length}
-            hint="Live positions right now"
-            action={
-              <Link
-                href={buildHref(baseHref, { ...baseQuery, drawer: "positions" })}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-              >
-                Open drawer
-              </Link>
-            }
-          />
-        ) : null}
-
-        {activeTab === "planned" ? (
-          <SummaryCard
-            label="Planned Trades"
-            value={plannedPairs.length}
-            hint="Upcoming basket signals"
-            action={
-              <Link
-                href={buildHref(baseHref, { ...baseQuery, drawer: "planned" })}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-              >
-                Open drawer
-              </Link>
-            }
-          />
-        ) : null}
-
-        {activeTab === "history" ? (
-          <SummaryCard
-            label="Closed Trades"
-            value={closedRows.length}
-            hint="Grouped closed positions"
-            action={
-              <Link
-                href={buildHref(baseHref, { ...baseQuery, drawer: "closed" })}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-              >
-                Open drawer
-              </Link>
-            }
-          />
-        ) : null}
-
-        {activeTab === "journal" ? (
-          <SummaryCard
-            label="Journal"
-            value={journalRows.length}
-            hint="Automation logs and notes"
-            action={
-              <Link
-                href={buildHref(baseHref, { ...baseQuery, drawer: "journal" })}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-              >
-                Open drawer
-              </Link>
-            }
-          />
-        ) : null}
-
-        {activeTab === "settings" ? (
-          <SummaryCard
-            label="Settings"
-            value="—"
-            hint="Account tools and mapping"
-            action={
-              <Link
-                href={buildHref(baseHref, { ...baseQuery, drawer: "mapping" })}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-              >
-                Open drawer
-              </Link>
-            }
-          />
-        ) : null}
-
-        <AccountDrawer mode={drawerMode} configs={drawerConfigs} />
-      </PageShell>
+      <AccountClientView
+        header={{
+          title: account?.label ?? "Account",
+          providerLabel: "MT5",
+          statusLabel: account?.status ?? "UNKNOWN",
+          statusToneClass: statusTone(account?.status ?? "PAUSED"),
+          lastSync: account?.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—",
+          weekOptions,
+          currentWeek: currentWeekOpenUtc,
+          selectedWeek,
+          onBackHref: "/accounts",
+        }}
+        kpi={{
+          weeklyPnlPct: weeklyPnlToShow,
+          maxDrawdownPct: weeklyDrawdown,
+          tradesThisWeek: account.trade_count_week,
+          equity: account.equity,
+          balance: account.balance,
+          currency: account.currency,
+          scopeLabel: "Week • Account",
+        }}
+        overview={{
+          openPositions: filteredOpenPositions.length,
+          plannedCount: plannedPairs.length,
+          mappingCount: 0,
+          plannedNote: null,
+          journalCount: journalRows.length,
+        }}
+        equity={{
+          title: "Weekly equity curve (%)",
+          points: equityCurvePoints,
+        }}
+        debug={{
+          selectedWeekKey: selectedWeek ?? currentWeekOpenUtc,
+          kpiWeekKey: statsWeekOpenUtc,
+          equityWeekKey: statsWeekOpenUtc,
+        }}
+        drawerConfigs={drawerConfigs}
+      />
     </DashboardLayout>
   );
 }

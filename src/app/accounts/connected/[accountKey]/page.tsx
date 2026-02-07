@@ -2,14 +2,9 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ConnectedAccountSizing from "@/components/ConnectedAccountSizing";
 import WeekSelector from "@/components/accounts/WeekSelector";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
-import DebugReadout from "@/components/DebugReadout";
-import PageShell from "@/components/shell/PageShell";
-import TabbedSection from "@/components/tabs/TabbedSection";
-import AccountKpiRow from "@/components/accounts/AccountKpiRow";
-import MiniSparkline from "@/components/visuals/MiniSparkline";
-import AccountDrawer, { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
+import AccountClientView from "@/components/accounts/AccountClientView";
+import { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
 import VirtualizedListTable from "@/components/common/VirtualizedListTable";
-import SummaryCard from "@/components/accounts/SummaryCard";
 import { getConnectedAccount, listConnectedAccounts } from "@/lib/connectedAccounts";
 import { formatDateTimeET } from "@/lib/time";
 import { buildBasketSignals } from "@/lib/basketSignals";
@@ -30,7 +25,6 @@ import { formatCurrencySafe } from "@/lib/formatters";
 import { getAccountStatsForWeek } from "@/lib/accountStats";
 import { buildAccountEquityCurve } from "@/lib/accountEquityCurve";
 import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -54,17 +48,6 @@ function formatPercent(value: number) {
   return `${sign}${percentFormatter.format(value)}%`;
 }
 
-function buildHref(baseHref: string, query: Record<string, string | undefined>) {
-  const params = new URLSearchParams();
-  Object.entries(query).forEach(([key, value]) => {
-    if (value) {
-      params.set(key, value);
-    }
-  });
-  const qs = params.toString();
-  return qs ? `${baseHref}?${qs}` : baseHref;
-}
-
 function computeMaxDrawdown(points: { equity_pct: number }[]) {
   let peak = Number.NEGATIVE_INFINITY;
   let maxDrawdown = 0;
@@ -78,6 +61,20 @@ function computeMaxDrawdown(points: { equity_pct: number }[]) {
     }
   }
   return maxDrawdown;
+}
+
+function extendToWindow(
+  points: { ts_utc: string; equity_pct: number; lock_pct: number | null }[],
+  windowEndUtc: string | null
+) {
+  if (!windowEndUtc || points.length === 0) {
+    return points;
+  }
+  const last = points[points.length - 1];
+  if (DateTime.fromISO(last.ts_utc, { zone: "utc" }) >= DateTime.fromISO(windowEndUtc, { zone: "utc" })) {
+    return points;
+  }
+  return [...points, { ...last, ts_utc: windowEndUtc }];
 }
 
 /**
@@ -196,6 +193,11 @@ export default async function ConnectedAccountPage({
     }
     return ordered;
   })();
+  const nowUtc = DateTime.utc();
+  const hoursToNext =
+    nextWeekOpenUtc
+      ? DateTime.fromISO(nextWeekOpenUtc, { zone: "utc" }).diff(nowUtc, "hours").hours
+      : null;
 
   // Determine selected week
   const resolvedSearchParams = await Promise.resolve(searchParams);
@@ -206,7 +208,9 @@ export default async function ConnectedAccountPage({
       ? "all"
       : typeof weekParam === "string" && weekOptionsWithUpcoming.includes(weekParam)
         ? weekParam
-        : getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc);
+        : hoursToNext !== null && hoursToNext <= 48 && nextWeekOpenUtc
+          ? nextWeekOpenUtc
+          : getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc);
 
   // Fetch week-specific data
   const stats = await getAccountStatsForWeek(account.account_key, selectedWeek);
@@ -229,7 +233,12 @@ export default async function ConnectedAccountPage({
   }
 
   // Build equity curve
-  const equityCurve = await buildAccountEquityCurve(account.account_key, selectedWeek);
+  const equityCurveRaw = await buildAccountEquityCurve(account.account_key, selectedWeek);
+  const windowEndUtc =
+    selectedWeek !== "all"
+      ? DateTime.fromISO(String(selectedWeek), { zone: "utc" }).plus({ days: 7 }).toUTC().toISO()
+      : null;
+  const equityCurve = extendToWindow(equityCurveRaw, windowEndUtc);
   const maxDrawdownPct = computeMaxDrawdown(equityCurve);
 
   // Build planned trades (only for current/upcoming weeks)
@@ -268,23 +277,6 @@ export default async function ConnectedAccountPage({
   }
 
   const accountCurrency = stats.currency;
-  const baseHref = `/accounts/connected/${encodeURIComponent(account.account_key)}`;
-  const tabParam =
-    typeof resolvedSearchParams?.tab === "string" ? resolvedSearchParams.tab : "overview";
-  const activeTab = ["overview", "equity", "positions", "planned", "history", "journal", "settings"].includes(
-    tabParam
-  )
-    ? tabParam
-    : "overview";
-  const drawerMode: DrawerMode =
-    typeof resolvedSearchParams?.drawer === "string"
-      ? (resolvedSearchParams.drawer as DrawerMode)
-      : null;
-  const baseQuery: Record<string, string | undefined> = {
-    week: selectedWeek === "all" ? undefined : String(selectedWeek),
-    view: selectedWeek === "all" ? "all" : undefined,
-    tab: activeTab,
-  };
 
   const plannedRows =
     plannedPairs.length === 0
@@ -464,239 +456,42 @@ export default async function ConnectedAccountPage({
 
   return (
     <DashboardLayout>
-      <PageShell
-        header={
-          <header className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href="/accounts"
-                className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-              >
-                Back
-              </Link>
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Account
-                </p>
-                <h1 className="text-xl font-semibold text-[var(--foreground)]">
-                  {account.label ?? account.account_key}
-                </h1>
-              </div>
-              <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                {account.provider.toUpperCase()}
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <WeekSelector
-                weekOptions={weekOptionsWithUpcoming}
-                currentWeek={currentWeekOpenUtc}
-                selectedWeek={selectedWeek}
-              />
-              <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Last refresh {account.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—"}
-              </span>
-            </div>
-          </header>
-        }
-        kpis={
-          <AccountKpiRow
-            weeklyPnlPct={stats.weeklyPnlPct}
-            maxDrawdownPct={maxDrawdownPct}
-            tradesThisWeek={stats.tradesThisWeek}
-            equity={stats.equity}
-            balance={stats.balance}
-            currency={accountCurrency}
-            scopeLabel={selectedWeek === "all" ? "All • Account" : "Week • Account"}
-            detailsHref={buildHref(baseHref, { ...baseQuery, drawer: "kpi" })}
-          />
-        }
-        tabs={
-          <TabbedSection
-            tabs={[
-              { id: "overview", label: "Overview" },
-              { id: "equity", label: "Equity" },
-              { id: "positions", label: "Positions" },
-              { id: "planned", label: "Planned" },
-              { id: "history", label: "History" },
-              { id: "journal", label: "Journal" },
-              { id: "settings", label: "Settings" },
-            ]}
-            active={activeTab}
-            baseHref={baseHref}
-            query={baseQuery}
-          />
-        }
-      >
-        {activeTab === "overview" ? (
-          <div className="space-y-4">
-            <MiniSparkline points={equityCurve} />
-            <div className="grid gap-4 md:grid-cols-3">
-              <SummaryCard
-                label="Open Positions"
-                value={stats.openPositions}
-                hint="Live positions right now"
-                action={
-                  <Link
-                    href={buildHref(baseHref, { ...baseQuery, drawer: "positions" })}
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                  >
-                    View drawer
-                  </Link>
-                }
-              />
-              <SummaryCard
-                label="Planned Trades"
-                value={plannedPairs.length}
-                hint={plannedNote ?? "Upcoming basket trades"}
-                action={
-                  <Link
-                    href={buildHref(baseHref, { ...baseQuery, drawer: "planned" })}
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                  >
-                    View drawer
-                  </Link>
-                }
-              />
-              <SummaryCard
-                label="Mappings"
-                value={mappedRows.length}
-                hint="Instrument availability"
-                action={
-                  <Link
-                    href={buildHref(baseHref, { ...baseQuery, drawer: "mapping" })}
-                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                  >
-                    View drawer
-                  </Link>
-                }
-              />
-            </div>
-          </div>
-        ) : null}
-
-        {activeTab === "equity" ? (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Query summary
-              </p>
-              <p className="mt-1 text-sm text-[color:var(--muted)]">
-                Week {selectedWeek === "all" ? "All-time" : selectedWeek} · Account {account.provider.toUpperCase()}
-              </p>
-            </div>
-            <EquityCurveChart
-              points={equityCurve}
-              title={selectedWeek === "all" ? "All-time equity curve" : "Weekly equity curve (%)"}
-              interactive
-            />
-            <DebugReadout
-              title="Chart + KPI Window"
-              items={[
-                { label: "Scope", value: `${account.provider}:${account.account_key}` },
-                { label: "Window", value: selectedWeek === "all" ? "all-time" : selectedWeek },
-                { label: "Series", value: "account_equity_curve" },
-              ]}
-            />
-          </div>
-        ) : null}
-
-        {activeTab === "positions" ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <SummaryCard
-              label="Open Positions"
-              value={stats.openPositions}
-              hint="Live positions right now"
-              action={
-                <Link
-                  href={buildHref(baseHref, { ...baseQuery, drawer: "positions" })}
-                  className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                >
-                  Open drawer
-                </Link>
-              }
-            />
-            <SummaryCard
-              label="Planned Trades"
-              value={plannedPairs.length}
-              hint="Pending basket signals"
-              action={
-                <Link
-                  href={buildHref(baseHref, { ...baseQuery, drawer: "planned" })}
-                  className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                >
-                  Open drawer
-                </Link>
-              }
-            />
-          </div>
-        ) : null}
-
-        {activeTab === "planned" ? (
-          <SummaryCard
-            label="Planned Trades"
-            value={plannedPairs.length}
-            hint={plannedNote ?? "Upcoming basket positions"}
-            action={
-              <Link
-                href={buildHref(baseHref, { ...baseQuery, drawer: "planned" })}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-              >
-                Open drawer
-              </Link>
-            }
-          />
-        ) : null}
-
-        {activeTab === "history" ? (
-          <SummaryCard
-            label="Closed Trades"
-            value="—"
-            hint="Historical trade groups"
-            action={
-              <Link
-                href={buildHref(baseHref, { ...baseQuery, drawer: "closed" })}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-              >
-                Open drawer
-              </Link>
-            }
-          />
-        ) : null}
-
-        {activeTab === "journal" ? (
-          <SummaryCard
-            label="Journal"
-            value="—"
-            hint="Automation notes and logs"
-            action={
-              <Link
-                href={buildHref(baseHref, { ...baseQuery, drawer: "journal" })}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-              >
-                Open drawer
-              </Link>
-            }
-          />
-        ) : null}
-
-        {activeTab === "settings" ? (
-          <SummaryCard
-            label="Mapping & Settings"
-            value={mappedRows.length}
-            hint="Instrument mapping and tools"
-            action={
-              <Link
-                href={buildHref(baseHref, { ...baseQuery, drawer: "mapping" })}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-              >
-                Open drawer
-              </Link>
-            }
-          />
-        ) : null}
-
-        <AccountDrawer mode={drawerMode} configs={drawerConfigs} />
-      </PageShell>
+      <AccountClientView
+        header={{
+          title: account.label ?? account.account_key,
+          providerLabel: account.provider.toUpperCase(),
+          lastSync: account.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—",
+          weekOptions: weekOptionsWithUpcoming,
+          currentWeek: currentWeekOpenUtc,
+          selectedWeek,
+          onBackHref: "/accounts",
+        }}
+        kpi={{
+          weeklyPnlPct: stats.weeklyPnlPct,
+          maxDrawdownPct,
+          tradesThisWeek: stats.tradesThisWeek,
+          equity: stats.equity,
+          balance: stats.balance,
+          currency: accountCurrency,
+          scopeLabel: selectedWeek === "all" ? "All • Account" : "Week • Account",
+        }}
+        overview={{
+          openPositions: stats.openPositions,
+          plannedCount: plannedPairs.length,
+          mappingCount: mappedRows.length,
+          plannedNote: plannedNote ?? null,
+        }}
+        equity={{
+          title: selectedWeek === "all" ? "All-time equity curve" : "Weekly equity curve (%)",
+          points: equityCurve,
+        }}
+        debug={{
+          selectedWeekKey: selectedWeek === "all" ? "all" : String(selectedWeek),
+          kpiWeekKey: stats.weekOpenUtc,
+          equityWeekKey: selectedWeek === "all" ? "all" : String(selectedWeek),
+        }}
+        drawerConfigs={drawerConfigs}
+      />
     </DashboardLayout>
   );
 }

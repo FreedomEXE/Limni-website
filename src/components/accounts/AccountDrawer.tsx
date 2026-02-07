@@ -4,6 +4,7 @@ import { ReactNode, useMemo, useState } from "react";
 import DrawerPanel from "@/components/drawers/DrawerPanel";
 import FilterBar from "@/components/common/FilterBar";
 import VirtualizedListTable from "@/components/common/VirtualizedListTable";
+import ErrorBoundary from "@/components/common/ErrorBoundary";
 
 export type DrawerMode =
   | "positions"
@@ -80,36 +81,44 @@ export default function AccountDrawer({ mode, configs, onClose }: AccountDrawerP
 
   return (
     <DrawerPanel title={config.title} subtitle={config.subtitle} open={true} onClose={onClose}>
-      {config.showFilters ? (
-        <div className="mb-4">
-          <FilterBar
-            status={status}
-            onStatusChange={setStatus}
-            search={search}
-            onSearchChange={setSearch}
-            sort={sort}
-            onSortChange={setSort}
-          />
-        </div>
-      ) : null}
+      <ErrorBoundary
+        fallback={
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-700">
+            Drawer content failed to render. Please reload the page.
+          </div>
+        }
+      >
+        {config.showFilters ? (
+          <div className="mb-4">
+            <FilterBar
+              status={status}
+              onStatusChange={setStatus}
+              search={search}
+              onSearchChange={setSearch}
+              sort={sort}
+              onSortChange={setSort}
+            />
+          </div>
+        ) : null}
 
-      {config.content ? (
-        config.content
-      ) : (
-        <VirtualizedListTable
-          columns={config.columns ?? []}
-          rows={filtered}
-          height={config.height}
-          emptyState={config.emptyState}
-          renderRow={(row: DrawerRow) => (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-              {row.cells.map((cell, index) => (
-                <div key={`${row.id}-${index}`}>{cell}</div>
-              ))}
-            </div>
-          )}
-        />
-      )}
+        {config.content ? (
+          config.content
+        ) : (
+          <VirtualizedListTable
+            columns={config.columns ?? []}
+            rows={filtered}
+            height={config.height}
+            emptyState={config.emptyState}
+            renderRow={(row: DrawerRow) => (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                {row.cells.map((cell, index) => (
+                  <div key={`${row.id}-${index}`}>{cell}</div>
+                ))}
+              </div>
+            )}
+          />
+        )}
+      </ErrorBoundary>
     </DrawerPanel>
   );
 }

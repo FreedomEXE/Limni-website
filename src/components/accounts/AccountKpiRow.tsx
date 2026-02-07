@@ -12,6 +12,7 @@ type AccountKpiRowProps = {
   currency: string;
   scopeLabel: string;
   detailsHref?: string;
+  onOpenDetails?: () => void;
 };
 
 const percentFormatter = new Intl.NumberFormat("en-US", {
@@ -36,20 +37,32 @@ export default function AccountKpiRow({
   currency,
   scopeLabel,
   detailsHref,
+  onOpenDetails,
 }: AccountKpiRowProps) {
+  const CardWrapper = ({
+    children,
+  }: {
+    children: React.ReactNode;
+  }) => {
+    if (onOpenDetails) {
+      return (
+        <button type="button" onClick={onOpenDetails} className="text-left">
+          {children}
+        </button>
+      );
+    }
+    if (detailsHref) {
+      return (
+        <Link href={detailsHref} className="block">
+          {children}
+        </Link>
+      );
+    }
+    return <>{children}</>;
+  };
   return (
     <KpiGroup title="Primary" description="Week-specific account highlights" columns={4}>
-      {detailsHref ? (
-        <Link href={detailsHref} className="block">
-          <KpiCard
-            label="Weekly PnL"
-            value={formatPercent(weeklyPnlPct)}
-            tone={weeklyPnlPct >= 0 ? "positive" : "negative"}
-            emphasis="primary"
-            hint={scopeLabel}
-          />
-        </Link>
-      ) : (
+      <CardWrapper>
         <KpiCard
           label="Weekly PnL"
           value={formatPercent(weeklyPnlPct)}
@@ -57,46 +70,25 @@ export default function AccountKpiRow({
           emphasis="primary"
           hint={scopeLabel}
         />
-      )}
-      {detailsHref ? (
-        <Link href={detailsHref} className="block">
-          <KpiCard
-            label="Max DD (week)"
-            value={formatPercent(maxDrawdownPct)}
-            tone={maxDrawdownPct > 0 ? "negative" : "neutral"}
-            hint={scopeLabel}
-          />
-        </Link>
-      ) : (
+      </CardWrapper>
+      <CardWrapper>
         <KpiCard
           label="Max DD (week)"
           value={formatPercent(maxDrawdownPct)}
           tone={maxDrawdownPct > 0 ? "negative" : "neutral"}
           hint={scopeLabel}
         />
-      )}
-      {detailsHref ? (
-        <Link href={detailsHref} className="block">
-          <KpiCard label="Trades (week)" value={`${tradesThisWeek}`} hint={scopeLabel} />
-        </Link>
-      ) : (
+      </CardWrapper>
+      <CardWrapper>
         <KpiCard label="Trades (week)" value={`${tradesThisWeek}`} hint={scopeLabel} />
-      )}
-      {detailsHref ? (
-        <Link href={detailsHref} className="block">
-          <KpiCard
-            label="Equity"
-            value={formatCurrencySafe(equity, currency)}
-            hint={`Balance ${formatCurrencySafe(balance, currency)}`}
-          />
-        </Link>
-      ) : (
+      </CardWrapper>
+      <CardWrapper>
         <KpiCard
           label="Equity"
           value={formatCurrencySafe(equity, currency)}
           hint={`Balance ${formatCurrencySafe(balance, currency)}`}
         />
-      )}
+      </CardWrapper>
     </KpiGroup>
   );
 }
