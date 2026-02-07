@@ -1,14 +1,17 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import ConnectedAccountSizing from "@/components/ConnectedAccountSizing";
-import PlannedTradesPanel from "@/components/PlannedTradesPanel";
-import CollapsibleSection from "@/components/accounts/CollapsibleSection";
 import WeekSelector from "@/components/accounts/WeekSelector";
-import AccountStats from "@/components/accounts/AccountStats";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
 import DebugReadout from "@/components/DebugReadout";
-import { readBotState } from "@/lib/botState";
+import PageShell from "@/components/shell/PageShell";
+import TabbedSection from "@/components/tabs/TabbedSection";
+import AccountKpiRow from "@/components/accounts/AccountKpiRow";
+import MiniSparkline from "@/components/visuals/MiniSparkline";
+import AccountDrawer, { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
+import VirtualizedListTable from "@/components/common/VirtualizedListTable";
+import SummaryCard from "@/components/accounts/SummaryCard";
 import { getConnectedAccount, listConnectedAccounts } from "@/lib/connectedAccounts";
-import { formatDateET, formatDateTimeET } from "@/lib/time";
+import { formatDateTimeET } from "@/lib/time";
 import { buildBasketSignals } from "@/lib/basketSignals";
 import {
   buildBitgetPlannedTrades,
@@ -17,7 +20,6 @@ import {
   groupSignals,
   signalsFromSnapshots,
 } from "@/lib/plannedTrades";
-import { buildOandaSizingForAccount } from "@/lib/oandaSizing";
 import { DateTime } from "luxon";
 import {
   getWeekOpenUtc,
@@ -28,6 +30,7 @@ import { formatCurrencySafe } from "@/lib/formatters";
 import { getAccountStatsForWeek } from "@/lib/accountStats";
 import { buildAccountEquityCurve } from "@/lib/accountEquityCurve";
 import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +52,32 @@ function formatPercent(value: number) {
   }
   const sign = value > 0 ? "+" : value < 0 ? "" : "";
   return `${sign}${percentFormatter.format(value)}%`;
+}
+
+function buildHref(baseHref: string, query: Record<string, string | undefined>) {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+  const qs = params.toString();
+  return qs ? `${baseHref}?${qs}` : baseHref;
+}
+
+function computeMaxDrawdown(points: { equity_pct: number }[]) {
+  let peak = Number.NEGATIVE_INFINITY;
+  let maxDrawdown = 0;
+  for (const point of points) {
+    if (point.equity_pct > peak) {
+      peak = point.equity_pct;
+    }
+    const drawdown = peak - point.equity_pct;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  }
+  return maxDrawdown;
 }
 
 /**
@@ -143,19 +172,30 @@ export default async function ConnectedAccountPage({
     );
   }
 
-  // Read bot state
-  const botState =
-    account.provider === "oanda"
-      ? await readBotState("oanda_universal_bot")
-      : account.provider === "bitget"
-        ? await readBotState("bitget_perp_bot")
-        : null;
-
   const analysis = account.analysis as Record<string, unknown> | null;
 
   // Get week options for this account (filtered by creation date)
   const weekOptions = await listWeekOptionsForAccount(account.account_key, true, 4);
   const currentWeekOpenUtc = getWeekOpenUtc();
+  const nextWeekOpenUtc = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" })
+    .plus({ days: 7 })
+    .toUTC()
+    .toISO();
+  const weekOptionsWithUpcoming = (() => {
+    const ordered: WeekOption[] = [];
+    const seen = new Set<string>();
+    if (nextWeekOpenUtc) {
+      ordered.push(nextWeekOpenUtc);
+      seen.add(nextWeekOpenUtc);
+    }
+    for (const week of weekOptions) {
+      if (!seen.has(String(week))) {
+        ordered.push(week);
+        seen.add(String(week));
+      }
+    }
+    return ordered;
+  })();
 
   // Determine selected week
   const resolvedSearchParams = await Promise.resolve(searchParams);
@@ -164,9 +204,9 @@ export default async function ConnectedAccountPage({
   const selectedWeek: WeekOption =
     viewParam === "all"
       ? "all"
-      : typeof weekParam === "string" && weekOptions.includes(weekParam)
+      : typeof weekParam === "string" && weekOptionsWithUpcoming.includes(weekParam)
         ? weekParam
-        : getDefaultWeek(weekOptions, currentWeekOpenUtc);
+        : getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc);
 
   // Fetch week-specific data
   const stats = await getAccountStatsForWeek(account.account_key, selectedWeek);
@@ -190,17 +230,11 @@ export default async function ConnectedAccountPage({
 
   // Build equity curve
   const equityCurve = await buildAccountEquityCurve(account.account_key, selectedWeek);
+  const maxDrawdownPct = computeMaxDrawdown(equityCurve);
 
   // Build planned trades (only for current/upcoming weeks)
   let plannedPairs: import("@/lib/plannedTrades").PlannedPair[] = [];
   let plannedNote: string | null = null;
-  let sizeBySymbol: Record<string, number> | undefined;
-  let sizeLabel: string | undefined;
-  let headerMeta: string | undefined;
-  let pairMeta: Record<string, string> | undefined;
-  let showOnePercent = true;
-  let showLegDetails = true;
-  let showLegCount = true;
 
   if (selectedWeek !== "all") {
     if (account.provider === "bitget") {
@@ -209,38 +243,9 @@ export default async function ConnectedAccountPage({
       plannedPairs = planned.pairs;
       plannedNote = planned.note ?? null;
 
-      const leverage =
-        typeof analysis?.leverage === "number"
-          ? analysis.leverage
-          : typeof (account.config as Record<string, unknown> | null)?.leverage === "number"
-            ? ((account.config as Record<string, unknown>).leverage as number)
-            : 10;
-      const equity = stats.equity;
-      const allocationPct = plannedPairs.length > 0 ? 100 / plannedPairs.length : 0;
-      const allocationUsd = equity * (allocationPct / 100);
-
-      headerMeta = `LEV ${leverage}x · ALLOC ${allocationPct.toFixed(0)}% (${allocationUsd.toFixed(2)})`;
-      pairMeta = Object.fromEntries(
-        plannedPairs.map((pair) => [pair.symbol, `LEV ${leverage}x · ${allocationPct.toFixed(0)}%`])
-      );
-      showOnePercent = false;
-      showLegDetails = false;
-      showLegCount = false;
     } else if (account.provider === "oanda") {
       const filtered = filterForOanda(basketSignals.pairs);
       plannedPairs = groupSignals(filtered);
-
-      try {
-        const sizing = await buildOandaSizingForAccount(account.account_key);
-        sizeBySymbol = Object.fromEntries(
-          sizing.rows
-            .filter((row) => row.available && typeof row.units === "number")
-            .map((row) => [row.symbol, row.units ?? 0])
-        );
-        sizeLabel = "units";
-      } catch (error) {
-        console.error("OANDA sizing load failed:", error);
-      }
     }
   }
 
@@ -263,237 +268,435 @@ export default async function ConnectedAccountPage({
   }
 
   const accountCurrency = stats.currency;
+  const baseHref = `/accounts/connected/${encodeURIComponent(account.account_key)}`;
+  const tabParam =
+    typeof resolvedSearchParams?.tab === "string" ? resolvedSearchParams.tab : "overview";
+  const activeTab = ["overview", "equity", "positions", "planned", "history", "journal", "settings"].includes(
+    tabParam
+  )
+    ? tabParam
+    : "overview";
+  const drawerMode: DrawerMode =
+    typeof resolvedSearchParams?.drawer === "string"
+      ? (resolvedSearchParams.drawer as DrawerMode)
+      : null;
+  const baseQuery: Record<string, string | undefined> = {
+    week: selectedWeek === "all" ? undefined : String(selectedWeek),
+    view: selectedWeek === "all" ? "all" : undefined,
+    tab: activeTab,
+  };
+
+  const plannedRows =
+    plannedPairs.length === 0
+      ? []
+      : plannedPairs.map((pair, index) => ({
+          id: `${pair.symbol}-${index}`,
+          status: "pending",
+          searchText: `${pair.symbol} ${pair.assetClass}`,
+          sortValue: pair.net,
+          cells: [
+            <span key="symbol" className="font-semibold">
+              {pair.symbol}
+            </span>,
+            <span key="asset" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              {pair.assetClass}
+            </span>,
+            <span key="net" className={pair.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
+              Net {pair.net}
+            </span>,
+            <span key="legs" className="text-xs text-[color:var(--muted)]">
+              {pair.legs.length} legs
+            </span>,
+          ],
+        }));
+
+  const mappingRows = mappedRows.map((row, index) => ({
+    id: `${row.symbol}-${index}`,
+    status: row.available ? "open" : "closed",
+    searchText: `${row.symbol} ${row.instrument}`,
+    cells: [
+      <span key="symbol" className="font-semibold">
+        {row.symbol}
+      </span>,
+      <span key="instrument" className="text-xs text-[color:var(--muted)]">
+        {row.instrument}
+      </span>,
+      <span
+        key="status"
+        className={`rounded-full px-2 py-1 text-xs font-semibold ${
+          row.available
+            ? "bg-emerald-500/10 text-emerald-600"
+            : "bg-rose-500/10 text-rose-600"
+        }`}
+      >
+        {row.available ? "Available" : "Missing"}
+      </span>,
+    ],
+  }));
+
+  const kpiRows = [
+    { id: "equity", label: "Equity", value: formatCurrencySafe(stats.equity, accountCurrency) },
+    { id: "balance", label: "Balance", value: formatCurrencySafe(stats.balance, accountCurrency) },
+    { id: "basket", label: "Basket PnL", value: formatPercent(stats.basketPnlPct) },
+    {
+      id: "locked",
+      label: "Locked Profit",
+      value: stats.lockedProfitPct !== null ? formatPercent(stats.lockedProfitPct) : "—",
+    },
+    { id: "leverage", label: "Leverage", value: stats.leverage ? `${stats.leverage}x` : "—" },
+    { id: "margin", label: "Margin", value: stats.margin ? formatCurrencySafe(stats.margin, accountCurrency) : "—" },
+    { id: "free", label: "Free Margin", value: stats.freeMargin ? formatCurrencySafe(stats.freeMargin, accountCurrency) : "—" },
+    { id: "risk", label: "Risk Used", value: stats.riskUsedPct ? formatPercent(stats.riskUsedPct) : "—" },
+  ];
+
+  const drawerConfigs: Partial<Record<Exclude<DrawerMode, null>, DrawerConfig>> = {
+    positions: {
+      title: "Open Positions",
+      subtitle: "Live positions for this account",
+      columns: [
+        { key: "symbol", label: "Symbol" },
+        { key: "status", label: "Status" },
+        { key: "note", label: "Notes" },
+      ],
+      rows: [],
+      showFilters: true,
+      emptyState: "No live positions available for this account yet.",
+    },
+    planned: {
+      title: "Planned Trades",
+      subtitle: "Upcoming basket positions",
+      columns: [
+        { key: "symbol", label: "Symbol" },
+        { key: "asset", label: "Asset" },
+        { key: "net", label: "Net" },
+        { key: "legs", label: "Legs" },
+      ],
+      rows: plannedRows,
+      showFilters: true,
+      emptyState: "No planned trades for this week.",
+    },
+    closed: {
+      title: "Closed Trades",
+      subtitle: "Historical trade groups for this account",
+      columns: [
+        { key: "symbol", label: "Symbol" },
+        { key: "status", label: "Status" },
+        { key: "note", label: "Notes" },
+      ],
+      rows: [],
+      showFilters: true,
+      emptyState: "No closed trades stored yet.",
+    },
+    journal: {
+      title: "Journal",
+      subtitle: "Automation logs and weekly notes",
+      columns: [
+        { key: "item", label: "Entry" },
+        { key: "detail", label: "Detail" },
+      ],
+      rows: [],
+      showFilters: false,
+      emptyState: "No journal entries yet.",
+    },
+    mapping: {
+      title: "Mapping & Settings",
+      subtitle: "Instrument mapping and account tools",
+      columns: [
+        { key: "symbol", label: "Symbol" },
+        { key: "instrument", label: "Instrument" },
+        { key: "status", label: "Status" },
+      ],
+      rows: mappingRows,
+      showFilters: true,
+      content: (
+        <div className="space-y-6">
+          <VirtualizedListTable
+            columns={[
+              { key: "symbol", label: "Symbol" },
+              { key: "instrument", label: "Instrument" },
+              { key: "status", label: "Status" },
+            ]}
+            rows={mappingRows}
+            height={320}
+            renderRow={(row) => (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                {row.cells.map((cell, index) => (
+                  <div key={`${row.id}-${index}`}>{cell}</div>
+                ))}
+              </div>
+            )}
+            emptyState="No mapping data available."
+          />
+          {account.provider === "oanda" ? (
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                OANDA sizing
+              </p>
+              <div className="mt-3 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+                <ConnectedAccountSizing accountKey={account.account_key} />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ),
+    },
+    kpi: {
+      title: "KPI Details",
+      subtitle: "Expanded performance and risk metrics",
+      columns: [
+        { key: "label", label: "Metric" },
+        { key: "value", label: "Value" },
+      ],
+      rows: kpiRows.map((row) => ({
+        id: row.id,
+        cells: [
+          <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            {row.label}
+          </span>,
+          <span key="value" className="font-semibold">
+            {row.value}
+          </span>,
+        ],
+      })),
+      showFilters: false,
+    },
+  };
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        {/* Header with Week Selector */}
-        <header className="space-y-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Connected Account
-            </p>
-            <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-              {account.label ?? account.account_key}
-            </h1>
-            <p className="text-sm text-[color:var(--muted)]">
-              Provider: {account.provider.toUpperCase()} · Status: {account.status ?? "READY"}
-            </p>
-          </div>
-
-          <WeekSelector
-            weekOptions={weekOptions}
-            currentWeek={currentWeekOpenUtc}
-            selectedWeek={selectedWeek}
-          />
-        </header>
-
-        {/* Reactive Stats Grid */}
-        <AccountStats accountKey={account.account_key} initialStats={stats} />
-
-        <CollapsibleSection
-          title="Account Details"
-          subtitle="Bot configuration and last sync status"
-          defaultOpen={true}
-        >
-          <section className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Bot Type
-              </p>
-              <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-                {account.bot_type}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Risk Mode
-              </p>
-              <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-                {account.risk_mode ?? "—"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Trail Mode
-              </p>
-              <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-                {account.trail_mode ?? "—"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Last Sync
-              </p>
-              <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-                {account.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—"}
-              </p>
-            </div>
-          </section>
-        </CollapsibleSection>
-
-        {/* Basket Status - Collapsible */}
-        <CollapsibleSection
-          title="Basket Status"
-          subtitle="Live view of the current weekly basket"
-          defaultOpen={true}
-        >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">State</p>
-              <p className="mt-1 font-semibold">
-                {basketSignals.trading_allowed ? "READY" : "PAUSED"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Report Date
-              </p>
-              <p className="mt-1 font-semibold">
-                {basketSignals.report_date ? formatDateET(basketSignals.report_date) : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Open Pairs
-              </p>
-              <p className="mt-1 font-semibold">{plannedPairs.length}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Open Positions
-              </p>
-              <p className="mt-1 font-semibold">{stats.openPositions}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Locked Profit
-              </p>
-              <p className="mt-1 font-semibold">
-                {stats.lockedProfitPct !== null ? formatPercent(stats.lockedProfitPct) : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Last Refresh
-              </p>
-              <p className="mt-1 font-semibold">
-                {basketSignals.last_refresh_utc
-                  ? formatDateTimeET(basketSignals.last_refresh_utc)
-                  : "—"}
-              </p>
-            </div>
-          </div>
-        </CollapsibleSection>
-
-        {/* Instrument Mapping - Collapsible (FIXED: Now collapsible) */}
-        <CollapsibleSection
-          title="Instrument Mapping"
-          subtitle="Symbol to instrument mappings"
-          badge={mappedRows.length}
-          badgeVariant="default"
-          defaultOpen={false}
-        >
-          <div className="grid gap-2">
-            {mappedRows.map((row, index) => (
-              <div
-                key={`${row.symbol}-${index}`}
-                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 p-3"
+      <PageShell
+        header={
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/accounts"
+                className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
               >
-                <div>
-                  <p className="font-semibold text-[var(--foreground)]">{row.symbol}</p>
-                  <p className="text-xs text-[color:var(--muted)]">{row.instrument}</p>
-                </div>
-                <span
-                  className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                    row.available
-                      ? "bg-emerald-500/10 text-emerald-600"
-                      : "bg-rose-500/10 text-rose-600"
-                  }`}
-                >
-                  {row.available ? "Available" : "Missing"}
-                </span>
+                Back
+              </Link>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Account
+                </p>
+                <h1 className="text-xl font-semibold text-[var(--foreground)]">
+                  {account.label ?? account.account_key}
+                </h1>
               </div>
-            ))}
-          </div>
-        </CollapsibleSection>
-
-        {/* Weekly Equity Curve - Collapsible */}
-        <CollapsibleSection
-          title="Equity Curve"
-          subtitle={
-            selectedWeek === "all"
-              ? "All-time account performance"
-              : "Week-to-date equity progression"
-          }
-          defaultOpen={true}
-        >
-          <EquityCurveChart
-            points={equityCurve}
-            title={
-              selectedWeek === "all" ? "All-time equity curve" : "Weekly equity curve (%)"
-            }
+              <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                {account.provider.toUpperCase()}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <WeekSelector
+                weekOptions={weekOptionsWithUpcoming}
+                currentWeek={currentWeekOpenUtc}
+                selectedWeek={selectedWeek}
+              />
+              <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Last refresh {account.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—"}
+              </span>
+            </div>
+          </header>
+        }
+        kpis={
+          <AccountKpiRow
+            weeklyPnlPct={stats.weeklyPnlPct}
+            maxDrawdownPct={maxDrawdownPct}
+            tradesThisWeek={stats.tradesThisWeek}
+            equity={stats.equity}
+            balance={stats.balance}
+            currency={accountCurrency}
+            scopeLabel={selectedWeek === "all" ? "All • Account" : "Week • Account"}
+            detailsHref={buildHref(baseHref, { ...baseQuery, drawer: "kpi" })}
           />
-          <div className="mt-4">
+        }
+        tabs={
+          <TabbedSection
+            tabs={[
+              { id: "overview", label: "Overview" },
+              { id: "equity", label: "Equity" },
+              { id: "positions", label: "Positions" },
+              { id: "planned", label: "Planned" },
+              { id: "history", label: "History" },
+              { id: "journal", label: "Journal" },
+              { id: "settings", label: "Settings" },
+            ]}
+            active={activeTab}
+            baseHref={baseHref}
+            query={baseQuery}
+          />
+        }
+      >
+        {activeTab === "overview" ? (
+          <div className="space-y-4">
+            <MiniSparkline points={equityCurve} />
+            <div className="grid gap-4 md:grid-cols-3">
+              <SummaryCard
+                label="Open Positions"
+                value={stats.openPositions}
+                hint="Live positions right now"
+                action={
+                  <Link
+                    href={buildHref(baseHref, { ...baseQuery, drawer: "positions" })}
+                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+                  >
+                    View drawer
+                  </Link>
+                }
+              />
+              <SummaryCard
+                label="Planned Trades"
+                value={plannedPairs.length}
+                hint={plannedNote ?? "Upcoming basket trades"}
+                action={
+                  <Link
+                    href={buildHref(baseHref, { ...baseQuery, drawer: "planned" })}
+                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+                  >
+                    View drawer
+                  </Link>
+                }
+              />
+              <SummaryCard
+                label="Mappings"
+                value={mappedRows.length}
+                hint="Instrument availability"
+                action={
+                  <Link
+                    href={buildHref(baseHref, { ...baseQuery, drawer: "mapping" })}
+                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+                  >
+                    View drawer
+                  </Link>
+                }
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === "equity" ? (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Query summary
+              </p>
+              <p className="mt-1 text-sm text-[color:var(--muted)]">
+                Week {selectedWeek === "all" ? "All-time" : selectedWeek} · Account {account.provider.toUpperCase()}
+              </p>
+            </div>
+            <EquityCurveChart
+              points={equityCurve}
+              title={selectedWeek === "all" ? "All-time equity curve" : "Weekly equity curve (%)"}
+              interactive
+            />
             <DebugReadout
               title="Chart + KPI Window"
               items={[
-                {
-                  label: "Scope",
-                  value: `${account.provider}:${account.account_key}`,
-                },
-                {
-                  label: "Window",
-                  value: selectedWeek === "all" ? "all-time" : selectedWeek,
-                },
-                {
-                  label: "Series",
-                  value: "account_equity_curve",
-                },
+                { label: "Scope", value: `${account.provider}:${account.account_key}` },
+                { label: "Window", value: selectedWeek === "all" ? "all-time" : selectedWeek },
+                { label: "Series", value: "account_equity_curve" },
               ]}
             />
           </div>
-        </CollapsibleSection>
+        ) : null}
 
-        {/* Planned Trades - Collapsible */}
-        {selectedWeek !== "all" && plannedPairs.length > 0 && (
-          <CollapsibleSection
-            title="Planned Trades"
-            subtitle="Upcoming basket positions"
-            badge={plannedPairs.length}
-            badgeVariant="success"
-            defaultOpen={true}
-          >
-            <PlannedTradesPanel
-              title="Planned Trades"
-              weekOpenUtc={basketSignals.week_open_utc}
-              currency={accountCurrency}
-              accountBalance={stats.equity}
-              pairs={plannedPairs}
-              note={plannedNote}
-              sizeBySymbol={sizeBySymbol}
-              sizeLabel={sizeLabel}
-              showOnePercent={showOnePercent}
-              showLegDetails={showLegDetails}
-              showLegCount={showLegCount}
-              headerMeta={headerMeta}
-              pairMeta={pairMeta}
-              openSymbols={{}}
+        {activeTab === "positions" ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <SummaryCard
+              label="Open Positions"
+              value={stats.openPositions}
+              hint="Live positions right now"
+              action={
+                <Link
+                  href={buildHref(baseHref, { ...baseQuery, drawer: "positions" })}
+                  className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+                >
+                  Open drawer
+                </Link>
+              }
             />
-          </CollapsibleSection>
-        )}
+            <SummaryCard
+              label="Planned Trades"
+              value={plannedPairs.length}
+              hint="Pending basket signals"
+              action={
+                <Link
+                  href={buildHref(baseHref, { ...baseQuery, drawer: "planned" })}
+                  className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+                >
+                  Open drawer
+                </Link>
+              }
+            />
+          </div>
+        ) : null}
 
-        {/* OANDA Sizing - Collapsible */}
-        {account.provider === "oanda" && (
-          <CollapsibleSection
-            title="OANDA Sizing"
-            subtitle="Position sizing calculator"
-            defaultOpen={false}
-          >
-            <ConnectedAccountSizing accountKey={account.account_key} />
-          </CollapsibleSection>
-        )}
-      </div>
+        {activeTab === "planned" ? (
+          <SummaryCard
+            label="Planned Trades"
+            value={plannedPairs.length}
+            hint={plannedNote ?? "Upcoming basket positions"}
+            action={
+              <Link
+                href={buildHref(baseHref, { ...baseQuery, drawer: "planned" })}
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+              >
+                Open drawer
+              </Link>
+            }
+          />
+        ) : null}
+
+        {activeTab === "history" ? (
+          <SummaryCard
+            label="Closed Trades"
+            value="—"
+            hint="Historical trade groups"
+            action={
+              <Link
+                href={buildHref(baseHref, { ...baseQuery, drawer: "closed" })}
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+              >
+                Open drawer
+              </Link>
+            }
+          />
+        ) : null}
+
+        {activeTab === "journal" ? (
+          <SummaryCard
+            label="Journal"
+            value="—"
+            hint="Automation notes and logs"
+            action={
+              <Link
+                href={buildHref(baseHref, { ...baseQuery, drawer: "journal" })}
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+              >
+                Open drawer
+              </Link>
+            }
+          />
+        ) : null}
+
+        {activeTab === "settings" ? (
+          <SummaryCard
+            label="Mapping & Settings"
+            value={mappedRows.length}
+            hint="Instrument mapping and tools"
+            action={
+              <Link
+                href={buildHref(baseHref, { ...baseQuery, drawer: "mapping" })}
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+              >
+                Open drawer
+              </Link>
+            }
+          />
+        ) : null}
+
+        <AccountDrawer mode={drawerMode} configs={drawerConfigs} />
+      </PageShell>
     </DashboardLayout>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { formatCurrencySafe } from "@/lib/formatters";
 import { deleteAccount, deleteConnectedAccount } from "@/app/actions/deleteAccount";
 
@@ -96,6 +97,9 @@ function pillTone(value: number, positive = true) {
 
 export default function AccountsDirectory({ accounts }: AccountsDirectoryProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const weekParam = searchParams.get("week");
+  const viewParam = searchParams.get("view");
 
   async function handleDelete(
     accountId: string,
@@ -184,7 +188,19 @@ export default function AccountsDirectory({ accounts }: AccountsDirectoryProps) 
           </button>
 
           {account.href ? (
-            <Link href={account.href} className="block">
+            <Link
+              href={
+                weekParam || viewParam
+                  ? (() => {
+                      const params = new URLSearchParams();
+                      if (weekParam) params.set("week", weekParam);
+                      if (viewParam) params.set("view", viewParam);
+                      return `${account.href}?${params.toString()}`;
+                    })()
+                  : account.href
+              }
+              className="block"
+            >
               <AccountCardContent account={account} />
             </Link>
           ) : (

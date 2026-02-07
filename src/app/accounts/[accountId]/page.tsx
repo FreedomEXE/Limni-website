@@ -5,25 +5,24 @@ import {
   getMt5WeekOpenUtc,
   isMt5WeekOpenUtc,
   readMt5ClosedNetForWeek,
-  readMt5ClosedPositions,
   readMt5ClosedPositionsByWeek,
   readMt5ClosedSummary,
   readMt5DrawdownRange,
   readMt5EquityCurveByRange,
   readMt5ChangeLog,
 } from "@/lib/mt5Store";
-import PositionsTable from "@/components/PositionsTable";
-import PlannedTradesPanel from "@/components/PlannedTradesPanel";
 import DashboardLayout from "@/components/DashboardLayout";
-import RefreshButton from "@/components/RefreshButton";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
-import AccountSection from "@/components/accounts/AccountSection";
-import KpiGroup from "@/components/metrics/KpiGroup";
-import KpiCard from "@/components/metrics/KpiCard";
 import DebugReadout from "@/components/DebugReadout";
+import PageShell from "@/components/shell/PageShell";
+import TabbedSection from "@/components/tabs/TabbedSection";
+import AccountKpiRow from "@/components/accounts/AccountKpiRow";
+import MiniSparkline from "@/components/visuals/MiniSparkline";
+import AccountDrawer, { type DrawerConfig, type DrawerMode } from "@/components/accounts/AccountDrawer";
+import SummaryCard from "@/components/accounts/SummaryCard";
 import { DateTime } from "luxon";
 import { formatCurrencySafe } from "@/lib/formatters";
-import { formatDateET, formatDateTimeET } from "@/lib/time";
+import { formatDateTimeET } from "@/lib/time";
 import {
   getWeekOpenUtc,
   listPerformanceWeeks,
@@ -32,6 +31,7 @@ import {
 } from "@/lib/performanceSnapshots";
 import { buildBasketSignals } from "@/lib/basketSignals";
 import { groupSignals, signalsFromSnapshots } from "@/lib/plannedTrades";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -115,15 +115,23 @@ function toQueryParam(value: string | string[] | undefined) {
   return value ?? null;
 }
 
+function buildHref(baseHref: string, query: Record<string, string | undefined>) {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    }
+  });
+  const qs = params.toString();
+  return qs ? `${baseHref}?${qs}` : baseHref;
+}
+
 export default async function AccountPage({ params, searchParams }: AccountPageProps) {
   const { accountId } = await params;
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const requestedWeek = toQueryParam(resolvedSearchParams?.week);
   const basketFilter = (toQueryParam(resolvedSearchParams?.basket) ?? "").toLowerCase();
   const symbolFilter = (toQueryParam(resolvedSearchParams?.symbol) ?? "").toUpperCase();
-  const curveScopeParam = toQueryParam(resolvedSearchParams?.scope);
-  const curveScope =
-    curveScopeParam === "basket" || curveScopeParam === "symbol" ? curveScopeParam : "account";
   const desiredWeeks = 4;
   const currentWeekOpenUtc = getWeekOpenUtc();
   const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
@@ -161,7 +169,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const isSelectedMt5Week = selectedWeek ? isMt5WeekOpenUtc(selectedWeek) : false;
   const statsWeekOpenUtc = isSelectedMt5Week ? selectedWeek : getMt5WeekOpenUtc();
   let account = null;
-  let closedPositions: Awaited<ReturnType<typeof readMt5ClosedPositions>> = [];
+  let closedPositions: Awaited<ReturnType<typeof readMt5ClosedPositionsByWeek>> = [];
   let closedSummary: Awaited<ReturnType<typeof readMt5ClosedSummary>> = [];
   let changeLog: Awaited<ReturnType<typeof readMt5ChangeLog>> = [];
   let weeklyDrawdown = 0;
@@ -350,750 +358,444 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     return Array.from(groups.values()).sort((a, b) => b.net - a.net);
   })();
 
-  const tradeCurvePoints =
-    filteredClosedPositions.length === 0
-      ? []
-      : (() => {
-          const sorted = [...filteredClosedPositions].sort(
-            (a, b) =>
-              DateTime.fromISO(a.close_time, { zone: "utc" }).toMillis() -
-              DateTime.fromISO(b.close_time, { zone: "utc" }).toMillis(),
-          );
-          const totalNet = sorted.reduce(
-            (sum, row) => sum + row.profit + row.swap + row.commission,
-            0,
-          );
-          const inferredStart =
-            account.balance - totalNet > 0 ? account.balance - totalNet : account.balance;
-          let cumulative = 0;
-          return sorted.map((row) => {
-            cumulative += row.profit + row.swap + row.commission;
-            const pct = inferredStart > 0 ? (cumulative / inferredStart) * 100 : 0;
-            return {
-              ts_utc: row.close_time,
-              equity_pct: pct,
-              lock_pct: null,
-            };
-          });
-        })();
 
-  const curvePointsToShow = curveScope === "account" ? equityCurvePoints : tradeCurvePoints;
-  const curveTitle =
-    curveScope === "account"
-      ? "Account equity % (week-to-date)"
-      : curveScope === "basket"
-        ? `Closed-trade curve (basket: ${effectiveBasketFilter || "all"})`
-        : `Closed-trade curve (symbol: ${effectiveSymbolFilter || "all"})`;
+  const baseHref = `/accounts/${accountId}`;
+  const activeTab = ["overview", "equity", "positions", "planned", "history", "journal", "settings"].includes(
+    toQueryParam(resolvedSearchParams?.tab) ?? ""
+  )
+    ? (toQueryParam(resolvedSearchParams?.tab) as string)
+    : "overview";
+  const drawerMode: DrawerMode =
+    typeof resolvedSearchParams?.drawer === "string"
+      ? (resolvedSearchParams.drawer as DrawerMode)
+      : null;
+  const baseQuery: Record<string, string | undefined> = {
+    week: selectedWeek ?? undefined,
+    tab: activeTab,
+  };
 
-  const openNetLotsBySymbol = filteredOpenPositions.reduce((acc, pos) => {
-    const sign = pos.type === "BUY" ? 1 : -1;
-    acc[pos.symbol] = (acc[pos.symbol] ?? 0) + pos.lots * sign;
-    return acc;
-  }, {} as Record<string, number>);
-  const openSymbols = Object.fromEntries(
-    Object.entries(openNetLotsBySymbol)
-      .filter(([, value]) => Math.abs(value) > 0)
-      .map(([symbol]) => [symbol, true]),
-  );
+  const plannedPairs = basketSignals ? groupSignals(basketSignals.pairs) : [];
+  const plannedRows = plannedPairs.map((pair, index) => ({
+    id: `${pair.symbol}-${index}`,
+    status: "pending",
+    searchText: `${pair.symbol} ${pair.assetClass}`,
+    sortValue: pair.net,
+    cells: [
+      <span key="symbol" className="font-semibold">
+        {pair.symbol}
+      </span>,
+      <span key="asset" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        {pair.assetClass}
+      </span>,
+      <span key="net" className={pair.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
+        Net {pair.net}
+      </span>,
+      <span key="legs" className="text-xs text-[color:var(--muted)]">
+        {pair.legs.length} legs
+      </span>,
+    ],
+  }));
+
+  const openRows = filteredOpenPositions.map((pos, index) => {
+    const pnl = pos.profit + pos.swap + pos.commission;
+    return {
+      id: `${pos.ticket}-${index}`,
+      status: "open",
+      searchText: `${pos.symbol} ${pos.comment ?? ""}`,
+      sortValue: pnl,
+      cells: [
+        <span key="symbol" className="font-semibold">
+          {pos.symbol}
+        </span>,
+        <span key="type" className={pos.type === "BUY" ? "text-emerald-700" : "text-rose-700"}>
+          {pos.type}
+        </span>,
+        <span key="lots" className="text-xs text-[color:var(--muted)]">
+          {pos.lots.toFixed(2)} lots
+        </span>,
+        <span key="pnl" className={pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>
+          {formatCurrencySafe(pnl, account.currency)}
+        </span>,
+      ],
+    };
+  });
+
+  const closedRows = closedGroups.map((group) => ({
+    id: group.key,
+    status: "closed",
+    searchText: `${group.symbol} ${group.basket}`,
+    sortValue: group.net,
+    cells: [
+      <span key="symbol" className="font-semibold">
+        {group.symbol}
+      </span>,
+      <span key="type" className={group.type === "BUY" ? "text-emerald-700" : "text-rose-700"}>
+        {group.type}
+      </span>,
+      <span key="net" className={group.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
+        {formatCurrencySafe(group.net, account.currency)}
+      </span>,
+      <span key="lots" className="text-xs text-[color:var(--muted)]">
+        {group.lots.toFixed(2)} lots
+      </span>,
+    ],
+  }));
+
+  const journalRows = [
+    ...(account.recent_logs ?? []).map((log, index) => ({
+      id: `log-${index}`,
+      cells: [
+        <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          Runtime
+        </span>,
+        <span key="value" className="text-xs text-[var(--foreground)]">
+          {log}
+        </span>,
+      ],
+    })),
+    ...changeLog.map((entry) => ({
+      id: `change-${entry.week_open_utc}-${entry.created_at}`,
+      cells: [
+        <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          {entry.strategy ?? "Change"}
+        </span>,
+        <span key="value" className="text-xs text-[var(--foreground)]">
+          {entry.title}
+        </span>,
+      ],
+    })),
+  ];
+
+  const kpiRows = [
+    { id: "equity", label: "Equity", value: formatCurrencySafe(account.equity, account.currency) },
+    { id: "balance", label: "Balance", value: formatCurrencySafe(account.balance, account.currency) },
+    { id: "basket", label: "Basket PnL", value: formatPercent(basketPnlToShow) },
+    { id: "risk", label: "Risk Used", value: formatPercent(account.risk_used_pct) },
+    { id: "drawdown", label: "Max DD (all)", value: formatPercent(account.max_drawdown_pct) },
+    { id: "margin", label: "Margin", value: formatCurrencySafe(account.margin, account.currency) },
+    { id: "free", label: "Free Margin", value: formatCurrencySafe(account.free_margin, account.currency) },
+  ];
+
+  const drawerConfigs: Partial<Record<Exclude<DrawerMode, null>, DrawerConfig>> = {
+    positions: {
+      title: "Open Positions",
+      subtitle: "Live positions for this account",
+      columns: [
+        { key: "symbol", label: "Symbol" },
+        { key: "type", label: "Side" },
+        { key: "lots", label: "Size" },
+        { key: "pnl", label: "P&L" },
+      ],
+      rows: openRows,
+      showFilters: true,
+      emptyState: "No open positions in this week.",
+    },
+    planned: {
+      title: "Planned Trades",
+      subtitle: "Upcoming basket signals",
+      columns: [
+        { key: "symbol", label: "Symbol" },
+        { key: "asset", label: "Asset" },
+        { key: "net", label: "Net" },
+        { key: "legs", label: "Legs" },
+      ],
+      rows: plannedRows,
+      showFilters: true,
+      emptyState: "No planned trades for this week.",
+    },
+    closed: {
+      title: "Closed Trades",
+      subtitle: "Grouped closed positions",
+      columns: [
+        { key: "symbol", label: "Symbol" },
+        { key: "type", label: "Side" },
+        { key: "net", label: "Net PnL" },
+        { key: "lots", label: "Lots" },
+      ],
+      rows: closedRows,
+      showFilters: true,
+      emptyState: "No closed trades recorded for this week.",
+    },
+    journal: {
+      title: "Journal",
+      subtitle: "Automation logs and weekly notes",
+      columns: [
+        { key: "label", label: "Type" },
+        { key: "value", label: "Entry" },
+      ],
+      rows: journalRows,
+      showFilters: false,
+      emptyState: "No journal entries yet.",
+    },
+    mapping: {
+      title: "Mapping & Settings",
+      subtitle: "Account settings and mapping",
+      columns: [
+        { key: "label", label: "Item" },
+        { key: "value", label: "Value" },
+      ],
+      rows: [],
+      showFilters: false,
+      emptyState: "No mapping data for MT5 accounts.",
+    },
+    kpi: {
+      title: "KPI Details",
+      subtitle: "Expanded performance and risk metrics",
+      columns: [
+        { key: "label", label: "Metric" },
+        { key: "value", label: "Value" },
+      ],
+      rows: kpiRows.map((row) => ({
+        id: row.id,
+        cells: [
+          <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            {row.label}
+          </span>,
+          <span key="value" className="font-semibold">
+            {row.value}
+          </span>,
+        ],
+      })),
+      showFilters: false,
+    },
+  };
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        {!account ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-6 text-sm text-rose-700">
-            Account data could not be loaded. Check database connectivity and MT5
-            push status.
-          </div>
-        ) : null}
-        <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
+      <PageShell
+        header={
+          <header className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-                {account?.label ?? "Account"}
-              </h1>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(
-                  account?.status ?? "PAUSED",
-                )}`}
+              <Link
+                href="/accounts"
+                className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
               >
+                Back
+              </Link>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Account
+                </p>
+                <h1 className="text-xl font-semibold text-[var(--foreground)]">
+                  {account?.label ?? "Account"}
+                </h1>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(account?.status ?? "PAUSED")}`}>
                 {account?.status ?? "UNKNOWN"}
               </span>
             </div>
-            <p className="text-sm text-[color:var(--muted)]">
-              {account?.broker || "Unknown broker"} -{" "}
-              {account?.server || "Unknown server"}
-            </p>
-            <form
-              action={`/accounts/${accountId}`}
-              method="get"
-              className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]"
-            >
-              {curveScope ? <input type="hidden" name="scope" value={curveScope} /> : null}
-              {effectiveBasketFilter ? <input type="hidden" name="basket" value={effectiveBasketFilter} /> : null}
-              {effectiveSymbolFilter ? <input type="hidden" name="symbol" value={effectiveSymbolFilter} /> : null}
-              <label>Week</label>
-              <select
-                name="week"
-                defaultValue={selectedWeek ?? ""}
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-              >
-                {weekOptions.map((week) => (
-                  <option key={week} value={week}>
-                    {weekLabelFromOpen(week)}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-              >
-                View
-              </button>
-            </form>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3 text-sm text-[color:var(--muted)] shadow-sm">
-              Last sync {formatDateTimeET(account?.last_sync_utc ?? "")}
-            </div>
-            <a
-              href={`/api/mt5/closed-positions/${accountId}?format=csv`}
-              download
-              className="inline-flex items-center justify-center rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-            >
-              Export closed trades
-            </a>
-            <RefreshButton />
-          </div>
-        </header>
-
-        {account ? (
-          <>
-        <div className="space-y-6">
-          <KpiGroup title="Performance" description="Primary performance metrics for the selected week.">
-            <KpiCard
-              label="Weekly PnL"
-              value={formatPercent(weeklyPnlToShow)}
-              tone={weeklyPnlToShow >= 0 ? "positive" : "negative"}
-              emphasis="primary"
-              hint={
-                Math.abs(account.weekly_pnl_pct) <= 0.001 && currentWeekNet.trades > 0
-                  ? `Derived from closed trades (${currentWeekNet.trades}).`
-                  : undefined
-              }
-            />
-            <KpiCard
-              label="Basket PnL"
-              value={formatPercent(basketPnlToShow)}
-              tone={basketPnlToShow >= 0 ? "positive" : "negative"}
-            />
-            <KpiCard
-              label="Equity"
-              value={formatCurrencySafe(account.equity, account.currency)}
-            />
-          </KpiGroup>
-
-          <KpiGroup title="Risk" description="Weekly drawdown and risk exposure.">
-            <KpiCard
-              label="Max DD (week)"
-              value={formatPercent(weeklyDrawdown)}
-              tone={weeklyDrawdown > 0 ? "negative" : "neutral"}
-            />
-            <KpiCard
-              label="Risk used"
-              value={formatPercent(account.risk_used_pct)}
-              tone={account.risk_used_pct > 2 ? "negative" : "accent"}
-            />
-            <KpiCard
-              label="Max DD (all)"
-              value={formatPercent(account.max_drawdown_pct)}
-              tone={account.max_drawdown_pct > 5 ? "negative" : "neutral"}
-            />
-          </KpiGroup>
-
-          <KpiGroup title="Context" description="Activity and baseline context.">
-            <KpiCard
-              label="Trades this week"
-              value={`${account.trade_count_week}`}
-            />
-            <KpiCard
-              label="Open positions"
-              value={`${account.open_positions}`}
-            />
-            <KpiCard
-              label="Win rate"
-              value={formatPercent(account.win_rate_pct)}
-            />
-          </KpiGroup>
-        </div>
-
-        <section className="grid gap-6 lg:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Basket status
-            </h2>
-            <p className="text-sm text-[color:var(--muted)]">
-              Live view of the current weekly basket.
-            </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  State
-                </p>
-                <p className={`mt-1 font-semibold ${basketTone(account.basket_state)}`}>
-                  {account.basket_state}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Report date
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatDateET(account.report_date)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Open pairs
-                </p>
-                <p className="mt-1 font-semibold">{account.open_pairs}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Open positions
-                </p>
-                <p className="mt-1 font-semibold">{account.open_positions}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Total lots
-                </p>
-                <p className="mt-1 font-semibold">
-                  {account.total_lots.toFixed(2)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Locked profit
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatPercent(account.locked_profit_pct)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">Operations</h2>
-            <p className="text-sm text-[color:var(--muted)]">
-              API health and scheduling.
-            </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  API status
-                </p>
-                <p
-                  className={`mt-1 font-semibold ${
-                    account.api_ok ? "text-emerald-700" : "text-rose-700"
-                  }`}
+            <div className="flex flex-wrap items-center gap-3">
+              <form action={baseHref} method="get" className="flex items-center gap-2">
+                <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Week</label>
+                <select
+                  name="week"
+                  defaultValue={selectedWeek ?? ""}
+                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
                 >
-                  {account.api_ok ? "OK" : "Error"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Trading allowed
-                </p>
-                <p
-                  className={`mt-1 font-semibold ${
-                    account.trading_allowed ? "text-emerald-700" : "text-rose-700"
-                  }`}
+                  {weekOptions.map((week) => (
+                    <option key={week} value={week}>
+                      {weekLabelFromOpen(week)}
+                    </option>
+                  ))}
+                </select>
+                <input type="hidden" name="tab" value={activeTab} />
+                <button
+                  type="submit"
+                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
                 >
-                  {account.trading_allowed ? "Yes" : "No"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Next add
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatDuration(account.next_add_seconds)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Next poll
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatDuration(account.next_poll_seconds)}
-                </p>
-              </div>
+                  View
+                </button>
+              </form>
+              <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Last sync {formatDateTimeET(account?.last_sync_utc ?? "")}
+              </span>
             </div>
-            <div className="mt-4 rounded-xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/60 p-3 text-xs text-[color:var(--muted)]">
-              {account.last_api_error || "No API errors reported."}
+          </header>
+        }
+        kpis={
+          <AccountKpiRow
+            weeklyPnlPct={weeklyPnlToShow}
+            maxDrawdownPct={weeklyDrawdown}
+            tradesThisWeek={account.trade_count_week}
+            equity={account.equity}
+            balance={account.balance}
+            currency={account.currency}
+            scopeLabel="Week • Account"
+            detailsHref={buildHref(baseHref, { ...baseQuery, drawer: "kpi" })}
+          />
+        }
+        tabs={
+          <TabbedSection
+            tabs={[
+              { id: "overview", label: "Overview" },
+              { id: "equity", label: "Equity" },
+              { id: "positions", label: "Positions" },
+              { id: "planned", label: "Planned" },
+              { id: "history", label: "History" },
+              { id: "journal", label: "Journal" },
+              { id: "settings", label: "Settings" },
+            ]}
+            active={activeTab}
+            baseHref={baseHref}
+            query={baseQuery}
+          />
+        }
+      >
+        {activeTab === "overview" ? (
+          <div className="space-y-4">
+            <MiniSparkline points={equityCurvePoints} />
+            <div className="grid gap-4 md:grid-cols-3">
+              <SummaryCard
+                label="Open Positions"
+                value={filteredOpenPositions.length}
+                hint="Live positions right now"
+                action={
+                  <Link
+                    href={buildHref(baseHref, { ...baseQuery, drawer: "positions" })}
+                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+                  >
+                    View drawer
+                  </Link>
+                }
+              />
+              <SummaryCard
+                label="Planned Trades"
+                value={plannedPairs.length}
+                hint="Upcoming basket signals"
+                action={
+                  <Link
+                    href={buildHref(baseHref, { ...baseQuery, drawer: "planned" })}
+                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+                  >
+                    View drawer
+                  </Link>
+                }
+              />
+              <SummaryCard
+                label="Journal"
+                value={journalRows.length}
+                hint="Latest notes and logs"
+                action={
+                  <Link
+                    href={buildHref(baseHref, { ...baseQuery, drawer: "journal" })}
+                    className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+                  >
+                    View drawer
+                  </Link>
+                }
+              />
             </div>
           </div>
+        ) : null}
 
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">Risk & margin</h2>
-            <p className="text-sm text-[color:var(--muted)]">
-              Pair caps and account buffers.
-            </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Risk used
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatPercent(account.risk_used_pct)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Max drawdown (week)
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatPercent(weeklyDrawdown)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Baseline equity
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatCurrencySafe(account.baseline_equity, account.currency)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Trades this week
-                </p>
-                <p className="mt-1 font-semibold">
-                  {account.trade_count_week}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Margin
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatCurrencySafe(account.margin, account.currency)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Free margin
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatCurrencySafe(account.free_margin, account.currency)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Win rate
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatPercent(account.win_rate_pct)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Max drawdown (all)
-                </p>
-                <p className="mt-1 font-semibold">
-                  {formatPercent(account.max_drawdown_pct)}
-                </p>
-              </div>
+        {activeTab === "equity" ? (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Query summary
+              </p>
+              <p className="mt-1 text-sm text-[color:var(--muted)]">
+                Week {selectedWeek ?? getWeekOpenUtc()} · Account MT5
+              </p>
             </div>
-          </div>
-        </section>
-
-        <AccountSection title="Weekly equity curve">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Weekly equity curve
-            </h2>
-            <p className="text-sm text-[color:var(--muted)]">
-              Switch between account snapshots, basket-level closed-trade curves, and symbol-level curves.
-            </p>
-          </div>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <EquityCurveChart
+              title="Weekly equity curve (%)"
+              points={equityCurvePoints}
+              interactive
+            />
             <DebugReadout
+              title="Chart + KPI Window"
               items={[
-                { label: "Scope", value: "account" },
+                { label: "Scope", value: `mt5:${accountId}` },
                 { label: "Window", value: selectedWeek ?? getWeekOpenUtc() },
-                { label: "Series", value: curveScope },
+                { label: "Series", value: "mt5_equity_curve" },
               ]}
             />
           </div>
-          <form
-            action={`/accounts/${accountId}`}
-            method="get"
-            className="mb-4 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]"
-          >
-            {selectedWeek ? <input type="hidden" name="week" value={selectedWeek} /> : null}
-            <select
-              name="scope"
-              defaultValue={curveScope}
-              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-            >
-              <option value="account">Account</option>
-              <option value="basket">Basket</option>
-              <option value="symbol">Symbol</option>
-            </select>
-            <select
-              name="basket"
-              defaultValue={effectiveBasketFilter}
-              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-            >
-              <option value="">All baskets</option>
-              {basketOptions.map((basket) => (
-                <option key={basket} value={basket}>
-                  {basket}
-                </option>
-              ))}
-            </select>
-            <select
-              name="symbol"
-              defaultValue={effectiveSymbolFilter}
-              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-            >
-              <option value="">All symbols</option>
-              {symbolOptions.map((symbol) => (
-                <option key={symbol} value={symbol}>
-                  {symbol}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-            >
-              Apply
-            </button>
-          </form>
-          <EquityCurveChart title={curveTitle} points={curvePointsToShow} />
-        </AccountSection>
-
-        <AccountSection title="Open positions">
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Open Positions
-            </h2>
-            <p className="text-sm text-[color:var(--muted)]">
-              {filteredOpenPositions.length} filtered position{filteredOpenPositions.length !== 1 ? 's' : ''}{" "}
-              ({account.open_positions} total)
-            </p>
-          </div>
-
-          {basketSignals ? (
-            <div className="mb-6">
-              <PlannedTradesPanel
-                title="Open positions"
-                weekOpenUtc={basketSignals.week_open_utc}
-                currency={account.currency}
-                accountBalance={account.equity}
-                pairs={groupSignals(basketSignals.pairs)}
-                note={basketSignals.trading_allowed ? null : basketSignals.reason}
-                sizeBySymbol={openNetLotsBySymbol}
-                sizeLabel="lots"
-                openSymbols={openSymbols}
-              />
-            </div>
-          ) : null}
-
-          <PositionsTable
-            positions={filteredOpenPositions}
-            currency={account.currency}
-            equity={account.equity}
-          />
-        </AccountSection>
-
-        <AccountSection title="Weekly trade history">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Weekly trade history
-            </h2>
-            <p className="text-sm text-[color:var(--muted)]">
-              Closed position results grouped by trading week.
-            </p>
-          </div>
-          {closedSummary.length === 0 ? (
-            <div className="space-y-2 text-sm text-[color:var(--muted)]">
-              <p>No closed trades stored yet.</p>
-              {account.trade_count_week > 0 ? (
-                <p className="text-amber-600">
-                  MT5 reports {account.trade_count_week} weekly trades, but no closed rows were saved.
-                  Verify that the push payload includes <code>closed_positions</code> and the push route accepts it.
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {closedSummary.map((week, index) => {
-                const winRate =
-                  week.trades > 0 ? (week.wins / week.trades) * 100 : 0;
-                const prevWeek = closedSummary[index + 1];
-                const deltaNet =
-                  prevWeek ? week.net_profit - prevWeek.net_profit : null;
-                return (
-                  <div
-                    key={week.week_open_utc}
-                    className={`rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4 ${
-                      selectedWeek === week.week_open_utc ? "border-[var(--accent)]/50" : ""
-                    }`}
-                  >
-                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                      {weekLabelFromOpen(week.week_open_utc)}
-                    </p>
-                    <p
-                      className={`mt-2 text-2xl font-semibold ${
-                        week.net_profit > 0
-                          ? "text-emerald-700"
-                          : week.net_profit < 0
-                            ? "text-rose-700"
-                            : "text-[var(--foreground)]"
-                      }`}
-                    >
-                      {formatCurrencySafe(week.net_profit, account.currency)}
-                    </p>
-                    <div className="mt-2 space-y-1 text-xs text-[color:var(--muted)]">
-                      <p>{week.trades} trades</p>
-                      <p>Win rate {winRate.toFixed(0)}%</p>
-                      <p>Avg net {formatCurrencySafe(week.avg_net, account.currency)}</p>
-                      {deltaNet !== null ? (
-                        <p
-                          className={
-                            deltaNet >= 0 ? "text-emerald-700" : "text-rose-700"
-                          }
-                        >
-                          vs prev {formatCurrencySafe(deltaNet, account.currency)}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </AccountSection>
-
-        <AccountSection title="Closed positions">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Closed positions
-              </h2>
-              <p className="text-sm text-[color:var(--muted)]">
-                Recent closed trades captured from MT5.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              <span>{filteredClosedPositions.length} records</span>
-            </div>
-          </div>
-          {filteredClosedPositions.length === 0 ? (
-            <div className="space-y-2 text-sm text-[color:var(--muted)]">
-              <p>No closed positions stored yet.</p>
-              {account.trade_count_week > 0 ? (
-                <p className="text-amber-600">
-                  Weekly trade count is non-zero, so this likely means closed trade rows are not being ingested.
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {closedGroups.map((group) => (
-                <details
-                  key={group.key}
-                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80"
-                >
-                  <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-[var(--foreground)]">
-                        {group.symbol}
-                      </span>
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                          group.type === "BUY"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-rose-100 text-rose-700"
-                        }`}
-                      >
-                        {group.type}
-                      </span>
-                      <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                        {group.basket}
-                      </span>
-                      <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                        {group.trades.length} trades
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <p
-                        className={`text-sm font-semibold ${
-                          group.net >= 0 ? "text-emerald-700" : "text-rose-700"
-                        }`}
-                      >
-                        {formatCurrencySafe(group.net, account.currency)}
-                      </p>
-                      <p className="text-xs text-[color:var(--muted)]">
-                        {group.lots.toFixed(2)} lots · {group.openDate}
-                      </p>
-                    </div>
-                  </summary>
-                  <div className="border-t border-[var(--panel-border)] px-4 py-3">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-left text-sm">
-                        <thead className="sticky top-0 bg-[var(--panel)] text-xs uppercase text-[var(--muted)]">
-                          <tr>
-                            <th className="py-2">Close time</th>
-                            <th className="py-2">Lots</th>
-                            <th className="py-2">Net P&L</th>
-                            <th className="py-2">Open</th>
-                            <th className="py-2">Close</th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-[var(--foreground)]">
-                          {group.trades.map((trade) => {
-                            const net =
-                              trade.profit + trade.swap + trade.commission;
-                            return (
-                              <tr
-                                key={`${trade.ticket}-${trade.close_time}`}
-                                className="border-t border-[var(--panel-border)]/40"
-                              >
-                                <td className="py-2 text-xs text-[color:var(--muted)]">
-                                  {formatDateTimeET(trade.close_time)}
-                                </td>
-                                <td className="py-2">{trade.lots.toFixed(2)}</td>
-                                <td
-                                  className={`py-2 font-semibold ${
-                                    net >= 0 ? "text-emerald-700" : "text-rose-700"
-                                  }`}
-                                >
-                                  {formatCurrencySafe(net, account.currency)}
-                                </td>
-                                <td className="py-2 text-xs text-[color:var(--muted)]">
-                                  {trade.open_price.toFixed(5)}
-                                </td>
-                                <td className="py-2 text-xs text-[color:var(--muted)]">
-                                  {trade.close_price.toFixed(5)}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </details>
-              ))}
-            </div>
-          )}
-        </AccountSection>
-
-        <AccountSection title="Journal">
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Journal
-              </h2>
-              <p className="text-sm text-[color:var(--muted)]">
-                Collapsible runtime logs and weekly strategy notes.
-              </p>
-            </div>
-            <div className="space-y-3">
-              <details className="group rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--foreground)]">EA runtime logs</p>
-                    <p className="text-xs text-[color:var(--muted)]">
-                      {account.recent_logs?.length ?? 0} recent messages
-                    </p>
-                  </div>
-                  <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
-                  <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
-                </summary>
-                <div className="mt-4">
-                  {!account.recent_logs || account.recent_logs.length === 0 ? (
-                    <p className="text-sm text-[color:var(--muted)]">
-                      No runtime logs available from the latest MT5 snapshot.
-                    </p>
-                  ) : (
-                    <div className="max-h-80 overflow-y-auto rounded-xl border border-[var(--panel-border)] bg-[var(--background)] p-4">
-                      <div className="space-y-1 font-mono text-xs">
-                        {account.recent_logs.map((log, idx) => (
-                          <div
-                            key={idx}
-                            className={`${
-                              log.includes("Error") || log.includes("ERROR") || log.includes("failed")
-                                ? "text-rose-600"
-                                : log.includes("WARNING") || log.includes("Skipped")
-                                  ? "text-amber-600"
-                                  : "text-[var(--muted)]"
-                            }`}
-                          >
-                            {log}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </details>
-
-              <details className="group rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4" open>
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--foreground)]">EA change log</p>
-                    <p className="text-xs text-[color:var(--muted)]">
-                      Weekly strategy tweaks for this account
-                    </p>
-                  </div>
-                  <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:hidden">Expand</span>
-                  <span className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] group-open:inline">Collapse</span>
-                </summary>
-                <div className="mt-4">
-                  {changeLog.length === 0 ? (
-                    <p className="text-sm text-[color:var(--muted)]">
-                      No change log entries yet. Add rows to mt5_change_log to track weekly improvements.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {changeLog.map((entry) => (
-                        <div
-                          key={`${entry.week_open_utc}-${entry.created_at}-${entry.title}`}
-                          className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/90 p-4"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                              {weekLabelFromOpen(entry.week_open_utc)}
-                            </p>
-                            {entry.strategy ? (
-                              <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1 text-xs font-semibold text-[color:var(--muted)]">
-                                {entry.strategy}
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
-                            {entry.title}
-                          </p>
-                          {entry.notes ? (
-                            <p className="mt-1 text-sm text-[color:var(--muted)]">
-                              {entry.notes}
-                            </p>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </details>
-            </div>
-        </AccountSection>
-          </>
         ) : null}
-      </div>
+
+        {activeTab === "positions" ? (
+          <SummaryCard
+            label="Open Positions"
+            value={filteredOpenPositions.length}
+            hint="Live positions right now"
+            action={
+              <Link
+                href={buildHref(baseHref, { ...baseQuery, drawer: "positions" })}
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+              >
+                Open drawer
+              </Link>
+            }
+          />
+        ) : null}
+
+        {activeTab === "planned" ? (
+          <SummaryCard
+            label="Planned Trades"
+            value={plannedPairs.length}
+            hint="Upcoming basket signals"
+            action={
+              <Link
+                href={buildHref(baseHref, { ...baseQuery, drawer: "planned" })}
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+              >
+                Open drawer
+              </Link>
+            }
+          />
+        ) : null}
+
+        {activeTab === "history" ? (
+          <SummaryCard
+            label="Closed Trades"
+            value={closedRows.length}
+            hint="Grouped closed positions"
+            action={
+              <Link
+                href={buildHref(baseHref, { ...baseQuery, drawer: "closed" })}
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+              >
+                Open drawer
+              </Link>
+            }
+          />
+        ) : null}
+
+        {activeTab === "journal" ? (
+          <SummaryCard
+            label="Journal"
+            value={journalRows.length}
+            hint="Automation logs and notes"
+            action={
+              <Link
+                href={buildHref(baseHref, { ...baseQuery, drawer: "journal" })}
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+              >
+                Open drawer
+              </Link>
+            }
+          />
+        ) : null}
+
+        {activeTab === "settings" ? (
+          <SummaryCard
+            label="Settings"
+            value="—"
+            hint="Account tools and mapping"
+            action={
+              <Link
+                href={buildHref(baseHref, { ...baseQuery, drawer: "mapping" })}
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+              >
+                Open drawer
+              </Link>
+            }
+          />
+        ) : null}
+
+        <AccountDrawer mode={drawerMode} configs={drawerConfigs} />
+      </PageShell>
     </DashboardLayout>
   );
 }
