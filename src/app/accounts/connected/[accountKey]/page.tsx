@@ -1,7 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import ConnectedAccountSizing from "@/components/ConnectedAccountSizing";
 import { readBotState } from "@/lib/botState";
-import { getConnectedAccount } from "@/lib/connectedAccounts";
+import { getConnectedAccount, listConnectedAccounts } from "@/lib/connectedAccounts";
 import { formatDateTimeET } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +11,53 @@ export default async function ConnectedAccountPage({
 }: {
   params: { accountKey: string };
 }) {
-  const accountKey = decodeURIComponent(params.accountKey);
-  const account = await getConnectedAccount(accountKey);
+  const rawParam = params.accountKey;
+  const decodeSafe = (value: string) => {
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  };
+  const normalize = (value: string) => value.trim().toLowerCase();
+  const decodedOnce = decodeSafe(rawParam);
+  const decodedTwice = decodeSafe(decodedOnce);
+  const candidates = Array.from(
+    new Set(
+      [rawParam, decodedOnce, decodedTwice, rawParam.replace(/%3A/gi, ":"), decodedOnce.replace(/%3A/gi, ":")].filter(
+        (value) => Boolean(value && value.trim()),
+      ),
+    ),
+  );
+
+  let account = null;
+  for (const candidate of candidates) {
+    account = await getConnectedAccount(candidate);
+    if (account) {
+      break;
+    }
+  }
+  if (!account) {
+    const all = await listConnectedAccounts();
+    const normalizedCandidates = new Set(candidates.map(normalize));
+    const idCandidates = new Set(
+      candidates
+        .flatMap((value) => {
+          const decoded = decodeSafe(value);
+          if (decoded.includes(":")) {
+            const [, ...rest] = decoded.split(":");
+            return [rest.join(":"), decoded];
+          }
+          return [decoded];
+        })
+        .map(normalize),
+    );
+    account =
+      all.find((item) => normalizedCandidates.has(normalize(item.account_key))) ??
+      all.find((item) => normalizedCandidates.has(normalize(`${item.provider}:${item.account_id ?? ""}`))) ??
+      all.find((item) => idCandidates.has(normalize(item.account_id ?? ""))) ??
+      null;
+  }
   const botState =
     account?.provider === "oanda"
       ? await readBotState("oanda_universal_bot")

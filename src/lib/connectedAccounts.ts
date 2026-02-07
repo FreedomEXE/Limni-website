@@ -44,7 +44,9 @@ export async function listConnectedAccounts(): Promise<ConnectedAccount[]> {
   }
   return Array.from(deduped.values()).map((row) => {
     const normalizedKey = row.account_id
-      ? `${row.provider}:${row.account_id}`
+      ? row.account_id.startsWith(`${row.provider}:`)
+        ? row.account_id
+        : `${row.provider}:${row.account_id}`
       : row.account_key;
     return {
       ...row,
@@ -113,6 +115,30 @@ export async function getConnectedAccount(accountKey: string): Promise<Connected
            ORDER BY updated_at DESC
            LIMIT 1`,
           [provider, accountKey],
+        );
+      }
+      if (!resolved) {
+        resolved = await queryOne<ConnectedAccountRow>(
+          `SELECT account_key, provider, account_id, label, status, bot_type,
+                  risk_mode, trail_mode, trail_start_pct, trail_offset_pct,
+                  config, analysis, last_sync_utc, created_at, updated_at
+           FROM connected_accounts
+           WHERE provider = $1 AND account_id = $2
+           ORDER BY updated_at DESC
+           LIMIT 1`,
+          [provider, accountKey],
+        );
+      }
+      if (!resolved) {
+        resolved = await queryOne<ConnectedAccountRow>(
+          `SELECT account_key, provider, account_id, label, status, bot_type,
+                  risk_mode, trail_mode, trail_start_pct, trail_offset_pct,
+                  config, analysis, last_sync_utc, created_at, updated_at
+           FROM connected_accounts
+           WHERE account_key = $1 OR account_id = $1
+           ORDER BY updated_at DESC
+           LIMIT 1`,
+          [accountId],
         );
       }
     }
@@ -385,6 +411,64 @@ export async function loadConnectedAccountSecretsByKey(
            ORDER BY updated_at DESC
            LIMIT 1`,
           [provider, accountKey],
+        );
+      }
+      if (!row) {
+        row = await queryOne<{
+          account_key: string;
+          provider: ConnectedAccount["provider"];
+          account_id: string | null;
+          label: string | null;
+          status: string | null;
+          bot_type: string;
+          risk_mode: string | null;
+          trail_mode: string | null;
+          trail_start_pct: number | null;
+          trail_offset_pct: number | null;
+          config: Record<string, unknown> | null;
+          analysis: Record<string, unknown> | null;
+          last_sync_utc: Date | null;
+          created_at: Date;
+          updated_at: Date;
+          secrets: EncryptedPayload | null;
+        }>(
+          `SELECT account_key, provider, account_id, label, status, bot_type,
+                  risk_mode, trail_mode, trail_start_pct, trail_offset_pct,
+                  config, analysis, last_sync_utc, created_at, updated_at, secrets
+           FROM connected_accounts
+           WHERE provider = $1 AND account_id = $2
+           ORDER BY updated_at DESC
+           LIMIT 1`,
+          [provider, accountKey],
+        );
+      }
+      if (!row) {
+        row = await queryOne<{
+          account_key: string;
+          provider: ConnectedAccount["provider"];
+          account_id: string | null;
+          label: string | null;
+          status: string | null;
+          bot_type: string;
+          risk_mode: string | null;
+          trail_mode: string | null;
+          trail_start_pct: number | null;
+          trail_offset_pct: number | null;
+          config: Record<string, unknown> | null;
+          analysis: Record<string, unknown> | null;
+          last_sync_utc: Date | null;
+          created_at: Date;
+          updated_at: Date;
+          secrets: EncryptedPayload | null;
+        }>(
+          `SELECT account_key, provider, account_id, label, status, bot_type,
+                  risk_mode, trail_mode, trail_start_pct, trail_offset_pct,
+                  config, analysis, last_sync_utc, created_at, updated_at, secrets
+           FROM connected_accounts
+           WHERE account_key = $1 OR account_id = $1
+           ORDER BY updated_at DESC
+           LIMIT 1`,
+          [accountId],
         );
       }
     }
