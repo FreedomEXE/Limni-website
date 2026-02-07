@@ -6,7 +6,6 @@ import {
   computeModelPerformance,
   computeReturnStats,
   type PerformanceModel,
-  type ModelPerformance,
 } from "@/lib/performanceLab";
 import { simulateTrailingForGroupsFromRows } from "@/lib/universalBasket";
 import { getPairPerformance } from "@/lib/pricePerformance";
@@ -141,6 +140,16 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     }
   }
   const hasSnapshots = weekSnapshots.length > 0;
+  const isHistoricalWeekSelected = (() => {
+    if (!selectedWeek || !currentWeekStart.isValid) {
+      return false;
+    }
+    const parsed = DateTime.fromISO(selectedWeek, { zone: "utc" });
+    if (!parsed.isValid) {
+      return false;
+    }
+    return parsed.toMillis() < currentWeekStart.toMillis();
+  })();
   const isWaitingWeek = isFutureWeekSelected || (isCurrentWeekSelected && !hasSnapshots);
   let latestPriceRefresh: string | null = null;
   try {
@@ -179,32 +188,83 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   let totals: Array<Awaited<ReturnType<typeof computeModelPerformance>>> = [];
   let anyPriced = false;
 
-  const emptyModel = (model: PerformanceModel): ModelPerformance => ({
-    model,
-    percent: 0,
-    priced: 0,
-    total: 0,
-    note: "Waiting for pricing.",
-    returns: [],
-    pair_details: [],
-    stats: {
-      avg_return: 0,
-      median_return: 0,
-      win_rate: 0,
-      volatility: 0,
-      best_pair: null,
-      worst_pair: null,
-    },
-  });
-
   if (isWaitingWeek) {
-    perAsset = assetClasses.map((asset) => ({
-      asset,
-      results: models.map((model) => emptyModel(model)),
-    }));
-    totals = models.map((model) => emptyModel(model));
+    const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
+    const latestSentiment = await getLatestAggregatesLocked();
+    const snapshotResults = await Promise.all(
+      assetClasses.map((asset) => readSnapshot({ assetClass: asset.id })),
+    );
+    snapshotResults.forEach((snapshot, index) => {
+      snapshots.set(assetClasses[index].id, snapshot);
+    });
+
+    const performanceOverride = {
+      performance: {},
+      note: "Week has not started yet. Returns will populate after the report week opens.",
+      missingPairs: [],
+    };
+
+    perAsset = await Promise.all(
+      assetClasses.map(async (asset) => {
+        const snapshot = snapshots.get(asset.id);
+        if (!snapshot) {
+          return { asset, results: [] as Awaited<ReturnType<typeof computeModelPerformance>>[] };
+        }
+        const results = [];
+        for (const model of models) {
+          results.push(
+            await computeModelPerformance({
+              model,
+              assetClass: asset.id,
+              snapshot,
+              sentiment: latestSentiment,
+              performance: performanceOverride,
+            }),
+          );
+        }
+        return { asset, results };
+      }),
+    );
+
+    totals = models.map((model) => {
+      let percent = 0;
+      let priced = 0;
+      let total = 0;
+      const returns: Array<{ pair: string; percent: number }> = [];
+      const pairDetails: Array<{
+        pair: string;
+        direction: "LONG" | "SHORT" | "NEUTRAL";
+        reason: string[];
+        percent: number | null;
+      }> = [];
+      let note = "Combined across assets.";
+      for (const asset of perAsset) {
+        const result = asset.results.find((item) => item.model === model);
+        if (!result) {
+          continue;
+        }
+        percent += result.percent;
+        priced += result.priced;
+        total += result.total;
+        returns.push(...result.returns);
+        pairDetails.push(...result.pair_details);
+        if (result.note) {
+          note = result.note;
+        }
+      }
+      return {
+        model,
+        percent,
+        priced,
+        total,
+        note,
+        returns,
+        pair_details: pairDetails,
+        stats: computeReturnStats(returns),
+      };
+    });
     anyPriced = false;
-  } else if (hasSnapshots) {
+  } else if (hasSnapshots && isHistoricalWeekSelected) {
     const groups = [
       ...models.map((model) => ({
         key: `combined:${model}`,
