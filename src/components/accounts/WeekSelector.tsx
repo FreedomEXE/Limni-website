@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import type { WeekOption } from "@/lib/weekState";
 import { useTransition } from "react";
+import { DateTime } from "luxon";
 
 type WeekSelectorProps = {
   weekOptions: WeekOption[];
@@ -61,7 +61,11 @@ export default function WeekSelector({
     if (week === "all") {
       return "All Time";
     }
-    return weekLabelFromOpen(week);
+    const parsed = DateTime.fromISO(week, { zone: "America/New_York" });
+    if (!parsed.isValid) {
+      return week;
+    }
+    return `Week of ${parsed.toFormat("MMM dd, yyyy")}`;
   };
 
   const isCurrentWeek = (week: WeekOption): boolean => {

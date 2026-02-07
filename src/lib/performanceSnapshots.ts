@@ -227,6 +227,11 @@ export async function listWeeksForAccount(
   try {
     // Get account creation date
     const account = await getConnectedAccount(accountKey);
+    if (!account) {
+      const currentWeek = getWeekOpenUtc();
+      const nextWeek = getNextWeekOpen(currentWeek);
+      return deduplicateWeeks([nextWeek, currentWeek]).slice(0, limit);
+    }
     const createdAt = DateTime.fromISO(account.created_at, { zone: "utc" });
 
     if (!createdAt.isValid) {
