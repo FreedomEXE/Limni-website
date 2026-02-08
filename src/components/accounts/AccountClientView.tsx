@@ -108,6 +108,7 @@ type AccountClientViewProps = {
   };
   plannedSummary?: {
     marginUsed?: number | null;
+    marginUsedBestCase?: number | null;
     marginAvailable?: number | null;
     scale?: number | null;
     currency?: string | null;
@@ -406,6 +407,17 @@ export default function AccountClientView({
                 {plannedSummary.currency ?? "$"}
                 {(plannedSummary.marginUsed ?? 0).toFixed(2)}
               </span>
+              {plannedSummary.marginUsedBestCase !== null &&
+              plannedSummary.marginUsedBestCase !== undefined ? (
+                <>
+                  {" "}
+                  • Best case (net hedged){" "}
+                  <span className="font-semibold text-[var(--foreground)]">
+                    {plannedSummary.currency ?? "$"}
+                    {plannedSummary.marginUsedBestCase.toFixed(2)}
+                  </span>
+                </>
+              ) : null}
               {plannedSummary.marginAvailable ? (
                 <>
                   {" "}

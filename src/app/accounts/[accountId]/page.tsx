@@ -404,6 +404,13 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
 
 
   let plannedPairs = basketSignals ? groupSignals(basketSignals.pairs) : [];
+  let plannedSummary: {
+    marginUsed?: number | null;
+    marginUsedBestCase?: number | null;
+    marginAvailable?: number | null;
+    scale?: number | null;
+    currency?: string | null;
+  } | null = null;
   const allowPlannedWeek =
     selectedWeek === currentWeekOpenUtc ||
     (nextWeekOpenUtc ? selectedWeek === nextWeekOpenUtc : false);
@@ -462,6 +469,17 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   };
 
   if (plannedPairs.length > 0 && lotMapRows.length > 0) {
+    // MT5 feasibility estimate: use the EA-provided per-leg margin requirement from lot_map.
+    // Gross assumes each leg opens independently (most conservative). Best-case assumes hedges net out.
+    const marginAvailable =
+      Number.isFinite(account.free_margin) && account.free_margin > 0
+        ? account.free_margin
+        : Number.isFinite(account.equity) && account.equity > 0
+          ? account.equity
+          : null;
+    let grossMargin = 0.0;
+    let bestCaseMargin = 0.0;
+
     plannedPairs = plannedPairs.map((pair) => {
       const sizing = findLotMapEntry(pair.symbol);
       if (!sizing || !Number.isFinite(sizing.lot)) {
@@ -473,6 +491,16 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
         ? (sizing.move_1pct_usd as number)
         : null;
       const moveNet = movePerLeg !== null ? Math.abs(pair.net) * movePerLeg : null;
+
+      const perLegMargin =
+        Number.isFinite((sizing as any).margin_required)
+          ? Number((sizing as any).margin_required)
+          : 0;
+      if (Number.isFinite(perLegMargin) && perLegMargin > 0) {
+        grossMargin += perLegMargin * pair.legs.length;
+        bestCaseMargin += perLegMargin * Math.abs(pair.net);
+      }
+
       return {
         ...pair,
         units: perLegLot,
@@ -490,6 +518,19 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
         legs: Array<typeof pair.legs[number] & { units: number; move1pctUsd?: number }>;
       };
     });
+
+    const buffer = 0.1;
+    const scale =
+      marginAvailable && grossMargin > 0
+        ? Math.min(1, (marginAvailable * (1 - buffer)) / grossMargin)
+        : null;
+    plannedSummary = {
+      marginUsed: grossMargin,
+      marginUsedBestCase: bestCaseMargin,
+      marginAvailable,
+      scale,
+      currency: account.currency === "USD" ? "$" : `${account.currency} `,
+    };
   }
   const journalRows = [
     ...(account.recent_logs ?? []).map((log) => ({
@@ -536,6 +577,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
           plannedNote: null,
           journalCount: journalRows.length,
         }}
+        plannedSummary={plannedSummary ?? undefined}
         equity={{
           title: "Weekly equity curve (%)",
           points: equityCurvePoints,
