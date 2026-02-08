@@ -410,12 +410,43 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   if (!allowPlannedWeek) {
     plannedPairs = [];
   }
-  const lotMapBySymbol = new Map(
-    account?.lot_map?.map((row) => [row.symbol, row]) ?? [],
-  );
-  if (plannedPairs.length > 0 && lotMapBySymbol.size > 0) {
+  const lotMapRows = account?.lot_map ?? [];
+  const findLotMapEntry = (symbol: string) => {
+    const target = symbol.trim().toUpperCase();
+    if (!target) return null;
+
+    // 1) Exact match (case-insensitive)
+    const exact = lotMapRows.find((row) => row.symbol?.toUpperCase() === target);
+    if (exact) return exact;
+
+    // 2) Broker suffix/prefix match (e.g. AUDCAD.m, EURUSD-ECN)
+    const startsWith = lotMapRows.find((row) => row.symbol?.toUpperCase().startsWith(target));
+    if (startsWith) return startsWith;
+
+    // 3) FX pairs: sometimes planned uses 6-char code but broker adds suffix
+    if (target.length === 6) {
+      const fx = lotMapRows.find((row) => row.symbol?.toUpperCase().startsWith(target));
+      if (fx) return fx;
+    }
+
+    // 4) Last resort: strip non-alphanumerics and try contains
+    const stripped = target.replace(/[^A-Z0-9]/g, "");
+    if (stripped) {
+      const fuzzy = lotMapRows.find((row) =>
+        String(row.symbol ?? "")
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, "")
+          .includes(stripped),
+      );
+      if (fuzzy) return fuzzy;
+    }
+
+    return null;
+  };
+
+  if (plannedPairs.length > 0 && lotMapRows.length > 0) {
     plannedPairs = plannedPairs.map((pair) => {
-      const sizing = lotMapBySymbol.get(pair.symbol);
+      const sizing = findLotMapEntry(pair.symbol);
       if (!sizing || !Number.isFinite(sizing.lot)) {
         return pair;
       }

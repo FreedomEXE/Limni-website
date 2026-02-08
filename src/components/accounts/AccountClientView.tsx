@@ -127,16 +127,21 @@ function SimpleListTable({
   emptyState,
   renderRow,
   maxHeight = 520,
+  gridClassName,
 }: {
   columns: Array<{ key: string; label: string }>;
   rows: Array<{ id: string }>;
   emptyState?: ReactNode;
   renderRow: (row: any) => ReactNode;
   maxHeight?: number;
+  gridClassName?: string;
 }) {
+  const headerGrid =
+    gridClassName ??
+    "grid-cols-[repeat(auto-fit,minmax(120px,1fr))]";
   return (
     <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3 border-b border-[var(--panel-border)] px-4 py-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+      <div className={`grid ${headerGrid} gap-3 border-b border-[var(--panel-border)] px-4 py-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]`}>
         {columns.map((col) => (
           <div key={col.key}>{col.label}</div>
         ))}
@@ -229,7 +234,8 @@ export default function AccountClientView({
   };
 
   const showKpis = activeView === "overview";
-  const isOanda = header.providerLabel.toLowerCase() === "oanda";
+  const providerKey = header.providerLabel.toLowerCase();
+  const isOanda = providerKey === "oanda";
   const directionForNet = (net: number) => {
     if (net > 0) return "LONG";
     if (net < 0) return "SHORT";
@@ -280,7 +286,7 @@ export default function AccountClientView({
   }, 0);
 
   const metricLabel = statusFilter === "pending" ? "Risk (1%)" : "P/L";
-  const sizeUnitLabel = isOanda ? "units" : "lots";
+  const sizeUnitLabel = isOanda ? "units" : providerKey === "bitget" ? "qty" : "lots";
   const rowGridCols =
     "grid-cols-[minmax(160px,1.2fr)_minmax(110px,0.7fr)_minmax(150px,0.9fr)_minmax(150px,0.9fr)_minmax(110px,0.5fr)]";
 
@@ -409,6 +415,15 @@ export default function AccountClientView({
               ) : null}
             </div>
           ) : null}
+          {statusFilter === "pending" &&
+          plannedRows.length > 0 &&
+          plannedRows.every((row) => !Number.isFinite(row.netUnits as number)) &&
+          providerKey === "mt5" ? (
+            <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
+              Waiting for MT5 sizing push. Update the EA to the latest version and ensure it is pushing `lot_map`
+              (and that the DB migration was run). Until then, Size and Risk will show as `—`.
+            </div>
+          ) : null}
           <SimpleListTable
             columns={[
               { key: "symbol", label: "Symbol" },
@@ -420,9 +435,12 @@ export default function AccountClientView({
             rows={filterRows([...plannedRows, ...openRows, ...closedRows])}
             emptyState="No positions for this week."
             maxHeight={520}
+            gridClassName={rowGridCols}
             renderRow={(row) => (
               <details className="group">
-                <summary className={`grid cursor-pointer list-none ${rowGridCols} gap-3`}>
+                <summary
+                  className={`grid cursor-pointer list-none ${rowGridCols} gap-3 [&::-webkit-details-marker]:hidden`}
+                >
                   <span className="font-semibold">{row.symbol}</span>
                   <span
                     className={
@@ -470,10 +488,10 @@ export default function AccountClientView({
                   </span>
                 </summary>
                 {row.legs && row.legs.length > 0 ? (
-                  <div className="mt-3 space-y-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3 text-xs text-[color:var(--muted)]">
+                  <div className="mt-3 space-y-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-0 py-3 text-xs text-[color:var(--muted)]">
                     {"model" in row.legs[0] ? (
                       (row.legs as Array<{ model: string; direction: string; units?: number | null; move1pctUsd?: number | null }>).map((leg, index) => (
-                        <div key={`${row.symbol}-${index}`} className={`grid ${rowGridCols} gap-3`}>
+                        <div key={`${row.symbol}-${index}`} className={`grid ${rowGridCols} gap-3 px-4`}>
                           <span className="font-semibold text-[var(--foreground)]">{leg.model}</span>
                           <span
                             className={
@@ -511,7 +529,7 @@ export default function AccountClientView({
                         openTime?: string;
                         closeTime?: string;
                       }>).map((leg) => (
-                        <div key={leg.id} className={`grid ${rowGridCols} gap-3`}>
+                        <div key={leg.id} className={`grid ${rowGridCols} gap-3 px-4`}>
                           <span className="font-semibold text-[var(--foreground)]">{leg.basket}</span>
                           <span className={leg.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>{leg.side}</span>
                           <span>{leg.lots.toFixed(2)} lots</span>

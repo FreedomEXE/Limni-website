@@ -4,6 +4,8 @@ import AccountClientView from "@/components/accounts/AccountClientView";
 import { getConnectedAccount, listConnectedAccounts } from "@/lib/connectedAccounts";
 import { formatDateTimeET } from "@/lib/time";
 import { buildBasketSignals } from "@/lib/basketSignals";
+import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
+import { loadConnectedAccountSecretsByKey } from "@/lib/connectedAccounts";
 import {
   buildBitgetPlannedTrades,
   filterForBitget,
@@ -23,6 +25,7 @@ import { buildAccountEquityCurve } from "@/lib/accountEquityCurve";
 import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
 import { buildOandaSizingForAccount } from "@/lib/oandaSizing";
 import { unstable_noStore } from "next/cache";
+import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +76,64 @@ function extendToWindow(
     return points;
   }
   return [...points, { ...last, ts_utc: windowEndUtc }];
+}
+
+async function fetchBitgetUsdtEquity(accountKey: string): Promise<number | null> {
+  const record = await loadConnectedAccountSecretsByKey(accountKey);
+  const secrets = record?.secrets as Record<string, unknown> | undefined;
+  const apiKey = typeof secrets?.apiKey === "string" ? (secrets.apiKey as string) : "";
+  const apiSecret = typeof secrets?.apiSecret === "string" ? (secrets.apiSecret as string) : "";
+  const apiPassphrase =
+    typeof secrets?.apiPassphrase === "string" ? (secrets.apiPassphrase as string) : "";
+
+  if (!apiKey || !apiSecret || !apiPassphrase) {
+    return null;
+  }
+
+  const productType = process.env.BITGET_PRODUCT_TYPE ?? "USDT-FUTURES";
+  const path = "/api/v2/mix/account/accounts";
+  const params = new URLSearchParams({ productType });
+  const query = `?${params.toString()}`;
+  const body = "";
+  const timestamp = Date.now().toString();
+  const prehash = `${timestamp}GET${path}${query}${body}`;
+  const signature = crypto.createHmac("sha256", apiSecret).update(prehash).digest("base64");
+
+  const response = await fetch(`https://api.bitget.com${path}${query}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "ACCESS-KEY": apiKey,
+      "ACCESS-SIGN": signature,
+      "ACCESS-TIMESTAMP": timestamp,
+      "ACCESS-PASSPHRASE": apiPassphrase,
+      locale: "en-US",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    console.error("Bitget equity fetch failed:", response.status, text);
+    return null;
+  }
+
+  const payload = (await response.json()) as {
+    code?: string;
+    msg?: string;
+    data?: Array<{ marginCoin?: string; equity?: string; usdtEquity?: string }>;
+  };
+
+  if (payload.code && payload.code !== "00000") {
+    console.error("Bitget equity API error:", payload.code, payload.msg);
+    return null;
+  }
+
+  const list = Array.isArray(payload.data) ? payload.data : [];
+  const row =
+    list.find((item) => String(item.marginCoin ?? "").toUpperCase() === "USDT") ?? list[0];
+  const equity = Number(row?.usdtEquity ?? row?.equity);
+  return Number.isFinite(equity) && equity > 0 ? equity : null;
 }
 
 /**
@@ -267,13 +328,73 @@ export default async function ConnectedAccountPage({
     if (account.provider === "bitget") {
       const filtered = filterForBitget(basketSignals.pairs);
       const planned = buildBitgetPlannedTrades(filtered);
-      plannedPairs = planned.pairs;
+      plannedPairs = planned.pairs.map((pair) => ({
+        ...pair,
+        net: pair.net > 0 ? 1 : pair.net < 0 ? -1 : 0,
+      }));
       plannedNote = planned.note ?? null;
 
     } else if (account.provider === "oanda") {
       const filtered = filterForOandaFx(basketSignals.pairs);
       plannedPairs = groupSignals(filtered);
     }
+  }
+
+  if (account.provider === "bitget" && plannedPairs.length > 0) {
+    const leverage =
+      typeof (account.config as Record<string, unknown> | null)?.leverage === "number"
+        ? (account.config as Record<string, unknown>).leverage as number
+        : Number(process.env.BITGET_LEVERAGE ?? "10");
+
+    let equity = stats.equity;
+    if (!(equity > 0)) {
+      const fetched = await fetchBitgetUsdtEquity(account.account_key);
+      if (fetched && fetched > 0) {
+        equity = fetched;
+      }
+    }
+    const notionalPerSymbol = equity > 0 && Number.isFinite(leverage) && leverage > 0
+      ? (equity * leverage) / plannedPairs.length
+      : 0;
+
+    const priceBySymbol = new Map<string, number>();
+    try {
+      const [btc, eth] = await Promise.all([
+        fetchBitgetFuturesSnapshot("BTC"),
+        fetchBitgetFuturesSnapshot("ETH"),
+      ]);
+      if (Number.isFinite(Number(btc.lastPrice))) priceBySymbol.set("BTCUSD", Number(btc.lastPrice));
+      if (Number.isFinite(Number(eth.lastPrice))) priceBySymbol.set("ETHUSD", Number(eth.lastPrice));
+    } catch (error) {
+      console.error("Failed to load Bitget prices for planned sizing:", error);
+    }
+
+    plannedPairs = plannedPairs.map((pair) => {
+      const price = priceBySymbol.get(pair.symbol);
+      if (!price || !Number.isFinite(price) || price <= 0 || notionalPerSymbol <= 0) {
+        return pair;
+      }
+      const qty = notionalPerSymbol / price;
+      const legQty = pair.legs.length > 0 ? qty / pair.legs.length : qty;
+      const move1pctNet = notionalPerSymbol * 0.01;
+      const move1pctLeg = (notionalPerSymbol / Math.max(1, pair.legs.length)) * 0.01;
+      return {
+        ...pair,
+        units: legQty,
+        netUnits: qty * (pair.net > 0 ? 1 : pair.net < 0 ? -1 : 0),
+        move1pctUsd: move1pctNet,
+        legs: pair.legs.map((leg) => ({
+          ...leg,
+          units: legQty,
+          move1pctUsd: move1pctLeg,
+        })),
+      } as typeof pair & {
+        units: number;
+        netUnits: number;
+        move1pctUsd: number;
+        legs: Array<typeof pair.legs[number] & { units: number; move1pctUsd: number }>;
+      };
+    });
   }
 
   if (account.provider === "oanda" && plannedPairs.length > 0) {
