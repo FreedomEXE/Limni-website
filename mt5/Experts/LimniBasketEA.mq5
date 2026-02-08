@@ -13,6 +13,13 @@ input bool ResetStateOnInit = false;
 input int ApiPollIntervalSeconds = 60;
 input double BasketLotCapPer100k = 10.0;
 input bool ManualMode = false;
+enum RiskProfile
+{
+  RISK_HIGH = 0,
+  RISK_LOW = 1
+};
+input RiskProfile RiskMode = RISK_HIGH;
+input double LowRiskLegScale = 0.2;
 input string SymbolAliases = "SPXUSD=SPX500,NDXUSD=NDX100,NIKKEIUSD=JPN225,WTIUSD=USOUSD,BTCUSD=BTCUSD,ETHUSD=ETHUSD";
 input bool EnforceAllowedSymbols = false;
 input string AllowedSymbols = "EURUSD*,GBPUSD*,USDJPY*,USDCHF*,USDCAD*,AUDUSD*,NZDUSD*,EURGBP*,EURJPY*,EURCHF*,EURAUD*,EURNZD*,EURCAD*,GBPJPY*,GBPCHF*,GBPAUD*,GBPNZD*,GBPCAD*,AUDJPY*,AUDCHF*,AUDCAD*,AUDNZD*,NZDJPY*,NZDCHF*,NZDCAD*,CADJPY*,CADCHF*,CHFJPY*,XAUUSD*,XAGUSD*,WTIUSD*,USOUSD*,SPXUSD*,NDXUSD*,NIKKEIUSD*,SPX500*,NDX100*,JPN225*,BTCUSD*,ETHUSD*";
@@ -218,6 +225,10 @@ void GetWeeklyTradeStats(int &tradeCount, double &winRatePct);
 void PushStatsIfDue();
 bool SendAccountSnapshot();
 bool HttpPostJson(const string url, const string payload, string &response);
+double GetLegRiskScale();
+string RiskModeToString();
+void ApplyRiskScale(const string symbol, double scale, double &targetLot, double &finalLot,
+                    double &deviationPct, double &equityPerSymbol, double &marginRequired);
 string BuildAccountPayload();
 string BuildPositionsArray();
 string BuildClosedPositionsArray();
@@ -1048,7 +1059,49 @@ double GetOneToOneLotForSymbol(const string symbol, const string assetClass)
   if(!ComputeOneToOneLot(symbol, assetClass, targetLot, finalLot, deviationPct,
                          equityPerSymbol, marginRequired))
     return 0.0;
+  ApplyRiskScale(symbol, GetLegRiskScale(), targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired);
   return finalLot;
+}
+
+double GetLegRiskScale()
+{
+  if(RiskMode == RISK_LOW)
+  {
+    if(LowRiskLegScale <= 0.0)
+      return 0.0;
+    return LowRiskLegScale;
+  }
+  return 1.0;
+}
+
+string RiskModeToString()
+{
+  return (RiskMode == RISK_LOW ? "LOW" : "HIGH");
+}
+
+void ApplyRiskScale(const string symbol, double scale, double &targetLot, double &finalLot,
+                    double &deviationPct, double &equityPerSymbol, double &marginRequired)
+{
+  if(scale <= 0.0)
+  {
+    targetLot = 0.0;
+    finalLot = 0.0;
+    deviationPct = 0.0;
+    equityPerSymbol = 0.0;
+    marginRequired = 0.0;
+    return;
+  }
+  if(MathAbs(scale - 1.0) < 1e-9)
+    return;
+
+  targetLot *= scale;
+  equityPerSymbol *= scale;
+  finalLot = NormalizeVolume(symbol, finalLot * scale);
+  marginRequired = CalculateMarginRequired(symbol, finalLot);
+  if(targetLot > 0.0)
+    deviationPct = (finalLot - targetLot) / targetLot * 100.0;
+  else
+    deviationPct = 0.0;
 }
 
 double CalculateMarginRequired(const string symbol, double lots)
@@ -1408,6 +1461,8 @@ void TryAddPositions()
     double marginRequired = 0.0;
     bool ok = ComputeOneToOneLot(symbol, assetClass, targetLot, finalLot,
                                  deviationPct, equityPerSymbol, marginRequired);
+    if(ok)
+      ApplyRiskScale(symbol, GetLegRiskScale(), targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired);
     double vol = finalLot;
     if(vol <= 0.0)
     {
@@ -2221,7 +2276,8 @@ void UpdateDashboard()
   color ddColor = (g_maxDrawdownPct <= 0.0 ? goodColor : badColor);
 
   double baseEquity = g_baselineEquity > 0.0 ? g_baselineEquity : AccountInfoDouble(ACCOUNT_BALANCE);
-  string lotLine = StringFormat("Sizing: 1:1  |  Base: %.2f", baseEquity);
+  double legScale = GetLegRiskScale();
+  string lotLine = StringFormat("Sizing: 1:1 x %.2f (%s)  |  Base: %.2f", legScale, RiskModeToString(), baseEquity);
   string multLine = StringFormat("Mult: FX %.2f  Crypto %.2f  Cmds %.2f  Ind %.2f",
                                  FxLotMultiplier, CryptoLotMultiplier, CommoditiesLotMultiplier, IndicesLotMultiplier);
 
@@ -2933,6 +2989,7 @@ string BuildLotMapArray()
     double marginRequired = 0.0;
     if(!ComputeOneToOneLot(symbol, assetClass, targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired))
       continue;
+    ApplyRiskScale(symbol, GetLegRiskScale(), targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired);
     double move1pct = ComputeMove1PctUsd(symbol, finalLot);
 
     if(!firstRow)
