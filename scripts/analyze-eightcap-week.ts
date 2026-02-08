@@ -80,6 +80,23 @@ function buildAssetClassMap() {
   return map;
 }
 
+function toOandaSymbol(symbol: string) {
+  const upper = symbol.trim().toUpperCase();
+  if (!upper) return symbol;
+  // Map common broker aliases to the canonical symbol names used across the app,
+  // so `getOandaInstrument()` can apply overrides correctly.
+  const aliasToCanonical: Record<string, string> = {
+    SPX500: "SPXUSD",
+    NAS100: "NDXUSD",
+    NDX100: "NDXUSD",
+    JP225: "NIKKEIUSD",
+    JPN225: "NIKKEIUSD",
+    USOUSD: "WTIUSD",
+    WTICO: "WTIUSD",
+  };
+  return aliasToCanonical[upper] ?? upper;
+}
+
 async function main() {
   loadDotEnv();
 
@@ -246,7 +263,7 @@ async function main() {
     const key = `${symbol}|${weekOpen.toISO()}|${simEnd.toISO()}`;
     if (priceCache.has(key)) return priceCache.get(key) ?? null;
     try {
-      const candle = await fetchOandaCandle(symbol, weekOpen, simEnd);
+      const candle = await fetchOandaCandle(toOandaSymbol(symbol), weekOpen, simEnd);
       const close = candle?.close ?? null;
       priceCache.set(key, close);
       return close;
