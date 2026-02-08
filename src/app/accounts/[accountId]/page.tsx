@@ -415,13 +415,29 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     const target = symbol.trim().toUpperCase();
     if (!target) return null;
 
+    const aliasMap: Record<string, string[]> = {
+      // Planned symbols (canonical) to common broker aliases.
+      // These mirror the EA defaults in `SymbolAliases`.
+      SPXUSD: ["SPX500", "SPXUSD"],
+      NDXUSD: ["NDX100", "NDXUSD"],
+      NIKKEIUSD: ["JPN225", "NIKKEIUSD"],
+      WTIUSD: ["USOUSD", "WTIUSD"],
+    };
+    const candidates = Array.from(
+      new Set([target, ...(aliasMap[target] ?? [])]),
+    );
+
     // 1) Exact match (case-insensitive)
-    const exact = lotMapRows.find((row) => row.symbol?.toUpperCase() === target);
-    if (exact) return exact;
+    for (const candidate of candidates) {
+      const exact = lotMapRows.find((row) => row.symbol?.toUpperCase() === candidate);
+      if (exact) return exact;
+    }
 
     // 2) Broker suffix/prefix match (e.g. AUDCAD.m, EURUSD-ECN)
-    const startsWith = lotMapRows.find((row) => row.symbol?.toUpperCase().startsWith(target));
-    if (startsWith) return startsWith;
+    for (const candidate of candidates) {
+      const startsWith = lotMapRows.find((row) => row.symbol?.toUpperCase().startsWith(candidate));
+      if (startsWith) return startsWith;
+    }
 
     // 3) FX pairs: sometimes planned uses 6-char code but broker adds suffix
     if (target.length === 6) {
@@ -430,8 +446,9 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     }
 
     // 4) Last resort: strip non-alphanumerics and try contains
-    const stripped = target.replace(/[^A-Z0-9]/g, "");
-    if (stripped) {
+    for (const candidate of candidates) {
+      const stripped = candidate.replace(/[^A-Z0-9]/g, "");
+      if (!stripped) continue;
       const fuzzy = lotMapRows.find((row) =>
         String(row.symbol ?? "")
           .toUpperCase()

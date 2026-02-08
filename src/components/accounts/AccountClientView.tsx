@@ -35,10 +35,14 @@ type DrawerData = {
       direction: string;
       units?: number | null;
       move1pctUsd?: number | null;
+      sizeDisplay?: string | null;
+      riskDisplay?: string | null;
     }>;
     units?: number | null;
     netUnits?: number | null;
     move1pctUsd?: number | null;
+    sizeDisplay?: string | null;
+    riskDisplay?: string | null;
   }>;
   mappingRows: Array<{
     symbol: string;
@@ -285,7 +289,12 @@ export default function AccountClientView({
     return sum;
   }, 0);
 
-  const metricLabel = statusFilter === "pending" ? "Risk (1%)" : "P/L";
+  const metricLabel =
+    statusFilter === "pending"
+      ? providerKey === "bitget"
+        ? "Risk"
+        : "Risk (1%)"
+      : "P/L";
   const sizeUnitLabel = isOanda ? "units" : providerKey === "bitget" ? "qty" : "lots";
   const rowGridCols =
     "grid-cols-[minmax(160px,1.2fr)_minmax(110px,0.7fr)_minmax(150px,0.9fr)_minmax(150px,0.9fr)_minmax(110px,0.5fr)]";
@@ -455,7 +464,9 @@ export default function AccountClientView({
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
                     {row.rowType === "planned"
-                      ? Number.isFinite(row.netUnits as number)
+                      ? typeof (row as any).sizeDisplay === "string" && (row as any).sizeDisplay
+                        ? (row as any).sizeDisplay
+                        : Number.isFinite(row.netUnits as number)
                         ? isOanda
                           ? `${Math.abs(row.netUnits as number).toFixed(0)} ${sizeUnitLabel}`
                           : `${Math.abs(row.netUnits as number).toFixed(2)} ${sizeUnitLabel}`
@@ -468,9 +479,11 @@ export default function AccountClientView({
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
                     {row.rowType === "planned"
-                      ? Number.isFinite(row.move1pctUsd as number)
-                        ? `$${(row.move1pctUsd as number).toFixed(2)}`
-                        : "—"
+                      ? typeof (row as any).riskDisplay === "string" && (row as any).riskDisplay
+                        ? (row as any).riskDisplay
+                        : Number.isFinite(row.move1pctUsd as number)
+                          ? `$${(row.move1pctUsd as number).toFixed(2)}`
+                          : "—"
                       : "pnl" in row
                         ? `${(row.pnl as number).toFixed(2)}`
                         : "net" in row
@@ -490,7 +503,14 @@ export default function AccountClientView({
                 {row.legs && row.legs.length > 0 ? (
                   <div className="mt-3 space-y-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-0 py-3 text-xs text-[color:var(--muted)]">
                     {"model" in row.legs[0] ? (
-                      (row.legs as Array<{ model: string; direction: string; units?: number | null; move1pctUsd?: number | null }>).map((leg, index) => (
+                      (row.legs as Array<{
+                        model: string;
+                        direction: string;
+                        units?: number | null;
+                        move1pctUsd?: number | null;
+                        sizeDisplay?: string | null;
+                        riskDisplay?: string | null;
+                      }>).map((leg, index) => (
                         <div key={`${row.symbol}-${index}`} className={`grid ${rowGridCols} gap-3 px-4`}>
                           <span className="font-semibold text-[var(--foreground)]">{leg.model}</span>
                           <span
@@ -505,16 +525,20 @@ export default function AccountClientView({
                             {leg.direction}
                           </span>
                           <span>
-                            {Number.isFinite(leg.units ?? NaN)
+                            {typeof leg.sizeDisplay === "string" && leg.sizeDisplay
+                              ? leg.sizeDisplay
+                              : Number.isFinite(leg.units ?? NaN)
                               ? isOanda
                                 ? `${leg.units?.toFixed(0)} ${sizeUnitLabel}`
                                 : `${leg.units?.toFixed(2)} ${sizeUnitLabel}`
                               : "—"}
                           </span>
                           <span>
-                            {Number.isFinite(leg.move1pctUsd ?? NaN)
-                              ? `$${leg.move1pctUsd?.toFixed(2)}`
-                              : "—"}
+                            {typeof leg.riskDisplay === "string" && leg.riskDisplay
+                              ? leg.riskDisplay
+                              : Number.isFinite(leg.move1pctUsd ?? NaN)
+                                ? `$${leg.move1pctUsd?.toFixed(2)}`
+                                : "—"}
                           </span>
                           <span />
                         </div>

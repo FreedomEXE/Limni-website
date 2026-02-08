@@ -353,9 +353,11 @@ export default async function ConnectedAccountPage({
         equity = fetched;
       }
     }
-    const notionalPerSymbol = equity > 0 && Number.isFinite(leverage) && leverage > 0
-      ? (equity * leverage) / plannedPairs.length
-      : 0;
+    const marginPerSymbol = equity > 0 ? equity / plannedPairs.length : 0;
+    const notionalPerSymbol =
+      equity > 0 && Number.isFinite(leverage) && leverage > 0
+        ? (equity * leverage) / plannedPairs.length
+        : 0;
 
     const priceBySymbol = new Map<string, number>();
     try {
@@ -378,21 +380,40 @@ export default async function ConnectedAccountPage({
       const legQty = pair.legs.length > 0 ? qty / pair.legs.length : qty;
       const move1pctNet = notionalPerSymbol * 0.01;
       const move1pctLeg = (notionalPerSymbol / Math.max(1, pair.legs.length)) * 0.01;
+      const sizeDisplay = Number.isFinite(leverage) && leverage > 0 ? `${leverage}x` : null;
+      const riskDisplay = marginPerSymbol > 0 ? `$${marginPerSymbol.toFixed(2)}` : null;
+      const riskDisplayLeg =
+        marginPerSymbol > 0
+          ? `$${(marginPerSymbol / Math.max(1, pair.legs.length)).toFixed(2)}`
+          : null;
       return {
         ...pair,
         units: legQty,
         netUnits: qty * (pair.net > 0 ? 1 : pair.net < 0 ? -1 : 0),
         move1pctUsd: move1pctNet,
+        sizeDisplay,
+        riskDisplay,
         legs: pair.legs.map((leg) => ({
           ...leg,
           units: legQty,
           move1pctUsd: move1pctLeg,
+          sizeDisplay,
+          riskDisplay: riskDisplayLeg,
         })),
       } as typeof pair & {
         units: number;
         netUnits: number;
         move1pctUsd: number;
-        legs: Array<typeof pair.legs[number] & { units: number; move1pctUsd: number }>;
+        sizeDisplay: string | null;
+        riskDisplay: string | null;
+        legs: Array<
+          typeof pair.legs[number] & {
+            units: number;
+            move1pctUsd: number;
+            sizeDisplay?: string | null;
+            riskDisplay?: string | null;
+          }
+        >;
       };
     });
   }
@@ -533,6 +554,8 @@ export default async function ConnectedAccountPage({
             units: "units" in pair ? (pair as any).units : null,
             netUnits: "netUnits" in pair ? (pair as any).netUnits : null,
             move1pctUsd: "move1pctUsd" in pair ? (pair as any).move1pctUsd : null,
+            sizeDisplay: "sizeDisplay" in pair ? (pair as any).sizeDisplay : null,
+            riskDisplay: "riskDisplay" in pair ? (pair as any).riskDisplay : null,
           })),
           mappingRows: mappedRows.map((row) => ({
             symbol: row.symbol,
