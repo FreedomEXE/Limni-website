@@ -65,7 +65,10 @@ export function groupSignals(pairs: BasketSignal[], models = UNIVERSAL_MODELS): 
     entry.legs.push(leg);
     entry.net += directionToScore(pair.direction);
   }
-  return Array.from(grouped.values()).sort((a, b) => a.symbol.localeCompare(b.symbol));
+  // Drop fully-netted symbols (no tradable net exposure).
+  return Array.from(grouped.values())
+    .filter((row) => row.net !== 0)
+    .sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
 export function filterForOanda(pairs: BasketSignal[]) {

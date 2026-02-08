@@ -119,6 +119,8 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
             assetClass: asset.id,
             snapshot,
             sentiment,
+            // Must match the basket/bot signal generation (no artificial UI cap).
+            maxSignals: 200,
           })
         : [];
     return signals.map((signal) => ({
@@ -188,6 +190,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
           assetClass: asset.id,
           snapshot,
           sentiment: previousSentiment.length > 0 ? previousSentiment : sentiment,
+          maxSignals: 200,
         });
         signals.forEach((signal) => {
           previousSignals.push({

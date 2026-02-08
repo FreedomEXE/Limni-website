@@ -26,7 +26,12 @@ function parseDate(value?: string | null): Date | null {
   if (!value) {
     return null;
   }
-  const parsed = new Date(value);
+  // Date-only strings (YYYY-MM-DD) are interpreted as UTC midnight by JS Date, which
+  // can render as the previous day in America/New_York. Anchor at noon UTC to keep
+  // the displayed calendar date stable in ET.
+  const normalized =
+    /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00.000Z` : value;
+  const parsed = new Date(normalized);
   if (Number.isNaN(parsed.getTime())) {
     return null;
   }

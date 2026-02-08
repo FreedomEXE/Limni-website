@@ -13,6 +13,7 @@ import type { PairSnapshot } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
 import PerformancePeriodSelector from "@/components/performance/PerformancePeriodSelector";
+import PerformanceViewCards from "@/components/performance/PerformanceViewCards";
 import { readMarketSnapshot } from "@/lib/priceStore";
 import { DateTime } from "luxon";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
@@ -653,6 +654,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             Invalid week value. Select a valid week from the dropdown.
           </div>
         ) : null}
+
+        <PerformanceViewCards activeView={view} />
+
         <PerformanceGrid
           key={view}
           combined={{

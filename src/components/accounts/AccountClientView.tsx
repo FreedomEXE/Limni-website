@@ -11,6 +11,8 @@ import FilterBar from "@/components/common/FilterBar";
 import type { WeekOption } from "@/lib/weekState";
 import type { ReactNode } from "react";
 
+const BASKET_ORDER = ["antikythera", "blended", "dealer", "commercial", "sentiment"] as const;
+
 type HeaderConfig = {
   title: string;
   providerLabel: string;
@@ -277,6 +279,21 @@ export default function AccountClientView({
   const pendingCount = plannedRows.length;
   const openCount = openRows.length;
   const closedCount = closedRows.length;
+
+  const plannedLegCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const key of BASKET_ORDER) {
+      counts.set(key, 0);
+    }
+    for (const pair of drawerData.plannedPairs) {
+      for (const leg of pair.legs ?? []) {
+        const model = String(leg.model ?? "").toLowerCase();
+        if (!model) continue;
+        counts.set(model, (counts.get(model) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [drawerData.plannedPairs]);
   const hasPlannedLotSizes = plannedRows.some((row) => Number.isFinite(row.netUnits as number));
   const netExposure = plannedRows.reduce((sum, row) => {
     if (isOanda && Number.isFinite(row.netUnits as number)) {
@@ -378,9 +395,27 @@ export default function AccountClientView({
       {activeView === "trades" ? (
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
-            <SummaryCard label="Pending" value={pendingCount} hint="Planned trades" />
-            <SummaryCard label="Open" value={openCount} hint="Active positions" />
-            <SummaryCard label="Closed" value={closedCount} hint="Closed this week" />
+            <SummaryCard
+              label="Pending"
+              value={pendingCount}
+              hint="Planned trades"
+              onClick={() => setStatusFilter("pending")}
+              selected={statusFilter === "pending"}
+            />
+            <SummaryCard
+              label="Open"
+              value={openCount}
+              hint="Active positions"
+              onClick={() => setStatusFilter("open")}
+              selected={statusFilter === "open"}
+            />
+            <SummaryCard
+              label="Closed"
+              value={closedCount}
+              hint="Closed this week"
+              onClick={() => setStatusFilter("closed")}
+              selected={statusFilter === "closed"}
+            />
             <SummaryCard
               label="Net Exposure"
               value={
@@ -393,6 +428,19 @@ export default function AccountClientView({
               hint="Planned net exposure"
             />
           </div>
+          {statusFilter === "pending" && pendingCount > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 px-4 py-3 text-xs text-[color:var(--muted)]">
+              <span className="uppercase tracking-[0.2em]">Basket legs</span>
+              {BASKET_ORDER.map((key) => (
+                <span
+                  key={key}
+                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 font-semibold uppercase tracking-[0.18em] text-[var(--foreground)]/80"
+                >
+                  {key}: {plannedLegCounts.get(key) ?? 0}
+                </span>
+              ))}
+            </div>
+          ) : null}
           <FilterBar
             status={statusFilter}
             onStatusChange={setStatusFilter}
