@@ -37,11 +37,16 @@ const OANDA_OVERRIDES: Record<string, string> = {
   SPXUSD: "SPX500_USD",
   NDXUSD: "NAS100_USD",
   NIKKEIUSD: "JP225_USD",
+  US30: "US30_USD",
+  US2000: "US2000_USD",
   BTCUSD: "BTC_USD",
   ETHUSD: "ETH_USD",
   XAUUSD: "XAU_USD",
   XAGUSD: "XAG_USD",
   WTIUSD: "WTICO_USD",
+  SUGAR: "SUGAR_USD",
+  WHEAT: "WHEAT_USD",
+  COPPER: "XCU_USD",
 };
 
 export function getOandaInstrument(symbol: string) {

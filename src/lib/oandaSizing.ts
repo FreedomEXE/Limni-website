@@ -88,6 +88,7 @@ export type OandaSizingRow = {
   notionalUsdPerUnit?: number;
   marginRate?: number | null;
   marginUsd?: number | null;
+  tradeUnitsPrecision?: number;
   minUnits?: number;
   minNavUsd?: number;
   reason?: string;
@@ -96,12 +97,16 @@ export type OandaSizingRow = {
 export type OandaSizingResult = {
   ok: boolean;
   nav: number;
+  marginAvailable?: number;
+  marginUsed?: number;
+  currency?: string;
   fetched_at: string;
   rows: OandaSizingRow[];
 };
 
 export async function buildOandaSizingForAccount(
   accountKey: string,
+  options?: { symbols?: string[] },
 ): Promise<OandaSizingResult> {
   const record = await loadConnectedAccountSecretsByKey(accountKey);
   if (!record) {
@@ -131,16 +136,20 @@ export async function buildOandaSizingForAccount(
   );
 
   const nav = Number(summary.account.NAV ?? summary.account.balance ?? 0);
+  const marginAvailable = Number(summary.account.marginAvailable ?? NaN);
+  const marginUsed = Number(summary.account.marginUsed ?? NaN);
   if (!Number.isFinite(nav) || nav <= 0) {
     throw new Error("Invalid NAV for sizing.");
   }
 
   const instrumentMap = new Map(instruments.instruments.map((inst) => [inst.name, inst]));
-  const allPairs = [
-    ...PAIRS_BY_ASSET_CLASS.fx,
-    ...PAIRS_BY_ASSET_CLASS.indices,
-    ...PAIRS_BY_ASSET_CLASS.commodities,
-  ].map((pair) => pair.pair);
+  const allPairs = options?.symbols?.length
+    ? options.symbols
+    : [
+        ...PAIRS_BY_ASSET_CLASS.fx,
+        ...PAIRS_BY_ASSET_CLASS.indices,
+        ...PAIRS_BY_ASSET_CLASS.commodities,
+      ].map((pair) => pair.pair);
 
   const instrumentList = allPairs.map((symbol) => getOandaInstrument(symbol));
   const uniqueInstruments = Array.from(new Set(instrumentList));
@@ -196,6 +205,7 @@ export async function buildOandaSizingForAccount(
       notionalUsdPerUnit,
       marginRate: Number.isFinite(marginRate) ? marginRate : null,
       marginUsd,
+      tradeUnitsPrecision: precision,
       minUnits,
       minNavUsd,
       reason: roundedUnits > 0 ? undefined : "Below minimum sizing, defaulted to 1 unit",
@@ -205,6 +215,9 @@ export async function buildOandaSizingForAccount(
   return {
     ok: true,
     nav,
+    marginAvailable: Number.isFinite(marginAvailable) ? marginAvailable : undefined,
+    marginUsed: Number.isFinite(marginUsed) ? marginUsed : undefined,
+    currency: summary.account.currency ?? "USD",
     fetched_at: DateTime.utc().toISO(),
     rows,
   };

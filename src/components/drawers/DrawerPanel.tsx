@@ -1,7 +1,6 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 
 type DrawerPanelProps = {
   title: string;
@@ -12,9 +11,6 @@ type DrawerPanelProps = {
 };
 
 export default function DrawerPanel({ title, subtitle, open, onClose, children }: DrawerPanelProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && open) {
@@ -30,9 +26,6 @@ export default function DrawerPanel({ title, subtitle, open, onClose, children }
       onClose();
       return;
     }
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("drawer");
-    router.replace(`?${params.toString()}`, { scroll: false });
   }
 
   if (!open) {

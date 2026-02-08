@@ -8,8 +8,7 @@ import MiniSparkline from "@/components/visuals/MiniSparkline";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
 import DebugReadout from "@/components/DebugReadout";
 import SummaryCard from "@/components/accounts/SummaryCard";
-import FilterBar from "@/components/common/FilterBar";
-import VirtualizedListTable from "@/components/common/VirtualizedListTable";
+import AccountDrawer, { type DrawerMode } from "@/components/accounts/AccountDrawer";
 import type { WeekOption } from "@/lib/weekState";
 import type { ReactNode } from "react";
 
@@ -101,9 +100,7 @@ export default function AccountClientView({
   drawerData,
   settingsExtras,
 }: AccountClientViewProps) {
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("recent");
+  const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
 
   const statusBadge = useMemo(() => {
     if (!header.statusLabel) return null;
@@ -118,30 +115,11 @@ export default function AccountClientView({
     );
   }, [header.statusLabel, header.statusToneClass]);
 
-  const searchLower = search.toLowerCase();
-  const filterRows = <T extends { status?: string; searchText?: string; sortValue?: number }>(
-    rows: T[],
-  ) => {
-    const filtered = rows.filter((row) => {
-      if (statusFilter !== "all" && row.status && row.status !== statusFilter) {
-        return false;
-      }
-      if (searchLower && row.searchText && !row.searchText.toLowerCase().includes(searchLower)) {
-        return false;
-      }
-      return true;
-    });
-    if (sort === "best") {
-      return [...filtered].sort((a, b) => (b.sortValue ?? 0) - (a.sortValue ?? 0));
-    }
-    if (sort === "worst") {
-      return [...filtered].sort((a, b) => (a.sortValue ?? 0) - (b.sortValue ?? 0));
-    }
-    if (sort === "oldest") {
-      return [...filtered].reverse();
-    }
-    return filtered;
-  };
+  const openPositionsCount = drawerData.openPositions.length;
+  const plannedCount = drawerData.plannedPairs.length;
+  const closedCount = drawerData.closedGroups.length;
+  const journalCount = drawerData.journalRows.length;
+  const mappingCount = drawerData.mappingRows.length;
 
   return (
     <PageShell
@@ -187,6 +165,7 @@ export default function AccountClientView({
           balance={kpi.balance}
           currency={kpi.currency}
           scopeLabel={kpi.scopeLabel}
+          onOpenDetails={() => setDrawerMode("kpi")}
         />
       }
     >
@@ -209,16 +188,43 @@ export default function AccountClientView({
               label="Open Positions"
               value={overview.openPositions}
               hint="Live positions right now"
+              action={
+                <button
+                  type="button"
+                  onClick={() => setDrawerMode("positions")}
+                  className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                >
+                  View drawer
+                </button>
+              }
             />
             <SummaryCard
               label="Planned Trades"
               value={overview.plannedCount}
               hint={overview.plannedNote ?? "Upcoming basket trades"}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setDrawerMode("planned")}
+                  className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                >
+                  View drawer
+                </button>
+              }
             />
             <SummaryCard
               label="Mappings"
               value={overview.mappingCount}
               hint="Instrument availability"
+              action={
+                <button
+                  type="button"
+                  onClick={() => setDrawerMode("mapping")}
+                  className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                >
+                  View drawer
+                </button>
+              }
             />
           </div>
         </div>
@@ -247,193 +253,223 @@ export default function AccountClientView({
       ) : null}
 
       {activeView === "positions" ? (
-        <div className="space-y-4">
-          <FilterBar
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            search={search}
-            onSearchChange={setSearch}
-            sort={sort}
-            onSortChange={setSort}
-          />
-          <VirtualizedListTable
-            columns={[
-              { key: "symbol", label: "Symbol" },
-              { key: "side", label: "Side" },
-              { key: "lots", label: "Size" },
-              { key: "pnl", label: "P&L" },
-            ]}
-            rows={filterRows(
-              drawerData.openPositions.map((row) => ({
-                ...row,
-                status: "open",
-                searchText: `${row.symbol} ${row.side}`,
-                sortValue: row.pnl,
-              }))
-            )}
-            emptyState="No open positions in this week."
-            renderRow={(row) => (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-                <span className="font-semibold">{row.symbol}</span>
-                <span className={row.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>
-                  {row.side}
-                </span>
-                <span className="text-xs text-[color:var(--muted)]">{row.lots.toFixed(2)} lots</span>
-                <span className={row.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>
-                  {row.pnl.toFixed(2)}
-                </span>
-              </div>
-            )}
-          />
-        </div>
+        <SummaryCard
+          label="Open Positions"
+          value={openPositionsCount}
+          hint="View the full list in the drawer."
+          action={
+            <button
+              type="button"
+              onClick={() => setDrawerMode("positions")}
+              className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+            >
+              View drawer
+            </button>
+          }
+        />
       ) : null}
 
       {activeView === "planned" ? (
-        <div className="space-y-4">
-          <FilterBar
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            search={search}
-            onSearchChange={setSearch}
-            sort={sort}
-            onSortChange={setSort}
-          />
-          <VirtualizedListTable
-            columns={[
-              { key: "symbol", label: "Symbol" },
-              { key: "asset", label: "Asset" },
-              { key: "net", label: "Net" },
-              { key: "legs", label: "Legs" },
-            ]}
-            rows={filterRows(
-              drawerData.plannedPairs.map((pair) => ({
-                ...pair,
-                status: "pending",
-                searchText: `${pair.symbol} ${pair.assetClass}`,
-                sortValue: pair.net,
-              }))
-            )}
-            emptyState="No planned trades for this week."
-            renderRow={(row) => (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-                <span className="font-semibold">{row.symbol}</span>
-                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  {row.assetClass}
-                </span>
-                <span className={row.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
-                  Net {row.net}
-                </span>
-                <span className="text-xs text-[color:var(--muted)]">{row.legsCount} legs</span>
-              </div>
-            )}
-          />
-        </div>
+        <SummaryCard
+          label="Planned Trades"
+          value={plannedCount}
+          hint={overview.plannedNote ?? "Upcoming basket trades."}
+          action={
+            <button
+              type="button"
+              onClick={() => setDrawerMode("planned")}
+              className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+            >
+              View drawer
+            </button>
+          }
+        />
       ) : null}
 
       {activeView === "history" ? (
-        <div className="space-y-4">
-          <FilterBar
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            search={search}
-            onSearchChange={setSearch}
-            sort={sort}
-            onSortChange={setSort}
-          />
-          <VirtualizedListTable
-            columns={[
-              { key: "symbol", label: "Symbol" },
-              { key: "side", label: "Side" },
-              { key: "net", label: "Net PnL" },
-              { key: "lots", label: "Lots" },
-            ]}
-            rows={filterRows(
-              drawerData.closedGroups.map((group) => ({
-                ...group,
-                status: "closed",
-                searchText: `${group.symbol} ${group.side}`,
-                sortValue: group.net,
-              }))
-            )}
-            emptyState="No closed trades recorded for this week."
-            renderRow={(row) => (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-                <span className="font-semibold">{row.symbol}</span>
-                <span className={row.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>
-                  {row.side}
-                </span>
-                <span className={row.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
-                  {row.net.toFixed(2)}
-                </span>
-                <span className="text-xs text-[color:var(--muted)]">{row.lots.toFixed(2)} lots</span>
-              </div>
-            )}
-          />
-        </div>
+        <SummaryCard
+          label="Closed Trades"
+          value={closedCount}
+          hint="Grouped by basket and session."
+          action={
+            <button
+              type="button"
+              onClick={() => setDrawerMode("closed")}
+              className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+            >
+              View drawer
+            </button>
+          }
+        />
       ) : null}
 
       {activeView === "journal" ? (
-        <div className="space-y-4">
-          <VirtualizedListTable
-            columns={[
-              { key: "label", label: "Type" },
-              { key: "value", label: "Entry" },
-            ]}
-            rows={drawerData.journalRows}
-            emptyState="No journal entries yet."
-            renderRow={(row) => (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  {row.label}
-                </span>
-                <span className="text-xs text-[var(--foreground)]">{row.value}</span>
-              </div>
-            )}
-          />
-        </div>
+        <SummaryCard
+          label="Journal"
+          value={journalCount}
+          hint="Operational notes and runtime logs."
+          action={
+            <button
+              type="button"
+              onClick={() => setDrawerMode("journal")}
+              className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+            >
+              View drawer
+            </button>
+          }
+        />
       ) : null}
 
       {activeView === "settings" ? (
         <div className="space-y-4">
-          <FilterBar
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            search={search}
-            onSearchChange={setSearch}
-            sort={sort}
-            onSortChange={setSort}
-          />
-          <VirtualizedListTable
-            columns={[
-              { key: "symbol", label: "Symbol" },
-              { key: "instrument", label: "Instrument" },
-              { key: "status", label: "Status" },
-            ]}
-            rows={filterRows(
-              drawerData.mappingRows.map((row) => ({
-                ...row,
-                status: row.available ? "open" : "closed",
-                searchText: `${row.symbol} ${row.instrument}`,
-              }))
-            )}
-            emptyState="No mapping data available."
-            renderRow={(row) => (
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-                <span className="font-semibold">{row.symbol}</span>
-                <span className="text-xs text-[color:var(--muted)]">{row.instrument}</span>
-                <span
-                  className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                    row.available ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
-                  }`}
-                >
-                  {row.available ? "Available" : "Missing"}
-                </span>
-              </div>
-            )}
+          <SummaryCard
+            label="Instrument Mapping"
+            value={mappingCount}
+            hint="Availability and mapping details."
+            action={
+              <button
+                type="button"
+                onClick={() => setDrawerMode("mapping")}
+                className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+              >
+                View drawer
+              </button>
+            }
           />
           {settingsExtras ? <div>{settingsExtras}</div> : null}
         </div>
       ) : null}
+
+      <AccountDrawer
+        mode={drawerMode}
+        onClose={() => setDrawerMode(null)}
+        configs={{
+          positions: {
+            title: "Open Positions",
+            subtitle: "Live positions in this week.",
+            showFilters: true,
+            columns: [
+              { key: "symbol", label: "Symbol" },
+              { key: "side", label: "Side" },
+              { key: "lots", label: "Size" },
+              { key: "pnl", label: "P&L" },
+            ],
+            rows: drawerData.openPositions.map((row) => ({
+              id: `${row.symbol}-${row.side}`,
+              status: "open",
+              searchText: `${row.symbol} ${row.side}`,
+              sortValue: row.pnl,
+              cells: [
+                <span key="symbol" className="font-semibold">{row.symbol}</span>,
+                <span key="side" className={row.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>{row.side}</span>,
+                <span key="lots" className="text-xs text-[color:var(--muted)]">{row.lots.toFixed(2)} lots</span>,
+                <span key="pnl" className={row.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>{row.pnl.toFixed(2)}</span>,
+              ],
+            })),
+            emptyState: "No open positions in this week.",
+          },
+          planned: {
+            title: "Planned Trades",
+            subtitle: overview.plannedNote ?? "Upcoming basket trades.",
+            showFilters: true,
+            columns: [
+              { key: "symbol", label: "Symbol" },
+              { key: "asset", label: "Asset" },
+              { key: "net", label: "Net" },
+              { key: "legs", label: "Legs" },
+            ],
+            rows: drawerData.plannedPairs.map((pair) => ({
+              id: pair.symbol,
+              status: "pending",
+              searchText: `${pair.symbol} ${pair.assetClass}`,
+              sortValue: pair.net,
+              cells: [
+                <span key="symbol" className="font-semibold">{pair.symbol}</span>,
+                <span key="asset" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">{pair.assetClass}</span>,
+                <span key="net" className={pair.net >= 0 ? "text-emerald-700" : "text-rose-700"}>Net {pair.net}</span>,
+                <span key="legs" className="text-xs text-[color:var(--muted)]">{pair.legsCount} legs</span>,
+              ],
+            })),
+            emptyState: "No planned trades for this week.",
+          },
+          closed: {
+            title: "Closed Trades",
+            subtitle: "Grouped by basket and session.",
+            showFilters: true,
+            columns: [
+              { key: "symbol", label: "Symbol" },
+              { key: "side", label: "Side" },
+              { key: "net", label: "Net PnL" },
+              { key: "lots", label: "Lots" },
+            ],
+            rows: drawerData.closedGroups.map((group) => ({
+              id: `${group.symbol}-${group.side}`,
+              status: "closed",
+              searchText: `${group.symbol} ${group.side}`,
+              sortValue: group.net,
+              cells: [
+                <span key="symbol" className="font-semibold">{group.symbol}</span>,
+                <span key="side" className={group.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>{group.side}</span>,
+                <span key="net" className={group.net >= 0 ? "text-emerald-700" : "text-rose-700"}>{group.net.toFixed(2)}</span>,
+                <span key="lots" className="text-xs text-[color:var(--muted)]">{group.lots.toFixed(2)} lots</span>,
+              ],
+            })),
+            emptyState: "No closed trades recorded for this week.",
+          },
+          journal: {
+            title: "Journal",
+            subtitle: "Operational notes and runtime logs.",
+            columns: [
+              { key: "label", label: "Type" },
+              { key: "value", label: "Entry" },
+            ],
+            rows: drawerData.journalRows.map((row, index) => ({
+              id: `journal-${index}`,
+              cells: [
+                <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">{row.label}</span>,
+                <span key="value" className="text-xs text-[var(--foreground)]">{row.value}</span>,
+              ],
+            })),
+            emptyState: "No journal entries yet.",
+          },
+          mapping: {
+            title: "Instrument Mapping",
+            subtitle: "Availability and mapping details.",
+            showFilters: true,
+            columns: [
+              { key: "symbol", label: "Symbol" },
+              { key: "instrument", label: "Instrument" },
+              { key: "status", label: "Status" },
+            ],
+            rows: drawerData.mappingRows.map((row) => ({
+              id: row.symbol,
+              status: row.available ? "open" : "closed",
+              searchText: `${row.symbol} ${row.instrument}`,
+              cells: [
+                <span key="symbol" className="font-semibold">{row.symbol}</span>,
+                <span key="instrument" className="text-xs text-[color:var(--muted)]">{row.instrument}</span>,
+                <span key="status" className={`rounded-full px-2 py-1 text-xs font-semibold ${row.available ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>{row.available ? "Available" : "Missing"}</span>,
+              ],
+            })),
+            emptyState: "No mapping data available.",
+          },
+          kpi: {
+            title: "KPI Details",
+            subtitle: "Additional account metrics.",
+            columns: [
+              { key: "label", label: "Metric" },
+              { key: "value", label: "Value" },
+            ],
+            rows: drawerData.kpiRows.map((row, index) => ({
+              id: `kpi-${index}`,
+              cells: [
+                <span key="label" className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">{row.label}</span>,
+                <span key="value" className="text-sm font-semibold text-[var(--foreground)]">{row.value}</span>,
+              ],
+            })),
+          },
+        }}
+      />
     </PageShell>
   );
 }

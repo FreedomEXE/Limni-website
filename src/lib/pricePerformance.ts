@@ -80,6 +80,11 @@ const SYMBOL_OVERRIDES: Partial<Record<string, string[]>> = {
   XAUUSD: ["XAU_USD", "XAUUSD"],
   XAGUSD: ["XAG_USD", "XAGUSD"],
   WTIUSD: ["WTICO_USD", "WTIUSD"],
+  US30: ["US30_USD", "US30"],
+  US2000: ["US2000_USD", "US2000"],
+  SUGAR: ["SUGAR_USD", "SUGAR"],
+  WHEAT: ["WHEAT_USD", "WHEAT"],
+  COPPER: ["XCU_USD", "COPPER"],
 };
 
 function hasOandaPricing(): boolean {

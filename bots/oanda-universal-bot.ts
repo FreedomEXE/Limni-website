@@ -10,6 +10,8 @@ import {
   buildClientTag,
 } from "@/lib/oandaTrade";
 import { readBotState, writeBotState } from "@/lib/botState";
+import { groupSignals } from "@/lib/plannedTrades";
+import type { AssetClass } from "@/lib/cotMarkets";
 import {
   loadConnectedAccountSecrets,
   updateConnectedAccountAnalysis,
@@ -19,7 +21,7 @@ type BasketSignal = {
   symbol: string;
   direction: "LONG" | "SHORT" | "NEUTRAL";
   model: "antikythera" | "blended" | "dealer" | "commercial" | "sentiment";
-  asset_class: string;
+  asset_class: AssetClass;
 };
 
 type OandaBotState = {
@@ -135,8 +137,15 @@ async function buildSizing(signals: BasketSignal[]) {
 
   const tradeSignals = signals.filter(
     (signal): signal is BasketSignal & { direction: "LONG" | "SHORT" } =>
-      signal.direction !== "NEUTRAL",
+      signal.direction !== "NEUTRAL" && signal.asset_class === "fx",
   );
+
+  // Net legs per symbol so margin is based on net exposure (OANDA nets margin on same instrument).
+  const grouped = groupSignals(tradeSignals);
+  const netBySymbol = new Map<string, number>();
+  for (const pair of grouped) {
+    netBySymbol.set(pair.symbol, Math.abs(pair.net));
+  }
   const instrumentNames = tradeSignals.map((signal) => getOandaInstrument(signal.symbol));
   const pricing = await fetchOandaPricing(Array.from(new Set(instrumentNames)));
   const priceMap = buildPriceMap(pricing);
@@ -175,7 +184,10 @@ async function buildSizing(signals: BasketSignal[]) {
 
     const marginRate = Number(spec.marginRate ?? "0");
     if (Number.isFinite(marginRate)) {
-      totalMargin += targetNotionalUsd * marginRate;
+      const net = netBySymbol.get(signal.symbol) ?? 0;
+      if (net > 0) {
+        totalMargin += targetNotionalUsd * marginRate * net;
+      }
     }
 
     plan.push({

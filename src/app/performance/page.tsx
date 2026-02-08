@@ -299,13 +299,16 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         })),
       ),
     ];
-    const trailingByGroup = await simulateTrailingForGroupsFromRows({
-      weekOpenUtc: selectedWeek,
-      groups,
-      trailStartPct: 10,
-      trailOffsetPct: 5,
-      timeframe: "M1",
-    });
+    const trailingByGroup =
+      view === "simulation"
+        ? await simulateTrailingForGroupsFromRows({
+            weekOpenUtc: selectedWeek,
+            groups,
+            trailStartPct: 10,
+            trailOffsetPct: 5,
+            timeframe: "M1",
+          })
+        : {};
 
     const byAsset = new Map<string, Awaited<ReturnType<typeof computeModelPerformance>>[]>();
     weekSnapshots.forEach((snapshot) => {
@@ -320,7 +323,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         returns: snapshot.returns,
         pair_details: snapshot.pair_details,
         stats: snapshot.stats,
-        trailing: trailingByGroup[`${snapshot.asset_class}:${snapshot.model}`],
+        trailing: view === "simulation" ? trailingByGroup[`${snapshot.asset_class}:${snapshot.model}`] : undefined,
       });
       byAsset.set(snapshot.asset_class, entry);
     });
@@ -375,7 +378,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         returns,
         pair_details: pairDetails,
         stats: computeReturnStats(returns),
-        trailing: trailingByGroup[`combined:${model}`],
+        trailing: view === "simulation" ? trailingByGroup[`combined:${model}`] : undefined,
       };
     });
     anyPriced = totals.some((result) => result.priced > 0);
@@ -465,13 +468,15 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   }
 
   let historyRows: Awaited<ReturnType<typeof readAllPerformanceSnapshots>> = [];
-  try {
-    historyRows = await readAllPerformanceSnapshots();
-  } catch (error) {
-    console.error(
-      "Performance snapshot history failed:",
-      error instanceof Error ? error.message : String(error),
-    );
+  if (selectedWeek === "all") {
+    try {
+      historyRows = await readAllPerformanceSnapshots();
+    } catch (error) {
+      console.error(
+        "Performance snapshot history failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   }
   const nowUtc = DateTime.utc().toMillis();
   const currentWeekMillis = currentWeekStart.isValid
@@ -563,21 +568,23 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     });
   }
 
-  const allTimeCombined = buildAllTimeStats(historyRows);
-  const allTimeByAsset = new Map<
-    string,
-    ReturnType<typeof buildAllTimeStats>
-  >();
-  assetClasses.forEach((asset) => {
-    const rows = historyRows.filter((row) => row.asset_class === asset.id);
-    allTimeByAsset.set(asset.id, buildAllTimeStats(rows));
-  });
-  const allTimePerformanceCombined = buildAllTimePerformance(historyRows);
+  const allTimeCombined = selectedWeek === "all" ? buildAllTimeStats(historyRows) : [];
+  const allTimeByAsset = new Map<string, ReturnType<typeof buildAllTimeStats>>();
+  if (selectedWeek === "all") {
+    assetClasses.forEach((asset) => {
+      const rows = historyRows.filter((row) => row.asset_class === asset.id);
+      allTimeByAsset.set(asset.id, buildAllTimeStats(rows));
+    });
+  }
+  const allTimePerformanceCombined =
+    selectedWeek === "all" ? buildAllTimePerformance(historyRows) : [];
   const allTimePerformanceByAsset = new Map<string, ReturnType<typeof buildAllTimePerformance>>();
-  assetClasses.forEach((asset) => {
-    const rows = historyRows.filter((row) => row.asset_class === asset.id);
-    allTimePerformanceByAsset.set(asset.id, buildAllTimePerformance(rows));
-  });
+  if (selectedWeek === "all") {
+    assetClasses.forEach((asset) => {
+      const rows = historyRows.filter((row) => row.asset_class === asset.id);
+      allTimePerformanceByAsset.set(asset.id, buildAllTimePerformance(rows));
+    });
+  }
 
   if (isAllTimeSelected) {
     totals = allTimePerformanceCombined;
@@ -641,6 +648,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           </div>
         ) : null}
         <PerformanceGrid
+          key={view}
           combined={{
             id: "combined",
             label: "Combined Basket",
