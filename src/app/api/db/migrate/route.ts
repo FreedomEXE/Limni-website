@@ -50,6 +50,10 @@ export async function POST(request: Request) {
       ALTER TABLE mt5_accounts
       ADD COLUMN IF NOT EXISTS lot_map_updated_utc TIMESTAMP
     `);
+    await pool.query(`
+      ALTER TABLE mt5_accounts
+      ADD COLUMN IF NOT EXISTS trade_mode VARCHAR(12)
+    `);
 
     // Get list of created tables
     const result = await pool.query(`

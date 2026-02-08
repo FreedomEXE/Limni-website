@@ -72,6 +72,7 @@ export type Mt5AccountSnapshot = {
   server: string;
   status: string;
   currency: string;
+  trade_mode?: "AUTO" | "MANUAL";
   equity: number;
   balance: number;
   margin: number;
@@ -139,6 +140,7 @@ export async function readMt5Accounts(): Promise<Mt5AccountSnapshot[]> {
       server: string;
       status: string;
       currency: string;
+      trade_mode?: string | null;
       equity: string;
       balance: string;
       margin: string;
@@ -195,6 +197,10 @@ export async function readMt5Accounts(): Promise<Mt5AccountSnapshot[]> {
           server: account.server,
           status: account.status,
           currency: account.currency,
+          trade_mode:
+            account.trade_mode?.toUpperCase() === "MANUAL"
+              ? ("MANUAL" as const)
+              : ("AUTO" as const),
           equity: Number(account.equity),
           balance: Number(account.balance),
           margin: Number(account.margin),
@@ -267,6 +273,7 @@ export async function upsertMt5Account(
       await client.query(
         `INSERT INTO mt5_accounts (
           account_id, label, broker, server, status, currency,
+          trade_mode,
           equity, balance, margin, free_margin, basket_state,
           open_positions, open_pairs, total_lots, baseline_equity,
           locked_profit_pct, basket_pnl_pct, weekly_pnl_pct, risk_used_pct,
@@ -274,8 +281,8 @@ export async function upsertMt5Account(
           api_ok, trading_allowed, last_api_error, next_add_seconds,
           next_poll_seconds, last_sync_utc, lot_map, lot_map_updated_utc, recent_logs
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+          $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33
         )
         ON CONFLICT (account_id) DO UPDATE SET
           label = EXCLUDED.label,
@@ -283,6 +290,7 @@ export async function upsertMt5Account(
           server = EXCLUDED.server,
           status = EXCLUDED.status,
           currency = EXCLUDED.currency,
+          trade_mode = EXCLUDED.trade_mode,
           equity = EXCLUDED.equity,
           balance = EXCLUDED.balance,
           margin = EXCLUDED.margin,
@@ -317,6 +325,7 @@ export async function upsertMt5Account(
           snapshot.server,
           snapshot.status,
           snapshot.currency,
+          snapshot.trade_mode ?? "AUTO",
           snapshot.equity,
           snapshot.balance,
           snapshot.margin,
@@ -823,6 +832,7 @@ export async function getMt5AccountById(
       server: string;
       status: string;
       currency: string;
+      trade_mode?: string | null;
       equity: string;
       balance: string;
       margin: string;
@@ -882,6 +892,10 @@ export async function getMt5AccountById(
       server: account.server,
       status: account.status,
       currency: account.currency,
+      trade_mode:
+        account.trade_mode?.toUpperCase() === "MANUAL"
+          ? ("MANUAL" as const)
+          : ("AUTO" as const),
       equity: Number(account.equity),
       balance: Number(account.balance),
       margin: Number(account.margin),

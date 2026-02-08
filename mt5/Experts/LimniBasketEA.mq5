@@ -12,6 +12,7 @@ input string AssetFilter = "all";
 input bool ResetStateOnInit = false;
 input int ApiPollIntervalSeconds = 60;
 input double BasketLotCapPer100k = 10.0;
+input bool ManualMode = false;
 input string SymbolAliases = "SPXUSD=SPX500,NDXUSD=NDX100,NIKKEIUSD=JPN225,WTIUSD=USOUSD,BTCUSD=BTCUSD,ETHUSD=ETHUSD";
 input bool EnforceAllowedSymbols = false;
 input string AllowedSymbols = "EURUSD*,GBPUSD*,USDJPY*,USDCHF*,USDCAD*,AUDUSD*,NZDUSD*,EURGBP*,EURJPY*,EURCHF*,EURAUD*,EURNZD*,EURCAD*,GBPJPY*,GBPCHF*,GBPAUD*,GBPNZD*,GBPCAD*,AUDJPY*,AUDCHF*,AUDCAD*,AUDNZD*,NZDJPY*,NZDCHF*,NZDCAD*,CADJPY*,CADCHF*,CHFJPY*,XAUUSD*,XAGUSD*,WTIUSD*,USOUSD*,SPXUSD*,NDXUSD*,NIKKEIUSD*,SPX500*,NDX100*,JPN225*,BTCUSD*,ETHUSD*";
@@ -222,6 +223,7 @@ string BuildPositionsArray();
 string BuildClosedPositionsArray();
 string BuildLotMapArray();
 double ComputeMove1PctUsd(const string symbol, double lots);
+string TradeModeToString();
 string JsonEscape(const string value);
 string BoolToJson(bool value);
 string FormatIsoUtc(datetime value);
@@ -1289,6 +1291,8 @@ void UpdateState()
 //+------------------------------------------------------------------+
 void ManageBasket()
 {
+  if(ManualMode)
+    return;
   if(!HasOpenPositions())
   {
     if(g_closeRequested)
@@ -1343,6 +1347,8 @@ void ManageBasket()
 //+------------------------------------------------------------------+
 void TryAddPositions()
 {
+  if(ManualMode)
+    return;
   if(!g_apiOk || !g_tradingAllowed || g_closeRequested)
     return;
 
@@ -2642,6 +2648,7 @@ string BuildAccountPayload()
   payload += "\"broker\":\"" + JsonEscape(broker) + "\",";
   payload += "\"server\":\"" + JsonEscape(server) + "\",";
   payload += "\"status\":\"" + JsonEscape(AccountStatusToString()) + "\",";
+  payload += "\"trade_mode\":\"" + JsonEscape(TradeModeToString()) + "\",";
   payload += "\"currency\":\"" + JsonEscape(currency) + "\",";
   payload += "\"equity\":" + DoubleToString(equity, 2) + ",";
   payload += "\"balance\":" + DoubleToString(balance, 2) + ",";
@@ -2979,6 +2986,12 @@ string AccountStatusToString()
   if(mode == ACCOUNT_TRADE_MODE_DEMO)
     return "DEMO";
   return "PAUSED";
+}
+
+//+------------------------------------------------------------------+
+string TradeModeToString()
+{
+  return ManualMode ? "MANUAL" : "AUTO";
 }
 
 //+------------------------------------------------------------------+

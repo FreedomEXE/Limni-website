@@ -367,6 +367,10 @@ export default async function ConnectedAccountPage({
         header={{
           title: account.label ?? account.account_key,
           providerLabel: account.provider.toUpperCase(),
+          tradeModeLabel:
+            typeof (account.config as Record<string, unknown> | null)?.trade_mode === "string"
+              ? String((account.config as Record<string, unknown>).trade_mode).toUpperCase()
+              : "AUTO",
           lastSync: account.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—",
           weekOptions: weekOptionsWithUpcoming,
           currentWeek: currentWeekOpenUtc,

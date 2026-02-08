@@ -463,6 +463,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
         header={{
           title: account?.label ?? "Account",
           providerLabel: "MT5",
+          tradeModeLabel: account?.trade_mode ?? "AUTO",
           statusLabel: account?.status ?? "UNKNOWN",
           statusToneClass: statusTone(account?.status ?? "PAUSED"),
           lastSync: account?.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—",

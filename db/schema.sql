@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS mt5_accounts (
   next_add_seconds INTEGER DEFAULT -1,
   next_poll_seconds INTEGER DEFAULT -1,
   last_sync_utc TIMESTAMP NOT NULL DEFAULT NOW(),
+  trade_mode VARCHAR(12) DEFAULT 'AUTO',
   lot_map JSONB,
   lot_map_updated_utc TIMESTAMP,
   recent_logs JSONB,

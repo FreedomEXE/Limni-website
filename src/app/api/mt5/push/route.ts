@@ -120,6 +120,11 @@ function parseLotMap(value: unknown): Mt5LotMapEntry[] | undefined {
     .filter((row) => row.symbol !== "");
 }
 
+function parseTradeMode(value: unknown): "AUTO" | "MANUAL" {
+  const raw = parseString(value, "AUTO").toUpperCase();
+  return raw === "MANUAL" ? "MANUAL" : "AUTO";
+}
+
 export async function GET() {
   return NextResponse.json({
     error: "Method not allowed. Use POST to push MT5 data.",
@@ -161,6 +166,7 @@ export async function POST(request: Request) {
     server: parseString(payload.server),
     status: parseString(payload.status, "UNKNOWN"),
     currency: parseString(payload.currency, "USD"),
+    trade_mode: parseTradeMode(payload.trade_mode),
     equity: parseNumber(payload.equity),
     balance: parseNumber(payload.balance),
     margin: parseNumber(payload.margin),

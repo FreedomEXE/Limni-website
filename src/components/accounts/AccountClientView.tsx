@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 type HeaderConfig = {
   title: string;
   providerLabel: string;
+  tradeModeLabel?: string;
   statusLabel?: string;
   statusToneClass?: string;
   lastSync?: string;
@@ -186,6 +187,22 @@ export default function AccountClientView({
     );
   }, [header.statusLabel, header.statusToneClass]);
 
+  const tradeModeBadge = useMemo(() => {
+    if (!header.tradeModeLabel) return null;
+    const isManual = header.tradeModeLabel.toUpperCase() === "MANUAL";
+    return (
+      <span
+        className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+          isManual
+            ? "border-amber-400/40 bg-amber-500/10 text-amber-200"
+            : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]"
+        }`}
+      >
+        {header.tradeModeLabel}
+      </span>
+    );
+  }, [header.tradeModeLabel]);
+
   const searchLower = search.toLowerCase();
   const filterRows = <T extends { status?: string; searchText?: string; sortValue?: number }>(
     rows: T[],
@@ -287,6 +304,7 @@ export default function AccountClientView({
             <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
               {header.providerLabel}
             </span>
+            {tradeModeBadge}
             {statusBadge}
           </div>
           <div className="flex flex-wrap items-center gap-3">
