@@ -75,21 +75,16 @@ function sentimentDirection(agg?: SentimentAggregate): Direction | null {
     return "SHORT";
   }
 
+  if (agg.flip_state === "FLIPPED_NEUTRAL") {
+    return null;
+  }
+
   if (agg.crowding_state === "CROWDED_LONG") {
     return "SHORT";
   }
 
   if (agg.crowding_state === "CROWDED_SHORT") {
     return "LONG";
-  }
-
-  // Keep a directional fallback so sentiment performance never drops pairs
-  // solely due to a neutralized flip marker.
-  if (agg.agg_net > 0) {
-    return "LONG";
-  }
-  if (agg.agg_net < 0) {
-    return "SHORT";
   }
 
   return null;

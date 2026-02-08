@@ -1,4 +1,6 @@
 import { DateTime } from "luxon";
+import fs from "node:fs";
+import path from "node:path";
 import { query } from "../src/lib/db";
 import { readSnapshot } from "../src/lib/cotStore";
 import { readAggregates, getAggregatesForWeekStart } from "../src/lib/sentiment/store";
@@ -7,10 +9,13 @@ import {
   buildSentimentPairsWithHistory,
 } from "../src/lib/performanceLab";
 import {
+  getPairPerformance,
   getPairPerformanceForWindows,
 } from "../src/lib/pricePerformance";
 import { writePerformanceSnapshots, type PerformanceSnapshot } from "../src/lib/performanceSnapshots";
 import { listAssetClasses } from "../src/lib/cotMarkets";
+import { PAIRS_BY_ASSET_CLASS } from "../src/lib/cotPairs";
+import type { PairSnapshot } from "../src/lib/cotTypes";
 
 async function listWeeks(): Promise<string[]> {
   const rows = await query<{ week_open_utc: Date }>(
@@ -33,7 +38,48 @@ async function listWeekReports(weekOpenUtc: string): Promise<Map<string, string 
 
 // Sentiment is snapshotted as-of the trading week open (Monday 00:00 ET).
 
+function loadDotEnv() {
+  const cwd = process.cwd();
+  for (const filename of [".env.local", ".env"]) {
+    const filePath = path.join(cwd, filename);
+    if (!fs.existsSync(filePath)) continue;
+    const content = fs.readFileSync(filePath, "utf8");
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      const idx = line.indexOf("=");
+      if (idx <= 0) continue;
+      const key = line.slice(0, idx).trim();
+      let value = line.slice(idx + 1).trim();
+      if (!key) continue;
+      if (
+        (value.startsWith("\"") && value.endsWith("\"")) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      if (!process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
+function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
+  const pairDefs = PAIRS_BY_ASSET_CLASS[assetId as keyof typeof PAIRS_BY_ASSET_CLASS] ?? [];
+  const pairs: Record<string, PairSnapshot> = {};
+  for (const pair of pairDefs) {
+    pairs[pair.pair] = {
+      direction: "LONG",
+      base_bias: "NEUTRAL",
+      quote_bias: "NEUTRAL",
+    };
+  }
+  return pairs;
+}
+
 async function main() {
+  loadDotEnv();
   const assetClasses = listAssetClasses();
 
   const weeks = await listWeeks();
@@ -68,6 +114,35 @@ async function main() {
       if (!snapshot) {
         continue;
       }
+
+      // Antikythera depends on sentiment gating; recompute it alongside sentiment so historical
+      // weeks reflect the correct "neutral = no trade" rules.
+      const basePerformance = await getPairPerformance(buildAllPairs(asset.id), {
+        assetClass: asset.id,
+        reportDate: snapshot.report_date,
+        isLatestReport: false,
+      });
+      const antikythera = await computeModelPerformance({
+        model: "antikythera",
+        assetClass: asset.id,
+        snapshot,
+        sentiment: latestSentiment,
+        performance: basePerformance,
+      });
+      payload.push({
+        week_open_utc: weekOpenUtc,
+        asset_class: asset.id,
+        model: "antikythera",
+        report_date: snapshot.report_date ?? null,
+        percent: antikythera.percent,
+        priced: antikythera.priced,
+        total: antikythera.total,
+        note: antikythera.note,
+        returns: antikythera.returns,
+        pair_details: antikythera.pair_details,
+        stats: antikythera.stats,
+      });
+
       const sentimentPairs = buildSentimentPairsWithHistory({
         assetClass: asset.id,
         sentimentHistory,

@@ -45,12 +45,6 @@ function sentimentDirection(agg?: SentimentAggregate): "LONG" | "SHORT" | null {
   if (agg.crowding_state === "CROWDED_SHORT") {
     return "LONG";
   }
-  if (agg.agg_net > 0) {
-    return "LONG";
-  }
-  if (agg.agg_net < 0) {
-    return "SHORT";
-  }
   return null;
 }
 

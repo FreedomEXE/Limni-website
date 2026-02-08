@@ -175,10 +175,9 @@ function sentimentDirection(agg?: SentimentAggregate): Direction | null {
   if (!agg) return null;
   if (agg.flip_state === "FLIPPED_UP") return "LONG";
   if (agg.flip_state === "FLIPPED_DOWN") return "SHORT";
+  if (agg.flip_state === "FLIPPED_NEUTRAL") return null;
   if (agg.crowding_state === "CROWDED_LONG") return "SHORT";
   if (agg.crowding_state === "CROWDED_SHORT") return "LONG";
-  if (agg.agg_net > 0) return "LONG";
-  if (agg.agg_net < 0) return "SHORT";
   return null;
 }
 
