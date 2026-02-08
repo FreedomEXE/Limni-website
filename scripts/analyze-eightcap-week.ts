@@ -27,7 +27,7 @@ function loadDotEnv() {
       if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
         value = value.slice(1, -1);
       }
-      if (process.env[key] === undefined) {
+      if (!process.env[key]) {
         process.env[key] = value;
       }
     }
@@ -123,6 +123,9 @@ async function main() {
 
   const weekOpen = DateTime.fromISO(targetWeek, { zone: "utc" });
   const weekEnd = weekOpen.plus({ days: 7 });
+  const nowUtc = DateTime.utc();
+  // OANDA rejects `to` in the future. Clamp the sim window end to "now" when running mid-week.
+  const simEnd = weekEnd <= nowUtc ? weekEnd : nowUtc.minus({ minutes: 5 });
 
   const closedResp = await fetchJson<{
     account_id: string;
@@ -237,12 +240,13 @@ async function main() {
   // This ignores funding/overnight costs; it is directional MTM using OANDA hourly candles.
   const priceCache = new Map<string, number | null>();
   let oandaDisabled = false;
-  async function getWeekEndClose(symbol: string, fromUtc: DateTime) {
+  async function getWeekEndClose(symbol: string) {
     if (oandaDisabled) return null;
-    const key = `${symbol}|${fromUtc.toISO()}|${weekEnd.toISO()}`;
+    // For hold-to-week-end we only need the week-end close. Use a single window per symbol.
+    const key = `${symbol}|${weekOpen.toISO()}|${simEnd.toISO()}`;
     if (priceCache.has(key)) return priceCache.get(key) ?? null;
     try {
-      const candle = await fetchOandaCandle(symbol, fromUtc, weekEnd);
+      const candle = await fetchOandaCandle(symbol, weekOpen, simEnd);
       const close = candle?.close ?? null;
       priceCache.set(key, close);
       return close;
@@ -265,8 +269,6 @@ async function main() {
 
   for (const r of rows) {
     if (!Number.isFinite(r.open_price) || r.open_price <= 0) continue;
-    const from = DateTime.fromISO(r.open_time, { zone: "utc" });
-    if (!from.isValid) continue;
 
     const lotMap = findLotMapEntry(r.canonical || r.symbol);
     const baseLotRaw = lotMap?.lot;
@@ -279,7 +281,7 @@ async function main() {
     }
 
     // Use canonical symbols for OANDA mapping (overrides exist for indices/commodities/crypto).
-    const candleClose = await getWeekEndClose(r.canonical || r.symbol, from);
+    const candleClose = await getWeekEndClose(r.canonical || r.symbol);
     if (candleClose === null || !Number.isFinite(candleClose)) {
       simMissingPrice.add(r.canonical || r.symbol);
       continue;
@@ -300,6 +302,7 @@ async function main() {
   if (oandaDisabled) {
     console.log("- Skipped: OANDA price access is not configured/authorized in this environment.");
   } else {
+    console.log(`- Sim window: ${weekOpen.toISO()} -> ${simEnd.toISO()}${simEnd < weekEnd ? " (clamped to now)" : ""}`);
     console.log(`- Covered trades: ${simCovered}/${rows.length}`);
     console.log(`- Sim net (MTM proxy): ${simTotalUsd.toFixed(2)} ${account.currency ?? "USD"}`);
     console.log("By asset class (sim MTM proxy):");
