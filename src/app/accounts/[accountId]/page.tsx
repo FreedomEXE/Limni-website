@@ -141,11 +141,16 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const viewParam = toQueryParam(resolvedSearchParams?.view);
   const basketFilter = (toQueryParam(resolvedSearchParams?.basket) ?? "").toLowerCase();
   const symbolFilter = (toQueryParam(resolvedSearchParams?.symbol) ?? "").toUpperCase();
-  const activeView =
-    viewParam &&
-    ["overview", "equity", "positions", "settings"].includes(viewParam)
-      ? (viewParam as "overview" | "equity" | "positions" | "settings")
-      : "overview";
+  const activeView = (() => {
+    if (!viewParam) return "overview" as const;
+    if (viewParam === "equity") return "overview" as const;
+    if (viewParam === "positions") return "trades" as const;
+    if (viewParam === "settings") return "analytics" as const;
+    if (["overview", "trades", "analytics"].includes(viewParam)) {
+      return viewParam as "overview" | "trades" | "analytics";
+    }
+    return "overview" as const;
+  })();
   const desiredWeeks = 4;
   const currentWeekOpenUtc = getMt5WeekOpenUtc();
   const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });

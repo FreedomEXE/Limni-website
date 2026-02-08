@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import WeekSelector from "@/components/accounts/WeekSelector";
 import PageShell from "@/components/shell/PageShell";
 import AccountKpiRow from "@/components/accounts/AccountKpiRow";
-import MiniSparkline from "@/components/visuals/MiniSparkline";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
 import DebugReadout from "@/components/DebugReadout";
 import SummaryCard from "@/components/accounts/SummaryCard";
@@ -84,7 +83,7 @@ type DrawerData = {
 };
 
 type AccountClientViewProps = {
-  activeView: "overview" | "equity" | "positions" | "settings";
+  activeView: "overview" | "trades" | "analytics";
   header: HeaderConfig;
   kpi: {
     weeklyPnlPct: number;
@@ -172,6 +171,7 @@ export default function AccountClientView({
   const [statusFilter, setStatusFilter] = useState("pending");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
+  const [mappingSearch, setMappingSearch] = useState("");
 
   const statusBadge = useMemo(() => {
     if (!header.statusLabel) return null;
@@ -211,7 +211,7 @@ export default function AccountClientView({
     return filtered;
   };
 
-  const showKpis = activeView === "overview" || activeView === "equity";
+  const showKpis = activeView === "overview";
   const isOanda = header.providerLabel.toLowerCase() === "oanda";
   const directionForNet = (net: number) => {
     if (net > 0) return "LONG";
@@ -316,20 +316,9 @@ export default function AccountClientView({
         ) : null
       }
     >
-      <div className="mb-3">
-        <DebugReadout
-          title="KPI Debug"
-          items={[
-            { label: "Selected", value: debug.selectedWeekKey },
-            { label: "KPI", value: debug.kpiWeekKey },
-            { label: "Equity", value: debug.equityWeekKey },
-          ]}
-        />
-      </div>
-
       {activeView === "overview" ? (
         <div className="space-y-4">
-          <MiniSparkline points={equity.points} />
+          <EquityCurveChart points={equity.points} title={equity.title} interactive={false} />
           <div className="grid gap-4 md:grid-cols-3">
             <SummaryCard
               label="Open Positions"
@@ -350,29 +339,7 @@ export default function AccountClientView({
         </div>
       ) : null}
 
-      {activeView === "equity" ? (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Query summary
-            </p>
-            <p className="mt-1 text-sm text-[color:var(--muted)]">
-              Week {debug.selectedWeekKey} · Account {header.providerLabel}
-            </p>
-          </div>
-          <EquityCurveChart points={equity.points} title={equity.title} interactive={false} />
-          <DebugReadout
-            title="Week Debug"
-            items={[
-              { label: "Selected", value: debug.selectedWeekKey },
-              { label: "KPI", value: debug.kpiWeekKey },
-              { label: "Equity", value: debug.equityWeekKey },
-            ]}
-          />
-        </div>
-      ) : null}
-
-      {activeView === "positions" ? (
+      {activeView === "trades" ? (
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <SummaryCard label="Pending" value={pendingCount} hint="Planned trades" />
@@ -545,8 +512,16 @@ export default function AccountClientView({
         </div>
       ) : null}
 
-      {activeView === "settings" ? (
+      {activeView === "analytics" ? (
         <div className="space-y-4">
+          <DebugReadout
+            title="Week Scope Debug"
+            items={[
+              { label: "Selected", value: debug.selectedWeekKey },
+              { label: "KPI", value: debug.kpiWeekKey },
+              { label: "Equity", value: debug.equityWeekKey },
+            ]}
+          />
           <SimpleListTable
             columns={[
               { key: "label", label: "Type" },
@@ -563,28 +538,47 @@ export default function AccountClientView({
               </div>
             )}
           />
-          <FilterBar
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            search={search}
-            onSearchChange={setSearch}
-            sort={sort}
-            onSortChange={setSort}
+          <SimpleListTable
+            columns={[
+              { key: "label", label: "Key" },
+              { key: "value", label: "Value" },
+            ]}
+            rows={drawerData.kpiRows.map((row, index) => ({ id: `kpi-${index}`, ...row }))}
+            emptyState="No KPI debug rows."
+            renderRow={(row) => (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  {row.label}
+                </span>
+                <span className="text-xs text-[var(--foreground)]">{row.value}</span>
+              </div>
+            )}
           />
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              value={mappingSearch}
+              onChange={(event) => setMappingSearch(event.target.value)}
+              placeholder="Search mapping"
+              className="h-9 flex-1 rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 text-sm text-[var(--foreground)] placeholder:text-[color:var(--muted)]"
+            />
+          </div>
           <SimpleListTable
             columns={[
               { key: "symbol", label: "Symbol" },
               { key: "instrument", label: "Instrument" },
               { key: "status", label: "Status" },
             ]}
-            rows={filterRows(
-              drawerData.mappingRows.map((row) => ({
+            rows={drawerData.mappingRows
+              .map((row) => ({
                 id: row.symbol,
                 ...row,
-                status: row.available ? "open" : "closed",
                 searchText: `${row.symbol} ${row.instrument}`,
               }))
-            )}
+              .filter((row) =>
+                mappingSearch
+                  ? row.searchText.toLowerCase().includes(mappingSearch.toLowerCase())
+                  : true
+              )}
             emptyState="No mapping data available."
             renderRow={(row) => (
               <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">

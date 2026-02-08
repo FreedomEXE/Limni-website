@@ -205,9 +205,15 @@ export default async function ConnectedAccountPage({
   const viewParam = resolvedSearchParams?.view;
   const activeView =
     typeof viewParam === "string" &&
-    ["overview", "equity", "positions", "settings"].includes(viewParam)
-      ? (viewParam as "overview" | "equity" | "positions" | "settings")
-      : "overview";
+    ["overview", "trades", "analytics", "equity", "positions", "settings"].includes(viewParam)
+      ? viewParam === "equity"
+        ? ("overview" as const)
+        : viewParam === "positions"
+          ? ("trades" as const)
+          : viewParam === "settings"
+            ? ("analytics" as const)
+            : (viewParam as "overview" | "trades" | "analytics")
+      : ("overview" as const);
   const selectedWeek: WeekOption =
     weekParamValue === "all"
       ? "all"

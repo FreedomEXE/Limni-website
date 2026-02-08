@@ -78,7 +78,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeSection = resolveSection(pathname);
-  const viewParam = searchParams.get("view");
+  const viewParamRaw = searchParams.get("view");
+  const viewParam =
+    activeSection === "accounts"
+      ? viewParamRaw === "positions"
+        ? "trades"
+        : viewParamRaw === "settings"
+          ? "analytics"
+          : viewParamRaw === "equity"
+            ? "overview"
+            : viewParamRaw
+      : viewParamRaw;
   const [navMode, setNavMode] = useState<"root" | "section">(
     activeSection ? "section" : "root",
   );
@@ -141,9 +151,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       }
       return [
         { href: `${accountBasePath}?view=overview`, label: "Overview" },
-        { href: `${accountBasePath}?view=equity`, label: "Equity" },
-        { href: `${accountBasePath}?view=positions`, label: "Positions" },
-        { href: `${accountBasePath}?view=settings`, label: "Settings" },
+        { href: `${accountBasePath}?view=trades`, label: "Trades" },
+        { href: `${accountBasePath}?view=analytics`, label: "Analytics" },
       ];
     }
     if (activeSection === "news") {
