@@ -422,9 +422,8 @@ export default function AccountClientView({
           <SimpleListTable
             columns={[
               { key: "symbol", label: "Symbol" },
-              { key: "status", label: "Status" },
               { key: "direction", label: "Direction" },
-              { key: "size", label: isOanda ? "Units" : hasPlannedLotSizes ? "Lots" : "Lots / Legs" },
+              { key: "size", label: "Size" },
               { key: "metric", label: "Metric" },
               { key: "legs", label: "Legs" },
             ]}
@@ -435,9 +434,6 @@ export default function AccountClientView({
               <details className="group">
                 <summary className="grid cursor-pointer list-none grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
                   <span className="font-semibold">{row.symbol}</span>
-                  <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    {row.status}
-                  </span>
                   <span
                     className={
                       String(row.direction).toUpperCase() === "LONG" || String(row.direction).toUpperCase() === "BUY"
