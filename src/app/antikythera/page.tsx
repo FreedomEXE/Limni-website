@@ -3,6 +3,7 @@ import SignalHeatmap from "@/components/SignalHeatmap";
 import ViewToggle from "@/components/ViewToggle";
 import SummaryCards from "@/components/SummaryCards";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
+import { ANTIKYTHERA_MAX_SIGNALS } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import { getAggregatesForWeekStart, getLatestAggregatesLocked } from "@/lib/sentiment/store";
@@ -119,8 +120,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
             assetClass: asset.id,
             snapshot,
             sentiment,
-            // Must match the basket/bot signal generation (no artificial UI cap).
-            maxSignals: 200,
+            maxSignals: ANTIKYTHERA_MAX_SIGNALS,
           })
         : [];
     return signals.map((signal) => ({
@@ -190,7 +190,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
           assetClass: asset.id,
           snapshot,
           sentiment: previousSentiment.length > 0 ? previousSentiment : sentiment,
-          maxSignals: 200,
+          maxSignals: ANTIKYTHERA_MAX_SIGNALS,
         });
         signals.forEach((signal) => {
           previousSignals.push({

@@ -15,6 +15,10 @@ export type AntikytheraSignal = {
   confidence: number;
 };
 
+// Single source of truth for Antikythera signal cap across UI/bots/performance.
+// Keeping this high avoids accidental truncation discrepancies between surfaces.
+export const ANTIKYTHERA_MAX_SIGNALS = 200;
+
 type SentimentResult = {
   aligned: boolean;
   reasons: string[];
@@ -74,7 +78,7 @@ export function buildAntikytheraSignals(options: {
   sentiment: SentimentAggregate[];
   maxSignals?: number;
 }) {
-  const { assetClass, snapshot, sentiment, maxSignals = 8 } = options;
+  const { assetClass, snapshot, sentiment, maxSignals = ANTIKYTHERA_MAX_SIGNALS } = options;
   const biasMode: BiasMode = "blended";
   const sentimentMap = new Map(sentiment.map((item) => [item.symbol, item]));
 

@@ -10,6 +10,7 @@ import {
   type BiasMode,
 } from "./cotCompute";
 import { buildAntikytheraSignals } from "./antikythera";
+import { ANTIKYTHERA_MAX_SIGNALS } from "./antikythera";
 
 export type PerformanceModel =
   | "blended"
@@ -254,7 +255,7 @@ function buildAntikytheraPairs(
     assetClass,
     snapshot,
     sentiment,
-    maxSignals: 50,
+    maxSignals: ANTIKYTHERA_MAX_SIGNALS,
   });
   const pairs: Record<string, PairSnapshot> = {};
   for (const signal of signals) {
@@ -351,7 +352,7 @@ export async function computeModelPerformance(options: {
       assetClass,
       snapshot,
       sentiment,
-      maxSignals: 50,
+      maxSignals: ANTIKYTHERA_MAX_SIGNALS,
     });
     signals.forEach((signal) => {
       pairs[signal.pair] = pairSnapshot(signal.direction);

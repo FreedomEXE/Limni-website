@@ -5,6 +5,7 @@ import { getAssetClass, listAssetClasses, type AssetClass } from "@/lib/cotMarke
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { derivePairDirections, derivePairDirectionsByBase, type BiasMode } from "@/lib/cotCompute";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
+import { ANTIKYTHERA_MAX_SIGNALS } from "@/lib/antikythera";
 import { getAggregatesForWeekStart, getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
@@ -136,7 +137,7 @@ export async function buildBasketSignals(options?: {
       assetClass: asset,
       snapshot,
       sentiment,
-      maxSignals: 200,
+      maxSignals: ANTIKYTHERA_MAX_SIGNALS,
     });
     pairs.push(
       ...antikytheraSignals.map((signal): BasketSignal => ({

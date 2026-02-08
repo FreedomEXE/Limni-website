@@ -24,6 +24,7 @@ type HeaderConfig = {
   currentWeek: string;
   selectedWeek: WeekOption;
   weekLabelMode?: "week_open_utc" | "monday_et";
+  showStopLoss1pct?: boolean;
   onBackHref: string;
 };
 
@@ -46,6 +47,8 @@ type DrawerData = {
     move1pctUsd?: number | null;
     sizeDisplay?: string | null;
     riskDisplay?: string | null;
+    entryPrice?: number | null;
+    stopLoss1pct?: number | null;
   }>;
   mappingRows: Array<{
     symbol: string;
@@ -186,6 +189,7 @@ export default function AccountClientView({
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
   const [mappingSearch, setMappingSearch] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const statusBadge = useMemo(() => {
     if (!header.statusLabel) return null;
@@ -317,6 +321,23 @@ export default function AccountClientView({
   const sizeUnitLabel = isOanda ? "units" : providerKey === "bitget" ? "qty" : "lots";
   const rowGridCols =
     "grid-cols-[minmax(160px,1.2fr)_minmax(110px,0.7fr)_minmax(150px,0.9fr)_minmax(150px,0.9fr)_minmax(110px,0.5fr)]";
+
+  const formatStopLoss = (symbol: string, value: number) => {
+    const upper = symbol.toUpperCase();
+    const decimals = upper.includes("JPY") ? 3 : 5;
+    return value.toFixed(decimals);
+  };
+
+  const stopLossLines = useMemo(() => {
+    if (!header.showStopLoss1pct) {
+      return [];
+    }
+    return plannedRows
+      .filter((row) => row.rowType === "planned")
+      .filter((row) => row.direction === "LONG" || row.direction === "SHORT")
+      .filter((row) => Number.isFinite(row.stopLoss1pct as number))
+      .map((row) => `${row.symbol}\t${row.direction}\tSL ${formatStopLoss(row.symbol, row.stopLoss1pct as number)}`);
+  }, [header.showStopLoss1pct, plannedRows]);
 
   return (
     <PageShell
@@ -450,6 +471,42 @@ export default function AccountClientView({
             onSortChange={setSort}
             statusOptions={["pending", "open", "closed"]}
           />
+          {header.showStopLoss1pct &&
+          statusFilter === "pending" &&
+          stopLossLines.length > 0 ? (
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]/80">
+                    Recommended Stop Losses (1%)
+                  </p>
+                  <p className="mt-1 text-xs text-[color:var(--muted)]">
+                    Format: SYMBOL [tab] DIRECTION [tab] SL PRICE
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(stopLossLines.join("\n"));
+                      setCopied(true);
+                      window.setTimeout(() => setCopied(false), 1200);
+                    } catch {
+                      // ignore clipboard failures
+                    }
+                  }}
+                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                >
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={stopLossLines.join("\n")}
+                className="mt-3 h-32 w-full resize-none rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-3 font-mono text-xs text-[var(--foreground)]"
+              />
+            </div>
+          ) : null}
           {plannedSummary ? (
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-xs text-[color:var(--muted)]">
               Estimated margin used this week:{" "}

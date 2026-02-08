@@ -21,8 +21,13 @@ import { formatDateTimeET } from "@/lib/time";
 import { readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import { buildBasketSignals } from "@/lib/basketSignals";
 import { groupSignals, signalsFromSnapshots } from "@/lib/plannedTrades";
+import { fetchOandaPricing } from "@/lib/oandaTrade";
+import { getOandaInstrument } from "@/lib/oandaPrices";
+import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 
 export const dynamic = "force-dynamic";
+
+const FX_PAIR_SET = new Set(PAIRS_BY_ASSET_CLASS.fx.map((row) => row.pair.toUpperCase()));
 
 type AccountPageProps = {
   params: Promise<{ accountId: string }>;
@@ -284,6 +289,13 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     notFound();
   }
 
+  // Some MT5 accounts (ex: The5ers manual accounts) cannot realistically trade the full non-FX universe.
+  // For those accounts, we intentionally show an FX-only plan in the app for manual execution.
+  const fxOnlyHint = `${account?.label ?? ""} ${account?.broker ?? ""} ${account?.server ?? ""}`.toLowerCase();
+  const forceFxOnlyPlanned =
+    (account?.trade_mode ?? "AUTO").toUpperCase() === "MANUAL" &&
+    fxOnlyHint.includes("5ers");
+
   const openFloatingPnl = (account.positions ?? []).reduce(
     (acc, position) => acc + position.profit + position.swap + position.commission,
     0,
@@ -309,11 +321,33 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
       ? account.basket_pnl_pct
       : derivedBasketPnlPct;
 
+  const normalizeSymbol = (rawSymbol: string) => {
+    const upper = String(rawSymbol ?? "").trim().toUpperCase();
+    if (!upper) return "";
+    const cleaned = upper.replace(/[^A-Z0-9]/g, "");
+    if (cleaned.length >= 6 && /^[A-Z]{6}/.test(cleaned)) {
+      return cleaned.slice(0, 6);
+    }
+    return cleaned;
+  };
+
+  const isFxSymbol = (rawSymbol: string) => {
+    const normalized = normalizeSymbol(rawSymbol);
+    return Boolean(normalized) && FX_PAIR_SET.has(normalized);
+  };
+
+  const baseOpenPositions = forceFxOnlyPlanned
+    ? (account.positions ?? []).filter((pos) => isFxSymbol(pos.symbol))
+    : (account.positions ?? []);
+  const baseClosedPositions = forceFxOnlyPlanned
+    ? closedPositions.filter((pos) => isFxSymbol(pos.symbol))
+    : closedPositions;
+
   const basketOptions = Array.from(
     new Set(
       [
-        ...(account.positions ?? []).map((position) => parseBasketFromComment(position.comment)),
-        ...closedPositions.map((position) => parseBasketFromComment(position.comment)),
+        ...baseOpenPositions.map((position) => parseBasketFromComment(position.comment)),
+        ...baseClosedPositions.map((position) => parseBasketFromComment(position.comment)),
       ].filter((value): value is string => value !== null),
     ),
   ).sort();
@@ -321,8 +355,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const symbolOptions = Array.from(
     new Set(
       [
-        ...(account.positions ?? []).map((position) => position.symbol),
-        ...closedPositions.map((position) => position.symbol),
+        ...baseOpenPositions.map((position) => position.symbol),
+        ...baseClosedPositions.map((position) => position.symbol),
       ],
     ),
   ).sort();
@@ -332,7 +366,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const effectiveSymbolFilter =
     symbolFilter && symbolOptions.includes(symbolFilter) ? symbolFilter : "";
 
-  const filteredOpenPositions = (account.positions ?? []).filter((position) => {
+  const filteredOpenPositions = baseOpenPositions.filter((position) => {
     const basket = parseBasketFromComment(position.comment);
     if (effectiveBasketFilter && basket !== effectiveBasketFilter) {
       return false;
@@ -343,7 +377,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     return true;
   });
 
-  const filteredClosedPositions = closedPositions.filter((position) => {
+  const filteredClosedPositions = baseClosedPositions.filter((position) => {
     const basket = parseBasketFromComment(position.comment);
     if (effectiveBasketFilter && basket !== effectiveBasketFilter) {
       return false;
@@ -418,15 +452,54 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     plannedPairs = [];
   }
 
-  // Some MT5 accounts (ex: The5ers manual accounts) cannot realistically trade the full non-FX universe.
-  // For those accounts, we intentionally show an FX-only plan in the app for manual execution.
-  const fxOnlyHint = `${account?.label ?? ""} ${account?.broker ?? ""} ${account?.server ?? ""}`.toLowerCase();
-  const forceFxOnlyPlanned =
-    (account?.trade_mode ?? "AUTO").toUpperCase() === "MANUAL" &&
-    fxOnlyHint.includes("5ers");
-
   if (forceFxOnlyPlanned && basketSignals) {
     plannedPairs = groupSignals(basketSignals.pairs.filter((pair) => pair.asset_class === "fx"));
+  }
+
+  // For The5ers manual accounts, we display an FX-only plan and include recommended 1% stop prices
+  // (based on latest OANDA mid) for quick copy/paste into a manual ticket.
+  const showStopLoss1pct = forceFxOnlyPlanned;
+  const plannedMidBySymbol = new Map<string, number>();
+  if (showStopLoss1pct && plannedPairs.length > 0) {
+    try {
+      const instruments = Array.from(
+        new Set(plannedPairs.map((pair) => getOandaInstrument(pair.symbol))),
+      );
+      const pricing = await fetchOandaPricing(instruments);
+      for (const price of pricing) {
+        const bid = Number(price.closeoutBid ?? price.bids?.[0]?.price ?? NaN);
+        const ask = Number(price.closeoutAsk ?? price.asks?.[0]?.price ?? NaN);
+        const mid = Number.isFinite(bid) && Number.isFinite(ask) ? (bid + ask) / 2 : NaN;
+        if (!Number.isFinite(mid)) {
+          continue;
+        }
+        const symbol = price.instrument.includes("_")
+          ? price.instrument.replace("_", "")
+          : price.instrument.replace("/", "");
+        plannedMidBySymbol.set(symbol.toUpperCase(), mid);
+      }
+    } catch (error) {
+      console.error("Failed to fetch pricing for stop-loss recommendations:", error);
+    }
+  }
+
+  if (showStopLoss1pct && plannedPairs.length > 0) {
+    plannedPairs = plannedPairs.map((pair) => {
+      const mid = plannedMidBySymbol.get(pair.symbol.toUpperCase()) ?? null;
+      const stopLoss1pct =
+        mid && Number.isFinite(mid)
+          ? pair.net > 0
+            ? mid * 0.99
+            : pair.net < 0
+              ? mid * 1.01
+              : null
+          : null;
+      return {
+        ...pair,
+        entryPrice: mid,
+        stopLoss1pct,
+      } as typeof pair & { entryPrice?: number | null; stopLoss1pct?: number | null };
+    });
   }
   const lotMapRows = account?.lot_map ?? [];
   const findLotMapEntry = (symbol: string) => {
@@ -514,6 +587,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
 
       return {
         ...pair,
+        entryPrice: "entryPrice" in pair ? (pair as any).entryPrice : null,
+        stopLoss1pct: "stopLoss1pct" in pair ? (pair as any).stopLoss1pct : null,
         units: perLegLot,
         netUnits: netLots,
         move1pctUsd: moveNet ?? undefined,
@@ -526,6 +601,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
         units: number;
         netUnits: number;
         move1pctUsd?: number;
+        entryPrice?: number | null;
+        stopLoss1pct?: number | null;
         legs: Array<typeof pair.legs[number] & { units: number; move1pctUsd?: number }>;
       };
     });
@@ -571,6 +648,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
           currentWeek: currentWeekOpenUtc,
           selectedWeek,
           weekLabelMode: "monday_et",
+          showStopLoss1pct,
           onBackHref: "/accounts",
         }}
         kpi={{
@@ -606,6 +684,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             net: pair.net,
             legsCount: pair.legs.length,
             legs: pair.legs,
+            entryPrice: "entryPrice" in pair ? (pair as any).entryPrice : null,
+            stopLoss1pct: "stopLoss1pct" in pair ? (pair as any).stopLoss1pct : null,
             units: "units" in pair ? (pair as any).units : null,
             netUnits: "netUnits" in pair ? (pair as any).netUnits : null,
             move1pctUsd: "move1pctUsd" in pair ? (pair as any).move1pctUsd : null,
