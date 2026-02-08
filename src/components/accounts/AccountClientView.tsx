@@ -262,6 +262,11 @@ export default function AccountClientView({
     return sum;
   }, 0);
 
+  const metricLabel = statusFilter === "pending" ? "Risk (1%)" : "P/L";
+  const sizeUnitLabel = isOanda ? "units" : "lots";
+  const rowGridCols =
+    "grid-cols-[minmax(160px,1.2fr)_minmax(110px,0.7fr)_minmax(150px,0.9fr)_minmax(150px,0.9fr)_minmax(110px,0.5fr)]";
+
   return (
     <PageShell
       header={
@@ -424,7 +429,7 @@ export default function AccountClientView({
               { key: "symbol", label: "Symbol" },
               { key: "direction", label: "Direction" },
               { key: "size", label: "Size" },
-              { key: "metric", label: "Metric" },
+              { key: "metric", label: metricLabel },
               { key: "legs", label: "Legs" },
             ]}
             rows={filterRows([...plannedRows, ...openRows, ...closedRows])}
@@ -432,7 +437,7 @@ export default function AccountClientView({
             maxHeight={520}
             renderRow={(row) => (
               <details className="group">
-                <summary className="grid cursor-pointer list-none grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                <summary className={`grid cursor-pointer list-none ${rowGridCols} gap-3`}>
                   <span className="font-semibold">{row.symbol}</span>
                   <span
                     className={
@@ -447,15 +452,11 @@ export default function AccountClientView({
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
                     {row.rowType === "planned"
-                      ? isOanda
-                        ? Number.isFinite(row.netUnits as number)
-                          ? `${(row.netUnits as number).toFixed(0)} units`
-                          : "—"
-                        : Number.isFinite(row.netUnits as number)
-                          ? `${(row.netUnits as number).toFixed(2)} lots`
-                          : Number.isFinite(row.net as number)
-                            ? `Net ${row.net} legs`
-                            : "—"
+                      ? Number.isFinite(row.netUnits as number)
+                        ? isOanda
+                          ? `${Math.abs(row.netUnits as number).toFixed(0)} ${sizeUnitLabel}`
+                          : `${Math.abs(row.netUnits as number).toFixed(2)} ${sizeUnitLabel}`
+                        : "—"
                       : isOanda
                         ? "—"
                         : "lots" in row
@@ -474,23 +475,37 @@ export default function AccountClientView({
                           : "—"}
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
-                    {"legsCount" in row ? `${row.legsCount} legs` : row.legs ? `${row.legs.length} legs` : "—"}
+                    {row.rowType === "planned"
+                      ? Number.isFinite(row.net as number)
+                        ? `${row.net > 0 ? "+" : ""}${row.net} net`
+                        : "—"
+                      : row.legs
+                        ? `${row.legs.length} legs`
+                        : "—"}
                   </span>
                 </summary>
                 {row.legs && row.legs.length > 0 ? (
                   <div className="mt-3 space-y-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3 text-xs text-[color:var(--muted)]">
                     {"model" in row.legs[0] ? (
                       (row.legs as Array<{ model: string; direction: string; units?: number | null; move1pctUsd?: number | null }>).map((leg, index) => (
-                        <div key={`${row.symbol}-${index}`} className="grid grid-cols-4 gap-3">
+                        <div key={`${row.symbol}-${index}`} className={`grid ${rowGridCols} gap-3`}>
                           <span className="font-semibold text-[var(--foreground)]">{leg.model}</span>
-                          <span className={leg.direction === "LONG" ? "text-emerald-700" : "text-rose-700"}>
+                          <span
+                            className={
+                              String(leg.direction).toUpperCase() === "LONG"
+                                ? "text-emerald-700"
+                                : String(leg.direction).toUpperCase() === "SHORT"
+                                  ? "text-rose-700"
+                                  : "text-[color:var(--muted)]"
+                            }
+                          >
                             {leg.direction}
                           </span>
                           <span>
                             {Number.isFinite(leg.units ?? NaN)
                               ? isOanda
-                                ? `${leg.units?.toFixed(0)} units`
-                                : `${leg.units?.toFixed(2)} lots`
+                                ? `${leg.units?.toFixed(0)} ${sizeUnitLabel}`
+                                : `${leg.units?.toFixed(2)} ${sizeUnitLabel}`
                               : "—"}
                           </span>
                           <span>
@@ -498,6 +513,7 @@ export default function AccountClientView({
                               ? `$${leg.move1pctUsd?.toFixed(2)}`
                               : "—"}
                           </span>
+                          <span />
                         </div>
                       ))
                     ) : (
@@ -510,12 +526,14 @@ export default function AccountClientView({
                         openTime?: string;
                         closeTime?: string;
                       }>).map((leg) => (
-                        <div key={leg.id} className="grid grid-cols-5 gap-3">
+                        <div key={leg.id} className={`grid ${rowGridCols} gap-3`}>
                           <span className="font-semibold text-[var(--foreground)]">{leg.basket}</span>
                           <span className={leg.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>{leg.side}</span>
                           <span>{leg.lots.toFixed(2)} lots</span>
                           <span className={leg.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>{leg.pnl.toFixed(2)}</span>
-                          <span className="text-[10px] text-[color:var(--muted)]">{leg.openTime?.slice(5, 16) ?? "—"} → {leg.closeTime?.slice(5, 16) ?? "—"}</span>
+                          <span className="text-[10px] text-[color:var(--muted)]">
+                            {leg.openTime?.slice(5, 16) ?? "—"} → {leg.closeTime?.slice(5, 16) ?? "—"}
+                          </span>
                         </div>
                       ))
                     )}
