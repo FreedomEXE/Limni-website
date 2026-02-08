@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { upsertMt5Account } from "@/lib/mt5Store";
-import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
+import type { Mt5AccountSnapshot, Mt5LotMapEntry } from "@/lib/mt5Store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -100,6 +100,26 @@ function parseClosedPositions(value: unknown) {
     .filter((row) => row.symbol !== "" && row.ticket > 0);
 }
 
+function parseLotMap(value: unknown): Mt5LotMapEntry[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value
+    .map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        symbol: parseString(row.symbol),
+        asset_class: parseString(row.asset_class, "fx"),
+        lot: parseNumber(row.lot),
+        target_lot: parseNumber(row.target_lot),
+        deviation_pct: parseNumber(row.deviation_pct),
+        margin_required: parseNumber(row.margin_required),
+        move_1pct_usd: parseNumber(row.move_1pct_usd),
+      } satisfies Mt5LotMapEntry;
+    })
+    .filter((row) => row.symbol !== "");
+}
+
 export async function GET() {
   return NextResponse.json({
     error: "Method not allowed. Use POST to push MT5 data.",
@@ -165,6 +185,8 @@ export async function POST(request: Request) {
     next_poll_seconds: parseIntValue(payload.next_poll_seconds, -1),
     last_sync_utc:
       parseString(payload.last_sync_utc) || new Date().toISOString(),
+    lot_map: parseLotMap(payload.lot_map),
+    lot_map_updated_utc: parseDateIso(payload.lot_map_updated_utc),
     positions: parsePositions(payload.positions),
     closed_positions: parseClosedPositions(payload.closed_positions),
     recent_logs: Array.isArray(payload.recent_logs)

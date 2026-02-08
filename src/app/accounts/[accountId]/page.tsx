@@ -5,6 +5,7 @@ import {
   getMt5AccountById,
   getMt5WeekOpenUtc,
   isMt5WeekOpenUtc,
+  listMt5WeekOptions,
   readMt5ClosedNetForWeek,
   readMt5ClosedPositionsByWeek,
   readMt5ClosedSummary,
@@ -17,12 +18,7 @@ import AccountClientView from "@/components/accounts/AccountClientView";
 import { DateTime } from "luxon";
 import { formatCurrencySafe } from "@/lib/formatters";
 import { formatDateTimeET } from "@/lib/time";
-import {
-  getWeekOpenUtc,
-  listPerformanceWeeks,
-  readPerformanceSnapshotsByWeek,
-  weekLabelFromOpen,
-} from "@/lib/performanceSnapshots";
+import { readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import { buildBasketSignals } from "@/lib/basketSignals";
 import { groupSignals, signalsFromSnapshots } from "@/lib/plannedTrades";
 
@@ -151,19 +147,23 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
       ? (viewParam as "overview" | "equity" | "positions" | "settings")
       : "overview";
   const desiredWeeks = 4;
-  const currentWeekOpenUtc = getWeekOpenUtc();
+  const currentWeekOpenUtc = getMt5WeekOpenUtc();
   const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
   const nextWeekOpenUtc = currentWeekStart.isValid
     ? currentWeekStart.plus({ days: 7 }).toUTC().toISO()
     : null;
   let weekOptions: string[] = [];
   try {
-    const recentWeeks = await listPerformanceWeeks(desiredWeeks);
+    const recentWeeks = await listMt5WeekOptions(accountId, desiredWeeks);
     const ordered: string[] = [];
     const seen = new Set<string>();
-    if (nextWeekOpenUtc && recentWeeks.length > 0) {
+    if (nextWeekOpenUtc) {
       ordered.push(nextWeekOpenUtc);
       seen.add(nextWeekOpenUtc);
+    }
+    if (currentWeekOpenUtc && !seen.has(currentWeekOpenUtc)) {
+      ordered.push(currentWeekOpenUtc);
+      seen.add(currentWeekOpenUtc);
     }
     for (const week of recentWeeks) {
       if (!seen.has(week)) {
@@ -174,9 +174,19 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     weekOptions = ordered.slice(0, desiredWeeks);
   } catch (error) {
     console.error(
-      "Performance week list failed:",
+      "MT5 week list failed:",
       error instanceof Error ? error.message : String(error),
     );
+  }
+  if (weekOptions.length === 0) {
+    const fallback: string[] = [];
+    if (nextWeekOpenUtc) {
+      fallback.push(nextWeekOpenUtc);
+    }
+    if (currentWeekOpenUtc && !fallback.includes(currentWeekOpenUtc)) {
+      fallback.push(currentWeekOpenUtc);
+    }
+    weekOptions = fallback;
   }
   const nowUtc = DateTime.utc();
   const hoursToNext =
@@ -389,23 +399,44 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
 
 
   let plannedPairs = basketSignals ? groupSignals(basketSignals.pairs) : [];
-  const lotCapPer100k = 10;
-  if (plannedPairs.length > 0) {
-    const totalCapLots = lotCapPer100k * (account.equity / 100000);
-    const perPairLot = totalCapLots / plannedPairs.length;
-    plannedPairs = plannedPairs.map((pair) => ({
-      ...pair,
-      units: perPairLot,
-      netUnits: perPairLot * pair.net,
-      legs: pair.legs.map((leg) => ({
-        ...leg,
-        units: perPairLot,
-      })),
-    })) as typeof plannedPairs & Array<{
-      units: number;
-      netUnits: number;
-      legs: Array<typeof plannedPairs[number]["legs"][number] & { units: number }>;
-    }>;
+  const allowPlannedWeek =
+    selectedWeek === currentWeekOpenUtc ||
+    (nextWeekOpenUtc ? selectedWeek === nextWeekOpenUtc : false);
+  if (!allowPlannedWeek) {
+    plannedPairs = [];
+  }
+  const lotMapBySymbol = new Map(
+    account?.lot_map?.map((row) => [row.symbol, row]) ?? [],
+  );
+  if (plannedPairs.length > 0 && lotMapBySymbol.size > 0) {
+    plannedPairs = plannedPairs.map((pair) => {
+      const sizing = lotMapBySymbol.get(pair.symbol);
+      if (!sizing || !Number.isFinite(sizing.lot)) {
+        return pair;
+      }
+      const perLegLot = sizing.lot;
+      const netLots = perLegLot * pair.net;
+      const movePerLeg = Number.isFinite(sizing.move_1pct_usd)
+        ? (sizing.move_1pct_usd as number)
+        : null;
+      const moveNet = movePerLeg !== null ? Math.abs(pair.net) * movePerLeg : null;
+      return {
+        ...pair,
+        units: perLegLot,
+        netUnits: netLots,
+        move1pctUsd: moveNet ?? undefined,
+        legs: pair.legs.map((leg) => ({
+          ...leg,
+          units: perLegLot,
+          move1pctUsd: movePerLeg ?? undefined,
+        })),
+      } as typeof pair & {
+        units: number;
+        netUnits: number;
+        move1pctUsd?: number;
+        legs: Array<typeof pair.legs[number] & { units: number; move1pctUsd?: number }>;
+      };
+    });
   }
   const journalRows = [
     ...(account.recent_logs ?? []).map((log) => ({
@@ -469,6 +500,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             legs: pair.legs,
             units: "units" in pair ? (pair as any).units : null,
             netUnits: "netUnits" in pair ? (pair as any).netUnits : null,
+            move1pctUsd: "move1pctUsd" in pair ? (pair as any).move1pctUsd : null,
           })),
           mappingRows: [],
           openPositions: filteredOpenPositions.map((pos) => ({

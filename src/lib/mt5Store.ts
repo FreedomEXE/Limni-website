@@ -1,6 +1,24 @@
 import { DateTime } from "luxon";
 import { query, queryOne, transaction } from "./db";
 
+function parseJsonArray<T>(value: unknown): T[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    return value as T[];
+  }
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as T[]) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 export type Mt5Position = {
   ticket: number;
   symbol: string;
@@ -19,6 +37,16 @@ export type Mt5Position = {
   min_volume?: number;
   max_volume?: number;
   volume_step?: number;
+};
+
+export type Mt5LotMapEntry = {
+  symbol: string;
+  asset_class: string;
+  lot: number;
+  target_lot?: number;
+  deviation_pct?: number;
+  margin_required?: number;
+  move_1pct_usd?: number;
 };
 
 export type Mt5ClosedPosition = {
@@ -67,6 +95,8 @@ export type Mt5AccountSnapshot = {
   next_add_seconds: number;
   next_poll_seconds: number;
   last_sync_utc: string;
+  lot_map?: Mt5LotMapEntry[];
+  lot_map_updated_utc?: string;
   positions?: Mt5Position[];
   closed_positions?: Mt5ClosedPosition[];
   recent_logs?: string[];
@@ -132,6 +162,8 @@ export async function readMt5Accounts(): Promise<Mt5AccountSnapshot[]> {
       next_add_seconds: number;
       next_poll_seconds: number;
       last_sync_utc: Date;
+      lot_map?: Mt5LotMapEntry[] | null;
+      lot_map_updated_utc?: Date | null;
     }>("SELECT * FROM mt5_accounts ORDER BY account_id");
 
     const accountsWithPositions = await Promise.all(
@@ -186,6 +218,10 @@ export async function readMt5Accounts(): Promise<Mt5AccountSnapshot[]> {
           next_add_seconds: account.next_add_seconds,
           next_poll_seconds: account.next_poll_seconds,
           last_sync_utc: account.last_sync_utc.toISOString(),
+          lot_map: parseJsonArray<Mt5LotMapEntry>(account.lot_map) ?? undefined,
+          lot_map_updated_utc: account.lot_map_updated_utc
+            ? account.lot_map_updated_utc.toISOString()
+            : undefined,
           positions: positions.map((pos) => ({
             ticket: pos.ticket,
             symbol: pos.symbol,
@@ -236,10 +272,10 @@ export async function upsertMt5Account(
           locked_profit_pct, basket_pnl_pct, weekly_pnl_pct, risk_used_pct,
           trade_count_week, win_rate_pct, max_drawdown_pct, report_date,
           api_ok, trading_allowed, last_api_error, next_add_seconds,
-          next_poll_seconds, last_sync_utc, recent_logs
+          next_poll_seconds, last_sync_utc, lot_map, lot_map_updated_utc, recent_logs
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30
+          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32
         )
         ON CONFLICT (account_id) DO UPDATE SET
           label = EXCLUDED.label,
@@ -270,6 +306,8 @@ export async function upsertMt5Account(
           next_add_seconds = EXCLUDED.next_add_seconds,
           next_poll_seconds = EXCLUDED.next_poll_seconds,
           last_sync_utc = EXCLUDED.last_sync_utc,
+          lot_map = EXCLUDED.lot_map,
+          lot_map_updated_utc = EXCLUDED.lot_map_updated_utc,
           recent_logs = EXCLUDED.recent_logs,
           updated_at = NOW()`,
         [
@@ -302,6 +340,8 @@ export async function upsertMt5Account(
           snapshot.next_add_seconds,
           snapshot.next_poll_seconds,
           new Date(snapshot.last_sync_utc),
+          snapshot.lot_map ? JSON.stringify(snapshot.lot_map) : null,
+          snapshot.lot_map_updated_utc ? new Date(snapshot.lot_map_updated_utc) : null,
           snapshot.recent_logs ? JSON.stringify(snapshot.recent_logs) : null,
         ]
       );
@@ -446,6 +486,39 @@ export function getMt5WeekOpenUtc(now = DateTime.utc()): string {
   });
 
   return open.toUTC().toISO() ?? now.toUTC().toISO();
+}
+
+export async function listMt5WeekOptions(
+  accountId: string,
+  limit = 6,
+): Promise<string[]> {
+  const safeLimit =
+    Number.isFinite(limit) && limit > 0 ? Math.min(limit, 52) : 6;
+  const minSnapshot = await queryOne<{ min: Date | null }>(
+    "SELECT MIN(snapshot_at) AS min FROM mt5_snapshots WHERE account_id = $1",
+    [accountId],
+  );
+  const minClosed = await queryOne<{ min: Date | null }>(
+    "SELECT MIN(close_time) AS min FROM mt5_closed_positions WHERE account_id = $1",
+    [accountId],
+  );
+  const minDate = minSnapshot?.min ?? minClosed?.min ?? null;
+  if (!minDate) {
+    return [];
+  }
+  const minWeekOpen = weekOpenUtcForTimestamp(minDate.toISOString());
+  const currentWeekOpen = getMt5WeekOpenUtc();
+  const minWeek = DateTime.fromISO(minWeekOpen, { zone: "utc" });
+  let cursor = DateTime.fromISO(currentWeekOpen, { zone: "utc" });
+  if (!minWeek.isValid || !cursor.isValid) {
+    return [];
+  }
+  const weeks: string[] = [];
+  while (cursor >= minWeek && weeks.length < safeLimit) {
+    weeks.push(cursor.toUTC().toISO() ?? currentWeekOpen);
+    cursor = cursor.minus({ days: 7 });
+  }
+  return weeks;
 }
 
 export async function readMt5ClosedPositions(
@@ -774,6 +847,8 @@ export async function getMt5AccountById(
       next_poll_seconds: number;
       last_sync_utc: Date;
       recent_logs?: string[] | null;
+      lot_map?: Mt5LotMapEntry[] | null;
+      lot_map_updated_utc?: Date | null;
     }>("SELECT * FROM mt5_accounts WHERE account_id = $1", [accountId]);
 
     if (!account) {
@@ -830,6 +905,10 @@ export async function getMt5AccountById(
       next_add_seconds: account.next_add_seconds,
       next_poll_seconds: account.next_poll_seconds,
       last_sync_utc: account.last_sync_utc.toISOString(),
+      lot_map: parseJsonArray<Mt5LotMapEntry>(account.lot_map) ?? undefined,
+      lot_map_updated_utc: account.lot_map_updated_utc
+        ? account.lot_map_updated_utc.toISOString()
+        : undefined,
       recent_logs: account.recent_logs ?? undefined,
       positions: positions.map((pos) => ({
         ticket: pos.ticket,

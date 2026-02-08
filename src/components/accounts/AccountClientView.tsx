@@ -169,7 +169,7 @@ export default function AccountClientView({
   drawerData,
   settingsExtras,
 }: AccountClientViewProps) {
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
 
@@ -213,12 +213,18 @@ export default function AccountClientView({
 
   const showKpis = activeView === "overview" || activeView === "equity";
   const isOanda = header.providerLabel.toLowerCase() === "oanda";
+  const directionForNet = (net: number) => {
+    if (net > 0) return "LONG";
+    if (net < 0) return "SHORT";
+    return "NEUTRAL";
+  };
   const plannedRows = drawerData.plannedPairs.map((pair) => ({
     id: `planned-${pair.symbol}`,
     status: "pending",
     searchText: `${pair.symbol} ${pair.assetClass}`,
     sortValue: pair.net,
     rowType: "planned",
+    direction: directionForNet(pair.net),
     ...pair,
   }));
   const openRows = drawerData.openPositions.map((row) => ({
@@ -227,6 +233,7 @@ export default function AccountClientView({
     searchText: `${row.symbol} ${row.side}`,
     sortValue: row.pnl,
     rowType: "open",
+    direction: row.side,
     ...row,
   }));
   const closedRows = drawerData.closedGroups.map((group) => ({
@@ -235,13 +242,18 @@ export default function AccountClientView({
     searchText: `${group.symbol} ${group.side}`,
     sortValue: group.net,
     rowType: "closed",
+    direction: group.side,
     ...group,
   }));
   const pendingCount = plannedRows.length;
   const openCount = openRows.length;
   const closedCount = closedRows.length;
+  const hasPlannedLotSizes = plannedRows.some((row) => Number.isFinite(row.netUnits as number));
   const netExposure = plannedRows.reduce((sum, row) => {
     if (isOanda && Number.isFinite(row.netUnits as number)) {
+      return sum + (row.netUnits as number);
+    }
+    if (!isOanda && Number.isFinite(row.netUnits as number)) {
       return sum + (row.netUnits as number);
     }
     if (!isOanda && Number.isFinite(row.net as number)) {
@@ -366,7 +378,9 @@ export default function AccountClientView({
               value={
                 isOanda
                   ? `${netExposure.toFixed(0)} units`
-                  : `${netExposure.toFixed(0)} legs`
+                  : hasPlannedLotSizes
+                    ? `${netExposure.toFixed(2)} lots`
+                    : `${netExposure.toFixed(0)} legs`
               }
               hint="Planned net exposure"
             />
@@ -378,6 +392,7 @@ export default function AccountClientView({
             onSearchChange={setSearch}
             sort={sort}
             onSortChange={setSort}
+            statusOptions={["pending", "open", "closed"]}
           />
           {plannedSummary ? (
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-xs text-[color:var(--muted)]">
@@ -408,7 +423,8 @@ export default function AccountClientView({
             columns={[
               { key: "symbol", label: "Symbol" },
               { key: "status", label: "Status" },
-              { key: "size", label: isOanda ? "Units" : "Lots / Legs" },
+              { key: "direction", label: "Direction" },
+              { key: "size", label: isOanda ? "Units" : hasPlannedLotSizes ? "Lots" : "Lots / Legs" },
               { key: "metric", label: "Metric" },
               { key: "legs", label: "Legs" },
             ]}
@@ -421,6 +437,17 @@ export default function AccountClientView({
                   <span className="font-semibold">{row.symbol}</span>
                   <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                     {row.status}
+                  </span>
+                  <span
+                    className={
+                      String(row.direction).toUpperCase() === "LONG" || String(row.direction).toUpperCase() === "BUY"
+                        ? "text-emerald-700"
+                        : String(row.direction).toUpperCase() === "SHORT" || String(row.direction).toUpperCase() === "SELL"
+                          ? "text-rose-700"
+                          : "text-[color:var(--muted)]"
+                    }
+                  >
+                    {String(row.direction).toUpperCase()}
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
                     {row.rowType === "planned"
@@ -471,7 +498,7 @@ export default function AccountClientView({
                               : "—"}
                           </span>
                           <span>
-                            {isOanda && Number.isFinite(leg.move1pctUsd ?? NaN)
+                            {Number.isFinite(leg.move1pctUsd ?? NaN)
                               ? `$${leg.move1pctUsd?.toFixed(2)}`
                               : "—"}
                           </span>

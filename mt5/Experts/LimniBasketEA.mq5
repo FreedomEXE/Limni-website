@@ -220,6 +220,8 @@ bool HttpPostJson(const string url, const string payload, string &response);
 string BuildAccountPayload();
 string BuildPositionsArray();
 string BuildClosedPositionsArray();
+string BuildLotMapArray();
+double ComputeMove1PctUsd(const string symbol, double lots);
 string JsonEscape(const string value);
 string BoolToJson(bool value);
 string FormatIsoUtc(datetime value);
@@ -1107,6 +1109,25 @@ bool ComputeOneToOneLot(const string symbol, const string assetClass, double &ta
   if(targetLot > 0.0)
     deviationPct = (finalLot - targetLot) / targetLot * 100.0;
   return true;
+}
+
+double ComputeMove1PctUsd(const string symbol, double lots)
+{
+  if(lots <= 0.0)
+    return 0.0;
+  double price = SymbolInfoDouble(symbol, SYMBOL_BID);
+  if(price <= 0.0)
+    price = SymbolInfoDouble(symbol, SYMBOL_ASK);
+  if(price <= 0.0)
+    price = SymbolInfoDouble(symbol, SYMBOL_LAST);
+  double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+  double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE_PROFIT);
+  if(tickValue <= 0.0)
+    tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+  if(price <= 0.0 || tickSize <= 0.0 || tickValue <= 0.0)
+    return 0.0;
+  double ticks = (price * 0.01) / tickSize;
+  return ticks * tickValue * lots;
 }
 
 bool ShouldLogSizing(const string symbol, int cooldownSeconds)
@@ -2647,6 +2668,8 @@ string BuildAccountPayload()
   payload += "\"last_sync_utc\":\"" + FormatIsoUtc(TimeGMT()) + "\",";
   payload += "\"positions\":" + BuildPositionsArray() + ",";
   payload += "\"closed_positions\":" + BuildClosedPositionsArray() + ",";
+  payload += "\"lot_map\":" + BuildLotMapArray() + ",";
+  payload += "\"lot_map_updated_utc\":\"" + FormatIsoUtc(TimeGMT()) + "\",";
 
   // Add recent logs
   payload += "\"recent_logs\":[";
@@ -2880,6 +2903,45 @@ string BuildClosedPositionsArray()
     result += "}";
   }
 
+  result += "]";
+  return result;
+}
+
+//+------------------------------------------------------------------+
+string BuildLotMapArray()
+{
+  string result = "[";
+  bool firstRow = true;
+  int total = ArraySize(g_brokerSymbols);
+  for(int i = 0; i < total; i++)
+  {
+    string symbol = g_brokerSymbols[i];
+    if(symbol == "")
+      continue;
+    string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
+    double targetLot = 0.0;
+    double finalLot = 0.0;
+    double deviationPct = 0.0;
+    double equityPerSymbol = 0.0;
+    double marginRequired = 0.0;
+    if(!ComputeOneToOneLot(symbol, assetClass, targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired))
+      continue;
+    double move1pct = ComputeMove1PctUsd(symbol, finalLot);
+
+    if(!firstRow)
+      result += ",";
+    firstRow = false;
+
+    result += "{";
+    result += "\"symbol\":\"" + JsonEscape(symbol) + "\",";
+    result += "\"asset_class\":\"" + JsonEscape(assetClass) + "\",";
+    result += "\"lot\":" + DoubleToString(finalLot, 4) + ",";
+    result += "\"target_lot\":" + DoubleToString(targetLot, 4) + ",";
+    result += "\"deviation_pct\":" + DoubleToString(deviationPct, 2) + ",";
+    result += "\"margin_required\":" + DoubleToString(marginRequired, 2) + ",";
+    result += "\"move_1pct_usd\":" + DoubleToString(move1pct, 2);
+    result += "}";
+  }
   result += "]";
   return result;
 }
