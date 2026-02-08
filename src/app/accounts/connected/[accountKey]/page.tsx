@@ -21,6 +21,7 @@ import { formatCurrencySafe } from "@/lib/formatters";
 import { getAccountStatsForWeek } from "@/lib/accountStats";
 import { buildAccountEquityCurve } from "@/lib/accountEquityCurve";
 import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
+import { buildOandaSizingForAccount } from "@/lib/oandaSizing";
 import { unstable_noStore } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -204,10 +205,8 @@ export default async function ConnectedAccountPage({
   const viewParam = resolvedSearchParams?.view;
   const activeView =
     typeof viewParam === "string" &&
-    ["overview", "equity", "positions", "planned", "history", "journal", "settings"].includes(
-      viewParam,
-    )
-      ? (viewParam as "overview" | "equity" | "positions" | "planned" | "history" | "journal" | "settings")
+    ["overview", "equity", "positions", "settings"].includes(viewParam)
+      ? (viewParam as "overview" | "equity" | "positions" | "settings")
       : "overview";
   const selectedWeek: WeekOption =
     weekParamValue === "all"
@@ -250,6 +249,13 @@ export default async function ConnectedAccountPage({
   // Build planned trades (only for current/upcoming weeks)
   let plannedPairs: import("@/lib/plannedTrades").PlannedPair[] = [];
   let plannedNote: string | null = null;
+  let plannedSummary: {
+    marginUsed?: number | null;
+    marginAvailable?: number | null;
+    scale?: number | null;
+    currency?: string | null;
+  } | null = null;
+  let plannedSizingBySymbol = new Map<string, import("@/lib/oandaSizing").OandaSizingRow>();
 
   if (selectedWeek !== "all") {
     if (account.provider === "bitget") {
@@ -261,6 +267,67 @@ export default async function ConnectedAccountPage({
     } else if (account.provider === "oanda") {
       const filtered = filterForOandaFx(basketSignals.pairs);
       plannedPairs = groupSignals(filtered);
+    }
+  }
+
+  if (account.provider === "oanda" && plannedPairs.length > 0) {
+    try {
+      const sizing = await buildOandaSizingForAccount(account.account_key, {
+        symbols: plannedPairs.map((pair) => pair.symbol),
+      });
+      plannedSizingBySymbol = new Map(
+        sizing.rows.filter((row) => row.available).map((row) => [row.symbol, row]),
+      );
+      const buffer =
+        typeof (account.config as Record<string, unknown> | null)?.marginBuffer === "number"
+          ? (account.config as Record<string, unknown>).marginBuffer as number
+          : 0.1;
+      let totalMargin = 0;
+      for (const pair of plannedPairs) {
+        const row = plannedSizingBySymbol.get(pair.symbol);
+        if (!row || !Number.isFinite(row.marginRate ?? NaN)) continue;
+        totalMargin += sizing.nav * (row.marginRate ?? 0) * Math.abs(pair.net);
+      }
+      const available = Number.isFinite(sizing.marginAvailable ?? NaN)
+        ? (sizing.marginAvailable as number)
+        : sizing.nav;
+      const scale = totalMargin > 0 ? Math.min(1, (available * (1 - buffer)) / totalMargin) : 1;
+      plannedSummary = {
+        marginUsed: totalMargin * scale,
+        marginAvailable: Number.isFinite(sizing.marginAvailable ?? NaN) ? sizing.marginAvailable : null,
+        scale,
+        currency: sizing.currency === "USD" ? "$" : `${sizing.currency ?? "USD"} `,
+      };
+
+      plannedPairs = plannedPairs.map((pair) => {
+        const row = plannedSizingBySymbol.get(pair.symbol);
+        if (!row || !row.available || !Number.isFinite(row.units ?? NaN)) {
+          return pair;
+        }
+        const precision = row.tradeUnitsPrecision ?? 0;
+        const scaledUnits = roundUnits((row.units ?? 0) * scale, precision, row.minUnits);
+        const netUnits = scaledUnits * pair.net;
+        const notionalPerUnit = row.notionalUsdPerUnit ?? 0;
+        const move1pctUsd = Math.abs(netUnits) * notionalPerUnit * 0.01;
+        return {
+          ...pair,
+          units: scaledUnits,
+          netUnits,
+          move1pctUsd,
+          legs: pair.legs.map((leg) => ({
+            ...leg,
+            units: scaledUnits,
+            move1pctUsd: scaledUnits * notionalPerUnit * 0.01,
+          })),
+        } as typeof pair & {
+          units: number;
+          netUnits: number;
+          move1pctUsd: number;
+          legs: Array<typeof pair.legs[number] & { units: number; move1pctUsd: number }>;
+        };
+      });
+    } catch (error) {
+      console.error("Failed to compute OANDA planned sizing:", error);
     }
   }
 
@@ -315,6 +382,7 @@ export default async function ConnectedAccountPage({
           mappingCount: mappedRows.length,
           plannedNote: plannedNote ?? null,
         }}
+        plannedSummary={plannedSummary ?? undefined}
         equity={{
           title: selectedWeek === "all" ? "All-time equity curve" : "Weekly equity curve (%)",
           points: equityCurve,
@@ -331,6 +399,9 @@ export default async function ConnectedAccountPage({
             net: pair.net,
             legsCount: pair.legs.length,
             legs: pair.legs,
+            units: "units" in pair ? (pair as any).units : null,
+            netUnits: "netUnits" in pair ? (pair as any).netUnits : null,
+            move1pctUsd: "move1pctUsd" in pair ? (pair as any).move1pctUsd : null,
           })),
           mappingRows: mappedRows.map((row) => ({
             symbol: row.symbol,
@@ -367,4 +438,13 @@ export default async function ConnectedAccountPage({
       />
     </DashboardLayout>
   );
+}
+
+function roundUnits(units: number, precision: number, minUnits?: number) {
+  const factor = Math.max(0, precision);
+  const rounded = Number(units.toFixed(factor));
+  if (minUnits && rounded > 0 && rounded < minUnits) {
+    return minUnits;
+  }
+  return rounded;
 }

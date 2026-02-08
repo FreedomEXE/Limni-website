@@ -147,10 +147,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const symbolFilter = (toQueryParam(resolvedSearchParams?.symbol) ?? "").toUpperCase();
   const activeView =
     viewParam &&
-    ["overview", "equity", "positions", "planned", "history", "journal", "settings"].includes(
-      viewParam,
-    )
-      ? (viewParam as "overview" | "equity" | "positions" | "planned" | "history" | "journal" | "settings")
+    ["overview", "equity", "positions", "settings"].includes(viewParam)
+      ? (viewParam as "overview" | "equity" | "positions" | "settings")
       : "overview";
   const desiredWeeks = 4;
   const currentWeekOpenUtc = getWeekOpenUtc();

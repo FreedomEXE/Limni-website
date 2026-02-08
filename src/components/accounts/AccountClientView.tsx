@@ -33,7 +33,12 @@ type DrawerData = {
     legs?: Array<{
       model: string;
       direction: string;
+      units?: number | null;
+      move1pctUsd?: number | null;
     }>;
+    units?: number | null;
+    netUnits?: number | null;
+    move1pctUsd?: number | null;
   }>;
   mappingRows: Array<{
     symbol: string;
@@ -79,7 +84,7 @@ type DrawerData = {
 };
 
 type AccountClientViewProps = {
-  activeView: "overview" | "equity" | "positions" | "planned" | "history" | "journal" | "settings";
+  activeView: "overview" | "equity" | "positions" | "settings";
   header: HeaderConfig;
   kpi: {
     weeklyPnlPct: number;
@@ -96,6 +101,12 @@ type AccountClientViewProps = {
     mappingCount: number;
     plannedNote?: string | null;
     journalCount?: number;
+  };
+  plannedSummary?: {
+    marginUsed?: number | null;
+    marginAvailable?: number | null;
+    scale?: number | null;
+    currency?: string | null;
   };
   equity: {
     title: string;
@@ -150,6 +161,7 @@ export default function AccountClientView({
   header,
   kpi,
   overview,
+  plannedSummary,
   equity,
   debug,
   drawerData,
@@ -171,12 +183,6 @@ export default function AccountClientView({
       </span>
     );
   }, [header.statusLabel, header.statusToneClass]);
-
-  const openPositionsCount = drawerData.openPositions.length;
-  const plannedCount = drawerData.plannedPairs.length;
-  const closedCount = drawerData.closedGroups.length;
-  const journalCount = drawerData.journalRows.length;
-  const mappingCount = drawerData.mappingRows.length;
 
   const searchLower = search.toLowerCase();
   const filterRows = <T extends { status?: string; searchText?: string; sortValue?: number }>(
@@ -202,6 +208,8 @@ export default function AccountClientView({
     }
     return filtered;
   };
+
+  const showKpis = activeView === "overview" || activeView === "equity";
 
   return (
     <PageShell
@@ -238,16 +246,18 @@ export default function AccountClientView({
         </header>
       }
       kpis={
-        <AccountKpiRow
-          key={debug.selectedWeekKey}
-          weeklyPnlPct={kpi.weeklyPnlPct}
-          maxDrawdownPct={kpi.maxDrawdownPct}
-          tradesThisWeek={kpi.tradesThisWeek}
-          equity={kpi.equity}
-          balance={kpi.balance}
-          currency={kpi.currency}
-          scopeLabel={kpi.scopeLabel}
-        />
+        showKpis ? (
+          <AccountKpiRow
+            key={debug.selectedWeekKey}
+            weeklyPnlPct={kpi.weeklyPnlPct}
+            maxDrawdownPct={kpi.maxDrawdownPct}
+            tradesThisWeek={kpi.tradesThisWeek}
+            equity={kpi.equity}
+            balance={kpi.balance}
+            currency={kpi.currency}
+            scopeLabel={kpi.scopeLabel}
+          />
+        ) : null
       }
     >
       <div className="mb-3">
@@ -316,204 +326,144 @@ export default function AccountClientView({
             sort={sort}
             onSortChange={setSort}
           />
+          {plannedSummary ? (
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-xs text-[color:var(--muted)]">
+              Estimated margin used this week:{" "}
+              <span className="font-semibold text-[var(--foreground)]">
+                {plannedSummary.currency ?? "$"}
+                {(plannedSummary.marginUsed ?? 0).toFixed(2)}
+              </span>
+              {plannedSummary.marginAvailable ? (
+                <>
+                  {" "}
+                  • Available{" "}
+                  <span className="font-semibold text-[var(--foreground)]">
+                    {plannedSummary.currency ?? "$"}
+                    {plannedSummary.marginAvailable.toFixed(2)}
+                  </span>
+                </>
+              ) : null}
+              {plannedSummary.scale ? (
+                <>
+                  {" "}
+                  • Scale {plannedSummary.scale.toFixed(2)}x
+                </>
+              ) : null}
+            </div>
+          ) : null}
           <SimpleListTable
             columns={[
               { key: "symbol", label: "Symbol" },
-              { key: "side", label: "Side" },
-              { key: "lots", label: "Size" },
-              { key: "pnl", label: "P&L" },
-            ]}
-            rows={filterRows(
-              drawerData.openPositions.map((row) => ({
-                id: `${row.symbol}-${row.side}-${row.lots}`,
-                ...row,
-                status: "open",
-                searchText: `${row.symbol} ${row.side}`,
-                sortValue: row.pnl,
-              }))
-            )}
-            emptyState="No open positions in this week."
-            renderRow={(row) => (
-              <details className="group">
-                <summary className="grid cursor-pointer list-none grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-                  <span className="font-semibold">{row.symbol}</span>
-                  <span className={row.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>
-                    {row.side}
-                  </span>
-                  <span className="text-xs text-[color:var(--muted)]">{row.lots.toFixed(2)} lots</span>
-                  <span className={row.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>
-                    {row.pnl.toFixed(2)}
-                  </span>
-                </summary>
-                {row.legs && row.legs.length > 0 ? (
-                  <div className="mt-3 space-y-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3 text-xs text-[color:var(--muted)]">
-                    {(row.legs as Array<{
-                      id: string | number;
-                      basket: string;
-                      side: string;
-                      lots: number;
-                      pnl: number;
-                    }>).map((leg) => (
-                      <div key={leg.id} className="grid grid-cols-4 gap-3">
-                        <span className="font-semibold text-[var(--foreground)]">{leg.basket}</span>
-                        <span className={leg.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>{leg.side}</span>
-                        <span>{leg.lots.toFixed(2)} lots</span>
-                        <span className={leg.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>{leg.pnl.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </details>
-            )}
-          />
-        </div>
-      ) : null}
-
-      {activeView === "planned" ? (
-        <div className="space-y-4">
-          <FilterBar
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            search={search}
-            onSearchChange={setSearch}
-            sort={sort}
-            onSortChange={setSort}
-          />
-          <SimpleListTable
-            columns={[
-              { key: "symbol", label: "Symbol" },
-              { key: "asset", label: "Asset" },
-              { key: "net", label: "Net" },
+              { key: "status", label: "Status" },
+              { key: "net", label: "Net Units" },
+              { key: "move", label: "1% Move ($)" },
               { key: "legs", label: "Legs" },
             ]}
-            rows={filterRows(
-              drawerData.plannedPairs.map((pair) => ({
-                id: pair.symbol,
-                ...pair,
+            rows={filterRows([
+              ...drawerData.plannedPairs.map((pair) => ({
+                id: `planned-${pair.symbol}`,
                 status: "pending",
                 searchText: `${pair.symbol} ${pair.assetClass}`,
                 sortValue: pair.net,
-              }))
-            )}
-            emptyState="No planned trades for this week."
+                ...pair,
+              })),
+              ...drawerData.openPositions.map((row) => ({
+                id: `open-${row.symbol}-${row.side}-${row.lots}`,
+                status: "open",
+                searchText: `${row.symbol} ${row.side}`,
+                sortValue: row.pnl,
+                ...row,
+              })),
+              ...drawerData.closedGroups.map((group) => ({
+                id: `closed-${group.symbol}-${group.side}-${group.lots}`,
+                status: "closed",
+                searchText: `${group.symbol} ${group.side}`,
+                sortValue: group.net,
+                ...group,
+              })),
+            ])}
+            emptyState="No positions for this week."
             renderRow={(row) => (
               <details className="group">
                 <summary className="grid cursor-pointer list-none grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
                   <span className="font-semibold">{row.symbol}</span>
                   <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    {row.assetClass}
+                    {row.status}
                   </span>
-                  <span className={row.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
-                    Net {row.net}
+                  <span className="text-xs text-[color:var(--muted)]">
+                    {"netUnits" in row && Number.isFinite(row.netUnits as number)
+                      ? `${(row.netUnits as number).toFixed(0)} units`
+                      : "lots" in row
+                        ? `${(row.lots as number).toFixed(2)} lots`
+                        : "—"}
                   </span>
-                  <span className="text-xs text-[color:var(--muted)]">{row.legsCount} legs</span>
+                  <span className="text-xs text-[color:var(--muted)]">
+                    {"move1pctUsd" in row && Number.isFinite(row.move1pctUsd as number)
+                      ? `$${(row.move1pctUsd as number).toFixed(2)}`
+                      : "—"}
+                  </span>
+                  <span className="text-xs text-[color:var(--muted)]">
+                    {"legsCount" in row ? `${row.legsCount} legs` : row.legs ? `${row.legs.length} legs` : "—"}
+                  </span>
                 </summary>
                 {row.legs && row.legs.length > 0 ? (
                   <div className="mt-3 space-y-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3 text-xs text-[color:var(--muted)]">
-                    {(row.legs as Array<{ model: string; direction: string; reason?: string }>).map((leg, index) => (
-                      <div key={`${row.symbol}-${index}`} className="grid grid-cols-3 gap-3">
-                        <span className="font-semibold text-[var(--foreground)]">{leg.model}</span>
-                        <span className={leg.direction === "LONG" ? "text-emerald-700" : "text-rose-700"}>
-                          {leg.direction}
-                        </span>
-                        <span className="text-[color:var(--muted)]">{leg.reason ?? "—"}</span>
-                      </div>
-                    ))}
+                    {"model" in row.legs[0] ? (
+                      (row.legs as Array<{ model: string; direction: string; units?: number | null; move1pctUsd?: number | null }>).map((leg, index) => (
+                        <div key={`${row.symbol}-${index}`} className="grid grid-cols-4 gap-3">
+                          <span className="font-semibold text-[var(--foreground)]">{leg.model}</span>
+                          <span className={leg.direction === "LONG" ? "text-emerald-700" : "text-rose-700"}>
+                            {leg.direction}
+                          </span>
+                          <span>{Number.isFinite(leg.units ?? NaN) ? `${leg.units?.toFixed(0)} units` : "—"}</span>
+                          <span>{Number.isFinite(leg.move1pctUsd ?? NaN) ? `$${leg.move1pctUsd?.toFixed(2)}` : "—"}</span>
+                        </div>
+                      ))
+                    ) : (
+                      (row.legs as Array<{
+                        id: string | number;
+                        basket: string;
+                        side: string;
+                        lots: number;
+                        pnl: number;
+                        openTime?: string;
+                        closeTime?: string;
+                      }>).map((leg) => (
+                        <div key={leg.id} className="grid grid-cols-5 gap-3">
+                          <span className="font-semibold text-[var(--foreground)]">{leg.basket}</span>
+                          <span className={leg.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>{leg.side}</span>
+                          <span>{leg.lots.toFixed(2)} lots</span>
+                          <span className={leg.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>{leg.pnl.toFixed(2)}</span>
+                          <span className="text-[10px] text-[color:var(--muted)]">{leg.openTime?.slice(5, 16) ?? "—"} → {leg.closeTime?.slice(5, 16) ?? "—"}</span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 ) : null}
               </details>
             )}
           />
         </div>
-      ) : null}
-
-      {activeView === "history" ? (
-        <div className="space-y-4">
-          <FilterBar
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            search={search}
-            onSearchChange={setSearch}
-            sort={sort}
-            onSortChange={setSort}
-          />
-          <SimpleListTable
-            columns={[
-              { key: "symbol", label: "Symbol" },
-              { key: "side", label: "Side" },
-              { key: "net", label: "Net PnL" },
-              { key: "lots", label: "Lots" },
-            ]}
-            rows={filterRows(
-              drawerData.closedGroups.map((group) => ({
-                id: `${group.symbol}-${group.side}-${group.lots}`,
-                ...group,
-                status: "closed",
-                searchText: `${group.symbol} ${group.side}`,
-                sortValue: group.net,
-              }))
-            )}
-            emptyState="No closed trades recorded for this week."
-            renderRow={(row) => (
-              <details className="group">
-                <summary className="grid cursor-pointer list-none grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-                  <span className="font-semibold">{row.symbol}</span>
-                  <span className={row.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>
-                    {row.side}
-                  </span>
-                  <span className={row.net >= 0 ? "text-emerald-700" : "text-rose-700"}>
-                    {row.net.toFixed(2)}
-                  </span>
-                  <span className="text-xs text-[color:var(--muted)]">{row.lots.toFixed(2)} lots</span>
-                </summary>
-                {row.legs && row.legs.length > 0 ? (
-                  <div className="mt-3 space-y-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3 text-xs text-[color:var(--muted)]">
-                    {(row.legs as Array<{
-                      id: string | number;
-                      basket: string;
-                      side: string;
-                      lots: number;
-                      pnl: number;
-                      openTime?: string;
-                      closeTime?: string;
-                    }>).map((leg) => (
-                      <div key={leg.id} className="grid grid-cols-5 gap-3">
-                        <span className="font-semibold text-[var(--foreground)]">{leg.basket}</span>
-                        <span className={leg.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>{leg.side}</span>
-                        <span>{leg.lots.toFixed(2)} lots</span>
-                        <span className={leg.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>{leg.pnl.toFixed(2)}</span>
-                        <span className="text-[10px] text-[color:var(--muted)]">{leg.openTime?.slice(5, 16) ?? "—"} → {leg.closeTime?.slice(5, 16) ?? "—"}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </details>
-            )}
-          />
-        </div>
-      ) : null}
-
-      {activeView === "journal" ? (
-        <SimpleListTable
-          columns={[
-            { key: "label", label: "Type" },
-            { key: "value", label: "Entry" },
-          ]}
-          rows={drawerData.journalRows.map((row, index) => ({ id: `journal-${index}`, ...row }))}
-          emptyState="No journal entries yet."
-          renderRow={(row) => (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
-              <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                {row.label}
-              </span>
-              <span className="text-xs text-[var(--foreground)]">{row.value}</span>
-            </div>
-          )}
-        />
       ) : null}
 
       {activeView === "settings" ? (
         <div className="space-y-4">
+          <SimpleListTable
+            columns={[
+              { key: "label", label: "Type" },
+              { key: "value", label: "Entry" },
+            ]}
+            rows={drawerData.journalRows.map((row, index) => ({ id: `journal-${index}`, ...row }))}
+            emptyState="No journal entries yet."
+            renderRow={(row) => (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  {row.label}
+                </span>
+                <span className="text-xs text-[var(--foreground)]">{row.value}</span>
+              </div>
+            )}
+          />
           <FilterBar
             status={statusFilter}
             onStatusChange={setStatusFilter}

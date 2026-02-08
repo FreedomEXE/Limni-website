@@ -143,9 +143,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         { href: `${accountBasePath}?view=overview`, label: "Overview" },
         { href: `${accountBasePath}?view=equity`, label: "Equity" },
         { href: `${accountBasePath}?view=positions`, label: "Positions" },
-        { href: `${accountBasePath}?view=planned`, label: "Planned" },
-        { href: `${accountBasePath}?view=history`, label: "History" },
-        { href: `${accountBasePath}?view=journal`, label: "Journal" },
         { href: `${accountBasePath}?view=settings`, label: "Settings" },
       ];
     }
