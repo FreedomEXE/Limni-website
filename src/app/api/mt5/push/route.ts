@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { upsertMt5Account } from "@/lib/mt5Store";
+import { ensureMt5AccountSchema, upsertMt5Account } from "@/lib/mt5Store";
 import type { Mt5AccountSnapshot, Mt5LotMapEntry } from "@/lib/mt5Store";
 
 export const runtime = "nodejs";
@@ -200,11 +200,42 @@ export async function POST(request: Request) {
       : undefined,
   };
 
-  await upsertMt5Account(snapshot);
-  return NextResponse.json({
-    ok: true,
-    account_id: snapshot.account_id,
-    positions_ingested: snapshot.positions?.length ?? 0,
-    closed_positions_ingested: snapshot.closed_positions?.length ?? 0,
-  });
+  try {
+    await upsertMt5Account(snapshot);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[MT5 Push] upsert failed:", message);
+
+    // Most common production failure: DB wasn't migrated yet to include lot_map/trade_mode.
+    // Attempt a safe, idempotent schema patch then retry once.
+    if (message.toLowerCase().includes("column") && message.toLowerCase().includes("mt5_accounts")) {
+      try {
+        await ensureMt5AccountSchema();
+        await upsertMt5Account(snapshot);
+      } catch (retryError) {
+        const retryMessage = retryError instanceof Error ? retryError.message : String(retryError);
+        console.error("[MT5 Push] retry failed:", retryMessage);
+        return NextResponse.json(
+          { ok: false, error: "Snapshot push failed", details: retryMessage },
+          { status: 500 },
+        );
+      }
+    } else {
+      return NextResponse.json(
+        { ok: false, error: "Snapshot push failed", details: message },
+        { status: 500 },
+      );
+    }
+  }
+
+  return NextResponse.json(
+    {
+      ok: true,
+      account_id: snapshot.account_id,
+      positions_ingested: snapshot.positions?.length ?? 0,
+      closed_positions_ingested: snapshot.closed_positions?.length ?? 0,
+      lot_map_rows: snapshot.lot_map?.length ?? 0,
+    },
+    { status: 200 },
+  );
 }

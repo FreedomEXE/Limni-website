@@ -447,6 +447,27 @@ export async function upsertMt5Account(
   }
 }
 
+export async function ensureMt5AccountSchema() {
+  // Safe, idempotent schema patch for production where /api/db/migrate wasn't run yet.
+  // This prevents MT5 pushes from 500'ing when the EA starts sending new fields.
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS recent_logs JSONB
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS lot_map JSONB
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS lot_map_updated_utc TIMESTAMP
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS trade_mode VARCHAR(12)
+  `);
+}
+
 function weekOpenUtcForTimestamp(timestamp: string): string {
   const parsed = DateTime.fromISO(timestamp, { zone: "utc" });
   if (!parsed.isValid) {
