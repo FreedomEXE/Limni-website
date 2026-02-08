@@ -417,6 +417,17 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   if (!allowPlannedWeek) {
     plannedPairs = [];
   }
+
+  // Some MT5 accounts (ex: The5ers manual accounts) cannot realistically trade the full non-FX universe.
+  // For those accounts, we intentionally show an FX-only plan in the app for manual execution.
+  const fxOnlyHint = `${account?.label ?? ""} ${account?.broker ?? ""} ${account?.server ?? ""}`.toLowerCase();
+  const forceFxOnlyPlanned =
+    (account?.trade_mode ?? "AUTO").toUpperCase() === "MANUAL" &&
+    fxOnlyHint.includes("5ers");
+
+  if (forceFxOnlyPlanned && basketSignals) {
+    plannedPairs = groupSignals(basketSignals.pairs.filter((pair) => pair.asset_class === "fx"));
+  }
   const lotMapRows = account?.lot_map ?? [];
   const findLotMapEntry = (symbol: string) => {
     const target = symbol.trim().toUpperCase();
