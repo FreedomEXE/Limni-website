@@ -72,6 +72,10 @@ export function filterForOanda(pairs: BasketSignal[]) {
   return pairs.filter((pair) => pair.asset_class !== "crypto");
 }
 
+export function filterForOandaFx(pairs: BasketSignal[]) {
+  return pairs.filter((pair) => pair.asset_class === "fx");
+}
+
 export function filterForBitget(pairs: BasketSignal[]) {
   return pairs.filter(
     (pair) =>

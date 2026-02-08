@@ -73,6 +73,19 @@ function getWeekWindowUtc(now = DateTime.utc()) {
   };
 }
 
+function getFxCloseUtc(now = DateTime.utc()) {
+  const etNow = now.setZone("America/New_York");
+  const daysSinceSunday = etNow.weekday % 7;
+  const sunday = etNow.minus({ days: daysSinceSunday }).startOf("day");
+  let open = sunday.set({ hour: 19, minute: 0, second: 0, millisecond: 0 });
+  if (etNow < open) {
+    open = open.minus({ weeks: 1 });
+  }
+  const friday = open.plus({ days: 5 });
+  const fxClose = friday.set({ hour: 16, minute: 30, second: 0, millisecond: 0 });
+  return fxClose.toUTC();
+}
+
 async function fetchLatestSignals(): Promise<BasketSignal[]> {
   if (!appBaseUrl) {
     throw new Error("APP_BASE_URL is not configured for OANDA bot.");
@@ -304,6 +317,19 @@ async function tick() {
       state.locked_pct = null;
       state.trail_hit_at = null;
       log("New week detected. Resetting state.", { weekId });
+    }
+
+    const fxCloseUtc = getFxCloseUtc(now);
+
+    if (now >= fxCloseUtc && now < closeUtc) {
+      const trades = await fetchOandaOpenTrades();
+      if (trades.length > 0) {
+        log("FX close reached (16:30 ET). Closing OANDA trades.");
+        await closeAllTrades();
+      }
+      state.entered = false;
+      await writeBotState(BOT_ID, state);
+      return;
     }
 
     if (now < openUtc || now >= closeUtc) {

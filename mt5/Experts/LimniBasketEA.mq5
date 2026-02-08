@@ -24,6 +24,7 @@ input int SizingLogCooldownSeconds = 300;
 input double SizingLogDeviationThresholdPct = 5.0;
 input double EquityTrailStartPct = 20.0;
 input double EquityTrailOffsetPct = 10.0;
+input bool EnableEquityTrail = false;
 input bool AllowNonFullTradeModeForListing = true;
 input int MaxOpenPositions = 200;
 input int SlippagePoints = 10;
@@ -1289,7 +1290,7 @@ void ManageBasket()
   double profitPct = (equity - g_baselineEquity) / g_baselineEquity * 100.0;
   bool wasTrailing = g_trailingActive;
 
-  if(profitPct >= EquityTrailStartPct)
+  if(EnableEquityTrail && profitPct >= EquityTrailStartPct)
   {
     g_trailingActive = true;
     if(!wasTrailing)
@@ -1303,6 +1304,11 @@ void ManageBasket()
       SaveState();
       Log(StringFormat("Equity trail lock updated: %.2f%%", g_lockedProfitPct));
     }
+  }
+  if(!EnableEquityTrail)
+  {
+    g_trailingActive = false;
+    g_lockedProfitPct = 0.0;
   }
 
   if(g_trailingActive && g_lockedProfitPct > 0.0 && profitPct <= g_lockedProfitPct)

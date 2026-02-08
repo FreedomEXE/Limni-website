@@ -7,7 +7,7 @@ import { buildBasketSignals } from "@/lib/basketSignals";
 import {
   buildBitgetPlannedTrades,
   filterForBitget,
-  filterForOanda,
+  filterForOandaFx,
   groupSignals,
   signalsFromSnapshots,
 } from "@/lib/plannedTrades";
@@ -259,7 +259,7 @@ export default async function ConnectedAccountPage({
       plannedNote = planned.note ?? null;
 
     } else if (account.provider === "oanda") {
-      const filtered = filterForOanda(basketSignals.pairs);
+      const filtered = filterForOandaFx(basketSignals.pairs);
       plannedPairs = groupSignals(filtered);
     }
   }
@@ -330,6 +330,7 @@ export default async function ConnectedAccountPage({
             assetClass: pair.assetClass,
             net: pair.net,
             legsCount: pair.legs.length,
+            legs: pair.legs,
           })),
           mappingRows: mappedRows.map((row) => ({
             symbol: row.symbol,

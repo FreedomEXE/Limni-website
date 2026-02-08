@@ -450,6 +450,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             assetClass: pair.assetClass,
             net: pair.net,
             legsCount: pair.legs.length,
+            legs: pair.legs,
           })),
           mappingRows: [],
           openPositions: filteredOpenPositions.map((pos) => ({
@@ -457,12 +458,30 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             side: pos.type,
             lots: pos.lots,
             pnl: pos.profit + pos.swap + pos.commission,
+            legs: [
+              {
+                id: pos.ticket,
+                basket: parseBasketFromComment(pos.comment) ?? "unknown",
+                side: pos.type,
+                lots: pos.lots,
+                pnl: pos.profit + pos.swap + pos.commission,
+              },
+            ],
           })),
           closedGroups: closedGroups.map((group) => ({
             symbol: group.symbol,
             side: group.type,
             net: group.net,
             lots: group.lots,
+            legs: group.trades.map((trade) => ({
+              id: trade.ticket,
+              basket: parseBasketFromComment(trade.comment) ?? "unknown",
+              side: trade.type,
+              lots: trade.lots,
+              pnl: trade.profit + trade.swap + trade.commission,
+              openTime: trade.open_time,
+              closeTime: trade.close_time,
+            })),
           })),
           journalRows: [
             ...(account.recent_logs ?? []).map((log) => ({
