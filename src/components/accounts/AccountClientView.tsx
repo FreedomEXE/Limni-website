@@ -428,9 +428,11 @@ export default function AccountClientView({
                         ? Number.isFinite(row.netUnits as number)
                           ? `${(row.netUnits as number).toFixed(0)} units`
                           : "—"
-                        : Number.isFinite(row.net as number)
-                          ? `Net ${row.net} legs`
-                          : "—"
+                        : Number.isFinite(row.netUnits as number)
+                          ? `${(row.netUnits as number).toFixed(2)} lots`
+                          : Number.isFinite(row.net as number)
+                            ? `Net ${row.net} legs`
+                            : "—"
                       : isOanda
                         ? "—"
                         : "lots" in row
@@ -461,8 +463,18 @@ export default function AccountClientView({
                           <span className={leg.direction === "LONG" ? "text-emerald-700" : "text-rose-700"}>
                             {leg.direction}
                           </span>
-                          <span>{Number.isFinite(leg.units ?? NaN) ? `${leg.units?.toFixed(0)} units` : "—"}</span>
-                          <span>{Number.isFinite(leg.move1pctUsd ?? NaN) ? `$${leg.move1pctUsd?.toFixed(2)}` : "—"}</span>
+                          <span>
+                            {Number.isFinite(leg.units ?? NaN)
+                              ? isOanda
+                                ? `${leg.units?.toFixed(0)} units`
+                                : `${leg.units?.toFixed(2)} lots`
+                              : "—"}
+                          </span>
+                          <span>
+                            {isOanda && Number.isFinite(leg.move1pctUsd ?? NaN)
+                              ? `$${leg.move1pctUsd?.toFixed(2)}`
+                              : "—"}
+                          </span>
                         </div>
                       ))
                     ) : (

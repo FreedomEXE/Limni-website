@@ -388,7 +388,25 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   })();
 
 
-  const plannedPairs = basketSignals ? groupSignals(basketSignals.pairs) : [];
+  let plannedPairs = basketSignals ? groupSignals(basketSignals.pairs) : [];
+  const lotCapPer100k = 10;
+  if (plannedPairs.length > 0) {
+    const totalCapLots = lotCapPer100k * (account.equity / 100000);
+    const perPairLot = totalCapLots / plannedPairs.length;
+    plannedPairs = plannedPairs.map((pair) => ({
+      ...pair,
+      units: perPairLot,
+      netUnits: perPairLot * pair.net,
+      legs: pair.legs.map((leg) => ({
+        ...leg,
+        units: perPairLot,
+      })),
+    })) as typeof plannedPairs & Array<{
+      units: number;
+      netUnits: number;
+      legs: Array<typeof plannedPairs[number]["legs"][number] & { units: number }>;
+    }>;
+  }
   const journalRows = [
     ...(account.recent_logs ?? []).map((log) => ({
       label: "Runtime",
@@ -449,6 +467,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             net: pair.net,
             legsCount: pair.legs.length,
             legs: pair.legs,
+            units: "units" in pair ? (pair as any).units : null,
+            netUnits: "netUnits" in pair ? (pair as any).netUnits : null,
           })),
           mappingRows: [],
           openPositions: filteredOpenPositions.map((pos) => ({
