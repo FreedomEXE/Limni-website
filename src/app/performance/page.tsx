@@ -80,9 +80,15 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     const recentWeeks = await listPerformanceWeeks(desiredWeeks);
     const ordered: string[] = [];
     const seen = new Set<string>();
-    if (nextWeekOpenUtc && recentWeeks.length > 0) {
+    // Always show both the current (possibly upcoming) week open and next week open
+    // so we don't skip a week when `desiredWeeks` is small.
+    if (nextWeekOpenUtc) {
       ordered.push(nextWeekOpenUtc);
       seen.add(nextWeekOpenUtc);
+    }
+    if (currentWeekOpenUtc && !seen.has(currentWeekOpenUtc)) {
+      ordered.push(currentWeekOpenUtc);
+      seen.add(currentWeekOpenUtc);
     }
     for (const week of recentWeeks) {
       if (!seen.has(week)) {

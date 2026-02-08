@@ -239,14 +239,20 @@ export async function listWeeksForAccount(
       return [];
     }
 
-    // Query weeks AFTER account creation
+    // Query weeks starting from the week the account was connected (not strictly after the timestamp),
+    // so users can view the partial week that includes the connection date.
+    const createdWeekOpenUtc = getWeekOpenUtc(createdAt);
+    const createdWeekOpenDt = DateTime.fromISO(createdWeekOpenUtc, { zone: "utc" });
+    const createdWeekOpen = createdWeekOpenDt.isValid ? createdWeekOpenDt.toJSDate() : createdAt.toJSDate();
+
+    // Query weeks on/after the connection week open
     const rows = await query<{ week_open_utc: Date }>(
       `SELECT DISTINCT week_open_utc
        FROM performance_snapshots
        WHERE week_open_utc >= $1
        ORDER BY week_open_utc DESC
        LIMIT $2`,
-      [createdAt.toJSDate(), limit]
+      [createdWeekOpen, limit]
     );
 
     const historicalWeeks = rows.map((row) => row.week_open_utc.toISOString());

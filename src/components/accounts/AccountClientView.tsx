@@ -21,6 +21,7 @@ type HeaderConfig = {
   weekOptions: WeekOption[];
   currentWeek: string;
   selectedWeek: WeekOption;
+  weekLabelMode?: "week_open_utc" | "monday_et";
   onBackHref: string;
 };
 
@@ -328,6 +329,7 @@ export default function AccountClientView({
               weekOptions={header.weekOptions}
               currentWeek={header.currentWeek}
               selectedWeek={header.selectedWeek}
+              labelMode={header.weekLabelMode}
             />
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Last refresh {header.lastSync ?? "—"}

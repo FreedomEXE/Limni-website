@@ -9,6 +9,7 @@ type WeekSelectorProps = {
   weekOptions: WeekOption[];
   currentWeek: string;
   selectedWeek: WeekOption;
+  labelMode?: "week_open_utc" | "monday_et";
   className?: string;
 };
 
@@ -33,6 +34,7 @@ export default function WeekSelector({
   weekOptions,
   currentWeek,
   selectedWeek,
+  labelMode = "week_open_utc",
   className = "",
 }: WeekSelectorProps) {
   const router = useRouter();
@@ -63,7 +65,11 @@ export default function WeekSelector({
     if (!parsed.isValid) {
       return week;
     }
-    return `Week of ${parsed.toFormat("MMM dd, yyyy")}`;
+    const labelDate =
+      labelMode === "monday_et"
+        ? parsed.plus({ days: 1 }).startOf("day")
+        : parsed;
+    return `Week of ${labelDate.toFormat("MMM dd, yyyy")}`;
   };
 
   const isCurrentWeek = (week: WeekOption): boolean => {

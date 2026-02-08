@@ -570,6 +570,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
           weekOptions,
           currentWeek: currentWeekOpenUtc,
           selectedWeek,
+          weekLabelMode: "monday_et",
           onBackHref: "/accounts",
         }}
         kpi={{

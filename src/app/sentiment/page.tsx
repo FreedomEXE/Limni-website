@@ -24,6 +24,7 @@ import {
   readPerformanceSnapshotsByWeek,
   weekLabelFromOpen,
 } from "@/lib/performanceSnapshots";
+import { deduplicateWeeks } from "@/lib/weekState";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -58,9 +59,20 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
     viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
   const weekValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
 
-  const weeks = await listPerformanceWeeks();
-  const selectedWeek = weekValue && weeks.includes(weekValue) ? weekValue : weeks[0] ?? null;
   const currentWeekOpen = getWeekOpenUtc();
+  const currentWeekStart = DateTime.fromISO(currentWeekOpen, { zone: "utc" });
+  const nextWeekOpen =
+    currentWeekStart.isValid
+      ? currentWeekStart.plus({ days: 7 }).toUTC().toISO()
+      : null;
+
+  const recentWeeks = await listPerformanceWeeks(24);
+  const weeks = deduplicateWeeks(
+    [nextWeekOpen, currentWeekOpen, ...recentWeeks].filter((w): w is string => Boolean(w)),
+  ).slice(0, 12);
+
+  const selectedWeek =
+    weekValue && weeks.includes(weekValue) ? weekValue : currentWeekOpen;
   const isCurrentWeek = !selectedWeek || selectedWeek === currentWeekOpen;
 
   let aggregates: SentimentAggregate[] = [];
