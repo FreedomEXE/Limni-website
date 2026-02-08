@@ -126,11 +126,13 @@ function SimpleListTable({
   rows,
   emptyState,
   renderRow,
+  maxHeight = 520,
 }: {
   columns: Array<{ key: string; label: string }>;
   rows: Array<{ id: string }>;
   emptyState?: ReactNode;
   renderRow: (row: any) => ReactNode;
+  maxHeight?: number;
 }) {
   return (
     <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70">
@@ -144,7 +146,7 @@ function SimpleListTable({
           {emptyState ?? "No rows to display."}
         </div>
       ) : (
-        <div>
+        <div className="overflow-y-auto" style={{ maxHeight }}>
           {rows.map((row) => (
             <div key={row.id} className="border-b border-[var(--panel-border)]/40 px-4 py-3 text-sm text-[var(--foreground)]">
               {renderRow(row)}
@@ -210,6 +212,43 @@ export default function AccountClientView({
   };
 
   const showKpis = activeView === "overview" || activeView === "equity";
+  const isOanda = header.providerLabel.toLowerCase() === "oanda";
+  const plannedRows = drawerData.plannedPairs.map((pair) => ({
+    id: `planned-${pair.symbol}`,
+    status: "pending",
+    searchText: `${pair.symbol} ${pair.assetClass}`,
+    sortValue: pair.net,
+    rowType: "planned",
+    ...pair,
+  }));
+  const openRows = drawerData.openPositions.map((row) => ({
+    id: `open-${row.symbol}-${row.side}-${row.lots}`,
+    status: "open",
+    searchText: `${row.symbol} ${row.side}`,
+    sortValue: row.pnl,
+    rowType: "open",
+    ...row,
+  }));
+  const closedRows = drawerData.closedGroups.map((group) => ({
+    id: `closed-${group.symbol}-${group.side}-${group.lots}`,
+    status: "closed",
+    searchText: `${group.symbol} ${group.side}`,
+    sortValue: group.net,
+    rowType: "closed",
+    ...group,
+  }));
+  const pendingCount = plannedRows.length;
+  const openCount = openRows.length;
+  const closedCount = closedRows.length;
+  const netExposure = plannedRows.reduce((sum, row) => {
+    if (isOanda && Number.isFinite(row.netUnits as number)) {
+      return sum + (row.netUnits as number);
+    }
+    if (!isOanda && Number.isFinite(row.net as number)) {
+      return sum + (row.net as number);
+    }
+    return sum;
+  }, 0);
 
   return (
     <PageShell
@@ -318,6 +357,20 @@ export default function AccountClientView({
 
       {activeView === "positions" ? (
         <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-4">
+            <SummaryCard label="Pending" value={pendingCount} hint="Planned trades" />
+            <SummaryCard label="Open" value={openCount} hint="Active positions" />
+            <SummaryCard label="Closed" value={closedCount} hint="Closed this week" />
+            <SummaryCard
+              label="Net Exposure"
+              value={
+                isOanda
+                  ? `${netExposure.toFixed(0)} units`
+                  : `${netExposure.toFixed(0)} legs`
+              }
+              hint="Planned net exposure"
+            />
+          </div>
           <FilterBar
             status={statusFilter}
             onStatusChange={setStatusFilter}
@@ -355,37 +408,13 @@ export default function AccountClientView({
             columns={[
               { key: "symbol", label: "Symbol" },
               { key: "status", label: "Status" },
-              { key: "size", label: "Size" },
+              { key: "size", label: isOanda ? "Units" : "Lots / Legs" },
               { key: "metric", label: "Metric" },
               { key: "legs", label: "Legs" },
             ]}
-            rows={filterRows([
-              ...drawerData.plannedPairs.map((pair) => ({
-                id: `planned-${pair.symbol}`,
-                status: "pending",
-                searchText: `${pair.symbol} ${pair.assetClass}`,
-                sortValue: pair.net,
-                rowType: "planned",
-                ...pair,
-              })),
-              ...drawerData.openPositions.map((row) => ({
-                id: `open-${row.symbol}-${row.side}-${row.lots}`,
-                status: "open",
-                searchText: `${row.symbol} ${row.side}`,
-                sortValue: row.pnl,
-                rowType: "open",
-                ...row,
-              })),
-              ...drawerData.closedGroups.map((group) => ({
-                id: `closed-${group.symbol}-${group.side}-${group.lots}`,
-                status: "closed",
-                searchText: `${group.symbol} ${group.side}`,
-                sortValue: group.net,
-                rowType: "closed",
-                ...group,
-              })),
-            ])}
+            rows={filterRows([...plannedRows, ...openRows, ...closedRows])}
             emptyState="No positions for this week."
+            maxHeight={520}
             renderRow={(row) => (
               <details className="group">
                 <summary className="grid cursor-pointer list-none grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
@@ -395,12 +424,18 @@ export default function AccountClientView({
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
                     {row.rowType === "planned"
-                      ? Number.isFinite(row.netUnits as number)
-                        ? `${(row.netUnits as number).toFixed(0)} units`
-                        : "—"
-                      : "lots" in row
-                        ? `${(row.lots as number).toFixed(2)} lots`
-                        : "—"}
+                      ? isOanda
+                        ? Number.isFinite(row.netUnits as number)
+                          ? `${(row.netUnits as number).toFixed(0)} units`
+                          : "—"
+                        : Number.isFinite(row.net as number)
+                          ? `Net ${row.net} legs`
+                          : "—"
+                      : isOanda
+                        ? "—"
+                        : "lots" in row
+                          ? `${(row.lots as number).toFixed(2)} lots`
+                          : "—"}
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
                     {row.rowType === "planned"
