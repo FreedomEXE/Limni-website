@@ -355,8 +355,8 @@ export default function AccountClientView({
             columns={[
               { key: "symbol", label: "Symbol" },
               { key: "status", label: "Status" },
-              { key: "net", label: "Net Units" },
-              { key: "move", label: "1% Move ($)" },
+              { key: "size", label: "Size" },
+              { key: "metric", label: "Metric" },
               { key: "legs", label: "Legs" },
             ]}
             rows={filterRows([
@@ -365,6 +365,7 @@ export default function AccountClientView({
                 status: "pending",
                 searchText: `${pair.symbol} ${pair.assetClass}`,
                 sortValue: pair.net,
+                rowType: "planned",
                 ...pair,
               })),
               ...drawerData.openPositions.map((row) => ({
@@ -372,6 +373,7 @@ export default function AccountClientView({
                 status: "open",
                 searchText: `${row.symbol} ${row.side}`,
                 sortValue: row.pnl,
+                rowType: "open",
                 ...row,
               })),
               ...drawerData.closedGroups.map((group) => ({
@@ -379,6 +381,7 @@ export default function AccountClientView({
                 status: "closed",
                 searchText: `${group.symbol} ${group.side}`,
                 sortValue: group.net,
+                rowType: "closed",
                 ...group,
               })),
             ])}
@@ -391,16 +394,24 @@ export default function AccountClientView({
                     {row.status}
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
-                    {"netUnits" in row && Number.isFinite(row.netUnits as number)
-                      ? `${(row.netUnits as number).toFixed(0)} units`
+                    {row.rowType === "planned"
+                      ? Number.isFinite(row.netUnits as number)
+                        ? `${(row.netUnits as number).toFixed(0)} units`
+                        : "—"
                       : "lots" in row
                         ? `${(row.lots as number).toFixed(2)} lots`
                         : "—"}
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
-                    {"move1pctUsd" in row && Number.isFinite(row.move1pctUsd as number)
-                      ? `$${(row.move1pctUsd as number).toFixed(2)}`
-                      : "—"}
+                    {row.rowType === "planned"
+                      ? Number.isFinite(row.move1pctUsd as number)
+                        ? `$${(row.move1pctUsd as number).toFixed(2)}`
+                        : "—"
+                      : "pnl" in row
+                        ? `${(row.pnl as number).toFixed(2)}`
+                        : "net" in row
+                          ? `${(row.net as number).toFixed(2)}`
+                          : "—"}
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
                     {"legsCount" in row ? `${row.legsCount} legs` : row.legs ? `${row.legs.length} legs` : "—"}
