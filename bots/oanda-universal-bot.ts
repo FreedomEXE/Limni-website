@@ -159,6 +159,7 @@ async function buildSizing(signals: BasketSignal[]) {
   const instrumentMap = new Map(instruments.map((inst) => [inst.name, inst]));
   const summary = await fetchOandaAccountSummary();
   const nav = Number(summary.NAV);
+  const marginAvailable = Number(summary.marginAvailable ?? NaN);
   if (!Number.isFinite(nav) || nav <= 0) {
     throw new Error("Invalid OANDA NAV.");
   }
@@ -252,7 +253,8 @@ async function buildSizing(signals: BasketSignal[]) {
     });
   }
 
-  const buffer = nav * (1 - marginBuffer);
+  const available = Number.isFinite(marginAvailable) && marginAvailable > 0 ? marginAvailable : nav;
+  const buffer = available * (1 - marginBuffer);
   const scale = totalMargin > 0 ? Math.min(1, buffer / totalMargin) : 1;
   if (skipped > 0) {
     log("Skipped instruments (missing price/spec/FX conversion).", {
@@ -270,8 +272,11 @@ async function buildSizing(signals: BasketSignal[]) {
           : Math.max(0, Number((row.units * scale).toFixed(row.precision))),
     })),
     nav,
+    marginAvailable: Number.isFinite(marginAvailable) ? marginAvailable : null,
     totalMargin,
     scale,
+    skipped,
+    skippedDetails,
   };
 }
 
@@ -293,7 +298,7 @@ async function enterTrades(signals: BasketSignal[]) {
       scale: sizing.scale,
       margin: sizing.totalMargin,
     });
-    return { nav: sizing.nav, pending: 0 };
+    return { nav: sizing.nav, pending: 0, skipped: sizing.skipped, failures: [] as any[] };
   }
 
   const openTrades = await fetchOandaOpenTrades();
@@ -319,6 +324,26 @@ async function enterTrades(signals: BasketSignal[]) {
 
   const failures: Array<{ symbol: string; instrument: string; error: string }> = [];
   const orderDetails: Array<{ symbol: string; instrument: string; units: number; side: string; model: string }> = [];
+
+  const plannedKeys = new Set<string>();
+  for (const planned of sizing.plan) {
+    if (!Number.isFinite(planned.units) || planned.units <= 0) continue;
+    plannedKeys.add(`${planned.symbol.toUpperCase()}:${String(planned.model).toLowerCase()}:${planned.direction}`);
+  }
+  const missingBefore = Array.from(plannedKeys).filter((key) => !existingLegKeys.has(key));
+  if (missingBefore.length > 0 || sizing.skipped > 0) {
+    log("OANDA leg diff before entry.", {
+      planned: plannedKeys.size,
+      open: existingLegKeys.size,
+      missing: missingBefore.length,
+      skipped: sizing.skipped,
+      scale: sizing.scale,
+      nav: sizing.nav,
+      marginAvailable: sizing.marginAvailable,
+      missingSamples: missingBefore.slice(0, 10),
+      skippedSamples: (sizing.skippedDetails ?? []).slice(0, 10),
+    });
+  }
 
   for (const planned of sizing.plan) {
     if (!Number.isFinite(planned.units) || planned.units <= 0) continue;
@@ -380,7 +405,8 @@ async function enterTrades(signals: BasketSignal[]) {
     }
   }
 
-  return { nav: sizing.nav, pending, failures };
+  // Treat skipped legs as pending so we keep retrying until the environment/instruments support them.
+  return { nav: sizing.nav, pending: pending + (sizing.skipped ?? 0), skipped: sizing.skipped ?? 0, failures };
 }
 
 async function tick() {
@@ -482,7 +508,7 @@ async function tick() {
       const signals = await fetchLatestSignals();
       const entry = await enterTrades(signals);
       const entryEquity = entry.nav;
-      state.entered = entry.pending === 0;
+      state.entered = entry.pending === 0 && (entry.failures?.length ?? 0) === 0;
       state.entry_time_utc = now.toISO();
       state.entry_equity = entryEquity;
       state.peak_equity = entryEquity;
