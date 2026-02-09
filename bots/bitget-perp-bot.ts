@@ -56,7 +56,7 @@ let trailOffsetPct = Number(process.env.BITGET_TRAIL_OFFSET_PCT ?? "10");
 let linkedAccountKey: string | null = null;
 let linkedAccountBase: Record<string, unknown> | null = null;
 
-const SYMBOLS = ["BTCUSDT.P", "ETHUSDT.P"] as const;
+const SYMBOLS = ["BTCUSDT", "ETHUSDT"] as const;
 const REQUIRED_MODELS: BasketSignal["model"][] = [
   "antikythera",
   "dealer",
@@ -68,8 +68,8 @@ let running = false;
 
 function toBitgetSymbol(symbol: string) {
   const upper = String(symbol ?? "").trim().toUpperCase();
-  if (upper === "BTCUSD") return "BTCUSDT.P";
-  if (upper === "ETHUSD") return "ETHUSDT.P";
+  if (upper === "BTCUSD") return "BTCUSDT";
+  if (upper === "ETHUSD") return "ETHUSDT";
   return upper;
 }
 
