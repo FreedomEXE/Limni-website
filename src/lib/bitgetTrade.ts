@@ -47,7 +47,7 @@ export function getBitgetEnv() {
 }
 
 export function getBitgetProductType() {
-  return process.env.BITGET_PRODUCT_TYPE ?? "USDT-FUTURES";
+  return process.env.BITGET_PRODUCT_TYPE ?? "USDT-M";
 }
 
 function getAuth(): BitgetAuth {
