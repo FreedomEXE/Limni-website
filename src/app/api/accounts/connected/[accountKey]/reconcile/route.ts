@@ -134,20 +134,14 @@ export async function GET(_request: Request, context: RouteContext) {
       (sizing.rows ?? []).map((row) => [String(row.symbol ?? "").toUpperCase(), row]),
     );
 
-    // Compute scale using the bot's logic: totalMargin uses *net per symbol* (from grouped signals).
-    const grouped = groupSignals(
-      plannedSignals.map((s) => ({
-        symbol: s.symbol,
-        model: s.model as any,
-        direction: s.direction as any,
-        asset_class: "fx" as const,
-      })) as any,
-    );
     let totalMargin = 0;
-    for (const pair of grouped) {
-      const row = sizingBySymbol.get(String(pair.symbol).toUpperCase());
-      if (!row || !row.available || !Number.isFinite(row.marginRate ?? NaN)) continue;
-      totalMargin += sizing.nav * (row.marginRate ?? 0) * Math.abs(pair.net);
+    for (const sig of plannedSignals) {
+      const row = sizingBySymbol.get(String(sig.symbol).toUpperCase());
+      if (!row || !row.available) continue;
+      if (!Number.isFinite(row.marginRate ?? NaN) || !Number.isFinite(row.notionalUsdPerUnit ?? NaN)) continue;
+      if (!Number.isFinite(row.units ?? NaN)) continue;
+      const legNotional = Math.abs((row.units ?? 0) * (row.notionalUsdPerUnit ?? 0));
+      totalMargin += legNotional * (row.marginRate ?? 0);
     }
     // marginAvailable can legitimately be 0; treat that as "no free margin", not "missing".
     const available =

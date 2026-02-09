@@ -69,6 +69,19 @@ function log(message: string, extra?: Record<string, unknown>) {
   }
 }
 
+function parseManagedLegTag(tag: string | undefined | null) {
+  const raw = String(tag ?? "").trim();
+  if (!raw) return null;
+  const parts = raw.split("-");
+  // Expected: uni-{SYMBOL}-{MODEL}-{random}
+  if (parts.length < 4) return null;
+  const prefix = String(parts[0] ?? "").toLowerCase();
+  const symbol = String(parts[1] ?? "").toUpperCase();
+  const model = String(parts[2] ?? "").toLowerCase();
+  if (prefix !== "uni" || !symbol || !model) return null;
+  return { symbol, model };
+}
+
 function getWeekWindowUtc(now = DateTime.utc()) {
   const etNow = now.setZone("America/New_York");
   const daysSinceSunday = etNow.weekday % 7;
@@ -183,15 +196,19 @@ async function buildSizing(signals: BasketSignal[]) {
       const sizing = await buildOandaSizingForAccount(linkedAccountKey);
       const sizingMap = new Map(sizing.rows.map((row) => [row.symbol, row]));
 
-      const available =
-        Number.isFinite(sizing.marginAvailable ?? NaN) && (sizing.marginAvailable as number) > 0
-          ? (sizing.marginAvailable as number)
-          : sizing.nav;
+      // Important: with OPEN_ONLY hedged legs, many accounts charge margin on *gross* exposure,
+      // not the netted instrument exposure. Scale sizing using gross margin across legs.
+      const available = Number.isFinite(sizing.marginAvailable ?? NaN)
+        ? (sizing.marginAvailable as number)
+        : sizing.nav;
       let totalMargin = 0;
-      for (const pair of grouped) {
-        const row = sizingMap.get(pair.symbol);
-        if (!row || !row.available || !Number.isFinite(row.marginRate ?? NaN)) continue;
-        totalMargin += sizing.nav * (row.marginRate ?? 0) * Math.abs(pair.net);
+      for (const signal of tradeSignals) {
+        const row = sizingMap.get(signal.symbol);
+        if (!row || !row.available) continue;
+        if (!Number.isFinite(row.marginRate ?? NaN) || !Number.isFinite(row.notionalUsdPerUnit ?? NaN)) continue;
+        if (!Number.isFinite(row.units ?? NaN)) continue;
+        const legNotional = Math.abs((row.units ?? 0) * (row.notionalUsdPerUnit ?? 0));
+        totalMargin += legNotional * (row.marginRate ?? 0);
       }
       const buffer = available * (1 - marginBuffer);
       const scale = totalMargin > 0 ? Math.min(1, buffer / totalMargin) : 1;
@@ -281,12 +298,7 @@ async function buildSizing(signals: BasketSignal[]) {
       signal.direction !== "NEUTRAL" && signal.asset_class === "fx",
   );
 
-  // For sizing and UI consistency we scale exposure based on *net* per symbol, but still trade full legs.
-  const grouped = groupSignals(tradeSignals);
-  const netBySymbol = new Map<string, number>();
-  for (const pair of grouped) {
-    netBySymbol.set(pair.symbol, Math.abs(pair.net));
-  }
+  // For OPEN_ONLY hedged legs, prefer scaling using gross margin across legs.
 
   // Price both the planned instruments and any required USD conversion pairs so we can size
   // non-USD quote currencies (e.g. EUR_GBP needs GBP_USD or USD_GBP pricing).
@@ -327,7 +339,6 @@ async function buildSizing(signals: BasketSignal[]) {
   }> = [];
 
   let totalMargin = 0;
-  const marginCounted = new Set<string>();
   const skippedDetails: Array<{ symbol: string; reason: string }> = [];
   for (const signal of tradeSignals) {
     const instrument = getOandaInstrument(signal.symbol);
@@ -360,12 +371,7 @@ async function buildSizing(signals: BasketSignal[]) {
 
     const marginRate = Number(spec.marginRate ?? "0");
     if (Number.isFinite(marginRate)) {
-      const net = netBySymbol.get(signal.symbol) ?? 0;
-      if (net > 0 && !marginCounted.has(signal.symbol)) {
-        // OANDA margin is netted per instrument on many accounts, so base scale on net exposure.
-        totalMargin += targetNotionalUsd * marginRate * net;
-        marginCounted.add(signal.symbol);
-      }
+      totalMargin += targetNotionalUsd * marginRate;
     }
 
     plan.push({
@@ -418,11 +424,48 @@ async function closeAllTrades() {
   }
 }
 
+async function closeTradesById(tradeIds: string[]) {
+  for (const id of tradeIds) {
+    await closeOandaTrade(id);
+  }
+}
+
 async function enterTrades(signals: BasketSignal[]) {
   const sizing = await buildSizing(signals);
   if (sizing.plan.length === 0) {
     throw new Error("No tradable instruments for OANDA.");
   }
+
+  const openTrades = await fetchOandaOpenTrades();
+  const isManagedTrade = (trade: Awaited<ReturnType<typeof fetchOandaOpenTrades>>[number]) => {
+    const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
+    return Boolean(parseManagedLegTag(tag));
+  };
+
+  const managedTrades = openTrades.filter(isManagedTrade);
+  const unmanagedTrades = openTrades.filter((t) => !isManagedTrade(t));
+
+  // If the account has any untagged/unmanaged trades, the bot cannot safely dedupe or reconcile.
+  // User-approved behavior: close everything and rebuild from a clean slate.
+  if (unmanagedTrades.length > 0) {
+    log("Unmanaged trades detected. Closing all open trades before entry.", {
+      totalOpen: openTrades.length,
+      unmanaged: unmanagedTrades.length,
+      unmanagedSamples: unmanagedTrades.slice(0, 10).map((t) => ({
+        id: t.id,
+        instrument: t.instrument,
+        currentUnits: t.currentUnits,
+        tag: t.clientExtensions?.tag ?? t.clientExtensions?.id ?? null,
+      })),
+    });
+    await closeTradesById(openTrades.map((t) => t.id));
+    const remaining = await fetchOandaOpenTrades();
+    if (remaining.length > 0) {
+      throw new Error(`Failed to clear unmanaged trades. Remaining open trades: ${remaining.length}`);
+    }
+    managedTrades.length = 0;
+  }
+
   if (!tradingEnabled) {
     log("OANDA_TRADING_ENABLED=false; skipping live orders.", {
       trades: sizing.plan.length,
@@ -432,25 +475,16 @@ async function enterTrades(signals: BasketSignal[]) {
     return { nav: sizing.nav, pending: 0, skipped: sizing.skipped, failures: [] as any[] };
   }
 
-  const openTrades = await fetchOandaOpenTrades();
-  const isManagedTrade = (trade: Awaited<ReturnType<typeof fetchOandaOpenTrades>>[number]) => {
-    const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
-    return tag.toLowerCase().startsWith("uni-");
-  };
-
-  const managedTrades = openTrades.filter(isManagedTrade);
   const existingLegKeys = new Set<string>();
   const unparsedTags: string[] = [];
   for (const trade of managedTrades) {
     const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
-    const parts = tag.split("-");
-    // Expected: uni-{SYMBOL}-{MODEL}-{random}
-    const symbol = (parts[1] ?? "").toUpperCase();
-    const model = (parts[2] ?? "").toLowerCase();
-    if (!symbol || !model) {
+    const parsed = parseManagedLegTag(tag);
+    if (!parsed) {
       if (tag) unparsedTags.push(tag);
       continue;
     }
+    const { symbol, model } = parsed;
     const units = Number(trade.currentUnits ?? 0);
     if (!Number.isFinite(units) || units === 0) continue;
     const dir = units > 0 ? "LONG" : "SHORT";
@@ -502,7 +536,45 @@ async function enterTrades(signals: BasketSignal[]) {
     }
   }
 
+  // Hedge-first entry ordering per symbol: alternate LONG/SHORT legs to minimize transient margin spikes.
+  const bySymbol = new Map<string, typeof sizing.plan>();
   for (const planned of sizing.plan) {
+    const sym = planned.symbol.toUpperCase();
+    if (!bySymbol.has(sym)) bySymbol.set(sym, []);
+    bySymbol.get(sym)!.push(planned);
+  }
+  const ordered: typeof sizing.plan = [];
+  for (const [sym, legs] of Array.from(bySymbol.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+    const longs = legs.filter((l) => l.direction === "LONG");
+    const shorts = legs.filter((l) => l.direction === "SHORT");
+    while (longs.length > 0 || shorts.length > 0) {
+      if (longs.length > 0) ordered.push(longs.shift()!);
+      if (shorts.length > 0) ordered.push(shorts.shift()!);
+    }
+  }
+
+  let placed = 0;
+  const logMargin = async (label: string) => {
+    try {
+      const summary = await fetchOandaAccountSummary();
+      log(label, {
+        nav: Number(summary.NAV),
+        balance: Number(summary.balance),
+        marginUsed: Number(summary.marginUsed),
+        marginAvailable: Number(summary.marginAvailable),
+        unrealizedPL: Number(summary.unrealizedPL),
+        currency: summary.currency,
+      });
+    } catch (error) {
+      log("Failed to fetch margin telemetry.", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
+  await logMargin("Margin before entry.");
+
+  for (const planned of ordered) {
     if (!Number.isFinite(planned.units) || planned.units <= 0) continue;
     const key = `${planned.symbol.toUpperCase()}:${String(planned.model).toLowerCase()}:${planned.direction}`;
     if (existingLegKeys.has(key)) continue;
@@ -515,10 +587,15 @@ async function enterTrades(signals: BasketSignal[]) {
         units,
         side,
         clientTag: buildClientTag("uni", planned.symbol, planned.model),
-        // Prevent accidental netting/closures. If the account cannot hold offsetting legs,
-        // this will fail loudly instead of silently reducing/closing existing trades.
+        // Preserve per-leg hedging. If the account disallows offsetting legs, this fails loudly.
         positionFill: "OPEN_ONLY",
       });
+
+      placed += 1;
+      if (placed % 6 === 0) {
+        await logMargin("Margin during entry.");
+      }
+
       if (debug) {
         log("OANDA order response (sample).", {
           symbol: planned.symbol,
@@ -561,8 +638,12 @@ async function enterTrades(signals: BasketSignal[]) {
         side,
         error: error instanceof Error ? error.message : String(error),
       });
+      await logMargin("Margin after order failure.");
+      break;
     }
   }
+
+  await logMargin("Margin after entry.");
 
   log("Placed OANDA orders (per-leg).", {
     count: orderDetails.length,
@@ -573,13 +654,36 @@ async function enterTrades(signals: BasketSignal[]) {
 
   const afterTrades = await fetchOandaOpenTrades();
   const afterManaged = afterTrades.filter(isManagedTrade);
+  if (orderDetails.length > 0 && afterTrades.length > 0 && afterManaged.length === 0) {
+    // If orders were placed but no trades are tagged, we cannot manage/dedupe/reconcile.
+    // Fail closed: wipe the account and let the next tick retry.
+    log("No managed trades detected after entry; closing all trades to avoid unmanaged exposure.", {
+      afterTrades: afterTrades.length,
+      placed: orderDetails.length,
+      tagSamples: afterTrades.slice(0, 10).map((t) => ({
+        id: t.id,
+        instrument: t.instrument,
+        currentUnits: t.currentUnits,
+        tag: t.clientExtensions?.tag ?? t.clientExtensions?.id ?? null,
+      })),
+    });
+    await closeTradesById(afterTrades.map((t) => t.id));
+    return {
+      nav: sizing.nav,
+      pending: sizing.plan.filter((p) => Number.isFinite(p.units) && p.units > 0).length,
+      skipped: sizing.skipped ?? 0,
+      failures: [
+        ...failures,
+        { symbol: "ALL", instrument: "ALL", error: "No managed trades detected after entry; closed all." },
+      ],
+    };
+  }
   const afterKeys = new Set<string>();
   for (const trade of afterManaged) {
     const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
-    const parts = tag.split("-");
-    const symbol = (parts[1] ?? "").toUpperCase();
-    const model = (parts[2] ?? "").toLowerCase();
-    if (!symbol || !model) continue;
+    const parsed = parseManagedLegTag(tag);
+    if (!parsed) continue;
+    const { symbol, model } = parsed;
     const units = Number(trade.currentUnits ?? 0);
     if (!Number.isFinite(units) || units === 0) continue;
     const dir = units > 0 ? "LONG" : "SHORT";
@@ -628,12 +732,17 @@ async function tick() {
         state.current_equity = currentNav;
         if (linkedAccountKey) {
           const openTrades = await fetchOandaOpenTrades();
+          const managedTrades = openTrades.filter((trade) => {
+            const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
+            return Boolean(parseManagedLegTag(tag));
+          });
           await updateConnectedAccountAnalysis(linkedAccountKey, {
             ...(linkedAccountBase ?? {}),
             nav: currentNav,
             balance: Number(summary.balance ?? summary.NAV ?? 0),
             currency: summary.currency ?? "USD",
-            positions: openTrades.map((trade) => ({
+            // Only report managed (tagged) legs to the app. Unmanaged trades should not be surfaced.
+            positions: managedTrades.map((trade) => ({
               symbol: trade.instrument.replace("_", ""),
               type: Number(trade.currentUnits ?? 0) > 0 ? "buy" : "sell",
               lots: Math.abs(Number(trade.currentUnits ?? 0)),

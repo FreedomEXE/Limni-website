@@ -439,10 +439,18 @@ export default async function ConnectedAccountPage({
           ? (account.config as Record<string, unknown>).marginBuffer as number
           : 0.1;
       let totalMargin = 0;
+      // When trading per-leg hedged baskets with OPEN_ONLY, margin is often assessed on gross exposure.
+      // Scale using gross margin across legs, not net exposure.
       for (const pair of plannedPairs) {
         const row = plannedSizingBySymbol.get(pair.symbol);
-        if (!row || !Number.isFinite(row.marginRate ?? NaN)) continue;
-        totalMargin += sizing.nav * (row.marginRate ?? 0) * Math.abs(pair.net);
+        if (!row || !row.available) continue;
+        if (!Number.isFinite(row.marginRate ?? NaN) || !Number.isFinite(row.notionalUsdPerUnit ?? NaN)) continue;
+        if (!Number.isFinite(row.units ?? NaN)) continue;
+        const legs = Array.isArray(pair.legs) ? pair.legs : [];
+        const legCount = Math.max(0, legs.filter((l) => String((l as any)?.direction ?? "").toUpperCase() !== "NEUTRAL").length);
+        if (legCount === 0) continue;
+        const perLegNotional = Math.abs((row.units ?? 0) * (row.notionalUsdPerUnit ?? 0));
+        totalMargin += perLegNotional * (row.marginRate ?? 0) * legCount;
       }
       // marginAvailable can legitimately be 0; treat that as "no free margin", not "missing".
       const available =
@@ -464,6 +472,15 @@ export default async function ConnectedAccountPage({
         }
         const precision = row.tradeUnitsPrecision ?? 0;
         const scaledUnits = roundUnits((row.units ?? 0) * scale, precision, row.minUnits);
+        if (!Number.isFinite(scaledUnits) || scaledUnits <= 0) {
+          return {
+            ...pair,
+            units: 0,
+            netUnits: 0,
+            move1pctUsd: 0,
+            legs: pair.legs.map((leg) => ({ ...leg, units: 0, move1pctUsd: 0 })),
+          } as any;
+        }
         const netUnits = scaledUnits * pair.net;
         const notionalPerUnit = row.notionalUsdPerUnit ?? 0;
         const move1pctUsd = Math.abs(netUnits) * notionalPerUnit * 0.01;
