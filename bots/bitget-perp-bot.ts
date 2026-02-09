@@ -241,11 +241,13 @@ async function closeAllPositions(direction: "LONG" | "SHORT") {
 async function enterPositions(direction: "LONG" | "SHORT") {
   await setBitgetPositionMode("one_way_mode");
 
-  // Skip programmatic leverage setting - use whatever is configured in Bitget UI
-  // Bitget may restrict programmatic leverage changes depending on account tier
-  log("Using leverage configured in Bitget UI (not setting programmatically)", {
-    targetLeverage: leverage
-  });
+  const effectiveLeverage = Number.isFinite(leverage) ? Math.max(1, Math.min(50, Math.floor(leverage))) : 10;
+  // We must keep leverage <= account max (your error is 40914: max leverage is 50).
+  // Setting leverage programmatically ensures orders don't get rejected due to UI leverage being higher.
+  for (const symbol of SYMBOLS) {
+    await setBitgetLeverage(symbol, effectiveLeverage);
+  }
+  log("Set Bitget leverage.", { effectiveLeverage });
 
   const account = await fetchBitgetAccount();
   const equity = Number(account?.usdtEquity ?? account?.equity ?? account?.available ?? "0");
@@ -257,7 +259,7 @@ async function enterPositions(direction: "LONG" | "SHORT") {
   // With $100 account: $50 margin per symbol
   // At 10x leverage: $50 * 10 = $500 notional per position
   // Note: We specify NOTIONAL size to the API, Bitget calculates margin = notional / leverage
-  const notionalPerSymbol = (equity * 0.5) * leverage;
+  const notionalPerSymbol = (equity * 0.5) * effectiveLeverage;
   const side = direction === "LONG" ? "buy" : "sell";
   const entryPrices: Record<string, number> = {};
   const entryNotional: Record<string, number> = {};

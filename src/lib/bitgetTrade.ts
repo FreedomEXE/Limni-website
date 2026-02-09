@@ -117,7 +117,9 @@ async function request<T>(options: BitgetRequestOptions): Promise<T> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Bitget request failed (${response.status}): ${errorText}`);
+    throw new Error(
+      `Bitget request failed (${response.status}) ${method} ${options.path}${queryString}: ${errorText}`,
+    );
   }
 
   const payload = (await response.json()) as {
@@ -147,6 +149,9 @@ export async function setBitgetPositionMode(posMode: "one_way_mode" | "hedge_mod
 
 export async function setBitgetLeverage(symbol: string, leverage: number) {
   const productType = getBitgetProductType();
+  const safeLeverage = Number.isFinite(leverage)
+    ? Math.max(1, Math.min(50, Math.floor(leverage)))
+    : 10;
   await request({
     method: "POST",
     path: "/api/v2/mix/account/set-leverage",
@@ -154,7 +159,7 @@ export async function setBitgetLeverage(symbol: string, leverage: number) {
       symbol,
       productType,
       marginCoin: "USDT",
-      leverage: String(leverage),
+      leverage: String(safeLeverage),
       holdSide: "long",
     },
   });
@@ -165,7 +170,7 @@ export async function setBitgetLeverage(symbol: string, leverage: number) {
       symbol,
       productType,
       marginCoin: "USDT",
-      leverage: String(leverage),
+      leverage: String(safeLeverage),
       holdSide: "short",
     },
   });
