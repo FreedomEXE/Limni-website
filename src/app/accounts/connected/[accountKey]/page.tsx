@@ -437,9 +437,10 @@ export default async function ConnectedAccountPage({
         if (!row || !Number.isFinite(row.marginRate ?? NaN)) continue;
         totalMargin += sizing.nav * (row.marginRate ?? 0) * Math.abs(pair.net);
       }
-      const available = Number.isFinite(sizing.marginAvailable ?? NaN)
-        ? (sizing.marginAvailable as number)
-        : sizing.nav;
+      const available =
+        Number.isFinite(sizing.marginAvailable ?? NaN) && (sizing.marginAvailable as number) > 0
+          ? (sizing.marginAvailable as number)
+          : sizing.nav;
       const scale = totalMargin > 0 ? Math.min(1, (available * (1 - buffer)) / totalMargin) : 1;
       plannedSummary = {
         marginUsed: totalMargin * scale,
@@ -506,6 +507,10 @@ export default async function ConnectedAccountPage({
     : [];
 
   const openPositions = (() => {
+    const fxSet = account.provider === "oanda"
+      ? new Set(PAIRS_BY_ASSET_CLASS.fx.map((row) => row.pair))
+      : null;
+
     const map = new Map<
       string,
       {
@@ -527,6 +532,7 @@ export default async function ConnectedAccountPage({
     rawPositions.forEach((pos, index) => {
       const symbol = String(pos.symbol ?? "").trim().toUpperCase();
       if (!symbol) return;
+      if (fxSet && !fxSet.has(symbol)) return;
 
       const type = String(pos.type ?? "").trim().toUpperCase();
       const side = type === "SELL" || type === "SHORT" ? "SELL" : "BUY";

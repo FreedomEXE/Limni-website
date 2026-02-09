@@ -677,7 +677,11 @@ export default function AccountClientView({
                         <div key={leg.id} className={`grid ${rowGridCols} gap-3 px-4`}>
                           <span className="font-semibold text-[var(--foreground)]">{leg.basket}</span>
                           <span className={leg.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>{leg.side}</span>
-                          <span>{leg.lots.toFixed(2)} lots</span>
+                          <span>
+                            {isOanda
+                              ? `${Math.abs(leg.lots).toFixed(0)} ${sizeUnitLabel}`
+                              : `${leg.lots.toFixed(2)} lots`}
+                          </span>
                           <span className={leg.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>{leg.pnl.toFixed(2)}</span>
                           <span className="text-[10px] text-[color:var(--muted)]">
                             {leg.openTime?.slice(5, 16) ?? "—"} → {leg.closeTime?.slice(5, 16) ?? "—"}
