@@ -269,12 +269,12 @@ async function buildSizing(signals: BasketSignal[]) {
 
   const instruments = await fetchOandaInstruments();
   const instrumentMap = new Map(instruments.map((inst) => [inst.name, inst]));
-  const summary = await fetchOandaAccountSummary();
-  const nav = Number(summary.NAV);
-  const marginAvailable = Number(summary.marginAvailable ?? NaN);
-  if (!Number.isFinite(nav) || nav <= 0) {
-    throw new Error("Invalid OANDA NAV.");
-  }
+      const summary = await fetchOandaAccountSummary();
+      const nav = Number(summary.NAV);
+      const marginAvailable = Number(summary.marginAvailable ?? NaN);
+      if (!Number.isFinite(nav) || nav <= 0) {
+        throw new Error("Invalid OANDA NAV.");
+      }
 
   const tradeSignals = signals.filter(
     (signal): signal is BasketSignal & { direction: "LONG" | "SHORT" } =>
@@ -383,15 +383,16 @@ async function buildSizing(signals: BasketSignal[]) {
     });
   }
 
-  const available = Number.isFinite(marginAvailable) && marginAvailable > 0 ? marginAvailable : nav;
-  const buffer = available * (1 - marginBuffer);
-  const scale = totalMargin > 0 ? Math.min(1, buffer / totalMargin) : 1;
-  if (skipped > 0) {
-    log("Skipped instruments (missing price/spec/FX conversion).", {
-      skipped,
-      details: skippedDetails,
-    });
-  }
+      // If OANDA reports marginAvailable=0, treat it as real (no free margin), not "missing".
+      const available = Number.isFinite(marginAvailable) ? marginAvailable : nav;
+      const buffer = available * (1 - marginBuffer);
+      const scale = totalMargin > 0 ? Math.min(1, buffer / totalMargin) : 1;
+      if (skipped > 0) {
+        log("Skipped instruments (missing price/spec/FX conversion).", {
+          skipped,
+          details: skippedDetails,
+        });
+      }
   return {
     plan: plan.map((row) => ({
       ...row,

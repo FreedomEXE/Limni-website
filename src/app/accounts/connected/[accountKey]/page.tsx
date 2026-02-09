@@ -444,8 +444,9 @@ export default async function ConnectedAccountPage({
         if (!row || !Number.isFinite(row.marginRate ?? NaN)) continue;
         totalMargin += sizing.nav * (row.marginRate ?? 0) * Math.abs(pair.net);
       }
+      // marginAvailable can legitimately be 0; treat that as "no free margin", not "missing".
       const available =
-        Number.isFinite(sizing.marginAvailable ?? NaN) && (sizing.marginAvailable as number) > 0
+        Number.isFinite(sizing.marginAvailable ?? NaN)
           ? (sizing.marginAvailable as number)
           : sizing.nav;
       const scale = totalMargin > 0 ? Math.min(1, (available * (1 - buffer)) / totalMargin) : 1;
