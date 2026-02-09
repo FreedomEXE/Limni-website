@@ -179,7 +179,7 @@ export async function setBitgetLeverage(
     ? Math.max(1, Math.min(50, Math.floor(leverage)))
     : 10;
   const marginMode = options?.marginMode ?? getBitgetMarginMode();
-  const holdSide = options?.holdSide ?? (marginMode === "isolated" ? "both" : undefined);
+  const holdSide = options?.holdSide;
 
   const baseBody = {
     symbol,
@@ -188,8 +188,9 @@ export async function setBitgetLeverage(
     leverage: String(safeLeverage),
   } as Record<string, unknown>;
 
-  // Empirically: cross margin expects no holdSide; isolated often expects holdSide-specific leverage.
-  if (marginMode === "isolated" && holdSide) {
+  // In hedge mode, Bitget expects leverage to be set per holdSide on isolated.
+  // In one-way mode, holdSide is typically omitted.
+  if (marginMode === "isolated" && (holdSide === "long" || holdSide === "short" || holdSide === "both")) {
     const sides: Array<"long" | "short"> =
       holdSide === "both" ? ["long", "short"] : [holdSide];
     for (const side of sides) {
@@ -207,6 +208,16 @@ export async function setBitgetLeverage(
     path: "/api/v2/mix/account/set-leverage",
     body: baseBody,
   });
+}
+
+export async function fetchBitgetSymbolAccount(symbol: string): Promise<Record<string, unknown> | null> {
+  const productType = getBitgetProductType();
+  const data = await request<Record<string, unknown>>({
+    method: "GET",
+    path: "/api/v2/mix/account/account",
+    query: { symbol, productType, marginCoin: "USDT" },
+  });
+  return data ?? null;
 }
 
 export async function fetchBitgetContracts(

@@ -5,6 +5,7 @@ import {
   fetchBitgetContracts,
   fetchBitgetPositions,
   placeBitgetOrder,
+  fetchBitgetSymbolAccount,
   setBitgetLeverage,
   setBitgetMarginMode,
   setBitgetPositionMode,
@@ -189,21 +190,30 @@ async function computeOrderSize(symbol: string, notionalUsd: number) {
   if (!Number.isFinite(price) || price <= 0) {
     throw new Error(`Invalid price for ${symbol}`);
   }
+  const precision = Number(contract.volumePlace ?? "0");
   const sizeMultiplier = Number(contract.sizeMultiplier ?? "0");
   const minTradeNum = Number(contract.minTradeNum ?? "0");
-  if (!Number.isFinite(sizeMultiplier) || sizeMultiplier <= 0) {
-    throw new Error(`Invalid sizeMultiplier for ${symbol}`);
-  }
+  const minTradeUsdt = Number(contract.minTradeUSDT ?? "0");
+  const qtyStep = Math.max(
+    0,
+    Number.isFinite(sizeMultiplier) ? sizeMultiplier : 0,
+    Number.isFinite(minTradeNum) ? minTradeNum : 0,
+  );
+
+  // Bitget mix v2 uses `size` as base-coin quantity (must be a multiple of sizeMultiplier and >= minTradeNum).
+  // Do NOT convert into "contract counts" here.
   const baseQty = notionalUsd / price;
-  const rawContracts = baseQty / sizeMultiplier;
-  const step = minTradeNum > 0 ? minTradeNum : 1;
-  const contracts = Math.floor(rawContracts / step) * step;
-  if (contracts <= 0) {
-    throw new Error(`Contracts too small for ${symbol}`);
+  const step = qtyStep > 0 ? qtyStep : Math.pow(10, -Math.max(0, precision));
+  const stepped = Math.floor(baseQty / step) * step;
+  const qty = Number(stepped.toFixed(Math.max(0, precision)));
+  if (!Number.isFinite(qty) || qty <= 0 || (minTradeNum > 0 && qty < minTradeNum)) {
+    throw new Error(`Order size too small for ${symbol}`);
   }
-  const precision = Number(contract.volumePlace ?? "0");
-  const size = contracts.toFixed(Math.max(0, precision));
-  const notional = contracts * sizeMultiplier * price;
+  const notional = qty * price;
+  if (Number.isFinite(minTradeUsdt) && minTradeUsdt > 0 && notional < minTradeUsdt) {
+    throw new Error(`Order notional below minTradeUSDT for ${symbol}`);
+  }
+  const size = qty.toFixed(Math.max(0, precision));
   return { size, price, notional };
 }
 
@@ -247,7 +257,21 @@ async function enterPositions(direction: "LONG" | "SHORT") {
   // Ensure the account/symbol config matches before placing orders.
   for (const symbol of SYMBOLS) {
     await setBitgetMarginMode(symbol, "isolated");
-    await setBitgetLeverage(symbol, effectiveLeverage, { marginMode: "isolated", holdSide: "both" });
+    // In one-way mode, omit holdSide so leverage actually applies.
+    await setBitgetLeverage(symbol, effectiveLeverage, { marginMode: "isolated" });
+    try {
+      const acct = await fetchBitgetSymbolAccount(symbol);
+      log("Verified Bitget symbol account settings.", {
+        symbol,
+        marginMode: acct?.marginMode ?? acct?.margin_mode ?? null,
+        leverage: acct?.leverage ?? null,
+        longLeverage: acct?.longLeverage ?? null,
+        shortLeverage: acct?.shortLeverage ?? null,
+        crossMarginLeverage: acct?.crossMarginLeverage ?? null,
+      });
+    } catch (error) {
+      log("Failed to verify Bitget symbol account settings.", { symbol, error: error instanceof Error ? error.message : String(error) });
+    }
   }
   log("Configured Bitget symbol settings.", { marginMode: "isolated", effectiveLeverage });
 
@@ -286,9 +310,10 @@ async function enterPositions(direction: "LONG" | "SHORT") {
   async function placeWithAutoReduce(symbol: string) {
     let targetNotional = notionalPerSymbol;
     // Try a few times, reducing size on "exceeds balance" errors.
-    for (let attempt = 1; attempt <= 6; attempt += 1) {
+    for (let attempt = 1; attempt <= 10; attempt += 1) {
       const { size, price, notional } = await computeOrderSize(symbol, targetNotional);
       try {
+        log("Placing Bitget entry order.", { symbol, side, size, price, notional, targetNotional });
         await placeBitgetOrder({
           symbol,
           side,
@@ -312,8 +337,23 @@ async function enterPositions(direction: "LONG" | "SHORT") {
           targetNotional = Math.min(targetNotional, marginPerSymbol); // margin ~= notional at 1x
           continue;
         }
-        if (isBalance && attempt < 6) {
-          targetNotional *= 0.85;
+        if (isBalance && attempt < 10) {
+          // If leverage didn't actually apply, required margin ~= notional and any notional > available will always fail.
+          // Detect that case and immediately drop targetNotional under available so we can at least enter a position.
+          try {
+            const acct = await fetchBitgetSymbolAccount(symbol);
+            log("Bitget balance rejection details.", { symbol, attempt, msg, account: acct });
+            const levAny = Number(acct?.leverage ?? acct?.longLeverage ?? acct?.crossMarginLeverage ?? NaN);
+            if (!Number.isFinite(levAny) || levAny <= 1) {
+              const maxNotional = Math.max(0, marginPerSymbol);
+              targetNotional = Math.min(targetNotional, maxNotional);
+              log("Leverage appears unset; capping notional to fit at ~1x.", { symbol, attempt, nextNotional: targetNotional, levAny });
+              continue;
+            }
+          } catch {
+            // Ignore verification failure; keep reducing notional.
+          }
+          targetNotional *= attempt <= 3 ? 0.8 : 0.65;
           log("Order exceeds balance; reducing notional and retrying.", { symbol, attempt, nextNotional: targetNotional });
           continue;
         }

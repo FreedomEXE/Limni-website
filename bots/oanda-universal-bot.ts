@@ -143,9 +143,6 @@ function buildPriceMap(prices: Awaited<ReturnType<typeof fetchOandaPricing>>) {
 function roundUnits(units: number, precision: number, minUnits?: number) {
   const factor = Math.max(0, precision);
   const rounded = Number(units.toFixed(factor));
-  if (minUnits && rounded > 0 && rounded < minUnits) {
-    return minUnits;
-  }
   return rounded;
 }
 
@@ -220,7 +217,13 @@ async function buildSizing(signals: BasketSignal[]) {
 
         const precision = row.tradeUnitsPrecision ?? 0;
         const minUnits = row.minUnits;
-        const scaledUnits = roundUnits((row.units ?? 0) * scale, precision, minUnits);
+        const scaledUnitsRaw = roundUnits((row.units ?? 0) * scale, precision);
+        if (minUnits && scaledUnitsRaw > 0 && scaledUnitsRaw < minUnits) {
+          skipped += 1;
+          skippedDetails.push({ symbol: signal.symbol, reason: `below minUnits after scale (${scaledUnitsRaw} < ${minUnits})` });
+          return null;
+        }
+        const scaledUnits = scaledUnitsRaw;
         if (!Number.isFinite(scaledUnits) || scaledUnits <= 0) {
           skipped += 1;
           skippedDetails.push({ symbol: signal.symbol, reason: "scaled units <= 0" });
@@ -509,6 +512,9 @@ async function enterTrades(signals: BasketSignal[]) {
         units,
         side,
         clientTag: buildClientTag("uni", planned.symbol, planned.model),
+        // Prevent accidental netting/closures. If the account cannot hold offsetting legs,
+        // this will fail loudly instead of silently reducing/closing existing trades.
+        positionFill: "OPEN_ONLY",
       });
       if (debug) {
         log("OANDA order response (sample).", {
@@ -527,6 +533,7 @@ async function enterTrades(signals: BasketSignal[]) {
             response?.orderFillTransaction?.tradeOpened?.tradeID ??
             response?.orderFillTransaction?.tradeReduced?.tradeID ??
             null,
+          tradeClosed: response?.orderFillTransaction?.tradeClosed?.tradeID ?? null,
         });
       }
       orderDetails.push({

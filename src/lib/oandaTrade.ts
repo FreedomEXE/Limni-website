@@ -122,6 +122,7 @@ export async function placeOandaMarketOrder(options: {
   units: number;
   side: OandaSide;
   clientTag: string;
+  positionFill?: "DEFAULT" | "OPEN_ONLY" | "REDUCE_FIRST" | "REDUCE_ONLY";
 }): Promise<any> {
   const accountId = getAccountId();
   const units = options.side === "buy" ? options.units : -Math.abs(options.units);
@@ -132,7 +133,7 @@ export async function placeOandaMarketOrder(options: {
         type: "MARKET",
         instrument: options.instrument,
         units: units.toString(),
-        positionFill: "DEFAULT",
+        positionFill: options.positionFill ?? "DEFAULT",
         clientExtensions: {
           id: options.clientTag,
           tag: options.clientTag,
