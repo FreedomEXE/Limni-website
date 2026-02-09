@@ -49,6 +49,11 @@ function parseClientTag(tag: string | undefined | null) {
   return { symbol, model };
 }
 
+function symbolFromInstrument(instrument: string) {
+  // EUR_USD -> EURUSD
+  return String(instrument ?? "").trim().toUpperCase().replaceAll("_", "");
+}
+
 function truncateUnits(units: number, precision: number) {
   const p = Math.max(0, precision);
   const factor = p > 0 ? 10 ** p : 1;
@@ -189,6 +194,7 @@ export async function GET(_request: Request, context: RouteContext) {
       return {
         id: t.id,
         instrument: t.instrument,
+        symbolFromInstrument: symbolFromInstrument(t.instrument),
         units,
         absUnits: Math.abs(units),
         direction: units > 0 ? ("LONG" as const) : ("SHORT" as const),
@@ -258,6 +264,57 @@ export async function GET(_request: Request, context: RouteContext) {
       })
       .filter(Boolean);
 
+    // Symbol-level reconciliation (does not require managed tags).
+    const expectedBySymbolDir = new Map<string, { long: number; short: number }>();
+    for (const leg of plannedLegs) {
+      if (!expectedBySymbolDir.has(leg.symbol)) {
+        expectedBySymbolDir.set(leg.symbol, { long: 0, short: 0 });
+      }
+      const row = expectedBySymbolDir.get(leg.symbol)!;
+      if (leg.direction === "LONG") row.long += leg.expectedUnits;
+      if (leg.direction === "SHORT") row.short += leg.expectedUnits;
+    }
+
+    const openBySymbolDir = new Map<string, { long: number; short: number; trades: number }>();
+    for (const t of openTrades) {
+      const sym = t.symbolFromInstrument;
+      if (!sym) continue;
+      if (!openBySymbolDir.has(sym)) {
+        openBySymbolDir.set(sym, { long: 0, short: 0, trades: 0 });
+      }
+      const row = openBySymbolDir.get(sym)!;
+      row.trades += 1;
+      if (t.units > 0) row.long += Math.abs(t.units);
+      if (t.units < 0) row.short += Math.abs(t.units);
+    }
+
+    const symbolDiff = Array.from(
+      new Set([...Array.from(expectedBySymbolDir.keys()), ...Array.from(openBySymbolDir.keys())]),
+    )
+      .map((symbol) => {
+        const exp = expectedBySymbolDir.get(symbol) ?? { long: 0, short: 0 };
+        const got = openBySymbolDir.get(symbol) ?? { long: 0, short: 0, trades: 0 };
+        const grossExp = exp.long + exp.short;
+        const grossGot = got.long + got.short;
+        const netExp = exp.long - exp.short;
+        const netGot = got.long - got.short;
+        const grossTol = Math.max(1, Math.floor(grossExp * 0.01));
+        const netTol = Math.max(1, Math.floor(Math.abs(netExp) * 0.01));
+        const grossDiff = Math.abs(grossGot - grossExp);
+        const netDiff = Math.abs(netGot - netExp);
+        const ok = (grossExp === 0 && grossGot === 0) || (grossDiff <= grossTol && netDiff <= netTol);
+        return {
+          symbol,
+          expected: { long: exp.long, short: exp.short, gross: grossExp, net: netExp },
+          open: { long: got.long, short: got.short, gross: grossGot, net: netGot, trades: got.trades },
+          ok,
+          grossDiff,
+          netDiff,
+        };
+      })
+      .filter((row) => row.expected.gross > 0 || row.open.gross > 0)
+      .sort((a, b) => a.symbol.localeCompare(b.symbol));
+
     // Per-symbol gross/net aggregation across legs.
     const symAgg = new Map<
       string,
@@ -316,8 +373,14 @@ export async function GET(_request: Request, context: RouteContext) {
           symbols: plannedSymbols.length,
         },
         open: {
+          totalTrades: openTrades.length,
           managedTrades: managedOpen.length,
           uniqueLegKeys: openByKey.size,
+          unmanagedTrades: openTrades.length - managedOpen.length,
+          unmanagedTagSamples: openTrades
+            .filter((t) => !t.managed)
+            .slice(0, 20)
+            .map((t) => ({ id: t.id, instrument: t.instrument, units: t.units, tag: t.tag })),
         },
         diff: {
           missingCount: missing.length,
@@ -327,6 +390,7 @@ export async function GET(_request: Request, context: RouteContext) {
           extra: extra.slice(0, 200),
           mismatched: (mismatched as any[]).slice(0, 200),
         },
+        symbolDiff,
         symbols: symbolSummary,
       },
       { headers: { "Cache-Control": "no-store, max-age=0" } },
@@ -339,4 +403,3 @@ export async function GET(_request: Request, context: RouteContext) {
     );
   }
 }
-
