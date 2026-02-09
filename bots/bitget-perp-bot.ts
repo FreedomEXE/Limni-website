@@ -39,7 +39,16 @@ type BitgetBotState = {
 
 const BOT_ID = "bitget_perp_bot";
 let tickSeconds = Number(process.env.BOT_TICK_SECONDS ?? "30");
-let appBaseUrl = process.env.APP_BASE_URL ?? "";
+function resolveAppBaseUrl() {
+  const raw = (process.env.APP_BASE_URL ?? "").trim();
+  if (!raw || raw.includes("your-app.onrender.com")) {
+    const fallback = (process.env.LIMNI_API_BASE ?? "").trim();
+    return fallback || "https://limni-website-nine.vercel.app";
+  }
+  return raw;
+}
+
+let appBaseUrl = resolveAppBaseUrl();
 let leverage = Number(process.env.BITGET_LEVERAGE ?? "10");
 let trailStartPct = Number(process.env.BITGET_TRAIL_START_PCT ?? "20");
 let trailOffsetPct = Number(process.env.BITGET_TRAIL_OFFSET_PCT ?? "10");
@@ -460,6 +469,12 @@ async function hydrateConnectedAccount() {
     }
     if (typeof record.account.trail_offset_pct === "number") {
       trailOffsetPct = record.account.trail_offset_pct;
+    }
+    if (typeof record.account.config === "object" && record.account.config) {
+      const config = record.account.config as Record<string, unknown>;
+      if (typeof config.appBaseUrl === "string") {
+        appBaseUrl = config.appBaseUrl.trim() || resolveAppBaseUrl();
+      }
     }
   } catch (error) {
     log("Failed to load connected account secrets.", {

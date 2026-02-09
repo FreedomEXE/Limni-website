@@ -38,7 +38,16 @@ type OandaBotState = {
 
 const BOT_ID = "oanda_universal_bot";
 let tickSeconds = Number(process.env.BOT_TICK_SECONDS ?? "30");
-let appBaseUrl = process.env.APP_BASE_URL ?? "";
+function resolveAppBaseUrl() {
+  const raw = (process.env.APP_BASE_URL ?? "").trim();
+  if (!raw || raw.includes("your-app.onrender.com")) {
+    const fallback = (process.env.LIMNI_API_BASE ?? "").trim();
+    return fallback || "https://limni-website-nine.vercel.app";
+  }
+  return raw;
+}
+
+let appBaseUrl = resolveAppBaseUrl();
 let trailStartPct = Number(process.env.OANDA_TRAIL_START_PCT ?? "20");
 let trailOffsetPct = Number(process.env.OANDA_TRAIL_OFFSET_PCT ?? "10");
 let marginBuffer = Number(process.env.OANDA_MARGIN_BUFFER ?? "0.1");
@@ -464,7 +473,7 @@ async function hydrateConnectedAccount() {
         tradingEnabled = config.tradingEnabled;
       }
       if (typeof config.appBaseUrl === "string") {
-        appBaseUrl = config.appBaseUrl;
+        appBaseUrl = config.appBaseUrl.trim() || resolveAppBaseUrl();
       }
     }
   } catch (error) {
