@@ -141,9 +141,11 @@ function buildPriceMap(prices: Awaited<ReturnType<typeof fetchOandaPricing>>) {
 }
 
 function roundUnits(units: number, precision: number, minUnits?: number) {
-  const factor = Math.max(0, precision);
-  const rounded = Number(units.toFixed(factor));
-  return rounded;
+  // Truncate (never round up) to avoid opening legs larger than intended.
+  const p = Math.max(0, precision);
+  const factor = p > 0 ? 10 ** p : 1;
+  const truncated = p > 0 ? Math.floor(units * factor) / factor : Math.floor(units);
+  return Number.isFinite(truncated) ? truncated : 0;
 }
 
 function convertToUsd(amount: number, currency: string, priceMap: Map<string, number>) {

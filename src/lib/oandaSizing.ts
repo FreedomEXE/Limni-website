@@ -188,18 +188,24 @@ export async function buildOandaSizingForAccount(
     const notionalUsdPerUnit = price * usdPerQuote;
     const rawUnits = nav / notionalUsdPerUnit;
     const precision = spec.tradeUnitsPrecision ?? 0;
-    const roundedUnits = Math.max(0, Number(rawUnits.toFixed(Math.max(0, precision))));
+    // Never round up sizing (rounding up can cause "dust" 1-unit legs and/or over-risk).
+    // Truncate to the tradeUnitsPrecision.
+    const safePrecision = Math.max(0, precision);
+    const factor = safePrecision > 0 ? 10 ** safePrecision : 1;
+    const roundedUnits = Math.max(
+      0,
+      safePrecision > 0 ? Math.floor(rawUnits * factor) / factor : Math.floor(rawUnits),
+    );
     const marginRate = Number(spec.marginRate ?? "0");
     const marginUsd = Number.isFinite(marginRate) ? nav * marginRate : null;
     const minUnits = precision <= 0 ? 1 : Number((1 / 10 ** precision).toFixed(precision));
     const minNavUsd = notionalUsdPerUnit * minUnits;
-    const units = roundedUnits > 0 ? roundedUnits : minUnits;
 
     return {
       symbol,
       instrument,
       available: true,
-      units,
+      units: roundedUnits,
       rawUnits,
       price,
       notionalUsdPerUnit,
@@ -208,7 +214,10 @@ export async function buildOandaSizingForAccount(
       tradeUnitsPrecision: precision,
       minUnits,
       minNavUsd,
-      reason: roundedUnits > 0 ? undefined : "Below minimum sizing, defaulted to 1 unit",
+      reason:
+        roundedUnits >= minUnits
+          ? undefined
+          : `Below minimum sizing (${roundedUnits} < ${minUnits}). Will be skipped.`,
     } as OandaSizingRow;
   });
 

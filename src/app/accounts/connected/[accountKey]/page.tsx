@@ -665,10 +665,15 @@ export default async function ConnectedAccountPage({
 }
 
 function roundUnits(units: number, precision: number, minUnits?: number) {
-  const factor = Math.max(0, precision);
-  const rounded = Number(units.toFixed(factor));
-  if (minUnits && rounded > 0 && rounded < minUnits) {
-    return minUnits;
+  // Keep UI planned sizing consistent with the bot:
+  // - truncate (never round up)
+  // - if below minUnits, treat as non-tradable (0) instead of forcing 1-unit "dust" legs
+  const p = Math.max(0, precision);
+  const factor = p > 0 ? 10 ** p : 1;
+  const truncated = p > 0 ? Math.floor(units * factor) / factor : Math.floor(units);
+  const safe = Number.isFinite(truncated) ? truncated : 0;
+  if (minUnits && safe > 0 && safe < minUnits) {
+    return 0;
   }
-  return rounded;
+  return safe;
 }
