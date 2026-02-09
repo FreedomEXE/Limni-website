@@ -51,6 +51,11 @@ export function getBitgetProductType() {
   return process.env.BITGET_PRODUCT_TYPE ?? "USDT-FUTURES";
 }
 
+export function getBitgetMarginMode(): "isolated" | "crossed" {
+  const raw = String(process.env.BITGET_MARGIN_MODE ?? "isolated").trim().toLowerCase();
+  return raw === "crossed" ? "crossed" : "isolated";
+}
+
 function getAuth(): BitgetAuth {
   const apiKey = process.env.BITGET_API_KEY ?? "";
   const apiSecret = process.env.BITGET_API_SECRET ?? "";
@@ -147,6 +152,23 @@ export async function setBitgetPositionMode(posMode: "one_way_mode" | "hedge_mod
   });
 }
 
+export async function setBitgetMarginMode(
+  symbol: string,
+  marginMode: "isolated" | "crossed",
+) {
+  const productType = getBitgetProductType();
+  await request({
+    method: "POST",
+    path: "/api/v2/mix/account/set-margin-mode",
+    body: {
+      symbol,
+      productType,
+      marginCoin: "USDT",
+      marginMode,
+    },
+  });
+}
+
 export async function setBitgetLeverage(symbol: string, leverage: number) {
   const productType = getBitgetProductType();
   const safeLeverage = Number.isFinite(leverage)
@@ -223,6 +245,7 @@ export async function placeBitgetOrder(options: {
   size: string;
   clientOid: string;
   reduceOnly?: "yes" | "no";
+  marginMode?: "isolated" | "crossed";
 }) {
   const productType = getBitgetProductType();
   await request({
@@ -231,7 +254,7 @@ export async function placeBitgetOrder(options: {
     body: {
       symbol: options.symbol,
       productType,
-      marginMode: "crossed",
+      marginMode: options.marginMode ?? getBitgetMarginMode(),
       marginCoin: "USDT",
       size: options.size,
       side: options.side,

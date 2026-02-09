@@ -6,6 +6,7 @@ import {
   fetchBitgetPositions,
   placeBitgetOrder,
   setBitgetLeverage,
+  setBitgetMarginMode,
   setBitgetPositionMode,
   getBitgetProductType,
 } from "@/lib/bitgetTrade";
@@ -242,12 +243,13 @@ async function enterPositions(direction: "LONG" | "SHORT") {
   await setBitgetPositionMode("one_way_mode");
 
   const effectiveLeverage = Number.isFinite(leverage) ? Math.max(1, Math.min(50, Math.floor(leverage))) : 10;
-  // We must keep leverage <= account max (your error is 40914: max leverage is 50).
-  // Setting leverage programmatically ensures orders don't get rejected due to UI leverage being higher.
+  // You want isolated margin per symbol, each using ~50% equity as margin.
+  // Ensure the account/symbol config matches before placing orders.
   for (const symbol of SYMBOLS) {
+    await setBitgetMarginMode(symbol, "isolated");
     await setBitgetLeverage(symbol, effectiveLeverage);
   }
-  log("Set Bitget leverage.", { effectiveLeverage });
+  log("Configured Bitget symbol settings.", { marginMode: "isolated", effectiveLeverage });
 
   const account = await fetchBitgetAccount();
   const equity = Number(account?.usdtEquity ?? account?.equity ?? account?.available ?? "0");
@@ -271,6 +273,7 @@ async function enterPositions(direction: "LONG" | "SHORT") {
       side,
       size,
       clientOid: `entry-${symbol}-${Date.now()}`,
+      marginMode: "isolated",
     });
     entryPrices[symbol] = price;
     entryNotional[symbol] = notional;
