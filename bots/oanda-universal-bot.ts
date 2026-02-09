@@ -507,11 +507,14 @@ async function enterTrades(signals: BasketSignal[]) {
   let unmanagedTrades = openTrades.filter((t) => !isManagedTrade(t));
 
   // If the account has any untagged/unmanaged trades, the bot cannot safely dedupe or reconcile.
-  // User-approved behavior: close everything and rebuild from a clean slate.
+  // Default behavior: do NOT auto-wipe (prevents commission churn).
+  // If you want the bot to auto-wipe, set OANDA_WIPE_UNMANAGED=true explicitly.
   if (unmanagedTrades.length > 0) {
-    log("Unmanaged trades detected. Closing all open trades before entry.", {
+    const wipeEnabled = (process.env.OANDA_WIPE_UNMANAGED ?? "").trim().toLowerCase() === "true";
+    log("Unmanaged trades detected.", {
       totalOpen: openTrades.length,
       unmanaged: unmanagedTrades.length,
+      wipeEnabled,
       unmanagedSamples: unmanagedTrades.slice(0, 10).map((t) => ({
         id: t.id,
         instrument: t.instrument,
@@ -519,6 +522,19 @@ async function enterTrades(signals: BasketSignal[]) {
         tag: t.clientExtensions?.tag ?? t.clientExtensions?.id ?? null,
       })),
     });
+    if (!wipeEnabled) {
+      // Fail closed: don't place any orders while the account state is dirty.
+      return {
+        nav: Number.isFinite(Number((await fetchOandaAccountSummary()).NAV))
+          ? Number((await fetchOandaAccountSummary()).NAV)
+          : 0,
+        pending: 0,
+        skipped: 0,
+        failures: [{ symbol: "ALL", instrument: "ALL", error: "Unmanaged trades present; wipe disabled." }],
+      };
+    }
+
+    log("Wiping unmanaged trades (OANDA_WIPE_UNMANAGED=true).");
     await wipeAllOpenTrades();
     openTrades = [];
     managedTrades = [];
@@ -719,9 +735,9 @@ async function enterTrades(signals: BasketSignal[]) {
   const afterTrades = await fetchOandaOpenTrades();
   const afterManaged = afterTrades.filter(isManagedTrade);
   if (orderDetails.length > 0 && afterTrades.length > 0 && afterManaged.length === 0) {
-    // If orders were placed but no trades are tagged, we cannot manage/dedupe/reconcile.
-    // Fail closed: wipe the account and let the next tick retry.
-    log("No managed trades detected after entry; closing all trades to avoid unmanaged exposure.", {
+    // With tradeClientExtensions fixed, this should not happen.
+    // Do NOT churn close here (commissions). Just surface the failure loudly.
+    log("No managed trades detected after entry; NOT auto-closing to avoid commission churn.", {
       afterTrades: afterTrades.length,
       placed: orderDetails.length,
       tagSamples: afterTrades.slice(0, 10).map((t) => ({
@@ -731,14 +747,13 @@ async function enterTrades(signals: BasketSignal[]) {
         tag: t.clientExtensions?.tag ?? t.clientExtensions?.id ?? null,
       })),
     });
-    await closeTradesById(afterTrades.map((t) => t.id));
     return {
       nav: sizing.nav,
       pending: sizing.plan.filter((p) => Number.isFinite(p.units) && p.units > 0).length,
       skipped: sizing.skipped ?? 0,
       failures: [
         ...failures,
-        { symbol: "ALL", instrument: "ALL", error: "No managed trades detected after entry; closed all." },
+        { symbol: "ALL", instrument: "ALL", error: "Trades opened but none tagged. Check tradeClientExtensions support." },
       ],
     };
   }

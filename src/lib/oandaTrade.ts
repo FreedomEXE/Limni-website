@@ -135,10 +135,10 @@ export async function placeOandaMarketOrder(options: {
         instrument: options.instrument,
         units: units.toString(),
         positionFill: options.positionFill ?? "DEFAULT",
-        clientExtensions: {
-          id: options.clientTag,
-          tag: options.clientTag,
-        },
+        // OANDA distinguishes order clientExtensions vs tradeClientExtensions.
+        // We need tradeClientExtensions so open trades carry the tag (used for dedupe/reconcile/UI).
+        clientExtensions: { id: options.clientTag, tag: options.clientTag },
+        tradeClientExtensions: { id: options.clientTag, tag: options.clientTag },
       },
     }),
   });
