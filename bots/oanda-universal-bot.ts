@@ -357,6 +357,12 @@ async function tick() {
       log("Detected open trades without state; marking entered.");
     }
 
+    // If state says entered but no actual trades exist, allow re-entry
+    if (state.entered && trades.length === 0) {
+      state.entered = false;
+      log("State marked entered but no trades exist; resetting to allow entry.");
+    }
+
     if (!state.entered) {
       const signals = await fetchLatestSignals();
       const entryEquity = await enterTrades(signals);

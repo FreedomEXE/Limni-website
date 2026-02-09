@@ -167,11 +167,11 @@ function resolveAlignment(
 }
 
 async function computeOrderSize(symbol: string, notionalUsd: number) {
-  const contracts = await fetchBitgetContracts(symbol);
-  log(`Fetched ${contracts.length} contracts for ${symbol}`, {
-    symbols: contracts.map(c => c.symbol).join(", "),
+  const contractList = await fetchBitgetContracts(symbol);
+  log(`Fetched ${contractList.length} contracts for ${symbol}`, {
+    symbols: contractList.map(c => c.symbol).join(", "),
   });
-  const [contract] = contracts;
+  const [contract] = contractList;
   if (!contract) {
     const allContracts = await fetchBitgetContracts();
     log(`All available contracts:`, {
