@@ -319,18 +319,29 @@ async function tick() {
       current_equity: null,
     };
 
-    // Fetch current account balance on every tick
+    // Fetch current account balance and positions on every tick
     try {
       const summary = await fetchOandaAccountSummary();
       const currentNav = Number(summary.NAV);
       if (Number.isFinite(currentNav) && currentNav > 0) {
         state.current_equity = currentNav;
         if (linkedAccountKey) {
+          const openTrades = await fetchOandaOpenTrades();
           await updateConnectedAccountAnalysis(linkedAccountKey, {
             ...(linkedAccountBase ?? {}),
             nav: currentNav,
             balance: Number(summary.balance ?? summary.NAV ?? 0),
             currency: summary.currency ?? "USD",
+            positions: openTrades.map((trade) => ({
+              symbol: trade.instrument.replace("_", ""),
+              type: Number(trade.currentUnits ?? 0) > 0 ? "buy" : "sell",
+              lots: Math.abs(Number(trade.currentUnits ?? 0)),
+              profit: Number(trade.unrealizedPL ?? 0),
+              swap: 0,
+              commission: 0,
+              open_time: trade.openTime ?? DateTime.utc().toISO(),
+              comment: trade.clientExtensions?.tag ?? "",
+            })),
             fetched_at: DateTime.utc().toISO(),
           });
         }
