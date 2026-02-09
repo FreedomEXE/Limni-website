@@ -118,6 +118,12 @@ function parseInstrumentCurrencies(instrument: string) {
   return { base, quote };
 }
 
+function buildUsdConversionPairs(currency: string) {
+  const upper = String(currency ?? "").trim().toUpperCase();
+  if (!upper || upper === "USD") return [];
+  return [`${upper}_USD`, `USD_${upper}`];
+}
+
 function buildPriceMap(prices: Awaited<ReturnType<typeof fetchOandaPricing>>) {
   const map = new Map<string, number>();
   for (const price of prices) {
@@ -166,7 +172,16 @@ async function buildSizing(signals: BasketSignal[]) {
   // If you place one order per model-leg, OANDA netting accounts will merge them into fewer trades.
   const grouped = groupSignals(tradeSignals);
   const instrumentNames = grouped.map((pair) => getOandaInstrument(pair.symbol));
-  const pricing = await fetchOandaPricing(Array.from(new Set(instrumentNames)));
+  const quoteCurrencies = Array.from(
+    new Set(
+      instrumentNames
+        .map((inst) => parseInstrumentCurrencies(inst).quote)
+        .filter((quote) => Boolean(quote)),
+    ),
+  );
+  const conversionPairs = quoteCurrencies.flatMap((quote) => buildUsdConversionPairs(quote));
+  const pricingList = Array.from(new Set([...instrumentNames, ...conversionPairs]));
+  const pricing = await fetchOandaPricing(pricingList);
   const priceMap = buildPriceMap(pricing);
   let skipped = 0;
 
@@ -270,6 +285,31 @@ async function enterTrades(signals: BasketSignal[]) {
       margin: sizing.totalMargin,
     });
     return { nav: sizing.nav, pending: 0 };
+  }
+
+  const planInstruments = new Set(sizing.plan.map((row) => row.instrument));
+
+  const isManagedTrade = (trade: Awaited<ReturnType<typeof fetchOandaOpenTrades>>[number]) => {
+    const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
+    return tag.toLowerCase().startsWith("uni-");
+  };
+
+  // Clean up legacy net-zero or out-of-basket trades created by earlier bot versions, otherwise
+  // they consume margin and make the live basket look "wrong" vs the planned net list.
+  const openTradesBefore = await fetchOandaOpenTrades();
+  const extraneous = openTradesBefore.filter(
+    (trade) => isManagedTrade(trade) && !planInstruments.has(trade.instrument),
+  );
+  for (const trade of extraneous) {
+    try {
+      await closeOandaTrade(trade.id);
+    } catch (error) {
+      log("Failed to close extraneous managed trade", {
+        id: trade.id,
+        instrument: trade.instrument,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   const openTrades = await fetchOandaOpenTrades();
