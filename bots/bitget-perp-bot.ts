@@ -112,7 +112,12 @@ async function fetchLatestSignals(): Promise<BasketSignal[]> {
   if (payload.trading_allowed === false) {
     throw new Error("Trading not allowed per COT freshness.");
   }
-  return payload.pairs ?? [];
+  const pairs = payload.pairs ?? [];
+  log(`Fetched ${pairs.length} crypto signals`, {
+    symbols: Array.from(new Set(pairs.map(p => p.symbol))).join(", "),
+    models: Array.from(new Set(pairs.map(p => p.model))).join(", "),
+  });
+  return pairs;
 }
 
 function resolveAlignment(
@@ -136,6 +141,10 @@ function resolveAlignment(
   for (const symbol of SYMBOLS) {
     const modelMap = map.get(symbol);
     if (!modelMap) {
+      log(`Missing signals for ${symbol}`, {
+        availableSymbols: Array.from(map.keys()).join(", "),
+        mapSize: map.size,
+      });
       return { ok: false, reason: `${symbol} missing signals` as const };
     }
     for (const model of REQUIRED_MODELS) {
