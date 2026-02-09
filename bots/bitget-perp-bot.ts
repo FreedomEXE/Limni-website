@@ -253,15 +253,32 @@ async function enterPositions(direction: "LONG" | "SHORT") {
 
   const account = await fetchBitgetAccount();
   const equity = Number(account?.usdtEquity ?? account?.equity ?? account?.available ?? "0");
+  const available = Number(account?.available ?? account?.usdtEquity ?? account?.equity ?? "0");
   if (!Number.isFinite(equity) || equity <= 0) {
     throw new Error("Invalid Bitget equity.");
   }
+  if (!Number.isFinite(available) || available <= 0) {
+    throw new Error("Invalid Bitget available balance.");
+  }
 
-  // Use 50% of equity as margin per symbol (user wants 50% on EACH of BTC and ETH)
-  // With $100 account: $50 margin per symbol
-  // At 10x leverage: $50 * 10 = $500 notional per position
-  // Note: We specify NOTIONAL size to the API, Bitget calculates margin = notional / leverage
-  const notionalPerSymbol = (equity * 0.5) * effectiveLeverage;
+  // Use ~50% of *available* balance as margin per symbol.
+  // Important: 50% each means 100% total across BTC+ETH, which often fails due to fees and/or
+  // available < equity. Keep a small buffer so orders don't get rejected with 40762.
+  const perSymbolMarginFraction = Number(process.env.BITGET_MARGIN_FRACTION_PER_SYMBOL ?? "0.5");
+  const safetyBuffer = Number(process.env.BITGET_MARGIN_SAFETY_BUFFER ?? "0.02"); // 2% buffer by default
+  const fraction = Number.isFinite(perSymbolMarginFraction) ? perSymbolMarginFraction : 0.5;
+  const buffer = Number.isFinite(safetyBuffer) ? Math.min(0.2, Math.max(0, safetyBuffer)) : 0.02;
+  const marginPerSymbol = available * Math.max(0, Math.min(1, fraction)) * (1 - buffer);
+  const notionalPerSymbol = marginPerSymbol * effectiveLeverage;
+  log("Bitget sizing inputs.", {
+    equity,
+    available,
+    marginPerSymbol,
+    notionalPerSymbol,
+    fraction,
+    buffer,
+    effectiveLeverage,
+  });
   const side = direction === "LONG" ? "buy" : "sell";
   const entryPrices: Record<string, number> = {};
   const entryNotional: Record<string, number> = {};
