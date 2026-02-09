@@ -240,17 +240,12 @@ async function closeAllPositions(direction: "LONG" | "SHORT") {
 
 async function enterPositions(direction: "LONG" | "SHORT") {
   await setBitgetPositionMode("one_way_mode");
-  for (const symbol of SYMBOLS) {
-    try {
-      await setBitgetLeverage(symbol, leverage);
-    } catch (error) {
-      log(`Failed to set leverage for ${symbol}`, {
-        leverage,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      // Continue anyway - leverage might already be set
-    }
-  }
+
+  // Skip programmatic leverage setting - use whatever is configured in Bitget UI
+  // Bitget may restrict programmatic leverage changes depending on account tier
+  log("Using leverage configured in Bitget UI (not setting programmatically)", {
+    targetLeverage: leverage
+  });
 
   const account = await fetchBitgetAccount();
   const equity = Number(account?.usdtEquity ?? account?.equity ?? account?.available ?? "0");
@@ -258,8 +253,10 @@ async function enterPositions(direction: "LONG" | "SHORT") {
     throw new Error("Invalid Bitget equity.");
   }
 
-  // Use 50% of equity per symbol with the configured leverage
-  const notionalPerSymbol = (equity * 0.5) * leverage;
+  // Use 50% of equity per symbol (user wants 50% on EACH of BTC and ETH)
+  // With $100 account: $50 per symbol
+  // At 10x leverage configured in UI: $50 * 10 = $500 notional per position
+  const notionalPerSymbol = equity * 0.5;
   const side = direction === "LONG" ? "buy" : "sell";
   const entryPrices: Record<string, number> = {};
   const entryNotional: Record<string, number> = {};
