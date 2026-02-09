@@ -188,7 +188,15 @@ async function buildSizing(signals: BasketSignal[]) {
         .filter((quote) => Boolean(quote)),
     ),
   );
-  const conversionPairs = quoteCurrencies.flatMap((quote) => buildUsdConversionPairs(quote));
+  const conversionPairsRaw = quoteCurrencies.flatMap((quote) => buildUsdConversionPairs(quote));
+  // Only request conversion instruments that actually exist for this account.
+  // OANDA pricing endpoint fails the entire request if ANY instrument is invalid (e.g. JPY_USD).
+  const conversionPairs = conversionPairsRaw.filter((inst) => instrumentMap.has(inst));
+  if (debug && conversionPairs.length !== conversionPairsRaw.length) {
+    const dropped = conversionPairsRaw.filter((inst) => !instrumentMap.has(inst));
+    log("Dropped invalid USD conversion instruments.", { dropped: dropped.slice(0, 20) });
+  }
+
   const pricingList = Array.from(new Set([...instrumentNames, ...conversionPairs]));
   const pricing = await fetchOandaPricing(pricingList);
   const priceMap = buildPriceMap(pricing);
