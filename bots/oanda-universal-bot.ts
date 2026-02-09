@@ -56,6 +56,8 @@ let linkedAccountKey: string | null = null;
 let linkedAccountBase: Record<string, unknown> | null = null;
 
 let running = false;
+const debug = (process.env.OANDA_DEBUG ?? "").trim().toLowerCase() === "true";
+const debugVerbose = (process.env.OANDA_DEBUG_VERBOSE ?? "").trim().toLowerCase() === "true";
 
 function log(message: string, extra?: Record<string, unknown>) {
   const stamp = DateTime.utc().toISO() ?? new Date().toISOString();
@@ -199,6 +201,11 @@ async function buildSizing(signals: BasketSignal[]) {
     model: BasketSignal["model"];
     symbol: string;
     precision: number;
+    rawUnits: number;
+    quote: string;
+    usdPerQuote: number;
+    price: number;
+    notionalUsdPerUnit: number;
   }> = [];
 
   let totalMargin = 0;
@@ -250,6 +257,11 @@ async function buildSizing(signals: BasketSignal[]) {
       model: signal.model,
       symbol: signal.symbol,
       precision: Math.max(0, precision),
+      rawUnits,
+      quote,
+      usdPerQuote,
+      price,
+      notionalUsdPerUnit,
     });
   }
 
@@ -309,13 +321,17 @@ async function enterTrades(signals: BasketSignal[]) {
 
   const managedTrades = openTrades.filter(isManagedTrade);
   const existingLegKeys = new Set<string>();
+  const unparsedTags: string[] = [];
   for (const trade of managedTrades) {
     const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
     const parts = tag.split("-");
     // Expected: uni-{SYMBOL}-{MODEL}-{random}
     const symbol = (parts[1] ?? "").toUpperCase();
     const model = (parts[2] ?? "").toLowerCase();
-    if (!symbol || !model) continue;
+    if (!symbol || !model) {
+      if (tag) unparsedTags.push(tag);
+      continue;
+    }
     const units = Number(trade.currentUnits ?? 0);
     if (!Number.isFinite(units) || units === 0) continue;
     const dir = units > 0 ? "LONG" : "SHORT";
@@ -340,9 +356,31 @@ async function enterTrades(signals: BasketSignal[]) {
       scale: sizing.scale,
       nav: sizing.nav,
       marginAvailable: sizing.marginAvailable,
+      marginBuffer,
+      totalMargin: sizing.totalMargin,
       missingSamples: missingBefore.slice(0, 10),
       skippedSamples: (sizing.skippedDetails ?? []).slice(0, 10),
+      unparsedTags: unparsedTags.slice(0, 5),
     });
+    if (debugVerbose && missingBefore.length > 0) {
+      const missingSet = new Set(missingBefore);
+      const missingLegDetails = sizing.plan
+        .filter((row) => missingSet.has(`${row.symbol.toUpperCase()}:${String(row.model).toLowerCase()}:${row.direction}`))
+        .slice(0, 30)
+        .map((row) => ({
+          symbol: row.symbol,
+          model: row.model,
+          direction: row.direction,
+          instrument: row.instrument,
+          units: row.units,
+          rawUnits: row.rawUnits,
+          price: row.price,
+          quote: row.quote,
+          usdPerQuote: row.usdPerQuote,
+          notionalUsdPerUnit: row.notionalUsdPerUnit,
+        }));
+      log("Missing leg details (sample).", { rows: missingLegDetails });
+    }
   }
 
   for (const planned of sizing.plan) {
@@ -353,12 +391,31 @@ async function enterTrades(signals: BasketSignal[]) {
     const side = planned.direction === "LONG" ? "buy" : "sell";
     const units = Math.abs(planned.units);
     try {
-      await placeOandaMarketOrder({
+      const response = await placeOandaMarketOrder({
         instrument: planned.instrument,
         units,
         side,
         clientTag: buildClientTag("uni", planned.symbol, planned.model),
       });
+      if (debug) {
+        log("OANDA order response (sample).", {
+          symbol: planned.symbol,
+          model: planned.model,
+          direction: planned.direction,
+          instrument: planned.instrument,
+          units,
+          side,
+          transactionId:
+            response?.orderFillTransaction?.id ??
+            response?.orderCreateTransaction?.id ??
+            response?.orderCancelTransaction?.id ??
+            null,
+          tradeOpened:
+            response?.orderFillTransaction?.tradeOpened?.tradeID ??
+            response?.orderFillTransaction?.tradeReduced?.tradeID ??
+            null,
+        });
+      }
       orderDetails.push({
         symbol: planned.symbol,
         instrument: planned.instrument,
@@ -370,6 +427,15 @@ async function enterTrades(signals: BasketSignal[]) {
       failures.push({
         symbol: planned.symbol,
         instrument: planned.instrument,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      log("OANDA order failed.", {
+        symbol: planned.symbol,
+        model: planned.model,
+        direction: planned.direction,
+        instrument: planned.instrument,
+        units,
+        side,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -504,9 +570,11 @@ async function tick() {
       log("State marked entered but no trades exist; resetting to allow entry.");
     }
 
+    // Keep attempting to fill missing legs throughout the week window.
+    // `enterTrades()` is idempotent via leg-key dedupe and will no-op once everything is open.
+    const signals = await fetchLatestSignals();
+    const entry = await enterTrades(signals);
     if (!state.entered) {
-      const signals = await fetchLatestSignals();
-      const entry = await enterTrades(signals);
       const entryEquity = entry.nav;
       state.entered = entry.pending === 0 && (entry.failures?.length ?? 0) === 0;
       state.entry_time_utc = now.toISO();
@@ -514,9 +582,11 @@ async function tick() {
       state.peak_equity = entryEquity;
       state.trailing_active = false;
       state.locked_pct = null;
-      log("Entry attempt complete.", { entered: state.entered, pending: entry.pending });
+      log("Entry attempt complete.", { entered: state.entered, pending: entry.pending, skipped: entry.skipped ?? 0, failures: entry.failures?.length ?? 0 });
       await writeBotState(BOT_ID, state);
       return;
+    } else if (entry.pending > 0 || (entry.failures?.length ?? 0) > 0) {
+      log("Basket incomplete; will retry next tick.", { pending: entry.pending, skipped: entry.skipped ?? 0, failures: entry.failures?.length ?? 0 });
     }
 
     const summary = await fetchOandaAccountSummary();

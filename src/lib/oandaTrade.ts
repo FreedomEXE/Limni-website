@@ -122,10 +122,10 @@ export async function placeOandaMarketOrder(options: {
   units: number;
   side: OandaSide;
   clientTag: string;
-}) {
+}): Promise<any> {
   const accountId = getAccountId();
   const units = options.side === "buy" ? options.units : -Math.abs(options.units);
-  await request(`/v3/accounts/${accountId}/orders`, {
+  return await request(`/v3/accounts/${accountId}/orders`, {
     method: "POST",
     body: JSON.stringify({
       order: {
