@@ -65,6 +65,13 @@ const REQUIRED_MODELS: BasketSignal["model"][] = [
 
 let running = false;
 
+function toBitgetSymbol(symbol: string) {
+  const upper = String(symbol ?? "").trim().toUpperCase();
+  if (upper === "BTCUSD") return "BTCUSDT";
+  if (upper === "ETHUSD") return "ETHUSDT";
+  return upper;
+}
+
 function log(message: string, extra?: Record<string, unknown>) {
   const stamp = DateTime.utc().toISO() ?? new Date().toISOString();
   if (extra) {
@@ -115,13 +122,14 @@ function resolveAlignment(
   | { ok: false; reason: string } {
   const map = new Map<string, Map<BasketSignal["model"], BasketSignal["direction"]>>();
   for (const pair of pairs) {
-    if (!SYMBOLS.includes(pair.symbol as typeof SYMBOLS[number])) {
+    const mapped = toBitgetSymbol(pair.symbol);
+    if (!SYMBOLS.includes(mapped as typeof SYMBOLS[number])) {
       continue;
     }
-    if (!map.has(pair.symbol)) {
-      map.set(pair.symbol, new Map());
+    if (!map.has(mapped)) {
+      map.set(mapped, new Map());
     }
-    map.get(pair.symbol)!.set(pair.model, pair.direction);
+    map.get(mapped)!.set(pair.model, pair.direction);
   }
 
   let direction: "LONG" | "SHORT" | null = null;
@@ -419,7 +427,11 @@ async function tick() {
 }
 
 async function main() {
-  log("Bitget perp bot starting...");
+  log("Bitget perp bot starting...", {
+    appBaseUrl,
+    tickSeconds,
+    symbols: SYMBOLS,
+  });
   await hydrateConnectedAccount();
   await tick();
   setInterval(() => {

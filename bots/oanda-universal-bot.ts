@@ -424,7 +424,11 @@ async function tick() {
 }
 
 async function main() {
-  log("OANDA universal bot starting...");
+  log("OANDA universal bot starting...", {
+    appBaseUrl,
+    tradingEnabled,
+    tickSeconds,
+  });
   await hydrateConnectedAccount();
   await tick();
   setInterval(() => {
@@ -469,8 +473,12 @@ async function hydrateConnectedAccount() {
       if (typeof config.marginBuffer === "number") {
         marginBuffer = config.marginBuffer;
       }
-      if (typeof config.tradingEnabled === "boolean") {
+      // Environment variable should be able to force-enable trading during incidents.
+      const envTrading = (process.env.OANDA_TRADING_ENABLED ?? "").trim();
+      if (!envTrading && typeof config.tradingEnabled === "boolean") {
         tradingEnabled = config.tradingEnabled;
+      } else if (envTrading) {
+        tradingEnabled = envTrading === "true";
       }
       if (typeof config.appBaseUrl === "string") {
         appBaseUrl = config.appBaseUrl.trim() || resolveAppBaseUrl();
