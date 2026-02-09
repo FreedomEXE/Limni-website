@@ -229,11 +229,24 @@ export async function updateConnectedAccountAnalysis(
   accountKey: string,
   analysis: Record<string, unknown>,
 ) {
+  const positions = Array.isArray((analysis as any)?.positions)
+    ? ((analysis as any).positions as unknown[]).filter(Boolean)
+    : null;
+  const normalized = {
+    ...analysis,
+    // Single source of truth: if bots push `positions`, derive `open_positions` from it.
+    open_positions:
+      typeof (analysis as any)?.open_positions === "number"
+        ? (analysis as any).open_positions
+        : positions
+          ? positions.length
+          : 0,
+  };
   await query(
     `UPDATE connected_accounts
      SET analysis = $2, last_sync_utc = NOW(), updated_at = NOW()
      WHERE account_key = $1`,
-    [accountKey, JSON.stringify(analysis)],
+    [accountKey, JSON.stringify(normalized)],
   );
 }
 

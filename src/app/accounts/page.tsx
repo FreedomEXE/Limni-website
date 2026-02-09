@@ -79,6 +79,12 @@ export default async function AccountsPage() {
         : typeof analysis?.nav === "number"
           ? (analysis.nav as number)
           : null;
+    const openPositions =
+      typeof analysis?.open_positions === "number"
+        ? (analysis.open_positions as number)
+        : Array.isArray(analysis?.positions)
+          ? (analysis?.positions as unknown[]).filter(Boolean).length
+          : 0;
     return {
       account_id: account.account_key,
       label: account.label ?? `${account.provider.toUpperCase()} account`,
@@ -100,7 +106,7 @@ export default async function AccountsPage() {
           : analysisEquity,
       weekly_pnl_pct: null,
       basket_state: botState?.state?.entered ? "ACTIVE" : "READY",
-      open_positions: null,
+      open_positions: openPositions,
       open_pairs: typeof analysis?.mapped_count === "number" ? (analysis.mapped_count as number) : null,
       win_rate_pct: null,
       max_drawdown_pct: null,

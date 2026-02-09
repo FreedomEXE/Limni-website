@@ -39,6 +39,10 @@ function extractStatsFromAnalysis(
 
   const balance = typeof analysis?.balance === "number" ? analysis.balance : equity;
 
+  const openPositionsFromList = Array.isArray((analysis as any)?.positions)
+    ? ((analysis as any).positions as unknown[]).filter(Boolean).length
+    : null;
+
   return {
     weekOpenUtc,
     equity,
@@ -53,7 +57,12 @@ function extractStatsFromAnalysis(
     currency: typeof analysis?.currency === "string" ? analysis.currency : "USD",
     lockedProfitPct:
       typeof analysis?.locked_profit_pct === "number" ? analysis.locked_profit_pct : null,
-    openPositions: typeof analysis?.open_positions === "number" ? analysis.open_positions : 0,
+    openPositions:
+      typeof analysis?.open_positions === "number"
+        ? analysis.open_positions
+        : typeof openPositionsFromList === "number"
+          ? openPositionsFromList
+          : 0,
     tradesThisWeek: typeof analysis?.trades_this_week === "number" ? analysis.trades_this_week : 0,
     leverage: typeof analysis?.leverage === "number" ? analysis.leverage : null,
     margin: typeof analysis?.margin === "number" ? analysis.margin : null,

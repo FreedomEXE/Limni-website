@@ -185,7 +185,7 @@ export default function AccountClientView({
   drawerData,
   settingsExtras,
 }: AccountClientViewProps) {
-  const [statusFilter, setStatusFilter] = useState("pending");
+  const [statusFilter, setStatusFilter] = useState("open");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
   const [mappingSearch, setMappingSearch] = useState("");
@@ -248,29 +248,142 @@ export default function AccountClientView({
   const showKpis = activeView === "overview";
   const providerKey = header.providerLabel.toLowerCase();
   const isOanda = providerKey === "oanda";
-  const directionForNet = (net: number) => {
-    if (net > 0) return "LONG";
-    if (net < 0) return "SHORT";
-    return "NEUTRAL";
+  const parseManagedModel = (tag: string) => {
+    // Expected: uni-SYMBOL-model-xxxx. Only used for display.
+    const raw = String(tag ?? "").trim();
+    const parts = raw.split("-");
+    const model = (parts[2] ?? "").toLowerCase();
+    return model || null;
   };
-  const plannedRows = drawerData.plannedPairs.map((pair) => ({
-    id: `planned-${pair.symbol}`,
-    status: "pending",
-    searchText: `${pair.symbol} ${pair.assetClass}`,
-    sortValue: pair.net,
-    rowType: "planned",
-    direction: directionForNet(pair.net),
-    ...pair,
-  }));
-  const openRows = drawerData.openPositions.map((row) => ({
-    id: `open-${row.symbol}-${row.side}-${row.lots}`,
-    status: "open",
-    searchText: `${row.symbol} ${row.side}`,
-    sortValue: row.pnl,
-    rowType: "open",
-    direction: row.side,
-    ...row,
-  }));
+
+  const symbolRows = useMemo(() => {
+    type PlannedLegRow = {
+      model: string;
+      direction: "LONG" | "SHORT";
+      units: number | null;
+      riskDisplay?: string | null;
+    };
+    type OpenLegRow = {
+      id: string | number;
+      basket: string;
+      side: "BUY" | "SELL";
+      lots: number;
+      pnl: number;
+      model: string | null;
+    };
+    type SymbolRow = {
+      id: string;
+      status: "open";
+      searchText: string;
+      sortValue: number;
+      symbol: string;
+      plannedLong: number;
+      plannedShort: number;
+      plannedLegs: PlannedLegRow[];
+      openLong: number;
+      openShort: number;
+      openPnl: number;
+      openLegs: OpenLegRow[];
+      legsPlannedCount: number;
+      legsOpenCount: number;
+    };
+
+    const plannedMap = new Map<
+      string,
+      { plannedLong: number; plannedShort: number; plannedLegs: PlannedLegRow[] }
+    >();
+    for (const pair of drawerData.plannedPairs) {
+      const symbol = String(pair.symbol ?? "").trim().toUpperCase();
+      if (!symbol) continue;
+      if (!plannedMap.has(symbol)) {
+        plannedMap.set(symbol, { plannedLong: 0, plannedShort: 0, plannedLegs: [] });
+      }
+      const entry = plannedMap.get(symbol)!;
+      const legs = Array.isArray(pair.legs) ? pair.legs : [];
+      for (const leg of legs) {
+        const direction = String(leg.direction ?? "").toUpperCase();
+        if (direction !== "LONG" && direction !== "SHORT") continue;
+        const unitsRaw =
+          typeof leg.units === "number" && Number.isFinite(leg.units)
+            ? leg.units
+            : typeof pair.units === "number" && Number.isFinite(pair.units)
+              ? pair.units
+              : null;
+        const units =
+          typeof unitsRaw === "number" && Number.isFinite(unitsRaw) ? Math.abs(unitsRaw) : null;
+        if (direction === "LONG") entry.plannedLong += units ?? 0;
+        if (direction === "SHORT") entry.plannedShort += units ?? 0;
+        entry.plannedLegs.push({
+          model: String(leg.model ?? "").toLowerCase() || "unknown",
+          direction,
+          units,
+          riskDisplay: leg.riskDisplay ?? pair.riskDisplay ?? null,
+        });
+      }
+    }
+
+    const openMap = new Map<
+      string,
+      { openLong: number; openShort: number; openPnl: number; openLegs: OpenLegRow[] }
+    >();
+    for (const pos of drawerData.openPositions) {
+      const symbol = String(pos.symbol ?? "").trim().toUpperCase();
+      if (!symbol) continue;
+      if (!openMap.has(symbol)) {
+        openMap.set(symbol, { openLong: 0, openShort: 0, openPnl: 0, openLegs: [] });
+      }
+      const entry = openMap.get(symbol)!;
+      const side = String(pos.side ?? "").trim().toUpperCase() === "SELL" ? "SELL" : "BUY";
+      const lots = Number(pos.lots ?? 0);
+      const pnl = Number(pos.pnl ?? 0);
+      if (Number.isFinite(lots) && lots !== 0) {
+        if (side === "BUY") entry.openLong += Math.abs(lots);
+        if (side === "SELL") entry.openShort += Math.abs(lots);
+      }
+      entry.openPnl += Number.isFinite(pnl) ? pnl : 0;
+
+      const legs = Array.isArray(pos.legs) ? pos.legs : [];
+      for (const leg of legs) {
+        const legSide = String(leg.side ?? "").trim().toUpperCase() === "SELL" ? "SELL" : "BUY";
+        const legLots = Number(leg.lots ?? 0);
+        const legPnl = Number(leg.pnl ?? 0);
+        const basket = String(leg.basket ?? "").trim();
+        entry.openLegs.push({
+          id: leg.id,
+          basket,
+          side: legSide,
+          lots: Number.isFinite(legLots) ? Math.abs(legLots) : 0,
+          pnl: Number.isFinite(legPnl) ? legPnl : 0,
+          model: parseManagedModel(basket),
+        });
+      }
+    }
+
+    const symbols = Array.from(new Set([...plannedMap.keys(), ...openMap.keys()])).sort((a, b) =>
+      a.localeCompare(b),
+    );
+
+    return symbols.map((symbol) => {
+      const planned = plannedMap.get(symbol) ?? { plannedLong: 0, plannedShort: 0, plannedLegs: [] };
+      const open = openMap.get(symbol) ?? { openLong: 0, openShort: 0, openPnl: 0, openLegs: [] };
+      return {
+        id: `sym-${symbol}`,
+        status: "open" as const,
+        searchText: symbol,
+        sortValue: open.openPnl,
+        symbol,
+        plannedLong: planned.plannedLong,
+        plannedShort: planned.plannedShort,
+        plannedLegs: planned.plannedLegs,
+        openLong: open.openLong,
+        openShort: open.openShort,
+        openPnl: open.openPnl,
+        openLegs: open.openLegs,
+        legsPlannedCount: planned.plannedLegs.length,
+        legsOpenCount: open.openLegs.length,
+      };
+    });
+  }, [drawerData.openPositions, drawerData.plannedPairs]);
   const closedRows = drawerData.closedGroups.map((group) => ({
     id: `closed-${group.symbol}-${group.side}-${group.lots}`,
     status: "closed",
@@ -280,8 +393,7 @@ export default function AccountClientView({
     direction: group.side,
     ...group,
   }));
-  const pendingCount = plannedRows.length;
-  const openCount = openRows.length;
+  const openCount = symbolRows.filter((row) => row.openLong + row.openShort > 0).length;
   const closedCount = closedRows.length;
 
   const plannedLegCounts = useMemo(() => {
@@ -298,29 +410,36 @@ export default function AccountClientView({
     }
     return counts;
   }, [drawerData.plannedPairs]);
-  const hasPlannedLotSizes = plannedRows.some((row) => Number.isFinite(row.netUnits as number));
-  const netExposure = plannedRows.reduce((sum, row) => {
-    if (isOanda && Number.isFinite(row.netUnits as number)) {
-      return sum + (row.netUnits as number);
-    }
-    if (!isOanda && Number.isFinite(row.netUnits as number)) {
-      return sum + (row.netUnits as number);
-    }
-    if (!isOanda && Number.isFinite(row.net as number)) {
-      return sum + (row.net as number);
+  const netExposure = useMemo(() => {
+    let sum = 0;
+    for (const pair of drawerData.plannedPairs) {
+      const legs = Array.isArray(pair.legs) ? pair.legs : [];
+      if (legs.length === 0) {
+        sum += Number.isFinite(pair.net as number) ? (pair.net as number) : 0;
+        continue;
+      }
+      for (const leg of legs) {
+        const dir = String(leg.direction ?? "").toUpperCase();
+        const unitsRaw =
+          typeof leg.units === "number" && Number.isFinite(leg.units)
+            ? leg.units
+            : typeof pair.units === "number" && Number.isFinite(pair.units)
+              ? pair.units
+              : null;
+        if (typeof unitsRaw !== "number" || !Number.isFinite(unitsRaw)) continue;
+        sum += dir === "LONG" ? Math.abs(unitsRaw) : dir === "SHORT" ? -Math.abs(unitsRaw) : 0;
+      }
     }
     return sum;
-  }, 0);
+  }, [drawerData.plannedPairs]);
 
   const metricLabel =
-    statusFilter === "pending"
-      ? providerKey === "bitget"
-        ? "Risk"
-        : "Risk (1%)"
-      : "P/L";
+    "P/L";
   const sizeUnitLabel = isOanda ? "units" : providerKey === "bitget" ? "qty" : "lots";
   const rowGridCols =
     "grid-cols-[minmax(160px,1.2fr)_minmax(110px,0.7fr)_minmax(150px,0.9fr)_minmax(150px,0.9fr)_minmax(110px,0.5fr)]";
+  const openGridCols =
+    "grid-cols-[minmax(160px,1.2fr)_minmax(110px,0.6fr)_minmax(170px,0.9fr)_minmax(150px,0.8fr)_minmax(120px,0.6fr)_minmax(110px,0.5fr)]";
 
   const formatStopLoss = (symbol: string, value: number) => {
     const upper = symbol.toUpperCase();
@@ -332,12 +451,15 @@ export default function AccountClientView({
     if (!header.showStopLoss1pct) {
       return [];
     }
-    return plannedRows
-      .filter((row) => row.rowType === "planned")
-      .filter((row) => row.direction === "LONG" || row.direction === "SHORT")
+    return drawerData.plannedPairs
       .filter((row) => Number.isFinite(row.stopLoss1pct as number))
-      .map((row) => `${row.symbol}\t${row.direction}\tSL ${formatStopLoss(row.symbol, row.stopLoss1pct as number)}`);
-  }, [header.showStopLoss1pct, plannedRows]);
+      .map((row) => {
+        const dir = row.net > 0 ? "LONG" : row.net < 0 ? "SHORT" : "NEUTRAL";
+        if (dir !== "LONG" && dir !== "SHORT") return null;
+        return `${row.symbol}\t${dir}\tSL ${formatStopLoss(row.symbol, row.stopLoss1pct as number)}`;
+      })
+      .filter((line): line is string => Boolean(line));
+  }, [header.showStopLoss1pct, drawerData.plannedPairs]);
 
   return (
     <PageShell
@@ -415,18 +537,11 @@ export default function AccountClientView({
 
       {activeView === "trades" ? (
         <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-4">
-            <SummaryCard
-              label="Pending"
-              value={pendingCount}
-              hint="Planned trades"
-              onClick={() => setStatusFilter("pending")}
-              selected={statusFilter === "pending"}
-            />
+          <div className="grid gap-4 md:grid-cols-3">
             <SummaryCard
               label="Open"
               value={openCount}
-              hint="Active positions"
+              hint="Symbols with active positions"
               onClick={() => setStatusFilter("open")}
               selected={statusFilter === "open"}
             />
@@ -442,16 +557,14 @@ export default function AccountClientView({
               value={
                 isOanda
                   ? `${netExposure.toFixed(0)} units`
-                  : hasPlannedLotSizes
-                    ? `${netExposure.toFixed(2)} lots`
-                    : `${netExposure.toFixed(0)} legs`
+                  : `${netExposure.toFixed(2)}`
               }
               hint="Planned net exposure"
             />
           </div>
-          {statusFilter === "pending" && pendingCount > 0 ? (
+          {drawerData.plannedPairs.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 px-4 py-3 text-xs text-[color:var(--muted)]">
-              <span className="uppercase tracking-[0.2em]">Basket legs</span>
+              <span className="uppercase tracking-[0.2em]">Planned legs</span>
               {BASKET_ORDER.map((key) => (
                 <span
                   key={key}
@@ -469,10 +582,10 @@ export default function AccountClientView({
             onSearchChange={setSearch}
             sort={sort}
             onSortChange={setSort}
-            statusOptions={["pending", "open", "closed"]}
+            statusOptions={["open", "closed"]}
           />
           {header.showStopLoss1pct &&
-          statusFilter === "pending" &&
+          statusFilter === "open" &&
           stopLossLines.length > 0 ? (
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -543,157 +656,191 @@ export default function AccountClientView({
               ) : null}
             </div>
           ) : null}
-          {statusFilter === "pending" &&
-          plannedRows.length > 0 &&
-          plannedRows.every((row) => !Number.isFinite(row.netUnits as number)) &&
-          providerKey === "mt5" ? (
-            <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100">
-              Waiting for MT5 sizing push. Update the EA to the latest version and ensure it is pushing `lot_map`
-              (and that the DB migration was run). Until then, Size and Risk will show as `—`.
-            </div>
-          ) : null}
-          <SimpleListTable
-            columns={[
-              { key: "symbol", label: "Symbol" },
-              { key: "direction", label: "Direction" },
-              { key: "size", label: "Size" },
-              { key: "metric", label: metricLabel },
-              { key: "legs", label: "Legs" },
-            ]}
-            rows={filterRows([...plannedRows, ...openRows, ...closedRows])}
-            emptyState="No positions for this week."
-            maxHeight={520}
-            gridClassName={rowGridCols}
-            renderRow={(row) => (
-              <details className="group">
-                <summary
-                  className={`grid cursor-pointer list-none ${rowGridCols} gap-3 [&::-webkit-details-marker]:hidden`}
-                >
+          {statusFilter === "open" ? (
+            <SimpleListTable
+              columns={[
+                { key: "symbol", label: "Symbol" },
+                { key: "direction", label: "Direction" },
+                { key: "filled", label: "Filled" },
+                { key: "net", label: "Net" },
+                { key: "metric", label: metricLabel },
+                { key: "legs", label: "Legs" },
+              ]}
+              rows={filterRows(symbolRows as any[])}
+              emptyState="No positions for this week."
+              maxHeight={520}
+              gridClassName={openGridCols}
+              renderRow={(row: any) => {
+                const plannedLong = Number(row.plannedLong ?? 0);
+                const plannedShort = Number(row.plannedShort ?? 0);
+                const openLong = Number(row.openLong ?? 0);
+                const openShort = Number(row.openShort ?? 0);
+                const openPnl = Number(row.openPnl ?? 0);
+                const grossPlanned = plannedLong + plannedShort;
+                const grossOpen = openLong + openShort;
+                const netPlanned = plannedLong - plannedShort;
+                const netOpen = openLong - openShort;
+
+                const fmt = (val: number) => val.toFixed(isOanda ? 0 : 2);
+                const filledText =
+                  grossPlanned > 0 ? `${fmt(grossOpen)}/${fmt(grossPlanned)}` : `${fmt(grossOpen)}/—`;
+                const netText =
+                  typeof netPlanned === "number"
+                    ? netPlanned !== 0
+                      ? `${fmt(netOpen)}/${fmt(netPlanned)}`
+                      : `${fmt(netOpen)}`
+                    : `${fmt(netOpen)}`;
+
+                const directionSource = Math.abs(netOpen) > 0 ? netOpen : netPlanned;
+                const direction =
+                  directionSource > 0 ? "LONG" : directionSource < 0 ? "SHORT" : "NEUTRAL";
+
+                const expanded =
+                  (Array.isArray(row.plannedLegs) && row.plannedLegs.length > 0) ||
+                  (Array.isArray(row.openLegs) && row.openLegs.length > 0);
+
+                return (
+                  <details className={expanded ? "group" : ""}>
+                    <summary
+                      className={`grid cursor-pointer list-none ${openGridCols} gap-3 [&::-webkit-details-marker]:hidden`}
+                    >
+                      <span className="font-semibold">{row.symbol}</span>
+                      <span
+                        className={
+                          direction === "LONG"
+                            ? "text-emerald-700"
+                            : direction === "SHORT"
+                              ? "text-rose-700"
+                              : "text-[color:var(--muted)]"
+                        }
+                      >
+                        {direction}
+                      </span>
+                      <span className="text-xs text-[color:var(--muted)]">{filledText}</span>
+                      <span className={netOpen >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                        {netOpen >= 0 ? "+" : ""}
+                        {netText}
+                      </span>
+                      <span className={openPnl >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                        {Number.isFinite(openPnl) ? openPnl.toFixed(2) : "—"}
+                      </span>
+                      <span className="text-xs text-[color:var(--muted)]">
+                        {Number(row.legsOpenCount ?? 0)}/{Number(row.legsPlannedCount ?? 0)}
+                      </span>
+                    </summary>
+
+                    {expanded ? (
+                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                        <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                            Planned Legs
+                          </div>
+                          <div className="mt-2 space-y-2">
+                            {(row.plannedLegs ?? []).length === 0 ? (
+                              <div className="text-xs text-[color:var(--muted)]">No planned legs.</div>
+                            ) : (
+                              (row.plannedLegs ?? []).map((leg: any, idx: number) => (
+                                <div
+                                  key={`${row.symbol}-planned-${idx}`}
+                                  className="grid grid-cols-[1fr_0.7fr_0.9fr] gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs"
+                                >
+                                  <div className="truncate text-[var(--foreground)]/90">
+                                    {String(leg.model ?? "unknown")}
+                                  </div>
+                                  <div
+                                    className={
+                                      String(leg.direction).toUpperCase() === "LONG"
+                                        ? "text-emerald-700"
+                                        : "text-rose-700"
+                                    }
+                                  >
+                                    {String(leg.direction).toUpperCase()}
+                                  </div>
+                                  <div className="text-right">
+                                    {Number.isFinite(Number(leg.units)) ? fmt(Number(leg.units)) : "—"}{" "}
+                                    {sizeUnitLabel}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                            Open Legs
+                          </div>
+                          <div className="mt-2 space-y-2">
+                            {(row.openLegs ?? []).length === 0 ? (
+                              <div className="text-xs text-[color:var(--muted)]">No open legs.</div>
+                            ) : (
+                              (row.openLegs ?? []).map((leg: any) => (
+                                <div
+                                  key={leg.id}
+                                  className="grid grid-cols-[1fr_0.7fr_0.9fr_0.9fr] gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs"
+                                >
+                                  <div className="truncate text-[var(--foreground)]/90">
+                                    {leg.model ? `${leg.model} • ` : ""}
+                                    {String(leg.basket ?? "live")}
+                                  </div>
+                                  <div
+                                    className={
+                                      String(leg.side).toUpperCase() === "BUY"
+                                        ? "text-emerald-700"
+                                        : "text-rose-700"
+                                    }
+                                  >
+                                    {String(leg.side).toUpperCase()}
+                                  </div>
+                                  <div className="text-right">
+                                    {fmt(Number(leg.lots ?? 0))} {sizeUnitLabel}
+                                  </div>
+                                  <div
+                                    className={`text-right ${
+                                      Number(leg.pnl ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"
+                                    }`}
+                                  >
+                                    {Number(leg.pnl ?? 0).toFixed(2)}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </details>
+                );
+              }}
+            />
+          ) : (
+            <SimpleListTable
+              columns={[
+                { key: "symbol", label: "Symbol" },
+                { key: "direction", label: "Direction" },
+                { key: "size", label: "Size" },
+                { key: "metric", label: metricLabel },
+                { key: "legs", label: "Legs" },
+              ]}
+              rows={filterRows(closedRows as any[])}
+              emptyState="No closed positions for this week."
+              maxHeight={520}
+              gridClassName={rowGridCols}
+              renderRow={(row) => (
+                <div className={`grid ${rowGridCols} gap-3`}>
                   <span className="font-semibold">{row.symbol}</span>
-                  <span
-                    className={
-                      String(row.direction).toUpperCase() === "LONG" || String(row.direction).toUpperCase() === "BUY"
-                        ? "text-emerald-700"
-                        : String(row.direction).toUpperCase() === "SHORT" || String(row.direction).toUpperCase() === "SELL"
-                          ? "text-rose-700"
-                          : "text-[color:var(--muted)]"
-                    }
-                  >
+                  <span className={String(row.direction).toUpperCase() === "BUY" ? "text-emerald-700" : "text-rose-700"}>
                     {String(row.direction).toUpperCase()}
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
-                    {row.rowType === "planned"
-                      ? typeof (row as any).sizeDisplay === "string" && (row as any).sizeDisplay
-                        ? (row as any).sizeDisplay
-                        : Number.isFinite(row.netUnits as number)
-                        ? isOanda
-                          ? `${Math.abs(row.netUnits as number).toFixed(0)} ${sizeUnitLabel}`
-                          : `${Math.abs(row.netUnits as number).toFixed(2)} ${sizeUnitLabel}`
-                        : "—"
-                      : isOanda
-                        ? "lots" in row
-                          ? `${Math.abs(row.lots as number).toFixed(0)} ${sizeUnitLabel}`
-                          : "—"
-                        : "lots" in row
-                          ? `${(row.lots as number).toFixed(2)} lots`
-                          : "—"}
+                    {Number(row.lots ?? 0).toFixed(isOanda ? 0 : 2)} {sizeUnitLabel}
                   </span>
-                  <span className="text-xs text-[color:var(--muted)]">
-                    {row.rowType === "planned"
-                      ? typeof (row as any).riskDisplay === "string" && (row as any).riskDisplay
-                        ? (row as any).riskDisplay
-                        : Number.isFinite(row.move1pctUsd as number)
-                          ? `$${(row.move1pctUsd as number).toFixed(2)}`
-                          : "—"
-                      : "pnl" in row
-                        ? `${(row.pnl as number).toFixed(2)}`
-                        : "net" in row
-                          ? `${(row.net as number).toFixed(2)}`
-                          : "—"}
-                  </span>
-                  <span className="text-xs text-[color:var(--muted)]">
-                    {row.rowType === "planned"
-                      ? Number.isFinite(row.net as number)
-                        ? `${row.net > 0 ? "+" : ""}${row.net} net`
-                        : "—"
-                      : row.legs
-                        ? `${row.legs.length} legs`
-                        : "—"}
-                  </span>
-                </summary>
-                {row.legs && row.legs.length > 0 ? (
-                  <div className="mt-3 space-y-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-0 py-3 text-xs text-[color:var(--muted)]">
-                    {"model" in row.legs[0] ? (
-                      (row.legs as Array<{
-                        model: string;
-                        direction: string;
-                        units?: number | null;
-                        move1pctUsd?: number | null;
-                        sizeDisplay?: string | null;
-                        riskDisplay?: string | null;
-                      }>).map((leg, index) => (
-                        <div key={`${row.symbol}-${index}`} className={`grid ${rowGridCols} gap-3 px-4`}>
-                          <span className="font-semibold text-[var(--foreground)]">{leg.model}</span>
-                          <span
-                            className={
-                              String(leg.direction).toUpperCase() === "LONG"
-                                ? "text-emerald-700"
-                                : String(leg.direction).toUpperCase() === "SHORT"
-                                  ? "text-rose-700"
-                                  : "text-[color:var(--muted)]"
-                            }
-                          >
-                            {leg.direction}
-                          </span>
-                          <span>
-                            {typeof leg.sizeDisplay === "string" && leg.sizeDisplay
-                              ? leg.sizeDisplay
-                              : Number.isFinite(leg.units ?? NaN)
-                              ? isOanda
-                                ? `${leg.units?.toFixed(0)} ${sizeUnitLabel}`
-                                : `${leg.units?.toFixed(2)} ${sizeUnitLabel}`
-                              : "—"}
-                          </span>
-                          <span>
-                            {typeof leg.riskDisplay === "string" && leg.riskDisplay
-                              ? leg.riskDisplay
-                              : Number.isFinite(leg.move1pctUsd ?? NaN)
-                                ? `$${leg.move1pctUsd?.toFixed(2)}`
-                                : "—"}
-                          </span>
-                          <span />
-                        </div>
-                      ))
-                    ) : (
-                      (row.legs as Array<{
-                        id: string | number;
-                        basket: string;
-                        side: string;
-                        lots: number;
-                        pnl: number;
-                        openTime?: string;
-                        closeTime?: string;
-                      }>).map((leg) => (
-                        <div key={leg.id} className={`grid ${rowGridCols} gap-3 px-4`}>
-                          <span className="font-semibold text-[var(--foreground)]">{leg.basket}</span>
-                          <span className={leg.side === "BUY" ? "text-emerald-700" : "text-rose-700"}>{leg.side}</span>
-                          <span>
-                            {isOanda
-                              ? `${Math.abs(leg.lots).toFixed(0)} ${sizeUnitLabel}`
-                              : `${leg.lots.toFixed(2)} lots`}
-                          </span>
-                          <span className={leg.pnl >= 0 ? "text-emerald-700" : "text-rose-700"}>{leg.pnl.toFixed(2)}</span>
-                          <span className="text-[10px] text-[color:var(--muted)]">
-                            {leg.openTime?.slice(5, 16) ?? "—"} → {leg.closeTime?.slice(5, 16) ?? "—"}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                ) : null}
-              </details>
-            )}
-          />
+                  <span className="text-xs text-[color:var(--muted)]">—</span>
+                  <span className="text-xs text-[color:var(--muted)]">{row.legs?.length ?? 0} legs</span>
+                </div>
+              )}
+            />
+          )}
         </div>
       ) : null}
 

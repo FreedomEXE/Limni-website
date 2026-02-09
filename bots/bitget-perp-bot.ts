@@ -402,10 +402,33 @@ async function tick() {
       if (Number.isFinite(currentEquity) && currentEquity > 0) {
         state.current_equity = currentEquity;
         if (linkedAccountKey) {
+          let positionsPayload: Array<Record<string, unknown>> = [];
+          try {
+            const positions = await fetchBitgetPositions();
+            positionsPayload = positions
+              .filter((pos) => SYMBOLS.includes(pos.symbol as any))
+              .map((pos) => {
+                const total = Number(pos.total ?? pos.available ?? "0");
+                const side = total >= 0 ? "buy" : "sell";
+                return {
+                  symbol: pos.symbol,
+                  type: side,
+                  lots: Math.abs(total),
+                  profit: Number(pos.unrealizedPL ?? 0),
+                  swap: 0,
+                  commission: 0,
+                  open_time: DateTime.utc().toISO(),
+                  comment: "bitget",
+                };
+              });
+          } catch (error) {
+            log("Failed to fetch Bitget positions for UI.", { error: error instanceof Error ? error.message : String(error) });
+          }
           await updateConnectedAccountAnalysis(linkedAccountKey, {
             ...(linkedAccountBase ?? {}),
             equity: currentEquity,
             currency: "USDT",
+            positions: positionsPayload,
             fetched_at: DateTime.utc().toISO(),
           });
         }
