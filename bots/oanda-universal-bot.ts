@@ -168,10 +168,16 @@ async function buildSizing(signals: BasketSignal[]) {
       signal.direction !== "NEUTRAL" && signal.asset_class === "fx",
   );
 
-  // Trade one net position per symbol so the resulting live positions match the planned basket.
-  // If you place one order per model-leg, OANDA netting accounts will merge them into fewer trades.
+  // For sizing and UI consistency we scale exposure based on *net* per symbol, but still trade full legs.
   const grouped = groupSignals(tradeSignals);
-  const instrumentNames = grouped.map((pair) => getOandaInstrument(pair.symbol));
+  const netBySymbol = new Map<string, number>();
+  for (const pair of grouped) {
+    netBySymbol.set(pair.symbol, Math.abs(pair.net));
+  }
+
+  // Price both the planned instruments and any required USD conversion pairs so we can size
+  // non-USD quote currencies (e.g. EUR_GBP needs GBP_USD or USD_GBP pricing).
+  const instrumentNames = tradeSignals.map((signal) => getOandaInstrument(signal.symbol));
   const quoteCurrencies = Array.from(
     new Set(
       instrumentNames
@@ -189,25 +195,26 @@ async function buildSizing(signals: BasketSignal[]) {
     instrument: string;
     units: number;
     direction: "LONG" | "SHORT";
+    model: BasketSignal["model"];
     symbol: string;
-    net: number;
     precision: number;
   }> = [];
 
   let totalMargin = 0;
+  const marginCounted = new Set<string>();
   const skippedDetails: Array<{ symbol: string; reason: string }> = [];
-  for (const pair of grouped) {
-    const instrument = getOandaInstrument(pair.symbol);
+  for (const signal of tradeSignals) {
+    const instrument = getOandaInstrument(signal.symbol);
     const spec = instrumentMap.get(instrument);
     const price = priceMap.get(instrument);
     if (!spec) {
       skipped += 1;
-      skippedDetails.push({ symbol: pair.symbol, reason: "missing spec" });
+      skippedDetails.push({ symbol: signal.symbol, reason: "missing spec" });
       continue;
     }
     if (!price) {
       skipped += 1;
-      skippedDetails.push({ symbol: pair.symbol, reason: "missing price" });
+      skippedDetails.push({ symbol: signal.symbol, reason: "missing price" });
       continue;
     }
 
@@ -215,7 +222,7 @@ async function buildSizing(signals: BasketSignal[]) {
     const usdPerQuote = convertToUsd(1, quote, priceMap);
     if (!usdPerQuote) {
       skipped += 1;
-      skippedDetails.push({ symbol: pair.symbol, reason: `no FX conversion for ${quote}` });
+      skippedDetails.push({ symbol: signal.symbol, reason: `no FX conversion for ${quote}` });
       continue;
     }
 
@@ -223,22 +230,24 @@ async function buildSizing(signals: BasketSignal[]) {
     const targetNotionalUsd = nav;
     const rawUnits = targetNotionalUsd / notionalUsdPerUnit;
     const precision = spec.tradeUnitsPrecision ?? 0;
-    const netWeight = Math.abs(pair.net);
-    const units = Number((rawUnits * netWeight).toFixed(Math.max(0, precision)));
+    const units = Number(rawUnits.toFixed(Math.max(0, precision)));
 
     const marginRate = Number(spec.marginRate ?? "0");
     if (Number.isFinite(marginRate)) {
-      if (netWeight > 0) {
-        totalMargin += targetNotionalUsd * marginRate * netWeight;
+      const net = netBySymbol.get(signal.symbol) ?? 0;
+      if (net > 0 && !marginCounted.has(signal.symbol)) {
+        // OANDA margin is netted per instrument on many accounts, so base scale on net exposure.
+        totalMargin += targetNotionalUsd * marginRate * net;
+        marginCounted.add(signal.symbol);
       }
     }
 
     plan.push({
       instrument,
       units,
-      direction: pair.net > 0 ? "LONG" : "SHORT",
-      symbol: pair.symbol,
-      net: pair.net,
+      direction: signal.direction,
+      model: signal.model,
+      symbol: signal.symbol,
       precision: Math.max(0, precision),
     });
   }
@@ -287,67 +296,51 @@ async function enterTrades(signals: BasketSignal[]) {
     return { nav: sizing.nav, pending: 0 };
   }
 
-  const planInstruments = new Set(sizing.plan.map((row) => row.instrument));
-
+  const openTrades = await fetchOandaOpenTrades();
   const isManagedTrade = (trade: Awaited<ReturnType<typeof fetchOandaOpenTrades>>[number]) => {
     const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
     return tag.toLowerCase().startsWith("uni-");
   };
 
-  // Clean up legacy net-zero or out-of-basket trades created by earlier bot versions, otherwise
-  // they consume margin and make the live basket look "wrong" vs the planned net list.
-  const openTradesBefore = await fetchOandaOpenTrades();
-  const extraneous = openTradesBefore.filter(
-    (trade) => isManagedTrade(trade) && !planInstruments.has(trade.instrument),
-  );
-  for (const trade of extraneous) {
-    try {
-      await closeOandaTrade(trade.id);
-    } catch (error) {
-      log("Failed to close extraneous managed trade", {
-        id: trade.id,
-        instrument: trade.instrument,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  const openTrades = await fetchOandaOpenTrades();
-  const netByInstrument = new Map<string, number>();
-  for (const trade of openTrades) {
+  const managedTrades = openTrades.filter(isManagedTrade);
+  const existingLegKeys = new Set<string>();
+  for (const trade of managedTrades) {
+    const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
+    const parts = tag.split("-");
+    // Expected: uni-{SYMBOL}-{MODEL}-{random}
+    const symbol = (parts[1] ?? "").toUpperCase();
+    const model = (parts[2] ?? "").toLowerCase();
+    if (!symbol || !model) continue;
     const units = Number(trade.currentUnits ?? 0);
     if (!Number.isFinite(units) || units === 0) continue;
-    netByInstrument.set(trade.instrument, (netByInstrument.get(trade.instrument) ?? 0) + units);
+    const dir = units > 0 ? "LONG" : "SHORT";
+    existingLegKeys.add(`${symbol}:${model}:${dir}`);
   }
 
   const failures: Array<{ symbol: string; instrument: string; error: string }> = [];
-  const orderDetails: Array<{ symbol: string; instrument: string; units: number; side: string }> = [];
+  const orderDetails: Array<{ symbol: string; instrument: string; units: number; side: string; model: string }> = [];
 
   for (const planned of sizing.plan) {
-    if (!Number.isFinite(planned.units) || planned.units <= 0) {
-      continue;
-    }
-    const targetSigned = planned.direction === "LONG" ? planned.units : -Math.abs(planned.units);
-    const current = netByInstrument.get(planned.instrument) ?? 0;
-    const delta = targetSigned - current;
-    const deltaRounded =
-      planned.precision === 0
-        ? Math.trunc(delta)
-        : Number(delta.toFixed(planned.precision));
-    if (!Number.isFinite(deltaRounded) || deltaRounded === 0) {
-      continue;
-    }
+    if (!Number.isFinite(planned.units) || planned.units <= 0) continue;
+    const key = `${planned.symbol.toUpperCase()}:${String(planned.model).toLowerCase()}:${planned.direction}`;
+    if (existingLegKeys.has(key)) continue;
 
-    const side = deltaRounded > 0 ? "buy" : "sell";
-    const units = Math.abs(deltaRounded);
+    const side = planned.direction === "LONG" ? "buy" : "sell";
+    const units = Math.abs(planned.units);
     try {
       await placeOandaMarketOrder({
         instrument: planned.instrument,
         units,
         side,
-        clientTag: buildClientTag("uni", planned.symbol, "net"),
+        clientTag: buildClientTag("uni", planned.symbol, planned.model),
       });
-      orderDetails.push({ symbol: planned.symbol, instrument: planned.instrument, units, side });
+      orderDetails.push({
+        symbol: planned.symbol,
+        instrument: planned.instrument,
+        units,
+        side,
+        model: planned.model,
+      });
     } catch (error) {
       failures.push({
         symbol: planned.symbol,
@@ -357,28 +350,32 @@ async function enterTrades(signals: BasketSignal[]) {
     }
   }
 
-  log("Placed OANDA orders (reconciled to net targets).", {
+  log("Placed OANDA orders (per-leg).", {
     count: orderDetails.length,
     orders: orderDetails.slice(0, 10),
     failures: failures.slice(0, 5),
     scale: sizing.scale,
   });
 
-  // Recheck alignment so we don't mark state as entered when only a subset of trades made it in.
   const afterTrades = await fetchOandaOpenTrades();
-  const afterNet = new Map<string, number>();
-  for (const trade of afterTrades) {
+  const afterManaged = afterTrades.filter(isManagedTrade);
+  const afterKeys = new Set<string>();
+  for (const trade of afterManaged) {
+    const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
+    const parts = tag.split("-");
+    const symbol = (parts[1] ?? "").toUpperCase();
+    const model = (parts[2] ?? "").toLowerCase();
+    if (!symbol || !model) continue;
     const units = Number(trade.currentUnits ?? 0);
     if (!Number.isFinite(units) || units === 0) continue;
-    afterNet.set(trade.instrument, (afterNet.get(trade.instrument) ?? 0) + units);
+    const dir = units > 0 ? "LONG" : "SHORT";
+    afterKeys.add(`${symbol}:${model}:${dir}`);
   }
 
   let pending = 0;
   for (const planned of sizing.plan) {
-    const targetSigned = planned.direction === "LONG" ? planned.units : -Math.abs(planned.units);
-    const current = afterNet.get(planned.instrument) ?? 0;
-    const epsilon = planned.precision === 0 ? 0.5 : Math.pow(10, -planned.precision) / 2;
-    if (Math.abs(targetSigned - current) > epsilon && planned.units > 0) {
+    const key = `${planned.symbol.toUpperCase()}:${String(planned.model).toLowerCase()}:${planned.direction}`;
+    if (!afterKeys.has(key) && planned.units > 0) {
       pending += 1;
     }
   }
