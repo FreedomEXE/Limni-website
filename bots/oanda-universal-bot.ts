@@ -7,6 +7,7 @@ import {
   fetchOandaPricing,
   placeOandaMarketOrder,
   closeOandaTrade,
+  closeOandaPosition,
   buildClientTag,
 } from "@/lib/oandaTrade";
 import { readBotState, writeBotState } from "@/lib/botState";
@@ -426,7 +427,70 @@ async function closeAllTrades() {
 
 async function closeTradesById(tradeIds: string[]) {
   for (const id of tradeIds) {
-    await closeOandaTrade(id);
+    try {
+      await closeOandaTrade(id);
+    } catch (error) {
+      log("Trade close failed.", { id, error: error instanceof Error ? error.message : String(error) });
+    }
+    // small delay to reduce rate-limit / "too many requests" bursts
+    await new Promise((resolve) => setTimeout(resolve, 120));
+  }
+}
+
+async function wipeAllOpenTrades() {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const trades = await fetchOandaOpenTrades();
+    if (trades.length === 0) {
+      return;
+    }
+
+    // Prefer position-level close (fewer calls, closes both sides per instrument if hedged).
+    const byInstrument = new Map<string, { hasLong: boolean; hasShort: boolean; tradeIds: string[] }>();
+    for (const t of trades) {
+      const instrument = String(t.instrument ?? "").trim();
+      if (!instrument) continue;
+      const units = Number(t.currentUnits ?? 0);
+      if (!Number.isFinite(units) || units === 0) continue;
+      if (!byInstrument.has(instrument)) {
+        byInstrument.set(instrument, { hasLong: false, hasShort: false, tradeIds: [] });
+      }
+      const row = byInstrument.get(instrument)!;
+      if (units > 0) row.hasLong = true;
+      if (units < 0) row.hasShort = true;
+      row.tradeIds.push(String(t.id));
+    }
+
+    for (const [instrument, row] of Array.from(byInstrument.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+      try {
+        await closeOandaPosition({
+          instrument,
+          longUnits: row.hasLong ? "ALL" : undefined,
+          shortUnits: row.hasShort ? "ALL" : undefined,
+        });
+      } catch (error) {
+        log("Position close failed; will fall back to per-trade close.", {
+          instrument,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        await closeTradesById(row.tradeIds);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+
+    const after = await fetchOandaOpenTrades();
+    log("Wipe attempt complete.", { attempt, before: trades.length, after: after.length });
+    if (after.length === 0) {
+      return;
+    }
+
+    // Last resort: brute-force trade closes.
+    await closeTradesById(after.map((t) => String(t.id)));
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  const remaining = await fetchOandaOpenTrades();
+  if (remaining.length > 0) {
+    throw new Error(`Failed to wipe open trades after retries. Remaining open trades: ${remaining.length}`);
   }
 }
 
@@ -455,11 +519,7 @@ async function enterTrades(signals: BasketSignal[]) {
         tag: t.clientExtensions?.tag ?? t.clientExtensions?.id ?? null,
       })),
     });
-    await closeTradesById(openTrades.map((t) => t.id));
-    const remaining = await fetchOandaOpenTrades();
-    if (remaining.length > 0) {
-      throw new Error(`Failed to clear unmanaged trades. Remaining open trades: ${remaining.length}`);
-    }
+    await wipeAllOpenTrades();
     openTrades = [];
     managedTrades = [];
     unmanagedTrades = [];

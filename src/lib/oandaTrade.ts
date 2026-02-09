@@ -72,6 +72,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       "Content-Type": "application/json",
       ...(options?.headers ?? {}),
     },
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -145,8 +146,28 @@ export async function placeOandaMarketOrder(options: {
 
 export async function closeOandaTrade(tradeId: string) {
   const accountId = getAccountId();
-  await request(`/v3/accounts/${accountId}/trades/${tradeId}/close`, {
+  return await request(`/v3/accounts/${accountId}/trades/${tradeId}/close`, {
     method: "PUT",
+  });
+}
+
+export async function closeOandaPosition(options: {
+  instrument: string;
+  longUnits?: "ALL" | number;
+  shortUnits?: "ALL" | number;
+}) {
+  const accountId = getAccountId();
+  const body: Record<string, string> = {};
+  if (options.longUnits !== undefined) {
+    body.longUnits = typeof options.longUnits === "number" ? String(options.longUnits) : options.longUnits;
+  }
+  if (options.shortUnits !== undefined) {
+    body.shortUnits =
+      typeof options.shortUnits === "number" ? String(options.shortUnits) : options.shortUnits;
+  }
+  return await request(`/v3/accounts/${accountId}/positions/${options.instrument}/close`, {
+    method: "PUT",
+    body: JSON.stringify(body),
   });
 }
 
