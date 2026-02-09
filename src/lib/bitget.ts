@@ -3,19 +3,21 @@ import { DateTime } from "luxon";
 type BitgetFundingRateResponse = {
   code?: string;
   msg?: string;
-  data?: {
+  data?: Array<{
     symbol?: string;
     fundingRate?: string;
-    fundingTime?: string;
-  };
+    fundingRateInterval?: string;
+    nextUpdate?: string;
+    minFundingRate?: string;
+    maxFundingRate?: string;
+  }>;
 };
 
 type BitgetOpenInterestResponse = {
   code?: string;
   msg?: string;
   data?: {
-    symbol?: string;
-    openInterest?: string;
+    openInterestList?: Array<{ symbol?: string; size?: string }>;
     ts?: string;
   };
 };
@@ -23,10 +25,11 @@ type BitgetOpenInterestResponse = {
 type BitgetTickerResponse = {
   code?: string;
   msg?: string;
-  data?: {
+  data?: Array<{
+    symbol?: string;
     lastPr?: string;
     ts?: string;
-  };
+  }>;
 };
 
 type BitgetCandleResponse = {
@@ -52,7 +55,9 @@ function getProductType() {
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`Bitget request failed: ${response.status}`);
+    const text = await response.text().catch(() => "");
+    const suffix = text ? `: ${text.slice(0, 240)}` : "";
+    throw new Error(`Bitget request failed (${response.status}) ${url}${suffix}`);
   }
   return (await response.json()) as T;
 }
@@ -78,7 +83,7 @@ export async function fetchBitgetFuturesSnapshot(
 ): Promise<BitgetFuturesSnapshot> {
   const productType = getProductType();
   const symbol = `${symbolBase}USDT`;
-  const fundingUrl = `${BASE_URL}/api/v2/mix/market/funding-rate?symbol=${symbol}&productType=${productType}`;
+  const fundingUrl = `${BASE_URL}/api/v2/mix/market/current-fund-rate?symbol=${symbol}&productType=${productType}`;
   const oiUrl = `${BASE_URL}/api/v2/mix/market/open-interest?symbol=${symbol}&productType=${productType}`;
   const tickerUrl = `${BASE_URL}/api/v2/mix/market/ticker?symbol=${symbol}&productType=${productType}`;
 
@@ -88,14 +93,18 @@ export async function fetchBitgetFuturesSnapshot(
     fetchJson<BitgetTickerResponse>(tickerUrl),
   ]);
 
+  const fundingRow = Array.isArray(funding.data) ? funding.data[0] : undefined;
+  const oiRow = openInterest.data?.openInterestList?.[0];
+  const tickerRow = Array.isArray(ticker.data) ? ticker.data[0] : undefined;
+
   return {
     symbol,
     productType,
-    lastPrice: toNumber(ticker.data?.lastPr),
-    lastPriceTime: ticker.data?.ts ?? null,
-    fundingRate: toNumber(funding.data?.fundingRate),
-    fundingTime: funding.data?.fundingTime ?? null,
-    openInterest: toNumber(openInterest.data?.openInterest),
+    lastPrice: toNumber(tickerRow?.lastPr),
+    lastPriceTime: tickerRow?.ts ?? null,
+    fundingRate: toNumber(fundingRow?.fundingRate),
+    fundingTime: fundingRow?.nextUpdate ?? null,
+    openInterest: toNumber(oiRow?.size),
     openInterestTime: openInterest.data?.ts ?? null,
   };
 }
