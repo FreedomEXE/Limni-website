@@ -169,22 +169,43 @@ export async function setBitgetMarginMode(
   });
 }
 
-export async function setBitgetLeverage(symbol: string, leverage: number) {
+export async function setBitgetLeverage(
+  symbol: string,
+  leverage: number,
+  options?: { marginMode?: "isolated" | "crossed"; holdSide?: "long" | "short" | "both" },
+) {
   const productType = getBitgetProductType();
   const safeLeverage = Number.isFinite(leverage)
     ? Math.max(1, Math.min(50, Math.floor(leverage)))
     : 10;
-  // Cross margin mode: do NOT pass holdSide (Bitget docs). Passing holdSide can set isolated/side leverages
-  // and may not affect crossMarginLeverage.
+  const marginMode = options?.marginMode ?? getBitgetMarginMode();
+  const holdSide = options?.holdSide ?? (marginMode === "isolated" ? "both" : undefined);
+
+  const baseBody = {
+    symbol,
+    productType,
+    marginCoin: "USDT",
+    leverage: String(safeLeverage),
+  } as Record<string, unknown>;
+
+  // Empirically: cross margin expects no holdSide; isolated often expects holdSide-specific leverage.
+  if (marginMode === "isolated" && holdSide) {
+    const sides: Array<"long" | "short"> =
+      holdSide === "both" ? ["long", "short"] : [holdSide];
+    for (const side of sides) {
+      await request({
+        method: "POST",
+        path: "/api/v2/mix/account/set-leverage",
+        body: { ...baseBody, holdSide: side },
+      });
+    }
+    return;
+  }
+
   await request({
     method: "POST",
     path: "/api/v2/mix/account/set-leverage",
-    body: {
-      symbol,
-      productType,
-      marginCoin: "USDT",
-      leverage: String(safeLeverage),
-    },
+    body: baseBody,
   });
 }
 

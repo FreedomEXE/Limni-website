@@ -247,7 +247,7 @@ async function enterPositions(direction: "LONG" | "SHORT") {
   // Ensure the account/symbol config matches before placing orders.
   for (const symbol of SYMBOLS) {
     await setBitgetMarginMode(symbol, "isolated");
-    await setBitgetLeverage(symbol, effectiveLeverage);
+    await setBitgetLeverage(symbol, effectiveLeverage, { marginMode: "isolated", holdSide: "both" });
   }
   log("Configured Bitget symbol settings.", { marginMode: "isolated", effectiveLeverage });
 
@@ -283,17 +283,47 @@ async function enterPositions(direction: "LONG" | "SHORT") {
   const entryPrices: Record<string, number> = {};
   const entryNotional: Record<string, number> = {};
 
+  async function placeWithAutoReduce(symbol: string) {
+    let targetNotional = notionalPerSymbol;
+    // Try a few times, reducing size on "exceeds balance" errors.
+    for (let attempt = 1; attempt <= 6; attempt += 1) {
+      const { size, price, notional } = await computeOrderSize(symbol, targetNotional);
+      try {
+        await placeBitgetOrder({
+          symbol,
+          side,
+          size,
+          clientOid: `entry-${symbol}-${Date.now()}`,
+          marginMode: "isolated",
+        });
+        entryPrices[symbol] = price;
+        entryNotional[symbol] = notional;
+        if (attempt > 1) {
+          log("Order sized down to fit balance.", { symbol, attempt, targetNotional, notional });
+        }
+        return;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        const isBalance = msg.includes("\"code\":\"40762\"") || msg.includes("40762") || msg.toLowerCase().includes("exceeds the balance");
+        const isLev = msg.includes("\"code\":\"40914\"") || msg.includes("40914");
+        if (isLev) {
+          // If leverage wasn't applied, fall back to minimum leverage (1) and retry sizing.
+          log("Leverage rejected during order; falling back to 1x sizing for this symbol.", { symbol, attempt, msg });
+          targetNotional = Math.min(targetNotional, marginPerSymbol); // margin ~= notional at 1x
+          continue;
+        }
+        if (isBalance && attempt < 6) {
+          targetNotional *= 0.85;
+          log("Order exceeds balance; reducing notional and retrying.", { symbol, attempt, nextNotional: targetNotional });
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+
   for (const symbol of SYMBOLS) {
-    const { size, price, notional } = await computeOrderSize(symbol, notionalPerSymbol);
-    await placeBitgetOrder({
-      symbol,
-      side,
-      size,
-      clientOid: `entry-${symbol}-${Date.now()}`,
-      marginMode: "isolated",
-    });
-    entryPrices[symbol] = price;
-    entryNotional[symbol] = notional;
+    await placeWithAutoReduce(symbol);
   }
 
   return { equity, entryPrices, entryNotional };
