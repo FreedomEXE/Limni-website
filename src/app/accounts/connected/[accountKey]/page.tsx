@@ -26,6 +26,7 @@ import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
 import { buildOandaSizingForAccount } from "@/lib/oandaSizing";
 import { unstable_noStore } from "next/cache";
 import crypto from "crypto";
+import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 
 export const dynamic = "force-dynamic";
 
@@ -492,9 +493,8 @@ export default async function ConnectedAccountPage({
       : [];
   let mappedRows = mapped.length > 0 ? mapped : fallbackMapped;
   if (account.provider === "oanda") {
-    mappedRows = mappedRows.filter(
-      (row) => row.symbol !== "BTCUSD" && row.symbol !== "ETHUSD"
-    );
+    const fxSet = new Set(PAIRS_BY_ASSET_CLASS.fx.map((row) => row.pair));
+    mappedRows = mappedRows.filter((row) => fxSet.has(row.symbol));
   }
 
   const accountCurrency = stats.currency;

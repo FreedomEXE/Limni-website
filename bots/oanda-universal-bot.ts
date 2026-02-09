@@ -16,6 +16,7 @@ import {
   loadConnectedAccountSecrets,
   updateConnectedAccountAnalysis,
 } from "@/lib/connectedAccounts";
+import { buildOandaSizingForAccount } from "@/lib/oandaSizing";
 
 type BasketSignal = {
   symbol: string;
@@ -139,6 +140,15 @@ function buildPriceMap(prices: Awaited<ReturnType<typeof fetchOandaPricing>>) {
   return map;
 }
 
+function roundUnits(units: number, precision: number, minUnits?: number) {
+  const factor = Math.max(0, precision);
+  const rounded = Number(units.toFixed(factor));
+  if (minUnits && rounded > 0 && rounded < minUnits) {
+    return minUnits;
+  }
+  return rounded;
+}
+
 function convertToUsd(amount: number, currency: string, priceMap: Map<string, number>) {
   if (currency === "USD") {
     return amount;
@@ -157,6 +167,101 @@ function convertToUsd(amount: number, currency: string, priceMap: Map<string, nu
 }
 
 async function buildSizing(signals: BasketSignal[]) {
+  // Preferred path: reuse the same sizing logic the app uses (Analytics -> "Sizing Analysis").
+  // This avoids drift between what the UI says is "safe" and what the bot trades.
+  if (linkedAccountKey) {
+    try {
+      const tradeSignals = signals.filter(
+        (signal): signal is BasketSignal & { direction: "LONG" | "SHORT" } =>
+          signal.direction !== "NEUTRAL" && signal.asset_class === "fx",
+      );
+      const grouped = groupSignals(tradeSignals);
+      const netBySymbol = new Map<string, number>();
+      for (const pair of grouped) {
+        netBySymbol.set(pair.symbol, Math.abs(pair.net));
+      }
+
+      const sizing = await buildOandaSizingForAccount(linkedAccountKey);
+      const sizingMap = new Map(sizing.rows.map((row) => [row.symbol, row]));
+
+      const available =
+        Number.isFinite(sizing.marginAvailable ?? NaN) && (sizing.marginAvailable as number) > 0
+          ? (sizing.marginAvailable as number)
+          : sizing.nav;
+      let totalMargin = 0;
+      for (const pair of grouped) {
+        const row = sizingMap.get(pair.symbol);
+        if (!row || !row.available || !Number.isFinite(row.marginRate ?? NaN)) continue;
+        totalMargin += sizing.nav * (row.marginRate ?? 0) * Math.abs(pair.net);
+      }
+      const buffer = available * (1 - marginBuffer);
+      const scale = totalMargin > 0 ? Math.min(1, buffer / totalMargin) : 1;
+
+      let skipped = 0;
+      const skippedDetails: Array<{ symbol: string; reason: string }> = [];
+
+      const plan = tradeSignals.map((signal) => {
+        const row = sizingMap.get(signal.symbol);
+        if (!row) {
+          skipped += 1;
+          skippedDetails.push({ symbol: signal.symbol, reason: "missing sizing row" });
+          return null;
+        }
+        if (!row.available) {
+          skipped += 1;
+          skippedDetails.push({ symbol: signal.symbol, reason: row.reason ?? "instrument unavailable" });
+          return null;
+        }
+        if (!Number.isFinite(row.units ?? NaN)) {
+          skipped += 1;
+          skippedDetails.push({ symbol: signal.symbol, reason: row.reason ?? "invalid units" });
+          return null;
+        }
+
+        const precision = row.tradeUnitsPrecision ?? 0;
+        const minUnits = row.minUnits;
+        const scaledUnits = roundUnits((row.units ?? 0) * scale, precision, minUnits);
+        if (!Number.isFinite(scaledUnits) || scaledUnits <= 0) {
+          skipped += 1;
+          skippedDetails.push({ symbol: signal.symbol, reason: "scaled units <= 0" });
+          return null;
+        }
+
+        return {
+          instrument: row.instrument,
+          units: scaledUnits,
+          direction: signal.direction,
+          model: signal.model,
+          symbol: signal.symbol,
+          precision: Math.max(0, precision),
+          rawUnits: row.rawUnits ?? row.units ?? 0,
+          quote: row.instrument.split("_")[1] ?? "",
+          usdPerQuote: 0,
+          price: row.price ?? 0,
+          notionalUsdPerUnit: row.notionalUsdPerUnit ?? 0,
+        };
+      }).filter((row): row is NonNullable<typeof row> => Boolean(row));
+
+      if (skipped > 0) {
+        log("Skipped instruments (from sizing analysis).", { skipped, details: skippedDetails.slice(0, 25) });
+      }
+
+      return {
+        plan,
+        nav: sizing.nav,
+        marginAvailable: Number.isFinite(sizing.marginAvailable ?? NaN) ? sizing.marginAvailable : null,
+        totalMargin,
+        scale,
+        skipped,
+        skippedDetails,
+      };
+    } catch (error) {
+      log("Sizing analysis path failed; falling back to direct sizing.", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   const instruments = await fetchOandaInstruments();
   const instrumentMap = new Map(instruments.map((inst) => [inst.name, inst]));
   const summary = await fetchOandaAccountSummary();
