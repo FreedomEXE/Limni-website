@@ -200,18 +200,12 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     weekOptions = fallback;
   }
   const nowUtc = DateTime.utc();
-  const hoursToNext =
-    nextWeekOpenUtc
-      ? DateTime.fromISO(nextWeekOpenUtc, { zone: "utc" }).diff(nowUtc, "hours").hours
-      : null;
   const selectedWeek =
     requestedWeek && weekOptions.includes(requestedWeek)
       ? requestedWeek
-      : hoursToNext !== null && hoursToNext <= 48 && nextWeekOpenUtc && weekOptions.includes(nextWeekOpenUtc)
-        ? nextWeekOpenUtc
-        : weekOptions.includes(currentWeekOpenUtc)
-          ? currentWeekOpenUtc
-          : weekOptions[0] ?? currentWeekOpenUtc;
+      : weekOptions.includes(currentWeekOpenUtc)
+        ? currentWeekOpenUtc
+        : weekOptions[0] ?? currentWeekOpenUtc;
   const isSelectedMt5Week = selectedWeek ? isMt5WeekOpenUtc(selectedWeek) : false;
   const statsWeekOpenUtc = isSelectedMt5Week ? selectedWeek : getMt5WeekOpenUtc();
   let account = null;

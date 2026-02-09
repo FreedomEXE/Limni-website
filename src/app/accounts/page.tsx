@@ -85,6 +85,15 @@ export default async function AccountsPage() {
         : Array.isArray(analysis?.positions)
           ? (analysis?.positions as unknown[]).filter(Boolean).length
           : 0;
+
+    const weeklyPnlPct =
+      typeof (analysis as any)?.weekly_pnl_pct === "number"
+        ? ((analysis as any).weekly_pnl_pct as number)
+        : typeof botState?.state?.entry_equity === "number" &&
+            typeof botState?.state?.current_equity === "number" &&
+            botState.state.entry_equity > 0
+          ? ((botState.state.current_equity - botState.state.entry_equity) / botState.state.entry_equity) * 100
+          : null;
     return {
       account_id: account.account_key,
       label: account.label ?? `${account.provider.toUpperCase()} account`,
@@ -104,7 +113,7 @@ export default async function AccountsPage() {
         typeof botState?.state?.current_equity === "number"
           ? botState?.state?.current_equity
           : analysisEquity,
-      weekly_pnl_pct: null,
+      weekly_pnl_pct: Number.isFinite(weeklyPnlPct as number) ? (weeklyPnlPct as number) : null,
       basket_state: botState?.state?.entered ? "ACTIVE" : "READY",
       open_positions: openPositions,
       open_pairs: typeof analysis?.mapped_count === "number" ? (analysis.mapped_count as number) : null,

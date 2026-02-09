@@ -393,7 +393,8 @@ export default function AccountClientView({
     direction: group.side,
     ...group,
   }));
-  const openCount = symbolRows.filter((row) => row.openLong + row.openShort > 0).length;
+  const openSymbolCount = symbolRows.filter((row) => row.openLong + row.openShort > 0).length;
+  const openLegCount = symbolRows.reduce((sum, row) => sum + Number(row.legsOpenCount ?? 0), 0);
   const closedCount = closedRows.length;
 
   const plannedLegCounts = useMemo(() => {
@@ -402,6 +403,7 @@ export default function AccountClientView({
       counts.set(key, 0);
     }
     for (const pair of drawerData.plannedPairs) {
+      if (isOanda && String(pair.assetClass ?? "").toLowerCase() !== "fx") continue;
       for (const leg of pair.legs ?? []) {
         const model = String(leg.model ?? "").toLowerCase();
         if (!model) continue;
@@ -413,6 +415,7 @@ export default function AccountClientView({
   const netExposure = useMemo(() => {
     let sum = 0;
     for (const pair of drawerData.plannedPairs) {
+      if (isOanda && String(pair.assetClass ?? "").toLowerCase() !== "fx") continue;
       const legs = Array.isArray(pair.legs) ? pair.legs : [];
       if (legs.length === 0) {
         sum += Number.isFinite(pair.net as number) ? (pair.net as number) : 0;
@@ -540,8 +543,8 @@ export default function AccountClientView({
           <div className="grid gap-4 md:grid-cols-3">
             <SummaryCard
               label="Open"
-              value={openCount}
-              hint="Symbols with active positions"
+              value={openLegCount}
+              hint="Open legs right now"
               onClick={() => setStatusFilter("open")}
               selected={statusFilter === "open"}
             />
@@ -564,7 +567,13 @@ export default function AccountClientView({
           </div>
           {drawerData.plannedPairs.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 px-4 py-3 text-xs text-[color:var(--muted)]">
-              <span className="uppercase tracking-[0.2em]">Planned legs</span>
+              <span className="uppercase tracking-[0.2em]">
+                Legs (open {openLegCount} / planned{" "}
+                {drawerData.plannedPairs.reduce((sum, pair) => {
+                  if (isOanda && String(pair.assetClass ?? "").toLowerCase() !== "fx") return sum;
+                  return sum + (Array.isArray(pair.legs) ? pair.legs.length : 0);
+                }, 0)})
+              </span>
               {BASKET_ORDER.map((key) => (
                 <span
                   key={key}

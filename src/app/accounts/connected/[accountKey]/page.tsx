@@ -242,6 +242,12 @@ export default async function ConnectedAccountPage({
   const weekOptionsWithUpcoming = (() => {
     const ordered: WeekOption[] = [];
     const seen = new Set<string>();
+    // Always include current week so the UI doesn't default to "next week" just because
+    // we have no snapshots/trades written yet for the current window.
+    if (currentWeekOpenUtc) {
+      ordered.push(currentWeekOpenUtc);
+      seen.add(currentWeekOpenUtc);
+    }
     if (nextWeekOpenUtc) {
       ordered.push(nextWeekOpenUtc);
       seen.add(nextWeekOpenUtc);
@@ -254,11 +260,6 @@ export default async function ConnectedAccountPage({
     }
     return ordered;
   })();
-  const nowUtc = DateTime.utc();
-  const hoursToNext =
-    nextWeekOpenUtc
-      ? DateTime.fromISO(nextWeekOpenUtc, { zone: "utc" }).diff(nowUtc, "hours").hours
-      : null;
 
   // Determine selected week
   const resolvedSearchParams = await Promise.resolve(searchParams);
@@ -281,8 +282,6 @@ export default async function ConnectedAccountPage({
       ? "all"
       : typeof weekParamValue === "string" && weekOptionsWithUpcoming.includes(weekParamValue)
         ? weekParamValue
-      : hoursToNext !== null && hoursToNext <= 48 && nextWeekOpenUtc
-        ? nextWeekOpenUtc
         : getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc);
 
   // Fetch week-specific data
@@ -331,13 +330,21 @@ export default async function ConnectedAccountPage({
       const planned = buildBitgetPlannedTrades(filtered);
       plannedPairs = planned.pairs.map((pair) => ({
         ...pair,
+        // Display/plan using the actual Bitget futures symbols so planned vs open lines up.
+        symbol:
+          pair.symbol.toUpperCase() === "BTCUSD"
+            ? "BTCUSDT"
+            : pair.symbol.toUpperCase() === "ETHUSD"
+              ? "ETHUSDT"
+              : pair.symbol,
         net: pair.net > 0 ? 1 : pair.net < 0 ? -1 : 0,
       }));
       plannedNote = planned.note ?? null;
 
     } else if (account.provider === "oanda") {
       const filtered = filterForOandaFx(basketSignals.pairs);
-      plannedPairs = groupSignals(filtered);
+      // Keep symbols even if their basket legs hedge to net 0.
+      plannedPairs = groupSignals(filtered, undefined, { dropNetted: false });
     }
   }
 

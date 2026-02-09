@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import LimniLoading from "@/components/LimniLoading";
+import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 
 type SizingRow = {
   symbol: string;
@@ -28,6 +29,7 @@ export default function ConnectedAccountSizing({ accountKey }: { accountKey: str
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SizingResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fxSet = new Set(PAIRS_BY_ASSET_CLASS.fx.map((row) => row.pair.toUpperCase()));
 
   async function runSizing() {
     setLoading(true);
@@ -88,7 +90,9 @@ export default function ConnectedAccountSizing({ accountKey }: { accountKey: str
             NAV used: {result.nav.toFixed(2)}
           </p>
           <div className="grid gap-2">
-            {result.rows.map((row) => (
+            {result.rows
+              .filter((row) => fxSet.has(String(row.symbol ?? "").toUpperCase()))
+              .map((row) => (
               <div
                 key={row.symbol}
                 className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs md:grid-cols-6"

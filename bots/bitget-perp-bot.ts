@@ -409,7 +409,9 @@ async function tick() {
               .filter((pos) => SYMBOLS.includes(pos.symbol as any))
               .map((pos) => {
                 const total = Number(pos.total ?? pos.available ?? "0");
-                const side = total >= 0 ? "buy" : "sell";
+                const holdSide = String(pos.holdSide ?? "").toLowerCase();
+                const side =
+                  holdSide === "short" ? "sell" : holdSide === "long" ? "buy" : total >= 0 ? "buy" : "sell";
                 return {
                   symbol: pos.symbol,
                   type: side,

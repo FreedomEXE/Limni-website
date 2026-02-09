@@ -38,7 +38,12 @@ function directionToScore(direction: PlannedLeg["direction"]) {
   return 0;
 }
 
-export function groupSignals(pairs: BasketSignal[], models = UNIVERSAL_MODELS): PlannedPair[] {
+export function groupSignals(
+  pairs: BasketSignal[],
+  models: PerformanceModel[] = UNIVERSAL_MODELS,
+  options?: { dropNetted?: boolean },
+): PlannedPair[] {
+  const dropNetted = options?.dropNetted ?? true;
   const modelSet = new Set(models);
   const grouped = new Map<string, PlannedPair>();
   for (const pair of pairs) {
@@ -65,9 +70,8 @@ export function groupSignals(pairs: BasketSignal[], models = UNIVERSAL_MODELS): 
     entry.legs.push(leg);
     entry.net += directionToScore(pair.direction);
   }
-  // Drop fully-netted symbols (no tradable net exposure).
   return Array.from(grouped.values())
-    .filter((row) => row.net !== 0)
+    .filter((row) => (dropNetted ? row.net !== 0 : true))
     .sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 

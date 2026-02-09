@@ -132,7 +132,7 @@ export function getPreviousWeekOpen(weekOpenUtc: string): string {
 
 /**
  * Determines the best default week to display
- * Prefers: upcoming week > current week > most recent historical week
+ * Prefers: current week > upcoming week > most recent historical week
  *
  * @param availableWeeks - Array of available week ISO strings
  * @param currentWeekOpenUtc - ISO string of the current week
@@ -151,14 +151,14 @@ export function getDefaultWeek(
 
   const nextWeek = getNextWeekOpen(currentWeekOpenUtc);
 
-  // Prefer upcoming week if available
-  if (weekStrings.includes(nextWeek)) {
-    return nextWeek;
-  }
-
   // Fall back to current week if available
   if (weekStrings.includes(currentWeekOpenUtc)) {
     return currentWeekOpenUtc;
+  }
+
+  // Prefer upcoming week if available
+  if (weekStrings.includes(nextWeek)) {
+    return nextWeek;
   }
 
   // Otherwise return the most recent week
