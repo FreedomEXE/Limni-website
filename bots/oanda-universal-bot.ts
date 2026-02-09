@@ -269,6 +269,7 @@ async function enterTrades(signals: BasketSignal[]) {
     return sizing.nav;
   }
 
+  const orderDetails: Array<{ symbol: string; instrument: string; units: number; side: string }> = [];
   for (const trade of sizing.plan) {
     if (trade.units <= 0) {
       continue;
@@ -280,7 +281,18 @@ async function enterTrades(signals: BasketSignal[]) {
       side,
       clientTag: buildClientTag("uni", trade.symbol, trade.model),
     });
+    orderDetails.push({
+      symbol: trade.symbol,
+      instrument: trade.instrument,
+      units: trade.units,
+      side,
+    });
   }
+  log("Placed OANDA orders.", {
+    count: orderDetails.length,
+    orders: orderDetails.slice(0, 10),
+    scale: sizing.scale,
+  });
 
   return sizing.nav;
 }
