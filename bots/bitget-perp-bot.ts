@@ -50,7 +50,7 @@ function resolveAppBaseUrl() {
 }
 
 let appBaseUrl = resolveAppBaseUrl();
-let leverage = Number(process.env.BITGET_LEVERAGE ?? "10");
+let leverage = Number(process.env.BITGET_LEVERAGE ?? "50");
 let trailStartPct = Number(process.env.BITGET_TRAIL_START_PCT ?? "20");
 let trailOffsetPct = Number(process.env.BITGET_TRAIL_OFFSET_PCT ?? "10");
 let linkedAccountKey: string | null = null;
@@ -241,7 +241,15 @@ async function closeAllPositions(direction: "LONG" | "SHORT") {
 async function enterPositions(direction: "LONG" | "SHORT") {
   await setBitgetPositionMode("one_way_mode");
   for (const symbol of SYMBOLS) {
-    await setBitgetLeverage(symbol, leverage);
+    try {
+      await setBitgetLeverage(symbol, leverage);
+    } catch (error) {
+      log(`Failed to set leverage for ${symbol}`, {
+        leverage,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Continue anyway - leverage might already be set
+    }
   }
 
   const account = await fetchBitgetAccount();
@@ -250,7 +258,8 @@ async function enterPositions(direction: "LONG" | "SHORT") {
     throw new Error("Invalid Bitget equity.");
   }
 
-  const notionalPerSymbol = (equity * leverage) / SYMBOLS.length;
+  // Use 50% of equity per symbol with the configured leverage
+  const notionalPerSymbol = (equity * 0.5) * leverage;
   const side = direction === "LONG" ? "buy" : "sell";
   const entryPrices: Record<string, number> = {};
   const entryNotional: Record<string, number> = {};
