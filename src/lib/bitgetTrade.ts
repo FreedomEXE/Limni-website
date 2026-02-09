@@ -152,6 +152,8 @@ export async function setBitgetLeverage(symbol: string, leverage: number) {
   const safeLeverage = Number.isFinite(leverage)
     ? Math.max(1, Math.min(50, Math.floor(leverage)))
     : 10;
+  // Cross margin mode: do NOT pass holdSide (Bitget docs). Passing holdSide can set isolated/side leverages
+  // and may not affect crossMarginLeverage.
   await request({
     method: "POST",
     path: "/api/v2/mix/account/set-leverage",
@@ -160,18 +162,6 @@ export async function setBitgetLeverage(symbol: string, leverage: number) {
       productType,
       marginCoin: "USDT",
       leverage: String(safeLeverage),
-      holdSide: "long",
-    },
-  });
-  await request({
-    method: "POST",
-    path: "/api/v2/mix/account/set-leverage",
-    body: {
-      symbol,
-      productType,
-      marginCoin: "USDT",
-      leverage: String(safeLeverage),
-      holdSide: "short",
     },
   });
 }
