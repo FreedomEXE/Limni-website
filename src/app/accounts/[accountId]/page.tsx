@@ -456,6 +456,12 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     plannedPairs = groupSignals(basketSignals.pairs.filter((pair) => pair.asset_class === "fx"));
   }
 
+  // Filter out planned pairs that already have open positions
+  if (plannedPairs.length > 0 && baseOpenPositions.length > 0) {
+    const openSymbols = new Set(baseOpenPositions.map((pos) => pos.symbol.toUpperCase()));
+    plannedPairs = plannedPairs.filter((pair) => !openSymbols.has(pair.symbol.toUpperCase()));
+  }
+
   // For The5ers manual accounts, we display an FX-only plan and include recommended 1% stop prices
   // (based on latest OANDA mid) for quick copy/paste into a manual ticket.
   const showStopLoss1pct = forceFxOnlyPlanned;

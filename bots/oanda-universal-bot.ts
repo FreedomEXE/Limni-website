@@ -182,12 +182,19 @@ async function buildSizing(signals: BasketSignal[]) {
   }> = [];
 
   let totalMargin = 0;
+  const skippedDetails: Array<{ symbol: string; reason: string }> = [];
   for (const signal of tradeSignals) {
     const instrument = getOandaInstrument(signal.symbol);
     const spec = instrumentMap.get(instrument);
     const price = priceMap.get(instrument);
-    if (!spec || !price) {
+    if (!spec) {
       skipped += 1;
+      skippedDetails.push({ symbol: signal.symbol, reason: "missing spec" });
+      continue;
+    }
+    if (!price) {
+      skipped += 1;
+      skippedDetails.push({ symbol: signal.symbol, reason: "missing price" });
       continue;
     }
 
@@ -195,6 +202,7 @@ async function buildSizing(signals: BasketSignal[]) {
     const usdPerQuote = convertToUsd(1, quote, priceMap);
     if (!usdPerQuote) {
       skipped += 1;
+      skippedDetails.push({ symbol: signal.symbol, reason: `no FX conversion for ${quote}` });
       continue;
     }
 
@@ -224,7 +232,10 @@ async function buildSizing(signals: BasketSignal[]) {
   const buffer = nav * (1 - marginBuffer);
   const scale = totalMargin > 0 ? Math.min(1, buffer / totalMargin) : 1;
   if (skipped > 0) {
-    log("Skipped instruments (missing price/spec/FX conversion).", { skipped });
+    log("Skipped instruments (missing price/spec/FX conversion).", {
+      skipped,
+      details: skippedDetails,
+    });
   }
   return {
     plan: plan.map((row) => ({
