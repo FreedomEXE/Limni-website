@@ -40,6 +40,11 @@ type OandaBotState = {
 
 const BOT_ID = "oanda_universal_bot";
 let tickSeconds = Number(process.env.BOT_TICK_SECONDS ?? "30");
+
+const ALL_MODELS = ["antikythera", "blended", "dealer", "commercial", "sentiment"] as const;
+type Model = (typeof ALL_MODELS)[number];
+let modelsToTrade: Model[] = [...ALL_MODELS];
+
 function resolveAppBaseUrl() {
   const raw = (process.env.APP_BASE_URL ?? "").trim();
   if (!raw || raw.includes("your-app.onrender.com")) {
@@ -188,6 +193,8 @@ async function buildSizing(signals: BasketSignal[]) {
         (signal): signal is BasketSignal & { direction: "LONG" | "SHORT" } =>
           signal.direction !== "NEUTRAL" && signal.asset_class === "fx",
       );
+      const modelSet = new Set(modelsToTrade);
+      const filteredSignals = tradeSignals.filter((s) => modelSet.has(s.model as Model));
       const grouped = groupSignals(tradeSignals);
       const netBySymbol = new Map<string, number>();
       for (const pair of grouped) {
@@ -203,7 +210,7 @@ async function buildSizing(signals: BasketSignal[]) {
         ? (sizing.marginAvailable as number)
         : sizing.nav;
       let totalMargin = 0;
-      for (const signal of tradeSignals) {
+      for (const signal of filteredSignals) {
         const row = sizingMap.get(signal.symbol);
         if (!row || !row.available) continue;
         if (!Number.isFinite(row.marginRate ?? NaN) || !Number.isFinite(row.notionalUsdPerUnit ?? NaN)) continue;
@@ -217,7 +224,7 @@ async function buildSizing(signals: BasketSignal[]) {
       let skipped = 0;
       const skippedDetails: Array<{ symbol: string; reason: string }> = [];
 
-      const plan = tradeSignals.map((signal) => {
+      const plan = filteredSignals.map((signal) => {
         const row = sizingMap.get(signal.symbol);
         if (!row) {
           skipped += 1;
@@ -298,6 +305,8 @@ async function buildSizing(signals: BasketSignal[]) {
     (signal): signal is BasketSignal & { direction: "LONG" | "SHORT" } =>
       signal.direction !== "NEUTRAL" && signal.asset_class === "fx",
   );
+  const modelSet = new Set(modelsToTrade);
+  const filteredSignals = tradeSignals.filter((s) => modelSet.has(s.model as Model));
 
   // For OPEN_ONLY hedged legs, prefer scaling using gross margin across legs.
 
@@ -341,7 +350,7 @@ async function buildSizing(signals: BasketSignal[]) {
 
   let totalMargin = 0;
   const skippedDetails: Array<{ symbol: string; reason: string }> = [];
-  for (const signal of tradeSignals) {
+  for (const signal of filteredSignals) {
     const instrument = getOandaInstrument(signal.symbol);
     const spec = instrumentMap.get(instrument);
     const price = priceMap.get(instrument);
@@ -957,6 +966,7 @@ async function main() {
     appBaseUrl,
     tradingEnabled,
     tickSeconds,
+    modelsToTrade,
   });
   await hydrateConnectedAccount();
   await tick();
@@ -1002,6 +1012,23 @@ async function hydrateConnectedAccount() {
       if (typeof config.marginBuffer === "number") {
         marginBuffer = config.marginBuffer;
       }
+      // Optional model override: ["sentiment"] or "sentiment,blended"
+      const configModels = (config.models ?? config.oandaModels) as unknown;
+      const parseModels = (raw: unknown) => {
+        const list =
+          Array.isArray(raw)
+            ? raw.map((v) => String(v).toLowerCase())
+            : typeof raw === "string"
+              ? raw.split(",").map((v) => v.trim().toLowerCase()).filter(Boolean)
+              : [];
+        const allowed = new Set(ALL_MODELS);
+        const picked = list.filter((m) => allowed.has(m as any)) as Model[];
+        return picked.length > 0 ? picked : null;
+      };
+      const envModelsRaw = (process.env.OANDA_MODELS ?? "").trim();
+      const envModels = parseModels(envModelsRaw);
+      const cfgModels = parseModels(configModels);
+      modelsToTrade = envModels ?? cfgModels ?? modelsToTrade;
       // Environment variable should be able to force-enable trading during incidents.
       const envTrading = (process.env.OANDA_TRADING_ENABLED ?? "").trim();
       if (!envTrading && typeof config.tradingEnabled === "boolean") {

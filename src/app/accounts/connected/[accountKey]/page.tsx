@@ -343,8 +343,22 @@ export default async function ConnectedAccountPage({
 
     } else if (account.provider === "oanda") {
       const filtered = filterForOandaFx(basketSignals.pairs);
+      const config = (account.config ?? {}) as Record<string, unknown>;
+      const modelsRaw = (config.models ?? config.oandaModels ?? process.env.OANDA_MODELS ?? "") as unknown;
+      const allowed = new Set(["antikythera", "blended", "dealer", "commercial", "sentiment"]);
+      const selectedModels = (
+        Array.isArray(modelsRaw)
+          ? modelsRaw.map((v) => String(v).toLowerCase())
+          : typeof modelsRaw === "string"
+            ? modelsRaw.split(",").map((v) => v.trim().toLowerCase()).filter(Boolean)
+            : []
+      ).filter((m) => allowed.has(m));
       // Keep symbols even if their basket legs hedge to net 0.
-      plannedPairs = groupSignals(filtered, undefined, { dropNetted: false });
+      plannedPairs = groupSignals(
+        filtered,
+        (selectedModels.length > 0 ? (selectedModels as any) : undefined),
+        { dropNetted: false },
+      );
     }
   }
 

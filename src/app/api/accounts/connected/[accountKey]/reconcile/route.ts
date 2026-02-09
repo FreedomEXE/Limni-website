@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { DateTime } from "luxon";
 
 import { buildBasketSignals } from "@/lib/basketSignals";
-import { groupSignals, UNIVERSAL_MODELS } from "@/lib/plannedTrades";
+import { UNIVERSAL_MODELS } from "@/lib/plannedTrades";
 import { buildOandaSizingForAccount } from "@/lib/oandaSizing";
 import { loadConnectedAccountSecretsByKey, getConnectedAccount } from "@/lib/connectedAccounts";
 
@@ -101,6 +101,17 @@ export async function GET(_request: Request, context: RouteContext) {
       typeof config.marginBuffer === "number" ? config.marginBuffer : Number(process.env.OANDA_MARGIN_BUFFER ?? "0.1");
     const buffer = Number.isFinite(marginBuffer) ? Math.min(0.5, Math.max(0, marginBuffer)) : 0.1;
 
+    const modelsRaw = (config.models ?? config.oandaModels ?? process.env.OANDA_MODELS ?? "") as unknown;
+    const allowedModels = new Set(UNIVERSAL_MODELS);
+    const selectedModels = (
+      Array.isArray(modelsRaw)
+        ? modelsRaw.map((v) => String(v).toLowerCase())
+        : typeof modelsRaw === "string"
+          ? modelsRaw.split(",").map((v) => v.trim().toLowerCase()).filter(Boolean)
+          : []
+    ).filter((m) => allowedModels.has(m as any));
+    const modelSet = new Set(selectedModels.length > 0 ? selectedModels : UNIVERSAL_MODELS);
+
     const [basket, sizing, openTradesPayload] = await Promise.all([
       buildBasketSignals(),
       buildOandaSizingForAccount(accountKey),
@@ -120,7 +131,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const plannedSignals = allSignals.filter(
       (row) =>
         row.asset_class === "fx" &&
-        UNIVERSAL_MODELS.includes(row.model) &&
+        modelSet.has(String(row.model ?? "").toLowerCase()) &&
         row.direction !== "NEUTRAL",
     ) as Array<{
       symbol: string;
