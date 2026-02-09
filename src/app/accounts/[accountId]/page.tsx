@@ -24,6 +24,7 @@ import { groupSignals, signalsFromSnapshots } from "@/lib/plannedTrades";
 import { fetchOandaPricing } from "@/lib/oandaTrade";
 import { getOandaInstrument } from "@/lib/oandaPrices";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
+import { getConnectedAccount } from "@/lib/connectedAccounts";
 
 export const dynamic = "force-dynamic";
 
@@ -222,7 +223,31 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   let equityCurvePoints: { ts_utc: string; equity_pct: number; lock_pct: number | null }[] = [];
   let basketSignals: Awaited<ReturnType<typeof buildBasketSignals>> | null = null;
   try {
-    account = await getMt5AccountById(accountId);
+    // Check if this is a connected account (OANDA/Bitget) or MT5 account
+    if (accountId.includes(":")) {
+      const connectedAccount = await getConnectedAccount(accountId);
+      if (connectedAccount) {
+        const analysis = connectedAccount.analysis as Record<string, any> | null;
+        account = {
+          id: accountId,
+          provider: connectedAccount.provider,
+          account_id: connectedAccount.account_id ?? accountId,
+          label: connectedAccount.label ?? accountId,
+          broker: connectedAccount.provider.toUpperCase(),
+          server: "",
+          balance: Number(analysis?.balance ?? 0),
+          equity: Number(analysis?.nav ?? analysis?.balance ?? 0),
+          positions: (analysis?.positions ?? []) as any[],
+          currency: String(analysis?.currency ?? "USD"),
+          last_sync_utc: connectedAccount.last_sync_utc,
+          trade_mode: "AUTO",
+          status: connectedAccount.status ?? "ACTIVE",
+          lot_map: [],
+        } as any;
+      }
+    } else {
+      account = await getMt5AccountById(accountId);
+    }
     closedSummary = await readMt5ClosedSummary(accountId, 12);
     changeLog = await readMt5ChangeLog(accountId, 12);
     closedPositions = isSelectedMt5Week
