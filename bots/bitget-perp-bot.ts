@@ -172,7 +172,9 @@ async function computeOrderSize(symbol: string, notionalUsd: number) {
   log(`Fetched ${contractList.length} contracts for ${symbol}`, {
     symbols: contractList.map(c => c.symbol).join(", "),
   });
-  const [contract] = contractList;
+  const contract =
+    contractList.find((c) => c.symbol.toUpperCase() === symbol.toUpperCase()) ??
+    contractList[0];
   if (!contract) {
     const allContracts = await fetchBitgetContracts();
     log(`All available contracts:`, {

@@ -17,7 +17,8 @@ type BitgetRequestOptions = {
 
 export type BitgetContract = {
   symbol: string;
-  productType: string;
+  // Not always present on Bitget v2 responses (contracts endpoint returns an array).
+  productType?: string;
   sizeMultiplier: string;
   minTradeNum: string;
   minTradeUSDT?: string;
@@ -47,7 +48,7 @@ export function getBitgetEnv() {
 }
 
 export function getBitgetProductType() {
-  return process.env.BITGET_PRODUCT_TYPE ?? "USDT-M";
+  return process.env.BITGET_PRODUCT_TYPE ?? "USDT-FUTURES";
 }
 
 function getAuth(): BitgetAuth {
@@ -162,12 +163,28 @@ export async function fetchBitgetContracts(
   symbol?: string,
 ): Promise<BitgetContract[]> {
   const productType = getBitgetProductType();
-  const data = await request<{ list: BitgetContract[] }>({
+  // Bitget v2 `/mix/market/contracts` returns `data` as an array of contracts (not `{ list: [...] }`).
+  // Some other endpoints use `{ list: [...] }`, so handle both shapes defensively.
+  const data = await request<unknown>({
     method: "GET",
     path: "/api/v2/mix/market/contracts",
     query: symbol ? { productType, symbol } : { productType },
   });
-  return data.list ?? [];
+  const list =
+    Array.isArray(data)
+      ? (data as BitgetContract[])
+      : (data &&
+          typeof data === "object" &&
+          "list" in data &&
+          Array.isArray((data as { list?: unknown }).list))
+        ? ((data as { list: BitgetContract[] }).list ?? [])
+        : [];
+
+  if (!symbol) {
+    return list;
+  }
+  // If the API ignores the symbol filter (or returns more than one), narrow it locally.
+  return list.filter((c) => String(c?.symbol ?? "").toUpperCase() === symbol.toUpperCase());
 }
 
 export async function fetchBitgetAccount(): Promise<BitgetAccount | null> {
