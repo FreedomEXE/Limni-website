@@ -321,10 +321,15 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     (account?.trade_mode ?? "AUTO").toUpperCase() === "MANUAL" &&
     fxOnlyHint.includes("5ers");
 
-  const openFloatingPnl = (account.positions ?? []).reduce(
-    (acc, position) => acc + position.profit + position.swap + position.commission,
-    0,
-  );
+  const openFloatingPnl = (account.positions ?? []).reduce((acc: number, position: any) => {
+    const profit = Number(position?.profit ?? 0);
+    const swap = Number(position?.swap ?? 0);
+    const commission = Number(position?.commission ?? 0);
+    return acc +
+      (Number.isFinite(profit) ? profit : 0) +
+      (Number.isFinite(swap) ? swap : 0) +
+      (Number.isFinite(commission) ? commission : 0);
+  }, 0);
   const inferredStartBalance =
     account.balance - currentWeekNet.net > 0 ? account.balance - currentWeekNet.net : account.balance;
   const derivedWeeklyPnlPct =
@@ -362,17 +367,17 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   };
 
   const baseOpenPositions = forceFxOnlyPlanned
-    ? (account.positions ?? []).filter((pos) => isFxSymbol(pos.symbol))
+    ? (account.positions ?? []).filter((pos: any) => isFxSymbol(pos.symbol))
     : (account.positions ?? []);
   const baseClosedPositions = forceFxOnlyPlanned
-    ? closedPositions.filter((pos) => isFxSymbol(pos.symbol))
+    ? closedPositions.filter((pos: any) => isFxSymbol(pos.symbol))
     : closedPositions;
 
   const basketOptions = Array.from(
     new Set(
       [
-        ...baseOpenPositions.map((position) => parseBasketFromComment(position.comment)),
-        ...baseClosedPositions.map((position) => parseBasketFromComment(position.comment)),
+        ...baseOpenPositions.map((position: any) => parseBasketFromComment(position.comment)),
+        ...baseClosedPositions.map((position: any) => parseBasketFromComment(position.comment)),
       ].filter((value): value is string => value !== null),
     ),
   ).sort();
@@ -380,8 +385,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const symbolOptions = Array.from(
     new Set(
       [
-        ...baseOpenPositions.map((position) => position.symbol),
-        ...baseClosedPositions.map((position) => position.symbol),
+        ...baseOpenPositions.map((position: any) => position.symbol),
+        ...baseClosedPositions.map((position: any) => position.symbol),
       ],
     ),
   ).sort();
@@ -391,7 +396,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const effectiveSymbolFilter =
     symbolFilter && symbolOptions.includes(symbolFilter) ? symbolFilter : "";
 
-  const filteredOpenPositions = baseOpenPositions.filter((position) => {
+  const filteredOpenPositions = baseOpenPositions.filter((position: any) => {
     const basket = parseBasketFromComment(position.comment);
     if (effectiveBasketFilter && basket !== effectiveBasketFilter) {
       return false;
@@ -402,7 +407,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     return true;
   });
 
-  const filteredClosedPositions = baseClosedPositions.filter((position) => {
+  const filteredClosedPositions = baseClosedPositions.filter((position: any) => {
     const basket = parseBasketFromComment(position.comment);
     if (effectiveBasketFilter && basket !== effectiveBasketFilter) {
       return false;
@@ -545,19 +550,19 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
 
     // 1) Exact match (case-insensitive)
     for (const candidate of candidates) {
-      const exact = lotMapRows.find((row) => row.symbol?.toUpperCase() === candidate);
+      const exact = lotMapRows.find((row: any) => row.symbol?.toUpperCase() === candidate);
       if (exact) return exact;
     }
 
     // 2) Broker suffix/prefix match (e.g. AUDCAD.m, EURUSD-ECN)
     for (const candidate of candidates) {
-      const startsWith = lotMapRows.find((row) => row.symbol?.toUpperCase().startsWith(candidate));
+      const startsWith = lotMapRows.find((row: any) => row.symbol?.toUpperCase().startsWith(candidate));
       if (startsWith) return startsWith;
     }
 
     // 3) FX pairs: sometimes planned uses 6-char code but broker adds suffix
     if (target.length === 6) {
-      const fx = lotMapRows.find((row) => row.symbol?.toUpperCase().startsWith(target));
+      const fx = lotMapRows.find((row: any) => row.symbol?.toUpperCase().startsWith(target));
       if (fx) return fx;
     }
 
@@ -565,7 +570,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     for (const candidate of candidates) {
       const stripped = candidate.replace(/[^A-Z0-9]/g, "");
       if (!stripped) continue;
-      const fuzzy = lotMapRows.find((row) =>
+      const fuzzy = lotMapRows.find((row: any) =>
         String(row.symbol ?? "")
           .toUpperCase()
           .replace(/[^A-Z0-9]/g, "")
@@ -646,11 +651,11 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     };
   }
   const journalRows = [
-    ...(account.recent_logs ?? []).map((log) => ({
+    ...(account.recent_logs ?? []).map((log: any) => ({
       label: "Runtime",
       value: log,
     })),
-    ...changeLog.map((entry) => ({
+    ...changeLog.map((entry: any) => ({
       label: entry.strategy ?? "Change",
       value: entry.title,
     })),
@@ -716,7 +721,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             move1pctUsd: "move1pctUsd" in pair ? (pair as any).move1pctUsd : null,
           })),
           mappingRows: [],
-          openPositions: filteredOpenPositions.map((pos) => ({
+          openPositions: filteredOpenPositions.map((pos: any) => ({
             symbol: pos.symbol,
             side: pos.type,
             lots: pos.lots,
@@ -736,7 +741,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             side: group.type,
             net: group.net,
             lots: group.lots,
-            legs: group.trades.map((trade) => ({
+            legs: group.trades.map((trade: any) => ({
               id: trade.ticket,
               basket: parseBasketFromComment(trade.comment) ?? "unknown",
               side: trade.type,
@@ -747,11 +752,11 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
             })),
           })),
           journalRows: [
-            ...(account.recent_logs ?? []).map((log) => ({
+            ...(account.recent_logs ?? []).map((log: any) => ({
               label: "Runtime",
               value: log,
             })),
-            ...changeLog.map((entry) => ({
+            ...changeLog.map((entry: any) => ({
               label: entry.strategy ?? "Change",
               value: entry.title,
             })),

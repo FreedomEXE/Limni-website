@@ -591,7 +591,9 @@ export default function AccountClientView({
                           : `${Math.abs(row.netUnits as number).toFixed(2)} ${sizeUnitLabel}`
                         : "—"
                       : isOanda
-                        ? "—"
+                        ? "lots" in row
+                          ? `${Math.abs(row.lots as number).toFixed(0)} ${sizeUnitLabel}`
+                          : "—"
                         : "lots" in row
                           ? `${(row.lots as number).toFixed(2)} lots`
                           : "—"}

@@ -36,6 +36,12 @@ export type OandaTrade = {
   instrument: string;
   currentUnits: string;
   unrealizedPL: string;
+  openTime?: string;
+  clientExtensions?: {
+    id?: string;
+    tag?: string;
+    comment?: string;
+  };
 };
 
 function getBaseUrl() {

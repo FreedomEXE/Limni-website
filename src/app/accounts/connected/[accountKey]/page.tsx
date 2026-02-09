@@ -501,6 +501,63 @@ export default async function ConnectedAccountPage({
   const settingsExtras =
     account.provider === "oanda" ? <ConnectedAccountSizing accountKey={account.account_key} /> : null;
 
+  const rawPositions = Array.isArray(analysis?.positions)
+    ? (analysis.positions as Array<Record<string, unknown>>)
+    : [];
+
+  const openPositions = (() => {
+    const map = new Map<
+      string,
+      {
+        symbol: string;
+        side: string;
+        lots: number;
+        pnl: number;
+        legs: Array<{
+          id: string;
+          basket: string;
+          side: string;
+          lots: number;
+          pnl: number;
+          openTime?: string;
+        }>;
+      }
+    >();
+
+    rawPositions.forEach((pos, index) => {
+      const symbol = String(pos.symbol ?? "").trim().toUpperCase();
+      if (!symbol) return;
+
+      const type = String(pos.type ?? "").trim().toUpperCase();
+      const side = type === "SELL" || type === "SHORT" ? "SELL" : "BUY";
+
+      const lots = Number(pos.lots ?? 0);
+      if (!Number.isFinite(lots) || lots === 0) return;
+
+      const pnl = Number(pos.profit ?? pos.pnl ?? 0);
+      const comment = String(pos.comment ?? pos.tag ?? "").trim();
+      const openTime = typeof pos.open_time === "string" ? (pos.open_time as string) : undefined;
+
+      const key = `${symbol}:${side}`;
+      if (!map.has(key)) {
+        map.set(key, { symbol, side, lots: 0, pnl: 0, legs: [] });
+      }
+      const row = map.get(key)!;
+      row.lots += Math.abs(lots);
+      row.pnl += Number.isFinite(pnl) ? pnl : 0;
+      row.legs.push({
+        id: `${key}:${index}`,
+        basket: comment || "live",
+        side,
+        lots: Math.abs(lots),
+        pnl: Number.isFinite(pnl) ? pnl : 0,
+        openTime,
+      });
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.symbol.localeCompare(b.symbol));
+  })();
+
 
   return (
     <DashboardLayout>
@@ -562,7 +619,7 @@ export default async function ConnectedAccountPage({
             instrument: row.instrument,
             available: row.available,
           })),
-          openPositions: [],
+          openPositions,
           closedGroups: [],
           journalRows: [],
           kpiRows: [
