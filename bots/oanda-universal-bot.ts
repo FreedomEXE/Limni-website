@@ -431,19 +431,16 @@ async function closeTradesById(tradeIds: string[]) {
 }
 
 async function enterTrades(signals: BasketSignal[]) {
-  const sizing = await buildSizing(signals);
-  if (sizing.plan.length === 0) {
-    throw new Error("No tradable instruments for OANDA.");
-  }
-
-  const openTrades = await fetchOandaOpenTrades();
+  // Always reconcile/clean the account *before* sizing. Sizing uses marginAvailable,
+  // which can be 0 if there is any leftover exposure.
+  let openTrades = await fetchOandaOpenTrades();
   const isManagedTrade = (trade: Awaited<ReturnType<typeof fetchOandaOpenTrades>>[number]) => {
     const tag = (trade.clientExtensions?.tag ?? trade.clientExtensions?.id ?? "").toString();
     return Boolean(parseManagedLegTag(tag));
   };
 
-  const managedTrades = openTrades.filter(isManagedTrade);
-  const unmanagedTrades = openTrades.filter((t) => !isManagedTrade(t));
+  let managedTrades = openTrades.filter(isManagedTrade);
+  let unmanagedTrades = openTrades.filter((t) => !isManagedTrade(t));
 
   // If the account has any untagged/unmanaged trades, the bot cannot safely dedupe or reconcile.
   // User-approved behavior: close everything and rebuild from a clean slate.
@@ -463,7 +460,14 @@ async function enterTrades(signals: BasketSignal[]) {
     if (remaining.length > 0) {
       throw new Error(`Failed to clear unmanaged trades. Remaining open trades: ${remaining.length}`);
     }
-    managedTrades.length = 0;
+    openTrades = [];
+    managedTrades = [];
+    unmanagedTrades = [];
+  }
+
+  const sizing = await buildSizing(signals);
+  if (sizing.plan.length === 0) {
+    throw new Error("No tradable instruments for OANDA.");
   }
 
   if (!tradingEnabled) {
