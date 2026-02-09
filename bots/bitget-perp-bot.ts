@@ -253,10 +253,11 @@ async function enterPositions(direction: "LONG" | "SHORT") {
     throw new Error("Invalid Bitget equity.");
   }
 
-  // Use 50% of equity per symbol (user wants 50% on EACH of BTC and ETH)
-  // With $100 account: $50 per symbol
-  // At 10x leverage configured in UI: $50 * 10 = $500 notional per position
-  const notionalPerSymbol = equity * 0.5;
+  // Use 50% of equity as margin per symbol (user wants 50% on EACH of BTC and ETH)
+  // With $100 account: $50 margin per symbol
+  // At 10x leverage: $50 * 10 = $500 notional per position
+  // Note: We specify NOTIONAL size to the API, Bitget calculates margin = notional / leverage
+  const notionalPerSymbol = (equity * 0.5) * leverage;
   const side = direction === "LONG" ? "buy" : "sell";
   const entryPrices: Record<string, number> = {};
   const entryNotional: Record<string, number> = {};
