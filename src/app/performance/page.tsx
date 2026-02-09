@@ -2,11 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
-import {
-  computeModelPerformance,
-  computeReturnStats,
-  type PerformanceModel,
-} from "@/lib/performanceLab";
+import { computeModelPerformance } from "@/lib/performanceLab";
 import { simulateTrailingForGroupsFromRows } from "@/lib/universalBasket";
 import { getPairPerformance } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
@@ -25,17 +21,24 @@ import {
   weekLabelFromOpen,
   getWeekOpenUtc,
 } from "@/lib/performanceSnapshots";
+import { buildWeekOptionsWithCurrentAndNext } from "@/lib/accounts/weekOptions";
+import {
+  buildPerformanceWeekFlags,
+  resolvePerformanceView,
+  resolveSelectedPerformanceWeek,
+} from "@/lib/performance/pageState";
+import { combinePerformanceModelTotals } from "@/lib/performance/pageTotals";
+import {
+  PERFORMANCE_MODELS,
+  PERFORMANCE_MODEL_LABELS,
+} from "@/lib/performance/modelConfig";
+import {
+  buildAllTimePerformance,
+  buildAllTimeStats,
+} from "@/lib/performance/allTime";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const MODEL_LABELS: Record<PerformanceModel, string> = {
-  blended: "Blended",
-  dealer: "Dealer",
-  commercial: "Commercial",
-  sentiment: "Sentiment",
-  antikythera: "Antikythera",
-};
 
 type PerformancePageProps = {
   searchParams?:
@@ -53,21 +56,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const weekParamValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
   const viewParam = resolvedSearchParams?.view;
   const viewParamValue = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-  const view =
-    viewParamValue === "simulation" ||
-    viewParamValue === "basket" ||
-    viewParamValue === "research" ||
-    viewParamValue === "notes"
-      ? viewParamValue
-      : "summary";
+  const view = resolvePerformanceView(viewParamValue);
   const assetClasses = listAssetClasses();
-  const models: PerformanceModel[] = [
-    "antikythera",
-    "blended",
-    "dealer",
-    "commercial",
-    "sentiment",
-  ];
+  const models = PERFORMANCE_MODELS;
 
   const desiredWeeks = 4;
   let weekOptions: string[] = [];
@@ -79,25 +70,12 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   let reportOptions: string[] = [];
   try {
     const recentWeeks = await listPerformanceWeeks(desiredWeeks);
-    const ordered: string[] = [];
-    const seen = new Set<string>();
-    // Always show both the current (possibly upcoming) week open and next week open
-    // so we don't skip a week when `desiredWeeks` is small.
-    if (nextWeekOpenUtc) {
-      ordered.push(nextWeekOpenUtc);
-      seen.add(nextWeekOpenUtc);
-    }
-    if (currentWeekOpenUtc && !seen.has(currentWeekOpenUtc)) {
-      ordered.push(currentWeekOpenUtc);
-      seen.add(currentWeekOpenUtc);
-    }
-    for (const week of recentWeeks) {
-      if (!seen.has(week)) {
-        ordered.push(week);
-        seen.add(week);
-      }
-    }
-    weekOptions = ordered.slice(0, desiredWeeks);
+    weekOptions = buildWeekOptionsWithCurrentAndNext(
+      recentWeeks,
+      currentWeekOpenUtc,
+      nextWeekOpenUtc ?? null,
+      desiredWeeks,
+    );
   } catch (error) {
     console.error(
       "Performance snapshot list failed:",
@@ -122,30 +100,11 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     }
   }
   const weekSelectorOptions = weekOptions.length > 0 ? ["all", ...weekOptions] : weekOptions;
-  const selectedWeek =
-    weekParamValue === "all"
-      ? "all"
-      : typeof weekParamValue === "string" && weekOptions.includes(weekParamValue)
-        ? weekParamValue
-      : weekOptions.includes(currentWeekOpenUtc)
-        ? currentWeekOpenUtc
-        : weekOptions[0] ?? null;
-  const isAllTimeSelected = selectedWeek === "all";
-  const isCurrentWeekSelected =
-    !isAllTimeSelected && selectedWeek != null && selectedWeek === currentWeekOpenUtc;
-  const isFutureWeekSelected = (() => {
-    if (isAllTimeSelected) {
-      return false;
-    }
-    if (!selectedWeek) {
-      return false;
-    }
-    const parsed = DateTime.fromISO(selectedWeek, { zone: "utc" });
-    if (!parsed.isValid || !currentWeekStart.isValid) {
-      return false;
-    }
-    return parsed.toMillis() > currentWeekStart.toMillis();
-  })();
+  const selectedWeek = resolveSelectedPerformanceWeek({
+    weekParamValue,
+    weekOptions,
+    currentWeekOpenUtc,
+  });
   const reportParam = resolvedSearchParams?.report;
   const selectedReport =
     typeof reportParam === "string" && reportOptions.includes(reportParam)
@@ -164,20 +123,16 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     }
   }
   const hasSnapshots = weekSnapshots.length > 0;
-  const isHistoricalWeekSelected = (() => {
-    if (isAllTimeSelected) {
-      return false;
-    }
-    if (!selectedWeek || !currentWeekStart.isValid) {
-      return false;
-    }
-    const parsed = DateTime.fromISO(selectedWeek, { zone: "utc" });
-    if (!parsed.isValid) {
-      return false;
-    }
-    return parsed.toMillis() < currentWeekStart.toMillis();
-  })();
-  const isWaitingWeek = isFutureWeekSelected || (isCurrentWeekSelected && !hasSnapshots);
+  const {
+    isAllTimeSelected,
+    isCurrentWeekSelected,
+    isHistoricalWeekSelected,
+    isWaitingWeek,
+  } = buildPerformanceWeekFlags({
+    selectedWeek,
+    currentWeekOpenUtc,
+    hasSnapshots,
+  });
   let latestPriceRefresh: string | null = null;
   try {
     const marketSnapshots = await Promise.all(
@@ -253,42 +208,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       }),
     );
 
-    totals = models.map((model) => {
-      let percent = 0;
-      let priced = 0;
-      let total = 0;
-      const returns: Array<{ pair: string; percent: number }> = [];
-      const pairDetails: Array<{
-        pair: string;
-        direction: "LONG" | "SHORT" | "NEUTRAL";
-        reason: string[];
-        percent: number | null;
-      }> = [];
-      let note = "Combined across assets.";
-      for (const asset of perAsset) {
-        const result = asset.results.find((item) => item.model === model);
-        if (!result) {
-          continue;
-        }
-        percent += result.percent;
-        priced += result.priced;
-        total += result.total;
-        returns.push(...result.returns);
-        pairDetails.push(...result.pair_details);
-        if (result.note) {
-          note = result.note;
-        }
-      }
-      return {
-        model,
-        percent,
-        priced,
-        total,
-        note,
-        returns,
-        pair_details: pairDetails,
-        stats: computeReturnStats(returns),
-      };
+    totals = combinePerformanceModelTotals({
+      models,
+      perAsset: perAsset.map((asset) => ({ assetLabel: asset.asset.label, results: asset.results })),
     });
     anyPriced = false;
   } else if (hasSnapshots && isHistoricalWeekSelected) {
@@ -340,53 +262,11 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       results: byAsset.get(asset.id) ?? [],
     }));
 
-    totals = models.map((model) => {
-      let percent = 0;
-      let priced = 0;
-      let total = 0;
-      const returns: Array<{ pair: string; percent: number }> = [];
-      const pairDetails: Array<{
-        pair: string;
-        direction: "LONG" | "SHORT" | "NEUTRAL";
-        reason: string[];
-        percent: number | null;
-      }> = [];
-      let note = "Combined across assets.";
-      for (const asset of perAsset) {
-        const result = asset.results.find((item) => item.model === model);
-        if (!result) {
-          continue;
-        }
-        percent += result.percent;
-        priced += result.priced;
-        total += result.total;
-        returns.push(
-          ...result.returns.map((item) => ({
-            pair: `${item.pair} (${asset.asset.label})`,
-            percent: item.percent,
-          })),
-        );
-        pairDetails.push(
-          ...result.pair_details.map((detail) => ({
-            ...detail,
-            pair: `${detail.pair} (${asset.asset.label})`,
-          })),
-        );
-        if (result.note) {
-          note = result.note;
-        }
-      }
-      return {
-        model,
-        percent,
-        priced,
-        total,
-        note,
-        returns,
-        pair_details: pairDetails,
-        stats: computeReturnStats(returns),
-        trailing: view === "simulation" ? trailingByGroup[`combined:${model}`] : undefined,
-      };
+    totals = combinePerformanceModelTotals({
+      models,
+      perAsset: perAsset.map((asset) => ({ assetLabel: asset.asset.label, results: asset.results })),
+      labelWithAsset: true,
+      trailingByCombinedModel: view === "simulation" ? trailingByGroup : undefined,
     });
     anyPriced = totals.some((result) => result.priced > 0);
   } else {
@@ -434,42 +314,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       }),
     );
 
-    totals = models.map((model) => {
-      let percent = 0;
-      let priced = 0;
-      let total = 0;
-      const returns: Array<{ pair: string; percent: number }> = [];
-      const pairDetails: Array<{
-        pair: string;
-        direction: "LONG" | "SHORT" | "NEUTRAL";
-        reason: string[];
-        percent: number | null;
-      }> = [];
-      let note = "Combined across assets.";
-      for (const asset of perAsset) {
-        const result = asset.results.find((item) => item.model === model);
-        if (!result) {
-          continue;
-        }
-        percent += result.percent;
-        priced += result.priced;
-        total += result.total;
-        returns.push(...result.returns);
-        pairDetails.push(...result.pair_details);
-        if (result.note) {
-          note = result.note;
-        }
-      }
-      return {
-        model,
-        percent,
-        priced,
-        total,
-        note,
-        returns,
-        pair_details: pairDetails,
-        stats: computeReturnStats(returns),
-      };
+    totals = combinePerformanceModelTotals({
+      models,
+      perAsset: perAsset.map((asset) => ({ assetLabel: asset.asset.label, results: asset.results })),
     });
     anyPriced = totals.some((result) => result.priced > 0);
   }
@@ -490,106 +337,32 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     ? currentWeekStart.toMillis()
     : nowUtc;
 
-  function buildAllTimeStats(rows: typeof historyRows) {
-    const weekTotalsByModel = new Map<
-      PerformanceModel,
-      Map<string, number>
-    >();
-    rows.forEach((row) => {
-      const modelWeeks = weekTotalsByModel.get(row.model) ?? new Map<string, number>();
-      const current = modelWeeks.get(row.week_open_utc) ?? 0;
-      modelWeeks.set(row.week_open_utc, current + row.percent);
-      weekTotalsByModel.set(row.model, modelWeeks);
-    });
-    return models.map((model) => {
-      const weekMap = weekTotalsByModel.get(model) ?? new Map();
-      const weekReturns = Array.from(weekMap.entries())
-        .filter(([week]) => {
-          const parsed = DateTime.fromISO(week, { zone: "utc" });
-          if (!parsed.isValid) {
-            return false;
-          }
-          const weekMillis = parsed.toMillis();
-          if (weekMillis >= currentWeekMillis) {
-            return false;
-          }
-          return weekMillis <= nowUtc;
-        })
-        .map(([week, value]) => ({
-          week,
-          value,
-        }));
-      const totalPercent = weekReturns.reduce((sum, item) => sum + item.value, 0);
-      const wins = weekReturns.filter((item) => item.value > 0).length;
-      const avg =
-        weekReturns.length > 0 ? totalPercent / weekReturns.length : 0;
-      return {
-        model,
-        totalPercent,
-        weeks: weekReturns.length,
-        winRate: weekReturns.length > 0 ? (wins / weekReturns.length) * 100 : 0,
-        avgWeekly: avg,
-      };
-    });
-  }
-
-  function buildAllTimePerformance(rows: typeof historyRows) {
-    const weekTotalsByModel = new Map<PerformanceModel, Map<string, number>>();
-    rows.forEach((row) => {
-      const modelWeeks = weekTotalsByModel.get(row.model) ?? new Map<string, number>();
-      const current = modelWeeks.get(row.week_open_utc) ?? 0;
-      modelWeeks.set(row.week_open_utc, current + row.percent);
-      weekTotalsByModel.set(row.model, modelWeeks);
-    });
-    return models.map((model) => {
-      const weekMap = weekTotalsByModel.get(model) ?? new Map<string, number>();
-      const weekReturns = Array.from(weekMap.entries())
-        .filter(([week]) => {
-          const parsed = DateTime.fromISO(week, { zone: "utc" });
-          if (!parsed.isValid) {
-            return false;
-          }
-          const weekMillis = parsed.toMillis();
-          if (weekMillis >= currentWeekMillis) {
-            return false;
-          }
-          return weekMillis <= nowUtc;
-        })
-        .map(([week, value]) => ({
-          pair: weekLabelFromOpen(week),
-          percent: value,
-        }));
-      const totalPercent = weekReturns.reduce((sum, item) => sum + item.percent, 0);
-      const stats = computeReturnStats(weekReturns);
-      const weeks = weekReturns.length;
-      return {
-        model,
-        percent: totalPercent,
-        priced: weeks,
-        total: weeks,
-        note: "All-time aggregation",
-        returns: weekReturns,
-        pair_details: [],
-        stats,
-      };
-    });
-  }
-
-  const allTimeCombined = selectedWeek === "all" ? buildAllTimeStats(historyRows) : [];
+  const allTimeCombined =
+    selectedWeek === "all"
+      ? buildAllTimeStats(historyRows, models, currentWeekMillis, nowUtc)
+      : [];
   const allTimeByAsset = new Map<string, ReturnType<typeof buildAllTimeStats>>();
   if (selectedWeek === "all") {
     assetClasses.forEach((asset) => {
       const rows = historyRows.filter((row) => row.asset_class === asset.id);
-      allTimeByAsset.set(asset.id, buildAllTimeStats(rows));
+      allTimeByAsset.set(
+        asset.id,
+        buildAllTimeStats(rows, models, currentWeekMillis, nowUtc),
+      );
     });
   }
   const allTimePerformanceCombined =
-    selectedWeek === "all" ? buildAllTimePerformance(historyRows) : [];
+    selectedWeek === "all"
+      ? buildAllTimePerformance(historyRows, models, currentWeekMillis, nowUtc)
+      : [];
   const allTimePerformanceByAsset = new Map<string, ReturnType<typeof buildAllTimePerformance>>();
   if (selectedWeek === "all") {
     assetClasses.forEach((asset) => {
       const rows = historyRows.filter((row) => row.asset_class === asset.id);
-      allTimePerformanceByAsset.set(asset.id, buildAllTimePerformance(rows));
+      allTimePerformanceByAsset.set(
+        asset.id,
+        buildAllTimePerformance(rows, models, currentWeekMillis, nowUtc),
+      );
     });
   }
 
@@ -677,7 +450,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               description: "Filter performance for this asset class.",
               models: asset.results,
             }))}
-          labels={MODEL_LABELS}
+          labels={PERFORMANCE_MODEL_LABELS}
           calibration={undefined}
           allTime={{
             combined: allTimeCombined,

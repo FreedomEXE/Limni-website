@@ -1,34 +1,26 @@
 import { notFound } from "next/navigation";
 import { unstable_noStore } from "next/cache";
 
-import {
-  getMt5AccountById,
-  getMt5WeekOpenUtc,
-  isMt5WeekOpenUtc,
-  listMt5WeekOptions,
-  readMt5ClosedNetForWeek,
-  readMt5ClosedPositionsByWeek,
-  readMt5ClosedSummary,
-  readMt5DrawdownRange,
-  readMt5EquityCurveByRange,
-  readMt5ChangeLog,
-} from "@/lib/mt5Store";
 import DashboardLayout from "@/components/DashboardLayout";
 import AccountClientView from "@/components/accounts/AccountClientView";
-import { DateTime } from "luxon";
-import { formatCurrencySafe } from "@/lib/formatters";
-import { formatDateTimeET } from "@/lib/time";
-import { readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
-import { buildBasketSignals } from "@/lib/basketSignals";
-import { groupSignals, signalsFromSnapshots } from "@/lib/plannedTrades";
-import { fetchOandaPricing } from "@/lib/oandaTrade";
-import { getOandaInstrument } from "@/lib/oandaPrices";
-import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
-import { getConnectedAccount } from "@/lib/connectedAccounts";
+import { computeMaxDrawdown } from "@/lib/accounts/viewUtils";
+import {
+  resolveCommonAccountSearchParams,
+  resolveMt5TradeFilters,
+} from "@/lib/accounts/navigation";
+import {
+  loadMt5PageData,
+  resolveMt5WeekContext,
+} from "@/lib/accounts/mt5PageData";
+import { buildMt5PlannedView } from "@/lib/accounts/mt5Planning";
+import {
+  buildMt5FilteredPositions,
+  deriveMt5PnlDisplay,
+  shouldForceFxOnlyPlanned,
+} from "@/lib/accounts/mt5PageState";
+import { buildMt5AccountClientViewProps } from "@/lib/accounts/mt5PageProps";
 
 export const dynamic = "force-dynamic";
-
-const FX_PAIR_SET = new Set(PAIRS_BY_ASSET_CLASS.fx.map((row) => row.pair.toUpperCase()));
 
 type AccountPageProps = {
   params: Promise<{ accountId: string }>;
@@ -37,735 +29,93 @@ type AccountPageProps = {
     | Promise<Record<string, string | string[] | undefined>>;
 };
 
-const percentFormatter = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-function formatPercent(value: number) {
-  if (!Number.isFinite(value)) {
-    return "0.00%";
-  }
-  const sign = value > 0 ? "+" : value < 0 ? "" : "";
-  return `${sign}${percentFormatter.format(value)}%`;
-}
-
-function formatDuration(seconds: number) {
-  if (!Number.isFinite(seconds) || seconds < 0) {
-    return "n/a";
-  }
-  if (seconds <= 1) {
-    return "now";
-  }
-  const total = Math.floor(seconds);
-  const hrs = Math.floor(total / 3600);
-  const mins = Math.floor((total % 3600) / 60);
-  const secs = total % 60;
-  const parts = [] as string[];
-  if (hrs > 0) {
-    parts.push(`${hrs}h`);
-  }
-  if (mins > 0 || hrs > 0) {
-    parts.push(`${mins}m`);
-  }
-  parts.push(`${secs}s`);
-  return parts.join(" ");
-}
-
-function statusTone(status: string) {
-  if (status === "LIVE") {
-    return "bg-emerald-100 text-emerald-700";
-  }
-  if (status === "DEMO") {
-    return "bg-[var(--panel-border)]/50 text-[var(--foreground)]/70";
-  }
-  return "bg-rose-100 text-rose-700";
-}
-
-function basketTone(state: string) {
-  if (state === "ACTIVE") {
-    return "text-emerald-700";
-  }
-  if (state === "READY") {
-    return "text-[var(--foreground)]/70";
-  }
-  if (state === "PAUSED") {
-    return "text-rose-700";
-  }
-  return "text-[color:var(--muted)]";
-}
-
-function parseBasketFromComment(comment: string) {
-  if (!comment) {
-    return null;
-  }
-  const match = comment.match(/LimniBasket\s+([A-Za-z0-9_]+)/i);
-  return match?.[1]?.toLowerCase() ?? null;
-}
-
-function toQueryParam(value: string | string[] | undefined) {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-  return value ?? null;
-}
-
-function extendToWindow(
-  points: { ts_utc: string; equity_pct: number; lock_pct: number | null }[],
-  windowEndUtc: string | null
-) {
-  if (!windowEndUtc || points.length === 0) {
-    return points;
-  }
-  const last = points[points.length - 1];
-  if (DateTime.fromISO(last.ts_utc, { zone: "utc" }) >= DateTime.fromISO(windowEndUtc, { zone: "utc" })) {
-    return points;
-  }
-  return [...points, { ...last, ts_utc: windowEndUtc }];
-}
-
-function computeMaxDrawdown(points: { equity_pct: number }[]) {
-  let peak = Number.NEGATIVE_INFINITY;
-  let maxDrawdown = 0;
-  for (const point of points) {
-    if (point.equity_pct > peak) {
-      peak = point.equity_pct;
-    }
-    const drawdown = peak - point.equity_pct;
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
-    }
-  }
-  return maxDrawdown;
-}
-
 export default async function AccountPage({ params, searchParams }: AccountPageProps) {
   unstable_noStore();
   const { accountId } = await params;
   const resolvedSearchParams = await Promise.resolve(searchParams);
-  const requestedWeek = toQueryParam(resolvedSearchParams?.week);
-  const viewParam = toQueryParam(resolvedSearchParams?.view);
-  const basketFilter = (toQueryParam(resolvedSearchParams?.basket) ?? "").toLowerCase();
-  const symbolFilter = (toQueryParam(resolvedSearchParams?.symbol) ?? "").toUpperCase();
-  const activeView = (() => {
-    if (!viewParam) return "overview" as const;
-    if (viewParam === "equity") return "overview" as const;
-    if (viewParam === "positions") return "trades" as const;
-    if (viewParam === "settings") return "analytics" as const;
-    if (["overview", "trades", "analytics"].includes(viewParam)) {
-      return viewParam as "overview" | "trades" | "analytics";
-    }
-    return "overview" as const;
-  })();
-  const desiredWeeks = 4;
-  const currentWeekOpenUtc = getMt5WeekOpenUtc();
-  const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
-  const nextWeekOpenUtc = currentWeekStart.isValid
-    ? currentWeekStart.plus({ days: 7 }).toUTC().toISO()
-    : null;
-  let weekOptions: string[] = [];
-  try {
-    const recentWeeks = await listMt5WeekOptions(accountId, desiredWeeks);
-    const ordered: string[] = [];
-    const seen = new Set<string>();
-    if (nextWeekOpenUtc) {
-      ordered.push(nextWeekOpenUtc);
-      seen.add(nextWeekOpenUtc);
-    }
-    if (currentWeekOpenUtc && !seen.has(currentWeekOpenUtc)) {
-      ordered.push(currentWeekOpenUtc);
-      seen.add(currentWeekOpenUtc);
-    }
-    for (const week of recentWeeks) {
-      if (!seen.has(week)) {
-        ordered.push(week);
-        seen.add(week);
-      }
-    }
-    weekOptions = ordered.slice(0, desiredWeeks);
-  } catch (error) {
-    console.error(
-      "MT5 week list failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
-  if (weekOptions.length === 0) {
-    const fallback: string[] = [];
-    if (nextWeekOpenUtc) {
-      fallback.push(nextWeekOpenUtc);
-    }
-    if (currentWeekOpenUtc && !fallback.includes(currentWeekOpenUtc)) {
-      fallback.push(currentWeekOpenUtc);
-    }
-    weekOptions = fallback;
-  }
-  const nowUtc = DateTime.utc();
-  const selectedWeek =
-    requestedWeek && weekOptions.includes(requestedWeek)
-      ? requestedWeek
-      : weekOptions.includes(currentWeekOpenUtc)
-        ? currentWeekOpenUtc
-        : weekOptions[0] ?? currentWeekOpenUtc;
-  const isSelectedMt5Week = selectedWeek ? isMt5WeekOpenUtc(selectedWeek) : false;
-  const statsWeekOpenUtc = isSelectedMt5Week ? selectedWeek : getMt5WeekOpenUtc();
-  let account = null;
-  let closedPositions: Awaited<ReturnType<typeof readMt5ClosedPositionsByWeek>> = [];
-  let closedSummary: Awaited<ReturnType<typeof readMt5ClosedSummary>> = [];
-  let changeLog: Awaited<ReturnType<typeof readMt5ChangeLog>> = [];
-  let weeklyDrawdown = 0;
-  let currentWeekNet = { net: 0, trades: 0 };
-  let equityCurvePoints: { ts_utc: string; equity_pct: number; lock_pct: number | null }[] = [];
-  let basketSignals: Awaited<ReturnType<typeof buildBasketSignals>> | null = null;
-  try {
-    // Check if this is a connected account (OANDA/Bitget) or MT5 account
-    if (accountId.includes(":")) {
-      const connectedAccount = await getConnectedAccount(accountId);
-      if (connectedAccount) {
-        const analysis = connectedAccount.analysis as Record<string, any> | null;
-        account = {
-          id: accountId,
-          provider: connectedAccount.provider,
-          account_id: connectedAccount.account_id ?? accountId,
-          label: connectedAccount.label ?? accountId,
-          broker: connectedAccount.provider.toUpperCase(),
-          server: "",
-          balance: Number(analysis?.balance ?? 0),
-          equity: Number(analysis?.nav ?? analysis?.balance ?? 0),
-          positions: (analysis?.positions ?? []) as any[],
-          currency: String(analysis?.currency ?? "USD"),
-          last_sync_utc: connectedAccount.last_sync_utc,
-          trade_mode: "AUTO",
-          status: connectedAccount.status ?? "ACTIVE",
-          lot_map: [],
-        } as any;
-      }
-    } else {
-      account = await getMt5AccountById(accountId);
-    }
-    closedSummary = await readMt5ClosedSummary(accountId, 12);
-    changeLog = await readMt5ChangeLog(accountId, 12);
-    closedPositions = isSelectedMt5Week
-      ? await readMt5ClosedPositionsByWeek(accountId, selectedWeek, 500)
-      : [];
-    const weekOpen = statsWeekOpenUtc;
-    const weekEnd = DateTime.fromISO(weekOpen, { zone: "utc" }).plus({ days: 7 }).toISO();
-    if (weekEnd) {
-      weeklyDrawdown = await readMt5DrawdownRange(accountId, weekOpen, weekEnd);
-      currentWeekNet = await readMt5ClosedNetForWeek(accountId, weekOpen);
-      const snapshots = await readMt5EquityCurveByRange(accountId, weekOpen, weekEnd);
-      console.log(
-        `[MT5 KPI] account=${accountId} week=${weekOpen} equitySnapshots=${snapshots.length}`
-      );
-      if (snapshots.length > 0) {
-        const startEquity = snapshots[0].equity;
-        const lockPct =
-          account && Number.isFinite(account.locked_profit_pct) && account.locked_profit_pct > 0
-            ? account.locked_profit_pct
-            : null;
-        equityCurvePoints = snapshots.map((point) => ({
-          ts_utc: point.snapshot_at,
-          equity_pct:
-            startEquity > 0
-              ? ((point.equity - startEquity) / startEquity) * 100
-              : 0,
-          lock_pct: lockPct,
-        }));
-        equityCurvePoints = extendToWindow(equityCurvePoints, weekEnd);
-      }
-    }
-    basketSignals = await buildBasketSignals();
-    if (selectedWeek && selectedWeek !== currentWeekOpenUtc) {
-      let usedHistory = false;
-      try {
-        const history = await readPerformanceSnapshotsByWeek(selectedWeek);
-        if (history.length > 0) {
-          basketSignals = {
-            ...basketSignals,
-            week_open_utc: selectedWeek,
-            pairs: signalsFromSnapshots(history),
-          };
-          usedHistory = true;
-        }
-      } catch (error) {
-        console.error(
-          "Performance snapshot load failed:",
-          error instanceof Error ? error.message : String(error),
-        );
-      }
-      if (!usedHistory) {
-        basketSignals = { ...basketSignals, week_open_utc: selectedWeek };
-      }
-    } else {
-      basketSignals = { ...basketSignals, week_open_utc: selectedWeek };
-    }
-  } catch (error) {
-    console.error(
-      "Account load failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
+  const { week: requestedWeek, view: activeView } =
+    resolveCommonAccountSearchParams(resolvedSearchParams);
+  const { basketFilter, symbolFilter } = resolveMt5TradeFilters(resolvedSearchParams);
+  const {
+    currentWeekOpenUtc,
+    nextWeekOpenUtc,
+    weekOptions,
+    selectedWeek,
+    isSelectedMt5Week,
+    statsWeekOpenUtc,
+  } = await resolveMt5WeekContext({
+    accountId,
+    requestedWeek,
+    desiredWeeks: 4,
+  });
+  const {
+    account,
+    closedPositions,
+    changeLog,
+    currentWeekNet,
+    equityCurvePoints,
+    basketSignals,
+  } = await loadMt5PageData({
+    accountId,
+    selectedWeek,
+    currentWeekOpenUtc,
+    statsWeekOpenUtc,
+    isSelectedMt5Week,
+  });
   if (!account) {
     notFound();
   }
 
   // Some MT5 accounts (ex: The5ers manual accounts) cannot realistically trade the full non-FX universe.
   // For those accounts, we intentionally show an FX-only plan in the app for manual execution.
-  const fxOnlyHint = `${account?.label ?? ""} ${account?.broker ?? ""} ${account?.server ?? ""}`.toLowerCase();
-  const forceFxOnlyPlanned =
-    (account?.trade_mode ?? "AUTO").toUpperCase() === "MANUAL" &&
-    fxOnlyHint.includes("5ers");
-
-  const openFloatingPnl = (account.positions ?? []).reduce((acc: number, position: any) => {
-    const profit = Number(position?.profit ?? 0);
-    const swap = Number(position?.swap ?? 0);
-    const commission = Number(position?.commission ?? 0);
-    return acc +
-      (Number.isFinite(profit) ? profit : 0) +
-      (Number.isFinite(swap) ? swap : 0) +
-      (Number.isFinite(commission) ? commission : 0);
-  }, 0);
-  const inferredStartBalance =
-    account.balance - currentWeekNet.net > 0 ? account.balance - currentWeekNet.net : account.balance;
-  const derivedWeeklyPnlPct =
-    inferredStartBalance > 0
-      ? (currentWeekNet.net / inferredStartBalance) * 100
-      : 0;
-  const derivedBasketPnlPct =
-    account.baseline_equity > 0
-      ? ((account.equity - account.baseline_equity) / account.baseline_equity) * 100
-      : derivedWeeklyPnlPct + (inferredStartBalance > 0 ? (openFloatingPnl / inferredStartBalance) * 100 : 0);
-
-  const weeklyPnlToShow =
-    Math.abs(account.weekly_pnl_pct) > 0.001 || currentWeekNet.trades === 0
-      ? account.weekly_pnl_pct
-      : derivedWeeklyPnlPct;
-  const basketPnlToShow =
-    Math.abs(account.basket_pnl_pct) > 0.001 ||
-    Math.abs(account.baseline_equity) > 0.001
-      ? account.basket_pnl_pct
-      : derivedBasketPnlPct;
-
-  const normalizeSymbol = (rawSymbol: string) => {
-    const upper = String(rawSymbol ?? "").trim().toUpperCase();
-    if (!upper) return "";
-    const cleaned = upper.replace(/[^A-Z0-9]/g, "");
-    if (cleaned.length >= 6 && /^[A-Z]{6}/.test(cleaned)) {
-      return cleaned.slice(0, 6);
-    }
-    return cleaned;
-  };
-
-  const isFxSymbol = (rawSymbol: string) => {
-    const normalized = normalizeSymbol(rawSymbol);
-    return Boolean(normalized) && FX_PAIR_SET.has(normalized);
-  };
-
-  const baseOpenPositions = forceFxOnlyPlanned
-    ? (account.positions ?? []).filter((pos: any) => isFxSymbol(pos.symbol))
-    : (account.positions ?? []);
-  const baseClosedPositions = forceFxOnlyPlanned
-    ? closedPositions.filter((pos: any) => isFxSymbol(pos.symbol))
-    : closedPositions;
-
-  const basketOptions = Array.from(
-    new Set(
-      [
-        ...baseOpenPositions.map((position: any) => parseBasketFromComment(position.comment)),
-        ...baseClosedPositions.map((position: any) => parseBasketFromComment(position.comment)),
-      ].filter((value): value is string => value !== null),
-    ),
-  ).sort();
-
-  const symbolOptions = Array.from(
-    new Set(
-      [
-        ...baseOpenPositions.map((position: any) => position.symbol),
-        ...baseClosedPositions.map((position: any) => position.symbol),
-      ],
-    ),
-  ).sort();
-
-  const effectiveBasketFilter =
-    basketFilter && basketOptions.includes(basketFilter) ? basketFilter : "";
-  const effectiveSymbolFilter =
-    symbolFilter && symbolOptions.includes(symbolFilter) ? symbolFilter : "";
-
-  const filteredOpenPositions = baseOpenPositions.filter((position: any) => {
-    const basket = parseBasketFromComment(position.comment);
-    if (effectiveBasketFilter && basket !== effectiveBasketFilter) {
-      return false;
-    }
-    if (effectiveSymbolFilter && position.symbol !== effectiveSymbolFilter) {
-      return false;
-    }
-    return true;
+  const forceFxOnlyPlanned = shouldForceFxOnlyPlanned(account);
+  const { weeklyPnlToShow, basketPnlToShow } = deriveMt5PnlDisplay(account, currentWeekNet);
+  const { filteredOpenPositions, filteredClosedPositions } = buildMt5FilteredPositions({
+    openPositions: account.positions ?? [],
+    closedPositions,
+    forceFxOnlyPlanned,
+    basketFilter,
+    symbolFilter,
   });
 
-  const filteredClosedPositions = baseClosedPositions.filter((position: any) => {
-    const basket = parseBasketFromComment(position.comment);
-    if (effectiveBasketFilter && basket !== effectiveBasketFilter) {
-      return false;
-    }
-    if (effectiveSymbolFilter && position.symbol !== effectiveSymbolFilter) {
-      return false;
-    }
-    return true;
+  const mt5Planned = await buildMt5PlannedView({
+    basketSignals: basketSignals ? { pairs: basketSignals.pairs } : null,
+    selectedWeek,
+    currentWeekOpenUtc,
+    nextWeekOpenUtc,
+    forceFxOnlyPlanned,
+    lotMapRows: account.lot_map ?? [],
+    freeMargin: Number(account.free_margin ?? 0),
+    equity: Number(account.equity ?? 0),
+    currency: String(account.currency ?? "USD"),
   });
-
-  const closedGroups = (() => {
-    const groups = new Map<
-      string,
-      {
-        key: string;
-        symbol: string;
-        type: "BUY" | "SELL";
-        basket: string;
-        openDate: string;
-        trades: typeof filteredClosedPositions;
-        net: number;
-        lots: number;
-        closeTimeMin: string;
-        closeTimeMax: string;
-      }
-    >();
-    for (const trade of filteredClosedPositions) {
-      const basket = parseBasketFromComment(trade.comment) ?? "unknown";
-      const openDate = trade.open_time.slice(0, 10);
-      const key = `${basket}|${trade.symbol}|${trade.type}|${openDate}`;
-      const net = trade.profit + trade.swap + trade.commission;
-      const existing = groups.get(key);
-      if (existing) {
-        existing.trades.push(trade);
-        existing.net += net;
-        existing.lots += trade.lots;
-        existing.closeTimeMin =
-          existing.closeTimeMin < trade.close_time ? existing.closeTimeMin : trade.close_time;
-        existing.closeTimeMax =
-          existing.closeTimeMax > trade.close_time ? existing.closeTimeMax : trade.close_time;
-      } else {
-        groups.set(key, {
-          key,
-          symbol: trade.symbol,
-          type: trade.type,
-          basket,
-          openDate,
-          trades: [trade],
-          net,
-          lots: trade.lots,
-          closeTimeMin: trade.close_time,
-          closeTimeMax: trade.close_time,
-        });
-      }
-    }
-    return Array.from(groups.values()).sort((a, b) => b.net - a.net);
-  })();
-
-
-  let plannedPairs = basketSignals ? groupSignals(basketSignals.pairs) : [];
-  let plannedSummary: {
-    marginUsed?: number | null;
-    marginUsedBestCase?: number | null;
-    marginAvailable?: number | null;
-    scale?: number | null;
-    currency?: string | null;
-  } | null = null;
-  const allowPlannedWeek =
-    selectedWeek === currentWeekOpenUtc ||
-    (nextWeekOpenUtc ? selectedWeek === nextWeekOpenUtc : false);
-  if (!allowPlannedWeek) {
-    plannedPairs = [];
-  }
-
-  if (forceFxOnlyPlanned && basketSignals) {
-    plannedPairs = groupSignals(basketSignals.pairs.filter((pair) => pair.asset_class === "fx"));
-  }
-
-  // For The5ers manual accounts, we display an FX-only plan and include recommended 1% stop prices
-  // (based on latest OANDA mid) for quick copy/paste into a manual ticket.
-  const showStopLoss1pct = forceFxOnlyPlanned;
-  const plannedMidBySymbol = new Map<string, number>();
-  if (showStopLoss1pct && plannedPairs.length > 0) {
-    try {
-      const instruments = Array.from(
-        new Set(plannedPairs.map((pair) => getOandaInstrument(pair.symbol))),
-      );
-      const pricing = await fetchOandaPricing(instruments);
-      for (const price of pricing) {
-        const bid = Number(price.closeoutBid ?? price.bids?.[0]?.price ?? NaN);
-        const ask = Number(price.closeoutAsk ?? price.asks?.[0]?.price ?? NaN);
-        const mid = Number.isFinite(bid) && Number.isFinite(ask) ? (bid + ask) / 2 : NaN;
-        if (!Number.isFinite(mid)) {
-          continue;
-        }
-        const symbol = price.instrument.includes("_")
-          ? price.instrument.replace("_", "")
-          : price.instrument.replace("/", "");
-        plannedMidBySymbol.set(symbol.toUpperCase(), mid);
-      }
-    } catch (error) {
-      console.error("Failed to fetch pricing for stop-loss recommendations:", error);
-    }
-  }
-
-  if (showStopLoss1pct && plannedPairs.length > 0) {
-    plannedPairs = plannedPairs.map((pair) => {
-      const mid = plannedMidBySymbol.get(pair.symbol.toUpperCase()) ?? null;
-      const stopLoss1pct =
-        mid && Number.isFinite(mid)
-          ? pair.net > 0
-            ? mid * 0.99
-            : pair.net < 0
-              ? mid * 1.01
-              : null
-          : null;
-      return {
-        ...pair,
-        entryPrice: mid,
-        stopLoss1pct,
-      } as typeof pair & { entryPrice?: number | null; stopLoss1pct?: number | null };
-    });
-  }
-  const lotMapRows = account?.lot_map ?? [];
-  const findLotMapEntry = (symbol: string) => {
-    const target = symbol.trim().toUpperCase();
-    if (!target) return null;
-
-    const aliasMap: Record<string, string[]> = {
-      // Planned symbols (canonical) to common broker aliases.
-      // These mirror the EA defaults in `SymbolAliases`.
-      SPXUSD: ["SPX500", "SPXUSD"],
-      NDXUSD: ["NDX100", "NDXUSD"],
-      NIKKEIUSD: ["JPN225", "NIKKEIUSD"],
-      WTIUSD: ["USOUSD", "WTIUSD"],
-    };
-    const candidates = Array.from(
-      new Set([target, ...(aliasMap[target] ?? [])]),
-    );
-
-    // 1) Exact match (case-insensitive)
-    for (const candidate of candidates) {
-      const exact = lotMapRows.find((row: any) => row.symbol?.toUpperCase() === candidate);
-      if (exact) return exact;
-    }
-
-    // 2) Broker suffix/prefix match (e.g. AUDCAD.m, EURUSD-ECN)
-    for (const candidate of candidates) {
-      const startsWith = lotMapRows.find((row: any) => row.symbol?.toUpperCase().startsWith(candidate));
-      if (startsWith) return startsWith;
-    }
-
-    // 3) FX pairs: sometimes planned uses 6-char code but broker adds suffix
-    if (target.length === 6) {
-      const fx = lotMapRows.find((row: any) => row.symbol?.toUpperCase().startsWith(target));
-      if (fx) return fx;
-    }
-
-    // 4) Last resort: strip non-alphanumerics and try contains
-    for (const candidate of candidates) {
-      const stripped = candidate.replace(/[^A-Z0-9]/g, "");
-      if (!stripped) continue;
-      const fuzzy = lotMapRows.find((row: any) =>
-        String(row.symbol ?? "")
-          .toUpperCase()
-          .replace(/[^A-Z0-9]/g, "")
-          .includes(stripped),
-      );
-      if (fuzzy) return fuzzy;
-    }
-
-    return null;
-  };
-
-  if (plannedPairs.length > 0 && lotMapRows.length > 0) {
-    // MT5 feasibility estimate: use the EA-provided per-leg margin requirement from lot_map.
-    // Gross assumes each leg opens independently (most conservative). Best-case assumes hedges net out.
-    const marginAvailable =
-      Number.isFinite(account.free_margin) && account.free_margin > 0
-        ? account.free_margin
-        : Number.isFinite(account.equity) && account.equity > 0
-          ? account.equity
-          : null;
-    let grossMargin = 0.0;
-    let bestCaseMargin = 0.0;
-
-    plannedPairs = plannedPairs.map((pair) => {
-      const sizing = findLotMapEntry(pair.symbol);
-      if (!sizing || !Number.isFinite(sizing.lot)) {
-        return pair;
-      }
-      const perLegLot = sizing.lot;
-      const netLots = perLegLot * pair.net;
-      const movePerLeg = Number.isFinite(sizing.move_1pct_usd)
-        ? (sizing.move_1pct_usd as number)
-        : null;
-      const moveNet = movePerLeg !== null ? Math.abs(pair.net) * movePerLeg : null;
-
-      const perLegMargin =
-        Number.isFinite((sizing as any).margin_required)
-          ? Number((sizing as any).margin_required)
-          : 0;
-      if (Number.isFinite(perLegMargin) && perLegMargin > 0) {
-        grossMargin += perLegMargin * pair.legs.length;
-        bestCaseMargin += perLegMargin * Math.abs(pair.net);
-      }
-
-      return {
-        ...pair,
-        entryPrice: "entryPrice" in pair ? (pair as any).entryPrice : null,
-        stopLoss1pct: "stopLoss1pct" in pair ? (pair as any).stopLoss1pct : null,
-        units: perLegLot,
-        netUnits: netLots,
-        move1pctUsd: moveNet ?? undefined,
-        legs: pair.legs.map((leg) => ({
-          ...leg,
-          units: perLegLot,
-          move1pctUsd: movePerLeg ?? undefined,
-        })),
-      } as typeof pair & {
-        units: number;
-        netUnits: number;
-        move1pctUsd?: number;
-        entryPrice?: number | null;
-        stopLoss1pct?: number | null;
-        legs: Array<typeof pair.legs[number] & { units: number; move1pctUsd?: number }>;
-      };
-    });
-
-    const buffer = 0.1;
-    const scale =
-      marginAvailable && grossMargin > 0
-        ? Math.min(1, (marginAvailable * (1 - buffer)) / grossMargin)
-        : null;
-    plannedSummary = {
-      marginUsed: grossMargin,
-      marginUsedBestCase: bestCaseMargin,
-      marginAvailable,
-      scale,
-      currency: account.currency === "USD" ? "$" : `${account.currency} `,
-    };
-  }
-  const journalRows = [
-    ...(account.recent_logs ?? []).map((log: any) => ({
-      label: "Runtime",
-      value: log,
-    })),
-    ...changeLog.map((entry: any) => ({
-      label: entry.strategy ?? "Change",
-      value: entry.title,
-    })),
-  ];
+  const plannedPairs = mt5Planned.plannedPairs;
+  const plannedSummary = mt5Planned.plannedSummary;
+  const showStopLoss1pct = mt5Planned.showStopLoss1pct;
 
   const maxDrawdownPct = computeMaxDrawdown(equityCurvePoints);
+  const mt5ViewProps = buildMt5AccountClientViewProps({
+    activeView,
+    account,
+    weekOptions,
+    currentWeekOpenUtc,
+    selectedWeek,
+    statsWeekOpenUtc,
+    showStopLoss1pct,
+    weeklyPnlToShow,
+    basketPnlToShow,
+    maxDrawdownPct,
+    filteredOpenPositions,
+    filteredClosedPositions,
+    plannedPairs,
+    plannedSummary,
+    equityCurvePoints,
+    changeLog,
+  });
 
   return (
     <DashboardLayout>
-      <AccountClientView
-        activeView={activeView}
-        header={{
-          title: account?.label ?? "Account",
-          providerLabel: "MT5",
-          tradeModeLabel: account?.trade_mode ?? "AUTO",
-          statusLabel: account?.status ?? "UNKNOWN",
-          statusToneClass: statusTone(account?.status ?? "PAUSED"),
-          lastSync: account?.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—",
-          weekOptions,
-          currentWeek: currentWeekOpenUtc,
-          selectedWeek,
-          weekLabelMode: "monday_et",
-          showStopLoss1pct,
-          onBackHref: "/accounts",
-        }}
-        kpi={{
-          weeklyPnlPct: weeklyPnlToShow,
-          maxDrawdownPct,
-          tradesThisWeek: account.trade_count_week,
-          equity: account.equity,
-          balance: account.balance,
-          currency: account.currency,
-          scopeLabel: "Week • Account",
-        }}
-        overview={{
-          openPositions: filteredOpenPositions.length,
-          plannedCount: plannedPairs.length,
-          mappingCount: 0,
-          plannedNote: null,
-          journalCount: journalRows.length,
-        }}
-        plannedSummary={plannedSummary ?? undefined}
-        equity={{
-          title: "Weekly equity curve (%)",
-          points: equityCurvePoints,
-        }}
-        debug={{
-          selectedWeekKey: selectedWeek ?? currentWeekOpenUtc,
-          kpiWeekKey: statsWeekOpenUtc,
-          equityWeekKey: statsWeekOpenUtc,
-        }}
-        drawerData={{
-          plannedPairs: plannedPairs.map((pair) => ({
-            symbol: pair.symbol,
-            assetClass: pair.assetClass,
-            net: pair.net,
-            legsCount: pair.legs.length,
-            legs: pair.legs,
-            entryPrice: "entryPrice" in pair ? (pair as any).entryPrice : null,
-            stopLoss1pct: "stopLoss1pct" in pair ? (pair as any).stopLoss1pct : null,
-            units: "units" in pair ? (pair as any).units : null,
-            netUnits: "netUnits" in pair ? (pair as any).netUnits : null,
-            move1pctUsd: "move1pctUsd" in pair ? (pair as any).move1pctUsd : null,
-          })),
-          mappingRows: [],
-          openPositions: filteredOpenPositions.map((pos: any) => ({
-            symbol: pos.symbol,
-            side: pos.type,
-            lots: pos.lots,
-            pnl: pos.profit + pos.swap + pos.commission,
-            legs: [
-              {
-                id: pos.ticket,
-                basket: parseBasketFromComment(pos.comment) ?? "unknown",
-                side: pos.type,
-                lots: pos.lots,
-                pnl: pos.profit + pos.swap + pos.commission,
-              },
-            ],
-          })),
-          closedGroups: closedGroups.map((group) => ({
-            symbol: group.symbol,
-            side: group.type,
-            net: group.net,
-            lots: group.lots,
-            legs: group.trades.map((trade: any) => ({
-              id: trade.ticket,
-              basket: parseBasketFromComment(trade.comment) ?? "unknown",
-              side: trade.type,
-              lots: trade.lots,
-              pnl: trade.profit + trade.swap + trade.commission,
-              openTime: trade.open_time,
-              closeTime: trade.close_time,
-            })),
-          })),
-          journalRows: [
-            ...(account.recent_logs ?? []).map((log: any) => ({
-              label: "Runtime",
-              value: log,
-            })),
-            ...changeLog.map((entry: any) => ({
-              label: entry.strategy ?? "Change",
-              value: entry.title,
-            })),
-          ],
-          kpiRows: [
-            { label: "Equity", value: formatCurrencySafe(account.equity, account.currency) },
-            { label: "Balance", value: formatCurrencySafe(account.balance, account.currency) },
-            { label: "Basket PnL", value: formatPercent(basketPnlToShow) },
-            { label: "Risk Used", value: formatPercent(account.risk_used_pct) },
-            { label: "Max DD (all)", value: formatPercent(account.max_drawdown_pct) },
-            { label: "Margin", value: formatCurrencySafe(account.margin, account.currency) },
-            { label: "Free Margin", value: formatCurrencySafe(account.free_margin, account.currency) },
-          ],
-        }}
-      />
+      <AccountClientView {...mt5ViewProps} />
     </DashboardLayout>
   );
 }

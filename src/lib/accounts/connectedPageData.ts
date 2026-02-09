@@ -1,0 +1,80 @@
+import { DateTime } from "luxon";
+import { buildBasketSignals } from "@/lib/basketSignals";
+import { signalsFromSnapshots } from "@/lib/plannedTrades";
+import { readPerformanceSnapshotsByWeek, listWeekOptionsForAccount, getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
+import { getAccountStatsForWeek } from "@/lib/accountStats";
+import { buildAccountEquityCurve } from "@/lib/accountEquityCurve";
+import { buildWeekOptionsWithCurrentAndNext } from "@/lib/accounts/weekOptions";
+import { computeMaxDrawdown, extendToWindow } from "@/lib/accounts/viewUtils";
+
+export async function resolveConnectedWeekContext(options: {
+  accountKey: string;
+  weekParamValue: string | null;
+}) {
+  const { accountKey, weekParamValue } = options;
+  const weekOptions = await listWeekOptionsForAccount(accountKey, true, 4);
+  const currentWeekOpenUtc = getWeekOpenUtc();
+  const nextWeekOpenUtc = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" })
+    .plus({ days: 7 })
+    .toUTC()
+    .toISO();
+  const weekOptionsWithUpcoming = buildWeekOptionsWithCurrentAndNext(
+    weekOptions as WeekOption[],
+    currentWeekOpenUtc,
+    nextWeekOpenUtc ?? null,
+  );
+  const selectedWeek: WeekOption =
+    weekParamValue === "all"
+      ? "all"
+      : typeof weekParamValue === "string" && weekOptionsWithUpcoming.includes(weekParamValue)
+        ? weekParamValue
+        : getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc);
+
+  return {
+    currentWeekOpenUtc,
+    nextWeekOpenUtc,
+    weekOptionsWithUpcoming,
+    selectedWeek,
+  };
+}
+
+export async function loadConnectedWeekData(options: {
+  accountKey: string;
+  selectedWeek: WeekOption;
+  currentWeekOpenUtc: string;
+}) {
+  const { accountKey, selectedWeek, currentWeekOpenUtc } = options;
+  const stats = await getAccountStatsForWeek(accountKey, selectedWeek);
+  let basketSignals = await buildBasketSignals();
+
+  if (selectedWeek !== "all" && selectedWeek !== currentWeekOpenUtc) {
+    try {
+      const history = await readPerformanceSnapshotsByWeek(selectedWeek);
+      if (history.length > 0) {
+        basketSignals = {
+          ...basketSignals,
+          week_open_utc: selectedWeek,
+          pairs: signalsFromSnapshots(history),
+        };
+      }
+    } catch (error) {
+      console.error("Failed to load historical basket signals:", error);
+    }
+  }
+
+  const equityCurveRaw = await buildAccountEquityCurve(accountKey, selectedWeek);
+  const windowEndUtc =
+    selectedWeek !== "all"
+      ? DateTime.fromISO(String(selectedWeek), { zone: "utc" }).plus({ days: 7 }).toUTC().toISO()
+      : null;
+  const equityCurve = extendToWindow(equityCurveRaw, windowEndUtc);
+  const maxDrawdownPct = computeMaxDrawdown(equityCurve);
+
+  return {
+    stats,
+    basketSignals,
+    equityCurve,
+    maxDrawdownPct,
+  };
+}

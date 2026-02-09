@@ -1,11 +1,18 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import AccountsDirectory, { type AccountCard } from "@/components/AccountsDirectory";
+import AccountsDirectory from "@/components/AccountsDirectory";
 import ConnectAccountButton from "@/components/ConnectAccountButton";
 import { formatCurrencySafe } from "@/lib/formatters";
 import { readBotState } from "@/lib/botState";
 import { readMt5Accounts } from "@/lib/mt5Store";
 import { listConnectedAccounts } from "@/lib/connectedAccounts";
-import { formatDateTimeET, latestIso } from "@/lib/time";
+import { formatDateTimeET } from "@/lib/time";
+import type { AccountCard } from "@/lib/accounts/accountsDirectoryTypes";
+import {
+  buildConnectedAccountCards,
+  buildMt5AccountCards,
+  computeAccountsOverview,
+} from "@/lib/accounts/accountsDirectoryData";
+import { collectAccountsLatestSyncIso } from "@/lib/accounts/accountsPageData";
 
 export const dynamic = "force-dynamic";
 
@@ -47,101 +54,20 @@ export default async function AccountsPage() {
     );
   }
 
-  const mt5Cards: AccountCard[] = mt5Accounts.map((account) => ({
-    account_id: account.account_id,
-    label: account.label,
-    broker: account.broker,
-    server: account.server,
-    status: account.status,
-    currency: account.currency,
-    equity: Number.isFinite(account.equity) ? account.equity : null,
-    weekly_pnl_pct: Number.isFinite(account.weekly_pnl_pct) ? account.weekly_pnl_pct : null,
-    basket_state: account.basket_state,
-    open_positions: account.open_positions,
-    open_pairs: account.open_pairs,
-    win_rate_pct: Number.isFinite(account.win_rate_pct) ? account.win_rate_pct : null,
-    max_drawdown_pct: Number.isFinite(account.max_drawdown_pct) ? account.max_drawdown_pct : null,
-    source: "mt5",
-    href: `/accounts/${account.account_id}`,
-  }));
-
-  const connectedCards: AccountCard[] = connectedAccounts.map((account) => {
-    const botState =
-      account.provider === "bitget"
-        ? bitgetState
-        : account.provider === "oanda"
-          ? oandaState
-          : null;
-    const analysis = account.analysis as Record<string, unknown> | null;
-    const analysisEquity =
-      typeof analysis?.equity === "number"
-        ? (analysis.equity as number)
-        : typeof analysis?.nav === "number"
-          ? (analysis.nav as number)
-          : null;
-    const openPositions =
-      typeof analysis?.open_positions === "number"
-        ? (analysis.open_positions as number)
-        : Array.isArray(analysis?.positions)
-          ? (analysis?.positions as unknown[]).filter(Boolean).length
-          : 0;
-
-    const weeklyPnlPct =
-      typeof (analysis as any)?.weekly_pnl_pct === "number"
-        ? ((analysis as any).weekly_pnl_pct as number)
-        : typeof botState?.state?.entry_equity === "number" &&
-            typeof botState?.state?.current_equity === "number" &&
-            botState.state.entry_equity > 0
-          ? ((botState.state.current_equity - botState.state.entry_equity) / botState.state.entry_equity) * 100
-          : null;
-    return {
-      account_id: account.account_key,
-      label: account.label ?? `${account.provider.toUpperCase()} account`,
-      broker:
-        account.provider === "bitget"
-          ? "Bitget"
-          : account.provider === "oanda"
-            ? "OANDA FxTrade"
-            : "MT5",
-      server:
-        (analysis?.productType as string) ??
-        (analysis?.env as string) ??
-        "Connected",
-      status: account.status ?? (account.provider === "oanda" ? "LIVE" : "LIVE"),
-      currency: (analysis?.currency as string) ?? "USD",
-      equity:
-        typeof botState?.state?.current_equity === "number"
-          ? botState?.state?.current_equity
-          : analysisEquity,
-      weekly_pnl_pct: Number.isFinite(weeklyPnlPct as number) ? (weeklyPnlPct as number) : null,
-      basket_state: botState?.state?.entered ? "ACTIVE" : "READY",
-      open_positions: openPositions,
-      open_pairs: typeof analysis?.mapped_count === "number" ? (analysis.mapped_count as number) : null,
-      win_rate_pct: null,
-      max_drawdown_pct: null,
-      source: account.provider as AccountCard["source"],
-      href: `/accounts/connected/${encodeURIComponent(account.account_key)}`,
-    };
+  const mt5Cards: AccountCard[] = buildMt5AccountCards(mt5Accounts);
+  const connectedCards: AccountCard[] = buildConnectedAccountCards(connectedAccounts, {
+    bitgetState,
+    oandaState,
   });
 
   const accounts: AccountCard[] = [...mt5Cards, ...connectedCards];
-  const totalEquity = accounts.reduce(
-    (sum, account) => sum + (Number.isFinite(account.equity ?? NaN) ? (account.equity ?? 0) : 0),
-    0,
-  );
-  const activeBaskets = accounts.filter(
-    (account) => account.basket_state === "ACTIVE",
-  ).length;
-  const latestSync = latestIso([
-    ...mt5Accounts.map((account) => account.last_sync_utc),
-    bitgetState?.updated_at ?? null,
-    oandaState?.updated_at ?? null,
-    ...connectedAccounts.map((account) => account.last_sync_utc ?? null),
-    ...connectedAccounts.map((account) => {
-      const analysis = account.analysis as Record<string, unknown> | null;
-      return typeof analysis?.fetched_at === "string" ? (analysis.fetched_at as string) : null;
-    }),
-  ]);
+  const { totalEquity, activeBaskets } = computeAccountsOverview(accounts);
+  const latestSync = collectAccountsLatestSyncIso({
+    mt5Accounts,
+    connectedAccounts,
+    bitgetUpdatedAt: bitgetState?.updated_at ?? null,
+    oandaUpdatedAt: oandaState?.updated_at ?? null,
+  });
 
   return (
     <DashboardLayout>
