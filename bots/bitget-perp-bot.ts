@@ -50,7 +50,7 @@ function resolveAppBaseUrl() {
 }
 
 let appBaseUrl = resolveAppBaseUrl();
-let leverage = Number(process.env.BITGET_LEVERAGE ?? "50");
+let leverage = Number(process.env.BITGET_LEVERAGE ?? "10");
 let trailStartPct = Number(process.env.BITGET_TRAIL_START_PCT ?? "20");
 let trailOffsetPct = Number(process.env.BITGET_TRAIL_OFFSET_PCT ?? "10");
 let linkedAccountKey: string | null = null;

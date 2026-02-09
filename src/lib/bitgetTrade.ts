@@ -155,6 +155,18 @@ export async function setBitgetLeverage(symbol: string, leverage: number) {
       productType,
       marginCoin: "USDT",
       leverage: String(leverage),
+      holdSide: "long",
+    },
+  });
+  await request({
+    method: "POST",
+    path: "/api/v2/mix/account/set-leverage",
+    body: {
+      symbol,
+      productType,
+      marginCoin: "USDT",
+      leverage: String(leverage),
+      holdSide: "short",
     },
   });
 }
