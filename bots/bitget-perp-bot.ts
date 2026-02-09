@@ -167,8 +167,17 @@ function resolveAlignment(
 }
 
 async function computeOrderSize(symbol: string, notionalUsd: number) {
-  const [contract] = await fetchBitgetContracts(symbol);
+  const contracts = await fetchBitgetContracts(symbol);
+  log(`Fetched ${contracts.length} contracts for ${symbol}`, {
+    symbols: contracts.map(c => c.symbol).join(", "),
+  });
+  const [contract] = contracts;
   if (!contract) {
+    const allContracts = await fetchBitgetContracts();
+    log(`All available contracts:`, {
+      count: allContracts.length,
+      samples: allContracts.slice(0, 10).map(c => c.symbol).join(", "),
+    });
     throw new Error(`Missing contract info for ${symbol}`);
   }
   const snapshot = await fetchBitgetFuturesSnapshot(symbol.startsWith("BTC") ? "BTC" : "ETH");
