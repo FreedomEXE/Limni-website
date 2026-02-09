@@ -7,6 +7,7 @@ import {
   placeBitgetOrder,
   setBitgetLeverage,
   setBitgetPositionMode,
+  getBitgetProductType,
 } from "@/lib/bitgetTrade";
 import { readBotState, writeBotState } from "@/lib/botState";
 import {
@@ -449,6 +450,7 @@ async function main() {
     appBaseUrl,
     tickSeconds,
     symbols: SYMBOLS,
+    productType: getBitgetProductType(),
   });
   await hydrateConnectedAccount();
   await tick();
