@@ -359,6 +359,9 @@ export default async function ConnectedAccountPage({
         (selectedModels.length > 0 ? (selectedModels as any) : undefined),
         { dropNetted: false },
       );
+      if (selectedModels.length > 0) {
+        plannedNote = `Model scope: ${selectedModels.map((m) => m.toUpperCase()).join(", ")}`;
+      }
     }
   }
 

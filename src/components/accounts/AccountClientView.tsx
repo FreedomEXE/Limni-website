@@ -11,8 +11,6 @@ import FilterBar from "@/components/common/FilterBar";
 import type { WeekOption } from "@/lib/weekState";
 import type { ReactNode } from "react";
 
-const BASKET_ORDER = ["antikythera", "blended", "dealer", "commercial", "sentiment"] as const;
-
 type HeaderConfig = {
   title: string;
   providerLabel: string;
@@ -399,9 +397,6 @@ export default function AccountClientView({
 
   const plannedLegCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const key of BASKET_ORDER) {
-      counts.set(key, 0);
-    }
     for (const pair of drawerData.plannedPairs) {
       if (isOanda && String(pair.assetClass ?? "").toLowerCase() !== "fx") continue;
       for (const leg of pair.legs ?? []) {
@@ -411,7 +406,14 @@ export default function AccountClientView({
       }
     }
     return counts;
-  }, [drawerData.plannedPairs]);
+  }, [drawerData.plannedPairs, isOanda]);
+  const plannedModelChips = useMemo(
+    () =>
+      Array.from(plannedLegCounts.entries())
+        .filter(([, count]) => count > 0)
+        .sort((a, b) => a[0].localeCompare(b[0])),
+    [plannedLegCounts],
+  );
   const netExposure = useMemo(() => {
     let sum = 0;
     for (const pair of drawerData.plannedPairs) {
@@ -434,7 +436,7 @@ export default function AccountClientView({
       }
     }
     return sum;
-  }, [drawerData.plannedPairs]);
+  }, [drawerData.plannedPairs, isOanda]);
 
   const metricLabel =
     "P/L";
@@ -574,12 +576,12 @@ export default function AccountClientView({
                   return sum + (Array.isArray(pair.legs) ? pair.legs.length : 0);
                 }, 0)})
               </span>
-              {BASKET_ORDER.map((key) => (
+              {plannedModelChips.map(([key, count]) => (
                 <span
                   key={key}
                   className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 font-semibold uppercase tracking-[0.18em] text-[var(--foreground)]/80"
                 >
-                  {key}: {plannedLegCounts.get(key) ?? 0}
+                  {key}: {count}
                 </span>
               ))}
             </div>
