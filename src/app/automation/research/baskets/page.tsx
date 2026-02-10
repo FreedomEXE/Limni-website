@@ -9,6 +9,7 @@ import { buildPerModelBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
 import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import { computeMaxDrawdown, pickParam } from "@/lib/research/common";
 
 export const revalidate = 900;
 
@@ -17,22 +18,6 @@ type PageProps = {
     | Record<string, string | string[] | undefined>
     | Promise<Record<string, string | string[] | undefined>>;
 };
-
-function pickParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function maxDrawdown(points: Array<{ equity_pct: number }>) {
-  if (points.length === 0) return 0;
-  let peak = points[0].equity_pct;
-  let maxDd = 0;
-  for (const point of points) {
-    if (point.equity_pct > peak) peak = point.equity_pct;
-    const dd = peak - point.equity_pct;
-    if (dd > maxDd) maxDd = dd;
-  }
-  return maxDd;
-}
 
 export default async function BasketResearchPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
@@ -84,7 +69,7 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
       ? selectedModel.by_week.find((row) => row.week_open_utc === selectedWeek) ?? null
       : null;
   const selectedModelWeekDrawdown = selectedModelWeek
-    ? maxDrawdown(selectedModelWeek.equity_curve)
+    ? computeMaxDrawdown(selectedModelWeek.equity_curve)
     : 0;
 
   return (
@@ -228,7 +213,7 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
                       <div className="flex items-center justify-between">
                         <span>Max DD (week)</span>
                         <span>
-                          {maxDrawdown(
+                          {computeMaxDrawdown(
                             model.by_week.find((row) => row.week_open_utc === selectedWeek)?.equity_curve ?? [],
                           ).toFixed(2)}
                           %

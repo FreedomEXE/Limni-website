@@ -12,6 +12,12 @@ import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
 import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import {
+  buildWeekOptionsFromCurve,
+  computeMaxDrawdown,
+  pickParam,
+  pickParams,
+} from "@/lib/research/common";
 
 export const revalidate = 900;
 
@@ -29,28 +35,6 @@ const MODEL_OPTIONS: Array<{ value: "all" | PerformanceModel; label: string }> =
   { value: "commercial", label: "Commercial" },
   { value: "sentiment", label: "Sentiment" },
 ];
-
-function pickParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function pickParams(value: string | string[] | undefined) {
-  if (Array.isArray(value)) return value;
-  if (typeof value !== "string" || value.length === 0) return [];
-  return value.split(",").map((item) => item.trim()).filter(Boolean);
-}
-
-function maxDrawdown(points: Array<{ equity_pct: number }>) {
-  if (points.length === 0) return 0;
-  let peak = points[0].equity_pct;
-  let maxDd = 0;
-  for (const point of points) {
-    if (point.equity_pct > peak) peak = point.equity_pct;
-    const dd = peak - point.equity_pct;
-    if (dd > maxDd) maxDd = dd;
-  }
-  return maxDd;
-}
 
 export default async function SymbolResearchPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
@@ -86,11 +70,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
 
   const summary = summaryAll;
   const currentWeekOpenUtc = getWeekOpenUtc();
-  const weekOptions = summary.equity_curve
-    .map((point) => point.ts_utc)
-    .slice()
-    .reverse()
-    .map((week) => ({ value: week, label: weekLabelFromOpen(week) }));
+  const weekOptions = buildWeekOptionsFromCurve(summary.equity_curve);
   const selectedWeek =
     weekParam && weekOptions.some((option) => option.value === weekParam)
       ? weekParam
@@ -131,7 +111,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
         ]
       : [{ id: selectedModel, label: selectedModel, points: buildCurveForSummary(summary) }];
 
-  const chartDd = Math.max(...series.map((row) => maxDrawdown(row.points)));
+  const chartDd = Math.max(...series.map((row) => computeMaxDrawdown(row.points)));
   const selectedMode = modeParam === "isolate" ? "isolate" : "compare";
 
   return (

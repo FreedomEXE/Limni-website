@@ -8,6 +8,7 @@ import KpiGroup from "@/components/metrics/KpiGroup";
 import KpiCard from "@/components/metrics/KpiCard";
 import DebugReadout from "@/components/DebugReadout";
 import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import { computeMaxDrawdown, pickParam } from "@/lib/research/common";
 
 export const revalidate = 900;
 
@@ -16,22 +17,6 @@ type PageProps = {
     | Record<string, string | string[] | undefined>
     | Promise<Record<string, string | string[] | undefined>>;
 };
-
-function pickParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function maxDrawdown(points: Array<{ equity_pct: number }>) {
-  if (points.length === 0) return 0;
-  let peak = points[0].equity_pct;
-  let maxDd = 0;
-  for (const point of points) {
-    if (point.equity_pct > peak) peak = point.equity_pct;
-    const dd = peak - point.equity_pct;
-    if (dd > maxDd) maxDd = dd;
-  }
-  return maxDd;
-}
 
 export default async function UniversalResearchPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
@@ -57,7 +42,7 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
       ? universalSummary.by_week.find((row) => row.week_open_utc === selectedWeek) ?? null
       : null;
   const selectedWeekDrawdown = selectedUniversalWeek
-    ? maxDrawdown(selectedUniversalWeek.equity_curve)
+    ? computeMaxDrawdown(selectedUniversalWeek.equity_curve)
     : 0;
 
   return (

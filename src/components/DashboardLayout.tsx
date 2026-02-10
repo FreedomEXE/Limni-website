@@ -140,6 +140,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (activeSection === "automation") {
       return [
         { href: "/automation/bots", label: "Bots" },
+        { href: "/automation/research/lab", label: "Research · Lab" },
         { href: "/automation/research/universal", label: "Research · Universal" },
         { href: "/automation/research/baskets", label: "Research · Baskets" },
         { href: "/automation/research/symbols", label: "Research · Symbols" },

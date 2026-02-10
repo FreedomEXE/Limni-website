@@ -274,6 +274,26 @@ CREATE TABLE IF NOT EXISTS bot_states (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Research Lab Runs
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS research_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  config_json JSONB NOT NULL,
+  config_hash TEXT NOT NULL,
+  result_json JSONB,
+  status VARCHAR(20) NOT NULL DEFAULT 'complete',
+  error TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_research_runs_config_hash
+  ON research_runs(config_hash);
+
+CREATE INDEX IF NOT EXISTS idx_research_runs_created_at
+  ON research_runs(created_at DESC);
+
 -- Connected Broker Accounts (server-managed)
 CREATE TABLE IF NOT EXISTS connected_accounts (
   account_key VARCHAR(64) PRIMARY KEY,
