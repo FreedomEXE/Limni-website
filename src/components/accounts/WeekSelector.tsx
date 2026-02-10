@@ -68,7 +68,9 @@ export default function WeekSelector({
     const labelDate =
       labelMode === "monday_et"
         ? parsed.plus({ days: 1 }).startOf("day")
-        : parsed;
+        : parsed.weekday === 7
+          ? parsed.plus({ days: 1 }).startOf("day")
+          : parsed;
     return `Week of ${labelDate.toFormat("MMM dd, yyyy")}`;
   };
 

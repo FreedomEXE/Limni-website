@@ -1,11 +1,11 @@
-import { DateTime } from "luxon";
 import { buildBasketSignals } from "@/lib/basketSignals";
 import { signalsFromSnapshots } from "@/lib/plannedTrades";
 import { readPerformanceSnapshotsByWeek, listWeekOptionsForAccount, getWeekOpenUtc } from "@/lib/performanceSnapshots";
 import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
 import { getAccountStatsForWeek } from "@/lib/accountStats";
 import { buildAccountEquityCurve } from "@/lib/accountEquityCurve";
-import { buildWeekOptionsWithCurrentAndNext } from "@/lib/accounts/weekOptions";
+import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
+import { DateTime } from "luxon";
 import { computeMaxDrawdown, extendToWindow } from "@/lib/accounts/viewUtils";
 
 export async function resolveConnectedWeekContext(options: {
@@ -15,15 +15,14 @@ export async function resolveConnectedWeekContext(options: {
   const { accountKey, weekParamValue } = options;
   const weekOptions = await listWeekOptionsForAccount(accountKey, true, 4);
   const currentWeekOpenUtc = getWeekOpenUtc();
-  const nextWeekOpenUtc = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" })
-    .plus({ days: 7 })
-    .toUTC()
-    .toISO();
-  const weekOptionsWithUpcoming = buildWeekOptionsWithCurrentAndNext(
-    weekOptions as WeekOption[],
+  const weekOptionsWithUpcoming = buildNormalizedWeekOptions({
+    historicalWeeks: weekOptions.filter((week): week is string => week !== "all"),
     currentWeekOpenUtc,
-    nextWeekOpenUtc ?? null,
-  );
+    includeAll: true,
+    includeCurrent: true,
+    includeFuture: false,
+    limit: 4,
+  }) as WeekOption[];
   const selectedWeek: WeekOption =
     weekParamValue === "all"
       ? "all"
@@ -33,7 +32,7 @@ export async function resolveConnectedWeekContext(options: {
 
   return {
     currentWeekOpenUtc,
-    nextWeekOpenUtc,
+    nextWeekOpenUtc: null,
     weekOptionsWithUpcoming,
     selectedWeek,
   };

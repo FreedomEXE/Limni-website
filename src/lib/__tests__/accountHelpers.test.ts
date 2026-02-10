@@ -7,14 +7,14 @@ import { pickQueryParam, resolveAccountView } from "@/lib/accounts/navigation";
 import { computeMaxDrawdown, formatPercent } from "@/lib/accounts/viewUtils";
 
 describe("accounts week options", () => {
-  test("builds unique ordered list with current and next first", () => {
+  test("builds unique ordered list with current then historical weeks", () => {
     const result = buildWeekOptionsWithCurrentAndNext(
       ["2026-02-02", "2026-02-09", "2026-02-16"],
       "2026-02-09",
       "2026-02-16",
       4,
     );
-    expect(result).toEqual(["2026-02-09", "2026-02-16", "2026-02-02"]);
+    expect(result).toEqual(["2026-02-09", "2026-02-02"]);
   });
 
   test("resolves requested week with fallback", () => {

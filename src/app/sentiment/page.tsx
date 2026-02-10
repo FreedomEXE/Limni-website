@@ -24,7 +24,7 @@ import {
   readPerformanceSnapshotsByWeek,
   weekLabelFromOpen,
 } from "@/lib/performanceSnapshots";
-import { deduplicateWeeks } from "@/lib/weekState";
+import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -60,16 +60,16 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
   const weekValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
 
   const currentWeekOpen = getWeekOpenUtc();
-  const currentWeekStart = DateTime.fromISO(currentWeekOpen, { zone: "utc" });
-  const nextWeekOpen =
-    currentWeekStart.isValid
-      ? currentWeekStart.plus({ days: 7 }).toUTC().toISO()
-      : null;
 
   const recentWeeks = await listPerformanceWeeks(24);
-  const weeks = deduplicateWeeks(
-    [nextWeekOpen, currentWeekOpen, ...recentWeeks].filter((w): w is string => Boolean(w)),
-  ).slice(0, 12);
+  const weeks = buildNormalizedWeekOptions({
+    historicalWeeks: recentWeeks,
+    currentWeekOpenUtc: currentWeekOpen,
+    includeAll: false,
+    includeCurrent: true,
+    includeFuture: false,
+    limit: 12,
+  }).filter((item): item is string => item !== "all");
 
   const selectedWeek =
     weekValue && weeks.includes(weekValue) ? weekValue : currentWeekOpen;

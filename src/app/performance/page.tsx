@@ -21,7 +21,7 @@ import {
   weekLabelFromOpen,
   getWeekOpenUtc,
 } from "@/lib/performanceSnapshots";
-import { buildWeekOptionsWithCurrentAndNext } from "@/lib/accounts/weekOptions";
+import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
 import {
   buildPerformanceWeekFlags,
   resolvePerformanceView,
@@ -64,18 +64,17 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   let weekOptions: string[] = [];
   const currentWeekOpenUtc = getWeekOpenUtc();
   const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
-  const nextWeekOpenUtc = currentWeekStart.isValid
-    ? currentWeekStart.plus({ days: 7 }).toUTC().toISO()
-    : null;
   let reportOptions: string[] = [];
   try {
     const recentWeeks = await listPerformanceWeeks(desiredWeeks);
-    weekOptions = buildWeekOptionsWithCurrentAndNext(
-      recentWeeks,
+    weekOptions = buildNormalizedWeekOptions({
+      historicalWeeks: recentWeeks,
       currentWeekOpenUtc,
-      nextWeekOpenUtc ?? null,
-      desiredWeeks,
-    );
+      includeAll: false,
+      includeCurrent: true,
+      includeFuture: false,
+      limit: desiredWeeks,
+    }) as string[];
   } catch (error) {
     console.error(
       "Performance snapshot list failed:",
@@ -123,12 +122,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     }
   }
   const hasSnapshots = weekSnapshots.length > 0;
-  const {
-    isAllTimeSelected,
-    isCurrentWeekSelected,
-    isHistoricalWeekSelected,
-    isWaitingWeek,
-  } = buildPerformanceWeekFlags({
+  const { isAllTimeSelected, isCurrentWeekSelected, isFutureWeekSelected, isHistoricalWeekSelected } = buildPerformanceWeekFlags({
     selectedWeek,
     currentWeekOpenUtc,
     hasSnapshots,
@@ -170,7 +164,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   let totals: Array<Awaited<ReturnType<typeof computeModelPerformance>>> = [];
   let anyPriced = false;
 
-  if (isWaitingWeek) {
+  if (isFutureWeekSelected) {
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
     const latestSentiment = await getLatestAggregatesLocked();
     const snapshotResults = await Promise.all(

@@ -4,8 +4,8 @@ import { formatDateTimeET } from "@/lib/time";
 import { listNewsWeeks, readNewsWeeklySnapshot } from "@/lib/news/store";
 import { refreshNewsSnapshot } from "@/lib/news/refresh";
 import NewsContentTabs from "@/components/news/NewsContentTabs";
-import { getNextWeekOpen } from "@/lib/weekState";
 import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
 
 export const revalidate = 300;
 
@@ -20,9 +20,10 @@ function pickParam(value: string | string[] | undefined) {
 }
 
 function weekLabel(weekOpenUtc: string) {
-  const parsed = DateTime.fromISO(weekOpenUtc, { zone: "America/New_York" });
+  const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).setZone("America/New_York");
   if (!parsed.isValid) return weekOpenUtc;
-  return `Week of ${parsed.toFormat("MMM dd, yyyy")}`;
+  const monday = parsed.weekday === 7 ? parsed.plus({ days: 1 }).startOf("day") : parsed.startOf("day");
+  return `Week of ${monday.toFormat("MMM dd, yyyy")}`;
 }
 
 export default async function NewsPage({ searchParams }: PageProps) {
@@ -39,18 +40,20 @@ export default async function NewsPage({ searchParams }: PageProps) {
   }
 
   const currentWeekOpenUtc = getWeekOpenUtc();
-  const nextWeekOpenUtc = getNextWeekOpen(currentWeekOpenUtc);
-  const weekOptions = Array.from(
-    new Set([nextWeekOpenUtc, currentWeekOpenUtc, ...weeks].filter(Boolean)),
-  );
+  const weekOptions = buildNormalizedWeekOptions({
+    historicalWeeks: weeks,
+    currentWeekOpenUtc,
+    includeAll: false,
+    includeCurrent: true,
+    includeFuture: false,
+    limit: 52,
+  }).filter((item): item is string => item !== "all");
   const selectedWeek =
     weekParam && weekOptions.includes(weekParam)
       ? weekParam
-      : weekOptions.includes(nextWeekOpenUtc)
-        ? nextWeekOpenUtc
-        : weekOptions.includes(currentWeekOpenUtc)
-          ? currentWeekOpenUtc
-          : weekOptions[0] ?? null;
+      : weekOptions.includes(currentWeekOpenUtc)
+        ? currentWeekOpenUtc
+        : weekOptions[0] ?? null;
   const snapshot = selectedWeek ? await readNewsWeeklySnapshot(selectedWeek) : null;
 
   const announcements = snapshot?.announcements ?? [];

@@ -3,7 +3,7 @@ import { query } from "./db";
 import type { AssetClass } from "./cotMarkets";
 import type { PerformanceModel, ModelPerformance } from "./performanceLab";
 import { getConnectedAccount } from "./connectedAccounts";
-import { deduplicateWeeks, getNextWeekOpen, type WeekOption } from "./weekState";
+import { deduplicateWeeks, type WeekOption } from "./weekState";
 
 export type PerformanceSnapshot = {
   week_open_utc: string;
@@ -20,14 +20,45 @@ export type PerformanceSnapshot = {
 };
 
 function formatWeekLabel(isoValue: string) {
-  const parsed = DateTime.fromISO(isoValue, { zone: "America/New_York" });
+  const parsed = DateTime.fromISO(isoValue, { zone: "utc" }).setZone("America/New_York");
   if (!parsed.isValid) {
     return isoValue;
   }
-  return parsed.toFormat("MMM dd, yyyy");
+  // Internal key is Sunday 17:00 ET open; display label as Monday date for clarity.
+  const mondayLabelDate =
+    parsed.weekday === 7
+      ? parsed.plus({ days: 1 }).startOf("day")
+      : parsed.weekday === 1
+        ? parsed.startOf("day") // legacy Monday-based key support
+        : parsed.startOf("day");
+  return mondayLabelDate.toFormat("MMM dd, yyyy");
 }
 
 export function getWeekOpenUtc(now = DateTime.utc()): string {
+  const nyNow = now.setZone("America/New_York");
+  // Trading week key: Sunday 17:00 ET (FX session open)
+  const daysSinceSunday = nyNow.weekday % 7; // Sunday=0
+  let sunday = nyNow.minus({ days: daysSinceSunday });
+  let open = sunday.set({
+    hour: 17,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+  if (daysSinceSunday === 0 && nyNow.toMillis() < open.toMillis()) {
+    sunday = sunday.minus({ days: 7 });
+    open = sunday.set({
+      hour: 17,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    });
+  }
+
+  return open.toUTC().toISO() ?? new Date().toISOString();
+}
+
+function getLegacyWeekOpenUtc(now = DateTime.utc()): string {
   const nyNow = now.setZone("America/New_York");
   const weekday = nyNow.weekday; // 1=Mon ... 7=Sun
   let monday = nyNow;
@@ -58,7 +89,8 @@ export function isWeekOpenUtc(isoValue: string) {
     return false;
   }
   const expected = getWeekOpenUtc(parsed);
-  return expected === isoValue;
+  const legacyExpected = getLegacyWeekOpenUtc(parsed);
+  return expected === isoValue || legacyExpected === isoValue;
 }
 
 export async function writePerformanceSnapshots(
@@ -229,8 +261,7 @@ export async function listWeeksForAccount(
     const account = await getConnectedAccount(accountKey);
     if (!account) {
       const currentWeek = getWeekOpenUtc();
-      const nextWeek = getNextWeekOpen(currentWeek);
-      return deduplicateWeeks([nextWeek, currentWeek]).slice(0, limit);
+      return deduplicateWeeks([currentWeek]).slice(0, limit);
     }
     const createdAt = DateTime.fromISO(account.created_at, { zone: "utc" });
 
@@ -257,12 +288,11 @@ export async function listWeeksForAccount(
 
     const historicalWeeks = rows.map((row) => row.week_open_utc.toISOString());
 
-    // Always include current and upcoming week
+    // Always include current week
     const currentWeek = getWeekOpenUtc();
-    const nextWeek = getNextWeekOpen(currentWeek);
 
     // Combine and deduplicate
-    const allWeeks = [nextWeek, currentWeek, ...historicalWeeks];
+    const allWeeks = [currentWeek, ...historicalWeeks];
     return deduplicateWeeks(allWeeks).slice(0, limit);
   } catch (error) {
     console.error(`Failed to list weeks for account ${accountKey}:`, error);

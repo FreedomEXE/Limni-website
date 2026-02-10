@@ -34,7 +34,21 @@ function getTargetReportDateForWeek(weekOpenUtc: string): string | null {
   if (!weekOpen.isValid) {
     return null;
   }
-  return weekOpen.minus({ days: 6 }).toISODate();
+  // Sunday 17:00 ET week key -> use Tuesday COT report from ~5 days prior.
+  return weekOpen.minus({ days: 5 }).toISODate();
+}
+
+function getTradingWeekOpenFromReportDate(reportDate: string): string | null {
+  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+  if (!report.isValid) return null;
+  const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
+  const sundayOpen = report.plus({ days: daysUntilSunday }).set({
+    hour: 17,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+  return sundayOpen.toUTC().toISO();
 }
 
 async function readSnapshotForWeek(
@@ -64,11 +78,10 @@ async function listRecentWeeks(
       if (!item.report_date) {
         continue;
       }
-      const reportDate = DateTime.fromISO(item.report_date, { zone: "America/New_York" });
-      if (!reportDate.isValid) {
-        continue;
+      const weekOpenUtc = getTradingWeekOpenFromReportDate(item.report_date);
+      if (weekOpenUtc) {
+        weeks.add(weekOpenUtc);
       }
-      weeks.add(getWeekOpenUtc(reportDate));
     }
   }
   return Array.from(weeks.values())
@@ -93,29 +106,29 @@ export async function refreshPerformanceSnapshots(options: {
   const targetWeeks = options.forcedWeekOpenUtc
     ? [options.forcedWeekOpenUtc]
     : await listRecentWeeks(assetClasses, Math.max(1, options.rollingWeeks));
+  const currentWeekOpenUtc = getWeekOpenUtc();
+  if (!options.forcedWeekOpenUtc && !targetWeeks.includes(currentWeekOpenUtc)) {
+    targetWeeks.unshift(currentWeekOpenUtc);
+  }
 
   if (!options.forcedWeekOpenUtc && targetWeeks.length > 0) {
     const latestSnapshot = await readSnapshot({ assetClass: assetClasses[0].id });
     if (latestSnapshot?.report_date) {
-      const reportDate = DateTime.fromISO(latestSnapshot.report_date, {
-        zone: "America/New_York",
-      });
-      if (reportDate.isValid) {
-        const latestWeek = getWeekOpenUtc(reportDate);
-        if (!targetWeeks.includes(latestWeek)) {
-          targetWeeks.unshift(latestWeek);
-        }
+      const latestWeek = getTradingWeekOpenFromReportDate(latestSnapshot.report_date);
+      if (latestWeek && !targetWeeks.includes(latestWeek)) {
+        targetWeeks.unshift(latestWeek);
       }
     }
   }
 
   const payload = [];
   for (const weekOpenUtc of targetWeeks) {
+    const isCurrentWeek = weekOpenUtc === currentWeekOpenUtc;
     const snapshots = await Promise.all(
       assetClasses.map((asset) =>
-        options.forcedWeekOpenUtc || targetWeeks.length > 1
-          ? readSnapshotForWeek(asset.id, weekOpenUtc)
-          : readSnapshot({ assetClass: asset.id }),
+        isCurrentWeek
+          ? readSnapshot({ assetClass: asset.id })
+          : readSnapshotForWeek(asset.id, weekOpenUtc),
       ),
     );
     for (const asset of assetClasses) {
@@ -123,22 +136,12 @@ export async function refreshPerformanceSnapshots(options: {
       if (!snapshot) {
         continue;
       }
-      const reportWeekOpenUtc =
-        options.forcedWeekOpenUtc || targetWeeks.length > 1
-          ? weekOpenUtc
-          : snapshot.report_date
-            ? (() => {
-                const reportDate = DateTime.fromISO(snapshot.report_date, {
-                  zone: "America/New_York",
-                });
-                return reportDate.isValid ? getWeekOpenUtc(reportDate) : getWeekOpenUtc();
-              })()
-            : getWeekOpenUtc();
+      const reportWeekOpenUtc = weekOpenUtc;
 
       const performance = await getPairPerformance(buildAllPairs(asset.id), {
         assetClass: asset.id,
         reportDate: snapshot.report_date,
-        isLatestReport: false,
+        isLatestReport: isCurrentWeek,
       });
 
       for (const model of models) {
