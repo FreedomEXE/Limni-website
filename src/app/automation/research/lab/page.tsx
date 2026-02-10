@@ -10,7 +10,7 @@ export default function ResearchLabPage() {
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">Research Lab</h1>
           <p className="text-sm text-[color:var(--muted)]">
-            Phase 1A shell: configure and run deterministic backtests through the new Research API.
+            Build and compare research configurations, run deterministic backtests, and inspect model/symbol/weekday attribution.
           </p>
         </header>
         <ResearchLabClient />
