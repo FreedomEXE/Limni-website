@@ -5,6 +5,7 @@ export type HeaderConfig = {
   title: string;
   providerLabel: string;
   tradeModeLabel?: string;
+  riskModeLabel?: string | null;
   statusLabel?: string;
   statusToneClass?: string;
   lastSync?: string;

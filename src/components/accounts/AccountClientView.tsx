@@ -73,16 +73,27 @@ export default function AccountClientView({
   const showKpis = activeView === "overview";
   const providerKey = header.providerLabel.toLowerCase();
   const isOanda = providerKey === "oanda";
+  const isManualMode = String(header.tradeModeLabel ?? "").toUpperCase() === "MANUAL";
   const symbolRows = useMemo(
     () => buildSymbolRows(drawerData.plannedPairs, drawerData.openPositions),
     [drawerData.openPositions, drawerData.plannedPairs],
+  );
+  const liveSymbolRows = useMemo(
+    () => symbolRows.filter((row) => row.hasOpenExposure),
+    [symbolRows],
   );
   const closedRows = useMemo(
     () => buildClosedRows(drawerData.closedGroups),
     [drawerData.closedGroups],
   );
-  const filteredSymbolRows = filterAccountRows({
+  const filteredReconcileRows = filterAccountRows({
     rows: symbolRows,
+    statusFilter,
+    search,
+    sort,
+  });
+  const filteredLiveRows = filterAccountRows({
+    rows: liveSymbolRows,
     statusFilter,
     search,
     sort,
@@ -93,7 +104,7 @@ export default function AccountClientView({
     search,
     sort,
   });
-  const openLegCount = symbolRows.reduce((sum, row) => sum + Number(row.legsOpenCount ?? 0), 0);
+  const openLegCount = liveSymbolRows.reduce((sum, row) => sum + Number(row.legsOpenCount ?? 0), 0);
   const closedCount = closedRows.length;
 
   const plannedLegCounts = useMemo(
@@ -187,12 +198,30 @@ export default function AccountClientView({
             }
           }}
           plannedSummary={plannedSummary}
-          symbolRows={filteredSymbolRows}
+          liveSymbolRows={filteredLiveRows}
+          reconcileSymbolRows={filteredReconcileRows}
           closedRows={filteredClosedRows}
           metricLabel={metricLabel}
           sizeUnitLabel={sizeUnitLabel}
           openGridCols={openGridCols}
           rowGridCols={rowGridCols}
+          manualExecution={{
+            enabled: isManualMode && drawerData.plannedPairs.length > 0,
+            accountLabel: header.title,
+            weekLabel: String(header.selectedWeek ?? ""),
+            currency: kpi.currency,
+            equity: Number(kpi.balance ?? kpi.equity ?? 0),
+            defaultRiskMode: header.riskModeLabel ?? null,
+            plannedPairs: drawerData.plannedPairs.map((pair) => ({
+              symbol: pair.symbol,
+              net: Number(pair.net ?? 0),
+              entryPrice: pair.entryPrice ?? null,
+              legs: (pair.legs ?? []).map((leg) => ({
+                model: leg.model,
+                direction: leg.direction,
+              })),
+            })),
+          }}
         />
       ) : null}
 

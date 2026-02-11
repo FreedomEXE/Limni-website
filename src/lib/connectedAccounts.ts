@@ -250,6 +250,17 @@ export async function updateConnectedAccountAnalysis(
   );
 }
 
+export async function updateConnectedAccountRiskMode(accountKey: string, riskMode: string) {
+  const row = await queryOne<{ account_key: string }>(
+    `UPDATE connected_accounts
+     SET risk_mode = $2, updated_at = NOW()
+     WHERE account_key = $1
+     RETURNING account_key`,
+    [accountKey, riskMode],
+  );
+  return row?.account_key ?? null;
+}
+
 export async function loadConnectedAccountSecrets(options: {
   provider: ConnectedAccount["provider"];
   botType?: string;

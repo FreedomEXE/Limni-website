@@ -16,6 +16,7 @@ import {
 type Mt5PageHeaderAccount = Partial<Mt5AccountLike> & {
   label?: string | null;
   trade_mode?: string | null;
+  risk_mode?: string | null;
   status?: string | null;
   last_sync_utc?: string | null;
   trade_count_week?: number | null;
@@ -84,6 +85,7 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
       title: String(account?.label ?? "Account"),
       providerLabel: "MT5",
       tradeModeLabel: String(account?.trade_mode ?? "AUTO"),
+      riskModeLabel: account?.risk_mode ?? null,
       statusLabel: String(account?.status ?? "UNKNOWN"),
       statusToneClass: statusTone(String(account?.status ?? "PAUSED")),
       lastSync: account?.last_sync_utc ? formatDateTimeET(String(account.last_sync_utc)) : "—",

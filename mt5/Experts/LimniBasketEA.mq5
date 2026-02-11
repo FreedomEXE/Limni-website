@@ -16,10 +16,12 @@ input bool ManualMode = false;
 enum RiskProfile
 {
   RISK_HIGH = 0,
-  RISK_LOW = 1
+  RISK_LOW = 1,
+  RISK_GOD = 2,
+  RISK_NORMAL = 3
 };
 input RiskProfile RiskMode = RISK_HIGH;
-input double LowRiskLegScale = 0.2;
+input double LowRiskLegScale = 0.10;
 input string SymbolAliases = "SPXUSD=SPX500,NDXUSD=NDX100,NIKKEIUSD=JPN225,WTIUSD=USOUSD,BTCUSD=BTCUSD,ETHUSD=ETHUSD";
 input bool EnforceAllowedSymbols = false;
 input string AllowedSymbols = "EURUSD*,GBPUSD*,USDJPY*,USDCHF*,USDCAD*,AUDUSD*,NZDUSD*,EURGBP*,EURJPY*,EURCHF*,EURAUD*,EURNZD*,EURCAD*,GBPJPY*,GBPCHF*,GBPAUD*,GBPNZD*,GBPCAD*,AUDJPY*,AUDCHF*,AUDCAD*,AUDNZD*,NZDJPY*,NZDCHF*,NZDCAD*,CADJPY*,CADCHF*,CHFJPY*,XAUUSD*,XAGUSD*,WTIUSD*,USOUSD*,SPXUSD*,NDXUSD*,NIKKEIUSD*,SPX500*,NDX100*,JPN225*,BTCUSD*,ETHUSD*";
@@ -241,6 +243,8 @@ string FormatIsoUtc(datetime value);
 string AccountStatusToString();
 int GetNextAddSeconds();
 int GetNextPollSeconds();
+double ProbeMarginCoverageForMode(const string symbol, const string assetClass, double &testLot, double &marginRequired);
+void LogBrokerCapability();
 
 //+------------------------------------------------------------------+
 int OnInit()
@@ -249,6 +253,7 @@ int OnInit()
   g_trade.SetDeviationInPoints(SlippagePoints);
 
   BuildAllowedKeys();
+  LogBrokerCapability();
   g_weekStartGmt = GetWeekStartGmt(TimeGMT());
   if(ResetStateOnInit)
   {
@@ -1065,18 +1070,112 @@ double GetOneToOneLotForSymbol(const string symbol, const string assetClass)
 
 double GetLegRiskScale()
 {
+  if(RiskMode == RISK_NORMAL)
+    return 0.25;
   if(RiskMode == RISK_LOW)
   {
     if(LowRiskLegScale <= 0.0)
       return 0.0;
     return LowRiskLegScale;
   }
+  // Legacy HIGH remains 1.0x (God semantics). Explicit GOD is also 1.0x.
   return 1.0;
 }
 
 string RiskModeToString()
 {
-  return (RiskMode == RISK_LOW ? "LOW" : "HIGH");
+  if(RiskMode == RISK_LOW)
+    return "LOW";
+  if(RiskMode == RISK_NORMAL)
+    return "NORMAL";
+  if(RiskMode == RISK_GOD)
+    return "GOD";
+  return "HIGH_LEGACY";
+}
+
+double ProbeMarginCoverageForMode(const string symbol, const string assetClass, double &testLot, double &marginRequired)
+{
+  testLot = 0.0;
+  marginRequired = 0.0;
+
+  double targetLot = 0.0;
+  double finalLot = 0.0;
+  double deviationPct = 0.0;
+  double equityPerSymbol = 0.0;
+  if(!ComputeOneToOneLot(symbol, assetClass, targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired))
+    return -1.0;
+
+  testLot = finalLot;
+  if(testLot <= 0.0)
+    return -2.0;
+
+  double price = SymbolInfoDouble(symbol, SYMBOL_ASK);
+  if(price <= 0.0)
+    price = SymbolInfoDouble(symbol, SYMBOL_BID);
+  if(price <= 0.0)
+    price = SymbolInfoDouble(symbol, SYMBOL_LAST);
+  if(price <= 0.0)
+    return -3.0;
+
+  if(!OrderCalcMargin(ORDER_TYPE_BUY, symbol, testLot, price, marginRequired))
+    return -4.0;
+  if(marginRequired <= 0.0)
+    return -5.0;
+
+  double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+  if(freeMargin <= 0.0)
+    return 0.0;
+  return freeMargin / marginRequired;
+}
+
+void LogBrokerCapability()
+{
+  string broker = AccountInfoString(ACCOUNT_COMPANY);
+  long leverage = AccountInfoInteger(ACCOUNT_LEVERAGE);
+  Log(StringFormat("Broker capability probe | Broker=%s | Leverage=1:%d | RiskMode=%s",
+                   broker, (int)leverage, RiskModeToString()));
+
+  string probeSymbols[2];
+  string probeAssetClasses[2];
+  probeSymbols[0] = "EURUSD";
+  probeSymbols[1] = "XAUUSD";
+  probeAssetClasses[0] = "fx";
+  probeAssetClasses[1] = "commodities";
+
+  for(int i = 0; i < 2; i++)
+  {
+    string resolved = "";
+    if(!ResolveSymbol(probeSymbols[i], resolved))
+    {
+      Log(StringFormat("Broker capability probe skipped %s (symbol unavailable)", probeSymbols[i]));
+      continue;
+    }
+
+    double testLot = 0.0;
+    double marginRequired = 0.0;
+    double coverage = ProbeMarginCoverageForMode(resolved, probeAssetClasses[i], testLot, marginRequired);
+    if(coverage < 0.0)
+    {
+      Log(StringFormat("Broker capability probe failed %s code=%.0f", resolved, coverage));
+      continue;
+    }
+
+    string capability = "LOW_ONLY";
+    if(coverage >= 4.0)
+      capability = "GOD_OK";
+    else if(coverage >= 1.0)
+      capability = "HIGH_OK";
+    else if(coverage >= 0.5)
+      capability = "NORMAL_OK";
+
+    Log(StringFormat("Capability %s lot=%.4f margin=%.2f free=%.2f coverage=%.2f -> %s",
+                     resolved,
+                     testLot,
+                     marginRequired,
+                     AccountInfoDouble(ACCOUNT_MARGIN_FREE),
+                     coverage,
+                     capability));
+  }
 }
 
 void ApplyRiskScale(const string symbol, double scale, double &targetLot, double &finalLot,

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import FilterBar from "@/components/common/FilterBar";
 import SummaryCard from "@/components/accounts/SummaryCard";
 import SimpleListTable from "@/components/accounts/SimpleListTable";
+import ManualExecutionSheetCard from "@/components/accounts/ManualExecutionSheetCard";
 import type { ClosedRow, SymbolRow } from "@/lib/accounts/accountClientViewRows";
 
 type PlannedSummary = {
@@ -32,12 +34,30 @@ type AccountTradesSectionProps = {
   copied: boolean;
   onCopyStopLoss: () => Promise<void>;
   plannedSummary?: PlannedSummary;
-  symbolRows: SymbolRow[];
+  liveSymbolRows: SymbolRow[];
+  reconcileSymbolRows: SymbolRow[];
   closedRows: ClosedRow[];
   metricLabel: string;
   sizeUnitLabel: string;
   openGridCols: string;
   rowGridCols: string;
+  manualExecution?: {
+    enabled: boolean;
+    accountLabel: string;
+    weekLabel: string;
+    currency: string;
+    equity: number;
+    defaultRiskMode?: string | null;
+    plannedPairs: Array<{
+      symbol: string;
+      net: number;
+      entryPrice?: number | null;
+      legs?: Array<{
+        model: string;
+        direction: string;
+      }>;
+    }>;
+  };
 };
 
 export default function AccountTradesSection(props: AccountTradesSectionProps) {
@@ -60,13 +80,17 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
     copied,
     onCopyStopLoss,
     plannedSummary,
-    symbolRows,
+    liveSymbolRows,
+    reconcileSymbolRows,
     closedRows,
     metricLabel,
     sizeUnitLabel,
     openGridCols,
     rowGridCols,
+    manualExecution,
   } = props;
+  const [openMode, setOpenMode] = useState<"live" | "reconcile">("live");
+  const symbolRows = openMode === "live" ? liveSymbolRows : reconcileSymbolRows;
 
   return (
     <div className="space-y-4">
@@ -88,7 +112,7 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
         <SummaryCard
           label="Net Exposure"
           value={isOanda ? `${netExposure.toFixed(0)} units` : `${netExposure.toFixed(2)}`}
-          hint="Planned net exposure"
+          hint="Planned net exposure (reconciliation)"
         />
       </div>
       {plannedPairsCount > 0 ? (
@@ -115,6 +139,47 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
         onSortChange={onSortChange}
         statusOptions={["open", "closed"]}
       />
+      {statusFilter === "open" ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-2">
+          <button
+            type="button"
+            onClick={() => setOpenMode("live")}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
+              openMode === "live"
+                ? "border-[var(--accent)]/50 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                : "border-[var(--panel-border)] bg-[var(--panel)] text-[var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+            }`}
+          >
+            Live Positions
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpenMode("reconcile")}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
+              openMode === "reconcile"
+                ? "border-[var(--accent)]/50 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                : "border-[var(--panel-border)] bg-[var(--panel)] text-[var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+            }`}
+          >
+            Planned vs Filled
+          </button>
+          <span className="ml-auto text-xs text-[color:var(--muted)]">
+            {openMode === "live"
+              ? "Source: live MT5 positions"
+              : "Source: model plan reconciled against live MT5 positions"}
+          </span>
+        </div>
+      ) : null}
+      {statusFilter === "open" && manualExecution?.enabled ? (
+        <ManualExecutionSheetCard
+          accountLabel={manualExecution.accountLabel}
+          weekLabel={manualExecution.weekLabel}
+          currency={manualExecution.currency}
+          equity={manualExecution.equity}
+          defaultRiskMode={manualExecution.defaultRiskMode}
+          plannedPairs={manualExecution.plannedPairs}
+        />
+      ) : null}
       {showStopLoss1pct && statusFilter === "open" && stopLossLines.length > 0 ? (
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -174,16 +239,31 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
       ) : null}
       {statusFilter === "open" ? (
         <SimpleListTable
-          columns={[
-            { key: "symbol", label: "Symbol" },
-            { key: "direction", label: "Direction" },
-            { key: "filled", label: "Filled" },
-            { key: "net", label: "Net" },
-            { key: "metric", label: metricLabel },
-            { key: "legs", label: "Legs" },
-          ]}
+          columns={
+            openMode === "live"
+              ? [
+                  { key: "symbol", label: "Symbol" },
+                  { key: "direction", label: "Direction" },
+                  { key: "filled", label: "Lots" },
+                  { key: "net", label: "Net" },
+                  { key: "metric", label: metricLabel },
+                  { key: "legs", label: "Legs" },
+                ]
+              : [
+                  { key: "symbol", label: "Symbol" },
+                  { key: "direction", label: "Direction" },
+                  { key: "filled", label: "Filled" },
+                  { key: "net", label: "Net" },
+                  { key: "metric", label: metricLabel },
+                  { key: "legs", label: "Legs" },
+                ]
+          }
           rows={symbolRows}
-          emptyState="No positions for this week."
+          emptyState={
+            openMode === "live"
+              ? "No live open positions for this week."
+              : "No planned/live reconciliation rows for this week."
+          }
           maxHeight={520}
           gridClassName={openGridCols}
           renderRow={(row) => {
@@ -199,10 +279,16 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
 
             const fmt = (val: number) => val.toFixed(isOanda ? 0 : 2);
             const filledText =
-              grossPlanned > 0 ? `${fmt(grossOpen)}/${fmt(grossPlanned)}` : `${fmt(grossOpen)}/—`;
+              openMode === "live"
+                ? `${fmt(grossOpen)}`
+                : grossPlanned > 0
+                  ? `${fmt(grossOpen)}/${fmt(grossPlanned)}`
+                  : `${fmt(grossOpen)}/—`;
             const netText =
               typeof netPlanned === "number"
-                ? netPlanned !== 0
+                ? openMode === "live"
+                  ? `${fmt(netOpen)}`
+                  : netPlanned !== 0
                   ? `${fmt(netOpen)}/${fmt(netPlanned)}`
                   : `${fmt(netOpen)}`
                 : `${fmt(netOpen)}`;
@@ -241,46 +327,50 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
                     {Number.isFinite(openPnl) ? openPnl.toFixed(2) : "—"}
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
-                    {Number(row.legsOpenCount ?? 0)}/{Number(row.legsPlannedCount ?? 0)}
+                    {openMode === "live"
+                      ? `${Number(row.legsOpenCount ?? 0)}`
+                      : `${Number(row.legsOpenCount ?? 0)}/${Number(row.legsPlannedCount ?? 0)}`}
                   </span>
                 </summary>
 
                 {expanded ? (
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
-                    <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3">
-                      <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                        Planned Legs
-                      </div>
-                      <div className="mt-2 space-y-2">
-                        {(row.plannedLegs ?? []).length === 0 ? (
-                          <div className="text-xs text-[color:var(--muted)]">No planned legs.</div>
-                        ) : (
-                          (row.plannedLegs ?? []).map((leg, idx) => (
-                            <div
-                              key={`${row.symbol}-planned-${idx}`}
-                              className="grid grid-cols-[1fr_0.7fr_0.9fr] gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs"
-                            >
-                              <div className="truncate text-[var(--foreground)]/90">
-                                {String(leg.model ?? "unknown")}
-                              </div>
+                  <div className={`mt-3 grid gap-3 ${openMode === "live" ? "" : "md:grid-cols-2"}`}>
+                    {openMode === "reconcile" ? (
+                      <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3">
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                          Planned Legs
+                        </div>
+                        <div className="mt-2 space-y-2">
+                          {(row.plannedLegs ?? []).length === 0 ? (
+                            <div className="text-xs text-[color:var(--muted)]">No planned legs.</div>
+                          ) : (
+                            (row.plannedLegs ?? []).map((leg, idx) => (
                               <div
-                                className={
-                                  String(leg.direction).toUpperCase() === "LONG"
-                                    ? "text-emerald-700"
-                                    : "text-rose-700"
-                                }
+                                key={`${row.symbol}-planned-${idx}`}
+                                className="grid grid-cols-[1fr_0.7fr_0.9fr] gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs"
                               >
-                                {String(leg.direction).toUpperCase()}
+                                <div className="truncate text-[var(--foreground)]/90">
+                                  {String(leg.model ?? "unknown")}
+                                </div>
+                                <div
+                                  className={
+                                    String(leg.direction).toUpperCase() === "LONG"
+                                      ? "text-emerald-700"
+                                      : "text-rose-700"
+                                  }
+                                >
+                                  {String(leg.direction).toUpperCase()}
+                                </div>
+                                <div className="text-right">
+                                  {Number.isFinite(Number(leg.units)) ? fmt(Number(leg.units)) : "—"}{" "}
+                                  {sizeUnitLabel}
+                                </div>
                               </div>
-                              <div className="text-right">
-                                {Number.isFinite(Number(leg.units)) ? fmt(Number(leg.units)) : "—"}{" "}
-                                {sizeUnitLabel}
-                              </div>
-                            </div>
-                          ))
-                        )}
+                            ))
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
 
                     <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3">
                       <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">

@@ -62,6 +62,7 @@ export type SymbolRow = {
   searchText: string;
   sortValue: number;
   symbol: string;
+  canonicalSymbol: string;
   plannedLong: number;
   plannedShort: number;
   plannedLegs: PlannedLegRow[];
@@ -71,6 +72,7 @@ export type SymbolRow = {
   openLegs: OpenLegRow[];
   legsPlannedCount: number;
   legsOpenCount: number;
+  hasOpenExposure: boolean;
 };
 
 export type ClosedRow = {
@@ -94,21 +96,44 @@ function parseManagedModel(tag: string) {
   return model || null;
 }
 
+function canonicalizeSymbol(rawSymbol: string) {
+  const upper = String(rawSymbol ?? "").trim().toUpperCase();
+  if (!upper) return "";
+  const firstPart = upper.split(".")[0] ?? upper;
+  return firstPart.replace(/[^A-Z0-9]/g, "");
+}
+
+function pickPreferredSymbol(existing: string | undefined, candidate: string) {
+  if (!candidate) return existing ?? "";
+  if (!existing) return candidate;
+  // Prefer broker/live symbol spelling because that's what users see in MT5.
+  if (existing.includes(".") && !candidate.includes(".")) return existing;
+  if (!existing.includes(".") && candidate.includes(".")) return candidate;
+  return existing;
+}
+
 export function buildSymbolRows(
   plannedPairs: PlannedPairLike[],
   openPositions: OpenPositionLike[],
 ): SymbolRow[] {
   const plannedMap = new Map<
     string,
-    { plannedLong: number; plannedShort: number; plannedLegs: PlannedLegRow[] }
+    { symbol: string; plannedLong: number; plannedShort: number; plannedLegs: PlannedLegRow[] }
   >();
   for (const pair of plannedPairs) {
-    const symbol = String(pair.symbol ?? "").trim().toUpperCase();
+    const rawSymbol = String(pair.symbol ?? "").trim().toUpperCase();
+    const symbol = canonicalizeSymbol(rawSymbol);
     if (!symbol) continue;
     if (!plannedMap.has(symbol)) {
-      plannedMap.set(symbol, { plannedLong: 0, plannedShort: 0, plannedLegs: [] });
+      plannedMap.set(symbol, {
+        symbol: rawSymbol,
+        plannedLong: 0,
+        plannedShort: 0,
+        plannedLegs: [],
+      });
     }
     const entry = plannedMap.get(symbol)!;
+    entry.symbol = pickPreferredSymbol(entry.symbol, rawSymbol);
     const legs = Array.isArray(pair.legs) ? pair.legs : [];
     for (const leg of legs) {
       const direction = String(leg.direction ?? "").toUpperCase();
@@ -134,15 +159,23 @@ export function buildSymbolRows(
 
   const openMap = new Map<
     string,
-    { openLong: number; openShort: number; openPnl: number; openLegs: OpenLegRow[] }
+    { symbol: string; openLong: number; openShort: number; openPnl: number; openLegs: OpenLegRow[] }
   >();
   for (const pos of openPositions) {
-    const symbol = String(pos.symbol ?? "").trim().toUpperCase();
+    const rawSymbol = String(pos.symbol ?? "").trim().toUpperCase();
+    const symbol = canonicalizeSymbol(rawSymbol);
     if (!symbol) continue;
     if (!openMap.has(symbol)) {
-      openMap.set(symbol, { openLong: 0, openShort: 0, openPnl: 0, openLegs: [] });
+      openMap.set(symbol, {
+        symbol: rawSymbol,
+        openLong: 0,
+        openShort: 0,
+        openPnl: 0,
+        openLegs: [],
+      });
     }
     const entry = openMap.get(symbol)!;
+    entry.symbol = pickPreferredSymbol(entry.symbol, rawSymbol);
     const side = String(pos.side ?? "").trim().toUpperCase() === "SELL" ? "SELL" : "BUY";
     const lots = Number(pos.lots ?? 0);
     const pnl = Number(pos.pnl ?? 0);
@@ -174,14 +207,29 @@ export function buildSymbolRows(
   );
 
   return symbols.map((symbol) => {
-    const planned = plannedMap.get(symbol) ?? { plannedLong: 0, plannedShort: 0, plannedLegs: [] };
-    const open = openMap.get(symbol) ?? { openLong: 0, openShort: 0, openPnl: 0, openLegs: [] };
-    return {
-      id: `sym-${symbol}`,
-      status: "open",
-      searchText: symbol,
-      sortValue: open.openPnl,
+    const planned = plannedMap.get(symbol) ?? {
       symbol,
+      plannedLong: 0,
+      plannedShort: 0,
+      plannedLegs: [],
+    };
+    const open = openMap.get(symbol) ?? {
+      symbol,
+      openLong: 0,
+      openShort: 0,
+      openPnl: 0,
+      openLegs: [],
+    };
+    const displaySymbol = open.symbol || planned.symbol || symbol;
+    const hasOpenExposure =
+      open.openLong > 0 || open.openShort > 0 || (Array.isArray(open.openLegs) && open.openLegs.length > 0);
+    return {
+      id: `sym-${displaySymbol}`,
+      status: "open",
+      searchText: `${displaySymbol} ${symbol}`,
+      sortValue: open.openPnl,
+      symbol: displaySymbol,
+      canonicalSymbol: symbol,
       plannedLong: planned.plannedLong,
       plannedShort: planned.plannedShort,
       plannedLegs: planned.plannedLegs,
@@ -191,6 +239,7 @@ export function buildSymbolRows(
       openLegs: open.openLegs,
       legsPlannedCount: planned.plannedLegs.length,
       legsOpenCount: open.openLegs.length,
+      hasOpenExposure,
     };
   });
 }

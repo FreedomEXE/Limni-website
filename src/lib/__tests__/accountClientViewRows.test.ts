@@ -59,4 +59,32 @@ describe("account client view row helpers", () => {
       rowType: "closed",
     });
   });
+
+  test("normalizes broker symbol suffixes when combining planned and live rows", () => {
+    const rows = buildSymbolRows(
+      [
+        {
+          symbol: "AUDCAD",
+          units: 5,
+          legs: [{ model: "sentiment", direction: "LONG", units: 5 }],
+        },
+      ],
+      [
+        {
+          symbol: "AUDCAD.i",
+          side: "BUY",
+          lots: 1.91,
+          pnl: 183.47,
+          legs: [{ id: "42", basket: "uni-AUDCAD-sentiment-1", side: "BUY", lots: 1.91, pnl: 183.47 }],
+        },
+      ],
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.canonicalSymbol).toBe("AUDCAD");
+    expect(rows[0]?.symbol).toBe("AUDCAD.I");
+    expect(rows[0]?.openLong).toBeCloseTo(1.91, 6);
+    expect(rows[0]?.plannedLong).toBeCloseTo(5, 6);
+    expect(rows[0]?.hasOpenExposure).toBe(true);
+  });
 });

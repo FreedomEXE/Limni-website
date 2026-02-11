@@ -13,6 +13,7 @@ type ConnectedPropsInput = {
     account_key: string;
     label: string | null;
     provider: "oanda" | "bitget" | "mt5";
+    risk_mode?: string | null;
     config: Record<string, unknown> | null;
     last_sync_utc: string | null;
   };
@@ -72,6 +73,7 @@ export function buildConnectedAccountClientViewProps(input: ConnectedPropsInput)
       title: account.label ?? account.account_key,
       providerLabel: account.provider.toUpperCase(),
       tradeModeLabel: resolveConnectedTradeModeLabel(account.config),
+      riskModeLabel: account.risk_mode ?? null,
       lastSync: account.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—",
       weekOptions: weekOptionsWithUpcoming,
       currentWeek: currentWeekOpenUtc,
