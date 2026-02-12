@@ -144,6 +144,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         { href: "/automation/research/universal", label: "Research · Universal" },
         { href: "/automation/research/baskets", label: "Research · Baskets" },
         { href: "/automation/research/symbols", label: "Research · Symbols" },
+        { href: "/automation/research/bank", label: "Research · Bank" },
       ];
     }
     if (activeSection === "accounts") {

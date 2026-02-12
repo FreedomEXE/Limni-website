@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/automation/research/universal", label: "Universal" },
   { href: "/automation/research/baskets", label: "Other Baskets" },
   { href: "/automation/research/symbols", label: "Symbols" },
+  { href: "/automation/research/bank", label: "Bank COT" },
 ];
 
 export default function ResearchSectionNav() {
