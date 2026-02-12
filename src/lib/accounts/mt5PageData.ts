@@ -10,6 +10,7 @@ import {
   readMt5DrawdownRange,
   readMt5EquityCurveByRange,
   readMt5ChangeLog,
+  readMt5FrozenPlan,
 } from "@/lib/mt5Store";
 import { getConnectedAccount } from "@/lib/connectedAccounts";
 import { buildBasketSignals } from "@/lib/basketSignals";
@@ -20,6 +21,7 @@ import { buildWeekOptionsWithCurrentAndNext, resolveRequestedWeek } from "@/lib/
 import type { OpenPositionLike } from "@/lib/accounts/mt5PageViewModel";
 import type { LotMapRow } from "@/lib/accounts/mt5ViewHelpers";
 import type { Mt5PlanningDiagnostics } from "@/lib/mt5Store";
+import type { Mt5FrozenPlan } from "@/lib/mt5Store";
 
 export type Mt5PageAccount = {
   id: string;
@@ -109,6 +111,7 @@ export async function loadMt5PageData(options: {
   let currentWeekNet = { net: 0, trades: 0 };
   let equityCurvePoints: { ts_utc: string; equity_pct: number; lock_pct: number | null }[] = [];
   let basketSignals: Awaited<ReturnType<typeof buildBasketSignals>> | null = null;
+  let frozenPlan: Mt5FrozenPlan | null = null;
 
   try {
     if (accountId.includes(":")) {
@@ -169,6 +172,7 @@ export async function loadMt5PageData(options: {
       }
     }
     basketSignals = await buildBasketSignals();
+    frozenPlan = await readMt5FrozenPlan(accountId, selectedWeek);
     if (selectedWeek && selectedWeek !== currentWeekOpenUtc) {
       let usedHistory = false;
       try {
@@ -204,5 +208,6 @@ export async function loadMt5PageData(options: {
     currentWeekNet,
     equityCurvePoints,
     basketSignals,
+    frozenPlan,
   };
 }

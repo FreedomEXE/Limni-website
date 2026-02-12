@@ -70,6 +70,8 @@ export async function buildMt5PlannedView(options: {
   nextWeekOpenUtc: string | null;
   forceFxOnlyPlanned: boolean;
   lotMapRows: LotMapRow[];
+  frozenLotMapRows?: LotMapRow[];
+  frozenBaselineEquity?: number | null;
   freeMargin: number;
   equity: number;
   currency: string;
@@ -82,6 +84,8 @@ export async function buildMt5PlannedView(options: {
     nextWeekOpenUtc,
     forceFxOnlyPlanned,
     lotMapRows,
+    frozenLotMapRows = [],
+    frozenBaselineEquity = null,
     freeMargin,
     equity,
     currency,
@@ -147,7 +151,10 @@ export async function buildMt5PlannedView(options: {
     });
   }
 
-  if (plannedPairs.length > 0 && lotMapRows.length > 0) {
+  const sizingLotMapRows =
+    Array.isArray(frozenLotMapRows) && frozenLotMapRows.length > 0 ? frozenLotMapRows : lotMapRows;
+
+  if (plannedPairs.length > 0 && sizingLotMapRows.length > 0) {
     const marginAvailable =
       Number.isFinite(freeMargin) && freeMargin > 0
         ? freeMargin
@@ -158,7 +165,7 @@ export async function buildMt5PlannedView(options: {
     let bestCaseMargin = 0.0;
 
     plannedPairs = plannedPairs.map((pair) => {
-      const sizing = findLotMapEntry(lotMapRows, pair.symbol);
+      const sizing = findLotMapEntry(sizingLotMapRows, pair.symbol);
       if (!sizing || !Number.isFinite(sizing.lot)) {
         return pair;
       }
@@ -210,6 +217,12 @@ export async function buildMt5PlannedView(options: {
     plannedPairs,
     plannedSummary,
     showStopLoss1pct,
+    sizingSource:
+      Array.isArray(frozenLotMapRows) && frozenLotMapRows.length > 0 ? "frozen_week_plan" : "live_lot_map",
+    sizingBaselineEquity:
+      Number.isFinite(Number(frozenBaselineEquity ?? NaN)) && Number(frozenBaselineEquity) > 0
+        ? Number(frozenBaselineEquity)
+        : null,
     planningMode: mode,
     planningDiagnostics: {
       rawApiLegCount: rawSignals.length,

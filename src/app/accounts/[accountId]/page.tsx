@@ -55,6 +55,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     currentWeekNet,
     equityCurvePoints,
     basketSignals,
+    frozenPlan,
   } = await loadMt5PageData({
     accountId,
     selectedWeek,
@@ -86,6 +87,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     nextWeekOpenUtc,
     forceFxOnlyPlanned,
     lotMapRows: account.lot_map ?? [],
+    frozenLotMapRows: frozenPlan?.lot_map ?? [],
+    frozenBaselineEquity: frozenPlan?.baseline_equity ?? null,
     freeMargin: Number(account.free_margin ?? 0),
     equity: Number(account.equity ?? 0),
     currency: String(account.currency ?? "USD"),
@@ -99,7 +102,13 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const maxDrawdownPct = computeMaxDrawdown(equityCurvePoints);
   const mt5ViewProps = buildMt5AccountClientViewProps({
     activeView,
-    account,
+    account: {
+      ...account,
+      baseline_equity:
+        Number(frozenPlan?.baseline_equity ?? 0) > 0
+          ? Number(frozenPlan?.baseline_equity ?? 0)
+          : Number(account.baseline_equity ?? 0),
+    },
     weekOptions,
     currentWeekOpenUtc,
     selectedWeek,

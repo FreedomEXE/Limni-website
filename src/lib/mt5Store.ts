@@ -70,6 +70,14 @@ export type Mt5PlanningDiagnostics = {
   capacity_limit_reason?: string;
 };
 
+export type Mt5FrozenPlan = {
+  account_id: string;
+  week_open_utc: string;
+  lot_map: Mt5LotMapEntry[];
+  baseline_equity: number;
+  captured_sync_utc: string;
+};
+
 export type Mt5ClosedPosition = {
   ticket: number;
   symbol: string;
@@ -430,6 +438,30 @@ export async function upsertMt5Account(
         ]
       );
 
+      // Freeze weekly sizing on first push for the week to keep planned sizes stable.
+      const weekOpenUtc = weekOpenUtcForTimestamp(snapshot.last_sync_utc);
+      if (
+        weekOpenUtc &&
+        Array.isArray(snapshot.lot_map) &&
+        snapshot.lot_map.length > 0 &&
+        Number.isFinite(snapshot.baseline_equity) &&
+        snapshot.baseline_equity > 0
+      ) {
+        await client.query(
+          `INSERT INTO mt5_weekly_plans (
+             account_id, week_open_utc, lot_map, baseline_equity, captured_sync_utc
+           ) VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (account_id, week_open_utc) DO NOTHING`,
+          [
+            snapshot.account_id,
+            new Date(weekOpenUtc),
+            JSON.stringify(snapshot.lot_map),
+            snapshot.baseline_equity,
+            new Date(snapshot.last_sync_utc),
+          ],
+        );
+      }
+
       // Delete old positions for this account
       await client.query("DELETE FROM mt5_positions WHERE account_id = $1", [
         snapshot.account_id,
@@ -577,9 +609,21 @@ export async function ensureMt5AccountSchema() {
     ALTER TABLE mt5_accounts
     ADD COLUMN IF NOT EXISTS planning_diagnostics JSONB
   `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS mt5_weekly_plans (
+      account_id VARCHAR(64) NOT NULL,
+      week_open_utc TIMESTAMP NOT NULL,
+      lot_map JSONB NOT NULL,
+      baseline_equity NUMERIC(18,2) NOT NULL,
+      captured_sync_utc TIMESTAMP NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (account_id, week_open_utc)
+    )
+  `);
 }
 
-function weekOpenUtcForTimestamp(timestamp: string): string {
+export function weekOpenUtcForTimestamp(timestamp: string): string {
   const parsed = DateTime.fromISO(timestamp, { zone: "utc" });
   if (!parsed.isValid) {
     return timestamp;
@@ -600,6 +644,36 @@ function weekOpenUtcForTimestamp(timestamp: string): string {
   });
 
   return open.toUTC().toISO() ?? timestamp;
+}
+
+export async function readMt5FrozenPlan(
+  accountId: string,
+  weekOpenUtc: string,
+): Promise<Mt5FrozenPlan | null> {
+  const week = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  if (!week.isValid) return null;
+  const row = await queryOne<{
+    account_id: string;
+    week_open_utc: Date;
+    lot_map: Mt5LotMapEntry[] | string;
+    baseline_equity: string;
+    captured_sync_utc: Date;
+  }>(
+    `SELECT account_id, week_open_utc, lot_map, baseline_equity, captured_sync_utc
+     FROM mt5_weekly_plans
+     WHERE account_id = $1
+       AND week_open_utc = $2
+     LIMIT 1`,
+    [accountId, week.toJSDate()],
+  );
+  if (!row) return null;
+  return {
+    account_id: row.account_id,
+    week_open_utc: row.week_open_utc.toISOString(),
+    lot_map: parseJsonArray<Mt5LotMapEntry>(row.lot_map) ?? [],
+    baseline_equity: Number(row.baseline_equity),
+    captured_sync_utc: row.captured_sync_utc.toISOString(),
+  };
 }
 
 export function isMt5WeekOpenUtc(isoValue: string): boolean {

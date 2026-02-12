@@ -58,6 +58,18 @@ export async function POST(request: Request) {
       ALTER TABLE mt5_accounts
       ADD COLUMN IF NOT EXISTS planning_diagnostics JSONB
     `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mt5_weekly_plans (
+        account_id VARCHAR(64) NOT NULL,
+        week_open_utc TIMESTAMP NOT NULL,
+        lot_map JSONB NOT NULL,
+        baseline_equity NUMERIC(18,2) NOT NULL,
+        captured_sync_utc TIMESTAMP NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (account_id, week_open_utc)
+      )
+    `);
 
     // Get list of created tables
     const result = await pool.query(`
