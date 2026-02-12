@@ -15,6 +15,7 @@ import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
 import {
   buildWeekOptionsFromCurve,
   computeMaxDrawdown,
+  computeStaticDrawdown,
   pickParam,
   pickParams,
 } from "@/lib/research/common";
@@ -112,6 +113,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
       : [{ id: selectedModel, label: selectedModel, points: buildCurveForSummary(summary) }];
 
   const chartDd = Math.max(...series.map((row) => computeMaxDrawdown(row.points)));
+  const chartStaticDd = Math.max(...series.map((row) => computeStaticDrawdown(row.points)));
   const selectedMode = modeParam === "isolate" ? "isolate" : "compare";
 
   return (
@@ -187,7 +189,12 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
               <KpiCard label="Symbols" value={`${summary.rows.length}`} />
             </KpiGroup>
             <KpiGroup title="Risk" description="Drawdown and exposure context for the chart.">
-              <KpiCard label="Chart DD %" value={`${chartDd.toFixed(2)}%`} tone="negative" />
+              <KpiCard
+                label="Chart DD (static) %"
+                value={`${chartStaticDd.toFixed(2)}%`}
+                tone="negative"
+                hint={`Trailing ${chartDd.toFixed(2)}%`}
+              />
               <KpiCard label="Trades" value={`${summary.priced_trades}/${summary.total_trades}`} />
               <KpiCard
                 label="Focused week"
@@ -205,6 +212,16 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
               }
               series={series}
               interactive
+              watermarkText={
+                selectedSymbols.length === 1
+                  ? selectedSymbols[0]
+                  : selectedSymbols.length > 1
+                    ? "Multiple"
+                    : selectedModel === "all"
+                      ? "Mixed"
+                      : selectedModel
+              }
+              referenceEquityUsd={100000}
             />
           </div>
 

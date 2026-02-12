@@ -8,7 +8,7 @@ import KpiGroup from "@/components/metrics/KpiGroup";
 import KpiCard from "@/components/metrics/KpiCard";
 import DebugReadout from "@/components/DebugReadout";
 import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
-import { computeMaxDrawdown, pickParam } from "@/lib/research/common";
+import { computeMaxDrawdown, computeStaticDrawdown, pickParam } from "@/lib/research/common";
 
 export const revalidate = 900;
 
@@ -43,6 +43,9 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
       : null;
   const selectedWeekDrawdown = selectedUniversalWeek
     ? computeMaxDrawdown(selectedUniversalWeek.equity_curve)
+    : 0;
+  const selectedWeekStaticDrawdown = selectedUniversalWeek
+    ? computeStaticDrawdown(selectedUniversalWeek.equity_curve)
     : 0;
 
   return (
@@ -118,9 +121,10 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
                 <KpiCard label="Week" value={selectedUniversalWeek.week_label.replace("Week of ", "")} />
                 <KpiCard label="Raw %" value={`${selectedUniversalWeek.total_percent.toFixed(2)}%`} />
                 <KpiCard
-                  label="Max DD %"
-                  value={`${selectedWeekDrawdown.toFixed(2)}%`}
-                  tone={selectedWeekDrawdown > 0 ? "negative" : "neutral"}
+                  label="DD (static) %"
+                  value={`${selectedWeekStaticDrawdown.toFixed(2)}%`}
+                  tone={selectedWeekStaticDrawdown > 0 ? "negative" : "neutral"}
+                  hint={`Trailing ${selectedWeekDrawdown.toFixed(2)}%`}
                 />
               </KpiGroup>
             ) : (
@@ -172,6 +176,8 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
               title={`${selectedUniversalWeek?.week_label ?? "Selected week"} equity curve`}
               points={selectedUniversalWeek?.equity_curve ?? []}
               interactive
+              watermarkText="Universal"
+              referenceEquityUsd={100000}
             />
           </div>
         </section>

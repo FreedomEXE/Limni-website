@@ -38,7 +38,8 @@ type Mt5PagePropsInput = {
   showStopLoss1pct: boolean;
   weeklyPnlToShow: number;
   basketPnlToShow: number;
-  maxDrawdownPct: number;
+  staticDrawdownPct: number;
+  trailingDrawdownPct: number;
   filteredOpenPositions: OpenPositionLike[];
   filteredClosedPositions: Mt5Position[];
   plannedPairs: PlannedPair[];
@@ -51,7 +52,15 @@ type Mt5PagePropsInput = {
   } | null;
   planningDiagnostics?: Mt5PlanningDiagnostics;
   planningMode?: "available" | "missing" | "legacy" | "disabled";
-  equityCurvePoints: { ts_utc: string; equity_pct: number; lock_pct: number | null }[];
+  equityCurvePoints: {
+    ts_utc: string;
+    equity_pct: number;
+    lock_pct: number | null;
+    equity_usd?: number;
+    static_baseline_usd?: number | null;
+    static_drawdown_pct?: number;
+    trailing_drawdown_pct?: number;
+  }[];
   changeLog: Array<{ strategy?: string | null; title: string }>;
 };
 
@@ -66,7 +75,8 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
     showStopLoss1pct,
     weeklyPnlToShow,
     basketPnlToShow,
-    maxDrawdownPct,
+    staticDrawdownPct,
+    trailingDrawdownPct,
     filteredOpenPositions,
     filteredClosedPositions,
     plannedPairs,
@@ -117,7 +127,8 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
     },
     kpi: {
       weeklyPnlPct: weeklyPnlToShow,
-      maxDrawdownPct,
+      staticDrawdownPct,
+      trailingDrawdownPct,
       tradesThisWeek: Number(account.trade_count_week ?? 0),
       openPositions: filteredOpenPositions.length,
       baselineEquity: Number(account.baseline_equity ?? 0),
@@ -137,6 +148,7 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
     equity: {
       title: "Weekly equity curve (%)",
       points: equityCurvePoints,
+      watermarkText: String(account.label ?? "Manual"),
     },
     debug: {
       selectedWeekKey: selectedWeek ?? currentWeekOpenUtc,

@@ -24,6 +24,9 @@ export type ResearchConfig = {
     order: "grouped_by_symbol" | "leg_sequence";
   };
   risk: {
+    startingEquity?: number;
+    riskMode?: string;
+    sizingModel?: "broker_native" | "fixed_risk" | "vol_target" | "custom";
     marginBuffer: number;
     leverage?: number;
     sizing: "broker_native" | "fixed_risk";
@@ -47,7 +50,8 @@ export type ResearchRunResult = {
   };
   headline: {
     totalReturnPct: number;
-    maxDrawdownPct: number;
+    staticDrawdownPct: number;
+    trailingDrawdownPct: number;
     winRatePct: number;
     trades: number;
     pricedTrades: number;
@@ -57,9 +61,26 @@ export type ResearchRunResult = {
     peakMarginUsedPct: number;
     fillRatePct: number;
   };
-  equityCurve: Array<{ ts_utc: string; equity_pct: number; lock_pct: number | null }>;
-  weekly: Array<{ week_open_utc: string; return_pct: number; drawdown_pct: number }>;
-  byModel: Array<{ model: string; return_pct: number; drawdown_pct: number; trades: number }>;
+  equityCurve: Array<{
+    ts_utc: string;
+    equity_pct: number;
+    equity_usd?: number;
+    static_baseline_usd?: number | null;
+    lock_pct: number | null;
+  }>;
+  weekly: Array<{
+    week_open_utc: string;
+    return_pct: number;
+    static_drawdown_pct: number;
+    trailing_drawdown_pct: number;
+  }>;
+  byModel: Array<{
+    model: string;
+    return_pct: number;
+    static_drawdown_pct: number;
+    trailing_drawdown_pct: number;
+    trades: number;
+  }>;
   bySymbol: Array<{ symbol: string; return_pct: number; win_rate_pct: number; trades: number }>;
   byWeekday?: Array<{ weekday: number; return_pct: number; trades: number }>;
 };

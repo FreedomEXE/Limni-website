@@ -1,4 +1,8 @@
 import { DateTime } from "luxon";
+import {
+  computeStaticDrawdownPctFromPercentCurve,
+  computeTrailingDrawdownPct,
+} from "@/lib/risk/drawdown";
 
 const percentFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -14,18 +18,11 @@ export function formatPercent(value: number) {
 }
 
 export function computeMaxDrawdown(points: { equity_pct: number }[]) {
-  let peak = Number.NEGATIVE_INFINITY;
-  let maxDrawdown = 0;
-  for (const point of points) {
-    if (point.equity_pct > peak) {
-      peak = point.equity_pct;
-    }
-    const drawdown = peak - point.equity_pct;
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
-    }
-  }
-  return maxDrawdown;
+  return computeTrailingDrawdownPct(points.map((point) => point.equity_pct));
+}
+
+export function computeStaticDrawdown(points: { equity_pct: number }[]) {
+  return computeStaticDrawdownPctFromPercentCurve(points);
 }
 
 export function extendToWindow<T extends { ts_utc: string }>(

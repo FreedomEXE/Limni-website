@@ -1,4 +1,8 @@
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import {
+  computeStaticDrawdownPctFromPercentCurve,
+  computeTrailingDrawdownPct,
+} from "@/lib/risk/drawdown";
 
 export function pickParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -14,15 +18,11 @@ export function pickParams(value: string | string[] | undefined) {
 }
 
 export function computeMaxDrawdown(points: Array<{ equity_pct: number }>) {
-  if (points.length === 0) return 0;
-  let peak = points[0].equity_pct;
-  let maxDd = 0;
-  for (const point of points) {
-    if (point.equity_pct > peak) peak = point.equity_pct;
-    const drawdown = peak - point.equity_pct;
-    if (drawdown > maxDd) maxDd = drawdown;
-  }
-  return maxDd;
+  return computeTrailingDrawdownPct(points.map((point) => point.equity_pct));
+}
+
+export function computeStaticDrawdown(points: Array<{ equity_pct: number }>) {
+  return computeStaticDrawdownPctFromPercentCurve(points);
 }
 
 export function buildWeekOptionsFromCurve(points: Array<{ ts_utc: string }>) {

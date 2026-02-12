@@ -196,7 +196,8 @@ export default function AccountClientView({
           <AccountKpiRow
             key={debug.selectedWeekKey}
             weeklyPnlPct={kpi.weeklyPnlPct}
-            maxDrawdownPct={kpi.maxDrawdownPct}
+            staticDrawdownPct={kpi.staticDrawdownPct}
+            trailingDrawdownPct={kpi.trailingDrawdownPct}
             tradesThisWeek={kpi.tradesThisWeek}
             openPositions={kpi.openPositions}
             equity={kpi.equity}

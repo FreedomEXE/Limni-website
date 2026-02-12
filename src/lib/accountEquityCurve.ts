@@ -12,6 +12,10 @@ export type AccountEquityPoint = {
   lock_pct: number | null;
   balance: number;
   equity: number;
+  equity_usd?: number;
+  static_baseline_usd?: number | null;
+  static_drawdown_pct?: number;
+  trailing_drawdown_pct?: number;
 };
 
 /**
@@ -63,6 +67,10 @@ export async function buildAccountEquityCurve(
       lock_pct: null,
       balance: balanceValue,
       equity: startingEquity,
+      equity_usd: startingEquity,
+      static_baseline_usd: startingEquity > 0 ? startingEquity : null,
+      static_drawdown_pct: 0,
+      trailing_drawdown_pct: 0,
     },
     {
       ts_utc: curveEnd.toISO()!,
@@ -70,6 +78,11 @@ export async function buildAccountEquityCurve(
       lock_pct: lockedProfitPct,
       balance: balanceValue,
       equity: currentEquity,
+      equity_usd: currentEquity,
+      static_baseline_usd: startingEquity > 0 ? startingEquity : null,
+      static_drawdown_pct:
+        startingEquity > 0 ? Math.max(0, ((startingEquity - currentEquity) / startingEquity) * 100) : 0,
+      trailing_drawdown_pct: Math.max(0, -weeklyPnlPct),
     },
   ];
 }
@@ -111,6 +124,10 @@ export async function buildAccountAllTimeEquityCurve(
       lock_pct: null,
       balance: 0,
       equity: 0,
+      equity_usd: balanceValue,
+      static_baseline_usd: balanceValue > 0 ? balanceValue : null,
+      static_drawdown_pct: 0,
+      trailing_drawdown_pct: 0,
     },
     {
       ts_utc: now.toISO()!,
@@ -118,6 +135,11 @@ export async function buildAccountAllTimeEquityCurve(
       lock_pct: lockedProfitPct,
       balance: balanceValue,
       equity: currentEquity,
+      equity_usd: currentEquity,
+      static_baseline_usd: balanceValue > 0 ? balanceValue : null,
+      static_drawdown_pct:
+        balanceValue > 0 ? Math.max(0, ((balanceValue - currentEquity) / balanceValue) * 100) : 0,
+      trailing_drawdown_pct: Math.max(0, -totalPnlPct),
     },
   ];
 }

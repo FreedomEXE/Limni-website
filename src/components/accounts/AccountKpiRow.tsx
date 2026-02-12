@@ -5,7 +5,8 @@ import Link from "next/link";
 
 type AccountKpiRowProps = {
   weeklyPnlPct: number;
-  maxDrawdownPct: number;
+  staticDrawdownPct: number;
+  trailingDrawdownPct: number;
   tradesThisWeek: number;
   openPositions?: number;
   equity: number;
@@ -31,7 +32,8 @@ function formatPercent(value: number) {
 
 export default function AccountKpiRow({
   weeklyPnlPct,
-  maxDrawdownPct,
+  staticDrawdownPct,
+  trailingDrawdownPct,
   tradesThisWeek,
   openPositions,
   equity,
@@ -82,10 +84,10 @@ export default function AccountKpiRow({
       </CardWrapper>
       <CardWrapper>
         <KpiCard
-          label="Max DD (week)"
-          value={formatPercent(maxDrawdownPct)}
-          tone={maxDrawdownPct > 0 ? "negative" : "neutral"}
-          hint={scopeLabel}
+          label="DD (static)"
+          value={formatPercent(staticDrawdownPct)}
+          tone={staticDrawdownPct > 0 ? "negative" : "neutral"}
+          hint={`Trailing ${formatPercent(trailingDrawdownPct)}`}
         />
       </CardWrapper>
       <CardWrapper>

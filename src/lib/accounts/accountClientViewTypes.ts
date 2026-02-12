@@ -92,7 +92,8 @@ export type AccountClientViewProps = {
   header: HeaderConfig;
   kpi: {
     weeklyPnlPct: number;
-    maxDrawdownPct: number;
+    staticDrawdownPct: number;
+    trailingDrawdownPct: number;
     tradesThisWeek: number;
     openPositions?: number;
     baselineEquity?: number;
@@ -117,7 +118,16 @@ export type AccountClientViewProps = {
   };
   equity: {
     title: string;
-    points: { ts_utc: string; equity_pct: number; lock_pct: number | null }[];
+    points: {
+      ts_utc: string;
+      equity_pct: number;
+      lock_pct: number | null;
+      equity_usd?: number;
+      static_baseline_usd?: number | null;
+      static_drawdown_pct?: number;
+      trailing_drawdown_pct?: number;
+    }[];
+    watermarkText?: string;
   };
   debug: {
     selectedWeekKey: string;

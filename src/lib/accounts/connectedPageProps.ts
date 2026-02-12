@@ -43,8 +43,17 @@ type ConnectedPropsInput = {
     scale?: number | null;
     currency?: string | null;
   } | null;
-  equityCurve: { ts_utc: string; equity_pct: number; lock_pct: number | null }[];
-  maxDrawdownPct: number;
+  equityCurve: {
+    ts_utc: string;
+    equity_pct: number;
+    lock_pct: number | null;
+    equity_usd?: number;
+    static_baseline_usd?: number | null;
+    static_drawdown_pct?: number;
+    trailing_drawdown_pct?: number;
+  }[];
+  staticDrawdownPct: number;
+  trailingDrawdownPct: number;
   mappedRows: Array<{ symbol: string; instrument: string; available: boolean }>;
   openPositions: NormalizedOpenPosition[];
 };
@@ -61,7 +70,8 @@ export function buildConnectedAccountClientViewProps(input: ConnectedPropsInput)
     plannedNote,
     plannedSummary,
     equityCurve,
-    maxDrawdownPct,
+    staticDrawdownPct,
+    trailingDrawdownPct,
     mappedRows,
     openPositions,
   } = input;
@@ -89,7 +99,8 @@ export function buildConnectedAccountClientViewProps(input: ConnectedPropsInput)
     },
     kpi: {
       weeklyPnlPct: stats.weeklyPnlPct,
-      maxDrawdownPct,
+      staticDrawdownPct,
+      trailingDrawdownPct,
       tradesThisWeek: stats.tradesThisWeek,
       openPositions: stats.openPositions,
       equity: stats.equity,
@@ -107,6 +118,10 @@ export function buildConnectedAccountClientViewProps(input: ConnectedPropsInput)
     equity: {
       title: selectedWeek === "all" ? "All-time equity curve" : "Weekly equity curve (%)",
       points: equityCurve,
+      watermarkText:
+        account.provider === "mt5"
+          ? "Manual"
+          : account.label ?? account.provider.toUpperCase(),
     },
     debug: {
       selectedWeekKey: selectedWeek === "all" ? "all" : String(selectedWeek),

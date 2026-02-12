@@ -17,6 +17,11 @@ import { buildBasketSignals } from "@/lib/basketSignals";
 import { readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import { signalsFromSnapshots } from "@/lib/plannedTrades";
 import { extendToWindow } from "@/lib/accounts/viewUtils";
+import {
+  computeStaticDrawdownPctFromBaseline,
+  computeTrailingDrawdownPct,
+  deriveStaticBaselineEquity,
+} from "@/lib/risk/drawdown";
 import { buildWeekOptionsWithCurrentAndNext, resolveRequestedWeek } from "@/lib/accounts/weekOptions";
 import type { OpenPositionLike } from "@/lib/accounts/mt5PageViewModel";
 import type { LotMapRow } from "@/lib/accounts/mt5ViewHelpers";
@@ -109,7 +114,15 @@ export async function loadMt5PageData(options: {
   let closedPositions: Awaited<ReturnType<typeof readMt5ClosedPositionsByWeek>> = [];
   let changeLog: Awaited<ReturnType<typeof readMt5ChangeLog>> = [];
   let currentWeekNet = { net: 0, trades: 0 };
-  let equityCurvePoints: { ts_utc: string; equity_pct: number; lock_pct: number | null }[] = [];
+  let equityCurvePoints: {
+    ts_utc: string;
+    equity_pct: number;
+    lock_pct: number | null;
+    equity_usd?: number;
+    static_baseline_usd?: number | null;
+    static_drawdown_pct?: number;
+    trailing_drawdown_pct?: number;
+  }[] = [];
   let basketSignals: Awaited<ReturnType<typeof buildBasketSignals>> | null = null;
   let frozenPlan: Mt5FrozenPlan | null = null;
 
@@ -155,7 +168,14 @@ export async function loadMt5PageData(options: {
         `[MT5 KPI] account=${accountId} week=${weekOpen} equitySnapshots=${snapshots.length}`,
       );
       if (snapshots.length > 0) {
-        const startEquity = snapshots[0].equity;
+        const baselines = deriveStaticBaselineEquity(
+          snapshots.map((point) => ({
+            equity: point.equity,
+            balance: point.balance,
+            openPositions: point.open_positions,
+          })),
+          null,
+        );
         const lockedProfitRaw = account?.locked_profit_pct;
         const lockPct =
           typeof lockedProfitRaw === "number" &&
@@ -163,11 +183,22 @@ export async function loadMt5PageData(options: {
           lockedProfitRaw > 0
             ? lockedProfitRaw
             : null;
-        equityCurvePoints = snapshots.map((point) => ({
-          ts_utc: point.snapshot_at,
-          equity_pct: startEquity > 0 ? ((point.equity - startEquity) / startEquity) * 100 : 0,
-          lock_pct: lockPct,
-        }));
+        const equityValues: number[] = [];
+        equityCurvePoints = snapshots.map((point, idx) => {
+          const baseline = baselines[idx];
+          const equityPct =
+            baseline && baseline > 0 ? ((point.equity - baseline) / baseline) * 100 : 0;
+          equityValues.push(point.equity);
+          return {
+            ts_utc: point.snapshot_at,
+            equity_pct: equityPct,
+            lock_pct: lockPct,
+            equity_usd: point.equity,
+            static_baseline_usd: baseline,
+            static_drawdown_pct: computeStaticDrawdownPctFromBaseline(point.equity, baseline),
+            trailing_drawdown_pct: computeTrailingDrawdownPct(equityValues),
+          };
+        });
         equityCurvePoints = extendToWindow(equityCurvePoints, weekEnd);
       }
     }

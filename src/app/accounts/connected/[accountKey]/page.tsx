@@ -70,7 +70,8 @@ export default async function ConnectedAccountPage({
     weekParamValue,
   });
 
-  const { stats, basketSignals, equityCurve, maxDrawdownPct } = await loadConnectedWeekData({
+  const { stats, basketSignals, equityCurve, staticDrawdownPct, trailingDrawdownPct } =
+    await loadConnectedWeekData({
     accountKey: account.account_key,
     selectedWeek,
     currentWeekOpenUtc,
@@ -125,7 +126,8 @@ export default async function ConnectedAccountPage({
     plannedNote,
     plannedSummary,
     equityCurve,
-    maxDrawdownPct,
+    staticDrawdownPct,
+    trailingDrawdownPct,
     mappedRows,
     openPositions,
   });

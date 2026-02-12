@@ -6,7 +6,16 @@ import SummaryCard from "@/components/accounts/SummaryCard";
 type AccountOverviewSectionProps = {
   equity: {
     title: string;
-    points: { ts_utc: string; equity_pct: number; lock_pct: number | null }[];
+    points: {
+      ts_utc: string;
+      equity_pct: number;
+      lock_pct: number | null;
+      equity_usd?: number;
+      static_baseline_usd?: number | null;
+      static_drawdown_pct?: number;
+      trailing_drawdown_pct?: number;
+    }[];
+    watermarkText?: string;
   };
   overview: {
     openPositions: number;
@@ -22,7 +31,12 @@ export default function AccountOverviewSection({
 }: AccountOverviewSectionProps) {
   return (
     <div className="space-y-4">
-      <EquityCurveChart points={equity.points} title={equity.title} interactive={false} />
+      <EquityCurveChart
+        points={equity.points}
+        title={equity.title}
+        interactive={false}
+        watermarkText={equity.watermarkText}
+      />
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard
           label="Open Positions"

@@ -9,7 +9,7 @@ import { buildPerModelBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
 import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
-import { computeMaxDrawdown, pickParam } from "@/lib/research/common";
+import { computeMaxDrawdown, computeStaticDrawdown, pickParam } from "@/lib/research/common";
 
 export const revalidate = 900;
 
@@ -70,6 +70,9 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
       : null;
   const selectedModelWeekDrawdown = selectedModelWeek
     ? computeMaxDrawdown(selectedModelWeek.equity_curve)
+    : 0;
+  const selectedModelWeekStaticDrawdown = selectedModelWeek
+    ? computeStaticDrawdown(selectedModelWeek.equity_curve)
     : 0;
 
   return (
@@ -150,9 +153,10 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
                   value={`${(selectedModelWeek?.observed_peak_percent ?? 0).toFixed(2)}%`}
                 />
                 <KpiCard
-                  label="Max DD % (week)"
-                  value={`${selectedModelWeekDrawdown.toFixed(2)}%`}
-                  tone={selectedModelWeekDrawdown > 0 ? "negative" : "neutral"}
+                  label="DD (static) % (week)"
+                  value={`${selectedModelWeekStaticDrawdown.toFixed(2)}%`}
+                  tone={selectedModelWeekStaticDrawdown > 0 ? "negative" : "neutral"}
+                  hint={`Trailing ${selectedModelWeekDrawdown.toFixed(2)}%`}
                 />
                 <KpiCard
                   label="Trail hit"
@@ -164,6 +168,8 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
                   title={`${selectedModel.model_label} ${selectedModelWeek?.week_label ?? "week"} equity curve`}
                   points={selectedModelWeek?.equity_curve ?? []}
                   interactive
+                  watermarkText={selectedModel.model_label}
+                  referenceEquityUsd={100000}
                 />
               </div>
             </div>
@@ -211,9 +217,9 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span>Max DD (week)</span>
+                        <span>DD (static) (week)</span>
                         <span>
-                          {computeMaxDrawdown(
+                          {computeStaticDrawdown(
                             model.by_week.find((row) => row.week_open_utc === selectedWeek)?.equity_curve ?? [],
                           ).toFixed(2)}
                           %

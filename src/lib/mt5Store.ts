@@ -165,6 +165,7 @@ export type Mt5EquityPoint = {
   snapshot_at: string;
   equity: number;
   balance: number;
+  open_positions: number;
   basket_pnl_pct: number;
   weekly_pnl_pct: number;
 };
@@ -973,11 +974,12 @@ export async function readMt5EquityCurveByRange(
   const rows = await query<{
     equity: string;
     balance: string;
+    open_positions: number;
     basket_pnl_pct: string;
     weekly_pnl_pct: string;
     snapshot_at: Date;
   }>(
-    `SELECT equity, balance, basket_pnl_pct, weekly_pnl_pct, snapshot_at
+    `SELECT equity, balance, open_positions, basket_pnl_pct, weekly_pnl_pct, snapshot_at
      FROM mt5_snapshots
      WHERE account_id = $1
        AND snapshot_at >= $2
@@ -990,6 +992,7 @@ export async function readMt5EquityCurveByRange(
     snapshot_at: row.snapshot_at.toISOString(),
     equity: Number(row.equity),
     balance: Number(row.balance),
+    open_positions: Number(row.open_positions ?? 0),
     basket_pnl_pct: Number(row.basket_pnl_pct),
     weekly_pnl_pct: Number(row.weekly_pnl_pct),
   }));

@@ -503,7 +503,10 @@ export default function ResearchLabClient() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <Kpi label="Return" value={`${result.headline.totalReturnPct.toFixed(2)}%`} />
-            <Kpi label="Max DD" value={`${result.headline.maxDrawdownPct.toFixed(2)}%`} />
+            <Kpi
+              label="DD (static)"
+              value={`${result.headline.staticDrawdownPct.toFixed(2)}%`}
+            />
             <Kpi label="Win Rate" value={`${result.headline.winRatePct.toFixed(2)}%`} />
             <Kpi label="Trades" value={`${result.headline.pricedTrades}/${result.headline.trades}`} />
             <Kpi label="Fill Rate" value={`${result.risk.fillRatePct.toFixed(2)}%`} />
@@ -512,6 +515,8 @@ export default function ResearchLabClient() {
             title="Research Lab Equity Curve"
             series={chartSeries}
             interactive
+            watermarkText="Mixed"
+            referenceEquityUsd={result.equityCurve[0]?.static_baseline_usd ?? 100000}
           />
           <div className="grid gap-4 lg:grid-cols-3">
             <DataTable
@@ -520,7 +525,7 @@ export default function ResearchLabClient() {
               rows={result.byModel.map((row) => [
                 row.model,
                 pct(row.return_pct),
-                pct(row.drawdown_pct),
+                pct(row.static_drawdown_pct),
                 String(row.trades),
               ])}
             />

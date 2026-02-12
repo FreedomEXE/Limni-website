@@ -6,7 +6,7 @@ import { getAccountStatsForWeek } from "@/lib/accountStats";
 import { buildAccountEquityCurve } from "@/lib/accountEquityCurve";
 import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
 import { DateTime } from "luxon";
-import { computeMaxDrawdown, extendToWindow } from "@/lib/accounts/viewUtils";
+import { computeMaxDrawdown, computeStaticDrawdown, extendToWindow } from "@/lib/accounts/viewUtils";
 
 export async function resolveConnectedWeekContext(options: {
   accountKey: string;
@@ -68,12 +68,14 @@ export async function loadConnectedWeekData(options: {
       ? DateTime.fromISO(String(selectedWeek), { zone: "utc" }).plus({ days: 7 }).toUTC().toISO()
       : null;
   const equityCurve = extendToWindow(equityCurveRaw, windowEndUtc);
-  const maxDrawdownPct = computeMaxDrawdown(equityCurve);
+  const trailingDrawdownPct = computeMaxDrawdown(equityCurve);
+  const staticDrawdownPct = computeStaticDrawdown(equityCurve);
 
   return {
     stats,
     basketSignals,
     equityCurve,
-    maxDrawdownPct,
+    staticDrawdownPct,
+    trailingDrawdownPct,
   };
 }

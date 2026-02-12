@@ -56,6 +56,7 @@ describe("connected page data helpers", () => {
     expect(result.stats.equity).toBe(100);
     expect(Array.isArray(result.basketSignals.pairs)).toBe(true);
     expect(Array.isArray(result.equityCurve)).toBe(true);
-    expect(result.maxDrawdownPct).toBe(0);
+    expect(result.staticDrawdownPct).toBe(0);
+    expect(result.trailingDrawdownPct).toBe(0);
   });
 });

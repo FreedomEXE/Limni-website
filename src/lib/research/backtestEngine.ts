@@ -4,6 +4,10 @@ import type {
   ResearchModel,
   ResearchRunResult,
 } from "@/lib/research/types";
+import {
+  computeStaticDrawdownPctFromPercentCurve,
+  computeTrailingDrawdownPct,
+} from "@/lib/risk/drawdown";
 
 const MODEL_ORDER = ["antikythera", "blended", "dealer", "commercial", "sentiment"] as const;
 
@@ -23,18 +27,6 @@ function numberFromHash(hash: string) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
-}
-
-function computeMaxDrawdown(points: Array<{ equity_pct: number }>) {
-  if (points.length === 0) return 0;
-  let peak = points[0].equity_pct;
-  let maxDd = 0;
-  for (const point of points) {
-    if (point.equity_pct > peak) peak = point.equity_pct;
-    const dd = peak - point.equity_pct;
-    if (dd > maxDd) maxDd = dd;
-  }
-  return maxDd;
 }
 
 function buildWeekTimeline(fromIso: string, toIso: string) {
@@ -90,11 +82,23 @@ export async function runBacktest(config: ResearchConfig): Promise<ResearchRunRe
   const legModeBias = config.execution.legMode === "net_only" ? 1.05 : 0.95;
   const variance = 0.5 + rand() * 0.8;
 
-  const weekly: Array<{ week_open_utc: string; return_pct: number; drawdown_pct: number }> = [];
-  const equityCurve: Array<{ ts_utc: string; equity_pct: number; lock_pct: number | null }> = [];
+  const weekly: Array<{
+    week_open_utc: string;
+    return_pct: number;
+    static_drawdown_pct: number;
+    trailing_drawdown_pct: number;
+  }> = [];
+  const equityCurve: Array<{
+    ts_utc: string;
+    equity_pct: number;
+    equity_usd: number;
+    static_baseline_usd: number;
+    lock_pct: number | null;
+  }> = [];
   let equity = 0;
-  let peak = 0;
   let wins = 0;
+  const startingEquity = Number(config.risk.startingEquity ?? 100000);
+  const equityHistory: number[] = [];
 
   const baseWeeklyMove = (0.4 + modelWeight * 0.22 + leverageBoost * 0.35) * modeBias * legModeBias;
   for (const [index, week] of weekOpenUtc.entries()) {
@@ -102,23 +106,35 @@ export async function runBacktest(config: ResearchConfig): Promise<ResearchRunRe
     const noise = (rand() - 0.5) * variance * 2.2;
     const returnPct = Number((baseWeeklyMove + cyclical + noise).toFixed(4));
     equity += returnPct;
-    peak = Math.max(peak, equity);
-    const drawdown = Number((peak - equity).toFixed(4));
+    const trailingDrawdown = Number(
+      computeTrailingDrawdownPct([...equityHistory, equity]).toFixed(4),
+    );
+    const staticDrawdown = Number(Math.max(0, -equity).toFixed(4));
+    const equityUsd = Number((startingEquity * (1 + equity / 100)).toFixed(2));
     if (returnPct > 0) wins += 1;
     weekly.push({
       week_open_utc: week,
       return_pct: returnPct,
-      drawdown_pct: drawdown,
+      static_drawdown_pct: staticDrawdown,
+      trailing_drawdown_pct: trailingDrawdown,
     });
     equityCurve.push({
       ts_utc: week,
       equity_pct: Number(equity.toFixed(4)),
+      equity_usd: equityUsd,
+      static_baseline_usd: startingEquity,
       lock_pct: config.risk.trailing ? Number((equity * 0.4).toFixed(4)) : null,
     });
+    equityHistory.push(equity);
   }
 
   const totalReturnPct = Number((weekly.reduce((sum, row) => sum + row.return_pct, 0)).toFixed(4));
-  const maxDrawdownPct = Number(computeMaxDrawdown(equityCurve).toFixed(4));
+  const trailingDrawdownPct = Number(
+    computeTrailingDrawdownPct(equityCurve.map((row) => row.equity_pct)).toFixed(4),
+  );
+  const staticDrawdownPct = Number(
+    computeStaticDrawdownPctFromPercentCurve(equityCurve).toFixed(4),
+  );
   const winRatePct = weekly.length > 0 ? Number(((wins / weekly.length) * 100).toFixed(2)) : 0;
   const totalTrades = weekly.length * Math.max(1, models.length) * Math.max(1, Math.floor(symbols.length / 2));
   const pricedTrades = Math.max(0, Math.floor(totalTrades * clamp(0.85 + (rand() - 0.5) * 0.2, 0.65, 0.99)));
@@ -126,12 +142,18 @@ export async function runBacktest(config: ResearchConfig): Promise<ResearchRunRe
   const byModel = models.map((model) => {
     const score = (MODEL_ORDER.indexOf(model) + 1) / MODEL_ORDER.length;
     const returnPct = Number((totalReturnPct * (0.65 + score * 0.6) / models.length).toFixed(4));
-    const ddPct = Number((maxDrawdownPct * (0.8 + (1 - score) * 0.4)).toFixed(4));
+    const trailingDdPct = Number(
+      (trailingDrawdownPct * (0.8 + (1 - score) * 0.4)).toFixed(4),
+    );
+    const staticDdPct = Number(
+      (staticDrawdownPct * (0.8 + (1 - score) * 0.4)).toFixed(4),
+    );
     const trades = Math.max(1, Math.floor(totalTrades / models.length));
     return {
       model,
       return_pct: returnPct,
-      drawdown_pct: ddPct,
+      static_drawdown_pct: staticDdPct,
+      trailing_drawdown_pct: trailingDdPct,
       trades,
     };
   });
@@ -178,7 +200,8 @@ export async function runBacktest(config: ResearchConfig): Promise<ResearchRunRe
     },
     headline: {
       totalReturnPct,
-      maxDrawdownPct,
+      staticDrawdownPct,
+      trailingDrawdownPct,
       winRatePct,
       trades: totalTrades,
       pricedTrades,

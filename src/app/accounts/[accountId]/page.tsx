@@ -3,7 +3,7 @@ import { unstable_noStore } from "next/cache";
 
 import DashboardLayout from "@/components/DashboardLayout";
 import AccountClientView from "@/components/accounts/AccountClientView";
-import { computeMaxDrawdown } from "@/lib/accounts/viewUtils";
+import { computeMaxDrawdown, computeStaticDrawdown } from "@/lib/accounts/viewUtils";
 import {
   resolveCommonAccountSearchParams,
   resolveMt5TradeFilters,
@@ -99,7 +99,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const planningDiagnostics = mt5Planned.planningDiagnostics;
   const planningMode = mt5Planned.planningMode;
 
-  const maxDrawdownPct = computeMaxDrawdown(equityCurvePoints);
+  const trailingDrawdownPct = computeMaxDrawdown(equityCurvePoints);
+  const staticDrawdownPct = computeStaticDrawdown(equityCurvePoints);
   const mt5ViewProps = buildMt5AccountClientViewProps({
     activeView,
     account: {
@@ -116,7 +117,8 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     showStopLoss1pct,
     weeklyPnlToShow,
     basketPnlToShow,
-    maxDrawdownPct,
+    staticDrawdownPct,
+    trailingDrawdownPct,
     filteredOpenPositions,
     filteredClosedPositions,
     plannedPairs,
