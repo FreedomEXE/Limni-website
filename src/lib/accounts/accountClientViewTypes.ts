@@ -1,5 +1,6 @@
 import type { WeekOption } from "@/lib/weekState";
 import type { ReactNode } from "react";
+import type { Mt5PlanningDiagnostics } from "@/lib/accounts/mt5Planning";
 
 export type HeaderConfig = {
   title: string;
@@ -94,6 +95,7 @@ export type AccountClientViewProps = {
     maxDrawdownPct: number;
     tradesThisWeek: number;
     openPositions?: number;
+    baselineEquity?: number;
     equity: number;
     balance: number;
     currency: string;
@@ -121,6 +123,10 @@ export type AccountClientViewProps = {
     selectedWeekKey: string;
     kpiWeekKey: string;
     equityWeekKey: string;
+  };
+  planningDiagnostics?: Mt5PlanningDiagnostics & {
+    sizingBaselineSource?: "week_start_baseline" | "current_equity";
+    sizingBaselineValue?: number;
   };
   drawerData: DrawerData;
   settingsExtras?: ReactNode;

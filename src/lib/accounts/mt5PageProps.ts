@@ -12,12 +12,14 @@ import {
   buildMt5DrawerPlannedPairs,
   buildMt5JournalRows,
 } from "@/lib/accounts/mt5PageViewModel";
+import type { Mt5PlanningDiagnostics } from "@/lib/accounts/mt5Planning";
 
 type Mt5PageHeaderAccount = Partial<Mt5AccountLike> & {
   label?: string | null;
   trade_mode?: string | null;
   risk_mode?: string | null;
   status?: string | null;
+  baseline_equity?: number | null;
   last_sync_utc?: string | null;
   trade_count_week?: number | null;
   recent_logs?: string[] | null;
@@ -47,6 +49,7 @@ type Mt5PagePropsInput = {
     scale?: number | null;
     currency?: string | null;
   } | null;
+  planningDiagnostics?: Mt5PlanningDiagnostics;
   equityCurvePoints: { ts_utc: string; equity_pct: number; lock_pct: number | null }[];
   changeLog: Array<{ strategy?: string | null; title: string }>;
 };
@@ -67,6 +70,7 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
     filteredClosedPositions,
     plannedPairs,
     plannedSummary,
+    planningDiagnostics,
     equityCurvePoints,
     changeLog,
   } = input;
@@ -82,6 +86,12 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
     margin: Number(account.margin ?? 0),
     free_margin: Number(account.free_margin ?? 0),
   };
+  const sizingBaselineSource: "week_start_baseline" | "current_equity" =
+    Number(account.baseline_equity ?? 0) > 0 ? "week_start_baseline" : "current_equity";
+  const sizingBaselineValue =
+    Number(account.baseline_equity ?? 0) > 0
+      ? Number(account.baseline_equity ?? 0)
+      : Number(account.equity ?? 0);
   return {
     activeView,
     header: {
@@ -108,6 +118,7 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
       maxDrawdownPct,
       tradesThisWeek: Number(account.trade_count_week ?? 0),
       openPositions: filteredOpenPositions.length,
+      baselineEquity: Number(account.baseline_equity ?? 0),
       equity: Number(account.equity ?? 0),
       balance: Number(account.balance ?? 0),
       currency: String(account.currency ?? "USD"),
@@ -130,6 +141,13 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
       kpiWeekKey: statsWeekOpenUtc,
       equityWeekKey: statsWeekOpenUtc,
     },
+    planningDiagnostics: planningDiagnostics
+      ? {
+          ...planningDiagnostics,
+          sizingBaselineSource,
+          sizingBaselineValue,
+        }
+      : undefined,
     drawerData: {
       plannedPairs: buildMt5DrawerPlannedPairs(plannedPairs),
       mappingRows: [],

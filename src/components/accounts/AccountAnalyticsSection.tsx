@@ -3,12 +3,17 @@
 import DebugReadout from "@/components/DebugReadout";
 import SimpleListTable from "@/components/accounts/SimpleListTable";
 import type { ReactNode } from "react";
+import type { Mt5PlanningDiagnostics } from "@/lib/accounts/mt5Planning";
 
 type AccountAnalyticsSectionProps = {
   debug: {
     selectedWeekKey: string;
     kpiWeekKey: string;
     equityWeekKey: string;
+  };
+  planningDiagnostics?: Mt5PlanningDiagnostics & {
+    sizingBaselineSource?: "week_start_baseline" | "current_equity";
+    sizingBaselineValue?: number;
   };
   journalRows: Array<{ label: string; value: string }>;
   kpiRows: Array<{ label: string; value: string }>;
@@ -21,6 +26,7 @@ type AccountAnalyticsSectionProps = {
 export default function AccountAnalyticsSection(props: AccountAnalyticsSectionProps) {
   const {
     debug,
+    planningDiagnostics,
     journalRows,
     kpiRows,
     mappingRows,
@@ -39,6 +45,34 @@ export default function AccountAnalyticsSection(props: AccountAnalyticsSectionPr
           { label: "Equity", value: debug.equityWeekKey },
         ]}
       />
+      {planningDiagnostics ? (
+        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]/80">
+            Planning Diagnostics
+          </p>
+          <pre className="mt-2 overflow-x-auto text-xs text-[color:var(--muted)]">
+            {JSON.stringify(
+              {
+                raw_api_leg_count: planningDiagnostics.rawApiLegCount,
+                ea_filtered_leg_count: planningDiagnostics.eaFilteredLegCount,
+                displayed_leg_count: planningDiagnostics.displayedLegCount,
+                model_leg_counts: planningDiagnostics.modelLegCounts,
+                filters_applied: {
+                  drop_netted: planningDiagnostics.filtersApplied.dropNetted,
+                  force_fx_only: planningDiagnostics.filtersApplied.forceFxOnly,
+                  drop_neutral: planningDiagnostics.filtersApplied.dropNeutral,
+                  resolve_symbol: planningDiagnostics.filtersApplied.resolveSymbol,
+                },
+                sizing_baseline_source:
+                  planningDiagnostics.sizingBaselineSource ?? "current_equity",
+                sizing_baseline_value: planningDiagnostics.sizingBaselineValue ?? null,
+              },
+              null,
+              2,
+            )}
+          </pre>
+        </div>
+      ) : null}
       <SimpleListTable
         columns={[
           { key: "label", label: "Type" },

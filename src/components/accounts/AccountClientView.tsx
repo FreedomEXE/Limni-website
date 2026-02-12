@@ -32,6 +32,7 @@ export default function AccountClientView({
   plannedSummary,
   equity,
   debug,
+  planningDiagnostics,
   drawerData,
   settingsExtras,
 }: AccountClientViewProps) {
@@ -163,6 +164,8 @@ export default function AccountClientView({
     () => buildStopLossLines(drawerData.plannedPairs, header.showStopLoss1pct, formatStopLossValue),
     [header.showStopLoss1pct, drawerData.plannedPairs],
   );
+  const manualSizingBaseline =
+    Number(kpi.baselineEquity ?? 0) > 0 ? Number(kpi.baselineEquity ?? 0) : Number(kpi.equity ?? 0);
 
   return (
     <PageShell
@@ -239,7 +242,7 @@ export default function AccountClientView({
             accountLabel: header.title,
             weekLabel: String(header.selectedWeek ?? ""),
             currency: kpi.currency,
-            equity: Number(kpi.balance ?? kpi.equity ?? 0),
+            equity: manualSizingBaseline,
             defaultRiskMode: header.riskModeLabel ?? null,
             plannedPairs: drawerData.plannedPairs.map((pair) => ({
               symbol: pair.symbol,
@@ -257,6 +260,7 @@ export default function AccountClientView({
       {activeView === "analytics" ? (
         <AccountAnalyticsSection
           debug={debug}
+          planningDiagnostics={planningDiagnostics}
           journalRows={drawerData.journalRows}
           kpiRows={drawerData.kpiRows}
           mappingRows={drawerData.mappingRows}

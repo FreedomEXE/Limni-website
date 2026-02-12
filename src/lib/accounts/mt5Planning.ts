@@ -20,6 +20,44 @@ export type Mt5PlannedSummary = {
   currency?: string | null;
 } | null;
 
+type PlannedModel = "antikythera" | "blended" | "commercial" | "dealer" | "sentiment";
+
+export type Mt5PlanningDiagnostics = {
+  rawApiLegCount: number;
+  eaFilteredLegCount: number;
+  displayedLegCount: number;
+  modelLegCounts: Record<PlannedModel, number>;
+  filtersApplied: {
+    dropNetted: boolean;
+    forceFxOnly: boolean;
+    dropNeutral: boolean;
+    resolveSymbol: boolean;
+  };
+};
+
+function emptyModelCounts(): Record<PlannedModel, number> {
+  return {
+    antikythera: 0,
+    blended: 0,
+    commercial: 0,
+    dealer: 0,
+    sentiment: 0,
+  };
+}
+
+function countLegsByModel(plannedPairs: PlannedPair[]) {
+  const counts = emptyModelCounts();
+  for (const pair of plannedPairs) {
+    for (const leg of pair.legs ?? []) {
+      const model = String(leg.model ?? "").toLowerCase() as PlannedModel;
+      if (model in counts) {
+        counts[model] += 1;
+      }
+    }
+  }
+  return counts;
+}
+
 export async function buildMt5PlannedView(options: {
   basketSignals: { pairs: BasketSignal[] } | null;
   selectedWeek: string;
@@ -43,7 +81,16 @@ export async function buildMt5PlannedView(options: {
     currency,
   } = options;
 
-  let plannedPairs = basketSignals ? groupSignals(basketSignals.pairs) : [];
+  const rawSignals = Array.isArray(basketSignals?.pairs) ? basketSignals.pairs : [];
+  const rawApiLegCount = rawSignals.length;
+  const nonNeutralSignals = rawSignals.filter(
+    (pair) => String(pair.direction ?? "").toUpperCase() !== "NEUTRAL",
+  );
+  const eaFilteredSignals =
+    lotMapRows.length > 0
+      ? nonNeutralSignals.filter((pair) => Boolean(findLotMapEntry(lotMapRows, pair.symbol)))
+      : nonNeutralSignals;
+  let plannedPairs = groupSignals(eaFilteredSignals, undefined, { dropNetted: false });
   let plannedSummary: Mt5PlannedSummary = null;
   const allowPlannedWeek =
     selectedWeek === currentWeekOpenUtc || (nextWeekOpenUtc ? selectedWeek === nextWeekOpenUtc : false);
@@ -51,16 +98,16 @@ export async function buildMt5PlannedView(options: {
     plannedPairs = [];
   }
 
-  if (forceFxOnlyPlanned && basketSignals) {
-    plannedPairs = groupSignals(basketSignals.pairs.filter((pair) => pair.asset_class === "fx"));
-  }
-
   const showStopLoss1pct = forceFxOnlyPlanned;
   const plannedMidBySymbol = new Map<string, number>();
   if (showStopLoss1pct && plannedPairs.length > 0) {
     try {
       const instruments = Array.from(
-        new Set(plannedPairs.map((pair) => getOandaInstrument(pair.symbol))),
+        new Set(
+          plannedPairs
+            .filter((pair) => String(pair.assetClass ?? "").toLowerCase() === "fx")
+            .map((pair) => getOandaInstrument(pair.symbol)),
+        ),
       );
       const pricing = await fetchOandaPricing(instruments);
       for (const price of pricing) {
@@ -159,5 +206,17 @@ export async function buildMt5PlannedView(options: {
     plannedPairs,
     plannedSummary,
     showStopLoss1pct,
+    planningDiagnostics: {
+      rawApiLegCount,
+      eaFilteredLegCount: eaFilteredSignals.length,
+      displayedLegCount: plannedPairs.reduce((sum, pair) => sum + (pair.legs?.length ?? 0), 0),
+      modelLegCounts: countLegsByModel(plannedPairs),
+      filtersApplied: {
+        dropNetted: false,
+        forceFxOnly: forceFxOnlyPlanned,
+        dropNeutral: true,
+        resolveSymbol: lotMapRows.length > 0,
+      },
+    } satisfies Mt5PlanningDiagnostics,
   };
 }

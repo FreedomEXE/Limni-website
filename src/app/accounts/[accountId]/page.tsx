@@ -92,6 +92,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const plannedPairs = mt5Planned.plannedPairs;
   const plannedSummary = mt5Planned.plannedSummary;
   const showStopLoss1pct = mt5Planned.showStopLoss1pct;
+  const planningDiagnostics = mt5Planned.planningDiagnostics;
 
   const maxDrawdownPct = computeMaxDrawdown(equityCurvePoints);
   const mt5ViewProps = buildMt5AccountClientViewProps({
@@ -109,6 +110,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     filteredClosedPositions,
     plannedPairs,
     plannedSummary,
+    planningDiagnostics,
     equityCurvePoints,
     changeLog,
   });
