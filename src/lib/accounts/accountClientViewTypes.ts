@@ -128,6 +128,7 @@ export type AccountClientViewProps = {
     sizingBaselineSource?: "week_start_baseline" | "current_equity";
     sizingBaselineValue?: number;
   };
+  planningMode?: "available" | "missing" | "legacy" | "disabled";
   drawerData: DrawerData;
   settingsExtras?: ReactNode;
 };

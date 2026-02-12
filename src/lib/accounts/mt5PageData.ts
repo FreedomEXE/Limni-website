@@ -19,6 +19,7 @@ import { extendToWindow } from "@/lib/accounts/viewUtils";
 import { buildWeekOptionsWithCurrentAndNext, resolveRequestedWeek } from "@/lib/accounts/weekOptions";
 import type { OpenPositionLike } from "@/lib/accounts/mt5PageViewModel";
 import type { LotMapRow } from "@/lib/accounts/mt5ViewHelpers";
+import type { Mt5PlanningDiagnostics } from "@/lib/mt5Store";
 
 export type Mt5PageAccount = {
   id: string;
@@ -35,6 +36,7 @@ export type Mt5PageAccount = {
   trade_mode: string;
   status: string;
   lot_map: LotMapRow[];
+  planning_diagnostics?: Mt5PlanningDiagnostics;
   [key: string]: unknown;
 };
 

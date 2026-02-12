@@ -23,6 +23,7 @@ type AccountTradesSectionProps = {
   plannedPairsCount: number;
   plannedLegTotal: number;
   plannedModelChips: Array<[string, number]>;
+  planningMode?: "available" | "missing" | "legacy" | "disabled";
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
   search: string;
@@ -69,6 +70,7 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
     plannedPairsCount,
     plannedLegTotal,
     plannedModelChips,
+    planningMode = "available",
     statusFilter,
     onStatusFilterChange,
     search,
@@ -89,7 +91,7 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
     rowGridCols,
     manualExecution,
   } = props;
-  const hasPlannedRows = plannedPairsCount > 0 || plannedLegTotal > 0;
+  const hasPlannedRows = planningMode === "available" && (plannedPairsCount > 0 || plannedLegTotal > 0);
   const [openMode, setOpenMode] = useState<"live" | "reconcile">("live");
   const effectiveOpenMode = hasPlannedRows ? openMode : "live";
   const symbolRows = effectiveOpenMode === "live" ? liveSymbolRows : reconcileSymbolRows;
@@ -117,7 +119,7 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
           hint="Planned net exposure (reconciliation)"
         />
       </div>
-      {plannedPairsCount > 0 ? (
+      {hasPlannedRows ? (
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 px-4 py-3 text-xs text-[color:var(--muted)]">
           <span className="uppercase tracking-[0.2em]">
             Legs (open {openLegCount} / planned {plannedLegTotal})
@@ -176,7 +178,9 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
       ) : null}
       {statusFilter === "open" && !hasPlannedRows ? (
         <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-xs text-sky-100">
-          No planned model basket for this account/week. Showing live/open exposure only.
+          {planningMode === "legacy"
+            ? "Legacy data (planned diagnostics not available for this week). Showing live/open exposure only."
+            : "Planned metrics unavailable (EA diagnostics not received). Showing live/open exposure only."}
         </div>
       ) : null}
       {statusFilter === "open" && manualExecution?.enabled ? (

@@ -50,6 +50,7 @@ type Mt5PagePropsInput = {
     currency?: string | null;
   } | null;
   planningDiagnostics?: Mt5PlanningDiagnostics;
+  planningMode?: "available" | "missing" | "legacy" | "disabled";
   equityCurvePoints: { ts_utc: string; equity_pct: number; lock_pct: number | null }[];
   changeLog: Array<{ strategy?: string | null; title: string }>;
 };
@@ -71,6 +72,7 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
     plannedPairs,
     plannedSummary,
     planningDiagnostics,
+    planningMode,
     equityCurvePoints,
     changeLog,
   } = input;
@@ -148,6 +150,7 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
           sizingBaselineValue,
         }
       : undefined,
+    planningMode: planningMode ?? "missing",
     drawerData: {
       plannedPairs: buildMt5DrawerPlannedPairs(plannedPairs),
       mappingRows: [],

@@ -15,6 +15,7 @@ type AccountAnalyticsSectionProps = {
     sizingBaselineSource?: "week_start_baseline" | "current_equity";
     sizingBaselineValue?: number;
   };
+  planningMode?: "available" | "missing" | "legacy" | "disabled";
   journalRows: Array<{ label: string; value: string }>;
   kpiRows: Array<{ label: string; value: string }>;
   mappingRows: Array<{ symbol: string; instrument: string; available: boolean }>;
@@ -27,6 +28,7 @@ export default function AccountAnalyticsSection(props: AccountAnalyticsSectionPr
   const {
     debug,
     planningDiagnostics,
+    planningMode,
     journalRows,
     kpiRows,
     mappingRows,
@@ -63,6 +65,9 @@ export default function AccountAnalyticsSection(props: AccountAnalyticsSectionPr
                   drop_neutral: planningDiagnostics.filtersApplied.dropNeutral,
                   resolve_symbol: planningDiagnostics.filtersApplied.resolveSymbol,
                 },
+                skipped_by_reason: planningDiagnostics.skippedByReason ?? {},
+                capacity_limited: planningDiagnostics.capacityLimited ?? false,
+                capacity_limit_reason: planningDiagnostics.capacityLimitReason ?? null,
                 sizing_baseline_source:
                   planningDiagnostics.sizingBaselineSource ?? "current_equity",
                 sizing_baseline_value: planningDiagnostics.sizingBaselineValue ?? null,
@@ -71,6 +76,13 @@ export default function AccountAnalyticsSection(props: AccountAnalyticsSectionPr
               2,
             )}
           </pre>
+        </div>
+      ) : null}
+      {!planningDiagnostics && (planningMode === "missing" || planningMode === "legacy") ? (
+        <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-xs text-sky-100">
+          {planningMode === "legacy"
+            ? "Legacy data (planned diagnostics not available for this week)."
+            : "Planned metrics unavailable (EA diagnostics not received)."}
         </div>
       ) : null}
       <SimpleListTable

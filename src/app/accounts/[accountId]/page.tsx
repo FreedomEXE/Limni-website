@@ -80,6 +80,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
 
   const mt5Planned = await buildMt5PlannedView({
     basketSignals: basketSignals ? { pairs: basketSignals.pairs } : null,
+    planningDiagnostics: account.planning_diagnostics,
     selectedWeek,
     currentWeekOpenUtc,
     nextWeekOpenUtc,
@@ -93,6 +94,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const plannedSummary = mt5Planned.plannedSummary;
   const showStopLoss1pct = mt5Planned.showStopLoss1pct;
   const planningDiagnostics = mt5Planned.planningDiagnostics;
+  const planningMode = mt5Planned.planningMode;
 
   const maxDrawdownPct = computeMaxDrawdown(equityCurvePoints);
   const mt5ViewProps = buildMt5AccountClientViewProps({
@@ -111,6 +113,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     plannedPairs,
     plannedSummary,
     planningDiagnostics,
+    planningMode,
     equityCurvePoints,
     changeLog,
   });

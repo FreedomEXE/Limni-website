@@ -127,6 +127,70 @@ function parseTradeMode(value: unknown): "AUTO" | "MANUAL" {
   return raw === "MANUAL" ? "MANUAL" : "AUTO";
 }
 
+function parseCountMap(value: unknown): Record<string, number> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const out: Record<string, number> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) continue;
+    out[String(key)] = parsed;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function parseDirection(value: unknown): "LONG" | "SHORT" | null {
+  const raw = String(value ?? "").toUpperCase();
+  if (raw === "LONG" || raw === "BUY") return "LONG";
+  if (raw === "SHORT" || raw === "SELL") return "SHORT";
+  return null;
+}
+
+function parsePlanningDiagnostics(value: unknown): Mt5AccountSnapshot["planning_diagnostics"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  const raw = value as Record<string, unknown>;
+  const plannedLegs = Array.isArray(raw.planned_legs)
+    ? raw.planned_legs
+        .map((item) => {
+          const row = item as Record<string, unknown>;
+          const direction = parseDirection(row.direction);
+          if (!direction) return null;
+          const symbol = parseString(row.symbol).toUpperCase();
+          const model = parseString(row.model).toLowerCase();
+          const units = parseNumber(row.units);
+          if (!symbol || !model || !Number.isFinite(units)) return null;
+          return { symbol, model, direction, units };
+        })
+        .filter((row): row is { symbol: string; model: string; direction: "LONG" | "SHORT"; units: number } => row !== null)
+    : undefined;
+  const executionLegs = Array.isArray(raw.execution_legs)
+    ? raw.execution_legs
+        .map((item) => {
+          const row = item as Record<string, unknown>;
+          const direction = parseDirection(row.direction);
+          if (!direction) return null;
+          const symbol = parseString(row.symbol).toUpperCase();
+          const model = parseString(row.model).toLowerCase();
+          const units = parseNumber(row.units);
+          const positionId = parseNumber(row.position_id);
+          if (!symbol || !model || !Number.isFinite(units) || !Number.isFinite(positionId)) return null;
+          return { symbol, model, direction, units, position_id: positionId };
+        })
+        .filter((row): row is { symbol: string; model: string; direction: "LONG" | "SHORT"; units: number; position_id: number } => row !== null)
+    : undefined;
+
+  return {
+    signals_raw_count_by_model: parseCountMap(raw.signals_raw_count_by_model),
+    signals_accepted_count_by_model: parseCountMap(raw.signals_accepted_count_by_model),
+    signals_skipped_count_by_reason: parseCountMap(raw.signals_skipped_count_by_reason),
+    planned_legs: plannedLegs,
+    execution_legs: executionLegs,
+    capacity_limited: parseBool(raw.capacity_limited),
+    capacity_limit_reason: parseString(raw.capacity_limit_reason, ""),
+  };
+}
+
 export async function GET() {
   return NextResponse.json({
     error: "Method not allowed. Use POST to push MT5 data.",
@@ -223,6 +287,7 @@ export async function POST(request: Request) {
       effectiveDataSource === "reconstructed" ? parseNumber(payload.reconstruction_week_realized, 0) : 0,
     lot_map: parseLotMap(payload.lot_map),
     lot_map_updated_utc: parseDateIso(payload.lot_map_updated_utc),
+    planning_diagnostics: parsePlanningDiagnostics(payload.planning_diagnostics),
     positions: parsePositions(payload.positions),
     closed_positions: parseClosedPositions(payload.closed_positions),
     recent_logs: Array.isArray(payload.recent_logs)

@@ -49,6 +49,27 @@ export type Mt5LotMapEntry = {
   move_1pct_usd?: number;
 };
 
+export type Mt5PlanningDiagnostics = {
+  signals_raw_count_by_model?: Record<string, number>;
+  signals_accepted_count_by_model?: Record<string, number>;
+  signals_skipped_count_by_reason?: Record<string, number>;
+  planned_legs?: Array<{
+    symbol: string;
+    model: string;
+    direction: "LONG" | "SHORT";
+    units: number;
+  }>;
+  execution_legs?: Array<{
+    symbol: string;
+    model: string;
+    direction: "LONG" | "SHORT";
+    units: number;
+    position_id: number;
+  }>;
+  capacity_limited?: boolean;
+  capacity_limit_reason?: string;
+};
+
 export type Mt5ClosedPosition = {
   ticket: number;
   symbol: string;
@@ -106,6 +127,7 @@ export type Mt5AccountSnapshot = {
   reconstruction_week_realized?: number;
   lot_map?: Mt5LotMapEntry[];
   lot_map_updated_utc?: string;
+  planning_diagnostics?: Mt5PlanningDiagnostics;
   positions?: Mt5Position[];
   closed_positions?: Mt5ClosedPosition[];
   recent_logs?: string[];
@@ -182,6 +204,7 @@ export async function readMt5Accounts(): Promise<Mt5AccountSnapshot[]> {
       reconstruction_week_realized?: string | null;
       lot_map?: Mt5LotMapEntry[] | null;
       lot_map_updated_utc?: Date | null;
+      planning_diagnostics?: Mt5PlanningDiagnostics | null;
     }>("SELECT * FROM mt5_accounts ORDER BY account_id");
 
     const accountsWithPositions = await Promise.all(
@@ -256,6 +279,7 @@ export async function readMt5Accounts(): Promise<Mt5AccountSnapshot[]> {
           lot_map_updated_utc: account.lot_map_updated_utc
             ? account.lot_map_updated_utc.toISOString()
             : undefined,
+          planning_diagnostics: (account.planning_diagnostics ?? undefined) as Mt5PlanningDiagnostics | undefined,
           positions: positions.map((pos) => ({
             ticket: pos.ticket,
             symbol: pos.symbol,
@@ -311,11 +335,11 @@ export async function upsertMt5Account(
           data_source, reconstruction_status, reconstruction_note,
           reconstruction_window_start_utc, reconstruction_window_end_utc,
           reconstruction_market_closed_segments, reconstruction_trades, reconstruction_week_realized,
-          lot_map, lot_map_updated_utc, recent_logs
+          lot_map, lot_map_updated_utc, planning_diagnostics, recent_logs
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
           $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-          $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41
+          $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42
         )
         ON CONFLICT (account_id) DO UPDATE SET
           label = EXCLUDED.label,
@@ -357,6 +381,7 @@ export async function upsertMt5Account(
           reconstruction_week_realized = EXCLUDED.reconstruction_week_realized,
           lot_map = EXCLUDED.lot_map,
           lot_map_updated_utc = EXCLUDED.lot_map_updated_utc,
+          planning_diagnostics = EXCLUDED.planning_diagnostics,
           recent_logs = EXCLUDED.recent_logs,
           updated_at = NOW()`,
         [
@@ -400,6 +425,7 @@ export async function upsertMt5Account(
           snapshot.reconstruction_week_realized ?? 0,
           snapshot.lot_map ? JSON.stringify(snapshot.lot_map) : null,
           snapshot.lot_map_updated_utc ? new Date(snapshot.lot_map_updated_utc) : null,
+          snapshot.planning_diagnostics ? JSON.stringify(snapshot.planning_diagnostics) : null,
           snapshot.recent_logs ? JSON.stringify(snapshot.recent_logs) : null,
         ]
       );
@@ -546,6 +572,10 @@ export async function ensureMt5AccountSchema() {
   await query(`
     ALTER TABLE mt5_accounts
     ADD COLUMN IF NOT EXISTS reconstruction_week_realized NUMERIC(18,2) DEFAULT 0
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS planning_diagnostics JSONB
   `);
 }
 
@@ -969,6 +999,7 @@ export async function getMt5AccountById(
       recent_logs?: string[] | null;
       lot_map?: Mt5LotMapEntry[] | null;
       lot_map_updated_utc?: Date | null;
+      planning_diagnostics?: Mt5PlanningDiagnostics | null;
     }>("SELECT * FROM mt5_accounts WHERE account_id = $1", [accountId]);
 
     if (!account) {
@@ -1045,6 +1076,7 @@ export async function getMt5AccountById(
       lot_map_updated_utc: account.lot_map_updated_utc
         ? account.lot_map_updated_utc.toISOString()
         : undefined,
+      planning_diagnostics: (account.planning_diagnostics ?? undefined) as Mt5PlanningDiagnostics | undefined,
       recent_logs: account.recent_logs ?? undefined,
       positions: positions.map((pos) => ({
         ticket: pos.ticket,

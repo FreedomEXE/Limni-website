@@ -107,6 +107,26 @@ string g_brokerSymbols[];
 int g_directions[];
 string g_models[];
 string g_assetClasses[];
+int g_diagRawA = 0;
+int g_diagRawB = 0;
+int g_diagRawC = 0;
+int g_diagRawD = 0;
+int g_diagRawS = 0;
+int g_diagAcceptedA = 0;
+int g_diagAcceptedB = 0;
+int g_diagAcceptedC = 0;
+int g_diagAcceptedD = 0;
+int g_diagAcceptedS = 0;
+int g_diagSkipNotAllowed = 0;
+int g_diagSkipUnresolvedSymbol = 0;
+int g_diagSkipDuplicateOpen = 0;
+int g_diagSkipCryptoNotOpen = 0;
+int g_diagSkipNotTradable = 0;
+int g_diagSkipInvalidVolume = 0;
+int g_diagSkipOrderFailed = 0;
+int g_diagSkipMaxPositions = 0;
+int g_diagSkipLotCap = 0;
+int g_diagSkipRateLimit = 0;
 
 datetime g_orderTimes[];
 datetime g_lastPush = 0;
@@ -252,6 +272,17 @@ string BuildAccountPayload();
 string BuildPositionsArray();
 string BuildClosedPositionsArray();
 string BuildLotMapArray();
+void ResetPlanningDiagnostics();
+void AddRawModelCount(const string model);
+void AddAcceptedModelCount(const string model);
+void AddSkipReason(const string reasonKey);
+string BuildPlanningDiagnosticsJson();
+string BuildModelCountJson(bool accepted);
+string BuildSkipReasonJson();
+string BuildPlannedLegsJson();
+string BuildExecutionLegsJson();
+string ParseModelFromComment(const string comment);
+string ToLongShort(int dir);
 double ComputeMove1PctUsd(const string symbol, double lots);
 string TradeModeToString();
 string JsonEscape(const string value);
@@ -361,6 +392,7 @@ void PollApiIfDue()
   int dirs[];
   string models[];
   string assetClasses[];
+  ResetPlanningDiagnostics();
   if(!ParseApiResponse(json, allowed, reportDate, symbols, dirs, models, assetClasses))
   {
     g_apiOk = false;
@@ -392,15 +424,20 @@ void PollApiIfDue()
 
   for(int i = 0; i < count; i++)
   {
+    string model = (i < ArraySize(models) ? models[i] : "blended");
+    AddRawModelCount(model);
+
     string resolved = "";
     if(!IsAllowedSymbol(symbols[i]))
     {
+      AddSkipReason("not_allowed");
       if(IsIndexSymbol(symbols[i]))
         LogTradeError(StringFormat("Index pair %s not in allowed list. Skipped.", symbols[i]));
       continue;
     }
     if(!ResolveSymbol(symbols[i], resolved))
     {
+      AddSkipReason("unresolved_symbol");
       if(IsIndexSymbol(symbols[i]))
         LogTradeError(StringFormat("Index pair %s not tradable or not found. Skipped.", symbols[i]));
       continue;
@@ -415,8 +452,9 @@ void PollApiIfDue()
     g_apiSymbols[idx] = symbols[i];
     g_brokerSymbols[idx] = resolved;
     g_directions[idx] = dirs[i];
-    g_models[idx] = (i < ArraySize(models) ? models[i] : "blended");
+    g_models[idx] = model;
     g_assetClasses[idx] = (i < ArraySize(assetClasses) ? assetClasses[i] : "fx");
+    AddAcceptedModelCount(model);
   }
 
   Log(StringFormat("API ok. trading_allowed=%s, report_date=%s, pairs=%d",
@@ -1530,18 +1568,21 @@ void TryAddPositions()
 
   if(openPositions >= MaxOpenPositions)
   {
+    AddSkipReason("max_positions");
     LogIndexSkipsForAll("max open positions reached", "max_positions");
     return;
   }
 
   if(totalLots >= cap)
   {
+    AddSkipReason("lot_cap");
     LogIndexSkipsForAll("basket lot cap reached", "lot_cap");
     return;
   }
 
   if(OrdersInLastMinute() >= MaxOrdersPerMinute)
   {
+    AddSkipReason("rate_limit");
     LogIndexSkipsForAll("order rate limit reached", "rate_limit");
     LogTradeError("Order rate limit reached. Skipping adds.");
     return;
@@ -1556,15 +1597,22 @@ void TryAddPositions()
 
     string model = (i < ArraySize(g_models) ? g_models[i] : "blended");
     if(HasPositionForModel(symbol, model))
+    {
+      AddSkipReason("duplicate_open");
       continue;
+    }
 
     string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
     string normalizedClass = assetClass;
     StringToLower(normalizedClass);
     if(normalizedClass == "crypto" && nowGmt < cryptoStartGmt)
+    {
+      AddSkipReason("crypto_not_open");
       continue;
+    }
     if(!IsTradableSymbol(symbol))
     {
+      AddSkipReason("not_tradable");
       int tradeMode = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_MODE);
       if(IsIndexSymbol(symbol))
         LogIndexSkip(symbol, StringFormat("not tradable (trade_mode=%d)", tradeMode), "not_tradable");
@@ -1583,6 +1631,7 @@ void TryAddPositions()
     double vol = finalLot;
     if(vol <= 0.0)
     {
+      AddSkipReason("invalid_volume");
       if(IsIndexSymbol(symbol))
         LogIndexSkip(symbol, StringFormat("invalid volume %.2f", vol), "invalid_volume");
       LogTradeError(StringFormat("%s invalid volume=%.2f", symbol, vol));
@@ -1596,6 +1645,7 @@ void TryAddPositions()
 
     if(!PlaceOrder(symbol, direction, vol, model))
     {
+      AddSkipReason("order_failed");
       if(IsIndexSymbol(symbol))
         LogIndexSkip(symbol, "order send failed", "order_failed");
       continue;
@@ -2885,6 +2935,217 @@ void GetWeeklyTradeStats(int &tradeCount, double &winRatePct)
   winRatePct = (double)wins / tradeCount * 100.0;
 }
 
+void ResetPlanningDiagnostics()
+{
+  g_diagRawA = 0;
+  g_diagRawB = 0;
+  g_diagRawC = 0;
+  g_diagRawD = 0;
+  g_diagRawS = 0;
+  g_diagAcceptedA = 0;
+  g_diagAcceptedB = 0;
+  g_diagAcceptedC = 0;
+  g_diagAcceptedD = 0;
+  g_diagAcceptedS = 0;
+  g_diagSkipNotAllowed = 0;
+  g_diagSkipUnresolvedSymbol = 0;
+  g_diagSkipDuplicateOpen = 0;
+  g_diagSkipCryptoNotOpen = 0;
+  g_diagSkipNotTradable = 0;
+  g_diagSkipInvalidVolume = 0;
+  g_diagSkipOrderFailed = 0;
+  g_diagSkipMaxPositions = 0;
+  g_diagSkipLotCap = 0;
+  g_diagSkipRateLimit = 0;
+}
+
+void AddRawModelCount(const string model)
+{
+  string key = model;
+  StringToLower(key);
+  if(key == "antikythera") g_diagRawA++;
+  else if(key == "blended") g_diagRawB++;
+  else if(key == "commercial") g_diagRawC++;
+  else if(key == "dealer") g_diagRawD++;
+  else if(key == "sentiment") g_diagRawS++;
+}
+
+void AddAcceptedModelCount(const string model)
+{
+  string key = model;
+  StringToLower(key);
+  if(key == "antikythera") g_diagAcceptedA++;
+  else if(key == "blended") g_diagAcceptedB++;
+  else if(key == "commercial") g_diagAcceptedC++;
+  else if(key == "dealer") g_diagAcceptedD++;
+  else if(key == "sentiment") g_diagAcceptedS++;
+}
+
+void AddSkipReason(const string reasonKey)
+{
+  string key = reasonKey;
+  StringToLower(key);
+  if(key == "not_allowed") g_diagSkipNotAllowed++;
+  else if(key == "unresolved_symbol") g_diagSkipUnresolvedSymbol++;
+  else if(key == "duplicate_open") g_diagSkipDuplicateOpen++;
+  else if(key == "crypto_not_open") g_diagSkipCryptoNotOpen++;
+  else if(key == "not_tradable") g_diagSkipNotTradable++;
+  else if(key == "invalid_volume") g_diagSkipInvalidVolume++;
+  else if(key == "order_failed") g_diagSkipOrderFailed++;
+  else if(key == "max_positions") g_diagSkipMaxPositions++;
+  else if(key == "lot_cap") g_diagSkipLotCap++;
+  else if(key == "rate_limit") g_diagSkipRateLimit++;
+}
+
+string ToLongShort(int dir)
+{
+  return dir > 0 ? "LONG" : "SHORT";
+}
+
+string ParseModelFromComment(const string comment)
+{
+  int idx = StringFind(comment, "LimniBasket ");
+  if(idx < 0)
+    return "unknown";
+  string rest = StringSubstr(comment, idx + StringLen("LimniBasket "));
+  int spaceIdx = StringFind(rest, " ");
+  string model = spaceIdx > 0 ? StringSubstr(rest, 0, spaceIdx) : rest;
+  if(model == "")
+    return "unknown";
+  StringToLower(model);
+  return model;
+}
+
+string BuildModelCountJson(bool accepted)
+{
+  string result = "{";
+  result += "\"antikythera\":" + IntegerToString(accepted ? g_diagAcceptedA : g_diagRawA) + ",";
+  result += "\"blended\":" + IntegerToString(accepted ? g_diagAcceptedB : g_diagRawB) + ",";
+  result += "\"commercial\":" + IntegerToString(accepted ? g_diagAcceptedC : g_diagRawC) + ",";
+  result += "\"dealer\":" + IntegerToString(accepted ? g_diagAcceptedD : g_diagRawD) + ",";
+  result += "\"sentiment\":" + IntegerToString(accepted ? g_diagAcceptedS : g_diagRawS);
+  result += "}";
+  return result;
+}
+
+string BuildSkipReasonJson()
+{
+  string result = "{";
+  result += "\"not_allowed\":" + IntegerToString(g_diagSkipNotAllowed) + ",";
+  result += "\"unresolved_symbol\":" + IntegerToString(g_diagSkipUnresolvedSymbol) + ",";
+  result += "\"duplicate_open\":" + IntegerToString(g_diagSkipDuplicateOpen) + ",";
+  result += "\"crypto_not_open\":" + IntegerToString(g_diagSkipCryptoNotOpen) + ",";
+  result += "\"not_tradable\":" + IntegerToString(g_diagSkipNotTradable) + ",";
+  result += "\"invalid_volume\":" + IntegerToString(g_diagSkipInvalidVolume) + ",";
+  result += "\"order_failed\":" + IntegerToString(g_diagSkipOrderFailed) + ",";
+  result += "\"max_positions\":" + IntegerToString(g_diagSkipMaxPositions) + ",";
+  result += "\"lot_cap\":" + IntegerToString(g_diagSkipLotCap) + ",";
+  result += "\"rate_limit\":" + IntegerToString(g_diagSkipRateLimit);
+  result += "}";
+  return result;
+}
+
+string BuildPlannedLegsJson()
+{
+  string result = "[";
+  bool firstRow = true;
+  int total = ArraySize(g_brokerSymbols);
+  for(int i = 0; i < total; i++)
+  {
+    string symbol = g_brokerSymbols[i];
+    int direction = g_directions[i];
+    if(symbol == "" || direction == 0)
+      continue;
+
+    string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
+    double targetLot = 0.0;
+    double finalLot = 0.0;
+    double deviationPct = 0.0;
+    double equityPerSymbol = 0.0;
+    double marginRequired = 0.0;
+    bool ok = ComputeOneToOneLot(symbol, assetClass, targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired);
+    if(ok)
+      ApplyRiskScale(symbol, GetLegRiskScale(), targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired);
+    if(!ok || finalLot <= 0.0)
+      continue;
+
+    if(!firstRow)
+      result += ",";
+    firstRow = false;
+
+    string model = (i < ArraySize(g_models) ? g_models[i] : "blended");
+    result += "{";
+    result += "\"symbol\":\"" + JsonEscape(symbol) + "\",";
+    result += "\"model\":\"" + JsonEscape(model) + "\",";
+    result += "\"direction\":\"" + ToLongShort(direction) + "\",";
+    result += "\"units\":" + DoubleToString(finalLot, 4);
+    result += "}";
+  }
+  result += "]";
+  return result;
+}
+
+string BuildExecutionLegsJson()
+{
+  string result = "[";
+  bool firstRow = true;
+  int total = PositionsTotal();
+  for(int i = 0; i < total; i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    long posType = PositionGetInteger(POSITION_TYPE);
+    int dir = (posType == POSITION_TYPE_BUY) ? 1 : -1;
+    double lots = PositionGetDouble(POSITION_VOLUME);
+    string model = ParseModelFromComment(PositionGetString(POSITION_COMMENT));
+
+    if(!firstRow)
+      result += ",";
+    firstRow = false;
+
+    result += "{";
+    result += "\"symbol\":\"" + JsonEscape(symbol) + "\",";
+    result += "\"model\":\"" + JsonEscape(model) + "\",";
+    result += "\"direction\":\"" + ToLongShort(dir) + "\",";
+    result += "\"units\":" + DoubleToString(lots, 4) + ",";
+    result += "\"position_id\":" + IntegerToString((int)ticket);
+    result += "}";
+  }
+  result += "]";
+  return result;
+}
+
+string BuildPlanningDiagnosticsJson()
+{
+  bool capacityLimited = (g_diagSkipMaxPositions > 0 || g_diagSkipLotCap > 0 || g_diagSkipRateLimit > 0 ||
+                          g_diagSkipNotTradable > 0 || g_diagSkipInvalidVolume > 0 || g_diagSkipOrderFailed > 0);
+  string reason = "";
+  if(g_diagSkipMaxPositions > 0) reason = "max_positions";
+  else if(g_diagSkipLotCap > 0) reason = "lot_cap";
+  else if(g_diagSkipRateLimit > 0) reason = "rate_limit";
+  else if(g_diagSkipNotTradable > 0) reason = "not_tradable";
+  else if(g_diagSkipInvalidVolume > 0) reason = "invalid_volume";
+  else if(g_diagSkipOrderFailed > 0) reason = "order_failed";
+
+  string result = "{";
+  result += "\"signals_raw_count_by_model\":" + BuildModelCountJson(false) + ",";
+  result += "\"signals_accepted_count_by_model\":" + BuildModelCountJson(true) + ",";
+  result += "\"signals_skipped_count_by_reason\":" + BuildSkipReasonJson() + ",";
+  result += "\"planned_legs\":" + BuildPlannedLegsJson() + ",";
+  result += "\"execution_legs\":" + BuildExecutionLegsJson() + ",";
+  result += "\"capacity_limited\":" + BoolToJson(capacityLimited) + ",";
+  result += "\"capacity_limit_reason\":\"" + JsonEscape(reason) + "\"";
+  result += "}";
+  return result;
+}
+
 //+------------------------------------------------------------------+
 string BuildAccountPayload()
 {
@@ -2959,6 +3220,7 @@ string BuildAccountPayload()
   payload += "\"closed_positions\":" + BuildClosedPositionsArray() + ",";
   payload += "\"lot_map\":" + BuildLotMapArray() + ",";
   payload += "\"lot_map_updated_utc\":\"" + FormatIsoUtc(TimeGMT()) + "\",";
+  payload += "\"planning_diagnostics\":" + BuildPlanningDiagnosticsJson() + ",";
 
   // Add recent logs
   payload += "\"recent_logs\":[";

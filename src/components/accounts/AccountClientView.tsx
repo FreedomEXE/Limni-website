@@ -33,6 +33,7 @@ export default function AccountClientView({
   equity,
   debug,
   planningDiagnostics,
+  planningMode,
   drawerData,
   settingsExtras,
 }: AccountClientViewProps) {
@@ -135,10 +136,16 @@ export default function AccountClientView({
   const openLegCount = liveSymbolRows.reduce((sum, row) => sum + Number(row.legsOpenCount ?? 0), 0);
   const closedCount = closedRows.length;
 
-  const plannedLegCounts = useMemo(
-    () => computePlannedLegCounts(drawerData.plannedPairs, isOanda),
-    [drawerData.plannedPairs, isOanda],
-  );
+  const plannedLegCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    if (planningDiagnostics?.modelLegCounts) {
+      for (const [model, count] of Object.entries(planningDiagnostics.modelLegCounts)) {
+        counts.set(model, Number(count ?? 0));
+      }
+      return counts;
+    }
+    return computePlannedLegCounts(drawerData.plannedPairs, isOanda);
+  }, [drawerData.plannedPairs, isOanda, planningDiagnostics]);
   const plannedModelChips = useMemo(
     () =>
       Array.from(plannedLegCounts.entries())
@@ -211,6 +218,7 @@ export default function AccountClientView({
           plannedPairsCount={drawerData.plannedPairs.length}
           plannedLegTotal={plannedLegTotal}
           plannedModelChips={plannedModelChips}
+          planningMode={planningMode}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           search={search}
@@ -261,6 +269,7 @@ export default function AccountClientView({
         <AccountAnalyticsSection
           debug={debug}
           planningDiagnostics={planningDiagnostics}
+          planningMode={planningMode}
           journalRows={drawerData.journalRows}
           kpiRows={drawerData.kpiRows}
           mappingRows={drawerData.mappingRows}

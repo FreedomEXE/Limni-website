@@ -16,3 +16,7 @@ export function isReconstructionEnabledForAccount(accountKey: string): boolean {
   return allowlist.has(accountKey);
 }
 
+export function useEaPlanningDiagnostics(): boolean {
+  const raw = String(process.env.MT5_USE_EA_PLANNING_DIAGNOSTICS ?? "true").toLowerCase();
+  return raw !== "false";
+}
