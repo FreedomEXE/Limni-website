@@ -72,17 +72,29 @@ export default function AccountClientView({
 
   const sourceBadge = useMemo(() => {
     const source = String(header.dataSourceLabel ?? "").toLowerCase();
-    if (source !== "reconstructed") return null;
     const status = String(header.reconstructionStatus ?? "partial").toUpperCase();
     const note = header.reconstructionNote ? ` (${header.reconstructionNote})` : "";
-    return (
-      <span
-        title={`Metrics reconstructed after reconnect${note}`}
-        className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-200"
-      >
-        Reconstructed {status}
-      </span>
-    );
+    if (source === "reconstructed") {
+      return (
+        <span
+          title={`Metrics reconstructed after reconnect${note}`}
+          className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-200"
+        >
+          Reconstructed {status}
+        </span>
+      );
+    }
+    if (source === "estimated") {
+      return (
+        <span
+          title={header.reconstructionNote ?? "Historical metrics are estimated from latest snapshot"}
+          className="rounded-full border border-sky-400/40 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200"
+        >
+          Estimated Week
+        </span>
+      );
+    }
+    return null;
   }, [header.dataSourceLabel, header.reconstructionStatus, header.reconstructionNote]);
 
   const showKpis = activeView === "overview";
@@ -176,6 +188,7 @@ export default function AccountClientView({
             weeklyPnlPct={kpi.weeklyPnlPct}
             maxDrawdownPct={kpi.maxDrawdownPct}
             tradesThisWeek={kpi.tradesThisWeek}
+            openPositions={kpi.openPositions}
             equity={kpi.equity}
             balance={kpi.balance}
             currency={kpi.currency}

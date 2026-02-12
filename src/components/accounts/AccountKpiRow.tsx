@@ -7,6 +7,7 @@ type AccountKpiRowProps = {
   weeklyPnlPct: number;
   maxDrawdownPct: number;
   tradesThisWeek: number;
+  openPositions?: number;
   equity: number;
   balance: number;
   currency: string;
@@ -32,6 +33,7 @@ export default function AccountKpiRow({
   weeklyPnlPct,
   maxDrawdownPct,
   tradesThisWeek,
+  openPositions,
   equity,
   balance,
   currency,
@@ -39,6 +41,13 @@ export default function AccountKpiRow({
   detailsHref,
   onOpenDetails,
 }: AccountKpiRowProps) {
+  const isAllScope = scopeLabel.toLowerCase().startsWith("all");
+  const pnlLabel = isAllScope ? "All-time PnL" : "Weekly PnL";
+  const activityLabel = isAllScope ? "Open Positions" : "Trades (week)";
+  const activityValue =
+    isAllScope && typeof openPositions === "number" ? openPositions : tradesThisWeek;
+  const activityHint = isAllScope ? "Live snapshot" : scopeLabel;
+
   const CardWrapper = ({
     children,
   }: {
@@ -64,7 +73,7 @@ export default function AccountKpiRow({
     <KpiGroup title="Primary" description="Week-specific account highlights" columns={4}>
       <CardWrapper>
         <KpiCard
-          label="Weekly PnL"
+          label={pnlLabel}
           value={formatPercent(weeklyPnlPct)}
           tone={weeklyPnlPct >= 0 ? "positive" : "negative"}
           emphasis="primary"
@@ -80,7 +89,7 @@ export default function AccountKpiRow({
         />
       </CardWrapper>
       <CardWrapper>
-        <KpiCard label="Trades (week)" value={`${tradesThisWeek}`} hint={scopeLabel} />
+        <KpiCard label={activityLabel} value={`${activityValue}`} hint={activityHint} />
       </CardWrapper>
       <CardWrapper>
         <KpiCard

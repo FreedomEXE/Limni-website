@@ -11,6 +11,7 @@ export type HeaderConfig = {
   dataSourceLabel?: string | null;
   reconstructionStatus?: string | null;
   reconstructionNote?: string | null;
+  lastSyncUtcRaw?: string | null;
   lastSync?: string;
   weekOptions: WeekOption[];
   currentWeek: string;
@@ -92,6 +93,7 @@ export type AccountClientViewProps = {
     weeklyPnlPct: number;
     maxDrawdownPct: number;
     tradesThisWeek: number;
+    openPositions?: number;
     equity: number;
     balance: number;
     currency: string;

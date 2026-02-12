@@ -67,6 +67,7 @@ export function buildConnectedAccountClientViewProps(input: ConnectedPropsInput)
   } = input;
 
   const accountCurrency = stats.currency;
+  const isHistoricalWeekEstimate = selectedWeek !== "all" && selectedWeek !== currentWeekOpenUtc;
   return {
     activeView,
     header: {
@@ -74,6 +75,12 @@ export function buildConnectedAccountClientViewProps(input: ConnectedPropsInput)
       providerLabel: account.provider.toUpperCase(),
       tradeModeLabel: resolveConnectedTradeModeLabel(account.config),
       riskModeLabel: account.risk_mode ?? null,
+      dataSourceLabel: isHistoricalWeekEstimate ? "estimated" : "realtime",
+      reconstructionStatus: isHistoricalWeekEstimate ? "estimated" : "none",
+      reconstructionNote: isHistoricalWeekEstimate
+        ? "Historical week uses latest connected snapshot (estimation)."
+        : null,
+      lastSyncUtcRaw: account.last_sync_utc,
       lastSync: account.last_sync_utc ? formatDateTimeET(account.last_sync_utc) : "—",
       weekOptions: weekOptionsWithUpcoming,
       currentWeek: currentWeekOpenUtc,
@@ -84,6 +91,7 @@ export function buildConnectedAccountClientViewProps(input: ConnectedPropsInput)
       weeklyPnlPct: stats.weeklyPnlPct,
       maxDrawdownPct,
       tradesThisWeek: stats.tradesThisWeek,
+      openPositions: stats.openPositions,
       equity: stats.equity,
       balance: stats.balance,
       currency: accountCurrency,

@@ -89,8 +89,10 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
     rowGridCols,
     manualExecution,
   } = props;
+  const hasPlannedRows = plannedPairsCount > 0 || plannedLegTotal > 0;
   const [openMode, setOpenMode] = useState<"live" | "reconcile">("live");
-  const symbolRows = openMode === "live" ? liveSymbolRows : reconcileSymbolRows;
+  const effectiveOpenMode = hasPlannedRows ? openMode : "live";
+  const symbolRows = effectiveOpenMode === "live" ? liveSymbolRows : reconcileSymbolRows;
 
   return (
     <div className="space-y-4">
@@ -145,29 +147,36 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
             type="button"
             onClick={() => setOpenMode("live")}
             className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-              openMode === "live"
+              effectiveOpenMode === "live"
                 ? "border-[var(--accent)]/50 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
                 : "border-[var(--panel-border)] bg-[var(--panel)] text-[var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
             }`}
           >
             Live Positions
           </button>
-          <button
-            type="button"
-            onClick={() => setOpenMode("reconcile")}
-            className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-              openMode === "reconcile"
-                ? "border-[var(--accent)]/50 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                : "border-[var(--panel-border)] bg-[var(--panel)] text-[var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-            }`}
-          >
-            Planned vs Filled
-          </button>
+          {hasPlannedRows ? (
+            <button
+              type="button"
+              onClick={() => setOpenMode("reconcile")}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${
+                effectiveOpenMode === "reconcile"
+                  ? "border-[var(--accent)]/50 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                  : "border-[var(--panel-border)] bg-[var(--panel)] text-[var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+              }`}
+            >
+              Planned vs Filled
+            </button>
+          ) : null}
           <span className="ml-auto text-xs text-[color:var(--muted)]">
-            {openMode === "live"
+            {effectiveOpenMode === "live"
               ? "Source: live MT5 positions"
               : "Source: model plan reconciled against live MT5 positions"}
           </span>
+        </div>
+      ) : null}
+      {statusFilter === "open" && !hasPlannedRows ? (
+        <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-xs text-sky-100">
+          No planned model basket for this account/week. Showing live/open exposure only.
         </div>
       ) : null}
       {statusFilter === "open" && manualExecution?.enabled ? (
@@ -240,19 +249,19 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
       {statusFilter === "open" ? (
         <SimpleListTable
           columns={
-            openMode === "live"
+            effectiveOpenMode === "live"
               ? [
                   { key: "symbol", label: "Symbol" },
-                  { key: "direction", label: "Direction" },
-                  { key: "filled", label: "Lots" },
+                  { key: "direction", label: "Bias" },
+                  { key: "filled", label: "Open (L/S)" },
                   { key: "net", label: "Net" },
                   { key: "metric", label: metricLabel },
                   { key: "legs", label: "Legs" },
                 ]
               : [
                   { key: "symbol", label: "Symbol" },
-                  { key: "direction", label: "Direction" },
-                  { key: "filled", label: "Filled" },
+                  { key: "direction", label: "Bias" },
+                  { key: "filled", label: "Open/Plan (L/S)" },
                   { key: "net", label: "Net" },
                   { key: "metric", label: metricLabel },
                   { key: "legs", label: "Legs" },
@@ -260,7 +269,7 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
           }
           rows={symbolRows}
           emptyState={
-            openMode === "live"
+            effectiveOpenMode === "live"
               ? "No live open positions for this week."
               : "No planned/live reconciliation rows for this week."
           }
@@ -279,27 +288,52 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
 
             const fmt = (val: number) => val.toFixed(isOanda ? 0 : 2);
             const filledText =
-              openMode === "live"
-                ? `${fmt(grossOpen)}`
+              effectiveOpenMode === "live"
+                ? `L ${fmt(openLong)} / S ${fmt(openShort)}`
                 : grossPlanned > 0
-                  ? `${fmt(grossOpen)}/${fmt(grossPlanned)}`
-                  : `${fmt(grossOpen)}/—`;
+                  ? `L ${fmt(openLong)}/${fmt(plannedLong)} / S ${fmt(openShort)}/${fmt(plannedShort)}`
+                  : `L ${fmt(openLong)} / S ${fmt(openShort)}`;
             const netText =
               typeof netPlanned === "number"
-                ? openMode === "live"
+                ? effectiveOpenMode === "live"
                   ? `${fmt(netOpen)}`
                   : netPlanned !== 0
                   ? `${fmt(netOpen)}/${fmt(netPlanned)}`
                   : `${fmt(netOpen)}`
                 : `${fmt(netOpen)}`;
 
+            const hasHedge = openLong > 0 && openShort > 0;
             const directionSource = Math.abs(netOpen) > 0 ? netOpen : netPlanned;
             const direction =
-              directionSource > 0 ? "LONG" : directionSource < 0 ? "SHORT" : "NEUTRAL";
+              hasHedge
+                ? "HEDGED"
+                : directionSource > 0
+                  ? "LONG"
+                  : directionSource < 0
+                    ? "SHORT"
+                    : "NEUTRAL";
 
             const expanded =
               (Array.isArray(row.plannedLegs) && row.plannedLegs.length > 0) ||
               (Array.isArray(row.openLegs) && row.openLegs.length > 0);
+            const plannedLegCount = Number(row.legsPlannedCount ?? 0);
+            const rowOpenLegCount = Number(row.legsOpenCount ?? 0);
+            const legState =
+              plannedLegCount === 0 && rowOpenLegCount > 0
+                ? "unplanned"
+                : plannedLegCount > 0 && rowOpenLegCount === 0
+                  ? "planned"
+                  : rowOpenLegCount >= plannedLegCount
+                    ? "filled"
+                    : "partial";
+            const legStateColor =
+              legState === "filled"
+                ? "text-emerald-700"
+                : legState === "partial"
+                  ? "text-amber-600"
+                  : legState === "unplanned"
+                    ? "text-rose-700"
+                    : "text-[color:var(--muted)]";
 
             return (
               <details className={expanded ? "group" : ""}>
@@ -313,6 +347,8 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
                         ? "text-emerald-700"
                         : direction === "SHORT"
                           ? "text-rose-700"
+                          : direction === "HEDGED"
+                            ? "text-amber-600"
                           : "text-[color:var(--muted)]"
                     }
                   >
@@ -327,15 +363,16 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
                     {Number.isFinite(openPnl) ? openPnl.toFixed(2) : "—"}
                   </span>
                   <span className="text-xs text-[color:var(--muted)]">
-                    {openMode === "live"
-                      ? `${Number(row.legsOpenCount ?? 0)}`
-                      : `${Number(row.legsOpenCount ?? 0)}/${Number(row.legsPlannedCount ?? 0)}`}
+                    {effectiveOpenMode === "live"
+                      ? `${rowOpenLegCount} live`
+                      : `${rowOpenLegCount}/${plannedLegCount} `}
+                    {effectiveOpenMode === "live" ? null : <span className={legStateColor}>{legState}</span>}
                   </span>
                 </summary>
 
                 {expanded ? (
-                  <div className={`mt-3 grid gap-3 ${openMode === "live" ? "" : "md:grid-cols-2"}`}>
-                    {openMode === "reconcile" ? (
+                  <div className={`mt-3 grid gap-3 ${effectiveOpenMode === "live" ? "" : "md:grid-cols-2"}`}>
+                    {effectiveOpenMode === "reconcile" ? (
                       <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-3">
                         <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
                           Planned Legs
@@ -447,7 +484,10 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
               <span className="text-xs text-[color:var(--muted)]">
                 {Number(row.lots ?? 0).toFixed(isOanda ? 0 : 2)} {sizeUnitLabel}
               </span>
-              <span className="text-xs text-[color:var(--muted)]">—</span>
+              <span className={Number(row.net ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                {Number(row.net ?? 0) >= 0 ? "+" : ""}
+                {Number(row.net ?? 0).toFixed(2)}
+              </span>
               <span className="text-xs text-[color:var(--muted)]">{row.legs?.length ?? 0} legs</span>
             </div>
           )}

@@ -35,6 +35,7 @@ describe("page props builders", () => {
     });
     expect(props.header.providerLabel).toBe("MT5");
     expect(props.kpi.currency).toBe("USD");
+    expect(props.kpi.openPositions).toBe(0);
   });
 
   test("builds connected account client view props", () => {
@@ -75,5 +76,50 @@ describe("page props builders", () => {
     });
     expect(props.header.providerLabel).toBe("OANDA");
     expect(props.debug.selectedWeekKey).toBe("2026-02-09");
+    expect(props.header.dataSourceLabel).toBe("realtime");
+    expect(props.kpi.openPositions).toBe(0);
+  });
+
+  test("marks connected historical weeks as estimated", () => {
+    const props = buildConnectedAccountClientViewProps({
+      activeView: "overview",
+      account: {
+        account_key: "oanda:2",
+        label: "Hist",
+        provider: "oanda",
+        config: null,
+        last_sync_utc: "2026-02-12T02:00:00.000Z",
+      },
+      weekOptionsWithUpcoming: ["2026-02-09", "2026-02-02"],
+      currentWeekOpenUtc: "2026-02-09",
+      selectedWeek: "2026-02-02",
+      stats: {
+        weekOpenUtc: "2026-02-02",
+        equity: 100,
+        balance: 100,
+        weeklyPnlPct: 1.2,
+        basketPnlPct: 1.2,
+        currency: "USD",
+        lockedProfitPct: null,
+        openPositions: 3,
+        tradesThisWeek: 5,
+        leverage: null,
+        margin: null,
+        freeMargin: null,
+        riskUsedPct: null,
+      },
+      plannedPairs: [],
+      plannedNote: null,
+      plannedSummary: null,
+      equityCurve: [],
+      maxDrawdownPct: 0,
+      mappedRows: [],
+      openPositions: [],
+    });
+
+    expect(props.header.dataSourceLabel).toBe("estimated");
+    expect(props.header.reconstructionStatus).toBe("estimated");
+    expect(String(props.header.reconstructionNote ?? "").length).toBeGreaterThan(0);
+    expect(props.kpi.openPositions).toBe(3);
   });
 });
