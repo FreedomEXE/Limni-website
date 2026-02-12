@@ -1,10 +1,9 @@
 import type { BasketSignal } from "@/lib/basketSignals";
-import { type PlannedPair } from "@/lib/plannedTrades";
+import { groupSignals, type PlannedPair } from "@/lib/plannedTrades";
 import { fetchOandaPricing } from "@/lib/oandaTrade";
 import { getOandaInstrument } from "@/lib/oandaPrices";
 import { findLotMapEntry, type LotMapRow } from "@/lib/accounts/mt5ViewHelpers";
 import type { Mt5PlanningDiagnostics as Mt5PlanningDiagnosticsPayload } from "@/lib/mt5Store";
-import { useEaPlanningDiagnostics } from "@/lib/config/eaFeatures";
 
 type PlannedPairWithDisplay = PlannedPair & {
   entryPrice?: number | null;
@@ -63,50 +62,6 @@ function countLegsByModel(plannedPairs: PlannedPair[]) {
   return counts;
 }
 
-function parseAssetClassFromSymbol(symbol: string): string {
-  const upper = String(symbol ?? "").toUpperCase();
-  if (upper.includes("BTC") || upper.includes("ETH")) return "crypto";
-  return "fx";
-}
-
-function modelCountsFromPayload(payload?: Mt5PlanningDiagnosticsPayload | undefined) {
-  const counts = emptyModelCounts();
-  const source = payload?.signals_accepted_count_by_model ?? {};
-  for (const [key, value] of Object.entries(source)) {
-    const model = String(key).toLowerCase() as PlannedModel;
-    if (!(model in counts)) continue;
-    counts[model] = Number(value ?? 0);
-  }
-  return counts;
-}
-
-function buildPlannedPairsFromDiagnostics(payload?: Mt5PlanningDiagnosticsPayload | undefined) {
-  const legs = Array.isArray(payload?.planned_legs) ? payload.planned_legs : [];
-  const map = new Map<string, PlannedPair>();
-  for (const leg of legs) {
-    const symbol = String(leg.symbol ?? "").toUpperCase();
-    const model = String(leg.model ?? "").toLowerCase();
-    const direction = String(leg.direction ?? "").toUpperCase();
-    if (!symbol || !model || (direction !== "LONG" && direction !== "SHORT")) continue;
-    const key = `${parseAssetClassFromSymbol(symbol)}:${symbol}`;
-    if (!map.has(key)) {
-      map.set(key, {
-        symbol,
-        assetClass: parseAssetClassFromSymbol(symbol),
-        net: 0,
-        legs: [],
-      });
-    }
-    const row = map.get(key)!;
-    row.legs.push({
-      model: model as PlannedPair["legs"][number]["model"],
-      direction: direction as "LONG" | "SHORT",
-    });
-    row.net += direction === "LONG" ? 1 : -1;
-  }
-  return Array.from(map.values()).sort((a, b) => a.symbol.localeCompare(b.symbol));
-}
-
 export async function buildMt5PlannedView(options: {
   basketSignals: { pairs: BasketSignal[] } | null;
   planningDiagnostics?: Mt5PlanningDiagnosticsPayload;
@@ -132,10 +87,11 @@ export async function buildMt5PlannedView(options: {
     currency,
   } = options;
 
-  const diagnosticsEnabled = useEaPlanningDiagnostics();
-  let plannedPairs = diagnosticsEnabled
-    ? buildPlannedPairsFromDiagnostics(planningDiagnostics)
-    : [];
+  const rawSignals = Array.isArray(basketSignals?.pairs) ? basketSignals.pairs : [];
+  const nonNeutralSignals = rawSignals.filter(
+    (pair) => String(pair.direction ?? "").toUpperCase() !== "NEUTRAL",
+  );
+  let plannedPairs = groupSignals(nonNeutralSignals, undefined, { dropNetted: false });
   let plannedSummary: Mt5PlannedSummary = null;
   const allowPlannedWeek =
     selectedWeek === currentWeekOpenUtc || (nextWeekOpenUtc ? selectedWeek === nextWeekOpenUtc : false);
@@ -247,51 +203,28 @@ export async function buildMt5PlannedView(options: {
     };
   }
 
-  const diagnosticsAvailable = diagnosticsEnabled && allowPlannedWeek && plannedPairs.length > 0;
-  const mode: "available" | "missing" | "legacy" | "disabled" = !diagnosticsEnabled
-    ? "disabled"
-    : !allowPlannedWeek
-      ? "legacy"
-      : diagnosticsAvailable
-        ? "available"
-        : "missing";
+  const mode: "available" | "missing" | "legacy" | "disabled" =
+    !allowPlannedWeek ? "legacy" : plannedPairs.length > 0 ? "available" : "missing";
 
   return {
     plannedPairs,
     plannedSummary,
     showStopLoss1pct,
     planningMode: mode,
-    planningDiagnostics:
-      mode === "available"
-        ? ({
-            rawApiLegCount: Number(
-              Object.values(planningDiagnostics?.signals_raw_count_by_model ?? {}).reduce(
-                (sum, value) => sum + Number(value ?? 0),
-                0,
-              ),
-            ),
-            eaFilteredLegCount: Number(
-              Object.values(planningDiagnostics?.signals_accepted_count_by_model ?? {}).reduce(
-                (sum, value) => sum + Number(value ?? 0),
-                0,
-              ),
-            ),
-            displayedLegCount: plannedPairs.reduce((sum, pair) => sum + (pair.legs?.length ?? 0), 0),
-            modelLegCounts: (() => {
-              const fromPayload = modelCountsFromPayload(planningDiagnostics);
-              const total = Object.values(fromPayload).reduce((sum, value) => sum + value, 0);
-              return total > 0 ? fromPayload : countLegsByModel(plannedPairs);
-            })(),
-            filtersApplied: {
-              dropNetted: false,
-              forceFxOnly: forceFxOnlyPlanned,
-              dropNeutral: true,
-              resolveSymbol: true,
-            },
-            skippedByReason: planningDiagnostics?.signals_skipped_count_by_reason ?? {},
-            capacityLimited: Boolean(planningDiagnostics?.capacity_limited),
-            capacityLimitReason: planningDiagnostics?.capacity_limit_reason ?? null,
-          } satisfies Mt5PlanningDiagnostics)
-        : undefined,
+    planningDiagnostics: {
+      rawApiLegCount: rawSignals.length,
+      eaFilteredLegCount: nonNeutralSignals.length,
+      displayedLegCount: plannedPairs.reduce((sum, pair) => sum + (pair.legs?.length ?? 0), 0),
+      modelLegCounts: countLegsByModel(plannedPairs),
+      filtersApplied: {
+        dropNetted: false,
+        forceFxOnly: forceFxOnlyPlanned,
+        dropNeutral: true,
+        resolveSymbol: false,
+      },
+      skippedByReason: planningDiagnostics?.signals_skipped_count_by_reason ?? {},
+      capacityLimited: Boolean(planningDiagnostics?.capacity_limited),
+      capacityLimitReason: planningDiagnostics?.capacity_limit_reason ?? null,
+    } satisfies Mt5PlanningDiagnostics,
   };
 }

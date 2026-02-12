@@ -7,33 +7,21 @@ vi.mock("@/lib/oandaTrade", () => ({
 }));
 
 describe("mt5 planning", () => {
-  test("uses EA planning diagnostics as canonical source", async () => {
+  test("uses basket signals as canonical planned source", async () => {
     const result = await buildMt5PlannedView({
-      basketSignals: { pairs: [] },
+      basketSignals: {
+        pairs: [
+          { symbol: "BTCUSD", asset_class: "crypto", model: "dealer", direction: "SHORT" },
+          { symbol: "BTCUSD", asset_class: "crypto", model: "blended", direction: "SHORT" },
+          { symbol: "ETHUSD", asset_class: "crypto", model: "dealer", direction: "SHORT" },
+          { symbol: "ETHUSD", asset_class: "crypto", model: "blended", direction: "SHORT" },
+          { symbol: "EURUSD", asset_class: "fx", model: "sentiment", direction: "LONG" },
+        ],
+      },
       planningDiagnostics: {
-        signals_raw_count_by_model: {
-          antikythera: 10,
-          blended: 24,
-          dealer: 24,
-          commercial: 23,
-          sentiment: 28,
-        },
-        signals_accepted_count_by_model: {
-          antikythera: 10,
-          blended: 24,
-          dealer: 24,
-          commercial: 23,
-          sentiment: 28,
-        },
         signals_skipped_count_by_reason: {
           lot_cap: 2,
         },
-        planned_legs: [
-          { symbol: "BTCUSD", model: "dealer", direction: "SHORT", units: 1.91 },
-          { symbol: "BTCUSD", model: "blended", direction: "SHORT", units: 1.91 },
-          { symbol: "ETHUSD", model: "dealer", direction: "SHORT", units: 64.48 },
-          { symbol: "ETHUSD", model: "blended", direction: "SHORT", units: 64.48 },
-        ],
         capacity_limited: true,
         capacity_limit_reason: "lot_cap",
       },
@@ -49,11 +37,9 @@ describe("mt5 planning", () => {
 
     expect(result.planningMode).toBe("available");
     expect(result.planningDiagnostics?.modelLegCounts).toMatchObject({
-      antikythera: 10,
-      blended: 24,
-      dealer: 24,
-      commercial: 23,
-      sentiment: 28,
+      blended: 2,
+      dealer: 2,
+      sentiment: 1,
     });
     expect(result.planningDiagnostics?.capacityLimited).toBe(true);
     expect(result.planningDiagnostics?.capacityLimitReason).toBe("lot_cap");
@@ -80,14 +66,12 @@ describe("mt5 planning", () => {
 
     expect(result.planningMode).toBe("legacy");
     expect(result.plannedPairs).toHaveLength(0);
-    expect(result.planningDiagnostics).toBeUndefined();
+    expect(result.planningDiagnostics?.displayedLegCount).toBe(0);
   });
 
-  test("marks current week as missing when diagnostics have not arrived", async () => {
+  test("marks current week as missing when no basket signals are available", async () => {
     const result = await buildMt5PlannedView({
-      basketSignals: {
-        pairs: [{ symbol: "EURUSD", asset_class: "fx", model: "sentiment", direction: "LONG" }],
-      },
+      basketSignals: { pairs: [] },
       planningDiagnostics: undefined,
       selectedWeek: "2026-02-09",
       currentWeekOpenUtc: "2026-02-09",
@@ -101,5 +85,6 @@ describe("mt5 planning", () => {
 
     expect(result.planningMode).toBe("missing");
     expect(result.plannedPairs).toHaveLength(0);
+    expect(result.planningDiagnostics?.rawApiLegCount).toBe(0);
   });
 });
