@@ -9,6 +9,7 @@ type AccountPageHeaderProps = {
   providerLabel: string;
   tradeModeBadge: ReactNode;
   statusBadge: ReactNode;
+  sourceBadge?: ReactNode;
   weekOptions: WeekOption[];
   currentWeek: string;
   selectedWeek: WeekOption;
@@ -23,6 +24,7 @@ export default function AccountPageHeader(props: AccountPageHeaderProps) {
     providerLabel,
     tradeModeBadge,
     statusBadge,
+    sourceBadge,
     weekOptions,
     currentWeek,
     selectedWeek,
@@ -50,6 +52,7 @@ export default function AccountPageHeader(props: AccountPageHeaderProps) {
         </span>
         {tradeModeBadge}
         {statusBadge}
+        {sourceBadge}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <WeekSelector

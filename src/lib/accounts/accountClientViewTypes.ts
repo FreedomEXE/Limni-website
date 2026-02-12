@@ -8,6 +8,9 @@ export type HeaderConfig = {
   riskModeLabel?: string | null;
   statusLabel?: string;
   statusToneClass?: string;
+  dataSourceLabel?: string | null;
+  reconstructionStatus?: string | null;
+  reconstructionNote?: string | null;
   lastSync?: string;
   weekOptions: WeekOption[];
   currentWeek: string;

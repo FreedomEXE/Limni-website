@@ -4,6 +4,7 @@ import type { AssetClass } from "./cotMarkets";
 import type { PerformanceModel, ModelPerformance } from "./performanceLab";
 import { getConnectedAccount } from "./connectedAccounts";
 import { deduplicateWeeks, type WeekOption } from "./weekState";
+import { getCanonicalWeekOpenUtc } from "./weekAnchor";
 
 export type PerformanceSnapshot = {
   week_open_utc: string;
@@ -24,7 +25,7 @@ function formatWeekLabel(isoValue: string) {
   if (!parsed.isValid) {
     return isoValue;
   }
-  // Internal key is Sunday 17:00 ET open; display label as Monday date for clarity.
+  // Internal key is Sunday 19:00 ET open; display label as Monday date for clarity.
   const mondayLabelDate =
     parsed.weekday === 7
       ? parsed.plus({ days: 1 }).startOf("day")
@@ -35,27 +36,7 @@ function formatWeekLabel(isoValue: string) {
 }
 
 export function getWeekOpenUtc(now = DateTime.utc()): string {
-  const nyNow = now.setZone("America/New_York");
-  // Trading week key: Sunday 17:00 ET (FX session open)
-  const daysSinceSunday = nyNow.weekday % 7; // Sunday=0
-  let sunday = nyNow.minus({ days: daysSinceSunday });
-  let open = sunday.set({
-    hour: 17,
-    minute: 0,
-    second: 0,
-    millisecond: 0,
-  });
-  if (daysSinceSunday === 0 && nyNow.toMillis() < open.toMillis()) {
-    sunday = sunday.minus({ days: 7 });
-    open = sunday.set({
-      hour: 17,
-      minute: 0,
-      second: 0,
-      millisecond: 0,
-    });
-  }
-
-  return open.toUTC().toISO() ?? new Date().toISOString();
+  return getCanonicalWeekOpenUtc(now);
 }
 
 function getLegacyWeekOpenUtc(now = DateTime.utc()): string {

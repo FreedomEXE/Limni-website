@@ -96,6 +96,14 @@ export type Mt5AccountSnapshot = {
   next_add_seconds: number;
   next_poll_seconds: number;
   last_sync_utc: string;
+  data_source?: string;
+  reconstruction_status?: string;
+  reconstruction_note?: string;
+  reconstruction_window_start_utc?: string;
+  reconstruction_window_end_utc?: string;
+  reconstruction_market_closed_segments?: number;
+  reconstruction_trades?: number;
+  reconstruction_week_realized?: number;
   lot_map?: Mt5LotMapEntry[];
   lot_map_updated_utc?: string;
   positions?: Mt5Position[];
@@ -164,6 +172,14 @@ export async function readMt5Accounts(): Promise<Mt5AccountSnapshot[]> {
       next_add_seconds: number;
       next_poll_seconds: number;
       last_sync_utc: Date;
+      data_source?: string | null;
+      reconstruction_status?: string | null;
+      reconstruction_note?: string | null;
+      reconstruction_window_start_utc?: Date | null;
+      reconstruction_window_end_utc?: Date | null;
+      reconstruction_market_closed_segments?: number | null;
+      reconstruction_trades?: number | null;
+      reconstruction_week_realized?: string | null;
       lot_map?: Mt5LotMapEntry[] | null;
       lot_map_updated_utc?: Date | null;
     }>("SELECT * FROM mt5_accounts ORDER BY account_id");
@@ -224,6 +240,18 @@ export async function readMt5Accounts(): Promise<Mt5AccountSnapshot[]> {
           next_add_seconds: account.next_add_seconds,
           next_poll_seconds: account.next_poll_seconds,
           last_sync_utc: account.last_sync_utc.toISOString(),
+          data_source: account.data_source ?? "realtime",
+          reconstruction_status: account.reconstruction_status ?? "none",
+          reconstruction_note: account.reconstruction_note ?? "",
+          reconstruction_window_start_utc: account.reconstruction_window_start_utc
+            ? account.reconstruction_window_start_utc.toISOString()
+            : "",
+          reconstruction_window_end_utc: account.reconstruction_window_end_utc
+            ? account.reconstruction_window_end_utc.toISOString()
+            : "",
+          reconstruction_market_closed_segments: Number(account.reconstruction_market_closed_segments ?? 0),
+          reconstruction_trades: Number(account.reconstruction_trades ?? 0),
+          reconstruction_week_realized: Number(account.reconstruction_week_realized ?? 0),
           lot_map: parseJsonArray<Mt5LotMapEntry>(account.lot_map) ?? undefined,
           lot_map_updated_utc: account.lot_map_updated_utc
             ? account.lot_map_updated_utc.toISOString()
@@ -279,10 +307,15 @@ export async function upsertMt5Account(
           locked_profit_pct, basket_pnl_pct, weekly_pnl_pct, risk_used_pct,
           trade_count_week, win_rate_pct, max_drawdown_pct, report_date,
           api_ok, trading_allowed, last_api_error, next_add_seconds,
-          next_poll_seconds, last_sync_utc, lot_map, lot_map_updated_utc, recent_logs
+          next_poll_seconds, last_sync_utc,
+          data_source, reconstruction_status, reconstruction_note,
+          reconstruction_window_start_utc, reconstruction_window_end_utc,
+          reconstruction_market_closed_segments, reconstruction_trades, reconstruction_week_realized,
+          lot_map, lot_map_updated_utc, recent_logs
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-          $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33
+          $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+          $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41
         )
         ON CONFLICT (account_id) DO UPDATE SET
           label = EXCLUDED.label,
@@ -314,6 +347,14 @@ export async function upsertMt5Account(
           next_add_seconds = EXCLUDED.next_add_seconds,
           next_poll_seconds = EXCLUDED.next_poll_seconds,
           last_sync_utc = EXCLUDED.last_sync_utc,
+          data_source = EXCLUDED.data_source,
+          reconstruction_status = EXCLUDED.reconstruction_status,
+          reconstruction_note = EXCLUDED.reconstruction_note,
+          reconstruction_window_start_utc = EXCLUDED.reconstruction_window_start_utc,
+          reconstruction_window_end_utc = EXCLUDED.reconstruction_window_end_utc,
+          reconstruction_market_closed_segments = EXCLUDED.reconstruction_market_closed_segments,
+          reconstruction_trades = EXCLUDED.reconstruction_trades,
+          reconstruction_week_realized = EXCLUDED.reconstruction_week_realized,
           lot_map = EXCLUDED.lot_map,
           lot_map_updated_utc = EXCLUDED.lot_map_updated_utc,
           recent_logs = EXCLUDED.recent_logs,
@@ -349,6 +390,14 @@ export async function upsertMt5Account(
           snapshot.next_add_seconds,
           snapshot.next_poll_seconds,
           new Date(snapshot.last_sync_utc),
+          snapshot.data_source ?? "realtime",
+          snapshot.reconstruction_status ?? "none",
+          snapshot.reconstruction_note ?? "",
+          snapshot.reconstruction_window_start_utc ? new Date(snapshot.reconstruction_window_start_utc) : null,
+          snapshot.reconstruction_window_end_utc ? new Date(snapshot.reconstruction_window_end_utc) : null,
+          snapshot.reconstruction_market_closed_segments ?? 0,
+          snapshot.reconstruction_trades ?? 0,
+          snapshot.reconstruction_week_realized ?? 0,
           snapshot.lot_map ? JSON.stringify(snapshot.lot_map) : null,
           snapshot.lot_map_updated_utc ? new Date(snapshot.lot_map_updated_utc) : null,
           snapshot.recent_logs ? JSON.stringify(snapshot.recent_logs) : null,
@@ -465,6 +514,38 @@ export async function ensureMt5AccountSchema() {
   await query(`
     ALTER TABLE mt5_accounts
     ADD COLUMN IF NOT EXISTS trade_mode VARCHAR(12)
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS data_source VARCHAR(24)
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS reconstruction_status VARCHAR(24)
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS reconstruction_note TEXT
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS reconstruction_window_start_utc TIMESTAMP
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS reconstruction_window_end_utc TIMESTAMP
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS reconstruction_market_closed_segments INTEGER DEFAULT 0
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS reconstruction_trades INTEGER DEFAULT 0
+  `);
+  await query(`
+    ALTER TABLE mt5_accounts
+    ADD COLUMN IF NOT EXISTS reconstruction_week_realized NUMERIC(18,2) DEFAULT 0
   `);
 }
 
@@ -877,6 +958,14 @@ export async function getMt5AccountById(
       next_add_seconds: number;
       next_poll_seconds: number;
       last_sync_utc: Date;
+      data_source?: string | null;
+      reconstruction_status?: string | null;
+      reconstruction_note?: string | null;
+      reconstruction_window_start_utc?: Date | null;
+      reconstruction_window_end_utc?: Date | null;
+      reconstruction_market_closed_segments?: number | null;
+      reconstruction_trades?: number | null;
+      reconstruction_week_realized?: string | null;
       recent_logs?: string[] | null;
       lot_map?: Mt5LotMapEntry[] | null;
       lot_map_updated_utc?: Date | null;
@@ -940,6 +1029,18 @@ export async function getMt5AccountById(
       next_add_seconds: account.next_add_seconds,
       next_poll_seconds: account.next_poll_seconds,
       last_sync_utc: account.last_sync_utc.toISOString(),
+      data_source: account.data_source ?? "realtime",
+      reconstruction_status: account.reconstruction_status ?? "none",
+      reconstruction_note: account.reconstruction_note ?? "",
+      reconstruction_window_start_utc: account.reconstruction_window_start_utc
+        ? account.reconstruction_window_start_utc.toISOString()
+        : "",
+      reconstruction_window_end_utc: account.reconstruction_window_end_utc
+        ? account.reconstruction_window_end_utc.toISOString()
+        : "",
+      reconstruction_market_closed_segments: Number(account.reconstruction_market_closed_segments ?? 0),
+      reconstruction_trades: Number(account.reconstruction_trades ?? 0),
+      reconstruction_week_realized: Number(account.reconstruction_week_realized ?? 0),
       lot_map: parseJsonArray<Mt5LotMapEntry>(account.lot_map) ?? undefined,
       lot_map_updated_utc: account.lot_map_updated_utc
         ? account.lot_map_updated_utc.toISOString()

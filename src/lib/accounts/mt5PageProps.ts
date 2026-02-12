@@ -21,6 +21,9 @@ type Mt5PageHeaderAccount = Partial<Mt5AccountLike> & {
   last_sync_utc?: string | null;
   trade_count_week?: number | null;
   recent_logs?: string[] | null;
+  data_source?: string | null;
+  reconstruction_status?: string | null;
+  reconstruction_note?: string | null;
 };
 
 type Mt5PagePropsInput = {
@@ -88,6 +91,9 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
       riskModeLabel: account?.risk_mode ?? null,
       statusLabel: String(account?.status ?? "UNKNOWN"),
       statusToneClass: statusTone(String(account?.status ?? "PAUSED")),
+      dataSourceLabel: account?.data_source ?? "realtime",
+      reconstructionStatus: account?.reconstruction_status ?? "none",
+      reconstructionNote: account?.reconstruction_note ?? null,
       lastSync: account?.last_sync_utc ? formatDateTimeET(String(account.last_sync_utc)) : "—",
       weekOptions,
       currentWeek: currentWeekOpenUtc,

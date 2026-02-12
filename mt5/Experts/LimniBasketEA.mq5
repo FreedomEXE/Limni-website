@@ -5,6 +5,7 @@
 #property strict
 
 #include <Trade/Trade.mqh>
+#include "Include/HistoricalReconstruction.mqh"
 
 input string ApiUrl = "https://limni-website-nine.vercel.app/api/cot/baskets/latest";
 input string ApiUrlFallback = "";
@@ -60,6 +61,11 @@ input string PushToken = "2121";
 input int PushIntervalSeconds = 30;
 input string AccountLabel = "";
 input int ClosedHistoryDays = 30;
+input bool EnableReconnectReconstruction = true;
+input int ReconstructIfOfflineMinutes = 60;
+input int ReconstructionMaxDays = 14;
+input int ReconstructionTimeoutSeconds = 30;
+input int ReconstructionMaxCandlesPerSymbol = 1000;
 
 enum EAState
 {
@@ -104,6 +110,15 @@ string g_assetClasses[];
 
 datetime g_orderTimes[];
 datetime g_lastPush = 0;
+string g_dataSource = "realtime";
+string g_reconstructionStatus = "none";
+string g_reconstructionNote = "";
+datetime g_reconstructionWindowStart = 0;
+datetime g_reconstructionWindowEnd = 0;
+int g_reconstructionMarketClosed = 0;
+int g_reconstructionTrades = 0;
+double g_reconstructionWeekRealized = 0.0;
+bool g_reconstructionAttempted = false;
 
 CTrade g_trade;
 
@@ -115,6 +130,7 @@ string GV_TRAIL = "Limni_TrailActive";
 string GV_CLOSE = "Limni_CloseRequested";
 string GV_WEEK_PEAK = "Limni_WeekPeak";
 string GV_MAX_DD = "Limni_MaxDD";
+string GV_LAST_PUSH = "Limni_LastPush";
 string CACHE_FILE = "LimniCotCache.json";
 string DASH_BG = "LimniDash_bg";
 string DASH_SHADOW = "LimniDash_shadow";
@@ -227,6 +243,7 @@ void GetWeeklyTradeStats(int &tradeCount, double &winRatePct);
 void PushStatsIfDue();
 bool SendAccountSnapshot();
 bool HttpPostJson(const string url, const string payload, string &response);
+void RunReconstructionIfNeeded();
 double GetLegRiskScale();
 string RiskModeToString();
 void ApplyRiskScale(const string symbol, double scale, double &targetLot, double &finalLot,
@@ -264,6 +281,7 @@ int OnInit()
     LoadState();
     LoadApiCache();
   }
+  RunReconstructionIfNeeded();
   InitDashboard();
 
   EventSetTimer(10);
@@ -1891,6 +1909,8 @@ void LoadState()
         g_weekPeakEquity = GlobalVariableGet(GV_WEEK_PEAK);
       if(GlobalVariableCheck(GV_MAX_DD))
         g_maxDrawdownPct = GlobalVariableGet(GV_MAX_DD);
+      if(GlobalVariableCheck(GV_LAST_PUSH))
+        g_lastPush = (datetime)GlobalVariableGet(GV_LAST_PUSH);
       return;
     }
   }
@@ -1902,6 +1922,10 @@ void LoadState()
   g_closeRequested = false;
   g_weekPeakEquity = 0.0;
   g_maxDrawdownPct = 0.0;
+  if(GlobalVariableCheck(GV_LAST_PUSH))
+    g_lastPush = (datetime)GlobalVariableGet(GV_LAST_PUSH);
+  else
+    g_lastPush = 0;
 }
 
 void SaveState()
@@ -1914,6 +1938,7 @@ void SaveState()
   GlobalVariableSet(GV_CLOSE, g_closeRequested ? 1.0 : 0.0);
   GlobalVariableSet(GV_WEEK_PEAK, g_weekPeakEquity);
   GlobalVariableSet(GV_MAX_DD, g_maxDrawdownPct);
+  GlobalVariableSet(GV_LAST_PUSH, (double)g_lastPush);
 }
 
 void LoadApiCache()
@@ -2626,6 +2651,92 @@ void UpdateDrawdown()
 }
 
 //+------------------------------------------------------------------+
+void RunReconstructionIfNeeded()
+{
+  if(!EnableReconnectReconstruction)
+    return;
+
+  datetime lastPushUtc = 0;
+  if(GlobalVariableCheck(GV_LAST_PUSH))
+    lastPushUtc = (datetime)GlobalVariableGet(GV_LAST_PUSH);
+  if(lastPushUtc <= 0)
+    return;
+
+  datetime nowUtc = TimeGMT();
+  if(nowUtc <= lastPushUtc)
+    return;
+
+  int offlineSeconds = (int)(nowUtc - lastPushUtc);
+  if(offlineSeconds < ReconstructIfOfflineMinutes * 60)
+    return;
+
+  HRSettings settings;
+  HR_DefaultSettings(settings);
+  settings.maxDays = ReconstructionMaxDays;
+  settings.timeoutSeconds = ReconstructionTimeoutSeconds;
+  settings.maxCandlesPerSymbol = ReconstructionMaxCandlesPerSymbol;
+  settings.timeframe = PERIOD_M5;
+  settings.includeMagicOnly = true;
+  settings.magicNumber = MagicNumber;
+  settings.weekStartUtc = g_weekStartGmt;
+
+  HROutcome outcome;
+  double peak = g_weekPeakEquity;
+  double maxDd = g_maxDrawdownPct;
+  double reconstructedPnl = 0.0;
+  int reconstructedTrades = 0;
+  bool ok = HR_RunReconstruction(
+    settings,
+    lastPushUtc,
+    nowUtc,
+    g_baselineEquity,
+    AccountInfoDouble(ACCOUNT_BALANCE),
+    peak,
+    maxDd,
+    reconstructedPnl,
+    reconstructedTrades,
+    outcome
+  );
+
+  g_reconstructionAttempted = true;
+  g_dataSource = "reconstructed";
+  g_reconstructionStatus = "failed";
+  g_reconstructionNote = outcome.note;
+  g_reconstructionWindowStart = outcome.windowStartUtc;
+  g_reconstructionWindowEnd = outcome.windowEndUtc;
+  g_reconstructionMarketClosed = outcome.marketClosedSegments;
+  g_reconstructionTrades = reconstructedTrades;
+  g_reconstructionWeekRealized = reconstructedPnl;
+
+  if(ok)
+  {
+    g_weekPeakEquity = peak;
+    g_maxDrawdownPct = maxDd;
+    g_reconstructionStatus = outcome.partial ? "partial" : "full";
+    SaveState();
+    Log(StringFormat(
+      "Reconstruction complete (%s). offline=%d sec symbols=%d trades=%d realized=%.2f",
+      g_reconstructionStatus,
+      offlineSeconds,
+      outcome.symbolsProcessed,
+      reconstructedTrades,
+      reconstructedPnl
+    ));
+  }
+  else
+  {
+    Log(StringFormat(
+      "Reconstruction failed. offline=%d sec note=%s",
+      offlineSeconds,
+      outcome.note
+    ));
+  }
+
+  // Force an immediate push carrying reconstructed metadata.
+  g_lastPush = 0;
+}
+
+//+------------------------------------------------------------------+
 void PushStatsIfDue()
 {
   if(!PushAccountStats || PushUrl == "")
@@ -2635,11 +2746,17 @@ void PushStatsIfDue()
   if(g_lastPush != 0 && (now - g_lastPush) < PushIntervalSeconds)
     return;
 
-  g_lastPush = now;
   if(!SendAccountSnapshot())
   {
     Log("Account snapshot push failed.");
+    return;
   }
+
+  g_lastPush = now;
+  GlobalVariableSet(GV_LAST_PUSH, (double)g_lastPush);
+
+  if(g_dataSource == "reconstructed")
+    g_dataSource = "realtime";
 }
 
 //+------------------------------------------------------------------+
@@ -2796,6 +2913,8 @@ string BuildAccountPayload()
   int tradeCount = 0;
   double winRate = 0.0;
   GetWeeklyTradeStats(tradeCount, winRate);
+  if(g_reconstructionAttempted && g_reconstructionTrades > tradeCount)
+    tradeCount = g_reconstructionTrades;
 
   string payload = "{";
   payload += "\"account_id\":\"" + JsonEscape(accountId) + "\",";
@@ -2828,6 +2947,14 @@ string BuildAccountPayload()
   payload += "\"next_add_seconds\":" + IntegerToString(nextAddSeconds) + ",";
   payload += "\"next_poll_seconds\":" + IntegerToString(nextPollSeconds) + ",";
   payload += "\"last_sync_utc\":\"" + FormatIsoUtc(TimeGMT()) + "\",";
+  payload += "\"data_source\":\"" + JsonEscape(g_dataSource) + "\",";
+  payload += "\"reconstruction_status\":\"" + JsonEscape(g_reconstructionStatus) + "\",";
+  payload += "\"reconstruction_note\":\"" + JsonEscape(g_reconstructionNote) + "\",";
+  payload += "\"reconstruction_window_start_utc\":\"" + JsonEscape(FormatIsoUtc(g_reconstructionWindowStart)) + "\",";
+  payload += "\"reconstruction_window_end_utc\":\"" + JsonEscape(FormatIsoUtc(g_reconstructionWindowEnd)) + "\",";
+  payload += "\"reconstruction_market_closed_segments\":" + IntegerToString(g_reconstructionMarketClosed) + ",";
+  payload += "\"reconstruction_trades\":" + IntegerToString(g_reconstructionTrades) + ",";
+  payload += "\"reconstruction_week_realized\":" + DoubleToString(g_reconstructionWeekRealized, 2) + ",";
   payload += "\"positions\":" + BuildPositionsArray() + ",";
   payload += "\"closed_positions\":" + BuildClosedPositionsArray() + ",";
   payload += "\"lot_map\":" + BuildLotMapArray() + ",";

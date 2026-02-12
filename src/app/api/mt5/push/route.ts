@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { ensureMt5AccountSchema, upsertMt5Account } from "@/lib/mt5Store";
 import type { Mt5AccountSnapshot, Mt5LotMapEntry } from "@/lib/mt5Store";
+import { isReconstructionEnabledForAccount } from "@/lib/config/eaFeatures";
+import { emitReconstructionEvent } from "@/lib/monitoring/reconstructionMetrics";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -159,6 +161,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "account_id is required." }, { status: 400 });
   }
 
+  const reconstructionEnabled = isReconstructionEnabledForAccount(accountId);
+  const requestedDataSource = parseString(payload.data_source, "realtime");
+  const effectiveDataSource =
+    requestedDataSource === "reconstructed" && !reconstructionEnabled ? "realtime" : requestedDataSource;
+
   const snapshot: Mt5AccountSnapshot = {
     account_id: accountId,
     label: parseString(payload.label, accountId),
@@ -191,6 +198,29 @@ export async function POST(request: Request) {
     next_poll_seconds: parseIntValue(payload.next_poll_seconds, -1),
     last_sync_utc:
       parseString(payload.last_sync_utc) || new Date().toISOString(),
+    data_source: effectiveDataSource,
+    reconstruction_status:
+      effectiveDataSource === "reconstructed"
+        ? parseString(payload.reconstruction_status, "none")
+        : "none",
+    reconstruction_note:
+      effectiveDataSource === "reconstructed" ? parseString(payload.reconstruction_note, "") : "",
+    reconstruction_window_start_utc:
+      effectiveDataSource === "reconstructed"
+        ? parseString(payload.reconstruction_window_start_utc, "")
+        : "",
+    reconstruction_window_end_utc:
+      effectiveDataSource === "reconstructed"
+        ? parseString(payload.reconstruction_window_end_utc, "")
+        : "",
+    reconstruction_market_closed_segments:
+      effectiveDataSource === "reconstructed"
+        ? parseIntValue(payload.reconstruction_market_closed_segments, 0)
+        : 0,
+    reconstruction_trades:
+      effectiveDataSource === "reconstructed" ? parseIntValue(payload.reconstruction_trades, 0) : 0,
+    reconstruction_week_realized:
+      effectiveDataSource === "reconstructed" ? parseNumber(payload.reconstruction_week_realized, 0) : 0,
     lot_map: parseLotMap(payload.lot_map),
     lot_map_updated_utc: parseDateIso(payload.lot_map_updated_utc),
     positions: parsePositions(payload.positions),
@@ -202,6 +232,13 @@ export async function POST(request: Request) {
 
   try {
     await upsertMt5Account(snapshot);
+    emitReconstructionEvent({
+      accountId: snapshot.account_id,
+      status: snapshot.reconstruction_status ?? "none",
+      dataSource: snapshot.data_source ?? "realtime",
+      windowStartUtc: snapshot.reconstruction_window_start_utc,
+      windowEndUtc: snapshot.reconstruction_window_end_utc,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[MT5 Push] upsert failed:", message);

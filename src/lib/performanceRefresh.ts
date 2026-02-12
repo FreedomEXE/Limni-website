@@ -34,7 +34,7 @@ function getTargetReportDateForWeek(weekOpenUtc: string): string | null {
   if (!weekOpen.isValid) {
     return null;
   }
-  // Sunday 17:00 ET week key -> use Tuesday COT report from ~5 days prior.
+  // Sunday 19:00 ET week key -> use Tuesday COT report from ~5 days prior.
   return weekOpen.minus({ days: 5 }).toISODate();
 }
 

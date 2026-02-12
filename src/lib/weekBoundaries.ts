@@ -18,7 +18,7 @@ export type WeekWindow = {
  * Previously, FX/commodity weeks stopped on Friday, missing 2 days of potential P&L
  *
  * Market-specific close times:
- * - FX: Sunday 17:00 ET → Sunday 17:00 ET (7 days)
+ * - FX: Sunday 19:00 ET → Sunday 19:00 ET (7 days)
  * - Crypto: Sunday 18:00 ET → Sunday 18:00 ET (7 days)
  * - Commodity: Sunday 18:00 ET → Sunday 18:00 ET (7 days)
  *

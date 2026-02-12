@@ -70,6 +70,21 @@ export default function AccountClientView({
     );
   }, [header.tradeModeLabel]);
 
+  const sourceBadge = useMemo(() => {
+    const source = String(header.dataSourceLabel ?? "").toLowerCase();
+    if (source !== "reconstructed") return null;
+    const status = String(header.reconstructionStatus ?? "partial").toUpperCase();
+    const note = header.reconstructionNote ? ` (${header.reconstructionNote})` : "";
+    return (
+      <span
+        title={`Metrics reconstructed after reconnect${note}`}
+        className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-200"
+      >
+        Reconstructed {status}
+      </span>
+    );
+  }, [header.dataSourceLabel, header.reconstructionStatus, header.reconstructionNote]);
+
   const showKpis = activeView === "overview";
   const providerKey = header.providerLabel.toLowerCase();
   const isOanda = providerKey === "oanda";
@@ -145,6 +160,7 @@ export default function AccountClientView({
           providerLabel={header.providerLabel}
           tradeModeBadge={tradeModeBadge}
           statusBadge={statusBadge}
+          sourceBadge={sourceBadge}
           weekOptions={header.weekOptions}
           currentWeek={header.currentWeek}
           selectedWeek={header.selectedWeek}

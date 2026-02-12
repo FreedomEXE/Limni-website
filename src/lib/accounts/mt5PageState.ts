@@ -15,6 +15,8 @@ type Mt5AccountState = {
   balance: number;
   equity: number;
   baseline_equity?: number;
+  data_source?: string;
+  reconstruction_status?: string;
   weekly_pnl_pct?: number;
   basket_pnl_pct?: number;
   positions?: OpenPositionLike[];
@@ -37,17 +39,19 @@ export function deriveMt5PnlDisplay(account: Mt5AccountState, currentWeekNet: Mt
   }, 0);
   const inferredStartBalance =
     account.balance - currentWeekNet.net > 0 ? account.balance - currentWeekNet.net : account.balance;
+  const fixedBaseline =
+    Number(account.baseline_equity ?? 0) > 0 ? Number(account.baseline_equity ?? 0) : inferredStartBalance;
   const derivedWeeklyPnlPct =
-    inferredStartBalance > 0 ? (currentWeekNet.net / inferredStartBalance) * 100 : 0;
+    fixedBaseline > 0 ? (currentWeekNet.net / fixedBaseline) * 100 : 0;
   const derivedBasketPnlPct =
     Number(account.baseline_equity ?? 0) > 0
       ? ((account.equity - Number(account.baseline_equity ?? 0)) / Number(account.baseline_equity ?? 0)) * 100
-      : derivedWeeklyPnlPct + (inferredStartBalance > 0 ? (openFloatingPnl / inferredStartBalance) * 100 : 0);
+      : derivedWeeklyPnlPct + (fixedBaseline > 0 ? (openFloatingPnl / fixedBaseline) * 100 : 0);
 
   const weeklyPnlToShow =
-    Math.abs(Number(account.weekly_pnl_pct ?? 0)) > 0.001 || currentWeekNet.trades === 0
-      ? Number(account.weekly_pnl_pct ?? 0)
-      : derivedWeeklyPnlPct;
+    currentWeekNet.trades > 0 || Number(account.baseline_equity ?? 0) > 0
+      ? derivedWeeklyPnlPct
+      : Number(account.weekly_pnl_pct ?? 0);
   const basketPnlToShow =
     Math.abs(Number(account.basket_pnl_pct ?? 0)) > 0.001 ||
     Math.abs(Number(account.baseline_equity ?? 0)) > 0.001
