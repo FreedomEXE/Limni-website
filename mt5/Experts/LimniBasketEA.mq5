@@ -36,6 +36,12 @@ input double SizingLogDeviationThresholdPct = 5.0;
 input double EquityTrailStartPct = 20.0;
 input double EquityTrailOffsetPct = 10.0;
 input bool EnableEquityTrail = false;
+input bool EnableBasketTakeProfit = true;
+input double BasketTakeProfitPct = 6.0;
+input double BasketTakeProfitUsd = 0.0;
+input bool EnforceStopLoss = true;
+input double StopLossRiskPct = 1.0;
+input double MaxStopLossRiskPct = 2.0;
 input bool AllowNonFullTradeModeForListing = true;
 input int MaxOpenPositions = 200;
 input int SlippagePoints = 10;
@@ -223,6 +229,8 @@ void UpdateState();
 void ManageBasket();
 void TryAddPositions();
 bool PlaceOrder(const string symbol, int direction, double volume, const string model);
+bool CalculateRiskStopLoss(const string symbol, int direction, double volume, double entryPrice, double &stopLoss);
+double EstimatePositionRiskUsd(const string symbol, int direction, double volume, double entryPrice, double stopLoss);
 bool GetSymbolStats(const string symbol, SymbolStats &stats);
 void CloseAllPositions();
 bool ClosePositionByTicket(ulong ticket);
@@ -1521,7 +1529,19 @@ void ManageBasket()
     g_baselineEquity = equity;
 
   double profitPct = (equity - g_baselineEquity) / g_baselineEquity * 100.0;
+  double profitUsd = equity - g_baselineEquity;
   bool wasTrailing = g_trailingActive;
+
+  bool basketTpHitPct = (EnableBasketTakeProfit && BasketTakeProfitPct > 0.0 && profitPct >= BasketTakeProfitPct);
+  bool basketTpHitUsd = (EnableBasketTakeProfit && BasketTakeProfitUsd > 0.0 && profitUsd >= BasketTakeProfitUsd);
+  if((basketTpHitPct || basketTpHitUsd) && !g_closeRequested)
+  {
+    g_closeRequested = true;
+    SaveState();
+    Log(StringFormat("Basket TP hit (pnl=%.2f%% / %.2f USD). Closing all positions.", profitPct, profitUsd));
+    CloseAllPositions();
+    return;
+  }
 
   if(EnableEquityTrail && profitPct >= EquityTrailStartPct)
   {
@@ -1637,6 +1657,25 @@ void TryAddPositions()
       LogTradeError(StringFormat("%s invalid volume=%.2f", symbol, vol));
       continue;
     }
+    if((totalLots + vol) > cap)
+    {
+      AddSkipReason("lot_cap");
+      LogTradeError(StringFormat("Lot cap reached %.2f/%.2f. Skipping %s %.2f lots.",
+                                 totalLots, cap, symbol, vol));
+      continue;
+    }
+    if(openPositions >= MaxOpenPositions)
+    {
+      AddSkipReason("max_positions");
+      LogTradeError(StringFormat("Max open positions reached %d. Stopping adds.", MaxOpenPositions));
+      break;
+    }
+    if(OrdersInLastMinute() >= MaxOrdersPerMinute)
+    {
+      AddSkipReason("rate_limit");
+      LogTradeError(StringFormat("Order rate limit reached %d/min. Stopping adds.", MaxOrdersPerMinute));
+      break;
+    }
     if(LogSizingDetails && ok && ShouldLogSizing(symbol, SizingLogCooldownSeconds))
     {
       if(MathAbs(deviationPct) >= SizingLogDeviationThresholdPct)
@@ -1652,6 +1691,7 @@ void TryAddPositions()
     }
 
     totalLots += vol;
+    openPositions++;
     MarkOrderTimestamp();
   }
 }
@@ -1661,13 +1701,23 @@ bool PlaceOrder(const string symbol, int direction, double volume, const string 
 {
   double price = direction > 0 ? SymbolInfoDouble(symbol, SYMBOL_ASK)
                                : SymbolInfoDouble(symbol, SYMBOL_BID);
+  double stopLoss = 0.0;
+  if(EnforceStopLoss)
+  {
+    if(!CalculateRiskStopLoss(symbol, direction, volume, price, stopLoss))
+    {
+      LogTradeError(StringFormat("Order blocked %s %s vol=%.2f (unable to set compliant SL)",
+                                 symbol, DirectionToString(direction), volume));
+      return false;
+    }
+  }
 
   string comment = "LimniBasket " + model + " " + g_reportDate;
   bool result = false;
   if(direction > 0)
-    result = g_trade.Buy(volume, symbol, price, 0.0, 0.0, comment);
+    result = g_trade.Buy(volume, symbol, price, stopLoss, 0.0, comment);
   else
-    result = g_trade.Sell(volume, symbol, price, 0.0, 0.0, comment);
+    result = g_trade.Sell(volume, symbol, price, stopLoss, 0.0, comment);
 
   if(!result)
   {
@@ -1677,6 +1727,96 @@ bool PlaceOrder(const string symbol, int direction, double volume, const string 
     return false;
   }
   return true;
+}
+
+bool CalculateRiskStopLoss(const string symbol, int direction, double volume, double entryPrice, double &stopLoss)
+{
+  stopLoss = 0.0;
+  if(direction == 0 || volume <= 0.0 || entryPrice <= 0.0)
+    return false;
+
+  double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+  if(balance <= 0.0)
+    return false;
+
+  double maxRiskPct = MaxStopLossRiskPct;
+  if(maxRiskPct <= 0.0)
+    maxRiskPct = 2.0;
+  double requestedRiskPct = StopLossRiskPct;
+  if(requestedRiskPct <= 0.0)
+    return false;
+  if(requestedRiskPct > maxRiskPct)
+    requestedRiskPct = maxRiskPct;
+
+  double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+  double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE_PROFIT);
+  if(tickValue <= 0.0)
+    tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+  if(tickSize <= 0.0 || tickValue <= 0.0)
+    return false;
+
+  double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+  int stopLevelPts = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
+  double minDistance = 0.0;
+  if(point > 0.0 && stopLevelPts > 0)
+    minDistance = point * stopLevelPts;
+
+  double riskUsd = balance * requestedRiskPct / 100.0;
+  if(riskUsd <= 0.0)
+    return false;
+
+  double maxAllowedUsd = balance * maxRiskPct / 100.0;
+  double priceDistance = (riskUsd / (tickValue * volume)) * tickSize;
+  if(priceDistance <= 0.0)
+    return false;
+
+  if(priceDistance < minDistance)
+    priceDistance = minDistance;
+
+  int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+  for(int attempt = 0; attempt < 3; attempt++)
+  {
+    double rawStop = (direction > 0) ? (entryPrice - priceDistance)
+                                     : (entryPrice + priceDistance);
+    stopLoss = NormalizeDouble(rawStop, digits);
+    if((direction > 0 && stopLoss >= entryPrice) || (direction < 0 && stopLoss <= entryPrice))
+      return false;
+
+    double actualRisk = EstimatePositionRiskUsd(symbol, direction, volume, entryPrice, stopLoss);
+    if(actualRisk < 0.0)
+      return false;
+    if(actualRisk <= maxAllowedUsd * 1.001)
+      return true;
+
+    double adjust = maxAllowedUsd / actualRisk;
+    if(adjust <= 0.0 || adjust >= 1.0)
+      return false;
+    priceDistance *= (adjust * 0.995);
+    if(priceDistance < minDistance)
+    {
+      priceDistance = minDistance;
+      break;
+    }
+  }
+
+  double rawFinalStop = (direction > 0) ? (entryPrice - priceDistance)
+                                        : (entryPrice + priceDistance);
+  stopLoss = NormalizeDouble(rawFinalStop, digits);
+  double finalRisk = EstimatePositionRiskUsd(symbol, direction, volume, entryPrice, stopLoss);
+  if(finalRisk < 0.0)
+    return false;
+  return (finalRisk <= maxAllowedUsd * 1.001);
+}
+
+double EstimatePositionRiskUsd(const string symbol, int direction, double volume, double entryPrice, double stopLoss)
+{
+  ENUM_ORDER_TYPE type = (direction > 0 ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+  double pnl = 0.0;
+  if(!OrderCalcProfit(type, symbol, volume, entryPrice, stopLoss, pnl))
+    return -1.0;
+  if(pnl >= 0.0)
+    return 0.0;
+  return -pnl;
 }
 //+------------------------------------------------------------------+
 bool GetSymbolStats(const string symbol, SymbolStats &stats)

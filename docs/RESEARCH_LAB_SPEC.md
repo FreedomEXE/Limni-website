@@ -48,6 +48,7 @@ type ResearchConfig = {
     marginBuffer: number;
     leverage?: number;
     sizing: "broker_native" | "fixed_risk";
+    assetClassMultipliers?: Partial<Record<"fx" | "indices" | "commodities" | "crypto", number>>;
     stopLoss?: { type: "pct"; value: number };
     trailing?: { startPct: number; offsetPct: number };
   };
@@ -80,6 +81,9 @@ type ResearchRunResult = {
     avgMarginUsedPct: number;
     peakMarginUsedPct: number;
     fillRatePct: number;
+  };
+  sizingDiagnostics?: {
+    assetClassMultipliers: Record<"fx" | "indices" | "commodities" | "crypto", number>;
   };
   equityCurve: Array<{ ts_utc: string; equity_pct: number; lock_pct: number | null }>;
   weekly: Array<{ week_open_utc: string; return_pct: number; drawdown_pct: number }>;
@@ -127,6 +131,14 @@ type ResearchRunResult = {
 2. Hypothetical engine endpoint with model/execution/risk toggles.
 3. Lab UI builder + results panels.
 4. Compare mode + export.
+
+## Research Backlog
+- Add `assetClassMultipliers` controls in the Lab Strategy Builder for hypothetical runs.
+- Support multiplier sweeps (for example `fx` from `1.0` to `1.5`) and include results in compare output.
+- Keep replay mode read-only to historical sizing; multipliers apply only to hypothetical runs.
+- Add optional range-position filters (for example 5-year high/low distance filter) as configurable entry gates.
+- Support directional toggles for range filters (`short_only` vs `short_and_long`) and evaluate return + drawdown tradeoffs.
+- Store filter diagnostics per run (signals filtered, pass rate, missing lookback data, missing entry price).
 
 ## Current Status
 - Shared research utility foundation added (`src/lib/research/common.ts`).
