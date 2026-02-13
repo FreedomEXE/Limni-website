@@ -281,9 +281,10 @@ export async function computeBankComparison(
 ): Promise<BankComparisonPayload> {
   const weeks = Math.max(8, options.weeks ?? 104);
   const months = Math.max(3, options.months ?? 24);
+  const defaultAssets: AssetClass[] = ["fx", "indices", "crypto", "commodities"];
   const assets = options.assets && options.assets.length > 0
     ? options.assets
-    : ["fx", "indices", "crypto", "commodities"];
+    : defaultAssets;
   const reportType = options.reportType ?? "f";
 
   const reports = await fetchBankReports({ limit: months, reportType });
