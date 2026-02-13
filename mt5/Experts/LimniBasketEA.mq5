@@ -14,6 +14,17 @@ input bool ResetStateOnInit = false;
 input int ApiPollIntervalSeconds = 60;
 input double BasketLotCapPer100k = 10.0;
 input bool ManualMode = false;
+enum StrategyProfile
+{
+  PROFILE_CUSTOM = 0,
+  PROFILE_EIGHTCAP = 1,
+  PROFILE_5ERS = 2,
+  PROFILE_AUTO = 3
+};
+input StrategyProfile StrategyMode = PROFILE_AUTO;
+input bool AutoProfileByBroker = true;
+input string EightcapBrokerHints = "eightcap";
+input string FiveersBrokerHints = "5ers,the5ers,fiveers,fivepercent";
 enum RiskProfile
 {
   RISK_HIGH = 0,
@@ -35,19 +46,43 @@ input int SizingLogCooldownSeconds = 300;
 input double SizingLogDeviationThresholdPct = 5.0;
 input double EquityTrailStartPct = 20.0;
 input double EquityTrailOffsetPct = 10.0;
-input bool EnableEquityTrail = false;
+input bool EnableEquityTrail = true;
+input bool EnableAdaptiveTrail = true;
+input double AdaptiveTrailStartMultiplier = 0.65;
+input double AdaptiveTrailOffsetFraction = 0.25;
+input double AdaptiveTrailMinStartPct = 30.0;
+input double AdaptiveTrailMaxStartPct = 130.0;
+input double AdaptiveTrailMinOffsetPct = 8.0;
+input double AdaptiveTrailMaxOffsetPct = 45.0;
+input double AdaptiveTrailAlpha = 0.35;
 input bool EnableBasketTakeProfit = true;
 input double BasketTakeProfitPct = 6.0;
 input double BasketTakeProfitUsd = 0.0;
+input int BasketTakeProfitReattachGraceSeconds = 300;
+input bool EnableBasketStopLoss = false;
+input double BasketStopLossPct = 0.0;
+input double EightcapEmergencyStopPct = 30.0;
+input double FiveersBasketTakeProfitPct = 6.0;
+input double FiveersBasketStopLossPct = 3.0;
 input bool EnforceStopLoss = true;
 input double StopLossRiskPct = 1.0;
 input double MaxStopLossRiskPct = 2.0;
 input bool AllowNonFullTradeModeForListing = true;
+input bool RequireHedgingAccount = true;
+input bool EnableWeeklyFlipClose = true;
+input bool EnableLoserAddToTarget = true;
+input double LoserAddToleranceLots = 0.0;
 input int MaxOpenPositions = 200;
 input int SlippagePoints = 10;
 input long MagicNumber = 912401;
 input int MaxOrdersPerMinute = 20;
 input bool ShowDashboard = true;
+enum DashboardMode
+{
+  DASH_COMPACT = 0,
+  DASH_DETAILED = 1
+};
+input DashboardMode DashboardView = DASH_COMPACT;
 input int DashboardCorner = 0;
 input int DashboardX = 18;
 input int DashboardY = 18;
@@ -107,6 +142,8 @@ bool g_trailingActive = false;
 bool g_closeRequested = false;
 double g_weekPeakEquity = 0.0;
 double g_maxDrawdownPct = 0.0;
+double g_adaptivePeakAvgPct = 0.0;
+double g_lastWeekPeakPct = 0.0;
 
 string g_apiSymbols[];
 string g_brokerSymbols[];
@@ -145,19 +182,25 @@ int g_reconstructionMarketClosed = 0;
 int g_reconstructionTrades = 0;
 double g_reconstructionWeekRealized = 0.0;
 bool g_reconstructionAttempted = false;
+datetime g_basketTpArmedAt = 0;
+bool g_basketTpGraceLogged = false;
 
 CTrade g_trade;
 
-string GV_WEEK_START = "Limni_WeekStart";
-string GV_STATE = "Limni_State";
-string GV_BASELINE = "Limni_Baseline";
-string GV_LOCKED = "Limni_Locked";
-string GV_TRAIL = "Limni_TrailActive";
-string GV_CLOSE = "Limni_CloseRequested";
-string GV_WEEK_PEAK = "Limni_WeekPeak";
-string GV_MAX_DD = "Limni_MaxDD";
-string GV_LAST_PUSH = "Limni_LastPush";
+string GV_WEEK_START = "WeekStart";
+string GV_STATE = "State";
+string GV_BASELINE = "Baseline";
+string GV_LOCKED = "Locked";
+string GV_TRAIL = "TrailActive";
+string GV_CLOSE = "CloseRequested";
+string GV_WEEK_PEAK = "WeekPeak";
+string GV_MAX_DD = "MaxDD";
+string GV_LAST_PUSH = "LastPush";
+string GV_ADAPTIVE_PEAK_AVG = "AdaptivePeakAvg";
+string GV_LAST_WEEK_PEAK = "LastWeekPeak";
 string CACHE_FILE = "LimniCotCache.json";
+string g_scopePrefix = "Limni_";
+string g_cacheFile = "LimniCotCache.json";
 string DASH_BG = "LimniDash_bg";
 string DASH_SHADOW = "LimniDash_shadow";
 string DASH_ACCENT = "LimniDash_accent";
@@ -228,13 +271,24 @@ bool HasPositionForModel(const string symbol, const string model);
 void UpdateState();
 void ManageBasket();
 void TryAddPositions();
-bool PlaceOrder(const string symbol, int direction, double volume, const string model);
+void ReconcilePositionsWithSignals();
+bool TryAddToLosingLeg(const string symbol, const string model, int direction, const string assetClass);
+double GetOpenVolumeForModelDirection(const string symbol, const string model, int direction, bool &hasLosing);
+bool PlaceOrder(const string symbol, int direction, double volume, const string model, const string reasonTag);
 bool CalculateRiskStopLoss(const string symbol, int direction, double volume, double entryPrice, double &stopLoss);
 double EstimatePositionRiskUsd(const string symbol, int direction, double volume, double entryPrice, double stopLoss);
 bool GetSymbolStats(const string symbol, SymbolStats &stats);
 void CloseAllPositions();
+void CloseAllPositions(const string reasonTag);
 bool ClosePositionByTicket(ulong ticket);
+bool ClosePositionByTicket(ulong ticket, const string reasonTag);
 void CloseSymbolPositions(const string symbol);
+void CloseSymbolPositions(const string symbol, const string reasonTag);
+string BuildOpenOrderComment(const string model, const string reasonTag);
+string BuildCloseOrderComment(const string reasonTag);
+string ShortReasonTag(const string reasonTag);
+string MarginModeToString();
+bool IsHedgingAccount();
 void MarkOrderTimestamp();
 int OrdersInLastMinute();
 datetime GetWeekStartGmt(datetime nowGmt);
@@ -261,11 +315,13 @@ void SetLabelText(const string name, const string text, color textColor);
 string StateToString(EAState state);
 string FormatDuration(int seconds);
 string FormatTimeValue(datetime value);
+string FormatDateOnly(datetime value);
 string CompactText(const string value, int maxLen);
 string EnsureTrailingSlash(const string url);
 int CountOpenPositions();
 int CountOpenPairs();
 int CountSignalsByModel(const string model);
+int CountOpenPositionsByModel(const string model);
 void UpdateDrawdown();
 void GetWeeklyTradeStats(int &tradeCount, double &winRatePct);
 void PushStatsIfDue();
@@ -274,6 +330,21 @@ bool HttpPostJson(const string url, const string payload, string &response);
 void RunReconstructionIfNeeded();
 double GetLegRiskScale();
 string RiskModeToString();
+string StrategyModeToString();
+StrategyProfile GetEffectiveStrategyMode();
+string NormalizeBrokerText(const string value);
+bool BrokerMatchesHints(const string hintsCsv);
+bool IsFiveersMode();
+bool IsEightcapMode();
+bool IsBasketTakeProfitEnabled();
+double GetEffectiveBasketTakeProfitPct();
+bool IsBasketStopLossEnabled();
+double GetEffectiveBasketStopLossPct();
+bool IsEquityTrailEnabled();
+bool IsAdaptiveTrailEnabled();
+double GetEffectiveTrailStartPct();
+double GetEffectiveTrailOffsetPct();
+void UpdateAdaptivePeakAverageFromWeek();
 void ApplyRiskScale(const string symbol, double scale, double &targetLot, double &finalLot,
                     double &deviationPct, double &equityPerSymbol, double &marginRequired);
 string BuildAccountPayload();
@@ -299,14 +370,47 @@ string FormatIsoUtc(datetime value);
 string AccountStatusToString();
 int GetNextAddSeconds();
 int GetNextPollSeconds();
+bool IsWaitingForWeeklySnapshot(string &expectedReportDate, int &minutesSinceRelease);
 double ProbeMarginCoverageForMode(const string symbol, const string assetClass, double &testLot, double &marginRequired);
 void LogBrokerCapability();
+string SanitizeScopePart(const string value);
+string BuildScopePrefix();
+string ScopeKey(const string suffix);
+string ScopeCacheFileName(const string baseName);
 
 //+------------------------------------------------------------------+
 int OnInit()
 {
   g_trade.SetExpertMagicNumber(MagicNumber);
   g_trade.SetDeviationInPoints(SlippagePoints);
+  g_scopePrefix = BuildScopePrefix();
+  g_cacheFile = ScopeCacheFileName(CACHE_FILE);
+  Print(StringFormat("Limni state scope=%s cache=%s", g_scopePrefix, g_cacheFile));
+  g_basketTpArmedAt = TimeCurrent();
+  g_basketTpGraceLogged = false;
+  string configuredMode = "CUSTOM";
+  if(StrategyMode == PROFILE_EIGHTCAP)
+    configuredMode = "EIGHTCAP";
+  else if(StrategyMode == PROFILE_5ERS)
+    configuredMode = "5ERS";
+  else if(StrategyMode == PROFILE_AUTO)
+    configuredMode = "AUTO";
+  Log(StringFormat("Strategy mode configured=%s effective=%s broker=%s server=%s",
+                   configuredMode,
+                   StrategyModeToString(),
+                   AccountInfoString(ACCOUNT_COMPANY),
+                   AccountInfoString(ACCOUNT_SERVER)));
+  Log(StringFormat("Effective guards: TP %.2f%% (%s) | SL %.2f%% (%s) | Trail %s",
+                   GetEffectiveBasketTakeProfitPct(),
+                   IsBasketTakeProfitEnabled() ? "on" : "off",
+                   GetEffectiveBasketStopLossPct(),
+                   IsBasketStopLossEnabled() ? "on" : "off",
+                   IsEquityTrailEnabled() ? "on" : "off"));
+  Log(StringFormat("Account structure: %s (RequireHedging=%s)",
+                   MarginModeToString(),
+                   RequireHedgingAccount ? "true" : "false"));
+  if(RequireHedgingAccount && !IsHedgingAccount())
+    LogTradeError("Account is NETTING. New entries blocked because RequireHedgingAccount=true.");
 
   BuildAllowedKeys();
   LogBrokerCapability();
@@ -322,6 +426,12 @@ int OnInit()
   }
   RunReconstructionIfNeeded();
   InitDashboard();
+  if(IsBasketTakeProfitEnabled() && BasketTakeProfitReattachGraceSeconds > 0 && HasOpenPositions())
+  {
+    g_basketTpArmedAt = TimeCurrent() + BasketTakeProfitReattachGraceSeconds;
+    Log(StringFormat("Basket TP grace armed for %d sec after attach (open basket detected).",
+                     BasketTakeProfitReattachGraceSeconds));
+  }
 
   EventSetTimer(10);
   Log("EA initialized.");
@@ -336,6 +446,44 @@ void OnDeinit(const int reason)
   EventKillTimer();
 }
 
+string SanitizeScopePart(const string value)
+{
+  string out = "";
+  int len = StringLen(value);
+  for(int i = 0; i < len; i++)
+  {
+    ushort ch = (ushort)StringGetCharacter(value, i);
+    bool digit = (ch >= '0' && ch <= '9');
+    bool upper = (ch >= 'A' && ch <= 'Z');
+    bool lower = (ch >= 'a' && ch <= 'z');
+    if(digit || upper || lower)
+      out += ShortToString(ch);
+    else
+      out += "_";
+  }
+  if(out == "")
+    out = "default";
+  return out;
+}
+
+string BuildScopePrefix()
+{
+  long login = AccountInfoInteger(ACCOUNT_LOGIN);
+  string server = SanitizeScopePart(AccountInfoString(ACCOUNT_SERVER));
+  string company = SanitizeScopePart(AccountInfoString(ACCOUNT_COMPANY));
+  return StringFormat("Limni_%I64d_%s_%s_", login, server, company);
+}
+
+string ScopeKey(const string suffix)
+{
+  return g_scopePrefix + suffix;
+}
+
+string ScopeCacheFileName(const string baseName)
+{
+  return ScopeKey(baseName);
+}
+
 //+------------------------------------------------------------------+
 void OnTimer()
 {
@@ -344,6 +492,7 @@ void OnTimer()
 
   if(newWeekStart != g_weekStartGmt)
   {
+    UpdateAdaptivePeakAverageFromWeek();
     g_weekStartGmt = newWeekStart;
     if(!HasOpenPositions())
     {
@@ -1134,6 +1283,8 @@ double GetOneToOneLotForSymbol(const string symbol, const string assetClass)
 
 double GetLegRiskScale()
 {
+  if(IsFiveersMode())
+    return 0.10;
   if(RiskMode == RISK_NORMAL)
     return 0.25;
   if(RiskMode == RISK_LOW)
@@ -1155,6 +1306,240 @@ string RiskModeToString()
   if(RiskMode == RISK_GOD)
     return "GOD";
   return "HIGH_LEGACY";
+}
+
+string StrategyModeToString()
+{
+  StrategyProfile mode = GetEffectiveStrategyMode();
+  if(mode == PROFILE_EIGHTCAP)
+    return "EIGHTCAP";
+  if(mode == PROFILE_5ERS)
+    return "5ERS";
+  if(mode == PROFILE_AUTO)
+    return "AUTO";
+  return "CUSTOM";
+}
+
+StrategyProfile GetEffectiveStrategyMode()
+{
+  if(StrategyMode == PROFILE_EIGHTCAP || StrategyMode == PROFILE_5ERS || StrategyMode == PROFILE_CUSTOM)
+    return StrategyMode;
+  if(!AutoProfileByBroker)
+    return PROFILE_CUSTOM;
+  if(BrokerMatchesHints(FiveersBrokerHints))
+    return PROFILE_5ERS;
+  if(BrokerMatchesHints(EightcapBrokerHints))
+    return PROFILE_EIGHTCAP;
+  return PROFILE_CUSTOM;
+}
+
+string NormalizeBrokerText(const string value)
+{
+  string out = value;
+  StringToLower(out);
+  StringReplace(out, " ", "");
+  StringReplace(out, "-", "");
+  StringReplace(out, "_", "");
+  StringReplace(out, ".", "");
+  StringReplace(out, ",", "");
+  return out;
+}
+
+bool BrokerMatchesHints(const string hintsCsv)
+{
+  string haystack = NormalizeBrokerText(AccountInfoString(ACCOUNT_COMPANY) + "|" + AccountInfoString(ACCOUNT_SERVER));
+  string csv = hintsCsv;
+  int start = 0;
+  while(start < StringLen(csv))
+  {
+    int comma = StringFind(csv, ",", start);
+    if(comma < 0)
+      comma = StringLen(csv);
+    string token = StringSubstr(csv, start, comma - start);
+    token = NormalizeBrokerText(token);
+    if(token != "" && StringFind(haystack, token) >= 0)
+      return true;
+    start = comma + 1;
+  }
+  return false;
+}
+
+bool IsFiveersMode()
+{
+  return (GetEffectiveStrategyMode() == PROFILE_5ERS);
+}
+
+bool IsEightcapMode()
+{
+  return (GetEffectiveStrategyMode() == PROFILE_EIGHTCAP);
+}
+
+string ShortReasonTag(const string reasonTag)
+{
+  string tag = reasonTag;
+  StringToLower(tag);
+  if(tag == "basket_tp")
+    return "basket_tp";
+  if(tag == "basket_sl")
+    return "basket_sl";
+  if(tag == "trail_lock")
+    return "trail_lock";
+  if(tag == "weekly_flip")
+    return "weekly_flip";
+  if(tag == "added_loser")
+    return "added_loser";
+  if(tag == "manual")
+    return "manual";
+  if(tag == "signal")
+    return "signal";
+  return "generic";
+}
+
+string BuildOpenOrderComment(const string model, const string reasonTag)
+{
+  string s = StringFormat("LimniBasket %s %s %s", model, ShortReasonTag(reasonTag), g_reportDate);
+  return CompactText(s, 31);
+}
+
+string BuildCloseOrderComment(const string reasonTag)
+{
+  string s = StringFormat("LimniClose %s", ShortReasonTag(reasonTag));
+  return CompactText(s, 31);
+}
+
+string MarginModeToString()
+{
+  int mode = (int)AccountInfoInteger(ACCOUNT_MARGIN_MODE);
+  if(mode == ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
+    return "HEDGED";
+  if(mode == ACCOUNT_MARGIN_MODE_RETAIL_NETTING || mode == ACCOUNT_MARGIN_MODE_EXCHANGE)
+    return "NET";
+  return "UNKNOWN";
+}
+
+bool IsHedgingAccount()
+{
+  return ((int)AccountInfoInteger(ACCOUNT_MARGIN_MODE) == ACCOUNT_MARGIN_MODE_RETAIL_HEDGING);
+}
+
+bool IsBasketTakeProfitEnabled()
+{
+  if(IsFiveersMode())
+    return true;
+  if(IsEightcapMode())
+    return false;
+  return EnableBasketTakeProfit;
+}
+
+double GetEffectiveBasketTakeProfitPct()
+{
+  if(IsFiveersMode())
+    return FiveersBasketTakeProfitPct;
+  if(IsEightcapMode())
+    return 0.0;
+  return BasketTakeProfitPct;
+}
+
+bool IsBasketStopLossEnabled()
+{
+  if(IsFiveersMode())
+    return true;
+  if(IsEightcapMode())
+    return (EightcapEmergencyStopPct > 0.0);
+  return EnableBasketStopLoss;
+}
+
+double GetEffectiveBasketStopLossPct()
+{
+  if(IsFiveersMode())
+    return FiveersBasketStopLossPct;
+  if(IsEightcapMode())
+    return EightcapEmergencyStopPct;
+  return BasketStopLossPct;
+}
+
+bool IsAdaptiveTrailEnabled()
+{
+  if(IsFiveersMode())
+    return false;
+  if(IsEightcapMode())
+    return true;
+  return EnableAdaptiveTrail;
+}
+
+bool IsEquityTrailEnabled()
+{
+  if(IsFiveersMode())
+    return false;
+  if(IsEightcapMode())
+    return true;
+  return EnableEquityTrail;
+}
+
+double GetEffectiveTrailStartPct()
+{
+  if(!IsEquityTrailEnabled())
+    return 0.0;
+
+  if(!IsAdaptiveTrailEnabled())
+    return EquityTrailStartPct;
+
+  double raw = (g_adaptivePeakAvgPct > 0.0 ? g_adaptivePeakAvgPct * AdaptiveTrailStartMultiplier : 30.0);
+  double minStart = AdaptiveTrailMinStartPct;
+  double maxStart = AdaptiveTrailMaxStartPct;
+  if(minStart <= 0.0)
+    minStart = 30.0;
+  if(maxStart < minStart)
+    maxStart = minStart;
+  return MathMax(minStart, MathMin(raw, maxStart));
+}
+
+double GetEffectiveTrailOffsetPct()
+{
+  if(!IsEquityTrailEnabled())
+    return 0.0;
+
+  if(!IsAdaptiveTrailEnabled())
+    return EquityTrailOffsetPct;
+
+  double start = GetEffectiveTrailStartPct();
+  double raw = start * AdaptiveTrailOffsetFraction;
+  double minOffset = AdaptiveTrailMinOffsetPct;
+  double maxOffset = AdaptiveTrailMaxOffsetPct;
+  if(minOffset <= 0.0)
+    minOffset = 8.0;
+  if(maxOffset < minOffset)
+    maxOffset = minOffset;
+  return MathMax(minOffset, MathMin(raw, maxOffset));
+}
+
+void UpdateAdaptivePeakAverageFromWeek()
+{
+  if(!IsAdaptiveTrailEnabled())
+    return;
+  if(g_baselineEquity <= 0.0 || g_weekPeakEquity <= 0.0)
+    return;
+  if(g_weekPeakEquity <= g_baselineEquity)
+    return;
+
+  double peakPct = (g_weekPeakEquity - g_baselineEquity) / g_baselineEquity * 100.0;
+  if(peakPct <= 0.0)
+    return;
+
+  double alpha = AdaptiveTrailAlpha;
+  if(alpha <= 0.0)
+    alpha = 0.35;
+  if(alpha > 1.0)
+    alpha = 1.0;
+
+  g_lastWeekPeakPct = peakPct;
+  if(g_adaptivePeakAvgPct <= 0.0)
+    g_adaptivePeakAvgPct = peakPct;
+  else
+    g_adaptivePeakAvgPct = g_adaptivePeakAvgPct * (1.0 - alpha) + peakPct * alpha;
+
+  SaveState();
+  Log(StringFormat("Adaptive peak updated: last=%.2f%% avg=%.2f%%", g_lastWeekPeakPct, g_adaptivePeakAvgPct));
 }
 
 double ProbeMarginCoverageForMode(const string symbol, const string assetClass, double &testLot, double &marginRequired)
@@ -1350,7 +1735,7 @@ double ComputeMove1PctUsd(const string symbol, double lots)
 
 bool ShouldLogSizing(const string symbol, int cooldownSeconds)
 {
-  string key = "Limni_Size_" + symbol;
+  string key = ScopeKey("Size_" + symbol);
   datetime now = TimeCurrent();
   if(GlobalVariableCheck(key))
   {
@@ -1474,6 +1859,8 @@ void UpdateState()
       g_lockedProfitPct = 0.0;
       g_trailingActive = false;
       g_closeRequested = false;
+      g_basketTpArmedAt = TimeCurrent();
+      g_basketTpGraceLogged = false;
       SaveState();
       Log("State -> ACTIVE (API allows trading).");
     }
@@ -1493,6 +1880,8 @@ void UpdateState()
     if(g_apiOk && g_tradingAllowed)
     {
       g_state = STATE_ACTIVE;
+      g_basketTpArmedAt = TimeCurrent();
+      g_basketTpGraceLogged = false;
       Log("State -> ACTIVE (API recovered).");
     }
   }
@@ -1526,31 +1915,62 @@ void ManageBasket()
 
   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
   if(g_baselineEquity <= 0.0)
-    g_baselineEquity = equity;
+    g_baselineEquity = AccountInfoDouble(ACCOUNT_BALANCE);
 
   double profitPct = (equity - g_baselineEquity) / g_baselineEquity * 100.0;
   double profitUsd = equity - g_baselineEquity;
   bool wasTrailing = g_trailingActive;
+  bool basketTpEnabled = IsBasketTakeProfitEnabled();
+  double basketTpPct = GetEffectiveBasketTakeProfitPct();
+  bool basketSlEnabled = IsBasketStopLossEnabled();
+  double basketSlPct = GetEffectiveBasketStopLossPct();
+  bool trailEnabled = IsEquityTrailEnabled();
+  double trailStartPct = GetEffectiveTrailStartPct();
+  double trailOffsetPct = GetEffectiveTrailOffsetPct();
+  datetime now = TimeCurrent();
+  bool basketTpArmed = (now >= g_basketTpArmedAt);
+  if(!basketTpArmed && !g_basketTpGraceLogged)
+  {
+    int left = (int)(g_basketTpArmedAt - now);
+    if(left < 0)
+      left = 0;
+    Log(StringFormat("Basket TP grace active (%d sec remaining).", left));
+    g_basketTpGraceLogged = true;
+  }
+  if(basketTpArmed)
+    g_basketTpGraceLogged = false;
 
-  bool basketTpHitPct = (EnableBasketTakeProfit && BasketTakeProfitPct > 0.0 && profitPct >= BasketTakeProfitPct);
-  bool basketTpHitUsd = (EnableBasketTakeProfit && BasketTakeProfitUsd > 0.0 && profitUsd >= BasketTakeProfitUsd);
+  bool basketSlHitPct = (basketSlEnabled && basketSlPct > 0.0 && profitPct <= -basketSlPct);
+  if(basketSlHitPct && !g_closeRequested)
+  {
+    g_closeRequested = true;
+    SaveState();
+    Log(StringFormat("Basket SL hit (pnl=%.2f%% / %.2f USD). Closing all positions.", profitPct, profitUsd));
+    CloseAllPositions("basket_sl");
+    return;
+  }
+
+  bool basketTpHitPct = (basketTpEnabled && basketTpArmed &&
+                         basketTpPct > 0.0 && profitPct >= basketTpPct);
+  bool basketTpHitUsd = (basketTpEnabled && basketTpArmed &&
+                         BasketTakeProfitUsd > 0.0 && profitUsd >= BasketTakeProfitUsd);
   if((basketTpHitPct || basketTpHitUsd) && !g_closeRequested)
   {
     g_closeRequested = true;
     SaveState();
     Log(StringFormat("Basket TP hit (pnl=%.2f%% / %.2f USD). Closing all positions.", profitPct, profitUsd));
-    CloseAllPositions();
+    CloseAllPositions("basket_tp");
     return;
   }
 
-  if(EnableEquityTrail && profitPct >= EquityTrailStartPct)
+  if(trailEnabled && trailStartPct > 0.0 && profitPct >= trailStartPct)
   {
     g_trailingActive = true;
     if(!wasTrailing)
       Log(StringFormat("Equity trail activated at %.2f%%", profitPct));
 
     double peakProfitPct = (g_weekPeakEquity - g_baselineEquity) / g_baselineEquity * 100.0;
-    double newLocked = peakProfitPct - EquityTrailOffsetPct;
+    double newLocked = peakProfitPct - trailOffsetPct;
     if(newLocked > g_lockedProfitPct)
     {
       g_lockedProfitPct = newLocked;
@@ -1558,7 +1978,7 @@ void ManageBasket()
       Log(StringFormat("Equity trail lock updated: %.2f%%", g_lockedProfitPct));
     }
   }
-  if(!EnableEquityTrail)
+  if(!trailEnabled)
   {
     g_trailingActive = false;
     g_lockedProfitPct = 0.0;
@@ -1569,7 +1989,7 @@ void ManageBasket()
     g_closeRequested = true;
     SaveState();
     Log(StringFormat("Equity trail hit %.2f%%. Closing all positions and pausing.", g_lockedProfitPct));
-    CloseAllPositions();
+    CloseAllPositions("trail_lock");
   }
 }
 //+------------------------------------------------------------------+
@@ -1577,8 +1997,12 @@ void TryAddPositions()
 {
   if(ManualMode)
     return;
+  if(RequireHedgingAccount && !IsHedgingAccount())
+    return;
   if(!g_apiOk || !g_tradingAllowed || g_closeRequested)
     return;
+
+  ReconcilePositionsWithSignals();
 
   double cap = GetBasketLotCap();
   double totalLots = GetTotalBasketLots();
@@ -1615,14 +2039,22 @@ void TryAddPositions()
     if(symbol == "" || direction == 0)
       continue;
 
+    string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
     string model = (i < ArraySize(g_models) ? g_models[i] : "blended");
     if(HasPositionForModel(symbol, model))
     {
-      AddSkipReason("duplicate_open");
+      if(TryAddToLosingLeg(symbol, model, direction, assetClass))
+      {
+        totalLots = GetTotalBasketLots();
+        openPositions = CountOpenPositions();
+      }
+      else
+      {
+        AddSkipReason("duplicate_open");
+      }
       continue;
     }
 
-    string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
     string normalizedClass = assetClass;
     StringToLower(normalizedClass);
     if(normalizedClass == "crypto" && nowGmt < cryptoStartGmt)
@@ -1682,7 +2114,7 @@ void TryAddPositions()
         LogSizing(symbol, targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired);
     }
 
-    if(!PlaceOrder(symbol, direction, vol, model))
+    if(!PlaceOrder(symbol, direction, vol, model, "signal"))
     {
       AddSkipReason("order_failed");
       if(IsIndexSymbol(symbol))
@@ -1697,7 +2129,168 @@ void TryAddPositions()
 }
 
 //+------------------------------------------------------------------+
-bool PlaceOrder(const string symbol, int direction, double volume, const string model)
+void ReconcilePositionsWithSignals()
+{
+  if(!EnableWeeklyFlipClose)
+    return;
+
+  int total = PositionsTotal();
+  for(int i = total - 1; i >= 0; i--)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    string model = ParseModelFromComment(PositionGetString(POSITION_COMMENT));
+    if(model == "" || model == "unknown")
+      continue;
+    StringToLower(model);
+
+    int currentDir = ((int)PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? 1 : -1);
+    int wantedDir = 0;
+    bool found = false;
+    for(int j = 0; j < ArraySize(g_brokerSymbols); j++)
+    {
+      if(g_brokerSymbols[j] != symbol)
+        continue;
+      string wantedModel = (j < ArraySize(g_models) ? g_models[j] : "blended");
+      StringToLower(wantedModel);
+      if(wantedModel != model)
+        continue;
+      wantedDir = g_directions[j];
+      found = true;
+      break;
+    }
+
+    if(!found || wantedDir == 0 || wantedDir != currentDir)
+    {
+      if(!ClosePositionByTicket(ticket, "weekly_flip"))
+        LogTradeError(StringFormat("Flip close failed %s model=%s ticket=%llu", symbol, model, ticket));
+      else
+        Log(StringFormat("Closed weekly flip %s model=%s ticket=%llu", symbol, model, ticket));
+    }
+  }
+}
+
+double GetOpenVolumeForModelDirection(const string symbol, const string model, int direction, bool &hasLosing)
+{
+  hasLosing = false;
+  string targetModel = model;
+  StringToLower(targetModel);
+  double totalVol = 0.0;
+  int total = PositionsTotal();
+  for(int i = 0; i < total; i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+    if(PositionGetString(POSITION_SYMBOL) != symbol)
+      continue;
+    string parsed = ParseModelFromComment(PositionGetString(POSITION_COMMENT));
+    StringToLower(parsed);
+    if(parsed != targetModel)
+      continue;
+
+    int dir = ((int)PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? 1 : -1);
+    if(dir != direction)
+      continue;
+
+    totalVol += PositionGetDouble(POSITION_VOLUME);
+    double pnl = PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+    if(pnl < 0.0)
+      hasLosing = true;
+  }
+  return totalVol;
+}
+
+bool TryAddToLosingLeg(const string symbol, const string model, int direction, const string assetClass)
+{
+  if(!EnableLoserAddToTarget)
+    return false;
+  if(direction == 0)
+    return false;
+  if(!IsTradableSymbol(symbol))
+    return false;
+
+  bool hasLosing = false;
+  double currentVol = GetOpenVolumeForModelDirection(symbol, model, direction, hasLosing);
+  if(currentVol <= 0.0 || !hasLosing)
+    return false;
+
+  double targetLot = 0.0;
+  double finalLot = 0.0;
+  double deviationPct = 0.0;
+  double equityPerSymbol = 0.0;
+  double marginRequired = 0.0;
+  bool ok = ComputeOneToOneLot(symbol, assetClass, targetLot, finalLot,
+                               deviationPct, equityPerSymbol, marginRequired);
+  if(ok)
+    ApplyRiskScale(symbol, GetLegRiskScale(), targetLot, finalLot, deviationPct, equityPerSymbol, marginRequired);
+  if(!ok || finalLot <= 0.0)
+    return false;
+
+  double tolerance = LoserAddToleranceLots;
+  double step = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+  if(step > 0.0 && tolerance < step * 0.5)
+    tolerance = step * 0.5;
+
+  // Only add when the losing leg is smaller than its balance-based target size.
+  double deficit = finalLot - currentVol;
+  if(deficit <= tolerance)
+    return false;
+
+  double minVol = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+  if(minVol <= 0.0)
+    return false;
+  if(deficit < minVol)
+    return false;
+
+  double addVol = NormalizeVolume(symbol, deficit);
+  if(addVol <= 0.0)
+    return false;
+
+  if(OrdersInLastMinute() >= MaxOrdersPerMinute)
+  {
+    AddSkipReason("rate_limit");
+    return false;
+  }
+  int openPositions = CountOpenPositions();
+  if(openPositions >= MaxOpenPositions)
+  {
+    AddSkipReason("max_positions");
+    return false;
+  }
+  double cap = GetBasketLotCap();
+  double totalLots = GetTotalBasketLots();
+  if((totalLots + addVol) > cap)
+  {
+    AddSkipReason("lot_cap");
+    return false;
+  }
+
+  if(!PlaceOrder(symbol, direction, addVol, model, "added_loser"))
+  {
+    AddSkipReason("order_failed");
+    return false;
+  }
+
+  MarkOrderTimestamp();
+  Log(StringFormat("Added to losing leg %s model=%s current=%.2f target=%.2f add=%.2f",
+                   symbol, model, currentVol, finalLot, addVol));
+  return true;
+}
+
+//+------------------------------------------------------------------+
+bool PlaceOrder(const string symbol, int direction, double volume, const string model, const string reasonTag)
 {
   double price = direction > 0 ? SymbolInfoDouble(symbol, SYMBOL_ASK)
                                : SymbolInfoDouble(symbol, SYMBOL_BID);
@@ -1712,7 +2305,7 @@ bool PlaceOrder(const string symbol, int direction, double volume, const string 
     }
   }
 
-  string comment = "LimniBasket " + model + " " + g_reportDate;
+  string comment = BuildOpenOrderComment(model, reasonTag);
   bool result = false;
   if(direction > 0)
     result = g_trade.Buy(volume, symbol, price, stopLoss, 0.0, comment);
@@ -1866,6 +2459,11 @@ bool GetSymbolStats(const string symbol, SymbolStats &stats)
 //+------------------------------------------------------------------+
 void CloseAllPositions()
 {
+  CloseAllPositions("manual");
+}
+
+void CloseAllPositions(const string reasonTag)
+{
   int count = PositionsTotal();
   for(int i = count - 1; i >= 0; i--)
   {
@@ -1876,11 +2474,16 @@ void CloseAllPositions()
       continue;
     if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
       continue;
-    ClosePositionByTicket(ticket);
+    ClosePositionByTicket(ticket, reasonTag);
   }
 }
 
 void CloseSymbolPositions(const string symbol)
+{
+  CloseSymbolPositions(symbol, "manual");
+}
+
+void CloseSymbolPositions(const string symbol, const string reasonTag)
 {
   int count = PositionsTotal();
   for(int i = count - 1; i >= 0; i--)
@@ -1894,11 +2497,16 @@ void CloseSymbolPositions(const string symbol)
       continue;
     if(PositionGetString(POSITION_SYMBOL) != symbol)
       continue;
-    ClosePositionByTicket(ticket);
+    ClosePositionByTicket(ticket, reasonTag);
   }
 }
 
 bool ClosePositionByTicket(ulong ticket)
+{
+  return ClosePositionByTicket(ticket, "manual");
+}
+
+bool ClosePositionByTicket(ulong ticket, const string reasonTag)
 {
   if(!PositionSelectByTicket(ticket))
     return false;
@@ -1921,7 +2529,7 @@ bool ClosePositionByTicket(ulong ticket)
   req.deviation = SlippagePoints;
   req.type = (type == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
   req.price = price;
-  req.comment = "LimniClose";
+  req.comment = BuildCloseOrderComment(reasonTag);
 
   if(!OrderSend(req, res))
   {
@@ -2085,22 +2693,38 @@ int NthSunday(int year, int mon, int nth)
 //+------------------------------------------------------------------+
 void LoadState()
 {
-  if(GlobalVariableCheck(GV_WEEK_START))
+  g_adaptivePeakAvgPct = 0.0;
+  g_lastWeekPeakPct = 0.0;
+  if(GlobalVariableCheck(ScopeKey(GV_ADAPTIVE_PEAK_AVG)))
+    g_adaptivePeakAvgPct = GlobalVariableGet(ScopeKey(GV_ADAPTIVE_PEAK_AVG));
+  if(GlobalVariableCheck(ScopeKey(GV_LAST_WEEK_PEAK)))
+    g_lastWeekPeakPct = GlobalVariableGet(ScopeKey(GV_LAST_WEEK_PEAK));
+
+  if(GlobalVariableCheck(ScopeKey(GV_WEEK_START)))
   {
-    datetime storedWeek = (datetime)GlobalVariableGet(GV_WEEK_START);
+    datetime storedWeek = (datetime)GlobalVariableGet(ScopeKey(GV_WEEK_START));
     if(storedWeek == g_weekStartGmt)
     {
-      g_state = (EAState)(int)GlobalVariableGet(GV_STATE);
-      g_baselineEquity = GlobalVariableGet(GV_BASELINE);
-      g_lockedProfitPct = GlobalVariableGet(GV_LOCKED);
-      g_trailingActive = (GlobalVariableGet(GV_TRAIL) > 0.5);
-      g_closeRequested = (GlobalVariableGet(GV_CLOSE) > 0.5);
-      if(GlobalVariableCheck(GV_WEEK_PEAK))
-        g_weekPeakEquity = GlobalVariableGet(GV_WEEK_PEAK);
-      if(GlobalVariableCheck(GV_MAX_DD))
-        g_maxDrawdownPct = GlobalVariableGet(GV_MAX_DD);
-      if(GlobalVariableCheck(GV_LAST_PUSH))
-        g_lastPush = (datetime)GlobalVariableGet(GV_LAST_PUSH);
+      g_state = (EAState)(int)GlobalVariableGet(ScopeKey(GV_STATE));
+      g_baselineEquity = GlobalVariableGet(ScopeKey(GV_BASELINE));
+      g_lockedProfitPct = GlobalVariableGet(ScopeKey(GV_LOCKED));
+      g_trailingActive = (GlobalVariableGet(ScopeKey(GV_TRAIL)) > 0.5);
+      g_closeRequested = (GlobalVariableGet(ScopeKey(GV_CLOSE)) > 0.5);
+      if(GlobalVariableCheck(ScopeKey(GV_WEEK_PEAK)))
+        g_weekPeakEquity = GlobalVariableGet(ScopeKey(GV_WEEK_PEAK));
+      if(GlobalVariableCheck(ScopeKey(GV_MAX_DD)))
+        g_maxDrawdownPct = GlobalVariableGet(ScopeKey(GV_MAX_DD));
+      if(GlobalVariableCheck(ScopeKey(GV_LAST_PUSH)))
+        g_lastPush = (datetime)GlobalVariableGet(ScopeKey(GV_LAST_PUSH));
+      double balanceNow = AccountInfoDouble(ACCOUNT_BALANCE);
+      if(balanceNow > 0.0 && (g_baselineEquity <= 0.0 || g_baselineEquity < (balanceNow * 0.25) || g_baselineEquity > (balanceNow * 4.0)))
+      {
+        Log(StringFormat("Baseline sanity reset %.2f -> %.2f", g_baselineEquity, balanceNow));
+        g_baselineEquity = balanceNow;
+        g_lockedProfitPct = 0.0;
+        g_trailingActive = false;
+        SaveState();
+      }
       return;
     }
   }
@@ -2112,28 +2736,30 @@ void LoadState()
   g_closeRequested = false;
   g_weekPeakEquity = 0.0;
   g_maxDrawdownPct = 0.0;
-  if(GlobalVariableCheck(GV_LAST_PUSH))
-    g_lastPush = (datetime)GlobalVariableGet(GV_LAST_PUSH);
+  if(GlobalVariableCheck(ScopeKey(GV_LAST_PUSH)))
+    g_lastPush = (datetime)GlobalVariableGet(ScopeKey(GV_LAST_PUSH));
   else
     g_lastPush = 0;
 }
 
 void SaveState()
 {
-  GlobalVariableSet(GV_WEEK_START, (double)g_weekStartGmt);
-  GlobalVariableSet(GV_STATE, (double)g_state);
-  GlobalVariableSet(GV_BASELINE, g_baselineEquity);
-  GlobalVariableSet(GV_LOCKED, g_lockedProfitPct);
-  GlobalVariableSet(GV_TRAIL, g_trailingActive ? 1.0 : 0.0);
-  GlobalVariableSet(GV_CLOSE, g_closeRequested ? 1.0 : 0.0);
-  GlobalVariableSet(GV_WEEK_PEAK, g_weekPeakEquity);
-  GlobalVariableSet(GV_MAX_DD, g_maxDrawdownPct);
-  GlobalVariableSet(GV_LAST_PUSH, (double)g_lastPush);
+  GlobalVariableSet(ScopeKey(GV_WEEK_START), (double)g_weekStartGmt);
+  GlobalVariableSet(ScopeKey(GV_STATE), (double)g_state);
+  GlobalVariableSet(ScopeKey(GV_BASELINE), g_baselineEquity);
+  GlobalVariableSet(ScopeKey(GV_LOCKED), g_lockedProfitPct);
+  GlobalVariableSet(ScopeKey(GV_TRAIL), g_trailingActive ? 1.0 : 0.0);
+  GlobalVariableSet(ScopeKey(GV_CLOSE), g_closeRequested ? 1.0 : 0.0);
+  GlobalVariableSet(ScopeKey(GV_WEEK_PEAK), g_weekPeakEquity);
+  GlobalVariableSet(ScopeKey(GV_MAX_DD), g_maxDrawdownPct);
+  GlobalVariableSet(ScopeKey(GV_LAST_PUSH), (double)g_lastPush);
+  GlobalVariableSet(ScopeKey(GV_ADAPTIVE_PEAK_AVG), g_adaptivePeakAvgPct);
+  GlobalVariableSet(ScopeKey(GV_LAST_WEEK_PEAK), g_lastWeekPeakPct);
 }
 
 void LoadApiCache()
 {
-  int handle = FileOpen(CACHE_FILE, FILE_READ | FILE_TXT | FILE_COMMON);
+  int handle = FileOpen(g_cacheFile, FILE_READ | FILE_TXT | FILE_COMMON);
   if(handle == INVALID_HANDLE)
     return;
   string json = FileReadString(handle);
@@ -2176,7 +2802,7 @@ void LoadApiCache()
 
 void SaveApiCache(const string json)
 {
-  int handle = FileOpen(CACHE_FILE, FILE_WRITE | FILE_TXT | FILE_COMMON);
+  int handle = FileOpen(g_cacheFile, FILE_WRITE | FILE_TXT | FILE_COMMON);
   if(handle == INVALID_HANDLE)
     return;
   FileWriteString(handle, json);
@@ -2192,6 +2818,8 @@ void ResetState()
   g_closeRequested = false;
   g_weekPeakEquity = 0.0;
   g_maxDrawdownPct = 0.0;
+  g_adaptivePeakAvgPct = 0.0;
+  g_lastWeekPeakPct = 0.0;
   g_lastApiSuccess = 0;
   g_loadedFromCache = false;
   g_reportDate = "";
@@ -2200,16 +2828,19 @@ void ResetState()
   g_lastApiError = "";
   g_lastApiErrorTime = 0;
 
-  GlobalVariableDel(GV_WEEK_START);
-  GlobalVariableDel(GV_STATE);
-  GlobalVariableDel(GV_BASELINE);
-  GlobalVariableDel(GV_LOCKED);
-  GlobalVariableDel(GV_TRAIL);
-  GlobalVariableDel(GV_CLOSE);
-  GlobalVariableDel(GV_WEEK_PEAK);
-  GlobalVariableDel(GV_MAX_DD);
+  GlobalVariableDel(ScopeKey(GV_WEEK_START));
+  GlobalVariableDel(ScopeKey(GV_STATE));
+  GlobalVariableDel(ScopeKey(GV_BASELINE));
+  GlobalVariableDel(ScopeKey(GV_LOCKED));
+  GlobalVariableDel(ScopeKey(GV_TRAIL));
+  GlobalVariableDel(ScopeKey(GV_CLOSE));
+  GlobalVariableDel(ScopeKey(GV_WEEK_PEAK));
+  GlobalVariableDel(ScopeKey(GV_MAX_DD));
+  GlobalVariableDel(ScopeKey(GV_LAST_PUSH));
+  GlobalVariableDel(ScopeKey(GV_ADAPTIVE_PEAK_AVG));
+  GlobalVariableDel(ScopeKey(GV_LAST_WEEK_PEAK));
 
-  FileDelete(CACHE_FILE, FILE_COMMON);
+  FileDelete(g_cacheFile, FILE_COMMON);
   Log("State reset on init.");
 }
 
@@ -2230,7 +2861,7 @@ void LogTradeError(const string message)
 
 bool ShouldLogIndexSkip(const string symbol, const string reasonKey, int cooldownSeconds)
 {
-  string key = "Limni_Skip_" + symbol + "_" + reasonKey;
+  string key = ScopeKey("Skip_" + symbol + "_" + reasonKey);
   datetime now = TimeCurrent();
   if(GlobalVariableCheck(key))
   {
@@ -2315,7 +2946,8 @@ void InitDashboard()
 
   DestroyDashboard();
 
-  g_dashWidth = MathMax(DashboardWidth, 1100);
+  int minWidth = (DashboardView == DASH_COMPACT ? 860 : 1100);
+  g_dashWidth = MathMax(DashboardWidth, minWidth);
   g_dashLineHeight = MathMax(DashboardLineHeight, 30);
   g_dashPadding = MathMax(DashboardPadding, 20);
   g_dashFontSize = MathMax(DashboardFontSize, 16);
@@ -2324,8 +2956,8 @@ void InitDashboard()
   g_dashShadowOffset = MathMax(DashboardShadowOffset, 6);
   g_dashColumnGap = MathMax(DashboardColumnGap, 12);
 
-  const int lineCount = 20;
-  const int mapLines = MathMax(6, LotMapMaxLines);
+  int lineCount = (DashboardView == DASH_COMPACT ? 12 : 20);
+  int mapLines = (DashboardView == DASH_COMPACT ? 8 : MathMax(6, LotMapMaxLines));
   ArrayResize(g_dashboardLines, lineCount);
   for(int i = 0; i < lineCount; i++)
     g_dashboardLines[i] = StringFormat("LimniDash_line_%d", i);
@@ -2552,8 +3184,13 @@ void UpdateDashboard()
   else if(g_apiOk)
     apiColor = warnColor;
 
-  string urlLine = "URL: " + CompactText(BuildApiUrl(), DashboardUrlMaxLen);
   string reportText = (g_reportDate == "" ? "--" : g_reportDate);
+  string expectedReportDate = "";
+  int waitMinutes = 0;
+  bool waitingSnapshot = IsWaitingForWeeklySnapshot(expectedReportDate, waitMinutes);
+  string snapshotLine = waitingSnapshot
+                          ? StringFormat("Snapshot: waiting for weekly update (expected %s, +%d min)", expectedReportDate, waitMinutes)
+                          : StringFormat("Snapshot: current (%s)", reportText);
   string cacheLine = g_loadedFromCache ? "Cache: Yes" : "Cache: No";
   if(g_lastApiSuccess > 0)
   {
@@ -2563,6 +3200,12 @@ void UpdateDashboard()
       cacheLine += " (cache)";
   }
 
+  string brokerLine = StringFormat("Broker: %s  |  Server: %s",
+                                   CompactText(AccountInfoString(ACCOUNT_COMPANY), 22),
+                                   CompactText(AccountInfoString(ACCOUNT_SERVER), 22));
+  string structureLine = StringFormat("Execution: %s%s",
+                                      MarginModeToString(),
+                                      (RequireHedgingAccount && !IsHedgingAccount()) ? " (blocked)" : "");
   string weekLine = StringFormat("Week start: %s  |  Asset: %s",
                                  FormatTimeValue(g_weekStartGmt),
                                  AssetFilter == "" ? "--" : AssetFilter);
@@ -2584,7 +3227,7 @@ void UpdateDashboard()
     pnlColor = (pnlPct >= 0.0 ? goodColor : badColor);
   }
   string trailText = g_trailingActive ? "On" : "Off";
-  string pnlLine = StringFormat("PnL: %s  |  Locked: %.2f%%  |  Trail: %s", pnlText, g_lockedProfitPct, trailText);
+  string pnlLine = StringFormat("PnL: %s  |  Locked: %.2f%%  |  Trail active: %s", pnlText, g_lockedProfitPct, trailText);
 
   string ddLine = StringFormat("Max DD: %.2f%%", g_maxDrawdownPct);
   color ddColor = (g_maxDrawdownPct <= 0.0 ? goodColor : badColor);
@@ -2594,6 +3237,16 @@ void UpdateDashboard()
   string lotLine = StringFormat("Sizing: 1:1 x %.2f (%s)  |  Base: %.2f", legScale, RiskModeToString(), baseEquity);
   string multLine = StringFormat("Mult: FX %.2f  Crypto %.2f  Cmds %.2f  Ind %.2f",
                                  FxLotMultiplier, CryptoLotMultiplier, CommoditiesLotMultiplier, IndicesLotMultiplier);
+  string trailLine = "Trail: off";
+  if(IsEquityTrailEnabled())
+  {
+    trailLine = StringFormat("Trail start %.2f%%, lock offset %.2f%%", GetEffectiveTrailStartPct(), GetEffectiveTrailOffsetPct());
+    if(IsAdaptiveTrailEnabled())
+      trailLine += StringFormat(" (adaptive avg peak %.2f%%)", g_adaptivePeakAvgPct);
+  }
+  string basketGuardLine = StringFormat("Basket guards: TP %.2f%% (%s)  SL %.2f%% (%s)",
+                                        GetEffectiveBasketTakeProfitPct(), IsBasketTakeProfitEnabled() ? "on" : "off",
+                                        GetEffectiveBasketStopLossPct(), IsBasketStopLossEnabled() ? "on" : "off");
 
   int pollRemaining = ApiPollIntervalSeconds;
   if(g_lastPoll > 0)
@@ -2613,81 +3266,183 @@ void UpdateDashboard()
       errorText += " " + FormatTimeValue(g_lastApiErrorTime);
     errorColor = badColor;
   }
+  if(RequireHedgingAccount && !IsHedgingAccount())
+    errorColor = badColor;
   string errorLine = StringFormat("Last error: %s", errorText);
 
   double capLots = GetBasketLotCap();
-  string modelLine = StringFormat("Models: A %d  B %d  D %d  C %d  S %d",
-                                  CountSignalsByModel("antikythera"),
-                                  CountSignalsByModel("blended"),
-                                  CountSignalsByModel("dealer"),
-                                  CountSignalsByModel("commercial"),
-                                  CountSignalsByModel("sentiment"));
+  string modelLine = StringFormat("Open basket: Antikythera %d  Blended %d  Dealer %d  Commercial %d  Sentiment %d",
+                                  CountOpenPositionsByModel("antikythera"),
+                                  CountOpenPositionsByModel("blended"),
+                                  CountOpenPositionsByModel("dealer"),
+                                  CountOpenPositionsByModel("commercial"),
+                                  CountOpenPositionsByModel("sentiment"));
   string capLine = StringFormat("Lot cap: %.2f  |  Total lots: %.2f", capLots, totalLots);
   string peakLine = g_weekPeakEquity > 0.0
                       ? StringFormat("Peak equity: %.2f", g_weekPeakEquity)
                       : "Peak equity: --";
+  bool compact = (DashboardView == DASH_COMPACT);
+  int usedLeft = 0;
 
   color headingColor = C'15,118,110';
 
   SetLabelText(DASH_TITLE, "Limni Basket EA", C'15,23,42');
-  SetLabelText(DASH_MAP_TITLE, "LOT MAP", headingColor);
-  SetLabelText(g_dashboardLines[0], "SYSTEM", headingColor);
-  SetLabelText(g_dashboardLines[1], StringFormat("State: %s  |  Trading: %s", stateText, g_tradingAllowed ? "Allowed" : "Blocked"), stateColor);
-  SetLabelText(g_dashboardLines[2], apiLine, apiColor);
-  SetLabelText(g_dashboardLines[3], urlLine, dimColor);
-  SetLabelText(g_dashboardLines[4], cacheLine, dimColor);
-  SetLabelText(g_dashboardLines[5], StringFormat("Report: %s", reportText), dimColor);
-  SetLabelText(g_dashboardLines[6], weekLine, dimColor);
+  if(compact)
+  {
+    SetLabelText(DASH_MAP_TITLE, "CHECKS", headingColor);
+    SetLabelText(g_dashboardLines[0], "STATUS", headingColor);
+    SetLabelText(g_dashboardLines[1], StringFormat("State: %s  |  Trading: %s  |  API: %s",
+                                                    stateText,
+                                                    g_tradingAllowed ? "Allowed" : "Blocked",
+                                                    g_apiOk ? "OK" : "Fail"), stateColor);
+    SetLabelText(g_dashboardLines[2], StringFormat("%s  |  %s  |  Profile: %s  |  Mode: %s x %.2f",
+                                                    brokerLine,
+                                                    structureLine,
+                                                    StrategyModeToString(),
+                                                    RiskModeToString(),
+                                                    legScale), dimColor);
+    SetLabelText(g_dashboardLines[3], basketGuardLine + "  |  " + trailLine, dimColor);
 
-  SetLabelText(g_dashboardLines[7], "POSITIONS", headingColor);
-  SetLabelText(g_dashboardLines[8], pairsLine, textColor);
-  SetLabelText(g_dashboardLines[9], positionLine, textColor);
-  SetLabelText(g_dashboardLines[10], capLine, textColor);
-  SetLabelText(g_dashboardLines[11], modelLine, dimColor);
+    SetLabelText(g_dashboardLines[4], "SYNC", headingColor);
+    SetLabelText(g_dashboardLines[5], StringFormat("%s  |  %s  |  Next poll: %s",
+                                                    snapshotLine, cacheLine, FormatDuration(pollRemaining)),
+                 waitingSnapshot ? warnColor : dimColor);
 
-  SetLabelText(g_dashboardLines[12], "ACCOUNT", headingColor);
-  SetLabelText(g_dashboardLines[13], equityLine, textColor);
-  SetLabelText(g_dashboardLines[14], pnlLine, pnlColor);
-  SetLabelText(g_dashboardLines[15], ddLine + "  |  " + peakLine, ddColor);
+    SetLabelText(g_dashboardLines[6], "ACCOUNT", headingColor);
+    SetLabelText(g_dashboardLines[7], equityLine, textColor);
+    SetLabelText(g_dashboardLines[8], pnlLine + "  |  " + ddLine, pnlColor);
 
-  SetLabelText(g_dashboardLines[16], "SIZING", headingColor);
-  SetLabelText(g_dashboardLines[17], lotLine, dimColor);
-  SetLabelText(g_dashboardLines[18], multLine, dimColor);
-  SetLabelText(g_dashboardLines[19], pollLine + "  |  " + errorLine, errorColor);
+    SetLabelText(g_dashboardLines[9], "POSITIONS", headingColor);
+    SetLabelText(g_dashboardLines[10], positionLine + "  |  " + capLine, textColor);
+    string alertLine = (g_lastApiError == "" ? "Alerts: none" : "Alerts: " + errorText);
+    if(RequireHedgingAccount && !IsHedgingAccount())
+      alertLine = "Alerts: account is NET, entries blocked";
+    if(waitingSnapshot)
+    {
+      if(alertLine == "Alerts: none")
+        alertLine = "Alerts: waiting for new weekly snapshot";
+      else
+        alertLine = alertLine + " | waiting for weekly snapshot";
+    }
+    SetLabelText(g_dashboardLines[11], modelLine + "  |  " + alertLine, errorColor);
+    usedLeft = 12;
+  }
+  else
+  {
+    SetLabelText(DASH_MAP_TITLE, "LOT MAP", headingColor);
+    SetLabelText(g_dashboardLines[0], "SYSTEM", headingColor);
+    SetLabelText(g_dashboardLines[1], StringFormat("State: %s  |  Trading: %s", stateText, g_tradingAllowed ? "Allowed" : "Blocked"), stateColor);
+    SetLabelText(g_dashboardLines[2], apiLine, apiColor);
+    SetLabelText(g_dashboardLines[3], brokerLine, dimColor);
+    SetLabelText(g_dashboardLines[4], cacheLine, dimColor);
+    SetLabelText(g_dashboardLines[5], snapshotLine, waitingSnapshot ? warnColor : dimColor);
+    SetLabelText(g_dashboardLines[6], weekLine + StringFormat("  |  %s  |  Profile: %s  |  Mode: %s x %.2f",
+                                                               structureLine, StrategyModeToString(), RiskModeToString(), legScale), dimColor);
+
+    SetLabelText(g_dashboardLines[7], "POSITIONS", headingColor);
+    SetLabelText(g_dashboardLines[8], pairsLine, textColor);
+    SetLabelText(g_dashboardLines[9], positionLine, textColor);
+    SetLabelText(g_dashboardLines[10], capLine, textColor);
+    SetLabelText(g_dashboardLines[11], modelLine + "  |  " + basketGuardLine, dimColor);
+
+    SetLabelText(g_dashboardLines[12], "ACCOUNT", headingColor);
+    SetLabelText(g_dashboardLines[13], equityLine, textColor);
+    SetLabelText(g_dashboardLines[14], pnlLine, pnlColor);
+    SetLabelText(g_dashboardLines[15], ddLine + "  |  " + peakLine, ddColor);
+
+    SetLabelText(g_dashboardLines[16], "SIZING", headingColor);
+    SetLabelText(g_dashboardLines[17], lotLine, dimColor);
+    SetLabelText(g_dashboardLines[18], multLine + "  |  " + trailLine, dimColor);
+    SetLabelText(g_dashboardLines[19], pollLine + "  |  " + errorLine, errorColor);
+    usedLeft = 20;
+  }
+
+  for(int i = usedLeft; i < ArraySize(g_dashboardLines); i++)
+    SetLabelText(g_dashboardLines[i], " ", dimColor);
 
   int mapCount = ArraySize(g_dashboardRightLines);
-  int totalSymbols = ArraySize(g_brokerSymbols);
-  bool hasOverflow = (totalSymbols > mapCount);
-  int displayCount = totalSymbols;
-  if(hasOverflow && mapCount > 1)
-    displayCount = mapCount - 1;
-  else
-    displayCount = MathMin(displayCount, mapCount);
-
-  for(int i = 0; i < mapCount; i++)
+  if(compact)
   {
-    if(i < displayCount)
+    string check0 = g_apiOk ? "Feed: OK" : "Feed: ERROR";
+    string check1 = g_tradingAllowed ? "Trading Gate: OPEN" : "Trading Gate: BLOCKED";
+    string check2 = StringFormat("Profile: %s | %s", StrategyModeToString(), MarginModeToString());
+    string check3 = StringFormat("TP %.2f%% (%s) | SL %.2f%% (%s)",
+                                 GetEffectiveBasketTakeProfitPct(), IsBasketTakeProfitEnabled() ? "on" : "off",
+                                 GetEffectiveBasketStopLossPct(), IsBasketStopLossEnabled() ? "on" : "off");
+    string check4 = IsEquityTrailEnabled()
+                      ? StringFormat("Trail: start %.2f%%, lock %.2f%%", GetEffectiveTrailStartPct(), GetEffectiveTrailOffsetPct())
+                      : "Trail: off";
+    string check5 = StringFormat("Open: %d pos | %d pairs", openPositions, openPairs);
+    string check6 = waitingSnapshot
+                      ? StringFormat("Snapshot wait: expected %s (+%d min)", expectedReportDate, waitMinutes)
+                      : (g_lastApiError == "" ? "Errors: none" : "Errors: " + errorText);
+    if(RequireHedgingAccount && !IsHedgingAccount())
+      check6 = "Errors: account is NET (blocked)";
+
+    string compactChecks[];
+    ArrayResize(compactChecks, 7);
+    compactChecks[0] = check0;
+    compactChecks[1] = check1;
+    compactChecks[2] = check2;
+    compactChecks[3] = check3;
+    compactChecks[4] = check4;
+    compactChecks[5] = check5;
+    compactChecks[6] = check6;
+
+    for(int i = 0; i < mapCount; i++)
     {
-      string symbol = g_brokerSymbols[i];
-      if(symbol == "")
+      if(i < ArraySize(compactChecks))
       {
-        SetLabelText(g_dashboardRightLines[i], "--", dimColor);
-        continue;
+        color c = dimColor;
+        if(i == 0)
+          c = g_apiOk ? goodColor : badColor;
+        else if(i == 1)
+          c = g_tradingAllowed ? goodColor : warnColor;
+        else if(i == 6)
+          c = (g_lastApiError == "" ? goodColor : badColor);
+        SetLabelText(g_dashboardRightLines[i], compactChecks[i], c);
       }
-      string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
-      double lot = GetLotForSymbol(symbol, assetClass);
-      SetLabelText(g_dashboardRightLines[i],
-                   StringFormat("%-10s  %s  %.2f", symbol, CompactText(assetClass, 8), lot),
-                   textColor);
+      else
+      {
+        SetLabelText(g_dashboardRightLines[i], " ", dimColor);
+      }
     }
-    else if(i == mapCount - 1 && hasOverflow)
-    {
-      int remaining = totalSymbols - displayCount;
-      SetLabelText(g_dashboardRightLines[i], StringFormat("... +%d more", remaining), dimColor);
-    }
+  }
+  else
+  {
+    int totalSymbols = ArraySize(g_brokerSymbols);
+    bool hasOverflow = (totalSymbols > mapCount);
+    int displayCount = totalSymbols;
+    if(hasOverflow && mapCount > 1)
+      displayCount = mapCount - 1;
     else
+      displayCount = MathMin(displayCount, mapCount);
+
+    for(int i = 0; i < mapCount; i++)
     {
-      SetLabelText(g_dashboardRightLines[i], " ", dimColor);
+      if(i < displayCount)
+      {
+        string symbol = g_brokerSymbols[i];
+        if(symbol == "")
+        {
+          SetLabelText(g_dashboardRightLines[i], "--", dimColor);
+          continue;
+        }
+        string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
+        double lot = GetLotForSymbol(symbol, assetClass);
+        SetLabelText(g_dashboardRightLines[i],
+                     StringFormat("%-10s  %s  %.2f", symbol, CompactText(assetClass, 8), lot),
+                     textColor);
+      }
+      else if(i == mapCount - 1 && hasOverflow)
+      {
+        int remaining = totalSymbols - displayCount;
+        SetLabelText(g_dashboardRightLines[i], StringFormat("... +%d more", remaining), dimColor);
+      }
+      else
+      {
+        SetLabelText(g_dashboardRightLines[i], " ", dimColor);
+      }
     }
   }
 }
@@ -2736,6 +3491,15 @@ string FormatTimeValue(datetime value)
   return TimeToString(value, TIME_DATE | TIME_SECONDS);
 }
 
+string FormatDateOnly(datetime value)
+{
+  if(value <= 0)
+    return "--";
+  MqlDateTime dt;
+  TimeToStruct(value, dt);
+  return StringFormat("%04d-%02d-%02d", dt.year, dt.mon, dt.day);
+}
+
 string CompactText(const string value, int maxLen)
 {
   if(maxLen <= 3)
@@ -2759,6 +3523,61 @@ string EnsureTrailingSlash(const string url)
   if(StringLen(base) > 0 && StringSubstr(base, StringLen(base) - 1, 1) != "/")
     base += "/";
   return base + query;
+}
+
+bool IsWaitingForWeeklySnapshot(string &expectedReportDate, int &minutesSinceRelease)
+{
+  expectedReportDate = "";
+  minutesSinceRelease = 0;
+
+  datetime nowGmt = TimeGMT();
+  bool dst = IsUsdDstUtc(nowGmt);
+  int offset = dst ? -4 : -5;
+  datetime etNow = nowGmt + offset * 3600;
+  MqlDateTime et;
+  TimeToStruct(etNow, et);
+
+  int daysSinceSunday = et.day_of_week;
+  datetime sundayEt = etNow - daysSinceSunday * 86400;
+  MqlDateTime sunday;
+  TimeToStruct(sundayEt, sunday);
+
+  datetime fridayBaseEt = sundayEt + 5 * 86400;
+  MqlDateTime friday;
+  TimeToStruct(fridayBaseEt, friday);
+  friday.hour = 15;
+  friday.min = 30;
+  friday.sec = 0;
+  datetime fridayReleaseEt = StructToTime(friday);
+  if(fridayReleaseEt <= 0)
+    return false;
+  MqlDateTime fridayLocal;
+  TimeToStruct(fridayReleaseEt, fridayLocal);
+  bool fridayDst = IsUsdDstLocal(fridayLocal.year, fridayLocal.mon, fridayLocal.day, fridayLocal.hour);
+  int fridayOffset = fridayDst ? -4 : -5;
+  datetime fridayReleaseUtc = fridayReleaseEt - fridayOffset * 3600;
+
+  datetime tuesdayBaseEt = sundayEt + 2 * 86400;
+  MqlDateTime tuesday;
+  TimeToStruct(tuesdayBaseEt, tuesday);
+  tuesday.hour = 0;
+  tuesday.min = 0;
+  tuesday.sec = 0;
+  expectedReportDate = FormatDateOnly(StructToTime(tuesday));
+  if(expectedReportDate == "--")
+    expectedReportDate = "";
+
+  if(nowGmt < fridayReleaseUtc)
+    return false;
+  minutesSinceRelease = (int)((nowGmt - fridayReleaseUtc) / 60);
+  if(minutesSinceRelease < 0)
+    minutesSinceRelease = 0;
+
+  if(expectedReportDate == "")
+    return false;
+  if(g_reportDate >= expectedReportDate)
+    return false;
+  return true;
 }
 
 //+------------------------------------------------------------------+
@@ -2807,6 +3626,28 @@ int CountSignalsByModel(const string model)
   return count;
 }
 
+int CountOpenPositionsByModel(const string model)
+{
+  string target = model;
+  StringToLower(target);
+  int count = 0;
+  int total = PositionsTotal();
+  for(int i = 0; i < total; i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+    string parsed = ParseModelFromComment(PositionGetString(POSITION_COMMENT));
+    if(parsed == target)
+      count++;
+  }
+  return count;
+}
+
 //+------------------------------------------------------------------+
 void UpdateDrawdown()
 {
@@ -2847,8 +3688,8 @@ void RunReconstructionIfNeeded()
     return;
 
   datetime lastPushUtc = 0;
-  if(GlobalVariableCheck(GV_LAST_PUSH))
-    lastPushUtc = (datetime)GlobalVariableGet(GV_LAST_PUSH);
+  if(GlobalVariableCheck(ScopeKey(GV_LAST_PUSH)))
+    lastPushUtc = (datetime)GlobalVariableGet(ScopeKey(GV_LAST_PUSH));
   if(lastPushUtc <= 0)
     return;
 
@@ -2943,7 +3784,7 @@ void PushStatsIfDue()
   }
 
   g_lastPush = now;
-  GlobalVariableSet(GV_LAST_PUSH, (double)g_lastPush);
+  GlobalVariableSet(ScopeKey(GV_LAST_PUSH), (double)g_lastPush);
 
   if(g_dataSource == "reconstructed")
     g_dataSource = "realtime";

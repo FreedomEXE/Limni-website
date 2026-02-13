@@ -23,6 +23,7 @@ import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import { getPairPerformance } from "@/lib/pricePerformance";
 import { readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
+import { getCronStatusSummary } from "@/lib/cronStatus";
 import type { PairSnapshot } from "@/lib/cotTypes";
 
 export const dynamic = "force-dynamic";
@@ -99,6 +100,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     reportDate && orderedDates.includes(reportDate)
       ? reportDate
       : orderedDates[0];
+  const cronStatus = await getCronStatusSummary();
   const previousReportDate =
     selectedReportDate
       ? orderedDates[orderedDates.indexOf(selectedReportDate) + 1] ?? null
@@ -429,6 +431,56 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </header>
 
         <div data-cot-surface="true">
+          <section className="mb-6 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Pipeline Health
+              </h2>
+              <span
+                className={`text-xs font-semibold uppercase tracking-[0.16em] ${
+                  cronStatus.overall_state === "ok"
+                    ? "text-emerald-600"
+                    : cronStatus.overall_state === "stale"
+                      ? "text-amber-600"
+                      : "text-rose-600"
+                }`}
+              >
+                {cronStatus.overall_state}
+              </span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-5">
+              {cronStatus.subsystems.map((row) => (
+                <div
+                  key={row.key}
+                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--muted)]">
+                      {row.label}
+                    </span>
+                    <span
+                      className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                        row.state === "ok"
+                          ? "text-emerald-600"
+                          : row.state === "stale"
+                            ? "text-amber-600"
+                            : "text-rose-600"
+                      }`}
+                    >
+                      {row.state}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-[color:var(--foreground)]">
+                    {row.last_refresh_utc
+                      ? formatDateTimeET(row.last_refresh_utc)
+                      : "No refresh yet"}
+                  </div>
+                  <div className="mt-1 text-[11px] text-[color:var(--muted)]">{row.detail}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
           <SummaryCards
             title="Bias"
             centered={true}

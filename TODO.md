@@ -1,5 +1,12 @@
 # TODO
 
+## Performance Deep Analysis UI
+- See detailed implementation checklist in `docs/TODO_PERFORMANCE_DEEP_ANALYSIS_UI.md`.
+- Integrate weekly deep-analysis stats into Performance view:
+  - weekly peak/low/intraweek drawdown (universal)
+  - basket/model comparison
+  - historical + current-week support
+
 ## COT + Sentiment Expansion (Data-Only First)
 - Track full 63‑symbol universe (44 FX + 19 non‑FX) in research only.
 - Keep new symbols **data-only** (not tradable) until graduation.

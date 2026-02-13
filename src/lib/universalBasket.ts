@@ -261,7 +261,10 @@ async function fetchSeriesForSymbol(input: {
 }): Promise<SymbolSeries | null> {
   const { assetClass, pair, reportDate, weekOpenUtc, timeframe } = input;
   const window = getWindowForAsset(assetClass, reportDate, weekOpenUtc);
-  if (window.closeUtc.toMillis() <= window.openUtc.toMillis()) {
+  const nowUtc = DateTime.utc().minus({ minutes: 5 });
+  const effectiveCloseUtc = window.closeUtc > nowUtc ? nowUtc : window.closeUtc;
+  const effectiveWindow = { openUtc: window.openUtc, closeUtc: effectiveCloseUtc };
+  if (effectiveCloseUtc.toMillis() <= window.openUtc.toMillis()) {
     return null;
   }
 
@@ -273,8 +276,8 @@ async function fetchSeriesForSymbol(input: {
       }
       const candles =
         timeframe === "M1"
-          ? await fetchBitgetMinuteSeries(base, window)
-          : await fetchBitgetCandleSeries(base, window);
+          ? await fetchBitgetMinuteSeries(base, effectiveWindow)
+          : await fetchBitgetCandleSeries(base, effectiveWindow);
       if (candles.length === 0) {
         return null;
       }
@@ -283,7 +286,7 @@ async function fetchSeriesForSymbol(input: {
         assetClass,
         pair,
         openTs: window.openUtc.toMillis(),
-        closeTs: window.closeUtc.toMillis(),
+        closeTs: effectiveCloseUtc.toMillis(),
         openPrice: candles[0].open,
         points: candles.map((c): SeriesPoint => ({ ts: c.ts, open: c.open, close: c.close })),
       };
@@ -295,12 +298,12 @@ async function fetchSeriesForSymbol(input: {
         ? await fetchOandaMinuteSeries(
             getOandaInstrument(symbol),
             window.openUtc,
-            window.closeUtc,
+            effectiveCloseUtc,
           )
         : await fetchOandaCandleSeries(
             getOandaInstrument(symbol),
             window.openUtc,
-            window.closeUtc,
+            effectiveCloseUtc,
           );
     if (candles.length === 0) {
       return null;
@@ -310,7 +313,7 @@ async function fetchSeriesForSymbol(input: {
       assetClass,
       pair,
       openTs: window.openUtc.toMillis(),
-      closeTs: window.closeUtc.toMillis(),
+      closeTs: effectiveCloseUtc.toMillis(),
       openPrice: candles[0].open,
       points: candles.map((c): SeriesPoint => ({ ts: c.ts, open: c.open, close: c.close })),
     };
