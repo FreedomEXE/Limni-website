@@ -52,10 +52,16 @@ describe("mt5 view helpers", () => {
   test("matches lot-map rows with aliases/suffixes", () => {
     const rows = [
       { symbol: "SPX500" },
+      { symbol: "US500" },
+      { symbol: "USOIL.i" },
+      { symbol: "XTIUSD" },
       { symbol: "EURUSD-ECN" },
       { symbol: "AUDCAD.m" },
     ];
     expect(findLotMapEntry(rows, "SPXUSD")?.symbol).toBe("SPX500");
+    expect(findLotMapEntry([{ symbol: "US500" }], "SPXUSD")?.symbol).toBe("US500");
+    expect(findLotMapEntry([{ symbol: "USOIL.i" }], "WTIUSD")?.symbol).toBe("USOIL.i");
+    expect(findLotMapEntry([{ symbol: "XTIUSD" }], "WTIUSD")?.symbol).toBe("XTIUSD");
     expect(findLotMapEntry(rows, "EURUSD")?.symbol).toBe("EURUSD-ECN");
     expect(findLotMapEntry(rows, "AUDCAD")?.symbol).toBe("AUDCAD.m");
   });

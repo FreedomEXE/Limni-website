@@ -84,10 +84,10 @@ export function findLotMapEntry(rows: LotMapRow[], symbol: string) {
   if (!target) return null;
 
   const aliasMap: Record<string, string[]> = {
-    SPXUSD: ["SPX500", "SPXUSD"],
-    NDXUSD: ["NDX100", "NDXUSD"],
-    NIKKEIUSD: ["JPN225", "NIKKEIUSD"],
-    WTIUSD: ["USOUSD", "WTIUSD"],
+    SPXUSD: ["SPX500", "SPXUSD", "US500", "SP500", "SPX", "US500USD"],
+    NDXUSD: ["NDX100", "NDXUSD", "US100", "NAS100", "USTEC", "US100USD"],
+    NIKKEIUSD: ["JPN225", "JP225", "NIKKEI225", "NIK225", "NIKKEIUSD"],
+    WTIUSD: ["USOUSD", "WTIUSD", "USOIL", "XTIUSD", "WTI", "CL", "USCRUDE"],
   };
   const candidates = Array.from(new Set([target, ...(aliasMap[target] ?? [])]));
 
