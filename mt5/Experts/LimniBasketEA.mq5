@@ -135,6 +135,7 @@ datetime g_weekStartGmt = 0;
 datetime g_lastPoll = 0;
 datetime g_lastApiSuccess = 0;
 bool g_loadedFromCache = false;
+string g_lastDataRefreshUtc = "";
 
 double g_baselineEquity = 0.0;
 double g_lockedProfitPct = 0.0;
@@ -324,6 +325,7 @@ string RightDashboardText(const string value);
 string EnsureTrailingSlash(const string url);
 int CountOpenPositions();
 int CountOpenPairs();
+int CountUniquePlannedPairs();
 int CountSignalsByModel(const string model);
 int CountOpenPositionsByModel(const string model);
 void UpdateDrawdown();
@@ -573,6 +575,7 @@ void PollApiIfDue()
   g_reportDate = reportDate;
   g_lastApiSuccess = TimeCurrent();
   g_loadedFromCache = false;
+  ExtractStringValue(json, "last_refresh_utc", g_lastDataRefreshUtc);
   g_lastApiError = "";
   g_lastApiErrorTime = 0;
 
@@ -2784,6 +2787,7 @@ void LoadApiCache()
     g_reportDate = reportDate;
     g_lastApiSuccess = TimeCurrent();
     g_loadedFromCache = true;
+    ExtractStringValue(json, "last_refresh_utc", g_lastDataRefreshUtc);
     int count = ArraySize(symbols);
     ArrayResize(g_apiSymbols, count);
     ArrayResize(g_directions, count);
@@ -2831,6 +2835,7 @@ void ResetState()
   g_apiOk = false;
   g_lastApiError = "";
   g_lastApiErrorTime = 0;
+  g_lastDataRefreshUtc = "";
 
   GlobalVariableDel(ScopeKey(GV_WEEK_START));
   GlobalVariableDel(ScopeKey(GV_STATE));
@@ -3178,7 +3183,8 @@ void UpdateDashboard()
     return;
 
   datetime now = TimeCurrent();
-  int totalPairs = ArraySize(g_brokerSymbols);
+  int totalLegs = ArraySize(g_brokerSymbols);
+  int totalPairs = CountUniquePlannedPairs();
   int openPairs = CountOpenPairs();
   int openPositions = CountOpenPositions();
   double totalLots = GetTotalBasketLots();
@@ -3208,6 +3214,7 @@ void UpdateDashboard()
     apiColor = warnColor;
 
   string reportText = (g_reportDate == "" ? "--" : g_reportDate);
+  string refreshText = (g_lastDataRefreshUtc == "" ? "--" : g_lastDataRefreshUtc);
   string expectedReportDate = "";
   int waitMinutes = 0;
   bool waitingSnapshot = IsWaitingForWeeklySnapshot(expectedReportDate, waitMinutes);
@@ -3232,7 +3239,7 @@ void UpdateDashboard()
   string weekLine = StringFormat("Week start: %s  |  Asset: %s",
                                  FormatTimeValue(g_weekStartGmt),
                                  AssetFilter == "" ? "--" : AssetFilter);
-  string pairsLine = StringFormat("Pairs: %d  |  Open pairs: %d", totalPairs, openPairs);
+  string pairsLine = StringFormat("Pairs: %d  |  Legs: %d  |  Open pairs: %d", totalPairs, totalLegs, openPairs);
   string positionLine = StringFormat("Pos:%d Lots:%.2f OPM:%d",
                                      openPositions, totalLots, OrdersInLastMinute());
   string equityLine = StringFormat("Eq:%.2f Bal:%.2f Free:%.2f",
@@ -3358,8 +3365,8 @@ void UpdateDashboard()
         alertLine = alertLine + " | waiting for weekly snapshot";
     }
     SetLabelText(g_dashboardLines[20], "| " + alertLine, errorColor);
-    SetLabelText(g_dashboardLines[21], StringFormat("| pairs=%d open_pairs=%d", totalPairs, openPairs), dimColor);
-    SetLabelText(g_dashboardLines[22], "| " + CompactText(errorLine, 58), errorColor);
+    SetLabelText(g_dashboardLines[21], StringFormat("| pairs=%d legs=%d open_pairs=%d", totalPairs, totalLegs, openPairs), dimColor);
+    SetLabelText(g_dashboardLines[22], "| " + CompactText(StringFormat("report=%s refresh=%s", reportText, refreshText), 58), errorColor);
     SetLabelText(g_dashboardLines[23], "+----------------------------------------------------------+", dimColor);
     usedLeft = 24;
   }
@@ -3634,17 +3641,60 @@ int CountOpenPositions()
 //+------------------------------------------------------------------+
 int CountOpenPairs()
 {
+  string seen[];
+  ArrayResize(seen, 0);
   int count = 0;
   for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
   {
     string symbol = g_brokerSymbols[i];
     if(symbol == "")
       continue;
+    bool already = false;
+    for(int j = 0; j < ArraySize(seen); j++)
+    {
+      if(seen[j] == symbol)
+      {
+        already = true;
+        break;
+      }
+    }
+    if(already)
+      continue;
     SymbolStats stats;
     if(GetSymbolStats(symbol, stats))
       count++;
+    int seenSize = ArraySize(seen);
+    ArrayResize(seen, seenSize + 1);
+    seen[seenSize] = symbol;
   }
   return count;
+}
+
+int CountUniquePlannedPairs()
+{
+  string seen[];
+  ArrayResize(seen, 0);
+  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
+  {
+    string symbol = g_brokerSymbols[i];
+    if(symbol == "")
+      continue;
+    bool exists = false;
+    for(int j = 0; j < ArraySize(seen); j++)
+    {
+      if(seen[j] == symbol)
+      {
+        exists = true;
+        break;
+      }
+    }
+    if(exists)
+      continue;
+    int size = ArraySize(seen);
+    ArrayResize(seen, size + 1);
+    seen[size] = symbol;
+  }
+  return ArraySize(seen);
 }
 
 int CountSignalsByModel(const string model)
