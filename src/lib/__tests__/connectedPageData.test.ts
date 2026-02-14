@@ -7,6 +7,7 @@ vi.mock("@/lib/performanceSnapshots", () => ({
 }));
 vi.mock("@/lib/weekAnchor", () => ({
   getDisplayWeekOpenUtc: vi.fn().mockReturnValue("2026-02-09"),
+  normalizeWeekOpenUtc: vi.fn((week: string) => week),
 }));
 
 vi.mock("@/lib/accountStats", () => ({

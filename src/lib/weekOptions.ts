@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import { deduplicateWeeks, type WeekOption } from "@/lib/weekState";
+import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 
 type BuildWeekOptionsInput = {
   historicalWeeks: string[];
@@ -20,6 +21,16 @@ function sortDesc(weeks: string[]) {
   });
 }
 
+function normalizeWeeks(weeks: string[]): string[] {
+  const normalized: string[] = [];
+  for (const week of weeks) {
+    const canonical = normalizeWeekOpenUtc(week);
+    if (!canonical) continue;
+    normalized.push(canonical);
+  }
+  return deduplicateWeeks(normalized);
+}
+
 export function buildNormalizedWeekOptions(input: BuildWeekOptionsInput): WeekOption[] {
   const {
     historicalWeeks,
@@ -32,8 +43,9 @@ export function buildNormalizedWeekOptions(input: BuildWeekOptionsInput): WeekOp
     filterWeek,
   } = input;
 
-  const currentMs = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" }).toMillis();
-  const deduped = deduplicateWeeks(historicalWeeks);
+  const normalizedCurrentWeekOpenUtc = normalizeWeekOpenUtc(currentWeekOpenUtc) ?? currentWeekOpenUtc;
+  const currentMs = DateTime.fromISO(normalizedCurrentWeekOpenUtc, { zone: "utc" }).toMillis();
+  const deduped = normalizeWeeks(historicalWeeks);
   const filtered = deduped.filter((week) => {
     const weekMs = DateTime.fromISO(week, { zone: "utc" }).toMillis();
     if (!Number.isFinite(weekMs)) return false;
@@ -54,7 +66,7 @@ export function buildNormalizedWeekOptions(input: BuildWeekOptionsInput): WeekOp
 
   if (currentPosition === "first") {
     if (includeCurrent) {
-      push(currentWeekOpenUtc);
+      push(normalizedCurrentWeekOpenUtc);
     }
     for (const week of sortDesc(filtered)) {
       push(week);
@@ -62,7 +74,7 @@ export function buildNormalizedWeekOptions(input: BuildWeekOptionsInput): WeekOp
   } else {
     const combined = [...filtered];
     if (includeCurrent) {
-      combined.push(currentWeekOpenUtc);
+      combined.push(normalizedCurrentWeekOpenUtc);
     }
     for (const week of sortDesc(combined)) {
       push(week);
@@ -133,6 +145,10 @@ export function resolveWeekSelection(input: ResolveWeekSelectionInput): WeekOpti
   } = input;
   if (requestedWeek === "all") {
     return allowAll ? "all" : null;
+  }
+  const normalizedRequested = requestedWeek ? normalizeWeekOpenUtc(requestedWeek) : null;
+  if (normalizedRequested && weekOptions.includes(normalizedRequested)) {
+    return normalizedRequested;
   }
   if (requestedWeek && weekOptions.includes(requestedWeek)) {
     return requestedWeek;

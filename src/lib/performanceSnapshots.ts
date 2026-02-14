@@ -4,7 +4,7 @@ import type { AssetClass } from "./cotMarkets";
 import type { PerformanceModel, ModelPerformance } from "./performanceLab";
 import { getConnectedAccount } from "./connectedAccounts";
 import { deduplicateWeeks, type WeekOption } from "./weekState";
-import { getCanonicalWeekOpenUtc } from "./weekAnchor";
+import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "./weekAnchor";
 
 export type PerformanceSnapshot = {
   week_open_utc: string;
@@ -35,6 +35,14 @@ function formatWeekLabel(isoValue: string) {
   return mondayLabelDate.toFormat("MMM dd, yyyy");
 }
 
+function weekDisplayKeyFromOpen(isoValue: string) {
+  const parsed = DateTime.fromISO(isoValue, { zone: "utc" }).setZone("America/New_York");
+  if (!parsed.isValid) return null;
+  const mondayLabelDate =
+    parsed.weekday === 7 ? parsed.plus({ days: 1 }).startOf("day") : parsed.startOf("day");
+  return mondayLabelDate.toFormat("yyyy-LL-dd");
+}
+
 export function getWeekOpenUtc(now = DateTime.utc()): string {
   return getCanonicalWeekOpenUtc(now);
 }
@@ -58,6 +66,19 @@ function getLegacyWeekOpenUtc(now = DateTime.utc()): string {
   });
 
   return open.toUTC().toISO() ?? new Date().toISOString();
+}
+
+function getEquivalentWeekOpenCandidates(weekOpenUtc: string): string[] {
+  const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  if (!parsed.isValid) {
+    return [weekOpenUtc];
+  }
+  const candidates = deduplicateWeeks([
+    weekOpenUtc,
+    getWeekOpenUtc(parsed),
+    getLegacyWeekOpenUtc(parsed),
+  ]);
+  return candidates;
 }
 
 export function weekLabelFromOpen(isoValue: string) {
@@ -123,14 +144,99 @@ export async function writePerformanceSnapshots(
 }
 
 export async function listPerformanceWeeks(limit = 52): Promise<string[]> {
-  const rows = await query<{ week_open_utc: Date }>(
-    "SELECT DISTINCT week_open_utc FROM performance_snapshots ORDER BY week_open_utc DESC LIMIT $1",
-    [limit],
-  );
-  return rows.map((row) => row.week_open_utc.toISOString());
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 52;
+  const chunkSize = Math.max(safeLimit * 4, 32);
+  const byDisplayKey = new Map<string, string>();
+  let offset = 0;
+  for (let pass = 0; pass < 8; pass++) {
+    const rows = await query<{ week_open_utc: Date }>(
+      "SELECT DISTINCT week_open_utc FROM performance_snapshots ORDER BY week_open_utc DESC LIMIT $1 OFFSET $2",
+      [chunkSize, offset],
+    );
+    if (rows.length === 0) {
+      break;
+    }
+
+    for (const row of rows) {
+      const iso = row.week_open_utc.toISOString();
+      const key = weekDisplayKeyFromOpen(iso);
+      if (!key) continue;
+      const existing = byDisplayKey.get(key);
+      if (!existing) {
+        byDisplayKey.set(key, iso);
+        continue;
+      }
+      const canonical = normalizeWeekOpenUtc(iso) ?? iso;
+      if (iso === canonical && existing !== canonical) {
+        byDisplayKey.set(key, iso);
+      }
+    }
+
+    if (byDisplayKey.size >= safeLimit || rows.length < chunkSize) {
+      break;
+    }
+    offset += rows.length;
+  }
+
+  return Array.from(byDisplayKey.values())
+    .sort((a, b) => DateTime.fromISO(b, { zone: "utc" }).toMillis() - DateTime.fromISO(a, { zone: "utc" }).toMillis())
+    .slice(0, safeLimit);
+}
+
+function isBetterWeekSnapshotRow(
+  current: {
+    week_open_utc: Date;
+    priced: number;
+    total: number;
+    report_date: Date | null;
+  },
+  next: {
+    week_open_utc: Date;
+    priced: number;
+    total: number;
+    report_date: Date | null;
+  },
+  requestedWeekOpenUtc: string,
+): boolean {
+  if (next.priced !== current.priced) {
+    return next.priced > current.priced;
+  }
+  if (next.total !== current.total) {
+    return next.total > current.total;
+  }
+
+  const currentIso = current.week_open_utc.toISOString();
+  const nextIso = next.week_open_utc.toISOString();
+  const currentExact = currentIso === requestedWeekOpenUtc;
+  const nextExact = nextIso === requestedWeekOpenUtc;
+  if (nextExact !== currentExact) {
+    return nextExact;
+  }
+
+  const currentCanonical = normalizeWeekOpenUtc(currentIso) ?? currentIso;
+  const nextCanonical = normalizeWeekOpenUtc(nextIso) ?? nextIso;
+  const requestedCanonical = normalizeWeekOpenUtc(requestedWeekOpenUtc) ?? requestedWeekOpenUtc;
+  const currentCanonicalMatch = currentCanonical === requestedCanonical;
+  const nextCanonicalMatch = nextCanonical === requestedCanonical;
+  if (nextCanonicalMatch !== currentCanonicalMatch) {
+    return nextCanonicalMatch;
+  }
+
+  const currentReportMs = current.report_date
+    ? DateTime.fromJSDate(current.report_date, { zone: "utc" }).toMillis()
+    : Number.NEGATIVE_INFINITY;
+  const nextReportMs = next.report_date
+    ? DateTime.fromJSDate(next.report_date, { zone: "utc" }).toMillis()
+    : Number.NEGATIVE_INFINITY;
+  if (nextReportMs !== currentReportMs) {
+    return nextReportMs > currentReportMs;
+  }
+
+  return next.week_open_utc.getTime() > current.week_open_utc.getTime();
 }
 
 export async function readPerformanceSnapshotsByWeek(weekOpenUtc: string) {
+  const candidates = getEquivalentWeekOpenCandidates(weekOpenUtc);
   const rows = await query<{
     week_open_utc: Date;
     asset_class: AssetClass;
@@ -146,12 +252,25 @@ export async function readPerformanceSnapshotsByWeek(weekOpenUtc: string) {
   }>(
     `SELECT week_open_utc, asset_class, model, report_date, percent, priced, total, note, returns, pair_details, stats
      FROM performance_snapshots
-     WHERE week_open_utc = $1
+     WHERE week_open_utc = ANY($1::timestamptz[])
      ORDER BY asset_class, model`,
-    [weekOpenUtc],
+    [candidates],
   );
 
-  return rows.map((row) => ({
+  const deduped = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    const key = `${row.asset_class}:${row.model}`;
+    const prev = deduped.get(key);
+    if (!prev) {
+      deduped.set(key, row);
+      continue;
+    }
+    if (isBetterWeekSnapshotRow(prev, row, weekOpenUtc)) {
+      deduped.set(key, row);
+    }
+  }
+
+  return Array.from(deduped.values()).map((row) => ({
     week_open_utc: row.week_open_utc.toISOString(),
     asset_class: row.asset_class,
     model: row.model,
@@ -272,8 +391,9 @@ export async function listWeeksForAccount(
     // Always include current week
     const currentWeek = getWeekOpenUtc();
 
-    // Combine and deduplicate
-    const allWeeks = [currentWeek, ...historicalWeeks];
+    // Combine and deduplicate using canonical week keys.
+    const allWeeks = [currentWeek, ...historicalWeeks]
+      .map((week) => normalizeWeekOpenUtc(week) ?? week);
     return deduplicateWeeks(allWeeks).slice(0, limit);
   } catch (error) {
     console.error(`Failed to list weeks for account ${accountKey}:`, error);
