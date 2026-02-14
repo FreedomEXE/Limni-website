@@ -45,11 +45,23 @@ export async function getCotOperatingModeSummary(): Promise<CotOperatingModeSumm
 
   const staleAssetClasses: string[] = [];
   const healthyAssetClasses: string[] = [];
+  const staleReasons: Array<{
+    asset: string;
+    reason: string;
+    expectedReportDate: string;
+    minutesSinceWeeklyRelease: number;
+  }> = [];
 
   for (const item of snapshots) {
     if (!item.snapshot) {
       console.log(`[COT Operating Mode] ${item.asset}: No snapshot found in database`);
       staleAssetClasses.push(item.asset);
+      staleReasons.push({
+        asset: item.asset,
+        reason: "no snapshot available",
+        expectedReportDate: "",
+        minutesSinceWeeklyRelease: 0,
+      });
       continue;
     }
     const freshness = evaluateFreshness(
@@ -61,14 +73,28 @@ export async function getCotOperatingModeSummary(): Promise<CotOperatingModeSumm
       healthyAssetClasses.push(item.asset);
     } else {
       staleAssetClasses.push(item.asset);
+      staleReasons.push({
+        asset: item.asset,
+        reason: freshness.reason,
+        expectedReportDate: freshness.expected_report_date,
+        minutesSinceWeeklyRelease: freshness.minutes_since_weekly_release,
+      });
     }
   }
 
   const halted = healthyAssetClasses.length === 0;
   if (halted) {
     const hasAnySnapshots = snapshots.some(item => item.snapshot !== null);
+    const weeklyPending = staleReasons.some((item) => item.reason === "awaiting weekly CFTC update");
+    const expectedDate = staleReasons.find((item) => item.expectedReportDate)?.expectedReportDate ?? "";
+    const waitMinutes = Math.max(
+      0,
+      ...staleReasons.map((item) => item.minutesSinceWeeklyRelease),
+    );
     const reason = hasAnySnapshots
-      ? `COT data is stale (>10 days old). Visit /api/cot/refresh?token=${process.env.ADMIN_TOKEN} to update.`
+      ? weeklyPending
+        ? `Awaiting weekly CFTC update${expectedDate ? ` (expected ${expectedDate})` : ""}. ${waitMinutes} min since Friday 3:30 PM ET release.`
+        : "COT data is stale. Refresh required on server-side /api/cot/refresh with ADMIN_TOKEN."
       : "No COT snapshots found in database. CFTC reporting may be halted, or database needs initial refresh.";
 
     return {

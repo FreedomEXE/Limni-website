@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { getCotOperatingModeSummary } from "@/lib/cotOperatingMode";
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 const getCachedMode = unstable_cache(
   async () => getCotOperatingModeSummary(),
   ["system-cot-mode"],
-  { revalidate: 300 },
+  { revalidate: 60 },
 );
 
 export async function GET() {
