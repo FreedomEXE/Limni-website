@@ -30,6 +30,7 @@ export type Mt5PlanningDiagnostics = {
   eaFilteredLegCount: number;
   displayedLegCount: number;
   modelLegCounts: Record<PlannedModel, number>;
+  rawModelLegCounts: Record<PlannedModel, number>;
   filtersApplied: {
     dropNetted: boolean;
     forceFxOnly: boolean;
@@ -63,6 +64,17 @@ function countLegsByModel(plannedPairs: PlannedPair[]) {
       if (model in counts) {
         counts[model] += 1;
       }
+    }
+  }
+  return counts;
+}
+
+function countSignalsByModel(signals: BasketSignal[]) {
+  const counts = emptyModelCounts();
+  for (const signal of signals) {
+    const model = String(signal.model ?? "").toLowerCase() as PlannedModel;
+    if (model in counts) {
+      counts[model] += 1;
     }
   }
   return counts;
@@ -282,6 +294,7 @@ export async function buildMt5PlannedView(options: {
       eaFilteredLegCount: nonNeutralSignals.length,
       displayedLegCount: plannedPairs.reduce((sum, pair) => sum + (pair.legs?.length ?? 0), 0),
       modelLegCounts: countLegsByModel(plannedPairs),
+      rawModelLegCounts: countSignalsByModel(nonNeutralSignals),
       filtersApplied: {
         dropNetted: enforceNetPlan,
         forceFxOnly: forceFxOnlyPlanned,

@@ -168,5 +168,10 @@ describe("mt5 planning", () => {
     expect(btcShorts).toBe(2);
     expect(eth).toBeUndefined(); // 1 short vs 1 long => net 0 dropped
     expect(result.planningDiagnostics?.filtersApplied.dropNetted).toBe(true);
+    expect(result.planningDiagnostics?.rawModelLegCounts).toMatchObject({
+      blended: 2,
+      dealer: 2,
+      commercial: 1,
+    });
   });
 });

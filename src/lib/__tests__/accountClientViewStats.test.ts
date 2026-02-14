@@ -3,6 +3,7 @@ import {
   buildStopLossLines,
   computeNetExposure,
   computePlannedLegCounts,
+  computePlannedNetLegTotal,
   computePlannedLegTotal,
 } from "@/lib/accounts/accountClientViewStats";
 
@@ -35,6 +36,8 @@ describe("account client view stats helpers", () => {
     expect(counts.get("dealer")).toBe(1);
     expect(computePlannedLegTotal(pairs, true)).toBe(2);
     expect(computePlannedLegTotal(pairs, false)).toBe(3);
+    expect(computePlannedNetLegTotal(pairs, true)).toBe(1);
+    expect(computePlannedNetLegTotal(pairs, false)).toBe(2);
   });
 
   test("computes net exposure from legs", () => {

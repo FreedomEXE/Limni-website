@@ -37,6 +37,15 @@ export function computePlannedLegTotal(plannedPairs: PlannedPairLike[], isOanda:
   }, 0);
 }
 
+export function computePlannedNetLegTotal(plannedPairs: PlannedPairLike[], isOanda: boolean) {
+  return plannedPairs.reduce((sum, pair) => {
+    if (!shouldIncludePair(pair, isOanda)) return sum;
+    const net = Number(pair.net ?? 0);
+    if (!Number.isFinite(net)) return sum;
+    return sum + Math.abs(net);
+  }, 0);
+}
+
 export function computeNetExposure(plannedPairs: PlannedPairLike[], isOanda: boolean) {
   let sum = 0;
   for (const pair of plannedPairs) {

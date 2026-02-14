@@ -11,6 +11,7 @@ import {
   buildStopLossLines,
   computeNetExposure,
   computePlannedLegCounts,
+  computePlannedNetLegTotal,
   computePlannedLegTotal,
 } from "@/lib/accounts/accountClientViewStats";
 import { filterAccountRows } from "@/lib/accounts/accountClientViewFilters";
@@ -138,8 +139,12 @@ export default function AccountClientView({
 
   const plannedLegCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    if (planningDiagnostics?.modelLegCounts) {
-      for (const [model, count] of Object.entries(planningDiagnostics.modelLegCounts)) {
+    const fullModelCounts =
+      !isOanda && planningDiagnostics?.rawModelLegCounts
+        ? planningDiagnostics.rawModelLegCounts
+        : planningDiagnostics?.modelLegCounts;
+    if (fullModelCounts) {
+      for (const [model, count] of Object.entries(fullModelCounts)) {
         counts.set(model, Number(count ?? 0));
       }
       return counts;
@@ -158,8 +163,11 @@ export default function AccountClientView({
     [drawerData.plannedPairs, isOanda],
   );
   const plannedLegTotal = useMemo(
-    () => computePlannedLegTotal(drawerData.plannedPairs, isOanda),
-    [drawerData.plannedPairs, isOanda],
+    () =>
+      planningDiagnostics?.filtersApplied.dropNetted
+        ? computePlannedNetLegTotal(drawerData.plannedPairs, isOanda)
+        : computePlannedLegTotal(drawerData.plannedPairs, isOanda),
+    [drawerData.plannedPairs, isOanda, planningDiagnostics?.filtersApplied.dropNetted],
   );
 
   const { metricLabel, sizeUnitLabel, rowGridCols, openGridCols } = getAccountClientViewLayout(
