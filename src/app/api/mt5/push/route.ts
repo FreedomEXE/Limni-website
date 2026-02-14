@@ -177,7 +177,7 @@ function parsePlanningDiagnostics(value: unknown): Mt5AccountSnapshot["planning_
             model: string;
             direction: "LONG" | "SHORT";
             units: number;
-            sizing_profile?: string;
+            sizing_profile: string;
           } => row !== null,
         )
     : undefined;
