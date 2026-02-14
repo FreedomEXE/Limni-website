@@ -3218,9 +3218,15 @@ void UpdateDashboard()
   string expectedReportDate = "";
   int waitMinutes = 0;
   bool waitingSnapshot = IsWaitingForWeeklySnapshot(expectedReportDate, waitMinutes);
-  string snapshotLine = waitingSnapshot
-                          ? StringFormat("Snapshot: waiting for weekly update (expected %s, +%d min)", expectedReportDate, waitMinutes)
-                          : StringFormat("Snapshot: current (%s)", reportText);
+  bool hasPlanLoaded = (totalLegs > 0);
+  bool showWaitingSnapshot = (waitingSnapshot && !hasPlanLoaded);
+  string snapshotLine = "Snapshot: no plan loaded";
+  if(showWaitingSnapshot)
+    snapshotLine = StringFormat("Snapshot: waiting for weekly update (expected %s, +%d min)", expectedReportDate, waitMinutes);
+  else if(hasPlanLoaded)
+    snapshotLine = StringFormat("Snapshot: ready (%s) pending Sunday open", reportText);
+  else
+    snapshotLine = StringFormat("Snapshot: current (%s)", reportText);
   string cacheLine = g_loadedFromCache ? "Cache: Yes" : "Cache: No";
   if(g_lastApiSuccess > 0)
   {
@@ -3301,12 +3307,12 @@ void UpdateDashboard()
   string errorLine = StringFormat("Last error: %s", errorText);
 
   double capLots = GetBasketLotCap();
-  string modelLine = StringFormat("Open basket A%d B%d D%d C%d S%d",
-                                  CountOpenPositionsByModel("antikythera"),
-                                  CountOpenPositionsByModel("blended"),
-                                  CountOpenPositionsByModel("dealer"),
-                                  CountOpenPositionsByModel("commercial"),
-                                  CountOpenPositionsByModel("sentiment"));
+  string plannedModelLine = StringFormat("Planned basket A%d B%d D%d C%d S%d",
+                                         CountSignalsByModel("antikythera"),
+                                         CountSignalsByModel("blended"),
+                                         CountSignalsByModel("dealer"),
+                                         CountSignalsByModel("commercial"),
+                                         CountSignalsByModel("sentiment"));
   string capLine = StringFormat("Cap:%.2f Used:%.2f", capLots, totalLots);
   string peakLine = g_weekPeakEquity > 0.0
                       ? StringFormat("Peak equity: %.2f", g_weekPeakEquity)
@@ -3336,11 +3342,11 @@ void UpdateDashboard()
     SetLabelText(g_dashboardLines[6], "+----------------------------------------------------------+", dimColor);
 
     SetLabelText(g_dashboardLines[7], "| SYNC                                                     |", headingColor);
-    SetLabelText(g_dashboardLines[8], "| " + CompactText(snapshotLine, 58), waitingSnapshot ? warnColor : dimColor);
+    SetLabelText(g_dashboardLines[8], "| " + CompactText(snapshotLine, 58), showWaitingSnapshot ? warnColor : dimColor);
     SetLabelText(g_dashboardLines[9], StringFormat("| %s | poll=%s",
                                                     CompactText(cacheLine, 30),
                                                     FormatDuration(pollRemaining)),
-                 waitingSnapshot ? warnColor : dimColor);
+                 showWaitingSnapshot ? warnColor : dimColor);
     SetLabelText(g_dashboardLines[10], "+----------------------------------------------------------+", dimColor);
 
     SetLabelText(g_dashboardLines[11], "| ACCOUNT                                                  |", headingColor);
@@ -3350,14 +3356,14 @@ void UpdateDashboard()
 
     SetLabelText(g_dashboardLines[15], "| POSITIONS                                                |", headingColor);
     SetLabelText(g_dashboardLines[16], "| " + positionLine + " | " + capLine, textColor);
-    SetLabelText(g_dashboardLines[17], "| " + modelLine, dimColor);
+    SetLabelText(g_dashboardLines[17], "| " + plannedModelLine, dimColor);
     SetLabelText(g_dashboardLines[18], "+----------------------------------------------------------+", dimColor);
 
     SetLabelText(g_dashboardLines[19], "| CHECKS                                                   |", headingColor);
     string alertLine = (g_lastApiError == "" ? "Alerts: none" : "Alerts: " + errorText);
     if(RequireHedgingAccount && !IsHedgingAccount())
       alertLine = "Alerts: account is NET, entries blocked";
-    if(waitingSnapshot)
+    if(showWaitingSnapshot)
     {
       if(alertLine == "Alerts: none")
         alertLine = "Alerts: waiting for new weekly snapshot";
@@ -3378,7 +3384,7 @@ void UpdateDashboard()
     SetLabelText(g_dashboardLines[2], apiLine, apiColor);
     SetLabelText(g_dashboardLines[3], brokerLine, dimColor);
     SetLabelText(g_dashboardLines[4], cacheLine, dimColor);
-    SetLabelText(g_dashboardLines[5], snapshotLine, waitingSnapshot ? warnColor : dimColor);
+    SetLabelText(g_dashboardLines[5], snapshotLine, showWaitingSnapshot ? warnColor : dimColor);
     SetLabelText(g_dashboardLines[6], weekLine + StringFormat("  |  %s  |  Profile: %s  |  Mode: %s x %.2f",
                                                                structureLine, StrategyModeToString(), RiskModeToString(), legScale), dimColor);
 
@@ -3386,7 +3392,7 @@ void UpdateDashboard()
     SetLabelText(g_dashboardLines[8], pairsLine, textColor);
     SetLabelText(g_dashboardLines[9], positionLine, textColor);
     SetLabelText(g_dashboardLines[10], capLine, textColor);
-    SetLabelText(g_dashboardLines[11], modelLine + "  |  " + basketGuardLine, dimColor);
+    SetLabelText(g_dashboardLines[11], plannedModelLine + "  |  " + basketGuardLine, dimColor);
 
     SetLabelText(g_dashboardLines[12], "ACCOUNT", headingColor);
     SetLabelText(g_dashboardLines[13], equityLine, textColor);
