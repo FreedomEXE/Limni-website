@@ -326,6 +326,9 @@ string EnsureTrailingSlash(const string url);
 int CountOpenPositions();
 int CountOpenPairs();
 int CountUniquePlannedPairs();
+int CountExpectedUniversePairs();
+bool HasPlannedSymbol(const string symbol);
+string GetMissingUniversePairs();
 int CountSignalsByModel(const string model);
 int CountOpenPositionsByModel(const string model);
 void UpdateDrawdown();
@@ -3185,6 +3188,8 @@ void UpdateDashboard()
   datetime now = TimeCurrent();
   int totalLegs = ArraySize(g_brokerSymbols);
   int totalPairs = CountUniquePlannedPairs();
+  int expectedPairs = CountExpectedUniversePairs();
+  string missingPairs = GetMissingUniversePairs();
   int openPairs = CountOpenPairs();
   int openPositions = CountOpenPositions();
   double totalLots = GetTotalBasketLots();
@@ -3245,7 +3250,8 @@ void UpdateDashboard()
   string weekLine = StringFormat("Week start: %s  |  Asset: %s",
                                  FormatTimeValue(g_weekStartGmt),
                                  AssetFilter == "" ? "--" : AssetFilter);
-  string pairsLine = StringFormat("Pairs: %d  |  Legs: %d  |  Open pairs: %d", totalPairs, totalLegs, openPairs);
+  string pairsLine = StringFormat("Pairs: %d/%d  |  Legs: %d  |  Open pairs: %d",
+                                  totalPairs, expectedPairs, totalLegs, openPairs);
   string positionLine = StringFormat("Pos:%d Lots:%.2f OPM:%d",
                                      openPositions, totalLots, OrdersInLastMinute());
   string equityLine = StringFormat("Eq:%.2f Bal:%.2f Free:%.2f",
@@ -3371,8 +3377,10 @@ void UpdateDashboard()
         alertLine = alertLine + " | waiting for weekly snapshot";
     }
     SetLabelText(g_dashboardLines[20], "| " + alertLine, errorColor);
-    SetLabelText(g_dashboardLines[21], StringFormat("| pairs=%d legs=%d open_pairs=%d", totalPairs, totalLegs, openPairs), dimColor);
-    SetLabelText(g_dashboardLines[22], "| " + CompactText(StringFormat("report=%s refresh=%s", reportText, refreshText), 58), errorColor);
+    SetLabelText(g_dashboardLines[21], StringFormat("| pairs=%d/%d legs=%d open_pairs=%d", totalPairs, expectedPairs, totalLegs, openPairs), dimColor);
+    SetLabelText(g_dashboardLines[22], "| " + CompactText(StringFormat("report=%s refresh=%s miss=%s",
+                                                    reportText, refreshText,
+                                                    missingPairs == "none" ? "none" : CompactText(missingPairs, 18)), 58), errorColor);
     SetLabelText(g_dashboardLines[23], "+----------------------------------------------------------+", dimColor);
     usedLeft = 24;
   }
@@ -3701,6 +3709,99 @@ int CountUniquePlannedPairs()
     seen[size] = symbol;
   }
   return ArraySize(seen);
+}
+
+int CountExpectedUniversePairs()
+{
+  string mode = AssetFilter;
+  StringToLower(mode);
+  if(mode == "fx")
+    return 28;
+  if(mode == "indices")
+    return 3;
+  if(mode == "crypto")
+    return 2;
+  if(mode == "commodities")
+    return 3;
+  return 36;
+}
+
+bool HasPlannedSymbol(const string symbol)
+{
+  string target = symbol;
+  StringToUpper(target);
+  for(int i = 0; i < ArraySize(g_apiSymbols); i++)
+  {
+    string current = g_apiSymbols[i];
+    StringToUpper(current);
+    if(current == target)
+      return true;
+  }
+  return false;
+}
+
+string GetMissingUniversePairs()
+{
+  string mode = AssetFilter;
+  StringToLower(mode);
+
+  string fxPairs[28] = {"EURUSD","GBPUSD","AUDUSD","NZDUSD","USDJPY","USDCHF","USDCAD","EURGBP",
+                        "EURJPY","EURCHF","EURAUD","EURNZD","EURCAD","GBPJPY","GBPCHF","GBPAUD",
+                        "GBPNZD","GBPCAD","AUDJPY","AUDCHF","AUDCAD","AUDNZD","NZDJPY","NZDCHF",
+                        "NZDCAD","CADJPY","CADCHF","CHFJPY"};
+  string indexPairs[3] = {"SPXUSD","NDXUSD","NIKKEIUSD"};
+  string cryptoPairs[2] = {"BTCUSD","ETHUSD"};
+  string commodityPairs[3] = {"XAUUSD","XAGUSD","WTIUSD"};
+
+  string missing = "";
+  if(mode == "fx" || mode == "all" || mode == "")
+  {
+    for(int i = 0; i < 28; i++)
+    {
+      if(HasPlannedSymbol(fxPairs[i]))
+        continue;
+      if(missing != "")
+        missing += ",";
+      missing += fxPairs[i];
+    }
+  }
+  if(mode == "indices" || mode == "all" || mode == "")
+  {
+    for(int i = 0; i < 3; i++)
+    {
+      if(HasPlannedSymbol(indexPairs[i]))
+        continue;
+      if(missing != "")
+        missing += ",";
+      missing += indexPairs[i];
+    }
+  }
+  if(mode == "crypto" || mode == "all" || mode == "")
+  {
+    for(int i = 0; i < 2; i++)
+    {
+      if(HasPlannedSymbol(cryptoPairs[i]))
+        continue;
+      if(missing != "")
+        missing += ",";
+      missing += cryptoPairs[i];
+    }
+  }
+  if(mode == "commodities" || mode == "all" || mode == "")
+  {
+    for(int i = 0; i < 3; i++)
+    {
+      if(HasPlannedSymbol(commodityPairs[i]))
+        continue;
+      if(missing != "")
+        missing += ",";
+      missing += commodityPairs[i];
+    }
+  }
+
+  if(missing == "")
+    return "none";
+  return missing;
 }
 
 int CountSignalsByModel(const string model)
