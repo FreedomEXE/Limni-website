@@ -7,9 +7,10 @@ import WeekSelector from "@/components/accounts/WeekSelector";
 import KpiGroup from "@/components/metrics/KpiGroup";
 import KpiCard from "@/components/metrics/KpiCard";
 import DebugReadout from "@/components/DebugReadout";
-import { getWeekOpenUtc, listPerformanceWeeks } from "@/lib/performanceSnapshots";
+import { listPerformanceWeeks } from "@/lib/performanceSnapshots";
 import { computeMaxDrawdown, computeStaticDrawdown, pickParam } from "@/lib/research/common";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const revalidate = 900;
 
@@ -33,7 +34,7 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
     { revalidate: 900 },
   );
   const universalSummary = await getUniversalSummary();
-  const currentWeekOpenUtc = getWeekOpenUtc();
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const performanceWeeks = await listPerformanceWeeks(12);
   const weekOptions = buildDataWeekOptions({
     historicalWeeks: [

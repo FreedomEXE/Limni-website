@@ -11,8 +11,9 @@ import type { PerformanceModel } from "@/lib/performanceLab";
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
-import { getWeekOpenUtc, listPerformanceWeeks } from "@/lib/performanceSnapshots";
+import { listPerformanceWeeks } from "@/lib/performanceSnapshots";
 import { resolveWeekSelection } from "@/lib/weekOptions";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import {
   buildWeekOptionsFromCurve,
   computeMaxDrawdown,
@@ -71,7 +72,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
   ]);
 
   const summary = summaryAll;
-  const currentWeekOpenUtc = getWeekOpenUtc();
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const performanceWeeks = await listPerformanceWeeks(12);
   const weekOptions = buildWeekOptionsFromCurve(
     summary.equity_curve,

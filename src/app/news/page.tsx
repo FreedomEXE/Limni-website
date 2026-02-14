@@ -4,8 +4,8 @@ import { formatDateTimeET } from "@/lib/time";
 import { listNewsWeeks, readNewsWeeklySnapshot } from "@/lib/news/store";
 import { refreshNewsSnapshot } from "@/lib/news/refresh";
 import NewsContentTabs from "@/components/news/NewsContentTabs";
-import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const revalidate = 300;
 
@@ -39,7 +39,7 @@ export default async function NewsPage({ searchParams }: PageProps) {
     weeks = await listNewsWeeks(52);
   }
 
-  const currentWeekOpenUtc = getWeekOpenUtc();
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const weekOptions = buildDataWeekOptions({
     historicalWeeks: weeks,
     currentWeekOpenUtc,

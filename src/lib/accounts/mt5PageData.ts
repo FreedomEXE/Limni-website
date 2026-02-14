@@ -1,7 +1,6 @@
 import { DateTime } from "luxon";
 import {
   getMt5AccountById,
-  getMt5WeekOpenUtc,
   isMt5WeekOpenUtc,
   listMt5WeekOptions,
   readMt5ClosedNetForWeek,
@@ -12,6 +11,7 @@ import {
   readMt5ChangeLog,
   readMt5FrozenPlan,
 } from "@/lib/mt5Store";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { getConnectedAccount } from "@/lib/connectedAccounts";
 import { buildBasketSignals } from "@/lib/basketSignals";
 import { readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
@@ -60,7 +60,7 @@ export async function resolveMt5WeekContext(options: {
   desiredWeeks?: number;
 }) {
   const { accountId, requestedWeek, desiredWeeks = 4 } = options;
-  const currentWeekOpenUtc = getMt5WeekOpenUtc();
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
   const nextWeekOpenUtc = currentWeekStart.isValid
     ? currentWeekStart.plus({ days: 7 }).toUTC().toISO()
@@ -90,7 +90,7 @@ export async function resolveMt5WeekContext(options: {
   }
   const selectedWeek = resolveRequestedWeek(requestedWeek, weekOptions, currentWeekOpenUtc);
   const isSelectedMt5Week = selectedWeek ? isMt5WeekOpenUtc(selectedWeek) : false;
-  const statsWeekOpenUtc = isSelectedMt5Week ? selectedWeek : getMt5WeekOpenUtc();
+  const statsWeekOpenUtc = isSelectedMt5Week ? selectedWeek : currentWeekOpenUtc;
 
   return {
     currentWeekOpenUtc,

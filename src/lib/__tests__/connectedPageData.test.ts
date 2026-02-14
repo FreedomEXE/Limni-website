@@ -3,8 +3,10 @@ import { loadConnectedWeekData, resolveConnectedWeekContext } from "@/lib/accoun
 
 vi.mock("@/lib/performanceSnapshots", () => ({
   listWeekOptionsForAccount: vi.fn().mockResolvedValue(["2026-02-09"]),
-  getWeekOpenUtc: vi.fn().mockReturnValue("2026-02-09"),
   readPerformanceSnapshotsByWeek: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("@/lib/weekAnchor", () => ({
+  getDisplayWeekOpenUtc: vi.fn().mockReturnValue("2026-02-09"),
 }));
 
 vi.mock("@/lib/accountStats", () => ({

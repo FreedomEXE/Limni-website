@@ -19,8 +19,8 @@ import {
   readPerformanceSnapshotsByWeek,
   isWeekOpenUtc,
   weekLabelFromOpen,
-  getWeekOpenUtc,
 } from "@/lib/performanceSnapshots";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 import {
   buildPerformanceWeekFlags,
@@ -62,7 +62,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
 
   const desiredWeeks = 4;
   let weekOptions: string[] = [];
-  const currentWeekOpenUtc = getWeekOpenUtc();
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
   let reportOptions: string[] = [];
   try {

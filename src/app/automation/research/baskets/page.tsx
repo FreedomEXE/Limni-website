@@ -8,9 +8,10 @@ import DebugReadout from "@/components/DebugReadout";
 import { buildPerModelBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
-import { getWeekOpenUtc, listPerformanceWeeks, weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import { listPerformanceWeeks, weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import { computeMaxDrawdown, computeStaticDrawdown, pickParam } from "@/lib/research/common";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const revalidate = 900;
 
@@ -37,7 +38,7 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
     { revalidate: 900 },
   );
   const summary = await getBasketSummary();
-  const currentWeekOpenUtc = getWeekOpenUtc();
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const weekLabelMap = new Map<string, string>();
   summary.models.forEach((model) => {
     model.by_week.forEach((row) => {

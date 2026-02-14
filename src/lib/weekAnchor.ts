@@ -26,3 +26,32 @@ export function getCanonicalWeekOpenUtc(now = DateTime.utc()): string {
   return open.toUTC().toISO() ?? now.toUTC().toISO();
 }
 
+export function normalizeWeekOpenUtc(isoValue: string): string | null {
+  const parsed = DateTime.fromISO(isoValue, { zone: "utc" });
+  if (!parsed.isValid) {
+    return null;
+  }
+  return getCanonicalWeekOpenUtc(parsed);
+}
+
+// UI display anchor:
+// after Friday 15:30 ET release, default to the upcoming trading week.
+export function getDisplayWeekOpenUtc(now = DateTime.utc()): string {
+  const canonical = getCanonicalWeekOpenUtc(now);
+  const currentWeek = DateTime.fromISO(canonical, { zone: "utc" });
+  if (!currentWeek.isValid) {
+    return canonical;
+  }
+
+  const weekStartEt = now
+    .setZone("America/New_York")
+    .startOf("day")
+    .minus({ days: now.setZone("America/New_York").weekday % 7 });
+  const fridayReleaseEt = weekStartEt.plus({ days: 5, hours: 15, minutes: 30 });
+  const releasePassed = now.toUTC().toMillis() >= fridayReleaseEt.toUTC().toMillis();
+
+  if (!releasePassed) {
+    return canonical;
+  }
+  return currentWeek.plus({ days: 7 }).toUTC().toISO() ?? canonical;
+}

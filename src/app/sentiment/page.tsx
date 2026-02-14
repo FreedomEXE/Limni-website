@@ -18,12 +18,12 @@ import {
 } from "@/lib/sentiment/symbols";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import {
-  getWeekOpenUtc,
   listPerformanceWeeks,
   readPerformanceSnapshotsByWeek,
   weekLabelFromOpen,
 } from "@/lib/performanceSnapshots";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -58,7 +58,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
     viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
   const weekValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
 
-  const currentWeekOpen = getWeekOpenUtc();
+  const currentWeekOpen = getDisplayWeekOpenUtc();
 
   const recentWeeks = await listPerformanceWeeks(24);
   const weeks = buildDataWeekOptions({

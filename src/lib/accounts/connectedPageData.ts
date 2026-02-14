@@ -1,12 +1,13 @@
 import { buildBasketSignals } from "@/lib/basketSignals";
 import { signalsFromSnapshots } from "@/lib/plannedTrades";
-import { readPerformanceSnapshotsByWeek, listWeekOptionsForAccount, getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import { readPerformanceSnapshotsByWeek, listWeekOptionsForAccount } from "@/lib/performanceSnapshots";
 import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
 import { getAccountStatsForWeek } from "@/lib/accountStats";
 import { buildAccountEquityCurve } from "@/lib/accountEquityCurve";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { DateTime } from "luxon";
 import { computeMaxDrawdown, computeStaticDrawdown, extendToWindow } from "@/lib/accounts/viewUtils";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export async function resolveConnectedWeekContext(options: {
   accountKey: string;
@@ -14,7 +15,7 @@ export async function resolveConnectedWeekContext(options: {
 }) {
   const { accountKey, weekParamValue } = options;
   const weekOptions = await listWeekOptionsForAccount(accountKey, true, 4);
-  const currentWeekOpenUtc = getWeekOpenUtc();
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const weekOptionsWithUpcoming = buildDataWeekOptions({
     historicalWeeks: weekOptions.filter((week): week is string => week !== "all"),
     currentWeekOpenUtc,
