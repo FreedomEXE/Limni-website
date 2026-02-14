@@ -71,4 +71,19 @@ describe("performance page state helpers", () => {
       }).isHistoricalWeekSelected,
     ).toBe(true);
   });
+
+  test("treats display-week selection as future until canonical trading week opens", () => {
+    const tradingWeek = "2026-02-09T05:00:00.000Z";
+    const displayWeek = "2026-02-16T05:00:00.000Z";
+    const flags = buildPerformanceWeekFlags({
+      selectedWeek: displayWeek,
+      currentWeekOpenUtc: displayWeek,
+      tradingWeekOpenUtc: tradingWeek,
+      hasSnapshots: false,
+    });
+
+    expect(flags.isCurrentWeekSelected).toBe(false);
+    expect(flags.isFutureWeekSelected).toBe(true);
+    expect(flags.isWaitingWeek).toBe(true);
+  });
 });

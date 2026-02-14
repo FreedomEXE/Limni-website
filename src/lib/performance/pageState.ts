@@ -34,13 +34,15 @@ export function resolveSelectedPerformanceWeek(options: {
 export function buildPerformanceWeekFlags(options: {
   selectedWeek: string | null;
   currentWeekOpenUtc: string;
+  tradingWeekOpenUtc?: string;
   hasSnapshots: boolean;
 }) {
-  const { selectedWeek, currentWeekOpenUtc, hasSnapshots } = options;
+  const { selectedWeek, currentWeekOpenUtc, tradingWeekOpenUtc, hasSnapshots } = options;
   const isAllTimeSelected = selectedWeek === "all";
-  const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
+  const logicalCurrentWeekOpenUtc = tradingWeekOpenUtc ?? currentWeekOpenUtc;
+  const currentWeekStart = DateTime.fromISO(logicalCurrentWeekOpenUtc, { zone: "utc" });
   const isCurrentWeekSelected =
-    !isAllTimeSelected && selectedWeek != null && selectedWeek === currentWeekOpenUtc;
+    !isAllTimeSelected && selectedWeek != null && selectedWeek === logicalCurrentWeekOpenUtc;
 
   const isFutureWeekSelected = (() => {
     if (isAllTimeSelected || !selectedWeek) {

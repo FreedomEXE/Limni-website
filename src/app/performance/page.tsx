@@ -20,7 +20,7 @@ import {
   isWeekOpenUtc,
   weekLabelFromOpen,
 } from "@/lib/performanceSnapshots";
-import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import { getCanonicalWeekOpenUtc, getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 import {
   buildPerformanceWeekFlags,
@@ -60,16 +60,17 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const assetClasses = listAssetClasses();
   const models = PERFORMANCE_MODELS;
 
-  const desiredWeeks = 4;
+  const desiredWeeks = 5;
   let weekOptions: string[] = [];
-  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  const currentWeekStart = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
+  const displayWeekOpenUtc = getDisplayWeekOpenUtc();
+  const tradingWeekOpenUtc = getCanonicalWeekOpenUtc();
+  const currentWeekStart = DateTime.fromISO(tradingWeekOpenUtc, { zone: "utc" });
   let reportOptions: string[] = [];
   try {
     const recentWeeks = await listPerformanceWeeks(desiredWeeks);
     weekOptions = buildDataWeekOptions({
       historicalWeeks: recentWeeks,
-      currentWeekOpenUtc,
+      currentWeekOpenUtc: displayWeekOpenUtc,
       includeAll: false,
       limit: desiredWeeks,
     }) as string[];
@@ -100,7 +101,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const selectedWeek = resolveSelectedPerformanceWeek({
     weekParamValue,
     weekOptions: weekSelectorOptions,
-    currentWeekOpenUtc,
+    currentWeekOpenUtc: displayWeekOpenUtc,
   });
   const reportParam = resolvedSearchParams?.report;
   const selectedReport =
@@ -122,7 +123,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const hasSnapshots = weekSnapshots.length > 0;
   const { isAllTimeSelected, isCurrentWeekSelected, isFutureWeekSelected, isHistoricalWeekSelected } = buildPerformanceWeekFlags({
     selectedWeek,
-    currentWeekOpenUtc,
+    currentWeekOpenUtc: displayWeekOpenUtc,
+    tradingWeekOpenUtc,
     hasSnapshots,
   });
   let latestPriceRefresh: string | null = null;
