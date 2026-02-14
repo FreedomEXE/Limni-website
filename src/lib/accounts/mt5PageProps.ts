@@ -49,6 +49,8 @@ type Mt5PagePropsInput = {
     marginAvailable?: number | null;
     scale?: number | null;
     currency?: string | null;
+    sizingSource?: "live_lot_map" | "frozen_week_plan";
+    sizingSourceLocked?: boolean;
   } | null;
   planningDiagnostics?: Mt5PlanningDiagnostics;
   planningMode?: "available" | "missing" | "legacy" | "disabled";

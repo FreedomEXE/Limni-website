@@ -28,3 +28,14 @@ export function resolveMt5TradeFilters(searchParams: AccountQueryParams) {
   const symbolFilter = (pickQueryParam(searchParams?.symbol) ?? "").toUpperCase();
   return { basketFilter, symbolFilter };
 }
+
+export type Mt5SizingSourcePreference = "auto" | "live" | "frozen";
+
+export function resolveMt5SizingSourcePreference(
+  searchParams: AccountQueryParams,
+): Mt5SizingSourcePreference {
+  const raw = String(pickQueryParam(searchParams?.sizing) ?? "").toLowerCase();
+  if (raw === "live") return "live";
+  if (raw === "frozen") return "frozen";
+  return "auto";
+}

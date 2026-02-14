@@ -44,9 +44,25 @@ export type Mt5LotMapEntry = {
   asset_class: string;
   lot: number;
   target_lot?: number;
+  solved_lot_raw?: number;
+  post_clamp_lot?: number;
   deviation_pct?: number;
+  target_risk_usd?: number;
   margin_required?: number;
   move_1pct_usd?: number;
+  move_1pct_per_lot_usd?: number;
+  move_1pct_cap_usd?: number;
+  sizing_profile?: string;
+  sizing_tolerance?: string;
+  spec_price?: number;
+  spec_tick_size?: number;
+  spec_tick_value?: number;
+  spec_contract_size?: number;
+  spec_volume_min?: number;
+  spec_volume_max?: number;
+  spec_volume_step?: number;
+  sizing_status?: string;
+  sizing_reason?: string;
 };
 
 export type Mt5PlanningDiagnostics = {
@@ -58,6 +74,12 @@ export type Mt5PlanningDiagnostics = {
     model: string;
     direction: "LONG" | "SHORT";
     units: number;
+    target_units?: number;
+    target_risk_usd?: number;
+    move_1pct_usd?: number;
+    sizing_profile?: string;
+    sizing_status?: string;
+    sizing_reason?: string;
   }>;
   execution_legs?: Array<{
     symbol: string;

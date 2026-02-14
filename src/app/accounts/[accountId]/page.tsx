@@ -7,6 +7,7 @@ import { computeMaxDrawdown, computeStaticDrawdown } from "@/lib/accounts/viewUt
 import {
   resolveCommonAccountSearchParams,
   resolveMt5TradeFilters,
+  resolveMt5SizingSourcePreference,
 } from "@/lib/accounts/navigation";
 import {
   loadMt5PageData,
@@ -36,6 +37,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const { week: requestedWeek, view: activeView } =
     resolveCommonAccountSearchParams(resolvedSearchParams);
   const { basketFilter, symbolFilter } = resolveMt5TradeFilters(resolvedSearchParams);
+  const sizingSourcePreference = resolveMt5SizingSourcePreference(resolvedSearchParams);
   const {
     currentWeekOpenUtc,
     nextWeekOpenUtc,
@@ -89,6 +91,10 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     lotMapRows: account.lot_map ?? [],
     frozenLotMapRows: frozenPlan?.lot_map ?? [],
     frozenBaselineEquity: frozenPlan?.baseline_equity ?? null,
+    lotMapUpdatedUtc:
+      typeof account.lot_map_updated_utc === "string" ? account.lot_map_updated_utc : null,
+    frozenCapturedUtc: frozenPlan?.captured_sync_utc ?? null,
+    sizingSourcePreference,
     freeMargin: Number(account.free_margin ?? 0),
     equity: Number(account.equity ?? 0),
     currency: String(account.currency ?? "USD"),
@@ -106,6 +112,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
     account: {
       ...account,
       baseline_equity:
+        mt5Planned.sizingSource === "frozen_week_plan" &&
         Number(frozenPlan?.baseline_equity ?? 0) > 0
           ? Number(frozenPlan?.baseline_equity ?? 0)
           : Number(account.baseline_equity ?? 0),

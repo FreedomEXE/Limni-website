@@ -115,6 +115,8 @@ export type AccountClientViewProps = {
     marginAvailable?: number | null;
     scale?: number | null;
     currency?: string | null;
+    sizingSource?: "live_lot_map" | "frozen_week_plan";
+    sizingSourceLocked?: boolean;
   };
   equity: {
     title: string;

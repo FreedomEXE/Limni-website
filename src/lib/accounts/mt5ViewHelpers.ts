@@ -65,8 +65,18 @@ export function applyPositionFilters<T extends HasCommentAndSymbol>(options: {
 export type LotMapRow = {
   symbol?: string | null;
   lot?: number | null;
+  target_lot?: number | null;
+  solved_lot_raw?: number | null;
+  post_clamp_lot?: number | null;
+  target_risk_usd?: number | null;
   move_1pct_usd?: number | null;
+  move_1pct_per_lot_usd?: number | null;
+  move_1pct_cap_usd?: number | null;
   margin_required?: number | null;
+  sizing_profile?: string | null;
+  sizing_tolerance?: string | null;
+  sizing_status?: string | null;
+  sizing_reason?: string | null;
 };
 
 export function findLotMapEntry(rows: LotMapRow[], symbol: string) {

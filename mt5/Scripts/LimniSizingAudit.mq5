@@ -24,19 +24,55 @@ input string SymbolMove1PctCapOfEquity = "";
 input string FiveersSymbolMove1PctCapOfEquity = "XAUUSD=0.10,XAGUSD=0.10,WTIUSD=0.20";
 input string SymbolLotCaps = "";
 input string FiveersSymbolLotCaps = "XAUUSD=0.50,XAGUSD=0.50,WTIUSD=0.50";
+enum SizingToleranceMode
+{
+  SIZING_STRICT_UNDER_TARGET = 0,
+  SIZING_NEAREST_STEP_BOUNDED_OVERSHOOT = 1
+};
+input SizingToleranceMode SizingTolerance = SIZING_STRICT_UNDER_TARGET;
+input double SizingMaxOvershootPct = 5.0;
 
 struct SizingRow
 {
   bool ok;
   string reason;
+  string profile;
+  string toleranceMode;
   double baseLotRaw;
   double targetLot;
+  double solvedLotRaw;
+  double postClampLot;
   double finalLot;
+  double targetRiskUsd;
   double marginRequired;
   double move1pctUsd;
+  double move1pctPerLotUsd;
   double move1pctCapUsd;
+  double specPrice;
+  double specTickSize;
+  double specTickValue;
+  double specContractSize;
+  double specMinLot;
+  double specMaxLot;
+  double specLotStep;
   bool lotCapTriggered;
   bool moveCapTriggered;
+};
+
+struct SymbolSpecProbe
+{
+  bool ok;
+  string reason;
+  double price;
+  double tickSize;
+  double tickValue;
+  double tickValueProfit;
+  double contractSize;
+  double minLot;
+  double maxLot;
+  double lotStep;
+  int tradeMode;
+  double move1pctPerLotUsd;
 };
 
 void AddUniqueSymbol(string &list[], const string value)
@@ -252,6 +288,133 @@ double NormalizeVolume(const string symbol, double volume)
   return normalized;
 }
 
+double NormalizeVolumeWithPolicy(const string symbol, double volume, bool strictUnderTarget, double maxOvershootPct, double targetVolume)
+{
+  double minVol = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+  double maxVol = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
+  double step = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+  if(minVol <= 0.0 || maxVol <= 0.0 || step <= 0.0 || volume <= 0.0)
+    return 0.0;
+
+  if(volume > maxVol)
+    volume = maxVol;
+
+  int digits = (int)MathRound(-MathLog10(step));
+  double floorVol = NormalizeDouble(MathFloor(volume / step + 1e-9) * step, digits);
+  double ceilVol = NormalizeDouble(MathCeil(volume / step - 1e-9) * step, digits);
+  if(floorVol < minVol)
+    floorVol = minVol;
+  if(ceilVol < minVol)
+    ceilVol = minVol;
+  if(floorVol > maxVol)
+    floorVol = maxVol;
+  if(ceilVol > maxVol)
+    ceilVol = maxVol;
+
+  if(strictUnderTarget || targetVolume <= 0.0)
+    return floorVol;
+
+  double chosen = (MathAbs(ceilVol - volume) < MathAbs(floorVol - volume) ? ceilVol : floorVol);
+  if(chosen > targetVolume + 1e-9)
+  {
+    double overPct = (chosen - targetVolume) / targetVolume * 100.0;
+    if(overPct > MathMax(0.0, maxOvershootPct) + 1e-9)
+      chosen = floorVol;
+  }
+  return chosen;
+}
+
+double EstimateMove1PctUsdPerLot(const string symbol, double priceHint)
+{
+  double refPrice = priceHint;
+  if(refPrice <= 0.0)
+    refPrice = SymbolInfoDouble(symbol, SYMBOL_BID);
+  if(refPrice <= 0.0)
+    refPrice = SymbolInfoDouble(symbol, SYMBOL_ASK);
+  if(refPrice <= 0.0)
+    refPrice = SymbolInfoDouble(symbol, SYMBOL_LAST);
+  if(refPrice <= 0.0)
+    return 0.0;
+
+  double move = refPrice * 0.01;
+  if(move <= 0.0)
+    return 0.0;
+
+  double pnl = 0.0;
+  if(OrderCalcProfit(ORDER_TYPE_BUY, symbol, 1.0, refPrice, refPrice + move, pnl))
+  {
+    double absPnl = MathAbs(pnl);
+    if(absPnl > 0.0)
+      return absPnl;
+  }
+
+  if(OrderCalcProfit(ORDER_TYPE_SELL, symbol, 1.0, refPrice, refPrice - move, pnl))
+  {
+    double absPnl = MathAbs(pnl);
+    if(absPnl > 0.0)
+      return absPnl;
+  }
+  return 0.0;
+}
+
+bool ProbeSymbolSpec(const string symbol, SymbolSpecProbe &probe)
+{
+  probe.ok = false;
+  probe.reason = "";
+  probe.price = SymbolInfoDouble(symbol, SYMBOL_BID);
+  if(probe.price <= 0.0)
+    probe.price = SymbolInfoDouble(symbol, SYMBOL_ASK);
+  if(probe.price <= 0.0)
+    probe.price = SymbolInfoDouble(symbol, SYMBOL_LAST);
+  probe.tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+  probe.tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+  probe.tickValueProfit = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE_PROFIT);
+  probe.contractSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_CONTRACT_SIZE);
+  probe.minLot = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+  probe.maxLot = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
+  probe.lotStep = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+  probe.tradeMode = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_MODE);
+  probe.move1pctPerLotUsd = 0.0;
+
+  if(probe.price <= 0.0)
+  {
+    probe.reason = "probe_price";
+    return false;
+  }
+  if(probe.minLot <= 0.0 || probe.maxLot <= 0.0 || probe.lotStep <= 0.0)
+  {
+    probe.reason = "probe_volume_spec";
+    return false;
+  }
+  if(probe.tickSize <= 0.0)
+  {
+    probe.reason = "probe_tick_size";
+    return false;
+  }
+
+  probe.move1pctPerLotUsd = EstimateMove1PctUsdPerLot(symbol, probe.price);
+  if(probe.move1pctPerLotUsd <= 0.0)
+  {
+    double tickValue = probe.tickValueProfit;
+    if(tickValue <= 0.0)
+      tickValue = probe.tickValue;
+    if(tickValue <= 0.0)
+    {
+      probe.reason = "probe_tick_value";
+      return false;
+    }
+    probe.move1pctPerLotUsd = ((probe.price * 0.01) / probe.tickSize) * tickValue;
+  }
+  if(probe.move1pctPerLotUsd <= 0.0)
+  {
+    probe.reason = "probe_move_per_lot";
+    return false;
+  }
+
+  probe.ok = true;
+  return true;
+}
+
 double ClampVolumeToMax(const string symbol, double desiredVolume, double maxCap)
 {
   if(desiredVolume <= 0.0 || maxCap <= 0.0)
@@ -401,53 +564,135 @@ bool EvaluateSizing(const string symbol, const string assetClass, double baseEqu
 {
   row.ok = false;
   row.reason = "";
+  row.profile = isFiveers ? "5ERS" : "EIGHTCAP";
+  row.toleranceMode = (SizingTolerance == SIZING_STRICT_UNDER_TARGET
+                       ? "strict_under_target"
+                       : "nearest_step_bounded_overshoot");
   row.baseLotRaw = 0.0;
   row.targetLot = 0.0;
+  row.solvedLotRaw = 0.0;
+  row.postClampLot = 0.0;
   row.finalLot = 0.0;
+  row.targetRiskUsd = 0.0;
   row.marginRequired = 0.0;
   row.move1pctUsd = 0.0;
+  row.move1pctPerLotUsd = 0.0;
   row.move1pctCapUsd = 0.0;
+  row.specPrice = 0.0;
+  row.specTickSize = 0.0;
+  row.specTickValue = 0.0;
+  row.specContractSize = 0.0;
+  row.specMinLot = 0.0;
+  row.specMaxLot = 0.0;
+  row.specLotStep = 0.0;
   row.lotCapTriggered = false;
   row.moveCapTriggered = false;
 
-  double price = SymbolInfoDouble(symbol, SYMBOL_BID);
-  if(price <= 0.0)
-    price = SymbolInfoDouble(symbol, SYMBOL_ASK);
-  if(price <= 0.0)
-    price = SymbolInfoDouble(symbol, SYMBOL_LAST);
-
-  double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
-  double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE_PROFIT);
-  if(tickValue <= 0.0)
-    tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
-
-  if(price <= 0.0 || tickSize <= 0.0 || tickValue <= 0.0 || baseEquity <= 0.0)
+  if(baseEquity <= 0.0)
   {
-    row.reason = "invalid_market_specs";
+    row.reason = "equity_zero";
     return false;
   }
 
-  row.baseLotRaw = baseEquity * tickSize / (price * tickValue);
+  // Keep eightcap calculations unchanged for parity checks.
+  if(!isFiveers)
+  {
+    double price = SymbolInfoDouble(symbol, SYMBOL_BID);
+    if(price <= 0.0)
+      price = SymbolInfoDouble(symbol, SYMBOL_ASK);
+    if(price <= 0.0)
+      price = SymbolInfoDouble(symbol, SYMBOL_LAST);
+
+    double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+    double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE_PROFIT);
+    if(tickValue <= 0.0)
+      tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+
+    if(price <= 0.0 || tickSize <= 0.0 || tickValue <= 0.0)
+    {
+      row.reason = "invalid_market_specs";
+      return false;
+    }
+
+    row.specPrice = price;
+    row.specTickSize = tickSize;
+    row.specTickValue = tickValue;
+    row.specContractSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_CONTRACT_SIZE);
+    row.specMinLot = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+    row.specMaxLot = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
+    row.specLotStep = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+    row.baseLotRaw = baseEquity * tickSize / (price * tickValue);
+    row.targetLot = row.baseLotRaw * GetAssetMultiplier(assetClass);
+    row.solvedLotRaw = row.targetLot;
+    row.postClampLot = NormalizeVolume(symbol, row.targetLot);
+    row.finalLot = row.postClampLot;
+    if(row.finalLot <= 0.0)
+    {
+      row.reason = "normalize_failed";
+      return false;
+    }
+    row.move1pctUsd = ComputeMove1PctUsd(symbol, row.finalLot);
+    row.move1pctPerLotUsd = (row.finalLot > 0.0 ? row.move1pctUsd / row.finalLot : 0.0);
+    row.move1pctCapUsd = GetMove1PctCapUsd(symbol, baseEquity, false);
+    row.marginRequired = CalculateMarginRequired(symbol, row.finalLot);
+    row.targetRiskUsd = baseEquity * 0.01 * GetAssetMultiplier(assetClass);
+    row.ok = true;
+    return true;
+  }
+
+  SymbolSpecProbe probe;
+  if(!ProbeSymbolSpec(symbol, probe))
+  {
+    row.reason = probe.reason;
+    return false;
+  }
+  row.specPrice = probe.price;
+  row.specTickSize = probe.tickSize;
+  row.specTickValue = (probe.tickValueProfit > 0.0 ? probe.tickValueProfit : probe.tickValue);
+  row.specContractSize = probe.contractSize;
+  row.specMinLot = probe.minLot;
+  row.specMaxLot = probe.maxLot;
+  row.specLotStep = probe.lotStep;
+  row.move1pctPerLotUsd = probe.move1pctPerLotUsd;
+
   double multiplier = GetAssetMultiplier(assetClass);
-  row.targetLot = row.baseLotRaw * multiplier;
-  if(row.targetLot <= 0.0)
+  row.targetRiskUsd = baseEquity * 0.01 * multiplier * 0.10;
+  if(row.targetRiskUsd <= 0.0 || row.move1pctPerLotUsd <= 0.0)
   {
-    row.reason = "target_zero";
+    row.reason = "risk_target_zero";
     return false;
   }
 
-  double riskScale = isFiveers ? 0.10 : 1.0;
-  row.targetLot *= riskScale;
-  row.finalLot = NormalizeVolume(symbol, row.targetLot);
-  if(row.finalLot <= 0.0)
+  row.baseLotRaw = row.targetRiskUsd / row.move1pctPerLotUsd;
+  row.targetLot = row.baseLotRaw;
+  row.solvedLotRaw = row.targetLot;
+
+  double lotCap = GetSymbolLotCap(symbol, true);
+  double hardMax = probe.maxLot;
+  if(lotCap > 0.0 && lotCap < hardMax)
+  {
+    hardMax = lotCap;
+    row.lotCapTriggered = true;
+  }
+  if(hardMax < probe.minLot)
+  {
+    row.reason = "lot_cap_below_min";
+    return false;
+  }
+
+  bool strict = (SizingTolerance == SIZING_STRICT_UNDER_TARGET);
+  row.postClampLot = NormalizeVolumeWithPolicy(symbol, MathMin(row.solvedLotRaw, hardMax), strict, SizingMaxOvershootPct, row.solvedLotRaw);
+  if(row.postClampLot <= 0.0)
   {
     row.reason = "normalize_failed";
     return false;
   }
+  row.finalLot = row.postClampLot;
+  row.move1pctUsd = row.finalLot * row.move1pctPerLotUsd;
+  row.move1pctCapUsd = GetMove1PctCapUsd(symbol, baseEquity, true);
 
   if(EnableSizingGuard)
   {
-    double lotCap = GetSymbolLotCap(symbol, isFiveers);
     if(lotCap > 0.0 && row.finalLot > lotCap + 1e-9)
     {
       double capped = ClampVolumeToMax(symbol, row.finalLot, lotCap);
@@ -460,26 +705,20 @@ bool EvaluateSizing(const string symbol, const string assetClass, double baseEqu
       row.lotCapTriggered = true;
     }
 
-    row.move1pctUsd = ComputeMove1PctUsd(symbol, row.finalLot);
-    row.move1pctCapUsd = GetMove1PctCapUsd(symbol, baseEquity, isFiveers);
     if(row.move1pctCapUsd > 0.0 && row.move1pctUsd > row.move1pctCapUsd + 1e-9)
     {
-      double ratio = row.move1pctCapUsd / row.move1pctUsd;
-      double adjusted = row.finalLot * ratio;
-      double capped = ClampVolumeToMax(symbol, adjusted, row.finalLot);
+      double maxLotForMove = row.move1pctCapUsd / row.move1pctPerLotUsd;
+      double adjusted = NormalizeVolumeWithPolicy(symbol, MathMin(row.finalLot, maxLotForMove), true, SizingMaxOvershootPct, maxLotForMove);
+      double capped = adjusted;
       if(capped <= 0.0)
       {
         row.reason = "move1pct_cap";
         return false;
       }
       row.finalLot = capped;
-      row.move1pctUsd = ComputeMove1PctUsd(symbol, row.finalLot);
+      row.move1pctUsd = row.finalLot * row.move1pctPerLotUsd;
       row.moveCapTriggered = true;
     }
-  }
-  else
-  {
-    row.move1pctUsd = ComputeMove1PctUsd(symbol, row.finalLot);
   }
 
   row.marginRequired = CalculateMarginRequired(symbol, row.finalLot);
@@ -507,22 +746,48 @@ void WriteAuditRow(const int handle, const string apiSymbol, const string broker
     IntegerToString(tradeMode) + "," +
     (eightcap.ok ? "1" : "0") + "," +
     eightcap.reason + "," +
+    eightcap.profile + "," +
+    eightcap.toleranceMode + "," +
     Dbl(eightcap.baseLotRaw, 6) + "," +
     Dbl(eightcap.targetLot, 6) + "," +
+    Dbl(eightcap.solvedLotRaw, 6) + "," +
+    Dbl(eightcap.postClampLot, 6) + "," +
     Dbl(eightcap.finalLot, 6) + "," +
+    Dbl(eightcap.targetRiskUsd, 2) + "," +
     Dbl(eightcap.marginRequired, 2) + "," +
     Dbl(eightcap.move1pctUsd, 2) + "," +
+    Dbl(eightcap.move1pctPerLotUsd, 2) + "," +
     Dbl(eightcap.move1pctCapUsd, 2) + "," +
+    Dbl(eightcap.specPrice, 5) + "," +
+    Dbl(eightcap.specTickSize, 8) + "," +
+    Dbl(eightcap.specTickValue, 8) + "," +
+    Dbl(eightcap.specContractSize, 4) + "," +
+    Dbl(eightcap.specMinLot, 4) + "," +
+    Dbl(eightcap.specMaxLot, 4) + "," +
+    Dbl(eightcap.specLotStep, 6) + "," +
     (eightcap.lotCapTriggered ? "1" : "0") + "," +
     (eightcap.moveCapTriggered ? "1" : "0") + "," +
     (fiveers.ok ? "1" : "0") + "," +
     fiveers.reason + "," +
+    fiveers.profile + "," +
+    fiveers.toleranceMode + "," +
     Dbl(fiveers.baseLotRaw, 6) + "," +
     Dbl(fiveers.targetLot, 6) + "," +
+    Dbl(fiveers.solvedLotRaw, 6) + "," +
+    Dbl(fiveers.postClampLot, 6) + "," +
     Dbl(fiveers.finalLot, 6) + "," +
+    Dbl(fiveers.targetRiskUsd, 2) + "," +
     Dbl(fiveers.marginRequired, 2) + "," +
     Dbl(fiveers.move1pctUsd, 2) + "," +
+    Dbl(fiveers.move1pctPerLotUsd, 2) + "," +
     Dbl(fiveers.move1pctCapUsd, 2) + "," +
+    Dbl(fiveers.specPrice, 5) + "," +
+    Dbl(fiveers.specTickSize, 8) + "," +
+    Dbl(fiveers.specTickValue, 8) + "," +
+    Dbl(fiveers.specContractSize, 4) + "," +
+    Dbl(fiveers.specMinLot, 4) + "," +
+    Dbl(fiveers.specMaxLot, 4) + "," +
+    Dbl(fiveers.specLotStep, 6) + "," +
     (fiveers.lotCapTriggered ? "1" : "0") + "," +
     (fiveers.moveCapTriggered ? "1" : "0") + "," +
     Dbl(deltaAbs, 6) + "," +
@@ -570,7 +835,7 @@ void OnStart()
 
   if(IncludeHeader)
   {
-    string header = "api_symbol,broker_symbol,asset_class,trade_mode,eightcap_ok,eightcap_reason,eightcap_base_lot_raw,eightcap_target_lot,eightcap_final_lot,eightcap_margin,eightcap_move1pct_usd,eightcap_move1pct_cap_usd,eightcap_lot_cap_hit,eightcap_move_cap_hit,fiveers_ok,fiveers_reason,fiveers_base_lot_raw,fiveers_target_lot,fiveers_final_lot,fiveers_margin,fiveers_move1pct_usd,fiveers_move1pct_cap_usd,fiveers_lot_cap_hit,fiveers_move_cap_hit,delta_lot_abs,delta_lot_pct";
+    string header = "api_symbol,broker_symbol,asset_class,trade_mode,eightcap_ok,eightcap_reason,eightcap_profile,eightcap_tolerance,eightcap_base_lot_raw,eightcap_target_lot,eightcap_solved_lot_raw,eightcap_post_clamp_lot,eightcap_final_lot,eightcap_target_risk_usd,eightcap_margin,eightcap_move1pct_usd,eightcap_move1pct_per_lot_usd,eightcap_move1pct_cap_usd,eightcap_spec_price,eightcap_spec_tick_size,eightcap_spec_tick_value,eightcap_spec_contract_size,eightcap_spec_volume_min,eightcap_spec_volume_max,eightcap_spec_volume_step,eightcap_lot_cap_hit,eightcap_move_cap_hit,fiveers_ok,fiveers_reason,fiveers_profile,fiveers_tolerance,fiveers_base_lot_raw,fiveers_target_lot,fiveers_solved_lot_raw,fiveers_post_clamp_lot,fiveers_final_lot,fiveers_target_risk_usd,fiveers_margin,fiveers_move1pct_usd,fiveers_move1pct_per_lot_usd,fiveers_move1pct_cap_usd,fiveers_spec_price,fiveers_spec_tick_size,fiveers_spec_tick_value,fiveers_spec_contract_size,fiveers_spec_volume_min,fiveers_spec_volume_max,fiveers_spec_volume_step,fiveers_lot_cap_hit,fiveers_move_cap_hit,delta_lot_abs,delta_lot_pct";
     FileWriteString(outHandle, header + "\r\n");
   }
 

@@ -13,6 +13,8 @@ type PlannedSummary = {
   marginAvailable?: number | null;
   scale?: number | null;
   currency?: string | null;
+  sizingSource?: "live_lot_map" | "frozen_week_plan";
+  sizingSourceLocked?: boolean;
 } | null | undefined;
 
 type AccountTradesSectionProps = {
@@ -221,6 +223,11 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
       ) : null}
       {plannedSummary ? (
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-xs text-[color:var(--muted)]">
+          Sizing source:{" "}
+          <span className="font-semibold text-[var(--foreground)]">
+            {plannedSummary.sizingSource === "frozen_week_plan" ? "frozen weekly plan" : "live lot map"}
+          </span>
+          {plannedSummary.sizingSourceLocked ? " (locked)" : " (auto)"} •{" "}
           Estimated margin used this week:{" "}
           <span className="font-semibold text-[var(--foreground)]">
             {plannedSummary.currency ?? "$"}

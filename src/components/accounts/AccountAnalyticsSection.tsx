@@ -14,6 +14,10 @@ type AccountAnalyticsSectionProps = {
   planningDiagnostics?: Mt5PlanningDiagnostics & {
     sizingBaselineSource?: "week_start_baseline" | "current_equity";
     sizingBaselineValue?: number;
+    sizingSource?: "live_lot_map" | "frozen_week_plan";
+    sizingSourceLocked?: boolean;
+    lotMapUpdatedUtc?: string | null;
+    frozenCapturedUtc?: string | null;
   };
   planningMode?: "available" | "missing" | "legacy" | "disabled";
   journalRows: Array<{ label: string; value: string }>;
@@ -71,6 +75,10 @@ export default function AccountAnalyticsSection(props: AccountAnalyticsSectionPr
                 sizing_baseline_source:
                   planningDiagnostics.sizingBaselineSource ?? "current_equity",
                 sizing_baseline_value: planningDiagnostics.sizingBaselineValue ?? null,
+                sizing_source: planningDiagnostics.sizingSource ?? "live_lot_map",
+                sizing_source_locked: planningDiagnostics.sizingSourceLocked ?? false,
+                live_lot_map_updated_utc: planningDiagnostics.lotMapUpdatedUtc ?? null,
+                frozen_plan_captured_utc: planningDiagnostics.frozenCapturedUtc ?? null,
               },
               null,
               2,

@@ -19,6 +19,8 @@ export type Mt5PlannedSummary = {
   marginAvailable?: number | null;
   scale?: number | null;
   currency?: string | null;
+  sizingSource?: "live_lot_map" | "frozen_week_plan";
+  sizingSourceLocked?: boolean;
 } | null;
 
 type PlannedModel = "antikythera" | "blended" | "commercial" | "dealer" | "sentiment";
@@ -37,6 +39,10 @@ export type Mt5PlanningDiagnostics = {
   skippedByReason?: Record<string, number>;
   capacityLimited?: boolean;
   capacityLimitReason?: string | null;
+  sizingSource?: "live_lot_map" | "frozen_week_plan";
+  sizingSourceLocked?: boolean;
+  lotMapUpdatedUtc?: string | null;
+  frozenCapturedUtc?: string | null;
 };
 
 function emptyModelCounts(): Record<PlannedModel, number> {
@@ -72,6 +78,9 @@ export async function buildMt5PlannedView(options: {
   lotMapRows: LotMapRow[];
   frozenLotMapRows?: LotMapRow[];
   frozenBaselineEquity?: number | null;
+  lotMapUpdatedUtc?: string | null;
+  frozenCapturedUtc?: string | null;
+  sizingSourcePreference?: "auto" | "live" | "frozen";
   freeMargin: number;
   equity: number;
   currency: string;
@@ -86,6 +95,9 @@ export async function buildMt5PlannedView(options: {
     lotMapRows,
     frozenLotMapRows = [],
     frozenBaselineEquity = null,
+    lotMapUpdatedUtc = null,
+    frozenCapturedUtc = null,
+    sizingSourcePreference = "auto",
     freeMargin,
     equity,
     currency,
@@ -151,8 +163,24 @@ export async function buildMt5PlannedView(options: {
     });
   }
 
-  const sizingLotMapRows =
-    Array.isArray(frozenLotMapRows) && frozenLotMapRows.length > 0 ? frozenLotMapRows : lotMapRows;
+  const hasLiveLotMap = Array.isArray(lotMapRows) && lotMapRows.length > 0;
+  const hasFrozenLotMap = Array.isArray(frozenLotMapRows) && frozenLotMapRows.length > 0;
+  const useFrozenLotMap = sizingSourcePreference === "frozen" && hasFrozenLotMap;
+  const sizingLotMapRows = useFrozenLotMap
+    ? frozenLotMapRows
+    : hasLiveLotMap
+      ? lotMapRows
+      : hasFrozenLotMap
+        ? frozenLotMapRows
+        : [];
+  const sizingSource: "live_lot_map" | "frozen_week_plan" = useFrozenLotMap
+    ? "frozen_week_plan"
+    : hasLiveLotMap
+      ? "live_lot_map"
+      : hasFrozenLotMap
+        ? "frozen_week_plan"
+        : "live_lot_map";
+  const sizingSourceLocked = sizingSourcePreference !== "auto";
 
   if (plannedPairs.length > 0 && sizingLotMapRows.length > 0) {
     const marginAvailable =
@@ -207,6 +235,8 @@ export async function buildMt5PlannedView(options: {
       marginAvailable,
       scale,
       currency: currency === "USD" ? "$" : `${currency} `,
+      sizingSource,
+      sizingSourceLocked,
     };
   }
 
@@ -217,10 +247,12 @@ export async function buildMt5PlannedView(options: {
     plannedPairs,
     plannedSummary,
     showStopLoss1pct,
-    sizingSource:
-      Array.isArray(frozenLotMapRows) && frozenLotMapRows.length > 0 ? "frozen_week_plan" : "live_lot_map",
+    sizingSource,
+    sizingSourceLocked,
     sizingBaselineEquity:
-      Number.isFinite(Number(frozenBaselineEquity ?? NaN)) && Number(frozenBaselineEquity) > 0
+      sizingSource === "frozen_week_plan" &&
+      Number.isFinite(Number(frozenBaselineEquity ?? NaN)) &&
+      Number(frozenBaselineEquity) > 0
         ? Number(frozenBaselineEquity)
         : null,
     planningMode: mode,
@@ -238,6 +270,10 @@ export async function buildMt5PlannedView(options: {
       skippedByReason: planningDiagnostics?.signals_skipped_count_by_reason ?? {},
       capacityLimited: Boolean(planningDiagnostics?.capacity_limited),
       capacityLimitReason: planningDiagnostics?.capacity_limit_reason ?? null,
+      sizingSource,
+      sizingSourceLocked,
+      lotMapUpdatedUtc,
+      frozenCapturedUtc,
     } satisfies Mt5PlanningDiagnostics,
   };
 }

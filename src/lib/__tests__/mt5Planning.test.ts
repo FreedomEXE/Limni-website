@@ -87,4 +87,50 @@ describe("mt5 planning", () => {
     expect(result.plannedPairs).toHaveLength(0);
     expect(result.planningDiagnostics?.rawApiLegCount).toBe(0);
   });
+
+  test("defaults to live lot map when both live and frozen maps exist", async () => {
+    const result = await buildMt5PlannedView({
+      basketSignals: {
+        pairs: [{ symbol: "EURUSD", asset_class: "fx", model: "sentiment", direction: "LONG" }],
+      },
+      planningDiagnostics: undefined,
+      selectedWeek: "2026-02-09",
+      currentWeekOpenUtc: "2026-02-09",
+      nextWeekOpenUtc: "2026-02-16",
+      forceFxOnlyPlanned: false,
+      lotMapRows: [{ symbol: "EURUSD", lot: 0.23 }],
+      frozenLotMapRows: [{ symbol: "EURUSD", lot: 0.11 }],
+      sizingSourcePreference: "auto",
+      freeMargin: 100,
+      equity: 100,
+      currency: "USD",
+    });
+
+    expect(result.sizingSource).toBe("live_lot_map");
+    expect(result.planningDiagnostics?.sizingSource).toBe("live_lot_map");
+    expect(result.planningDiagnostics?.sizingSourceLocked).toBe(false);
+  });
+
+  test("supports forcing frozen map for debugging parity checks", async () => {
+    const result = await buildMt5PlannedView({
+      basketSignals: {
+        pairs: [{ symbol: "EURUSD", asset_class: "fx", model: "sentiment", direction: "LONG" }],
+      },
+      planningDiagnostics: undefined,
+      selectedWeek: "2026-02-09",
+      currentWeekOpenUtc: "2026-02-09",
+      nextWeekOpenUtc: "2026-02-16",
+      forceFxOnlyPlanned: false,
+      lotMapRows: [{ symbol: "EURUSD", lot: 0.23 }],
+      frozenLotMapRows: [{ symbol: "EURUSD", lot: 0.11 }],
+      sizingSourcePreference: "frozen",
+      freeMargin: 100,
+      equity: 100,
+      currency: "USD",
+    });
+
+    expect(result.sizingSource).toBe("frozen_week_plan");
+    expect(result.planningDiagnostics?.sizingSource).toBe("frozen_week_plan");
+    expect(result.planningDiagnostics?.sizingSourceLocked).toBe(true);
+  });
 });
