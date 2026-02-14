@@ -9,6 +9,7 @@ import { ANTIKYTHERA_MAX_SIGNALS } from "@/lib/antikythera";
 import { getAggregatesForWeekStart, getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
+import { getAdaptiveTrailProfile, type AdaptiveTrailProfile } from "@/lib/adaptiveTrailProfile";
 
 export type BasketSignal = {
   symbol: string;
@@ -28,6 +29,7 @@ type BasketSignalsResponse = {
   minutes_since_weekly_release?: number;
   week_open_utc: string;
   pairs: BasketSignal[];
+  trail_profile?: AdaptiveTrailProfile;
 };
 
 type AvailableSnapshot = {
@@ -261,6 +263,8 @@ export async function buildBasketSignals(options?: {
     pairs.push(...sentimentPairs);
   }
 
+  const trailProfile = await getAdaptiveTrailProfile();
+
   return {
     report_date: reference.snapshot.report_date,
     last_refresh_utc: reference.snapshot.last_refresh_utc,
@@ -272,5 +276,6 @@ export async function buildBasketSignals(options?: {
     minutes_since_weekly_release: freshness.minutes_since_weekly_release,
     week_open_utc: weekOpen,
     pairs,
+    trail_profile: trailProfile ?? undefined,
   };
 }

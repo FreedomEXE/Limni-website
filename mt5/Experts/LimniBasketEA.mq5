@@ -72,6 +72,10 @@ input bool RequireHedgingAccount = true;
 input bool EnableWeeklyFlipClose = true;
 input bool EnableLoserAddToTarget = true;
 input double LoserAddToleranceLots = 0.0;
+input int MaxLoserAddsPerSymbol = 2;
+input int LoserAddWindowHours = 48;
+input bool PreventMidWeekAttach = true;
+input int MidWeekAttachGraceHours = 24;
 input int MaxOpenPositions = 200;
 input int SlippagePoints = 10;
 input long MagicNumber = 912401;
@@ -134,8 +138,14 @@ EAState g_state = STATE_IDLE;
 datetime g_weekStartGmt = 0;
 datetime g_lastPoll = 0;
 datetime g_lastApiSuccess = 0;
+datetime g_eaAttachTime = 0;
+int g_loserAddCounts[];
 bool g_loadedFromCache = false;
 string g_lastDataRefreshUtc = "";
+string g_trailProfileSource = "";
+string g_trailProfileGeneratedUtc = "";
+double g_trailProfileStartPct = 0.0;
+double g_trailProfileOffsetPct = 0.0;
 
 double g_baselineEquity = 0.0;
 double g_lockedProfitPct = 0.0;
@@ -145,8 +155,11 @@ double g_weekPeakEquity = 0.0;
 double g_maxDrawdownPct = 0.0;
 double g_adaptivePeakAvgPct = 0.0;
 double g_lastWeekPeakPct = 0.0;
+double g_adaptivePeakSumPct = 0.0;
+int g_adaptivePeakCount = 0;
 
 string g_apiSymbols[];
+string g_apiSymbolsRaw[];
 string g_brokerSymbols[];
 int g_directions[];
 string g_models[];
@@ -199,6 +212,8 @@ string GV_MAX_DD = "MaxDD";
 string GV_LAST_PUSH = "LastPush";
 string GV_ADAPTIVE_PEAK_AVG = "AdaptivePeakAvg";
 string GV_LAST_WEEK_PEAK = "LastWeekPeak";
+string GV_ADAPTIVE_PEAK_SUM = "AdaptivePeakSum";
+string GV_ADAPTIVE_PEAK_COUNT = "AdaptivePeakCount";
 string CACHE_FILE = "LimniCotCache.json";
 string g_scopePrefix = "Limni_";
 string g_cacheFile = "LimniCotCache.json";
@@ -244,6 +259,8 @@ bool ParsePairsArray(const string json, string &symbols[], int &dirs[], string &
 bool ParsePairsObject(const string json, string &symbols[], int &dirs[], string &models[], string &assetClasses[]);
 bool ExtractStringValue(const string json, const string key, string &value);
 bool ExtractBoolValue(const string json, const string key, bool &value);
+bool ExtractNumberValue(const string json, const string key, double &value);
+void ApplyTrailProfileFromApi(const string json);
 bool ResolveSymbol(const string apiSymbol, string &resolved);
 bool IsTradableSymbol(const string symbol);
 string NormalizeSymbolKey(const string value);
@@ -290,6 +307,9 @@ string BuildCloseOrderComment(const string reasonTag);
 string ShortReasonTag(const string reasonTag);
 string MarginModeToString();
 bool IsHedgingAccount();
+string NormalizeModelName(const string value);
+bool IsFreshEntryWindow(datetime nowGmt);
+bool IsMidWeekAttachBlocked(datetime nowGmt);
 void MarkOrderTimestamp();
 int OrdersInLastMinute();
 datetime GetWeekStartGmt(datetime nowGmt);
@@ -353,6 +373,7 @@ bool IsEquityTrailEnabled();
 bool IsAdaptiveTrailEnabled();
 double GetEffectiveTrailStartPct();
 double GetEffectiveTrailOffsetPct();
+bool ShouldEnforcePerOrderStopLoss();
 void UpdateAdaptivePeakAverageFromWeek();
 void ApplyRiskScale(const string symbol, double scale, double &targetLot, double &finalLot,
                     double &deviationPct, double &equityPerSymbol, double &marginRequired);
@@ -415,6 +436,8 @@ int OnInit()
                    GetEffectiveBasketStopLossPct(),
                    IsBasketStopLossEnabled() ? "on" : "off",
                    IsEquityTrailEnabled() ? "on" : "off"));
+  Log(StringFormat("Per-order stop loss: %s",
+                   ShouldEnforcePerOrderStopLoss() ? "on (5ERS required)" : "off"));
   Log(StringFormat("Account structure: %s (RequireHedging=%s)",
                    MarginModeToString(),
                    RequireHedgingAccount ? "true" : "false"));
@@ -424,6 +447,8 @@ int OnInit()
   BuildAllowedKeys();
   LogBrokerCapability();
   g_weekStartGmt = GetWeekStartGmt(TimeGMT());
+  g_eaAttachTime = TimeGMT();
+
   if(ResetStateOnInit)
   {
     ResetState();
@@ -503,6 +528,7 @@ void OnTimer()
   {
     UpdateAdaptivePeakAverageFromWeek();
     g_weekStartGmt = newWeekStart;
+    ResetLoserAddCounts();
     if(!HasOpenPositions())
     {
       g_state = STATE_IDLE;
@@ -517,7 +543,19 @@ void OnTimer()
     }
     else
     {
-      Log("New week detected but positions still open. Holding state.");
+      // New week with open positions (losers from previous week)
+      // Update baseline to current balance (after profitable trades closed)
+      double newBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+      if(newBalance > 0.0)
+      {
+        g_baselineEquity = newBalance;
+        SaveState();
+        Log(StringFormat("New week detected with open positions. Baseline updated to %.2f (new balance after profitable closes).", newBalance));
+      }
+      else
+      {
+        Log("New week detected but positions still open. Holding state.");
+      }
     }
   }
 
@@ -579,10 +617,17 @@ void PollApiIfDue()
   g_lastApiSuccess = TimeCurrent();
   g_loadedFromCache = false;
   ExtractStringValue(json, "last_refresh_utc", g_lastDataRefreshUtc);
+  ApplyTrailProfileFromApi(json);
   g_lastApiError = "";
   g_lastApiErrorTime = 0;
 
   int count = ArraySize(symbols);
+  ArrayResize(g_apiSymbolsRaw, count);
+  for(int i = 0; i < count; i++)
+  {
+    g_apiSymbolsRaw[i] = symbols[i];
+    StringToUpper(g_apiSymbolsRaw[i]);
+  }
   ArrayResize(g_apiSymbols, 0);
   ArrayResize(g_brokerSymbols, 0);
   ArrayResize(g_directions, 0);
@@ -591,7 +636,7 @@ void PollApiIfDue()
 
   for(int i = 0; i < count; i++)
   {
-    string model = (i < ArraySize(models) ? models[i] : "blended");
+    string model = NormalizeModelName(i < ArraySize(models) ? models[i] : "blended");
     AddRawModelCount(model);
 
     string resolved = "";
@@ -600,6 +645,7 @@ void PollApiIfDue()
       AddSkipReason("not_allowed");
       if(IsIndexSymbol(symbols[i]))
         LogTradeError(StringFormat("Index pair %s not in allowed list. Skipped.", symbols[i]));
+      Log(StringFormat("Signal %d SKIP not_allowed: symbol=%s model=%s", i, symbols[i], model));
       continue;
     }
     if(!ResolveSymbol(symbols[i], resolved))
@@ -607,6 +653,7 @@ void PollApiIfDue()
       AddSkipReason("unresolved_symbol");
       if(IsIndexSymbol(symbols[i]))
         LogTradeError(StringFormat("Index pair %s not tradable or not found. Skipped.", symbols[i]));
+      Log(StringFormat("Signal %d SKIP unresolved: symbol=%s model=%s", i, symbols[i], model));
       continue;
     }
 
@@ -622,12 +669,18 @@ void PollApiIfDue()
     g_models[idx] = model;
     g_assetClasses[idx] = (i < ArraySize(assetClasses) ? assetClasses[i] : "fx");
     AddAcceptedModelCount(model);
+    Log(StringFormat("Signal %d ACCEPTED: symbol=%s->%s model=%s dir=%d asset=%s",
+                     i, symbols[i], resolved, model, dirs[i],
+                     (i < ArraySize(assetClasses) ? assetClasses[i] : "fx")));
   }
 
   Log(StringFormat("API ok. trading_allowed=%s, report_date=%s, pairs=%d",
                    g_tradingAllowed ? "true" : "false",
                    g_reportDate,
                    ArraySize(g_apiSymbols)));
+  Log(StringFormat("Parsed counts - Raw: A=%d B=%d C=%d D=%d S=%d | Accepted: A=%d B=%d C=%d D=%d S=%d",
+                   g_diagRawA, g_diagRawB, g_diagRawC, g_diagRawD, g_diagRawS,
+                   g_diagAcceptedA, g_diagAcceptedB, g_diagAcceptedC, g_diagAcceptedD, g_diagAcceptedS));
 }
 
 string BuildApiUrl()
@@ -814,7 +867,7 @@ bool ParsePairsArray(const string json, string &symbols[], int &dirs[], string &
         ArrayResize(assetClasses, size + 1);
         symbols[size] = symbol;
         dirs[size] = dir;
-        models[size] = (model == "" ? "blended" : model);
+        models[size] = NormalizeModelName(model);
         assetClasses[size] = (assetClass == "" ? "fx" : assetClass);
       }
     }
@@ -910,7 +963,7 @@ bool ParsePairsObject(const string json, string &symbols[], int &dirs[], string 
         ArrayResize(assetClasses, size + 1);
         symbols[size] = key;
         dirs[size] = dir;
-        models[size] = (model == "" ? "blended" : model);
+        models[size] = NormalizeModelName(model);
         assetClasses[size] = (assetClass == "" ? "fx" : assetClass);
       }
     }
@@ -969,6 +1022,104 @@ bool ExtractBoolValue(const string json, const string key, bool &value)
     return true;
   }
   return false;
+}
+
+bool ExtractNumberValue(const string json, const string key, double &value)
+{
+  int pos = StringFind(json, "\"" + key + "\"");
+  if(pos < 0)
+    return false;
+  int colon = StringFind(json, ":", pos);
+  if(colon < 0)
+    return false;
+
+  int start = colon + 1;
+  while(start < StringLen(json))
+  {
+    string ch = StringSubstr(json, start, 1);
+    if(ch != " " && ch != "\n" && ch != "\r" && ch != "\t")
+      break;
+    start++;
+  }
+
+  int end = start;
+  bool hasDigit = false;
+  while(end < StringLen(json))
+  {
+    string ch = StringSubstr(json, end, 1);
+    int code = (int)StringGetCharacter(ch, 0);
+    bool isDigit = (code >= '0' && code <= '9');
+    bool isSign = (ch == "+" || ch == "-");
+    bool isDecimal = (ch == ".");
+    bool isExponent = (ch == "e" || ch == "E");
+    if(!(isDigit || isSign || isDecimal || isExponent))
+      break;
+    if(isDigit)
+      hasDigit = true;
+    end++;
+  }
+  if(end <= start || !hasDigit)
+    return false;
+
+  string token = StringSubstr(json, start, end - start);
+  value = StringToDouble(token);
+  return true;
+}
+
+void ApplyTrailProfileFromApi(const string json)
+{
+  g_trailProfileSource = "";
+  g_trailProfileGeneratedUtc = "";
+  g_trailProfileStartPct = 0.0;
+  g_trailProfileOffsetPct = 0.0;
+
+  ExtractStringValue(json, "trail_profile_source", g_trailProfileSource);
+  ExtractStringValue(json, "trail_profile_generated_at_utc", g_trailProfileGeneratedUtc);
+  ExtractNumberValue(json, "adaptive_trail_start_pct", g_trailProfileStartPct);
+  ExtractNumberValue(json, "adaptive_trail_offset_pct", g_trailProfileOffsetPct);
+
+  double avgPeak = 0.0;
+  double peakCountRaw = 0.0;
+  double peakSum = 0.0;
+  bool hasAvg = ExtractNumberValue(json, "adaptive_avg_peak_pct", avgPeak);
+  bool hasCount = ExtractNumberValue(json, "adaptive_peak_count", peakCountRaw);
+  bool hasSum = ExtractNumberValue(json, "adaptive_peak_sum_pct", peakSum);
+  if(!hasAvg || !hasCount || avgPeak <= 0.0 || peakCountRaw <= 0.0)
+    return;
+
+  int peakCount = (int)MathRound(peakCountRaw);
+  if(peakCount <= 0)
+    return;
+  if(!hasSum || peakSum <= 0.0)
+    peakSum = avgPeak * peakCount;
+
+  bool changed = false;
+  if(MathAbs(g_adaptivePeakAvgPct - avgPeak) > 0.01)
+  {
+    g_adaptivePeakAvgPct = avgPeak;
+    changed = true;
+  }
+  if(g_adaptivePeakCount != peakCount)
+  {
+    g_adaptivePeakCount = peakCount;
+    changed = true;
+  }
+  if(MathAbs(g_adaptivePeakSumPct - peakSum) > 0.01)
+  {
+    g_adaptivePeakSumPct = peakSum;
+    changed = true;
+  }
+
+  if(changed)
+  {
+    SaveState();
+    Log(StringFormat("Adaptive trail profile synced from API: avg=%.2f weeks=%d start=%.2f offset=%.2f src=%s",
+                     g_adaptivePeakAvgPct,
+                     g_adaptivePeakCount,
+                     g_trailProfileStartPct,
+                     g_trailProfileOffsetPct,
+                     g_trailProfileSource));
+  }
 }
 
 //+------------------------------------------------------------------+
@@ -1407,7 +1558,8 @@ string ShortReasonTag(const string reasonTag)
 
 string BuildOpenOrderComment(const string model, const string reasonTag)
 {
-  string s = StringFormat("LimniBasket %s %s %s", model, ShortReasonTag(reasonTag), g_reportDate);
+  string normalizedModel = NormalizeModelName(model);
+  string s = StringFormat("LimniBasket %s %s %s", normalizedModel, ShortReasonTag(reasonTag), g_reportDate);
   return CompactText(s, 31);
 }
 
@@ -1494,7 +1646,12 @@ double GetEffectiveTrailStartPct()
   if(!IsAdaptiveTrailEnabled())
     return EquityTrailStartPct;
 
-  double raw = (g_adaptivePeakAvgPct > 0.0 ? g_adaptivePeakAvgPct * AdaptiveTrailStartMultiplier : 30.0);
+  // No adaptive history yet: fall back to configured static trail settings.
+  bool hasAdaptiveHistory = (g_adaptivePeakCount > 0 && g_adaptivePeakAvgPct > 0.0);
+  if(!hasAdaptiveHistory)
+    return MathMax(0.0, EquityTrailStartPct);
+
+  double raw = g_adaptivePeakAvgPct * AdaptiveTrailStartMultiplier;
   double minStart = AdaptiveTrailMinStartPct;
   double maxStart = AdaptiveTrailMaxStartPct;
   if(minStart <= 0.0)
@@ -1512,6 +1669,10 @@ double GetEffectiveTrailOffsetPct()
   if(!IsAdaptiveTrailEnabled())
     return EquityTrailOffsetPct;
 
+  bool hasAdaptiveHistory = (g_adaptivePeakCount > 0 && g_adaptivePeakAvgPct > 0.0);
+  if(!hasAdaptiveHistory)
+    return MathMax(0.0, EquityTrailOffsetPct);
+
   double start = GetEffectiveTrailStartPct();
   double raw = start * AdaptiveTrailOffsetFraction;
   double minOffset = AdaptiveTrailMinOffsetPct;
@@ -1521,6 +1682,12 @@ double GetEffectiveTrailOffsetPct()
   if(maxOffset < minOffset)
     maxOffset = minOffset;
   return MathMax(minOffset, MathMin(raw, maxOffset));
+}
+
+bool ShouldEnforcePerOrderStopLoss()
+{
+  // Broker rule: per-order SL is mandatory only for 5ers mode.
+  return IsFiveersMode();
 }
 
 void UpdateAdaptivePeakAverageFromWeek()
@@ -1536,20 +1703,21 @@ void UpdateAdaptivePeakAverageFromWeek()
   if(peakPct <= 0.0)
     return;
 
-  double alpha = AdaptiveTrailAlpha;
-  if(alpha <= 0.0)
-    alpha = 0.35;
-  if(alpha > 1.0)
-    alpha = 1.0;
-
   g_lastWeekPeakPct = peakPct;
-  if(g_adaptivePeakAvgPct <= 0.0)
-    g_adaptivePeakAvgPct = peakPct;
+  if(g_adaptivePeakCount < 0)
+    g_adaptivePeakCount = 0;
+  if(g_adaptivePeakSumPct < 0.0)
+    g_adaptivePeakSumPct = 0.0;
+  g_adaptivePeakCount++;
+  g_adaptivePeakSumPct += peakPct;
+  if(g_adaptivePeakCount > 0)
+    g_adaptivePeakAvgPct = g_adaptivePeakSumPct / (double)g_adaptivePeakCount;
   else
-    g_adaptivePeakAvgPct = g_adaptivePeakAvgPct * (1.0 - alpha) + peakPct * alpha;
+    g_adaptivePeakAvgPct = 0.0;
 
   SaveState();
-  Log(StringFormat("Adaptive peak updated: last=%.2f%% avg=%.2f%%", g_lastWeekPeakPct, g_adaptivePeakAvgPct));
+  Log(StringFormat("Adaptive peak updated: last=%.2f%% avg=%.2f%% weeks=%d",
+                   g_lastWeekPeakPct, g_adaptivePeakAvgPct, g_adaptivePeakCount));
 }
 
 double ProbeMarginCoverageForMode(const string symbol, const string assetClass, double &testLot, double &marginRequired)
@@ -1822,7 +1990,8 @@ bool HasOpenPositions()
 bool HasPositionForModel(const string symbol, const string model)
 {
   int count = PositionsTotal();
-  string tag = "LimniBasket " + model;
+  string targetModel = NormalizeModelName(model);
+  string tag = "LimniBasket " + targetModel;
   for(int i = 0; i < count; i++)
   {
     ulong ticket = PositionGetTicket(i);
@@ -1841,12 +2010,58 @@ bool HasPositionForModel(const string symbol, const string model)
   return false;
 }
 
+string NormalizeModelName(const string value)
+{
+  string normalized = value;
+  StringTrimLeft(normalized);
+  StringTrimRight(normalized);
+  StringToLower(normalized);
+  if(normalized == "")
+    return "blended";
+  if(normalized == "anti_kythera" || normalized == "anti-kythera")
+    return "antikythera";
+  if(normalized == "dealers")
+    return "dealer";
+  if(normalized == "commercials")
+    return "commercial";
+  return normalized;
+}
+
+bool IsFreshEntryWindow(datetime nowGmt)
+{
+  if(nowGmt < g_weekStartGmt)
+    return false;
+  int hoursSinceWeekStart = (int)((nowGmt - g_weekStartGmt) / 3600);
+  return (hoursSinceWeekStart <= MidWeekAttachGraceHours);
+}
+
+bool IsMidWeekAttachBlocked(datetime nowGmt)
+{
+  if(!PreventMidWeekAttach)
+    return false;
+  if(nowGmt < g_weekStartGmt)
+    return false;
+  if(IsFreshEntryWindow(nowGmt))
+    return false;
+  return (g_eaAttachTime >= g_weekStartGmt);
+}
+
 //+------------------------------------------------------------------+
 void UpdateState()
 {
   datetime nowGmt = TimeGMT();
   bool afterStart = (nowGmt >= g_weekStartGmt);
   bool hasPositions = HasOpenPositions();
+
+  if(!hasPositions && IsMidWeekAttachBlocked(nowGmt))
+  {
+    if(g_state != STATE_IDLE)
+    {
+      g_state = STATE_IDLE;
+      SaveState();
+    }
+    return;
+  }
 
   if(!afterStart && !hasPositions && g_state != STATE_IDLE)
   {
@@ -1856,6 +2071,11 @@ void UpdateState()
 
   if(afterStart && g_state == STATE_IDLE && !hasPositions)
   {
+    if(PreventMidWeekAttach && !IsFreshEntryWindow(nowGmt))
+    {
+      return;
+    }
+
     g_state = STATE_READY;
     Log("State -> READY (Sunday open reached).");
   }
@@ -2012,25 +2232,23 @@ void TryAddPositions()
   if(!g_apiOk || !g_tradingAllowed || g_closeRequested)
     return;
 
+  datetime nowGmt = TimeGMT();
+  if(IsMidWeekAttachBlocked(nowGmt))
+    return;
+
   ReconcilePositionsWithSignals();
 
-  double cap = GetBasketLotCap();
   double totalLots = GetTotalBasketLots();
-  datetime nowGmt = TimeGMT();
   datetime cryptoStartGmt = GetCryptoWeekStartGmt(nowGmt);
   int openPositions = CountOpenPositions();
+
+  Log(StringFormat("TryAddPositions start: %d signals in queue, %d positions open",
+                   ArraySize(g_brokerSymbols), openPositions));
 
   if(openPositions >= MaxOpenPositions)
   {
     AddSkipReason("max_positions");
     LogIndexSkipsForAll("max open positions reached", "max_positions");
-    return;
-  }
-
-  if(totalLots >= cap)
-  {
-    AddSkipReason("lot_cap");
-    LogIndexSkipsForAll("basket lot cap reached", "lot_cap");
     return;
   }
 
@@ -2047,12 +2265,18 @@ void TryAddPositions()
     string symbol = g_brokerSymbols[i];
     int direction = g_directions[i];
     if(symbol == "" || direction == 0)
+    {
+      Log(StringFormat("TryAdd %d SKIP: empty symbol or zero direction", i));
       continue;
+    }
 
     string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
-    string model = (i < ArraySize(g_models) ? g_models[i] : "blended");
+    string model = NormalizeModelName(i < ArraySize(g_models) ? g_models[i] : "blended");
+    Log(StringFormat("TryAdd %d: symbol=%s model=%s dir=%d asset=%s", i, symbol, model, direction, assetClass));
+
     if(HasPositionForModel(symbol, model))
     {
+      Log(StringFormat("TryAdd %d: position exists, trying loser add", i));
       if(TryAddToLosingLeg(symbol, model, direction, assetClass))
       {
         totalLots = GetTotalBasketLots();
@@ -2062,6 +2286,14 @@ void TryAddPositions()
       {
         AddSkipReason("duplicate_open");
       }
+      continue;
+    }
+
+    Log(StringFormat("TryAdd %d: no position exists, will attempt to open", i));
+
+    if(PreventMidWeekAttach && !IsFreshEntryWindow(nowGmt))
+    {
+      AddSkipReason("entry_window_closed");
       continue;
     }
 
@@ -2099,13 +2331,6 @@ void TryAddPositions()
       LogTradeError(StringFormat("%s invalid volume=%.2f", symbol, vol));
       continue;
     }
-    if((totalLots + vol) > cap)
-    {
-      AddSkipReason("lot_cap");
-      LogTradeError(StringFormat("Lot cap reached %.2f/%.2f. Skipping %s %.2f lots.",
-                                 totalLots, cap, symbol, vol));
-      continue;
-    }
     if(openPositions >= MaxOpenPositions)
     {
       AddSkipReason("max_positions");
@@ -2129,9 +2354,11 @@ void TryAddPositions()
       AddSkipReason("order_failed");
       if(IsIndexSymbol(symbol))
         LogIndexSkip(symbol, "order send failed", "order_failed");
+      Log(StringFormat("TryAdd %d FAILED: PlaceOrder failed for %s %s", i, symbol, model));
       continue;
     }
 
+    Log(StringFormat("TryAdd %d SUCCESS: Opened %s %s %.4f lots", i, symbol, model, vol));
     totalLots += vol;
     openPositions++;
     MarkOrderTimestamp();
@@ -2222,6 +2449,35 @@ double GetOpenVolumeForModelDirection(const string symbol, const string model, i
   return totalVol;
 }
 
+int GetLoserAddCountForSymbol(const string symbol)
+{
+  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
+  {
+    if(g_brokerSymbols[i] == symbol && i < ArraySize(g_loserAddCounts))
+      return g_loserAddCounts[i];
+  }
+  return 0;
+}
+
+void IncrementLoserAddCount(const string symbol)
+{
+  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
+  {
+    if(g_brokerSymbols[i] == symbol)
+    {
+      if(ArraySize(g_loserAddCounts) <= i)
+        ArrayResize(g_loserAddCounts, i + 1);
+      g_loserAddCounts[i]++;
+      return;
+    }
+  }
+}
+
+void ResetLoserAddCounts()
+{
+  ArrayResize(g_loserAddCounts, 0);
+}
+
 bool TryAddToLosingLeg(const string symbol, const string model, int direction, const string assetClass)
 {
   if(!EnableLoserAddToTarget)
@@ -2230,6 +2486,26 @@ bool TryAddToLosingLeg(const string symbol, const string model, int direction, c
     return false;
   if(!IsTradableSymbol(symbol))
     return false;
+
+  // Only add within X hours of week start (after profitable trades close)
+  datetime nowGmt = TimeGMT();
+  if(IsMidWeekAttachBlocked(nowGmt))
+    return false;
+
+  int hoursSinceWeekStart = (int)((nowGmt - g_weekStartGmt) / 3600);
+  if(hoursSinceWeekStart < 0 || hoursSinceWeekStart > LoserAddWindowHours)
+  {
+    AddSkipReason("add_window_closed");
+    return false;
+  }
+
+  // Check max loser adds limit
+  int addCount = GetLoserAddCountForSymbol(symbol);
+  if(addCount >= MaxLoserAddsPerSymbol)
+  {
+    AddSkipReason("max_loser_adds");
+    return false;
+  }
 
   bool hasLosing = false;
   double currentVol = GetOpenVolumeForModelDirection(symbol, model, direction, hasLosing);
@@ -2279,13 +2555,6 @@ bool TryAddToLosingLeg(const string symbol, const string model, int direction, c
     AddSkipReason("max_positions");
     return false;
   }
-  double cap = GetBasketLotCap();
-  double totalLots = GetTotalBasketLots();
-  if((totalLots + addVol) > cap)
-  {
-    AddSkipReason("lot_cap");
-    return false;
-  }
 
   if(!PlaceOrder(symbol, direction, addVol, model, "added_loser"))
   {
@@ -2293,9 +2562,10 @@ bool TryAddToLosingLeg(const string symbol, const string model, int direction, c
     return false;
   }
 
+  IncrementLoserAddCount(symbol);
   MarkOrderTimestamp();
-  Log(StringFormat("Added to losing leg %s model=%s current=%.2f target=%.2f add=%.2f",
-                   symbol, model, currentVol, finalLot, addVol));
+  Log(StringFormat("Added to losing leg %s model=%s current=%.2f target=%.2f add=%.2f (count=%d/%d)",
+                   symbol, model, currentVol, finalLot, addVol, addCount + 1, MaxLoserAddsPerSymbol));
   return true;
 }
 
@@ -2305,7 +2575,7 @@ bool PlaceOrder(const string symbol, int direction, double volume, const string 
   double price = direction > 0 ? SymbolInfoDouble(symbol, SYMBOL_ASK)
                                : SymbolInfoDouble(symbol, SYMBOL_BID);
   double stopLoss = 0.0;
-  if(EnforceStopLoss)
+  if(ShouldEnforcePerOrderStopLoss())
   {
     if(!CalculateRiskStopLoss(symbol, direction, volume, price, stopLoss))
     {
@@ -2329,6 +2599,10 @@ bool PlaceOrder(const string symbol, int direction, double volume, const string 
                                symbol, DirectionToString(direction), volume, errorCode));
     return false;
   }
+
+  // 5ers compliance: Ensure minimum delay between orders to prevent same-millisecond execution
+  Sleep(100); // 100ms delay between orders
+
   return true;
 }
 
@@ -2705,10 +2979,104 @@ void LoadState()
 {
   g_adaptivePeakAvgPct = 0.0;
   g_lastWeekPeakPct = 0.0;
+  g_adaptivePeakSumPct = 0.0;
+  g_adaptivePeakCount = 0;
+  bool hasScopedAdaptive = false;
   if(GlobalVariableCheck(ScopeKey(GV_ADAPTIVE_PEAK_AVG)))
+  {
     g_adaptivePeakAvgPct = GlobalVariableGet(ScopeKey(GV_ADAPTIVE_PEAK_AVG));
+    hasScopedAdaptive = true;
+  }
   if(GlobalVariableCheck(ScopeKey(GV_LAST_WEEK_PEAK)))
+  {
     g_lastWeekPeakPct = GlobalVariableGet(ScopeKey(GV_LAST_WEEK_PEAK));
+    hasScopedAdaptive = true;
+  }
+  if(GlobalVariableCheck(ScopeKey(GV_ADAPTIVE_PEAK_SUM)))
+  {
+    g_adaptivePeakSumPct = GlobalVariableGet(ScopeKey(GV_ADAPTIVE_PEAK_SUM));
+    hasScopedAdaptive = true;
+  }
+  if(GlobalVariableCheck(ScopeKey(GV_ADAPTIVE_PEAK_COUNT)))
+  {
+    g_adaptivePeakCount = (int)GlobalVariableGet(ScopeKey(GV_ADAPTIVE_PEAK_COUNT));
+    hasScopedAdaptive = true;
+  }
+
+  // One-time compatibility migration from older non-account-scoped keys.
+  if(!hasScopedAdaptive)
+  {
+    bool migrated = false;
+    string legacyPrefix = "Limni_";
+    string legacyAvgKey = legacyPrefix + GV_ADAPTIVE_PEAK_AVG;
+    string legacyLastKey = legacyPrefix + GV_LAST_WEEK_PEAK;
+    string legacySumKey = legacyPrefix + GV_ADAPTIVE_PEAK_SUM;
+    string legacyCountKey = legacyPrefix + GV_ADAPTIVE_PEAK_COUNT;
+
+    if(GlobalVariableCheck(legacyAvgKey))
+    {
+      g_adaptivePeakAvgPct = GlobalVariableGet(legacyAvgKey);
+      migrated = true;
+    }
+    if(GlobalVariableCheck(legacyLastKey))
+    {
+      g_lastWeekPeakPct = GlobalVariableGet(legacyLastKey);
+      migrated = true;
+    }
+    if(GlobalVariableCheck(legacySumKey))
+    {
+      g_adaptivePeakSumPct = GlobalVariableGet(legacySumKey);
+      migrated = true;
+    }
+    if(GlobalVariableCheck(legacyCountKey))
+    {
+      g_adaptivePeakCount = (int)GlobalVariableGet(legacyCountKey);
+      migrated = true;
+    }
+
+    if(!migrated)
+    {
+      if(GlobalVariableCheck(GV_ADAPTIVE_PEAK_AVG))
+      {
+        g_adaptivePeakAvgPct = GlobalVariableGet(GV_ADAPTIVE_PEAK_AVG);
+        migrated = true;
+      }
+      if(GlobalVariableCheck(GV_LAST_WEEK_PEAK))
+      {
+        g_lastWeekPeakPct = GlobalVariableGet(GV_LAST_WEEK_PEAK);
+        migrated = true;
+      }
+      if(GlobalVariableCheck(GV_ADAPTIVE_PEAK_SUM))
+      {
+        g_adaptivePeakSumPct = GlobalVariableGet(GV_ADAPTIVE_PEAK_SUM);
+        migrated = true;
+      }
+      if(GlobalVariableCheck(GV_ADAPTIVE_PEAK_COUNT))
+      {
+        g_adaptivePeakCount = (int)GlobalVariableGet(GV_ADAPTIVE_PEAK_COUNT);
+        migrated = true;
+      }
+    }
+
+    if(migrated)
+    {
+      if(g_adaptivePeakCount <= 0 && g_adaptivePeakAvgPct > 0.0)
+      {
+        g_adaptivePeakCount = 1;
+        g_adaptivePeakSumPct = g_adaptivePeakAvgPct;
+      }
+      SaveState();
+      Log(StringFormat("Migrated adaptive peak history from legacy scope: avg=%.2f weeks=%d",
+                       g_adaptivePeakAvgPct, g_adaptivePeakCount));
+    }
+  }
+
+  if(g_adaptivePeakCount <= 0 && g_adaptivePeakAvgPct > 0.0)
+  {
+    // Backward compatibility with older state that only stored average.
+    g_adaptivePeakCount = 1;
+    g_adaptivePeakSumPct = g_adaptivePeakAvgPct;
+  }
 
   if(GlobalVariableCheck(ScopeKey(GV_WEEK_START)))
   {
@@ -2765,6 +3133,8 @@ void SaveState()
   GlobalVariableSet(ScopeKey(GV_LAST_PUSH), (double)g_lastPush);
   GlobalVariableSet(ScopeKey(GV_ADAPTIVE_PEAK_AVG), g_adaptivePeakAvgPct);
   GlobalVariableSet(ScopeKey(GV_LAST_WEEK_PEAK), g_lastWeekPeakPct);
+  GlobalVariableSet(ScopeKey(GV_ADAPTIVE_PEAK_SUM), g_adaptivePeakSumPct);
+  GlobalVariableSet(ScopeKey(GV_ADAPTIVE_PEAK_COUNT), (double)g_adaptivePeakCount);
 }
 
 void LoadApiCache()
@@ -2791,7 +3161,14 @@ void LoadApiCache()
     g_lastApiSuccess = TimeCurrent();
     g_loadedFromCache = true;
     ExtractStringValue(json, "last_refresh_utc", g_lastDataRefreshUtc);
+    ApplyTrailProfileFromApi(json);
     int count = ArraySize(symbols);
+    ArrayResize(g_apiSymbolsRaw, count);
+    for(int k = 0; k < count; k++)
+    {
+      g_apiSymbolsRaw[k] = symbols[k];
+      StringToUpper(g_apiSymbolsRaw[k]);
+    }
     ArrayResize(g_apiSymbols, count);
     ArrayResize(g_directions, count);
     ArrayResize(g_brokerSymbols, count);
@@ -2802,7 +3179,7 @@ void LoadApiCache()
       string resolved = "";
       g_apiSymbols[i] = symbols[i];
       g_directions[i] = dirs[i];
-      g_models[i] = (i < ArraySize(models) ? models[i] : "blended");
+      g_models[i] = NormalizeModelName(i < ArraySize(models) ? models[i] : "blended");
       g_assetClasses[i] = (i < ArraySize(assetClasses) ? assetClasses[i] : "fx");
       if(ResolveSymbol(symbols[i], resolved))
         g_brokerSymbols[i] = resolved;
@@ -2831,6 +3208,8 @@ void ResetState()
   g_maxDrawdownPct = 0.0;
   g_adaptivePeakAvgPct = 0.0;
   g_lastWeekPeakPct = 0.0;
+  g_adaptivePeakSumPct = 0.0;
+  g_adaptivePeakCount = 0;
   g_lastApiSuccess = 0;
   g_loadedFromCache = false;
   g_reportDate = "";
@@ -2839,6 +3218,7 @@ void ResetState()
   g_lastApiError = "";
   g_lastApiErrorTime = 0;
   g_lastDataRefreshUtc = "";
+  ArrayResize(g_apiSymbolsRaw, 0);
 
   GlobalVariableDel(ScopeKey(GV_WEEK_START));
   GlobalVariableDel(ScopeKey(GV_STATE));
@@ -2851,6 +3231,8 @@ void ResetState()
   GlobalVariableDel(ScopeKey(GV_LAST_PUSH));
   GlobalVariableDel(ScopeKey(GV_ADAPTIVE_PEAK_AVG));
   GlobalVariableDel(ScopeKey(GV_LAST_WEEK_PEAK));
+  GlobalVariableDel(ScopeKey(GV_ADAPTIVE_PEAK_SUM));
+  GlobalVariableDel(ScopeKey(GV_ADAPTIVE_PEAK_COUNT));
 
   FileDelete(g_cacheFile, FILE_COMMON);
   Log("State reset on init.");
@@ -3284,7 +3666,12 @@ void UpdateDashboard()
   {
     trailLine = StringFormat("Trail %.1f/%.1f", GetEffectiveTrailStartPct(), GetEffectiveTrailOffsetPct());
     if(IsAdaptiveTrailEnabled())
-      trailLine += StringFormat(" avg %.1f", g_adaptivePeakAvgPct);
+    {
+      if(g_adaptivePeakCount > 0 && g_adaptivePeakAvgPct > 0.0)
+        trailLine += StringFormat(" avg %.1f", g_adaptivePeakAvgPct);
+      else
+        trailLine += " avg n/a";
+    }
   }
   string basketGuardLine = StringFormat("TP %.1f %s | SL %.1f %s",
                                         GetEffectiveBasketTakeProfitPct(), IsBasketTakeProfitEnabled() ? "on" : "off",
@@ -3312,14 +3699,13 @@ void UpdateDashboard()
     errorColor = badColor;
   string errorLine = StringFormat("Last error: %s", errorText);
 
-  double capLots = GetBasketLotCap();
   string plannedModelLine = StringFormat("Planned basket A%d B%d D%d C%d S%d",
                                          CountSignalsByModel("antikythera"),
                                          CountSignalsByModel("blended"),
                                          CountSignalsByModel("dealer"),
                                          CountSignalsByModel("commercial"),
                                          CountSignalsByModel("sentiment"));
-  string capLine = StringFormat("Cap:%.2f Used:%.2f", capLots, totalLots);
+  string lotsLine = StringFormat("Lots used:%.2f", totalLots);
   string peakLine = g_weekPeakEquity > 0.0
                       ? StringFormat("Peak equity: %.2f", g_weekPeakEquity)
                       : "Peak equity: --";
@@ -3361,7 +3747,7 @@ void UpdateDashboard()
     SetLabelText(g_dashboardLines[14], "+----------------------------------------------------------+", dimColor);
 
     SetLabelText(g_dashboardLines[15], "| POSITIONS                                                |", headingColor);
-    SetLabelText(g_dashboardLines[16], "| " + positionLine + " | " + capLine, textColor);
+    SetLabelText(g_dashboardLines[16], "| " + positionLine + " | " + lotsLine, textColor);
     SetLabelText(g_dashboardLines[17], "| " + plannedModelLine, dimColor);
     SetLabelText(g_dashboardLines[18], "+----------------------------------------------------------+", dimColor);
 
@@ -3399,7 +3785,7 @@ void UpdateDashboard()
     SetLabelText(g_dashboardLines[7], "POSITIONS", headingColor);
     SetLabelText(g_dashboardLines[8], pairsLine, textColor);
     SetLabelText(g_dashboardLines[9], positionLine, textColor);
-    SetLabelText(g_dashboardLines[10], capLine, textColor);
+    SetLabelText(g_dashboardLines[10], lotsLine, textColor);
     SetLabelText(g_dashboardLines[11], plannedModelLine + "  |  " + basketGuardLine, dimColor);
 
     SetLabelText(g_dashboardLines[12], "ACCOUNT", headingColor);
@@ -3688,11 +4074,12 @@ int CountUniquePlannedPairs()
 {
   string seen[];
   ArrayResize(seen, 0);
-  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
+  for(int i = 0; i < ArraySize(g_apiSymbolsRaw); i++)
   {
-    string symbol = g_brokerSymbols[i];
+    string symbol = g_apiSymbolsRaw[i];
     if(symbol == "")
       continue;
+    StringToUpper(symbol);
     bool exists = false;
     for(int j = 0; j < ArraySize(seen); j++)
     {
@@ -3730,9 +4117,9 @@ bool HasPlannedSymbol(const string symbol)
 {
   string target = symbol;
   StringToUpper(target);
-  for(int i = 0; i < ArraySize(g_apiSymbols); i++)
+  for(int i = 0; i < ArraySize(g_apiSymbolsRaw); i++)
   {
-    string current = g_apiSymbols[i];
+    string current = g_apiSymbolsRaw[i];
     StringToUpper(current);
     if(current == target)
       return true;
@@ -4131,8 +4518,7 @@ void ResetPlanningDiagnostics()
 
 void AddRawModelCount(const string model)
 {
-  string key = model;
-  StringToLower(key);
+  string key = NormalizeModelName(model);
   if(key == "antikythera") g_diagRawA++;
   else if(key == "blended") g_diagRawB++;
   else if(key == "commercial") g_diagRawC++;
@@ -4142,8 +4528,7 @@ void AddRawModelCount(const string model)
 
 void AddAcceptedModelCount(const string model)
 {
-  string key = model;
-  StringToLower(key);
+  string key = NormalizeModelName(model);
   if(key == "antikythera") g_diagAcceptedA++;
   else if(key == "blended") g_diagAcceptedB++;
   else if(key == "commercial") g_diagAcceptedC++;
@@ -4182,8 +4567,7 @@ string ParseModelFromComment(const string comment)
   string model = spaceIdx > 0 ? StringSubstr(rest, 0, spaceIdx) : rest;
   if(model == "")
     return "unknown";
-  StringToLower(model);
-  return model;
+  return NormalizeModelName(model);
 }
 
 string BuildModelCountJson(bool accepted)
