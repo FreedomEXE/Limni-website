@@ -858,18 +858,15 @@ bool ParsePairsArray(const string json, string &symbols[], int &dirs[], string &
        ExtractStringValue(obj, "direction", direction))
     {
       int dir = DirectionFromString(direction);
-      if(dir != 0)
-      {
-        int size = ArraySize(symbols);
-        ArrayResize(symbols, size + 1);
-        ArrayResize(dirs, size + 1);
-        ArrayResize(models, size + 1);
-        ArrayResize(assetClasses, size + 1);
-        symbols[size] = symbol;
-        dirs[size] = dir;
-        models[size] = NormalizeModelName(model);
-        assetClasses[size] = (assetClass == "" ? "fx" : assetClass);
-      }
+      int size = ArraySize(symbols);
+      ArrayResize(symbols, size + 1);
+      ArrayResize(dirs, size + 1);
+      ArrayResize(models, size + 1);
+      ArrayResize(assetClasses, size + 1);
+      symbols[size] = symbol;
+      dirs[size] = dir;
+      models[size] = NormalizeModelName(model);
+      assetClasses[size] = (assetClass == "" ? "fx" : assetClass);
     }
 
     scan = objEnd + 1;
@@ -954,18 +951,15 @@ bool ParsePairsObject(const string json, string &symbols[], int &dirs[], string 
     if(ExtractStringValue(nested, "direction", direction))
     {
       int dir = DirectionFromString(direction);
-      if(dir != 0)
-      {
-        int size = ArraySize(symbols);
-        ArrayResize(symbols, size + 1);
-        ArrayResize(dirs, size + 1);
-        ArrayResize(models, size + 1);
-        ArrayResize(assetClasses, size + 1);
-        symbols[size] = key;
-        dirs[size] = dir;
-        models[size] = NormalizeModelName(model);
-        assetClasses[size] = (assetClass == "" ? "fx" : assetClass);
-      }
+      int size = ArraySize(symbols);
+      ArrayResize(symbols, size + 1);
+      ArrayResize(dirs, size + 1);
+      ArrayResize(models, size + 1);
+      ArrayResize(assetClasses, size + 1);
+      symbols[size] = key;
+      dirs[size] = dir;
+      models[size] = NormalizeModelName(model);
+      assetClasses[size] = (assetClass == "" ? "fx" : assetClass);
     }
 
     scan = nestedEnd + 1;

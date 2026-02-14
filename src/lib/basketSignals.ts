@@ -263,6 +263,23 @@ export async function buildBasketSignals(options?: {
     pairs.push(...sentimentPairs);
   }
 
+  // Keep universe coverage explicit for dashboards: add non-trading placeholders
+  // for symbols missing from all model outputs.
+  const seen = new Set(pairs.map((row) => `${row.asset_class}|${row.symbol}`));
+  for (const asset of assetClasses) {
+    for (const pairDef of PAIRS_BY_ASSET_CLASS[asset]) {
+      const key = `${asset}|${pairDef.pair}`;
+      if (seen.has(key)) continue;
+      pairs.push({
+        symbol: pairDef.pair,
+        direction: "NEUTRAL",
+        model: "blended",
+        asset_class: asset,
+      });
+      seen.add(key);
+    }
+  }
+
   const trailProfile = await getAdaptiveTrailProfile();
 
   return {
