@@ -266,6 +266,7 @@ bool IsTradableSymbol(const string symbol);
 string NormalizeSymbolKey(const string value);
 bool TryResolveAlias(const string apiSymbol, string &resolved);
 bool ResolveSymbolByNormalizedKey(const string targetKey, string &resolved, bool requireFull);
+bool ResolveSymbolByFamily(const string apiSymbol, string &resolved, bool requireFull);
 void BuildAllowedKeys();
 bool IsAllowedSymbol(const string symbol);
 bool IsIndexSymbol(const string symbol);
@@ -1159,8 +1160,15 @@ bool ResolveSymbol(const string apiSymbol, string &resolved)
     return true;
   }
 
-  string targetKey = NormalizeSymbolKey(target);
   bool requireFull = !AllowNonFullTradeModeForListing;
+  if(ResolveSymbolByFamily(target, resolved, requireFull))
+  {
+    if(!IsAllowedSymbol(resolved))
+      return false;
+    return true;
+  }
+
+  string targetKey = NormalizeSymbolKey(target);
   if(ResolveSymbolByNormalizedKey(targetKey, resolved, requireFull))
   {
     if(!IsAllowedSymbol(resolved))
@@ -1377,6 +1385,89 @@ bool ResolveSymbolByNormalizedKey(const string targetKey, string &resolved, bool
     return true;
   }
   return false;
+}
+
+bool ResolveSymbolByFamily(const string apiSymbol, string &resolved, bool requireFull)
+{
+  string apiUpper = apiSymbol;
+  StringToUpper(apiUpper);
+  string apiKey = NormalizeSymbolKey(apiUpper);
+  if(apiKey == "")
+    return false;
+
+  int family = 0;
+  if(apiKey == "SPXUSD" || StringFind(apiKey, "SPX") >= 0 || StringFind(apiKey, "SP500") >= 0 || StringFind(apiKey, "US500") >= 0)
+    family = 1; // S&P 500
+  else if(apiKey == "NDXUSD" || StringFind(apiKey, "NDX") >= 0 || StringFind(apiKey, "NAS100") >= 0 || StringFind(apiKey, "US100") >= 0)
+    family = 2; // Nasdaq 100
+  else if(apiKey == "NIKKEIUSD" || StringFind(apiKey, "NIKKEI") >= 0 || StringFind(apiKey, "JPN225") >= 0 || StringFind(apiKey, "JP225") >= 0)
+    family = 3; // Nikkei
+  else if(apiKey == "WTIUSD" || StringFind(apiKey, "WTI") >= 0 || StringFind(apiKey, "USOIL") >= 0 || StringFind(apiKey, "USOUSD") >= 0 || StringFind(apiKey, "XTI") >= 0 || StringFind(apiKey, "USCRUDE") >= 0)
+    family = 4; // WTI crude
+  else
+    return false;
+
+  int bestScore = 2147483647;
+  string bestSymbol = "";
+
+  for(int pass = 0; pass < 2; pass++)
+  {
+    int total = SymbolsTotal(pass == 0);
+    for(int i = 0; i < total; i++)
+    {
+      string sym = SymbolName(i, pass == 0);
+      if(pass == 1 && !SymbolSelect(sym, true))
+        continue;
+
+      if(requireFull && !IsTradableSymbol(sym))
+        continue;
+
+      string symUpper = sym;
+      StringToUpper(symUpper);
+      string symKey = NormalizeSymbolKey(symUpper);
+      if(symKey == "")
+        continue;
+
+      bool match = false;
+      if(family == 1)
+      {
+        match = (StringFind(symKey, "SPX") >= 0 || StringFind(symKey, "SP500") >= 0 ||
+                 StringFind(symKey, "SPX500") >= 0 || StringFind(symKey, "US500") >= 0);
+      }
+      else if(family == 2)
+      {
+        match = (StringFind(symKey, "NDX") >= 0 || StringFind(symKey, "NDX100") >= 0 ||
+                 StringFind(symKey, "NAS100") >= 0 || StringFind(symKey, "US100") >= 0);
+      }
+      else if(family == 3)
+      {
+        match = (StringFind(symKey, "NIKKEI") >= 0 || StringFind(symKey, "NIKKEI225") >= 0 ||
+                 StringFind(symKey, "NIK225") >= 0 || StringFind(symKey, "JPN225") >= 0 ||
+                 StringFind(symKey, "JP225") >= 0);
+      }
+      else if(family == 4)
+      {
+        match = (StringFind(symKey, "WTI") >= 0 || StringFind(symKey, "USOIL") >= 0 ||
+                 StringFind(symKey, "USOUSD") >= 0 || StringFind(symKey, "XTI") >= 0 ||
+                 StringFind(symKey, "USCRUDE") >= 0 || StringFind(symKey, "CL") >= 0);
+      }
+      if(!match)
+        continue;
+
+      int score = MathAbs(StringLen(symKey) - StringLen(apiKey));
+      if(score < bestScore)
+      {
+        bestScore = score;
+        bestSymbol = sym;
+      }
+    }
+  }
+
+  if(bestSymbol == "")
+    return false;
+
+  resolved = bestSymbol;
+  return true;
 }
 
 //+------------------------------------------------------------------+
