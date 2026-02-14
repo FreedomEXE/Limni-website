@@ -134,7 +134,7 @@ describe("mt5 planning", () => {
     expect(result.planningDiagnostics?.sizingSourceLocked).toBe(true);
   });
 
-  test("nets planned legs per symbol for 5ERS-style accounts", async () => {
+  test("keeps full planned legs while dropping net-zero symbols for 5ERS-style accounts", async () => {
     const result = await buildMt5PlannedView({
       basketSignals: {
         pairs: [
@@ -161,8 +161,11 @@ describe("mt5 planning", () => {
     const btc = result.plannedPairs.find((pair) => pair.symbol === "BTCUSD");
     const eth = result.plannedPairs.find((pair) => pair.symbol === "ETHUSD");
     expect(btc?.net).toBe(-1); // 2 short vs 1 long => 1 net short leg
-    expect(btc?.legs.length).toBe(1);
-    expect(btc?.legs[0]?.direction).toBe("SHORT");
+    expect(btc?.legs.length).toBe(3); // full model legs retained for expanded UI visibility
+    const btcLongs = btc?.legs.filter((leg) => leg.direction === "LONG").length ?? 0;
+    const btcShorts = btc?.legs.filter((leg) => leg.direction === "SHORT").length ?? 0;
+    expect(btcLongs).toBe(1);
+    expect(btcShorts).toBe(2);
     expect(eth).toBeUndefined(); // 1 short vs 1 long => net 0 dropped
     expect(result.planningDiagnostics?.filtersApplied.dropNetted).toBe(true);
   });

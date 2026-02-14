@@ -127,38 +127,6 @@ export async function buildMt5PlannedView(options: {
   const enforceNetPlan = isFiveersHint || isFiveersLotMap || isFiveersDiagnostics;
 
   let plannedPairs = groupSignals(nonNeutralSignals, undefined, { dropNetted: enforceNetPlan });
-  if (enforceNetPlan) {
-    plannedPairs = plannedPairs
-      .map((pair) => {
-        let score = 0;
-        for (const leg of pair.legs) {
-          const dir = String(leg.direction ?? "").toUpperCase();
-          if (dir === "LONG") score += 1;
-          if (dir === "SHORT") score -= 1;
-        }
-        if (score === 0) return null;
-
-        const direction = score > 0 ? "LONG" : "SHORT";
-        const count = Math.abs(score);
-        const directionalLegs = pair.legs
-          .filter((leg) => String(leg.direction ?? "").toUpperCase() === direction)
-          .slice(0, count);
-        const syntheticCount = Math.max(0, count - directionalLegs.length);
-        const syntheticLegs =
-          syntheticCount > 0
-            ? Array.from({ length: syntheticCount }, () => ({
-                model: "blended" as const,
-                direction,
-              }))
-            : [];
-        return {
-          ...pair,
-          net: score > 0 ? count : -count,
-          legs: [...directionalLegs, ...syntheticLegs],
-        };
-      })
-      .filter((pair): pair is PlannedPair => pair !== null);
-  }
 
   let plannedSummary: Mt5PlannedSummary = null;
   const allowPlannedWeek =

@@ -397,29 +397,50 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
                           {(row.plannedLegs ?? []).length === 0 ? (
                             <div className="text-xs text-[color:var(--muted)]">No planned legs.</div>
                           ) : (
-                            (row.plannedLegs ?? []).map((leg, idx) => (
-                              <div
-                                key={`${row.symbol}-planned-${idx}`}
-                                className="grid grid-cols-[1fr_0.7fr_0.9fr] gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs"
-                              >
-                                <div className="truncate text-[var(--foreground)]/90">
-                                  {String(leg.model ?? "unknown")}
+                            <>
+                              <div className="grid grid-cols-[1fr_0.7fr_0.9fr] gap-2 rounded-lg border border-[var(--accent)]/35 bg-[var(--accent)]/8 px-3 py-2 text-xs">
+                                <div className="truncate font-semibold text-[var(--foreground)]/90">
+                                  Universal
                                 </div>
                                 <div
                                   className={
-                                    String(leg.direction).toUpperCase() === "LONG"
+                                    netPlanned > 0
                                       ? "text-emerald-700"
-                                      : "text-rose-700"
+                                      : netPlanned < 0
+                                        ? "text-rose-700"
+                                        : "text-[color:var(--muted)]"
                                   }
                                 >
-                                  {String(leg.direction).toUpperCase()}
+                                  {netPlanned > 0 ? "LONG" : netPlanned < 0 ? "SHORT" : "NEUTRAL"}
                                 </div>
-                                <div className="text-right">
-                                  {Number.isFinite(Number(leg.units)) ? fmt(Number(leg.units)) : "—"}{" "}
-                                  {sizeUnitLabel}
+                                <div className="text-right font-semibold">
+                                  {fmt(Math.abs(netPlanned))} {sizeUnitLabel}
                                 </div>
                               </div>
-                            ))
+                              {(row.plannedLegs ?? []).map((leg, idx) => (
+                                <div
+                                  key={`${row.symbol}-planned-${idx}`}
+                                  className="grid grid-cols-[1fr_0.7fr_0.9fr] gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs"
+                                >
+                                  <div className="truncate text-[var(--foreground)]/90">
+                                    {String(leg.model ?? "unknown")}
+                                  </div>
+                                  <div
+                                    className={
+                                      String(leg.direction).toUpperCase() === "LONG"
+                                        ? "text-emerald-700"
+                                        : "text-rose-700"
+                                    }
+                                  >
+                                    {String(leg.direction).toUpperCase()}
+                                  </div>
+                                  <div className="text-right">
+                                    {Number.isFinite(Number(leg.units)) ? fmt(Number(leg.units)) : "—"}{" "}
+                                    {sizeUnitLabel}
+                                  </div>
+                                </div>
+                              ))}
+                            </>
                           )}
                         </div>
                       </div>
