@@ -117,6 +117,7 @@ function parseLotMap(value: unknown): Mt5LotMapEntry[] | undefined {
         deviation_pct: parseNumber(row.deviation_pct),
         margin_required: parseNumber(row.margin_required),
         move_1pct_usd: parseNumber(row.move_1pct_usd),
+        sizing_profile: parseString(row.sizing_profile),
       } satisfies Mt5LotMapEntry;
     })
     .filter((row) => row.symbol !== "");
@@ -160,9 +161,25 @@ function parsePlanningDiagnostics(value: unknown): Mt5AccountSnapshot["planning_
           const model = parseString(row.model).toLowerCase();
           const units = parseNumber(row.units);
           if (!symbol || !model || !Number.isFinite(units)) return null;
-          return { symbol, model, direction, units };
+          return {
+            symbol,
+            model,
+            direction,
+            units,
+            sizing_profile: parseString(row.sizing_profile),
+          };
         })
-        .filter((row): row is { symbol: string; model: string; direction: "LONG" | "SHORT"; units: number } => row !== null)
+        .filter(
+          (
+            row,
+          ): row is {
+            symbol: string;
+            model: string;
+            direction: "LONG" | "SHORT";
+            units: number;
+            sizing_profile?: string;
+          } => row !== null,
+        )
     : undefined;
   const executionLegs = Array.isArray(raw.execution_legs)
     ? raw.execution_legs

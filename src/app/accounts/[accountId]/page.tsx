@@ -84,6 +84,9 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   const mt5Planned = await buildMt5PlannedView({
     basketSignals: basketSignals ? { pairs: basketSignals.pairs } : null,
     planningDiagnostics: account.planning_diagnostics,
+    broker: String(account.broker ?? ""),
+    server: String(account.server ?? ""),
+    label: String(account.label ?? ""),
     selectedWeek,
     currentWeekOpenUtc,
     nextWeekOpenUtc,

@@ -133,4 +133,37 @@ describe("mt5 planning", () => {
     expect(result.planningDiagnostics?.sizingSource).toBe("frozen_week_plan");
     expect(result.planningDiagnostics?.sizingSourceLocked).toBe(true);
   });
+
+  test("nets planned legs per symbol for 5ERS-style accounts", async () => {
+    const result = await buildMt5PlannedView({
+      basketSignals: {
+        pairs: [
+          { symbol: "BTCUSD", asset_class: "crypto", model: "dealer", direction: "SHORT" },
+          { symbol: "BTCUSD", asset_class: "crypto", model: "blended", direction: "SHORT" },
+          { symbol: "BTCUSD", asset_class: "crypto", model: "commercial", direction: "LONG" },
+          { symbol: "ETHUSD", asset_class: "crypto", model: "dealer", direction: "SHORT" },
+          { symbol: "ETHUSD", asset_class: "crypto", model: "blended", direction: "LONG" },
+        ],
+      },
+      planningDiagnostics: undefined,
+      broker: "Five Percent Online Ltd",
+      server: "FivePercentOnline-Real",
+      selectedWeek: "2026-02-09",
+      currentWeekOpenUtc: "2026-02-09",
+      nextWeekOpenUtc: "2026-02-16",
+      forceFxOnlyPlanned: false,
+      lotMapRows: [{ symbol: "BTCUSD", lot: 0.1, margin_required: 100 }],
+      freeMargin: 1000,
+      equity: 1000,
+      currency: "USD",
+    });
+
+    const btc = result.plannedPairs.find((pair) => pair.symbol === "BTCUSD");
+    const eth = result.plannedPairs.find((pair) => pair.symbol === "ETHUSD");
+    expect(btc?.net).toBe(-1); // 2 short vs 1 long => 1 net short leg
+    expect(btc?.legs.length).toBe(1);
+    expect(btc?.legs[0]?.direction).toBe("SHORT");
+    expect(eth).toBeUndefined(); // 1 short vs 1 long => net 0 dropped
+    expect(result.planningDiagnostics?.filtersApplied.dropNetted).toBe(true);
+  });
 });

@@ -12,7 +12,6 @@ input string ApiUrlFallback = "";
 input string AssetFilter = "all";
 input bool ResetStateOnInit = false;
 input int ApiPollIntervalSeconds = 60;
-input double BasketLotCapPer100k = 10.0;
 input bool ManualMode = false;
 enum StrategyProfile
 {
@@ -38,16 +37,14 @@ input string SymbolAliases = "SPXUSD=SPX500,NDXUSD=NDX100,NIKKEIUSD=JPN225,WTIUS
 input bool EnforceAllowedSymbols = false;
 input string AllowedSymbols = "EURUSD*,GBPUSD*,USDJPY*,USDCHF*,USDCAD*,AUDUSD*,NZDUSD*,EURGBP*,EURJPY*,EURCHF*,EURAUD*,EURNZD*,EURCAD*,GBPJPY*,GBPCHF*,GBPAUD*,GBPNZD*,GBPCAD*,AUDJPY*,AUDCHF*,AUDCAD*,AUDNZD*,NZDJPY*,NZDCHF*,NZDCAD*,CADJPY*,CADCHF*,CHFJPY*,XAUUSD*,XAGUSD*,WTIUSD*,USOUSD*,SPXUSD*,NDXUSD*,NIKKEIUSD*,SPX500*,NDX100*,JPN225*,BTCUSD*,ETHUSD*";
 input double FxLotMultiplier = 1.0;
-input double CryptoLotMultiplier = 1.0;
-input double CommoditiesLotMultiplier = 1.0;
-input double IndicesLotMultiplier = 1.0;
+input double CryptoLotMultiplier = 0.5;
+input double CommoditiesLotMultiplier = 0.5;
+input double IndicesLotMultiplier = 0.5;
 input bool EnableSizingGuard = true;
 input double MaxLegMove1PctOfEquity = 1.0;
 input double FiveersMaxLegMove1PctOfEquity = 0.25;
 input string SymbolMove1PctCapOfEquity = "";
 input string FiveersSymbolMove1PctCapOfEquity = "XAUUSD=0.10,XAGUSD=0.10,WTIUSD=0.20";
-input string SymbolLotCaps = "";
-input string FiveersSymbolLotCaps = "XAUUSD=0.50,XAGUSD=0.50,WTIUSD=0.50";
 input bool LogSizingDetails = true;
 input int SizingLogCooldownSeconds = 300;
 input double SizingLogDeviationThresholdPct = 5.0;
@@ -197,7 +194,6 @@ struct SizingPolicy
 {
   string profile;
   double riskScale;
-  double lotCap;
   double moveCapUsd;
   bool strictUnderTarget;
   double maxOvershootPct;
@@ -256,7 +252,6 @@ int g_diagSkipInvalidVolume = 0;
 int g_diagSkipSizingGuard = 0;
 int g_diagSkipOrderFailed = 0;
 int g_diagSkipMaxPositions = 0;
-int g_diagSkipLotCap = 0;
 int g_diagSkipRateLimit = 0;
 
 datetime g_orderTimes[];
@@ -360,14 +355,12 @@ bool ComputeOneToOneLot(const string symbol, const string assetClass, double &ta
                         double &marginRequired);
 double ClampVolumeToMax(const string symbol, double desiredVolume, double maxCap);
 bool TryGetCsvSymbolDouble(const string csv, const string symbol, double &value);
-double GetSymbolLotCap(const string symbol);
 double GetMove1PctCapUsd(const string symbol, const string assetClass, double baseEquity);
 bool EvaluateLegSizing(const string symbol, const string assetClass, LegSizingResult &result);
 bool ShouldLogSizing(const string symbol, int cooldownSeconds);
 void LogSizing(const string symbol, double targetLot, double finalLot,
                double deviationPct, double equityPerSymbol, double marginRequired);
 double GetAssetMultiplier(const string assetClass);
-double GetBasketLotCap();
 double GetTotalBasketLots();
 bool HasOpenPositions();
 bool HasPositionForModel(const string symbol, const string model);
@@ -392,7 +385,11 @@ string BuildCloseOrderComment(const string reasonTag);
 string ShortReasonTag(const string reasonTag);
 string MarginModeToString();
 bool IsHedgingAccount();
+bool IsNettingAccount();
 bool ShouldRequireHedgingAccount();
+bool ShouldRequireNettingAccount();
+bool IsAccountStructureAllowed();
+double GetOpenSymbolRiskUsd(const string symbol);
 string NormalizeModelName(const string value);
 bool IsFreshEntryWindow(datetime nowGmt);
 bool IsMidWeekAttachBlocked(datetime nowGmt);
@@ -524,11 +521,7 @@ int OnInit()
                    IsEquityTrailEnabled() ? "on" : "off"));
   Log(StringFormat("Per-order stop loss: %s",
                    ShouldEnforcePerOrderStopLoss() ? "on (5ERS required)" : "off"));
-  Log(StringFormat("Account structure: %s (RequireHedging=%s)",
-                   MarginModeToString(),
-                   ShouldRequireHedgingAccount() ? "true" : "false"));
-  if(ShouldRequireHedgingAccount() && !IsHedgingAccount())
-    LogTradeError("Account is NETTING. New entries blocked because RequireHedgingAccount=true.");
+  Log(StringFormat("Account structure: %s", MarginModeToString()));
 
   BuildAllowedKeys();
   LogBrokerCapability();
@@ -1758,7 +1751,6 @@ bool BuildSizingPolicy(const string symbol, const string assetClass, const Symbo
 
   policy.profile = StrategyModeToString();
   policy.riskScale = GetLegRiskScale();
-  policy.lotCap = GetSymbolLotCap(symbol);
   policy.moveCapUsd = GetMove1PctCapUsd(symbol, assetClass, baseEquity);
   policy.strictUnderTarget = (SizingTolerance == SIZING_STRICT_UNDER_TARGET);
   policy.maxOvershootPct = SizingMaxOvershootPct;
@@ -1801,6 +1793,8 @@ double GetLegRiskScale()
 
 string RiskModeToString()
 {
+  if(IsFiveersMode())
+    return "Low";
   if(RiskMode == RISK_HIGH)
     return "God Mode";
   if(RiskMode == RISK_LOW)
@@ -1927,12 +1921,32 @@ bool IsHedgingAccount()
   return ((int)AccountInfoInteger(ACCOUNT_MARGIN_MODE) == ACCOUNT_MARGIN_MODE_RETAIL_HEDGING);
 }
 
+bool IsNettingAccount()
+{
+  int mode = (int)AccountInfoInteger(ACCOUNT_MARGIN_MODE);
+  return (mode == ACCOUNT_MARGIN_MODE_RETAIL_NETTING || mode == ACCOUNT_MARGIN_MODE_EXCHANGE);
+}
+
 bool ShouldRequireHedgingAccount()
 {
-  // 5ERS defaults to net-friendly execution. Other profiles follow the input flag.
+  // 5ERS enforces net-only execution. Other profiles follow the input flag.
   if(IsFiveersMode())
     return false;
   return RequireHedgingAccount;
+}
+
+bool ShouldRequireNettingAccount()
+{
+  return IsFiveersMode();
+}
+
+bool IsAccountStructureAllowed()
+{
+  if(ShouldRequireNettingAccount())
+    return IsNettingAccount();
+  if(ShouldRequireHedgingAccount())
+    return IsHedgingAccount();
+  return true;
 }
 
 bool IsBasketTakeProfitEnabled()
@@ -2311,20 +2325,6 @@ bool TryGetCsvSymbolDouble(const string csv, const string symbol, double &value)
   return false;
 }
 
-double GetSymbolLotCap(const string symbol)
-{
-  double cap = 0.0;
-  double parsed = 0.0;
-  if(TryGetCsvSymbolDouble(SymbolLotCaps, symbol, parsed) && parsed > 0.0)
-    cap = parsed;
-  if(IsFiveersMode() && TryGetCsvSymbolDouble(FiveersSymbolLotCaps, symbol, parsed) && parsed > 0.0)
-  {
-    if(cap <= 0.0 || parsed < cap)
-      cap = parsed;
-  }
-  return cap;
-}
-
 double GetMove1PctCapUsd(const string symbol, const string assetClass, double baseEquity)
 {
   if(!EnableSizingGuard || baseEquity <= 0.0)
@@ -2383,17 +2383,6 @@ bool EvaluateLegSizingLegacy(const string symbol, const string assetClass, LegSi
 
   if(EnableSizingGuard)
   {
-    double lotCap = GetSymbolLotCap(symbol);
-    if(lotCap > 0.0 && result.finalLot > lotCap + 1e-9)
-    {
-      result.finalLot = ClampVolumeToMax(symbol, result.finalLot, lotCap);
-      if(result.finalLot <= 0.0)
-      {
-        result.reasonKey = "symbol_lot_cap";
-        return false;
-      }
-    }
-
     result.move1pctUsd = ComputeMove1PctUsd(symbol, result.finalLot);
     result.move1pctCapUsd = GetMove1PctCapUsd(symbol, assetClass, result.equityPerSymbol);
     if(result.move1pctCapUsd > 0.0 && result.move1pctUsd > result.move1pctCapUsd + 1e-9)
@@ -2502,11 +2491,9 @@ bool EvaluateLegSizing(const string symbol, const string assetClass, LegSizingRe
   }
 
   double hardMax = probe.maxLot;
-  if(policy.lotCap > 0.0 && policy.lotCap < hardMax)
-    hardMax = policy.lotCap;
   if(hardMax < probe.minLot)
   {
-    result.reasonKey = "lot_cap_below_min";
+    result.reasonKey = "broker_max_below_min";
     return false;
   }
 
@@ -2534,12 +2521,6 @@ bool EvaluateLegSizing(const string symbol, const string assetClass, LegSizingRe
     }
     result.finalLot = adjusted;
     result.move1pctUsd = result.finalLot * result.move1pctPerLotUsd;
-  }
-
-  if(policy.lotCap > 0.0 && result.finalLot > policy.lotCap + 1e-9)
-  {
-    result.reasonKey = "symbol_lot_cap";
-    return false;
   }
 
   result.marginRequired = CalculateMarginRequired(symbol, result.finalLot);
@@ -2598,6 +2579,7 @@ double GetAssetMultiplier(const string assetClass)
 {
   string normalized = assetClass;
   StringToLower(normalized);
+
   if(normalized == "crypto")
     return CryptoLotMultiplier;
   if(normalized == "commodities")
@@ -2605,13 +2587,6 @@ double GetAssetMultiplier(const string assetClass)
   if(normalized == "indices")
     return IndicesLotMultiplier;
   return FxLotMultiplier;
-}
-
-//+------------------------------------------------------------------+
-double GetBasketLotCap()
-{
-  double equity = AccountInfoDouble(ACCOUNT_EQUITY);
-  return BasketLotCapPer100k * (equity / 100000.0);
 }
 
 double GetTotalBasketLots()
@@ -2888,8 +2863,6 @@ void ManageBasket()
 void TryAddPositions()
 {
   if(ManualMode)
-    return;
-  if(ShouldRequireHedgingAccount() && !IsHedgingAccount())
     return;
   if(!g_apiOk || !g_tradingAllowed || g_closeRequested)
     return;
@@ -3256,6 +3229,37 @@ bool PlaceOrder(const string symbol, int direction, double volume, const string 
   return true;
 }
 
+double GetOpenSymbolRiskUsd(const string symbol)
+{
+  double totalRiskUsd = 0.0;
+  int total = PositionsTotal();
+  for(int i = 0; i < total; i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+    if(PositionGetString(POSITION_SYMBOL) != symbol)
+      continue;
+
+    int dir = ((int)PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? 1 : -1);
+    double vol = PositionGetDouble(POSITION_VOLUME);
+    double entry = PositionGetDouble(POSITION_PRICE_OPEN);
+    double sl = PositionGetDouble(POSITION_SL);
+    if(vol <= 0.0 || entry <= 0.0 || sl <= 0.0)
+      return DBL_MAX;
+
+    double riskUsd = EstimatePositionRiskUsd(symbol, dir, vol, entry, sl);
+    if(riskUsd < 0.0)
+      return DBL_MAX;
+    totalRiskUsd += riskUsd;
+  }
+  return totalRiskUsd;
+}
+
 bool CalculateRiskStopLoss(const string symbol, int direction, double volume, double entryPrice, double &stopLoss)
 {
   stopLoss = 0.0;
@@ -3267,6 +3271,8 @@ bool CalculateRiskStopLoss(const string symbol, int direction, double volume, do
     return false;
 
   double maxRiskPct = MaxStopLossRiskPct;
+  if(IsFiveersMode())
+    maxRiskPct = 2.0;
   if(maxRiskPct <= 0.0)
     maxRiskPct = 2.0;
   double requestedRiskPct = StopLossRiskPct;
@@ -3293,6 +3299,19 @@ bool CalculateRiskStopLoss(const string symbol, int direction, double volume, do
     return false;
 
   double maxAllowedUsd = balance * maxRiskPct / 100.0;
+  double limitUsd = maxAllowedUsd;
+  if(IsFiveersMode())
+  {
+    double existingRiskUsd = GetOpenSymbolRiskUsd(symbol);
+    if(existingRiskUsd >= DBL_MAX)
+      return false;
+    limitUsd = maxAllowedUsd - existingRiskUsd;
+    if(limitUsd <= 0.0)
+      return false;
+    if(riskUsd > limitUsd)
+      riskUsd = limitUsd;
+  }
+
   double priceDistance = (riskUsd / (tickValue * volume)) * tickSize;
   if(priceDistance <= 0.0)
     return false;
@@ -3312,10 +3331,10 @@ bool CalculateRiskStopLoss(const string symbol, int direction, double volume, do
     double actualRisk = EstimatePositionRiskUsd(symbol, direction, volume, entryPrice, stopLoss);
     if(actualRisk < 0.0)
       return false;
-    if(actualRisk <= maxAllowedUsd * 1.001)
+    if(actualRisk <= limitUsd * 1.001)
       return true;
 
-    double adjust = maxAllowedUsd / actualRisk;
+    double adjust = limitUsd / actualRisk;
     if(adjust <= 0.0 || adjust >= 1.0)
       return false;
     priceDistance *= (adjust * 0.995);
@@ -3332,7 +3351,7 @@ bool CalculateRiskStopLoss(const string symbol, int direction, double volume, do
   double finalRisk = EstimatePositionRiskUsd(symbol, direction, volume, entryPrice, stopLoss);
   if(finalRisk < 0.0)
     return false;
-  return (finalRisk <= maxAllowedUsd * 1.001);
+  return (finalRisk <= limitUsd * 1.001);
 }
 
 double EstimatePositionRiskUsd(const string symbol, int direction, double volume, double entryPrice, double stopLoss)
@@ -4276,9 +4295,7 @@ void UpdateDashboard()
   string brokerLine = StringFormat("Broker: %s",
                                    CompactText(AccountInfoString(ACCOUNT_COMPANY), 18));
   string serverLine = StringFormat("Server: %s", CompactText(AccountInfoString(ACCOUNT_SERVER), 18));
-  string structureLine = StringFormat("Exec: %s%s",
-                                      MarginModeToString(),
-                                      (ShouldRequireHedgingAccount() && !IsHedgingAccount()) ? " (blocked)" : "");
+  string structureLine = StringFormat("Exec: %s", MarginModeToString());
   string weekLine = StringFormat("Week start: %s  |  Asset: %s",
                                  FormatTimeValue(g_weekStartGmt),
                                  AssetFilter == "" ? "--" : AssetFilter);
@@ -4345,8 +4362,6 @@ void UpdateDashboard()
       errorText += " " + FormatTimeValue(g_lastApiErrorTime);
     errorColor = badColor;
   }
-  if(ShouldRequireHedgingAccount() && !IsHedgingAccount())
-    errorColor = badColor;
   string errorLine = StringFormat("Last error: %s", errorText);
 
   string plannedModelLine = StringFormat("Planned basket A%d B%d D%d C%d S%d",
@@ -4402,8 +4417,6 @@ void UpdateDashboard()
 
     SetLabelText(g_dashboardLines[19], "| CHECKS                                                   |", headingColor);
     string alertLine = (g_lastApiError == "" ? "Alerts: none" : "Alerts: " + errorText);
-    if(ShouldRequireHedgingAccount() && !IsHedgingAccount())
-      alertLine = "Alerts: account is NET, entries blocked";
     if(showWaitingSnapshot)
     {
       if(alertLine == "Alerts: none")
@@ -5162,7 +5175,6 @@ void ResetPlanningDiagnostics()
   g_diagSkipSizingGuard = 0;
   g_diagSkipOrderFailed = 0;
   g_diagSkipMaxPositions = 0;
-  g_diagSkipLotCap = 0;
   g_diagSkipRateLimit = 0;
 }
 
@@ -5199,7 +5211,6 @@ void AddSkipReason(const string reasonKey)
   else if(key == "sizing_guard") g_diagSkipSizingGuard++;
   else if(key == "order_failed") g_diagSkipOrderFailed++;
   else if(key == "max_positions") g_diagSkipMaxPositions++;
-  else if(key == "lot_cap") g_diagSkipLotCap++;
   else if(key == "rate_limit") g_diagSkipRateLimit++;
 }
 
@@ -5245,7 +5256,6 @@ string BuildSkipReasonJson()
   result += "\"sizing_guard\":" + IntegerToString(g_diagSkipSizingGuard) + ",";
   result += "\"order_failed\":" + IntegerToString(g_diagSkipOrderFailed) + ",";
   result += "\"max_positions\":" + IntegerToString(g_diagSkipMaxPositions) + ",";
-  result += "\"lot_cap\":" + IntegerToString(g_diagSkipLotCap) + ",";
   result += "\"rate_limit\":" + IntegerToString(g_diagSkipRateLimit);
   result += "}";
   return result;
@@ -5328,12 +5338,11 @@ string BuildExecutionLegsJson()
 
 string BuildPlanningDiagnosticsJson()
 {
-  bool capacityLimited = (g_diagSkipMaxPositions > 0 || g_diagSkipLotCap > 0 || g_diagSkipRateLimit > 0 ||
+  bool capacityLimited = (g_diagSkipMaxPositions > 0 || g_diagSkipRateLimit > 0 ||
                           g_diagSkipNotTradable > 0 || g_diagSkipInvalidVolume > 0 || g_diagSkipSizingGuard > 0 ||
                           g_diagSkipOrderFailed > 0);
   string reason = "";
   if(g_diagSkipMaxPositions > 0) reason = "max_positions";
-  else if(g_diagSkipLotCap > 0) reason = "lot_cap";
   else if(g_diagSkipRateLimit > 0) reason = "rate_limit";
   else if(g_diagSkipNotTradable > 0) reason = "not_tradable";
   else if(g_diagSkipInvalidVolume > 0) reason = "invalid_volume";

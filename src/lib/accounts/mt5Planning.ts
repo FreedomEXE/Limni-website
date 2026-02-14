@@ -71,6 +71,9 @@ function countLegsByModel(plannedPairs: PlannedPair[]) {
 export async function buildMt5PlannedView(options: {
   basketSignals: { pairs: BasketSignal[] } | null;
   planningDiagnostics?: Mt5PlanningDiagnosticsPayload;
+  broker?: string | null;
+  server?: string | null;
+  label?: string | null;
   selectedWeek: string;
   currentWeekOpenUtc: string;
   nextWeekOpenUtc: string | null;
@@ -88,6 +91,9 @@ export async function buildMt5PlannedView(options: {
   const {
     basketSignals,
     planningDiagnostics,
+    broker = null,
+    server = null,
+    label = null,
     selectedWeek,
     currentWeekOpenUtc,
     nextWeekOpenUtc,
@@ -107,7 +113,53 @@ export async function buildMt5PlannedView(options: {
   const nonNeutralSignals = rawSignals.filter(
     (pair) => String(pair.direction ?? "").toUpperCase() !== "NEUTRAL",
   );
-  let plannedPairs = groupSignals(nonNeutralSignals, undefined, { dropNetted: false });
+  const isFiveersHint = (() => {
+    const haystack = `${String(broker ?? "")}|${String(server ?? "")}|${String(label ?? "")}`.toLowerCase();
+    const hints = ["5ers", "the5ers", "fiveers", "fivepercent", "five percent"];
+    return hints.some((hint) => haystack.includes(hint));
+  })();
+  const isFiveersLotMap = (lotMapRows ?? []).some(
+    (row) => String((row as { sizing_profile?: string | null }).sizing_profile ?? "").toUpperCase() === "5ERS",
+  );
+  const isFiveersDiagnostics = (planningDiagnostics?.planned_legs ?? []).some(
+    (leg) => String((leg as { sizing_profile?: string | null }).sizing_profile ?? "").toUpperCase() === "5ERS",
+  );
+  const enforceNetPlan = isFiveersHint || isFiveersLotMap || isFiveersDiagnostics;
+
+  let plannedPairs = groupSignals(nonNeutralSignals, undefined, { dropNetted: enforceNetPlan });
+  if (enforceNetPlan) {
+    plannedPairs = plannedPairs
+      .map((pair) => {
+        let score = 0;
+        for (const leg of pair.legs) {
+          const dir = String(leg.direction ?? "").toUpperCase();
+          if (dir === "LONG") score += 1;
+          if (dir === "SHORT") score -= 1;
+        }
+        if (score === 0) return null;
+
+        const direction = score > 0 ? "LONG" : "SHORT";
+        const count = Math.abs(score);
+        const directionalLegs = pair.legs
+          .filter((leg) => String(leg.direction ?? "").toUpperCase() === direction)
+          .slice(0, count);
+        const syntheticCount = Math.max(0, count - directionalLegs.length);
+        const syntheticLegs =
+          syntheticCount > 0
+            ? Array.from({ length: syntheticCount }, () => ({
+                model: "blended" as const,
+                direction,
+              }))
+            : [];
+        return {
+          ...pair,
+          net: score > 0 ? count : -count,
+          legs: [...directionalLegs, ...syntheticLegs],
+        };
+      })
+      .filter((pair): pair is PlannedPair => pair !== null);
+  }
+
   let plannedSummary: Mt5PlannedSummary = null;
   const allowPlannedWeek =
     selectedWeek === currentWeekOpenUtc || (nextWeekOpenUtc ? selectedWeek === nextWeekOpenUtc : false);
@@ -203,7 +255,8 @@ export async function buildMt5PlannedView(options: {
       const moveNet = movePerLeg !== null ? Math.abs(pair.net) * movePerLeg : null;
       const perLegMargin = Number.isFinite(sizing.margin_required) ? Number(sizing.margin_required) : 0;
       if (Number.isFinite(perLegMargin) && perLegMargin > 0) {
-        grossMargin += perLegMargin * pair.legs.length;
+        const plannedLegMultiplier = enforceNetPlan ? Math.abs(pair.net) : pair.legs.length;
+        grossMargin += perLegMargin * plannedLegMultiplier;
         bestCaseMargin += perLegMargin * Math.abs(pair.net);
       }
       const row = pair as PlannedPairWithDisplay;
@@ -262,7 +315,7 @@ export async function buildMt5PlannedView(options: {
       displayedLegCount: plannedPairs.reduce((sum, pair) => sum + (pair.legs?.length ?? 0), 0),
       modelLegCounts: countLegsByModel(plannedPairs),
       filtersApplied: {
-        dropNetted: false,
+        dropNetted: enforceNetPlan,
         forceFxOnly: forceFxOnlyPlanned,
         dropNeutral: true,
         resolveSymbol: false,
