@@ -392,6 +392,7 @@ string BuildCloseOrderComment(const string reasonTag);
 string ShortReasonTag(const string reasonTag);
 string MarginModeToString();
 bool IsHedgingAccount();
+bool ShouldRequireHedgingAccount();
 string NormalizeModelName(const string value);
 bool IsFreshEntryWindow(datetime nowGmt);
 bool IsMidWeekAttachBlocked(datetime nowGmt);
@@ -525,8 +526,8 @@ int OnInit()
                    ShouldEnforcePerOrderStopLoss() ? "on (5ERS required)" : "off"));
   Log(StringFormat("Account structure: %s (RequireHedging=%s)",
                    MarginModeToString(),
-                   RequireHedgingAccount ? "true" : "false"));
-  if(RequireHedgingAccount && !IsHedgingAccount())
+                   ShouldRequireHedgingAccount() ? "true" : "false"));
+  if(ShouldRequireHedgingAccount() && !IsHedgingAccount())
     LogTradeError("Account is NETTING. New entries blocked because RequireHedgingAccount=true.");
 
   BuildAllowedKeys();
@@ -1800,13 +1801,15 @@ double GetLegRiskScale()
 
 string RiskModeToString()
 {
+  if(RiskMode == RISK_HIGH)
+    return "God Mode";
   if(RiskMode == RISK_LOW)
-    return "LOW";
+    return "Low";
   if(RiskMode == RISK_NORMAL)
-    return "NORMAL";
+    return "Normal";
   if(RiskMode == RISK_GOD)
-    return "GOD";
-  return "HIGH_LEGACY";
+    return "God Mode";
+  return "Custom";
 }
 
 string StrategyModeToString()
@@ -1922,6 +1925,14 @@ string MarginModeToString()
 bool IsHedgingAccount()
 {
   return ((int)AccountInfoInteger(ACCOUNT_MARGIN_MODE) == ACCOUNT_MARGIN_MODE_RETAIL_HEDGING);
+}
+
+bool ShouldRequireHedgingAccount()
+{
+  // 5ERS defaults to net-friendly execution. Other profiles follow the input flag.
+  if(IsFiveersMode())
+    return false;
+  return RequireHedgingAccount;
 }
 
 bool IsBasketTakeProfitEnabled()
@@ -2878,7 +2889,7 @@ void TryAddPositions()
 {
   if(ManualMode)
     return;
-  if(RequireHedgingAccount && !IsHedgingAccount())
+  if(ShouldRequireHedgingAccount() && !IsHedgingAccount())
     return;
   if(!g_apiOk || !g_tradingAllowed || g_closeRequested)
     return;
@@ -4267,7 +4278,7 @@ void UpdateDashboard()
   string serverLine = StringFormat("Server: %s", CompactText(AccountInfoString(ACCOUNT_SERVER), 18));
   string structureLine = StringFormat("Exec: %s%s",
                                       MarginModeToString(),
-                                      (RequireHedgingAccount && !IsHedgingAccount()) ? " (blocked)" : "");
+                                      (ShouldRequireHedgingAccount() && !IsHedgingAccount()) ? " (blocked)" : "");
   string weekLine = StringFormat("Week start: %s  |  Asset: %s",
                                  FormatTimeValue(g_weekStartGmt),
                                  AssetFilter == "" ? "--" : AssetFilter);
@@ -4334,7 +4345,7 @@ void UpdateDashboard()
       errorText += " " + FormatTimeValue(g_lastApiErrorTime);
     errorColor = badColor;
   }
-  if(RequireHedgingAccount && !IsHedgingAccount())
+  if(ShouldRequireHedgingAccount() && !IsHedgingAccount())
     errorColor = badColor;
   string errorLine = StringFormat("Last error: %s", errorText);
 
@@ -4364,11 +4375,10 @@ void UpdateDashboard()
                                                     g_tradingAllowed ? "allowed" : "blocked",
                                                     g_apiOk ? "ok" : "fail"), stateColor);
     SetLabelText(g_dashboardLines[3], StringFormat("| %s | %s", brokerLine, serverLine), dimColor);
-    SetLabelText(g_dashboardLines[4], StringFormat("| %s | profile=%s risk=%s x%.2f",
+    SetLabelText(g_dashboardLines[4], StringFormat("| %s | profile=%s risk=%s",
                                                     structureLine,
                                                     StrategyModeToString(),
-                                                    RiskModeToString(),
-                                                    legScale), dimColor);
+                                                    RiskModeToString()), dimColor);
     SetLabelText(g_dashboardLines[5], "| " + basketGuardLine + " | " + trailLine, dimColor);
     SetLabelText(g_dashboardLines[6], "+----------------------------------------------------------+", dimColor);
 
@@ -4392,7 +4402,7 @@ void UpdateDashboard()
 
     SetLabelText(g_dashboardLines[19], "| CHECKS                                                   |", headingColor);
     string alertLine = (g_lastApiError == "" ? "Alerts: none" : "Alerts: " + errorText);
-    if(RequireHedgingAccount && !IsHedgingAccount())
+    if(ShouldRequireHedgingAccount() && !IsHedgingAccount())
       alertLine = "Alerts: account is NET, entries blocked";
     if(showWaitingSnapshot)
     {
@@ -4418,8 +4428,8 @@ void UpdateDashboard()
     SetLabelText(g_dashboardLines[3], brokerLine, dimColor);
     SetLabelText(g_dashboardLines[4], cacheLine, dimColor);
     SetLabelText(g_dashboardLines[5], snapshotLine, showWaitingSnapshot ? warnColor : dimColor);
-    SetLabelText(g_dashboardLines[6], weekLine + StringFormat("  |  %s  |  Profile: %s  |  Mode: %s x %.2f",
-                                                               structureLine, StrategyModeToString(), RiskModeToString(), legScale), dimColor);
+    SetLabelText(g_dashboardLines[6], weekLine + StringFormat("  |  %s  |  Profile: %s  |  Mode: %s",
+                                                               structureLine, StrategyModeToString(), RiskModeToString()), dimColor);
 
     SetLabelText(g_dashboardLines[7], "POSITIONS", headingColor);
     SetLabelText(g_dashboardLines[8], pairsLine, textColor);

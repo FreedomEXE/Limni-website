@@ -62,3 +62,10 @@ __pycache__/
 
 # Research outputs
 research/scalp_bot/output*/
+
+# Local MT5 sizing audit exports
+scripts/LimniSizingAudit_*.csv
+
+# Generated funded-policy simulation reports
+reports/universal-v1-funded-policy-sim-latest.md
+reports/universal-v1-funded-policy-sim-*.md
