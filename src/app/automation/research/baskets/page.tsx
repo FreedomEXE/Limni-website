@@ -8,8 +8,9 @@ import DebugReadout from "@/components/DebugReadout";
 import { buildPerModelBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
-import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import { getWeekOpenUtc, listPerformanceWeeks, weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import { computeMaxDrawdown, computeStaticDrawdown, pickParam } from "@/lib/research/common";
+import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 
 export const revalidate = 900;
 
@@ -45,14 +46,24 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
       }
     });
   });
-  const weekOptions = Array.from(weekLabelMap.entries()).map(([value, label]) => ({
+  const performanceWeeks = await listPerformanceWeeks(12);
+  const normalizedWeekOptions = buildDataWeekOptions({
+    historicalWeeks: [...Array.from(weekLabelMap.keys()), ...performanceWeeks],
+    currentWeekOpenUtc,
+    includeAll: false,
+    limit: 12,
+  }).filter((week): week is string => week !== "all");
+  const weekOptions = normalizedWeekOptions.map((value) => ({
     value,
-    label,
+    label: weekLabelMap.get(value) ?? weekLabelFromOpen(value),
   }));
   const selectedWeek =
-    weekParam && weekOptions.some((option) => option.value === weekParam)
-      ? weekParam
-      : (weekOptions[0]?.value ?? null);
+    (resolveWeekSelection({
+      requestedWeek: weekParam,
+      weekOptions: weekOptions.map((option) => option.value),
+      currentWeekOpenUtc,
+      allowAll: false,
+    }) as string | null) ?? (weekOptions[0]?.value ?? null);
   const modelOptions = summary.models.map((model) => ({
     value: model.model,
     label: model.model_label,

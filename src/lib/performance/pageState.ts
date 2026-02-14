@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { resolveWeekSelection } from "@/lib/weekOptions";
 
 export type PerformanceView =
   | "summary"
@@ -18,20 +19,16 @@ export function resolvePerformanceView(value: string | null | undefined): Perfor
 
 export function resolveSelectedPerformanceWeek(options: {
   weekParamValue: string | null | undefined;
-  weekOptions: string[];
+  weekOptions: Array<string | "all">;
   currentWeekOpenUtc: string;
 }) {
   const { weekParamValue, weekOptions, currentWeekOpenUtc } = options;
-  if (weekParamValue === "all") {
-    return "all";
-  }
-  if (typeof weekParamValue === "string" && weekOptions.includes(weekParamValue)) {
-    return weekParamValue;
-  }
-  if (weekOptions.includes(currentWeekOpenUtc)) {
-    return currentWeekOpenUtc;
-  }
-  return weekOptions[0] ?? null;
+  return resolveWeekSelection({
+    requestedWeek: weekParamValue,
+    weekOptions,
+    currentWeekOpenUtc,
+    allowAll: true,
+  }) as string | null;
 }
 
 export function buildPerformanceWeekFlags(options: {

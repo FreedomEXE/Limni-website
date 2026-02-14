@@ -11,7 +11,8 @@ import type { PerformanceModel } from "@/lib/performanceLab";
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
-import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import { getWeekOpenUtc, listPerformanceWeeks } from "@/lib/performanceSnapshots";
+import { resolveWeekSelection } from "@/lib/weekOptions";
 import {
   buildWeekOptionsFromCurve,
   computeMaxDrawdown,
@@ -71,11 +72,19 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
 
   const summary = summaryAll;
   const currentWeekOpenUtc = getWeekOpenUtc();
-  const weekOptions = buildWeekOptionsFromCurve(summary.equity_curve);
+  const performanceWeeks = await listPerformanceWeeks(12);
+  const weekOptions = buildWeekOptionsFromCurve(
+    summary.equity_curve,
+    currentWeekOpenUtc,
+    performanceWeeks,
+  );
   const selectedWeek =
-    weekParam && weekOptions.some((option) => option.value === weekParam)
-      ? weekParam
-      : (weekOptions[0]?.value ?? null);
+    (resolveWeekSelection({
+      requestedWeek: weekParam,
+      weekOptions: weekOptions.map((option) => option.value),
+      currentWeekOpenUtc,
+      allowAll: false,
+    }) as string | null) ?? (weekOptions[0]?.value ?? null);
 
   const rowWeekPercent = (row: (typeof summary.rows)[number]) =>
     row.weekly.find((item) => item.week_open_utc === selectedWeek)?.percent ?? 0;

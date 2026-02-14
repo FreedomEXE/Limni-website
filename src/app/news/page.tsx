@@ -5,7 +5,7 @@ import { listNewsWeeks, readNewsWeeklySnapshot } from "@/lib/news/store";
 import { refreshNewsSnapshot } from "@/lib/news/refresh";
 import NewsContentTabs from "@/components/news/NewsContentTabs";
 import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
-import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
+import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 
 export const revalidate = 300;
 
@@ -40,20 +40,19 @@ export default async function NewsPage({ searchParams }: PageProps) {
   }
 
   const currentWeekOpenUtc = getWeekOpenUtc();
-  const weekOptions = buildNormalizedWeekOptions({
+  const weekOptions = buildDataWeekOptions({
     historicalWeeks: weeks,
     currentWeekOpenUtc,
     includeAll: false,
-    includeCurrent: true,
-    includeFuture: false,
     limit: 52,
   }).filter((item): item is string => item !== "all");
   const selectedWeek =
-    weekParam && weekOptions.includes(weekParam)
-      ? weekParam
-      : weekOptions.includes(currentWeekOpenUtc)
-        ? currentWeekOpenUtc
-        : weekOptions[0] ?? null;
+    (resolveWeekSelection({
+      requestedWeek: weekParam,
+      weekOptions,
+      currentWeekOpenUtc,
+      allowAll: false,
+    }) as string | null) ?? null;
   const snapshot = selectedWeek ? await readNewsWeeklySnapshot(selectedWeek) : null;
 
   const announcements = snapshot?.announcements ?? [];

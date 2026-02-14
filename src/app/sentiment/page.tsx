@@ -7,7 +7,6 @@ import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { fetchCryptoSpotPrice } from "@/lib/cryptoPrices";
 import {
   getAggregatesForWeekStart,
-  getLatestAggregates,
   getLatestAggregatesLocked,
 } from "@/lib/sentiment/store";
 import { formatDateTimeET, latestIso } from "@/lib/time";
@@ -24,7 +23,7 @@ import {
   readPerformanceSnapshotsByWeek,
   weekLabelFromOpen,
 } from "@/lib/performanceSnapshots";
-import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
+import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -62,23 +61,24 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
   const currentWeekOpen = getWeekOpenUtc();
 
   const recentWeeks = await listPerformanceWeeks(24);
-  const weeks = buildNormalizedWeekOptions({
+  const weeks = buildDataWeekOptions({
     historicalWeeks: recentWeeks,
     currentWeekOpenUtc: currentWeekOpen,
     includeAll: false,
-    includeCurrent: true,
-    includeFuture: false,
     limit: 12,
   }).filter((item): item is string => item !== "all");
 
-  const selectedWeek =
-    weekValue && weeks.includes(weekValue) ? weekValue : currentWeekOpen;
-  const isCurrentWeek = !selectedWeek || selectedWeek === currentWeekOpen;
+  const selectedWeek = resolveWeekSelection({
+    requestedWeek: weekValue,
+    weekOptions: weeks,
+    currentWeekOpenUtc: currentWeekOpen,
+    allowAll: false,
+  }) as string | null;
 
   let aggregates: SentimentAggregate[] = [];
   let previousAggregates: SentimentAggregate[] = [];
   try {
-    if (selectedWeek && !isCurrentWeek) {
+    if (selectedWeek) {
       const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
       const close = open.isValid ? open.plus({ days: 7 }) : open;
       aggregates = open.isValid
@@ -96,17 +96,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
         );
       }
     } else {
-      // Current week is live for manual trading visibility (hourly refresh + flips).
-      aggregates = await getLatestAggregates();
-      const open = DateTime.fromISO(currentWeekOpen, { zone: "utc" });
-      const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
-      if (prevOpen && prevOpen.isValid) {
-        const prevClose = prevOpen.plus({ days: 7 });
-        previousAggregates = await getAggregatesForWeekStart(
-          prevOpen.toUTC().toISO() ?? currentWeekOpen,
-          prevClose.toUTC().toISO() ?? currentWeekOpen,
-        );
-      }
+      aggregates = await getLatestAggregatesLocked();
     }
   } catch (error) {
     console.error(

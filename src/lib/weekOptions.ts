@@ -7,6 +7,7 @@ type BuildWeekOptionsInput = {
   includeAll?: boolean;
   includeCurrent?: boolean;
   includeFuture?: boolean;
+  currentPosition?: "first" | "sorted";
   limit?: number;
   filterWeek?: (weekOpenUtc: string) => boolean;
 };
@@ -26,6 +27,7 @@ export function buildNormalizedWeekOptions(input: BuildWeekOptionsInput): WeekOp
     includeAll = true,
     includeCurrent = true,
     includeFuture = false,
+    currentPosition = "first",
     limit,
     filterWeek,
   } = input;
@@ -50,12 +52,21 @@ export function buildNormalizedWeekOptions(input: BuildWeekOptionsInput): WeekOp
     ordered.push(week);
   };
 
-  if (includeCurrent) {
-    push(currentWeekOpenUtc);
-  }
-
-  for (const week of sortDesc(filtered)) {
-    push(week);
+  if (currentPosition === "first") {
+    if (includeCurrent) {
+      push(currentWeekOpenUtc);
+    }
+    for (const week of sortDesc(filtered)) {
+      push(week);
+    }
+  } else {
+    const combined = [...filtered];
+    if (includeCurrent) {
+      combined.push(currentWeekOpenUtc);
+    }
+    for (const week of sortDesc(combined)) {
+      push(week);
+    }
   }
 
   const limited =
@@ -64,4 +75,74 @@ export function buildNormalizedWeekOptions(input: BuildWeekOptionsInput): WeekOp
       : ordered;
 
   return includeAll ? ["all", ...limited] : limited;
+}
+
+type BuildDataWeekOptionsInput = {
+  historicalWeeks: string[];
+  currentWeekOpenUtc: string;
+  includeAll?: boolean;
+  limit?: number;
+  maxFutureWeeks?: number;
+};
+
+export function buildDataWeekOptions(input: BuildDataWeekOptionsInput): WeekOption[] {
+  const {
+    historicalWeeks,
+    currentWeekOpenUtc,
+    includeAll = false,
+    limit,
+    maxFutureWeeks = 1,
+  } = input;
+  const currentMs = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" }).toMillis();
+  const futureCapMs =
+    Number.isFinite(currentMs) && maxFutureWeeks >= 0
+      ? currentMs + maxFutureWeeks * 7 * 24 * 60 * 60 * 1000
+      : Number.POSITIVE_INFINITY;
+
+  return buildNormalizedWeekOptions({
+    historicalWeeks,
+    currentWeekOpenUtc,
+    includeAll,
+    includeCurrent: true,
+    includeFuture: true,
+    currentPosition: "sorted",
+    limit,
+    filterWeek: (weekOpenUtc) => {
+      const weekMs = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).toMillis();
+      if (!Number.isFinite(weekMs)) {
+        return false;
+      }
+      return weekMs <= futureCapMs;
+    },
+  });
+}
+
+type ResolveWeekSelectionInput = {
+  requestedWeek: string | null | undefined;
+  weekOptions: WeekOption[];
+  currentWeekOpenUtc: string;
+  allowAll?: boolean;
+};
+
+export function resolveWeekSelection(input: ResolveWeekSelectionInput): WeekOption | null {
+  const {
+    requestedWeek,
+    weekOptions,
+    currentWeekOpenUtc,
+    allowAll = true,
+  } = input;
+  if (requestedWeek === "all") {
+    return allowAll ? "all" : null;
+  }
+  if (requestedWeek && weekOptions.includes(requestedWeek)) {
+    return requestedWeek;
+  }
+  const firstDataWeek = weekOptions.find((week) => week !== "all") ?? null;
+  if (firstDataWeek) {
+    return firstDataWeek;
+  }
+  if (weekOptions.includes(currentWeekOpenUtc)) {
+    return currentWeekOpenUtc;
+  }
+  return currentWeekOpenUtc ?? null;
 }

@@ -1,4 +1,5 @@
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import { buildDataWeekOptions } from "@/lib/weekOptions";
 import {
   computeStaticDrawdownPctFromPercentCurve,
   computeTrailingDrawdownPct,
@@ -25,10 +26,17 @@ export function computeStaticDrawdown(points: Array<{ equity_pct: number }>) {
   return computeStaticDrawdownPctFromPercentCurve(points);
 }
 
-export function buildWeekOptionsFromCurve(points: Array<{ ts_utc: string }>) {
-  return points
-    .map((point) => point.ts_utc)
-    .slice()
-    .reverse()
-    .map((week) => ({ value: week, label: weekLabelFromOpen(week) }));
+export function buildWeekOptionsFromCurve(
+  points: Array<{ ts_utc: string }>,
+  currentWeekOpenUtc: string = points.at(-1)?.ts_utc ?? points[0]?.ts_utc ?? "",
+  extraWeeks: string[] = [],
+) {
+  const historicalWeeks = [...points.map((point) => point.ts_utc), ...extraWeeks];
+  const weeks = buildDataWeekOptions({
+    historicalWeeks,
+    currentWeekOpenUtc,
+    includeAll: false,
+    limit: 12,
+  }).filter((week): week is string => week !== "all");
+  return weeks.map((week) => ({ value: week, label: weekLabelFromOpen(week) }));
 }

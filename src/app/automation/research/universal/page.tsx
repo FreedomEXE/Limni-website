@@ -7,8 +7,9 @@ import WeekSelector from "@/components/accounts/WeekSelector";
 import KpiGroup from "@/components/metrics/KpiGroup";
 import KpiCard from "@/components/metrics/KpiCard";
 import DebugReadout from "@/components/DebugReadout";
-import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import { getWeekOpenUtc, listPerformanceWeeks } from "@/lib/performanceSnapshots";
 import { computeMaxDrawdown, computeStaticDrawdown, pickParam } from "@/lib/research/common";
+import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 
 export const revalidate = 900;
 
@@ -33,10 +34,23 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
   );
   const universalSummary = await getUniversalSummary();
   const currentWeekOpenUtc = getWeekOpenUtc();
+  const performanceWeeks = await listPerformanceWeeks(12);
+  const weekOptions = buildDataWeekOptions({
+    historicalWeeks: [
+      ...universalSummary.by_week.map((row) => row.week_open_utc),
+      ...performanceWeeks,
+    ],
+    currentWeekOpenUtc,
+    includeAll: false,
+    limit: 12,
+  }).filter((week): week is string => week !== "all");
   const selectedWeek =
-    weekParam && universalSummary.by_week.some((row) => row.week_open_utc === weekParam)
-      ? weekParam
-      : (universalSummary.by_week[0]?.week_open_utc ?? null);
+    (resolveWeekSelection({
+      requestedWeek: weekParam,
+      weekOptions,
+      currentWeekOpenUtc,
+      allowAll: false,
+    }) as string | null) ?? (weekOptions[0] ?? null);
   const selectedUniversalWeek =
     selectedWeek
       ? universalSummary.by_week.find((row) => row.week_open_utc === selectedWeek) ?? null
@@ -76,7 +90,7 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <WeekSelector
-              weekOptions={universalSummary.by_week.map((row) => row.week_open_utc)}
+              weekOptions={weekOptions}
               currentWeek={currentWeekOpenUtc}
               selectedWeek={selectedWeek ?? ""}
             />

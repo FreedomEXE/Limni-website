@@ -1,4 +1,4 @@
-import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
+import { buildDataWeekOptions } from "@/lib/weekOptions";
 
 export function buildWeekOptionsWithCurrentAndNext<T extends string>(
   existing: T[],
@@ -7,12 +7,10 @@ export function buildWeekOptionsWithCurrentAndNext<T extends string>(
   limit?: number,
 ) {
   void nextWeekOpenUtc;
-  return buildNormalizedWeekOptions({
+  return buildDataWeekOptions({
     historicalWeeks: existing as string[],
     currentWeekOpenUtc,
     includeAll: false,
-    includeCurrent: true,
-    includeFuture: false,
     limit,
   }) as T[];
 }

@@ -21,7 +21,7 @@ import {
   weekLabelFromOpen,
   getWeekOpenUtc,
 } from "@/lib/performanceSnapshots";
-import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
+import { buildDataWeekOptions } from "@/lib/weekOptions";
 import {
   buildPerformanceWeekFlags,
   resolvePerformanceView,
@@ -67,12 +67,10 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   let reportOptions: string[] = [];
   try {
     const recentWeeks = await listPerformanceWeeks(desiredWeeks);
-    weekOptions = buildNormalizedWeekOptions({
+    weekOptions = buildDataWeekOptions({
       historicalWeeks: recentWeeks,
       currentWeekOpenUtc,
       includeAll: false,
-      includeCurrent: true,
-      includeFuture: false,
       limit: desiredWeeks,
     }) as string[];
   } catch (error) {
@@ -101,7 +99,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const weekSelectorOptions = weekOptions.length > 0 ? ["all", ...weekOptions] : weekOptions;
   const selectedWeek = resolveSelectedPerformanceWeek({
     weekParamValue,
-    weekOptions,
+    weekOptions: weekSelectorOptions,
     currentWeekOpenUtc,
   });
   const reportParam = resolvedSearchParams?.report;
@@ -208,6 +206,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     });
     anyPriced = false;
   } else if (hasSnapshots && isHistoricalWeekSelected) {
+    const historicalWeekOpenUtc = selectedWeek as string;
     const groups = [
       ...models.map((model) => ({
         key: `combined:${model}`,
@@ -225,7 +224,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     const trailingByGroup =
       view === "simulation"
         ? await simulateTrailingForGroupsFromRows({
-            weekOpenUtc: selectedWeek,
+            weekOpenUtc: historicalWeekOpenUtc,
             groups,
             trailStartPct: 10,
             trailOffsetPct: 5,

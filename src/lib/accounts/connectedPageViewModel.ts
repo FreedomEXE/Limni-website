@@ -1,6 +1,7 @@
 import { formatCurrencySafe } from "@/lib/formatters";
 import { formatPercent } from "@/lib/accounts/viewUtils";
 import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
+import { resolveWeekSelection } from "@/lib/weekOptions";
 import type { PlannedPair } from "@/lib/plannedTrades";
 import type { AccountWeekStats } from "@/lib/accountStats";
 
@@ -18,11 +19,14 @@ export function resolveConnectedSelectedWeek(options: {
   currentWeekOpenUtc: string;
 }): WeekOption {
   const { weekParamValue, weekOptionsWithUpcoming, currentWeekOpenUtc } = options;
-  return weekParamValue === "all"
-    ? "all"
-    : typeof weekParamValue === "string" && weekOptionsWithUpcoming.includes(weekParamValue)
-      ? weekParamValue
-      : getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc);
+  return (
+    resolveWeekSelection({
+      requestedWeek: weekParamValue,
+      weekOptions: weekOptionsWithUpcoming,
+      currentWeekOpenUtc,
+      allowAll: true,
+    }) ?? getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc)
+  );
 }
 
 export function resolveConnectedTradeModeLabel(config: Record<string, unknown> | null): string {

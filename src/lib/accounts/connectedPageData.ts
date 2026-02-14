@@ -4,7 +4,7 @@ import { readPerformanceSnapshotsByWeek, listWeekOptionsForAccount, getWeekOpenU
 import { getDefaultWeek, type WeekOption } from "@/lib/weekState";
 import { getAccountStatsForWeek } from "@/lib/accountStats";
 import { buildAccountEquityCurve } from "@/lib/accountEquityCurve";
-import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
+import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { DateTime } from "luxon";
 import { computeMaxDrawdown, computeStaticDrawdown, extendToWindow } from "@/lib/accounts/viewUtils";
 
@@ -15,20 +15,19 @@ export async function resolveConnectedWeekContext(options: {
   const { accountKey, weekParamValue } = options;
   const weekOptions = await listWeekOptionsForAccount(accountKey, true, 4);
   const currentWeekOpenUtc = getWeekOpenUtc();
-  const weekOptionsWithUpcoming = buildNormalizedWeekOptions({
+  const weekOptionsWithUpcoming = buildDataWeekOptions({
     historicalWeeks: weekOptions.filter((week): week is string => week !== "all"),
     currentWeekOpenUtc,
     includeAll: true,
-    includeCurrent: true,
-    includeFuture: false,
     limit: 4,
   }) as WeekOption[];
-  const selectedWeek: WeekOption =
-    weekParamValue === "all"
-      ? "all"
-      : typeof weekParamValue === "string" && weekOptionsWithUpcoming.includes(weekParamValue)
-        ? weekParamValue
-        : getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc);
+  const selectedWeek =
+    resolveWeekSelection({
+      requestedWeek: weekParamValue,
+      weekOptions: weekOptionsWithUpcoming,
+      currentWeekOpenUtc,
+      allowAll: true,
+    }) ?? getDefaultWeek(weekOptionsWithUpcoming, currentWeekOpenUtc);
 
   return {
     currentWeekOpenUtc,
