@@ -43,6 +43,14 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(value, max));
 }
 
+function unwrapJsonModule<T>(value: unknown): T {
+  const maybeModule = value as { default?: T } | null;
+  if (maybeModule && typeof maybeModule === "object" && "default" in maybeModule && maybeModule.default) {
+    return maybeModule.default;
+  }
+  return value as T;
+}
+
 function toFiniteNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -62,8 +70,8 @@ export async function getAdaptiveTrailProfile(): Promise<AdaptiveTrailProfile | 
     return cachedProfile;
   }
 
-  const deep = deepReport as DeepAnalysisReport;
-  const trigger = triggerReport as TriggerBasisReport;
+  const deep = unwrapJsonModule<DeepAnalysisReport>(deepReport);
+  const trigger = unwrapJsonModule<TriggerBasisReport>(triggerReport);
 
   const peaks = (deep?.universal_weekly_metrics ?? [])
     .map((row) => toFiniteNumber(row.peak_pct))
