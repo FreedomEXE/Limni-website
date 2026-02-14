@@ -65,6 +65,8 @@ export type SymbolRow = {
   canonicalSymbol: string;
   plannedLong: number;
   plannedShort: number;
+  plannedLongSignals: number;
+  plannedShortSignals: number;
   plannedLegs: PlannedLegRow[];
   openLong: number;
   openShort: number;
@@ -118,7 +120,14 @@ export function buildSymbolRows(
 ): SymbolRow[] {
   const plannedMap = new Map<
     string,
-    { symbol: string; plannedLong: number; plannedShort: number; plannedLegs: PlannedLegRow[] }
+    {
+      symbol: string;
+      plannedLong: number;
+      plannedShort: number;
+      plannedLongSignals: number;
+      plannedShortSignals: number;
+      plannedLegs: PlannedLegRow[];
+    }
   >();
   for (const pair of plannedPairs) {
     const rawSymbol = String(pair.symbol ?? "").trim().toUpperCase();
@@ -129,6 +138,8 @@ export function buildSymbolRows(
         symbol: rawSymbol,
         plannedLong: 0,
         plannedShort: 0,
+        plannedLongSignals: 0,
+        plannedShortSignals: 0,
         plannedLegs: [],
       });
     }
@@ -146,8 +157,14 @@ export function buildSymbolRows(
             : null;
       const units =
         typeof unitsRaw === "number" && Number.isFinite(unitsRaw) ? Math.abs(unitsRaw) : null;
-      if (direction === "LONG") entry.plannedLong += units ?? 0;
-      if (direction === "SHORT") entry.plannedShort += units ?? 0;
+      if (direction === "LONG") {
+        entry.plannedLong += units ?? 0;
+        entry.plannedLongSignals += 1;
+      }
+      if (direction === "SHORT") {
+        entry.plannedShort += units ?? 0;
+        entry.plannedShortSignals += 1;
+      }
       entry.plannedLegs.push({
         model: String(leg.model ?? "").toLowerCase() || "unknown",
         direction,
@@ -211,6 +228,8 @@ export function buildSymbolRows(
       symbol,
       plannedLong: 0,
       plannedShort: 0,
+      plannedLongSignals: 0,
+      plannedShortSignals: 0,
       plannedLegs: [],
     };
     const open = openMap.get(symbol) ?? {
@@ -232,6 +251,8 @@ export function buildSymbolRows(
       canonicalSymbol: symbol,
       plannedLong: planned.plannedLong,
       plannedShort: planned.plannedShort,
+      plannedLongSignals: planned.plannedLongSignals,
+      plannedShortSignals: planned.plannedShortSignals,
       plannedLegs: planned.plannedLegs,
       openLong: open.openLong,
       openShort: open.openShort,

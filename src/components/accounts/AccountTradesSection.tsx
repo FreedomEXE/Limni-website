@@ -282,6 +282,8 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
           renderRow={(row) => {
             const plannedLong = Number(row.plannedLong ?? 0);
             const plannedShort = Number(row.plannedShort ?? 0);
+            const plannedLongSignals = Number(row.plannedLongSignals ?? 0);
+            const plannedShortSignals = Number(row.plannedShortSignals ?? 0);
             const openLong = Number(row.openLong ?? 0);
             const openShort = Number(row.openShort ?? 0);
             const openPnl = Number(row.openPnl ?? 0);
@@ -289,6 +291,7 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
             const grossOpen = openLong + openShort;
             const netPlanned = plannedLong - plannedShort;
             const netOpen = openLong - openShort;
+            const signalNet = plannedLongSignals - plannedShortSignals;
 
             const fmt = (val: number) => val.toFixed(isOanda ? 0 : 2);
             const filledText =
@@ -303,11 +306,13 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
                   ? `${fmt(netOpen)}`
                   : netPlanned !== 0
                   ? `${fmt(netOpen)}/${fmt(netPlanned)}`
-                  : `${fmt(netOpen)}`
+                  : signalNet !== 0
+                    ? `${fmt(netOpen)} (${plannedLongSignals}/${plannedShortSignals} sig)`
+                    : `${fmt(netOpen)}`
                 : `${fmt(netOpen)}`;
 
             const hasHedge = openLong > 0 && openShort > 0;
-            const directionSource = Math.abs(netOpen) > 0 ? netOpen : netPlanned;
+            const directionSource = Math.abs(netOpen) > 0 ? netOpen : Math.abs(netPlanned) > 0 ? netPlanned : signalNet;
             const direction =
               hasHedge
                 ? "HEDGED"
