@@ -28,6 +28,10 @@ type WeekMetrics = {
   left_on_table_pct: number;
   week_underwater_dd_pct: number;
   week_giveback_dd_pct: number;
+  hard_stop_closes: number;
+  flip_or_invalid_closes: number;
+  winner_takeprofit_closes: number;
+  winners_closed_friday: number;
 };
 
 type AdaptiveConfig = {
@@ -614,4 +618,3 @@ main().catch((error) => {
   console.error("universal-v1-adaptive-trail-sweep failed:", error);
   process.exit(1);
 });
-

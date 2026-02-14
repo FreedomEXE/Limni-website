@@ -317,6 +317,10 @@ string FormatDuration(int seconds);
 string FormatTimeValue(datetime value);
 string FormatDateOnly(datetime value);
 string CompactText(const string value, int maxLen);
+int EstimateDashMaxChars(int pixelWidth);
+string FitDashboardText(const string value, int pixelWidth);
+string LeftDashboardText(const string value);
+string RightDashboardText(const string value);
 string EnsureTrailingSlash(const string url);
 int CountOpenPositions();
 int CountOpenPairs();
@@ -2946,18 +2950,19 @@ void InitDashboard()
 
   DestroyDashboard();
 
-  int minWidth = (DashboardView == DASH_COMPACT ? 860 : 1100);
+  int minWidth = (DashboardView == DASH_COMPACT ? 960 : 1100);
   g_dashWidth = MathMax(DashboardWidth, minWidth);
-  g_dashLineHeight = MathMax(DashboardLineHeight, 30);
-  g_dashPadding = MathMax(DashboardPadding, 20);
-  g_dashFontSize = MathMax(DashboardFontSize, 16);
-  g_dashTitleSize = MathMax(DashboardTitleSize, 20);
+  bool compactDash = (DashboardView == DASH_COMPACT);
+  g_dashLineHeight = MathMax(DashboardLineHeight, (compactDash ? 38 : 30));
+  g_dashPadding = compactDash ? MathMax(DashboardPadding, 26) : MathMax(DashboardPadding, 20);
+  g_dashFontSize = compactDash ? MathMax(15, DashboardFontSize - 1) : MathMax(DashboardFontSize, 16);
+  g_dashTitleSize = compactDash ? MathMax(18, DashboardTitleSize - 2) : MathMax(DashboardTitleSize, 20);
   g_dashAccentWidth = MathMax(DashboardAccentWidth, 10);
   g_dashShadowOffset = MathMax(DashboardShadowOffset, 6);
   g_dashColumnGap = MathMax(DashboardColumnGap, 12);
 
-  int lineCount = (DashboardView == DASH_COMPACT ? 12 : 20);
-  int mapLines = (DashboardView == DASH_COMPACT ? 8 : MathMax(6, LotMapMaxLines));
+  int lineCount = (DashboardView == DASH_COMPACT ? 24 : 20);
+  int mapLines = (DashboardView == DASH_COMPACT ? 0 : MathMax(6, LotMapMaxLines));
   ArrayResize(g_dashboardLines, lineCount);
   for(int i = 0; i < lineCount; i++)
     g_dashboardLines[i] = StringFormat("LimniDash_line_%d", i);
@@ -2965,23 +2970,33 @@ void InitDashboard()
   for(int i = 0; i < mapLines; i++)
     g_dashboardRightLines[i] = StringFormat("LimniDash_map_%d", i);
 
-  int headerHeight = g_dashLineHeight + 12;
+  int headerHeight = g_dashLineHeight + (compactDash ? 18 : 12);
   int rows = lineCount > mapLines ? lineCount : mapLines;
   int height = g_dashPadding * 2 + headerHeight + rows * g_dashLineHeight;
   int accentWidth = g_dashAccentWidth;
   int contentX = DashboardX + g_dashPadding + accentWidth;
   int contentWidth = g_dashWidth - (g_dashPadding * 2) - accentWidth;
-  g_dashLeftWidth = (contentWidth - g_dashColumnGap) * 2 / 3;
-  if(g_dashLeftWidth < 520)
-    g_dashLeftWidth = 520;
-  g_dashRightWidth = contentWidth - g_dashLeftWidth - g_dashColumnGap;
-  if(g_dashRightWidth < 240)
+  if(DashboardView == DASH_COMPACT)
   {
-    g_dashRightWidth = 240;
-    g_dashLeftWidth = contentWidth - g_dashRightWidth - g_dashColumnGap;
+    g_dashLeftWidth = contentWidth;
+    g_dashRightWidth = 0;
+    g_dashLeftX = contentX;
+    g_dashRightX = contentX;
   }
-  g_dashLeftX = contentX;
-  g_dashRightX = contentX + g_dashLeftWidth + g_dashColumnGap;
+  else
+  {
+    g_dashLeftWidth = (contentWidth - g_dashColumnGap) * 2 / 3;
+    if(g_dashLeftWidth < 520)
+      g_dashLeftWidth = 520;
+    g_dashRightWidth = contentWidth - g_dashLeftWidth - g_dashColumnGap;
+    if(g_dashRightWidth < 240)
+    {
+      g_dashRightWidth = 240;
+      g_dashLeftWidth = contentWidth - g_dashRightWidth - g_dashColumnGap;
+    }
+    g_dashLeftX = contentX;
+    g_dashRightX = contentX + g_dashLeftWidth + g_dashColumnGap;
+  }
 
   if(ObjectFind(0, DASH_SHADOW) < 0)
   {
@@ -3047,7 +3062,11 @@ void InitDashboard()
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_HIDDEN, true);
   }
 
-  if(ObjectFind(0, DASH_COL_DIVIDER) < 0)
+  if(DashboardView == DASH_COMPACT)
+  {
+    ObjectDelete(0, DASH_COL_DIVIDER);
+  }
+  else if(ObjectFind(0, DASH_COL_DIVIDER) < 0)
   {
     ObjectCreate(0, DASH_COL_DIVIDER, OBJ_RECTANGLE_LABEL, 0, 0, 0);
     ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_CORNER, DashboardCorner);
@@ -3070,12 +3089,16 @@ void InitDashboard()
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_XDISTANCE, g_dashLeftX);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + 1);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_FONTSIZE, g_dashTitleSize);
-    ObjectSetString(0, DASH_TITLE, OBJPROP_FONT, "Segoe UI Semibold");
+    ObjectSetString(0, DASH_TITLE, OBJPROP_FONT, compactDash ? "Consolas" : "Segoe UI Semibold");
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_SELECTABLE, false);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_HIDDEN, true);
   }
 
-  if(ObjectFind(0, DASH_MAP_TITLE) < 0)
+  if(compactDash)
+  {
+    ObjectDelete(0, DASH_MAP_TITLE);
+  }
+  else if(ObjectFind(0, DASH_MAP_TITLE) < 0)
   {
     ObjectCreate(0, DASH_MAP_TITLE, OBJ_LABEL, 0, 0, 0);
     ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_CORNER, DashboardCorner);
@@ -3102,7 +3125,7 @@ void InitDashboard()
       DashboardY + g_dashPadding + headerHeight + i * g_dashLineHeight
     );
     ObjectSetInteger(0, name, OBJPROP_FONTSIZE, g_dashFontSize);
-    ObjectSetString(0, name, OBJPROP_FONT, "Segoe UI");
+    ObjectSetString(0, name, OBJPROP_FONT, compactDash ? "Consolas" : "Segoe UI");
     ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
     ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
   }
@@ -3200,19 +3223,19 @@ void UpdateDashboard()
       cacheLine += " (cache)";
   }
 
-  string brokerLine = StringFormat("Broker: %s  |  Server: %s",
-                                   CompactText(AccountInfoString(ACCOUNT_COMPANY), 22),
-                                   CompactText(AccountInfoString(ACCOUNT_SERVER), 22));
-  string structureLine = StringFormat("Execution: %s%s",
+  string brokerLine = StringFormat("Broker: %s",
+                                   CompactText(AccountInfoString(ACCOUNT_COMPANY), 18));
+  string serverLine = StringFormat("Server: %s", CompactText(AccountInfoString(ACCOUNT_SERVER), 18));
+  string structureLine = StringFormat("Exec: %s%s",
                                       MarginModeToString(),
                                       (RequireHedgingAccount && !IsHedgingAccount()) ? " (blocked)" : "");
   string weekLine = StringFormat("Week start: %s  |  Asset: %s",
                                  FormatTimeValue(g_weekStartGmt),
                                  AssetFilter == "" ? "--" : AssetFilter);
   string pairsLine = StringFormat("Pairs: %d  |  Open pairs: %d", totalPairs, openPairs);
-  string positionLine = StringFormat("Positions: %d  |  Lots: %.2f  |  Orders/min: %d",
+  string positionLine = StringFormat("Pos:%d Lots:%.2f OPM:%d",
                                      openPositions, totalLots, OrdersInLastMinute());
-  string equityLine = StringFormat("Equity: %.2f  |  Balance: %.2f  |  Free: %.2f",
+  string equityLine = StringFormat("Eq:%.2f Bal:%.2f Free:%.2f",
                                    AccountInfoDouble(ACCOUNT_EQUITY),
                                    AccountInfoDouble(ACCOUNT_BALANCE),
                                    AccountInfoDouble(ACCOUNT_MARGIN_FREE));
@@ -3227,7 +3250,7 @@ void UpdateDashboard()
     pnlColor = (pnlPct >= 0.0 ? goodColor : badColor);
   }
   string trailText = g_trailingActive ? "On" : "Off";
-  string pnlLine = StringFormat("PnL: %s  |  Locked: %.2f%%  |  Trail active: %s", pnlText, g_lockedProfitPct, trailText);
+  string pnlLine = StringFormat("PnL:%s Locked:%.2f%% Trail:%s", pnlText, g_lockedProfitPct, trailText);
 
   string ddLine = StringFormat("Max DD: %.2f%%", g_maxDrawdownPct);
   color ddColor = (g_maxDrawdownPct <= 0.0 ? goodColor : badColor);
@@ -3237,14 +3260,14 @@ void UpdateDashboard()
   string lotLine = StringFormat("Sizing: 1:1 x %.2f (%s)  |  Base: %.2f", legScale, RiskModeToString(), baseEquity);
   string multLine = StringFormat("Mult: FX %.2f  Crypto %.2f  Cmds %.2f  Ind %.2f",
                                  FxLotMultiplier, CryptoLotMultiplier, CommoditiesLotMultiplier, IndicesLotMultiplier);
-  string trailLine = "Trail: off";
+  string trailLine = "Trail off";
   if(IsEquityTrailEnabled())
   {
-    trailLine = StringFormat("Trail start %.2f%%, lock offset %.2f%%", GetEffectiveTrailStartPct(), GetEffectiveTrailOffsetPct());
+    trailLine = StringFormat("Trail %.1f/%.1f", GetEffectiveTrailStartPct(), GetEffectiveTrailOffsetPct());
     if(IsAdaptiveTrailEnabled())
-      trailLine += StringFormat(" (adaptive avg peak %.2f%%)", g_adaptivePeakAvgPct);
+      trailLine += StringFormat(" avg %.1f", g_adaptivePeakAvgPct);
   }
-  string basketGuardLine = StringFormat("Basket guards: TP %.2f%% (%s)  SL %.2f%% (%s)",
+  string basketGuardLine = StringFormat("TP %.1f %s | SL %.1f %s",
                                         GetEffectiveBasketTakeProfitPct(), IsBasketTakeProfitEnabled() ? "on" : "off",
                                         GetEffectiveBasketStopLossPct(), IsBasketStopLossEnabled() ? "on" : "off");
 
@@ -3271,13 +3294,13 @@ void UpdateDashboard()
   string errorLine = StringFormat("Last error: %s", errorText);
 
   double capLots = GetBasketLotCap();
-  string modelLine = StringFormat("Open basket: Antikythera %d  Blended %d  Dealer %d  Commercial %d  Sentiment %d",
+  string modelLine = StringFormat("Open basket A%d B%d D%d C%d S%d",
                                   CountOpenPositionsByModel("antikythera"),
                                   CountOpenPositionsByModel("blended"),
                                   CountOpenPositionsByModel("dealer"),
                                   CountOpenPositionsByModel("commercial"),
                                   CountOpenPositionsByModel("sentiment"));
-  string capLine = StringFormat("Lot cap: %.2f  |  Total lots: %.2f", capLots, totalLots);
+  string capLine = StringFormat("Cap:%.2f Used:%.2f", capLots, totalLots);
   string peakLine = g_weekPeakEquity > 0.0
                       ? StringFormat("Peak equity: %.2f", g_weekPeakEquity)
                       : "Peak equity: --";
@@ -3289,31 +3312,41 @@ void UpdateDashboard()
   SetLabelText(DASH_TITLE, "Limni Basket EA", C'15,23,42');
   if(compact)
   {
-    SetLabelText(DASH_MAP_TITLE, "CHECKS", headingColor);
-    SetLabelText(g_dashboardLines[0], "STATUS", headingColor);
-    SetLabelText(g_dashboardLines[1], StringFormat("State: %s  |  Trading: %s  |  API: %s",
+    SetLabelText(DASH_TITLE, "[ LIMNI_BASKET_EA ]", C'15,23,42');
+    SetLabelText(g_dashboardLines[0], "+----------------------------------------------------------+", dimColor);
+    SetLabelText(g_dashboardLines[1], "| STATUS                                                   |", headingColor);
+    SetLabelText(g_dashboardLines[2], StringFormat("| state=%s trading=%s api=%s",
                                                     stateText,
-                                                    g_tradingAllowed ? "Allowed" : "Blocked",
-                                                    g_apiOk ? "OK" : "Fail"), stateColor);
-    SetLabelText(g_dashboardLines[2], StringFormat("%s  |  %s  |  Profile: %s  |  Mode: %s x %.2f",
-                                                    brokerLine,
+                                                    g_tradingAllowed ? "allowed" : "blocked",
+                                                    g_apiOk ? "ok" : "fail"), stateColor);
+    SetLabelText(g_dashboardLines[3], StringFormat("| %s | %s", brokerLine, serverLine), dimColor);
+    SetLabelText(g_dashboardLines[4], StringFormat("| %s | profile=%s risk=%s x%.2f",
                                                     structureLine,
                                                     StrategyModeToString(),
                                                     RiskModeToString(),
                                                     legScale), dimColor);
-    SetLabelText(g_dashboardLines[3], basketGuardLine + "  |  " + trailLine, dimColor);
+    SetLabelText(g_dashboardLines[5], "| " + basketGuardLine + " | " + trailLine, dimColor);
+    SetLabelText(g_dashboardLines[6], "+----------------------------------------------------------+", dimColor);
 
-    SetLabelText(g_dashboardLines[4], "SYNC", headingColor);
-    SetLabelText(g_dashboardLines[5], StringFormat("%s  |  %s  |  Next poll: %s",
-                                                    snapshotLine, cacheLine, FormatDuration(pollRemaining)),
+    SetLabelText(g_dashboardLines[7], "| SYNC                                                     |", headingColor);
+    SetLabelText(g_dashboardLines[8], "| " + CompactText(snapshotLine, 58), waitingSnapshot ? warnColor : dimColor);
+    SetLabelText(g_dashboardLines[9], StringFormat("| %s | poll=%s",
+                                                    CompactText(cacheLine, 30),
+                                                    FormatDuration(pollRemaining)),
                  waitingSnapshot ? warnColor : dimColor);
+    SetLabelText(g_dashboardLines[10], "+----------------------------------------------------------+", dimColor);
 
-    SetLabelText(g_dashboardLines[6], "ACCOUNT", headingColor);
-    SetLabelText(g_dashboardLines[7], equityLine, textColor);
-    SetLabelText(g_dashboardLines[8], pnlLine + "  |  " + ddLine, pnlColor);
+    SetLabelText(g_dashboardLines[11], "| ACCOUNT                                                  |", headingColor);
+    SetLabelText(g_dashboardLines[12], "| " + equityLine, textColor);
+    SetLabelText(g_dashboardLines[13], "| " + pnlLine + " | " + ddLine, pnlColor);
+    SetLabelText(g_dashboardLines[14], "+----------------------------------------------------------+", dimColor);
 
-    SetLabelText(g_dashboardLines[9], "POSITIONS", headingColor);
-    SetLabelText(g_dashboardLines[10], positionLine + "  |  " + capLine, textColor);
+    SetLabelText(g_dashboardLines[15], "| POSITIONS                                                |", headingColor);
+    SetLabelText(g_dashboardLines[16], "| " + positionLine + " | " + capLine, textColor);
+    SetLabelText(g_dashboardLines[17], "| " + modelLine, dimColor);
+    SetLabelText(g_dashboardLines[18], "+----------------------------------------------------------+", dimColor);
+
+    SetLabelText(g_dashboardLines[19], "| CHECKS                                                   |", headingColor);
     string alertLine = (g_lastApiError == "" ? "Alerts: none" : "Alerts: " + errorText);
     if(RequireHedgingAccount && !IsHedgingAccount())
       alertLine = "Alerts: account is NET, entries blocked";
@@ -3324,8 +3357,11 @@ void UpdateDashboard()
       else
         alertLine = alertLine + " | waiting for weekly snapshot";
     }
-    SetLabelText(g_dashboardLines[11], modelLine + "  |  " + alertLine, errorColor);
-    usedLeft = 12;
+    SetLabelText(g_dashboardLines[20], "| " + alertLine, errorColor);
+    SetLabelText(g_dashboardLines[21], StringFormat("| pairs=%d open_pairs=%d", totalPairs, openPairs), dimColor);
+    SetLabelText(g_dashboardLines[22], "| " + CompactText(errorLine, 58), errorColor);
+    SetLabelText(g_dashboardLines[23], "+----------------------------------------------------------+", dimColor);
+    usedLeft = 24;
   }
   else
   {
@@ -3363,50 +3399,8 @@ void UpdateDashboard()
   int mapCount = ArraySize(g_dashboardRightLines);
   if(compact)
   {
-    string check0 = g_apiOk ? "Feed: OK" : "Feed: ERROR";
-    string check1 = g_tradingAllowed ? "Trading Gate: OPEN" : "Trading Gate: BLOCKED";
-    string check2 = StringFormat("Profile: %s | %s", StrategyModeToString(), MarginModeToString());
-    string check3 = StringFormat("TP %.2f%% (%s) | SL %.2f%% (%s)",
-                                 GetEffectiveBasketTakeProfitPct(), IsBasketTakeProfitEnabled() ? "on" : "off",
-                                 GetEffectiveBasketStopLossPct(), IsBasketStopLossEnabled() ? "on" : "off");
-    string check4 = IsEquityTrailEnabled()
-                      ? StringFormat("Trail: start %.2f%%, lock %.2f%%", GetEffectiveTrailStartPct(), GetEffectiveTrailOffsetPct())
-                      : "Trail: off";
-    string check5 = StringFormat("Open: %d pos | %d pairs", openPositions, openPairs);
-    string check6 = waitingSnapshot
-                      ? StringFormat("Snapshot wait: expected %s (+%d min)", expectedReportDate, waitMinutes)
-                      : (g_lastApiError == "" ? "Errors: none" : "Errors: " + errorText);
-    if(RequireHedgingAccount && !IsHedgingAccount())
-      check6 = "Errors: account is NET (blocked)";
-
-    string compactChecks[];
-    ArrayResize(compactChecks, 7);
-    compactChecks[0] = check0;
-    compactChecks[1] = check1;
-    compactChecks[2] = check2;
-    compactChecks[3] = check3;
-    compactChecks[4] = check4;
-    compactChecks[5] = check5;
-    compactChecks[6] = check6;
-
     for(int i = 0; i < mapCount; i++)
-    {
-      if(i < ArraySize(compactChecks))
-      {
-        color c = dimColor;
-        if(i == 0)
-          c = g_apiOk ? goodColor : badColor;
-        else if(i == 1)
-          c = g_tradingAllowed ? goodColor : warnColor;
-        else if(i == 6)
-          c = (g_lastApiError == "" ? goodColor : badColor);
-        SetLabelText(g_dashboardRightLines[i], compactChecks[i], c);
-      }
-      else
-      {
-        SetLabelText(g_dashboardRightLines[i], " ", dimColor);
-      }
-    }
+      SetLabelText(g_dashboardRightLines[i], " ", dimColor);
   }
   else
   {
@@ -3452,7 +3446,12 @@ void SetLabelText(const string name, const string text, color textColor)
 {
   if(ObjectFind(0, name) < 0)
     return;
-  ObjectSetString(0, name, OBJPROP_TEXT, text);
+  string finalText = text;
+  if(StringFind(name, "LimniDash_line_") == 0 || name == DASH_TITLE)
+    finalText = LeftDashboardText(text);
+  else if(StringFind(name, "LimniDash_map_") == 0 || name == DASH_MAP_TITLE)
+    finalText = RightDashboardText(text);
+  ObjectSetString(0, name, OBJPROP_TEXT, finalText);
   ObjectSetInteger(0, name, OBJPROP_COLOR, textColor);
 }
 
@@ -3508,6 +3507,39 @@ string CompactText(const string value, int maxLen)
   if(len <= maxLen)
     return value;
   return StringSubstr(value, 0, maxLen - 3) + "...";
+}
+
+int EstimateDashMaxChars(int pixelWidth)
+{
+  int fontSize = (g_dashFontSize > 0 ? g_dashFontSize : 16);
+  int charWidth = (int)MathRound((double)fontSize * 0.58);
+  if(charWidth < 7)
+    charWidth = 7;
+  int maxChars = pixelWidth / charWidth;
+  if(maxChars < 10)
+    maxChars = 10;
+  return maxChars;
+}
+
+string FitDashboardText(const string value, int pixelWidth)
+{
+  return CompactText(value, EstimateDashMaxChars(pixelWidth));
+}
+
+string LeftDashboardText(const string value)
+{
+  int width = g_dashLeftWidth - 10;
+  if(width <= 0)
+    width = 620;
+  return FitDashboardText(value, width);
+}
+
+string RightDashboardText(const string value)
+{
+  int width = g_dashRightWidth - 10;
+  if(width <= 0)
+    width = 300;
+  return FitDashboardText(value, width);
 }
 
 string EnsureTrailingSlash(const string url)

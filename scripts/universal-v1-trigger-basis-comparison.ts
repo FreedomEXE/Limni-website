@@ -24,6 +24,8 @@ type VariantOut = {
     worst_week_underwater_dd_pct: number;
     overall_baseline_underwater_dd_pct: number;
     overall_peak_to_now_giveback_dd_pct: number;
+    avg_week_giveback_dd_pct: number;
+    worst_week_giveback_dd_pct: number;
     win_rate_pct: number;
   };
 };
@@ -406,4 +408,3 @@ main().catch((error) => {
   console.error("universal-v1-trigger-basis-comparison failed:", error);
   process.exit(1);
 });
-

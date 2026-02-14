@@ -207,7 +207,7 @@ async function main() {
   const includeCurrentWeek = (process.env.TRUTH_INCLUDE_CURRENT_WEEK ?? "true").toLowerCase() !== "false";
   const timeframe = (process.env.TRUTH_TIMEFRAME ?? "M1") as "M1" | "H1";
 
-  const universalMod = (await import("../src/lib/universalBasket.ts")) as {
+  const universalMod = (await import("../src/lib/universalBasket")) as {
     buildUniversalBasketSummary: (o?: Record<string, unknown>) => Promise<{
       generated_at: string;
       by_week: WeekRow[];
