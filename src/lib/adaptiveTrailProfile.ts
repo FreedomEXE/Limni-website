@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import deepReport from "../../reports/universal-deep-analysis-latest.json";
+import triggerReport from "../../reports/universal-v1-trigger-basis-comparison-latest.json";
 
 type DeepAnalysisWeek = {
   peak_pct?: number;
@@ -43,16 +43,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(value, max));
 }
 
-async function readJsonFile<T>(fileName: string): Promise<T | null> {
-  const fullPath = path.join(process.cwd(), "reports", fileName);
-  try {
-    const raw = await fs.readFile(fullPath, "utf8");
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
 function toFiniteNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -72,10 +62,8 @@ export async function getAdaptiveTrailProfile(): Promise<AdaptiveTrailProfile | 
     return cachedProfile;
   }
 
-  const [deep, trigger] = await Promise.all([
-    readJsonFile<DeepAnalysisReport>("universal-deep-analysis-latest.json"),
-    readJsonFile<TriggerBasisReport>("universal-v1-trigger-basis-comparison-latest.json"),
-  ]);
+  const deep = deepReport as DeepAnalysisReport;
+  const trigger = triggerReport as TriggerBasisReport;
 
   const peaks = (deep?.universal_weekly_metrics ?? [])
     .map((row) => toFiniteNumber(row.peak_pct))
