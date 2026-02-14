@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import { evaluateFreshness } from "@/lib/cotFreshness";
-import { readSnapshot } from "@/lib/cotStore";
+import { readSnapshot, refreshAllSnapshots, refreshSnapshotForClass } from "@/lib/cotStore";
 import { getAssetClass, listAssetClasses, type AssetClass } from "@/lib/cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { derivePairDirections, derivePairDirectionsByBase, type BiasMode } from "@/lib/cotCompute";
@@ -23,8 +23,16 @@ type BasketSignalsResponse = {
   asset_class: AssetClass | "all";
   trading_allowed: boolean;
   reason: string;
+  expected_report_date?: string;
+  weekly_release_utc?: string;
+  minutes_since_weekly_release?: number;
   week_open_utc: string;
   pairs: BasketSignal[];
+};
+
+type AvailableSnapshot = {
+  snapshot: NonNullable<Awaited<ReturnType<typeof readSnapshot>>>;
+  asset: AssetClass;
 };
 
 function sentimentDirection(agg?: SentimentAggregate): "LONG" | "SHORT" | null {
@@ -78,6 +86,50 @@ function buildBiasPairs(
     .filter((row): row is BasketSignal => Boolean(row));
 }
 
+function toAvailable(
+  snapshots: Awaited<ReturnType<typeof readSnapshot>>[],
+  assets: AssetClass[],
+): AvailableSnapshot[] {
+  return snapshots
+    .map((snapshot, index) => ({ snapshot, asset: assets[index] }))
+    .filter((row): row is AvailableSnapshot => Boolean(row.snapshot));
+}
+
+function pickReferenceSnapshot(rows: AvailableSnapshot[]): AvailableSnapshot {
+  let best = rows[0];
+  for (let i = 1; i < rows.length; i += 1) {
+    const current = rows[i];
+    if (current.snapshot.report_date > best.snapshot.report_date) {
+      best = current;
+      continue;
+    }
+    if (
+      current.snapshot.report_date === best.snapshot.report_date &&
+      current.snapshot.last_refresh_utc > best.snapshot.last_refresh_utc
+    ) {
+      best = current;
+    }
+  }
+  return best;
+}
+
+function shouldAutoRefresh(reason: string, lastRefreshUtc: string): boolean {
+  const normalized = reason.toLowerCase();
+  const autoRefreshReason =
+    normalized === "awaiting weekly cftc update" || normalized === "report_date is stale";
+  if (!autoRefreshReason) {
+    return false;
+  }
+
+  const refreshedAt = DateTime.fromISO(lastRefreshUtc, { zone: "utc" });
+  if (!refreshedAt.isValid) {
+    return true;
+  }
+
+  const ageMinutes = DateTime.utc().diff(refreshedAt, "minutes").minutes;
+  return !Number.isFinite(ageMinutes) || ageMinutes >= 10;
+}
+
 export async function buildBasketSignals(options?: {
   assetClass?: AssetClass | "all" | null;
 }): Promise<BasketSignalsResponse> {
@@ -86,12 +138,26 @@ export async function buildBasketSignals(options?: {
     ? [getAssetClass(assetParam)]
     : listAssetClasses().map((asset) => asset.id);
 
-  const snapshots = await Promise.all(
+  let snapshots = await Promise.all(
     assetClasses.map((asset) => readSnapshot({ assetClass: asset })),
   );
-  const available = snapshots
-    .map((snapshot, index) => ({ snapshot, asset: assetClasses[index] }))
-    .filter((row) => Boolean(row.snapshot));
+  let available = toAvailable(snapshots, assetClasses);
+
+  if (available.length === 0) {
+    try {
+      if (assetParam && assetParam !== "all") {
+        await refreshSnapshotForClass(assetClasses[0]);
+      } else {
+        await refreshAllSnapshots();
+      }
+      snapshots = await Promise.all(
+        assetClasses.map((asset) => readSnapshot({ assetClass: asset })),
+      );
+      available = toAvailable(snapshots, assetClasses);
+    } catch (error) {
+      console.warn("Auto-refresh failed while loading basket snapshots:", error);
+    }
+  }
 
   if (available.length === 0) {
     return {
@@ -105,10 +171,38 @@ export async function buildBasketSignals(options?: {
     };
   }
 
-  const freshness = evaluateFreshness(
-    available[0].snapshot!.report_date,
-    available[0].snapshot!.last_refresh_utc,
+  let reference = pickReferenceSnapshot(available);
+  let freshness = evaluateFreshness(
+    reference.snapshot.report_date,
+    reference.snapshot.last_refresh_utc,
   );
+
+  if (
+    !freshness.trading_allowed &&
+    shouldAutoRefresh(freshness.reason, reference.snapshot.last_refresh_utc)
+  ) {
+    try {
+      if (assetParam && assetParam !== "all") {
+        await refreshSnapshotForClass(assetClasses[0]);
+      } else {
+        await refreshAllSnapshots();
+      }
+      snapshots = await Promise.all(
+        assetClasses.map((asset) => readSnapshot({ assetClass: asset })),
+      );
+      available = toAvailable(snapshots, assetClasses);
+      if (available.length > 0) {
+        reference = pickReferenceSnapshot(available);
+        freshness = evaluateFreshness(
+          reference.snapshot.report_date,
+          reference.snapshot.last_refresh_utc,
+        );
+      }
+    } catch (error) {
+      console.warn("Auto-refresh failed after freshness check:", error);
+    }
+  }
+
   const weekOpen = getWeekOpenUtc();
   const weekOpenDt = DateTime.fromISO(weekOpen, { zone: "utc" });
   const weekClose = weekOpenDt.isValid ? weekOpenDt.plus({ days: 7 }) : weekOpenDt;
@@ -127,7 +221,7 @@ export async function buildBasketSignals(options?: {
   const pairs: BasketSignal[] = [];
 
   for (const entry of available) {
-    const snapshot = entry.snapshot!;
+    const snapshot = entry.snapshot;
     const asset = entry.asset;
     pairs.push(...buildBiasPairs(asset, snapshot, "blended"));
     pairs.push(...buildBiasPairs(asset, snapshot, "dealer"));
@@ -168,11 +262,14 @@ export async function buildBasketSignals(options?: {
   }
 
   return {
-    report_date: available[0].snapshot!.report_date,
-    last_refresh_utc: available[0].snapshot!.last_refresh_utc,
+    report_date: reference.snapshot.report_date,
+    last_refresh_utc: reference.snapshot.last_refresh_utc,
     asset_class: assetParam ?? "all",
     trading_allowed: freshness.trading_allowed,
     reason: freshness.reason,
+    expected_report_date: freshness.expected_report_date,
+    weekly_release_utc: freshness.weekly_release_utc,
+    minutes_since_weekly_release: freshness.minutes_since_weekly_release,
     week_open_utc: weekOpen,
     pairs,
   };
