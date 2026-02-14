@@ -48,4 +48,24 @@ describe("performance/allTime", () => {
     expect(dealer?.returns).toHaveLength(2);
     expect(dealer?.note).toBe("All-time aggregation");
   });
+
+  it("merges legacy and canonical rows into one logical week", () => {
+    const rows = [
+      { week_open_utc: "2026-02-09T00:00:00.000Z", model: "blended" as const, percent: 1.0 }, // canonical
+      { week_open_utc: "2026-02-09T05:00:00.000Z", model: "blended" as const, percent: 2.0 }, // legacy
+      { week_open_utc: "2026-01-26T00:00:00.000Z", model: "blended" as const, percent: -0.5 },
+    ];
+    const currentWeekMillis = Date.parse("2026-02-16T00:00:00.000Z");
+    const nowUtcMillis = Date.parse("2026-02-18T00:00:00.000Z");
+    const performance = buildAllTimePerformance(rows, MODELS, currentWeekMillis, nowUtcMillis);
+    const blended = performance.find((entry) => entry.model === "blended");
+
+    expect(blended).toBeDefined();
+    expect(blended?.returns).toHaveLength(2);
+    expect(blended?.returns.map((item) => item.pair)).toEqual([
+      "Week of Feb 09, 2026",
+      "Week of Jan 26, 2026",
+    ]);
+    expect(blended?.percent).toBe(2.5);
+  });
 });

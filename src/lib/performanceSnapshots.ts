@@ -35,14 +35,6 @@ function formatWeekLabel(isoValue: string) {
   return mondayLabelDate.toFormat("MMM dd, yyyy");
 }
 
-function weekDisplayKeyFromOpen(isoValue: string) {
-  const parsed = DateTime.fromISO(isoValue, { zone: "utc" }).setZone("America/New_York");
-  if (!parsed.isValid) return null;
-  const mondayLabelDate =
-    parsed.weekday === 7 ? parsed.plus({ days: 1 }).startOf("day") : parsed.startOf("day");
-  return mondayLabelDate.toFormat("yyyy-LL-dd");
-}
-
 export function getWeekOpenUtc(now = DateTime.utc()): string {
   return getCanonicalWeekOpenUtc(now);
 }
@@ -146,7 +138,8 @@ export async function writePerformanceSnapshots(
 export async function listPerformanceWeeks(limit = 52): Promise<string[]> {
   const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 52;
   const chunkSize = Math.max(safeLimit * 4, 32);
-  const byDisplayKey = new Map<string, string>();
+  const canonicalWeeks: string[] = [];
+  const seenCanonicalWeeks = new Set<string>();
   let offset = 0;
   for (let pass = 0; pass < 8; pass++) {
     const rows = await query<{ week_open_utc: Date }>(
@@ -159,26 +152,20 @@ export async function listPerformanceWeeks(limit = 52): Promise<string[]> {
 
     for (const row of rows) {
       const iso = row.week_open_utc.toISOString();
-      const key = weekDisplayKeyFromOpen(iso);
-      if (!key) continue;
-      const existing = byDisplayKey.get(key);
-      if (!existing) {
-        byDisplayKey.set(key, iso);
-        continue;
-      }
       const canonical = normalizeWeekOpenUtc(iso) ?? iso;
-      if (iso === canonical && existing !== canonical) {
-        byDisplayKey.set(key, iso);
+      if (!seenCanonicalWeeks.has(canonical)) {
+        seenCanonicalWeeks.add(canonical);
+        canonicalWeeks.push(canonical);
       }
     }
 
-    if (byDisplayKey.size >= safeLimit || rows.length < chunkSize) {
+    if (canonicalWeeks.length >= safeLimit || rows.length < chunkSize) {
       break;
     }
     offset += rows.length;
   }
 
-  return Array.from(byDisplayKey.values())
+  return canonicalWeeks
     .sort((a, b) => DateTime.fromISO(b, { zone: "utc" }).toMillis() - DateTime.fromISO(a, { zone: "utc" }).toMillis())
     .slice(0, safeLimit);
 }

@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { computeReturnStats, type PerformanceModel } from "@/lib/performanceLab";
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 
 type AllTimeRow = {
   week_open_utc: string;
@@ -37,8 +38,12 @@ function isClosedHistoricalWeek(
 function buildWeekTotalsByModel(rows: AllTimeRow[]) {
   const totals = new Map<PerformanceModel, Map<string, number>>();
   for (const row of rows) {
+    const canonicalWeekOpenUtc = normalizeWeekOpenUtc(row.week_open_utc) ?? row.week_open_utc;
     const modelWeeks = totals.get(row.model) ?? new Map<string, number>();
-    modelWeeks.set(row.week_open_utc, (modelWeeks.get(row.week_open_utc) ?? 0) + row.percent);
+    modelWeeks.set(
+      canonicalWeekOpenUtc,
+      (modelWeeks.get(canonicalWeekOpenUtc) ?? 0) + row.percent,
+    );
     totals.set(row.model, modelWeeks);
   }
   return totals;
