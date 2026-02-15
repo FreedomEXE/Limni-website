@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readNewsWeeklySnapshot } from "@/lib/news/store";
+import { readNewsWeeklySnapshot, writeNewsWeeklySnapshot } from "@/lib/news/store";
 import { refreshNewsSnapshot } from "@/lib/news/refresh";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
@@ -31,10 +31,41 @@ function shouldRefreshSnapshot(snapshot: { week_open_utc: string; fetched_at: st
   return nowMs - fetchedAtMs > maxAgeHours * 60 * 60 * 1000;
 }
 
+function snapshotContainsDisplayWeekEvents(
+  snapshot: { calendar: Array<{ datetime_utc?: string | null }> },
+  displayWeekOpenUtc: string,
+): boolean {
+  const startMs = toMillis(displayWeekOpenUtc);
+  if (startMs === null) {
+    return false;
+  }
+  const endMs = startMs + 7 * 24 * 60 * 60 * 1000;
+  for (const event of snapshot.calendar ?? []) {
+    const eventMs = toMillis(event.datetime_utc ?? null);
+    if (eventMs !== null && eventMs >= startMs && eventMs < endMs) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function GET() {
   try {
     const displayWeekOpenUtc = getDisplayWeekOpenUtc();
     let snapshot = await readNewsWeeklySnapshot();
+    if (
+      snapshot &&
+      snapshot.week_open_utc !== displayWeekOpenUtc &&
+      snapshotContainsDisplayWeekEvents(snapshot, displayWeekOpenUtc)
+    ) {
+      await writeNewsWeeklySnapshot({
+        week_open_utc: displayWeekOpenUtc,
+        source: snapshot.source,
+        announcements: snapshot.announcements,
+        calendar: snapshot.calendar,
+      });
+      snapshot = await readNewsWeeklySnapshot(displayWeekOpenUtc);
+    }
     if (!snapshot || shouldRefreshSnapshot(snapshot, displayWeekOpenUtc)) {
       await refreshNewsSnapshot();
       snapshot = await readNewsWeeklySnapshot();

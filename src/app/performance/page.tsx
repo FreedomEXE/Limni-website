@@ -168,7 +168,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       ? formatDateTimeET(latestPriceRefresh)
       : isFutureWeekSelected
         ? "Waiting for week open"
-        : "No refresh yet";
+        : hasSnapshots
+          ? "Snapshot loaded; waiting for first price refresh"
+          : "No refresh yet";
 
   if (isFutureWeekSelected && !hasSnapshots) {
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();

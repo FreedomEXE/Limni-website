@@ -1,12 +1,16 @@
 import { DateTime } from "luxon";
 import DashboardLayout from "@/components/DashboardLayout";
 import { formatDateTimeET } from "@/lib/time";
-import { listNewsWeeks, readNewsWeeklySnapshot } from "@/lib/news/store";
+import {
+  listNewsWeeks,
+  readNewsWeeklySnapshot,
+  writeNewsWeeklySnapshot,
+} from "@/lib/news/store";
 import { refreshNewsSnapshot } from "@/lib/news/refresh";
-import { listPerformanceWeeks } from "@/lib/performanceSnapshots";
 import NewsContentTabs from "@/components/news/NewsContentTabs";
-import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
+import { buildNormalizedWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import type { NewsEvent, NewsWeeklySnapshot } from "@/lib/news/types";
 
 export const revalidate = 300;
 
@@ -27,6 +31,77 @@ function weekLabel(weekOpenUtc: string) {
   return `Week of ${monday.toFormat("MMM dd, yyyy")}`;
 }
 
+function eventMs(event: NewsEvent) {
+  if (!event.datetime_utc) return null;
+  const ms = Date.parse(event.datetime_utc);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function hasEventsForWeek(events: NewsEvent[], weekOpenUtc: string) {
+  const startMs = Date.parse(weekOpenUtc);
+  if (!Number.isFinite(startMs)) return false;
+  const endMs = startMs + 7 * 24 * 60 * 60 * 1000;
+  for (const event of events) {
+    const ms = eventMs(event);
+    if (ms !== null && ms >= startMs && ms < endMs) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function inferWeekFromEvents(events: NewsEvent[]) {
+  let firstMs: number | null = null;
+  for (const event of events) {
+    const ms = eventMs(event);
+    if (ms === null) continue;
+    if (firstMs === null || ms < firstMs) firstMs = ms;
+  }
+  if (firstMs === null) return null;
+  const firstEventTime = DateTime.fromMillis(firstMs, { zone: "utc" });
+  if (!firstEventTime.isValid) return null;
+  return getDisplayWeekOpenUtc(firstEventTime as DateTime<true>);
+}
+
+async function normalizeNewsWeekKeys(weeks: string[]) {
+  const validWeeks: string[] = [];
+  let wroteAny = false;
+
+  for (const week of weeks) {
+    const snapshot = await readNewsWeeklySnapshot(week);
+    if (!snapshot) continue;
+    if (hasEventsForWeek(snapshot.calendar, week)) {
+      validWeeks.push(week);
+      continue;
+    }
+    const inferredWeek = inferWeekFromEvents(snapshot.calendar);
+    if (inferredWeek && inferredWeek !== week) {
+      await writeNewsWeeklySnapshot({
+        week_open_utc: inferredWeek,
+        source: snapshot.source,
+        announcements: snapshot.announcements,
+        calendar: snapshot.calendar,
+      });
+      wroteAny = true;
+    }
+  }
+
+  if (!wroteAny) {
+    return validWeeks;
+  }
+
+  const refreshedWeeks = await listNewsWeeks(520);
+  const refreshedValid: string[] = [];
+  for (const week of refreshedWeeks) {
+    const snapshot = await readNewsWeeklySnapshot(week);
+    if (!snapshot) continue;
+    if (hasEventsForWeek(snapshot.calendar, week)) {
+      refreshedValid.push(week);
+    }
+  }
+  return refreshedValid;
+}
+
 export default async function NewsPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
   const weekParam = pickParam(params?.week);
@@ -40,29 +115,42 @@ export default async function NewsPage({ searchParams }: PageProps) {
     await refreshNewsSnapshot();
     newsWeeks = await listNewsWeeks(520);
   }
+  newsWeeks = await normalizeNewsWeekKeys(newsWeeks);
 
-  let performanceWeeks: string[] = [];
-  try {
-    performanceWeeks = await listPerformanceWeeks(520);
-  } catch {
-    performanceWeeks = [];
-  }
-
-  const mergedWeeks = Array.from(new Set([...newsWeeks, ...performanceWeeks]));
-  const weekOptions = buildDataWeekOptions({
-    historicalWeeks: mergedWeeks,
+  // Show only weeks that actually have news data.
+  const weekOptions = buildNormalizedWeekOptions({
+    historicalWeeks: newsWeeks,
     currentWeekOpenUtc,
     includeAll: false,
+    includeCurrent: false,
+    includeFuture: true,
+    currentPosition: "sorted",
     limit: 520,
   }).filter((item): item is string => item !== "all");
-  const selectedWeek =
-    (resolveWeekSelection({
-      requestedWeek: weekParam,
-      weekOptions,
-      currentWeekOpenUtc,
+  let selectedWeek = weekOptions.length
+    ? ((resolveWeekSelection({
+        requestedWeek: weekParam,
+        weekOptions,
+        currentWeekOpenUtc,
       allowAll: false,
-    }) as string | null) ?? null;
-  let snapshot = selectedWeek ? await readNewsWeeklySnapshot(selectedWeek) : null;
+      }) as string | null) ?? null)
+    : null;
+  let snapshot: NewsWeeklySnapshot | null = selectedWeek
+    ? await readNewsWeeklySnapshot(selectedWeek)
+    : null;
+  if (snapshot && selectedWeek && !hasEventsForWeek(snapshot.calendar, selectedWeek)) {
+    const inferredWeek = inferWeekFromEvents(snapshot.calendar);
+    if (inferredWeek) {
+      await writeNewsWeeklySnapshot({
+        week_open_utc: inferredWeek,
+        source: snapshot.source,
+        announcements: snapshot.announcements,
+        calendar: snapshot.calendar,
+      });
+      selectedWeek = inferredWeek;
+      snapshot = await readNewsWeeklySnapshot(selectedWeek);
+    }
+  }
   if (!snapshot && selectedWeek && selectedWeek === currentWeekOpenUtc) {
     await refreshNewsSnapshot();
     snapshot = await readNewsWeeklySnapshot(selectedWeek);
@@ -90,23 +178,29 @@ export default async function NewsPage({ searchParams }: PageProps) {
               <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Week
               </label>
-              <select
-                name="week"
-                defaultValue={selectedWeek ?? undefined}
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-              >
-                {weekOptions.map((week) => (
-                  <option key={week} value={week}>
-                    {weekLabel(week)}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-              >
-                View
-              </button>
+              {weekOptions.length > 0 ? (
+                <>
+                  <select
+                    name="week"
+                    defaultValue={selectedWeek ?? undefined}
+                    className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+                  >
+                    {weekOptions.map((week) => (
+                      <option key={week} value={week}>
+                        {weekLabel(week)}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="submit"
+                    className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+                  >
+                    View
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs text-[color:var(--muted)]">No weeks with news data yet.</span>
+              )}
             </form>
             <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               {snapshot ? `Last refresh ${formatDateTimeET(snapshot.fetched_at)}` : "No snapshot yet"}
