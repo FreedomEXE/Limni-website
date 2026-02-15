@@ -50,6 +50,25 @@ function hasEventsForWeek(events: NewsEvent[], weekOpenUtc: string) {
   return false;
 }
 
+function getWeekWindowStats(events: NewsEvent[], weekOpenUtc: string) {
+  const startMs = Date.parse(weekOpenUtc);
+  if (!Number.isFinite(startMs)) {
+    return { inWeek: 0, beforeWeek: 0, afterWeek: 0 };
+  }
+  const endMs = startMs + 7 * 24 * 60 * 60 * 1000;
+  let inWeek = 0;
+  let beforeWeek = 0;
+  let afterWeek = 0;
+  for (const event of events) {
+    const ms = eventMs(event);
+    if (ms === null) continue;
+    if (ms < startMs) beforeWeek++;
+    else if (ms >= endMs) afterWeek++;
+    else inWeek++;
+  }
+  return { inWeek, beforeWeek, afterWeek };
+}
+
 function countDistinctEventDaysInWeek(events: NewsEvent[], weekOpenUtc: string) {
   const startMs = Date.parse(weekOpenUtc);
   if (!Number.isFinite(startMs)) return 0;
@@ -68,34 +87,41 @@ function isWeekSnapshotUsable(snapshot: NewsWeeklySnapshot, weekOpenUtc: string,
   if (!hasEventsForWeek(snapshot.calendar, weekOpenUtc)) {
     return false;
   }
-  const eventsInWeek = snapshot.calendar.filter((event) => {
-    const ms = eventMs(event);
-    if (ms === null) return false;
-    const startMs = Date.parse(weekOpenUtc);
-    if (!Number.isFinite(startMs)) return false;
-    return ms >= startMs && ms < startMs + 7 * 24 * 60 * 60 * 1000;
-  }).length;
+  const stats = getWeekWindowStats(snapshot.calendar, weekOpenUtc);
+  const eventsInWeek = stats.inWeek;
   const distinctDays = countDistinctEventDaysInWeek(snapshot.calendar, weekOpenUtc);
+  const hasForwardSpill = stats.afterWeek > 0;
 
   // Hide low-quality historical snapshots (partial or malformed weeks).
   if (weekOpenUtc !== currentWeekOpenUtc) {
-    return eventsInWeek >= 30 && distinctDays >= 3;
+    return eventsInWeek >= 30 && distinctDays >= 3 && !hasForwardSpill;
   }
   // Current display week can still be in-progress.
-  return eventsInWeek > 0 && distinctDays >= 1;
+  return eventsInWeek > 0 && distinctDays >= 1 && !hasForwardSpill;
 }
 
 function inferWeekFromEvents(events: NewsEvent[]) {
-  let firstMs: number | null = null;
+  const weekVotes = new Map<string, number>();
+  let fallbackWeek: string | null = null;
   for (const event of events) {
     const ms = eventMs(event);
     if (ms === null) continue;
-    if (firstMs === null || ms < firstMs) firstMs = ms;
+    const eventTime = DateTime.fromMillis(ms, { zone: "utc" });
+    if (!eventTime.isValid) continue;
+    const voteWeek = getDisplayWeekOpenUtc(eventTime as DateTime<true>);
+    if (!fallbackWeek) fallbackWeek = voteWeek;
+    weekVotes.set(voteWeek, (weekVotes.get(voteWeek) ?? 0) + 1);
   }
-  if (firstMs === null) return null;
-  const firstEventTime = DateTime.fromMillis(firstMs, { zone: "utc" });
-  if (!firstEventTime.isValid) return null;
-  return getDisplayWeekOpenUtc(firstEventTime as DateTime<true>);
+  if (weekVotes.size === 0) return null;
+  let bestWeek = fallbackWeek;
+  let bestVotes = -1;
+  for (const [week, votes] of weekVotes.entries()) {
+    if (votes > bestVotes) {
+      bestVotes = votes;
+      bestWeek = week;
+    }
+  }
+  return bestWeek;
 }
 
 async function normalizeNewsWeekKeys(weeks: string[], currentWeekOpenUtc: string) {

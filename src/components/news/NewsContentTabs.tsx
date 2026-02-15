@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { NewsEvent } from "@/lib/news/types";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
 import { DateTime } from "luxon";
@@ -88,6 +88,30 @@ export default function NewsContentTabs({
     return Array.from(groups.values()).sort((a, b) => a.ts - b.ts);
   }, [filteredCalendar]);
 
+  const mostRecentGroupKey = useMemo(() => {
+    if (groupedCalendar.length === 0) return null;
+    return groupedCalendar[groupedCalendar.length - 1]?.key ?? null;
+  }, [groupedCalendar]);
+
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!mostRecentGroupKey) {
+      setOpenGroups(new Set());
+      return;
+    }
+    setOpenGroups(new Set([mostRecentGroupKey]));
+  }, [mostRecentGroupKey, selectedWeek, view]);
+
+  function toggleGroup(key: string) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   return (
     <>
       {view === "announcements" ? (
@@ -139,80 +163,104 @@ export default function NewsContentTabs({
               <div className="divide-y divide-[var(--panel-border)]">
                 {groupedCalendar.map((group) => (
                   <div key={group.key} className="bg-[var(--panel)]/40">
-                    <div className="sticky top-0 z-10 border-b border-[var(--panel-border)] bg-[var(--panel)]/95">
-                      <div className="px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                          {group.label}
-                        </p>
-                        <p className="text-sm text-[var(--foreground)]">
-                          {group.events.length} event{group.events.length !== 1 ? "s" : ""}
-                        </p>
-                      </div>
-                      <div className="hidden border-t border-[var(--panel-border)] px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)] md:grid md:grid-cols-[90px_90px_110px_1fr_140px_140px_140px]">
-                        <span className="text-left">Time</span>
-                        <span className="text-left">Country</span>
-                        <span className="text-left">Impact</span>
-                        <span className="text-left">Event</span>
-                        <span className="text-right">Actual</span>
-                        <span className="text-right">Forecast</span>
-                        <span className="text-right">Previous</span>
-                      </div>
-                    </div>
-                    <div className="divide-y divide-[var(--panel-border)]">
-                      {group.events.map((event, index) => {
-                        const date = resolveEventDate(event);
-                        return (
-                          <div
-                            key={`${event.title}-${event.datetime_utc ?? event.date}-${index}`}
-                            className="grid gap-2 px-4 py-3 md:grid-cols-[90px_90px_110px_1fr_140px_140px_140px] md:items-center"
+                    {(() => {
+                      const isOpen = openGroups.has(group.key);
+                      const isMostRecent = group.key === mostRecentGroupKey;
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(group.key)}
+                            className={`w-full border-b border-[var(--panel-border)] px-4 py-3 text-left transition ${
+                              isMostRecent ? "bg-emerald-50/60" : "bg-[var(--panel)]/95"
+                            }`}
                           >
-                            <div className="text-xs font-semibold text-[var(--foreground)]">
-                              {formatEventTime(event, date)}
-                            </div>
-                            <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                              {event.country}
-                            </div>
-                            <div>
-                              <span
-                                className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${impactTone(
-                                  event.impact,
-                                )}`}
-                              >
-                                {event.impact}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-[var(--foreground)]">
-                                {event.title}
-                              </p>
-                              {event.datetime_utc ? (
-                                <p className="mt-1 text-xs text-[color:var(--muted)]">
-                                  {formatEventMoment(event)}
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                                  {group.label}
+                                  {isMostRecent ? " • Most Recent" : ""}
                                 </p>
-                              ) : null}
-                            </div>
-                            <div className="text-right text-xs font-semibold text-[var(--foreground)]">
-                              <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                                Actual{" "}
+                                <p className="text-sm font-semibold text-[var(--foreground)]">
+                                  {group.events.length} event{group.events.length !== 1 ? "s" : ""}
+                                </p>
+                              </div>
+                              <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                                {isOpen ? "Hide" : "Show"}
                               </span>
-                              {event.actual ?? "—"}
                             </div>
-                            <div className="text-right text-xs text-[var(--foreground)]">
-                              <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                                Forecast{" "}
-                              </span>
-                              {event.forecast ?? "—"}
-                            </div>
-                            <div className="text-right text-xs text-[var(--foreground)]">
-                              <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                                Previous{" "}
-                              </span>
-                              {event.previous ?? "—"}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          </button>
+                          {isOpen ? (
+                            <>
+                              <div className="hidden border-b border-[var(--panel-border)] px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)] md:grid md:grid-cols-[90px_90px_110px_1fr_140px_140px_140px]">
+                                <span className="text-left">Time</span>
+                                <span className="text-left">Country</span>
+                                <span className="text-left">Impact</span>
+                                <span className="text-left">Event</span>
+                                <span className="text-right">Actual</span>
+                                <span className="text-right">Forecast</span>
+                                <span className="text-right">Previous</span>
+                              </div>
+                              <div className="divide-y divide-[var(--panel-border)]">
+                                {group.events.map((event, index) => {
+                                  const date = resolveEventDate(event);
+                                  return (
+                                    <div
+                                      key={`${event.title}-${event.datetime_utc ?? event.date}-${index}`}
+                                      className="grid gap-2 px-4 py-3 md:grid-cols-[90px_90px_110px_1fr_140px_140px_140px] md:items-center"
+                                    >
+                                      <div className="text-xs font-semibold text-[var(--foreground)]">
+                                        {formatEventTime(event, date)}
+                                      </div>
+                                      <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                                        {event.country}
+                                      </div>
+                                      <div>
+                                        <span
+                                          className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${impactTone(
+                                            event.impact,
+                                          )}`}
+                                        >
+                                          {event.impact}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-semibold text-[var(--foreground)]">
+                                          {event.title}
+                                        </p>
+                                        {event.datetime_utc ? (
+                                          <p className="mt-1 text-xs text-[color:var(--muted)]">
+                                            {formatEventMoment(event)}
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                      <div className="text-right text-xs font-semibold text-[var(--foreground)]">
+                                        <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                                          Actual{" "}
+                                        </span>
+                                        {event.actual ?? "—"}
+                                      </div>
+                                      <div className="text-right text-xs text-[var(--foreground)]">
+                                        <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                                          Forecast{" "}
+                                        </span>
+                                        {event.forecast ?? "—"}
+                                      </div>
+                                      <div className="text-right text-xs text-[var(--foreground)]">
+                                        <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                                          Previous{" "}
+                                        </span>
+                                        {event.previous ?? "—"}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
