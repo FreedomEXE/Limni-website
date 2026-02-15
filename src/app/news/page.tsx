@@ -50,6 +50,41 @@ function hasEventsForWeek(events: NewsEvent[], weekOpenUtc: string) {
   return false;
 }
 
+function countDistinctEventDaysInWeek(events: NewsEvent[], weekOpenUtc: string) {
+  const startMs = Date.parse(weekOpenUtc);
+  if (!Number.isFinite(startMs)) return 0;
+  const endMs = startMs + 7 * 24 * 60 * 60 * 1000;
+  const days = new Set<string>();
+  for (const event of events) {
+    const ms = eventMs(event);
+    if (ms === null || ms < startMs || ms >= endMs) continue;
+    const dayKey = DateTime.fromMillis(ms, { zone: "utc" }).toISODate();
+    if (dayKey) days.add(dayKey);
+  }
+  return days.size;
+}
+
+function isWeekSnapshotUsable(snapshot: NewsWeeklySnapshot, weekOpenUtc: string, currentWeekOpenUtc: string) {
+  if (!hasEventsForWeek(snapshot.calendar, weekOpenUtc)) {
+    return false;
+  }
+  const eventsInWeek = snapshot.calendar.filter((event) => {
+    const ms = eventMs(event);
+    if (ms === null) return false;
+    const startMs = Date.parse(weekOpenUtc);
+    if (!Number.isFinite(startMs)) return false;
+    return ms >= startMs && ms < startMs + 7 * 24 * 60 * 60 * 1000;
+  }).length;
+  const distinctDays = countDistinctEventDaysInWeek(snapshot.calendar, weekOpenUtc);
+
+  // Hide low-quality historical snapshots (partial or malformed weeks).
+  if (weekOpenUtc !== currentWeekOpenUtc) {
+    return eventsInWeek >= 30 && distinctDays >= 3;
+  }
+  // Current display week can still be in-progress.
+  return eventsInWeek > 0 && distinctDays >= 1;
+}
+
 function inferWeekFromEvents(events: NewsEvent[]) {
   let firstMs: number | null = null;
   for (const event of events) {
@@ -63,14 +98,14 @@ function inferWeekFromEvents(events: NewsEvent[]) {
   return getDisplayWeekOpenUtc(firstEventTime as DateTime<true>);
 }
 
-async function normalizeNewsWeekKeys(weeks: string[]) {
+async function normalizeNewsWeekKeys(weeks: string[], currentWeekOpenUtc: string) {
   const validWeeks: string[] = [];
   let wroteAny = false;
 
   for (const week of weeks) {
     const snapshot = await readNewsWeeklySnapshot(week);
     if (!snapshot) continue;
-    if (hasEventsForWeek(snapshot.calendar, week)) {
+    if (isWeekSnapshotUsable(snapshot, week, currentWeekOpenUtc)) {
       validWeeks.push(week);
       continue;
     }
@@ -95,7 +130,7 @@ async function normalizeNewsWeekKeys(weeks: string[]) {
   for (const week of refreshedWeeks) {
     const snapshot = await readNewsWeeklySnapshot(week);
     if (!snapshot) continue;
-    if (hasEventsForWeek(snapshot.calendar, week)) {
+    if (isWeekSnapshotUsable(snapshot, week, currentWeekOpenUtc)) {
       refreshedValid.push(week);
     }
   }
@@ -115,7 +150,7 @@ export default async function NewsPage({ searchParams }: PageProps) {
     await refreshNewsSnapshot();
     newsWeeks = await listNewsWeeks(520);
   }
-  newsWeeks = await normalizeNewsWeekKeys(newsWeeks);
+  newsWeeks = await normalizeNewsWeekKeys(newsWeeks, currentWeekOpenUtc);
 
   // Show only weeks that actually have news data.
   const weekOptions = buildNormalizedWeekOptions({
