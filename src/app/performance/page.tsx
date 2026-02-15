@@ -164,7 +164,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   let totals: Array<Awaited<ReturnType<typeof computeModelPerformance>>> = [];
   let anyPriced = false;
 
-  if (isFutureWeekSelected) {
+  if (isFutureWeekSelected && !hasSnapshots) {
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
     const latestSentiment = await getLatestAggregatesLocked();
     const snapshotResults = await Promise.all(
@@ -174,18 +174,17 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       snapshots.set(assetClasses[index].id, snapshot);
     });
 
-    const performanceOverride = {
-      performance: {},
-      note: "Week has not started yet. Returns will populate after the report week opens.",
-      missingPairs: [],
-    };
-
     perAsset = await Promise.all(
       assetClasses.map(async (asset) => {
         const snapshot = snapshots.get(asset.id);
         if (!snapshot) {
           return { asset, results: [] as Awaited<ReturnType<typeof computeModelPerformance>>[] };
         }
+        const performance = await getPairPerformance(buildAllPairs(asset.id), {
+          assetClass: asset.id,
+          reportDate: snapshot.report_date,
+          isLatestReport: false,
+        });
         const results = [];
         for (const model of models) {
           results.push(
@@ -194,7 +193,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               assetClass: asset.id,
               snapshot,
               sentiment: latestSentiment,
-              performance: performanceOverride,
+              performance,
             }),
           );
         }
@@ -206,8 +205,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       models,
       perAsset: perAsset.map((asset) => ({ assetLabel: asset.asset.label, results: asset.results })),
     });
-    anyPriced = false;
-  } else if (hasSnapshots && isHistoricalWeekSelected) {
+    anyPriced = totals.some((result) => result.priced > 0);
+  } else if (hasSnapshots && (isHistoricalWeekSelected || isFutureWeekSelected)) {
     const historicalWeekOpenUtc = selectedWeek as string;
     const groups = [
       ...models.map((model) => ({
@@ -412,7 +411,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           </div>
         </header>
 
-        {!anyPriced ? (
+        {!anyPriced && !isFutureWeekSelected ? (
           <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-3 text-xs text-[var(--accent-strong)]">
             No priced pairs yet. Prices populate when the scheduled refresh runs.
           </div>
