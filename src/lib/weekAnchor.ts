@@ -43,11 +43,15 @@ export function getDisplayWeekOpenUtc(now = DateTime.utc()): string {
     return canonical;
   }
 
-  const weekStartEt = now
-    .setZone("America/New_York")
-    .startOf("day")
-    .minus({ days: now.setZone("America/New_York").weekday % 7 });
-  const fridayReleaseEt = weekStartEt.plus({ days: 5, hours: 15, minutes: 30 });
+  // Anchor release check to the canonical trading week (Sunday 19:00 ET),
+  // so Sunday pre-open still points to the upcoming week after Friday release.
+  const canonicalEt = currentWeek.setZone("America/New_York");
+  const fridayReleaseEt = canonicalEt.plus({ days: 5 }).set({
+    hour: 15,
+    minute: 30,
+    second: 0,
+    millisecond: 0,
+  });
   const releasePassed = now.toUTC().toMillis() >= fridayReleaseEt.toUTC().toMillis();
 
   if (!releasePassed) {
