@@ -139,8 +139,8 @@ export default function NewsContentTabs({
               <div className="divide-y divide-[var(--panel-border)]">
                 {groupedCalendar.map((group) => (
                   <div key={group.key} className="bg-[var(--panel)]/40">
-                    <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--panel-border)] bg-[var(--panel)]/95 px-4 py-3">
-                      <div>
+                    <div className="sticky top-0 z-10 border-b border-[var(--panel-border)] bg-[var(--panel)]/95">
+                      <div className="px-4 py-3">
                         <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                           {group.label}
                         </p>
@@ -148,13 +148,14 @@ export default function NewsContentTabs({
                           {group.events.length} event{group.events.length !== 1 ? "s" : ""}
                         </p>
                       </div>
-                      <div className="hidden text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] md:flex md:items-center md:gap-6">
-                        <span className="w-20 text-left">Time</span>
-                        <span className="w-20 text-left">Country</span>
-                        <span className="w-20 text-left">Impact</span>
-                        <span className="w-40 text-right">Actual</span>
-                        <span className="w-40 text-right">Forecast</span>
-                        <span className="w-40 text-right">Previous</span>
+                      <div className="hidden border-t border-[var(--panel-border)] px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)] md:grid md:grid-cols-[90px_90px_110px_1fr_140px_140px_140px]">
+                        <span className="text-left">Time</span>
+                        <span className="text-left">Country</span>
+                        <span className="text-left">Impact</span>
+                        <span className="text-left">Event</span>
+                        <span className="text-right">Actual</span>
+                        <span className="text-right">Forecast</span>
+                        <span className="text-right">Previous</span>
                       </div>
                     </div>
                     <div className="divide-y divide-[var(--panel-border)]">
