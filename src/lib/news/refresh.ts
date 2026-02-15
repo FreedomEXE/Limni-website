@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { fetchForexFactoryCalendarEvents } from "./fetch";
 import { writeNewsWeeklySnapshot } from "./store";
 import type { NewsEvent } from "./types";
@@ -20,7 +20,7 @@ function buildAnnouncements(events: NewsEvent[], nowUtc: DateTime) {
 export async function refreshNewsSnapshot() {
   const events = await fetchForexFactoryCalendarEvents();
   const nowUtc = DateTime.utc();
-  const weekOpenUtc = getWeekOpenUtc(nowUtc);
+  const weekOpenUtc = getDisplayWeekOpenUtc(nowUtc);
   const announcements = buildAnnouncements(events, nowUtc);
 
   await writeNewsWeeklySnapshot({

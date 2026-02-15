@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { formatDateTimeET } from "@/lib/time";
 import { listNewsWeeks, readNewsWeeklySnapshot } from "@/lib/news/store";
 import { refreshNewsSnapshot } from "@/lib/news/refresh";
+import { listPerformanceWeeks } from "@/lib/performanceSnapshots";
 import NewsContentTabs from "@/components/news/NewsContentTabs";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
@@ -33,18 +34,26 @@ export default async function NewsPage({ searchParams }: PageProps) {
   const view =
     viewParam === "announcements" || viewParam === "impact" ? viewParam : "calendar";
 
-  let weeks = await listNewsWeeks(52);
-  if (weeks.length === 0) {
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  let newsWeeks = await listNewsWeeks(520);
+  if (newsWeeks.length === 0 || !newsWeeks.includes(currentWeekOpenUtc)) {
     await refreshNewsSnapshot();
-    weeks = await listNewsWeeks(52);
+    newsWeeks = await listNewsWeeks(520);
   }
 
-  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  let performanceWeeks: string[] = [];
+  try {
+    performanceWeeks = await listPerformanceWeeks(520);
+  } catch {
+    performanceWeeks = [];
+  }
+
+  const mergedWeeks = Array.from(new Set([...newsWeeks, ...performanceWeeks]));
   const weekOptions = buildDataWeekOptions({
-    historicalWeeks: weeks,
+    historicalWeeks: mergedWeeks,
     currentWeekOpenUtc,
     includeAll: false,
-    limit: 52,
+    limit: 520,
   }).filter((item): item is string => item !== "all");
   const selectedWeek =
     (resolveWeekSelection({
@@ -53,7 +62,11 @@ export default async function NewsPage({ searchParams }: PageProps) {
       currentWeekOpenUtc,
       allowAll: false,
     }) as string | null) ?? null;
-  const snapshot = selectedWeek ? await readNewsWeeklySnapshot(selectedWeek) : null;
+  let snapshot = selectedWeek ? await readNewsWeeklySnapshot(selectedWeek) : null;
+  if (!snapshot && selectedWeek && selectedWeek === currentWeekOpenUtc) {
+    await refreshNewsSnapshot();
+    snapshot = await readNewsWeeklySnapshot(selectedWeek);
+  }
 
   const announcements = snapshot?.announcements ?? [];
   const calendar = snapshot?.calendar ?? [];
