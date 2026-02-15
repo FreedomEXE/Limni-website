@@ -163,6 +163,12 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   }> = [];
   let totals: Array<Awaited<ReturnType<typeof computeModelPerformance>>> = [];
   let anyPriced = false;
+  const lastRefreshText =
+    latestPriceRefresh
+      ? formatDateTimeET(latestPriceRefresh)
+      : isFutureWeekSelected
+        ? "Waiting for week open"
+        : "No refresh yet";
 
   if (isFutureWeekSelected && !hasSnapshots) {
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
@@ -381,9 +387,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Last refresh{" "}
-              {latestPriceRefresh
-                ? formatDateTimeET(latestPriceRefresh)
-                : "No refresh yet"}
+              {lastRefreshText}
             </span>
             {weekOptions.length > 0 ? (
               <PerformancePeriodSelector
