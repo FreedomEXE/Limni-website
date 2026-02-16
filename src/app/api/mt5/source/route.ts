@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getSessionRole } from "@/lib/auth";
+import { getSessionRole, getSessionUsername } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -20,7 +20,13 @@ const SOURCE_FILES: Record<string, { filePath: string; downloadName: string }> =
 
 export async function GET(request: NextRequest) {
   const role = await getSessionRole();
-  if (role !== "admin") {
+  const username = await getSessionUsername();
+  const adminUsername = process.env.AUTH_USERNAME || "admin";
+  const isSourceAllowed =
+    role === "admin" &&
+    Boolean(username) &&
+    username.toLowerCase() === adminUsername.toLowerCase();
+  if (!isSourceAllowed) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

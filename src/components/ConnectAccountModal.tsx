@@ -46,7 +46,7 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
     analyze: "idle" as StepState,
     save: "idle" as StepState,
   });
-  const [sessionRole, setSessionRole] = useState<"admin" | "viewer" | null>(null);
+  const [canAccessSource, setCanAccessSource] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -56,10 +56,10 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
         if (!response.ok) return;
         const data = (await response.json()) as {
           authenticated?: boolean;
-          role?: "admin" | "viewer" | null;
+          canAccessSource?: boolean;
         };
         if (!mounted) return;
-        setSessionRole(data.role ?? null);
+        setCanAccessSource(Boolean(data.canAccessSource));
       } catch {
         // Keep null role when unavailable.
       }
@@ -136,7 +136,7 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
           </p>
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Downloads (.ex5)
+              Downloads (Compiled .EX5)
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <a
@@ -144,33 +144,38 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
                 className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
                 download
               >
-                Download EA
+                Download EA (.EX5)
               </a>
               <a
                 href="/downloads/LimniSizingAudit.ex5"
                 className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
                 download
               >
-                Download Sizer
+                Download Sizer Script (.EX5)
               </a>
             </div>
-            {sessionRole === "admin" ? (
+            {!canAccessSource ? (
+              <p className="mt-3 text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Source files (.MQ5) are restricted.
+              </p>
+            ) : null}
+            {canAccessSource ? (
               <div className="mt-4 border-t border-[var(--panel-border)] pt-3">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Admin Source Access
+                  Freedom Source Access (.MQ5)
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <a
                     href="/api/mt5/source?file=ea"
                     className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
                   >
-                    EA Source (.mq5)
+                    Download EA Source (.MQ5)
                   </a>
                   <a
                     href="/api/mt5/source?file=sizer"
                     className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
                   >
-                    Sizer Source (.mq5)
+                    Download Sizer Source (.MQ5)
                   </a>
                 </div>
               </div>
