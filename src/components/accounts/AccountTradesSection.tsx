@@ -25,6 +25,7 @@ type AccountTradesSectionProps = {
   plannedPairsCount: number;
   plannedLegTotal: number;
   plannedModelChips: Array<[string, number]>;
+  dropNettedPlan?: boolean;
   planningMode?: "available" | "missing" | "legacy" | "disabled";
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
@@ -72,6 +73,7 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
     plannedPairsCount,
     plannedLegTotal,
     plannedModelChips,
+    dropNettedPlan = false,
     planningMode = "available",
     statusFilter,
     onStatusFilterChange,
@@ -332,7 +334,11 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
             const expanded =
               (Array.isArray(row.plannedLegs) && row.plannedLegs.length > 0) ||
               (Array.isArray(row.openLegs) && row.openLegs.length > 0);
-            const plannedLegCount = Number(row.legsPlannedCount ?? 0);
+            const plannedLegCount = dropNettedPlan
+              ? Math.abs(netPlanned) > 0
+                ? 1
+                : 0
+              : Number(row.legsPlannedCount ?? 0);
             const rowOpenLegCount = Number(row.legsOpenCount ?? 0);
             const legState =
               plannedLegCount === 0 && rowOpenLegCount > 0

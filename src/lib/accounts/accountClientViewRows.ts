@@ -98,11 +98,31 @@ function parseManagedModel(tag: string) {
   return model || null;
 }
 
+const SYMBOL_ALIAS_FAMILIES: Array<{ canonical: string; aliases: string[] }> = [
+  { canonical: "SPXUSD", aliases: ["SPXUSD", "SPX500", "SP500", "US500", "SPX", "US500USD"] },
+  { canonical: "NDXUSD", aliases: ["NDXUSD", "NDX100", "NAS100", "US100", "USTEC", "US100USD"] },
+  { canonical: "NIKKEIUSD", aliases: ["NIKKEIUSD", "NIKKEI225", "NIK225", "JPN225", "JP225"] },
+  { canonical: "WTIUSD", aliases: ["WTIUSD", "USOUSD", "USOIL", "XTIUSD", "WTI", "USCRUDE", "CL"] },
+];
+
+function normalizeAliasFamilySymbol(cleanedSymbol: string) {
+  for (const family of SYMBOL_ALIAS_FAMILIES) {
+    for (const alias of family.aliases) {
+      if (cleanedSymbol === alias || cleanedSymbol.startsWith(alias)) {
+        return family.canonical;
+      }
+    }
+  }
+  return cleanedSymbol;
+}
+
 function canonicalizeSymbol(rawSymbol: string) {
   const upper = String(rawSymbol ?? "").trim().toUpperCase();
   if (!upper) return "";
   const firstPart = upper.split(".")[0] ?? upper;
-  return firstPart.replace(/[^A-Z0-9]/g, "");
+  const cleaned = firstPart.replace(/[^A-Z0-9]/g, "");
+  if (!cleaned) return "";
+  return normalizeAliasFamilySymbol(cleaned);
 }
 
 function pickPreferredSymbol(existing: string | undefined, candidate: string) {

@@ -87,4 +87,31 @@ describe("account client view row helpers", () => {
     expect(rows[0]?.plannedLong).toBeCloseTo(5, 6);
     expect(rows[0]?.hasOpenExposure).toBe(true);
   });
+
+  test("normalizes index aliases when combining planned and live rows", () => {
+    const rows = buildSymbolRows(
+      [
+        {
+          symbol: "NIKKEIUSD",
+          units: 10,
+          legs: [{ model: "blended", direction: "SHORT", units: 10 }],
+        },
+      ],
+      [
+        {
+          symbol: "JPN225",
+          side: "SELL",
+          lots: 1,
+          pnl: -10.71,
+          legs: [{ id: "88", basket: "LimniBasket blended signal 2026-02-10", side: "SELL", lots: 1, pnl: -10.71 }],
+        },
+      ],
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.canonicalSymbol).toBe("NIKKEIUSD");
+    expect(rows[0]?.symbol).toBe("JPN225");
+    expect(rows[0]?.plannedShort).toBe(10);
+    expect(rows[0]?.openShort).toBe(1);
+  });
 });

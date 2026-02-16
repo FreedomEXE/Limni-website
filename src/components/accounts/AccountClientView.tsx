@@ -227,6 +227,7 @@ export default function AccountClientView({
           plannedPairsCount={drawerData.plannedPairs.length}
           plannedLegTotal={plannedLegTotal}
           plannedModelChips={plannedModelChips}
+          dropNettedPlan={Boolean(planningDiagnostics?.filtersApplied.dropNetted)}
           planningMode={planningMode}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}

@@ -78,6 +78,7 @@ input double FiveersBasketStopLossPct = 3.0;
 input bool EnforceStopLoss = true;
 input double StopLossRiskPct = 1.0;
 input double MaxStopLossRiskPct = 2.0;
+input double FiveersPerTradeRiskPct = 1.98;
 input bool AllowNonFullTradeModeForListing = true;
 input bool RequireHedgingAccount = true;
 input bool EnableWeeklyFlipClose = true;
@@ -256,6 +257,7 @@ int g_diagSkipRateLimit = 0;
 
 datetime g_orderTimes[];
 datetime g_lastPush = 0;
+datetime g_lastStructureWarn = 0;
 string g_dataSource = "realtime";
 string g_reconstructionStatus = "none";
 string g_reconstructionNote = "";
@@ -363,7 +365,10 @@ void LogSizing(const string symbol, double targetLot, double finalLot,
 double GetAssetMultiplier(const string assetClass);
 double GetTotalBasketLots();
 bool HasOpenPositions();
+bool HasPositionForSymbol(const string symbol);
 bool HasPositionForModel(const string symbol, const string model);
+int GetNetSignalForSymbol(const string symbol);
+string GetNetModelForSymbol(const string symbol, int netDirection);
 void UpdateState();
 void ManageBasket();
 void TryAddPositions();
@@ -2624,6 +2629,25 @@ bool HasOpenPositions()
   return false;
 }
 
+bool HasPositionForSymbol(const string symbol)
+{
+  int count = PositionsTotal();
+  for(int i = 0; i < count; i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+    if(PositionGetString(POSITION_SYMBOL) != symbol)
+      continue;
+    return true;
+  }
+  return false;
+}
+
 bool HasPositionForModel(const string symbol, const string model)
 {
   int count = PositionsTotal();
@@ -2640,11 +2664,65 @@ bool HasPositionForModel(const string symbol, const string model)
       continue;
     if(PositionGetString(POSITION_SYMBOL) != symbol)
       continue;
+    // In strict net mode (5ERS), only one symbol position is allowed regardless of model tag/comment.
+    if(IsFiveersMode())
+      return true;
     string comment = PositionGetString(POSITION_COMMENT);
     if(StringFind(comment, tag) >= 0)
       return true;
   }
   return false;
+}
+
+int GetNetSignalForSymbol(const string symbol)
+{
+  int net = 0;
+  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
+  {
+    if(g_brokerSymbols[i] != symbol)
+      continue;
+    if(i >= ArraySize(g_directions))
+      continue;
+    int dir = g_directions[i];
+    if(dir > 0)
+      net += 1;
+    else if(dir < 0)
+      net -= 1;
+  }
+  return net;
+}
+
+string GetNetModelForSymbol(const string symbol, int netDirection)
+{
+  string fallback = "blended";
+  string firstMatch = "";
+  bool hasDirectionalMatch = false;
+  int targetDir = (netDirection > 0 ? 1 : -1);
+
+  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
+  {
+    if(g_brokerSymbols[i] != symbol)
+      continue;
+
+    string model = NormalizeModelName(i < ArraySize(g_models) ? g_models[i] : "blended");
+    int dir = (i < ArraySize(g_directions) ? g_directions[i] : 0);
+    if(firstMatch == "")
+      firstMatch = model;
+
+    if(dir != targetDir)
+      continue;
+    hasDirectionalMatch = true;
+    if(model == "blended")
+      return model;
+    if(fallback == "blended")
+      fallback = model;
+  }
+
+  if(hasDirectionalMatch)
+    return fallback;
+  if(firstMatch != "")
+    return firstMatch;
+  return "blended";
 }
 
 string NormalizeModelName(const string value)
@@ -2866,6 +2944,27 @@ void TryAddPositions()
     return;
   if(!g_apiOk || !g_tradingAllowed || g_closeRequested)
     return;
+  if(!IsAccountStructureAllowed())
+  {
+    if(IsFiveersMode())
+    {
+      // Some servers report hedged mode even when user policy requires net behavior.
+      // Continue in 5ERS with strict one-position-per-symbol guards instead of hard-blocking.
+      datetime nowWarn = TimeCurrent();
+      if(g_lastStructureWarn == 0 || (nowWarn - g_lastStructureWarn) >= 300)
+      {
+        LogTradeError(StringFormat("Account structure reports %s in 5ERS mode. Continuing with strict symbol-net enforcement.",
+                                   MarginModeToString()));
+        g_lastStructureWarn = nowWarn;
+      }
+    }
+    else
+    {
+      LogTradeError(StringFormat("Account structure mismatch for mode %s (account=%s). Blocking new entries.",
+                                 StrategyModeToString(), MarginModeToString()));
+      return;
+    }
+  }
 
   datetime nowGmt = TimeGMT();
   if(IsMidWeekAttachBlocked(nowGmt))
@@ -2895,6 +2994,10 @@ void TryAddPositions()
     return;
   }
 
+  // 5ERS strict netting: only one order attempt per symbol per pass.
+  string seenSymbols[];
+  ArrayResize(seenSymbols, 0);
+
   for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
   {
     string symbol = g_brokerSymbols[i];
@@ -2908,6 +3011,46 @@ void TryAddPositions()
     string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
     string model = NormalizeModelName(i < ArraySize(g_models) ? g_models[i] : "blended");
     Log(StringFormat("TryAdd %d: symbol=%s model=%s dir=%d asset=%s", i, symbol, model, direction, assetClass));
+
+    if(IsFiveersMode())
+    {
+      bool alreadySeen = false;
+      for(int s = 0; s < ArraySize(seenSymbols); s++)
+      {
+        if(seenSymbols[s] == symbol)
+        {
+          alreadySeen = true;
+          break;
+        }
+      }
+      if(alreadySeen)
+      {
+        AddSkipReason("duplicate_open");
+        Log(StringFormat("TryAdd %d SKIP: symbol %s already processed this pass (5ERS net mode)", i, symbol));
+        continue;
+      }
+      int seenSize = ArraySize(seenSymbols);
+      ArrayResize(seenSymbols, seenSize + 1);
+      seenSymbols[seenSize] = symbol;
+
+      int netSignal = GetNetSignalForSymbol(symbol);
+      if(netSignal == 0)
+      {
+        Log(StringFormat("TryAdd %d SKIP: symbol %s net signal is flat in 5ERS mode", i, symbol));
+        continue;
+      }
+      direction = (netSignal > 0 ? 1 : -1);
+      model = GetNetModelForSymbol(symbol, direction);
+      Log(StringFormat("TryAdd %d 5ERS net: symbol=%s net=%d dir=%d model=%s",
+                       i, symbol, netSignal, direction, model));
+    }
+
+    if(IsFiveersMode() && HasPositionForSymbol(symbol))
+    {
+      AddSkipReason("duplicate_open");
+      Log(StringFormat("TryAdd %d SKIP: 5ERS net mode allows one live position per symbol (%s already open)", i, symbol));
+      continue;
+    }
 
     if(HasPositionForModel(symbol, model))
     {
@@ -2951,6 +3094,23 @@ void TryAddPositions()
     LegSizingResult sizing;
     bool ok = EvaluateLegSizing(symbol, assetClass, sizing);
     double vol = sizing.finalLot;
+    if(IsFiveersMode())
+    {
+      int netSignal = GetNetSignalForSymbol(symbol);
+      int netMagnitude = MathAbs(netSignal);
+      if(netMagnitude <= 0)
+      {
+        Log(StringFormat("TryAdd %d SKIP: symbol %s net magnitude is zero in 5ERS mode", i, symbol));
+        continue;
+      }
+      double scaled = vol * netMagnitude;
+      vol = NormalizeVolumeWithPolicy(symbol, scaled, true, SizingMaxOvershootPct, scaled);
+      if(vol > 0.0)
+      {
+        Log(StringFormat("TryAdd %d 5ERS net sizing: symbol=%s base=%.4f net=%d final=%.4f",
+                         i, symbol, sizing.finalLot, netMagnitude, vol));
+      }
+    }
     if(vol <= 0.0)
     {
       AddSkipReason("sizing_guard");
@@ -3012,11 +3172,30 @@ void ReconcilePositionsWithSignals()
 
     string symbol = PositionGetString(POSITION_SYMBOL);
     string model = ParseModelFromComment(PositionGetString(POSITION_COMMENT));
+    int currentDir = ((int)PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? 1 : -1);
+
+    if(IsFiveersMode())
+    {
+      int netSignal = GetNetSignalForSymbol(symbol);
+      int wantedDir = 0;
+      bool found = (netSignal != 0);
+      if(found)
+        wantedDir = (netSignal > 0 ? 1 : -1);
+
+      if(!found || wantedDir != currentDir)
+      {
+        if(!ClosePositionByTicket(ticket, "weekly_flip"))
+          LogTradeError(StringFormat("Flip close failed %s net=%d ticket=%llu", symbol, netSignal, ticket));
+        else
+          Log(StringFormat("Closed weekly flip %s net=%d ticket=%llu", symbol, netSignal, ticket));
+      }
+      continue;
+    }
+
     if(model == "" || model == "unknown")
       continue;
     StringToLower(model);
 
-    int currentDir = ((int)PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? 1 : -1);
     int wantedDir = 0;
     bool found = false;
     for(int j = 0; j < ArraySize(g_brokerSymbols); j++)
@@ -3108,6 +3287,9 @@ void ResetLoserAddCounts()
 
 bool TryAddToLosingLeg(const string symbol, const string model, int direction, const string assetClass)
 {
+  // 5ERS requires strict net behavior: one live position per symbol, no stacking adds.
+  if(IsFiveersMode())
+    return false;
   if(!EnableLoserAddToTarget)
     return false;
   if(direction == 0)
@@ -3276,8 +3458,16 @@ bool CalculateRiskStopLoss(const string symbol, int direction, double volume, do
   if(maxRiskPct <= 0.0)
     maxRiskPct = 2.0;
   double requestedRiskPct = StopLossRiskPct;
+  if(IsFiveersMode())
+  {
+    requestedRiskPct = FiveersPerTradeRiskPct;
+    if(requestedRiskPct <= 0.0)
+      requestedRiskPct = maxRiskPct * 0.99;
+  }
   if(requestedRiskPct <= 0.0)
     return false;
+  if(IsFiveersMode() && requestedRiskPct >= maxRiskPct)
+    requestedRiskPct = maxRiskPct * 0.99;
   if(requestedRiskPct > maxRiskPct)
     requestedRiskPct = maxRiskPct;
 
