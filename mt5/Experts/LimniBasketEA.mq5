@@ -23,7 +23,7 @@ enum StrategyProfile
 input StrategyProfile StrategyMode = PROFILE_AUTO;
 input bool AutoProfileByBroker = true;
 input string EightcapBrokerHints = "eightcap";
-input string FiveersBrokerHints = "5ers,the5ers,fiveers,fivepercent";
+input string FiveersBrokerHints = "5ers,the5ers,fiveers,fivepercent,fxify";
 enum RiskProfile
 {
   RISK_HIGH = 0,
@@ -122,6 +122,8 @@ input string ProfileLabelOverride = "";
 input string AccountClassLabelOverride = "";
 input string UserLabel = "";
 input int ClosedHistoryDays = 30;
+input bool RequireFullUniverseSizingReady = true;
+input int UniverseSizingCheckCooldownSeconds = 60;
 input bool EnableReconnectReconstruction = true;
 input int ReconstructIfOfflineMinutes = 60;
 input int ReconstructionMaxDays = 14;
@@ -264,6 +266,10 @@ int g_diagSkipPendingLegFill = 0;
 datetime g_orderTimes[];
 datetime g_lastPush = 0;
 datetime g_lastStructureWarn = 0;
+datetime g_lastUniverseGateWarn = 0;
+datetime g_lastUniverseSizingCheck = 0;
+bool g_universeSizingReady = false;
+string g_universeSizingReason = "";
 string g_dataSource = "realtime";
 string g_reconstructionStatus = "none";
 string g_reconstructionNote = "";
@@ -454,6 +460,8 @@ int CountUniquePlannedPairs();
 int CountExpectedUniversePairs();
 bool HasPlannedSymbol(const string symbol);
 string GetMissingUniversePairs();
+bool FindAcceptedSymbolIndex(const string apiSymbol, int &indexOut);
+bool IsUniverseSizingReady(string &reason);
 int CountSignalsByModel(const string model);
 int CountOpenPositionsByModel(const string model);
 void UpdateDrawdown();
@@ -3104,6 +3112,25 @@ void TryAddPositions()
     }
   }
 
+  string universeReason = "";
+  if(!IsUniverseSizingReady(universeReason))
+  {
+    datetime nowWarn = TimeCurrent();
+    if(g_lastUniverseGateWarn == 0 || (nowWarn - g_lastUniverseGateWarn) >= 60)
+    {
+      LogTradeError(StringFormat(
+        "Universe/sizing gate blocked new entries: %s (require_all=%s, expected=%d, planned=%d, missing=%s)",
+        universeReason,
+        RequireFullUniverseSizingReady ? "true" : "false",
+        CountExpectedUniversePairs(),
+        CountUniquePlannedPairs(),
+        GetMissingUniversePairs()
+      ));
+      g_lastUniverseGateWarn = nowWarn;
+    }
+    return;
+  }
+
   datetime nowGmt = TimeGMT();
   if(IsMidWeekAttachBlocked(nowGmt))
     return;
@@ -4890,6 +4917,8 @@ void UpdateDashboard()
   int totalPairs = CountUniquePlannedPairs();
   int expectedPairs = CountExpectedUniversePairs();
   string missingPairs = GetMissingUniversePairs();
+  string universeGateReason = "";
+  bool universeGateReady = IsUniverseSizingReady(universeGateReason);
   int openPairs = CountOpenPairs();
   int openPositions = CountOpenPositions();
   double totalLots = GetTotalBasketLots();
@@ -5069,6 +5098,13 @@ void UpdateDashboard()
 
     SetLabelText(g_dashboardLines[19], "| CHECKS                                                   |", headingColor);
     string alertLine = (g_lastApiError == "" ? "Alerts: none" : "Alerts: " + errorText);
+    if(!universeGateReady)
+    {
+      if(alertLine == "Alerts: none")
+        alertLine = "Alerts: universe gate " + universeGateReason;
+      else
+        alertLine = alertLine + " | universe gate " + universeGateReason;
+    }
     if(showWaitingSnapshot)
     {
       if(alertLine == "Alerts: none")
@@ -5110,7 +5146,10 @@ void UpdateDashboard()
     SetLabelText(g_dashboardLines[16], "SIZING", headingColor);
     SetLabelText(g_dashboardLines[17], lotLine, dimColor);
     SetLabelText(g_dashboardLines[18], multLine + "  |  " + trailLine, dimColor);
-    SetLabelText(g_dashboardLines[19], pollLine + "  |  " + errorLine, errorColor);
+    string detailedErrorLine = pollLine + "  |  " + errorLine;
+    if(!universeGateReady)
+      detailedErrorLine += "  |  universe gate: " + universeGateReason;
+    SetLabelText(g_dashboardLines[19], detailedErrorLine, errorColor);
     usedLeft = 20;
   }
 
@@ -5535,6 +5574,112 @@ string GetMissingUniversePairs()
   if(missing == "")
     return "none";
   return missing;
+}
+
+bool FindAcceptedSymbolIndex(const string apiSymbol, int &indexOut)
+{
+  indexOut = -1;
+  string target = apiSymbol;
+  StringToUpper(target);
+
+  for(int i = 0; i < ArraySize(g_apiSymbols); i++)
+  {
+    string current = g_apiSymbols[i];
+    StringToUpper(current);
+    if(current == target)
+    {
+      indexOut = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsUniverseSizingReady(string &reason)
+{
+  reason = "disabled";
+  if(!RequireFullUniverseSizingReady)
+    return true;
+
+  int cooldown = UniverseSizingCheckCooldownSeconds;
+  if(cooldown < 5)
+    cooldown = 5;
+
+  datetime now = TimeCurrent();
+  if(g_lastUniverseSizingCheck != 0 && (now - g_lastUniverseSizingCheck) < cooldown)
+  {
+    reason = g_universeSizingReason;
+    return g_universeSizingReady;
+  }
+
+  g_lastUniverseSizingCheck = now;
+  g_universeSizingReady = false;
+  g_universeSizingReason = "unknown";
+
+  string mode = AssetFilter;
+  StringToLower(mode);
+  if(mode != "" && mode != "all")
+  {
+    g_universeSizingReason = "asset_filter_not_all";
+    reason = g_universeSizingReason;
+    return false;
+  }
+
+  string fxPairs[28] = {"EURUSD","GBPUSD","AUDUSD","NZDUSD","USDJPY","USDCHF","USDCAD","EURGBP",
+                        "EURJPY","EURCHF","EURAUD","EURNZD","EURCAD","GBPJPY","GBPCHF","GBPAUD",
+                        "GBPNZD","GBPCAD","AUDJPY","AUDCHF","AUDCAD","AUDNZD","NZDJPY","NZDCHF",
+                        "NZDCAD","CADJPY","CADCHF","CHFJPY"};
+  string indexPairs[3] = {"SPXUSD","NDXUSD","NIKKEIUSD"};
+  string cryptoPairs[2] = {"BTCUSD","ETHUSD"};
+  string commodityPairs[3] = {"XAUUSD","XAGUSD","WTIUSD"};
+
+  string universe[36];
+  int u = 0;
+  for(int i = 0; i < 28; i++) universe[u++] = fxPairs[i];
+  for(int i = 0; i < 3; i++) universe[u++] = indexPairs[i];
+  for(int i = 0; i < 2; i++) universe[u++] = cryptoPairs[i];
+  for(int i = 0; i < 3; i++) universe[u++] = commodityPairs[i];
+
+  for(int i = 0; i < 36; i++)
+  {
+    string apiSymbol = universe[i];
+    int idx = -1;
+    if(!FindAcceptedSymbolIndex(apiSymbol, idx))
+    {
+      g_universeSizingReason = "missing_or_unresolved_" + apiSymbol;
+      reason = g_universeSizingReason;
+      return false;
+    }
+
+    string brokerSymbol = (idx < ArraySize(g_brokerSymbols) ? g_brokerSymbols[idx] : "");
+    if(brokerSymbol == "")
+    {
+      g_universeSizingReason = "broker_symbol_empty_" + apiSymbol;
+      reason = g_universeSizingReason;
+      return false;
+    }
+
+    if(!IsTradableSymbol(brokerSymbol))
+    {
+      g_universeSizingReason = "not_tradable_" + brokerSymbol;
+      reason = g_universeSizingReason;
+      return false;
+    }
+
+    string assetClass = (idx < ArraySize(g_assetClasses) ? g_assetClasses[idx] : "fx");
+    LegSizingResult sizing;
+    if(!EvaluateLegSizing(brokerSymbol, assetClass, sizing) || sizing.finalLot <= 0.0)
+    {
+      g_universeSizingReason = "sizing_failed_" + brokerSymbol;
+      reason = g_universeSizingReason;
+      return false;
+    }
+  }
+
+  g_universeSizingReady = true;
+  g_universeSizingReason = "ok";
+  reason = g_universeSizingReason;
+  return true;
 }
 
 int CountSignalsByModel(const string model)
