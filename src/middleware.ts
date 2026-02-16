@@ -7,6 +7,11 @@ const SESSION_SECRETS = new Set(["admin", "viewer", "authenticated"]);
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Never serve raw MT5 source files from web routes.
+  if (pathname.toLowerCase().endsWith(".mq5")) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
   // Allow login page and API/bot routes without auth
   if (pathname === "/login" || pathname.startsWith("/api/") || pathname.startsWith("/bot/")) {
     return NextResponse.next();

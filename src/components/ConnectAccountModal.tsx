@@ -108,24 +108,34 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
         <div className="space-y-4 text-sm text-[color:var(--muted)]">
           <p>
             MT5 accounts are connected by running the LimniBasket EA on your broker terminal.
-            Download the EA file below and follow the setup guide to configure the push URL and token.
+            Source code is not distributed through the app. Download the compiled packages (.ex5),
+            then configure the push URL, token, and license key.
           </p>
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Download EA
+              Downloads (.ex5)
             </p>
-            <a
-              href="/downloads/LimniBasketEA.mq5"
-              className="mt-2 inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-              download
-            >
-              Download MT5 EA
-            </a>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <a
+                href="/downloads/LimniBasketEA.ex5"
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+                download
+              >
+                Download EA
+              </a>
+              <a
+                href="/downloads/LimniSizingAudit.ex5"
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+                download
+              >
+                Download Sizer
+              </a>
+            </div>
           </div>
           <ol className="list-decimal space-y-2 pl-5 text-xs uppercase tracking-[0.2em]">
             <li>Open MT5 and add the EA under Experts.</li>
             <li>Enable WebRequest for the Limni push URL.</li>
-            <li>Set the push token in EA inputs to match the app.</li>
+            <li>Set the push token and license key in EA inputs.</li>
             <li>Attach EA to one chart and keep terminal running.</li>
           </ol>
         </div>

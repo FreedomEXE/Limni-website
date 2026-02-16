@@ -4,6 +4,7 @@ import { ensureMt5AccountSchema, upsertMt5Account } from "@/lib/mt5Store";
 import type { Mt5AccountSnapshot, Mt5LotMapEntry } from "@/lib/mt5Store";
 import { isReconstructionEnabledForAccount } from "@/lib/config/eaFeatures";
 import { emitReconstructionEvent } from "@/lib/monitoring/reconstructionMetrics";
+import { validateMt5License } from "@/lib/mt5Licensing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -233,13 +234,28 @@ export async function POST(request: Request) {
   let payload: Record<string, unknown>;
   try {
     payload = (await request.json()) as Record<string, unknown>;
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
 
   const accountId = parseString(payload.account_id);
   if (!accountId) {
     return NextResponse.json({ error: "account_id is required." }, { status: 400 });
+  }
+  const licenseKey =
+    request.headers.get("x-mt5-license") ??
+    parseString(payload.license_key);
+  const licenseCheck = await validateMt5License({
+    accountId,
+    licenseKey,
+    server: parseString(payload.server),
+    broker: parseString(payload.broker),
+  });
+  if (!licenseCheck.ok) {
+    return NextResponse.json(
+      { error: "License validation failed.", code: licenseCheck.reason },
+      { status: 401 },
+    );
   }
 
   const reconstructionEnabled = isReconstructionEnabledForAccount(accountId);

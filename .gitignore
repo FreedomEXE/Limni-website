@@ -46,6 +46,7 @@ Thumbs.db
 
 # MT5 compiled files
 mt5/Experts/*.ex5
+public/downloads/*.mq5
 
 # Scraper
 scraper/node_modules/

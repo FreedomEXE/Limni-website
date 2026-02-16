@@ -115,8 +115,12 @@ input int DashboardUrlMaxLen = 84;
 input bool PushAccountStats = true;
 input string PushUrl = "https://limni-website-nine.vercel.app/api/mt5/push";
 input string PushToken = "2121";
+input string LicenseKey = "";
 input int PushIntervalSeconds = 30;
 input string AccountLabel = "";
+input string ProfileLabelOverride = "";
+input string AccountClassLabelOverride = "";
+input string UserLabel = "";
 input int ClosedHistoryDays = 30;
 input bool EnableReconnectReconstruction = true;
 input int ReconstructIfOfflineMinutes = 60;
@@ -252,8 +256,10 @@ int g_diagSkipNotTradable = 0;
 int g_diagSkipInvalidVolume = 0;
 int g_diagSkipSizingGuard = 0;
 int g_diagSkipOrderFailed = 0;
+int g_diagSkipMaxVolume = 0;
 int g_diagSkipMaxPositions = 0;
 int g_diagSkipRateLimit = 0;
+int g_diagSkipPendingLegFill = 0;
 
 datetime g_orderTimes[];
 datetime g_lastPush = 0;
@@ -298,6 +304,8 @@ string DASH_MAP_TITLE = "LimniDash_map_title";
 
 string g_lastApiError = "";
 datetime g_lastApiErrorTime = 0;
+string g_lastStopLossReason = "";
+string g_lastOrderFailureKey = "";
 string g_dashboardLines[];
 string g_dashboardRightLines[];
 bool g_dashboardReady = false;
@@ -367,6 +375,9 @@ double GetTotalBasketLots();
 bool HasOpenPositions();
 bool HasPositionForSymbol(const string symbol);
 bool HasPositionForModel(const string symbol, const string model);
+bool HasMissingPlannedModelsForSymbol(const string symbol);
+double GetDirectionalOpenVolume(const string symbol, int direction);
+double ClampVolumeToSymbolDirectionLimit(const string symbol, int direction, double desiredVolume);
 int GetNetSignalForSymbol(const string symbol);
 string GetNetModelForSymbol(const string symbol, int netDirection);
 void UpdateState();
@@ -377,6 +388,10 @@ bool TryAddToLosingLeg(const string symbol, const string model, int direction, c
 double GetOpenVolumeForModelDirection(const string symbol, const string model, int direction, bool &hasLosing);
 bool PlaceOrder(const string symbol, int direction, double volume, const string model, const string reasonTag);
 bool CalculateRiskStopLoss(const string symbol, int direction, double volume, double entryPrice, double &stopLoss);
+bool EnforceBrokerStopDistance(const string symbol, int direction, double entryPrice, double &stopLoss);
+bool TryBuildFallbackCompliantStopLoss(const string symbol, int direction, double volume,
+                                       double entryPrice, double limitUsd, double minDistance,
+                                       double &stopLoss);
 double EstimatePositionRiskUsd(const string symbol, int direction, double volume, double entryPrice, double stopLoss);
 bool GetSymbolStats(const string symbol, SymbolStats &stats);
 void CloseAllPositions();
@@ -431,6 +446,8 @@ string FitDashboardText(const string value, int pixelWidth);
 string LeftDashboardText(const string value);
 string RightDashboardText(const string value);
 string EnsureTrailingSlash(const string url);
+string UrlEncode(const string value);
+string AppendQueryParam(const string url, const string key, const string value);
 int CountOpenPositions();
 int CountOpenPairs();
 int CountUniquePlannedPairs();
@@ -448,6 +465,9 @@ void RunReconstructionIfNeeded();
 double GetLegRiskScale();
 string RiskModeToString();
 string StrategyModeToString();
+string GetProfileLabel();
+string GetAccountClassLabel();
+string GetUserLabel();
 StrategyProfile GetEffectiveStrategyMode();
 string NormalizeBrokerText(const string value);
 bool BrokerMatchesHints(const string hintsCsv);
@@ -772,12 +792,20 @@ string BuildApiUrl()
   string url = ApiUrl;
   if(StringFind(url, "http") != 0)
     return url;
-  if(StringFind(url, "asset=") >= 0)
-    return url;
-  if(AssetFilter == "")
-    return url;
-  string sep = StringFind(url, "?") >= 0 ? "&" : "?";
-  return url + sep + "asset=" + AssetFilter;
+  if(StringFind(url, "asset=") < 0 && AssetFilter != "")
+    url = AppendQueryParam(url, "asset", AssetFilter);
+
+  string accountId = IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+  string server = AccountInfoString(ACCOUNT_SERVER);
+  string broker = AccountInfoString(ACCOUNT_COMPANY);
+
+  if(StringFind(url, "account_id=") < 0)
+    url = AppendQueryParam(url, "account_id", accountId);
+  if(StringFind(url, "server=") < 0 && server != "")
+    url = AppendQueryParam(url, "server", server);
+  if(StringFind(url, "broker=") < 0 && broker != "")
+    url = AppendQueryParam(url, "broker", broker);
+  return url;
 }
 
 string BuildPushUrl()
@@ -804,6 +832,16 @@ bool FetchApi(string &json)
                            "Accept-Encoding: identity\r\n"
                            "Connection: close\r\n"
                            "User-Agent: MT5-LimniBasket/2.1\r\n";
+  string accountId = IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+  string server = AccountInfoString(ACCOUNT_SERVER);
+  string broker = AccountInfoString(ACCOUNT_COMPANY);
+  request_headers += "x-mt5-account-id: " + accountId + "\r\n";
+  if(server != "")
+    request_headers += "x-mt5-server: " + server + "\r\n";
+  if(broker != "")
+    request_headers += "x-mt5-broker: " + broker + "\r\n";
+  if(LicenseKey != "")
+    request_headers += "x-mt5-license: " + LicenseKey + "\r\n";
   string url = BuildApiUrl();
   int status = WebRequest("GET", url, request_headers, timeout, data, result, headers);
   if(status == 404)
@@ -1823,6 +1861,38 @@ string StrategyModeToString()
   return "CUSTOM";
 }
 
+string GetProfileLabel()
+{
+  if(ProfileLabelOverride != "")
+    return ProfileLabelOverride;
+  return StrategyModeToString();
+}
+
+string GetAccountClassLabel()
+{
+  if(AccountClassLabelOverride != "")
+    return AccountClassLabelOverride;
+
+  StrategyProfile mode = GetEffectiveStrategyMode();
+  if(mode == PROFILE_5ERS)
+    return "Prop Account";
+  return "Broker Account";
+}
+
+string GetUserLabel()
+{
+  if(UserLabel != "")
+    return UserLabel;
+  if(AccountLabel != "")
+    return AccountLabel;
+
+  string accountName = AccountInfoString(ACCOUNT_NAME);
+  if(accountName != "")
+    return accountName;
+
+  return IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+}
+
 StrategyProfile GetEffectiveStrategyMode()
 {
   if(StrategyMode == PROFILE_EIGHTCAP || StrategyMode == PROFILE_5ERS || StrategyMode == PROFILE_CUSTOM)
@@ -2674,6 +2744,45 @@ bool HasPositionForModel(const string symbol, const string model)
   return false;
 }
 
+bool HasMissingPlannedModelsForSymbol(const string symbol)
+{
+  if(symbol == "")
+    return false;
+  if(IsFiveersMode())
+    return false;
+
+  string checkedModels[];
+  ArrayResize(checkedModels, 0);
+
+  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
+  {
+    if(g_brokerSymbols[i] != symbol)
+      continue;
+
+    string plannedModel = NormalizeModelName(i < ArraySize(g_models) ? g_models[i] : "blended");
+    bool alreadyChecked = false;
+    for(int m = 0; m < ArraySize(checkedModels); m++)
+    {
+      if(checkedModels[m] == plannedModel)
+      {
+        alreadyChecked = true;
+        break;
+      }
+    }
+    if(alreadyChecked)
+      continue;
+
+    int size = ArraySize(checkedModels);
+    ArrayResize(checkedModels, size + 1);
+    checkedModels[size] = plannedModel;
+
+    if(!HasPositionForModel(symbol, plannedModel))
+      return true;
+  }
+
+  return false;
+}
+
 int GetNetSignalForSymbol(const string symbol)
 {
   int net = 0;
@@ -2767,6 +2876,35 @@ void UpdateState()
   datetime nowGmt = TimeGMT();
   bool afterStart = (nowGmt >= g_weekStartGmt);
   bool hasPositions = HasOpenPositions();
+
+  // Re-attach safety: if positions already exist, keep state aligned so management/add logic can run.
+  if(hasPositions)
+  {
+    if(g_baselineEquity <= 0.0)
+      g_baselineEquity = AccountInfoDouble(ACCOUNT_BALANCE);
+
+    if(g_apiOk && g_tradingAllowed)
+    {
+      if(g_state != STATE_ACTIVE)
+      {
+        g_state = STATE_ACTIVE;
+        g_basketTpArmedAt = TimeCurrent();
+        g_basketTpGraceLogged = false;
+        SaveState();
+        Log("State -> ACTIVE (open positions detected on attach).");
+      }
+    }
+    else
+    {
+      if(g_state != STATE_PAUSED)
+      {
+        g_state = STATE_PAUSED;
+        SaveState();
+        Log("State -> PAUSED (open positions with API disallowed/unavailable).");
+      }
+    }
+    return;
+  }
 
   if(!hasPositions && IsMidWeekAttachBlocked(nowGmt))
   {
@@ -3054,6 +3192,13 @@ void TryAddPositions()
 
     if(HasPositionForModel(symbol, model))
     {
+      if(HasMissingPlannedModelsForSymbol(symbol))
+      {
+        AddSkipReason("pending_leg_fill");
+        Log(StringFormat("TryAdd %d SKIP: defer loser add for %s %s (planned legs still missing)",
+                         i, symbol, model));
+        continue;
+      }
       Log(StringFormat("TryAdd %d: position exists, trying loser add", i));
       if(TryAddToLosingLeg(symbol, model, direction, assetClass))
       {
@@ -3119,6 +3264,25 @@ void TryAddPositions()
       LogTradeError(StringFormat("%s sizing blocked (%s) volume=%.2f", symbol, sizing.reasonKey, vol));
       continue;
     }
+
+    // Respect broker max directional symbol volume (prevents ret=10034 "limit volume").
+    double limitedVol = ClampVolumeToSymbolDirectionLimit(symbol, direction, vol);
+    if(limitedVol <= 0.0)
+    {
+      AddSkipReason("max_volume_reached");
+      double symbolLimit = SymbolInfoDouble(symbol, SYMBOL_VOLUME_LIMIT);
+      double usedDirVol = GetDirectionalOpenVolume(symbol, direction);
+      LogTradeError(StringFormat("%s max volume reached pre-send (limit=%.2f used_dir=%.2f req=%.4f)",
+                                 symbol, symbolLimit, usedDirVol, vol));
+      continue;
+    }
+    if(limitedVol + 1e-9 < vol)
+    {
+      Log(StringFormat("TryAdd %d volume clamp by symbol limit: %s %.4f -> %.4f",
+                       i, symbol, vol, limitedVol));
+      vol = limitedVol;
+    }
+
     if(openPositions >= MaxOpenPositions)
     {
       AddSkipReason("max_positions");
@@ -3139,7 +3303,10 @@ void TryAddPositions()
 
     if(!PlaceOrder(symbol, direction, vol, model, "signal"))
     {
-      AddSkipReason("order_failed");
+      string failKey = g_lastOrderFailureKey;
+      if(failKey == "")
+        failKey = "order_failed";
+      AddSkipReason(failKey);
       if(IsIndexSymbol(symbol))
         LogIndexSkip(symbol, "order send failed", "order_failed");
       Log(StringFormat("TryAdd %d FAILED: PlaceOrder failed for %s %s", i, symbol, model));
@@ -3377,6 +3544,7 @@ bool TryAddToLosingLeg(const string symbol, const string model, int direction, c
 //+------------------------------------------------------------------+
 bool PlaceOrder(const string symbol, int direction, double volume, const string model, const string reasonTag)
 {
+  g_lastOrderFailureKey = "";
   double price = direction > 0 ? SymbolInfoDouble(symbol, SYMBOL_ASK)
                                : SymbolInfoDouble(symbol, SYMBOL_BID);
   double stopLoss = 0.0;
@@ -3384,8 +3552,10 @@ bool PlaceOrder(const string symbol, int direction, double volume, const string 
   {
     if(!CalculateRiskStopLoss(symbol, direction, volume, price, stopLoss))
     {
-      LogTradeError(StringFormat("Order blocked %s %s vol=%.2f (unable to set compliant SL)",
-                                 symbol, DirectionToString(direction), volume));
+      string reason = (g_lastStopLossReason == "" ? "unknown" : g_lastStopLossReason);
+      g_lastOrderFailureKey = "order_failed";
+      LogTradeError(StringFormat("Order blocked %s %s vol=%.2f (unable to set compliant SL: %s)",
+                                 symbol, DirectionToString(direction), volume, reason));
       return false;
     }
   }
@@ -3400,8 +3570,29 @@ bool PlaceOrder(const string symbol, int direction, double volume, const string 
   if(!result)
   {
     int errorCode = GetLastError();
-    LogTradeError(StringFormat("Order failed %s %s vol=%.2f code=%d",
-                               symbol, DirectionToString(direction), volume, errorCode));
+    long retcode = g_trade.ResultRetcode();
+    string retDesc = g_trade.ResultRetcodeDescription();
+    string retComment = g_trade.ResultComment();
+    string retDescLower = retDesc;
+    StringToLower(retDescLower);
+    string retCommentLower = retComment;
+    StringToLower(retCommentLower);
+    bool limitVolume = (retcode == TRADE_RETCODE_LIMIT_VOLUME ||
+                        StringFind(retDescLower, "limit volume") >= 0 ||
+                        StringFind(retCommentLower, "limit volume") >= 0);
+    g_lastOrderFailureKey = (limitVolume ? "max_volume_reached" : "order_failed");
+    double marginNeed = CalculateMarginRequired(symbol, volume);
+    double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+    LogTradeError(StringFormat("Order failed %s %s vol=%.2f code=%d ret=%I64d desc=%s comment=%s free=%.2f need=%.2f reason=%s",
+                               symbol, DirectionToString(direction), volume, errorCode, retcode,
+                               retDesc, retComment, freeMargin, marginNeed, g_lastOrderFailureKey));
+    if(limitVolume)
+    {
+      double symbolLimit = SymbolInfoDouble(symbol, SYMBOL_VOLUME_LIMIT);
+      double usedDirVol = GetDirectionalOpenVolume(symbol, direction);
+      LogTradeError(StringFormat("%s max volume reached (limit=%.2f used_dir=%.2f req=%.2f)",
+                                 symbol, symbolLimit, usedDirVol, volume));
+    }
     return false;
   }
 
@@ -3444,13 +3635,20 @@ double GetOpenSymbolRiskUsd(const string symbol)
 
 bool CalculateRiskStopLoss(const string symbol, int direction, double volume, double entryPrice, double &stopLoss)
 {
+  g_lastStopLossReason = "";
   stopLoss = 0.0;
   if(direction == 0 || volume <= 0.0 || entryPrice <= 0.0)
+  {
+    g_lastStopLossReason = "invalid_inputs";
     return false;
+  }
 
   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
   if(balance <= 0.0)
+  {
+    g_lastStopLossReason = "balance_zero";
     return false;
+  }
 
   double maxRiskPct = MaxStopLossRiskPct;
   if(IsFiveersMode())
@@ -3465,7 +3663,10 @@ bool CalculateRiskStopLoss(const string symbol, int direction, double volume, do
       requestedRiskPct = maxRiskPct * 0.99;
   }
   if(requestedRiskPct <= 0.0)
+  {
+    g_lastStopLossReason = "requested_risk_zero";
     return false;
+  }
   if(IsFiveersMode() && requestedRiskPct >= maxRiskPct)
     requestedRiskPct = maxRiskPct * 0.99;
   if(requestedRiskPct > maxRiskPct)
@@ -3476,17 +3677,25 @@ bool CalculateRiskStopLoss(const string symbol, int direction, double volume, do
   if(tickValue <= 0.0)
     tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
   if(tickSize <= 0.0 || tickValue <= 0.0)
+  {
+    g_lastStopLossReason = "tick_spec_unavailable";
     return false;
+  }
 
   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
   int stopLevelPts = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
+  int freezeLevelPts = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_FREEZE_LEVEL);
   double minDistance = 0.0;
-  if(point > 0.0 && stopLevelPts > 0)
-    minDistance = point * stopLevelPts;
+  int requiredLevelPts = MathMax(stopLevelPts, freezeLevelPts);
+  if(point > 0.0 && requiredLevelPts > 0)
+    minDistance = point * requiredLevelPts;
 
   double riskUsd = balance * requestedRiskPct / 100.0;
   if(riskUsd <= 0.0)
+  {
+    g_lastStopLossReason = "risk_usd_zero";
     return false;
+  }
 
   double maxAllowedUsd = balance * maxRiskPct / 100.0;
   double limitUsd = maxAllowedUsd;
@@ -3494,40 +3703,80 @@ bool CalculateRiskStopLoss(const string symbol, int direction, double volume, do
   {
     double existingRiskUsd = GetOpenSymbolRiskUsd(symbol);
     if(existingRiskUsd >= DBL_MAX)
+    {
+      g_lastStopLossReason = "existing_symbol_risk_unknown";
       return false;
+    }
     limitUsd = maxAllowedUsd - existingRiskUsd;
     if(limitUsd <= 0.0)
+    {
+      g_lastStopLossReason = "symbol_risk_limit_exhausted";
       return false;
+    }
     if(riskUsd > limitUsd)
       riskUsd = limitUsd;
   }
 
   double priceDistance = (riskUsd / (tickValue * volume)) * tickSize;
   if(priceDistance <= 0.0)
+  {
+    g_lastStopLossReason = "price_distance_zero";
     return false;
+  }
+
+  int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+  double minPositivePrice = point;
+  if(minPositivePrice <= 0.0)
+    minPositivePrice = tickSize;
+  if(minPositivePrice <= 0.0)
+    minPositivePrice = 1e-6;
+  double maxBuyDistance = 0.0;
+  if(direction > 0)
+  {
+    maxBuyDistance = entryPrice - minPositivePrice;
+    if(maxBuyDistance <= 0.0)
+    {
+      g_lastStopLossReason = "buy_sl_price_floor";
+      return false;
+    }
+    if(minDistance > maxBuyDistance + 1e-9)
+    {
+      g_lastStopLossReason = "broker_min_distance_exceeds_buy_price";
+      return false;
+    }
+    if(priceDistance > maxBuyDistance)
+      priceDistance = maxBuyDistance;
+  }
 
   if(priceDistance < minDistance)
     priceDistance = minDistance;
 
-  int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
   for(int attempt = 0; attempt < 3; attempt++)
   {
+    if(direction > 0 && priceDistance > maxBuyDistance)
+      priceDistance = maxBuyDistance;
     double rawStop = (direction > 0) ? (entryPrice - priceDistance)
                                      : (entryPrice + priceDistance);
+    if(direction > 0 && rawStop <= minPositivePrice)
+      rawStop = minPositivePrice;
     stopLoss = NormalizeDouble(rawStop, digits);
     if((direction > 0 && stopLoss >= entryPrice) || (direction < 0 && stopLoss <= entryPrice))
       return false;
+    if(!EnforceBrokerStopDistance(symbol, direction, entryPrice, stopLoss))
+      break;
 
     double actualRisk = EstimatePositionRiskUsd(symbol, direction, volume, entryPrice, stopLoss);
     if(actualRisk < 0.0)
-      return false;
+      break;
     if(actualRisk <= limitUsd * 1.001)
       return true;
 
     double adjust = limitUsd / actualRisk;
     if(adjust <= 0.0 || adjust >= 1.0)
-      return false;
+      break;
     priceDistance *= (adjust * 0.995);
+    if(direction > 0 && priceDistance > maxBuyDistance)
+      priceDistance = maxBuyDistance;
     if(priceDistance < minDistance)
     {
       priceDistance = minDistance;
@@ -3537,11 +3786,164 @@ bool CalculateRiskStopLoss(const string symbol, int direction, double volume, do
 
   double rawFinalStop = (direction > 0) ? (entryPrice - priceDistance)
                                         : (entryPrice + priceDistance);
+  if(direction > 0 && rawFinalStop <= minPositivePrice)
+    rawFinalStop = minPositivePrice;
   stopLoss = NormalizeDouble(rawFinalStop, digits);
-  double finalRisk = EstimatePositionRiskUsd(symbol, direction, volume, entryPrice, stopLoss);
-  if(finalRisk < 0.0)
+  if(!EnforceBrokerStopDistance(symbol, direction, entryPrice, stopLoss))
+  {
+    if(g_lastStopLossReason == "")
+      g_lastStopLossReason = "broker_distance_invalid";
     return false;
-  return (finalRisk <= limitUsd * 1.001);
+  }
+  double finalRisk = EstimatePositionRiskUsd(symbol, direction, volume, entryPrice, stopLoss);
+  if(finalRisk >= 0.0 && finalRisk <= limitUsd * 1.001)
+  {
+    g_lastStopLossReason = "";
+    return true;
+  }
+
+  // Fallback for symbols where risk-sized SL math can become invalid (e.g. very small lots on CFDs):
+  // place the nearest broker-compliant SL and keep strict max-risk enforcement.
+  bool ok = TryBuildFallbackCompliantStopLoss(symbol, direction, volume, entryPrice, limitUsd, minDistance, stopLoss);
+  if(!ok && g_lastStopLossReason == "")
+    g_lastStopLossReason = "fallback_failed_or_risk_limit";
+  if(ok)
+    g_lastStopLossReason = "";
+  return ok;
+}
+
+bool EnforceBrokerStopDistance(const string symbol, int direction, double entryPrice, double &stopLoss)
+{
+  if(direction == 0 || entryPrice <= 0.0 || stopLoss <= 0.0)
+  {
+    if(g_lastStopLossReason == "")
+      g_lastStopLossReason = "distance_invalid_inputs";
+    return false;
+  }
+
+  double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+  int stopLevelPts = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
+  int freezeLevelPts = (int)SymbolInfoInteger(symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+  int requiredLevelPts = MathMax(stopLevelPts, freezeLevelPts);
+  if(point <= 0.0 || requiredLevelPts <= 0)
+    return true;
+
+  // Small extra padding avoids edge rejections caused by rounding/spread movement.
+  double minDistance = point * (requiredLevelPts + 1);
+  int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+  double bid = SymbolInfoDouble(symbol, SYMBOL_BID);
+  double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
+
+  if(direction > 0)
+  {
+    double ref = (bid > 0.0 ? bid : entryPrice);
+    double maxAllowed = ref - minDistance;
+    if(stopLoss > maxAllowed)
+      stopLoss = NormalizeDouble(maxAllowed, digits);
+    if(stopLoss <= 0.0)
+    {
+      if(g_lastStopLossReason == "")
+        g_lastStopLossReason = "buy_stop_non_positive";
+      return false;
+    }
+    if(stopLoss >= entryPrice)
+    {
+      if(g_lastStopLossReason == "")
+        g_lastStopLossReason = "stop_not_below_entry";
+      return false;
+    }
+  }
+  else
+  {
+    double ref = (ask > 0.0 ? ask : entryPrice);
+    double minAllowed = ref + minDistance;
+    if(stopLoss < minAllowed)
+      stopLoss = NormalizeDouble(minAllowed, digits);
+    if(stopLoss <= entryPrice)
+    {
+      if(g_lastStopLossReason == "")
+        g_lastStopLossReason = "stop_not_above_entry";
+      return false;
+    }
+  }
+
+  return (stopLoss > 0.0);
+}
+
+bool TryBuildFallbackCompliantStopLoss(const string symbol, int direction, double volume,
+                                       double entryPrice, double limitUsd, double minDistance,
+                                       double &stopLoss)
+{
+  stopLoss = 0.0;
+  if(direction == 0 || volume <= 0.0 || entryPrice <= 0.0 || limitUsd <= 0.0)
+  {
+    if(g_lastStopLossReason == "")
+      g_lastStopLossReason = "fallback_invalid_inputs";
+    return false;
+  }
+
+  double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+  if(tickSize <= 0.0)
+    tickSize = SymbolInfoDouble(symbol, SYMBOL_POINT);
+  if(tickSize <= 0.0)
+  {
+    if(g_lastStopLossReason == "")
+      g_lastStopLossReason = "fallback_tick_spec_unavailable";
+    return false;
+  }
+
+  double distance = minDistance;
+  if(distance <= 0.0)
+    distance = tickSize;
+
+  double minPositivePrice = SymbolInfoDouble(symbol, SYMBOL_POINT);
+  if(minPositivePrice <= 0.0)
+    minPositivePrice = tickSize;
+  if(minPositivePrice <= 0.0)
+    minPositivePrice = 1e-6;
+
+  if(direction > 0)
+  {
+    double maxBuyDistance = entryPrice - minPositivePrice;
+    if(maxBuyDistance <= 0.0)
+    {
+      if(g_lastStopLossReason == "")
+        g_lastStopLossReason = "fallback_buy_sl_price_floor";
+      return false;
+    }
+    if(distance > maxBuyDistance)
+      distance = maxBuyDistance;
+  }
+
+  int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+  double rawStop = (direction > 0) ? (entryPrice - distance)
+                                   : (entryPrice + distance);
+  if(direction > 0 && rawStop <= minPositivePrice)
+    rawStop = minPositivePrice;
+  stopLoss = NormalizeDouble(rawStop, digits);
+  if((direction > 0 && stopLoss >= entryPrice) || (direction < 0 && stopLoss <= entryPrice))
+  {
+    if(g_lastStopLossReason == "")
+      g_lastStopLossReason = "fallback_stop_side_invalid";
+    return false;
+  }
+  if(!EnforceBrokerStopDistance(symbol, direction, entryPrice, stopLoss))
+    return false;
+
+  double riskUsd = EstimatePositionRiskUsd(symbol, direction, volume, entryPrice, stopLoss);
+  if(riskUsd < 0.0)
+  {
+    if(g_lastStopLossReason == "")
+      g_lastStopLossReason = "fallback_risk_probe_failed";
+    return false;
+  }
+  if(riskUsd > limitUsd * 1.001)
+  {
+    if(g_lastStopLossReason == "")
+      g_lastStopLossReason = "fallback_risk_exceeds_limit";
+    return false;
+  }
+  return true;
 }
 
 double EstimatePositionRiskUsd(const string symbol, int direction, double volume, double entryPrice, double stopLoss)
@@ -3549,10 +3951,67 @@ double EstimatePositionRiskUsd(const string symbol, int direction, double volume
   ENUM_ORDER_TYPE type = (direction > 0 ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
   double pnl = 0.0;
   if(!OrderCalcProfit(type, symbol, volume, entryPrice, stopLoss, pnl))
-    return -1.0;
+  {
+    // Some CFD brokers reject profit probing for synthetic symbols; fall back to tick-value estimate.
+    double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+    if(tickSize <= 0.0)
+      tickSize = SymbolInfoDouble(symbol, SYMBOL_POINT);
+    double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE_PROFIT);
+    if(tickValue <= 0.0)
+      tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+    if(tickSize <= 0.0 || tickValue <= 0.0)
+      return -1.0;
+
+    double distance = MathAbs(entryPrice - stopLoss);
+    if(distance <= 0.0)
+      return 0.0;
+    double ticks = distance / tickSize;
+    return ticks * tickValue * volume;
+  }
   if(pnl >= 0.0)
     return 0.0;
   return -pnl;
+}
+
+double GetDirectionalOpenVolume(const string symbol, int direction)
+{
+  if(symbol == "" || direction == 0)
+    return 0.0;
+  double used = 0.0;
+  int total = PositionsTotal();
+  for(int i = 0; i < total; i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if(PositionGetString(POSITION_SYMBOL) != symbol)
+      continue;
+    int dir = ((int)PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? 1 : -1);
+    if(dir != direction)
+      continue;
+    used += PositionGetDouble(POSITION_VOLUME);
+  }
+  return used;
+}
+
+double ClampVolumeToSymbolDirectionLimit(const string symbol, int direction, double desiredVolume)
+{
+  if(desiredVolume <= 0.0 || direction == 0)
+    return 0.0;
+
+  double limitVol = SymbolInfoDouble(symbol, SYMBOL_VOLUME_LIMIT);
+  if(limitVol <= 0.0)
+    return desiredVolume;
+
+  double used = GetDirectionalOpenVolume(symbol, direction);
+  double available = limitVol - used;
+  if(available <= 0.0)
+    return 0.0;
+
+  double capped = MathMin(desiredVolume, available);
+  return NormalizeVolumeWithPolicy(symbol, capped, true, SizingMaxOvershootPct, capped);
 }
 //+------------------------------------------------------------------+
 bool GetSymbolStats(const string symbol, SymbolStats &stats)
@@ -4485,6 +4944,9 @@ void UpdateDashboard()
   string brokerLine = StringFormat("Broker: %s",
                                    CompactText(AccountInfoString(ACCOUNT_COMPANY), 18));
   string serverLine = StringFormat("Server: %s", CompactText(AccountInfoString(ACCOUNT_SERVER), 18));
+  string profileLabel = GetProfileLabel();
+  string accountClassLabel = GetAccountClassLabel();
+  string userLabel = GetUserLabel();
   string structureLine = StringFormat("Exec: %s", MarginModeToString());
   string weekLine = StringFormat("Week start: %s  |  Asset: %s",
                                  FormatTimeValue(g_weekStartGmt),
@@ -4569,10 +5031,10 @@ void UpdateDashboard()
 
   color headingColor = C'15,118,110';
 
-  SetLabelText(DASH_TITLE, "Limni Basket EA", C'15,23,42');
+  SetLabelText(DASH_TITLE, "Limni Basket EA | " + userLabel, C'15,23,42');
   if(compact)
   {
-    SetLabelText(DASH_TITLE, "[ LIMNI_BASKET_EA ]", C'15,23,42');
+    SetLabelText(DASH_TITLE, "[ LIMNI_BASKET_EA | " + userLabel + " ]", C'15,23,42');
     SetLabelText(g_dashboardLines[0], "+----------------------------------------------------------+", dimColor);
     SetLabelText(g_dashboardLines[1], "| STATUS                                                   |", headingColor);
     SetLabelText(g_dashboardLines[2], StringFormat("| state=%s trading=%s api=%s",
@@ -4580,11 +5042,11 @@ void UpdateDashboard()
                                                     g_tradingAllowed ? "allowed" : "blocked",
                                                     g_apiOk ? "ok" : "fail"), stateColor);
     SetLabelText(g_dashboardLines[3], StringFormat("| %s | %s", brokerLine, serverLine), dimColor);
-    SetLabelText(g_dashboardLines[4], StringFormat("| %s | profile=%s risk=%s",
+    SetLabelText(g_dashboardLines[4], StringFormat("| %s | class=%s profile=%s",
                                                     structureLine,
-                                                    StrategyModeToString(),
-                                                    RiskModeToString()), dimColor);
-    SetLabelText(g_dashboardLines[5], "| " + basketGuardLine + " | " + trailLine, dimColor);
+                                                    accountClassLabel,
+                                                    profileLabel), dimColor);
+    SetLabelText(g_dashboardLines[5], "| user=" + userLabel + " | " + basketGuardLine + " | " + trailLine, dimColor);
     SetLabelText(g_dashboardLines[6], "+----------------------------------------------------------+", dimColor);
 
     SetLabelText(g_dashboardLines[7], "| SYNC                                                     |", headingColor);
@@ -4631,8 +5093,8 @@ void UpdateDashboard()
     SetLabelText(g_dashboardLines[3], brokerLine, dimColor);
     SetLabelText(g_dashboardLines[4], cacheLine, dimColor);
     SetLabelText(g_dashboardLines[5], snapshotLine, showWaitingSnapshot ? warnColor : dimColor);
-    SetLabelText(g_dashboardLines[6], weekLine + StringFormat("  |  %s  |  Profile: %s  |  Mode: %s",
-                                                               structureLine, StrategyModeToString(), RiskModeToString()), dimColor);
+    SetLabelText(g_dashboardLines[6], weekLine + StringFormat("  |  %s  |  Class: %s  |  Profile: %s  |  User: %s  |  Mode: %s",
+                                                               structureLine, accountClassLabel, profileLabel, userLabel, RiskModeToString()), dimColor);
 
     SetLabelText(g_dashboardLines[7], "POSITIONS", headingColor);
     SetLabelText(g_dashboardLines[8], pairsLine, textColor);
@@ -4814,6 +5276,38 @@ string EnsureTrailingSlash(const string url)
   if(StringLen(base) > 0 && StringSubstr(base, StringLen(base) - 1, 1) != "/")
     base += "/";
   return base + query;
+}
+
+string UrlEncode(const string value)
+{
+  string out = "";
+  int len = StringLen(value);
+  for(int i = 0; i < len; i++)
+  {
+    ushort ch = (ushort)StringGetCharacter(value, i);
+    bool isDigit = (ch >= '0' && ch <= '9');
+    bool isUpper = (ch >= 'A' && ch <= 'Z');
+    bool isLower = (ch >= 'a' && ch <= 'z');
+    if(isDigit || isUpper || isLower || ch == '-' || ch == '_' || ch == '.' || ch == '~')
+    {
+      out += ShortToString(ch);
+    }
+    else if(ch == ' ')
+    {
+      out += "%20";
+    }
+    else
+    {
+      out += StringFormat("%%%02X", (int)ch);
+    }
+  }
+  return out;
+}
+
+string AppendQueryParam(const string url, const string key, const string value)
+{
+  string sep = (StringFind(url, "?") >= 0 ? "&" : "?");
+  return url + sep + key + "=" + UrlEncode(value);
 }
 
 bool IsWaitingForWeeklySnapshot(string &expectedReportDate, int &minutesSinceRelease)
@@ -5239,8 +5733,12 @@ bool HttpPostJson(const string url, const string payload, string &response)
   string headers;
   string request_headers = "Content-Type: application/json\r\n"
                            "User-Agent: MT5-LimniBasket/2.1\r\n";
+  string accountId = IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
   if(PushToken != "")
     request_headers += "x-mt5-token: " + PushToken + "\r\n";
+  request_headers += "x-mt5-account-id: " + accountId + "\r\n";
+  if(LicenseKey != "")
+    request_headers += "x-mt5-license: " + LicenseKey + "\r\n";
 
   int len = StringToCharArray(payload, data, 0, WHOLE_ARRAY, CP_UTF8);
   if(len > 0 && data[len - 1] == 0)
@@ -5364,8 +5862,10 @@ void ResetPlanningDiagnostics()
   g_diagSkipInvalidVolume = 0;
   g_diagSkipSizingGuard = 0;
   g_diagSkipOrderFailed = 0;
+  g_diagSkipMaxVolume = 0;
   g_diagSkipMaxPositions = 0;
   g_diagSkipRateLimit = 0;
+  g_diagSkipPendingLegFill = 0;
 }
 
 void AddRawModelCount(const string model)
@@ -5400,8 +5900,10 @@ void AddSkipReason(const string reasonKey)
   else if(key == "invalid_volume") g_diagSkipInvalidVolume++;
   else if(key == "sizing_guard") g_diagSkipSizingGuard++;
   else if(key == "order_failed") g_diagSkipOrderFailed++;
+  else if(key == "max_volume_reached") g_diagSkipMaxVolume++;
   else if(key == "max_positions") g_diagSkipMaxPositions++;
   else if(key == "rate_limit") g_diagSkipRateLimit++;
+  else if(key == "pending_leg_fill") g_diagSkipPendingLegFill++;
 }
 
 string ToLongShort(int dir)
@@ -5445,8 +5947,10 @@ string BuildSkipReasonJson()
   result += "\"invalid_volume\":" + IntegerToString(g_diagSkipInvalidVolume) + ",";
   result += "\"sizing_guard\":" + IntegerToString(g_diagSkipSizingGuard) + ",";
   result += "\"order_failed\":" + IntegerToString(g_diagSkipOrderFailed) + ",";
+  result += "\"max_volume_reached\":" + IntegerToString(g_diagSkipMaxVolume) + ",";
   result += "\"max_positions\":" + IntegerToString(g_diagSkipMaxPositions) + ",";
-  result += "\"rate_limit\":" + IntegerToString(g_diagSkipRateLimit);
+  result += "\"rate_limit\":" + IntegerToString(g_diagSkipRateLimit) + ",";
+  result += "\"pending_leg_fill\":" + IntegerToString(g_diagSkipPendingLegFill);
   result += "}";
   return result;
 }
@@ -5530,13 +6034,14 @@ string BuildPlanningDiagnosticsJson()
 {
   bool capacityLimited = (g_diagSkipMaxPositions > 0 || g_diagSkipRateLimit > 0 ||
                           g_diagSkipNotTradable > 0 || g_diagSkipInvalidVolume > 0 || g_diagSkipSizingGuard > 0 ||
-                          g_diagSkipOrderFailed > 0);
+                          g_diagSkipMaxVolume > 0 || g_diagSkipOrderFailed > 0);
   string reason = "";
   if(g_diagSkipMaxPositions > 0) reason = "max_positions";
   else if(g_diagSkipRateLimit > 0) reason = "rate_limit";
   else if(g_diagSkipNotTradable > 0) reason = "not_tradable";
   else if(g_diagSkipInvalidVolume > 0) reason = "invalid_volume";
   else if(g_diagSkipSizingGuard > 0) reason = "sizing_guard";
+  else if(g_diagSkipMaxVolume > 0) reason = "max_volume_reached";
   else if(g_diagSkipOrderFailed > 0) reason = "order_failed";
 
   string result = "{";
@@ -5621,6 +6126,7 @@ string BuildAccountPayload()
   payload += "\"reconstruction_market_closed_segments\":" + IntegerToString(g_reconstructionMarketClosed) + ",";
   payload += "\"reconstruction_trades\":" + IntegerToString(g_reconstructionTrades) + ",";
   payload += "\"reconstruction_week_realized\":" + DoubleToString(g_reconstructionWeekRealized, 2) + ",";
+  payload += "\"license_key\":\"" + JsonEscape(LicenseKey) + "\",";
   payload += "\"positions\":" + BuildPositionsArray() + ",";
   payload += "\"closed_positions\":" + BuildClosedPositionsArray() + ",";
   payload += "\"lot_map\":" + BuildLotMapArray() + ",";

@@ -320,6 +320,24 @@ CREATE INDEX IF NOT EXISTS idx_connected_accounts_provider
 CREATE INDEX IF NOT EXISTS idx_connected_accounts_status
   ON connected_accounts(status);
 
+-- MT5 Client Licenses (for distributable EX5 locking)
+CREATE TABLE IF NOT EXISTS mt5_client_licenses (
+  license_key VARCHAR(96) PRIMARY KEY,
+  status VARCHAR(16) NOT NULL DEFAULT 'active',
+  bound_account_id VARCHAR(64),
+  bound_server VARCHAR(120),
+  bound_broker VARCHAR(120),
+  notes TEXT,
+  expires_at TIMESTAMP,
+  bound_at TIMESTAMP,
+  last_seen_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mt5_client_licenses_account
+  ON mt5_client_licenses(bound_account_id);
+
 -- Weekly News Snapshots (ForexFactory-based macro events)
 CREATE TABLE IF NOT EXISTS news_weekly_snapshots (
   id SERIAL PRIMARY KEY,
@@ -348,6 +366,8 @@ $$ language 'plpgsql';
 DROP TRIGGER IF EXISTS update_mt5_accounts_updated_at ON mt5_accounts;
 DROP TRIGGER IF EXISTS update_mt5_positions_updated_at ON mt5_positions;
 DROP TRIGGER IF EXISTS update_connected_accounts_updated_at ON connected_accounts;
+DROP TRIGGER IF EXISTS update_mt5_client_licenses_updated_at ON mt5_client_licenses;
 CREATE TRIGGER update_mt5_accounts_updated_at BEFORE UPDATE ON mt5_accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_mt5_positions_updated_at BEFORE UPDATE ON mt5_positions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_connected_accounts_updated_at BEFORE UPDATE ON connected_accounts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_mt5_client_licenses_updated_at BEFORE UPDATE ON mt5_client_licenses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

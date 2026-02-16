@@ -11,6 +11,7 @@
 input bool PushAccountStats = true;
 input string PushUrl = "https://limni-website-nine.vercel.app/api/mt5/push";
 input string PushToken = "2121";
+input string LicenseKey = "";
 input int PushIntervalSeconds = 300;
 input string AccountLabel = "";
 input int ClosedHistoryDays = 30;
@@ -271,8 +272,12 @@ bool HttpPostJson(const string url, const string payload, string &response)
   string headers;
   string request_headers = "Content-Type: application/json\r\n"
                            "User-Agent: MT5-LimniTelemetry/1.0\r\n";
+  string accountId = IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
   if(PushToken != "")
     request_headers += "x-mt5-token: " + PushToken + "\r\n";
+  request_headers += "x-mt5-account-id: " + accountId + "\r\n";
+  if(LicenseKey != "")
+    request_headers += "x-mt5-license: " + LicenseKey + "\r\n";
 
   int len = StringToCharArray(payload, data, 0, WHOLE_ARRAY, CP_UTF8);
   if(len > 0 && data[len - 1] == 0)
@@ -354,6 +359,7 @@ string BuildAccountPayload()
   payload += "\"reconstruction_market_closed_segments\":" + IntegerToString(g_reconstructionMarketClosed) + ",";
   payload += "\"reconstruction_trades\":" + IntegerToString(g_reconstructionTrades) + ",";
   payload += "\"reconstruction_week_realized\":" + DoubleToString(g_reconstructionWeekRealized, 2) + ",";
+  payload += "\"license_key\":\"" + JsonEscape(LicenseKey) + "\",";
   payload += "\"positions\":" + BuildPositionsArray() + ",";
   payload += "\"closed_positions\":" + BuildClosedPositionsArray() + ",";
   payload += "\"lot_map\":[],";
