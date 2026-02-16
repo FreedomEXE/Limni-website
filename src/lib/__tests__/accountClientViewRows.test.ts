@@ -114,4 +114,51 @@ describe("account client view row helpers", () => {
     expect(rows[0]?.plannedShort).toBe(10);
     expect(rows[0]?.openShort).toBe(1);
   });
+
+  test("normalizes broad index/oil aliases when combining planned and live rows", () => {
+    const rows = buildSymbolRows(
+      [
+        { symbol: "SPXUSD", units: 1, legs: [{ model: "blended", direction: "LONG", units: 1 }] },
+        { symbol: "NDXUSD", units: 1, legs: [{ model: "blended", direction: "LONG", units: 1 }] },
+        { symbol: "NIKKEIUSD", units: 1, legs: [{ model: "blended", direction: "SHORT", units: 1 }] },
+        { symbol: "WTIUSD", units: 1, legs: [{ model: "blended", direction: "LONG", units: 1 }] },
+      ],
+      [
+        {
+          symbol: "US500USD",
+          side: "BUY",
+          lots: 0.4,
+          pnl: 1.1,
+          legs: [{ id: "1", basket: "LimniBasket blended signal", side: "BUY", lots: 0.4, pnl: 1.1 }],
+        },
+        {
+          symbol: "NDX",
+          side: "BUY",
+          lots: 0.4,
+          pnl: -0.2,
+          legs: [{ id: "2", basket: "LimniBasket blended signal", side: "BUY", lots: 0.4, pnl: -0.2 }],
+        },
+        {
+          symbol: "NIKKEI",
+          side: "SELL",
+          lots: 0.4,
+          pnl: 0.9,
+          legs: [{ id: "3", basket: "LimniBasket blended signal", side: "SELL", lots: 0.4, pnl: 0.9 }],
+        },
+        {
+          symbol: "USOIL.cash",
+          side: "BUY",
+          lots: 0.4,
+          pnl: 0.3,
+          legs: [{ id: "4", basket: "LimniBasket blended signal", side: "BUY", lots: 0.4, pnl: 0.3 }],
+        },
+      ],
+    );
+
+    expect(rows).toHaveLength(4);
+    expect(rows.find((row) => row.canonicalSymbol === "SPXUSD")?.symbol).toBe("US500USD");
+    expect(rows.find((row) => row.canonicalSymbol === "NDXUSD")?.symbol).toBe("NDX");
+    expect(rows.find((row) => row.canonicalSymbol === "NIKKEIUSD")?.symbol).toBe("NIKKEI");
+    expect(rows.find((row) => row.canonicalSymbol === "WTIUSD")?.symbol).toBe("USOIL.CASH");
+  });
 });

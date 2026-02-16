@@ -100,15 +100,22 @@ function parseManagedModel(tag: string) {
 
 const SYMBOL_ALIAS_FAMILIES: Array<{ canonical: string; aliases: string[] }> = [
   { canonical: "SPXUSD", aliases: ["SPXUSD", "SPX500", "SP500", "US500", "SPX", "US500USD"] },
-  { canonical: "NDXUSD", aliases: ["NDXUSD", "NDX100", "NAS100", "US100", "USTEC", "US100USD"] },
-  { canonical: "NIKKEIUSD", aliases: ["NIKKEIUSD", "NIKKEI225", "NIK225", "JPN225", "JP225"] },
+  { canonical: "NDXUSD", aliases: ["NDXUSD", "NDX100", "NDX", "NAS100", "NAS", "US100", "USTEC", "US100USD"] },
+  {
+    canonical: "NIKKEIUSD",
+    aliases: ["NIKKEIUSD", "NIKKEI", "NIKKEI225", "NIK225", "N225", "NI225", "NKY", "JPN225", "JP225"],
+  },
   { canonical: "WTIUSD", aliases: ["WTIUSD", "USOUSD", "USOIL", "XTIUSD", "WTI", "USCRUDE", "CL"] },
 ];
 
 function normalizeAliasFamilySymbol(cleanedSymbol: string) {
   for (const family of SYMBOL_ALIAS_FAMILIES) {
     for (const alias of family.aliases) {
-      if (cleanedSymbol === alias || cleanedSymbol.startsWith(alias)) {
+      if (
+        cleanedSymbol === alias ||
+        cleanedSymbol.startsWith(alias) ||
+        alias.startsWith(cleanedSymbol)
+      ) {
         return family.canonical;
       }
     }

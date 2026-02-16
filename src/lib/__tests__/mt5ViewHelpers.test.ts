@@ -65,4 +65,10 @@ describe("mt5 view helpers", () => {
     expect(findLotMapEntry(rows, "EURUSD")?.symbol).toBe("EURUSD-ECN");
     expect(findLotMapEntry(rows, "AUDCAD")?.symbol).toBe("AUDCAD.m");
   });
+
+  test("matches lot-map rows with broad index aliases", () => {
+    expect(findLotMapEntry([{ symbol: "NIKKEI" }], "NIKKEIUSD")?.symbol).toBe("NIKKEI");
+    expect(findLotMapEntry([{ symbol: "NDX" }], "NDXUSD")?.symbol).toBe("NDX");
+    expect(findLotMapEntry([{ symbol: "US500USD" }], "SPXUSD")?.symbol).toBe("US500USD");
+  });
 });

@@ -85,8 +85,8 @@ export function findLotMapEntry(rows: LotMapRow[], symbol: string) {
 
   const aliasMap: Record<string, string[]> = {
     SPXUSD: ["SPX500", "SPXUSD", "US500", "SP500", "SPX", "US500USD"],
-    NDXUSD: ["NDX100", "NDXUSD", "US100", "NAS100", "USTEC", "US100USD"],
-    NIKKEIUSD: ["JPN225", "JP225", "NIKKEI225", "NIK225", "NIKKEIUSD"],
+    NDXUSD: ["NDX100", "NDXUSD", "NDX", "US100", "NAS100", "NAS", "USTEC", "US100USD"],
+    NIKKEIUSD: ["JPN225", "JP225", "NIKKEI225", "NIK225", "NIKKEIUSD", "NIKKEI", "N225", "NI225", "NKY"],
     WTIUSD: ["USOUSD", "WTIUSD", "USOIL", "XTIUSD", "WTI", "CL", "USCRUDE"],
   };
   const candidates = Array.from(new Set([target, ...(aliasMap[target] ?? [])]));
@@ -99,6 +99,13 @@ export function findLotMapEntry(rows: LotMapRow[], symbol: string) {
   for (const candidate of candidates) {
     const startsWith = rows.find((row) => row.symbol?.toUpperCase().startsWith(candidate));
     if (startsWith) return startsWith;
+  }
+  for (const candidate of candidates) {
+    const reverseStartsWith = rows.find((row) => {
+      const raw = row.symbol?.toUpperCase() ?? "";
+      return raw.length > 0 && candidate.startsWith(raw);
+    });
+    if (reverseStartsWith) return reverseStartsWith;
   }
 
   if (target.length === 6) {
