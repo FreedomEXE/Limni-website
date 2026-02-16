@@ -24,6 +24,7 @@ input StrategyProfile StrategyMode = PROFILE_AUTO;
 input bool AutoProfileByBroker = true;
 input string EightcapBrokerHints = "eightcap";
 input string FiveersBrokerHints = "5ers,the5ers,fiveers,fivepercent,fxify";
+input string FxifyBrokerHints = "fxify";
 enum RiskProfile
 {
   RISK_HIGH = 0,
@@ -74,6 +75,7 @@ input bool EnableBasketStopLoss = false;
 input double BasketStopLossPct = 0.0;
 input double EightcapEmergencyStopPct = 30.0;
 input double FiveersBasketTakeProfitPct = 6.0;
+input double FxifyBasketTakeProfitPct = 5.0;
 input double FiveersBasketStopLossPct = 3.0;
 input bool EnforceStopLoss = true;
 input double StopLossRiskPct = 1.0;
@@ -481,6 +483,7 @@ string NormalizeBrokerText(const string value);
 bool BrokerMatchesHints(const string hintsCsv);
 bool IsFiveersMode();
 bool IsEightcapMode();
+bool IsFxifyMode();
 bool IsBasketTakeProfitEnabled();
 double GetEffectiveBasketTakeProfitPct();
 bool IsBasketStopLossEnabled();
@@ -1955,6 +1958,13 @@ bool IsEightcapMode()
   return (GetEffectiveStrategyMode() == PROFILE_EIGHTCAP);
 }
 
+bool IsFxifyMode()
+{
+  if(!IsFiveersMode())
+    return false;
+  return BrokerMatchesHints(FxifyBrokerHints);
+}
+
 string ShortReasonTag(const string reasonTag)
 {
   string tag = reasonTag;
@@ -2044,7 +2054,11 @@ bool IsBasketTakeProfitEnabled()
 double GetEffectiveBasketTakeProfitPct()
 {
   if(IsFiveersMode())
+  {
+    if(IsFxifyMode())
+      return FxifyBasketTakeProfitPct;
     return FiveersBasketTakeProfitPct;
+  }
   if(IsEightcapMode())
     return 0.0;
   return BasketTakeProfitPct;

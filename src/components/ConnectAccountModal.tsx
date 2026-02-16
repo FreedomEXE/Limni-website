@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import InfoModal from "@/components/InfoModal";
 import LimniLoading from "@/components/LimniLoading";
 
@@ -46,6 +46,29 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
     analyze: "idle" as StepState,
     save: "idle" as StepState,
   });
+  const [sessionRole, setSessionRole] = useState<"admin" | "viewer" | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadRole() {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          authenticated?: boolean;
+          role?: "admin" | "viewer" | null;
+        };
+        if (!mounted) return;
+        setSessionRole(data.role ?? null);
+      } catch {
+        // Keep null role when unavailable.
+      }
+    }
+    loadRole();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const botLabel = useMemo(() => {
     if (provider === "bitget") return "Crypto Perp Bot (Bitget)";
@@ -131,6 +154,27 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
                 Download Sizer
               </a>
             </div>
+            {sessionRole === "admin" ? (
+              <div className="mt-4 border-t border-[var(--panel-border)] pt-3">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Admin Source Access
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <a
+                    href="/api/mt5/source?file=ea"
+                    className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+                  >
+                    EA Source (.mq5)
+                  </a>
+                  <a
+                    href="/api/mt5/source?file=sizer"
+                    className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+                  >
+                    Sizer Source (.mq5)
+                  </a>
+                </div>
+              </div>
+            ) : null}
           </div>
           <ol className="list-decimal space-y-2 pl-5 text-xs uppercase tracking-[0.2em]">
             <li>Open MT5 and add the EA under Experts.</li>
