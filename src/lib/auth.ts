@@ -44,7 +44,11 @@ export async function canAccessMt5Source(): Promise<boolean> {
     .trim()
     .toLowerCase();
 
-  return role === "admin" && Boolean(username) && username.toLowerCase() === sourceAccessUsername;
+  if (role !== "admin" || !username) {
+    return false;
+  }
+
+  return username.toLowerCase() === sourceAccessUsername;
 }
 
 export async function login(username: string, password: string): Promise<boolean> {
