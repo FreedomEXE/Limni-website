@@ -33,6 +33,20 @@ export async function isAuthenticated(): Promise<boolean> {
   return role !== null;
 }
 
+export async function canAccessMt5Source(): Promise<boolean> {
+  const role = await getSessionRole();
+  const username = await getSessionUsername();
+  const sourceAccessUsername = (
+    process.env.MT5_SOURCE_ACCESS_USERNAME ||
+    process.env.AUTH_USERNAME ||
+    "admin"
+  )
+    .trim()
+    .toLowerCase();
+
+  return role === "admin" && Boolean(username) && username.toLowerCase() === sourceAccessUsername;
+}
+
 export async function login(username: string, password: string): Promise<boolean> {
   const validUsername = process.env.AUTH_USERNAME || "admin";
   const validPassword = process.env.AUTH_PASSWORD || "password";

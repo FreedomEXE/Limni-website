@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { getSessionRole, getSessionUsername } from "@/lib/auth";
+import { canAccessMt5Source, getSessionRole, getSessionUsername } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   const role = await getSessionRole();
   const username = await getSessionUsername();
-  const adminUsername = process.env.AUTH_USERNAME || "admin";
-  const canAccessSource = role === "admin" && username?.toLowerCase() === adminUsername.toLowerCase();
+  const canAccessSource = await canAccessMt5Source();
   return NextResponse.json({
     authenticated: role !== null,
     role,

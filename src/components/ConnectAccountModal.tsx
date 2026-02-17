@@ -12,6 +12,36 @@ type ConnectResult = {
 };
 
 type StepState = "idle" | "running" | "done";
+type Mt5DownloadFile = {
+  key: "ea" | "sizer";
+  displayName: string;
+  roleLabel: string;
+  compiledName: string;
+  compiledHref: string;
+  sourceName: string;
+  sourceHref: string;
+};
+
+const MT5_DOWNLOAD_FILES: Mt5DownloadFile[] = [
+  {
+    key: "ea",
+    displayName: "Limni Basket EA",
+    roleLabel: "Expert Advisor",
+    compiledName: "LimniBasketEA.ex5",
+    compiledHref: "/downloads/LimniBasketEA.ex5",
+    sourceName: "LimniBasketEA.mq5",
+    sourceHref: "/api/mt5/source?file=ea",
+  },
+  {
+    key: "sizer",
+    displayName: "Sizing Script Analyzer",
+    roleLabel: "Script",
+    compiledName: "LimniSizingAudit.ex5",
+    compiledHref: "/downloads/LimniSizingAudit.ex5",
+    sourceName: "LimniSizingAudit.mq5",
+    sourceHref: "/api/mt5/source?file=sizer",
+  },
+];
 
 function StepRow({ label, state }: { label: string; state: StepState }) {
   return (
@@ -125,75 +155,12 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
     }
   }
 
-  if (provider === "mt5") {
-    return (
-      <InfoModal title="Connect MT5 Account" subtitle="Manual setup" onClose={onClose}>
-        <div className="space-y-4 text-sm text-[color:var(--muted)]">
-          <p>
-            MT5 accounts are connected by running the LimniBasket EA on your broker terminal.
-            Source code is not distributed through the app. Download the compiled packages (.ex5),
-            then configure the push URL, token, and license key.
-          </p>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Downloads (Compiled .EX5)
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <a
-                href="/downloads/LimniBasketEA.ex5"
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                download
-              >
-                Download EA (.EX5)
-              </a>
-              <a
-                href="/downloads/LimniSizingAudit.ex5"
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-                download
-              >
-                Download Sizer Script (.EX5)
-              </a>
-            </div>
-            {!canAccessSource ? (
-              <p className="mt-3 text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Source files (.MQ5) are restricted.
-              </p>
-            ) : null}
-            {canAccessSource ? (
-              <div className="mt-4 border-t border-[var(--panel-border)] pt-3">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Freedom Source Access (.MQ5)
-                </p>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <a
-                    href="/api/mt5/source?file=ea"
-                    className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-                  >
-                    Download EA Source (.MQ5)
-                  </a>
-                  <a
-                    href="/api/mt5/source?file=sizer"
-                    className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-                  >
-                    Download Sizer Source (.MQ5)
-                  </a>
-                </div>
-              </div>
-            ) : null}
-          </div>
-          <ol className="list-decimal space-y-2 pl-5 text-xs uppercase tracking-[0.2em]">
-            <li>Open MT5 and add the EA under Experts.</li>
-            <li>Enable WebRequest for the Limni push URL.</li>
-            <li>Set the push token and license key in EA inputs.</li>
-            <li>Attach EA to one chart and keep terminal running.</li>
-          </ol>
-        </div>
-      </InfoModal>
-    );
-  }
-
   return (
-    <InfoModal title="Connect Account" subtitle={botLabel} onClose={onClose}>
+    <InfoModal
+      title={provider === "mt5" ? "Connect MT5 Account" : "Connect Account"}
+      subtitle={provider === "mt5" ? "Manual setup" : botLabel}
+      onClose={onClose}
+    >
       <div className="space-y-4 text-sm text-[color:var(--muted)]">
         <div className="grid grid-cols-3 gap-2">
           {(["oanda", "bitget", "mt5"] as Provider[]).map((item) => (
@@ -217,192 +184,255 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
           ))}
         </div>
 
-        {connecting ? (
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-            <LimniLoading label="Configuring account" compact />
-            <div className="mt-4 space-y-2">
-              <StepRow label="Validate credentials" state={stepState.validate} />
-              <StepRow label="Analyze instruments" state={stepState.analyze} />
-              <StepRow label="Save configuration" state={stepState.save} />
-            </div>
-          </div>
-        ) : null}
-
-        {error ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-3 text-xs uppercase tracking-[0.2em] text-rose-700">
-            {error}
-          </div>
-        ) : null}
-
-        {result ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 text-xs uppercase tracking-[0.2em] text-emerald-700">
-            Connected! Account key: {result.accountKey}
-          </div>
-        ) : null}
-
-        <div className="space-y-3">
-          <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Label
-            <input
-              value={label}
-              onChange={(event) => setLabel(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-              placeholder={botLabel}
-            />
-          </label>
-
-          {provider === "oanda" ? (
-            <>
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                OANDA Account ID
-                <input
-                  value={accountId}
-                  onChange={(event) => setAccountId(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                  placeholder="001-XXX-XXXXXXX-XXX"
-                />
-              </label>
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                OANDA API Key
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                />
-              </label>
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Environment
-                <select
-                  value={env}
-                  onChange={(event) => setEnv(event.target.value as "live" | "practice")}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+        {provider === "mt5" ? (
+          <>
+            <p>
+              MT5 accounts are connected by running the EA on your broker terminal.
+              Download the compiled files below, then configure push URL, token, and
+              license key in MT5. Source files are owner-only.
+            </p>
+            <div className="space-y-3 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Available Files
+              </p>
+              {MT5_DOWNLOAD_FILES.map((file) => (
+                <div
+                  key={file.key}
+                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/40 p-3"
                 >
-                  <option value="live">Live</option>
-                  <option value="practice">Practice</option>
-                </select>
-              </label>
-            </>
-          ) : null}
-
-          {provider === "bitget" ? (
-            <>
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                API Key
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                />
-              </label>
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                API Secret
-                <input
-                  type="password"
-                  value={apiSecret}
-                  onChange={(event) => setApiSecret(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                />
-              </label>
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                API Passphrase
-                <input
-                  type="password"
-                  value={apiPassphrase}
-                  onChange={(event) => setApiPassphrase(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                />
-              </label>
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Environment
-                <select
-                  value={env}
-                  onChange={(event) => setEnv(event.target.value as "live" | "demo")}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                >
-                  <option value="live">Live</option>
-                  <option value="demo">Demo</option>
-                </select>
-              </label>
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Product Type
-                <input
-                  value={productType}
-                  onChange={(event) => setProductType(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                />
-              </label>
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Leverage
-                <input
-                  type="number"
-                  value={leverage}
-                  onChange={(event) => setLeverage(Number(event.target.value))}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                />
-              </label>
-            </>
-          ) : null}
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Risk Mode
-              <select
-                value={riskMode}
-                onChange={(event) => setRiskMode(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-              >
-                <option value="1:1">1:1 (Default)</option>
-                <option value="reduced">Reduced</option>
-                <option value="aggressive">Aggressive</option>
-              </select>
-            </label>
-            <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Exit Style
-              <select
-                value={trailMode}
-                onChange={(event) => setTrailMode(event.target.value as "trail" | "hold")}
-                className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-              >
-                <option value="trail">Trail (Default)</option>
-                <option value="hold">Hold To Week Close</option>
-              </select>
-            </label>
-          </div>
-
-          {trailMode === "trail" ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Trail Start %
-                <input
-                  type="number"
-                  value={trailStartPct}
-                  onChange={(event) => setTrailStartPct(Number(event.target.value))}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                />
-              </label>
-              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Trail Offset %
-                <input
-                  type="number"
-                  value={trailOffsetPct}
-                  onChange={(event) => setTrailOffsetPct(Number(event.target.value))}
-                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                />
-              </label>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--foreground)]">
+                      {file.displayName}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                      {file.roleLabel}
+                    </p>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <a
+                      href={file.compiledHref}
+                      className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+                      download
+                    >
+                      {file.compiledName} (.EX5)
+                    </a>
+                    {canAccessSource ? (
+                      <a
+                        href={file.sourceHref}
+                        className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
+                      >
+                        {file.sourceName} (.MQ5)
+                      </a>
+                    ) : (
+                      <span className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)]/60 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]/80">
+                        {file.sourceName} (.MQ5) Restricted
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {!canAccessSource ? (
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  MQ5 source download is restricted to the owner account.
+                </p>
+              ) : null}
             </div>
-          ) : null}
-        </div>
+            <ol className="list-decimal space-y-2 pl-5 text-xs uppercase tracking-[0.2em]">
+              <li>Open MT5 and add the EA under Experts.</li>
+              <li>Enable WebRequest for the Limni push URL.</li>
+              <li>Set the push token and license key in EA inputs.</li>
+              <li>Attach EA to one chart and keep terminal running.</li>
+            </ol>
+          </>
+        ) : (
+          <>
+            {connecting ? (
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+                <LimniLoading label="Configuring account" compact />
+                <div className="mt-4 space-y-2">
+                  <StepRow label="Validate credentials" state={stepState.validate} />
+                  <StepRow label="Analyze instruments" state={stepState.analyze} />
+                  <StepRow label="Save configuration" state={stepState.save} />
+                </div>
+              </div>
+            ) : null}
 
-        <button
-          type="button"
-          onClick={handleConnect}
-          disabled={connecting}
-          className="w-full rounded-full border border-[var(--accent)] bg-[var(--accent)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)] transition hover:bg-[var(--accent)]/20 disabled:opacity-60"
-        >
-          {connecting ? "Connecting..." : "Connect Account"}
-        </button>
+            {error ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-3 text-xs uppercase tracking-[0.2em] text-rose-700">
+                {error}
+              </div>
+            ) : null}
+
+            {result ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 text-xs uppercase tracking-[0.2em] text-emerald-700">
+                Connected! Account key: {result.accountKey}
+              </div>
+            ) : null}
+
+            <div className="space-y-3">
+              <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Label
+                <input
+                  value={label}
+                  onChange={(event) => setLabel(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                  placeholder={botLabel}
+                />
+              </label>
+
+              {provider === "oanda" ? (
+                <>
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    OANDA Account ID
+                    <input
+                      value={accountId}
+                      onChange={(event) => setAccountId(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                      placeholder="001-XXX-XXXXXXX-XXX"
+                    />
+                  </label>
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    OANDA API Key
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(event) => setApiKey(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                    />
+                  </label>
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Environment
+                    <select
+                      value={env}
+                      onChange={(event) => setEnv(event.target.value as "live" | "practice")}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                    >
+                      <option value="live">Live</option>
+                      <option value="practice">Practice</option>
+                    </select>
+                  </label>
+                </>
+              ) : null}
+
+              {provider === "bitget" ? (
+                <>
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    API Key
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(event) => setApiKey(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                    />
+                  </label>
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    API Secret
+                    <input
+                      type="password"
+                      value={apiSecret}
+                      onChange={(event) => setApiSecret(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                    />
+                  </label>
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    API Passphrase
+                    <input
+                      type="password"
+                      value={apiPassphrase}
+                      onChange={(event) => setApiPassphrase(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                    />
+                  </label>
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Environment
+                    <select
+                      value={env}
+                      onChange={(event) => setEnv(event.target.value as "live" | "demo")}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                    >
+                      <option value="live">Live</option>
+                      <option value="demo">Demo</option>
+                    </select>
+                  </label>
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Product Type
+                    <input
+                      value={productType}
+                      onChange={(event) => setProductType(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                    />
+                  </label>
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Leverage
+                    <input
+                      type="number"
+                      value={leverage}
+                      onChange={(event) => setLeverage(Number(event.target.value))}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                    />
+                  </label>
+                </>
+              ) : null}
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Risk Mode
+                  <select
+                    value={riskMode}
+                    onChange={(event) => setRiskMode(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                  >
+                    <option value="1:1">1:1 (Default)</option>
+                    <option value="reduced">Reduced</option>
+                    <option value="aggressive">Aggressive</option>
+                  </select>
+                </label>
+                <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                  Exit Style
+                  <select
+                    value={trailMode}
+                    onChange={(event) => setTrailMode(event.target.value as "trail" | "hold")}
+                    className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                  >
+                    <option value="trail">Trail (Default)</option>
+                    <option value="hold">Hold To Week Close</option>
+                  </select>
+                </label>
+              </div>
+
+              {trailMode === "trail" ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Trail Start %
+                    <input
+                      type="number"
+                      value={trailStartPct}
+                      onChange={(event) => setTrailStartPct(Number(event.target.value))}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                    />
+                  </label>
+                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    Trail Offset %
+                    <input
+                      type="number"
+                      value={trailOffsetPct}
+                      onChange={(event) => setTrailOffsetPct(Number(event.target.value))}
+                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
+                    />
+                  </label>
+                </div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={handleConnect}
+              disabled={connecting}
+              className="w-full rounded-full border border-[var(--accent)] bg-[var(--accent)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)] transition hover:bg-[var(--accent)]/20 disabled:opacity-60"
+            >
+              {connecting ? "Connecting..." : "Connect Account"}
+            </button>
+          </>
+        )}
       </div>
     </InfoModal>
   );

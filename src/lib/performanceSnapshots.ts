@@ -6,6 +6,16 @@ import { getConnectedAccount } from "./connectedAccounts";
 import { deduplicateWeeks, type WeekOption } from "./weekState";
 import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "./weekAnchor";
 
+const EXCLUDED_PERFORMANCE_WEEK_CANONICAL = new Set<string>([
+  // No bot/live analytics existed for this week; exclude from all historical reporting.
+  "2026-01-12T00:00:00.000Z",
+]);
+
+function isExcludedPerformanceWeek(weekOpenUtc: string): boolean {
+  const canonical = normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
+  return EXCLUDED_PERFORMANCE_WEEK_CANONICAL.has(canonical);
+}
+
 export type PerformanceSnapshot = {
   week_open_utc: string;
   asset_class: AssetClass;
@@ -90,14 +100,15 @@ export function isWeekOpenUtc(isoValue: string) {
 export async function writePerformanceSnapshots(
   snapshots: PerformanceSnapshot[],
 ): Promise<void> {
-  if (snapshots.length === 0) {
+  const allowedSnapshots = snapshots.filter((snapshot) => !isExcludedPerformanceWeek(snapshot.week_open_utc));
+  if (allowedSnapshots.length === 0) {
     return;
   }
   const values: string[] = [];
   const params: Array<string | number | null> = [];
   let index = 1;
 
-  for (const snapshot of snapshots) {
+  for (const snapshot of allowedSnapshots) {
     values.push(
       `($${index}, $${index + 1}, $${index + 2}, $${index + 3}, $${index + 4}, $${index + 5}, $${index + 6}, $${index + 7}, $${index + 8}, $${index + 9}, $${index + 10})`,
     );
@@ -153,6 +164,9 @@ export async function listPerformanceWeeks(limit = 52): Promise<string[]> {
     for (const row of rows) {
       const iso = row.week_open_utc.toISOString();
       const canonical = normalizeWeekOpenUtc(iso) ?? iso;
+      if (isExcludedPerformanceWeek(canonical)) {
+        continue;
+      }
       if (!seenCanonicalWeeks.has(canonical)) {
         seenCanonicalWeeks.add(canonical);
         canonicalWeeks.push(canonical);
@@ -223,7 +237,14 @@ function isBetterWeekSnapshotRow(
 }
 
 export async function readPerformanceSnapshotsByWeek(weekOpenUtc: string) {
+  if (isExcludedPerformanceWeek(weekOpenUtc)) {
+    return [];
+  }
   const candidates = getEquivalentWeekOpenCandidates(weekOpenUtc);
+  const filteredCandidates = candidates.filter((candidate) => !isExcludedPerformanceWeek(candidate));
+  if (filteredCandidates.length === 0) {
+    return [];
+  }
   const rows = await query<{
     week_open_utc: Date;
     asset_class: AssetClass;
@@ -241,7 +262,7 @@ export async function readPerformanceSnapshotsByWeek(weekOpenUtc: string) {
      FROM performance_snapshots
      WHERE week_open_utc = ANY($1::timestamptz[])
      ORDER BY asset_class, model`,
-    [candidates],
+    [filteredCandidates],
   );
 
   const deduped = new Map<string, (typeof rows)[number]>();
@@ -293,12 +314,14 @@ export async function readAllPerformanceSnapshots(limit = 520) {
     [limit],
   );
 
-  return rows.map((row) => ({
-    week_open_utc: row.week_open_utc.toISOString(),
-    asset_class: row.asset_class,
-    model: row.model,
-    percent: Number(row.percent),
-  }));
+  return rows
+    .map((row) => ({
+      week_open_utc: row.week_open_utc.toISOString(),
+      asset_class: row.asset_class,
+      model: row.model,
+      percent: Number(row.percent),
+    }))
+    .filter((row) => !isExcludedPerformanceWeek(row.week_open_utc));
 }
 
 export async function readUniversalWeeklyTotals(limit = 104): Promise<
@@ -324,11 +347,13 @@ export async function readUniversalWeeklyTotals(limit = 104): Promise<
     [limit],
   );
 
-  return rows.map((row) => ({
-    week_open_utc: row.week_open_utc.toISOString(),
-    total_percent: Number(row.total_percent),
-    rows: row.rows,
-  }));
+  return rows
+    .map((row) => ({
+      week_open_utc: row.week_open_utc.toISOString(),
+      total_percent: Number(row.total_percent),
+      rows: row.rows,
+    }))
+    .filter((row) => !isExcludedPerformanceWeek(row.week_open_utc));
 }
 
 /**
@@ -373,7 +398,9 @@ export async function listWeeksForAccount(
       [createdWeekOpen, limit]
     );
 
-    const historicalWeeks = rows.map((row) => row.week_open_utc.toISOString());
+    const historicalWeeks = rows
+      .map((row) => row.week_open_utc.toISOString())
+      .filter((week) => !isExcludedPerformanceWeek(week));
 
     // Always include current week
     const currentWeek = getWeekOpenUtc();

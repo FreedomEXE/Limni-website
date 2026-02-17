@@ -34,6 +34,23 @@ describe("performanceSnapshots week handling", () => {
     ]);
   });
 
+  test("listPerformanceWeeks excludes disabled historical weeks", async () => {
+    queryMock.mockResolvedValueOnce([
+      { week_open_utc: new Date("2026-02-16T00:00:00.000Z") },
+      { week_open_utc: new Date("2026-01-12T00:00:00.000Z") }, // excluded
+      { week_open_utc: new Date("2026-02-09T00:00:00.000Z") },
+      { week_open_utc: new Date("2026-02-02T00:00:00.000Z") },
+    ]);
+
+    const weeks = await listPerformanceWeeks(4);
+
+    expect(weeks).toEqual([
+      "2026-02-16T00:00:00.000Z",
+      "2026-02-09T00:00:00.000Z",
+      "2026-02-02T00:00:00.000Z",
+    ]);
+  });
+
   test("readPerformanceSnapshotsByWeek reads equivalent keys and returns best row", async () => {
     queryMock.mockResolvedValueOnce([
       {
@@ -87,5 +104,11 @@ describe("performanceSnapshots week handling", () => {
     const blended = rows.find((row) => row.model === "blended");
     expect(blended?.percent).toBe(1.4);
     expect(blended?.week_open_utc).toBe("2026-02-09T00:00:00.000Z");
+  });
+
+  test("readPerformanceSnapshotsByWeek short-circuits excluded weeks", async () => {
+    const rows = await readPerformanceSnapshotsByWeek("2026-01-12T00:00:00.000Z");
+    expect(rows).toEqual([]);
+    expect(queryMock).not.toHaveBeenCalled();
   });
 });

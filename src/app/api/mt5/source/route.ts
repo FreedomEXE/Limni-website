@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getSessionRole, getSessionUsername } from "@/lib/auth";
+import { canAccessMt5Source } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -19,13 +19,7 @@ const SOURCE_FILES: Record<string, { filePath: string; downloadName: string }> =
 };
 
 export async function GET(request: NextRequest) {
-  const role = await getSessionRole();
-  const username = await getSessionUsername();
-  const adminUsername = process.env.AUTH_USERNAME || "admin";
-  const isSourceAllowed =
-    role === "admin" &&
-    Boolean(username) &&
-    username.toLowerCase() === adminUsername.toLowerCase();
+  const isSourceAllowed = await canAccessMt5Source();
   if (!isSourceAllowed) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
