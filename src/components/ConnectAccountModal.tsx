@@ -14,7 +14,7 @@ type ConnectResult = {
 type StepState = "idle" | "running" | "done";
 
 type Mt5DownloadFile = {
-  key: "ea" | "sizer";
+  key: "ea" | "sizer" | "panel";
   title: string;
   fileName: string;
   href: string;
@@ -48,6 +48,20 @@ const MT5_DOWNLOAD_FILES: Mt5DownloadFile[] = [
       "Use script inputs that match your live EA settings so sizing results are consistent.",
       "Run the script and review the generated CSV in the MT5 common files folder.",
       "Re-run after any broker/account/risk-setting change before trading.",
+    ],
+  },
+  {
+    key: "panel",
+    title: "Limni Trade Panel (Indicator)",
+    fileName: "Limni-TradePanel-v2.0.ex5",
+    href: "/downloads/Limni-TradePanel-v2.0.ex5",
+    instructions: [
+      "In MT5, open File > Open Data Folder and copy Limni-TradePanel-v2.0.ex5 into MQL5/Indicators.",
+      "Restart MT5 or right-click Navigator > Indicators > Refresh.",
+      "Open the chart you want to manage and drag Limni-TradePanel-v2.0 onto it.",
+      "Allow imports if prompted, then click OK to load the panel.",
+      "If the panel is not visible, check chart foreground/background settings and chart scale.",
+      "Use the panel as a chart-side execution helper after EA/script setup is complete.",
     ],
   },
 ];
