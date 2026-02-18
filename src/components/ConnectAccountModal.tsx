@@ -200,33 +200,35 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
 
         {provider === "mt5" ? (
           <>
-            <p>
-              MT5 setup is manual. Download and install the EX5 files below. Source files (.mq5) are not distributed in-app.
-            </p>
+            <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/50 p-3 text-xs leading-relaxed text-[color:var(--muted)]">
+              MT5 setup is manual. Download the files below and follow each file setup checklist.
+            </div>
             <div className="space-y-3 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Available Files</p>
-              {MT5_DOWNLOAD_FILES.map((file) => (
-                <div
-                  key={file.key}
-                  className="space-y-3 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/40 p-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--foreground)]">{file.title}</p>
-                    <a
-                      href={file.href}
-                      className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/40 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
-                      download
-                    >
-                      {file.fileName}
-                    </a>
+              <div className="grid gap-3 md:grid-cols-2">
+                {MT5_DOWNLOAD_FILES.map((file) => (
+                  <div
+                    key={file.key}
+                    className="flex h-full flex-col gap-3 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/40 p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--foreground)]">{file.title}</p>
+                      <a
+                        href={file.href}
+                        className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-strong)]"
+                        download
+                      >
+                        {file.fileName}
+                      </a>
+                    </div>
+                    <ol className="list-decimal space-y-1.5 pl-5 text-[11px] leading-5 tracking-[0.04em] text-[color:var(--muted)]">
+                      {file.instructions.map((instruction) => (
+                        <li key={instruction}>{instruction}</li>
+                      ))}
+                    </ol>
                   </div>
-                  <ol className="list-decimal space-y-1 pl-5 text-[10px] uppercase tracking-[0.18em]">
-                    {file.instructions.map((instruction) => (
-                      <li key={instruction}>{instruction}</li>
-                    ))}
-                  </ol>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </>
         ) : (

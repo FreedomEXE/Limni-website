@@ -12,16 +12,16 @@ type InfoModalProps = {
 export default function InfoModal({ title, subtitle, onClose, children }: InfoModalProps) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--foreground)]/30 p-6"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--foreground)]/30 p-3 md:items-center md:p-6"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-2xl"
+        className="flex w-full max-w-3xl flex-col rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-2xl sm:p-6 md:max-h-[88vh]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-start justify-between">
+        <div className="flex shrink-0 items-start justify-between border-b border-[var(--panel-border)]/70 pb-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
               Detail
@@ -43,7 +43,7 @@ export default function InfoModal({ title, subtitle, onClose, children }: InfoMo
             Close
           </button>
         </div>
-        <div className="mt-4 text-sm text-[color:var(--muted)]">{children}</div>
+        <div className="mt-4 min-h-0 overflow-y-auto pr-1 text-sm text-[color:var(--muted)]">{children}</div>
       </div>
     </div>
   );
