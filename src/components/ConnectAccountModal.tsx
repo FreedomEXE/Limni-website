@@ -14,7 +14,7 @@ type ConnectResult = {
 type StepState = "idle" | "running" | "done";
 
 type Mt5DownloadFile = {
-  key: "ea" | "sizer" | "panel";
+  key: "ea" | "sizer" | "panel" | "panelTemplate";
   title: string;
   fileName: string;
   href: string;
@@ -62,6 +62,20 @@ const MT5_DOWNLOAD_FILES: Mt5DownloadFile[] = [
       "Allow imports if prompted, then click OK to load the panel.",
       "If the panel is not visible, check chart foreground/background settings and chart scale.",
       "Use the panel as a chart-side execution helper after EA/script setup is complete.",
+    ],
+  },
+  {
+    key: "panelTemplate",
+    title: "Trade Panel Chart Template",
+    fileName: "TradePanel.tpl",
+    href: "/downloads/TradePanel.tpl",
+    instructions: [
+      "In MT5, open File > Open Data Folder and copy TradePanel.tpl into the root Templates folder.",
+      "Restart MT5 or right-click inside a chart > Templates to refresh the list.",
+      "Open a chart, then apply Templates > Load Template > TradePanel.tpl.",
+      "If template objects do not show, ensure Limni-TradePanel-v2.0.ex5 is installed and loaded on that chart.",
+      "Save your own variant as a new template after adjusting chart colors, panel position, and defaults.",
+      "Re-apply this template to quickly standardize new charts across symbols.",
     ],
   },
 ];
@@ -158,7 +172,7 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
   return (
     <InfoModal
       title={provider === "mt5" ? "Connect MT5 Account" : "Connect Account"}
-      subtitle={provider === "mt5" ? "EX5 downloads only" : botLabel}
+      subtitle={provider === "mt5" ? "MT5 download package" : botLabel}
       onClose={onClose}
     >
       <div className="space-y-4 text-sm text-[color:var(--muted)]">
@@ -190,7 +204,7 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
               MT5 setup is manual. Download and install the EX5 files below. Source files (.mq5) are not distributed in-app.
             </p>
             <div className="space-y-3 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Available Files (.EX5)</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Available Files</p>
               {MT5_DOWNLOAD_FILES.map((file) => (
                 <div
                   key={file.key}
