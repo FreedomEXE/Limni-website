@@ -1,0 +1,44 @@
+name: Force Vercel Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Optional reason for this forced deployment"
+        required: false
+        default: "Manual force deploy"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Vercel deploy hook secret
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            echo "Missing required GitHub secret: VERCEL_DEPLOY_HOOK_URL"
+            echo "Set it in repo settings: Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Trigger deploy hook
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+          FORCE_REASON: ${{ inputs.reason }}
+        run: |
+          echo "Triggering Vercel deploy hook..."
+          echo "Reason: $FORCE_REASON"
+
+          RESPONSE="$(curl -sS -X POST -w '\n%{http_code}' "$VERCEL_DEPLOY_HOOK_URL")"
+          BODY="$(echo "$RESPONSE" | sed '$d')"
+          STATUS="$(echo "$RESPONSE" | tail -n1)"
+
+          echo "HTTP Status: $STATUS"
+          echo "Response: $BODY"
+
+          if [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
+            echo "Deploy hook call failed."
+            exit 1
+          fi
+
