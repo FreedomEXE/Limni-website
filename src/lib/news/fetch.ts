@@ -35,6 +35,26 @@ function decodeCdata(value: string) {
     .trim();
 }
 
+function decodeHtml(value: string) {
+  return value
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, "/")
+    .replace(/&#(\d+);/g, (_, code: string) => {
+      const n = Number(code);
+      return Number.isFinite(n) ? String.fromCharCode(n) : _;
+    });
+}
+
+function stripHtml(value: string) {
+  return decodeHtml(value.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+}
+
 function extractTag(block: string, tag: string) {
   const match = block.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, "i"));
   if (!match) {
@@ -67,6 +87,14 @@ function asAbsoluteForexFactoryUrl(raw: string | null) {
     return `https://www.forexfactory.com${raw}`;
   }
   return `https://www.forexfactory.com/${raw}`;
+}
+
+function impactFromIconClass(rowHtml: string): NewsEvent["impact"] {
+  if (/icon--ff-impact-red/.test(rowHtml)) return "High";
+  if (/icon--ff-impact-ora/.test(rowHtml)) return "Medium";
+  if (/icon--ff-impact-yel/.test(rowHtml)) return "Low";
+  if (/icon--ff-impact-gra/.test(rowHtml)) return "Holiday";
+  return "Unknown";
 }
 
 function toUtcIso(dateRaw: string, timeRaw: string) {
@@ -125,6 +153,127 @@ function parseForexFactoryXml(xml: string): NewsEvent[] {
       source: "forexfactory",
     });
   }
+  return events.sort((a, b) => {
+    const aTs = a.datetime_utc ? Date.parse(a.datetime_utc) : 0;
+    const bTs = b.datetime_utc ? Date.parse(b.datetime_utc) : 0;
+    return aTs - bTs;
+  });
+}
+
+function parsePageTimezone(html: string) {
+  const m = html.match(/timezone_name:\s*'([^']+)'/i);
+  const zone = m?.[1]?.trim();
+  return zone || "America/New_York";
+}
+
+function parsePageYear(html: string) {
+  const m = html.match(/begin_date":"[A-Za-z]+\s+\d{1,2},\s*(\d{4})"/);
+  if (m?.[1]) {
+    return Number(m[1]);
+  }
+  return DateTime.utc().year;
+}
+
+function extractTableCell(rowHtml: string, cellClass: string) {
+  const match = rowHtml.match(
+    new RegExp(`<td[^>]*class="[^"]*${cellClass}[^"]*"[^>]*>([\\s\\S]*?)<\\/td>`, "i"),
+  );
+  return match?.[1] ?? "";
+}
+
+function normalizeTableNumber(value: string | null) {
+  const v = normalizeField(value);
+  if (!v || v === "-" || v === "—") {
+    return null;
+  }
+  return v;
+}
+
+function parseForexFactoryCalendarTable(html: string): NewsEvent[] {
+  const events: NewsEvent[] = [];
+  const sourceZone = parsePageTimezone(html);
+  const year = parsePageYear(html);
+
+  const rowMatches = html.match(/<tr[\s\S]*?<\/tr>/gi) ?? [];
+  let currentMonthDay: string | null = null;
+  let currentTimeLabel = "";
+
+  for (const row of rowMatches) {
+    if (/calendar__row--day-breaker/.test(row)) {
+      const cellHtml = row.match(/<td[^>]*class="calendar__cell"[^>]*>([\s\S]*?)<\/td>/i)?.[1] ?? "";
+      const dayText = stripHtml(cellHtml); // e.g. "Tue Feb 17"
+      const md = dayText.match(/([A-Za-z]{3})\s+([A-Za-z]{3}\s+\d{1,2})/);
+      if (md?.[2]) {
+        currentMonthDay = md[2];
+      }
+      currentTimeLabel = "";
+      continue;
+    }
+
+    if (!/data-event-id=/.test(row)) {
+      continue;
+    }
+    if (!currentMonthDay) {
+      continue;
+    }
+
+    const titleHtml =
+      row.match(/<span[^>]*class="calendar__event-title"[^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? "";
+    const title = stripHtml(titleHtml);
+    if (!title) {
+      continue;
+    }
+
+    const timeCell = stripHtml(extractTableCell(row, "calendar__time"));
+    if (timeCell) {
+      currentTimeLabel = timeCell;
+    }
+    const effectiveTime = currentTimeLabel || timeCell || "Tentative";
+
+    const currency = stripHtml(extractTableCell(row, "calendar__currency")) || "All";
+    const actual = normalizeTableNumber(stripHtml(extractTableCell(row, "calendar__actual")));
+    const forecast = normalizeTableNumber(stripHtml(extractTableCell(row, "calendar__forecast")));
+    const previous = normalizeTableNumber(stripHtml(extractTableCell(row, "calendar__previous")));
+    const impact = impactFromIconClass(row);
+
+    let datetimeUtc: string | null = null;
+    const timeLower = effectiveTime.toLowerCase();
+    const isNonTime =
+      timeLower.includes("all day") ||
+      timeLower.includes("tentative") ||
+      timeLower.includes("data");
+    if (!isNonTime) {
+      const parsed = DateTime.fromFormat(
+        `${currentMonthDay} ${year} ${effectiveTime.replace(/\s+/g, "")}`,
+        "MMM d yyyy h:mma",
+        { zone: sourceZone },
+      );
+      if (parsed.isValid) {
+        datetimeUtc = parsed.toUTC().toISO();
+      }
+    }
+
+    const date = datetimeUtc
+      ? DateTime.fromISO(datetimeUtc, { zone: "utc" }).setZone(NEWS_DISPLAY_TIME_ZONE).toFormat("MM-dd-yyyy")
+      : DateTime.fromFormat(`${currentMonthDay} ${year}`, "MMM d yyyy", { zone: sourceZone }).toFormat(
+          "MM-dd-yyyy",
+        );
+
+    events.push({
+      title,
+      country: currency,
+      impact,
+      date,
+      time: effectiveTime || "Tentative",
+      datetime_utc: datetimeUtc,
+      actual,
+      forecast,
+      previous,
+      url: null,
+      source: "forexfactory",
+    });
+  }
+
   return events.sort((a, b) => {
     const aTs = a.datetime_utc ? Date.parse(a.datetime_utc) : 0;
     const bTs = b.datetime_utc ? Date.parse(b.datetime_utc) : 0;
@@ -212,11 +361,20 @@ async function fetchForexFactoryCalendarPageEvents(): Promise<NewsEvent[]> {
     throw new Error(`ForexFactory calendar page failed (${response.status})`);
   }
   const html = await response.text();
-  const events = parseForexFactoryCalendarPage(html);
-  if (events.length === 0) {
+  try {
+    const events = parseForexFactoryCalendarPage(html);
+    if (events.length > 0) {
+      return events;
+    }
+  } catch {
+    // fall through to table parser
+  }
+
+  const tableEvents = parseForexFactoryCalendarTable(html);
+  if (tableEvents.length === 0) {
     throw new Error("ForexFactory calendar page returned no events");
   }
-  return events;
+  return tableEvents;
 }
 
 export async function fetchForexFactoryCalendarEvents(): Promise<NewsEvent[]> {
