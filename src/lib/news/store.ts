@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import { query, queryOne } from "@/lib/db";
 import type { NewsEvent, NewsWeeklySnapshot } from "./types";
 
@@ -53,14 +54,26 @@ export async function writeNewsWeeklySnapshot(input: {
 
 export async function listNewsWeeks(limit = 52): Promise<string[]> {
   await ensureNewsTables();
-  const rows = await query<{ week_open_utc: Date }>(
-    `SELECT DISTINCT week_open_utc
+  const rows = await query<{ week_open_utc: string }>(
+    `SELECT DISTINCT week_open_utc::text AS week_open_utc
      FROM news_weekly_snapshots
      ORDER BY week_open_utc DESC
      LIMIT $1`,
     [limit],
   );
-  return rows.map((row) => row.week_open_utc.toISOString());
+  return rows
+    .map((row) => normalizeTimestampText(row.week_open_utc))
+    .filter((value): value is string => !!value);
+}
+
+function normalizeTimestampText(value: string | null | undefined) {
+  const raw = (value ?? "").trim();
+  if (!raw) return null;
+  const parsed = DateTime.fromSQL(raw, { zone: "utc" });
+  if (!parsed.isValid) {
+    return null;
+  }
+  return parsed.toUTC().toISO();
 }
 
 export async function readNewsWeeklySnapshot(
@@ -69,27 +82,27 @@ export async function readNewsWeeklySnapshot(
   await ensureNewsTables();
   const row = weekOpenUtc
     ? await queryOne<{
-        week_open_utc: Date;
+        week_open_utc: string;
         source: string;
         announcements: NewsEvent[];
         calendar: NewsEvent[];
-        fetched_at: Date;
+        fetched_at: string;
       }>(
-        `SELECT week_open_utc, source, announcements, calendar, fetched_at
+        `SELECT week_open_utc::text AS week_open_utc, source, announcements, calendar, fetched_at::text AS fetched_at
          FROM news_weekly_snapshots
-         WHERE week_open_utc = $1
+         WHERE week_open_utc = $1::timestamp
          ORDER BY fetched_at DESC
          LIMIT 1`,
         [weekOpenUtc],
       )
     : await queryOne<{
-        week_open_utc: Date;
+        week_open_utc: string;
         source: string;
         announcements: NewsEvent[];
         calendar: NewsEvent[];
-        fetched_at: Date;
+        fetched_at: string;
       }>(
-        `SELECT week_open_utc, source, announcements, calendar, fetched_at
+        `SELECT week_open_utc::text AS week_open_utc, source, announcements, calendar, fetched_at::text AS fetched_at
          FROM news_weekly_snapshots
          ORDER BY week_open_utc DESC, fetched_at DESC
          LIMIT 1`,
@@ -98,12 +111,17 @@ export async function readNewsWeeklySnapshot(
   if (!row) {
     return null;
   }
+  const weekOpenIso = normalizeTimestampText(row.week_open_utc);
+  const fetchedAtIso = normalizeTimestampText(row.fetched_at);
+  if (!weekOpenIso || !fetchedAtIso) {
+    return null;
+  }
 
   return {
-    week_open_utc: row.week_open_utc.toISOString(),
+    week_open_utc: weekOpenIso,
     source: row.source,
     announcements: row.announcements ?? [],
     calendar: row.calendar ?? [],
-    fetched_at: row.fetched_at.toISOString(),
+    fetched_at: fetchedAtIso,
   };
 }
