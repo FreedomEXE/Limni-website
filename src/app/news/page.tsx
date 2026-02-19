@@ -13,6 +13,7 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import type { NewsEvent, NewsWeeklySnapshot } from "@/lib/news/types";
 
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   searchParams?:

@@ -4,6 +4,8 @@ import { refreshNewsSnapshot, shouldRefreshForPendingActuals } from "@/lib/news/
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function toMillis(value: string | null | undefined): number | null {
   if (!value) return null;
