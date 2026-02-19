@@ -129,7 +129,9 @@ function shouldAutoRefresh(reason: string, lastRefreshUtc: string): boolean {
   }
 
   const ageMinutes = DateTime.utc().diff(refreshedAt, "minutes").minutes;
-  return !Number.isFinite(ageMinutes) || ageMinutes >= 10;
+  // Use a short throttle (2 min) so the EA picks up new signals quickly after the
+  // Friday 15:30 ET CFTC release without hammering the upstream API unnecessarily.
+  return !Number.isFinite(ageMinutes) || ageMinutes >= 2;
 }
 
 export async function buildBasketSignals(options?: {
