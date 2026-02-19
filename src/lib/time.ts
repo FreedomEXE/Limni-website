@@ -1,4 +1,4 @@
-const TIME_ZONE = "America/New_York";
+const TIME_ZONE = "America/Toronto";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: TIME_ZONE,
@@ -27,7 +27,7 @@ function parseDate(value?: string | null): Date | null {
     return null;
   }
   // Date-only strings (YYYY-MM-DD) are interpreted as UTC midnight by JS Date, which
-  // can render as the previous day in America/New_York. Anchor at noon UTC to keep
+  // can render as the previous day in America/Toronto. Anchor at noon UTC to keep
   // the displayed calendar date stable in ET.
   const normalized =
     /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00.000Z` : value;

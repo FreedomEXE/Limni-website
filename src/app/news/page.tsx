@@ -6,13 +6,13 @@ import {
   readNewsWeeklySnapshot,
   writeNewsWeeklySnapshot,
 } from "@/lib/news/store";
-import { refreshNewsSnapshot } from "@/lib/news/refresh";
+import { refreshNewsSnapshot, shouldRefreshForPendingActuals } from "@/lib/news/refresh";
 import NewsContentTabs from "@/components/news/NewsContentTabs";
 import { buildNormalizedWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import type { NewsEvent, NewsWeeklySnapshot } from "@/lib/news/types";
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 type PageProps = {
   searchParams?:
@@ -25,7 +25,7 @@ function pickParam(value: string | string[] | undefined) {
 }
 
 function weekLabel(weekOpenUtc: string) {
-  const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).setZone("America/New_York");
+  const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).setZone("America/Toronto");
   if (!parsed.isValid) return weekOpenUtc;
   const monday = parsed.weekday === 7 ? parsed.plus({ days: 1 }).startOf("day") : parsed.startOf("day");
   return `Week of ${monday.toFormat("MMM dd, yyyy")}`;
@@ -216,6 +216,15 @@ export default async function NewsPage({ searchParams }: PageProps) {
     await refreshNewsSnapshot();
     snapshot = await readNewsWeeklySnapshot(selectedWeek);
   }
+  if (
+    snapshot &&
+    selectedWeek &&
+    selectedWeek === currentWeekOpenUtc &&
+    shouldRefreshForPendingActuals(snapshot)
+  ) {
+    await refreshNewsSnapshot();
+    snapshot = await readNewsWeeklySnapshot(selectedWeek);
+  }
 
   const announcements = snapshot?.announcements ?? [];
   const calendar = snapshot?.calendar ?? [];
@@ -276,7 +285,7 @@ export default async function NewsPage({ searchParams }: PageProps) {
           </div>
         </section>
         <NewsContentTabs
-          selectedWeek={selectedWeek}
+          key={`${selectedWeek ?? "none"}:${view}:${snapshot?.fetched_at ?? "none"}`}
           view={view}
           announcements={announcements}
           calendar={calendar}

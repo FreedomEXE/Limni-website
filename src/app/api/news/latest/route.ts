@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { readNewsWeeklySnapshot, writeNewsWeeklySnapshot } from "@/lib/news/store";
-import { refreshNewsSnapshot } from "@/lib/news/refresh";
+import { refreshNewsSnapshot, shouldRefreshForPendingActuals } from "@/lib/news/refresh";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 function toMillis(value: string | null | undefined): number | null {
   if (!value) return null;
@@ -69,6 +69,14 @@ export async function GET() {
     if (!snapshot || shouldRefreshSnapshot(snapshot, displayWeekOpenUtc)) {
       await refreshNewsSnapshot();
       snapshot = await readNewsWeeklySnapshot();
+    }
+    if (
+      snapshot &&
+      snapshot.week_open_utc === displayWeekOpenUtc &&
+      shouldRefreshForPendingActuals(snapshot)
+    ) {
+      await refreshNewsSnapshot();
+      snapshot = await readNewsWeeklySnapshot(displayWeekOpenUtc);
     }
     return NextResponse.json(
       snapshot ?? {

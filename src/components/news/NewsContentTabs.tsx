@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { NewsEvent } from "@/lib/news/types";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
 import { DateTime } from "luxon";
 
+const NEWS_TIME_ZONE = "America/Toronto";
+
 type NewsContentTabsProps = {
-  selectedWeek: string | null;
   view: "announcements" | "calendar" | "impact";
   announcements: NewsEvent[];
   calendar: NewsEvent[];
@@ -18,7 +19,7 @@ function formatEventMoment(event: NewsEvent) {
   }
   if (event.date) {
     const asIso = DateTime.fromFormat(event.date, "MM-dd-yyyy", {
-      zone: "America/New_York",
+      zone: NEWS_TIME_ZONE,
     });
     if (asIso.isValid) {
       return `${formatDateET(asIso.toUTC().toISO())} ${event.time}`;
@@ -30,11 +31,11 @@ function formatEventMoment(event: NewsEvent) {
 function resolveEventDate(event: NewsEvent) {
   if (event.datetime_utc) {
     const parsed = DateTime.fromISO(event.datetime_utc, { zone: "utc" });
-    return parsed.isValid ? parsed.setZone("America/New_York") : null;
+    return parsed.isValid ? parsed.setZone(NEWS_TIME_ZONE) : null;
   }
   if (event.date) {
     const parsed = DateTime.fromFormat(event.date, "MM-dd-yyyy", {
-      zone: "America/New_York",
+      zone: NEWS_TIME_ZONE,
     });
     return parsed.isValid ? parsed : null;
   }
@@ -57,7 +58,6 @@ function impactTone(impact: NewsEvent["impact"]) {
 }
 
 export default function NewsContentTabs({
-  selectedWeek,
   view,
   announcements,
   calendar,
@@ -93,15 +93,9 @@ export default function NewsContentTabs({
     return groupedCalendar[groupedCalendar.length - 1]?.key ?? null;
   }, [groupedCalendar]);
 
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!mostRecentGroupKey) {
-      setOpenGroups(new Set());
-      return;
-    }
-    setOpenGroups(new Set([mostRecentGroupKey]));
-  }, [mostRecentGroupKey, selectedWeek, view]);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() =>
+    mostRecentGroupKey ? new Set([mostRecentGroupKey]) : new Set(),
+  );
 
   function toggleGroup(key: string) {
     setOpenGroups((prev) => {
