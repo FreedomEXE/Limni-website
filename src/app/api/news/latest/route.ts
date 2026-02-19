@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readNewsWeeklySnapshot, writeNewsWeeklySnapshot } from "@/lib/news/store";
+import { listNewsWeeks, readNewsWeeklySnapshot, writeNewsWeeklySnapshot } from "@/lib/news/store";
 import { refreshNewsSnapshot, shouldRefreshForPendingActuals } from "@/lib/news/refresh";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
@@ -49,6 +49,33 @@ function snapshotContainsDisplayWeekEvents(
   return false;
 }
 
+function countActualValues(snapshot: { calendar: Array<{ actual?: string | null }> }) {
+  let count = 0;
+  for (const event of snapshot.calendar ?? []) {
+    if (typeof event.actual === "string" && event.actual.trim().length > 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
+async function findBestSnapshotForDisplayWeek(displayWeekOpenUtc: string) {
+  const weeks = await listNewsWeeks(24);
+  let best: Awaited<ReturnType<typeof readNewsWeeklySnapshot>> = null;
+  let bestActual = -1;
+  for (const week of weeks) {
+    const candidate = await readNewsWeeklySnapshot(week);
+    if (!candidate) continue;
+    if (!snapshotContainsDisplayWeekEvents(candidate, displayWeekOpenUtc)) continue;
+    const actualCount = countActualValues(candidate);
+    if (actualCount > bestActual) {
+      best = candidate;
+      bestActual = actualCount;
+    }
+  }
+  return best;
+}
+
 export async function GET() {
   try {
     const displayWeekOpenUtc = getDisplayWeekOpenUtc();
@@ -77,6 +104,18 @@ export async function GET() {
     ) {
       await refreshNewsSnapshot();
       snapshot = await readNewsWeeklySnapshot(displayWeekOpenUtc);
+    }
+    if (snapshot && snapshot.week_open_utc === displayWeekOpenUtc && countActualValues(snapshot) === 0) {
+      const bestSnapshot = await findBestSnapshotForDisplayWeek(displayWeekOpenUtc);
+      if (bestSnapshot && countActualValues(bestSnapshot) > 0) {
+        await writeNewsWeeklySnapshot({
+          week_open_utc: displayWeekOpenUtc,
+          source: bestSnapshot.source,
+          announcements: bestSnapshot.announcements,
+          calendar: bestSnapshot.calendar,
+        });
+        snapshot = await readNewsWeeklySnapshot(displayWeekOpenUtc);
+      }
     }
     return NextResponse.json(
       snapshot ?? {

@@ -124,6 +124,33 @@ function inferWeekFromEvents(events: NewsEvent[]) {
   return bestWeek;
 }
 
+function countActualValues(events: NewsEvent[]) {
+  let count = 0;
+  for (const event of events) {
+    if (typeof event.actual === "string" && event.actual.trim().length > 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
+async function findBestSnapshotForDisplayWeek(displayWeekOpenUtc: string) {
+  const weeks = await listNewsWeeks(24);
+  let best: NewsWeeklySnapshot | null = null;
+  let bestActual = -1;
+  for (const week of weeks) {
+    const candidate = await readNewsWeeklySnapshot(week);
+    if (!candidate) continue;
+    if (!hasEventsForWeek(candidate.calendar, displayWeekOpenUtc)) continue;
+    const actualCount = countActualValues(candidate.calendar);
+    if (actualCount > bestActual) {
+      best = candidate;
+      bestActual = actualCount;
+    }
+  }
+  return best;
+}
+
 async function normalizeNewsWeekKeys(weeks: string[], currentWeekOpenUtc: string) {
   const validWeeks: string[] = [];
   let wroteAny = false;
@@ -224,6 +251,23 @@ export default async function NewsPage({ searchParams }: PageProps) {
   ) {
     await refreshNewsSnapshot();
     snapshot = await readNewsWeeklySnapshot(selectedWeek);
+  }
+  if (
+    snapshot &&
+    selectedWeek &&
+    selectedWeek === currentWeekOpenUtc &&
+    countActualValues(snapshot.calendar) === 0
+  ) {
+    const bestSnapshot = await findBestSnapshotForDisplayWeek(currentWeekOpenUtc);
+    if (bestSnapshot && countActualValues(bestSnapshot.calendar) > 0) {
+      await writeNewsWeeklySnapshot({
+        week_open_utc: currentWeekOpenUtc,
+        source: bestSnapshot.source,
+        announcements: bestSnapshot.announcements,
+        calendar: bestSnapshot.calendar,
+      });
+      snapshot = await readNewsWeeklySnapshot(currentWeekOpenUtc);
+    }
   }
 
   const announcements = snapshot?.announcements ?? [];
