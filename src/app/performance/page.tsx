@@ -1,7 +1,10 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
-import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
+import {
+  getAggregatesForWeekStart,
+  getLatestAggregatesLocked,
+} from "@/lib/sentiment/store";
 import { computeModelPerformance } from "@/lib/performanceLab";
 import { simulateTrailingForGroupsFromRows } from "@/lib/universalBasket";
 import { getPairPerformance } from "@/lib/pricePerformance";
@@ -48,6 +51,20 @@ type PerformancePageProps = {
 
 function formatWeekOption(value: string) {
   return weekLabelFromOpen(value);
+}
+
+async function getPerformanceSentimentForWeek(weekOpenUtc: string) {
+  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  const weekClose = weekOpen.isValid
+    ? weekOpen.plus({ days: 7 }).toUTC().toISO()
+    : null;
+  if (weekClose) {
+    const weekStart = await getAggregatesForWeekStart(weekOpenUtc, weekClose);
+    if (weekStart.length > 0) {
+      return weekStart;
+    }
+  }
+  return getLatestAggregatesLocked();
 }
 
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
@@ -174,7 +191,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
 
   if (isFutureWeekSelected && !hasSnapshots) {
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
-    const latestSentiment = await getLatestAggregatesLocked();
+    const sentimentForSelectedWeek = await getPerformanceSentimentForWeek(
+      selectedWeek && selectedWeek !== "all" ? selectedWeek : displayWeekOpenUtc,
+    );
     const snapshotResults = await Promise.all(
       assetClasses.map((asset) => readSnapshot({ assetClass: asset.id })),
     );
@@ -200,7 +219,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               model,
               assetClass: asset.id,
               snapshot,
-              sentiment: latestSentiment,
+              sentiment: sentimentForSelectedWeek,
               performance,
             }),
           );
@@ -273,7 +292,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     anyPriced = totals.some((result) => result.priced > 0);
   } else {
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
-    const latestSentiment = await getLatestAggregatesLocked();
+    const sentimentForSelectedWeek = await getPerformanceSentimentForWeek(
+      selectedWeek && selectedWeek !== "all" ? selectedWeek : tradingWeekOpenUtc,
+    );
     const snapshotResults = await Promise.all(
       assetClasses.map((asset) =>
         isCurrentWeekSelected
@@ -307,7 +328,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               model,
               assetClass: asset.id,
               snapshot,
-              sentiment: latestSentiment,
+              sentiment: sentimentForSelectedWeek,
               performance,
             }),
           );

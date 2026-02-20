@@ -305,23 +305,86 @@ export async function readAllPerformanceSnapshots(limit = 520) {
     week_open_utc: Date;
     asset_class: AssetClass;
     model: PerformanceModel;
+    report_date: Date | null;
+    priced: number;
+    total: number;
     percent: string;
   }>(
-    `SELECT week_open_utc, asset_class, model, percent
+    `SELECT week_open_utc, asset_class, model, report_date, priced, total, percent
      FROM performance_snapshots
      ORDER BY week_open_utc DESC
      LIMIT $1`,
     [limit],
   );
 
-  return rows
+  const mapped = rows
     .map((row) => ({
       week_open_utc: row.week_open_utc.toISOString(),
       asset_class: row.asset_class,
       model: row.model,
+      report_date: row.report_date ? row.report_date.toISOString().slice(0, 10) : null,
+      priced: row.priced,
+      total: row.total,
       percent: Number(row.percent),
     }))
     .filter((row) => !isExcludedPerformanceWeek(row.week_open_utc));
+
+  function canonicalWeekFromReportDate(reportDate: string | null): string | null {
+    if (!reportDate) return null;
+    const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+    if (!report.isValid) return null;
+    const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
+    return report
+      .plus({ days: daysUntilSunday })
+      .set({ hour: 19, minute: 0, second: 0, millisecond: 0 })
+      .toUTC()
+      .toISO();
+  }
+
+  function isBetterRow(
+    current: (typeof mapped)[number],
+    next: (typeof mapped)[number],
+  ): boolean {
+    if (next.priced !== current.priced) return next.priced > current.priced;
+    if (next.total !== current.total) return next.total > current.total;
+
+    const canonical = canonicalWeekFromReportDate(next.report_date);
+    if (canonical) {
+      const canonicalMs = DateTime.fromISO(canonical, { zone: "utc" }).toMillis();
+      const currentMs = DateTime.fromISO(current.week_open_utc, { zone: "utc" }).toMillis();
+      const nextMs = DateTime.fromISO(next.week_open_utc, { zone: "utc" }).toMillis();
+      const currentDist = Number.isFinite(currentMs) ? Math.abs(currentMs - canonicalMs) : Number.POSITIVE_INFINITY;
+      const nextDist = Number.isFinite(nextMs) ? Math.abs(nextMs - canonicalMs) : Number.POSITIVE_INFINITY;
+      if (nextDist !== currentDist) return nextDist < currentDist;
+    }
+
+    const currentWeekMs = DateTime.fromISO(current.week_open_utc, { zone: "utc" }).toMillis();
+    const nextWeekMs = DateTime.fromISO(next.week_open_utc, { zone: "utc" }).toMillis();
+    if (Number.isFinite(currentWeekMs) && Number.isFinite(nextWeekMs)) {
+      return nextWeekMs > currentWeekMs;
+    }
+
+    return false;
+  }
+
+  const deduped = new Map<string, (typeof mapped)[number]>();
+  for (const row of mapped) {
+    const canonicalWeek = normalizeWeekOpenUtc(row.week_open_utc) ?? row.week_open_utc;
+    const logicalWeekKey = row.report_date ? `report:${row.report_date}` : `week:${canonicalWeek}`;
+    const key = `${row.asset_class}:${row.model}:${logicalWeekKey}`;
+    const prev = deduped.get(key);
+    if (!prev || isBetterRow(prev, row)) {
+      deduped.set(key, row);
+    }
+  }
+
+  return Array.from(deduped.values()).map((row) => ({
+    week_open_utc: row.week_open_utc,
+    asset_class: row.asset_class,
+    model: row.model,
+    report_date: row.report_date,
+    percent: row.percent,
+  }));
 }
 
 export async function readUniversalWeeklyTotals(limit = 104): Promise<

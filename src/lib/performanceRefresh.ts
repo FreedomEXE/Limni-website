@@ -1,7 +1,10 @@
 import { DateTime } from "luxon";
 import { listAssetClasses, type AssetClass } from "@/lib/cotMarkets";
 import { readSnapshot, readSnapshotHistory } from "@/lib/cotStore";
-import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
+import {
+  getAggregatesForWeekStart,
+  getLatestAggregatesLocked,
+} from "@/lib/sentiment/store";
 import {
   computeModelPerformance,
   type PerformanceModel,
@@ -43,7 +46,7 @@ function getTradingWeekOpenFromReportDate(reportDate: string): string | null {
   if (!report.isValid) return null;
   const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
   const sundayOpen = report.plus({ days: daysUntilSunday }).set({
-    hour: 17,
+    hour: 19,
     minute: 0,
     second: 0,
     millisecond: 0,
@@ -124,6 +127,17 @@ export async function refreshPerformanceSnapshots(options: {
   const payload = [];
   for (const weekOpenUtc of targetWeeks) {
     const isCurrentWeek = weekOpenUtc === currentWeekOpenUtc;
+    let sentimentForWeek = latestSentiment;
+    const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+    const weekClose = weekOpen.isValid
+      ? weekOpen.plus({ days: 7 }).toUTC().toISO()
+      : null;
+    if (weekClose) {
+      const weekStartSentiment = await getAggregatesForWeekStart(weekOpenUtc, weekClose);
+      if (weekStartSentiment.length > 0) {
+        sentimentForWeek = weekStartSentiment;
+      }
+    }
     const snapshots = await Promise.all(
       assetClasses.map((asset) =>
         isCurrentWeek
@@ -149,7 +163,7 @@ export async function refreshPerformanceSnapshots(options: {
           model,
           assetClass: asset.id,
           snapshot,
-          sentiment: latestSentiment,
+          sentiment: sentimentForWeek,
           performance,
         });
         payload.push({

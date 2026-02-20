@@ -324,6 +324,28 @@ function buildPerformanceValue(
   };
 }
 
+function isHistoricalSnapshotFinal(snapshot: MarketSnapshot, closeUtc: DateTime): boolean {
+  const closeMs = closeUtc.toMillis();
+  const refreshedMs = DateTime.fromISO(snapshot.last_refresh_utc, { zone: "utc" }).toMillis();
+  if (Number.isFinite(refreshedMs) && refreshedMs >= closeMs) {
+    return true;
+  }
+
+  // Bitget candles close on the hour; allow small tolerance around close boundary.
+  const toleranceMs = 61 * 60 * 1000;
+  const pairRows = Object.values(snapshot.pairs).filter(
+    (value): value is PairPerformance => value !== null,
+  );
+  if (pairRows.length === 0) {
+    return false;
+  }
+
+  return pairRows.every((row) => {
+    const currentMs = DateTime.fromISO(row.current_time_utc, { zone: "utc" }).toMillis();
+    return Number.isFinite(currentMs) && currentMs >= closeMs - toleranceMs;
+  });
+}
+
 function getCryptoBase(pair: string): "BTC" | "ETH" | null {
   if (pair.startsWith("BTC")) {
     return "BTC";
@@ -645,6 +667,7 @@ export async function getPairPerformance(
   // Always try to use cached pricing data from DB first
   const snapshot = await readMarketSnapshot(weekOpenIso, assetClass);
   const allowHistoricalRecalc = process.env.ALLOW_HISTORICAL_RECALC === "true";
+  let staleHistoricalFallback: PerformanceResult | null = null;
 
   // Skip cache for historical weeks if recalculation is forced
   if (snapshot && !(allowHistoricalRecalc && !isCurrentWeek)) {
@@ -684,7 +707,15 @@ export async function getPairPerformance(
         return { performance, note, missingPairs };
       }
     } else {
-      // For historical weeks, ALWAYS use cached data (never fetch from APIs)
+      // For historical weeks, only use cache if it was refreshed at/after week close.
+      // If cached snapshot was captured mid-week, recalc once to finalize.
+      if (window.isHistorical && !isHistoricalSnapshotFinal(snapshot, window.closeUtc)) {
+        staleHistoricalFallback = {
+          performance,
+          note: `Historical snapshot is stale (captured before weekly close). Attempting recalculation. ${formatUtcLabel(snapshot.last_refresh_utc)} cache retained as fallback.`,
+          missingPairs,
+        };
+      } else {
       const baseNote =
         missing > 0
           ? `Historical data. Missing prices for ${missing}/${totalPairs}. Snapshot from ${formatUtcLabel(
@@ -696,11 +727,16 @@ export async function getPairPerformance(
           ? `${baseNote} Derived from Bitget pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`
           : `${baseNote} Derived from OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
       return { performance, note, missingPairs };
+      }
     }
   }
 
-  // If no cached data exists for historical weeks and recalc is not forced, return empty result
-  if (!isCurrentWeek && !allowHistoricalRecalc) {
+  // For historical weeks, permit recalculation when explicit or when stale cache was detected.
+  const shouldRecalcHistorical =
+    !isCurrentWeek && (allowHistoricalRecalc || staleHistoricalFallback !== null);
+
+  // If no historical cache exists and recalc isn't enabled, return empty result.
+  if (!isCurrentWeek && !shouldRecalcHistorical) {
     const performance: Record<string, PairPerformance | null> = {};
     Object.keys(pairs).forEach((pair) => {
       performance[pair] = null;
@@ -714,7 +750,11 @@ export async function getPairPerformance(
 
   if (assetClass !== "fx") {
     const result = await buildNonFxPerformance(pairs, assetClass, window);
-    if (isCurrentWeek || allowHistoricalRecalc) {
+    const allMissing = Object.values(result.performance).every((value) => value === null);
+    if (allMissing && staleHistoricalFallback) {
+      return staleHistoricalFallback;
+    }
+    if (isCurrentWeek || allowHistoricalRecalc || staleHistoricalFallback !== null) {
       const snapshot: MarketSnapshot = {
         week_open_utc: weekOpenIso,
         last_refresh_utc: toIsoString(now),
@@ -730,8 +770,12 @@ export async function getPairPerformance(
     pairs,
     window,
   );
+  const allMissing = Object.values(performance).every((value) => value === null);
+  if (allMissing && staleHistoricalFallback) {
+    return staleHistoricalFallback;
+  }
 
-  if (isCurrentWeek || allowHistoricalRecalc) {
+  if (isCurrentWeek || allowHistoricalRecalc || staleHistoricalFallback !== null) {
     const snapshot: MarketSnapshot = {
       week_open_utc: weekOpenIso,
       last_refresh_utc: toIsoString(now),
