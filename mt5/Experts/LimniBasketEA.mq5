@@ -1977,6 +1977,8 @@ string ShortReasonTag(const string reasonTag)
     return "basket_sl";
   if(tag == "trail_lock")
     return "trail_lock";
+  if(tag == "friday_winner_close")
+    return "friday_winner_close";
   if(tag == "weekly_flip")
     return "weekly_flip";
   if(tag == "added_loser")
@@ -4619,6 +4621,7 @@ void ResetState()
   g_lastApiSuccess = 0;
   g_loadedFromCache = false;
   g_reportDate = "";
+  g_lastReconcileReportDate = "";
   g_tradingAllowed = false;
   g_apiOk = false;
   g_lastApiError = "";

@@ -6,7 +6,39 @@
     },
     {
       "path": "/api/cron/cot-refresh",
-      "schedule": "30-59/5 19 * * 5"
+      "schedule": "28 19 * * 5"
+    },
+    {
+      "path": "/api/cron/cot-refresh",
+      "schedule": "29 19 * * 5"
+    },
+    {
+      "path": "/api/cron/cot-refresh",
+      "schedule": "30 19 * * 5"
+    },
+    {
+      "path": "/api/cron/cot-refresh",
+      "schedule": "31 19 * * 5"
+    },
+    {
+      "path": "/api/cron/cot-refresh",
+      "schedule": "32 19 * * 5"
+    },
+    {
+      "path": "/api/cron/cot-refresh",
+      "schedule": "33 19 * * 5"
+    },
+    {
+      "path": "/api/cron/cot-refresh",
+      "schedule": "34 19 * * 5"
+    },
+    {
+      "path": "/api/cron/cot-refresh",
+      "schedule": "35 19 * * 5"
+    },
+    {
+      "path": "/api/cron/cot-refresh",
+      "schedule": "40-59/5 19 * * 5"
     },
     {
       "path": "/api/cron/cot-refresh",
