@@ -170,7 +170,7 @@ export async function buildBasketSignals(options?: {
       asset_class: assetParam ?? "all",
       trading_allowed: false,
       reason: "no snapshot available",
-      week_open_utc: getWeekOpenUtc(),
+      week_open_utc: getDisplayWeekOpenUtc(),
       pairs: [],
     };
   }
