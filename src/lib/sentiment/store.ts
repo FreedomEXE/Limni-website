@@ -389,6 +389,28 @@ export async function getAggregatesForWeekStart(
   return snapshot;
 }
 
+export async function getAggregatesForWeekStartWithBackfill(
+  weekOpenUtc: string,
+  weekCloseUtc: string,
+): Promise<SentimentAggregate[]> {
+  const weekAnchored = await getAggregatesForWeekStart(weekOpenUtc, weekCloseUtc);
+  if (weekAnchored.length === 0) {
+    return getLatestAggregatesLocked();
+  }
+
+  const latestLocked = await getLatestAggregatesLocked();
+  const merged = new Map<string, SentimentAggregate>(
+    weekAnchored.map((agg) => [agg.symbol, agg]),
+  );
+  for (const agg of latestLocked) {
+    if (!merged.has(agg.symbol)) {
+      merged.set(agg.symbol, agg);
+    }
+  }
+
+  return Array.from(merged.values()).sort((a, b) => a.symbol.localeCompare(b.symbol));
+}
+
 export async function readSourceHealth(): Promise<SourceHealth[]> {
   // For now, return empty array - source health tracking not yet implemented in DB
   // TODO: Add sentiment_source_health table and implement this

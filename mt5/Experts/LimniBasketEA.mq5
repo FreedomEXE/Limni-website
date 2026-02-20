@@ -511,8 +511,8 @@ string BuildPositionsArray();
 string BuildClosedPositionsArray();
 string BuildLotMapArray();
 void ResetPlanningDiagnostics();
-void AddRawModelCount(const string model);
-void AddAcceptedModelCount(const string model);
+void AddRawModelCount(const string model, int direction);
+void AddAcceptedModelCount(const string model, int direction);
 void AddSkipReason(const string reasonKey);
 string BuildPlanningDiagnosticsJson();
 string BuildModelCountJson(bool accepted);
@@ -771,7 +771,8 @@ void PollApiIfDue()
   for(int i = 0; i < count; i++)
   {
     string model = NormalizeModelName(i < ArraySize(models) ? models[i] : "blended");
-    AddRawModelCount(model);
+    int dir = (i < ArraySize(dirs) ? dirs[i] : 0);
+    AddRawModelCount(model, dir);
 
     string resolved = "";
     if(!IsAllowedSymbol(symbols[i]))
@@ -799,12 +800,12 @@ void PollApiIfDue()
     ArrayResize(g_assetClasses, idx + 1);
     g_apiSymbols[idx] = symbols[i];
     g_brokerSymbols[idx] = resolved;
-    g_directions[idx] = dirs[i];
+    g_directions[idx] = dir;
     g_models[idx] = model;
     g_assetClasses[idx] = (i < ArraySize(assetClasses) ? assetClasses[i] : "fx");
-    AddAcceptedModelCount(model);
+    AddAcceptedModelCount(model, dir);
     Log(StringFormat("Signal %d ACCEPTED: symbol=%s->%s model=%s dir=%d asset=%s",
-                     i, symbols[i], resolved, model, dirs[i],
+                     i, symbols[i], resolved, model, dir,
                      (i < ArraySize(assetClasses) ? assetClasses[i] : "fx")));
   }
 
@@ -812,7 +813,7 @@ void PollApiIfDue()
                    g_tradingAllowed ? "true" : "false",
                    g_reportDate,
                    ArraySize(g_apiSymbols)));
-  Log(StringFormat("Parsed counts - Raw: A=%d B=%d C=%d D=%d S=%d | Accepted: A=%d B=%d C=%d D=%d S=%d",
+  Log(StringFormat("Parsed active counts (dir!=0) - Raw: A=%d B=%d C=%d D=%d S=%d | Accepted: A=%d B=%d C=%d D=%d S=%d",
                    g_diagRawA, g_diagRawB, g_diagRawC, g_diagRawD, g_diagRawS,
                    g_diagAcceptedA, g_diagAcceptedB, g_diagAcceptedC, g_diagAcceptedD, g_diagAcceptedS));
 }
@@ -3153,6 +3154,7 @@ void TryAddPositions()
     return;
   if(!g_apiOk || !g_tradingAllowed || g_closeRequested)
     return;
+  bool accountStructureBlocked = false;
   if(!IsAccountStructureAllowed())
   {
     if(IsFiveersMode())
@@ -3171,12 +3173,13 @@ void TryAddPositions()
     {
       LogTradeError(StringFormat("Account structure mismatch for mode %s (account=%s). Blocking new entries.",
                                  StrategyModeToString(), MarginModeToString()));
-      return;
+      accountStructureBlocked = true;
     }
   }
 
   string universeReason = "";
-  if(!IsUniverseSizingReady(universeReason))
+  bool universeReady = IsUniverseSizingReady(universeReason);
+  if(!universeReady)
   {
     datetime nowWarn = TimeCurrent();
     if(g_lastUniverseGateWarn == 0 || (nowWarn - g_lastUniverseGateWarn) >= 60)
@@ -3191,25 +3194,49 @@ void TryAddPositions()
       ));
       g_lastUniverseGateWarn = nowWarn;
     }
-    return;
   }
 
   datetime nowGmt = TimeGMT();
-  if(IsMidWeekAttachBlocked(nowGmt))
-    return;
+  bool midWeekAttachBlocked = IsMidWeekAttachBlocked(nowGmt);
 
   // Friday winner-close: when new COT data arrives (report_date changes), close all
   // profitable positions before reconciling losers against the new signal set.
-  if(EnableWeeklyFlipClose && g_reportDate != "" && g_lastReconcileReportDate != "" &&
-     g_reportDate != g_lastReconcileReportDate)
+  bool weeklyReportChanged = (EnableWeeklyFlipClose &&
+                              g_reportDate != "" &&
+                              g_lastReconcileReportDate != "" &&
+                              g_reportDate != g_lastReconcileReportDate);
+  bool weeklyBootstrapReconcile = false;
+  if(EnableWeeklyFlipClose &&
+     g_reportDate != "" &&
+     g_lastReconcileReportDate == "" &&
+     HasOpenPositions())
+  {
+    string expectedReportDate = "";
+    int minutesSinceRelease = 0;
+    bool waitingWeeklySnapshot = IsWaitingForWeeklySnapshot(expectedReportDate, minutesSinceRelease);
+    bool pastWeeklyRelease = (waitingWeeklySnapshot || minutesSinceRelease > 0);
+    if(pastWeeklyRelease)
+    {
+      weeklyBootstrapReconcile = true;
+      Log(StringFormat("Friday reconcile bootstrap: prior report unknown on attach. report_date=%s expected=%s mins_since_release=%d",
+                       g_reportDate,
+                       expectedReportDate,
+                       minutesSinceRelease));
+    }
+  }
+  if(weeklyReportChanged || weeklyBootstrapReconcile)
   {
     g_postFridayRolloverHold = true;
     SaveState();
 
     if(IsFiveersMode())
     {
-      Log(StringFormat("New weekly report detected (%s -> %s). 5ERS/prop mode: closing all non-crypto positions (BTC/ETH carry to Sunday).",
-                       g_lastReconcileReportDate, g_reportDate));
+      if(weeklyReportChanged)
+        Log(StringFormat("New weekly report detected (%s -> %s). 5ERS/prop mode: closing all non-crypto positions (BTC/ETH carry to Sunday).",
+                         g_lastReconcileReportDate, g_reportDate));
+      else
+        Log(StringFormat("Friday reconcile bootstrap on attach (report=%s). 5ERS/prop mode: closing all non-crypto positions (BTC/ETH carry to Sunday).",
+                         g_reportDate));
       g_closeRequested = true;
       SaveState();
       CloseAllPositionsExceptSundayCrypto("friday_prop_close");
@@ -3223,8 +3250,12 @@ void TryAddPositions()
       return;
     }
 
-    Log(StringFormat("New weekly report detected (%s -> %s). Closing non-crypto winners before reconcile (BTC/ETH carry to Sunday).",
-                     g_lastReconcileReportDate, g_reportDate));
+    if(weeklyReportChanged)
+      Log(StringFormat("New weekly report detected (%s -> %s). Closing non-crypto winners before reconcile (BTC/ETH carry to Sunday).",
+                       g_lastReconcileReportDate, g_reportDate));
+    else
+      Log(StringFormat("Friday reconcile bootstrap on attach (report=%s). Closing non-crypto winners before reconcile (BTC/ETH carry to Sunday).",
+                       g_reportDate));
     CloseWinningPositionsExceptSundayCrypto("friday_winner_close");
   }
   g_lastReconcileReportDate = g_reportDate;
@@ -3247,6 +3278,16 @@ void TryAddPositions()
     }
     return;
   }
+
+  // Mid-week attach should block only new entries, not Friday close/reconcile.
+  if(midWeekAttachBlocked)
+    return;
+
+  if(accountStructureBlocked)
+    return;
+
+  if(!universeReady)
+    return;
 
   double totalLots = GetTotalBasketLots();
   datetime cryptoStartGmt = GetCryptoWeekStartGmt(nowGmt);
@@ -4859,7 +4900,7 @@ void InitDashboard()
   g_dashShadowOffset = MathMax(DashboardShadowOffset, 6);
   g_dashColumnGap = MathMax(DashboardColumnGap, 12);
 
-  int lineCount = (DashboardView == DASH_COMPACT ? 24 : 20);
+  int lineCount = (DashboardView == DASH_COMPACT ? 27 : 20);
   int mapLines = (DashboardView == DASH_COMPACT ? 0 : MathMax(6, LotMapMaxLines));
   ArrayResize(g_dashboardLines, lineCount);
   for(int i = 0; i < lineCount; i++)
@@ -5233,33 +5274,37 @@ void UpdateDashboard()
                                                     stateText,
                                                     g_tradingAllowed ? "allowed" : "blocked",
                                                     g_apiOk ? "ok" : "fail"), stateColor);
-    SetLabelText(g_dashboardLines[3], StringFormat("| %s | %s", brokerLine, serverLine), dimColor);
-    SetLabelText(g_dashboardLines[4], StringFormat("| %s | class=%s profile=%s",
-                                                    structureLine,
-                                                    accountClassLabel,
-                                                    profileLabel), dimColor);
-    SetLabelText(g_dashboardLines[5], "| user=" + userLabel + " | " + basketGuardLine + " | " + trailLine, dimColor);
-    SetLabelText(g_dashboardLines[6], "+----------------------------------------------------------+", dimColor);
+    SetLabelText(g_dashboardLines[3], "| " + brokerLine, dimColor);
+    SetLabelText(g_dashboardLines[4], StringFormat("| %s | %s", serverLine, structureLine), dimColor);
+    SetLabelText(g_dashboardLines[5], StringFormat("| class=%s profile=%s user=%s",
+                                                    CompactText(accountClassLabel, 14),
+                                                    CompactText(profileLabel, 12),
+                                                    CompactText(userLabel, 22)), dimColor);
+    SetLabelText(g_dashboardLines[6], "| " + basketGuardLine, dimColor);
+    SetLabelText(g_dashboardLines[7], "| " + trailLine, dimColor);
+    SetLabelText(g_dashboardLines[8], "+----------------------------------------------------------+", dimColor);
 
-    SetLabelText(g_dashboardLines[7], "| SYNC                                                     |", headingColor);
-    SetLabelText(g_dashboardLines[8], "| " + CompactText(snapshotLine, 58), showWaitingSnapshot ? warnColor : dimColor);
-    SetLabelText(g_dashboardLines[9], StringFormat("| %s | poll=%s",
+    SetLabelText(g_dashboardLines[9], "| SYNC                                                     |", headingColor);
+    SetLabelText(g_dashboardLines[10], "| " + CompactText(snapshotLine, 58), showWaitingSnapshot ? warnColor : dimColor);
+    SetLabelText(g_dashboardLines[11], StringFormat("| %s | poll=%s",
                                                     CompactText(cacheLine, 30),
                                                     FormatDuration(pollRemaining)),
                  showWaitingSnapshot ? warnColor : dimColor);
-    SetLabelText(g_dashboardLines[10], "+----------------------------------------------------------+", dimColor);
-
-    SetLabelText(g_dashboardLines[11], "| ACCOUNT                                                  |", headingColor);
-    SetLabelText(g_dashboardLines[12], "| " + equityLine, textColor);
-    SetLabelText(g_dashboardLines[13], "| " + pnlLine + " | " + ddLine, pnlColor);
+    SetLabelText(g_dashboardLines[12], "| report=" + reportText, dimColor);
+    SetLabelText(g_dashboardLines[13], "| refresh=" + CompactText(refreshText, 48), dimColor);
     SetLabelText(g_dashboardLines[14], "+----------------------------------------------------------+", dimColor);
 
-    SetLabelText(g_dashboardLines[15], "| POSITIONS                                                |", headingColor);
-    SetLabelText(g_dashboardLines[16], "| " + positionLine + " | " + lotsLine, textColor);
-    SetLabelText(g_dashboardLines[17], "| " + plannedModelLine, dimColor);
-    SetLabelText(g_dashboardLines[18], "+----------------------------------------------------------+", dimColor);
+    SetLabelText(g_dashboardLines[15], "| ACCOUNT                                                  |", headingColor);
+    SetLabelText(g_dashboardLines[16], "| " + equityLine, textColor);
+    SetLabelText(g_dashboardLines[17], "| " + pnlLine, pnlColor);
+    SetLabelText(g_dashboardLines[18], "| " + ddLine + " | " + peakLine, ddColor);
+    SetLabelText(g_dashboardLines[19], "+----------------------------------------------------------+", dimColor);
 
-    SetLabelText(g_dashboardLines[19], "| CHECKS                                                   |", headingColor);
+    SetLabelText(g_dashboardLines[20], "| POSITIONS                                                |", headingColor);
+    SetLabelText(g_dashboardLines[21], "| " + positionLine + " | " + lotsLine, textColor);
+    SetLabelText(g_dashboardLines[22], "| " + CompactText(plannedModelLine, 58), dimColor);
+    SetLabelText(g_dashboardLines[23], "+----------------------------------------------------------+", dimColor);
+    SetLabelText(g_dashboardLines[24], "| CHECKS                                                   |", headingColor);
     string alertLine = (g_lastApiError == "" ? "Alerts: none" : "Alerts: " + errorText);
     if(!universeGateReady)
     {
@@ -5275,13 +5320,13 @@ void UpdateDashboard()
       else
         alertLine = alertLine + " | waiting for weekly snapshot";
     }
-    SetLabelText(g_dashboardLines[20], "| " + alertLine, errorColor);
-    SetLabelText(g_dashboardLines[21], StringFormat("| pairs=%d/%d legs=%d open_pairs=%d", totalPairs, expectedPairs, totalLegs, openPairs), dimColor);
-    SetLabelText(g_dashboardLines[22], "| " + CompactText(StringFormat("report=%s refresh=%s miss=%s",
-                                                    reportText, refreshText,
-                                                    missingPairs == "none" ? "none" : CompactText(missingPairs, 18)), 58), errorColor);
-    SetLabelText(g_dashboardLines[23], "+----------------------------------------------------------+", dimColor);
-    usedLeft = 24;
+    string checksSummary = StringFormat("pairs=%d/%d open_pairs=%d miss=%s",
+                                        totalPairs, expectedPairs, openPairs,
+                                        missingPairs == "none" ? "none" : CompactText(missingPairs, 18));
+    SetLabelText(g_dashboardLines[25], "| " + CompactText(alertLine + " | " + checksSummary, 58),
+                 (!universeGateReady || missingPairs != "none") ? warnColor : errorColor);
+    SetLabelText(g_dashboardLines[26], "+----------------------------------------------------------+", dimColor);
+    usedLeft = 27;
   }
   else
   {
@@ -5850,6 +5895,8 @@ int CountSignalsByModel(const string model)
   int count = 0;
   for(int i = 0; i < ArraySize(g_models); i++)
   {
+    if(i < ArraySize(g_directions) && g_directions[i] == 0)
+      continue;
     if(g_models[i] == model)
       count++;
   }
@@ -6176,8 +6223,10 @@ void ResetPlanningDiagnostics()
   g_diagSkipPendingLegFill = 0;
 }
 
-void AddRawModelCount(const string model)
+void AddRawModelCount(const string model, int direction)
 {
+  if(direction == 0)
+    return;
   string key = NormalizeModelName(model);
   if(key == "antikythera") g_diagRawA++;
   else if(key == "blended") g_diagRawB++;
@@ -6186,8 +6235,10 @@ void AddRawModelCount(const string model)
   else if(key == "sentiment") g_diagRawS++;
 }
 
-void AddAcceptedModelCount(const string model)
+void AddAcceptedModelCount(const string model, int direction)
 {
+  if(direction == 0)
+    return;
   string key = NormalizeModelName(model);
   if(key == "antikythera") g_diagAcceptedA++;
   else if(key == "blended") g_diagAcceptedB++;

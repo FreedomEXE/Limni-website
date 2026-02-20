@@ -2,8 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import {
-  getAggregatesForWeekStart,
-  getLatestAggregatesLocked,
+  getAggregatesForWeekStartWithBackfill,
 } from "@/lib/sentiment/store";
 import { computeModelPerformance } from "@/lib/performanceLab";
 import { simulateTrailingForGroupsFromRows } from "@/lib/universalBasket";
@@ -58,13 +57,10 @@ async function getPerformanceSentimentForWeek(weekOpenUtc: string) {
   const weekClose = weekOpen.isValid
     ? weekOpen.plus({ days: 7 }).toUTC().toISO()
     : null;
-  if (weekClose) {
-    const weekStart = await getAggregatesForWeekStart(weekOpenUtc, weekClose);
-    if (weekStart.length > 0) {
-      return weekStart;
-    }
+  if (!weekClose) {
+    return [];
   }
-  return getLatestAggregatesLocked();
+  return getAggregatesForWeekStartWithBackfill(weekOpenUtc, weekClose);
 }
 
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
@@ -189,7 +185,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           ? "Snapshot loaded; waiting for first price refresh"
           : "No refresh yet";
 
-  if (isFutureWeekSelected && !hasSnapshots) {
+  if (isFutureWeekSelected) {
     const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
     const sentimentForSelectedWeek = await getPerformanceSentimentForWeek(
       selectedWeek && selectedWeek !== "all" ? selectedWeek : displayWeekOpenUtc,
@@ -233,7 +229,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       perAsset: perAsset.map((asset) => ({ assetLabel: asset.asset.label, results: asset.results })),
     });
     anyPriced = totals.some((result) => result.priced > 0);
-  } else if (hasSnapshots && (isHistoricalWeekSelected || isFutureWeekSelected)) {
+  } else if (hasSnapshots && isHistoricalWeekSelected) {
     const historicalWeekOpenUtc = selectedWeek as string;
     const groups = [
       ...models.map((model) => ({

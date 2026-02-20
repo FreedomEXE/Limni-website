@@ -6,7 +6,7 @@ import { fetchLiquidationSummary } from "@/lib/coinank";
 import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { fetchCryptoSpotPrice } from "@/lib/cryptoPrices";
 import {
-  getAggregatesForWeekStart,
+  getAggregatesForWeekStartWithBackfill,
   getLatestAggregatesLocked,
 } from "@/lib/sentiment/store";
 import { formatDateTimeET, latestIso } from "@/lib/time";
@@ -82,7 +82,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
       const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
       const close = open.isValid ? open.plus({ days: 7 }) : open;
       aggregates = open.isValid
-        ? await getAggregatesForWeekStart(
+        ? await getAggregatesForWeekStartWithBackfill(
             open.toUTC().toISO() ?? selectedWeek,
             close.toUTC().toISO() ?? selectedWeek,
           )
@@ -90,7 +90,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
       const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
       if (prevOpen && prevOpen.isValid) {
         const prevClose = prevOpen.plus({ days: 7 });
-        previousAggregates = await getAggregatesForWeekStart(
+        previousAggregates = await getAggregatesForWeekStartWithBackfill(
           prevOpen.toUTC().toISO() ?? selectedWeek,
           prevClose.toUTC().toISO() ?? selectedWeek,
         );

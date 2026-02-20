@@ -6,8 +6,8 @@ import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { derivePairDirections, derivePairDirectionsByBase, type BiasMode } from "@/lib/cotCompute";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { ANTIKYTHERA_MAX_SIGNALS } from "@/lib/antikythera";
-import { getAggregatesForWeekStart, getLatestAggregatesLocked } from "@/lib/sentiment/store";
-import { getWeekOpenUtc } from "@/lib/performanceSnapshots";
+import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { getAdaptiveTrailProfile, type AdaptiveTrailProfile } from "@/lib/adaptiveTrailProfile";
 
@@ -207,20 +207,16 @@ export async function buildBasketSignals(options?: {
     }
   }
 
-  const weekOpen = getWeekOpenUtc();
+  // After Friday 15:30 ET release, use the upcoming trading week anchor so
+  // all surfaces (UI, API, EA) agree on the "new week" signal set.
+  const weekOpen = getDisplayWeekOpenUtc();
   const weekOpenDt = DateTime.fromISO(weekOpen, { zone: "utc" });
   const weekClose = weekOpenDt.isValid ? weekOpenDt.plus({ days: 7 }) : weekOpenDt;
-  const sentiment = await getAggregatesForWeekStart(
+  const sentiment = await getAggregatesForWeekStartWithBackfill(
     weekOpenDt.toUTC().toISO() ?? weekOpen,
     weekClose.toUTC().toISO() ?? weekOpen,
   );
-  const latestSentiment = await getLatestAggregatesLocked();
   const sentimentMap = new Map(sentiment.map((agg) => [agg.symbol, agg]));
-  for (const agg of latestSentiment) {
-    if (!sentimentMap.has(agg.symbol)) {
-      sentimentMap.set(agg.symbol, agg);
-    }
-  }
 
   const pairs: BasketSignal[] = [];
 

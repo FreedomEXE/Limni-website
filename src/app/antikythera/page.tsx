@@ -6,11 +6,13 @@ import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { ANTIKYTHERA_MAX_SIGNALS } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
-import { getAggregatesForWeekStart, getLatestAggregatesLocked } from "@/lib/sentiment/store";
+import { getAggregatesForWeekStartWithBackfill, getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { listPerformanceWeeks, readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import { DateTime } from "luxon";
+import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -72,8 +74,16 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
     );
   }
 
-  const weeks = await listPerformanceWeeks();
-  let selectedWeek = weeks[0] ?? null;
+  const currentWeekOpen = getDisplayWeekOpenUtc();
+  const recentWeeks = await listPerformanceWeeks(24);
+  const weeks = buildDataWeekOptions({
+    historicalWeeks: recentWeeks,
+    currentWeekOpenUtc: currentWeekOpen,
+    includeAll: false,
+    limit: 12,
+  }).filter((item): item is string => item !== "all");
+
+  let mappedWeekFromReport: string | null = null;
   if (selectedReportDate) {
     const report = DateTime.fromISO(selectedReportDate, { zone: "America/New_York" });
     if (report.isValid) {
@@ -82,22 +92,29 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
         .plus({ days: daysUntilMonday })
         .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
       const weekIso = monday.toUTC().toISO();
-      if (weekIso && weeks.includes(weekIso)) {
-        selectedWeek = weekIso;
-      }
+      if (weekIso) mappedWeekFromReport = weekIso;
     }
   }
+  const selectedWeek = resolveWeekSelection({
+    requestedWeek: mappedWeekFromReport ?? undefined,
+    weekOptions: weeks,
+    currentWeekOpenUtc: currentWeekOpen,
+    allowAll: false,
+  }) as string | null;
   try {
     if (selectedWeek) {
       const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
       const close = open.isValid ? open.plus({ days: 7 }) : open;
       sentiment = open.isValid
-        ? await getAggregatesForWeekStart(open.toUTC().toISO() ?? selectedWeek, close.toUTC().toISO() ?? selectedWeek)
+        ? await getAggregatesForWeekStartWithBackfill(
+            open.toUTC().toISO() ?? selectedWeek,
+            close.toUTC().toISO() ?? selectedWeek,
+          )
         : await getLatestAggregatesLocked();
       const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
       if (prevOpen && prevOpen.isValid) {
         const prevClose = prevOpen.plus({ days: 7 });
-        previousSentiment = await getAggregatesForWeekStart(
+        previousSentiment = await getAggregatesForWeekStartWithBackfill(
           prevOpen.toUTC().toISO() ?? selectedWeek,
           prevClose.toUTC().toISO() ?? selectedWeek,
         );
@@ -112,7 +129,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
     );
   }
   const performanceByPair: Record<string, number | null> = {};
-  let allSignals = assetClasses.flatMap((asset) => {
+  const allSignals = assetClasses.flatMap((asset) => {
     const snapshot = snapshots.get(asset.id) ?? null;
     const signals =
       snapshot
