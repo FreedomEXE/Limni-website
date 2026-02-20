@@ -1,11 +1,17 @@
 /**
  * GET /api/mt5/reconcile-preview
  *
- * Simulates the EA's ReconcilePositionsWithSignals() logic server-side.
- * Shows which open positions would be KEPT vs CLOSED (weekly_flip) against
- * the currently loaded basket signals, without touching the broker account.
+ * Simulates the EA's Friday rollover logic server-side. Shows which positions
+ * would be KEPT vs CLOSED when new COT data arrives, without touching the broker.
  *
- * Intended for monitoring the Friday 15:30 ET weekly rollover.
+ * EA Friday rollover sequence (when report_date changes):
+ * 1. Close ALL winning positions (profit+swap > 0) with reason "friday_winner_close"
+ * 2. Run ReconcilePositionsWithSignals on remaining losers:
+ *    - KEEP if signal direction still matches
+ *    - CLOSE if signal flipped or symbol/model has no signal ("weekly_flip")
+ *
+ * NOTE: This preview shows reconcile verdicts BEFORE the winner-close step.
+ * Any position with profit > 0 will be closed first, regardless of verdict shown here.
  *
  * Query params:
  *   account_id  - optional, filter to a single MT5 account

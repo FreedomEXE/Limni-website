@@ -209,6 +209,7 @@ struct SizingPolicy
 };
 
 string g_reportDate = "";
+string g_lastReconcileReportDate = "";
 bool g_tradingAllowed = false;
 bool g_apiOk = false;
 
@@ -404,6 +405,7 @@ double EstimatePositionRiskUsd(const string symbol, int direction, double volume
 bool GetSymbolStats(const string symbol, SymbolStats &stats);
 void CloseAllPositions();
 void CloseAllPositions(const string reasonTag);
+void CloseWinningPositions(const string reasonTag);
 bool ClosePositionByTicket(ulong ticket);
 bool ClosePositionByTicket(ulong ticket, const string reasonTag);
 void CloseSymbolPositions(const string symbol);
@@ -3093,8 +3095,18 @@ void ManageBasket()
   {
     g_closeRequested = true;
     SaveState();
-    Log(StringFormat("Equity trail hit %.2f%%. Closing all positions and pausing.", g_lockedProfitPct));
-    CloseAllPositions("trail_lock");
+    Log(StringFormat("Equity trail hit %.2f%%. Closing winning positions, keeping losers for Friday reconcile.", g_lockedProfitPct));
+    CloseWinningPositions("trail_lock");
+
+    // If losers remain after closing winners, clear close flag so they can be managed
+    if(HasOpenPositions())
+    {
+      g_closeRequested = false;
+      g_trailingActive = false;
+      g_lockedProfitPct = 0.0;
+      SaveState();
+      Log("Losers remain after trail lock. Continuing management until Friday reconcile.");
+    }
   }
 }
 //+------------------------------------------------------------------+
@@ -3148,6 +3160,17 @@ void TryAddPositions()
   datetime nowGmt = TimeGMT();
   if(IsMidWeekAttachBlocked(nowGmt))
     return;
+
+  // Friday winner-close: when new COT data arrives (report_date changes), close all
+  // profitable positions before reconciling losers against the new signal set.
+  if(EnableWeeklyFlipClose && g_reportDate != "" && g_lastReconcileReportDate != "" &&
+     g_reportDate != g_lastReconcileReportDate)
+  {
+    Log(StringFormat("New weekly report detected (%s -> %s). Closing all winning positions before reconcile.",
+                     g_lastReconcileReportDate, g_reportDate));
+    CloseWinningPositions("friday_winner_close");
+  }
+  g_lastReconcileReportDate = g_reportDate;
 
   ReconcilePositionsWithSignals();
 
@@ -4118,6 +4141,30 @@ void CloseAllPositions(const string reasonTag)
     if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
       continue;
     ClosePositionByTicket(ticket, reasonTag);
+  }
+}
+
+void CloseWinningPositions(const string reasonTag)
+{
+  int count = PositionsTotal();
+  for(int i = count - 1; i >= 0; i--)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+
+    double profit = PositionGetDouble(POSITION_PROFIT);
+    double swap = PositionGetDouble(POSITION_SWAP);
+    double netPnl = profit + swap;
+
+    if(netPnl > 0.0)
+    {
+      ClosePositionByTicket(ticket, reasonTag);
+    }
   }
 }
 
