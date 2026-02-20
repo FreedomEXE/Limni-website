@@ -5,12 +5,14 @@
  * each open position will take when new COT data arrives, without touching broker state.
  *
  * EA Friday rollover sequence (when report_date changes):
- * - 5ERS/prop mode: close ALL positions with reason "friday_prop_close"
+ * - BTC/ETH: carry through Friday and close on Sunday rollover ("sunday_crypto_close")
+ * - 5ERS/prop mode: close all non-BTC/ETH positions with reason "friday_prop_close"
  * - Non-5ERS mode:
- *   1. Close ALL winning positions (profit+swap > 0) with reason "friday_winner_close"
+ *   1. Close non-BTC/ETH winning positions (profit+swap > 0) with reason "friday_winner_close"
  *   2. Run ReconcilePositionsWithSignals on remaining losers:
  *      - KEEP if signal direction still matches
  *      - CLOSE if signal flipped or symbol/model has no signal ("weekly_flip")
+ *      - BTC/ETH are excluded and carried to Sunday close
  *
  * This endpoint returns both:
  * - `reconcile_verdict` (what reconcile alone would do)
@@ -55,6 +57,12 @@ function normalizeModelName(value: string): string {
 // Mirrors EA NormalizeSymbolKey(): keep only A-Z0-9.
 function normalizeSymbolKey(brokerSymbol: string): string {
   return brokerSymbol.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function isSundayCryptoCarrySymbol(symbol: string): boolean {
+  const key = normalizeSymbolKey(symbol);
+  if (!key) return false;
+  return key.includes("BTCUSD") || key.includes("ETHUSD");
 }
 
 // Mirrors EA ResolveSymbolByFamily() buckets for index/commodity aliases.
@@ -206,6 +214,7 @@ export async function GET(request: Request) {
     reconcile_verdict: "KEEP" | "CLOSE" | "UNKNOWN";
     reconcile_reason: string;
     winner_close: boolean;
+    sunday_crypto_carry: boolean;
     prop_friday_close: boolean;
     net_pnl: number;
     verdict: "KEEP" | "CLOSE" | "UNKNOWN";
@@ -225,6 +234,7 @@ export async function GET(request: Request) {
     const sym = normalizeSymbolKey(brokerSym);
     const matchedSignalSymbol = resolveSignalSymbolKey(sym, signalMap);
     const accountMode = inferNetMode(pos.broker, pos.server) ? "NET" : "MODEL";
+    const sundayCryptoCarry = isSundayCryptoCarrySymbol(sym);
     const posDir = pos.type.toUpperCase() === "BUY" ? 1 : -1;
     const posDirLabel = posDir === 1 ? "BUY" : "SELL";
 
@@ -234,7 +244,10 @@ export async function GET(request: Request) {
     let reconcileVerdict: "KEEP" | "CLOSE" | "UNKNOWN" = "UNKNOWN";
     let reconcileReason = "";
 
-    if (accountMode === "NET") {
+    if (sundayCryptoCarry) {
+      reconcileVerdict = "KEEP";
+      reconcileReason = "btc/eth weekly close is Sunday; skipped from Friday reconcile";
+    } else if (accountMode === "NET") {
       if (!modelMap) {
         reconcileVerdict = "CLOSE";
         reconcileReason = "symbol not in current signal set (net mode)";
@@ -284,12 +297,16 @@ export async function GET(request: Request) {
     const profit = Number(pos.profit);
     const swap = Number(pos.swap);
     const netPnl = profit + swap;
-    const propFridayClose = accountMode === "NET";
-    const winnerClose = Number.isFinite(netPnl) && netPnl > 0;
-    const finalVerdict: "KEEP" | "CLOSE" | "UNKNOWN" = propFridayClose || winnerClose
+    const propFridayClose = accountMode === "NET" && !sundayCryptoCarry;
+    const winnerClose = !sundayCryptoCarry && Number.isFinite(netPnl) && netPnl > 0;
+    const finalVerdict: "KEEP" | "CLOSE" | "UNKNOWN" = sundayCryptoCarry
+      ? "KEEP"
+      : propFridayClose || winnerClose
       ? "CLOSE"
       : reconcileVerdict;
-    const finalReason = propFridayClose
+    const finalReason = sundayCryptoCarry
+      ? "sunday_crypto_close: BTC/ETH carry through Friday and close on Sunday rollover"
+      : propFridayClose
       ? "friday_prop_close: 5ERS/prop mode closes all positions on weekly rollover"
       : winnerClose
       ? "friday_winner_close: net PnL > 0 (profit + swap)"
@@ -311,6 +328,7 @@ export async function GET(request: Request) {
       reconcile_verdict: reconcileVerdict,
       reconcile_reason: reconcileReason,
       winner_close: winnerClose,
+      sunday_crypto_carry: sundayCryptoCarry,
       prop_friday_close: propFridayClose,
       net_pnl: Number.isFinite(netPnl) ? netPnl : 0,
       verdict: finalVerdict,
@@ -332,6 +350,7 @@ export async function GET(request: Request) {
     close: results.filter((r) => r.verdict === "CLOSE").length,
     unknown: results.filter((r) => r.verdict === "UNKNOWN").length,
     winner_close: results.filter((r) => r.winner_close).length,
+    sunday_crypto_carry: results.filter((r) => r.sunday_crypto_carry).length,
     prop_friday_close: results.filter((r) => r.prop_friday_close).length,
   };
 

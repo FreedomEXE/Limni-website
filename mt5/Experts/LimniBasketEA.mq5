@@ -405,7 +405,10 @@ double EstimatePositionRiskUsd(const string symbol, int direction, double volume
 bool GetSymbolStats(const string symbol, SymbolStats &stats);
 void CloseAllPositions();
 void CloseAllPositions(const string reasonTag);
+void CloseAllPositionsExceptSundayCrypto(const string reasonTag);
 void CloseWinningPositions(const string reasonTag);
+void CloseWinningPositionsExceptSundayCrypto(const string reasonTag);
+void CloseSundayCryptoCarryPositions(const string reasonTag);
 bool ClosePositionByTicket(ulong ticket);
 bool ClosePositionByTicket(ulong ticket, const string reasonTag);
 void CloseSymbolPositions(const string symbol);
@@ -486,6 +489,7 @@ bool BrokerMatchesHints(const string hintsCsv);
 bool IsFiveersMode();
 bool IsEightcapMode();
 bool IsFxifyMode();
+bool IsSundayCryptoCarrySymbol(const string symbol);
 bool IsBasketTakeProfitEnabled();
 double GetEffectiveBasketTakeProfitPct();
 bool IsBasketStopLossEnabled();
@@ -646,6 +650,13 @@ void OnTimer()
     UpdateAdaptivePeakAverageFromWeek();
     g_weekStartGmt = newWeekStart;
     ResetLoserAddCounts();
+
+    // BTC/ETH weekly carry closes on Sunday rollover, not Friday report refresh.
+    if(HasOpenPositions())
+    {
+      CloseSundayCryptoCarryPositions("sunday_crypto_close");
+    }
+
     if(!HasOpenPositions())
     {
       g_state = STATE_IDLE;
@@ -1967,6 +1978,20 @@ bool IsFxifyMode()
   return BrokerMatchesHints(FxifyBrokerHints);
 }
 
+bool IsSundayCryptoCarrySymbol(const string symbol)
+{
+  string upper = symbol;
+  StringToUpper(upper);
+  string key = NormalizeSymbolKey(upper);
+  if(key == "")
+    return false;
+  if(StringFind(key, "BTCUSD") >= 0)
+    return true;
+  if(StringFind(key, "ETHUSD") >= 0)
+    return true;
+  return false;
+}
+
 string ShortReasonTag(const string reasonTag)
 {
   string tag = reasonTag;
@@ -1981,6 +2006,8 @@ string ShortReasonTag(const string reasonTag)
     return "friday_winner_close";
   if(tag == "friday_prop_close")
     return "friday_prop_close";
+  if(tag == "sunday_crypto_close")
+    return "sunday_crypto_close";
   if(tag == "weekly_flip")
     return "weekly_flip";
   if(tag == "added_loser")
@@ -3172,18 +3199,24 @@ void TryAddPositions()
   {
     if(IsFiveersMode())
     {
-      Log(StringFormat("New weekly report detected (%s -> %s). 5ERS/prop mode: closing all open positions.",
+      Log(StringFormat("New weekly report detected (%s -> %s). 5ERS/prop mode: closing all non-crypto positions (BTC/ETH carry to Sunday).",
                        g_lastReconcileReportDate, g_reportDate));
       g_closeRequested = true;
       SaveState();
-      CloseAllPositions("friday_prop_close");
+      CloseAllPositionsExceptSundayCrypto("friday_prop_close");
+      if(HasOpenPositions())
+      {
+        g_closeRequested = false;
+        SaveState();
+        Log("BTC/ETH carry positions remain open for Sunday close.");
+      }
       g_lastReconcileReportDate = g_reportDate;
       return;
     }
 
-    Log(StringFormat("New weekly report detected (%s -> %s). Closing all winning positions before reconcile.",
+    Log(StringFormat("New weekly report detected (%s -> %s). Closing non-crypto winners before reconcile (BTC/ETH carry to Sunday).",
                      g_lastReconcileReportDate, g_reportDate));
-    CloseWinningPositions("friday_winner_close");
+    CloseWinningPositionsExceptSundayCrypto("friday_winner_close");
   }
   g_lastReconcileReportDate = g_reportDate;
 
@@ -3417,6 +3450,8 @@ void ReconcilePositionsWithSignals()
       continue;
 
     string symbol = PositionGetString(POSITION_SYMBOL);
+    if(IsSundayCryptoCarrySymbol(symbol))
+      continue;
     string model = ParseModelFromComment(PositionGetString(POSITION_COMMENT));
     int currentDir = ((int)PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY ? 1 : -1);
 
@@ -4159,6 +4194,26 @@ void CloseAllPositions(const string reasonTag)
   }
 }
 
+void CloseAllPositionsExceptSundayCrypto(const string reasonTag)
+{
+  int count = PositionsTotal();
+  for(int i = count - 1; i >= 0; i--)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    if(IsSundayCryptoCarrySymbol(symbol))
+      continue;
+    ClosePositionByTicket(ticket, reasonTag);
+  }
+}
+
 void CloseWinningPositions(const string reasonTag)
 {
   int count = PositionsTotal();
@@ -4180,6 +4235,51 @@ void CloseWinningPositions(const string reasonTag)
     {
       ClosePositionByTicket(ticket, reasonTag);
     }
+  }
+}
+
+void CloseWinningPositionsExceptSundayCrypto(const string reasonTag)
+{
+  int count = PositionsTotal();
+  for(int i = count - 1; i >= 0; i--)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    if(IsSundayCryptoCarrySymbol(symbol))
+      continue;
+
+    double profit = PositionGetDouble(POSITION_PROFIT);
+    double swap = PositionGetDouble(POSITION_SWAP);
+    double netPnl = profit + swap;
+    if(netPnl > 0.0)
+      ClosePositionByTicket(ticket, reasonTag);
+  }
+}
+
+void CloseSundayCryptoCarryPositions(const string reasonTag)
+{
+  int count = PositionsTotal();
+  for(int i = count - 1; i >= 0; i--)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    if(!IsSundayCryptoCarrySymbol(symbol))
+      continue;
+    ClosePositionByTicket(ticket, reasonTag);
   }
 }
 
