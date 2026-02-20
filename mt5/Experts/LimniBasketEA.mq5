@@ -1979,6 +1979,8 @@ string ShortReasonTag(const string reasonTag)
     return "trail_lock";
   if(tag == "friday_winner_close")
     return "friday_winner_close";
+  if(tag == "friday_prop_close")
+    return "friday_prop_close";
   if(tag == "weekly_flip")
     return "weekly_flip";
   if(tag == "added_loser")
@@ -3168,6 +3170,17 @@ void TryAddPositions()
   if(EnableWeeklyFlipClose && g_reportDate != "" && g_lastReconcileReportDate != "" &&
      g_reportDate != g_lastReconcileReportDate)
   {
+    if(IsFiveersMode())
+    {
+      Log(StringFormat("New weekly report detected (%s -> %s). 5ERS/prop mode: closing all open positions.",
+                       g_lastReconcileReportDate, g_reportDate));
+      g_closeRequested = true;
+      SaveState();
+      CloseAllPositions("friday_prop_close");
+      g_lastReconcileReportDate = g_reportDate;
+      return;
+    }
+
     Log(StringFormat("New weekly report detected (%s -> %s). Closing all winning positions before reconcile.",
                      g_lastReconcileReportDate, g_reportDate));
     CloseWinningPositions("friday_winner_close");

@@ -5,10 +5,12 @@
  * each open position will take when new COT data arrives, without touching broker state.
  *
  * EA Friday rollover sequence (when report_date changes):
- * 1. Close ALL winning positions (profit+swap > 0) with reason "friday_winner_close"
- * 2. Run ReconcilePositionsWithSignals on remaining losers:
- *    - KEEP if signal direction still matches
- *    - CLOSE if signal flipped or symbol/model has no signal ("weekly_flip")
+ * - 5ERS/prop mode: close ALL positions with reason "friday_prop_close"
+ * - Non-5ERS mode:
+ *   1. Close ALL winning positions (profit+swap > 0) with reason "friday_winner_close"
+ *   2. Run ReconcilePositionsWithSignals on remaining losers:
+ *      - KEEP if signal direction still matches
+ *      - CLOSE if signal flipped or symbol/model has no signal ("weekly_flip")
  *
  * This endpoint returns both:
  * - `reconcile_verdict` (what reconcile alone would do)
@@ -204,6 +206,7 @@ export async function GET(request: Request) {
     reconcile_verdict: "KEEP" | "CLOSE" | "UNKNOWN";
     reconcile_reason: string;
     winner_close: boolean;
+    prop_friday_close: boolean;
     net_pnl: number;
     verdict: "KEEP" | "CLOSE" | "UNKNOWN";
     verdict_reason: string;
@@ -281,9 +284,14 @@ export async function GET(request: Request) {
     const profit = Number(pos.profit);
     const swap = Number(pos.swap);
     const netPnl = profit + swap;
+    const propFridayClose = accountMode === "NET";
     const winnerClose = Number.isFinite(netPnl) && netPnl > 0;
-    const finalVerdict: "KEEP" | "CLOSE" | "UNKNOWN" = winnerClose ? "CLOSE" : reconcileVerdict;
-    const finalReason = winnerClose
+    const finalVerdict: "KEEP" | "CLOSE" | "UNKNOWN" = propFridayClose || winnerClose
+      ? "CLOSE"
+      : reconcileVerdict;
+    const finalReason = propFridayClose
+      ? "friday_prop_close: 5ERS/prop mode closes all positions on weekly rollover"
+      : winnerClose
       ? "friday_winner_close: net PnL > 0 (profit + swap)"
       : reconcileReason;
     const openTime = pos.open_time instanceof Date
@@ -303,6 +311,7 @@ export async function GET(request: Request) {
       reconcile_verdict: reconcileVerdict,
       reconcile_reason: reconcileReason,
       winner_close: winnerClose,
+      prop_friday_close: propFridayClose,
       net_pnl: Number.isFinite(netPnl) ? netPnl : 0,
       verdict: finalVerdict,
       verdict_reason: finalReason,
@@ -323,6 +332,7 @@ export async function GET(request: Request) {
     close: results.filter((r) => r.verdict === "CLOSE").length,
     unknown: results.filter((r) => r.verdict === "UNKNOWN").length,
     winner_close: results.filter((r) => r.winner_close).length,
+    prop_friday_close: results.filter((r) => r.prop_friday_close).length,
   };
 
   return NextResponse.json(
