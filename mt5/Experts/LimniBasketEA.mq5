@@ -212,6 +212,7 @@ string g_reportDate = "";
 string g_lastReconcileReportDate = "";
 bool g_tradingAllowed = false;
 bool g_apiOk = false;
+bool g_postFridayRolloverHold = false;
 
 EAState g_state = STATE_IDLE;
 datetime g_weekStartGmt = 0;
@@ -271,6 +272,7 @@ datetime g_lastPush = 0;
 datetime g_lastStructureWarn = 0;
 datetime g_lastUniverseGateWarn = 0;
 datetime g_lastUniverseSizingCheck = 0;
+datetime g_lastRolloverHoldWarn = 0;
 bool g_universeSizingReady = false;
 string g_universeSizingReason = "";
 string g_dataSource = "realtime";
@@ -300,6 +302,7 @@ string GV_ADAPTIVE_PEAK_AVG = "AdaptivePeakAvg";
 string GV_LAST_WEEK_PEAK = "LastWeekPeak";
 string GV_ADAPTIVE_PEAK_SUM = "AdaptivePeakSum";
 string GV_ADAPTIVE_PEAK_COUNT = "AdaptivePeakCount";
+string GV_POST_FRIDAY_HOLD = "PostFridayHold";
 string CACHE_FILE = "LimniCotCache.json";
 string g_scopePrefix = "Limni_";
 string g_cacheFile = "LimniCotCache.json";
@@ -409,6 +412,7 @@ void CloseAllPositionsExceptSundayCrypto(const string reasonTag);
 void CloseWinningPositions(const string reasonTag);
 void CloseWinningPositionsExceptSundayCrypto(const string reasonTag);
 void CloseSundayCryptoCarryPositions(const string reasonTag);
+void ClosePositionsFiltered(const string reasonTag, bool winnersOnly, bool onlySundayCrypto, bool excludeSundayCrypto);
 bool ClosePositionByTicket(ulong ticket);
 bool ClosePositionByTicket(ulong ticket, const string reasonTag);
 void CloseSymbolPositions(const string symbol);
@@ -649,6 +653,8 @@ void OnTimer()
   {
     UpdateAdaptivePeakAverageFromWeek();
     g_weekStartGmt = newWeekStart;
+    g_postFridayRolloverHold = false;
+    g_lastRolloverHoldWarn = 0;
     ResetLoserAddCounts();
 
     // BTC/ETH weekly carry closes on Sunday rollover, not Friday report refresh.
@@ -3197,6 +3203,9 @@ void TryAddPositions()
   if(EnableWeeklyFlipClose && g_reportDate != "" && g_lastReconcileReportDate != "" &&
      g_reportDate != g_lastReconcileReportDate)
   {
+    g_postFridayRolloverHold = true;
+    SaveState();
+
     if(IsFiveersMode())
     {
       Log(StringFormat("New weekly report detected (%s -> %s). 5ERS/prop mode: closing all non-crypto positions (BTC/ETH carry to Sunday).",
@@ -3221,6 +3230,23 @@ void TryAddPositions()
   g_lastReconcileReportDate = g_reportDate;
 
   ReconcilePositionsWithSignals();
+
+  if(g_postFridayRolloverHold)
+  {
+    if(IsFiveersMode())
+    {
+      // Retry Friday prop close for any non-crypto stragglers that failed to close.
+      CloseAllPositionsExceptSundayCrypto("friday_prop_close");
+    }
+
+    datetime nowWarn = TimeCurrent();
+    if(g_lastRolloverHoldWarn == 0 || (nowWarn - g_lastRolloverHoldWarn) >= 300)
+    {
+      Log("Post-Friday rollover hold active. Skipping new entries until Sunday week rollover.");
+      g_lastRolloverHoldWarn = nowWarn;
+    }
+    return;
+  }
 
   double totalLots = GetTotalBasketLots();
   datetime cryptoStartGmt = GetCryptoWeekStartGmt(nowGmt);
@@ -4180,90 +4206,30 @@ void CloseAllPositions()
 
 void CloseAllPositions(const string reasonTag)
 {
-  int count = PositionsTotal();
-  for(int i = count - 1; i >= 0; i--)
-  {
-    ulong ticket = PositionGetTicket(i);
-    if(ticket == 0)
-      continue;
-    if(!PositionSelectByTicket(ticket))
-      continue;
-    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
-      continue;
-    ClosePositionByTicket(ticket, reasonTag);
-  }
+  ClosePositionsFiltered(reasonTag, false, false, false);
 }
 
 void CloseAllPositionsExceptSundayCrypto(const string reasonTag)
 {
-  int count = PositionsTotal();
-  for(int i = count - 1; i >= 0; i--)
-  {
-    ulong ticket = PositionGetTicket(i);
-    if(ticket == 0)
-      continue;
-    if(!PositionSelectByTicket(ticket))
-      continue;
-    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
-      continue;
-
-    string symbol = PositionGetString(POSITION_SYMBOL);
-    if(IsSundayCryptoCarrySymbol(symbol))
-      continue;
-    ClosePositionByTicket(ticket, reasonTag);
-  }
+  ClosePositionsFiltered(reasonTag, false, false, true);
 }
 
 void CloseWinningPositions(const string reasonTag)
 {
-  int count = PositionsTotal();
-  for(int i = count - 1; i >= 0; i--)
-  {
-    ulong ticket = PositionGetTicket(i);
-    if(ticket == 0)
-      continue;
-    if(!PositionSelectByTicket(ticket))
-      continue;
-    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
-      continue;
-
-    double profit = PositionGetDouble(POSITION_PROFIT);
-    double swap = PositionGetDouble(POSITION_SWAP);
-    double netPnl = profit + swap;
-
-    if(netPnl > 0.0)
-    {
-      ClosePositionByTicket(ticket, reasonTag);
-    }
-  }
+  ClosePositionsFiltered(reasonTag, true, false, false);
 }
 
 void CloseWinningPositionsExceptSundayCrypto(const string reasonTag)
 {
-  int count = PositionsTotal();
-  for(int i = count - 1; i >= 0; i--)
-  {
-    ulong ticket = PositionGetTicket(i);
-    if(ticket == 0)
-      continue;
-    if(!PositionSelectByTicket(ticket))
-      continue;
-    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
-      continue;
-
-    string symbol = PositionGetString(POSITION_SYMBOL);
-    if(IsSundayCryptoCarrySymbol(symbol))
-      continue;
-
-    double profit = PositionGetDouble(POSITION_PROFIT);
-    double swap = PositionGetDouble(POSITION_SWAP);
-    double netPnl = profit + swap;
-    if(netPnl > 0.0)
-      ClosePositionByTicket(ticket, reasonTag);
-  }
+  ClosePositionsFiltered(reasonTag, true, false, true);
 }
 
 void CloseSundayCryptoCarryPositions(const string reasonTag)
+{
+  ClosePositionsFiltered(reasonTag, false, true, false);
+}
+
+void ClosePositionsFiltered(const string reasonTag, bool winnersOnly, bool onlySundayCrypto, bool excludeSundayCrypto)
 {
   int count = PositionsTotal();
   for(int i = count - 1; i >= 0; i--)
@@ -4277,8 +4243,21 @@ void CloseSundayCryptoCarryPositions(const string reasonTag)
       continue;
 
     string symbol = PositionGetString(POSITION_SYMBOL);
-    if(!IsSundayCryptoCarrySymbol(symbol))
+    bool sundayCarry = IsSundayCryptoCarrySymbol(symbol);
+    if(onlySundayCrypto && !sundayCarry)
       continue;
+    if(excludeSundayCrypto && sundayCarry)
+      continue;
+
+    if(winnersOnly)
+    {
+      double profit = PositionGetDouble(POSITION_PROFIT);
+      double swap = PositionGetDouble(POSITION_SWAP);
+      double netPnl = profit + swap;
+      if(netPnl <= 0.0)
+        continue;
+    }
+
     ClosePositionByTicket(ticket, reasonTag);
   }
 }
@@ -4498,6 +4477,7 @@ int NthSunday(int year, int mon, int nth)
 //+------------------------------------------------------------------+
 void LoadState()
 {
+  g_postFridayRolloverHold = false;
   g_adaptivePeakAvgPct = 0.0;
   g_lastWeekPeakPct = 0.0;
   g_adaptivePeakSumPct = 0.0;
@@ -4609,6 +4589,8 @@ void LoadState()
       g_lockedProfitPct = GlobalVariableGet(ScopeKey(GV_LOCKED));
       g_trailingActive = (GlobalVariableGet(ScopeKey(GV_TRAIL)) > 0.5);
       g_closeRequested = (GlobalVariableGet(ScopeKey(GV_CLOSE)) > 0.5);
+      if(GlobalVariableCheck(ScopeKey(GV_POST_FRIDAY_HOLD)))
+        g_postFridayRolloverHold = (GlobalVariableGet(ScopeKey(GV_POST_FRIDAY_HOLD)) > 0.5);
       if(GlobalVariableCheck(ScopeKey(GV_WEEK_PEAK)))
         g_weekPeakEquity = GlobalVariableGet(ScopeKey(GV_WEEK_PEAK));
       if(GlobalVariableCheck(ScopeKey(GV_MAX_DD)))
@@ -4656,6 +4638,7 @@ void SaveState()
   GlobalVariableSet(ScopeKey(GV_LAST_WEEK_PEAK), g_lastWeekPeakPct);
   GlobalVariableSet(ScopeKey(GV_ADAPTIVE_PEAK_SUM), g_adaptivePeakSumPct);
   GlobalVariableSet(ScopeKey(GV_ADAPTIVE_PEAK_COUNT), (double)g_adaptivePeakCount);
+  GlobalVariableSet(ScopeKey(GV_POST_FRIDAY_HOLD), g_postFridayRolloverHold ? 1.0 : 0.0);
 }
 
 void LoadApiCache()
@@ -4725,6 +4708,7 @@ void ResetState()
   g_lockedProfitPct = 0.0;
   g_trailingActive = false;
   g_closeRequested = false;
+  g_postFridayRolloverHold = false;
   g_weekPeakEquity = 0.0;
   g_maxDrawdownPct = 0.0;
   g_adaptivePeakAvgPct = 0.0;
@@ -4739,6 +4723,7 @@ void ResetState()
   g_apiOk = false;
   g_lastApiError = "";
   g_lastApiErrorTime = 0;
+  g_lastRolloverHoldWarn = 0;
   g_lastDataRefreshUtc = "";
   ArrayResize(g_apiSymbolsRaw, 0);
 
@@ -4755,6 +4740,7 @@ void ResetState()
   GlobalVariableDel(ScopeKey(GV_LAST_WEEK_PEAK));
   GlobalVariableDel(ScopeKey(GV_ADAPTIVE_PEAK_SUM));
   GlobalVariableDel(ScopeKey(GV_ADAPTIVE_PEAK_COUNT));
+  GlobalVariableDel(ScopeKey(GV_POST_FRIDAY_HOLD));
 
   FileDelete(g_cacheFile, FILE_COMMON);
   Log("State reset on init.");
