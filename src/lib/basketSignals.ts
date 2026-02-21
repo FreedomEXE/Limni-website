@@ -232,6 +232,7 @@ export async function buildBasketSignals(options?: {
       snapshot,
       sentiment,
       maxSignals: ANTIKYTHERA_MAX_SIGNALS,
+      biasMode: "blended",
     });
     pairs.push(
       ...antikytheraSignals.map((signal): BasketSignal => ({

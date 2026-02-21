@@ -3,10 +3,11 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
+import { resolveAccountView, type AccountPageView } from "@/lib/accounts/navigation";
 
 const PerformanceComparisonPanel = dynamic(
   () => import("@/components/performance/PerformanceComparisonPanel"),
@@ -91,20 +92,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const activeSection = resolveSection(pathname);
   const viewParamRaw = searchParams.get("view");
-  const viewParam =
-    activeSection === "accounts"
-      ? viewParamRaw === "positions"
-        ? "trades"
-        : viewParamRaw === "settings"
-          ? "analytics"
-          : viewParamRaw === "equity"
-            ? "overview"
-            : viewParamRaw
-      : viewParamRaw;
+  const accountViewFromUrl = resolveAccountView(viewParamRaw);
+  const viewParam = activeSection === "accounts" ? accountViewFromUrl : viewParamRaw;
   const [rootLockSection, setRootLockSection] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountViewOverride, setAccountViewOverride] = useState<AccountPageView | null>(null);
   const navMode: "root" | "section" =
     activeSection && rootLockSection === activeSection ? "root" : activeSection ? "section" : "root";
+  const effectiveAccountView = accountViewOverride ?? accountViewFromUrl;
+
+  useEffect(() => {
+    if (activeSection !== "accounts") {
+      setAccountViewOverride(null);
+      return;
+    }
+    setAccountViewOverride(accountViewFromUrl);
+  }, [accountViewFromUrl, activeSection, pathname]);
 
   const accountBasePath = useMemo(() => {
     if (pathname.startsWith("/accounts/connected/")) {
@@ -187,6 +190,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       }
       return activeSection;
     });
+  };
+
+  const handleAccountViewChange = (nextView: AccountPageView) => {
+    setMobileOpen(false);
+    setAccountViewOverride(nextView);
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", nextView);
+    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+    window.dispatchEvent(new CustomEvent("accounts-view-change", { detail: nextView }));
   };
 
   const sectionLabel = activeSection ? SECTION_LABELS[activeSection] : "Navigation";
@@ -275,7 +287,37 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               : activeSection === "accounts"
                 ? "overview"
                 : null;
-          const isActive = isActiveHref(item.href, pathname, viewParam, defaultView);
+          const resolvedViewParam =
+            activeSection === "accounts" ? effectiveAccountView : viewParam;
+          const isActive = isActiveHref(item.href, pathname, resolvedViewParam, defaultView);
+          const { path: itemPath, params: itemParams } = parseHref(item.href);
+          const accountItemView = itemParams.get("view");
+          const isLocalAccountToggle =
+            activeSection === "accounts" &&
+            itemPath === pathname &&
+            accountItemView !== null;
+          if (isLocalAccountToggle) {
+            const nextAccountView = resolveAccountView(accountItemView);
+            return (
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => handleAccountViewChange(nextAccountView)}
+                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                  isActive
+                    ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)]/80 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                }`}
+              >
+                <span className="tracking-tight">{item.label}</span>
+                {isActive ? (
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-strong)]">
+                    Active
+                  </span>
+                ) : null}
+              </button>
+            );
+          }
           return (
             <Link
               key={item.href}

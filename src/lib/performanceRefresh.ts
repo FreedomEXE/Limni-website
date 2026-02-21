@@ -99,6 +99,7 @@ export async function refreshPerformanceSnapshots(options: {
   const assetClasses = listAssetClasses();
   const models: PerformanceModel[] = [
     "antikythera",
+    "antikythera_v2",
     "blended",
     "dealer",
     "commercial",

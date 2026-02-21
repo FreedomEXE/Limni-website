@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PageShell from "@/components/shell/PageShell";
 import AccountKpiRow from "@/components/accounts/AccountKpiRow";
 import AccountTradesSection from "@/components/accounts/AccountTradesSection";
@@ -24,6 +24,10 @@ import {
   formatStopLossValue,
   getAccountClientViewLayout,
 } from "@/lib/accounts/accountClientViewLayout";
+import {
+  resolveAccountView,
+  type AccountPageView,
+} from "@/lib/accounts/navigation";
 
 export default function AccountClientView({
   activeView,
@@ -38,11 +42,46 @@ export default function AccountClientView({
   drawerData,
   settingsExtras,
 }: AccountClientViewProps) {
+  const [localActiveView, setLocalActiveView] = useState<AccountPageView>(activeView);
   const [statusFilter, setStatusFilter] = useState("open");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
   const [mappingSearch, setMappingSearch] = useState("");
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setLocalActiveView(activeView);
+  }, [activeView]);
+
+  useEffect(() => {
+    const onViewChange = (event: Event) => {
+      const custom = event as CustomEvent<AccountPageView>;
+      const next = custom.detail;
+      if (next === "overview" || next === "trades" || next === "analytics") {
+        setLocalActiveView(next);
+      }
+    };
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setLocalActiveView(resolveAccountView(params.get("view")));
+    };
+    window.addEventListener("accounts-view-change", onViewChange);
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("accounts-view-change", onViewChange);
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const current = resolveAccountView(url.searchParams.get("view"));
+    if (current === localActiveView) {
+      return;
+    }
+    url.searchParams.set("view", localActiveView);
+    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+  }, [localActiveView]);
 
   const statusBadge = useMemo(() => {
     if (!header.statusLabel) return null;
@@ -100,7 +139,7 @@ export default function AccountClientView({
     return null;
   }, [header.dataSourceLabel, header.reconstructionStatus, header.reconstructionNote]);
 
-  const showKpis = activeView === "overview";
+  const showKpis = localActiveView === "overview";
   const providerKey = header.providerLabel.toLowerCase();
   const isOanda = providerKey === "oanda";
   const isManualMode = String(header.tradeModeLabel ?? "").toUpperCase() === "MANUAL";
@@ -216,9 +255,9 @@ export default function AccountClientView({
         ) : null
       }
     >
-      {activeView === "overview" ? <AccountOverviewSection equity={equity} overview={overview} /> : null}
+      {localActiveView === "overview" ? <AccountOverviewSection equity={equity} overview={overview} /> : null}
 
-      {activeView === "trades" ? (
+      {localActiveView === "trades" ? (
         <AccountTradesSection
           isOanda={isOanda}
           openLegCount={openLegCount}
@@ -275,7 +314,7 @@ export default function AccountClientView({
         />
       ) : null}
 
-      {activeView === "analytics" ? (
+      {localActiveView === "analytics" ? (
         <AccountAnalyticsSection
           debug={debug}
           planningDiagnostics={planningDiagnostics}

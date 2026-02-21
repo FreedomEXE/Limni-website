@@ -385,6 +385,9 @@ void LogSizing(const string symbol, double targetLot, double finalLot,
 double GetAssetMultiplier(const string assetClass);
 double GetTotalBasketLots();
 bool HasOpenPositions();
+bool HasOpenNonSundayCryptoPositions();
+bool HasOpenPriorWeekNonSundayCryptoPositions(datetime weekStartGmt);
+void ClosePriorWeekNonSundayCryptoPositions(const string reasonTag, datetime weekStartGmt);
 bool HasPositionForSymbol(const string symbol);
 bool HasPositionForModel(const string symbol, const string model);
 bool HasMissingPlannedModelsForSymbol(const string symbol);
@@ -658,9 +661,17 @@ void OnTimer()
     ResetLoserAddCounts();
 
     // BTC/ETH weekly carry closes on Sunday rollover, not Friday report refresh.
+    // In 5ERS mode, any prior-week non-crypto leftovers (e.g. indices/commodities
+    // that were closed at Friday cutoff) are also flattened at Sunday rollover so
+    // fresh week entries can reopen cleanly.
     if(HasOpenPositions())
     {
       CloseSundayCryptoCarryPositions("sunday_crypto_close");
+      if(IsFiveersMode() && HasOpenPriorWeekNonSundayCryptoPositions(g_weekStartGmt))
+      {
+        Log("Sunday rollover in 5ERS: closing prior-week non-crypto carry positions.");
+        ClosePriorWeekNonSundayCryptoPositions("sunday_rollover_reopen", g_weekStartGmt);
+      }
     }
 
     if(!HasOpenPositions())
@@ -2015,6 +2026,8 @@ string ShortReasonTag(const string reasonTag)
     return "friday_prop_close";
   if(tag == "sunday_crypto_close")
     return "sunday_crypto_close";
+  if(tag == "sunday_rollover_reopen")
+    return "sunday_rollover_reopen";
   if(tag == "weekly_flip")
     return "weekly_flip";
   if(tag == "added_loser")
@@ -2761,6 +2774,81 @@ bool HasOpenPositions()
   return false;
 }
 
+bool HasOpenNonSundayCryptoPositions()
+{
+  int count = PositionsTotal();
+  for(int i = 0; i < count; i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    if(IsSundayCryptoCarrySymbol(symbol))
+      continue;
+    return true;
+  }
+  return false;
+}
+
+bool HasOpenPriorWeekNonSundayCryptoPositions(datetime weekStartGmt)
+{
+  if(weekStartGmt <= 0)
+    return false;
+
+  int count = PositionsTotal();
+  for(int i = 0; i < count; i++)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    if(IsSundayCryptoCarrySymbol(symbol))
+      continue;
+
+    datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+    if(openTime < weekStartGmt)
+      return true;
+  }
+  return false;
+}
+
+void ClosePriorWeekNonSundayCryptoPositions(const string reasonTag, datetime weekStartGmt)
+{
+  if(weekStartGmt <= 0)
+    return;
+
+  int count = PositionsTotal();
+  for(int i = count - 1; i >= 0; i--)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    if(IsSundayCryptoCarrySymbol(symbol))
+      continue;
+
+    datetime openTime = (datetime)PositionGetInteger(POSITION_TIME);
+    if(openTime >= weekStartGmt)
+      continue;
+
+    ClosePositionByTicket(ticket, reasonTag);
+  }
+}
+
 bool HasPositionForSymbol(const string symbol)
 {
   int count = PositionsTotal();
@@ -3205,26 +3293,40 @@ void TryAddPositions()
                               g_reportDate != "" &&
                               g_lastReconcileReportDate != "" &&
                               g_reportDate != g_lastReconcileReportDate);
+  string expectedReportDate = "";
+  int minutesSinceRelease = 0;
+  bool waitingWeeklySnapshot = IsWaitingForWeeklySnapshot(expectedReportDate, minutesSinceRelease);
+  bool pastWeeklyRelease = (waitingWeeklySnapshot || minutesSinceRelease > 0);
   bool weeklyBootstrapReconcile = false;
   if(EnableWeeklyFlipClose &&
      g_reportDate != "" &&
      g_lastReconcileReportDate == "" &&
-     HasOpenPositions())
+     HasOpenPositions() &&
+     pastWeeklyRelease)
   {
-    string expectedReportDate = "";
-    int minutesSinceRelease = 0;
-    bool waitingWeeklySnapshot = IsWaitingForWeeklySnapshot(expectedReportDate, minutesSinceRelease);
-    bool pastWeeklyRelease = (waitingWeeklySnapshot || minutesSinceRelease > 0);
-    if(pastWeeklyRelease)
-    {
-      weeklyBootstrapReconcile = true;
-      Log(StringFormat("Friday reconcile bootstrap: prior report unknown on attach. report_date=%s expected=%s mins_since_release=%d",
-                       g_reportDate,
-                       expectedReportDate,
-                       minutesSinceRelease));
-    }
+    weeklyBootstrapReconcile = true;
+    Log(StringFormat("Friday reconcile bootstrap: prior report unknown on attach. report_date=%s expected=%s mins_since_release=%d",
+                     g_reportDate,
+                     expectedReportDate,
+                     minutesSinceRelease));
   }
-  if(weeklyReportChanged || weeklyBootstrapReconcile)
+  bool weeklyRecoveryReconcile = false;
+  if(EnableWeeklyFlipClose &&
+     IsFiveersMode() &&
+     g_reportDate != "" &&
+     g_lastReconcileReportDate == g_reportDate &&
+     !g_postFridayRolloverHold &&
+     pastWeeklyRelease &&
+     HasOpenNonSundayCryptoPositions())
+  {
+    weeklyRecoveryReconcile = true;
+    Log(StringFormat("Friday reconcile recovery: report=%s expected=%s mins_since_release=%d non-crypto positions still open in 5ERS; forcing friday_prop_close.",
+                     g_reportDate,
+                     expectedReportDate,
+                     minutesSinceRelease));
+  }
+
+  if(weeklyReportChanged || weeklyBootstrapReconcile || weeklyRecoveryReconcile)
   {
     g_postFridayRolloverHold = true;
     SaveState();
@@ -3234,8 +3336,11 @@ void TryAddPositions()
       if(weeklyReportChanged)
         Log(StringFormat("New weekly report detected (%s -> %s). 5ERS/prop mode: closing all non-crypto positions (BTC/ETH carry to Sunday).",
                          g_lastReconcileReportDate, g_reportDate));
-      else
+      else if(weeklyBootstrapReconcile)
         Log(StringFormat("Friday reconcile bootstrap on attach (report=%s). 5ERS/prop mode: closing all non-crypto positions (BTC/ETH carry to Sunday).",
+                         g_reportDate));
+      else
+        Log(StringFormat("Friday reconcile recovery (report=%s). 5ERS/prop mode: closing all non-crypto positions (BTC/ETH carry to Sunday).",
                          g_reportDate));
       g_closeRequested = true;
       SaveState();
@@ -3277,6 +3382,22 @@ void TryAddPositions()
       g_lastRolloverHoldWarn = nowWarn;
     }
     return;
+  }
+
+  if(IsFiveersMode() && HasOpenPriorWeekNonSundayCryptoPositions(g_weekStartGmt))
+  {
+    ClosePriorWeekNonSundayCryptoPositions("sunday_rollover_reopen", g_weekStartGmt);
+    if(HasOpenPriorWeekNonSundayCryptoPositions(g_weekStartGmt))
+    {
+      datetime nowWarn = TimeCurrent();
+      if(g_lastRolloverHoldWarn == 0 || (nowWarn - g_lastRolloverHoldWarn) >= 60)
+      {
+        Log("5ERS Sunday rollover cleanup pending: prior-week non-crypto positions still open. New entries paused until they close.");
+        g_lastRolloverHoldWarn = nowWarn;
+      }
+      return;
+    }
+    Log("5ERS Sunday rollover cleanup complete: prior-week non-crypto carry closed. Evaluating fresh entries.");
   }
 
   // Mid-week attach should block only new entries, not Friday close/reconcile.

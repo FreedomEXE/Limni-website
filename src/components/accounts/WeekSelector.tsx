@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import type { WeekOption } from "@/lib/weekState";
 import { useTransition } from "react";
 import { DateTime } from "luxon";
@@ -39,12 +39,11 @@ export default function WeekSelector({
 }: WeekSelectorProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const handleWeekChange = (newWeek: string) => {
     startTransition(() => {
-      const params = new URLSearchParams(searchParams);
+      const params = new URLSearchParams(window.location.search);
 
       if (newWeek === "all") {
         params.set("week", "all");

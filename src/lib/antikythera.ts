@@ -77,9 +77,9 @@ export function buildAntikytheraSignals(options: {
   snapshot: CotSnapshot;
   sentiment: SentimentAggregate[];
   maxSignals?: number;
+  biasMode?: BiasMode;
 }) {
-  const { assetClass, snapshot, sentiment, maxSignals = ANTIKYTHERA_MAX_SIGNALS } = options;
-  const biasMode: BiasMode = "blended";
+  const { assetClass, snapshot, sentiment, maxSignals = ANTIKYTHERA_MAX_SIGNALS, biasMode = "blended" } = options;
   const sentimentMap = new Map(sentiment.map((item) => [item.symbol, item]));
 
   const signals: AntikytheraSignal[] = [];
@@ -107,7 +107,10 @@ export function buildAntikytheraSignals(options: {
       continue;
     }
 
-    const reasons: string[] = ["Blended COT bias aligned"];
+    const biasLabel = biasMode === "blended" ? "Blended COT bias aligned" :
+                      biasMode === "dealer" ? "Dealer COT bias aligned" :
+                      "Commercial COT bias aligned";
+    const reasons: string[] = [biasLabel];
     if (hasSentiment && sentimentResult.aligned) {
       reasons.push(...sentimentResult.reasons);
     }
