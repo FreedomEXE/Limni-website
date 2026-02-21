@@ -237,13 +237,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <nav className="flex-1 space-y-2 p-4">
         {subNavItems.map((item) => {
           const defaultView =
-            activeSection === "performance"
-              ? "summary"
-              : activeSection === "news"
-                ? "calendar"
-                : activeSection === "accounts"
-                  ? "overview"
-                  : null;
+            activeSection === "news"
+              ? "calendar"
+              : activeSection === "accounts"
+                ? "overview"
+                : null;
           const isActive = isActiveHref(item.href, pathname, viewParam, defaultView);
           return (
             <Link
