@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type ComparisonMetrics = {
   totalReturn: number;
@@ -16,9 +17,13 @@ type ComparisonData = {
 };
 
 export default function PerformanceComparisonPanel() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [data, setData] = useState<ComparisonData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const activeTab = searchParams.get("system") === "v2" ? "v2" : "v1";
 
   useEffect(() => {
     async function fetchData() {
@@ -42,37 +47,31 @@ export default function PerformanceComparisonPanel() {
     fetchData();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex-1 space-y-4 p-4">
-        <div className="animate-pulse rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/40 px-4 py-8">
-          <div className="text-xs text-center text-[color:var(--muted)]">Loading comparison...</div>
-        </div>
-      </div>
-    );
-  }
+  const v1Metrics = data?.v1 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 };
+  const v2Metrics = data?.v2 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 };
+  const activeMetrics = activeTab === "v1" ? v1Metrics : v2Metrics;
+  const activeLabel = activeTab === "v1" ? "Universal V1" : "Universal V2";
+  const activeBadge = activeTab === "v1" ? "5 Baskets" : "3 Baskets";
+  const activeCardClass =
+    activeTab === "v1"
+      ? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4"
+      : "rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4";
+  const valueClass = activeTab === "v1" ? "text-[var(--foreground)]" : "text-emerald-900 dark:text-emerald-100";
+  const labelClass =
+    activeTab === "v1"
+      ? "text-[color:var(--muted)]"
+      : "text-emerald-700 dark:text-emerald-300";
+  const badgeClass =
+    activeTab === "v1"
+      ? "rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]"
+      : "rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-emerald-800 dark:text-emerald-200";
+  const hasHistoricalData = v1Metrics.weeks > 0 || v2Metrics.weeks > 0;
 
-  if (error) {
-    return (
-      <div className="p-4">
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs text-rose-700">
-          Failed to load comparison data: {error}
-        </div>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="p-4">
-        <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-3 text-xs text-[var(--accent-strong)]">
-          No performance data available yet.
-        </div>
-      </div>
-    );
-  }
-
-  const { v1: v1Metrics, v2: v2Metrics } = data;
+  const setSystem = (next: "v1" | "v2") => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("system", next);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <div className="flex-1 space-y-4 p-4">
@@ -82,123 +81,119 @@ export default function PerformanceComparisonPanel() {
         </div>
       </div>
 
-      {/* V1 Card */}
-      <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => setSystem("v1")}
+          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+            activeTab === "v1"
+              ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-[var(--accent)]/40"
+          }`}
+        >
+          Universal V1
+        </button>
+        <button
+          type="button"
+          onClick={() => setSystem("v2")}
+          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+            activeTab === "v2"
+              ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-emerald-400/50"
+          }`}
+        >
+          Universal V2
+        </button>
+      </div>
+
+      <div className={activeCardClass}>
         <div className="mb-3 flex items-center justify-between">
-          <div className="text-sm font-semibold text-[var(--foreground)]">V1 · Current</div>
-          <div className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]">
-            5 Baskets
-          </div>
+          <div className={`text-sm font-semibold ${valueClass}`}>{activeLabel}</div>
+          <div className={badgeClass}>{activeBadge}</div>
         </div>
 
         <div className="mb-4">
-          <div className="text-2xl font-bold text-[var(--foreground)]">
-            {v1Metrics.totalReturn >= 0 ? "+" : ""}{v1Metrics.totalReturn.toFixed(2)}%
+          <div className={`text-2xl font-bold ${valueClass}`}>
+            {activeMetrics.totalReturn >= 0 ? "+" : ""}
+            {activeMetrics.totalReturn.toFixed(2)}%
           </div>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          <div className={`text-[10px] uppercase tracking-[0.2em] ${labelClass}`}>
             Total Return
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-sm font-semibold text-[var(--foreground)]">
-              {v1Metrics.winRate.toFixed(0)}%
+            <div className={`text-sm font-semibold ${valueClass}`}>
+              {activeMetrics.winRate.toFixed(0)}%
             </div>
-            <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
               Win Rate
             </div>
           </div>
           <div>
-            <div className="text-sm font-semibold text-[var(--foreground)]">
-              {v1Metrics.sharpe.toFixed(2)}
+            <div className={`text-sm font-semibold ${valueClass}`}>
+              {activeMetrics.sharpe.toFixed(2)}
             </div>
-            <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
               Sharpe
             </div>
           </div>
           <div>
-            <div className="text-sm font-semibold text-[var(--foreground)]">
-              {v1Metrics.avgWeekly >= 0 ? "+" : ""}{v1Metrics.avgWeekly.toFixed(2)}%
+            <div className={`text-sm font-semibold ${valueClass}`}>
+              {activeMetrics.avgWeekly >= 0 ? "+" : ""}
+              {activeMetrics.avgWeekly.toFixed(2)}%
             </div>
-            <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
               Avg Weekly
             </div>
           </div>
           <div>
-            <div className="text-sm font-semibold text-[var(--foreground)]">
-              {v1Metrics.weeks}
+            <div className={`text-sm font-semibold ${valueClass}`}>
+              {activeMetrics.weeks}
             </div>
-            <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
               Weeks
             </div>
           </div>
         </div>
       </div>
 
-      {/* V2 Card */}
-      <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">V2 · Proposed</div>
-          <div className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-emerald-800 dark:text-emerald-200">
-            3 Baskets
+      {loading ? (
+        <div className="rounded-2xl border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-3 py-2 text-center">
+          <div className="text-xs font-semibold text-[var(--foreground)]">Loading comparison...</div>
+          <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
+            Fetching snapshot metrics
           </div>
         </div>
+      ) : null}
 
-        <div className="mb-4">
-          <div className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">
-            {v2Metrics.totalReturn >= 0 ? "+" : ""}{v2Metrics.totalReturn.toFixed(2)}%
-          </div>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
-            Total Return
+      {error ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-center">
+          <div className="text-xs font-semibold text-rose-700">Failed to load comparison data</div>
+          <div className="text-[9px] uppercase tracking-[0.15em] text-rose-600">
+            {error}
           </div>
         </div>
+      ) : null}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-              {v2Metrics.winRate.toFixed(0)}%
-            </div>
-            <div className="text-[9px] uppercase tracking-[0.15em] text-emerald-700 dark:text-emerald-300">
-              Win Rate
-            </div>
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-              {v2Metrics.sharpe.toFixed(2)}
-            </div>
-            <div className="text-[9px] uppercase tracking-[0.15em] text-emerald-700 dark:text-emerald-300">
-              Sharpe
-            </div>
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-              {v2Metrics.avgWeekly >= 0 ? "+" : ""}{v2Metrics.avgWeekly.toFixed(2)}%
-            </div>
-            <div className="text-[9px] uppercase tracking-[0.15em] text-emerald-700 dark:text-emerald-300">
-              Avg Weekly
-            </div>
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-              {v2Metrics.weeks}
-            </div>
-            <div className="text-[9px] uppercase tracking-[0.15em] text-emerald-700 dark:text-emerald-300">
-              Weeks
-            </div>
+      {!loading && !error && !hasHistoricalData ? (
+        <div className="rounded-2xl border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-3 py-2 text-center">
+          <div className="text-xs font-semibold text-[var(--foreground)]">No closed weeks available yet</div>
+          <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
+            Waiting for historical snapshots
           </div>
         </div>
-      </div>
+      ) : null}
 
-      {/* Delta Indicator */}
-      {v2Metrics.totalReturn !== v1Metrics.totalReturn ? (
+      {!loading && !error && v2Metrics.totalReturn !== v1Metrics.totalReturn ? (
         <div className="rounded-2xl border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-3 py-2 text-center">
           <div className="text-xs font-semibold text-[var(--foreground)]">
             {v2Metrics.totalReturn > v1Metrics.totalReturn ? "↑" : "↓"}{" "}
             {Math.abs(v2Metrics.totalReturn - v1Metrics.totalReturn).toFixed(2)}%
           </div>
           <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
-            Delta
+            V2 vs V1 Delta
           </div>
         </div>
       ) : null}

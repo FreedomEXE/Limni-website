@@ -31,8 +31,9 @@ import {
 } from "@/lib/performance/pageState";
 import { combinePerformanceModelTotals } from "@/lib/performance/pageTotals";
 import {
-  PERFORMANCE_MODELS,
+  PERFORMANCE_SYSTEM_MODEL_MAP,
   PERFORMANCE_MODEL_LABELS,
+  resolvePerformanceSystem,
 } from "@/lib/performance/modelConfig";
 import {
   buildAllTimePerformance,
@@ -69,9 +70,12 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const weekParamValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
   const viewParam = resolvedSearchParams?.view;
   const viewParamValue = Array.isArray(viewParam) ? viewParam[0] : viewParam;
+  const systemParam = resolvedSearchParams?.system;
+  const systemParamValue = Array.isArray(systemParam) ? systemParam[0] : systemParam;
+  const system = resolvePerformanceSystem(systemParamValue);
   const view = resolvePerformanceView(viewParamValue);
   const assetClasses = listAssetClasses();
-  const models = PERFORMANCE_MODELS;
+  const models = PERFORMANCE_SYSTEM_MODEL_MAP[system];
 
   const desiredWeeks = 5;
   let weekOptions: string[] = [];
@@ -402,6 +406,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             <h1 className="text-3xl font-semibold text-[var(--foreground)]">
               Performance
             </h1>
+            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
+              {system === "v2" ? "Universal V2" : "Universal V1"}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">

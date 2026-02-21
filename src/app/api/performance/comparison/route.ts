@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { readAllPerformanceSnapshots } from "@/lib/performanceSnapshots";
-import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
+import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import { DateTime } from "luxon";
 import type { PerformanceModel } from "@/lib/performanceLab";
+import { PERFORMANCE_V1_MODELS, PERFORMANCE_V2_MODELS } from "@/lib/performance/modelConfig";
 
-const V1_MODELS: PerformanceModel[] = ["antikythera", "blended", "dealer", "commercial", "sentiment"];
-const V2_MODELS: PerformanceModel[] = ["dealer", "sentiment", "antikythera"];
+const V1_MODELS: PerformanceModel[] = PERFORMANCE_V1_MODELS;
+const V2_MODELS: PerformanceModel[] = PERFORMANCE_V2_MODELS;
+const COMPARISON_WEEKS = 5;
+const SNAPSHOT_SCAN_LIMIT = 1200;
 
 type ComparisonMetrics = {
   totalReturn: number;
@@ -15,27 +18,66 @@ type ComparisonMetrics = {
   avgWeekly: number;
 };
 
-function computeMetrics(
-  snapshots: Awaited<ReturnType<typeof readAllPerformanceSnapshots>>,
-  models: PerformanceModel[],
+type SnapshotRow = Awaited<ReturnType<typeof readAllPerformanceSnapshots>>[number];
+
+function getWeekBucketKey(snapshot: SnapshotRow): string {
+  if (snapshot.report_date) {
+    return `report:${snapshot.report_date}`;
+  }
+  const canonicalWeek = normalizeWeekOpenUtc(snapshot.week_open_utc) ?? snapshot.week_open_utc;
+  return `week:${canonicalWeek}`;
+}
+
+function isClosedSnapshot(snapshot: SnapshotRow, currentWeekMillis: number): boolean {
+  const weekMillis = DateTime.fromISO(snapshot.week_open_utc, { zone: "utc" }).toMillis();
+  return Number.isFinite(weekMillis) && weekMillis < currentWeekMillis;
+}
+
+function pickRecentClosedWeeks(
+  snapshots: SnapshotRow[],
   currentWeekMillis: number,
+  maxWeeks: number,
+): Set<string> {
+  const weekByKey = new Map<string, number>();
+
+  for (const snapshot of snapshots) {
+    if (!isClosedSnapshot(snapshot, currentWeekMillis)) {
+      continue;
+    }
+    const key = getWeekBucketKey(snapshot);
+    const weekMillis = DateTime.fromISO(snapshot.week_open_utc, { zone: "utc" }).toMillis();
+    if (!Number.isFinite(weekMillis)) {
+      continue;
+    }
+    const existing = weekByKey.get(key);
+    if (existing === undefined || weekMillis > existing) {
+      weekByKey.set(key, weekMillis);
+    }
+  }
+
+  const selected = Array.from(weekByKey.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxWeeks)
+    .map(([key]) => key);
+
+  return new Set(selected);
+}
+
+function computeMetrics(
+  snapshots: SnapshotRow[],
+  models: PerformanceModel[],
+  selectedWeeks: Set<string>,
 ): ComparisonMetrics {
-  // Group by week and sum across selected models
   const weekTotals = new Map<string, number>();
 
   for (const snapshot of snapshots) {
     if (!models.includes(snapshot.model)) {
       continue;
     }
-
-    const weekKey = snapshot.week_open_utc;
-    const weekMillis = DateTime.fromISO(weekKey, { zone: "utc" }).toMillis();
-
-    // Only include closed historical weeks
-    if (weekMillis >= currentWeekMillis) {
+    const weekKey = getWeekBucketKey(snapshot);
+    if (!selectedWeeks.has(weekKey)) {
       continue;
     }
-
     const current = weekTotals.get(weekKey) ?? 0;
     weekTotals.set(weekKey, current + snapshot.percent);
   }
@@ -72,15 +114,17 @@ export async function GET() {
     const currentWeekOpenUtc = getCanonicalWeekOpenUtc();
     const currentWeekMillis = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" }).toMillis();
 
-    // Fetch last 5 weeks of snapshots
-    const snapshots = await readAllPerformanceSnapshots(5 * 5); // 5 models × 5 weeks = 25 rows max
+    // Scan a wide enough history window to reliably backfill the selected weeks.
+    const snapshots = await readAllPerformanceSnapshots(SNAPSHOT_SCAN_LIMIT);
+    const selectedWeeks = pickRecentClosedWeeks(snapshots, currentWeekMillis, COMPARISON_WEEKS);
 
-    const v1Metrics = computeMetrics(snapshots, V1_MODELS, currentWeekMillis);
-    const v2Metrics = computeMetrics(snapshots, V2_MODELS, currentWeekMillis);
+    const v1Metrics = computeMetrics(snapshots, V1_MODELS, selectedWeeks);
+    const v2Metrics = computeMetrics(snapshots, V2_MODELS, selectedWeeks);
 
     return NextResponse.json({
       v1: v1Metrics,
       v2: v2Metrics,
+      weeksAnalyzed: selectedWeeks.size,
     });
   } catch (error) {
     console.error("Performance comparison API error:", error);
