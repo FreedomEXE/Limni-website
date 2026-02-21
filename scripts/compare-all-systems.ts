@@ -4,7 +4,7 @@ process.env.DATABASE_URL = process.env.DATABASE_URL ||
 
 import { Pool } from "pg";
 import { DateTime } from "luxon";
-import { listAssetClasses } from "../src/lib/cotMarkets";
+import { listAssetClasses, type AssetClass } from "../src/lib/cotMarkets";
 import { readSnapshotHistory } from "../src/lib/cotStore";
 import { computeModelPerformance } from "../src/lib/performanceLab";
 import { getAggregatesForWeekStartWithBackfill } from "../src/lib/sentiment/store";
@@ -34,7 +34,7 @@ function getReportDateForWeek(weekOpenUtc: string): string {
   return weekOpen.minus({ days: 5 }).toISODate()!;
 }
 
-async function getSnapshotForWeek(assetClass: string, weekOpenUtc: string) {
+async function getSnapshotForWeek(assetClass: AssetClass, weekOpenUtc: string) {
   const targetReportDate = getReportDateForWeek(weekOpenUtc);
   const history = await readSnapshotHistory(assetClass, 260);
   const match = history.find((item) => item.report_date <= targetReportDate);
@@ -154,8 +154,11 @@ async function main() {
     for (const asset of assetClasses) {
       try {
         const marketSnapshot = await readMarketSnapshot(weekOpenUtc, asset.id);
+        if (!marketSnapshot) {
+          continue;
+        }
         Object.entries(marketSnapshot.pairs).forEach(([pair, data]) => {
-          if (typeof data.percent === "number") {
+          if (data && typeof data.percent === "number") {
             marketReturns.set(pair, data.percent);
           }
         });
