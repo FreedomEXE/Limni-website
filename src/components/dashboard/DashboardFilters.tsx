@@ -105,7 +105,7 @@ export default function DashboardFilters({
         ))}
       </select>
       <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-        Bias mode
+        Data type
       </label>
       <select
         value={selectedBias}
@@ -118,4 +118,3 @@ export default function DashboardFilters({
     </div>
   );
 }
-

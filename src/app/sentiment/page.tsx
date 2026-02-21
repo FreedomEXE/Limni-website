@@ -244,8 +244,13 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header className="space-y-4">
+        <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">Sentiment</h1>
+          <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            {latestAggregateTimestamp
+              ? `Last refresh ${formatDateTimeET(latestAggregateTimestamp)}`
+              : "No refresh yet"}
+          </div>
         </header>
 
         <SummaryCards
@@ -382,12 +387,6 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
             ))}
           </section>
         ) : null}
-
-        <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          {latestAggregateTimestamp
-            ? `Last refresh ${formatDateTimeET(latestAggregateTimestamp)}`
-            : "No refresh yet"}
-        </div>
       </div>
     </DashboardLayout>
   );

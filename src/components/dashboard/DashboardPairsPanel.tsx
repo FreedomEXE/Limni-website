@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import PairHeatmap from "@/components/PairHeatmap";
-import PairPerformanceTable from "@/components/PairPerformanceTable";
 import type { Direction } from "@/lib/cotTypes";
 import type { PairPerformance } from "@/lib/priceStore";
 
@@ -66,30 +65,14 @@ export default function DashboardPairsPanel({
         </div>
       </div>
 
-      {view === "heatmap" ? (
-        <div data-cot-surface="true">
-          <PairHeatmap rows={rows} />
-        </div>
-      ) : (
-        <section
-          data-cot-surface="true"
-          className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm"
-        >
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-[var(--foreground)]">
-              Pair Performance
-            </h2>
-            <p className="text-sm text-[var(--muted)]">
-              List view of all pairs with performance data
-            </p>
-          </div>
-          <PairPerformanceTable
-            rows={rows}
-            note={note}
-            missingPairs={missingPairs}
-          />
-        </section>
-      )}
+      <div data-cot-surface="true">
+        <PairHeatmap
+          rows={rows}
+          view={view}
+          note={note}
+          missingPairs={missingPairs}
+        />
+      </div>
     </div>
   );
 }

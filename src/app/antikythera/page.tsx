@@ -248,20 +248,6 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
       label: `${signal.pair} (${signal.assetLabel})`,
       value: "SHORT",
     }));
-  const reportWeekLabel = (() => {
-    if (!selectedReportDate) {
-      return "";
-    }
-    const report = DateTime.fromISO(selectedReportDate, { zone: "America/New_York" });
-    if (!report.isValid) {
-      return formatDateET(selectedReportDate);
-    }
-    const daysUntilMonday = (8 - report.weekday) % 7;
-    const monday = report
-      .plus({ days: daysUntilMonday })
-      .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-    return formatDateET(monday.toUTC().toISO());
-  })();
   const viewParams = new URLSearchParams();
   if (selectedReportDate) {
     viewParams.set("report", selectedReportDate);
@@ -282,10 +268,15 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header className="space-y-4">
+        <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">
             Antikythera
           </h1>
+          <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            {latestAntikytheraRefresh
+              ? `Last refresh ${formatDateTimeET(latestAntikytheraRefresh)}`
+              : "No refresh yet"}
+          </div>
         </header>
 
         <div data-cot-surface="true">
@@ -383,32 +374,19 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
             </form>
             <ViewToggle value={view} items={viewItems} />
           </div>
-          {selectedReportDate ? (
-            <div className="mt-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              COT report date {formatDateET(selectedReportDate)}
-              {reportWeekLabel ? ` · Trading week ${reportWeekLabel}` : ""}
-            </div>
-          ) : null}
+          <div className="mt-6">
+            <SignalHeatmap
+              signals={filteredSignals.map((signal) => ({
+                pair: signal.pair,
+                direction: signal.direction,
+                assetLabel: signal.assetLabel,
+                reasons: signal.reasons,
+              }))}
+              view={view}
+              performanceByPair={performanceByPair}
+            />
+          </div>
         </section>
-
-        <div data-cot-surface="true">
-          <SignalHeatmap
-            signals={filteredSignals.map((signal) => ({
-              pair: signal.pair,
-              direction: signal.direction,
-              assetLabel: signal.assetLabel,
-              reasons: signal.reasons,
-            }))}
-            view={view}
-            performanceByPair={performanceByPair}
-          />
-        </div>
-
-        <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          {latestAntikytheraRefresh
-            ? `Last refresh ${formatDateTimeET(latestAntikytheraRefresh)}`
-            : "No refresh yet"}
-        </div>
       </div>
     </DashboardLayout>
   );

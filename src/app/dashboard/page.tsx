@@ -1,8 +1,9 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import SummaryCards from "@/components/SummaryCards";
 import MiniBiasStrip from "@/components/MiniBiasStrip";
+import PairHeatmap from "@/components/PairHeatmap";
+import ViewToggle from "@/components/ViewToggle";
 import DashboardFilters from "@/components/dashboard/DashboardFilters";
-import DashboardPairsPanel from "@/components/dashboard/DashboardPairsPanel";
 import { evaluateFreshness } from "@/lib/cotFreshness";
 import { formatDateET, formatDateTimeET } from "@/lib/time";
 import { DateTime } from "luxon";
@@ -18,7 +19,7 @@ import {
   resolveMarketBias,
   type BiasMode,
 } from "@/lib/cotCompute";
-import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
+import { PAIRS_BY_ASSET_CLASS, type PairDefinition } from "@/lib/cotPairs";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import { getPairPerformance } from "@/lib/pricePerformance";
@@ -63,6 +64,61 @@ function getBiasMode(value?: string): BiasMode {
     return value;
   }
   return "dealer";
+}
+
+type ResolvedBias = {
+  long: number;
+  short: number;
+  net: number;
+  bias: string;
+};
+
+function formatCftcNumber(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "N/A";
+  }
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function buildBiasDetails({
+  pairDef,
+  direction,
+  dataType,
+  assetLabel,
+  baseBias,
+  quoteBias,
+  baseResolved,
+  quoteResolved,
+}: {
+  pairDef: PairDefinition;
+  direction: PairSnapshot["direction"];
+  dataType: "dealer" | "commercial";
+  assetLabel: string;
+  baseBias: PairSnapshot["base_bias"];
+  quoteBias: PairSnapshot["quote_bias"];
+  baseResolved?: ResolvedBias;
+  quoteResolved?: ResolvedBias;
+}) {
+  return [
+    { label: "Direction", value: direction },
+    {
+      label: "Data Type",
+      value: dataType === "dealer" ? "Dealer" : "Commercial",
+    },
+    { label: "Asset Class", value: assetLabel },
+    { label: "Base Market", value: pairDef.base },
+    { label: "Base Bias", value: baseBias },
+    { label: "Base Long", value: formatCftcNumber(baseResolved?.long) },
+    { label: "Base Short", value: formatCftcNumber(baseResolved?.short) },
+    { label: "Base Net", value: formatCftcNumber(baseResolved?.net) },
+    { label: "Quote Market", value: pairDef.quote },
+    { label: "Quote Bias", value: quoteBias },
+    { label: "Quote Long", value: formatCftcNumber(quoteResolved?.long) },
+    { label: "Quote Short", value: formatCftcNumber(quoteResolved?.short) },
+    { label: "Quote Net", value: formatCftcNumber(quoteResolved?.net) },
+  ];
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -126,6 +182,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     pair: string;
     direction: "LONG" | "SHORT" | "NEUTRAL";
     performance: Awaited<ReturnType<typeof getPairPerformance>>["performance"][string] | null;
+    subtitle?: string;
+    details: Array<{ label: string; value: string }>;
   }>;
   let pairNote = "No pairs to price.";
   let missingPairs: string[] = [];
@@ -156,6 +214,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         const entrySnapshot = entry.snapshot!;
         const marketLabels = entry.asset.markets;
         const pairDefs = PAIRS_BY_ASSET_CLASS[entry.asset.id];
+        const resolvedByCurrency = new Map<string, ResolvedBias>();
+
+        Object.entries(entrySnapshot.currencies).forEach(([currency, snapshotValue]) => {
+          const resolved = resolveMarketBias(snapshotValue, biasMode);
+          if (resolved) {
+            resolvedByCurrency.set(currency, {
+              long: resolved.long,
+              short: resolved.short,
+              net: resolved.net,
+              bias: resolved.bias,
+            });
+          }
+        });
 
         const resolvedCurrencyRows = Object.entries(entrySnapshot.currencies)
           .map(([currency, snapshotValue]) => {
@@ -206,11 +277,25 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         return {
           assetLabel: entry.asset.label,
           currencyRows: resolvedCurrencyRows,
-          pairRows: Object.entries(allPairs).map(([pair, row]) => ({
-            pair: `${pair} (${entry.asset.label})`,
-            direction: row.direction,
-            performance: perfResult.performance[pair] ?? null,
-          })),
+          pairRows: pairDefs.map((pairDef) => {
+            const row = allPairs[pairDef.pair];
+            return {
+              pair: `${pairDef.pair} (${entry.asset.label})`,
+              direction: row.direction,
+              performance: perfResult.performance[pairDef.pair] ?? null,
+              subtitle: entry.asset.label,
+              details: buildBiasDetails({
+                pairDef,
+                direction: row.direction,
+                dataType: selectedBiasForFilter,
+                assetLabel: entry.asset.label,
+                baseBias: row.base_bias,
+                quoteBias: row.quote_bias,
+                baseResolved: resolvedByCurrency.get(pairDef.base),
+                quoteResolved: resolvedByCurrency.get(pairDef.quote),
+              }),
+            };
+          }),
           missingPairs: perfResult.missingPairs.map(
             (pair) => `${pair} (${entry.asset.label})`,
           ),
@@ -285,9 +370,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       }
     }
 
-    const pairRows = Object.entries(allPairs).sort(([a], [b]) =>
-      a.localeCompare(b),
-    );
+    const pairRows = pairDefs
+      .map((pairDef) => ({
+        pairDef,
+        row: allPairs[pairDef.pair],
+      }))
+      .sort((a, b) => a.pairDef.pair.localeCompare(b.pairDef.pair));
     const perfResult =
       pairRows.length > 0
         ? await getPairPerformance(allPairs, {
@@ -298,30 +386,46 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         : { performance: {}, note: "No pairs to price.", missingPairs: [] };
     pairNote = perfResult.note;
     missingPairs = perfResult.missingPairs;
-    pairRows.forEach(([pair, row]) => {
+    pairRows.forEach(({ pairDef, row }) => {
       pairRowsWithPerf.push({
-        pair,
+        pair: pairDef.pair,
         ...row,
-        performance: perfResult.performance[pair] ?? null,
+        performance: perfResult.performance[pairDef.pair] ?? null,
+        subtitle: assetDefinition.label,
+        details: buildBiasDetails({
+          pairDef,
+          direction: row.direction,
+          dataType: selectedBiasForFilter,
+          assetLabel: assetDefinition.label,
+          baseBias: row.base_bias,
+          quoteBias: row.quote_bias,
+          baseResolved: data.currencies[pairDef.base]
+            ? (resolveMarketBias(data.currencies[pairDef.base], biasMode) ?? undefined)
+            : undefined,
+          quoteResolved: data.currencies[pairDef.quote]
+            ? (resolveMarketBias(data.currencies[pairDef.quote], biasMode) ?? undefined)
+            : undefined,
+        }),
       });
     });
   }
 
   const biasLabel = isAll ? "Asset" : assetDefinition.biasLabel;
-  const reportWeekLabel = (() => {
-    if (!selectedReportDate) {
-      return "";
-    }
-    const report = DateTime.fromISO(selectedReportDate, { zone: "America/New_York" });
-    if (!report.isValid) {
-      return formatDateET(selectedReportDate);
-    }
-    const daysUntilMonday = (8 - report.weekday) % 7;
-    const monday = report
-      .plus({ days: daysUntilMonday })
-      .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-    return formatDateET(monday.toUTC().toISO());
-  })();
+  const viewParams = new URLSearchParams();
+  viewParams.set("asset", isAll ? "all" : assetClass);
+  if (selectedReportDate) {
+    viewParams.set("report", selectedReportDate);
+  }
+  viewParams.set("bias", selectedBiasForFilter);
+  const viewItems = (["heatmap", "list"] as const).map((option) => {
+    const params = new URLSearchParams(viewParams);
+    params.set("view", option);
+    return {
+      value: option,
+      label: option,
+      href: `/dashboard?${params.toString()}`,
+    };
+  });
   const longDetails = pairRowsWithPerf
     .filter((row) => row.direction === "LONG")
     .map((row) => ({ label: row.pair, value: "LONG" }));
@@ -385,8 +489,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header className="space-y-4">
+        <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">Bias</h1>
+          <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            {combinedRefresh ? `Last refresh ${formatDateTimeET(combinedRefresh)}` : "No refresh yet"}
+          </div>
         </header>
 
         <div data-cot-surface="true">
@@ -454,14 +561,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               selectedReport={selectedReportDate ?? ""}
               selectedBias={selectedBiasForFilter}
             />
+            <ViewToggle value={view} items={viewItems} />
           </div>
-          {selectedReportDate ? (
-            <div className="mt-3 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              COT report date {formatDateET(selectedReportDate)}
-              {reportWeekLabel ? ` · Trading week ${reportWeekLabel}` : ""}
-            </div>
-          ) : null}
-
+          <div className="mt-6">
+            <PairHeatmap
+              rows={pairRowsWithPerf}
+              view={view}
+              note={pairNote}
+              missingPairs={missingPairs}
+            />
+          </div>
           <div className="mt-6">
             <h2 className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               {biasLabel} bias strip
@@ -477,17 +586,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           </div>
         </section>
-
-        <DashboardPairsPanel
-          initialView={view}
-          rows={pairRowsWithPerf}
-          note={pairNote}
-          missingPairs={missingPairs}
-        />
-
-        <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          {combinedRefresh ? `Last refresh ${formatDateTimeET(combinedRefresh)}` : "No refresh yet"}
-        </div>
       </div>
     </DashboardLayout>
   );
