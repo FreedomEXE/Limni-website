@@ -10,6 +10,7 @@ type PerformanceModalProps = {
   onClose: () => void;
   accountSize: number;
   setAccountSize: (size: number) => void;
+  initialView?: ViewMode;
   calibration?: {
     accountId: string;
     accountLabel: string;
@@ -166,13 +167,14 @@ export default function PerformanceModal({
   onClose,
   accountSize,
   setAccountSize,
+  initialView = "home",
   calibration,
 }: PerformanceModalProps) {
   const notesKey = useMemo(
     () => `limni-notes-${sectionLabel}-${modelLabel}`,
     [sectionLabel, modelLabel],
   );
-  const [view, setView] = useState<ViewMode>("home");
+  const [view, setView] = useState<ViewMode>(initialView);
   const [simulationMode, setSimulationMode] = useState<"hold" | "trailing">("hold");
   const [notes, setNotes] = useState(() => {
     if (typeof window === "undefined") {
@@ -207,23 +209,23 @@ export default function PerformanceModal({
   };
 
   useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        if (view === "home") {
-          onClose();
-        } else {
-          setView("home");
-        }
+        onClose();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [view, onClose]);
+  }, [onClose]);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--foreground)]/30 p-6"
-      onClick={() => view === "home" ? onClose() : setView("home")}
+      onClick={onClose}
     >
       <div
         role="dialog"

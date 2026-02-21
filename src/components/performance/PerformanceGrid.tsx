@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { ModelPerformance, PerformanceModel } from "@/lib/performanceLab";
+import PerformanceModal from "@/components/performance/PerformanceModal";
 
 type Section = {
   id: string;
@@ -224,6 +225,7 @@ function PerformanceCard({
   calibrationSize,
   calibrationLabel,
   isCotBased,
+  onOpenDetails,
   style,
 }: {
   label: string;
@@ -232,6 +234,7 @@ function PerformanceCard({
   calibrationSize?: number;
   calibrationLabel?: string;
   isCotBased: boolean;
+  onOpenDetails: () => void;
   style?: CSSProperties;
 }) {
   const tier = getPerformanceTier(performance.percent, performance.stats.win_rate);
@@ -250,10 +253,13 @@ function PerformanceCard({
       : null;
   const topPairs = performance.pair_details.slice(0, 4);
   return (
-    <div
+    <button
+      type="button"
+      onClick={onOpenDetails}
+      aria-label={`Open ${label} details`}
       style={style}
       data-cot-surface={isCotBased ? "true" : undefined}
-      className={`relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in ${tier.card}`}
+      className={`relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in hover:scale-[1.01] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${tier.card}`}
     >
       <div className="absolute right-4 top-3 text-4xl opacity-10">{tier.emoji}</div>
       <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -405,7 +411,10 @@ function PerformanceCard({
           {calibrationLabel ? `${calibrationLabel}: ` : ""} {formatMoney(calibrationPnl)}
         </div>
       ) : null}
-    </div>
+      <div className="mt-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
+        View details
+      </div>
+    </button>
   );
 }
 
@@ -427,6 +436,19 @@ export default function PerformanceGrid({
   const [selectedSectionId, setSelectedSectionId] = useState(
     sections[0]?.id ?? "combined",
   );
+  const [modalAccountSize, setModalAccountSize] = useState(calibration?.accountSize ?? 100000);
+  const [selectedModel, setSelectedModel] = useState<{
+    sectionLabel: string;
+    modelLabel: string;
+    performance: ModelPerformance;
+  } | null>(null);
+
+  useEffect(() => {
+    if (calibration?.accountSize && Number.isFinite(calibration.accountSize)) {
+      setModalAccountSize(calibration.accountSize);
+    }
+  }, [calibration?.accountSize]);
+
   const resolvedSectionId = sections.find((section) => section.id === selectedSectionId)
     ? selectedSectionId
     : sections[0]?.id ?? "combined";
@@ -479,6 +501,13 @@ export default function PerformanceGrid({
                       isCotBased={result.model !== "sentiment"}
                       calibrationSize={calibration?.accountSize}
                       calibrationLabel={calibration ? "MT5 sized" : undefined}
+                      onOpenDetails={() =>
+                        setSelectedModel({
+                          sectionLabel: section.label,
+                          modelLabel: labels[result.model],
+                          performance: result,
+                        })
+                      }
                       style={{ animationDelay: `${index * 50}ms` }}
                     />
                   ))}
@@ -529,6 +558,18 @@ export default function PerformanceGrid({
             ))}
           </div>
         </section>
+      ) : null}
+      {selectedModel ? (
+        <PerformanceModal
+          sectionLabel={selectedModel.sectionLabel}
+          modelLabel={selectedModel.modelLabel}
+          performance={selectedModel.performance}
+          onClose={() => setSelectedModel(null)}
+          accountSize={modalAccountSize}
+          setAccountSize={setModalAccountSize}
+          initialView={view}
+          calibration={calibration}
+        />
       ) : null}
     </>
   );
