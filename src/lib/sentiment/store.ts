@@ -1,46 +1,58 @@
 import { query } from "../db";
 import { DateTime } from "luxon";
 import { getWeekOpenUtc } from "../performanceSnapshots";
+import { clearRuntimeCacheByPrefix, getOrSetRuntimeCache } from "../runtimeCache";
 import type {
   ProviderSentiment,
   SentimentAggregate,
   SourceHealth,
 } from "./types";
 
-export async function readSnapshots(): Promise<ProviderSentiment[]> {
-  try {
-    const retentionHours = Number(process.env.SENTIMENT_SNAPSHOT_RETENTION_HOURS ?? "24");
-    const hours = Number.isFinite(retentionHours) && retentionHours > 0 ? retentionHours : 24;
-    const rows = await query<{
-      provider: string;
-      symbol: string;
-      long_pct: string;
-      short_pct: string;
-      timestamp_utc: Date;
-    }>(
-      `SELECT provider, symbol, long_pct, short_pct, timestamp_utc
-       FROM sentiment_data
-       WHERE timestamp_utc > NOW() - INTERVAL '${hours} hours'
-       ORDER BY timestamp_utc DESC`
-    );
+const SENTIMENT_STORE_CACHE_TTL_MS = Number(process.env.SENTIMENT_STORE_CACHE_TTL_MS ?? "15000");
 
-    return rows.map((row) => {
-      const longPct = Number(row.long_pct);
-      const shortPct = Number(row.short_pct);
-      return {
-        provider: row.provider as ProviderSentiment["provider"],
-        symbol: row.symbol,
-        long_pct: longPct,
-        short_pct: shortPct,
-        net: longPct - shortPct,
-        ratio: shortPct > 0 ? longPct / shortPct : 0,
-        timestamp_utc: row.timestamp_utc.toISOString(),
-      };
-    });
-  } catch (error) {
-    console.error("Error reading sentiment snapshots:", error);
-    throw error;
-  }
+function getSentimentStoreCacheTtlMs() {
+  return Number.isFinite(SENTIMENT_STORE_CACHE_TTL_MS) && SENTIMENT_STORE_CACHE_TTL_MS >= 0
+    ? SENTIMENT_STORE_CACHE_TTL_MS
+    : 15000;
+}
+
+export async function readSnapshots(): Promise<ProviderSentiment[]> {
+  const retentionHours = Number(process.env.SENTIMENT_SNAPSHOT_RETENTION_HOURS ?? "24");
+  const hours = Number.isFinite(retentionHours) && retentionHours > 0 ? retentionHours : 24;
+  const cacheKey = `sentimentStore:readSnapshots:${hours}`;
+  return getOrSetRuntimeCache(cacheKey, getSentimentStoreCacheTtlMs(), async () => {
+    try {
+      const rows = await query<{
+        provider: string;
+        symbol: string;
+        long_pct: string;
+        short_pct: string;
+        timestamp_utc: Date;
+      }>(
+        `SELECT provider, symbol, long_pct, short_pct, timestamp_utc
+         FROM sentiment_data
+         WHERE timestamp_utc > NOW() - INTERVAL '${hours} hours'
+         ORDER BY timestamp_utc DESC`
+      );
+
+      return rows.map((row) => {
+        const longPct = Number(row.long_pct);
+        const shortPct = Number(row.short_pct);
+        return {
+          provider: row.provider as ProviderSentiment["provider"],
+          symbol: row.symbol,
+          long_pct: longPct,
+          short_pct: shortPct,
+          net: longPct - shortPct,
+          ratio: shortPct > 0 ? longPct / shortPct : 0,
+          timestamp_utc: row.timestamp_utc.toISOString(),
+        };
+      });
+    } catch (error) {
+      console.error("Error reading sentiment snapshots:", error);
+      throw error;
+    }
+  });
 }
 
 export async function writeSnapshots(
@@ -77,45 +89,50 @@ export async function appendSnapshots(
   } catch (error) {
     console.error("Error appending sentiment snapshots:", error);
     throw error;
+  } finally {
+    clearRuntimeCacheByPrefix("sentimentStore:");
   }
 }
 
 export async function readAggregates(): Promise<SentimentAggregate[]> {
-  try {
-    const retentionDays = Number(process.env.SENTIMENT_RETENTION_DAYS ?? "365");
-    const days = Number.isFinite(retentionDays) && retentionDays > 0 ? retentionDays : 365;
-    const rows = await query<{
-      symbol: string;
-      agg_long_pct: string;
-      agg_short_pct: string;
-      agg_net: string;
-      sources_used: string[];
-      confidence_score: string;
-      crowding_state: string;
-      flip_state: string;
-      timestamp_utc: Date;
-    }>(
-      `SELECT symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc
-       FROM sentiment_aggregates
-       WHERE timestamp_utc > NOW() - INTERVAL '${days} days'
-       ORDER BY timestamp_utc DESC`
-    );
+  const retentionDays = Number(process.env.SENTIMENT_RETENTION_DAYS ?? "365");
+  const days = Number.isFinite(retentionDays) && retentionDays > 0 ? retentionDays : 365;
+  const cacheKey = `sentimentStore:readAggregates:${days}`;
+  return getOrSetRuntimeCache(cacheKey, getSentimentStoreCacheTtlMs(), async () => {
+    try {
+      const rows = await query<{
+        symbol: string;
+        agg_long_pct: string;
+        agg_short_pct: string;
+        agg_net: string;
+        sources_used: string[];
+        confidence_score: string;
+        crowding_state: string;
+        flip_state: string;
+        timestamp_utc: Date;
+      }>(
+        `SELECT symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc
+         FROM sentiment_aggregates
+         WHERE timestamp_utc > NOW() - INTERVAL '${days} days'
+         ORDER BY timestamp_utc DESC`
+      );
 
-    return rows.map((row) => ({
-      symbol: row.symbol,
-      agg_long_pct: Number(row.agg_long_pct),
-      agg_short_pct: Number(row.agg_short_pct),
-      agg_net: Number(row.agg_net),
-      sources_used: row.sources_used as ProviderSentiment["provider"][],
-      confidence_score: Number(row.confidence_score),
-      crowding_state: row.crowding_state as SentimentAggregate["crowding_state"],
-      flip_state: row.flip_state as SentimentAggregate["flip_state"],
-      timestamp_utc: row.timestamp_utc.toISOString(),
-    }));
-  } catch (error) {
-    console.error("Error reading sentiment aggregates:", error);
-    throw error;
-  }
+      return rows.map((row) => ({
+        symbol: row.symbol,
+        agg_long_pct: Number(row.agg_long_pct),
+        agg_short_pct: Number(row.agg_short_pct),
+        agg_net: Number(row.agg_net),
+        sources_used: row.sources_used as ProviderSentiment["provider"][],
+        confidence_score: Number(row.confidence_score),
+        crowding_state: row.crowding_state as SentimentAggregate["crowding_state"],
+        flip_state: row.flip_state as SentimentAggregate["flip_state"],
+        timestamp_utc: row.timestamp_utc.toISOString(),
+      }));
+    } catch (error) {
+      console.error("Error reading sentiment aggregates:", error);
+      throw error;
+    }
+  });
 }
 
 export async function writeAggregates(
@@ -156,105 +173,115 @@ export async function appendAggregates(
   } catch (error) {
     console.error("Error appending sentiment aggregates:", error);
     throw error;
+  } finally {
+    clearRuntimeCacheByPrefix("sentimentStore:");
   }
 }
 
 export async function getLatestAggregates(): Promise<SentimentAggregate[]> {
-  try {
-    const rows = await query<{
-      symbol: string;
-      agg_long_pct: string;
-      agg_short_pct: string;
-      agg_net: string;
-      sources_used: string[];
-      confidence_score: string;
-      crowding_state: string;
-      flip_state: string;
-      timestamp_utc: Date;
-    }>(
-      `SELECT DISTINCT ON (symbol)
-         symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc
-       FROM sentiment_aggregates
-       ORDER BY symbol, timestamp_utc DESC`
-    );
+  const cacheKey = "sentimentStore:getLatestAggregates";
+  return getOrSetRuntimeCache(cacheKey, getSentimentStoreCacheTtlMs(), async () => {
+    try {
+      const rows = await query<{
+        symbol: string;
+        agg_long_pct: string;
+        agg_short_pct: string;
+        agg_net: string;
+        sources_used: string[];
+        confidence_score: string;
+        crowding_state: string;
+        flip_state: string;
+        timestamp_utc: Date;
+      }>(
+        `SELECT DISTINCT ON (symbol)
+           symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc
+         FROM sentiment_aggregates
+         ORDER BY symbol, timestamp_utc DESC`
+      );
 
-    return rows.map((row) => ({
-      symbol: row.symbol,
-      agg_long_pct: Number(row.agg_long_pct),
-      agg_short_pct: Number(row.agg_short_pct),
-      agg_net: Number(row.agg_net),
-      sources_used: row.sources_used as ProviderSentiment["provider"][],
-      confidence_score: Number(row.confidence_score),
-      crowding_state: row.crowding_state as SentimentAggregate["crowding_state"],
-      flip_state: row.flip_state as SentimentAggregate["flip_state"],
-      timestamp_utc: row.timestamp_utc.toISOString(),
-    }));
-  } catch (error) {
-    console.error("Error getting latest sentiment aggregates:", error);
-    throw error;
-  }
+      return rows.map((row) => ({
+        symbol: row.symbol,
+        agg_long_pct: Number(row.agg_long_pct),
+        agg_short_pct: Number(row.agg_short_pct),
+        agg_net: Number(row.agg_net),
+        sources_used: row.sources_used as ProviderSentiment["provider"][],
+        confidence_score: Number(row.confidence_score),
+        crowding_state: row.crowding_state as SentimentAggregate["crowding_state"],
+        flip_state: row.flip_state as SentimentAggregate["flip_state"],
+        timestamp_utc: row.timestamp_utc.toISOString(),
+      }));
+    } catch (error) {
+      console.error("Error getting latest sentiment aggregates:", error);
+      throw error;
+    }
+  });
 }
 
 export async function getLatestAggregatesLocked(): Promise<SentimentAggregate[]> {
-  const aggregates = await readAggregates();
-  if (aggregates.length === 0) {
-    return [];
-  }
-
   const weekOpenUtc = getWeekOpenUtc();
-  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
-  const weekOpenMs = weekOpen.isValid ? weekOpen.toMillis() : Date.now();
-
-  const bySymbol = new Map<string, SentimentAggregate[]>();
-  for (const agg of aggregates) {
-    if (!bySymbol.has(agg.symbol)) {
-      bySymbol.set(agg.symbol, []);
-    }
-    bySymbol.get(agg.symbol)?.push(agg);
-  }
-
-  const locked: SentimentAggregate[] = [];
-  for (const [symbol, list] of bySymbol.entries()) {
-    const sorted = list
-      .map((agg) => ({
-        agg,
-        ts: DateTime.fromISO(agg.timestamp_utc, { zone: "utc" }),
-      }))
-      .filter((entry) => entry.ts.isValid)
-      .sort((a, b) => a.ts.toMillis() - b.ts.toMillis());
-
-    if (sorted.length === 0) {
-      continue;
+  const cacheKey = `sentimentStore:getLatestAggregatesLocked:${weekOpenUtc}`;
+  return getOrSetRuntimeCache(cacheKey, getSentimentStoreCacheTtlMs(), async () => {
+    const aggregates = await readAggregates();
+    if (aggregates.length === 0) {
+      return [];
     }
 
-    const latest = sorted[sorted.length - 1].agg;
-    const firstFlip = sorted.find(
-      (entry) =>
-        entry.ts.toMillis() >= weekOpenMs && entry.agg.flip_state !== "NONE",
-    );
+    const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+    const weekOpenMs = weekOpen.isValid ? weekOpen.toMillis() : Date.now();
 
-    if (firstFlip) {
-      locked.push({
-        ...latest,
-        crowding_state: "NEUTRAL",
-        flip_state: "FLIPPED_NEUTRAL",
-        timestamp_utc: firstFlip.agg.timestamp_utc,
-      });
-    } else {
-      locked.push(latest);
+    const bySymbol = new Map<string, SentimentAggregate[]>();
+    for (const agg of aggregates) {
+      if (!bySymbol.has(agg.symbol)) {
+        bySymbol.set(agg.symbol, []);
+      }
+      bySymbol.get(agg.symbol)?.push(agg);
     }
-  }
 
-  return locked;
+    const locked: SentimentAggregate[] = [];
+    for (const [symbol, list] of bySymbol.entries()) {
+      const sorted = list
+        .map((agg) => ({
+          agg,
+          ts: DateTime.fromISO(agg.timestamp_utc, { zone: "utc" }),
+        }))
+        .filter((entry) => entry.ts.isValid)
+        .sort((a, b) => a.ts.toMillis() - b.ts.toMillis());
+
+      if (sorted.length === 0) {
+        continue;
+      }
+
+      const latest = sorted[sorted.length - 1].agg;
+      const firstFlip = sorted.find(
+        (entry) =>
+          entry.ts.toMillis() >= weekOpenMs && entry.agg.flip_state !== "NONE",
+      );
+
+      if (firstFlip) {
+        locked.push({
+          ...latest,
+          crowding_state: "NEUTRAL",
+          flip_state: "FLIPPED_NEUTRAL",
+          timestamp_utc: firstFlip.agg.timestamp_utc,
+        });
+      } else {
+        locked.push(latest);
+      }
+    }
+
+    return locked;
+  });
 }
 
 export async function getAggregatesForWeekLocked(
   weekOpenUtc: string,
 ): Promise<SentimentAggregate[]> {
-  const aggregates = await readAggregates();
-  if (aggregates.length === 0) {
-    return [];
-  }
+  const cacheKey = `sentimentStore:getAggregatesForWeekLocked:${weekOpenUtc}`;
+  return getOrSetRuntimeCache(cacheKey, getSentimentStoreCacheTtlMs(), async () => {
+    const aggregates = await readAggregates();
+    if (aggregates.length === 0) {
+      return [];
+    }
 
   const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
   if (!weekOpen.isValid) {
@@ -298,117 +325,127 @@ export async function getAggregatesForWeekLocked(
     }
   }
 
-  return locked;
+    return locked;
+  });
 }
 
 export async function getAggregatesAsOf(
   asOfUtc: string,
 ): Promise<SentimentAggregate[]> {
-  const aggregates = await readAggregates();
-  if (aggregates.length === 0) {
-    return [];
-  }
-  const asOf = DateTime.fromISO(asOfUtc, { zone: "utc" });
-  if (!asOf.isValid) {
-    return [];
-  }
-  const cutoff = asOf.toMillis();
-  const bySymbol = new Map<string, { agg: SentimentAggregate; time: DateTime }[]>();
-
-  for (const agg of aggregates) {
-    const time = DateTime.fromISO(agg.timestamp_utc, { zone: "utc" });
-    if (!time.isValid || time.toMillis() > cutoff) {
-      continue;
+  const cacheKey = `sentimentStore:getAggregatesAsOf:${asOfUtc}`;
+  return getOrSetRuntimeCache(cacheKey, getSentimentStoreCacheTtlMs(), async () => {
+    const aggregates = await readAggregates();
+    if (aggregates.length === 0) {
+      return [];
     }
-    if (!bySymbol.has(agg.symbol)) {
-      bySymbol.set(agg.symbol, []);
+    const asOf = DateTime.fromISO(asOfUtc, { zone: "utc" });
+    if (!asOf.isValid) {
+      return [];
     }
-    bySymbol.get(agg.symbol)?.push({ agg, time });
-  }
+    const cutoff = asOf.toMillis();
+    const bySymbol = new Map<string, { agg: SentimentAggregate; time: DateTime }[]>();
 
-  const snapshot: SentimentAggregate[] = [];
-  for (const [symbol, list] of bySymbol.entries()) {
-    const sorted = list.sort((a, b) => a.time.toMillis() - b.time.toMillis());
-    const latest = sorted.at(-1);
-    if (!latest) {
-      continue;
+    for (const agg of aggregates) {
+      const time = DateTime.fromISO(agg.timestamp_utc, { zone: "utc" });
+      if (!time.isValid || time.toMillis() > cutoff) {
+        continue;
+      }
+      if (!bySymbol.has(agg.symbol)) {
+        bySymbol.set(agg.symbol, []);
+      }
+      bySymbol.get(agg.symbol)?.push({ agg, time });
     }
-    snapshot.push(latest.agg);
-  }
 
-  return snapshot;
+    const snapshot: SentimentAggregate[] = [];
+    for (const [symbol, list] of bySymbol.entries()) {
+      const sorted = list.sort((a, b) => a.time.toMillis() - b.time.toMillis());
+      const latest = sorted.at(-1);
+      if (!latest) {
+        continue;
+      }
+      snapshot.push(latest.agg);
+    }
+
+    return snapshot;
+  });
 }
 
 export async function getAggregatesForWeekStart(
   weekOpenUtc: string,
   weekCloseUtc: string,
 ): Promise<SentimentAggregate[]> {
-  const aggregates = await readAggregates();
-  if (aggregates.length === 0) {
-    return [];
-  }
-  const open = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
-  const close = DateTime.fromISO(weekCloseUtc, { zone: "utc" });
-  if (!open.isValid) {
-    return [];
-  }
-  const openMs = open.toMillis();
-  const closeMs = close.isValid ? close.toMillis() : openMs;
-  const bySymbol = new Map<string, { agg: SentimentAggregate; time: DateTime }[]>();
+  const cacheKey = `sentimentStore:getAggregatesForWeekStart:${weekOpenUtc}:${weekCloseUtc}`;
+  return getOrSetRuntimeCache(cacheKey, getSentimentStoreCacheTtlMs(), async () => {
+    const aggregates = await readAggregates();
+    if (aggregates.length === 0) {
+      return [];
+    }
+    const open = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+    const close = DateTime.fromISO(weekCloseUtc, { zone: "utc" });
+    if (!open.isValid) {
+      return [];
+    }
+    const openMs = open.toMillis();
+    const closeMs = close.isValid ? close.toMillis() : openMs;
+    const bySymbol = new Map<string, { agg: SentimentAggregate; time: DateTime }[]>();
 
-  for (const agg of aggregates) {
-    const time = DateTime.fromISO(agg.timestamp_utc, { zone: "utc" });
-    if (!time.isValid || time.toMillis() > closeMs) {
-      continue;
+    for (const agg of aggregates) {
+      const time = DateTime.fromISO(agg.timestamp_utc, { zone: "utc" });
+      if (!time.isValid || time.toMillis() > closeMs) {
+        continue;
+      }
+      if (!bySymbol.has(agg.symbol)) {
+        bySymbol.set(agg.symbol, []);
+      }
+      bySymbol.get(agg.symbol)?.push({ agg, time });
     }
-    if (!bySymbol.has(agg.symbol)) {
-      bySymbol.set(agg.symbol, []);
-    }
-    bySymbol.get(agg.symbol)?.push({ agg, time });
-  }
 
-  const snapshot: SentimentAggregate[] = [];
-  for (const [symbol, list] of bySymbol.entries()) {
-    const sorted = list.sort((a, b) => a.time.toMillis() - b.time.toMillis());
-    if (sorted.length === 0) {
-      continue;
+    const snapshot: SentimentAggregate[] = [];
+    for (const [symbol, list] of bySymbol.entries()) {
+      const sorted = list.sort((a, b) => a.time.toMillis() - b.time.toMillis());
+      if (sorted.length === 0) {
+        continue;
+      }
+      const latestBeforeOpen = [...sorted]
+        .reverse()
+        .find((entry) => entry.time.toMillis() <= openMs);
+      if (latestBeforeOpen) {
+        snapshot.push(latestBeforeOpen.agg);
+        continue;
+      }
+      const firstAfterOpen = sorted.find((entry) => entry.time.toMillis() >= openMs);
+      if (firstAfterOpen) {
+        snapshot.push(firstAfterOpen.agg);
+      }
     }
-    const latestBeforeOpen = [...sorted]
-      .reverse()
-      .find((entry) => entry.time.toMillis() <= openMs);
-    if (latestBeforeOpen) {
-      snapshot.push(latestBeforeOpen.agg);
-      continue;
-    }
-    const firstAfterOpen = sorted.find((entry) => entry.time.toMillis() >= openMs);
-    if (firstAfterOpen) {
-      snapshot.push(firstAfterOpen.agg);
-    }
-  }
 
-  return snapshot;
+    return snapshot;
+  });
 }
 
 export async function getAggregatesForWeekStartWithBackfill(
   weekOpenUtc: string,
   weekCloseUtc: string,
 ): Promise<SentimentAggregate[]> {
-  const weekAnchored = await getAggregatesForWeekStart(weekOpenUtc, weekCloseUtc);
-  if (weekAnchored.length === 0) {
-    return getLatestAggregatesLocked();
-  }
-
-  const latestLocked = await getLatestAggregatesLocked();
-  const merged = new Map<string, SentimentAggregate>(
-    weekAnchored.map((agg) => [agg.symbol, agg]),
-  );
-  for (const agg of latestLocked) {
-    if (!merged.has(agg.symbol)) {
-      merged.set(agg.symbol, agg);
+  const cacheKey = `sentimentStore:getAggregatesForWeekStartWithBackfill:${weekOpenUtc}:${weekCloseUtc}`;
+  return getOrSetRuntimeCache(cacheKey, getSentimentStoreCacheTtlMs(), async () => {
+    const weekAnchored = await getAggregatesForWeekStart(weekOpenUtc, weekCloseUtc);
+    if (weekAnchored.length === 0) {
+      return getLatestAggregatesLocked();
     }
-  }
 
-  return Array.from(merged.values()).sort((a, b) => a.symbol.localeCompare(b.symbol));
+    const latestLocked = await getLatestAggregatesLocked();
+    const merged = new Map<string, SentimentAggregate>(
+      weekAnchored.map((agg) => [agg.symbol, agg]),
+    );
+    for (const agg of latestLocked) {
+      if (!merged.has(agg.symbol)) {
+        merged.set(agg.symbol, agg);
+      }
+    }
+
+    return Array.from(merged.values()).sort((a, b) => a.symbol.localeCompare(b.symbol));
+  });
 }
 
 export async function readSourceHealth(): Promise<SourceHealth[]> {

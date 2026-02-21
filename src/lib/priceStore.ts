@@ -1,5 +1,6 @@
 import { query, queryOne } from "./db";
 import type { AssetClass } from "./cotMarkets";
+import { clearRuntimeCacheByPrefix, getOrSetRuntimeCache } from "./runtimeCache";
 
 export type PairPerformance = {
   open: number;
@@ -17,43 +18,55 @@ export type MarketSnapshot = {
   pairs: Record<string, PairPerformance | null>;
 };
 
+const PRICE_STORE_CACHE_TTL_MS = Number(process.env.PRICE_STORE_CACHE_TTL_MS ?? "15000");
+
+function getPriceStoreCacheTtlMs() {
+  return Number.isFinite(PRICE_STORE_CACHE_TTL_MS) && PRICE_STORE_CACHE_TTL_MS >= 0
+    ? PRICE_STORE_CACHE_TTL_MS
+    : 15000;
+}
+
 export async function readMarketSnapshot(
   weekOpenUtc?: string,
   assetClass: AssetClass = "fx",
 ): Promise<MarketSnapshot | null> {
-  try {
-    const queryText = weekOpenUtc
-      ? `SELECT week_open_utc, last_refresh_utc, asset_class, pairs
-         FROM market_snapshots
-         WHERE asset_class = $1
-           AND week_open_utc BETWEEN $2::timestamptz - INTERVAL '36 hours' AND $2::timestamptz + INTERVAL '36 hours'
-         ORDER BY ABS(EXTRACT(EPOCH FROM (week_open_utc - $2::timestamptz))) ASC
-         LIMIT 1`
-      : "SELECT week_open_utc, last_refresh_utc, asset_class, pairs FROM market_snapshots WHERE asset_class = $1 ORDER BY week_open_utc DESC LIMIT 1";
-    const params = weekOpenUtc
-      ? [assetClass, new Date(weekOpenUtc)]
-      : [assetClass];
-    const row = await queryOne<{
-      week_open_utc: Date;
-      last_refresh_utc: Date;
-      asset_class: AssetClass;
-      pairs: Record<string, PairPerformance | null>;
-    }>(queryText, params);
+  const weekKey = weekOpenUtc ?? "latest";
+  const cacheKey = `priceStore:${assetClass}:readMarketSnapshot:${weekKey}`;
+  return getOrSetRuntimeCache(cacheKey, getPriceStoreCacheTtlMs(), async () => {
+    try {
+      const queryText = weekOpenUtc
+        ? `SELECT week_open_utc, last_refresh_utc, asset_class, pairs
+           FROM market_snapshots
+           WHERE asset_class = $1
+             AND week_open_utc BETWEEN $2::timestamptz - INTERVAL '36 hours' AND $2::timestamptz + INTERVAL '36 hours'
+           ORDER BY ABS(EXTRACT(EPOCH FROM (week_open_utc - $2::timestamptz))) ASC
+           LIMIT 1`
+        : "SELECT week_open_utc, last_refresh_utc, asset_class, pairs FROM market_snapshots WHERE asset_class = $1 ORDER BY week_open_utc DESC LIMIT 1";
+      const params = weekOpenUtc
+        ? [assetClass, new Date(weekOpenUtc)]
+        : [assetClass];
+      const row = await queryOne<{
+        week_open_utc: Date;
+        last_refresh_utc: Date;
+        asset_class: AssetClass;
+        pairs: Record<string, PairPerformance | null>;
+      }>(queryText, params);
 
-    if (!row) {
-      return null;
+      if (!row) {
+        return null;
+      }
+
+      return {
+        week_open_utc: row.week_open_utc.toISOString(),
+        last_refresh_utc: row.last_refresh_utc.toISOString(),
+        asset_class: row.asset_class,
+        pairs: row.pairs,
+      };
+    } catch (error) {
+      console.error("Error reading market snapshot from database:", error);
+      throw error;
     }
-
-    return {
-      week_open_utc: row.week_open_utc.toISOString(),
-      last_refresh_utc: row.last_refresh_utc.toISOString(),
-      asset_class: row.asset_class,
-      pairs: row.pairs,
-    };
-  } catch (error) {
-    console.error("Error reading market snapshot from database:", error);
-    throw error;
-  }
+  });
 }
 
 export async function writeMarketSnapshot(
@@ -93,5 +106,8 @@ export async function writeMarketSnapshot(
   } catch (error) {
     console.error("Error writing market snapshot to database:", error);
     throw error;
+  } finally {
+    clearRuntimeCacheByPrefix(`priceStore:${snapshot.asset_class}:`);
+    clearRuntimeCacheByPrefix("pricePerformance:getPairPerformance:");
   }
 }

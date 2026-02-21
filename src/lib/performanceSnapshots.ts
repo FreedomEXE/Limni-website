@@ -5,11 +5,20 @@ import type { PerformanceModel, ModelPerformance } from "./performanceLab";
 import { getConnectedAccount } from "./connectedAccounts";
 import { deduplicateWeeks, type WeekOption } from "./weekState";
 import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "./weekAnchor";
+import { clearRuntimeCacheByPrefix, getOrSetRuntimeCache } from "./runtimeCache";
 
 const EXCLUDED_PERFORMANCE_WEEK_CANONICAL = new Set<string>([
   // No bot/live analytics existed for this week; exclude from all historical reporting.
   "2026-01-12T00:00:00.000Z",
 ]);
+
+const PERFORMANCE_SNAPSHOT_CACHE_TTL_MS = Number(process.env.PERFORMANCE_SNAPSHOT_CACHE_TTL_MS ?? "15000");
+
+function getPerformanceSnapshotCacheTtlMs() {
+  return Number.isFinite(PERFORMANCE_SNAPSHOT_CACHE_TTL_MS) && PERFORMANCE_SNAPSHOT_CACHE_TTL_MS >= 0
+    ? PERFORMANCE_SNAPSHOT_CACHE_TTL_MS
+    : 15000;
+}
 
 function isExcludedPerformanceWeek(weekOpenUtc: string): boolean {
   const canonical = normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
@@ -144,44 +153,48 @@ export async function writePerformanceSnapshots(
        stats = EXCLUDED.stats`,
     params,
   );
+  clearRuntimeCacheByPrefix("performanceSnapshots:");
 }
 
 export async function listPerformanceWeeks(limit = 52): Promise<string[]> {
   const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 52;
-  const chunkSize = Math.max(safeLimit * 4, 32);
-  const canonicalWeeks: string[] = [];
-  const seenCanonicalWeeks = new Set<string>();
-  let offset = 0;
-  for (let pass = 0; pass < 8; pass++) {
-    const rows = await query<{ week_open_utc: Date }>(
-      "SELECT DISTINCT week_open_utc FROM performance_snapshots ORDER BY week_open_utc DESC LIMIT $1 OFFSET $2",
-      [chunkSize, offset],
-    );
-    if (rows.length === 0) {
-      break;
-    }
-
-    for (const row of rows) {
-      const iso = row.week_open_utc.toISOString();
-      const canonical = normalizeWeekOpenUtc(iso) ?? iso;
-      if (isExcludedPerformanceWeek(canonical)) {
-        continue;
+  const cacheKey = `performanceSnapshots:listPerformanceWeeks:${safeLimit}`;
+  return getOrSetRuntimeCache(cacheKey, getPerformanceSnapshotCacheTtlMs(), async () => {
+    const chunkSize = Math.max(safeLimit * 4, 32);
+    const canonicalWeeks: string[] = [];
+    const seenCanonicalWeeks = new Set<string>();
+    let offset = 0;
+    for (let pass = 0; pass < 8; pass++) {
+      const rows = await query<{ week_open_utc: Date }>(
+        "SELECT DISTINCT week_open_utc FROM performance_snapshots ORDER BY week_open_utc DESC LIMIT $1 OFFSET $2",
+        [chunkSize, offset],
+      );
+      if (rows.length === 0) {
+        break;
       }
-      if (!seenCanonicalWeeks.has(canonical)) {
-        seenCanonicalWeeks.add(canonical);
-        canonicalWeeks.push(canonical);
+
+      for (const row of rows) {
+        const iso = row.week_open_utc.toISOString();
+        const canonical = normalizeWeekOpenUtc(iso) ?? iso;
+        if (isExcludedPerformanceWeek(canonical)) {
+          continue;
+        }
+        if (!seenCanonicalWeeks.has(canonical)) {
+          seenCanonicalWeeks.add(canonical);
+          canonicalWeeks.push(canonical);
+        }
       }
+
+      if (canonicalWeeks.length >= safeLimit || rows.length < chunkSize) {
+        break;
+      }
+      offset += rows.length;
     }
 
-    if (canonicalWeeks.length >= safeLimit || rows.length < chunkSize) {
-      break;
-    }
-    offset += rows.length;
-  }
-
-  return canonicalWeeks
-    .sort((a, b) => DateTime.fromISO(b, { zone: "utc" }).toMillis() - DateTime.fromISO(a, { zone: "utc" }).toMillis())
-    .slice(0, safeLimit);
+    return canonicalWeeks
+      .sort((a, b) => DateTime.fromISO(b, { zone: "utc" }).toMillis() - DateTime.fromISO(a, { zone: "utc" }).toMillis())
+      .slice(0, safeLimit);
+  });
 }
 
 function isBetterWeekSnapshotRow(
@@ -237,6 +250,8 @@ function isBetterWeekSnapshotRow(
 }
 
 export async function readPerformanceSnapshotsByWeek(weekOpenUtc: string) {
+  const cacheKey = `performanceSnapshots:readPerformanceSnapshotsByWeek:${weekOpenUtc}`;
+  return getOrSetRuntimeCache(cacheKey, getPerformanceSnapshotCacheTtlMs(), async () => {
   if (isExcludedPerformanceWeek(weekOpenUtc)) {
     return [];
   }
@@ -278,29 +293,33 @@ export async function readPerformanceSnapshotsByWeek(weekOpenUtc: string) {
     }
   }
 
-  return Array.from(deduped.values()).map((row) => ({
-    week_open_utc: row.week_open_utc.toISOString(),
-    asset_class: row.asset_class,
-    model: row.model,
-    report_date: row.report_date ? row.report_date.toISOString().slice(0, 10) : null,
-    percent: Number(row.percent),
-    priced: row.priced,
-    total: row.total,
-    note: row.note ?? "",
-    returns: row.returns ?? [],
-    pair_details: row.pair_details ?? [],
-    stats: row.stats ?? {
-      avg_return: 0,
-      median_return: 0,
-      win_rate: 0,
-      volatility: 0,
-      best_pair: null,
-      worst_pair: null,
-    },
-  }));
+    return Array.from(deduped.values()).map((row) => ({
+      week_open_utc: row.week_open_utc.toISOString(),
+      asset_class: row.asset_class,
+      model: row.model,
+      report_date: row.report_date ? row.report_date.toISOString().slice(0, 10) : null,
+      percent: Number(row.percent),
+      priced: row.priced,
+      total: row.total,
+      note: row.note ?? "",
+      returns: row.returns ?? [],
+      pair_details: row.pair_details ?? [],
+      stats: row.stats ?? {
+        avg_return: 0,
+        median_return: 0,
+        win_rate: 0,
+        volatility: 0,
+        best_pair: null,
+        worst_pair: null,
+      },
+    }));
+  });
 }
 
 export async function readAllPerformanceSnapshots(limit = 520) {
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 520;
+  const cacheKey = `performanceSnapshots:readAllPerformanceSnapshots:${safeLimit}`;
+  return getOrSetRuntimeCache(cacheKey, getPerformanceSnapshotCacheTtlMs(), async () => {
   const rows = await query<{
     week_open_utc: Date;
     asset_class: AssetClass;
@@ -314,7 +333,7 @@ export async function readAllPerformanceSnapshots(limit = 520) {
      FROM performance_snapshots
      ORDER BY week_open_utc DESC
      LIMIT $1`,
-    [limit],
+    [safeLimit],
   );
 
   const mapped = rows
@@ -378,13 +397,14 @@ export async function readAllPerformanceSnapshots(limit = 520) {
     }
   }
 
-  return Array.from(deduped.values()).map((row) => ({
-    week_open_utc: row.week_open_utc,
-    asset_class: row.asset_class,
-    model: row.model,
-    report_date: row.report_date,
-    percent: row.percent,
-  }));
+    return Array.from(deduped.values()).map((row) => ({
+      week_open_utc: row.week_open_utc,
+      asset_class: row.asset_class,
+      model: row.model,
+      report_date: row.report_date,
+      percent: row.percent,
+    }));
+  });
 }
 
 export async function readUniversalWeeklyTotals(limit = 104): Promise<
@@ -394,29 +414,33 @@ export async function readUniversalWeeklyTotals(limit = 104): Promise<
     rows: number;
   }>
 > {
-  const rows = await query<{
-    week_open_utc: Date;
-    total_percent: string;
-    rows: number;
-  }>(
-    `SELECT
-       week_open_utc,
-       SUM(percent) AS total_percent,
-       COUNT(*)::int AS rows
-     FROM performance_snapshots
-     GROUP BY week_open_utc
-     ORDER BY week_open_utc DESC
-     LIMIT $1`,
-    [limit],
-  );
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 104;
+  const cacheKey = `performanceSnapshots:readUniversalWeeklyTotals:${safeLimit}`;
+  return getOrSetRuntimeCache(cacheKey, getPerformanceSnapshotCacheTtlMs(), async () => {
+    const rows = await query<{
+      week_open_utc: Date;
+      total_percent: string;
+      rows: number;
+    }>(
+      `SELECT
+         week_open_utc,
+         SUM(percent) AS total_percent,
+         COUNT(*)::int AS rows
+       FROM performance_snapshots
+       GROUP BY week_open_utc
+       ORDER BY week_open_utc DESC
+       LIMIT $1`,
+      [safeLimit],
+    );
 
-  return rows
-    .map((row) => ({
-      week_open_utc: row.week_open_utc.toISOString(),
-      total_percent: Number(row.total_percent),
-      rows: row.rows,
-    }))
-    .filter((row) => !isExcludedPerformanceWeek(row.week_open_utc));
+    return rows
+      .map((row) => ({
+        week_open_utc: row.week_open_utc.toISOString(),
+        total_percent: Number(row.total_percent),
+        rows: row.rows,
+      }))
+      .filter((row) => !isExcludedPerformanceWeek(row.week_open_utc));
+  });
 }
 
 /**
@@ -431,52 +455,56 @@ export async function listWeeksForAccount(
   accountKey: string,
   limit: number = 4
 ): Promise<string[]> {
-  try {
-    // Get account creation date
-    const account = await getConnectedAccount(accountKey);
-    if (!account) {
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 4;
+  const cacheKey = `performanceSnapshots:listWeeksForAccount:${accountKey}:${safeLimit}`;
+  return getOrSetRuntimeCache(cacheKey, getPerformanceSnapshotCacheTtlMs(), async () => {
+    try {
+      // Get account creation date
+      const account = await getConnectedAccount(accountKey);
+      if (!account) {
+        const currentWeek = getWeekOpenUtc();
+        return deduplicateWeeks([currentWeek]).slice(0, safeLimit);
+      }
+      const createdAt = DateTime.fromISO(account.created_at, { zone: "utc" });
+
+      if (!createdAt.isValid) {
+        console.error(`Invalid account creation date for ${accountKey}`);
+        return [];
+      }
+
+      // Query weeks starting from the week the account was connected (not strictly after the timestamp),
+      // so users can view the partial week that includes the connection date.
+      const createdWeekOpenUtc = getWeekOpenUtc(createdAt);
+      const createdWeekOpenDt = DateTime.fromISO(createdWeekOpenUtc, { zone: "utc" });
+      const createdWeekOpen = createdWeekOpenDt.isValid ? createdWeekOpenDt.toJSDate() : createdAt.toJSDate();
+
+      // Query weeks on/after the connection week open
+      const rows = await query<{ week_open_utc: Date }>(
+        `SELECT DISTINCT week_open_utc
+         FROM performance_snapshots
+         WHERE week_open_utc >= $1
+         ORDER BY week_open_utc DESC
+         LIMIT $2`,
+        [createdWeekOpen, safeLimit]
+      );
+
+      const historicalWeeks = rows
+        .map((row) => row.week_open_utc.toISOString())
+        .filter((week) => !isExcludedPerformanceWeek(week));
+
+      // Always include current week
       const currentWeek = getWeekOpenUtc();
-      return deduplicateWeeks([currentWeek]).slice(0, limit);
+
+      // Combine and deduplicate using canonical week keys.
+      const allWeeks = [currentWeek, ...historicalWeeks]
+        .map((week) => normalizeWeekOpenUtc(week) ?? week);
+      return deduplicateWeeks(allWeeks).slice(0, safeLimit);
+    } catch (error) {
+      console.error(`Failed to list weeks for account ${accountKey}:`, error);
+      // Fallback to current week only
+      return [getWeekOpenUtc()];
     }
-    const createdAt = DateTime.fromISO(account.created_at, { zone: "utc" });
-
-    if (!createdAt.isValid) {
-      console.error(`Invalid account creation date for ${accountKey}`);
-      return [];
-    }
-
-    // Query weeks starting from the week the account was connected (not strictly after the timestamp),
-    // so users can view the partial week that includes the connection date.
-    const createdWeekOpenUtc = getWeekOpenUtc(createdAt);
-    const createdWeekOpenDt = DateTime.fromISO(createdWeekOpenUtc, { zone: "utc" });
-    const createdWeekOpen = createdWeekOpenDt.isValid ? createdWeekOpenDt.toJSDate() : createdAt.toJSDate();
-
-    // Query weeks on/after the connection week open
-    const rows = await query<{ week_open_utc: Date }>(
-      `SELECT DISTINCT week_open_utc
-       FROM performance_snapshots
-       WHERE week_open_utc >= $1
-       ORDER BY week_open_utc DESC
-       LIMIT $2`,
-      [createdWeekOpen, limit]
-    );
-
-    const historicalWeeks = rows
-      .map((row) => row.week_open_utc.toISOString())
-      .filter((week) => !isExcludedPerformanceWeek(week));
-
-    // Always include current week
-    const currentWeek = getWeekOpenUtc();
-
-    // Combine and deduplicate using canonical week keys.
-    const allWeeks = [currentWeek, ...historicalWeeks]
-      .map((week) => normalizeWeekOpenUtc(week) ?? week);
-    return deduplicateWeeks(allWeeks).slice(0, limit);
-  } catch (error) {
-    console.error(`Failed to list weeks for account ${accountKey}:`, error);
-    // Fallback to current week only
-    return [getWeekOpenUtc()];
-  }
+  });
 }
 
 /**

@@ -9,6 +9,7 @@ import {
 } from "./priceStore";
 import { fetchOandaCandle, getOandaInstrument } from "./oandaPrices";
 import { fetchBitgetCandleRange } from "./bitget";
+import { getOrSetRuntimeCache } from "./runtimeCache";
 
 type PerformanceResult = {
   performance: Record<string, PairPerformance | null>;
@@ -28,6 +29,14 @@ type WeekWindow = {
   isHistorical: boolean;
   isPreOpen: boolean;
 };
+
+const PAIR_PERFORMANCE_CACHE_TTL_MS = Number(process.env.PAIR_PERFORMANCE_CACHE_TTL_MS ?? "10000");
+
+function getPairPerformanceCacheTtlMs() {
+  return Number.isFinite(PAIR_PERFORMANCE_CACHE_TTL_MS) && PAIR_PERFORMANCE_CACHE_TTL_MS >= 0
+    ? PAIR_PERFORMANCE_CACHE_TTL_MS
+    : 10000;
+}
 
 type SessionSpec = {
   openHour: number;
@@ -617,7 +626,7 @@ async function buildNonFxPerformance(
   return { performance, note, missingPairs };
 }
 
-export async function getPairPerformance(
+async function getPairPerformanceUncached(
   pairs: Record<string, PairSnapshot>,
   options?: PerformanceOptions,
 ): Promise<PerformanceResult> {
@@ -799,6 +808,35 @@ export async function getPairPerformance(
   const note = `${baseNote} Derived from OANDA pricing. Percent is raw; pips are direction-adjusted. Totals are direction-adjusted PnL.`;
 
   return { performance, note, missingPairs };
+}
+
+function buildPairPerformanceCacheKey(
+  pairs: Record<string, PairSnapshot>,
+  options?: PerformanceOptions,
+) {
+  const assetClass = options?.assetClass ?? "fx";
+  const reportDate = options?.reportDate ?? "latest";
+  const isLatestReport = options?.isLatestReport === true ? "1" : "0";
+  const pairSignature = Object.keys(pairs)
+    .sort((a, b) => a.localeCompare(b))
+    .map((pair) => {
+      const row = pairs[pair];
+      return `${pair}:${row?.direction ?? "NEUTRAL"}:${row?.base_bias ?? "NEUTRAL"}:${row?.quote_bias ?? "NEUTRAL"}`;
+    })
+    .join("|");
+  return `pricePerformance:getPairPerformance:${assetClass}:${reportDate}:${isLatestReport}:${pairSignature}`;
+}
+
+export async function getPairPerformance(
+  pairs: Record<string, PairSnapshot>,
+  options?: PerformanceOptions,
+): Promise<PerformanceResult> {
+  const key = buildPairPerformanceCacheKey(pairs, options);
+  return getOrSetRuntimeCache(
+    key,
+    getPairPerformanceCacheTtlMs(),
+    () => getPairPerformanceUncached(pairs, options),
+  );
 }
 
 export async function refreshMarketSnapshot(

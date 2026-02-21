@@ -16,73 +16,86 @@ import {
 import { PAIRS_BY_ASSET_CLASS } from "./cotPairs";
 import type { CotSnapshot, MarketSnapshot, PairSnapshot } from "./cotTypes";
 import { DateTime } from "luxon";
+import { clearRuntimeCacheByPrefix, getOrSetRuntimeCache } from "./runtimeCache";
 
 type ReadSnapshotOptions = {
   assetClass?: AssetClass;
   reportDate?: string;
 };
 
+const COT_STORE_CACHE_TTL_MS = Number(process.env.COT_STORE_CACHE_TTL_MS ?? "30000");
+
+function getCotCacheTtlMs() {
+  return Number.isFinite(COT_STORE_CACHE_TTL_MS) && COT_STORE_CACHE_TTL_MS >= 0
+    ? COT_STORE_CACHE_TTL_MS
+    : 30000;
+}
+
 export async function readSnapshot(
   options: ReadSnapshotOptions = {},
 ): Promise<CotSnapshot | null> {
-  try {
-    const assetClass = options.assetClass ?? "fx";
-    const params = [assetClass, COT_VARIANT];
-    let queryText =
-      "SELECT report_date, asset_class, variant, currencies, pairs, fetched_at FROM cot_snapshots WHERE asset_class = $1 AND variant = $2";
+  const assetClass = options.assetClass ?? "fx";
+  const reportDate = options.reportDate ?? "latest";
+  const cacheKey = `cotStore:${assetClass}:readSnapshot:${reportDate}:${COT_VARIANT}`;
+  return getOrSetRuntimeCache(cacheKey, getCotCacheTtlMs(), async () => {
+    try {
+      const params = [assetClass, COT_VARIANT];
+      let queryText =
+        "SELECT report_date, asset_class, variant, currencies, pairs, fetched_at FROM cot_snapshots WHERE asset_class = $1 AND variant = $2";
 
-    if (options.reportDate) {
-      params.push(options.reportDate);
-      queryText += " AND report_date = $3";
-    } else {
-      queryText += " ORDER BY report_date DESC LIMIT 1";
-    }
+      if (options.reportDate) {
+        params.push(options.reportDate);
+        queryText += " AND report_date = $3";
+      } else {
+        queryText += " ORDER BY report_date DESC LIMIT 1";
+      }
 
-    const row = await queryOne<{
-      report_date: string | Date;
-      asset_class: string;
-      variant: string;
-      currencies: Record<string, MarketSnapshot>;
-      pairs: Record<string, PairSnapshot>;
-      fetched_at: Date;
-    }>(queryText, params);
-
-    let resolvedRow = row;
-    if (!resolvedRow && !options.reportDate) {
-      resolvedRow = await queryOne<{
+      const row = await queryOne<{
         report_date: string | Date;
         asset_class: string;
         variant: string;
         currencies: Record<string, MarketSnapshot>;
         pairs: Record<string, PairSnapshot>;
         fetched_at: Date;
-      }>(
-        "SELECT report_date, asset_class, variant, currencies, pairs, fetched_at FROM cot_snapshots WHERE asset_class = $1 ORDER BY report_date DESC LIMIT 1",
-        [assetClass],
-      );
+      }>(queryText, params);
+
+      let resolvedRow = row;
+      if (!resolvedRow && !options.reportDate) {
+        resolvedRow = await queryOne<{
+          report_date: string | Date;
+          asset_class: string;
+          variant: string;
+          currencies: Record<string, MarketSnapshot>;
+          pairs: Record<string, PairSnapshot>;
+          fetched_at: Date;
+        }>(
+          "SELECT report_date, asset_class, variant, currencies, pairs, fetched_at FROM cot_snapshots WHERE asset_class = $1 ORDER BY report_date DESC LIMIT 1",
+          [assetClass],
+        );
+      }
+
+      if (!resolvedRow) {
+        return null;
+      }
+
+      const resolvedReportDate =
+        resolvedRow.report_date instanceof Date
+          ? resolvedRow.report_date.toISOString().slice(0, 10)
+          : resolvedRow.report_date;
+
+      return {
+        report_date: resolvedReportDate,
+        last_refresh_utc: resolvedRow.fetched_at.toISOString(),
+        asset_class: (resolvedRow.asset_class ?? assetClass) as AssetClass,
+        variant: resolvedRow.variant ?? COT_VARIANT,
+        currencies: resolvedRow.currencies,
+        pairs: resolvedRow.pairs,
+      };
+    } catch (error) {
+      console.error("Error reading COT snapshot from database:", error);
+      throw error;
     }
-
-    if (!resolvedRow) {
-      return null;
-    }
-
-    const reportDate =
-      resolvedRow.report_date instanceof Date
-        ? resolvedRow.report_date.toISOString().slice(0, 10)
-        : resolvedRow.report_date;
-
-    return {
-      report_date: reportDate,
-      last_refresh_utc: resolvedRow.fetched_at.toISOString(),
-      asset_class: (resolvedRow.asset_class ?? assetClass) as AssetClass,
-      variant: resolvedRow.variant ?? COT_VARIANT,
-      currencies: resolvedRow.currencies,
-      pairs: resolvedRow.pairs,
-    };
-  } catch (error) {
-    console.error("Error reading COT snapshot from database:", error);
-    throw error;
-  }
+  });
 }
 
 export async function ensureSnapshotForClass(
@@ -111,37 +124,40 @@ export async function readSnapshotHistory(
   assetClass: AssetClass = "fx",
   limit = 104,
 ): Promise<CotSnapshot[]> {
-  try {
-    const rows = await query<{
-      report_date: string | Date;
-      asset_class: string;
-      variant: string;
-      currencies: Record<string, MarketSnapshot>;
-      pairs: Record<string, PairSnapshot>;
-      fetched_at: Date;
-    }>(
-      "SELECT report_date, asset_class, variant, currencies, pairs, fetched_at FROM cot_snapshots WHERE asset_class = $1 AND variant = $2 ORDER BY report_date DESC LIMIT $3",
-      [assetClass, COT_VARIANT, limit],
-    );
+  const cacheKey = `cotStore:${assetClass}:readSnapshotHistory:${limit}:${COT_VARIANT}`;
+  return getOrSetRuntimeCache(cacheKey, getCotCacheTtlMs(), async () => {
+    try {
+      const rows = await query<{
+        report_date: string | Date;
+        asset_class: string;
+        variant: string;
+        currencies: Record<string, MarketSnapshot>;
+        pairs: Record<string, PairSnapshot>;
+        fetched_at: Date;
+      }>(
+        "SELECT report_date, asset_class, variant, currencies, pairs, fetched_at FROM cot_snapshots WHERE asset_class = $1 AND variant = $2 ORDER BY report_date DESC LIMIT $3",
+        [assetClass, COT_VARIANT, limit],
+      );
 
-    return rows.map((row) => {
-      const reportDate =
-        row.report_date instanceof Date
-          ? row.report_date.toISOString().slice(0, 10)
-          : row.report_date;
-      return {
-        report_date: reportDate,
-        last_refresh_utc: row.fetched_at.toISOString(),
-        asset_class: (row.asset_class ?? assetClass) as AssetClass,
-        variant: row.variant ?? COT_VARIANT,
-        currencies: row.currencies,
-        pairs: row.pairs,
-      };
-    });
-  } catch (error) {
-    console.error("Error reading COT snapshot history:", error);
-    throw error;
-  }
+      return rows.map((row) => {
+        const reportDate =
+          row.report_date instanceof Date
+            ? row.report_date.toISOString().slice(0, 10)
+            : row.report_date;
+        return {
+          report_date: reportDate,
+          last_refresh_utc: row.fetched_at.toISOString(),
+          asset_class: (row.asset_class ?? assetClass) as AssetClass,
+          variant: row.variant ?? COT_VARIANT,
+          currencies: row.currencies,
+          pairs: row.pairs,
+        };
+      });
+    } catch (error) {
+      console.error("Error reading COT snapshot history:", error);
+      throw error;
+    }
+  });
 }
 
 export async function writeSnapshot(snapshot: CotSnapshot): Promise<void> {
@@ -166,26 +182,32 @@ export async function writeSnapshot(snapshot: CotSnapshot): Promise<void> {
   } catch (error) {
     console.error("Error writing COT snapshot to database:", error);
     throw error;
+  } finally {
+    clearRuntimeCacheByPrefix(`cotStore:${snapshot.asset_class}:`);
+    clearRuntimeCacheByPrefix("cotStore:all:");
   }
 }
 
 export async function listSnapshotDates(
   assetClass: AssetClass = "fx",
 ): Promise<string[]> {
-  try {
-    const rows = await query<{ report_date: string | Date }>(
-      "SELECT report_date FROM cot_snapshots WHERE asset_class = $1 AND variant = $2 ORDER BY report_date DESC",
-      [assetClass, COT_VARIANT],
-    );
-    return rows.map((row) =>
-      row.report_date instanceof Date
-        ? row.report_date.toISOString().slice(0, 10)
-        : row.report_date,
-    );
-  } catch (error) {
-    console.error("Error listing COT snapshot dates:", error);
-    throw error;
-  }
+  const cacheKey = `cotStore:${assetClass}:listSnapshotDates:${COT_VARIANT}`;
+  return getOrSetRuntimeCache(cacheKey, getCotCacheTtlMs(), async () => {
+    try {
+      const rows = await query<{ report_date: string | Date }>(
+        "SELECT report_date FROM cot_snapshots WHERE asset_class = $1 AND variant = $2 ORDER BY report_date DESC",
+        [assetClass, COT_VARIANT],
+      );
+      return rows.map((row) =>
+        row.report_date instanceof Date
+          ? row.report_date.toISOString().slice(0, 10)
+          : row.report_date,
+      );
+    } catch (error) {
+      console.error("Error listing COT snapshot dates:", error);
+      throw error;
+    }
+  });
 }
 
 export async function refreshSnapshotForClass(

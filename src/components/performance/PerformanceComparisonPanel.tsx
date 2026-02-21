@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 type ComparisonMetrics = {
   totalReturn: number;
@@ -17,13 +17,12 @@ type ComparisonData = {
 };
 
 export default function PerformanceComparisonPanel() {
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [data, setData] = useState<ComparisonData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const activeTab = searchParams.get("system") === "v2" ? "v2" : "v1";
+  const initialTab = searchParams.get("system") === "v2" ? "v2" : "v1";
+  const [activeTab, setActiveTab] = useState<"v1" | "v2">(initialTab);
 
   useEffect(() => {
     async function fetchData() {
@@ -66,11 +65,12 @@ export default function PerformanceComparisonPanel() {
       ? "rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]"
       : "rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-emerald-800 dark:text-emerald-200";
   const hasHistoricalData = v1Metrics.weeks > 0 || v2Metrics.weeks > 0;
-
   const setSystem = (next: "v1" | "v2") => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("system", next);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    setActiveTab(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("system", next);
+    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+    window.dispatchEvent(new CustomEvent("performance-system-change", { detail: next }));
   };
 
   return (

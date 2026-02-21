@@ -280,7 +280,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              prefetch={false}
               onClick={() => setMobileOpen(false)}
               className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
                 isActive

@@ -1,10 +1,8 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { PerformanceView } from "@/lib/performance/pageState";
 
-type View = "summary" | "simulation" | "basket" | "research" | "notes";
-
-const VIEWS: Array<{ id: View; label: string; description: string }> = [
+const VIEWS: Array<{ id: PerformanceView; label: string; description: string }> = [
   { id: "summary", label: "Summary", description: "Key metrics and model ranking." },
   { id: "simulation", label: "Simulation", description: "Trailing-stop and sizing perspective." },
   { id: "basket", label: "Basket", description: "See every pair, direction, and return." },
@@ -12,17 +10,13 @@ const VIEWS: Array<{ id: View; label: string; description: string }> = [
   { id: "notes", label: "Notes", description: "Weekly observations and takeaways." },
 ];
 
-export default function PerformanceViewCards({ activeView }: { activeView: View }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const setView = (next: View) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", next);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  };
-
+export default function PerformanceViewCards({
+  activeView,
+  onViewChange,
+}: {
+  activeView: PerformanceView;
+  onViewChange: (next: PerformanceView) => void;
+}) {
   return (
     <div className="grid gap-3 md:grid-cols-5">
       {VIEWS.map((view) => {
@@ -31,7 +25,7 @@ export default function PerformanceViewCards({ activeView }: { activeView: View 
           <button
             key={view.id}
             type="button"
-            onClick={() => setView(view.id)}
+            onClick={() => onViewChange(view.id)}
             className={`rounded-2xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 ${
               selected
                 ? "border-[var(--accent)]/40 bg-[var(--accent)]/10"
@@ -50,4 +44,3 @@ export default function PerformanceViewCards({ activeView }: { activeView: View 
     </div>
   );
 }
-
