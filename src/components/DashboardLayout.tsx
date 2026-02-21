@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
+import PerformanceComparisonPanel from "@/components/performance/PerformanceComparisonPanel";
 
 type NavItem = {
   key: string;
@@ -225,6 +226,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
       );
+    }
+
+    // Performance section: show V1/V2 comparison panel instead of subnav items
+    if (activeSection === "performance") {
+      return <PerformanceComparisonPanel />;
     }
 
     return (
