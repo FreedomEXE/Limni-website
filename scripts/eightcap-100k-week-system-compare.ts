@@ -6,6 +6,7 @@ process.env.DATABASE_URL =
 import fs from "node:fs";
 import { DateTime } from "luxon";
 import { getPool, query, queryOne } from "../src/lib/db";
+import type { AssetClass } from "../src/lib/cotMarkets";
 import {
   type PerformanceModel,
 } from "../src/lib/performanceLab";
