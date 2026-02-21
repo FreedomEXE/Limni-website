@@ -68,7 +68,7 @@ export default function SentimentHeatmap({
       </div>
 
       {view === "heatmap" ? (
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           {sorted.map((agg) => (
             <div
               key={agg.symbol}

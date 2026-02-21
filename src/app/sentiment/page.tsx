@@ -214,13 +214,19 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
         }
       }
 
-      for (const base of ["BTC", "ETH"] as const) {
-        if (!priceMap.has(base)) {
-          const spot = await fetchCryptoSpotPrice(base);
+      const missingBases = (["BTC", "ETH"] as const).filter((base) => !priceMap.has(base));
+      if (missingBases.length > 0) {
+        const spotPrices = await Promise.all(
+          missingBases.map(async (base) => ({
+            base,
+            spot: await fetchCryptoSpotPrice(base),
+          })),
+        );
+        spotPrices.forEach(({ base, spot }) => {
           if (Number.isFinite(spot ?? NaN)) {
             priceMap.set(base, { price: spot as number, source: "CMC Spot" });
           }
-        }
+        });
       }
 
       liquidationSummaries = await Promise.all([

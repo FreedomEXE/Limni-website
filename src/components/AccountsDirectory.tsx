@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { deleteAccount, deleteConnectedAccount } from "@/app/actions/deleteAccount";
 import type { AccountCard } from "@/lib/accounts/accountsDirectoryTypes";
 import AccountsDirectoryCard from "@/components/accounts/AccountsDirectoryCard";
@@ -12,6 +12,7 @@ type AccountsDirectoryProps = {
 
 export default function AccountsDirectory({ accounts }: AccountsDirectoryProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const weekParam = searchParams.get("week");
   const viewParam = searchParams.get("view");
@@ -37,7 +38,8 @@ export default function AccountsDirectory({ accounts }: AccountsDirectoryProps) 
         throw new Error(result.error || "Failed to delete account");
       }
 
-      window.location.reload();
+      setDeletingId(null);
+      router.refresh();
     } catch (error) {
       console.error("Delete failed:", error);
       alert(

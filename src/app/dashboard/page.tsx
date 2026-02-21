@@ -151,34 +151,77 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       }))
       .filter((entry) => Boolean(entry.snapshot));
 
-    for (const entry of snapshotEntries) {
-      const entrySnapshot = entry.snapshot!;
-      const marketLabels = entry.asset.markets;
-      const pairDefs = PAIRS_BY_ASSET_CLASS[entry.asset.id];
-      const resolvedCurrencyRows = Object.entries(entrySnapshot.currencies)
-        .map(([currency, snapshotValue]) => {
-          const resolved = resolveMarketBias(snapshotValue, biasMode);
-          if (!resolved) {
-            return null;
+    const aggregateResults = await Promise.all(
+      snapshotEntries.map(async (entry) => {
+        const entrySnapshot = entry.snapshot!;
+        const marketLabels = entry.asset.markets;
+        const pairDefs = PAIRS_BY_ASSET_CLASS[entry.asset.id];
+
+        const resolvedCurrencyRows = Object.entries(entrySnapshot.currencies)
+          .map(([currency, snapshotValue]) => {
+            const resolved = resolveMarketBias(snapshotValue, biasMode);
+            if (!resolved) {
+              return null;
+            }
+            if (entry.asset.id !== "fx" && currency === "USD") {
+              return null;
+            }
+            return {
+              assetLabel: entry.asset.label,
+              currency,
+              long: resolved.long,
+              short: resolved.short,
+              net: resolved.net,
+              bias: resolved.bias,
+              label: marketLabels[currency]?.label ?? currency,
+            };
+          })
+          .filter((row): row is NonNullable<typeof row> => Boolean(row));
+
+        const derivedPairs: Record<string, PairSnapshot> =
+          entry.asset.id === "fx"
+            ? derivePairDirectionsWithNeutral(entrySnapshot.currencies, pairDefs, biasMode)
+            : derivePairDirectionsByBaseWithNeutral(entrySnapshot.currencies, pairDefs, biasMode);
+
+        // Ensure all pairs are included (add missing ones as NEUTRAL)
+        const allPairs: Record<string, PairSnapshot> = {};
+        for (const pairDef of pairDefs) {
+          if (derivedPairs[pairDef.pair]) {
+            allPairs[pairDef.pair] = derivedPairs[pairDef.pair];
+          } else {
+            allPairs[pairDef.pair] = {
+              direction: "NEUTRAL",
+              base_bias: "NEUTRAL",
+              quote_bias: "NEUTRAL",
+            };
           }
-          if (entry.asset.id !== "fx" && currency === "USD") {
-            return null;
-          }
+        }
+
+        const perfResult = await getPairPerformance(allPairs, {
+          assetClass: entry.asset.id,
+          reportDate: entrySnapshot.report_date,
+          isLatestReport: false,
+        });
+
         return {
           assetLabel: entry.asset.label,
-          currency,
-          long: resolved.long,
-          short: resolved.short,
-          net: resolved.net,
-          bias: resolved.bias,
-          label: marketLabels[currency]?.label ?? currency,
+          currencyRows: resolvedCurrencyRows,
+          pairRows: Object.entries(allPairs).map(([pair, row]) => ({
+            pair: `${pair} (${entry.asset.label})`,
+            direction: row.direction,
+            performance: perfResult.performance[pair] ?? null,
+          })),
+          missingPairs: perfResult.missingPairs.map(
+            (pair) => `${pair} (${entry.asset.label})`,
+          ),
         };
-      })
-        .filter((row): row is NonNullable<typeof row> => Boolean(row));
+      }),
+    );
 
-      resolvedCurrencyRows.forEach((row) => {
+    aggregateResults.forEach((result) => {
+      result.currencyRows.forEach((row) => {
         currencyRows.push({
-          assetLabel: entry.asset.label,
+          assetLabel: result.assetLabel,
           currency: row.currency,
           label: row.label,
           long: row.long,
@@ -187,42 +230,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           bias: row.bias,
         });
       });
-
-      const derivedPairs: Record<string, PairSnapshot> =
-        entry.asset.id === "fx"
-          ? derivePairDirectionsWithNeutral(entrySnapshot.currencies, pairDefs, biasMode)
-          : derivePairDirectionsByBaseWithNeutral(entrySnapshot.currencies, pairDefs, biasMode);
-
-      // Ensure all pairs are included (add missing ones as NEUTRAL)
-      const allPairs: Record<string, PairSnapshot> = {};
-      for (const pairDef of pairDefs) {
-        if (derivedPairs[pairDef.pair]) {
-          allPairs[pairDef.pair] = derivedPairs[pairDef.pair];
-        } else {
-          allPairs[pairDef.pair] = {
-            direction: "NEUTRAL",
-            base_bias: "NEUTRAL",
-            quote_bias: "NEUTRAL",
-          };
-        }
-      }
-
-      const perfResult = await getPairPerformance(allPairs, {
-        assetClass: entry.asset.id,
-        reportDate: entrySnapshot.report_date,
-        isLatestReport: false,
-      });
-      Object.entries(allPairs).forEach(([pair, row]) => {
-        pairRowsWithPerf.push({
-          pair: `${pair} (${entry.asset.label})`,
-          direction: row.direction,
-          performance: perfResult.performance[pair] ?? null,
-        });
-      });
-      missingPairs = missingPairs.concat(
-        perfResult.missingPairs.map((pair) => `${pair} (${entry.asset.label})`),
-      );
-    }
+      result.pairRows.forEach((row) => pairRowsWithPerf.push(row));
+      missingPairs = missingPairs.concat(result.missingPairs);
+    });
 
     currencyRows.sort((a, b) =>
       `${a.assetLabel}-${a.currency}`.localeCompare(`${b.assetLabel}-${b.currency}`),

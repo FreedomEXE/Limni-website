@@ -1,12 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
-import PerformanceComparisonPanel from "@/components/performance/PerformanceComparisonPanel";
+
+const PerformanceComparisonPanel = dynamic(
+  () => import("@/components/performance/PerformanceComparisonPanel"),
+  {
+    loading: () => (
+      <div className="flex-1 p-4 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        Loading comparison...
+      </div>
+    ),
+  },
+);
 
 type NavItem = {
   key: string;
@@ -90,25 +101,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             ? "overview"
             : viewParamRaw
       : viewParamRaw;
-  const [navMode, setNavMode] = useState<"root" | "section">(
-    activeSection ? "section" : "root",
-  );
   const [rootLockSection, setRootLockSection] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    if (!activeSection) {
-      setNavMode("root");
-      setRootLockSection(null);
-      return;
-    }
-    if (rootLockSection && rootLockSection === activeSection) {
-      setNavMode("root");
-      return;
-    }
-    setNavMode("section");
-    setRootLockSection(null);
-  }, [activeSection, rootLockSection]);
+  const navMode: "root" | "section" =
+    activeSection && rootLockSection === activeSection ? "root" : activeSection ? "section" : "root";
 
   const accountBasePath = useMemo(() => {
     if (pathname.startsWith("/accounts/connected/")) {
@@ -172,7 +168,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, [activeSection, accountBasePath]);
 
   const handleOpenSection = (sectionKey: string) => {
-    setNavMode("section");
     setRootLockSection(null);
     setMobileOpen(false);
     const target = TOP_LEVEL.find((item) => item.key === sectionKey);
@@ -182,14 +177,52 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   };
 
   const handleRootToggle = () => {
-    if (activeSection) {
-      setNavMode("root");
-      setRootLockSection(activeSection);
-    } else {
-      setNavMode("root");
+    if (!activeSection) {
       setRootLockSection(null);
+      return;
     }
+    setRootLockSection((previous) => {
+      if (previous === activeSection) {
+        return null;
+      }
+      return activeSection;
+    });
   };
+
+  const sectionLabel = activeSection ? SECTION_LABELS[activeSection] : "Navigation";
+
+  const sidebarHeader = (
+    <div className="border-b border-[var(--panel-border)]/80 p-4">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={handleRootToggle}
+          className="flex items-center gap-3"
+        >
+          <div className="flex size-12 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)] shadow-sm">
+            <img src="/limni-icon.svg" alt="Limni" className="size-10 scale-125 logo-theme-aware" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--foreground)]">
+              LIMNI LABS
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              {navMode === "section" ? sectionLabel : "Navigation"}
+            </div>
+          </div>
+        </button>
+        {navMode === "section" ? (
+          <button
+            type="button"
+            onClick={handleRootToggle}
+            className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+          >
+            Back
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
 
   const renderNavContent = () => {
     if (navMode === "root") {
@@ -247,6 +280,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               onClick={() => setMobileOpen(false)}
               className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
                 isActive
@@ -266,46 +300,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       </nav>
     );
   };
-
-  useEffect(() => {
-    if (subNavItems.length === 0) return;
-    subNavItems.forEach((item) => {
-      router.prefetch(item.href);
-    });
-  }, [router, subNavItems]);
-
-  const sidebarHeader = (
-    <div className="border-b border-[var(--panel-border)]/80 p-4">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handleRootToggle}
-          className="flex items-center gap-3"
-        >
-          <div className="flex size-12 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)] shadow-sm">
-            <img src="/limni-icon.svg" alt="Limni" className="size-10 scale-125 logo-theme-aware" />
-          </div>
-          <div>
-            <div className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--foreground)]">
-              LIMNI LABS
-            </div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {navMode === "section" && activeSection ? SECTION_LABELS[activeSection] : "Navigation"}
-            </div>
-          </div>
-        </button>
-        {navMode === "section" ? (
-          <button
-            type="button"
-            onClick={handleRootToggle}
-            className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-          >
-            Back
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
 
   return (
     <div className="relative flex min-h-screen bg-[var(--background)]">

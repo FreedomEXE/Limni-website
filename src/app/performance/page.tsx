@@ -212,18 +212,17 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           reportDate: snapshot.report_date,
           isLatestReport: false,
         });
-        const results = [];
-        for (const model of models) {
-          results.push(
-            await computeModelPerformance({
+        const results = await Promise.all(
+          models.map((model) =>
+            computeModelPerformance({
               model,
               assetClass: asset.id,
               snapshot,
               sentiment: sentimentForSelectedWeek,
               performance,
             }),
-          );
-        }
+          ),
+        );
         return { asset, results };
       }),
     );
@@ -321,18 +320,17 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           isLatestReport: useLatestReport,
         });
 
-        const results = [];
-        for (const model of models) {
-          results.push(
-            await computeModelPerformance({
+        const results = await Promise.all(
+          models.map((model) =>
+            computeModelPerformance({
               model,
               assetClass: asset.id,
               snapshot,
               sentiment: sentimentForSelectedWeek,
               performance,
             }),
-          );
-        }
+          ),
+        );
         return { asset, results };
       }),
     );
