@@ -125,3 +125,60 @@ export function buildAntikytheraSignals(options: {
 
   return signals.sort((a, b) => b.confidence - a.confidence).slice(0, maxSignals);
 }
+
+export function buildAntikytheraAgreementSignals(options: {
+  assetClass: AssetClass;
+  snapshot: CotSnapshot;
+  sentiment: SentimentAggregate[];
+  maxSignals?: number;
+}) {
+  const { assetClass, snapshot, sentiment, maxSignals = ANTIKYTHERA_MAX_SIGNALS } = options;
+  const sentimentMap = new Map(sentiment.map((item) => [item.symbol, item]));
+  const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
+  const dealerPairs =
+    assetClass === "fx"
+      ? derivePairDirections(snapshot.currencies, pairDefs, "dealer")
+      : derivePairDirectionsByBase(snapshot.currencies, pairDefs, "dealer");
+  const commercialPairs =
+    assetClass === "fx"
+      ? derivePairDirections(snapshot.currencies, pairDefs, "commercial")
+      : derivePairDirectionsByBase(snapshot.currencies, pairDefs, "commercial");
+
+  const signals: AntikytheraSignal[] = [];
+  for (const pairDef of pairDefs) {
+    const dealerDirection = dealerPairs[pairDef.pair]?.direction ?? "NEUTRAL";
+    const commercialDirection = commercialPairs[pairDef.pair]?.direction ?? "NEUTRAL";
+    const sentimentAgg = sentimentMap.get(pairDef.pair);
+    const sentimentBias = sentimentDirection(sentimentAgg) ?? "NEUTRAL";
+
+    if (
+      dealerDirection === "NEUTRAL" ||
+      commercialDirection === "NEUTRAL" ||
+      sentimentBias === "NEUTRAL"
+    ) {
+      continue;
+    }
+
+    if (dealerDirection !== commercialDirection || dealerDirection !== sentimentBias) {
+      continue;
+    }
+
+    const sentimentResult = sentimentAlignment(dealerDirection, sentimentAgg);
+    const reasons = [
+      "Dealer COT bias aligned",
+      "Commercial COT bias aligned",
+      ...(sentimentResult.reasons.length > 0
+        ? sentimentResult.reasons
+        : ["Sentiment bias aligned"]),
+    ];
+
+    signals.push({
+      pair: pairDef.pair,
+      direction: dealerDirection,
+      reasons,
+      confidence: 95,
+    });
+  }
+
+  return signals.sort((a, b) => b.confidence - a.confidence).slice(0, maxSignals);
+}

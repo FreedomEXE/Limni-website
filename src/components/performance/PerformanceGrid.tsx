@@ -48,6 +48,8 @@ type PerformanceGridProps = {
 
 const MODEL_ORDER: PerformanceModel[] = [
   "antikythera",
+  "antikythera_v2",
+  "antikythera_v3",
   "blended",
   "dealer",
   "commercial",

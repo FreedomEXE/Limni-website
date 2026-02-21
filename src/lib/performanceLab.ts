@@ -9,7 +9,10 @@ import {
   derivePairDirectionsByBase,
   type BiasMode,
 } from "./cotCompute";
-import { buildAntikytheraSignals } from "./antikythera";
+import {
+  buildAntikytheraSignals,
+  buildAntikytheraAgreementSignals,
+} from "./antikythera";
 import { ANTIKYTHERA_MAX_SIGNALS } from "./antikythera";
 
 export type PerformanceModel =
@@ -18,7 +21,8 @@ export type PerformanceModel =
   | "commercial"
   | "sentiment"
   | "antikythera"
-  | "antikythera_v2";
+  | "antikythera_v2"
+  | "antikythera_v3";
 
 export type ModelPerformance = {
   model: PerformanceModel;
@@ -251,8 +255,22 @@ function buildAntikytheraPairs(
   assetClass: AssetClass,
   snapshot: CotSnapshot,
   sentiment: SentimentAggregate[],
-  system: "v1" | "v2" = "v1",
+  system: "v1" | "v2" | "v3" = "v1",
 ): Record<string, PairSnapshot> {
+  if (system === "v3") {
+    const signals = buildAntikytheraAgreementSignals({
+      assetClass,
+      snapshot,
+      sentiment,
+      maxSignals: ANTIKYTHERA_MAX_SIGNALS,
+    });
+    const pairs: Record<string, PairSnapshot> = {};
+    for (const signal of signals) {
+      pairs[signal.pair] = pairSnapshot(signal.direction);
+    }
+    return pairs;
+  }
+
   const biasMode: BiasMode = system === "v2" ? "dealer" : "blended";
   const signals = buildAntikytheraSignals({
     assetClass,
@@ -273,7 +291,7 @@ function buildModelPairs(options: {
   assetClass: AssetClass;
   snapshot: CotSnapshot;
   sentiment: SentimentAggregate[];
-  system?: "v1" | "v2";
+  system?: "v1" | "v2" | "v3";
 }): Record<string, PairSnapshot> {
   const { model, assetClass, snapshot, sentiment, system = "v1" } = options;
 
@@ -281,8 +299,13 @@ function buildModelPairs(options: {
     return buildSentimentPairs(assetClass, sentiment);
   }
 
-  if (model === "antikythera" || model === "antikythera_v2") {
-    const effectiveSystem = model === "antikythera_v2" ? "v2" : system;
+  if (model === "antikythera" || model === "antikythera_v2" || model === "antikythera_v3") {
+    const effectiveSystem =
+      model === "antikythera_v2"
+        ? "v2"
+        : model === "antikythera_v3"
+          ? "v3"
+          : system;
     return buildAntikytheraPairs(assetClass, snapshot, sentiment, effectiveSystem);
   }
 
@@ -336,7 +359,7 @@ export async function computeModelPerformance(options: {
   performance?: Awaited<ReturnType<typeof getPairPerformance>>;
   pairsOverride?: Record<string, PairSnapshot>;
   reasonOverrides?: Map<string, string[]>;
-  system?: "v1" | "v2";
+  system?: "v1" | "v2" | "v3";
 }): Promise<ModelPerformance> {
   const { model, assetClass, snapshot, sentiment, performance, pairsOverride, reasonOverrides, system = "v1" } = options;
   const sentimentMap = new Map(sentiment.map((item) => [item.symbol, item]));
@@ -354,15 +377,22 @@ export async function computeModelPerformance(options: {
       const agg = sentimentMap.get(pair);
       reasonMap.set(pair, sentimentReason(agg, info.direction));
     });
-  } else if (model === "antikythera" || model === "antikythera_v2") {
-    const biasMode: BiasMode = model === "antikythera_v2" || system === "v2" ? "dealer" : "blended";
-    const signals = buildAntikytheraSignals({
-      assetClass,
-      snapshot,
-      sentiment,
-      maxSignals: ANTIKYTHERA_MAX_SIGNALS,
-      biasMode,
-    });
+  } else if (model === "antikythera" || model === "antikythera_v2" || model === "antikythera_v3") {
+    const signals =
+      model === "antikythera_v3" || system === "v3"
+        ? buildAntikytheraAgreementSignals({
+            assetClass,
+            snapshot,
+            sentiment,
+            maxSignals: ANTIKYTHERA_MAX_SIGNALS,
+          })
+        : buildAntikytheraSignals({
+            assetClass,
+            snapshot,
+            sentiment,
+            maxSignals: ANTIKYTHERA_MAX_SIGNALS,
+            biasMode: model === "antikythera_v2" || system === "v2" ? "dealer" : "blended",
+          });
     signals.forEach((signal) => {
       pairs[signal.pair] = pairSnapshot(signal.direction);
       reasonMap.set(signal.pair, signal.reasons);

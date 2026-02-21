@@ -60,6 +60,8 @@ async function main() {
   const minReportDate = process.env.PERFORMANCE_MIN_REPORT_DATE ?? "";
   const models: PerformanceModel[] = [
     "antikythera",
+    "antikythera_v2",
+    "antikythera_v3",
     "blended",
     "dealer",
     "commercial",

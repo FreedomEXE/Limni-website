@@ -579,6 +579,8 @@ export async function buildUniversalBasketSummary(options?: {
 
 const MODEL_LABELS: Record<PerformanceModel, string> = {
   antikythera: "Antikythera",
+  antikythera_v2: "Antikythera V2",
+  antikythera_v3: "Antikythera V3",
   blended: "Blended",
   dealer: "Dealer",
   commercial: "Commercial",

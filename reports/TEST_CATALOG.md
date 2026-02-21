@@ -17,6 +17,7 @@ Machine-readable source: `reports/test-catalog.json`.
 | `universal_v1_weekly_adds_comparison_2026_02_13` | V1 no-adds vs weekly loser normalization adds | Loser adds did not improve total return and worsened drawdown/retention metrics. |
 | `universal_v1_adaptive_trail_sweep_2026_02_13` | Dynamic trailing from rolling historical average peak vs static 30/10 | Adaptive aggressive variant led (`336.01%` total, `14.33%` avg left-on-table, `0%` baseline DD). |
 | `universal_v1_trigger_basis_comparison_2026_02_13` | Compare trail trigger basis: net basket peak vs winners-only peak vs winners-peak with net gate | Winners-only peak lifted total slightly (`338.18%` vs `336.01%`) but worsened retention/giveback; net-peak stayed best balanced. |
+| `universal_v3_agreement_backtest_2026_02_21` | V3 agreement vote system (dealer + commercial + sentiment) with equal, tiered, and capital-normalized sizing | V3 showed strong selectivity edge; 5-week capital-normalized compounded return improved from `5.16%` (equal) to `11.76%-13.40%` (tiered). |
 
 Hourly 1% caution: real execution must respect broker `min_volume` and `volume_step`. Small positions (for example `0.21`) cannot be split into 100 exact pieces; implementation needs per-position accumulator/quantization logic.
 Carry+flip caution: this simulation is very sensitive to risk constraints and should be treated as directional until lot caps/margin/financing constraints are modeled.

@@ -14,7 +14,14 @@ import { getAdaptiveTrailProfile, type AdaptiveTrailProfile } from "@/lib/adapti
 export type BasketSignal = {
   symbol: string;
   direction: "LONG" | "SHORT" | "NEUTRAL";
-  model: "antikythera" | "blended" | "dealer" | "commercial" | "sentiment";
+  model:
+    | "antikythera"
+    | "antikythera_v2"
+    | "antikythera_v3"
+    | "blended"
+    | "dealer"
+    | "commercial"
+    | "sentiment";
   asset_class: AssetClass;
 };
 

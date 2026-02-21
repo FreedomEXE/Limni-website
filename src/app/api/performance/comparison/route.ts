@@ -3,10 +3,15 @@ import { readAllPerformanceSnapshots } from "@/lib/performanceSnapshots";
 import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import { DateTime } from "luxon";
 import type { PerformanceModel } from "@/lib/performanceLab";
-import { PERFORMANCE_V1_MODELS, PERFORMANCE_V2_MODELS } from "@/lib/performance/modelConfig";
+import {
+  PERFORMANCE_V1_MODELS,
+  PERFORMANCE_V2_MODELS,
+  PERFORMANCE_V3_MODELS,
+} from "@/lib/performance/modelConfig";
 
 const V1_MODELS: PerformanceModel[] = PERFORMANCE_V1_MODELS;
 const V2_MODELS: PerformanceModel[] = PERFORMANCE_V2_MODELS;
+const V3_MODELS: PerformanceModel[] = PERFORMANCE_V3_MODELS;
 const COMPARISON_WEEKS = 5;
 const SNAPSHOT_SCAN_LIMIT = 1200;
 
@@ -120,10 +125,12 @@ export async function GET() {
 
     const v1Metrics = computeMetrics(snapshots, V1_MODELS, selectedWeeks);
     const v2Metrics = computeMetrics(snapshots, V2_MODELS, selectedWeeks);
+    const v3Metrics = computeMetrics(snapshots, V3_MODELS, selectedWeeks);
 
     return NextResponse.json({
       v1: v1Metrics,
       v2: v2Metrics,
+      v3: v3Metrics,
       weeksAnalyzed: selectedWeeks.size,
     });
   } catch (error) {

@@ -11,8 +11,8 @@ import {
   buildAllTimePerformance,
 } from "@/lib/performance/allTime";
 import {
+  PERFORMANCE_MODELS,
   PERFORMANCE_MODEL_LABELS,
-  PERFORMANCE_SYSTEM_MODEL_MAP,
   resolvePerformanceSystem,
 } from "@/lib/performance/modelConfig";
 import {
@@ -135,7 +135,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const initialSystem = resolvePerformanceSystem(systemParamValue);
   const view = resolvePerformanceView(viewParamValue);
   const assetClasses = listAssetClasses();
-  const models = PERFORMANCE_SYSTEM_MODEL_MAP.v1;
+  const models = PERFORMANCE_MODELS;
 
   const desiredWeeks = 5;
   let weekOptions: string[] = [];
@@ -259,7 +259,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 Performance
               </h1>
               <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-                Universal systems (V1/V2)
+                Universal systems (V1/V2/V3)
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -616,7 +616,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 Performance
               </h1>
               <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-                Universal systems (V1/V2)
+                Universal systems (V1/V2/V3)
               </p>
             </div>
           <div className="flex flex-wrap items-center gap-3">

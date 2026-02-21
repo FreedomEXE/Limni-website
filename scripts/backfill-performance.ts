@@ -115,33 +115,35 @@ async function main() {
         continue;
       }
 
-      // Antikythera depends on sentiment gating; recompute it alongside sentiment so historical
-      // weeks reflect the correct "neutral = no trade" rules.
+      // Antikythera variants depend on sentiment gating; recompute them alongside sentiment so
+      // historical weeks reflect the correct "neutral = no trade" rules.
       const basePerformance = await getPairPerformance(buildAllPairs(asset.id), {
         assetClass: asset.id,
         reportDate: snapshot.report_date,
         isLatestReport: false,
       });
-      const antikythera = await computeModelPerformance({
-        model: "antikythera",
-        assetClass: asset.id,
-        snapshot,
-        sentiment: latestSentiment,
-        performance: basePerformance,
-      });
-      payload.push({
-        week_open_utc: weekOpenUtc,
-        asset_class: asset.id,
-        model: "antikythera",
-        report_date: snapshot.report_date ?? null,
-        percent: antikythera.percent,
-        priced: antikythera.priced,
-        total: antikythera.total,
-        note: antikythera.note,
-        returns: antikythera.returns,
-        pair_details: antikythera.pair_details,
-        stats: antikythera.stats,
-      });
+      for (const model of ["antikythera", "antikythera_v3"] as const) {
+        const antikythera = await computeModelPerformance({
+          model,
+          assetClass: asset.id,
+          snapshot,
+          sentiment: latestSentiment,
+          performance: basePerformance,
+        });
+        payload.push({
+          week_open_utc: weekOpenUtc,
+          asset_class: asset.id,
+          model,
+          report_date: snapshot.report_date ?? null,
+          percent: antikythera.percent,
+          priced: antikythera.priced,
+          total: antikythera.total,
+          note: antikythera.note,
+          returns: antikythera.returns,
+          pair_details: antikythera.pair_details,
+          stats: antikythera.stats,
+        });
+      }
 
       const sentimentPairs = buildSentimentPairsWithHistory({
         assetClass: asset.id,

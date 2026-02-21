@@ -45,6 +45,8 @@ async function main() {
   const assetClasses = listAssetClasses();
   const models: PerformanceModel[] = [
     "antikythera",
+    "antikythera_v2",
+    "antikythera_v3",
     "blended",
     "dealer",
     "commercial",

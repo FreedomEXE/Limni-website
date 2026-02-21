@@ -29,7 +29,7 @@ export default function PerformanceViewSection({
   useEffect(() => {
     const onSystemChange = (event: Event) => {
       const custom = event as CustomEvent<PerformanceSystem>;
-      if (custom.detail === "v1" || custom.detail === "v2") {
+      if (custom.detail === "v1" || custom.detail === "v2" || custom.detail === "v3") {
         setSystem(custom.detail);
       }
     };

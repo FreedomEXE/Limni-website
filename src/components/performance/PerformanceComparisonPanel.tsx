@@ -14,6 +14,7 @@ type ComparisonMetrics = {
 type ComparisonData = {
   v1: ComparisonMetrics;
   v2: ComparisonMetrics;
+  v3: ComparisonMetrics;
 };
 
 export default function PerformanceComparisonPanel() {
@@ -21,8 +22,9 @@ export default function PerformanceComparisonPanel() {
   const [data, setData] = useState<ComparisonData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const initialTab = searchParams.get("system") === "v2" ? "v2" : "v1";
-  const [activeTab, setActiveTab] = useState<"v1" | "v2">(initialTab);
+  const requestedSystem = searchParams.get("system");
+  const initialTab = requestedSystem === "v2" || requestedSystem === "v3" ? requestedSystem : "v1";
+  const [activeTab, setActiveTab] = useState<"v1" | "v2" | "v3">(initialTab);
 
   useEffect(() => {
     async function fetchData() {
@@ -48,24 +50,37 @@ export default function PerformanceComparisonPanel() {
 
   const v1Metrics = data?.v1 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 };
   const v2Metrics = data?.v2 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 };
-  const activeMetrics = activeTab === "v1" ? v1Metrics : v2Metrics;
-  const activeLabel = activeTab === "v1" ? "Universal V1" : "Universal V2";
-  const activeBadge = activeTab === "v1" ? "5 Baskets" : "3 Baskets";
+  const v3Metrics = data?.v3 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 };
+  const activeMetrics = activeTab === "v1" ? v1Metrics : activeTab === "v2" ? v2Metrics : v3Metrics;
+  const activeLabel =
+    activeTab === "v1" ? "Universal V1" : activeTab === "v2" ? "Universal V2" : "Universal V3";
+  const activeBadge = activeTab === "v1" ? "5 Baskets" : activeTab === "v2" ? "3 Baskets" : "4 Baskets";
   const activeCardClass =
     activeTab === "v1"
       ? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4"
-      : "rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4";
-  const valueClass = activeTab === "v1" ? "text-[var(--foreground)]" : "text-emerald-900 dark:text-emerald-100";
+      : activeTab === "v2"
+        ? "rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4"
+        : "rounded-2xl border border-cyan-400/40 bg-cyan-500/10 p-4";
+  const valueClass =
+    activeTab === "v1"
+      ? "text-[var(--foreground)]"
+      : activeTab === "v2"
+        ? "text-emerald-900 dark:text-emerald-100"
+        : "text-cyan-900 dark:text-cyan-100";
   const labelClass =
     activeTab === "v1"
       ? "text-[color:var(--muted)]"
-      : "text-emerald-700 dark:text-emerald-300";
+      : activeTab === "v2"
+        ? "text-emerald-700 dark:text-emerald-300"
+        : "text-cyan-700 dark:text-cyan-300";
   const badgeClass =
     activeTab === "v1"
       ? "rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]"
-      : "rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-emerald-800 dark:text-emerald-200";
-  const hasHistoricalData = v1Metrics.weeks > 0 || v2Metrics.weeks > 0;
-  const setSystem = (next: "v1" | "v2") => {
+      : activeTab === "v2"
+        ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-emerald-800 dark:text-emerald-200"
+        : "rounded-full bg-cyan-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-cyan-800 dark:text-cyan-200";
+  const hasHistoricalData = v1Metrics.weeks > 0 || v2Metrics.weeks > 0 || v3Metrics.weeks > 0;
+  const setSystem = (next: "v1" | "v2" | "v3") => {
     setActiveTab(next);
     const url = new URL(window.location.href);
     url.searchParams.set("system", next);
@@ -81,7 +96,7 @@ export default function PerformanceComparisonPanel() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <button
           type="button"
           onClick={() => setSystem("v1")}
@@ -103,6 +118,17 @@ export default function PerformanceComparisonPanel() {
           }`}
         >
           Universal V2
+        </button>
+        <button
+          type="button"
+          onClick={() => setSystem("v3")}
+          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+            activeTab === "v3"
+              ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-800 dark:text-cyan-200"
+              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-cyan-400/50"
+          }`}
+        >
+          Universal V3
         </button>
       </div>
 
@@ -186,14 +212,14 @@ export default function PerformanceComparisonPanel() {
         </div>
       ) : null}
 
-      {!loading && !error && v2Metrics.totalReturn !== v1Metrics.totalReturn ? (
+      {!loading && !error && activeTab !== "v1" ? (
         <div className="rounded-2xl border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-3 py-2 text-center">
           <div className="text-xs font-semibold text-[var(--foreground)]">
-            {v2Metrics.totalReturn > v1Metrics.totalReturn ? "↑" : "↓"}{" "}
-            {Math.abs(v2Metrics.totalReturn - v1Metrics.totalReturn).toFixed(2)}%
+            {activeMetrics.totalReturn > v1Metrics.totalReturn ? "↑" : "↓"}{" "}
+            {Math.abs(activeMetrics.totalReturn - v1Metrics.totalReturn).toFixed(2)}%
           </div>
           <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
-            V2 vs V1 Delta
+            {activeTab.toUpperCase()} vs V1 Delta
           </div>
         </div>
       ) : null}
