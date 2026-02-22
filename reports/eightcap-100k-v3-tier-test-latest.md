@@ -1,6 +1,6 @@
 # Eightcap 100k V3 Tier Test (Week of Feb 16, 2026)
 
-Generated: 2026-02-21T21:31:35.826Z
+Generated: 2026-02-21T23:03:33.397Z
 Week: 2026-02-16T00:00:00.000Z
 Account: 7936840 (Tyrell Tsolakis - USD 004)
 Sizing source: frozen_week_plan
@@ -15,12 +15,12 @@ Lot map rows: 112
 ### V1 (as-is, GOD mode 1:1)
 - Margin used: +$78936.88
 - Legs: 110 (priced 110, wins 69)
-- PnL on 100k: +$44380.22 (+44.38%)
+- PnL on 100k: +$44852.00 (+44.85%)
 
 ### V2 (as-is)
 - Margin used: +$45820.12
 - Legs: 62 (priced 62, wins 44)
-- PnL on 100k: +$42163.29 (+42.16%)
+- PnL on 100k: +$42446.36 (+42.45%)
 
 ## V3 Tier Structure
 - Tier 1 trades: 3
@@ -29,7 +29,7 @@ Lot map rows: 112
 - Total candidate trades: 28
 
 ## V3 Tier Performance (Equal 1x Weight)
-- Tier 1: 3 trades (priced 3), wins 2, win rate 66.67%, sum return +1.11%, avg/trade +0.37%
+- Tier 1: 3 trades (priced 3), wins 2, win rate 66.67%, sum return +1.21%, avg/trade +0.40%
 - Tier 2: 16 trades (priced 16), wins 10, win rate 62.50%, sum return +5.90%, avg/trade +0.37%
 - Tier 3: 9 trades (priced 9), wins 7, win rate 77.78%, sum return +5.11%, avg/trade +0.57%
 
@@ -49,12 +49,12 @@ Lot map rows: 112
 ### All tiers (1x/1x/1x)
 - Margin used: +$16572.67
 - Trades: 28 (priced 28, wins 19)
-- PnL on 100k: +$12087.70 (+12.09%)
+- PnL on 100k: +$12182.06 (+12.18%)
 
 ### Tier 1 only
 - Margin used: +$10492.02
 - Trades: 3 (priced 3, wins 2)
-- PnL on 100k: +$1108.46 (+1.11%)
+- PnL on 100k: +$1202.82 (+1.20%)
 
 ### Tier 2 only
 - Margin used: +$4285.84
@@ -69,7 +69,7 @@ Lot map rows: 112
 ### Tier3 focus (1x/1x/2x)
 - Margin used: +$18367.48
 - Trades: 28 (priced 28, wins 19)
-- PnL on 100k: +$17178.13 (+17.18%)
+- PnL on 100k: +$17272.48 (+17.27%)
 
 ### Tier3 focus (0x/1x/2x)
 - Margin used: +$7875.46
@@ -82,12 +82,12 @@ Lot map rows: 112
 ### All tiers (1x/1x/1x) (4.7631x)
 - Margin used: +$78936.88
 - Trades: 28 (priced 28, wins 19)
-- PnL on 100k: +$57574.63 (+57.57%)
+- PnL on 100k: +$58024.07 (+58.02%)
 
 ### Tier 1 only (7.5235x)
 - Margin used: +$78936.88
 - Trades: 3 (priced 3, wins 2)
-- PnL on 100k: +$8339.52 (+8.34%)
+- PnL on 100k: +$9049.44 (+9.05%)
 
 ### Tier 2 only (18.4181x)
 - Margin used: +$78936.88
@@ -102,7 +102,7 @@ Lot map rows: 112
 ### Tier3 focus (1x/1x/2x) (4.2976x)
 - Margin used: +$78936.88
 - Trades: 28 (priced 28, wins 19)
-- PnL on 100k: +$73825.48 (+73.83%)
+- PnL on 100k: +$74230.96 (+74.23%)
 
 ### Tier3 focus (0x/1x/2x) (10.0231x)
 - Margin used: +$78936.88

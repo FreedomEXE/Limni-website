@@ -1,7 +1,3 @@
-"use client";
-
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
 type AssetOption = {
   id: string;
   label: string;
@@ -13,32 +9,8 @@ type DashboardFiltersProps = {
   selectedAsset: string;
   selectedReport: string;
   selectedBias: "dealer" | "commercial";
+  selectedView: "heatmap" | "list";
 };
-
-function buildUrl(
-  pathname: string,
-  searchParams: URLSearchParams,
-  next: {
-    asset?: string;
-    report?: string;
-    bias?: "dealer" | "commercial";
-  },
-) {
-  const params = new URLSearchParams(searchParams.toString());
-  const asset = next.asset ?? params.get("asset") ?? "all";
-  const report = next.report ?? params.get("report") ?? "";
-  const bias = next.bias ?? (params.get("bias") === "commercial" ? "commercial" : "dealer");
-
-  params.set("asset", asset);
-  params.set("bias", bias);
-  if (report) {
-    params.set("report", report);
-  } else {
-    params.delete("report");
-  }
-
-  return `${pathname}?${params.toString()}`;
-}
 
 export default function DashboardFilters({
   assetOptions,
@@ -46,41 +18,32 @@ export default function DashboardFilters({
   selectedAsset,
   selectedReport,
   selectedBias,
+  selectedView,
 }: DashboardFiltersProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const onAssetChange = (value: string) => {
-    const url = buildUrl(pathname, new URLSearchParams(searchParams.toString()), {
-      asset: value,
-      report: "",
-    });
-    router.replace(url, { scroll: false });
-  };
-
-  const onReportChange = (value: string) => {
-    const url = buildUrl(pathname, new URLSearchParams(searchParams.toString()), {
-      report: value,
-    });
-    router.replace(url, { scroll: false });
-  };
-
-  const onBiasChange = (value: "dealer" | "commercial") => {
-    const url = buildUrl(pathname, new URLSearchParams(searchParams.toString()), {
-      bias: value,
-    });
-    router.replace(url, { scroll: false });
-  };
-
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <form action="/dashboard" method="get" className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="view" value={selectedView} />
+      <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        Trading week
+      </label>
+      <select
+        name="report"
+        defaultValue={selectedReport}
+        className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+      >
+        {reportOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+
       <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
         Asset class
       </label>
       <select
-        value={selectedAsset}
-        onChange={(event) => onAssetChange(event.target.value)}
+        name="asset"
+        defaultValue={selectedAsset}
         className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
       >
         <option value="all">ALL</option>
@@ -90,31 +53,25 @@ export default function DashboardFilters({
           </option>
         ))}
       </select>
-      <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-        Trading week
-      </label>
-      <select
-        value={selectedReport}
-        onChange={(event) => onReportChange(event.target.value)}
-        className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-      >
-        {reportOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+
       <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
         Data type
       </label>
       <select
-        value={selectedBias}
-        onChange={(event) => onBiasChange(event.target.value as "dealer" | "commercial")}
+        name="bias"
+        defaultValue={selectedBias}
         className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
       >
         <option value="dealer">DEALER</option>
         <option value="commercial">COMMERCIAL</option>
       </select>
-    </div>
+
+      <button
+        type="submit"
+        className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+      >
+        View
+      </button>
+    </form>
   );
 }

@@ -8,6 +8,7 @@ import {
   PERFORMANCE_V2_MODELS,
   PERFORMANCE_V3_MODELS,
 } from "@/lib/performance/modelConfig";
+import { computeTieredForWeeksAllSystems } from "@/lib/performance/tiered";
 
 const V1_MODELS: PerformanceModel[] = PERFORMANCE_V1_MODELS;
 const V2_MODELS: PerformanceModel[] = PERFORMANCE_V2_MODELS;
@@ -21,6 +22,7 @@ type ComparisonMetrics = {
   winRate: number;
   sharpe: number;
   avgWeekly: number;
+  trades?: number;
 };
 
 type SnapshotRow = Awaited<ReturnType<typeof readAllPerformanceSnapshots>>[number];
@@ -114,6 +116,37 @@ function computeMetrics(
   };
 }
 
+function computeMetricsFromWeeklyRows(
+  weeklyRows: Array<{ return_percent: number; priced_trades: number; wins: number }>,
+): ComparisonMetrics {
+  const weekReturns = weeklyRows.map((row) => row.return_percent);
+  const totalReturn = weekReturns.reduce((sum, val) => sum + val, 0);
+  const weeks = weekReturns.length;
+  const totalTrades = weeklyRows.reduce((sum, row) => sum + row.priced_trades, 0);
+  const wins = weeklyRows.reduce((sum, row) => sum + row.wins, 0);
+  const winRate = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
+  const avgWeekly = weeks > 0 ? totalReturn / weeks : 0;
+
+  let sharpe = 0;
+  if (weeks > 1 && avgWeekly !== 0) {
+    const variance = weekReturns.reduce((sum, val) => {
+      const diff = val - avgWeekly;
+      return sum + diff * diff;
+    }, 0) / (weeks - 1);
+    const stdDev = Math.sqrt(variance);
+    sharpe = stdDev > 0 ? avgWeekly / stdDev : 0;
+  }
+
+  return {
+    totalReturn,
+    weeks,
+    winRate,
+    sharpe,
+    avgWeekly,
+    trades: totalTrades,
+  };
+}
+
 export async function GET() {
   try {
     const currentWeekOpenUtc = getCanonicalWeekOpenUtc();
@@ -127,10 +160,63 @@ export async function GET() {
     const v2Metrics = computeMetrics(snapshots, V2_MODELS, selectedWeeks);
     const v3Metrics = computeMetrics(snapshots, V3_MODELS, selectedWeeks);
 
+    const selectedWeekOpens = Array.from(
+      snapshots.reduce((acc, snapshot) => {
+        const bucket = getWeekBucketKey(snapshot);
+        if (!selectedWeeks.has(bucket)) {
+          return acc;
+        }
+        const current = acc.get(bucket);
+        const weekMillis = DateTime.fromISO(snapshot.week_open_utc, { zone: "utc" }).toMillis();
+        if (!Number.isFinite(weekMillis)) {
+          return acc;
+        }
+        if (!current || weekMillis > current.weekMillis) {
+          acc.set(bucket, { weekMillis, week_open_utc: snapshot.week_open_utc });
+        }
+        return acc;
+      }, new Map<string, { weekMillis: number; week_open_utc: string }>()),
+    )
+      .sort((a, b) => a[1].weekMillis - b[1].weekMillis)
+      .map(([, value]) => value.week_open_utc);
+
+    const tieredWeeklyBySystem = await computeTieredForWeeksAllSystems({
+      weeks: selectedWeekOpens,
+    });
+    const tiered = {
+      v1: computeMetricsFromWeeklyRows(
+        tieredWeeklyBySystem.v1.map((row) => ({
+          return_percent: row.summary.return_percent,
+          priced_trades: row.summary.priced_trades,
+          wins: row.summary.wins,
+        })),
+      ),
+      v2: computeMetricsFromWeeklyRows(
+        tieredWeeklyBySystem.v2.map((row) => ({
+          return_percent: row.summary.return_percent,
+          priced_trades: row.summary.priced_trades,
+          wins: row.summary.wins,
+        })),
+      ),
+      v3: computeMetricsFromWeeklyRows(
+        tieredWeeklyBySystem.v3.map((row) => ({
+          return_percent: row.summary.return_percent,
+          priced_trades: row.summary.priced_trades,
+          wins: row.summary.wins,
+        })),
+      ),
+    };
+
     return NextResponse.json({
       v1: v1Metrics,
       v2: v2Metrics,
       v3: v3Metrics,
+      universal: {
+        v1: v1Metrics,
+        v2: v2Metrics,
+        v3: v3Metrics,
+      },
+      tiered,
       weeksAnalyzed: selectedWeeks.size,
     });
   } catch (error) {

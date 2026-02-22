@@ -1,6 +1,6 @@
 # Eightcap 100k One-Week System Comparison
 
-Generated: 2026-02-21T21:06:16.618Z
+Generated: 2026-02-21T23:03:30.520Z
 Target week: 2026-02-16T00:00:00.000Z
 Account size: $100000.00
 
@@ -23,44 +23,44 @@ Account size: $100000.00
 ## Base Lot Map (No Reallocation)
 
 ### V1
-- Margin used: +$55961.56
-- Margin best-case (netted): +$41839.36
-- Trades (legs): 91 (priced 91, wins 56)
-- PnL on 100k: +$29641.85 (+29.64%)
+- Margin used: +$78936.88
+- Margin best-case (netted): +$62626.58
+- Trades (legs): 110 (priced 110, wins 69)
+- PnL on 100k: +$44852.00 (+44.85%)
 
 ### V2
-- Margin used: +$23042.49
-- Margin best-case (netted): +$20858.47
-- Trades (legs): 44 (priced 44, wins 34)
-- PnL on 100k: +$33321.30 (+33.32%)
+- Margin used: +$45820.12
+- Margin best-case (netted): +$41642.54
+- Trades (legs): 62 (priced 62, wins 44)
+- PnL on 100k: +$42446.36 (+42.45%)
 
 ### V3
-- Margin used: +$37305.36
-- Margin best-case (netted): +$24971.50
-- Trades (legs): 62 (priced 62, wins 33)
-- PnL on 100k: +$3005.25 (+3.01%)
+- Margin used: +$60181.45
+- Margin best-case (netted): +$48048.73
+- Trades (legs): 79 (priced 79, wins 46)
+- PnL on 100k: +$15790.52 (+15.79%)
 
 ## Normalized To V1 Margin Budget
 
-- V1 margin budget target: +$55961.56
+- V1 margin budget target: +$78936.88
 
 ### V1 (1.00x)
-- Margin used: +$55961.56
-- Margin best-case (netted): +$41839.36
-- Trades (legs): 91 (priced 91, wins 56)
-- PnL on 100k: +$29641.85 (+29.64%)
+- Margin used: +$78936.88
+- Margin best-case (netted): +$62626.58
+- Trades (legs): 110 (priced 110, wins 69)
+- PnL on 100k: +$44852.00 (+44.85%)
 
-### V2 (2.4286x)
-- Margin used: +$55961.56
-- Margin best-case (netted): +$50657.40
-- Trades (legs): 44 (priced 44, wins 34)
-- PnL on 100k: +$80924.93 (+80.92%)
+### V2 (1.7228x)
+- Margin used: +$78936.88
+- Margin best-case (netted): +$71739.93
+- Trades (legs): 62 (priced 62, wins 44)
+- PnL on 100k: +$73124.72 (+73.12%)
 
-### V3 (1.5001x)
-- Margin used: +$55961.56
-- Margin best-case (netted): +$37459.61
-- Trades (legs): 62 (priced 62, wins 33)
-- PnL on 100k: +$4508.16 (+4.51%)
+### V3 (1.3116x)
+- Margin used: +$78936.88
+- Margin best-case (netted): +$63023.02
+- Trades (legs): 79 (priced 79, wins 46)
+- PnL on 100k: +$20711.60 (+20.71%)
 
 ## Assumptions
 

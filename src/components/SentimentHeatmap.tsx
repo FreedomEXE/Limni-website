@@ -1,7 +1,6 @@
 "use client";
 
 import type { SentimentAggregate } from "@/lib/sentiment/types";
-import { formatDateTimeET, latestIso } from "@/lib/time";
 import PairSignalSurface, {
   type PairSignalSurfaceItem,
 } from "@/components/PairSignalSurface";
@@ -30,9 +29,6 @@ export default function SentimentHeatmap({
   performanceByPair = {},
 }: SentimentHeatmapProps) {
   const sorted = [...aggregates].sort((a, b) => a.symbol.localeCompare(b.symbol));
-  const latestAggregateTimestamp = latestIso(
-    aggregates.map((aggregate) => aggregate.timestamp_utc),
-  );
   const items: PairSignalSurfaceItem[] = sorted.map((agg) => ({
     id: agg.symbol,
     label: agg.symbol,
@@ -59,11 +55,6 @@ export default function SentimentHeatmap({
       view={view}
       emptyTitle="No sentiment data yet"
       emptyDescription="Trigger a manual refresh or start the sentiment poller"
-      updatedLabel={
-        latestAggregateTimestamp
-          ? `Updated ${formatDateTimeET(latestAggregateTimestamp)}`
-          : undefined
-      }
     />
   );
 }

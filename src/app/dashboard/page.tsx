@@ -185,7 +185,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     subtitle?: string;
     details: Array<{ label: string; value: string }>;
   }>;
-  let pairNote = "No pairs to price.";
   let missingPairs: string[] = [];
   let combinedRefresh = data.last_refresh_utc;
 
@@ -323,8 +322,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       `${a.assetLabel}-${a.currency}`.localeCompare(`${b.assetLabel}-${b.currency}`),
     );
     pairRowsWithPerf.sort((a, b) => a.pair.localeCompare(b.pair));
-    pairNote =
-      "Combined view across asset classes. Refresh prices per asset class to reduce missing data.";
     const refreshDates = snapshotEntries
       .map((entry) => entry.snapshot?.last_refresh_utc)
       .filter((value): value is string => Boolean(value));
@@ -384,7 +381,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             isLatestReport: false,
           })
         : { performance: {}, note: "No pairs to price.", missingPairs: [] };
-    pairNote = perfResult.note;
     missingPairs = perfResult.missingPairs;
     pairRows.forEach(({ pairDef, row }) => {
       pairRowsWithPerf.push({
@@ -560,6 +556,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               selectedAsset={isAll ? "all" : assetClass}
               selectedReport={selectedReportDate ?? ""}
               selectedBias={selectedBiasForFilter}
+              selectedView={view}
             />
             <ViewToggle value={view} items={viewItems} />
           </div>
@@ -567,7 +564,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <PairHeatmap
               rows={pairRowsWithPerf}
               view={view}
-              note={pairNote}
               missingPairs={missingPairs}
             />
           </div>

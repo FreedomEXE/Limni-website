@@ -9,12 +9,23 @@ type ComparisonMetrics = {
   winRate: number;
   sharpe: number;
   avgWeekly: number;
+  trades?: number;
 };
 
 type ComparisonData = {
   v1: ComparisonMetrics;
   v2: ComparisonMetrics;
   v3: ComparisonMetrics;
+  universal?: {
+    v1: ComparisonMetrics;
+    v2: ComparisonMetrics;
+    v3: ComparisonMetrics;
+  };
+  tiered?: {
+    v1: ComparisonMetrics;
+    v2: ComparisonMetrics;
+    v3: ComparisonMetrics;
+  };
 };
 
 export default function PerformanceComparisonPanel() {
@@ -23,8 +34,11 @@ export default function PerformanceComparisonPanel() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const requestedSystem = searchParams.get("system");
+  const requestedStyle = searchParams.get("style");
   const initialTab = requestedSystem === "v2" || requestedSystem === "v3" ? requestedSystem : "v1";
+  const initialStyle = requestedStyle === "tiered" ? "tiered" : "universal";
   const [activeTab, setActiveTab] = useState<"v1" | "v2" | "v3">(initialTab);
+  const [activeStyle, setActiveStyle] = useState<"universal" | "tiered">(initialStyle);
 
   useEffect(() => {
     async function fetchData() {
@@ -48,13 +62,34 @@ export default function PerformanceComparisonPanel() {
     fetchData();
   }, []);
 
-  const v1Metrics = data?.v1 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 };
-  const v2Metrics = data?.v2 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 };
-  const v3Metrics = data?.v3 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 };
+  const universalMetrics = data?.universal ?? {
+    v1: data?.v1 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 },
+    v2: data?.v2 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 },
+    v3: data?.v3 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 },
+  };
+  const tieredMetrics = data?.tiered ?? {
+    v1: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
+    v2: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
+    v3: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
+  };
+  const metricSet = activeStyle === "tiered" ? tieredMetrics : universalMetrics;
+  const v1Metrics = metricSet.v1;
+  const v2Metrics = metricSet.v2;
+  const v3Metrics = metricSet.v3;
   const activeMetrics = activeTab === "v1" ? v1Metrics : activeTab === "v2" ? v2Metrics : v3Metrics;
+  const activeVersionLabel = activeTab === "v1" ? "V1" : activeTab === "v2" ? "V2" : "V3";
   const activeLabel =
-    activeTab === "v1" ? "Universal V1" : activeTab === "v2" ? "Universal V2" : "Universal V3";
-  const activeBadge = activeTab === "v1" ? "5 Baskets" : activeTab === "v2" ? "3 Baskets" : "4 Baskets";
+    activeStyle === "tiered" ? `Tiered ${activeVersionLabel}` : `Universal ${activeVersionLabel}`;
+  const activeBadge =
+    activeStyle === "tiered"
+      ? activeTab === "v2"
+        ? "Tiered (2 tiers)"
+        : "Tiered (3 tiers)"
+      : activeTab === "v1"
+        ? "5 Baskets"
+        : activeTab === "v2"
+          ? "3 Baskets"
+          : "4 Baskets";
   const activeCardClass =
     activeTab === "v1"
       ? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4"
@@ -80,10 +115,18 @@ export default function PerformanceComparisonPanel() {
         ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-emerald-800 dark:text-emerald-200"
         : "rounded-full bg-cyan-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-cyan-800 dark:text-cyan-200";
   const hasHistoricalData = v1Metrics.weeks > 0 || v2Metrics.weeks > 0 || v3Metrics.weeks > 0;
+  const setStyle = (next: "universal" | "tiered") => {
+    setActiveStyle(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("style", next);
+    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+    window.dispatchEvent(new CustomEvent("performance-style-change", { detail: next }));
+  };
   const setSystem = (next: "v1" | "v2" | "v3") => {
     setActiveTab(next);
     const url = new URL(window.location.href);
     url.searchParams.set("system", next);
+    url.searchParams.set("style", activeStyle);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(new CustomEvent("performance-system-change", { detail: next }));
   };
@@ -94,6 +137,31 @@ export default function PerformanceComparisonPanel() {
         <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
           System Comparison
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => setStyle("universal")}
+          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+            activeStyle === "universal"
+              ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+          }`}
+        >
+          Universal
+        </button>
+        <button
+          type="button"
+          onClick={() => setStyle("tiered")}
+          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+            activeStyle === "tiered"
+              ? "border-sky-400/50 bg-sky-500/10 text-sky-800 dark:text-sky-200"
+              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+          }`}
+        >
+          Tiered
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -146,6 +214,11 @@ export default function PerformanceComparisonPanel() {
           <div className={`text-[10px] uppercase tracking-[0.2em] ${labelClass}`}>
             Total Return
           </div>
+          {activeStyle === "tiered" ? (
+            <div className={`mt-1 text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+              Scaled to universal margin
+            </div>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -176,10 +249,10 @@ export default function PerformanceComparisonPanel() {
           </div>
           <div>
             <div className={`text-sm font-semibold ${valueClass}`}>
-              {activeMetrics.weeks}
+              {activeMetrics.trades ?? activeMetrics.weeks}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
-              Weeks
+              {activeStyle === "tiered" ? "Trades" : "Weeks"}
             </div>
           </div>
         </div>

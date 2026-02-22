@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import PerformancePeriodSelector from "@/components/performance/PerformancePeriodSelector";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
+import type { ComponentProps } from "react";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import type { PairSnapshot } from "@/lib/cotTypes";
@@ -14,6 +15,7 @@ import {
   PERFORMANCE_MODELS,
   PERFORMANCE_MODEL_LABELS,
   resolvePerformanceSystem,
+  type PerformanceSystem,
 } from "@/lib/performance/modelConfig";
 import {
   buildPerformanceWeekFlags,
@@ -33,8 +35,15 @@ import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
 import { simulateTrailingForGroupsFromRows } from "@/lib/universalBasket";
 import { getCanonicalWeekOpenUtc, getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 import { DateTime } from "luxon";
+import {
+  buildTieredAllTimeViewsFromWeekly,
+  computeTieredForWeeksAllSystems,
+  computeTieredWeekForAllSystems,
+  TIERED_DISPLAY_LABELS,
+} from "@/lib/performance/tiered";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -47,6 +56,39 @@ type PerformancePageProps = {
 
 function formatWeekOption(value: string) {
   return weekLabelFromOpen(value);
+}
+
+function resolvePerformanceStyle(value: string | null | undefined): "universal" | "tiered" {
+  return value === "tiered" ? "tiered" : "universal";
+}
+
+function listClosedHistoricalWeeksFromPerformanceRows(
+  rows: Array<{ week_open_utc: string }>,
+  currentWeekMillis: number,
+) {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const sorted = [...rows].sort((a, b) =>
+    DateTime.fromISO(b.week_open_utc, { zone: "utc" }).toMillis() -
+    DateTime.fromISO(a.week_open_utc, { zone: "utc" }).toMillis(),
+  );
+  for (const row of sorted) {
+    const weekMillis = DateTime.fromISO(row.week_open_utc, { zone: "utc" }).toMillis();
+    if (!Number.isFinite(weekMillis) || weekMillis >= currentWeekMillis) {
+      continue;
+    }
+    const canonical = normalizeWeekOpenUtc(row.week_open_utc) ?? row.week_open_utc;
+    if (seen.has(canonical)) {
+      continue;
+    }
+    seen.add(canonical);
+    out.push(canonical);
+  }
+  return out.sort(
+    (a, b) =>
+      DateTime.fromISO(a, { zone: "utc" }).toMillis() -
+      DateTime.fromISO(b, { zone: "utc" }).toMillis(),
+  );
 }
 
 async function getPerformanceSentimentForWeek(weekOpenUtc: string) {
@@ -131,8 +173,11 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const viewParamValue = Array.isArray(viewParam) ? viewParam[0] : viewParam;
   const systemParam = resolvedSearchParams?.system;
   const systemParamValue = Array.isArray(systemParam) ? systemParam[0] : systemParam;
+  const styleParam = resolvedSearchParams?.style;
+  const styleParamValue = Array.isArray(styleParam) ? styleParam[0] : styleParam;
 
   const initialSystem = resolvePerformanceSystem(systemParamValue);
+  const initialStyle = resolvePerformanceStyle(styleParamValue);
   const view = resolvePerformanceView(viewParamValue);
   const assetClasses = listAssetClasses();
   const models = PERFORMANCE_MODELS;
@@ -240,6 +285,84 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       results: allTimePerformanceByAsset.get(asset.id) ?? [],
     }));
     const anyPriced = allTimePerformanceCombined.some((result) => result.total > 0);
+
+    let tieredGridPropsBySystem: ComponentProps<typeof PerformanceViewSection>["tieredGridPropsBySystem"];
+    try {
+      const closedWeeks = listClosedHistoricalWeeksFromPerformanceRows(historyRows, currentWeekMillis);
+      if (closedWeeks.length > 0) {
+        const tieredWeeklyBySystem = await timed(
+          "all_time.computeTieredForWeeksAllSystems",
+          { weeks: closedWeeks.length },
+          () => computeTieredForWeeksAllSystems({ weeks: closedWeeks }),
+        );
+        const tieredViews = timedSync(
+          "all_time.buildTieredAllTimeViewsFromWeekly",
+          { weeks: closedWeeks.length },
+          () => buildTieredAllTimeViewsFromWeekly(tieredWeeklyBySystem),
+        );
+        tieredGridPropsBySystem = {
+          v1: {
+            combined: {
+              id: "combined",
+              label: "Combined Basket",
+              description: "All asset classes aggregated. All-time tiered view (scaled to universal margin).",
+              models: tieredViews.v1.combined,
+            },
+            perAsset: assetClasses.map((asset) => ({
+              id: asset.id,
+              label: asset.label,
+              description: "Filter tiered performance for this asset class.",
+              models: tieredViews.v1.perAsset[asset.id] ?? [],
+            })),
+            labels: TIERED_DISPLAY_LABELS,
+            calibration: undefined,
+            allTime: { combined: [], perAsset: {} },
+            showAllTime: false,
+          },
+          v2: {
+            combined: {
+              id: "combined",
+              label: "Combined Basket",
+              description: "All asset classes aggregated. All-time tiered view (scaled to universal margin).",
+              models: tieredViews.v2.combined,
+            },
+            perAsset: assetClasses.map((asset) => ({
+              id: asset.id,
+              label: asset.label,
+              description: "Filter tiered performance for this asset class.",
+              models: tieredViews.v2.perAsset[asset.id] ?? [],
+            })),
+            labels: TIERED_DISPLAY_LABELS,
+            calibration: undefined,
+            allTime: { combined: [], perAsset: {} },
+            showAllTime: false,
+          },
+          v3: {
+            combined: {
+              id: "combined",
+              label: "Combined Basket",
+              description: "All asset classes aggregated. All-time tiered view (scaled to universal margin).",
+              models: tieredViews.v3.combined,
+            },
+            perAsset: assetClasses.map((asset) => ({
+              id: asset.id,
+              label: asset.label,
+              description: "Filter tiered performance for this asset class.",
+              models: tieredViews.v3.perAsset[asset.id] ?? [],
+            })),
+            labels: TIERED_DISPLAY_LABELS,
+            calibration: undefined,
+            allTime: { combined: [], perAsset: {} },
+            showAllTime: false,
+          },
+        };
+      }
+    } catch (error) {
+      console.error(
+        "Tiered all-time performance build failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     traceDuration("branch.all_time.total", branchStartMs, {
       selectedWeek,
       anyPriced,
@@ -292,7 +415,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           <PerformanceViewSection
             initialView={view}
             initialSystem={initialSystem}
-            gridProps={{
+            initialStyle={initialStyle}
+            universalGridProps={{
               combined: {
                 id: "combined",
                 label: "Combined Basket",
@@ -313,6 +437,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               },
               showAllTime: false,
             }}
+            tieredGridPropsBySystem={tieredGridPropsBySystem}
           />
         </div>
       </DashboardLayout>
@@ -381,6 +506,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   let totals: Array<Awaited<ReturnType<typeof computeModelPerformance>>> = [];
   let anyPriced = false;
   let branchLabel = "unknown";
+  let tieredGridPropsBySystem: ComponentProps<typeof PerformanceViewSection>["tieredGridPropsBySystem"];
   const branchStartMs = perfNowMs();
 
   if (isFutureWeekSelected) {
@@ -583,6 +709,46 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     anyPriced = totals.some((result) => result.priced > 0);
   }
 
+  if (selectedWeek && selectedWeek !== "all" && isWeekOpenUtc(selectedWeek)) {
+    try {
+      const tieredBySystem = await timed(
+        "tiered.computeTieredWeekForAllSystems",
+        { selectedWeek },
+        () => computeTieredWeekForAllSystems({ weekOpenUtc: selectedWeek }),
+      );
+      tieredGridPropsBySystem = (["v1", "v2", "v3"] as const).reduce((acc, system) => {
+        const result = tieredBySystem[system];
+        if (!result) {
+          return acc;
+        }
+        acc[system] = {
+          combined: {
+            id: "combined",
+            label: "Combined Basket",
+            description: `${weekLabelFromOpen(selectedWeek)}. Tiered ${system.toUpperCase()} (scaled to universal margin).`,
+            models: result.combined,
+          },
+          perAsset: assetClasses.map((asset) => ({
+            id: asset.id,
+            label: asset.label,
+            description: "Filter tiered performance for this asset class.",
+            models: result.perAsset[asset.id] ?? [],
+          })),
+          labels: TIERED_DISPLAY_LABELS,
+          calibration: undefined,
+          allTime: { combined: [], perAsset: {} },
+          showAllTime: false,
+        };
+        return acc;
+      }, {} as NonNullable<ComponentProps<typeof PerformanceViewSection>["tieredGridPropsBySystem"]>);
+    } catch (error) {
+      console.error(
+        "Tiered weekly performance build failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
   traceDuration("branch.total", branchStartMs, {
     branch: branchLabel,
     selectedWeek: selectedWeek ?? null,
@@ -664,7 +830,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         <PerformanceViewSection
           initialView={view}
           initialSystem={initialSystem}
-          gridProps={{
+          initialStyle={initialStyle}
+          universalGridProps={{
             combined: {
               id: "combined",
               label: "Combined Basket",
@@ -689,6 +856,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             },
             showAllTime: false,
           }}
+          tieredGridPropsBySystem={tieredGridPropsBySystem}
         />
       </div>
     </DashboardLayout>
