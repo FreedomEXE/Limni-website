@@ -553,6 +553,8 @@ string SanitizeScopePart(const string value);
 string BuildScopePrefix();
 string ScopeKey(const string suffix);
 string ScopeCacheFileName(const string baseName);
+bool TryRebuildCycleBaselineFromHistory(double &baselineEquity, datetime &cycleStartTime, double &realizedPnl, string &reason);
+bool EnsureCycleTrailBaselineInitialized(const string contextTag);
 
 //+------------------------------------------------------------------+
 int OnInit()
@@ -714,7 +716,7 @@ void OnTimer()
       {
         g_baselineEquity = newBalance;
         if(g_cycleBaselineBalance <= 0.0)
-          g_cycleBaselineBalance = newBalance;
+          EnsureCycleTrailBaselineInitialized("weekly_rollover");
         double eqNow = AccountInfoDouble(ACCOUNT_EQUITY);
         if(eqNow > 0.0 && (g_cyclePeakEquity <= 0.0 || eqNow > g_cyclePeakEquity))
           g_cyclePeakEquity = eqNow;
@@ -3152,14 +3154,7 @@ void UpdateState()
     if(g_baselineEquity <= 0.0)
       g_baselineEquity = AccountInfoDouble(ACCOUNT_BALANCE);
     if(g_cycleBaselineBalance <= 0.0)
-    {
-      g_cycleBaselineBalance = AccountInfoDouble(ACCOUNT_BALANCE);
-      double eqNow = AccountInfoDouble(ACCOUNT_EQUITY);
-      if(eqNow > 0.0)
-        g_cyclePeakEquity = eqNow;
-      SaveState();
-      Log(StringFormat("Cycle trail baseline initialized on attach: %.2f", g_cycleBaselineBalance));
-    }
+      EnsureCycleTrailBaselineInitialized("attach");
 
     if(g_apiOk && g_tradingAllowed)
     {
@@ -3279,6 +3274,18 @@ void ManageBasket()
       SaveState();
       Log("All positions closed. State -> CLOSED.");
     }
+    else if(g_cycleBaselineBalance > 0.0 || g_cyclePeakEquity > 0.0 || g_trailingActive || g_lockedProfitPct != 0.0 || g_baselineEquity > 0.0)
+    {
+      // Basket became flat without the normal close-request path (e.g. manual flatten).
+      // Reset cycle trail state so the next basket always re-anchors from the new cycle start.
+      g_lockedProfitPct = 0.0;
+      g_trailingActive = false;
+      g_baselineEquity = 0.0;
+      g_cycleBaselineBalance = 0.0;
+      g_cyclePeakEquity = 0.0;
+      SaveState();
+      Log("Basket flat detected. Cycle trail state reset; next cycle baseline will re-anchor from new cycle start.");
+    }
     return;
   }
 
@@ -3286,13 +3293,7 @@ void ManageBasket()
   if(g_baselineEquity <= 0.0)
     g_baselineEquity = AccountInfoDouble(ACCOUNT_BALANCE);
   if(g_cycleBaselineBalance <= 0.0)
-  {
-    g_cycleBaselineBalance = AccountInfoDouble(ACCOUNT_BALANCE);
-    if(equity > 0.0)
-      g_cyclePeakEquity = equity;
-    SaveState();
-    Log(StringFormat("Cycle trail baseline initialized: %.2f", g_cycleBaselineBalance));
-  }
+    EnsureCycleTrailBaselineInitialized("manage");
   if(equity > 0.0 && (g_cyclePeakEquity <= 0.0 || equity > g_cyclePeakEquity))
     g_cyclePeakEquity = equity;
 
@@ -4683,6 +4684,197 @@ int OrdersInLastMinute()
       count++;
   }
   return count;
+}
+
+bool TryRebuildCycleBaselineFromHistory(double &baselineEquity, datetime &cycleStartTime, double &realizedPnl, string &reason)
+{
+  baselineEquity = 0.0;
+  cycleStartTime = 0;
+  realizedPnl = 0.0;
+  reason = "";
+
+  if(!HasOpenPositions())
+  {
+    reason = "no_open_positions";
+    return false;
+  }
+
+  datetime to = TimeCurrent();
+  if(to <= 0)
+    to = TimeGMT();
+  if(to <= 0)
+  {
+    reason = "time_unavailable";
+    return false;
+  }
+
+  // Rebuild from full available local history so long-running cycles (with prior winners
+  // already closed) can recover the original cycle anchor after re-attach/recompile.
+  if(!HistorySelect(0, to))
+  {
+    reason = "history_select_failed";
+    return false;
+  }
+
+  long posIds[];
+  double posOpenVol[];
+  ArrayResize(posIds, 0);
+  ArrayResize(posOpenVol, 0);
+
+  int activeCount = 0;
+  int deals = HistoryDealsTotal();
+  for(int i = 0; i < deals; i++)
+  {
+    ulong dealTicket = HistoryDealGetTicket(i);
+    if(dealTicket == 0)
+      continue;
+    if((long)HistoryDealGetInteger(dealTicket, DEAL_MAGIC) != MagicNumber)
+      continue;
+
+    int entry = (int)HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
+    if(entry != DEAL_ENTRY_IN && entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_OUT_BY)
+      continue;
+
+    long posId = (long)HistoryDealGetInteger(dealTicket, DEAL_POSITION_ID);
+    if(posId <= 0)
+      continue;
+
+    double vol = MathAbs(HistoryDealGetDouble(dealTicket, DEAL_VOLUME));
+    if(vol <= 0.0)
+      continue;
+
+    int idx = -1;
+    for(int j = 0; j < ArraySize(posIds); j++)
+    {
+      if(posIds[j] == posId)
+      {
+        idx = j;
+        break;
+      }
+    }
+    if(idx < 0)
+    {
+      int size = ArraySize(posIds);
+      ArrayResize(posIds, size + 1);
+      ArrayResize(posOpenVol, size + 1);
+      posIds[size] = posId;
+      posOpenVol[size] = 0.0;
+      idx = size;
+    }
+
+    double beforeVol = posOpenVol[idx];
+    int prevActiveCount = activeCount;
+
+    if(entry == DEAL_ENTRY_IN)
+      posOpenVol[idx] += vol;
+    else
+      posOpenVol[idx] -= vol;
+
+    if(posOpenVol[idx] < 1e-8)
+      posOpenVol[idx] = 0.0;
+
+    bool wasActive = (beforeVol > 1e-8);
+    bool isActive = (posOpenVol[idx] > 1e-8);
+    if(!wasActive && isActive)
+      activeCount++;
+    else if(wasActive && !isActive && activeCount > 0)
+      activeCount--;
+
+    if(prevActiveCount == 0 && activeCount > 0)
+      cycleStartTime = (datetime)HistoryDealGetInteger(dealTicket, DEAL_TIME);
+  }
+
+  if(cycleStartTime <= 0)
+  {
+    reason = "cycle_start_not_found";
+    return false;
+  }
+  if(activeCount <= 0)
+  {
+    reason = "history_not_in_open_cycle";
+    return false;
+  }
+
+  for(int i = 0; i < deals; i++)
+  {
+    ulong dealTicket = HistoryDealGetTicket(i);
+    if(dealTicket == 0)
+      continue;
+    if((long)HistoryDealGetInteger(dealTicket, DEAL_MAGIC) != MagicNumber)
+      continue;
+
+    datetime dealTime = (datetime)HistoryDealGetInteger(dealTicket, DEAL_TIME);
+    if(dealTime < cycleStartTime)
+      continue;
+
+    int entry = (int)HistoryDealGetInteger(dealTicket, DEAL_ENTRY);
+    if(entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_OUT_BY)
+      continue;
+
+    double profit = HistoryDealGetDouble(dealTicket, DEAL_PROFIT);
+    profit += HistoryDealGetDouble(dealTicket, DEAL_SWAP);
+    profit += HistoryDealGetDouble(dealTicket, DEAL_COMMISSION);
+    realizedPnl += profit;
+  }
+
+  double currentBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+  if(currentBalance <= 0.0)
+  {
+    reason = "balance_unavailable";
+    return false;
+  }
+
+  // Cycle starts when EA basket is flat -> balance ~= equity at cycle start (assuming no
+  // non-EA balance adjustments during the cycle).
+  baselineEquity = currentBalance - realizedPnl;
+  if(baselineEquity <= 0.0)
+  {
+    reason = "baseline_non_positive";
+    baselineEquity = 0.0;
+    return false;
+  }
+
+  reason = "ok";
+  return true;
+}
+
+bool EnsureCycleTrailBaselineInitialized(const string contextTag)
+{
+  if(g_cycleBaselineBalance > 0.0)
+    return true;
+
+  double rebuiltBaseline = 0.0;
+  datetime cycleStart = 0;
+  double realizedPnl = 0.0;
+  string reason = "";
+  if(TryRebuildCycleBaselineFromHistory(rebuiltBaseline, cycleStart, realizedPnl, reason))
+  {
+    g_cycleBaselineBalance = rebuiltBaseline;
+    double eqNow = AccountInfoDouble(ACCOUNT_EQUITY);
+    if(eqNow > 0.0 && (g_cyclePeakEquity <= 0.0 || eqNow > g_cyclePeakEquity))
+      g_cyclePeakEquity = eqNow;
+    SaveState();
+    Log(StringFormat("Cycle trail baseline restored from history (%s): %.2f start=%s realized=%.2f",
+                     contextTag,
+                     g_cycleBaselineBalance,
+                     FormatTimeValue(cycleStart),
+                     realizedPnl));
+    return true;
+  }
+
+  double fallback = AccountInfoDouble(ACCOUNT_EQUITY);
+  if(fallback <= 0.0)
+    fallback = AccountInfoDouble(ACCOUNT_BALANCE);
+  if(fallback <= 0.0)
+    return false;
+
+  g_cycleBaselineBalance = fallback;
+  if(g_cyclePeakEquity <= 0.0)
+    g_cyclePeakEquity = fallback;
+  SaveState();
+  Log(StringFormat("Cycle trail baseline fallback init (%s): %.2f (reason=%s)",
+                   contextTag, g_cycleBaselineBalance, reason));
+  return true;
 }
 //+------------------------------------------------------------------+
 datetime GetWeekStartGmt(datetime nowGmt)
