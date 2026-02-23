@@ -39,6 +39,8 @@ type BasketSignalsResponse = {
   trail_profile?: AdaptiveTrailProfile;
 };
 
+type StrategyVariantId = string;
+
 type AvailableSnapshot = {
   snapshot: NonNullable<Awaited<ReturnType<typeof readSnapshot>>>;
   asset: AssetClass;
@@ -143,8 +145,10 @@ function shouldAutoRefresh(reason: string, lastRefreshUtc: string): boolean {
 
 export async function buildBasketSignals(options?: {
   assetClass?: AssetClass | "all" | null;
+  strategyVariantId?: StrategyVariantId | null;
 }): Promise<BasketSignalsResponse> {
   const assetParam = options?.assetClass ?? "all";
+  const strategyVariantId = options?.strategyVariantId?.trim() || "";
   const assetClasses = assetParam && assetParam !== "all"
     ? [getAssetClass(assetParam)]
     : listAssetClasses().map((asset) => asset.id);
@@ -286,7 +290,9 @@ export async function buildBasketSignals(options?: {
     }
   }
 
-  const trailProfile = await getAdaptiveTrailProfile();
+  const trailProfile = await getAdaptiveTrailProfile({
+    strategyVariantId: strategyVariantId || undefined,
+  });
 
   return {
     report_date: reference.snapshot.report_date,

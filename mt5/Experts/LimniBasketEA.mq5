@@ -13,6 +13,9 @@ input string AssetFilter = "all";
 input bool ResetStateOnInit = false;
 input int ApiPollIntervalSeconds = 60;
 input bool ManualMode = false;
+input bool EmergencyCryptoRecoveryMode = false;
+input string EmergencyCryptoRecoveryDateEt = "";
+input string StrategyVariantId = "universal_v1";
 enum StrategyProfile
 {
   PROFILE_CUSTOM = 0,
@@ -226,6 +229,8 @@ string g_trailProfileSource = "";
 string g_trailProfileGeneratedUtc = "";
 double g_trailProfileStartPct = 0.0;
 double g_trailProfileOffsetPct = 0.0;
+double g_strategyTrailFallbackStartPct = 100.0;
+double g_strategyTrailFallbackOffsetPct = 30.0;
 
 double g_baselineEquity = 0.0;
 double g_lockedProfitPct = 0.0;
@@ -233,10 +238,14 @@ bool g_trailingActive = false;
 bool g_closeRequested = false;
 double g_weekPeakEquity = 0.0;
 double g_maxDrawdownPct = 0.0;
+double g_cycleBaselineBalance = 0.0;
+double g_cyclePeakEquity = 0.0;
 double g_adaptivePeakAvgPct = 0.0;
 double g_lastWeekPeakPct = 0.0;
 double g_adaptivePeakSumPct = 0.0;
 int g_adaptivePeakCount = 0;
+bool g_hasStrategyAdaptiveTrailProfile = false;
+string g_trailProfileStrategyId = "";
 
 string g_apiSymbols[];
 string g_apiSymbolsRaw[];
@@ -273,6 +282,7 @@ datetime g_lastStructureWarn = 0;
 datetime g_lastUniverseGateWarn = 0;
 datetime g_lastUniverseSizingCheck = 0;
 datetime g_lastRolloverHoldWarn = 0;
+datetime g_lastTryAddBlockedWarn = 0;
 bool g_universeSizingReady = false;
 string g_universeSizingReason = "";
 string g_dataSource = "realtime";
@@ -298,6 +308,8 @@ string GV_CLOSE = "CloseRequested";
 string GV_WEEK_PEAK = "WeekPeak";
 string GV_MAX_DD = "MaxDD";
 string GV_LAST_PUSH = "LastPush";
+string GV_CYCLE_BASELINE = "CycleBaseline";
+string GV_CYCLE_PEAK = "CyclePeak";
 string GV_ADAPTIVE_PEAK_AVG = "AdaptivePeakAvg";
 string GV_LAST_WEEK_PEAK = "LastWeekPeak";
 string GV_ADAPTIVE_PEAK_SUM = "AdaptivePeakSum";
@@ -433,6 +445,8 @@ double GetOpenSymbolRiskUsd(const string symbol);
 string NormalizeModelName(const string value);
 bool IsFreshEntryWindow(datetime nowGmt);
 bool IsMidWeekAttachBlocked(datetime nowGmt);
+bool IsEmergencyCryptoRecoveryWindow(datetime nowGmt);
+bool ShouldBypassCryptoGateForSymbol(const string symbol, datetime nowGmt);
 void MarkOrderTimestamp();
 int OrdersInLastMinute();
 datetime GetWeekStartGmt(datetime nowGmt);
@@ -678,6 +692,8 @@ void OnTimer()
     {
       g_state = STATE_IDLE;
       g_baselineEquity = 0.0;
+      g_cycleBaselineBalance = 0.0;
+      g_cyclePeakEquity = 0.0;
       g_lockedProfitPct = 0.0;
       g_trailingActive = false;
       g_closeRequested = false;
@@ -690,12 +706,21 @@ void OnTimer()
     {
       // New week with open positions (losers from previous week)
       // Update baseline to current balance (after profitable trades closed)
+      // Clear only stale close latch so add/reconcile logic can resume.
+      // Cycle trail anchor/lock persists across rollover while losers remain open.
+      g_closeRequested = false;
       double newBalance = AccountInfoDouble(ACCOUNT_BALANCE);
       if(newBalance > 0.0)
       {
         g_baselineEquity = newBalance;
+        if(g_cycleBaselineBalance <= 0.0)
+          g_cycleBaselineBalance = newBalance;
+        double eqNow = AccountInfoDouble(ACCOUNT_EQUITY);
+        if(eqNow > 0.0 && (g_cyclePeakEquity <= 0.0 || eqNow > g_cyclePeakEquity))
+          g_cyclePeakEquity = eqNow;
         SaveState();
-        Log(StringFormat("New week detected with open positions. Baseline updated to %.2f (new balance after profitable closes).", newBalance));
+        Log(StringFormat("New week detected with open positions. Weekly baseline updated to %.2f (cycle trail anchor preserved at %.2f).",
+                         newBalance, g_cycleBaselineBalance));
       }
       else
       {
@@ -847,6 +872,11 @@ string BuildApiUrl()
     url = AppendQueryParam(url, "server", server);
   if(StringFind(url, "broker=") < 0 && broker != "")
     url = AppendQueryParam(url, "broker", broker);
+  string strategyVariant = StrategyVariantId;
+  StringTrimLeft(strategyVariant);
+  StringTrimRight(strategyVariant);
+  if(StringFind(url, "strategy_variant=") < 0 && strategyVariant != "")
+    url = AppendQueryParam(url, "strategy_variant", strategyVariant);
   return url;
 }
 
@@ -1230,9 +1260,12 @@ void ApplyTrailProfileFromApi(const string json)
   g_trailProfileGeneratedUtc = "";
   g_trailProfileStartPct = 0.0;
   g_trailProfileOffsetPct = 0.0;
+  g_trailProfileStrategyId = "";
+  g_hasStrategyAdaptiveTrailProfile = false;
 
   ExtractStringValue(json, "trail_profile_source", g_trailProfileSource);
   ExtractStringValue(json, "trail_profile_generated_at_utc", g_trailProfileGeneratedUtc);
+  ExtractStringValue(json, "trail_profile_strategy_id", g_trailProfileStrategyId);
   ExtractNumberValue(json, "adaptive_trail_start_pct", g_trailProfileStartPct);
   ExtractNumberValue(json, "adaptive_trail_offset_pct", g_trailProfileOffsetPct);
 
@@ -1250,6 +1283,37 @@ void ApplyTrailProfileFromApi(const string json)
     return;
   if(!hasSum || peakSum <= 0.0)
     peakSum = avgPeak * peakCount;
+
+  string configuredVariant = StrategyVariantId;
+  StringTrimLeft(configuredVariant);
+  StringTrimRight(configuredVariant);
+  string profileVariant = g_trailProfileStrategyId;
+  StringTrimLeft(profileVariant);
+  StringTrimRight(profileVariant);
+  if(configuredVariant != "")
+  {
+    string configuredCmp = configuredVariant;
+    string profileCmp = profileVariant;
+    StringToLower(configuredCmp);
+    StringToLower(profileCmp);
+    if(profileCmp == "" || profileCmp != configuredCmp)
+    {
+      Log(StringFormat("Ignoring API adaptive trail profile (variant mismatch): configured=%s api=%s src=%s",
+                       configuredVariant,
+                       (profileVariant == "" ? "none" : profileVariant),
+                       g_trailProfileSource));
+      return;
+    }
+    string sourceCmp = g_trailProfileSource;
+    StringToLower(sourceCmp);
+    if(StringFind(sourceCmp, "fallback_100_30") >= 0)
+    {
+      Log(StringFormat("Using strategy trail fallback 100/30 for variant=%s (src=%s)",
+                       configuredVariant, g_trailProfileSource));
+      return;
+    }
+    g_hasStrategyAdaptiveTrailProfile = true;
+  }
 
   bool changed = false;
   if(MathAbs(g_adaptivePeakAvgPct - avgPeak) > 0.01)
@@ -1271,12 +1335,13 @@ void ApplyTrailProfileFromApi(const string json)
   if(changed)
   {
     SaveState();
-    Log(StringFormat("Adaptive trail profile synced from API: avg=%.2f weeks=%d start=%.2f offset=%.2f src=%s",
+    Log(StringFormat("Adaptive trail profile synced from API: avg=%.2f weeks=%d start=%.2f offset=%.2f src=%s variant=%s",
                      g_adaptivePeakAvgPct,
                      g_adaptivePeakCount,
                      g_trailProfileStartPct,
                      g_trailProfileOffsetPct,
-                     g_trailProfileSource));
+                     g_trailProfileSource,
+                     (g_trailProfileStrategyId == "" ? "none" : g_trailProfileStrategyId)));
   }
 }
 
@@ -2161,6 +2226,15 @@ double GetEffectiveTrailStartPct()
   if(!IsAdaptiveTrailEnabled())
     return EquityTrailStartPct;
 
+  string configuredVariant = StrategyVariantId;
+  StringTrimLeft(configuredVariant);
+  StringTrimRight(configuredVariant);
+  if(configuredVariant != "")
+  {
+    if(!g_hasStrategyAdaptiveTrailProfile || g_adaptivePeakCount <= 0 || g_adaptivePeakAvgPct <= 0.0)
+      return MathMax(0.0, g_strategyTrailFallbackStartPct);
+  }
+
   // No adaptive history yet: fall back to configured static trail settings.
   bool hasAdaptiveHistory = (g_adaptivePeakCount > 0 && g_adaptivePeakAvgPct > 0.0);
   if(!hasAdaptiveHistory)
@@ -2183,6 +2257,15 @@ double GetEffectiveTrailOffsetPct()
 
   if(!IsAdaptiveTrailEnabled())
     return EquityTrailOffsetPct;
+
+  string configuredVariant = StrategyVariantId;
+  StringTrimLeft(configuredVariant);
+  StringTrimRight(configuredVariant);
+  if(configuredVariant != "")
+  {
+    if(!g_hasStrategyAdaptiveTrailProfile || g_adaptivePeakCount <= 0 || g_adaptivePeakAvgPct <= 0.0)
+      return MathMax(0.0, g_strategyTrailFallbackOffsetPct);
+  }
 
   bool hasAdaptiveHistory = (g_adaptivePeakCount > 0 && g_adaptivePeakAvgPct > 0.0);
   if(!hasAdaptiveHistory)
@@ -3020,6 +3103,42 @@ bool IsMidWeekAttachBlocked(datetime nowGmt)
   return (g_eaAttachTime >= g_weekStartGmt);
 }
 
+bool IsEmergencyCryptoRecoveryWindow(datetime nowGmt)
+{
+  if(!EmergencyCryptoRecoveryMode)
+    return false;
+
+  bool dst = IsUsdDstUtc(nowGmt);
+  int offset = dst ? -4 : -5;
+  datetime etNow = nowGmt + offset * 3600;
+  MqlDateTime et;
+  TimeToStruct(etNow, et);
+
+  if(et.day_of_week != 0)
+    return false;
+  if(et.hour >= 19)
+    return false;
+
+  string limitDateEt = EmergencyCryptoRecoveryDateEt;
+  StringTrimLeft(limitDateEt);
+  StringTrimRight(limitDateEt);
+  if(limitDateEt != "")
+  {
+    string currentDateEt = FormatDateOnly(etNow);
+    if(currentDateEt == "--" || currentDateEt != limitDateEt)
+      return false;
+  }
+
+  return true;
+}
+
+bool ShouldBypassCryptoGateForSymbol(const string symbol, datetime nowGmt)
+{
+  if(!IsSundayCryptoCarrySymbol(symbol))
+    return false;
+  return IsEmergencyCryptoRecoveryWindow(nowGmt);
+}
+
 //+------------------------------------------------------------------+
 void UpdateState()
 {
@@ -3032,9 +3151,24 @@ void UpdateState()
   {
     if(g_baselineEquity <= 0.0)
       g_baselineEquity = AccountInfoDouble(ACCOUNT_BALANCE);
+    if(g_cycleBaselineBalance <= 0.0)
+    {
+      g_cycleBaselineBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+      double eqNow = AccountInfoDouble(ACCOUNT_EQUITY);
+      if(eqNow > 0.0)
+        g_cyclePeakEquity = eqNow;
+      SaveState();
+      Log(StringFormat("Cycle trail baseline initialized on attach: %.2f", g_cycleBaselineBalance));
+    }
 
     if(g_apiOk && g_tradingAllowed)
     {
+      if(g_closeRequested)
+      {
+        g_closeRequested = false;
+        SaveState();
+        Log("Cleared stale close request on attach. Resuming add/reconcile logic.");
+      }
       if(g_state != STATE_ACTIVE)
       {
         g_state = STATE_ACTIVE;
@@ -3139,6 +3273,8 @@ void ManageBasket()
       g_lockedProfitPct = 0.0;
       g_trailingActive = false;
       g_baselineEquity = 0.0;
+      g_cycleBaselineBalance = 0.0;
+      g_cyclePeakEquity = 0.0;
       g_state = STATE_CLOSED;
       SaveState();
       Log("All positions closed. State -> CLOSED.");
@@ -3149,9 +3285,21 @@ void ManageBasket()
   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
   if(g_baselineEquity <= 0.0)
     g_baselineEquity = AccountInfoDouble(ACCOUNT_BALANCE);
+  if(g_cycleBaselineBalance <= 0.0)
+  {
+    g_cycleBaselineBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+    if(equity > 0.0)
+      g_cyclePeakEquity = equity;
+    SaveState();
+    Log(StringFormat("Cycle trail baseline initialized: %.2f", g_cycleBaselineBalance));
+  }
+  if(equity > 0.0 && (g_cyclePeakEquity <= 0.0 || equity > g_cyclePeakEquity))
+    g_cyclePeakEquity = equity;
 
-  double profitPct = (equity - g_baselineEquity) / g_baselineEquity * 100.0;
+  double profitPct = (g_baselineEquity > 0.0 ? (equity - g_baselineEquity) / g_baselineEquity * 100.0 : 0.0);
   double profitUsd = equity - g_baselineEquity;
+  double cycleProfitPct = (g_cycleBaselineBalance > 0.0 ? (equity - g_cycleBaselineBalance) / g_cycleBaselineBalance * 100.0 : 0.0);
+  double cycleProfitUsd = equity - g_cycleBaselineBalance;
   bool wasTrailing = g_trailingActive;
   bool basketTpEnabled = IsBasketTakeProfitEnabled();
   double basketTpPct = GetEffectiveBasketTakeProfitPct();
@@ -3196,13 +3344,16 @@ void ManageBasket()
     return;
   }
 
-  if(trailEnabled && trailStartPct > 0.0 && profitPct >= trailStartPct)
+  if(trailEnabled && trailStartPct > 0.0 && cycleProfitPct >= trailStartPct)
   {
     g_trailingActive = true;
     if(!wasTrailing)
-      Log(StringFormat("Equity trail activated at %.2f%%", profitPct));
+      Log(StringFormat("Equity trail activated at %.2f%% (cycle baseline %.2f)",
+                       cycleProfitPct, g_cycleBaselineBalance));
 
-    double peakProfitPct = (g_weekPeakEquity - g_baselineEquity) / g_baselineEquity * 100.0;
+    double peakProfitPct = 0.0;
+    if(g_cyclePeakEquity > 0.0 && g_cycleBaselineBalance > 0.0)
+      peakProfitPct = (g_cyclePeakEquity - g_cycleBaselineBalance) / g_cycleBaselineBalance * 100.0;
     double newLocked = peakProfitPct - trailOffsetPct;
     if(newLocked > g_lockedProfitPct)
     {
@@ -3217,22 +3368,13 @@ void ManageBasket()
     g_lockedProfitPct = 0.0;
   }
 
-  if(g_trailingActive && g_lockedProfitPct > 0.0 && profitPct <= g_lockedProfitPct)
+  if(g_trailingActive && g_lockedProfitPct > 0.0 && cycleProfitPct <= g_lockedProfitPct)
   {
     g_closeRequested = true;
     SaveState();
-    Log(StringFormat("Equity trail hit %.2f%%. Closing winning positions, keeping losers for Friday reconcile.", g_lockedProfitPct));
-    CloseWinningPositions("trail_lock");
-
-    // If losers remain after closing winners, clear close flag so they can be managed
-    if(HasOpenPositions())
-    {
-      g_closeRequested = false;
-      g_trailingActive = false;
-      g_lockedProfitPct = 0.0;
-      SaveState();
-      Log("Losers remain after trail lock. Continuing management until Friday reconcile.");
-    }
+    Log(StringFormat("Equity trail hit %.2f%% (cycle pnl=%.2f%% / %.2f USD). Closing all positions for cycle reset.",
+                     g_lockedProfitPct, cycleProfitPct, cycleProfitUsd));
+    CloseAllPositions("trail_lock");
   }
 }
 //+------------------------------------------------------------------+
@@ -3241,7 +3383,18 @@ void TryAddPositions()
   if(ManualMode)
     return;
   if(!g_apiOk || !g_tradingAllowed || g_closeRequested)
+  {
+    datetime nowWarn = TimeCurrent();
+    if(g_lastTryAddBlockedWarn == 0 || (nowWarn - g_lastTryAddBlockedWarn) >= 60)
+    {
+      Log(StringFormat("TryAddPositions skipped: api_ok=%s trading_allowed=%s close_requested=%s",
+                       g_apiOk ? "true" : "false",
+                       g_tradingAllowed ? "true" : "false",
+                       g_closeRequested ? "true" : "false"));
+      g_lastTryAddBlockedWarn = nowWarn;
+    }
     return;
+  }
   bool accountStructureBlocked = false;
   if(!IsAccountStructureAllowed())
   {
@@ -3286,6 +3439,8 @@ void TryAddPositions()
 
   datetime nowGmt = TimeGMT();
   bool midWeekAttachBlocked = IsMidWeekAttachBlocked(nowGmt);
+  bool emergencyCryptoRecoveryActive = IsEmergencyCryptoRecoveryWindow(nowGmt);
+  bool emergencyCryptoOnlyFlow = false;
 
   // Friday winner-close: when new COT data arrives (report_date changes), close all
   // profitable positions before reconciling losers against the new signal set.
@@ -3376,38 +3531,54 @@ void TryAddPositions()
     }
 
     datetime nowWarn = TimeCurrent();
-    if(g_lastRolloverHoldWarn == 0 || (nowWarn - g_lastRolloverHoldWarn) >= 300)
+    bool shouldLogHoldWarn = (g_lastRolloverHoldWarn == 0 || (nowWarn - g_lastRolloverHoldWarn) >= 300);
+    if(shouldLogHoldWarn)
     {
       Log("Post-Friday rollover hold active. Skipping new entries until Sunday week rollover.");
       g_lastRolloverHoldWarn = nowWarn;
     }
-    return;
+    if(!emergencyCryptoRecoveryActive)
+      return;
+
+    emergencyCryptoOnlyFlow = true;
+    if(shouldLogHoldWarn)
+      Log("Emergency crypto recovery active: bypassing post-Friday rollover hold for BTC/ETH only.");
   }
 
   if(IsFiveersMode() && HasOpenPriorWeekNonSundayCryptoPositions(g_weekStartGmt))
   {
     ClosePriorWeekNonSundayCryptoPositions("sunday_rollover_reopen", g_weekStartGmt);
-    if(HasOpenPriorWeekNonSundayCryptoPositions(g_weekStartGmt))
+    bool cleanupPending = HasOpenPriorWeekNonSundayCryptoPositions(g_weekStartGmt);
+    if(cleanupPending)
     {
       datetime nowWarn = TimeCurrent();
-      if(g_lastRolloverHoldWarn == 0 || (nowWarn - g_lastRolloverHoldWarn) >= 60)
+      bool shouldLogCleanupWarn = (g_lastRolloverHoldWarn == 0 || (nowWarn - g_lastRolloverHoldWarn) >= 60);
+      if(shouldLogCleanupWarn)
       {
         Log("5ERS Sunday rollover cleanup pending: prior-week non-crypto positions still open. New entries paused until they close.");
         g_lastRolloverHoldWarn = nowWarn;
       }
-      return;
+      if(!emergencyCryptoRecoveryActive)
+        return;
+
+      emergencyCryptoOnlyFlow = true;
+      if(shouldLogCleanupWarn)
+        Log("Emergency crypto recovery active: continuing BTC/ETH-only evaluation while 5ERS non-crypto cleanup is pending.");
     }
-    Log("5ERS Sunday rollover cleanup complete: prior-week non-crypto carry closed. Evaluating fresh entries.");
+    else
+    {
+      Log("5ERS Sunday rollover cleanup complete: prior-week non-crypto carry closed. Evaluating fresh entries.");
+    }
   }
 
   // Mid-week attach should block only new entries, not Friday close/reconcile.
-  if(midWeekAttachBlocked)
+  if(midWeekAttachBlocked && !emergencyCryptoRecoveryActive)
     return;
 
   if(accountStructureBlocked)
     return;
 
-  if(!universeReady)
+  if(!universeReady && !emergencyCryptoRecoveryActive)
     return;
 
   double totalLots = GetTotalBasketLots();
@@ -3416,6 +3587,8 @@ void TryAddPositions()
 
   Log(StringFormat("TryAddPositions start: %d signals in queue, %d positions open",
                    ArraySize(g_brokerSymbols), openPositions));
+  if(emergencyCryptoRecoveryActive)
+    Log("Emergency crypto recovery mode active: BTC/ETH-only re-entry window (pre-7pm ET Sunday).");
 
   if(openPositions >= MaxOpenPositions)
   {
@@ -3440,11 +3613,15 @@ void TryAddPositions()
   {
     string symbol = g_brokerSymbols[i];
     int direction = g_directions[i];
+    bool emergencyCryptoBypass = (emergencyCryptoRecoveryActive && ShouldBypassCryptoGateForSymbol(symbol, nowGmt));
     if(symbol == "" || direction == 0)
     {
       Log(StringFormat("TryAdd %d SKIP: empty symbol or zero direction", i));
       continue;
     }
+
+    if((emergencyCryptoOnlyFlow || emergencyCryptoRecoveryActive) && !IsSundayCryptoCarrySymbol(symbol))
+      continue;
 
     string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
     string model = NormalizeModelName(i < ArraySize(g_models) ? g_models[i] : "blended");
@@ -3514,7 +3691,7 @@ void TryAddPositions()
 
     Log(StringFormat("TryAdd %d: no position exists, will attempt to open", i));
 
-    if(PreventMidWeekAttach && !IsFreshEntryWindow(nowGmt))
+    if(PreventMidWeekAttach && !IsFreshEntryWindow(nowGmt) && !emergencyCryptoBypass)
     {
       AddSkipReason("entry_window_closed");
       continue;
@@ -3522,11 +3699,13 @@ void TryAddPositions()
 
     string normalizedClass = assetClass;
     StringToLower(normalizedClass);
-    if(normalizedClass == "crypto" && nowGmt < cryptoStartGmt)
+    if(normalizedClass == "crypto" && nowGmt < cryptoStartGmt && !emergencyCryptoBypass)
     {
       AddSkipReason("crypto_not_open");
       continue;
     }
+    if(emergencyCryptoBypass && normalizedClass == "crypto")
+      Log(StringFormat("TryAdd %d emergency bypass: %s allowed before normal crypto gate.", i, symbol));
     if(!IsTradableSymbol(symbol))
     {
       AddSkipReason("not_tradable");
@@ -4521,6 +4700,8 @@ datetime GetWeekStartGmt(datetime nowGmt)
   sundayStruct.min = 0;
   sundayStruct.sec = 0;
   datetime sundayEt = StructToTime(sundayStruct);
+  if(etNow < sundayEt)
+    sundayEt -= 7 * 86400;
 
   bool dstLocal = IsUsdDstLocal(sundayStruct.year, sundayStruct.mon,
                                 sundayStruct.day, sundayStruct.hour);
@@ -4640,6 +4821,8 @@ int NthSunday(int year, int mon, int nth)
 void LoadState()
 {
   g_postFridayRolloverHold = false;
+  g_hasStrategyAdaptiveTrailProfile = false;
+  g_trailProfileStrategyId = "";
   g_adaptivePeakAvgPct = 0.0;
   g_lastWeekPeakPct = 0.0;
   g_adaptivePeakSumPct = 0.0;
@@ -4748,6 +4931,10 @@ void LoadState()
     {
       g_state = (EAState)(int)GlobalVariableGet(ScopeKey(GV_STATE));
       g_baselineEquity = GlobalVariableGet(ScopeKey(GV_BASELINE));
+      if(GlobalVariableCheck(ScopeKey(GV_CYCLE_BASELINE)))
+        g_cycleBaselineBalance = GlobalVariableGet(ScopeKey(GV_CYCLE_BASELINE));
+      if(GlobalVariableCheck(ScopeKey(GV_CYCLE_PEAK)))
+        g_cyclePeakEquity = GlobalVariableGet(ScopeKey(GV_CYCLE_PEAK));
       g_lockedProfitPct = GlobalVariableGet(ScopeKey(GV_LOCKED));
       g_trailingActive = (GlobalVariableGet(ScopeKey(GV_TRAIL)) > 0.5);
       g_closeRequested = (GlobalVariableGet(ScopeKey(GV_CLOSE)) > 0.5);
@@ -4764,8 +4951,6 @@ void LoadState()
       {
         Log(StringFormat("Baseline sanity reset %.2f -> %.2f", g_baselineEquity, balanceNow));
         g_baselineEquity = balanceNow;
-        g_lockedProfitPct = 0.0;
-        g_trailingActive = false;
         SaveState();
       }
       return;
@@ -4777,6 +4962,8 @@ void LoadState()
   g_lockedProfitPct = 0.0;
   g_trailingActive = false;
   g_closeRequested = false;
+  g_cycleBaselineBalance = 0.0;
+  g_cyclePeakEquity = 0.0;
   g_weekPeakEquity = 0.0;
   g_maxDrawdownPct = 0.0;
   if(GlobalVariableCheck(ScopeKey(GV_LAST_PUSH)))
@@ -4790,6 +4977,8 @@ void SaveState()
   GlobalVariableSet(ScopeKey(GV_WEEK_START), (double)g_weekStartGmt);
   GlobalVariableSet(ScopeKey(GV_STATE), (double)g_state);
   GlobalVariableSet(ScopeKey(GV_BASELINE), g_baselineEquity);
+  GlobalVariableSet(ScopeKey(GV_CYCLE_BASELINE), g_cycleBaselineBalance);
+  GlobalVariableSet(ScopeKey(GV_CYCLE_PEAK), g_cyclePeakEquity);
   GlobalVariableSet(ScopeKey(GV_LOCKED), g_lockedProfitPct);
   GlobalVariableSet(ScopeKey(GV_TRAIL), g_trailingActive ? 1.0 : 0.0);
   GlobalVariableSet(ScopeKey(GV_CLOSE), g_closeRequested ? 1.0 : 0.0);
@@ -4871,9 +5060,13 @@ void ResetState()
   g_trailingActive = false;
   g_closeRequested = false;
   g_postFridayRolloverHold = false;
+  g_cycleBaselineBalance = 0.0;
+  g_cyclePeakEquity = 0.0;
   g_weekPeakEquity = 0.0;
   g_maxDrawdownPct = 0.0;
   g_adaptivePeakAvgPct = 0.0;
+  g_hasStrategyAdaptiveTrailProfile = false;
+  g_trailProfileStrategyId = "";
   g_lastWeekPeakPct = 0.0;
   g_adaptivePeakSumPct = 0.0;
   g_adaptivePeakCount = 0;
@@ -4892,6 +5085,8 @@ void ResetState()
   GlobalVariableDel(ScopeKey(GV_WEEK_START));
   GlobalVariableDel(ScopeKey(GV_STATE));
   GlobalVariableDel(ScopeKey(GV_BASELINE));
+  GlobalVariableDel(ScopeKey(GV_CYCLE_BASELINE));
+  GlobalVariableDel(ScopeKey(GV_CYCLE_PEAK));
   GlobalVariableDel(ScopeKey(GV_LOCKED));
   GlobalVariableDel(ScopeKey(GV_TRAIL));
   GlobalVariableDel(ScopeKey(GV_CLOSE));
@@ -5337,10 +5532,15 @@ void UpdateDashboard()
   string trailLine = "Trail off";
   if(IsEquityTrailEnabled())
   {
+    string configuredVariantForDash = StrategyVariantId;
+    StringTrimLeft(configuredVariantForDash);
+    StringTrimRight(configuredVariantForDash);
     trailLine = StringFormat("Trail %.1f/%.1f", GetEffectiveTrailStartPct(), GetEffectiveTrailOffsetPct());
     if(IsAdaptiveTrailEnabled())
     {
-      if(g_adaptivePeakCount > 0 && g_adaptivePeakAvgPct > 0.0)
+      if(configuredVariantForDash != "" && !g_hasStrategyAdaptiveTrailProfile)
+        trailLine += " avg fallback";
+      else if(g_adaptivePeakCount > 0 && g_adaptivePeakAvgPct > 0.0)
         trailLine += StringFormat(" avg %.1f", g_adaptivePeakAvgPct);
       else
         trailLine += " avg n/a";
@@ -6054,6 +6254,15 @@ void UpdateDrawdown()
     return;
 
   bool changed = false;
+  bool hasEaPositions = HasOpenPositions();
+  if(hasEaPositions && g_cycleBaselineBalance > 0.0)
+  {
+    if(g_cyclePeakEquity <= 0.0 || equity > g_cyclePeakEquity)
+    {
+      g_cyclePeakEquity = equity;
+      changed = true;
+    }
+  }
   if(g_weekPeakEquity <= 0.0)
   {
     g_weekPeakEquity = equity;

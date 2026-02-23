@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const assetParam = url.searchParams.get("asset");
+  const strategyVariantId = url.searchParams.get("strategy_variant");
   const accountId =
     url.searchParams.get("account_id") ??
     request.headers.get("x-mt5-account-id") ??
@@ -48,6 +49,7 @@ export async function GET(request: Request) {
 
   const payload = await buildBasketSignals({
     assetClass: assetParam && assetParam !== "all" ? getAssetClass(assetParam) : "all",
+    strategyVariantId,
   });
   return NextResponse.json(payload, { headers: { "Cache-Control": "no-store" } });
 }
