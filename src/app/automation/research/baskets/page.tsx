@@ -28,13 +28,13 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
   const getBasketSummary = unstable_cache(
     async () =>
       buildPerModelBasketSummary({
-        timeframe: "M1",
+        timeframe: "H1",
         limitWeeks: 8,
         includeCurrentWeek: false,
         trailStartPct: 10,
         trailOffsetPct: 5,
       }),
-    ["research-baskets-m1-8w-10-5"],
+    ["research-baskets-h1-8w-10-5"],
     { revalidate: 900 },
   );
   const summary = await getBasketSummary();
@@ -106,7 +106,7 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
               <p className="mt-2 text-sm text-[color:var(--muted)]">
                 Each basket is simulated separately using trail start{" "}
                 {summary.assumptions.trail_start_pct.toFixed(0)}% and trail offset{" "}
-                {summary.assumptions.trail_offset_pct.toFixed(0)}% on minute data.
+                {summary.assumptions.trail_offset_pct.toFixed(0)}% on hourly data.
               </p>
             </div>
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">

@@ -592,7 +592,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         groups,
         trailStartPct: 10,
         trailOffsetPct: 5,
-        timeframe: "M1",
+        timeframe: "H1",
       }),
     );
 

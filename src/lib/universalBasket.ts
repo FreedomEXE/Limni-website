@@ -470,7 +470,7 @@ export async function buildUniversalBasketSummary(options?: {
   const trailOffsetPct = options?.trailOffsetPct ?? 10;
   const includeCurrentWeek = options?.includeCurrentWeek ?? false;
   const limitWeeks = options?.limitWeeks ?? 6;
-  const timeframe = options?.timeframe ?? "M1";
+  const timeframe = options?.timeframe ?? "H1";
   const nowIso = DateTime.utc().toISO() ?? new Date().toISOString();
   const currentWeekOpenUtc = getWeekOpenUtc();
 
@@ -596,7 +596,7 @@ export async function simulateTrailingForGroupsFromRows(options: {
 }) {
   const trailStartPct = options.trailStartPct ?? 10;
   const trailOffsetPct = options.trailOffsetPct ?? 5;
-  const timeframe = options.timeframe ?? "M1";
+  const timeframe = options.timeframe ?? "H1";
   const result: Record<string, TrailingSimulationSummary> = {};
   const legsByGroup = new Map<string, UniversalLeg[]>();
   const uniqueSymbols = new Map<
@@ -673,7 +673,7 @@ export async function buildPerModelBasketSummary(options?: {
   const trailOffsetPct = options?.trailOffsetPct ?? 5;
   const includeCurrentWeek = options?.includeCurrentWeek ?? false;
   const limitWeeks = options?.limitWeeks ?? 8;
-  const timeframe = options?.timeframe ?? "M1";
+  const timeframe = options?.timeframe ?? "H1";
   const nowIso = DateTime.utc().toISO() ?? new Date().toISOString();
   const currentWeekOpenUtc = getWeekOpenUtc();
   const models: PerformanceModel[] = [

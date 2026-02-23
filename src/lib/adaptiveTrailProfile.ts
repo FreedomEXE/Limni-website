@@ -43,6 +43,13 @@ function readEnvNumber(name: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function readAdaptiveTrailSourceTimeframe(): "M1" | "H1" {
+  const raw = (process.env.TRAIL_ADAPTIVE_SOURCE_TIMEFRAME ?? process.env.TRUTH_TIMEFRAME ?? "H1")
+    .trim()
+    .toUpperCase();
+  return raw === "M1" ? "M1" : "H1";
+}
+
 function buildFallbackProfile(options?: {
   strategyVariantId?: string | null;
   source?: string;
@@ -84,7 +91,8 @@ async function buildUniversalV1AdaptiveTrailProfile(strategyVariantId: string): 
       Math.round(readEnvNumber("TRAIL_ADAPTIVE_MAX_WEEKS") ?? 260),
     );
     const summary = await buildUniversalBasketSummary({
-      timeframe: "M1",
+      // Use the same timeframe basis as the validated universal deep-analysis peaks.
+      timeframe: readAdaptiveTrailSourceTimeframe(),
       includeCurrentWeek: false,
       limitWeeks,
     });

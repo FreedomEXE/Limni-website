@@ -5536,6 +5536,8 @@ void UpdateDashboard()
     StringTrimLeft(configuredVariantForDash);
     StringTrimRight(configuredVariantForDash);
     trailLine = StringFormat("Trail %.1f/%.1f", GetEffectiveTrailStartPct(), GetEffectiveTrailOffsetPct());
+    if(configuredVariantForDash != "")
+      trailLine += " v=" + CompactText(configuredVariantForDash, 12);
     if(IsAdaptiveTrailEnabled())
     {
       if(configuredVariantForDash != "" && !g_hasStrategyAdaptiveTrailProfile)

@@ -26,11 +26,11 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
   const getUniversalSummary = unstable_cache(
     async () =>
       buildUniversalBasketSummary({
-        timeframe: "M1",
+        timeframe: "H1",
         limitWeeks: 8,
         includeCurrentWeek: false,
       }),
-    ["research-universal-m1-8w"],
+    ["research-universal-h1-8w"],
     { revalidate: 900 },
   );
   const universalSummary = await getUniversalSummary();
@@ -80,7 +80,7 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
                 Universal Basket (All Models Combined)
               </h2>
               <p className="mt-2 text-sm text-[color:var(--muted)]">
-                Minute-level simulation with trail start{" "}
+                Hourly simulation with trail start{" "}
                 {universalSummary.assumptions.trail_start_pct.toFixed(0)}% and trail offset{" "}
                 {universalSummary.assumptions.trail_offset_pct.toFixed(0)}%.
               </p>
