@@ -460,36 +460,60 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
                         {(row.openLegs ?? []).length === 0 ? (
                           <div className="text-xs text-[color:var(--muted)]">No open legs.</div>
                         ) : (
-                          (row.openLegs ?? []).map((leg) => (
-                            <div
-                              key={leg.id}
-                              className="grid grid-cols-[1fr_0.7fr_0.9fr_0.9fr] gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs"
-                            >
-                              <div className="truncate text-[var(--foreground)]/90">
-                                {leg.model ? `${leg.model} • ` : ""}
-                                {String(leg.basket ?? "live")}
-                              </div>
-                              <div
-                                className={
-                                  String(leg.side).toUpperCase() === "BUY"
-                                    ? "text-emerald-700"
-                                    : "text-rose-700"
-                                }
-                              >
-                                {String(leg.side).toUpperCase()}
-                              </div>
-                              <div className="text-right">
-                                {fmt(Number(leg.lots ?? 0))} {sizeUnitLabel}
-                              </div>
-                              <div
-                                className={`text-right ${
-                                  Number(leg.pnl ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"
-                                }`}
-                              >
-                                {Number(leg.pnl ?? 0).toFixed(2)}
-                              </div>
+                          <>
+                            <div className="grid grid-cols-[1fr_0.7fr_0.9fr_0.9fr_0.7fr_0.7fr] gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-[color:var(--muted)]">
+                              <div>Model</div>
+                              <div>Side</div>
+                              <div className="text-right">Size</div>
+                              <div className="text-right">P&L</div>
+                              <div className="text-right">Swap</div>
+                              <div className="text-right">Comm</div>
                             </div>
-                          ))
+                            {(row.openLegs ?? []).map((leg) => (
+                              <div
+                                key={leg.id}
+                                className="grid grid-cols-[1fr_0.7fr_0.9fr_0.9fr_0.7fr_0.7fr] gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs"
+                              >
+                                <div className="truncate text-[var(--foreground)]/90">
+                                  {leg.model ? `${leg.model} • ` : ""}
+                                  {String(leg.basket ?? "live")}
+                                </div>
+                                <div
+                                  className={
+                                    String(leg.side).toUpperCase() === "BUY"
+                                      ? "text-emerald-700"
+                                      : "text-rose-700"
+                                  }
+                                >
+                                  {String(leg.side).toUpperCase()}
+                                </div>
+                                <div className="text-right">
+                                  {fmt(Number(leg.lots ?? 0))} {sizeUnitLabel}
+                                </div>
+                                <div
+                                  className={`text-right ${
+                                    Number(leg.pnl ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"
+                                  }`}
+                                >
+                                  {Number(leg.pnl ?? 0).toFixed(2)}
+                                </div>
+                                <div
+                                  className={`text-right text-[color:var(--muted)] ${
+                                    Number(leg.swap ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"
+                                  }`}
+                                >
+                                  {Number(leg.swap ?? 0).toFixed(2)}
+                                </div>
+                                <div
+                                  className={`text-right text-[color:var(--muted)] ${
+                                    Number(leg.commission ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"
+                                  }`}
+                                >
+                                  {Number(leg.commission ?? 0).toFixed(2)}
+                                </div>
+                              </div>
+                            ))}
+                          </>
                         )}
                       </div>
                     </div>
@@ -506,14 +530,16 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
             { key: "direction", label: "Direction" },
             { key: "size", label: "Size" },
             { key: "metric", label: metricLabel },
+            { key: "swap", label: "Swap" },
+            { key: "commission", label: "Comm" },
             { key: "legs", label: "Legs" },
           ]}
           rows={closedRows}
           emptyState="No closed positions for this week."
           maxHeight={520}
-          gridClassName={rowGridCols}
+          gridClassName="grid-cols-[1.2fr_0.9fr_0.9fr_0.9fr_0.7fr_0.7fr_0.7fr]"
           renderRow={(row) => (
-            <div className={`grid ${rowGridCols} gap-3`}>
+            <div className="grid grid-cols-[1.2fr_0.9fr_0.9fr_0.9fr_0.7fr_0.7fr_0.7fr] gap-3">
               <span className="font-semibold">{row.symbol}</span>
               <span
                 className={
@@ -530,6 +556,20 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
               <span className={Number(row.net ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"}>
                 {Number(row.net ?? 0) >= 0 ? "+" : ""}
                 {Number(row.net ?? 0).toFixed(2)}
+              </span>
+              <span
+                className={`text-xs ${
+                  Number(row.swap ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"
+                }`}
+              >
+                {Number(row.swap ?? 0).toFixed(2)}
+              </span>
+              <span
+                className={`text-xs ${
+                  Number(row.commission ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"
+                }`}
+              >
+                {Number(row.commission ?? 0).toFixed(2)}
               </span>
               <span className="text-xs text-[color:var(--muted)]">{row.legs?.length ?? 0} legs</span>
             </div>

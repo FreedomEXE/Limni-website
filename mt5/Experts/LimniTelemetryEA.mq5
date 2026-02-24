@@ -570,6 +570,8 @@ datetime GetWeekStartGmt(datetime nowGmt)
   sundayStruct.min = 0;
   sundayStruct.sec = 0;
   datetime sundayEt = StructToTime(sundayStruct);
+  if(etNow < sundayEt)
+    sundayEt -= 7 * 86400;
   bool dstLocal = IsUsdDstLocal(sundayStruct.year, sundayStruct.mon, sundayStruct.day, sundayStruct.hour);
   int localOffset = dstLocal ? -4 : -5;
   return sundayEt - localOffset * 3600;

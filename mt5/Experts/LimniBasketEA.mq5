@@ -80,6 +80,17 @@ input double EightcapEmergencyStopPct = 30.0;
 input double FiveersBasketTakeProfitPct = 6.0;
 input double FxifyBasketTakeProfitPct = 5.0;
 input double FiveersBasketStopLossPct = 3.0;
+input bool EnableFiveersSwapGuard = true;
+input string FiveersSwapGuardSymbols = "XTIUSD,WTIUSD,USOUSD,XAUUSD,XAGUSD,BTCUSD,ETHUSD,SP500,NAS100,JPN225";
+input bool FiveersSwapGuardRequireBothSidesNegative = true;
+input int FiveersSwapNoNewMinutesBeforeRollover = 180;
+input int FiveersSwapFlatMinutesBeforeRollover = 30;
+input bool EnableFiveersDailyFlatReopen = false;
+input int FiveersDailyCloseHourEt = 16;
+input int FiveersDailyCloseMinuteEt = 30;
+input int FiveersDailyReopenHourEt = 19;
+input int FiveersDailyReopenMinuteEt = 0;
+input double FiveersDailyTargetPct = 6.0;
 input bool EnforceStopLoss = true;
 input double StopLossRiskPct = 1.0;
 input double MaxStopLossRiskPct = 2.0;
@@ -296,6 +307,20 @@ double g_reconstructionWeekRealized = 0.0;
 bool g_reconstructionAttempted = false;
 datetime g_basketTpArmedAt = 0;
 bool g_basketTpGraceLogged = false;
+datetime g_lastSwapGuardWarn = 0;
+double g_weekStartBalance = 0.0;
+datetime g_lastDailyClose = 0;
+datetime g_lastDailyReopen = 0;
+bool g_dailyFlatActive = false;
+
+struct ClosedPositionCache
+{
+  string symbol;
+  int direction;
+  string model;
+  string assetClass;
+};
+ClosedPositionCache g_dailyClosedPositions[];
 
 CTrade g_trade;
 
@@ -510,6 +535,20 @@ bool BrokerMatchesHints(const string hintsCsv);
 bool IsFiveersMode();
 bool IsEightcapMode();
 bool IsFxifyMode();
+bool IsSwapGuardEnabled();
+bool IsFiveersSwapGuardSymbol(const string symbol);
+bool IsFiveersPunitiveTwoWaySwap(const string symbol);
+bool IsSymbolListedInCsv(const string csv, const string symbol);
+datetime GetNextNyRolloverGmt(datetime nowGmt);
+int SecondsToNextNyRollover(datetime nowGmt);
+bool EnforceFiveersSwapFlatWindow(datetime nowGmt);
+bool IsDailyFlatReopenEnabled();
+string GetAssetClassForSymbol(const string symbol);
+datetime ConvertEtToGmt(int hourEt, int minuteEt, datetime nowGmt);
+bool ShouldExecuteDailyClose(datetime nowGmt);
+bool ExecuteDailyClose(datetime nowGmt);
+bool ShouldExecuteDailyReopen(datetime nowGmt);
+bool ExecuteDailyReopen(datetime nowGmt);
 bool IsSundayCryptoCarrySymbol(const string symbol);
 bool IsBasketTakeProfitEnabled();
 double GetEffectiveBasketTakeProfitPct();
@@ -587,6 +626,14 @@ int OnInit()
   Log(StringFormat("Per-order stop loss: %s",
                    ShouldEnforcePerOrderStopLoss() ? "on (5ERS required)" : "off"));
   Log(StringFormat("Account structure: %s", MarginModeToString()));
+  if(IsSwapGuardEnabled())
+  {
+    Log(StringFormat("5ERS swap guard enabled: symbols=%s | no-new=%d min | flat=%d min | require_two_way_negative=%s",
+                     FiveersSwapGuardSymbols,
+                     FiveersSwapNoNewMinutesBeforeRollover,
+                     FiveersSwapFlatMinutesBeforeRollover,
+                     FiveersSwapGuardRequireBothSidesNegative ? "true" : "false"));
+  }
 
   BuildAllowedKeys();
   LogBrokerCapability();
@@ -674,7 +721,15 @@ void OnTimer()
     g_weekStartGmt = newWeekStart;
     g_postFridayRolloverHold = false;
     g_lastRolloverHoldWarn = 0;
+    g_lastSwapGuardWarn = 0;
     ResetLoserAddCounts();
+
+    // Reset daily flat/reopen state on new week
+    g_weekStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+    g_lastDailyClose = 0;
+    g_lastDailyReopen = 0;
+    g_dailyFlatActive = false;
+    ArrayResize(g_dailyClosedPositions, 0);
 
     // BTC/ETH weekly carry closes on Sunday rollover, not Friday report refresh.
     // In 5ERS mode, any prior-week non-crypto leftovers (e.g. indices/commodities
@@ -734,6 +789,16 @@ void OnTimer()
   PollApiIfDue();
   UpdateState();
   ManageBasket();
+
+  // 5ers daily flat/reopen cycle
+  if(IsDailyFlatReopenEnabled())
+  {
+    if(ShouldExecuteDailyClose(nowGmt))
+      ExecuteDailyClose(nowGmt);
+    else if(ShouldExecuteDailyReopen(nowGmt))
+      ExecuteDailyReopen(nowGmt);
+  }
+
   UpdateDrawdown();
   if(g_state == STATE_ACTIVE)
     TryAddPositions();
@@ -2063,6 +2128,380 @@ bool IsFxifyMode()
   return BrokerMatchesHints(FxifyBrokerHints);
 }
 
+bool IsSwapGuardEnabled()
+{
+  return (IsFiveersMode() && EnableFiveersSwapGuard);
+}
+
+bool IsFiveersPunitiveTwoWaySwap(const string symbol)
+{
+  if(symbol == "")
+    return false;
+
+  double swapLong = SymbolInfoDouble(symbol, SYMBOL_SWAP_LONG);
+  double swapShort = SymbolInfoDouble(symbol, SYMBOL_SWAP_SHORT);
+  if(!MathIsValidNumber(swapLong) || !MathIsValidNumber(swapShort))
+    return false;
+
+  return (swapLong < 0.0 && swapShort < 0.0);
+}
+
+bool IsSymbolListedInCsv(const string csv, const string symbol)
+{
+  string target = NormalizeSymbolKey(symbol);
+  if(target == "")
+    return false;
+
+  int start = 0;
+  while(start < StringLen(csv))
+  {
+    int comma = StringFind(csv, ",", start);
+    if(comma < 0)
+      comma = StringLen(csv);
+    string token = StringSubstr(csv, start, comma - start);
+    StringTrimLeft(token);
+    StringTrimRight(token);
+    string tokenKey = NormalizeSymbolKey(token);
+    if(tokenKey != "")
+    {
+      if(target == tokenKey || StringFind(target, tokenKey) >= 0 || StringFind(tokenKey, target) >= 0)
+        return true;
+    }
+    start = comma + 1;
+  }
+
+  return false;
+}
+
+bool IsFiveersSwapGuardSymbol(const string symbol)
+{
+  if(!IsSwapGuardEnabled())
+    return false;
+
+  string csv = FiveersSwapGuardSymbols;
+  StringTrimLeft(csv);
+  StringTrimRight(csv);
+  bool listed = (csv == "" || IsSymbolListedInCsv(csv, symbol));
+  if(!listed)
+    return false;
+
+  if(FiveersSwapGuardRequireBothSidesNegative && !IsFiveersPunitiveTwoWaySwap(symbol))
+    return false;
+
+  return true;
+}
+
+datetime GetNextNyRolloverGmt(datetime nowGmt)
+{
+  bool dstNow = IsUsdDstUtc(nowGmt);
+  int nowOffset = dstNow ? -4 : -5;
+  datetime etNow = nowGmt + nowOffset * 3600;
+
+  MqlDateTime etStruct;
+  TimeToStruct(etNow, etStruct);
+  etStruct.hour = 17;
+  etStruct.min = 0;
+  etStruct.sec = 0;
+  datetime rolloverEt = StructToTime(etStruct);
+  if(etNow >= rolloverEt)
+    rolloverEt += 86400;
+
+  MqlDateTime rolloverStruct;
+  TimeToStruct(rolloverEt, rolloverStruct);
+  bool dstRollover = IsUsdDstLocal(rolloverStruct.year, rolloverStruct.mon, rolloverStruct.day, rolloverStruct.hour);
+  int rolloverOffset = dstRollover ? -4 : -5;
+  datetime rolloverUtc = rolloverEt - rolloverOffset * 3600;
+  return rolloverUtc;
+}
+
+int SecondsToNextNyRollover(datetime nowGmt)
+{
+  datetime rolloverUtc = GetNextNyRolloverGmt(nowGmt);
+  if(rolloverUtc <= 0)
+    return -1;
+  int seconds = (int)(rolloverUtc - nowGmt);
+  if(seconds < 0)
+    return 0;
+  return seconds;
+}
+
+bool EnforceFiveersSwapFlatWindow(datetime nowGmt)
+{
+  if(!IsSwapGuardEnabled())
+    return false;
+
+  int flatMinutes = FiveersSwapFlatMinutesBeforeRollover;
+  if(flatMinutes <= 0)
+    return false;
+
+  int secondsToRollover = SecondsToNextNyRollover(nowGmt);
+  if(secondsToRollover < 0 || secondsToRollover > flatMinutes * 60)
+    return false;
+
+  bool closedAny = false;
+  int total = PositionsTotal();
+  for(int i = total - 1; i >= 0; i--)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    if(!IsFiveersSwapGuardSymbol(symbol))
+      continue;
+
+    if(!ClosePositionByTicket(ticket, "swap_guard_close"))
+    {
+      LogTradeError(StringFormat("5ERS swap guard close failed %s ticket=%llu", symbol, ticket));
+      continue;
+    }
+
+    closedAny = true;
+    Log(StringFormat("5ERS swap guard closed %s ticket=%llu before NY rollover.", symbol, ticket));
+  }
+
+  return closedAny;
+}
+
+bool IsDailyFlatReopenEnabled()
+{
+  return (IsFiveersMode() && EnableFiveersDailyFlatReopen);
+}
+
+string GetAssetClassForSymbol(const string symbol)
+{
+  for(int i = 0; i < ArraySize(g_symbols); i++)
+  {
+    if(g_symbols[i] == symbol)
+    {
+      if(i < ArraySize(g_assetClasses))
+        return g_assetClasses[i];
+      return "fx";
+    }
+  }
+  return "fx";
+}
+
+datetime ConvertEtToGmt(int hourEt, int minuteEt, datetime nowGmt)
+{
+  bool dstNow = IsUsdDstUtc(nowGmt);
+  int nowOffset = dstNow ? -4 : -5;
+  datetime etNow = nowGmt + nowOffset * 3600;
+
+  MqlDateTime etStruct;
+  TimeToStruct(etNow, etStruct);
+  etStruct.hour = hourEt;
+  etStruct.min = minuteEt;
+  etStruct.sec = 0;
+  datetime targetEt = StructToTime(etStruct);
+
+  MqlDateTime targetStruct;
+  TimeToStruct(targetEt, targetStruct);
+  bool dstTarget = IsUsdDstLocal(targetStruct.year, targetStruct.mon, targetStruct.day, targetStruct.hour);
+  int targetOffset = dstTarget ? -4 : -5;
+  datetime targetGmt = targetEt - targetOffset * 3600;
+  return targetGmt;
+}
+
+bool ShouldExecuteDailyClose(datetime nowGmt)
+{
+  if(!IsDailyFlatReopenEnabled())
+    return false;
+  if(!HasOpenPositions())
+    return false;
+
+  datetime closeTimeGmt = ConvertEtToGmt(FiveersDailyCloseHourEt, FiveersDailyCloseMinuteEt, nowGmt);
+  datetime reopenTimeGmt = ConvertEtToGmt(FiveersDailyReopenHourEt, FiveersDailyReopenMinuteEt, nowGmt);
+
+  MqlDateTime nowStruct, lastCloseStruct;
+  TimeToStruct(nowGmt, nowStruct);
+  TimeToStruct(g_lastDailyClose, lastCloseStruct);
+
+  bool alreadyClosedToday = (lastCloseStruct.year == nowStruct.year &&
+                              lastCloseStruct.mon == nowStruct.mon &&
+                              lastCloseStruct.day == nowStruct.day);
+  if(alreadyClosedToday)
+    return false;
+
+  if(nowGmt < closeTimeGmt)
+    return false;
+
+  return true;
+}
+
+bool ExecuteDailyClose(datetime nowGmt)
+{
+  if(!HasOpenPositions())
+  {
+    g_lastDailyClose = nowGmt;
+    g_dailyFlatActive = true;
+    return false;
+  }
+
+  ArrayResize(g_dailyClosedPositions, 0);
+  int total = PositionsTotal();
+  int closedCount = 0;
+
+  for(int i = total - 1; i >= 0; i--)
+  {
+    ulong ticket = PositionGetTicket(i);
+    if(ticket == 0)
+      continue;
+    if(!PositionSelectByTicket(ticket))
+      continue;
+    if((long)PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+      continue;
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    string comment = PositionGetString(POSITION_COMMENT);
+    int type = (int)PositionGetInteger(POSITION_TYPE);
+    int direction = (type == POSITION_TYPE_BUY ? 1 : -1);
+
+    string model = "";
+    string assetClass = "";
+    int commentLen = StringLen(comment);
+    int basketIdx = StringFind(comment, "LimniBasket");
+    if(basketIdx >= 0)
+    {
+      int modelStart = basketIdx + StringLen("LimniBasket");
+      if(modelStart < commentLen)
+      {
+        int spaceIdx = StringFind(comment, " ", modelStart);
+        if(spaceIdx > modelStart)
+          model = StringSubstr(comment, modelStart, spaceIdx - modelStart);
+        else
+          model = StringSubstr(comment, modelStart);
+      }
+    }
+
+    StringTrimLeft(model);
+    StringTrimRight(model);
+    if(model == "")
+      model = "unknown";
+
+    assetClass = GetAssetClassForSymbol(symbol);
+
+    int idx = ArraySize(g_dailyClosedPositions);
+    ArrayResize(g_dailyClosedPositions, idx + 1);
+    g_dailyClosedPositions[idx].symbol = symbol;
+    g_dailyClosedPositions[idx].direction = direction;
+    g_dailyClosedPositions[idx].model = model;
+    g_dailyClosedPositions[idx].assetClass = assetClass;
+
+    if(!ClosePositionByTicket(ticket, "daily_flat_close"))
+    {
+      LogTradeError(StringFormat("5ERS daily flat close failed %s ticket=%llu", symbol, ticket));
+      continue;
+    }
+
+    closedCount++;
+  }
+
+  g_lastDailyClose = nowGmt;
+  g_dailyFlatActive = true;
+  Log(StringFormat("5ERS daily flat executed at %.0f ET. Closed %d positions for reopen at %.0f ET.",
+                   (double)FiveersDailyCloseHourEt + FiveersDailyCloseMinuteEt / 60.0,
+                   closedCount,
+                   (double)FiveersDailyReopenHourEt + FiveersDailyReopenMinuteEt / 60.0));
+  return (closedCount > 0);
+}
+
+bool ShouldExecuteDailyReopen(datetime nowGmt)
+{
+  if(!IsDailyFlatReopenEnabled())
+    return false;
+  if(!g_dailyFlatActive)
+    return false;
+
+  datetime reopenTimeGmt = ConvertEtToGmt(FiveersDailyReopenHourEt, FiveersDailyReopenMinuteEt, nowGmt);
+
+  MqlDateTime nowStruct, lastReopenStruct;
+  TimeToStruct(nowGmt, nowStruct);
+  TimeToStruct(g_lastDailyReopen, lastReopenStruct);
+
+  bool alreadyReopenedToday = (lastReopenStruct.year == nowStruct.year &&
+                                lastReopenStruct.mon == nowStruct.mon &&
+                                lastReopenStruct.day == nowStruct.day);
+  if(alreadyReopenedToday)
+    return false;
+
+  if(nowGmt < reopenTimeGmt)
+    return false;
+
+  double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+  if(g_weekStartBalance > 0.0)
+  {
+    double weekProfitPct = ((balance - g_weekStartBalance) / g_weekStartBalance) * 100.0;
+    if(weekProfitPct >= FiveersDailyTargetPct)
+    {
+      Log(StringFormat("5ERS daily reopen skipped: week target hit (%.2f%% >= %.2f%%)", weekProfitPct, FiveersDailyTargetPct));
+      g_dailyFlatActive = false;
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool ExecuteDailyReopen(datetime nowGmt)
+{
+  if(ArraySize(g_dailyClosedPositions) == 0)
+  {
+    g_lastDailyReopen = nowGmt;
+    g_dailyFlatActive = false;
+    Log("5ERS daily reopen: no cached positions to reopen.");
+    return false;
+  }
+
+  double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+  int reopenedCount = 0;
+  int failedCount = 0;
+
+  for(int i = 0; i < ArraySize(g_dailyClosedPositions); i++)
+  {
+    string symbol = g_dailyClosedPositions[i].symbol;
+    int direction = g_dailyClosedPositions[i].direction;
+    string model = g_dailyClosedPositions[i].model;
+    string assetClass = g_dailyClosedPositions[i].assetClass;
+
+    LegSizingResult sizing;
+    if(!EvaluateLegSizing(symbol, assetClass, sizing))
+    {
+      failedCount++;
+      continue;
+    }
+
+    if(sizing.finalLot <= 0.0)
+    {
+      failedCount++;
+      continue;
+    }
+
+    if(!PlaceOrder(symbol, direction, sizing.finalLot, model, "daily_reopen"))
+    {
+      failedCount++;
+      continue;
+    }
+
+    reopenedCount++;
+  }
+
+  g_lastDailyReopen = nowGmt;
+  g_dailyFlatActive = false;
+  ArrayResize(g_dailyClosedPositions, 0);
+
+  Log(StringFormat("5ERS daily reopen executed at %.0f ET. Reopened %d/%d positions (balance %.2f).",
+                   (double)FiveersDailyReopenHourEt + FiveersDailyReopenMinuteEt / 60.0,
+                   reopenedCount,
+                   reopenedCount + failedCount,
+                   balance));
+  return (reopenedCount > 0);
+}
+
 bool IsSundayCryptoCarrySymbol(const string symbol)
 {
   string upper = symbol;
@@ -2095,6 +2534,12 @@ string ShortReasonTag(const string reasonTag)
     return "sunday_crypto_close";
   if(tag == "sunday_rollover_reopen")
     return "sunday_rollover_reopen";
+  if(tag == "swap_guard_close")
+    return "swap_guard_close";
+  if(tag == "daily_flat_close")
+    return "daily_flat_close";
+  if(tag == "daily_reopen")
+    return "daily_reopen";
   if(tag == "weekly_flip")
     return "weekly_flip";
   if(tag == "added_loser")
@@ -3396,6 +3841,12 @@ void TryAddPositions()
     }
     return;
   }
+
+  // Block new entries during daily flat window
+  if(IsDailyFlatReopenEnabled() && g_dailyFlatActive)
+  {
+    return;
+  }
   bool accountStructureBlocked = false;
   if(!IsAccountStructureAllowed())
   {
@@ -3442,6 +3893,10 @@ void TryAddPositions()
   bool midWeekAttachBlocked = IsMidWeekAttachBlocked(nowGmt);
   bool emergencyCryptoRecoveryActive = IsEmergencyCryptoRecoveryWindow(nowGmt);
   bool emergencyCryptoOnlyFlow = false;
+  bool swapGuardActive = IsSwapGuardEnabled();
+  int secondsToNyRollover = -1;
+  if(swapGuardActive)
+    secondsToNyRollover = SecondsToNextNyRollover(nowGmt);
 
   // Friday winner-close: when new COT data arrives (report_date changes), close all
   // profitable positions before reconciling losers against the new signal set.
@@ -3522,6 +3977,22 @@ void TryAddPositions()
   g_lastReconcileReportDate = g_reportDate;
 
   ReconcilePositionsWithSignals();
+
+  if(swapGuardActive &&
+     FiveersSwapFlatMinutesBeforeRollover > 0 &&
+     secondsToNyRollover >= 0 &&
+     secondsToNyRollover <= FiveersSwapFlatMinutesBeforeRollover * 60)
+  {
+    bool flattened = EnforceFiveersSwapFlatWindow(nowGmt);
+    datetime nowWarn = TimeCurrent();
+    if(g_lastSwapGuardWarn == 0 || (nowWarn - g_lastSwapGuardWarn) >= 60)
+    {
+      Log(StringFormat("5ERS swap guard window active (%d min to NY rollover). %s",
+                       secondsToNyRollover / 60,
+                       flattened ? "Flattened eligible positions." : "No eligible positions to flatten."));
+      g_lastSwapGuardWarn = nowWarn;
+    }
+  }
 
   if(g_postFridayRolloverHold)
   {
@@ -3665,6 +4136,18 @@ void TryAddPositions()
     {
       AddSkipReason("duplicate_open");
       Log(StringFormat("TryAdd %d SKIP: 5ERS net mode allows one live position per symbol (%s already open)", i, symbol));
+      continue;
+    }
+
+    if(swapGuardActive &&
+       FiveersSwapNoNewMinutesBeforeRollover > 0 &&
+       secondsToNyRollover >= 0 &&
+       secondsToNyRollover <= FiveersSwapNoNewMinutesBeforeRollover * 60 &&
+       IsFiveersSwapGuardSymbol(symbol))
+    {
+      AddSkipReason("entry_window_closed");
+      Log(StringFormat("TryAdd %d SKIP: %s blocked by 5ERS swap guard (%d min to NY rollover)",
+                       i, symbol, secondsToNyRollover / 60));
       continue;
     }
 
@@ -5271,6 +5754,7 @@ void ResetState()
   g_lastApiError = "";
   g_lastApiErrorTime = 0;
   g_lastRolloverHoldWarn = 0;
+  g_lastSwapGuardWarn = 0;
   g_lastDataRefreshUtc = "";
   ArrayResize(g_apiSymbolsRaw, 0);
 

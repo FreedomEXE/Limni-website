@@ -1,5 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import SentimentHeatmap from "@/components/SentimentHeatmap";
+import SentimentHeatmap, {
+  type MyfxbookPositioning,
+} from "@/components/SentimentHeatmap";
 import ViewToggle from "@/components/ViewToggle";
 import SummaryCards from "@/components/SummaryCards";
 import { fetchLiquidationSummary } from "@/lib/coinank";
@@ -8,6 +10,7 @@ import { fetchCryptoSpotPrice } from "@/lib/cryptoPrices";
 import {
   getAggregatesForWeekStartWithBackfill,
   getLatestAggregatesLocked,
+  getLatestSnapshotsByProvider,
 } from "@/lib/sentiment/store";
 import { formatDateTimeET, latestIso } from "@/lib/time";
 import { DateTime } from "luxon";
@@ -35,6 +38,54 @@ type SentimentPageProps = {
 };
 
 type SentimentView = SentimentAssetClass | "all";
+
+type MyfxbookRawPayload = {
+  longVolume?: number | string;
+  shortVolume?: number | string;
+  longPositions?: number | string;
+  shortPositions?: number | string;
+  totalPositions?: number | string;
+  avgLongPrice?: number | string;
+  avgShortPrice?: number | string;
+};
+
+function toNullableNumber(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function parseMyfxbookPositioning(
+  payload: unknown,
+  timestampUtc: string,
+): MyfxbookPositioning | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const row = payload as MyfxbookRawPayload;
+  const longLots = toNullableNumber(row.longVolume);
+  const shortLots = toNullableNumber(row.shortVolume);
+  const totalLots =
+    longLots !== null && shortLots !== null ? longLots + shortLots : null;
+
+  return {
+    longLots,
+    shortLots,
+    totalLots,
+    longPositions: toNullableNumber(row.longPositions),
+    shortPositions: toNullableNumber(row.shortPositions),
+    totalPositions: toNullableNumber(row.totalPositions),
+    avgLongPrice: toNullableNumber(row.avgLongPrice),
+    avgShortPrice: toNullableNumber(row.avgShortPrice),
+    updatedAtUtc: timestampUtc || null,
+  };
+}
 
 function getAssetClass(value?: string | null): SentimentView {
   if (!value || value === "all") {
@@ -157,6 +208,28 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
     .map((agg) => ({ label: agg.symbol, value: "NEUTRAL" }));
 
   const performanceByPair: Record<string, number | null> = {};
+  let myfxbookPositioningBySymbol: Record<string, MyfxbookPositioning | undefined> = {};
+  try {
+    const myfxbookSnapshots = await getLatestSnapshotsByProvider(
+      "MYFXBOOK",
+      Array.from(symbols),
+    );
+    myfxbookPositioningBySymbol = myfxbookSnapshots.reduce<
+      Record<string, MyfxbookPositioning | undefined>
+    >((acc, snapshot) => {
+      acc[snapshot.symbol] = parseMyfxbookPositioning(
+        snapshot.raw_payload,
+        snapshot.timestamp_utc,
+      ) ?? undefined;
+      return acc;
+    }, {});
+  } catch (error) {
+    console.error(
+      "Myfxbook positioning load failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+
   if (selectedWeek) {
     try {
       const weekSnapshots = await readPerformanceSnapshotsByWeek(selectedWeek);
@@ -342,6 +415,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
               aggregates={sortedAggregates}
               view={view}
               performanceByPair={performanceByPair}
+              myfxbookPositioningBySymbol={myfxbookPositioningBySymbol}
             />
           </div>
         </section>

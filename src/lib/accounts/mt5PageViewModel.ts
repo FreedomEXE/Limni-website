@@ -30,6 +30,8 @@ export type ClosedGroup = {
   trades: Mt5Position[];
   net: number;
   lots: number;
+  swap: number;
+  commission: number;
   closeTimeMin: string;
   closeTimeMax: string;
 };
@@ -46,6 +48,8 @@ export function buildMt5ClosedGroups(filteredClosedPositions: Mt5Position[]): Cl
       existing.trades.push(trade);
       existing.net += net;
       existing.lots += trade.lots;
+      existing.swap += trade.swap;
+      existing.commission += trade.commission;
       existing.closeTimeMin =
         existing.closeTimeMin < trade.close_time ? existing.closeTimeMin : trade.close_time;
       existing.closeTimeMax =
@@ -60,6 +64,8 @@ export function buildMt5ClosedGroups(filteredClosedPositions: Mt5Position[]): Cl
         trades: [trade],
         net,
         lots: trade.lots,
+        swap: trade.swap,
+        commission: trade.commission,
         closeTimeMin: trade.close_time,
         closeTimeMax: trade.close_time,
       });
@@ -127,6 +133,8 @@ export function buildMt5DrawerOpenPositions(positions: OpenPositionLike[]) {
     side: pos.type,
     lots: pos.lots,
     pnl: pos.profit + pos.swap + pos.commission,
+    swap: pos.swap,
+    commission: pos.commission,
     legs: [
       {
         id: pos.ticket,
@@ -134,6 +142,8 @@ export function buildMt5DrawerOpenPositions(positions: OpenPositionLike[]) {
         side: pos.type,
         lots: pos.lots,
         pnl: pos.profit + pos.swap + pos.commission,
+        swap: pos.swap,
+        commission: pos.commission,
       },
     ],
   }));
@@ -145,12 +155,16 @@ export function buildMt5DrawerClosedGroups(closedGroups: ClosedGroup[]) {
     side: group.type,
     net: group.net,
     lots: group.lots,
+    swap: group.swap,
+    commission: group.commission,
     legs: group.trades.map((trade) => ({
       id: trade.ticket,
       basket: parseBasketFromComment(trade.comment) ?? "unknown",
       side: trade.type,
       lots: trade.lots,
       pnl: trade.profit + trade.swap + trade.commission,
+      swap: trade.swap,
+      commission: trade.commission,
       openTime: trade.open_time,
       closeTime: trade.close_time,
     })),

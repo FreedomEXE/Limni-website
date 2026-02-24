@@ -27,9 +27,13 @@ export async function readSnapshots(): Promise<ProviderSentiment[]> {
         symbol: string;
         long_pct: string;
         short_pct: string;
+        net: string | null;
+        ratio: string | null;
+        raw_payload: unknown;
+        fetch_latency_ms: number | null;
         timestamp_utc: Date;
       }>(
-        `SELECT provider, symbol, long_pct, short_pct, timestamp_utc
+        `SELECT provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc
          FROM sentiment_data
          WHERE timestamp_utc > NOW() - INTERVAL '${hours} hours'
          ORDER BY timestamp_utc DESC`
@@ -43,8 +47,18 @@ export async function readSnapshots(): Promise<ProviderSentiment[]> {
           symbol: row.symbol,
           long_pct: longPct,
           short_pct: shortPct,
-          net: longPct - shortPct,
-          ratio: shortPct > 0 ? longPct / shortPct : 0,
+          net:
+            row.net === null || row.net === undefined
+              ? longPct - shortPct
+              : Number(row.net),
+          ratio:
+            row.ratio === null || row.ratio === undefined
+              ? shortPct > 0
+                ? longPct / shortPct
+                : 0
+              : Number(row.ratio),
+          raw_payload: row.raw_payload ?? undefined,
+          fetch_latency_ms: row.fetch_latency_ms ?? undefined,
           timestamp_utc: row.timestamp_utc.toISOString(),
         };
       });
@@ -68,13 +82,19 @@ export async function appendSnapshots(
   try {
     for (const snapshot of newSnapshots) {
       await query(
-        `INSERT INTO sentiment_data (provider, symbol, long_pct, short_pct, timestamp_utc)
-         VALUES ($1, $2, $3, $4, $5)`,
+        `INSERT INTO sentiment_data
+          (provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc)
+         VALUES
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           snapshot.provider,
           snapshot.symbol,
           snapshot.long_pct,
           snapshot.short_pct,
+          snapshot.net,
+          snapshot.ratio,
+          snapshot.raw_payload ?? null,
+          snapshot.fetch_latency_ms ?? null,
           new Date(snapshot.timestamp_utc),
         ]
       );
@@ -92,6 +112,64 @@ export async function appendSnapshots(
   } finally {
     clearRuntimeCacheByPrefix("sentimentStore:");
   }
+}
+
+export async function getLatestSnapshotsByProvider(
+  provider: ProviderSentiment["provider"],
+  symbols?: string[],
+): Promise<ProviderSentiment[]> {
+  const keySymbols = symbols && symbols.length > 0 ? symbols.slice().sort().join(",") : "all";
+  const cacheKey = `sentimentStore:getLatestSnapshotsByProvider:${provider}:${keySymbols}`;
+  return getOrSetRuntimeCache(cacheKey, getSentimentStoreCacheTtlMs(), async () => {
+    const rows = await query<{
+      provider: string;
+      symbol: string;
+      long_pct: string;
+      short_pct: string;
+      net: string | null;
+      ratio: string | null;
+      raw_payload: unknown;
+      fetch_latency_ms: number | null;
+      timestamp_utc: Date;
+    }>(
+      symbols && symbols.length > 0
+        ? `SELECT DISTINCT ON (symbol)
+             provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc
+           FROM sentiment_data
+           WHERE provider = $1 AND symbol = ANY($2)
+           ORDER BY symbol, timestamp_utc DESC`
+        : `SELECT DISTINCT ON (symbol)
+             provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc
+           FROM sentiment_data
+           WHERE provider = $1
+           ORDER BY symbol, timestamp_utc DESC`,
+      symbols && symbols.length > 0 ? [provider, symbols] : [provider],
+    );
+
+    return rows.map((row) => {
+      const longPct = Number(row.long_pct);
+      const shortPct = Number(row.short_pct);
+      return {
+        provider: row.provider as ProviderSentiment["provider"],
+        symbol: row.symbol,
+        long_pct: longPct,
+        short_pct: shortPct,
+        net:
+          row.net === null || row.net === undefined
+            ? longPct - shortPct
+            : Number(row.net),
+        ratio:
+          row.ratio === null || row.ratio === undefined
+            ? shortPct > 0
+              ? longPct / shortPct
+              : 0
+            : Number(row.ratio),
+        raw_payload: row.raw_payload ?? undefined,
+        fetch_latency_ms: row.fetch_latency_ms ?? undefined,
+        timestamp_utc: row.timestamp_utc.toISOString(),
+      };
+    });
+  });
 }
 
 export async function readAggregates(): Promise<SentimentAggregate[]> {

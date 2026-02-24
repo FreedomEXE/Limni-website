@@ -54,12 +54,16 @@ export type DrawerData = {
     side: string;
     lots: number;
     pnl: number;
+    swap?: number;
+    commission?: number;
     legs?: Array<{
       id: string | number;
       basket: string;
       side: string;
       lots: number;
       pnl: number;
+      swap?: number;
+      commission?: number;
     }>;
   }>;
   closedGroups: Array<{
@@ -67,12 +71,16 @@ export type DrawerData = {
     side: string;
     net: number;
     lots: number;
+    swap?: number;
+    commission?: number;
     legs?: Array<{
       id: string | number;
       basket: string;
       side: string;
       lots: number;
       pnl: number;
+      swap?: number;
+      commission?: number;
       openTime?: string;
       closeTime?: string;
     }>;

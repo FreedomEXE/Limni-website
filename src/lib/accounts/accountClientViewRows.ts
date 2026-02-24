@@ -15,12 +15,16 @@ type OpenPositionLike = {
   side: string;
   lots: number;
   pnl: number;
+  swap?: number;
+  commission?: number;
   legs?: Array<{
     id: string | number;
     basket: string;
     side: string;
     lots: number;
     pnl: number;
+    swap?: number;
+    commission?: number;
   }>;
 };
 
@@ -29,12 +33,16 @@ type ClosedGroupLike = {
   side: string;
   net: number;
   lots: number;
+  swap?: number;
+  commission?: number;
   legs?: Array<{
     id: string | number;
     basket: string;
     side: string;
     lots: number;
     pnl: number;
+    swap?: number;
+    commission?: number;
     openTime?: string;
     closeTime?: string;
   }>;
@@ -53,6 +61,8 @@ export type OpenLegRow = {
   side: "BUY" | "SELL";
   lots: number;
   pnl: number;
+  swap?: number;
+  commission?: number;
   model: string | null;
 };
 
@@ -71,6 +81,8 @@ export type SymbolRow = {
   openLong: number;
   openShort: number;
   openPnl: number;
+  openSwap: number;
+  openCommission: number;
   openLegs: OpenLegRow[];
   legsPlannedCount: number;
   legsOpenCount: number;
@@ -88,6 +100,8 @@ export type ClosedRow = {
   side: string;
   net: number;
   lots: number;
+  swap?: number;
+  commission?: number;
   legs?: ClosedGroupLike["legs"];
 };
 
@@ -203,7 +217,7 @@ export function buildSymbolRows(
 
   const openMap = new Map<
     string,
-    { symbol: string; openLong: number; openShort: number; openPnl: number; openLegs: OpenLegRow[] }
+    { symbol: string; openLong: number; openShort: number; openPnl: number; openSwap: number; openCommission: number; openLegs: OpenLegRow[] }
   >();
   for (const pos of openPositions) {
     const rawSymbol = String(pos.symbol ?? "").trim().toUpperCase();
@@ -215,6 +229,8 @@ export function buildSymbolRows(
         openLong: 0,
         openShort: 0,
         openPnl: 0,
+        openSwap: 0,
+        openCommission: 0,
         openLegs: [],
       });
     }
@@ -223,17 +239,23 @@ export function buildSymbolRows(
     const side = String(pos.side ?? "").trim().toUpperCase() === "SELL" ? "SELL" : "BUY";
     const lots = Number(pos.lots ?? 0);
     const pnl = Number(pos.pnl ?? 0);
+    const swap = Number(pos.swap ?? 0);
+    const commission = Number(pos.commission ?? 0);
     if (Number.isFinite(lots) && lots !== 0) {
       if (side === "BUY") entry.openLong += Math.abs(lots);
       if (side === "SELL") entry.openShort += Math.abs(lots);
     }
     entry.openPnl += Number.isFinite(pnl) ? pnl : 0;
+    entry.openSwap += Number.isFinite(swap) ? swap : 0;
+    entry.openCommission += Number.isFinite(commission) ? commission : 0;
 
     const legs = Array.isArray(pos.legs) ? pos.legs : [];
     for (const leg of legs) {
       const legSide = String(leg.side ?? "").trim().toUpperCase() === "SELL" ? "SELL" : "BUY";
       const legLots = Number(leg.lots ?? 0);
       const legPnl = Number(leg.pnl ?? 0);
+      const legSwap = Number(leg.swap ?? 0);
+      const legCommission = Number(leg.commission ?? 0);
       const basket = String(leg.basket ?? "").trim();
       entry.openLegs.push({
         id: leg.id,
@@ -241,6 +263,8 @@ export function buildSymbolRows(
         side: legSide,
         lots: Number.isFinite(legLots) ? Math.abs(legLots) : 0,
         pnl: Number.isFinite(legPnl) ? legPnl : 0,
+        swap: Number.isFinite(legSwap) ? legSwap : 0,
+        commission: Number.isFinite(legCommission) ? legCommission : 0,
         model: parseManagedModel(basket),
       });
     }
@@ -264,6 +288,8 @@ export function buildSymbolRows(
       openLong: 0,
       openShort: 0,
       openPnl: 0,
+      openSwap: 0,
+      openCommission: 0,
       openLegs: [],
     };
     const displaySymbol = open.symbol || planned.symbol || symbol;
@@ -284,6 +310,8 @@ export function buildSymbolRows(
       openLong: open.openLong,
       openShort: open.openShort,
       openPnl: open.openPnl,
+      openSwap: open.openSwap,
+      openCommission: open.openCommission,
       openLegs: open.openLegs,
       legsPlannedCount: planned.plannedLegs.length,
       legsOpenCount: open.openLegs.length,

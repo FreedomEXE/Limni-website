@@ -221,6 +221,34 @@ export default function AccountClientView({
   const manualSizingBaseline =
     Number(kpi.baselineEquity ?? 0) > 0 ? Number(kpi.baselineEquity ?? 0) : Number(kpi.equity ?? 0);
 
+  const pnlBreakdown = useMemo(() => {
+    let totalNet = 0;
+    let totalSwap = 0;
+    let totalCommission = 0;
+
+    for (const pos of drawerData.openPositions) {
+      totalNet += Number(pos.pnl ?? 0);
+      totalSwap += Number(pos.swap ?? 0);
+      totalCommission += Number(pos.commission ?? 0);
+    }
+
+    for (const group of drawerData.closedGroups) {
+      totalNet += Number(group.net ?? 0);
+      totalSwap += Number(group.swap ?? 0);
+      totalCommission += Number(group.commission ?? 0);
+    }
+
+    const grossProfit = totalNet - totalSwap - totalCommission;
+
+    return {
+      grossProfit,
+      swap: totalSwap,
+      commission: totalCommission,
+      net: totalNet,
+      currency: kpi.currency,
+    };
+  }, [drawerData.openPositions, drawerData.closedGroups, kpi.currency]);
+
   return (
     <PageShell
       header={
@@ -255,7 +283,9 @@ export default function AccountClientView({
         ) : null
       }
     >
-      {localActiveView === "overview" ? <AccountOverviewSection equity={equity} overview={overview} /> : null}
+      {localActiveView === "overview" ? (
+        <AccountOverviewSection equity={equity} overview={overview} pnlBreakdown={pnlBreakdown} />
+      ) : null}
 
       {localActiveView === "trades" ? (
         <AccountTradesSection

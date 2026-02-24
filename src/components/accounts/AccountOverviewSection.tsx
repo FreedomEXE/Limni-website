@@ -2,6 +2,7 @@
 
 import EquityCurveChart from "@/components/research/EquityCurveChart";
 import SummaryCard from "@/components/accounts/SummaryCard";
+import PnlBreakdownCard from "@/components/accounts/PnlBreakdownCard";
 
 type AccountOverviewSectionProps = {
   equity: {
@@ -23,11 +24,19 @@ type AccountOverviewSectionProps = {
     mappingCount: number;
     plannedNote?: string | null;
   };
+  pnlBreakdown?: {
+    grossProfit: number;
+    swap: number;
+    commission: number;
+    net: number;
+    currency: string;
+  } | null;
 };
 
 export default function AccountOverviewSection({
   equity,
   overview,
+  pnlBreakdown,
 }: AccountOverviewSectionProps) {
   return (
     <div className="space-y-4">
@@ -54,6 +63,15 @@ export default function AccountOverviewSection({
           hint="Instrument availability"
         />
       </div>
+      {pnlBreakdown ? (
+        <PnlBreakdownCard
+          grossProfit={pnlBreakdown.grossProfit}
+          swap={pnlBreakdown.swap}
+          commission={pnlBreakdown.commission}
+          net={pnlBreakdown.net}
+          currency={pnlBreakdown.currency}
+        />
+      ) : null}
     </div>
   );
 }

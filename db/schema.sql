@@ -247,6 +247,15 @@ CREATE TABLE IF NOT EXISTS sentiment_data (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE sentiment_data
+  ADD COLUMN IF NOT EXISTS net DECIMAL(6, 2);
+ALTER TABLE sentiment_data
+  ADD COLUMN IF NOT EXISTS ratio DECIMAL(8, 2);
+ALTER TABLE sentiment_data
+  ADD COLUMN IF NOT EXISTS raw_payload JSONB;
+ALTER TABLE sentiment_data
+  ADD COLUMN IF NOT EXISTS fetch_latency_ms INTEGER;
+
 CREATE INDEX IF NOT EXISTS idx_sentiment_symbol_time ON sentiment_data(symbol, timestamp_utc DESC);
 CREATE INDEX IF NOT EXISTS idx_sentiment_provider_time ON sentiment_data(provider, timestamp_utc DESC);
 
