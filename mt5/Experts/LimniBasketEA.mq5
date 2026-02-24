@@ -2274,9 +2274,9 @@ bool IsDailyFlatReopenEnabled()
 
 string GetAssetClassForSymbol(const string symbol)
 {
-  for(int i = 0; i < ArraySize(g_symbols); i++)
+  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
   {
-    if(g_symbols[i] == symbol)
+    if(g_brokerSymbols[i] == symbol)
     {
       if(i < ArraySize(g_assetClasses))
         return g_assetClasses[i];
@@ -2385,18 +2385,19 @@ bool ExecuteDailyClose(datetime nowGmt)
 
     assetClass = GetAssetClassForSymbol(symbol);
 
+    if(!ClosePositionByTicket(ticket, "daily_flat_close"))
+    {
+      LogTradeError(StringFormat("5ERS daily flat close failed %s ticket=%llu", symbol, ticket));
+      continue;
+    }
+
+    // Only cache if close succeeded
     int idx = ArraySize(g_dailyClosedPositions);
     ArrayResize(g_dailyClosedPositions, idx + 1);
     g_dailyClosedPositions[idx].symbol = symbol;
     g_dailyClosedPositions[idx].direction = direction;
     g_dailyClosedPositions[idx].model = model;
     g_dailyClosedPositions[idx].assetClass = assetClass;
-
-    if(!ClosePositionByTicket(ticket, "daily_flat_close"))
-    {
-      LogTradeError(StringFormat("5ERS daily flat close failed %s ticket=%llu", symbol, ticket));
-      continue;
-    }
 
     closedCount++;
   }
@@ -5117,36 +5118,54 @@ bool ClosePositionByTicket(ulong ticket)
 
 bool ClosePositionByTicket(ulong ticket, const string reasonTag)
 {
-  if(!PositionSelectByTicket(ticket))
-    return false;
-
-  string symbol = PositionGetString(POSITION_SYMBOL);
-  double volume = PositionGetDouble(POSITION_VOLUME);
-  int type = (int)PositionGetInteger(POSITION_TYPE);
-  double price = (type == POSITION_TYPE_BUY) ? SymbolInfoDouble(symbol, SYMBOL_BID)
-                                             : SymbolInfoDouble(symbol, SYMBOL_ASK);
-
-  MqlTradeRequest req;
-  MqlTradeResult res;
-  ZeroMemory(req);
-  ZeroMemory(res);
-  req.action = TRADE_ACTION_DEAL;
-  req.position = ticket;
-  req.symbol = symbol;
-  req.volume = volume;
-  req.magic = MagicNumber;
-  req.deviation = SlippagePoints;
-  req.type = (type == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
-  req.price = price;
-  req.comment = BuildCloseOrderComment(reasonTag);
-
-  if(!OrderSend(req, res))
+  // Retry up to 3 times with fresh position data each time
+  for(int attempt = 0; attempt < 3; attempt++)
   {
-    Log(StringFormat("Close failed %s ticket=%llu err=%d", symbol, ticket, GetLastError()));
-    return false;
+    if(!PositionSelectByTicket(ticket))
+    {
+      if(attempt == 0)
+        return false;  // Position doesn't exist
+      return true;     // Position was closed by retry or externally
+    }
+
+    string symbol = PositionGetString(POSITION_SYMBOL);
+    double volume = PositionGetDouble(POSITION_VOLUME);
+    int type = (int)PositionGetInteger(POSITION_TYPE);
+
+    // Normalize volume to broker's lot step
+    double lotStep = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+    if(lotStep > 0.0)
+      volume = MathRound(volume / lotStep) * lotStep;
+
+    double price = (type == POSITION_TYPE_BUY) ? SymbolInfoDouble(symbol, SYMBOL_BID)
+                                               : SymbolInfoDouble(symbol, SYMBOL_ASK);
+
+    MqlTradeRequest req;
+    MqlTradeResult res;
+    ZeroMemory(req);
+    ZeroMemory(res);
+    req.action = TRADE_ACTION_DEAL;
+    req.position = ticket;
+    req.symbol = symbol;
+    req.volume = volume;
+    req.magic = MagicNumber;
+    req.deviation = SlippagePoints;
+    req.type = (type == POSITION_TYPE_BUY) ? ORDER_TYPE_SELL : ORDER_TYPE_BUY;
+    req.price = price;
+    req.comment = BuildCloseOrderComment(reasonTag);
+
+    if(OrderSend(req, res))
+      return true;
+
+    int err = GetLastError();
+    Log(StringFormat("Close failed %s ticket=%llu err=%d retcode=%d attempt=%d",
+                     symbol, ticket, err, res.retcode, attempt + 1));
+
+    if(attempt < 2)
+      Sleep(500);  // Wait 500ms before retry
   }
 
-  return true;
+  return false;
 }
 
 //+------------------------------------------------------------------+
