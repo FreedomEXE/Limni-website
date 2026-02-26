@@ -82,6 +82,7 @@ async function bitgetRequest<T>(options: {
   path: string;
   query?: Record<string, string | number | boolean | undefined | null>;
   body?: Record<string, unknown> | null;
+  env?: string;
 }): Promise<T> {
   const params = new URLSearchParams();
   if (options.query) {
@@ -101,16 +102,23 @@ async function bitgetRequest<T>(options: {
     body,
     timestamp,
   );
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "ACCESS-KEY": options.apiKey,
+    "ACCESS-SIGN": signature,
+    "ACCESS-TIMESTAMP": timestamp,
+    "ACCESS-PASSPHRASE": options.apiPassphrase,
+    locale: "en-US",
+  };
+
+  // Bitget demo trading: same base URL, distinguished by header
+  if (options.env === "demo") {
+    headers["paptrading"] = "1";
+  }
+
   const response = await fetch(`${BITGET_BASE_URL}${options.path}${query}`, {
     method: options.method,
-    headers: {
-      "Content-Type": "application/json",
-      "ACCESS-KEY": options.apiKey,
-      "ACCESS-SIGN": signature,
-      "ACCESS-TIMESTAMP": timestamp,
-      "ACCESS-PASSPHRASE": options.apiPassphrase,
-      locale: "en-US",
-    },
+    headers,
     body: body || undefined,
   });
   if (!response.ok) {
@@ -264,6 +272,7 @@ export async function POST(request: Request) {
           method: "GET",
           path: "/api/v2/mix/account/accounts",
           query: { productType },
+          env: body.env ?? "live",
         },
       );
       const rows = Array.isArray(account) ? account : [];

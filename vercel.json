@@ -115,6 +115,14 @@
     {
       "path": "/api/cron/performance-refresh",
       "schedule": "20 * * * *"
+    },
+    {
+      "path": "/api/cron/market-snapshots",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/bitget-bot",
+      "schedule": "* * * * *"
     }
   ]
 }

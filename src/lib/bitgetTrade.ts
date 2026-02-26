@@ -1,3 +1,17 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: bitgetTrade.ts
+ *
+ * Description:
+ * Authenticated Bitget trade/account API wrapper for futures execution,
+ * leverage/margin controls, position/account reads, and trigger-stop placement.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
 import crypto from "node:crypto";
 
 const BASE_URL = "https://api.bitget.com";
@@ -41,6 +55,11 @@ export type BitgetPosition = {
   available?: string;
   marginCoin?: string;
   unrealizedPL?: string;
+};
+
+type BitgetPosTpslResponseRow = {
+  orderId?: string;
+  stopLossClientOid?: string;
 };
 
 export function getBitgetEnv() {
@@ -107,16 +126,23 @@ async function request<T>(options: BitgetRequestOptions): Promise<T> {
   const timestamp = Date.now().toString();
   const signature = signRequest(auth, method, options.path, queryString, body, timestamp);
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "ACCESS-KEY": auth.apiKey,
+    "ACCESS-SIGN": signature,
+    "ACCESS-TIMESTAMP": timestamp,
+    "ACCESS-PASSPHRASE": auth.apiPassphrase,
+    locale: "en-US",
+  };
+
+  // Bitget demo trading: same base URL, distinguished by header
+  if (getBitgetEnv() === "demo") {
+    headers["paptrading"] = "1";
+  }
+
   const response = await fetch(`${BASE_URL}${options.path}${queryString}`, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      "ACCESS-KEY": auth.apiKey,
-      "ACCESS-SIGN": signature,
-      "ACCESS-TIMESTAMP": timestamp,
-      "ACCESS-PASSPHRASE": auth.apiPassphrase,
-      locale: "en-US",
-    },
+    headers,
     body: body || undefined,
   });
 
@@ -295,4 +321,46 @@ export async function placeBitgetOrder(options: {
       clientOid: options.clientOid,
     },
   });
+}
+
+export async function placeBitgetPositionStopLoss(options: {
+  symbol: string;
+  holdSide: "buy" | "sell" | "long" | "short";
+  triggerPrice: number;
+  triggerType?: "mark_price" | "fill_price";
+  executePrice?: number;
+  stopLossClientOid?: string;
+}) {
+  const productType = getBitgetProductType();
+  const triggerType = options.triggerType ?? "mark_price";
+  const triggerPrice = Number(options.triggerPrice);
+  if (!(Number.isFinite(triggerPrice) && triggerPrice > 0)) {
+    throw new Error("Invalid stop-loss trigger price.");
+  }
+
+  const executePriceRaw = Number(options.executePrice ?? 0);
+  const executePrice = Number.isFinite(executePriceRaw) && executePriceRaw > 0
+    ? executePriceRaw
+    : 0;
+
+  const data = await request<BitgetPosTpslResponseRow[] | BitgetPosTpslResponseRow>({
+    method: "POST",
+    path: "/api/v2/mix/order/place-pos-tpsl",
+    body: {
+      marginCoin: "USDT",
+      productType,
+      symbol: options.symbol,
+      holdSide: options.holdSide,
+      stopLossTriggerPrice: String(triggerPrice),
+      stopLossTriggerType: triggerType,
+      stopLossExecutePrice: executePrice > 0 ? String(executePrice) : "0",
+      stopLossClientOid: options.stopLossClientOid ?? "",
+    },
+  });
+
+  const first = Array.isArray(data) ? data[0] : data;
+  return {
+    orderId: first?.orderId ?? null,
+    stopLossClientOid: first?.stopLossClientOid ?? options.stopLossClientOid ?? null,
+  };
 }
