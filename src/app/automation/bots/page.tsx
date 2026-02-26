@@ -1,3 +1,17 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: page.tsx
+ *
+ * Description:
+ * Automation bots landing page with status cards and navigation into
+ * dedicated monitoring views, including Bitget Bot v2 dashboard.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import { readBotState } from "@/lib/botState";
@@ -5,7 +19,7 @@ import { readMt5Accounts } from "@/lib/mt5Store";
 
 export const dynamic = "force-dynamic";
 
-type BotStatus = "ON" | "OFF" | "WAITING" | "READY";
+type BotStatus = "ON" | "OFF" | "WAITING" | "READY" | "WATCHING" | "ERROR";
 
 type BotBadge = {
   label: BotStatus;
@@ -23,6 +37,16 @@ function statusBadge(status: BotStatus): BotBadge {
       return {
         label: "READY",
         tone: "border-sky-200 bg-sky-50 text-sky-800",
+      };
+    case "WATCHING":
+      return {
+        label: "WATCHING",
+        tone: "border-amber-200 bg-amber-50 text-amber-800",
+      };
+    case "ERROR":
+      return {
+        label: "ERROR",
+        tone: "border-rose-200 bg-rose-50 text-rose-800",
       };
     case "WAITING":
       return {
@@ -47,17 +71,23 @@ function isFresh(iso: string | null | undefined, minutes = 10) {
 export default async function AutomationBotsPage() {
   const [mt5Accounts, bitgetState, oandaState] = await Promise.all([
     readMt5Accounts().catch(() => []),
-    readBotState("bitget_perp_bot"),
+    readBotState("bitget_perp_v2"),
     readBotState("oanda_universal_bot"),
   ]);
 
   const mt5Fresh = mt5Accounts.some((account) => isFresh(account.last_sync_utc, 15));
   const mt5Status: BotStatus = mt5Accounts.length === 0 ? "OFF" : mt5Fresh ? "ON" : "OFF";
-  const bitgetStatus: BotStatus = !bitgetState
-    ? "OFF"
-    : bitgetState.state?.entered
-      ? "ON"
-      : "WAITING";
+  const bitgetLifecycle = String((bitgetState?.state as { lifecycle?: string } | undefined)?.lifecycle ?? "");
+  const bitgetStatus: BotStatus =
+    !bitgetState || bitgetLifecycle === "" || bitgetLifecycle === "IDLE" || bitgetLifecycle === "KILLED"
+      ? "OFF"
+      : ["POSITION_OPEN", "SCALING", "TRAILING"].includes(bitgetLifecycle)
+        ? "ON"
+        : ["WATCHING_SWEEP", "WATCHING_RANGE", "AWAITING_HANDSHAKE", "WEEK_READY"].includes(bitgetLifecycle)
+          ? "WATCHING"
+          : bitgetLifecycle === "ERROR"
+            ? "ERROR"
+            : "OFF";
   const oandaStatus: BotStatus = !oandaState
     ? "OFF"
     : oandaState.state?.entered
@@ -96,7 +126,10 @@ export default async function AutomationBotsPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <Link
+            href="/automation/bots/bitget"
+            className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
                 Crypto Perp Bot (Bitget)
@@ -112,7 +145,7 @@ export default async function AutomationBotsPage() {
               <span>10x leverage, unlevered trail</span>
               <span>All-model alignment filter</span>
             </div>
-          </div>
+          </Link>
 
           <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <div className="flex items-start justify-between">

@@ -1,0 +1,263 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: LiveStateTab.tsx
+ *
+ * Description:
+ * Read-only live state panel for Bitget Bot v2 showing weekly bias,
+ * session ranges, handshake timing, and current open positions.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
+import type { BitgetBotStateV1 } from "@/lib/bitgetBotEngine";
+import {
+  toIsoString,
+  toNumber,
+  type BitgetRangeRow,
+} from "@/components/bitget-bot/types";
+
+type LiveStateTabProps = {
+  botState: BitgetBotStateV1 | null;
+  ranges: BitgetRangeRow[];
+  nowIso: string;
+};
+
+function directionTone(direction: string | null | undefined) {
+  if (direction === "LONG") return { icon: "↑", tone: "text-emerald-300" };
+  if (direction === "SHORT") return { icon: "↓", tone: "text-rose-300" };
+  return { icon: "•", tone: "text-[color:var(--muted)]" };
+}
+
+function tierLabel(tier: string | null | undefined) {
+  if (tier === "HIGH") return "T1";
+  if (tier === "MEDIUM") return "T2";
+  return "T3";
+}
+
+function fmtNumber(value: unknown, digits = 2) {
+  const num = toNumber(value);
+  return num === null ? "—" : num.toFixed(digits);
+}
+
+function fmtPct(value: unknown, digits = 2) {
+  const num = toNumber(value);
+  return num === null ? "—" : `${num.toFixed(digits)}%`;
+}
+
+function fmtUtc(value: unknown) {
+  const iso = toIsoString(value);
+  if (!iso) return "—";
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return iso;
+  return new Date(ts).toLocaleString();
+}
+
+function resolveRange(
+  rows: BitgetRangeRow[],
+  symbol: "BTC" | "ETH",
+  source: "ASIA+LONDON" | "US",
+) {
+  const filtered = rows.filter((row) => row.symbol === symbol && row.range_source === source);
+  if (!filtered.length) return null;
+  return filtered.sort((a, b) => Date.parse(String(b.day_utc)) - Date.parse(String(a.day_utc)))[0];
+}
+
+function expiryCountdown(expiryTs: number | null | undefined, nowIso: string) {
+  if (!Number.isFinite(expiryTs ?? NaN)) return "—";
+  const nowMs = Date.parse(nowIso);
+  if (!Number.isFinite(nowMs)) return "—";
+  const seconds = Math.floor(((expiryTs ?? 0) - nowMs) / 1000);
+  if (seconds <= 0) return "Expired";
+  const minutes = Math.floor(seconds / 60);
+  const rem = seconds % 60;
+  return `${minutes}m ${rem}s`;
+}
+
+function PositionCard({
+  position,
+}: {
+  position: NonNullable<BitgetBotStateV1["positions"]>[number];
+}) {
+  return (
+    <article className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-[var(--foreground)]">{position.symbol}</h4>
+          <span
+            className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${
+              position.direction === "LONG"
+                ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-200"
+                : "border-rose-300/40 bg-rose-500/10 text-rose-200"
+            }`}
+          >
+            {position.direction}
+          </span>
+        </div>
+        <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          {position.sessionWindow}
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-2 text-sm text-[color:var(--muted)] md:grid-cols-3">
+        <span>Entry: {fmtNumber(position.entryPrice, 4)}</span>
+        <span>Stop: {fmtNumber(position.stopPrice, 4)}</span>
+        <span>Lev: {fmtNumber(position.currentLeverage, 0)}x</span>
+        <span>Max Lev: {fmtNumber(position.maxLeverageReached, 0)}x</span>
+        <span>Margin: {fmtNumber(position.marginUsd, 2)} USDT</span>
+        <span>Entry Time: {fmtUtc(position.entryTimeUtc)}</span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {(position.milestonesHit ?? []).length > 0 ? (
+          (position.milestonesHit ?? []).map((m) => (
+            <span
+              key={`${position.symbol}-${m}`}
+              className="rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]"
+            >
+              +{m}%
+            </span>
+          ))
+        ) : (
+          <span className="text-xs text-[color:var(--muted)]">No milestones hit</span>
+        )}
+        {position.breakevenReached ? (
+          <span className="rounded-full border border-emerald-300/40 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200">
+            Breakeven
+          </span>
+        ) : null}
+        {position.trailingActive ? (
+          <span className="rounded-full border border-sky-300/40 bg-sky-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-sky-200">
+            Trailing Active
+          </span>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+export default function LiveStateTab({ botState, ranges, nowIso }: LiveStateTabProps) {
+  const btcAsiaLondon = resolveRange(ranges, "BTC", "ASIA+LONDON");
+  const ethAsiaLondon = resolveRange(ranges, "ETH", "ASIA+LONDON");
+  const btcUs = resolveRange(ranges, "BTC", "US");
+  const ethUs = resolveRange(ranges, "ETH", "US");
+
+  const weeklyBias = botState?.weeklyBias;
+  const btcBias = weeklyBias?.btc;
+  const ethBias = weeklyBias?.eth;
+  const handshake = botState?.handshake;
+
+  const sideCards = [
+    { symbol: "BTC", side: btcBias },
+    { symbol: "ETH", side: ethBias },
+  ] as const;
+
+  return (
+    <div className="space-y-4">
+      <section className="grid gap-4 lg:grid-cols-2">
+        <article className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Weekly Bias
+            </h3>
+            <span className="text-xs text-[color:var(--muted)]">
+              {weeklyBias ? `${fmtUtc(weeklyBias.weekOpenUtc)} - ${fmtUtc(weeklyBias.weekCloseUtc)}` : "No week loaded"}
+            </span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {sideCards.map(({ symbol, side }) => {
+              const tone = directionTone(side?.bias);
+              return (
+                <div key={symbol} className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-[var(--foreground)]">{symbol}</h4>
+                    <span className={`text-xl ${tone.tone}`}>{tone.icon}</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className={`text-sm font-semibold ${tone.tone}`}>{side?.bias ?? "NEUTRAL"}</span>
+                    <span className="rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]">
+                      {tierLabel(side?.tier)}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-1 text-xs text-[color:var(--muted)]">
+                    <p>Dealer: {side?.dealer ?? "—"}</p>
+                    <p>Commercial: {side?.commercial ?? "—"}</p>
+                    <p>Sentiment: {side?.sentiment ?? "—"}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </article>
+
+        <article className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            Session Ranges
+          </h3>
+          <div className="mt-4 space-y-3 text-sm">
+            {[
+              { label: "Asia+London", btc: btcAsiaLondon, eth: ethAsiaLondon },
+              { label: "US", btc: btcUs, eth: ethUs },
+            ].map((block) => (
+              <div key={block.label} className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">{block.label}</span>
+                  <span className="text-xs text-[color:var(--muted)]">
+                    {block.btc?.locked_at_utc || block.eth?.locked_at_utc ? "Locked" : "Forming"}
+                  </span>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div className="rounded-xl border border-[var(--panel-border)] p-3">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">BTC</p>
+                    <p className="mt-1 text-sm text-[var(--foreground)]">H {fmtNumber(block.btc?.high, 2)}</p>
+                    <p className="text-sm text-[var(--foreground)]">L {fmtNumber(block.btc?.low, 2)}</p>
+                  </div>
+                  <div className="rounded-xl border border-[var(--panel-border)] p-3">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">ETH</p>
+                    <p className="mt-1 text-sm text-[var(--foreground)]">H {fmtNumber(block.eth?.high, 2)}</p>
+                    <p className="text-sm text-[var(--foreground)]">L {fmtNumber(block.eth?.low, 2)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <article className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            Handshake Status
+          </h3>
+          <div className="mt-4 grid gap-3 text-sm text-[var(--foreground)] md:grid-cols-2">
+            <p>Active: <span className="font-semibold">{handshake?.active ? "Yes" : "No"}</span></p>
+            <p>Session: <span className="font-semibold">{handshake?.sessionWindow ?? "—"}</span></p>
+            <p>First Symbol: <span className="font-semibold">{handshake?.firstSymbol ?? "—"}</span></p>
+            <p>First Confirm: <span className="font-semibold">{fmtUtc(handshake?.firstConfirmTs ? new Date(handshake.firstConfirmTs).toISOString() : null)}</span></p>
+            <p>Expires: <span className="font-semibold">{handshake?.expiryTs ? fmtUtc(new Date(handshake.expiryTs).toISOString()) : "—"}</span></p>
+            <p>Countdown: <span className="font-semibold">{expiryCountdown(handshake?.expiryTs, nowIso)}</span></p>
+          </div>
+        </article>
+
+        <article className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            Open Positions
+          </h3>
+          <div className="mt-4 space-y-3">
+            {(botState?.positions ?? []).length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/60 p-4 text-sm text-[color:var(--muted)]">
+                No open positions. Lifecycle: {botState?.lifecycle ?? "IDLE"}.
+              </div>
+            ) : (
+              (botState?.positions ?? []).map((position) => (
+                <PositionCard key={`${position.symbol}-${position.entryTs}`} position={position} />
+              ))
+            )}
+          </div>
+        </article>
+      </section>
+    </div>
+  );
+}
