@@ -152,6 +152,7 @@ export async function readBitgetBotStatusData(): Promise<BitgetBotStatusPayload>
       `SELECT *
          FROM bitget_bot_trades
         WHERE bot_id = $1
+          AND ABS(EXTRACT(EPOCH FROM (created_at - entry_time_utc))) < 3600
         ORDER BY entry_time_utc DESC
         LIMIT 100`,
       [BOT_ID],
@@ -160,6 +161,7 @@ export async function readBitgetBotStatusData(): Promise<BitgetBotStatusPayload>
       `SELECT *
          FROM bitget_bot_signals
         WHERE bot_id = $1
+          AND ABS(EXTRACT(EPOCH FROM (created_at - confirm_time_utc))) < 3600
         ORDER BY created_at DESC
         LIMIT 200`,
       [BOT_ID],
