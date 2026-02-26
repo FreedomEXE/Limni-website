@@ -1,5 +1,4 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import ConnectedAccountSizing from "@/components/ConnectedAccountSizing";
 import ConnectedAccountRiskSettings from "@/components/ConnectedAccountRiskSettings";
 import AccountClientView from "@/components/accounts/AccountClientView";
 import { resolveCommonAccountSearchParams } from "@/lib/accounts/navigation";
@@ -99,7 +98,6 @@ export default async function ConnectedAccountPage({
   const settingsExtras = (
     <div className="space-y-4">
       <ConnectedAccountRiskSettings accountKey={account.account_key} riskMode={account.risk_mode} />
-      {account.provider === "oanda" ? <ConnectedAccountSizing accountKey={account.account_key} /> : null}
     </div>
   );
 

@@ -16,16 +16,12 @@ import { collectAccountsLatestSyncIso } from "@/lib/accounts/accountsPageData";
 
 export const dynamic = "force-dynamic";
 
-type BitgetBotState = {
-  entered?: boolean;
-  entry_equity?: number | null;
-  current_equity?: number | null;
-};
-
-type OandaBotState = {
-  entered?: boolean;
-  entry_equity?: number | null;
-  current_equity?: number | null;
+type BitgetV2BotState = {
+  lifecycle?: string;
+  positions?: Array<{
+    currentEquityUsd?: number;
+    entryEquityUsd?: number;
+  }>;
 };
 
 export default async function AccountsPage() {
@@ -39,10 +35,7 @@ export default async function AccountsPage() {
     );
   }
 
-  const [bitgetState, oandaState] = await Promise.all([
-    readBotState<BitgetBotState>("bitget_perp_bot"),
-    readBotState<OandaBotState>("oanda_universal_bot"),
-  ]);
+  const bitgetState = await readBotState<BitgetV2BotState>("bitget_perp_v2");
 
   let connectedAccounts: Awaited<ReturnType<typeof listConnectedAccounts>> = [];
   try {
@@ -57,7 +50,6 @@ export default async function AccountsPage() {
   const mt5Cards: AccountCard[] = buildMt5AccountCards(mt5Accounts);
   const connectedCards: AccountCard[] = buildConnectedAccountCards(connectedAccounts, {
     bitgetState,
-    oandaState,
   });
 
   const accounts: AccountCard[] = [...mt5Cards, ...connectedCards];
@@ -66,7 +58,6 @@ export default async function AccountsPage() {
     mt5Accounts,
     connectedAccounts,
     bitgetUpdatedAt: bitgetState?.updated_at ?? null,
-    oandaUpdatedAt: oandaState?.updated_at ?? null,
   });
 
   return (

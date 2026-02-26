@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import InfoModal from "@/components/InfoModal";
 import LimniLoading from "@/components/LimniLoading";
 
-type Provider = "oanda" | "bitget" | "mt5";
+type Provider = "bitget" | "mt5";
 
 type ConnectResult = {
   accountKey: string;
@@ -92,7 +92,7 @@ function StepRow({ label, state }: { label: string; state: StepState }) {
 }
 
 export default function ConnectAccountModal({ onClose }: { onClose: () => void }) {
-  const [provider, setProvider] = useState<Provider>("oanda");
+  const [provider, setProvider] = useState<Provider>("bitget");
   const [label, setLabel] = useState("");
   const [accountId, setAccountId] = useState("");
   const [apiKey, setApiKey] = useState("");
@@ -116,8 +116,7 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
 
   const botLabel = useMemo(() => {
     if (provider === "bitget") return "Crypto Perp Bot (Bitget)";
-    if (provider === "mt5") return "Manual MT5 Setup";
-    return "OANDA Universal Bot";
+    return "Manual MT5 Setup";
   }, [provider]);
 
   async function handleConnect() {
@@ -137,7 +136,7 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
         env,
         productType,
         leverage,
-        botType: provider === "bitget" ? "bitget_perp" : "oanda_universal",
+        botType: "bitget_perp_v2",
         riskMode,
         trailMode,
         trailStartPct,
@@ -176,8 +175,8 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
       onClose={onClose}
     >
       <div className="space-y-4 text-sm text-[color:var(--muted)]">
-        <div className="grid grid-cols-3 gap-2">
-          {(["oanda", "bitget", "mt5"] as Provider[]).map((item) => (
+        <div className="grid grid-cols-2 gap-2">
+          {(["bitget", "mt5"] as Provider[]).map((item) => (
             <button
               key={item}
               type="button"
@@ -266,40 +265,6 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
                   placeholder={botLabel}
                 />
               </label>
-
-              {provider === "oanda" ? (
-                <>
-                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    OANDA Account ID
-                    <input
-                      value={accountId}
-                      onChange={(event) => setAccountId(event.target.value)}
-                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                      placeholder="001-XXX-XXXXXXX-XXX"
-                    />
-                  </label>
-                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    OANDA API Key
-                    <input
-                      type="password"
-                      value={apiKey}
-                      onChange={(event) => setApiKey(event.target.value)}
-                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                    />
-                  </label>
-                  <label className="block text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    Environment
-                    <select
-                      value={env}
-                      onChange={(event) => setEnv(event.target.value as "live" | "practice")}
-                      className="mt-2 w-full rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-2 text-sm text-[var(--foreground)]"
-                    >
-                      <option value="live">Live</option>
-                      <option value="practice">Practice</option>
-                    </select>
-                  </label>
-                </>
-              ) : null}
 
               {provider === "bitget" ? (
                 <>

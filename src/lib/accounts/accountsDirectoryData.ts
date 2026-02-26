@@ -2,9 +2,11 @@ import type { AccountCard } from "@/lib/accounts/accountsDirectoryTypes";
 
 type BotState = {
   state?: {
-    entered?: boolean;
-    entry_equity?: number | null;
-    current_equity?: number | null;
+    lifecycle?: string;
+    positions?: Array<{
+      currentEquityUsd?: number;
+      entryEquityUsd?: number;
+    }>;
   };
 };
 
@@ -44,9 +46,13 @@ function resolveConnectedEquity(
       : typeof analysis?.nav === "number"
         ? analysis.nav
         : null;
-  return typeof botState?.state?.current_equity === "number"
-    ? botState.state.current_equity
-    : analysisEquity;
+  // v2: sum currentEquityUsd from all open positions
+  const positions = botState?.state?.positions;
+  if (Array.isArray(positions) && positions.length > 0) {
+    const total = positions.reduce((sum, p) => sum + (p.currentEquityUsd ?? 0), 0);
+    if (total > 0) return total;
+  }
+  return analysisEquity;
 }
 
 function resolveConnectedOpenPositions(analysis: ConnectedAnalysis | null) {
@@ -63,12 +69,22 @@ function resolveConnectedWeeklyPnlPct(
   if (typeof analysis?.weekly_pnl_pct === "number") {
     return analysis.weekly_pnl_pct;
   }
-  const entry = botState?.state?.entry_equity;
-  const current = botState?.state?.current_equity;
-  if (typeof entry !== "number" || typeof current !== "number" || entry <= 0) {
-    return null;
+  // v2: compute from positions
+  const positions = botState?.state?.positions;
+  if (Array.isArray(positions) && positions.length > 0) {
+    let totalEntry = 0;
+    let totalCurrent = 0;
+    for (const p of positions) {
+      if (typeof p.entryEquityUsd === "number" && typeof p.currentEquityUsd === "number") {
+        totalEntry += p.entryEquityUsd;
+        totalCurrent += p.currentEquityUsd;
+      }
+    }
+    if (totalEntry > 0) {
+      return ((totalCurrent - totalEntry) / totalEntry) * 100;
+    }
   }
-  return ((current - entry) / entry) * 100;
+  return null;
 }
 
 function toFiniteOrNull(value: number | null) {
@@ -119,15 +135,13 @@ export function buildConnectedAccountCards(
     status: string | null;
     analysis: Record<string, unknown> | null;
   }>,
-  botStates: { bitgetState: BotState | null; oandaState: BotState | null },
+  botStates: { bitgetState: BotState | null },
 ): AccountCard[] {
   return connectedAccounts.map((account) => {
     const botState =
       account.provider === "bitget"
         ? botStates.bitgetState
-        : account.provider === "oanda"
-          ? botStates.oandaState
-          : null;
+        : null;
     const analysis = toConnectedAnalysis(account.analysis);
     const openPositions = resolveConnectedOpenPositions(analysis);
     const weeklyPnlPct = resolveConnectedWeeklyPnlPct(analysis, botState);
@@ -138,15 +152,13 @@ export function buildConnectedAccountCards(
       broker:
         account.provider === "bitget"
           ? "Bitget"
-          : account.provider === "oanda"
-            ? "OANDA FxTrade"
-            : "MT5",
+          : "MT5",
       server: analysis?.productType ?? analysis?.env ?? "Connected",
       status: account.status ?? "LIVE",
       currency: analysis?.currency ?? "USD",
       equity: resolveConnectedEquity(analysis, botState),
       weekly_pnl_pct: toFiniteOrNull(weeklyPnlPct),
-      basket_state: botState?.state?.entered ? "ACTIVE" : "READY",
+      basket_state: botState?.state?.lifecycle && ["POSITION_OPEN", "SCALING", "TRAILING"].includes(botState.state.lifecycle) ? "ACTIVE" : "READY",
       open_positions: openPositions,
       open_pairs: typeof analysis?.mapped_count === "number" ? analysis.mapped_count : null,
       win_rate_pct: null,

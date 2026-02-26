@@ -14,13 +14,11 @@ export function collectAccountsLatestSyncIso(options: {
   mt5Accounts: Mt5SyncLike[];
   connectedAccounts: ConnectedSyncLike[];
   bitgetUpdatedAt: string | null;
-  oandaUpdatedAt: string | null;
 }) {
-  const { mt5Accounts, connectedAccounts, bitgetUpdatedAt, oandaUpdatedAt } = options;
+  const { mt5Accounts, connectedAccounts, bitgetUpdatedAt } = options;
   return latestIso([
     ...mt5Accounts.map((account) => account.last_sync_utc ?? null),
     bitgetUpdatedAt,
-    oandaUpdatedAt,
     ...connectedAccounts.map((account) => account.last_sync_utc ?? null),
     ...connectedAccounts.map((account) =>
       getConnectedAnalysisFetchedAt(account.analysis ?? null),

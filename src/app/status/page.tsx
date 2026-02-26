@@ -95,10 +95,7 @@ export default async function StatusPage() {
       symbols: string[];
     }>;
   }> = [];
-  const [bitgetState, oandaState] = await Promise.all([
-    readBotState("bitget_perp_bot"),
-    readBotState("oanda_universal_bot"),
-  ]);
+  const bitgetState = await readBotState("bitget_perp_v2");
 
   try {
     cotSnapshot = await readSnapshot();
@@ -252,16 +249,13 @@ export default async function StatusPage() {
   ]);
   const mt5Status =
     accounts.length === 0 ? "OFF" : isFresh(latestAccountSync, 15) ? "ON" : "OFF";
-  const bitgetStatus = !bitgetState
-    ? "OFF"
-    : bitgetState.state?.entered
-      ? "ON"
-      : "WAITING";
-  const oandaStatus = !oandaState
-    ? "OFF"
-    : oandaState.state?.entered
-      ? "ON"
-      : "READY";
+  const bitgetLifecycle = String((bitgetState?.state as { lifecycle?: string } | undefined)?.lifecycle ?? "");
+  const bitgetStatus =
+    !bitgetState || bitgetLifecycle === "" || bitgetLifecycle === "IDLE" || bitgetLifecycle === "KILLED"
+      ? "OFF"
+      : ["POSITION_OPEN", "SCALING", "TRAILING"].includes(bitgetLifecycle)
+        ? "ON"
+        : "WAITING";
 
   const health: HealthItem[] = [
     {
@@ -426,7 +420,7 @@ export default async function StatusPage() {
 
             <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-[var(--foreground)]">Bitget Perp Bot</p>
+                <p className="text-sm font-semibold text-[var(--foreground)]">Bitget Perp Bot v2</p>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${botToneMap[bitgetStatus]}`}>
                   {bitgetStatus}
                 </span>
@@ -436,23 +430,7 @@ export default async function StatusPage() {
                 {bitgetState?.updated_at ? formatDateTimeET(bitgetState.updated_at) : "No heartbeat yet"}
               </p>
               <p className="mt-1 text-xs text-[color:var(--muted)]">
-                Entered: {bitgetState?.state?.entered ? "Yes" : "No"}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-[var(--foreground)]">OANDA Universal Bot</p>
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${botToneMap[oandaStatus]}`}>
-                  {oandaStatus}
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-[color:var(--muted)]">
-                Last heartbeat{" "}
-                {oandaState?.updated_at ? formatDateTimeET(oandaState.updated_at) : "No heartbeat yet"}
-              </p>
-              <p className="mt-1 text-xs text-[color:var(--muted)]">
-                Entered: {oandaState?.state?.entered ? "Yes" : "No"}
+                Lifecycle: {bitgetLifecycle || "IDLE"}
               </p>
             </div>
           </div>

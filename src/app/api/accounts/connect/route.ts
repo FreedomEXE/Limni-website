@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { DateTime } from "luxon";
-import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
-import { getOandaInstrument } from "@/lib/oandaPrices";
 import { upsertConnectedAccount } from "@/lib/connectedAccounts";
 import { query } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-const OANDA_PRACTICE_URL = "https://api-fxpractice.oanda.com";
-const OANDA_LIVE_URL = "https://api-fxtrade.oanda.com";
 const BITGET_BASE_URL = "https://api.bitget.com";
 
 type ConnectRequest = {
-  provider: "oanda" | "bitget" | "mt5";
+  provider: "bitget" | "mt5";
   label?: string;
   accountId?: string;
   apiKey?: string;
@@ -40,26 +36,6 @@ function buildBitgetAccountId(options: { apiKey: string; env: string; productTyp
   const seed = `${options.apiKey.trim()}|${options.env}|${options.productType}`;
   const hash = crypto.createHash("sha256").update(seed).digest("hex").slice(0, 16);
   return `bitget_${hash}`;
-}
-
-async function oandaRequest<T>(
-  apiKey: string,
-  env: "live" | "practice",
-  path: string,
-): Promise<T> {
-  const base = env === "live" ? OANDA_LIVE_URL : OANDA_PRACTICE_URL;
-  const response = await fetch(`${base}${path}`, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`OANDA request failed (${response.status}): ${body}`);
-  }
-  return (await response.json()) as T;
 }
 
 function buildBitgetSignature(
@@ -148,109 +124,6 @@ export async function POST(request: Request) {
       });
     }
 
-    if (body.provider === "oanda") {
-      const apiKey = clean(body.apiKey);
-      const accountId = clean(body.accountId);
-      if (!apiKey || !accountId) {
-        return NextResponse.json(
-          { error: "Missing OANDA credentials" },
-          { status: 400 },
-        );
-      }
-      const env = body.env === "practice" ? "practice" : "live";
-      let summary: { account: Record<string, string> };
-      let instruments: { instruments: Array<{ name: string; type: string }> };
-      try {
-        summary = await oandaRequest<{ account: Record<string, string> }>(
-          apiKey,
-          env,
-          `/v3/accounts/${accountId}/summary`,
-        );
-        instruments = await oandaRequest<{ instruments: Array<{ name: string; type: string }> }>(
-          apiKey,
-          env,
-          `/v3/accounts/${accountId}/instruments`,
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (env === "live" && message.includes("(401)")) {
-          try {
-            await oandaRequest<{ account: Record<string, string> }>(
-              apiKey,
-              "practice",
-              `/v3/accounts/${accountId}/summary`,
-            );
-            return NextResponse.json(
-              { error: "OANDA key appears to be PRACTICE-only. Switch Environment to Practice." },
-              { status: 400 },
-            );
-          } catch {
-            // fall through with original error
-          }
-        }
-        throw error;
-      }
-
-      const instrumentSet = new Set(instruments.instruments.map((inst) => inst.name));
-      const allPairs = [
-        ...PAIRS_BY_ASSET_CLASS.fx,
-        ...PAIRS_BY_ASSET_CLASS.indices,
-        ...PAIRS_BY_ASSET_CLASS.commodities,
-      ].map((pair) => pair.pair);
-
-      const mapped = allPairs.map((symbol) => {
-        const instrument = getOandaInstrument(symbol);
-        return {
-          symbol,
-          instrument,
-          available: instrumentSet.has(instrument),
-        };
-      });
-
-      const missing = mapped.filter((row) => !row.available).map((row) => row.symbol);
-      const accountKey = buildAccountKey("oanda", accountId);
-      const analysis = {
-        nav: Number(summary.account.NAV ?? summary.account.balance ?? 0),
-        balance: Number(summary.account.balance ?? 0),
-        currency: summary.account.currency ?? "USD",
-        mapped_count: mapped.filter((row) => row.available).length,
-        missing,
-        mapped,
-        env,
-        fetched_at: DateTime.utc().toISO(),
-      };
-
-      await upsertConnectedAccount({
-        account_key: accountKey,
-        provider: "oanda",
-        account_id: accountId,
-        label: body.label ?? "OANDA Universal Bot",
-        status: env === "live" ? "LIVE" : "DEMO",
-        bot_type: body.botType ?? "oanda_universal",
-        risk_mode: body.riskMode ?? "1:1",
-        trail_mode: body.trailMode ?? "trail",
-        trail_start_pct: body.trailStartPct ?? 20,
-        trail_offset_pct: body.trailOffsetPct ?? 10,
-        config: {
-          env,
-        },
-        analysis,
-        secrets: {
-          apiKey,
-          accountId,
-          env,
-        },
-      });
-
-      await query(
-        `DELETE FROM connected_accounts
-         WHERE provider = $1 AND account_id = $2 AND account_key <> $3`,
-        ["oanda", accountId, accountKey],
-      );
-
-      return NextResponse.json({ ok: true, accountKey, analysis });
-    }
-
     if (body.provider === "bitget") {
       const apiKey = clean(body.apiKey);
       const apiSecret = clean(body.apiSecret);
@@ -302,7 +175,7 @@ export async function POST(request: Request) {
         account_id: accountId,
         label: body.label ?? "Bitget Perp Bot",
         status: body.env === "demo" ? "DEMO" : "LIVE",
-        bot_type: body.botType ?? "bitget_perp",
+        bot_type: body.botType ?? "bitget_perp_v2",
         risk_mode: body.riskMode ?? "1:1",
         trail_mode: body.trailMode ?? "trail",
         trail_start_pct: body.trailStartPct ?? 20,

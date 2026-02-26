@@ -69,10 +69,9 @@ function isFresh(iso: string | null | undefined, minutes = 10) {
 }
 
 export default async function AutomationBotsPage() {
-  const [mt5Accounts, bitgetState, oandaState] = await Promise.all([
+  const [mt5Accounts, bitgetState] = await Promise.all([
     readMt5Accounts().catch(() => []),
     readBotState("bitget_perp_v2"),
-    readBotState("oanda_universal_bot"),
   ]);
 
   const mt5Fresh = mt5Accounts.some((account) => isFresh(account.last_sync_utc, 15));
@@ -88,15 +87,8 @@ export default async function AutomationBotsPage() {
           : bitgetLifecycle === "ERROR"
             ? "ERROR"
             : "OFF";
-  const oandaStatus: BotStatus = !oandaState
-    ? "OFF"
-    : oandaState.state?.entered
-      ? "ON"
-      : "READY";
-
   const mt5Badge = statusBadge(mt5Status);
   const bitgetBadge = statusBadge(bitgetStatus);
-  const oandaBadge = statusBadge(oandaStatus);
 
   return (
     <DashboardLayout>
@@ -146,24 +138,6 @@ export default async function AutomationBotsPage() {
               <span>All-model alignment filter</span>
             </div>
           </Link>
-
-          <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-            <div className="flex items-start justify-between">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                OANDA Universal Bot
-              </h2>
-              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${oandaBadge.tone}`}>
-                {oandaBadge.label}
-              </span>
-            </div>
-            <p className="mt-2 text-sm text-[color:var(--muted)]">
-              Full 36-pair basket automation with 1:1 sizing.
-            </p>
-            <div className="mt-4 grid gap-2 text-xs text-[var(--accent-strong)]">
-              <span>Global equity trail</span>
-              <span>Margin-aware scaling</span>
-            </div>
-          </div>
 
           <Link
             href="/automation/solana-meme-bot"

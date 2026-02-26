@@ -35,17 +35,16 @@ describe("accounts directory data", () => {
     const cards = buildConnectedAccountCards(
       [
         {
-          account_key: "oanda:1",
-          provider: "oanda",
+          account_key: "bitget:1",
+          provider: "bitget",
           label: null,
           status: null,
           analysis: { currency: "USD", open_positions: 3, weekly_pnl_pct: 2 },
         },
       ],
       {
-        bitgetState: null,
-        oandaState: {
-          state: { entered: true, entry_equity: 100, current_equity: 101 },
+        bitgetState: {
+          state: { lifecycle: "POSITION_OPEN", positions: [{ currentEquityUsd: 101, entryEquityUsd: 100 }] },
         },
       },
     );
@@ -67,9 +66,8 @@ describe("accounts directory data", () => {
       ],
       {
         bitgetState: {
-          state: { entered: true, entry_equity: 100, current_equity: 110 },
+          state: { lifecycle: "SCALING", positions: [{ currentEquityUsd: 110, entryEquityUsd: 100 }] },
         },
-        oandaState: null,
       },
     );
     expect(cards[0]?.equity).toBe(110);

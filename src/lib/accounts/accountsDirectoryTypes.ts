@@ -12,6 +12,6 @@ export type AccountCard = {
   open_pairs: number | null;
   win_rate_pct: number | null;
   max_drawdown_pct: number | null;
-  source: "mt5" | "bitget" | "oanda";
+  source: "mt5" | "bitget";
   href?: string;
 };

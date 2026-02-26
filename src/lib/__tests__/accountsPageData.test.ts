@@ -12,7 +12,6 @@ describe("accounts page data helpers", () => {
         },
       ],
       bitgetUpdatedAt: "2026-02-09T01:00:00.000Z",
-      oandaUpdatedAt: null,
     });
 
     expect(latest).toBe("2026-02-09T04:00:00.000Z");
@@ -23,7 +22,6 @@ describe("accounts page data helpers", () => {
       mt5Accounts: [],
       connectedAccounts: [],
       bitgetUpdatedAt: null,
-      oandaUpdatedAt: null,
     });
     expect(latest).toBeNull();
   });
