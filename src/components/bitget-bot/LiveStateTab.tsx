@@ -62,7 +62,30 @@ function resolveRange(
 ) {
   const filtered = rows.filter((row) => row.symbol === symbol && row.range_source === source);
   if (!filtered.length) return null;
-  return filtered.sort((a, b) => Date.parse(String(b.day_utc)) - Date.parse(String(a.day_utc)))[0];
+  return filtered
+    .sort((a, b) => {
+      const aDay = (a.day_utc_text ?? String(a.day_utc).slice(0, 10));
+      const bDay = (b.day_utc_text ?? String(b.day_utc).slice(0, 10));
+      if (aDay !== bDay) return bDay.localeCompare(aDay);
+      return Date.parse(String(b.locked_at_utc)) - Date.parse(String(a.locked_at_utc));
+    })[0];
+}
+
+function getRangeDayText(row: BitgetRangeRow | null) {
+  if (!row) return null;
+  const day = row.day_utc_text ?? String(row.day_utc).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+}
+
+function isRangeStale(dayText: string | null, nowIso: string) {
+  if (!dayText) return false;
+  const dayMs = Date.parse(`${dayText}T00:00:00.000Z`);
+  const nowMs = Date.parse(nowIso);
+  if (!Number.isFinite(dayMs) || !Number.isFinite(nowMs)) return false;
+  const nowDayStart = new Date(nowMs);
+  nowDayStart.setUTCHours(0, 0, 0, 0);
+  const yesterdayStartMs = nowDayStart.getTime() - 24 * 60 * 60 * 1000;
+  return dayMs < yesterdayStartMs;
 }
 
 function expiryCountdown(expiryTs: number | null | undefined, nowIso: string) {
@@ -138,6 +161,34 @@ function PositionCard({
   );
 }
 
+function RangeCell({
+  label,
+  range,
+  nowIso,
+}: {
+  label: "BTC" | "ETH";
+  range: BitgetRangeRow | null;
+  nowIso: string;
+}) {
+  const dayText = getRangeDayText(range);
+  const stale = isRangeStale(dayText, nowIso);
+  return (
+    <div className="rounded-xl border border-[var(--panel-border)] p-3">
+      <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">{label}</p>
+      <p className="mt-1 text-sm text-[var(--foreground)]">H {fmtNumber(range?.high, 2)}</p>
+      <p className="text-sm text-[var(--foreground)]">L {fmtNumber(range?.low, 2)}</p>
+      <div className="mt-1 flex items-center gap-2 text-xs text-[color:var(--muted)]">
+        <span>({dayText ?? "—"})</span>
+        {stale ? (
+          <span className="rounded-full border border-rose-300/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-rose-200">
+            STALE
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export default function LiveStateTab({ botState, ranges, nowIso }: LiveStateTabProps) {
   const btcAsiaLondon = resolveRange(ranges, "BTC", "ASIA+LONDON");
   const ethAsiaLondon = resolveRange(ranges, "ETH", "ASIA+LONDON");
@@ -209,16 +260,8 @@ export default function LiveStateTab({ botState, ranges, nowIso }: LiveStateTabP
                   </span>
                 </div>
                 <div className="grid gap-2 md:grid-cols-2">
-                  <div className="rounded-xl border border-[var(--panel-border)] p-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">BTC</p>
-                    <p className="mt-1 text-sm text-[var(--foreground)]">H {fmtNumber(block.btc?.high, 2)}</p>
-                    <p className="text-sm text-[var(--foreground)]">L {fmtNumber(block.btc?.low, 2)}</p>
-                  </div>
-                  <div className="rounded-xl border border-[var(--panel-border)] p-3">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">ETH</p>
-                    <p className="mt-1 text-sm text-[var(--foreground)]">H {fmtNumber(block.eth?.high, 2)}</p>
-                    <p className="text-sm text-[var(--foreground)]">L {fmtNumber(block.eth?.low, 2)}</p>
-                  </div>
+                  <RangeCell label="BTC" range={block.btc} nowIso={nowIso} />
+                  <RangeCell label="ETH" range={block.eth} nowIso={nowIso} />
                 </div>
               </div>
             ))}

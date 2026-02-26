@@ -60,6 +60,7 @@ export type BitgetRangeRow = {
   id: number;
   bot_id: string;
   day_utc: string | Date;
+  day_utc_text?: string | null;
   symbol: string;
   range_source: string;
   high: string | number;
@@ -167,7 +168,8 @@ export async function readBitgetBotStatusData(): Promise<BitgetBotStatusPayload>
       [BOT_ID],
     ),
     safeQuery<BitgetRangeRow>(
-      `SELECT *
+      `SELECT *,
+              day_utc::text AS day_utc_text
          FROM bitget_bot_ranges
         WHERE bot_id = $1
         ORDER BY day_utc DESC, symbol

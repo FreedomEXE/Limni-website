@@ -506,11 +506,62 @@ async function safeInsertRange(params: {
       `INSERT INTO bitget_bot_ranges
         (bot_id, day_utc, symbol, range_source, high, low, locked_at_utc)
        VALUES ($1, $2::date, $3, $4, $5, $6, $7::timestamptz)
-       ON CONFLICT (day_utc, symbol, range_source) DO NOTHING`,
+       ON CONFLICT (day_utc, symbol, range_source) DO UPDATE
+         SET high = EXCLUDED.high,
+             low = EXCLUDED.low,
+             locked_at_utc = EXCLUDED.locked_at_utc`,
       [BOT_ID, params.dayUtc, params.symbol, params.rangeSource, params.high, params.low, params.lockedAtUtc],
     );
   } catch {
     // Non-fatal while migrations are pending.
+  }
+}
+
+async function persistSessionRanges(
+  candleMap: Record<CoreSymbol, BotCandle[]>,
+  nowIso: string,
+) {
+  try {
+    const todayUtc = DateTime.fromISO(nowIso, { zone: "utc" }).toISODate()
+      ?? new Date().toISOString().slice(0, 10);
+    const yesterdayUtc = previousUtcDay(todayUtc);
+
+    const asiaLondonRangeByDay = {
+      BTC: buildAsiaLondonRange(candleMap.BTC),
+      ETH: buildAsiaLondonRange(candleMap.ETH),
+    };
+    const usRangeByDay = {
+      BTC: buildUsSessionRange(candleMap.BTC),
+      ETH: buildUsSessionRange(candleMap.ETH),
+    };
+
+    for (const symbol of CORE_SYMBOLS) {
+      const asiaLondonToday = asiaLondonRangeByDay[symbol].get(todayUtc);
+      if (asiaLondonToday?.locked) {
+        await safeInsertRange({
+          dayUtc: todayUtc,
+          symbol,
+          rangeSource: "ASIA+LONDON",
+          high: asiaLondonToday.high,
+          low: asiaLondonToday.low,
+          lockedAtUtc: nowIso,
+        });
+      }
+
+      const usYesterday = usRangeByDay[symbol].get(yesterdayUtc);
+      if (usYesterday?.locked) {
+        await safeInsertRange({
+          dayUtc: yesterdayUtc,
+          symbol,
+          rangeSource: "US",
+          high: usYesterday.high,
+          low: usYesterday.low,
+          lockedAtUtc: nowIso,
+        });
+      }
+    }
+  } catch {
+    // Keep range persistence non-fatal and decoupled from trading flow.
   }
 }
 
@@ -790,6 +841,7 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
         closeUtc: now,
       }).catch(() => []);
     }
+    await persistSessionRanges(candleMap, nowIso);
 
     const window = getSessionWindow(now.toMillis());
     if (!window) {
@@ -837,23 +889,6 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
       if (!ranges.BTC?.locked || !ranges.ETH?.locked) {
         transitionState(state, "WATCHING_RANGE", transitions, "range not locked");
       } else {
-        await safeInsertRange({
-          dayUtc: rangeDay,
-          symbol: "BTC",
-          rangeSource: window === "ASIA_LONDON_RANGE_NY_ENTRY" ? "ASIA+LONDON" : "US",
-          high: ranges.BTC.high,
-          low: ranges.BTC.low,
-          lockedAtUtc: nowIso,
-        });
-        await safeInsertRange({
-          dayUtc: rangeDay,
-          symbol: "ETH",
-          rangeSource: window === "ASIA_LONDON_RANGE_NY_ENTRY" ? "ASIA+LONDON" : "US",
-          high: ranges.ETH.high,
-          low: ranges.ETH.low,
-          lockedAtUtc: nowIso,
-        });
-
         transitionState(state, "WATCHING_SWEEP", transitions, "range locked");
 
         const btcCandles = sessionCandlesForNow(candleMap.BTC, currentDayUtc, window, now.toMillis());

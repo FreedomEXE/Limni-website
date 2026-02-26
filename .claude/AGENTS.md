@@ -161,8 +161,7 @@ npm run build        # Production build
 npm run lint         # ESLint
 npm test             # Vitest
 npm run db:migrate   # Run migrations
-npm run bot:bitget   # Start Bitget bot
-npm run bot:oanda    # Start OANDA bot
+npm run bot:bitget   # Start Bitget bot (v2)
 ```
 
 ---
