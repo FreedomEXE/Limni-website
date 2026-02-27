@@ -19,6 +19,27 @@ import { getSessionState, updateSessionState } from "@/lib/poseidon/state";
 import type { PoseidonBehaviorKey } from "@/lib/poseidon/config";
 
 type ToolInput = Record<string, unknown>;
+type LivePriceRow = {
+  symbol: string;
+  pair: string;
+  price: number | null;
+  change24hPct: number | null;
+  volume24hUsd: number | null;
+  timestamp: string | null;
+};
+
+type BitgetTickerResponse = {
+  code?: string;
+  msg?: string;
+  data?: Array<{
+    symbol?: string;
+    lastPr?: string;
+    change24h?: string;
+    usdtVolume?: string;
+    quoteVolume?: string;
+    ts?: string;
+  }>;
+};
 
 const BEHAVIOR_KEYS: PoseidonBehaviorKey[] = [
   "alertsEnabled",
@@ -27,6 +48,10 @@ const BEHAVIOR_KEYS: PoseidonBehaviorKey[] = [
   "errorAlerts",
   "verboseMode",
 ];
+const BITGET_BASE_URL = "https://api.bitget.com";
+const LIVE_PRICE_CACHE_TTL_MS = 10_000;
+const MAX_LIVE_PRICE_SYMBOLS = 12;
+const livePriceCache = new Map<string, { expiresAt: number; row: LivePriceRow }>();
 
 function toJson(data: unknown): string {
   return JSON.stringify(data, null, 2);
@@ -40,6 +65,127 @@ function normalizeLimit(raw: unknown, fallback = 20, cap = 200) {
 
 function isBehaviorKey(value: unknown): value is PoseidonBehaviorKey {
   return typeof value === "string" && BEHAVIOR_KEYS.includes(value as PoseidonBehaviorKey);
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getBitgetProductType() {
+  const raw = String(process.env.BITGET_PRODUCT_TYPE ?? "USDT-FUTURES").trim();
+  return raw || "USDT-FUTURES";
+}
+
+function normalizeLivePriceSymbol(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const clean = raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!clean) return null;
+
+  const full = clean.endsWith("USDT") ? clean : `${clean}USDT`;
+  if (!/^[A-Z0-9]{4,18}$/.test(full)) return null;
+  return full;
+}
+
+function formatTimestamp(ts: unknown): string | null {
+  const millis = Number(ts);
+  if (!Number.isFinite(millis) || millis <= 0) return null;
+  return new Date(millis).toISOString();
+}
+
+function compactSymbol(pair: string): string {
+  return pair.endsWith("USDT") ? pair.slice(0, -4) : pair;
+}
+
+async function fetchBitgetTicker(symbol: string): Promise<LivePriceRow> {
+  const productType = getBitgetProductType();
+  const url = new URL(`${BITGET_BASE_URL}/api/v2/mix/market/ticker`);
+  url.searchParams.set("productType", productType);
+  url.searchParams.set("symbol", symbol);
+
+  const response = await fetch(url.toString(), { cache: "no-store" });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    const suffix = body ? `: ${body.slice(0, 200)}` : "";
+    throw new Error(`Bitget ticker failed (${response.status})${suffix}`);
+  }
+
+  const payload = (await response.json()) as BitgetTickerResponse;
+  const row = Array.isArray(payload.data) ? payload.data[0] : null;
+  if (!row || (payload.code && payload.code !== "00000")) {
+    throw new Error(payload.msg || `No ticker data for ${symbol}`);
+  }
+
+  return {
+    symbol: compactSymbol(symbol),
+    pair: symbol,
+    price: toFiniteNumber(row.lastPr),
+    change24hPct: (() => {
+      const ratio = toFiniteNumber(row.change24h);
+      return ratio === null ? null : ratio * 100;
+    })(),
+    volume24hUsd: toFiniteNumber(row.usdtVolume ?? row.quoteVolume),
+    timestamp: formatTimestamp(row.ts),
+  };
+}
+
+async function getLivePricesFromInput(input: ToolInput) {
+  const rawSymbols = Array.isArray(input.symbols) ? input.symbols : [];
+  const normalized = rawSymbols
+    .map(normalizeLivePriceSymbol)
+    .filter((value): value is string => Boolean(value));
+  const uniqueSymbols = Array.from(new Set(normalized)).slice(0, MAX_LIVE_PRICE_SYMBOLS);
+
+  if (!uniqueSymbols.length) {
+    return {
+      error: "get_live_prices requires `symbols` as a non-empty string array (e.g. [\"BTC\", \"ETH\"]).",
+      results: [] as LivePriceRow[],
+    };
+  }
+
+  const now = Date.now();
+  const cacheHits: LivePriceRow[] = [];
+  const toFetch: string[] = [];
+
+  for (const symbol of uniqueSymbols) {
+    const cached = livePriceCache.get(symbol);
+    if (cached && cached.expiresAt > now) {
+      cacheHits.push(cached.row);
+      continue;
+    }
+    toFetch.push(symbol);
+  }
+
+  const fetched = await Promise.all(
+    toFetch.map(async (symbol) => {
+      try {
+        const row = await fetchBitgetTicker(symbol);
+        livePriceCache.set(symbol, { row, expiresAt: Date.now() + LIVE_PRICE_CACHE_TTL_MS });
+        return row;
+      } catch (error) {
+        return {
+          symbol: compactSymbol(symbol),
+          pair: symbol,
+          price: null,
+          change24hPct: null,
+          volume24hUsd: null,
+          timestamp: null,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }),
+  );
+
+  const merged = [...cacheHits, ...fetched];
+  const order = new Map(uniqueSymbols.map((symbol, idx) => [symbol, idx]));
+  merged.sort((a, b) => (order.get(a.pair) ?? 99) - (order.get(b.pair) ?? 99));
+
+  return {
+    productType: getBitgetProductType(),
+    cachedTtlMs: LIVE_PRICE_CACHE_TTL_MS,
+    asOfUtc: new Date().toISOString(),
+    results: merged,
+  };
 }
 
 async function getBotState() {
@@ -211,7 +357,7 @@ export const toolDefinitions: Anthropic.Tool[] = [
   },
   {
     name: "get_market_snapshot",
-    description: "Get recent market funding, open interest, and liquidation snapshots.",
+    description: "Get recent market funding/open-interest/liquidation snapshots (not real-time ticker prices).",
     input_schema: {
       type: "object",
       properties: {
@@ -227,6 +373,23 @@ export const toolDefinitions: Anthropic.Tool[] = [
       type: "object",
       properties: {},
       required: [],
+    },
+  },
+  {
+    name: "get_live_prices",
+    description: "Get live Bitget futures ticker prices on-demand for specific symbols. Use this for current/real-time price questions.",
+    input_schema: {
+      type: "object",
+      properties: {
+        symbols: {
+          type: "array",
+          items: { type: "string" },
+          minItems: 1,
+          maxItems: MAX_LIVE_PRICE_SYMBOLS,
+          description: "Base symbols or pairs (e.g. [\"BTC\", \"ETH\"] or [\"BTCUSDT\"]).",
+        },
+      },
+      required: ["symbols"],
     },
   },
   {
@@ -308,6 +471,9 @@ export async function handleToolCall(name: string, input: ToolInput): Promise<st
       case "get_weekly_bias": {
         return toJson(await getWeeklyBias());
       }
+      case "get_live_prices": {
+        return toJson(await getLivePricesFromInput(input));
+      }
       case "get_behavior": {
         return toJson(await getBehavior());
       }
@@ -332,4 +498,3 @@ export async function handleToolCall(name: string, input: ToolInput): Promise<st
     return `Tool error [${name}]: ${error instanceof Error ? error.message : String(error)}`;
   }
 }
-
