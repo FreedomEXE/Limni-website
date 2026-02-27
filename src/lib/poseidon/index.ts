@@ -368,7 +368,12 @@ bot.on("text", async (ctx) => {
       });
     } catch (error) {
       console.error("[poseidon] group text handler error:", error);
-      // Don't spam error messages in group — silent fail
+      // DM Freedom the error instead of spamming the group
+      const errMsg = error instanceof Error ? error.message : String(error);
+      await ctx.telegram.sendMessage(
+        config.telegram.ownerId,
+        `⚠️ Group handler error: ${errMsg.slice(0, 500)}`,
+      ).catch(() => undefined);
     }
     return;
   }
