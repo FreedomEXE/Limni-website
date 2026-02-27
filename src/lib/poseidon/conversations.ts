@@ -96,3 +96,8 @@ export async function clearHistory(): Promise<void> {
   history = [];
   await saveHistory();
 }
+
+export async function getConversationCount(): Promise<number> {
+  await loadHistory();
+  return history.length;
+}
