@@ -16,9 +16,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "@/lib/poseidon/config";
 import { handleToolCall } from "@/lib/poseidon/tools";
+import type { SystemPromptParts } from "@/lib/poseidon/memory";
 
 const client = new Anthropic({ apiKey: config.anthropic.apiKey });
-const MAX_TOOL_ROUNDS = 5;
+const MAX_TOOL_ROUNDS = 3;
 const CLAUDE_TIMEOUT_MS = 30_000;
 const TOOL_TIMEOUT_MS = 15_000;
 const TYPING_KEEPALIVE_MS = 4_000;
@@ -31,6 +32,11 @@ export type ChatMessage = {
 export type ChatResponse = {
   displayText: string;
   persistText: string;
+};
+
+export type ChatOptions = {
+  /** Override the default model (e.g. Haiku for group mode) */
+  model?: string;
 };
 
 function summarizeToolResult(result: string, maxChars = 120): string {
@@ -118,16 +124,53 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
+/**
+ * Build the `system` parameter for the Anthropic API.
+ * When given structured parts, applies cache_control to the static portion
+ * so Anthropic caches it across calls (90% cost reduction on cache hits).
+ * Falls back to a plain string for simple cases (e.g. group mode).
+ */
+function buildSystemParam(
+  prompt: SystemPromptParts | string,
+): string | Anthropic.TextBlockParam[] {
+  if (typeof prompt === "string") {
+    return prompt;
+  }
+
+  const blocks: Anthropic.TextBlockParam[] = [];
+
+  if (prompt.staticPart) {
+    blocks.push({
+      type: "text" as const,
+      text: prompt.staticPart,
+      cache_control: { type: "ephemeral" as const },
+    });
+  }
+
+  if (prompt.dynamicPart) {
+    blocks.push({
+      type: "text" as const,
+      text: prompt.dynamicPart,
+    });
+  }
+
+  return blocks.length ? blocks : "";
+}
+
 export async function chat(
-  systemPrompt: string,
+  systemPrompt: SystemPromptParts | string,
   messages: ChatMessage[],
   tools: Anthropic.Tool[],
   typingFn?: () => Promise<unknown>,
+  options?: ChatOptions,
 ): Promise<ChatResponse> {
   const transcript = messages.map((msg) => ({
     role: msg.role,
     content: msg.content,
   })) as Anthropic.MessageParam[];
+
+  const systemParam = buildSystemParam(systemPrompt);
+  const model = options?.model || config.models.proteus;
 
   let typingInterval: NodeJS.Timeout | null = null;
   if (typingFn) {
@@ -145,9 +188,9 @@ export async function chat(
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
       const response = await withTimeout(
         callClaudeWithRetry({
-          model: config.models.proteus,
+          model,
           max_tokens: 4096,
-          system: systemPrompt,
+          system: systemParam,
           messages: transcript,
           tools,
         }),

@@ -67,7 +67,7 @@ export const config = {
     maxGroupHistory: 200,
   },
   maxConversationHistory: parseInteger(
-    process.env.MAX_CONVERSATION_HISTORY?.trim() || "50",
+    process.env.MAX_CONVERSATION_HISTORY?.trim() || "20",
     "MAX_CONVERSATION_HISTORY",
   ),
   memoryDir: process.env.POSEIDON_MEMORY_DIR?.trim() || "./docs/ai/poseidon/memory",

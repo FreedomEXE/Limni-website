@@ -173,6 +173,7 @@ bot.command("start", async (ctx) => {
       },
     ],
     [],
+    undefined,
   );
 
   await addMessage("assistant", greeting.persistText);
@@ -308,10 +309,10 @@ bot.on("text", async (ctx) => {
         await ctx.reply("Sent you the details privately.", {
           reply_parameters: { message_id: ctx.message.message_id },
         });
-        // Forward to private handler via DM
-        const systemPrompt = await loadSystemPrompt();
+        // Forward to private handler via DM (use full private prompt + tools)
+        const privatePrompt = await loadSystemPrompt();
         const dmResponse = await chat(
-          systemPrompt,
+          privatePrompt,
           [{ role: "user", content: userMessage }],
           toolDefinitions,
         );
@@ -351,6 +352,7 @@ bot.on("text", async (ctx) => {
         groupHistory,
         groupTools,
         () => ctx.sendChatAction("typing"),
+        { model: config.models.nereus },
       );
 
       setActiveGroupId(null);
@@ -381,11 +383,11 @@ bot.on("text", async (ctx) => {
   // ─── PRIVATE TEXT HANDLER ────────────────────
   try {
     await writeHeartbeat({ event: "text_message" }).catch(() => undefined);
-    let systemPrompt = await loadSystemPrompt();
+    const systemPrompt = await loadSystemPrompt();
     const historyBefore = await getHistory();
     const isNewConversation = historyBefore.length === 0;
     if (isNewConversation) {
-      systemPrompt += "\n\nThis is the start of a new conversation. Greet Freedom briefly. Do NOT call any tools unless he asks for specific data.";
+      systemPrompt.dynamicPart += "\n\nThis is the start of a new conversation. Greet Freedom briefly. Do NOT call any tools unless he asks for specific data.";
     }
 
     await bufferMessage(

@@ -102,7 +102,17 @@ export async function diagnoseContext(): Promise<ContextDiagnosis> {
   return { loaded, missing, totalChars };
 }
 
-export async function loadSystemPrompt(): Promise<string> {
+/**
+ * Structured system prompt with static (cacheable) and dynamic parts.
+ * Static = memory files (rarely change, cached by Anthropic for 5 min).
+ * Dynamic = session state + protocol (changes every conversation).
+ */
+export type SystemPromptParts = {
+  staticPart: string;
+  dynamicPart: string;
+};
+
+export async function loadSystemPrompt(): Promise<SystemPromptParts> {
   const sections: string[] = [];
 
   for (const spec of MEMORY_FILES) {
@@ -111,6 +121,9 @@ export async function loadSystemPrompt(): Promise<string> {
     if (!content) continue;
     sections.push(`## ${spec.filename}\n${content}`);
   }
+
+  // Static part = memory files joined (stable across calls, ideal for caching)
+  const staticPart = sections.join("\n\n");
 
   // Load session state (perpetual memory across restarts)
   const sessionState = await loadSessionState();
@@ -129,41 +142,33 @@ export async function loadSystemPrompt(): Promise<string> {
     );
   }
 
-  const baseSections = [...sections, SESSION_STATE_PROTOCOL];
-  const baseComposed = baseSections.join("\n\n");
+  // Build dynamic part: session state + protocol
+  const dynamicSections: string[] = [];
 
-  if (!sessionState || sessionState.length <= 20) {
-    if (baseComposed.length <= MAX_SYSTEM_PROMPT_CHARS) {
-      return baseComposed;
-    }
-    return baseComposed.slice(0, MAX_SYSTEM_PROMPT_CHARS);
+  if (sessionState && sessionState.length > 20) {
+    const statePrefix = "## CURRENT SESSION STATE\n";
+    const truncationNote = "\n\n[Oldest session state truncated to fit prompt budget. Run /reckoning or request curation to archive.]";
+
+    // Budget for state: total limit minus static, protocol, and joining overhead
+    const protocolAndPadding = SESSION_STATE_PROTOCOL.length + 20; // joining padding
+    const availableForState =
+      MAX_SYSTEM_PROMPT_CHARS -
+      staticPart.length -
+      statePrefix.length -
+      truncationNote.length -
+      protocolAndPadding;
+
+    const cappedState = capStateToNewestWindow(sessionState, availableForState);
+    const stateSection = cappedState.length === sessionState.length
+      ? `${statePrefix}${cappedState}`
+      : `${statePrefix}${cappedState}${truncationNote}`;
+    dynamicSections.push(stateSection);
   }
 
-  const statePrefix = "## CURRENT SESSION STATE\n";
-  const joinPadding = "\n\n";
-  const truncationNote = "\n\n[Oldest session state truncated to fit prompt budget. Run /reckoning or request curation to archive.]";
-  const availableForState =
-    MAX_SYSTEM_PROMPT_CHARS -
-    baseComposed.length -
-    joinPadding.length -
-    statePrefix.length -
-    truncationNote.length;
-  const cappedState = capStateToNewestWindow(sessionState, availableForState);
+  dynamicSections.push(SESSION_STATE_PROTOCOL);
+  const dynamicPart = dynamicSections.join("\n\n");
 
-  const stateSection = cappedState.length === sessionState.length
-    ? `${statePrefix}${cappedState}`
-    : `${statePrefix}${cappedState}${truncationNote}`;
-
-  const withState = [sections.join("\n\n"), stateSection, SESSION_STATE_PROTOCOL]
-    .filter(Boolean)
-    .join("\n\n");
-
-  if (withState.length <= MAX_SYSTEM_PROMPT_CHARS) {
-    return withState;
-  }
-
-  // Fallback safety cap if memory files unexpectedly exceed budget.
-  return withState.slice(0, MAX_SYSTEM_PROMPT_CHARS);
+  return { staticPart, dynamicPart };
 }
 
 /**
