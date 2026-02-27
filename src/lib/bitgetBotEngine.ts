@@ -30,7 +30,7 @@ import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { sendEmail } from "@/lib/notifications/email";
 import { fetchLiquidationSummary } from "@/lib/coinank";
 import { readNearestLiquidationHeatmapSnapshot } from "@/lib/marketSnapshots";
-import { buildLiquidationAdvisory } from "@/lib/bitgetLiquidationFeatures";
+import { buildLiquidationAdvisory, buildMultiTimeframeExitContext } from "@/lib/bitgetLiquidationFeatures";
 import {
   buildAsiaLondonRange,
   buildUsSessionRange,
@@ -154,6 +154,7 @@ const LIQ_ADVISORY_EXCHANGE_GROUP =
   (process.env.BITGET_LIQ_ADVISORY_EXCHANGE_GROUP ?? "binance_bybit").trim() || "binance_bybit";
 const LIQ_ADVISORY_THRESHOLD = Number(process.env.BITGET_LIQ_ADVISORY_THRESHOLD ?? "1.2");
 const LIQ_ADVISORY_MAX_AGE_MINUTES = Number(process.env.BITGET_LIQ_ADVISORY_MAX_AGE_MINUTES ?? "240");
+const LIQ_EXIT_INTERVALS = ["6h", "1d", "7d", "30d"] as const;
 
 function loadEnvFromFile() {
   for (const filename of [".env.local", ".env"]) {
@@ -671,6 +672,7 @@ async function fetchEntryMarketMetadata(
       advisory: null,
       as_of_utc: atUtc,
     },
+    exit_context: null as unknown,
     warnings: [] as string[],
   };
 
@@ -710,6 +712,7 @@ async function fetchEntryMarketMetadata(
   }
 
   if (LIQ_ADVISORY_ENABLED) {
+    // Fetch primary interval advisory (backward compatible)
     try {
       const heatmap = await readNearestLiquidationHeatmapSnapshot({
         symbol,
@@ -736,6 +739,42 @@ async function fetchEntryMarketMetadata(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       (metadata.warnings as string[]).push(`liquidation_advisory_failed: ${message}`);
+    }
+
+    // Fetch all intervals in parallel for multi-timeframe exit context
+    try {
+      const settled = await Promise.allSettled(
+        LIQ_EXIT_INTERVALS.map(async (interval) => {
+          const snapshot = await readNearestLiquidationHeatmapSnapshot({
+            symbol,
+            atUtc,
+            interval,
+            exchangeGroup: LIQ_ADVISORY_EXCHANGE_GROUP,
+            maxAgeMinutes: LIQ_ADVISORY_MAX_AGE_MINUTES,
+          });
+          return { interval, snapshot };
+        }),
+      );
+
+      const snapshotMap = new Map<string, Awaited<ReturnType<typeof readNearestLiquidationHeatmapSnapshot>> & {}>();
+      for (const result of settled) {
+        if (result.status === "fulfilled" && result.value.snapshot) {
+          snapshotMap.set(result.value.interval, result.value.snapshot);
+        }
+      }
+
+      if (snapshotMap.size > 0) {
+        metadata.exit_context = buildMultiTimeframeExitContext(snapshotMap, direction, {
+          symbol,
+          currentPrice: referencePrice,
+          opposingThreshold: LIQ_ADVISORY_THRESHOLD,
+        });
+      } else {
+        (metadata.warnings as string[]).push("exit_context_no_snapshots_available");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      (metadata.warnings as string[]).push(`exit_context_failed: ${message}`);
     }
   }
 
