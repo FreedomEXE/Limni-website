@@ -217,6 +217,8 @@ Alt expansion is stubbed in the live bot (`loadAltSymbols()` returns `["BTCUSDT"
 
 - **Full architecture spec:** `docs/bots/bitget-bot-architecture.md`
 - **Strategy detail:** `docs/bots/bitget-bot-strategy.md`
+- **Liquidation intelligence implementation plan:** `docs/bots/bitget-liquidation-intelligence-implementation.md`
+- **Liquidation intelligence execution checklist:** `docs/bots/bitget-liquidation-intelligence-checklist.md`
 - **Backtest results:** `docs/bots/bitget-v2-backtest-results.md`
 - **Backtest script:** `scripts/bitget-v2-backtest.ts`
 - **Alt screener:** `scripts/alt-pair-screener.ts`

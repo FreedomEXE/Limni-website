@@ -6,7 +6,7 @@
  *
  * Description:
  * Hourly cron endpoint for collection-only market snapshots
- * (funding rates, open interest, and liquidation summaries).
+ * (funding rates, open interest, liquidation summaries, and heatmap ladders).
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
         funding: result.funding,
         oi: result.oi,
         liquidation: result.liquidation,
+        heatmap: result.heatmap,
       },
       errors: result.errors,
       started_at: startedAt,
@@ -45,7 +46,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        counts: { funding: 0, oi: 0, liquidation: 0 },
+        counts: { funding: 0, oi: 0, liquidation: 0, heatmap: 0 },
         errors: [message],
         started_at: startedAt,
         timestamp: new Date().toISOString(),

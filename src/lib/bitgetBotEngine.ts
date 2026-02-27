@@ -29,6 +29,8 @@ import type { CotSnapshot } from "@/lib/cotTypes";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { sendEmail } from "@/lib/notifications/email";
 import { fetchLiquidationSummary } from "@/lib/coinank";
+import { readNearestLiquidationHeatmapSnapshot } from "@/lib/marketSnapshots";
+import { buildLiquidationAdvisory } from "@/lib/bitgetLiquidationFeatures";
 import {
   buildAsiaLondonRange,
   buildUsSessionRange,
@@ -146,6 +148,12 @@ const HANDSHAKE_WINDOW_MINUTES = Number(process.env.BITGET_BOT_HANDSHAKE_WINDOW_
 const WEEKLY_MAX_ENTRIES = Number(process.env.BITGET_BOT_WEEKLY_MAX_ENTRIES_PER_SYMBOL ?? "5");
 const INITIAL_LEVERAGE = Number(process.env.BITGET_BOT_INITIAL_LEVERAGE ?? "5");
 const DRY_RUN = String(process.env.BITGET_BOT_DRY_RUN ?? "true").toLowerCase() !== "false";
+const LIQ_ADVISORY_ENABLED = String(process.env.BITGET_LIQ_ADVISORY_ENABLED ?? "true").toLowerCase() !== "false";
+const LIQ_ADVISORY_INTERVAL = (process.env.BITGET_LIQ_ADVISORY_INTERVAL ?? "1d").trim() || "1d";
+const LIQ_ADVISORY_EXCHANGE_GROUP =
+  (process.env.BITGET_LIQ_ADVISORY_EXCHANGE_GROUP ?? "binance_bybit").trim() || "binance_bybit";
+const LIQ_ADVISORY_THRESHOLD = Number(process.env.BITGET_LIQ_ADVISORY_THRESHOLD ?? "1.2");
+const LIQ_ADVISORY_MAX_AGE_MINUTES = Number(process.env.BITGET_LIQ_ADVISORY_MAX_AGE_MINUTES ?? "240");
 
 function loadEnvFromFile() {
   for (const filename of [".env.local", ".env"]) {
@@ -636,7 +644,12 @@ async function safeAttachHandshakeGroup(params: {
   }
 }
 
-async function fetchEntryMarketMetadata(symbol: CoreSymbol, referencePrice: number) {
+async function fetchEntryMarketMetadata(
+  symbol: CoreSymbol,
+  referencePrice: number,
+  direction: RiskDirection,
+  atUtc: string,
+) {
   const metadata: Record<string, unknown> = {
     funding_rate: null,
     open_interest: null,
@@ -650,6 +663,13 @@ async function fetchEntryMarketMetadata(symbol: CoreSymbol, referencePrice: numb
       largest_above: null,
       largest_below: null,
       last_updated: null,
+    },
+    liquidation_intelligence: {
+      enabled: LIQ_ADVISORY_ENABLED,
+      interval: LIQ_ADVISORY_INTERVAL,
+      exchange_group: LIQ_ADVISORY_EXCHANGE_GROUP,
+      advisory: null,
+      as_of_utc: atUtc,
     },
     warnings: [] as string[],
   };
@@ -687,6 +707,36 @@ async function fetchEntryMarketMetadata(symbol: CoreSymbol, referencePrice: numb
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     (metadata.warnings as string[]).push(`liquidation_snapshot_failed: ${message}`);
+  }
+
+  if (LIQ_ADVISORY_ENABLED) {
+    try {
+      const heatmap = await readNearestLiquidationHeatmapSnapshot({
+        symbol,
+        atUtc,
+        interval: LIQ_ADVISORY_INTERVAL,
+        exchangeGroup: LIQ_ADVISORY_EXCHANGE_GROUP,
+        maxAgeMinutes: LIQ_ADVISORY_MAX_AGE_MINUTES,
+      });
+
+      if (!heatmap) {
+        (metadata.warnings as string[]).push("liquidation_advisory_missing_snapshot");
+      } else {
+        const advisory = buildLiquidationAdvisory(heatmap, direction, {
+          opposingThreshold: LIQ_ADVISORY_THRESHOLD,
+        });
+        metadata.liquidation_intelligence = {
+          enabled: true,
+          interval: LIQ_ADVISORY_INTERVAL,
+          exchange_group: LIQ_ADVISORY_EXCHANGE_GROUP,
+          advisory,
+          as_of_utc: atUtc,
+        };
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      (metadata.warnings as string[]).push(`liquidation_advisory_failed: ${message}`);
+    }
   }
 
   return metadata;
@@ -1016,8 +1066,8 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
               }
 
               const [btcMarketTag, ethMarketTag] = await Promise.all([
-                fetchEntryMarketMetadata("BTC", btcPrice),
-                fetchEntryMarketMetadata("ETH", ethPrice),
+                fetchEntryMarketMetadata("BTC", btcPrice, btcDirection, entryTimeUtc),
+                fetchEntryMarketMetadata("ETH", ethPrice, ethDirection, entryTimeUtc),
               ]);
 
               state.positions.push({
