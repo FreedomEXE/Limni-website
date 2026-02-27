@@ -15,16 +15,20 @@
     "performance:cleanup-duplicates": "tsx scripts/cleanup-performance-snapshot-duplicates.ts",
     "db:migrate": "tsx db/migrate.ts",
     "bot:bitget": "tsx bots/bitget-perp-bot.ts",
-    "bot:oanda": "tsx bots/oanda-universal-bot.ts"
+    "bot:oanda": "tsx bots/oanda-universal-bot.ts",
+    "poseidon": "tsx src/lib/poseidon/index.ts",
+    "poseidon:dev": "tsx watch src/lib/poseidon/index.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@types/pg": "^8.16.0",
     "better-sqlite3": "^12.6.2",
     "luxon": "^3.7.2",
     "next": "16.1.1",
     "pg": "^8.17.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "telegraf": "^4.16.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -70,3 +70,17 @@ scripts/LimniSizingAudit_*.csv
 # Generated funded-policy simulation reports
 reports/universal-v1-funded-policy-sim-latest.md
 reports/universal-v1-funded-policy-sim-*.md
+
+# Screenshots and temp files
+screenshots/
+temp/
+nul
+*.png
+*.jpeg
+*.jpg
+
+# Poseidon runtime state (persisted locally, not in git)
+docs/ai/poseidon/state/
+
+# Python helper scripts
+scripts/*.py
