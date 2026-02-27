@@ -160,9 +160,12 @@ bot.on("text", async (ctx) => {
     );
     const history = await getHistory();
 
-    await ctx.sendChatAction("typing");
-
-    const response = await chat(systemPrompt, history, toolDefinitions);
+    const response = await chat(
+      systemPrompt,
+      history,
+      toolDefinitions,
+      () => ctx.sendChatAction("typing"),
+    );
 
     await addMessage("assistant", response.persistText);
     await ctx.reply(response.displayText, { parse_mode: "Markdown" }).catch(async () => {

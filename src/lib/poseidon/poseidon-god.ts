@@ -18,8 +18,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { DateTime } from "luxon";
 import type { Telegram } from "telegraf";
 import { query, queryOne } from "@/lib/db";
+import { readActivityLog, resetActivityLog } from "@/lib/poseidon/activity-log";
 import { config } from "@/lib/poseidon/config";
+import { readCurationFlag } from "@/lib/poseidon/curation-flag";
 import { buildPoseidonHeader, sendPoseidonAnimation } from "@/lib/poseidon/animations";
+import { curateProteusMemory } from "@/lib/poseidon/poseidon-curator";
 import { getCronStatusSummary } from "@/lib/cronStatus";
 
 // ─── Poseidon Personality ─────────────────
@@ -330,6 +333,40 @@ async function gatherReckoningData(): Promise<string> {
     sections.push("NEWS\n  Error");
   }
 
+  // DEITY ACTIVITY
+  try {
+    const activity = await readActivityLog();
+    if (activity.length > 0) {
+      const tritonAlerts = activity.filter((item) => item.deity === "triton");
+      const nereusBriefings = activity.filter((item) => item.deity === "nereus");
+
+      const lines: string[] = ["DEITY ACTIVITY (last 24h)"];
+      lines.push(`  Triton: ${tritonAlerts.length} alerts sent`);
+
+      const critical = tritonAlerts.filter((item) => item.priority === "CRITICAL").length;
+      const high = tritonAlerts.filter((item) => item.priority === "HIGH").length;
+      if (critical) lines.push(`    CRITICAL: ${critical}`);
+      if (high) lines.push(`    HIGH: ${high}`);
+
+      for (const alert of tritonAlerts
+        .filter((item) => item.priority === "CRITICAL" || item.priority === "HIGH")
+        .slice(0, 5)) {
+        lines.push(`    ${alert.timestamp.slice(11, 16)} UTC: ${alert.summary}`);
+      }
+
+      lines.push(`  Nereus: ${nereusBriefings.length} briefings delivered`);
+      for (const briefing of nereusBriefings.slice(0, 2)) {
+        lines.push(`    ${briefing.summary}`);
+      }
+
+      sections.push(lines.join("\n"));
+    } else {
+      sections.push("DEITY ACTIVITY\n  No activity logged since last Reckoning.");
+    }
+  } catch {
+    sections.push("DEITY ACTIVITY\n  Error reading activity log.");
+  }
+
   return sections.join("\n\n");
 }
 
@@ -379,6 +416,27 @@ export async function sendReckoning(telegram: Telegram, ownerId: number): Promis
 
     await telegram.sendMessage(ownerId, message, { parse_mode: "HTML" });
     console.log("[poseidon-god] Daily Reckoning delivered");
+
+    try {
+      const flag = await readCurationFlag();
+      const reason = flag.requested
+        ? `daily scheduled curation (priority: elevated; ${flag.reason})`
+        : "daily scheduled curation";
+      const curationResult = await curateProteusMemory(reason);
+      if (!curationResult.success) {
+        console.warn(`[poseidon-curator] Curation incomplete: ${curationResult.note}`);
+      } else if (curationResult.archived > 0) {
+        console.log(
+          `[poseidon-curator] Archived ${curationResult.archived} entries: ${curationResult.note}`,
+        );
+      }
+    } catch (err) {
+      console.error("[poseidon-curator] Daily curation failed:", err);
+    }
+
+    await resetActivityLog().catch((error) => {
+      console.warn("[poseidon-god] Failed to reset activity log:", error);
+    });
   } catch (err) {
     console.error("[poseidon-god] Reckoning failed:", err);
     try {

@@ -13,10 +13,14 @@
 -----------------------------------------------*/
 
 import Anthropic from "@anthropic-ai/sdk";
+import { readdir, readFile } from "node:fs/promises";
+import path from "node:path";
 import { query, queryOne } from "@/lib/db";
+import { fetchLiquidationHeatmap } from "@/lib/coinank";
 import { getBehavior, setBehavior, type BehaviorState } from "@/lib/poseidon/behavior";
 import { getSessionState, updateSessionState } from "@/lib/poseidon/state";
-import type { PoseidonBehaviorKey } from "@/lib/poseidon/config";
+import { config, type PoseidonBehaviorKey } from "@/lib/poseidon/config";
+import { curateProteusMemory } from "@/lib/poseidon/poseidon-curator";
 
 type ToolInput = Record<string, unknown>;
 type LivePriceRow = {
@@ -51,6 +55,11 @@ const BEHAVIOR_KEYS: PoseidonBehaviorKey[] = [
 const BITGET_BASE_URL = "https://api.bitget.com";
 const LIVE_PRICE_CACHE_TTL_MS = 10_000;
 const MAX_LIVE_PRICE_SYMBOLS = 12;
+const MAX_HEATMAP_SYMBOLS = 6;
+const HEATMAP_DEFAULT_EXCHANGES = ["Binance", "Bybit"];
+const MONTH_FORMAT = /^\d{4}-(0[1-9]|1[0-2])$/;
+const ARCHIVE_MAX_RESPONSE_CHARS = 8_000;
+const ARCHIVE_MAX_QUERY_SECTION_CHARS = 4_000;
 const livePriceCache = new Map<string, { expiresAt: number; row: LivePriceRow }>();
 
 function toJson(data: unknown): string {
@@ -95,6 +104,121 @@ function formatTimestamp(ts: unknown): string | null {
 
 function compactSymbol(pair: string): string {
   return pair.endsWith("USDT") ? pair.slice(0, -4) : pair;
+}
+
+function normalizeBaseSymbol(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const clean = raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!clean) return null;
+  return clean.endsWith("USDT") ? clean.slice(0, -4) : clean;
+}
+
+function normalizeHeatmapInterval(raw: unknown): string {
+  const text = typeof raw === "string" ? raw.trim() : "";
+  return text || "1d";
+}
+
+function normalizeHeatmapExchanges(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    return HEATMAP_DEFAULT_EXCHANGES;
+  }
+
+  const normalized = raw
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (!normalized.length) {
+    return HEATMAP_DEFAULT_EXCHANGES;
+  }
+  return Array.from(new Set(normalized));
+}
+
+function sanitizeMonthInput(raw: string): string | null {
+  const trimmed = raw.trim();
+  return MONTH_FORMAT.test(trimmed) ? trimmed : null;
+}
+
+function assertPathContainment(filePath: string, allowedDir: string): void {
+  const resolvedFile = path.resolve(filePath);
+  const resolvedDir = path.resolve(allowedDir);
+  const relative = path.relative(resolvedDir, resolvedFile);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Path traversal blocked");
+  }
+}
+
+function filterArchiveSections(content: string, query: string): string {
+  const sections = content.split(/(?=^### )/m);
+  const matches = sections.filter((section) => section.toLowerCase().includes(query));
+  return matches.join("\n").trim().slice(0, ARCHIVE_MAX_QUERY_SECTION_CHARS);
+}
+
+function extractArchiveSummary(content: string): string {
+  const match = content.match(/## Summary\n([\s\S]*?)(?=\n---|\n## )/);
+  return match?.[1]?.trim().slice(0, 300) || "No summary available.";
+}
+
+async function getSessionArchive(input: ToolInput): Promise<string> {
+  const archiveDir = path.resolve(process.cwd(), config.stateDir, "..", "archives");
+  const queryText = typeof input.query === "string" ? input.query.trim().toLowerCase() : "";
+  const rawMonth = typeof input.month === "string" ? input.month.trim() : "";
+
+  if (rawMonth) {
+    const month = sanitizeMonthInput(rawMonth);
+    if (!month) {
+      return "Invalid month format. Use YYYY-MM (e.g. '2026-02').";
+    }
+
+    const filePath = path.join(archiveDir, `${month}.md`);
+    assertPathContainment(filePath, archiveDir);
+    try {
+      const content = await readFile(filePath, "utf8");
+      if (!queryText) {
+        return content.slice(0, ARCHIVE_MAX_RESPONSE_CHARS);
+      }
+      const filtered = filterArchiveSections(content, queryText);
+      return filtered || `No archive entries found in ${month} matching "${queryText}".`;
+    } catch {
+      return `No archive found for ${month}.`;
+    }
+  }
+
+  try {
+    const files = await readdir(archiveDir);
+    const mdFiles = files
+      .filter((file) => file.endsWith(".md"))
+      .sort()
+      .reverse();
+
+    if (!mdFiles.length) return "No archives exist yet.";
+
+    if (!queryText) {
+      const summaries: string[] = [];
+      for (const file of mdFiles.slice(0, 12)) {
+        const filePath = path.join(archiveDir, file);
+        assertPathContainment(filePath, archiveDir);
+        const content = await readFile(filePath, "utf8");
+        summaries.push(`**${file.replace(".md", "")}**: ${extractArchiveSummary(content)}`);
+      }
+      return summaries.join("\n\n");
+    }
+
+    const results: string[] = [];
+    for (const file of mdFiles) {
+      const filePath = path.join(archiveDir, file);
+      assertPathContainment(filePath, archiveDir);
+      const content = await readFile(filePath, "utf8");
+      const matches = filterArchiveSections(content, queryText);
+      if (matches) {
+        results.push(`--- ${file.replace(".md", "")} ---\n${matches}`);
+      }
+    }
+
+    if (!results.length) return `No archive entries found matching "${queryText}".`;
+    return results.join("\n\n").slice(0, ARCHIVE_MAX_RESPONSE_CHARS);
+  } catch {
+    return "Archive directory not found. No archives exist yet.";
+  }
 }
 
 async function fetchBitgetTicker(symbol: string): Promise<LivePriceRow> {
@@ -185,6 +309,59 @@ async function getLivePricesFromInput(input: ToolInput) {
     cachedTtlMs: LIVE_PRICE_CACHE_TTL_MS,
     asOfUtc: new Date().toISOString(),
     results: merged,
+  };
+}
+
+async function getLiquidationHeatmapFromInput(input: ToolInput) {
+  const rawSymbols = Array.isArray(input.symbols) ? input.symbols : [];
+  const symbols = Array.from(
+    new Set(
+      rawSymbols
+        .map(normalizeBaseSymbol)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ).slice(0, MAX_HEATMAP_SYMBOLS);
+
+  if (!symbols.length) {
+    return {
+      error: "get_liquidation_heatmap requires `symbols` as a non-empty string array (e.g. [\"BTC\", \"ETH\"]).",
+      results: [],
+    };
+  }
+
+  const interval = normalizeHeatmapInterval(input.interval);
+  const exchanges = normalizeHeatmapExchanges(input.exchanges);
+
+  const settled = await Promise.allSettled(
+    symbols.map(async (symbol) => {
+      try {
+        return await fetchLiquidationHeatmap(symbol, { interval, exchanges });
+      } catch (error) {
+        return {
+          symbol,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }),
+  );
+
+  const results: Array<Record<string, unknown>> = [];
+  for (const item of settled) {
+    if (item.status === "fulfilled") {
+      results.push(item.value as Record<string, unknown>);
+    } else {
+      results.push({
+        symbol: "unknown",
+        error: item.reason instanceof Error ? item.reason.message : String(item.reason),
+      });
+    }
+  }
+
+  return {
+    asOfUtc: new Date().toISOString(),
+    interval,
+    exchanges,
+    results,
   };
 }
 
@@ -393,6 +570,32 @@ export const toolDefinitions: Anthropic.Tool[] = [
     },
   },
   {
+    name: "get_liquidation_heatmap",
+    description: "Get swing-level liquidation heatmap density bands (±2/5/10/15/25%) for big-zone analysis. Use only when user asks for swing heatmap/big liquidation zones.",
+    input_schema: {
+      type: "object",
+      properties: {
+        symbols: {
+          type: "array",
+          items: { type: "string" },
+          minItems: 1,
+          maxItems: MAX_HEATMAP_SYMBOLS,
+          description: "Base symbols or pairs (e.g. [\"BTC\", \"ETH\"] or [\"BTCUSDT\"]).",
+        },
+        interval: {
+          type: "string",
+          description: "CoinAnk heatmap interval (default: 1d).",
+        },
+        exchanges: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional exchange list. Defaults to Binance + Bybit.",
+        },
+      },
+      required: ["symbols"],
+    },
+  },
+  {
     name: "get_behavior",
     description: "Read Poseidon runtime behavior flags from local state.",
     input_schema: {
@@ -428,6 +631,38 @@ export const toolDefinitions: Anthropic.Tool[] = [
     input_schema: {
       type: "object",
       properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "get_session_archive",
+    description: "Search archived memory for resolved projects, past trades, and historical decisions by keyword or month.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Keyword/phrase to search archives (e.g. 'ETH trade', 'liquidation research').",
+        },
+        month: {
+          type: "string",
+          description: "Specific month in YYYY-MM format (e.g. '2026-02').",
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "request_poseidon_curation",
+    description: "Call Poseidon to curate memory by archiving resolved items and keeping active state lean.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reason: {
+          type: "string",
+          description: "Optional reason for curation request.",
+        },
+      },
       required: [],
     },
   },
@@ -474,6 +709,9 @@ export async function handleToolCall(name: string, input: ToolInput): Promise<st
       case "get_live_prices": {
         return toJson(await getLivePricesFromInput(input));
       }
+      case "get_liquidation_heatmap": {
+        return toJson(await getLiquidationHeatmapFromInput(input));
+      }
       case "get_behavior": {
         return toJson(await getBehavior());
       }
@@ -483,6 +721,14 @@ export async function handleToolCall(name: string, input: ToolInput): Promise<st
       case "get_session_state": {
         const state = await getSessionState();
         return state || "No session state saved yet.";
+      }
+      case "get_session_archive": {
+        return await getSessionArchive(input);
+      }
+      case "request_poseidon_curation": {
+        const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+        const result = await curateProteusMemory(reason || undefined);
+        return toJson(result);
       }
       case "update_session_state": {
         const content = input.content;

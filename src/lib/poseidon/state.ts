@@ -19,10 +19,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { config } from "@/lib/poseidon/config";
+import { withStateLock } from "@/lib/poseidon/state-mutex";
 
 const STATE_FILENAME = "PROTEUS_STATE.md";
 const statePath = path.resolve(process.cwd(), config.stateDir, STATE_FILENAME);
-const MAX_STATE_CHARS = 3000;
+export const STATE_SOFT_LIMIT_CHARS = 40_000;
 
 let cachedState: string | null = null;
 
@@ -39,7 +40,7 @@ export async function loadSessionState(): Promise<string> {
   await ensureStateDir();
   try {
     const raw = await readFile(statePath, "utf8");
-    cachedState = raw.slice(0, MAX_STATE_CHARS);
+    cachedState = raw;
     console.log(`[poseidon.state] Loaded PROTEUS_STATE.md (${cachedState.length} chars)`);
     return cachedState;
   } catch {
@@ -56,6 +57,32 @@ export async function getSessionState(): Promise<string> {
   return await loadSessionState();
 }
 
+function stripStateHeader(content: string): string {
+  return content.replace(/^# Proteus Session State\s*\n+(?:> Last updated:.*\n+)?/i, "").trim();
+}
+
+function formatStateDocument(content: string): string {
+  const now = new Date().toISOString();
+  const header = `# Proteus Session State\n\n> Last updated: ${now}\n\n`;
+  const body = stripStateHeader(content);
+  return `${header}${body}`;
+}
+
+export async function writeStateRaw(content: string): Promise<string> {
+  await ensureStateDir();
+  const full = formatStateDocument(content);
+
+  await writeFile(statePath, full, "utf8");
+  cachedState = full;
+  console.log(`[poseidon.state] Updated PROTEUS_STATE.md (${full.length} chars)`);
+  if (full.length > STATE_SOFT_LIMIT_CHARS) {
+    console.warn(
+      `[poseidon.state] State file exceeds soft limit (${full.length} chars) - curation recommended`,
+    );
+  }
+  return `Session state updated (${full.length} chars)`;
+}
+
 /**
  * Write new session state to disk. Called by Proteus via the
  * update_session_state tool when something meaningful happens.
@@ -68,18 +95,12 @@ export async function getSessionState(): Promise<string> {
  * - Any open threads or pending items
  */
 export async function updateSessionState(content: string): Promise<string> {
-  await ensureStateDir();
+  return await withStateLock(async () => await writeStateRaw(content));
+}
 
-  // Prepend timestamp
-  const now = new Date().toISOString();
-  const header = `# Proteus Session State\n\n> Last updated: ${now}\n\n`;
-  const body = content.slice(0, MAX_STATE_CHARS - header.length);
-  const full = header + body;
-
-  await writeFile(statePath, full, "utf8");
-  cachedState = full;
-  console.log(`[poseidon.state] Updated PROTEUS_STATE.md (${full.length} chars)`);
-  return `Session state updated (${full.length} chars)`;
+export async function getStateSize(): Promise<number> {
+  const state = await loadSessionState();
+  return state.length;
 }
 
 /**

@@ -16,6 +16,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Telegram } from "telegraf";
+import { appendActivityLog } from "@/lib/poseidon/activity-log";
 import { config } from "@/lib/poseidon/config";
 import { getBehavior, loadBehavior, type BehaviorState } from "@/lib/poseidon/behavior";
 import {
@@ -178,6 +179,16 @@ async function runMonitors(sendAlerts: boolean, telegram?: Telegram, ownerId?: n
     const payload = formatTritonAlert(alert.type, alert.priority, alert.body);
     try {
       await telegram.sendMessage(ownerId, payload);
+      await appendActivityLog({
+        deity: "triton",
+        timestamp: new Date().toISOString(),
+        type: "alert_sent",
+        summary: `${alert.type}: ${alert.body.slice(0, 100)}`,
+        priority: alert.priority,
+        metadata: {
+          discriminator: alert.discriminator,
+        },
+      }).catch(() => undefined);
       markAlertSent(alert.type, alert.discriminator);
     } catch (error) {
       console.warn("[triton] failed to send alert", {

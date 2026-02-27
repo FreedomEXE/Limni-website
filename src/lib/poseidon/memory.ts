@@ -15,7 +15,8 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { config } from "@/lib/poseidon/config";
-import { loadSessionState } from "@/lib/poseidon/state";
+import { readCurationFlag, writeCurationFlag } from "@/lib/poseidon/curation-flag";
+import { loadSessionState, STATE_SOFT_LIMIT_CHARS } from "@/lib/poseidon/state";
 
 type MemorySpec = {
   filename: string;
@@ -29,12 +30,20 @@ type ContextDiagnosis = {
 };
 
 const MEMORY_FILES: MemorySpec[] = [
-  { filename: "PROTEUS_CORE.md", maxChars: 4000 },
-  { filename: "LIMNI_PLATFORM.md", maxChars: 4000 },
-  { filename: "TRADING_FRAMEWORK.md", maxChars: 5000 },
-  { filename: "BOT_OPERATIONS.md", maxChars: 4000 },
-  { filename: "MARKET_KNOWLEDGE.md", maxChars: 3000 },
+  { filename: "PROTEUS_CORE.md", maxChars: 5000 },
+  { filename: "LIMNI_PLATFORM.md", maxChars: 5000 },
+  { filename: "TRADING_FRAMEWORK.md", maxChars: 6000 },
+  { filename: "BOT_OPERATIONS.md", maxChars: 5000 },
+  { filename: "MARKET_KNOWLEDGE.md", maxChars: 4000 },
 ];
+const MAX_SYSTEM_PROMPT_CHARS = 50_000;
+const SESSION_STATE_PROTOCOL = [
+  "## SESSION STATE PROTOCOL",
+  "Use `update_session_state` after meaningful decisions, strategy changes, or important trades.",
+  "Your session state is loaded into every conversation and is your long-term memory.",
+  "Check session state and history before saying you do not remember something.",
+  "If context is genuinely missing, say you do not have that specific information.",
+].join("\n");
 
 function truncate(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
@@ -87,22 +96,56 @@ export async function loadSystemPrompt(): Promise<string> {
 
   // Load session state (perpetual memory across restarts)
   const sessionState = await loadSessionState();
-  if (sessionState && sessionState.length > 20) {
-    sections.push(`## CURRENT SESSION STATE\n${sessionState}`);
+  if (sessionState.length > STATE_SOFT_LIMIT_CHARS) {
+    const reason = `State size ${sessionState.length} exceeds soft limit ${STATE_SOFT_LIMIT_CHARS}`;
+    const existingFlag = await readCurationFlag();
+    if (!existingFlag.requested || existingFlag.reason !== reason) {
+      await writeCurationFlag({
+        requested: true,
+        reason,
+        setAt: new Date().toISOString(),
+      });
+    }
+    console.warn(
+      `[poseidon.memory] State exceeds soft limit (${sessionState.length} chars) - curation flagged`,
+    );
   }
 
-  // Session state instructions (always present)
-  sections.push([
-    "## SESSION STATE PROTOCOL",
-    "Use `update_session_state` after meaningful decisions, strategy changes, or important trades.",
-    "Your session state is loaded into every conversation and is your long-term memory.",
-    "Check session state and history before saying you do not remember something.",
-    "If context is genuinely missing, say you do not have that specific information.",
-  ].join("\n"));
+  const baseSections = [...sections, SESSION_STATE_PROTOCOL];
+  const baseComposed = baseSections.join("\n\n");
 
-  const composed = sections.join("\n\n");
-  if (composed.length > 22000) {
-    return composed.slice(0, 22000);
+  if (!sessionState || sessionState.length <= 20) {
+    if (baseComposed.length <= MAX_SYSTEM_PROMPT_CHARS) {
+      return baseComposed;
+    }
+    return baseComposed.slice(0, MAX_SYSTEM_PROMPT_CHARS);
   }
-  return composed;
+
+  const statePrefix = "## CURRENT SESSION STATE\n";
+  const joinPadding = "\n\n";
+  const truncationNote = "\n\n[Session state truncated to fit system prompt budget.]";
+  const availableForState =
+    MAX_SYSTEM_PROMPT_CHARS -
+    baseComposed.length -
+    joinPadding.length -
+    statePrefix.length -
+    truncationNote.length;
+  const cappedState = availableForState > 0
+    ? sessionState.slice(0, availableForState)
+    : "";
+
+  const stateSection = cappedState.length === sessionState.length
+    ? `${statePrefix}${cappedState}`
+    : `${statePrefix}${cappedState}${truncationNote}`;
+
+  const withState = [sections.join("\n\n"), stateSection, SESSION_STATE_PROTOCOL]
+    .filter(Boolean)
+    .join("\n\n");
+
+  if (withState.length <= MAX_SYSTEM_PROMPT_CHARS) {
+    return withState;
+  }
+
+  // Fallback safety cap if memory files unexpectedly exceed budget.
+  return withState.slice(0, MAX_SYSTEM_PROMPT_CHARS);
 }

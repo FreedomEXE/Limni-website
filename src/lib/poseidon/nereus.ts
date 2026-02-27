@@ -16,6 +16,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { Telegram } from "telegraf";
+import { appendActivityLog } from "@/lib/poseidon/activity-log";
 import { config } from "@/lib/poseidon/config";
 import { buildNereusHeader } from "@/lib/poseidon/animations";
 import { assembleBriefingData, type SessionType } from "@/lib/poseidon/nereus-queries";
@@ -105,6 +106,12 @@ async function sendBriefing(
   try {
     const message = await buildBriefing(sessionType);
     await telegram.sendMessage(ownerId, message, { parse_mode: "HTML" });
+    await appendActivityLog({
+      deity: "nereus",
+      timestamp: new Date().toISOString(),
+      type: "briefing_delivered",
+      summary: `${sessionType} briefing delivered.`,
+    }).catch(() => undefined);
     console.log(`[nereus] ${sessionType} briefing sent`);
   } catch (err) {
     console.error(`[nereus] ${sessionType} briefing failed:`, err);
