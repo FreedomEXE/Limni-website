@@ -17,6 +17,7 @@ import path from "node:path";
 import { config } from "@/lib/poseidon/config";
 import { readCurationFlag, writeCurationFlag } from "@/lib/poseidon/curation-flag";
 import { loadSessionState, STATE_SOFT_LIMIT_CHARS } from "@/lib/poseidon/state";
+import { loadGroupContext } from "@/lib/poseidon/group-memory";
 
 type MemorySpec = {
   filename: string;
@@ -34,6 +35,17 @@ const MEMORY_FILES: MemorySpec[] = [
   { filename: "LIMNI_PLATFORM.md", maxChars: 5000 },
   { filename: "TRADING_FRAMEWORK.md", maxChars: 6000 },
   { filename: "BOT_OPERATIONS.md", maxChars: 5000 },
+  { filename: "MARKET_KNOWLEDGE.md", maxChars: 4000 },
+];
+
+/**
+ * Group mode loads a different set of memory files.
+ * No PROTEUS_CORE (contains CTO identity), no LIMNI_PLATFORM (architecture),
+ * no BOT_OPERATIONS (bot internals). Only market knowledge + group persona.
+ */
+const GROUP_MEMORY_FILES: MemorySpec[] = [
+  { filename: "PROTEUS_GROUP_CORE.md", maxChars: 4000 },
+  { filename: "TRADING_FRAMEWORK.md", maxChars: 6000 },
   { filename: "MARKET_KNOWLEDGE.md", maxChars: 4000 },
 ];
 const MAX_SYSTEM_PROMPT_CHARS = 50_000;
@@ -152,4 +164,41 @@ export async function loadSystemPrompt(): Promise<string> {
 
   // Fallback safety cap if memory files unexpectedly exceed budget.
   return withState.slice(0, MAX_SYSTEM_PROMPT_CHARS);
+}
+
+/**
+ * Load the system prompt for group mode conversations.
+ * Uses the group-specific memory files (no CTO identity, no platform internals)
+ * and injects group active context from the database instead of session state.
+ */
+export async function loadGroupSystemPrompt(groupId: number): Promise<string> {
+  const sections: string[] = [];
+
+  for (const spec of GROUP_MEMORY_FILES) {
+    const fullPath = path.resolve(process.cwd(), config.memoryDir, spec.filename);
+    const content = await safeRead(fullPath, spec.maxChars);
+    if (!content) continue;
+    sections.push(`## ${spec.filename}\n${content}`);
+  }
+
+  // Load group active context from DB
+  const groupContext = await loadGroupContext(groupId);
+  if (groupContext && groupContext.length > 20) {
+    const capped = truncate(groupContext, config.group.maxContextChars);
+    sections.push(`## GROUP CONTEXT\n${capped}`);
+  }
+
+  sections.push([
+    "## GROUP CONTEXT PROTOCOL",
+    "Use `get_group_context` to check what topics the group has been discussing.",
+    "Use `update_group_context` after notable discussions to save important context.",
+    "You do NOT have access to private session state, bot internals, or account data in group mode.",
+    "If Freedom asks for restricted data in the group, tell him you'll send it privately.",
+  ].join("\n"));
+
+  const composed = sections.join("\n\n");
+  if (composed.length <= MAX_SYSTEM_PROMPT_CHARS) {
+    return composed;
+  }
+  return composed.slice(0, MAX_SYSTEM_PROMPT_CHARS);
 }

@@ -21,6 +21,8 @@ import { getBehavior, setBehavior, type BehaviorState } from "@/lib/poseidon/beh
 import { getSessionState, updateSessionState } from "@/lib/poseidon/state";
 import { config, type PoseidonBehaviorKey } from "@/lib/poseidon/config";
 import { curateProteusMemory } from "@/lib/poseidon/poseidon-curator";
+import { getGroupToolDefinitions } from "@/lib/poseidon/group-policy";
+import { loadGroupContext, saveGroupContext } from "@/lib/poseidon/group-memory";
 
 type ToolInput = Record<string, unknown>;
 type LivePriceRow = {
@@ -682,6 +684,15 @@ export const toolDefinitions: Anthropic.Tool[] = [
   },
 ];
 
+export { getGroupToolDefinitions };
+
+/** Active group ID for group tool calls. Set by the group handler before invoking chat. */
+let activeGroupId: number | null = null;
+
+export function setActiveGroupId(groupId: number | null): void {
+  activeGroupId = groupId;
+}
+
 export async function handleToolCall(name: string, input: ToolInput): Promise<string> {
   try {
     switch (name) {
@@ -736,6 +747,20 @@ export async function handleToolCall(name: string, input: ToolInput): Promise<st
           return "Error: content is required and must be a non-empty string.";
         }
         return await updateSessionState(content);
+      }
+      case "get_group_context": {
+        if (!activeGroupId) return "No active group context.";
+        const ctx = await loadGroupContext(activeGroupId);
+        return ctx || "No group context saved yet.";
+      }
+      case "update_group_context": {
+        if (!activeGroupId) return "Error: no active group.";
+        const content = input.content;
+        if (typeof content !== "string" || !content.trim()) {
+          return "Error: content is required and must be a non-empty string.";
+        }
+        await saveGroupContext(activeGroupId, content);
+        return "Group context updated.";
       }
       default:
         return `Unknown tool: ${name}`;

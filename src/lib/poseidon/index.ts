@@ -18,7 +18,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { query } from "@/lib/db";
 import { config } from "@/lib/poseidon/config";
-import { loadSystemPrompt, diagnoseContext } from "@/lib/poseidon/memory";
+import { loadSystemPrompt, loadGroupSystemPrompt, diagnoseContext } from "@/lib/poseidon/memory";
 import {
   getHistory,
   addMessage,
@@ -29,12 +29,19 @@ import {
 import { loadBehavior } from "@/lib/poseidon/behavior";
 import { getRecoverySummary, loadSessionState } from "@/lib/poseidon/state";
 import { chat } from "@/lib/poseidon/proteus";
-import { toolDefinitions, handleToolCall } from "@/lib/poseidon/tools";
+import { toolDefinitions, handleToolCall, getGroupToolDefinitions, setActiveGroupId } from "@/lib/poseidon/tools";
 import { sendStartupAnimation } from "@/lib/poseidon/animations";
 import { startTriton, stopTriton } from "@/lib/poseidon/triton";
 import { scheduleNereus, stopNereus, buildBriefing } from "@/lib/poseidon/nereus";
 import { schedulePoseidon, stopPoseidon, sendReckoning } from "@/lib/poseidon/poseidon-god";
 import { persistTurnWithRetry } from "@/lib/poseidon/turn-persistence";
+import { isOwnerInGroup, isRestrictedQuery } from "@/lib/poseidon/group-policy";
+import {
+  upsertGroupMember,
+  logGroupMessage,
+  buildGroupChatHistory,
+} from "@/lib/poseidon/group-memory";
+import { runGroupScoring, formatLeaderboard } from "@/lib/poseidon/group-scoring";
 
 const bot = new Telegraf(config.telegram.botToken);
 const heartbeatPath = path.resolve(process.cwd(), config.stateDir, "heartbeat.json");
@@ -58,9 +65,87 @@ async function checkDbConnection() {
   }
 }
 
+// ─── Chat Type Detection ─────────────────────
+
+type ChatType = "private" | "group" | "supergroup" | "channel";
+
+function isGroupChat(type: ChatType): boolean {
+  return type === "group" || type === "supergroup";
+}
+
+function isAllowedGroup(chatId: number): boolean {
+  return config.group.enabled && config.group.groupId === chatId;
+}
+
+// ─── Smart Interjection ──────────────────────
+// Proteus can jump in on quality discussions without being mentioned.
+// Cooldown prevents being noisy.
+
+let lastInterjectionAt = 0;
+
+const QUALITY_PATTERNS = [
+  /\b(analysis|structure|divergence|confluenc|setup)\b/i,
+  /\b(cot|commitment.of.traders|institutional|positioning)\b/i,
+  /\b(liquidation|squeeze|cluster|heatmap)\b/i,
+  /\b(funding|open.interest|oi|basis)\b/i,
+  /\b(support|resistance|fib|level|sweep|displacement)\b/i,
+  /\b(bias|bearish|bullish)\s+(on|for)\s+/i,
+  /\b(i think|my view|imo|prediction|call)\b.*\b(btc|eth|eur|gbp|gold|oil|spy|nasdaq)\b/i,
+];
+
+function isQualityDiscussion(text: string): boolean {
+  const matches = QUALITY_PATTERNS.filter((p) => p.test(text)).length;
+  return matches >= 2 && text.length > 50;
+}
+
+function canInterject(): boolean {
+  const now = Date.now();
+  if (now - lastInterjectionAt < config.group.interjectionCooldownMs) return false;
+  return true;
+}
+
+function shouldProteusRespond(text: string, botUsername: string): { respond: boolean; reason: string } {
+  // Check explicit mention
+  const mentionRegex = new RegExp(`@${botUsername}\\b`, "i");
+  if (mentionRegex.test(text)) {
+    return { respond: true, reason: "mention" };
+  }
+
+  // Check /ask command style
+  if (text.startsWith("/ask ")) {
+    return { respond: true, reason: "ask_command" };
+  }
+
+  // Check smart interjection on quality discussions
+  if (isQualityDiscussion(text) && canInterject()) {
+    return { respond: true, reason: "interjection" };
+  }
+
+  return { respond: false, reason: "none" };
+}
+
+// ─── Middleware ───────────────────────────────
+
 bot.use(async (ctx, next) => {
-  if (ctx.from?.id !== config.telegram.ownerId) return;
-  return next();
+  const chatType = ctx.chat?.type as ChatType | undefined;
+  const userId = ctx.from?.id;
+
+  if (!chatType || !userId) return;
+
+  // Private chat: owner only
+  if (chatType === "private") {
+    if (userId !== config.telegram.ownerId) return;
+    return next();
+  }
+
+  // Group chat: only allowed group
+  if (isGroupChat(chatType)) {
+    const chatId = ctx.chat?.id;
+    if (!chatId || !isAllowedGroup(chatId)) return;
+    return next();
+  }
+
+  // All other chat types: ignore
 });
 
 bot.command("start", async (ctx) => {
@@ -140,10 +225,155 @@ bot.command("reckoning", async (ctx) => {
   await sendReckoning(ctx.telegram, config.telegram.ownerId);
 });
 
+bot.command("leaderboard", async (ctx) => {
+  const chatType = ctx.chat?.type as ChatType;
+  const groupId = ctx.chat?.id;
+  if (!groupId) return;
+
+  // Works in both group (shows publicly) and DM (Freedom can check from DM)
+  const targetGroupId = isGroupChat(chatType) ? groupId : config.group.groupId;
+  if (!targetGroupId) {
+    await ctx.reply("No group configured.");
+    return;
+  }
+
+  try {
+    const board = await formatLeaderboard(targetGroupId);
+    await ctx.reply(board, { parse_mode: "Markdown" }).catch(async () => {
+      await ctx.reply(board);
+    });
+  } catch (error) {
+    console.error("[poseidon] leaderboard error:", error);
+    await ctx.reply("Could not load leaderboard.");
+  }
+});
+
+bot.command("scores", async (ctx) => {
+  // Alias for /leaderboard, DM only (Freedom command)
+  if (ctx.chat?.type !== "private") return;
+  const targetGroupId = config.group.groupId;
+  if (!targetGroupId) {
+    await ctx.reply("No group configured.");
+    return;
+  }
+  try {
+    const board = await formatLeaderboard(targetGroupId);
+    await ctx.reply(board, { parse_mode: "Markdown" }).catch(async () => {
+      await ctx.reply(board);
+    });
+  } catch (error) {
+    console.error("[poseidon] scores error:", error);
+    await ctx.reply("Could not load scores.");
+  }
+});
+
+// ─── Private Text Handler ────────────────────
+
 bot.on("text", async (ctx) => {
   const userMessage = ctx.message.text;
   if (userMessage.startsWith("/")) return;
 
+  const chatType = ctx.chat?.type as ChatType;
+
+  // ─── GROUP TEXT HANDLER ──────────────────────
+  if (isGroupChat(chatType)) {
+    const groupId = ctx.chat?.id;
+    const userId = ctx.from?.id;
+    if (!groupId || !userId) return;
+
+    try {
+      // Always log + register member
+      await upsertGroupMember(
+        groupId,
+        userId,
+        ctx.from?.username || null,
+        ctx.from?.first_name || null,
+      );
+      await logGroupMessage(
+        groupId,
+        ctx.message.message_id,
+        userId,
+        userMessage,
+      );
+
+      // Get bot username for mention detection
+      const botInfo = await bot.telegram.getMe();
+      const botUsername = botInfo.username || "ProteusBot";
+
+      // Determine if Proteus should respond
+      const decision = shouldProteusRespond(userMessage, botUsername);
+
+      // Freedom asking restricted data in group → DM redirect
+      if (decision.respond && isOwnerInGroup(userId) && isRestrictedQuery(userMessage)) {
+        await ctx.reply("Sent you the details privately.", {
+          reply_parameters: { message_id: ctx.message.message_id },
+        });
+        // Forward to private handler via DM
+        const systemPrompt = await loadSystemPrompt();
+        const dmResponse = await chat(
+          systemPrompt,
+          [{ role: "user", content: userMessage }],
+          toolDefinitions,
+        );
+        await ctx.telegram.sendMessage(config.telegram.ownerId, dmResponse.displayText, {
+          parse_mode: "Markdown",
+        }).catch(async () => {
+          await ctx.telegram.sendMessage(config.telegram.ownerId, dmResponse.displayText);
+        });
+        return;
+      }
+
+      if (!decision.respond) return;
+
+      // Mark interjection timestamp
+      if (decision.reason === "interjection") {
+        lastInterjectionAt = Date.now();
+      }
+
+      // Update message as triggering Proteus
+      await logGroupMessage(
+        groupId,
+        ctx.message.message_id,
+        userId,
+        userMessage,
+        "text",
+        true,
+      );
+
+      // Build group system prompt and chat history
+      setActiveGroupId(groupId);
+      const systemPrompt = await loadGroupSystemPrompt(groupId);
+      const groupHistory = await buildGroupChatHistory(groupId, 30);
+      const groupTools = getGroupToolDefinitions();
+
+      const response = await chat(
+        systemPrompt,
+        groupHistory,
+        groupTools,
+        () => ctx.sendChatAction("typing"),
+      );
+
+      setActiveGroupId(null);
+
+      // Log Proteus's response as a group message too
+      await logGroupMessage(groupId, null, config.telegram.ownerId, response.persistText, "text", false);
+
+      await ctx.reply(response.displayText, {
+        parse_mode: "Markdown",
+        reply_parameters: { message_id: ctx.message.message_id },
+      }).catch(async () => {
+        await ctx.reply(response.displayText, {
+          reply_parameters: { message_id: ctx.message.message_id },
+        });
+      });
+    } catch (error) {
+      console.error("[poseidon] group text handler error:", error);
+      // Don't spam error messages in group — silent fail
+    }
+    return;
+  }
+
+  // ─── PRIVATE TEXT HANDLER ────────────────────
   try {
     await writeHeartbeat({ event: "text_message" }).catch(() => undefined);
     let systemPrompt = await loadSystemPrompt();
@@ -177,24 +407,50 @@ bot.on("text", async (ctx) => {
   }
 });
 
+function is409Error(error: unknown): boolean {
+  // Check TelegramError response shape
+  if (
+    error instanceof Error &&
+    "response" in error &&
+    (error as { response?: { error_code?: number } }).response?.error_code === 409
+  ) {
+    return true;
+  }
+  // Fallback: check error message string for 409/conflict
+  if (error instanceof Error && /409.*conflict|conflict.*409/i.test(error.message)) {
+    return true;
+  }
+  return false;
+}
+
+const MAX_LAUNCH_ATTEMPTS = 20;
+
 async function launchBotWithRetry(): Promise<void> {
-  let attempt = 1;
-  while (true) {
+  for (let attempt = 1; attempt <= MAX_LAUNCH_ATTEMPTS; attempt += 1) {
     try {
+      // Clear any stale webhook/polling state before each attempt
+      await bot.telegram.deleteWebhook({ drop_pending_updates: true }).catch(() => undefined);
+
       await bot.launch({ dropPendingUpdates: true });
       return;
     } catch (error: unknown) {
-      const is409 =
-        error instanceof Error && "response" in error &&
-        (error as { response?: { error_code?: number } }).response?.error_code === 409;
-      if (!is409) throw error;
+      if (!is409Error(error)) throw error;
 
-      const delay = Math.min(30_000, attempt * 3_000);
+      if (attempt === MAX_LAUNCH_ATTEMPTS) {
+        console.error(`[poseidon] 409 conflict persisted after ${MAX_LAUNCH_ATTEMPTS} attempts, giving up.`);
+        throw error;
+      }
+
+      // Exponential backoff: 5s, 8s, 11s, 14s... capped at 30s
+      // Gives the old instance up to ~90s total to die
+      const delay = Math.min(30_000, 5_000 + (attempt - 1) * 3_000);
       console.warn(
-        `[poseidon] 409 conflict (another poller active), retrying in ${delay / 1000}s...`,
+        `[poseidon] 409 conflict on attempt ${attempt}/${MAX_LAUNCH_ATTEMPTS}, retrying in ${delay / 1000}s...`,
       );
       await new Promise((r) => setTimeout(r, delay));
-      attempt += 1;
+
+      // Stop the bot to reset Telegraf internal state before retrying
+      try { bot.stop("retry"); } catch { /* ignore if not started */ }
     }
   }
 }
@@ -259,6 +515,19 @@ async function start() {
   await startTriton(bot.telegram, config.telegram.ownerId);
   scheduleNereus(bot.telegram, config.telegram.ownerId);
   schedulePoseidon(bot.telegram, config.telegram.ownerId);
+
+  // Group scoring schedule
+  if (config.group.enabled && config.group.groupId) {
+    const scoringMs = config.group.scoringIntervalHours * 60 * 60_000;
+    const groupId = config.group.groupId;
+    const scoringInterval = setInterval(() => {
+      runGroupScoring(groupId).catch((err) =>
+        console.error("[poseidon] group scoring error:", err),
+      );
+    }, scoringMs);
+    scoringInterval.unref();
+    console.log(`[poseidon] Group scoring scheduled every ${config.group.scoringIntervalHours}h for group ${groupId}`);
+  }
 
   // Animated startup message to Freedom
   try {

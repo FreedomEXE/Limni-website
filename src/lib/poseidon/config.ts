@@ -32,6 +32,16 @@ function parseInteger(value: string, name: string): number {
   return parsed;
 }
 
+function optionalInt(name: string): number | null {
+  const raw = process.env[name]?.trim();
+  if (!raw) return null;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`Invalid integer for ${name}: ${raw}`);
+  }
+  return parsed;
+}
+
 export const config = {
   telegram: {
     botToken: requireEnv("TELEGRAM_BOT_TOKEN"),
@@ -47,6 +57,14 @@ export const config = {
   },
   db: {
     connectionString: requireEnv("DATABASE_URL"),
+  },
+  group: {
+    enabled: process.env.PROTEUS_GROUP_ENABLED?.trim()?.toLowerCase() === "true",
+    groupId: optionalInt("TELEGRAM_GROUP_ID"),
+    maxContextChars: 4_000,
+    scoringIntervalHours: 6,
+    interjectionCooldownMs: 5 * 60_000,
+    maxGroupHistory: 200,
   },
   maxConversationHistory: parseInteger(
     process.env.MAX_CONVERSATION_HISTORY?.trim() || "50",
