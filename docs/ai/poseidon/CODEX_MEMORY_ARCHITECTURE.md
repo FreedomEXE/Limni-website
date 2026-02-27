@@ -5,6 +5,7 @@
 >
 > Authored by Claude (CTO) + Freedom (Founder)
 > February 27, 2026
+> Revised: v2 — incorporates Codex review findings (6 hardening fixes) + Poseidon awareness layer
 
 ---
 
@@ -16,7 +17,18 @@ Proteus is live and functional but has two categories of problems:
 
 2. **Crash/silence issues** — Proteus goes silent mid-conversation due to unhandled API errors, token limits, and missing timeout logic. Freedom sees "Proteus hit an error" or just... nothing.
 
-This prompt fixes both. It also adds Poseidon as the memory curator and hardens Proteus against crashes.
+This prompt fixes both. It also adds Poseidon as the memory curator, gives Poseidon awareness of Triton/Nereus activity, and hardens Proteus against crashes.
+
+### Codex Review Findings (All Accepted)
+
+Six issues were identified during code review. All are valid and addressed in this revision:
+
+1. **[HIGH] Curation output schema** — Fixed: strict 4-key schema with Zod validation before any writes
+2. **[HIGH] Path traversal in archive queries** — Fixed: YYYY-MM regex enforcement + resolved path containment check
+3. **[HIGH] Race conditions during curation** — Fixed: async mutex around all state/archive write paths
+4. **[MEDIUM] Automatic curation trigger flag unspecified** — Fixed: defined storage location, consumer, and reset semantics
+5. **[MEDIUM] Archive verification too weak** — Fixed: verify all entries by count, atomic write via tmp+rename
+6. **[MEDIUM] Typing indicator gaps** — Fixed: background keep-alive interval every 4s during all async operations
 
 ---
 
@@ -178,8 +190,29 @@ At ~4 chars per token, 50K chars = ~12.5K tokens. Claude Sonnet 4.5 has a 200K t
    - Session state protocol instructions load at the very end
    - If the total exceeds the ceiling, truncate from the END of the state (oldest entries first), never from identity/knowledge files
 
-3. **Add automatic curation trigger:**
-   After loading the system prompt, if `PROTEUS_STATE.md` alone exceeds `STATE_SOFT_LIMIT_CHARS` (40K), log a warning and set a flag that the next Poseidon cycle should prioritize curation. This is a passive signal, not a blocking operation.
+3. **Add automatic curation trigger (Finding #4 fix):**
+   After loading the system prompt, if `PROTEUS_STATE.md` alone exceeds `STATE_SOFT_LIMIT_CHARS` (40K), log a warning and set a curation flag.
+
+   **Flag specification:**
+   - **Storage:** `docs/ai/poseidon/state/curation_flag.json`
+   - **Schema:** `{ "requested": boolean, "reason": string, "setAt": string (ISO timestamp) }`
+   - **Writer:** `loadSystemPrompt()` in `memory.ts` sets `requested: true` when state exceeds threshold
+   - **Consumer:** Poseidon's daily curation in `poseidon-god.ts` checks the flag before running. If `requested: true`, curation runs with elevated priority (processes more aggressively). If `requested: false`, curation still runs daily but with normal threshold logic.
+   - **Reset:** `poseidon-curator.ts` sets `requested: false` after successful curation
+   - **On-demand override:** `request_poseidon_curation()` tool ignores the flag entirely — it always runs
+
+   ```typescript
+   // In memory.ts, after loading state
+   const stateSize = sessionState?.length ?? 0;
+   if (stateSize > STATE_SOFT_LIMIT_CHARS) {
+     await writeCurationFlag({
+       requested: true,
+       reason: `State size ${stateSize} exceeds soft limit ${STATE_SOFT_LIMIT_CHARS}`,
+       setAt: new Date().toISOString(),
+     });
+     console.warn(`[poseidon.memory] State exceeds soft limit (${stateSize} chars) — curation flagged`);
+   }
+   ```
 
 4. **Updated `MEMORY_FILES` with adjusted budgets:**
 ```typescript
@@ -229,14 +262,33 @@ const MEMORY_FILES: MemorySpec[] = [
 **Handler implementation (new file or in `tools.ts`):**
 
 ```typescript
+const MONTH_FORMAT = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+function sanitizeMonthInput(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!MONTH_FORMAT.test(trimmed)) return null;
+  return trimmed;
+}
+
+function assertPathContainment(filePath: string, allowedDir: string): void {
+  const resolved = path.resolve(filePath);
+  const resolvedDir = path.resolve(allowedDir);
+  if (!resolved.startsWith(resolvedDir + path.sep) && resolved !== resolvedDir) {
+    throw new Error("Path traversal blocked");
+  }
+}
+
 async function getSessionArchive(input: ToolInput): Promise<string> {
   const archiveDir = path.resolve(process.cwd(), config.stateDir, "..", "archives");
   const query = typeof input.query === "string" ? input.query.trim().toLowerCase() : "";
-  const month = typeof input.month === "string" ? input.month.trim() : "";
+  const rawMonth = typeof input.month === "string" ? input.month.trim() : "";
 
   // If specific month requested, read that file
-  if (month) {
+  if (rawMonth) {
+    const month = sanitizeMonthInput(rawMonth);
+    if (!month) return "Invalid month format. Use YYYY-MM (e.g. '2026-02').";
     const filePath = path.join(archiveDir, `${month}.md`);
+    assertPathContainment(filePath, archiveDir);
     try {
       const content = await readFile(filePath, "utf8");
       if (query) {
@@ -393,7 +445,7 @@ RULES:
    - Status at time of curation
 
 OUTPUT FORMAT:
-Return a JSON object with exactly two keys:
+Return a JSON object with exactly four keys (all required):
 {
   "active_state": "The cleaned PROTEUS_STATE.md content (markdown string)",
   "archive_entries": [
@@ -408,91 +460,216 @@ Return a JSON object with exactly two keys:
   "curation_notes": "1-2 sentences on what you did and why (for logging)"
 }
 
+STRICT RULES:
+- All four keys MUST be present. No extra keys.
+- "active_state" MUST be a non-empty string.
+- "archive_entries" MUST be an array (empty array if nothing to archive).
+- Each entry MUST have all four fields: date, title, summary, content.
+- "archive_summary" MUST be a string.
+- "curation_notes" MUST be a string.
+- Return ONLY the JSON object. No markdown fences, no commentary before/after.
+
 If nothing needs archiving, return empty archive_entries and the state unchanged.
 Do NOT invent or fabricate content. Only work with what's in the state file.`;
 ```
 
-### 3.4 Curation Function
+### 3.4 Async Mutex for State/Archive Safety
+
+**[Finding #3 fix]** Curation reads and writes state over a multi-step flow. If Proteus calls `update_session_state` concurrently (e.g., during a conversation while daily curation runs), data can be lost.
+
+**Solution:** A shared async mutex that wraps ALL state and archive write operations.
+
+```typescript
+// src/lib/poseidon/state-mutex.ts
+// Simple async mutex — no external dependencies needed
+
+let locked = false;
+const queue: Array<() => void> = [];
+
+export async function withStateLock<T>(fn: () => Promise<T>): Promise<T> {
+  // Wait for lock
+  if (locked) {
+    await new Promise<void>((resolve) => queue.push(resolve));
+  }
+  locked = true;
+  try {
+    return await fn();
+  } finally {
+    locked = false;
+    const next = queue.shift();
+    if (next) next();
+  }
+}
+```
+
+**Usage:** Wrap `updateSessionState()` in `state.ts` and the entire curation flow in `poseidon-curator.ts` with `withStateLock()`. This ensures no concurrent writes.
+
+```typescript
+// In state.ts
+export async function updateSessionState(content: string): Promise<string> {
+  return withStateLock(async () => {
+    // ... existing write logic ...
+  });
+}
+
+// In poseidon-curator.ts
+export async function curateProteusMemory(reason?: string): Promise<CurationResult> {
+  return withStateLock(async () => {
+    // ... entire curation flow ...
+  });
+}
+```
+
+### 3.5 Schema Validation
+
+**[Finding #1 fix]** Raw `JSON.parse()` on Opus output is fragile. One formatting miss breaks curation.
+
+**Solution:** Use Zod (already available in most Next.js projects) or a manual validator to enforce the schema before any writes.
+
+```typescript
+import { z } from "zod";
+
+const ArchiveEntrySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  title: z.string().min(1),
+  summary: z.string().min(1),
+  content: z.string().min(1),
+});
+
+const CurationResponseSchema = z.object({
+  active_state: z.string().min(1),
+  archive_entries: z.array(ArchiveEntrySchema),
+  archive_summary: z.string(),
+  curation_notes: z.string(),
+});
+
+type CurationResponse = z.infer<typeof CurationResponseSchema>;
+```
+
+If Zod is not available, implement equivalent manual validation:
+```typescript
+function validateCurationResponse(raw: unknown): CurationResponse {
+  if (!raw || typeof raw !== "object") throw new Error("Curation response is not an object");
+  const obj = raw as Record<string, unknown>;
+  if (typeof obj.active_state !== "string" || !obj.active_state) throw new Error("Missing/empty active_state");
+  if (!Array.isArray(obj.archive_entries)) throw new Error("archive_entries must be array");
+  for (const entry of obj.archive_entries) {
+    if (!entry || typeof entry !== "object") throw new Error("Invalid archive entry");
+    const e = entry as Record<string, unknown>;
+    if (typeof e.date !== "string" || typeof e.title !== "string" ||
+        typeof e.summary !== "string" || typeof e.content !== "string") {
+      throw new Error("Archive entry missing required fields (date, title, summary, content)");
+    }
+  }
+  if (typeof obj.archive_summary !== "string") throw new Error("Missing archive_summary");
+  if (typeof obj.curation_notes !== "string") throw new Error("Missing curation_notes");
+  return obj as unknown as CurationResponse;
+}
+```
+
+### 3.6 Curation Function
 
 ```typescript
 export async function curateProteusMemory(reason?: string): Promise<CurationResult> {
-  // 1. Read current state
-  const currentState = await loadSessionState();
-  if (!currentState || currentState.length < 100) {
-    return { success: true, archived: 0, note: "State too small to curate." };
-  }
+  return withStateLock(async () => {
+    // 1. Read current state
+    const currentState = await loadSessionState();
+    if (!currentState || currentState.length < 100) {
+      return { success: true, archived: 0, note: "State too small to curate." };
+    }
 
-  // 2. Determine current archive month
-  const now = new Date();
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const archivePath = path.resolve(process.cwd(), config.stateDir, "..", "archives", `${monthKey}.md`);
+    // 2. Determine current archive month
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const archiveDir = path.resolve(process.cwd(), config.stateDir, "..", "archives");
+    const archivePath = path.join(archiveDir, `${monthKey}.md`);
 
-  // 3. Call Opus for curation decisions
-  const client = new Anthropic({ apiKey: config.anthropic.apiKey });
-  const response = await client.messages.create({
-    model: config.models.poseidon,
-    max_tokens: 4096,
-    system: CURATION_SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `Curate this session state.${reason ? ` Reason: ${reason}` : ""}\n\nCurrent date: ${now.toISOString()}\n\n---\n\n${currentState}`,
-      },
-    ],
-  });
+    // 3. Call Opus for curation decisions
+    const client = new Anthropic({ apiKey: config.anthropic.apiKey });
+    const response = await client.messages.create({
+      model: config.models.poseidon,
+      max_tokens: 4096,
+      system: CURATION_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: `Curate this session state.${reason ? ` Reason: ${reason}` : ""}\n\nCurrent date: ${now.toISOString()}\n\n---\n\n${currentState}`,
+        },
+      ],
+    });
 
-  // 4. Parse Opus response
-  const text = response.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("");
+    // 4. Parse and VALIDATE Opus response (Finding #1 fix)
+    const text = response.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("");
 
-  const parsed = JSON.parse(text); // wrap in try/catch in implementation
-
-  // 5. ARCHIVE FIRST (safety protocol)
-  if (parsed.archive_entries?.length) {
-    await ensureArchiveDir();
-
-    // Read existing archive (if any)
-    let existingArchive = "";
+    let parsed: CurationResponse;
     try {
-      existingArchive = await readFile(archivePath, "utf8");
-    } catch {
-      // New archive file — create with header
-      existingArchive = `# Proteus Archive — ${monthKey}\n\n## Summary\n${parsed.archive_summary || "No summary yet."}\n\n---\n\n## Archived Entries\n`;
+      const raw = JSON.parse(text);
+      parsed = validateCurationResponse(raw); // or CurationResponseSchema.parse(raw) with Zod
+    } catch (parseError) {
+      console.error("[poseidon-curator] Invalid curation response from Opus:", parseError);
+      console.error("[poseidon-curator] Raw response:", text.slice(0, 500));
+      return { success: false, archived: 0, note: "Opus returned invalid schema. Curation aborted." };
     }
 
-    // Update summary header
-    existingArchive = existingArchive.replace(
-      /## Summary\n[\s\S]*?(?=\n---)/,
-      `## Summary\n${parsed.archive_summary || "No summary yet."}`
-    );
+    // 5. ARCHIVE FIRST (safety protocol)
+    if (parsed.archive_entries.length > 0) {
+      await ensureArchiveDir();
 
-    // Append new entries
-    const newEntries = parsed.archive_entries.map((entry: ArchiveEntry) =>
-      `### ${entry.date} — ${entry.title}\n> ${entry.summary}\n\n${entry.content}\n`
-    ).join("\n");
+      // Read existing archive (if any)
+      let existingArchive = "";
+      try {
+        existingArchive = await readFile(archivePath, "utf8");
+      } catch {
+        // New archive file — create with header
+        existingArchive = `# Proteus Archive — ${monthKey}\n\n## Summary\n${parsed.archive_summary || "No summary yet."}\n\n---\n\n## Archived Entries\n`;
+      }
 
-    const updatedArchive = existingArchive.trimEnd() + "\n\n" + newEntries;
+      // Update summary header
+      existingArchive = existingArchive.replace(
+        /## Summary\n[\s\S]*?(?=\n---)/,
+        `## Summary\n${parsed.archive_summary || "No summary yet."}`
+      );
 
-    // Write archive
-    await writeFile(archivePath, updatedArchive, "utf8");
+      // Append new entries
+      const newEntries = parsed.archive_entries.map((entry) =>
+        `### ${entry.date} — ${entry.title}\n> ${entry.summary}\n\n${entry.content}\n`
+      ).join("\n");
 
-    // 6. Verify archive write
-    const verification = await readFile(archivePath, "utf8");
-    if (!verification.includes(parsed.archive_entries[0].title)) {
-      throw new Error("Archive verification failed — aborting state update");
+      const updatedArchive = existingArchive.trimEnd() + "\n\n" + newEntries;
+
+      // 6. Atomic write via tmp+rename (Finding #5 fix)
+      const tmpPath = archivePath + `.tmp.${Date.now()}`;
+      await writeFile(tmpPath, updatedArchive, "utf8");
+
+      // 7. Verify ALL entries present (Finding #5 fix — not just first title)
+      const verification = await readFile(tmpPath, "utf8");
+      const allPresent = parsed.archive_entries.every(
+        (entry) => verification.includes(entry.title) && verification.includes(entry.content.slice(0, 50))
+      );
+      if (!allPresent) {
+        // Clean up tmp file, abort
+        await unlink(tmpPath).catch(() => undefined);
+        throw new Error("Archive verification failed — not all entries found in written file. Aborting.");
+      }
+
+      // 8. Atomic rename (tmp → final)
+      await rename(tmpPath, archivePath);
     }
-  }
 
-  // 7. ONLY NOW update state (after archive is confirmed safe)
-  await updateSessionState(parsed.active_state);
+    // 9. ONLY NOW update state (after archive is confirmed safe)
+    // Note: updateSessionState is also wrapped in withStateLock internally,
+    // but since we're already holding the lock, use the raw write here.
+    await writeStateRaw(parsed.active_state);
 
-  return {
-    success: true,
-    archived: parsed.archive_entries?.length || 0,
-    note: parsed.curation_notes || "Curation complete.",
-  };
+    return {
+      success: true,
+      archived: parsed.archive_entries.length,
+      note: parsed.curation_notes || "Curation complete.",
+    };
+  });
 }
 ```
 
@@ -557,9 +734,31 @@ These are independent of the memory architecture and should be implemented in th
 
 **Problem:** `client.messages.create()` at line 69 has zero error handling. API errors (rate limits, timeouts, network failures) crash the entire chat function.
 
-**Fix:** Wrap the API call in try/catch with retry logic:
+**Fix:** Wrap the API call in try/catch with retry logic. Use typed error detection (Finding #6 improvement — don't rely on string matching):
 
 ```typescript
+import Anthropic from "@anthropic-ai/sdk";
+
+function isRetryableError(error: unknown): boolean {
+  // Anthropic SDK typed errors (preferred)
+  if (error instanceof Anthropic.RateLimitError) return true;       // 429
+  if (error instanceof Anthropic.InternalServerError) return true;  // 500
+  if (error instanceof Anthropic.APIConnectionError) return true;   // network issues
+
+  // Anthropic SDK has an 'overloaded' error for 529
+  if (error instanceof Anthropic.APIStatusError && error.status === 529) return true;
+
+  // Fallback: check for network-level errors by code
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("econnreset") || msg.includes("etimedout") || msg.includes("socket hang up")) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 async function callClaudeWithRetry(
   params: Anthropic.MessageCreateParams,
   maxRetries = 2,
@@ -568,15 +767,7 @@ async function callClaudeWithRetry(
     try {
       return await client.messages.create(params);
     } catch (error) {
-      const isRetryable = error instanceof Error && (
-        error.message.includes("429") ||
-        error.message.includes("529") ||
-        error.message.includes("timeout") ||
-        error.message.includes("ECONNRESET") ||
-        error.message.includes("overloaded")
-      );
-
-      if (!isRetryable || attempt === maxRetries) throw error;
+      if (!isRetryableError(error) || attempt === maxRetries) throw error;
 
       const delay = (attempt + 1) * 2000; // 2s, 4s
       console.warn(`[proteus] API error (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms:`,
@@ -600,11 +791,11 @@ Then replace `client.messages.create(...)` in the tool loop with `callClaudeWith
 max_tokens: 4096,
 ```
 
-### 4.3 Typing Indicator on Every Tool Round — `proteus.ts` and `index.ts`
+### 4.3 Typing Keep-Alive — `proteus.ts` and `index.ts`
 
-**Problem:** `sendChatAction("typing")` is only called once before the first API call. Telegram typing indicators expire after 5 seconds. Multi-tool chains take 10-25 seconds. User sees nothing — looks like a crash.
+**Problem:** `sendChatAction("typing")` is only called once before the first API call. Telegram typing indicators expire after 5 seconds. A single long API call or tool execution (not just between rounds) can cause silence.
 
-**Fix:** Pass a typing callback into `chat()`:
+**Fix (Finding #6):** Background keep-alive interval that sends typing every 4 seconds throughout the entire `chat()` call, not just between rounds.
 
 ```typescript
 // In proteus.ts — updated signature
@@ -612,17 +803,27 @@ export async function chat(
   systemPrompt: string,
   messages: ChatMessage[],
   tools: Anthropic.Tool[],
-  onToolRound?: () => Promise<void>,  // typing indicator callback
+  typingFn?: () => Promise<void>,  // typing indicator function
 ): Promise<ChatResponse> {
-  // ... existing setup ...
+  // Start keep-alive interval for entire chat duration
+  let typingInterval: NodeJS.Timeout | null = null;
+  if (typingFn) {
+    // Send immediately, then every 4 seconds
+    typingFn().catch(() => undefined);
+    typingInterval = setInterval(() => {
+      typingFn().catch(() => undefined);
+    }, 4000);
+  }
 
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-    // Send typing indicator on each round
-    if (round > 0 && onToolRound) {
-      await onToolRound().catch(() => undefined);
+  try {
+    // ... existing tool loop ...
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+      // No per-round typing needed — interval handles it
+      // ... rest of loop ...
     }
-
-    // ... rest of loop ...
+  } finally {
+    // Always clean up interval, even on error
+    if (typingInterval) clearInterval(typingInterval);
   }
 }
 ```
@@ -636,6 +837,12 @@ const response = await chat(
   () => ctx.sendChatAction("typing"),
 );
 ```
+
+This ensures typing indicator stays alive during:
+- Long API calls (Opus/Sonnet thinking)
+- Multi-tool execution within a single round
+- Database queries that take >5 seconds
+- Any async operation throughout the entire chat flow
 
 ### 4.4 `Promise.allSettled` for Tool Execution — `proteus.ts`
 
@@ -718,41 +925,262 @@ Freedom asked whether the other deities need upgrades. Here's the assessment:
 
 **Should Poseidon have his own state/archives?** Not now. His daily Reckonings are sent to Telegram and that's sufficient. If Freedom wants historical Reckoning analysis later ("what did Poseidon say last Tuesday?"), we could save Reckonings to `archives/reckonings/YYYY-MM.md` — but that's a Phase 3 enhancement. Don't build it now.
 
-### Nereus (Haiku, twice daily) — NO CHANGES
+### Nereus (Haiku, twice daily) — MINOR: Activity Log Writer
 
 **Current role:** Pre-session briefings at 23:30 UTC and 12:30 UTC.
 **Assessment:** Working as intended. Briefings are delivered, Haiku is cost-efficient, and the structured format is solid.
-**Should Nereus save briefings?** Same answer as Poseidon — nice-to-have for historical analysis but not needed now. Telegram has the history.
-**Verdict:** No changes needed. Leave as-is.
+**New addition:** Append to `activity_log.json` after each briefing delivery (see Part 6). One-line change — no architectural modifications.
+**Verdict:** Minimal touch. Activity log integration only.
 
-### Triton (polling, every 30s) — NO CHANGES
+### Triton (polling, every 30s) — MINOR: Activity Log Writer
 
 **Current role:** Alert monitoring and delivery. Polls 9 subsystem monitors, applies behavior filters, sends formatted alerts.
 **Assessment:** Already well-built. Has its own state persistence (`triton_state.json`), dedup cache, priority system, and graceful error handling per monitor.
-**Verdict:** Most mature module. No changes needed.
+**New addition:** Append to `activity_log.json` after each successfully sent alert (see Part 6). One-line change — no architectural modifications.
+**Verdict:** Minimal touch. Activity log integration only.
 
 ### Summary
 
 | Deity | Change | Priority |
 |-------|--------|----------|
-| **Poseidon** | Add curation responsibility | P0 (part of this prompt) |
-| **Nereus** | None | — |
-| **Triton** | None | — |
+| **Poseidon** | Add curation + awareness layer (reads activity log, curates Proteus state) | P0 (part of this prompt) |
+| **Nereus** | Activity log writer (1-line addition) | P1 |
+| **Triton** | Activity log writer (1-line addition) | P1 |
 | **Proteus** | Memory architecture + crash fixes | P0 (this prompt) |
 
 ---
 
-## Part 6: Files to Modify
+## Part 6: Poseidon Awareness Layer
+
+### 6.1 Problem
+
+Poseidon is the god — he reviews everything daily. But he has no awareness of what his subordinate deities actually did between Reckonings. Triton sends 15 alerts? Poseidon doesn't know. Nereus delivers a briefing flagging stale crons? Poseidon queries the DB independently and may reach a different conclusion.
+
+The god should know what his lieutenants reported.
+
+### 6.2 Solution: Activity Log
+
+A lightweight append-only log that Triton and Nereus write to whenever they fire. Poseidon reads it during the Daily Reckoning, then resets it.
+
+**File:** `docs/ai/poseidon/state/activity_log.json`
+
+**Schema:**
+```typescript
+type ActivityEntry = {
+  deity: "triton" | "nereus";
+  timestamp: string;       // ISO 8601
+  type: string;            // e.g., "alert_sent", "briefing_delivered"
+  summary: string;         // 1-2 sentences: what happened
+  priority?: string;       // Triton: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
+  metadata?: Record<string, unknown>; // Optional extra context
+};
+
+// File is a JSON array of ActivityEntry objects
+// Example:
+[
+  {
+    "deity": "triton",
+    "timestamp": "2026-02-27T14:32:00Z",
+    "type": "alert_sent",
+    "summary": "BTC SHORT trade opened @ 97,450. Bitget v2, 5x leverage.",
+    "priority": "HIGH"
+  },
+  {
+    "deity": "triton",
+    "timestamp": "2026-02-27T15:10:00Z",
+    "type": "alert_sent",
+    "summary": "BTC SHORT milestone +5% hit. Leverage scaled to 10x.",
+    "priority": "MEDIUM"
+  },
+  {
+    "deity": "nereus",
+    "timestamp": "2026-02-27T12:30:00Z",
+    "type": "briefing_delivered",
+    "summary": "Pre-NY briefing: Short bias, clean alignment. 2 stale crons flagged."
+  }
+]
+```
+
+### 6.3 Writers
+
+**Triton** — append after each successfully sent alert:
+```typescript
+// In triton.ts, after successful telegram.sendMessage()
+await appendActivityLog({
+  deity: "triton",
+  timestamp: new Date().toISOString(),
+  type: "alert_sent",
+  summary: `${alert.type}: ${alert.body.slice(0, 100)}`,
+  priority: alert.priority,
+});
+```
+
+**Nereus** — append after each briefing delivery:
+```typescript
+// In nereus.ts, after successful briefing send
+await appendActivityLog({
+  deity: "nereus",
+  timestamp: new Date().toISOString(),
+  type: "briefing_delivered",
+  summary: `${sessionType} briefing delivered. Commentary: ${commentary.slice(0, 100)}`,
+});
+```
+
+### 6.4 Implementation: `src/lib/poseidon/activity-log.ts`
+
+```typescript
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: activity-log.ts
+ *
+ * Description:
+ * Lightweight append-only activity log for deity actions. Triton and
+ * Nereus write entries when they fire. Poseidon reads and resets the
+ * log during the Daily Reckoning.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { config } from "@/lib/poseidon/config";
+
+type ActivityEntry = {
+  deity: "triton" | "nereus";
+  timestamp: string;
+  type: string;
+  summary: string;
+  priority?: string;
+  metadata?: Record<string, unknown>;
+};
+
+const LOG_PATH = path.resolve(process.cwd(), config.stateDir, "activity_log.json");
+const MAX_ENTRIES = 200; // Safety cap — oldest entries dropped if exceeded
+
+async function ensureDir() {
+  await mkdir(path.dirname(LOG_PATH), { recursive: true });
+}
+
+export async function appendActivityLog(entry: ActivityEntry): Promise<void> {
+  await ensureDir();
+  let entries: ActivityEntry[] = [];
+  try {
+    const raw = await readFile(LOG_PATH, "utf8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) entries = parsed;
+  } catch {
+    // Fresh log
+  }
+
+  entries.push(entry);
+
+  // Safety cap — keep most recent entries
+  if (entries.length > MAX_ENTRIES) {
+    entries = entries.slice(-MAX_ENTRIES);
+  }
+
+  await writeFile(LOG_PATH, JSON.stringify(entries, null, 2), "utf8");
+}
+
+export async function readActivityLog(): Promise<ActivityEntry[]> {
+  await ensureDir();
+  try {
+    const raw = await readFile(LOG_PATH, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function resetActivityLog(): Promise<void> {
+  await ensureDir();
+  await writeFile(LOG_PATH, "[]", "utf8");
+}
+```
+
+### 6.5 Consumer: Poseidon Daily Reckoning
+
+In `poseidon-god.ts`, inject the activity log into the Reckoning data:
+
+```typescript
+import { readActivityLog, resetActivityLog } from "@/lib/poseidon/activity-log";
+
+async function gatherReckoningData(): Promise<string> {
+  // ... existing data gathering ...
+
+  // DEITY ACTIVITY (new section)
+  try {
+    const activity = await readActivityLog();
+    if (activity.length > 0) {
+      const tritonAlerts = activity.filter(a => a.deity === "triton");
+      const nereusBriefings = activity.filter(a => a.deity === "nereus");
+
+      const lines: string[] = ["DEITY ACTIVITY (last 24h)"];
+      lines.push(`  Triton: ${tritonAlerts.length} alerts sent`);
+
+      // Summarize by priority
+      const critical = tritonAlerts.filter(a => a.priority === "CRITICAL").length;
+      const high = tritonAlerts.filter(a => a.priority === "HIGH").length;
+      if (critical) lines.push(`    CRITICAL: ${critical}`);
+      if (high) lines.push(`    HIGH: ${high}`);
+
+      // List notable alerts (HIGH and CRITICAL only, to keep Reckoning data lean)
+      for (const alert of tritonAlerts.filter(a => a.priority === "CRITICAL" || a.priority === "HIGH").slice(0, 5)) {
+        lines.push(`    ${alert.timestamp.slice(11, 16)} UTC: ${alert.summary}`);
+      }
+
+      lines.push(`  Nereus: ${nereusBriefings.length} briefings delivered`);
+      for (const briefing of nereusBriefings.slice(0, 2)) {
+        lines.push(`    ${briefing.summary}`);
+      }
+
+      sections.push(lines.join("\n"));
+    } else {
+      sections.push("DEITY ACTIVITY\n  No activity logged since last Reckoning.");
+    }
+  } catch {
+    sections.push("DEITY ACTIVITY\n  Error reading activity log.");
+  }
+
+  return sections.join("\n\n");
+}
+```
+
+After the Reckoning is sent and curation is complete, reset the log:
+
+```typescript
+// In sendReckoning(), after curation
+await resetActivityLog().catch(e => console.warn("[poseidon] Failed to reset activity log:", e));
+```
+
+### 6.6 Why This Matters
+
+- **Poseidon sees the full picture.** He knows Triton sent 3 CRITICAL alerts about bot errors, and Nereus flagged stale data in the pre-NY briefing. His Reckoning can now reference what his subordinates reported.
+- **No separate archives needed.** The activity log resets daily. Poseidon's Reckoning is the archive — it synthesizes everything into one authoritative statement.
+- **Minimal overhead.** JSON append on each alert/briefing. No AI calls. No DB writes. Trivial cost.
+- **Feeds into Proteus too.** If Proteus ever needs to know "what alerts did Triton send today?", we could add a `get_activity_log` tool later. Not needed now.
+
+---
+
+## Part 7: Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/lib/poseidon/state.ts` | Remove `MAX_STATE_CHARS`, add `STATE_SOFT_LIMIT_CHARS`, add `getStateSize()`, remove truncation |
-| `src/lib/poseidon/memory.ts` | Bump system prompt ceiling to 50K, restructure priority loading, bump individual file budgets |
-| `src/lib/poseidon/proteus.ts` | Add retry logic, bump max_tokens to 4096, add typing callback, switch to `Promise.allSettled`, add timeout wrapper |
-| `src/lib/poseidon/tools.ts` | Add `get_session_archive` and `request_poseidon_curation` tool definitions + handlers |
+| `src/lib/poseidon/state.ts` | Remove `MAX_STATE_CHARS`, add `STATE_SOFT_LIMIT_CHARS`, add `getStateSize()`, remove truncation, wrap writes in `withStateLock` |
+| `src/lib/poseidon/memory.ts` | Bump system prompt ceiling to 50K, restructure priority loading, bump individual file budgets, add curation flag writer |
+| `src/lib/poseidon/proteus.ts` | Add retry logic with typed errors, bump max_tokens to 4096, add typing keep-alive interval, switch to `Promise.allSettled`, add timeout wrapper |
+| `src/lib/poseidon/tools.ts` | Add `get_session_archive` (with path traversal protection) and `request_poseidon_curation` tool definitions + handlers |
 | `src/lib/poseidon/index.ts` | Pass typing callback to `chat()`, no other changes needed |
-| `src/lib/poseidon/poseidon-god.ts` | Add curation call after Reckoning |
-| `src/lib/poseidon/poseidon-curator.ts` | **NEW FILE** — Curation logic, Opus prompt, archive read/write, safety protocol |
+| `src/lib/poseidon/poseidon-god.ts` | Add curation call after Reckoning, inject activity log into Reckoning data, reset activity log after Reckoning |
+| `src/lib/poseidon/triton.ts` | Add `appendActivityLog()` call after each successfully sent alert |
+| `src/lib/poseidon/nereus.ts` | Add `appendActivityLog()` call after each briefing delivery |
+| `src/lib/poseidon/poseidon-curator.ts` | **NEW FILE** — Curation logic, Opus prompt, schema validation, archive read/write, atomic writes, safety protocol |
+| `src/lib/poseidon/state-mutex.ts` | **NEW FILE** — Shared async mutex for state/archive write safety |
+| `src/lib/poseidon/activity-log.ts` | **NEW FILE** — Deity activity log (append, read, reset) |
 
 ## Files NOT to Modify
 
@@ -760,8 +1188,6 @@ Freedom asked whether the other deities need upgrades. Here's the assessment:
 - `src/lib/poseidon/conversations.ts` — leave as-is
 - `src/lib/poseidon/behavior.ts` — leave as-is
 - `src/lib/poseidon/animations.ts` — leave as-is
-- `src/lib/poseidon/triton.ts` — leave as-is
-- `src/lib/poseidon/nereus.ts` — leave as-is
 - All memory `.md` files — leave as-is
 - Any files outside `src/lib/poseidon/` and `docs/ai/poseidon/` — DO NOT TOUCH
 
@@ -769,21 +1195,42 @@ Freedom asked whether the other deities need upgrades. Here's the assessment:
 
 ## Acceptance Criteria
 
-1. `npx tsc` compiles with zero errors (or only pre-existing errors outside poseidon/)
-2. `PROTEUS_STATE.md` has no hardcoded character cap — Proteus can write freely
-3. System prompt ceiling bumped to 50K chars with correct priority loading
-4. `archives/` directory structure created and writable
-5. `get_session_archive` tool works — returns results when archives exist, graceful "no archives" when empty
+### Memory Architecture
+1. `PROTEUS_STATE.md` has no hardcoded character cap — Proteus can write freely
+2. System prompt ceiling bumped to 50K chars with correct priority loading (identity first, state last)
+3. `archives/` directory structure created and writable
+4. `get_session_archive` tool works — returns results when archives exist, graceful "no archives" when empty
+5. `get_session_archive` rejects invalid month formats and blocks path traversal
 6. `request_poseidon_curation` tool works — calls Opus, archives resolved items, cleans state
-7. Archive safety protocol enforced — archive-first, then delete, with verification
-8. Poseidon daily curation fires after the Reckoning (non-blocking, failure doesn't break Reckoning)
-9. `proteus.ts` has retry logic on API calls (2 retries with backoff)
-10. `max_tokens` bumped to 4096
-11. Typing indicator sent on every tool round
-12. `Promise.allSettled` used for tool execution
-13. Timeout wrapper on API calls (30s) and tool calls (15s)
-14. All existing commands (/start, /health, /status, /clear, /briefing, /reckoning) still work
-15. No files outside the poseidon module are modified
+
+### Archive Safety
+7. Archive safety protocol enforced — archive-first, then delete, with verification of ALL entries
+8. Atomic writes via tmp+rename for archive files
+9. Async mutex prevents concurrent state/archive writes
+10. Curation response validated against strict 4-key schema before any writes
+
+### Poseidon Awareness
+11. Triton appends to `activity_log.json` after each alert
+12. Nereus appends to `activity_log.json` after each briefing
+13. Poseidon's `gatherReckoningData()` includes deity activity section
+14. Activity log resets after Reckoning delivery
+
+### Crash Fixes
+15. `proteus.ts` has retry logic using typed Anthropic SDK error classes (2 retries with backoff)
+16. `max_tokens` bumped to 4096
+17. Typing keep-alive interval every 4 seconds throughout entire `chat()` call, cleaned up in `finally`
+18. `Promise.allSettled` used for tool execution
+19. Timeout wrapper on API calls (30s) and tool calls (15s)
+
+### Curation Trigger
+20. `curation_flag.json` written when state exceeds soft limit
+21. Poseidon reads and respects the flag during daily curation
+22. Flag reset after successful curation
+
+### General
+23. `npx tsc` compiles with zero errors (or only pre-existing errors outside poseidon/)
+24. All existing commands (/start, /health, /status, /clear, /briefing, /reckoning) still work
+25. No files outside the poseidon module are modified (except `triton.ts` and `nereus.ts` for activity log integration)
 
 ---
 
