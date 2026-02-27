@@ -352,7 +352,6 @@ bot.on("text", async (ctx) => {
         groupHistory,
         groupTools,
         () => ctx.sendChatAction("typing"),
-        { model: config.models.nereus },
       );
 
       setActiveGroupId(null);
