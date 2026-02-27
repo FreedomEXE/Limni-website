@@ -409,6 +409,19 @@ bot.on("text", async (ctx) => {
     });
   } catch (error) {
     console.error("[poseidon] text handler error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    await persistTurnWithRetry(
+      userMessage,
+      `[System error while generating response] ${errorMessage.slice(0, 400)}`,
+    ).catch(() => undefined);
+
+    if (/timed out/i.test(errorMessage)) {
+      await ctx.reply(
+        "Proteus timed out while processing that request. Your message was still logged to memory. Send it again and I will continue.",
+      );
+      return;
+    }
+
     await ctx.reply("Proteus hit an error while processing that request. Try again.");
   }
 });

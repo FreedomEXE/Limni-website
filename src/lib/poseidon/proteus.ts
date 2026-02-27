@@ -20,7 +20,7 @@ import type { SystemPromptParts } from "@/lib/poseidon/memory";
 
 const client = new Anthropic({ apiKey: config.anthropic.apiKey });
 const MAX_TOOL_ROUNDS = 3;
-const CLAUDE_TIMEOUT_MS = 30_000;
+const CLAUDE_TIMEOUT_MS = 90_000;
 const TOOL_TIMEOUT_MS = 15_000;
 const TYPING_KEEPALIVE_MS = 4_000;
 
