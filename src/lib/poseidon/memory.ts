@@ -45,6 +45,12 @@ const SESSION_STATE_PROTOCOL = [
   "If context is genuinely missing, say you do not have that specific information.",
 ].join("\n");
 
+export function capStateToNewestWindow(state: string, maxChars: number): string {
+  if (maxChars <= 0) return "";
+  if (state.length <= maxChars) return state;
+  return state.slice(-maxChars);
+}
+
 function truncate(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   return `${text.slice(0, maxChars)}\n\n[Truncated to ${maxChars} chars]`;
@@ -123,16 +129,14 @@ export async function loadSystemPrompt(): Promise<string> {
 
   const statePrefix = "## CURRENT SESSION STATE\n";
   const joinPadding = "\n\n";
-  const truncationNote = "\n\n[Session state truncated to fit system prompt budget.]";
+  const truncationNote = "\n\n[Oldest session state truncated to fit prompt budget. Run /reckoning or request curation to archive.]";
   const availableForState =
     MAX_SYSTEM_PROMPT_CHARS -
     baseComposed.length -
     joinPadding.length -
     statePrefix.length -
     truncationNote.length;
-  const cappedState = availableForState > 0
-    ? sessionState.slice(0, availableForState)
-    : "";
+  const cappedState = capStateToNewestWindow(sessionState, availableForState);
 
   const stateSection = cappedState.length === sessionState.length
     ? `${statePrefix}${cappedState}`

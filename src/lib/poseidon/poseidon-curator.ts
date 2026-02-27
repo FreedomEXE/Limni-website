@@ -16,23 +16,21 @@ import Anthropic from "@anthropic-ai/sdk";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { config } from "@/lib/poseidon/config";
+import {
+  buildArchiveDocument,
+  buildEntryBlocks,
+  validateCurationResponse,
+  verifyArchiveWrite,
+  type CurationResponse,
+} from "@/lib/poseidon/curation-schema";
 import { resetCurationFlag } from "@/lib/poseidon/curation-flag";
+import {
+  appendMissedTurnsToState,
+  clearMissedTurns,
+  readMissedTurns,
+} from "@/lib/poseidon/missed-turns";
 import { loadSessionState, writeStateRaw } from "@/lib/poseidon/state";
 import { withStateLock } from "@/lib/poseidon/state-mutex";
-
-type ArchiveEntry = {
-  date: string;
-  title: string;
-  summary: string;
-  content: string;
-};
-
-type CurationResponse = {
-  active_state: string;
-  archive_entries: ArchiveEntry[];
-  archive_summary: string;
-  curation_notes: string;
-};
 
 export type CurationResult = {
   success: boolean;
@@ -87,7 +85,7 @@ Return a JSON object with exactly four keys (all required):
 }
 
 STRICT RULES:
-- All four keys MUST be present. No extra keys.
+- All four keys MUST be present.
 - "active_state" MUST be a non-empty string.
 - "archive_entries" MUST be an array (empty array if nothing to archive).
 - Each entry MUST have all four fields: date, title, summary, content.
@@ -97,8 +95,6 @@ STRICT RULES:
 
 If nothing needs archiving, return empty archive_entries and the state unchanged.
 Do NOT invent or fabricate content. Only work with what's in the state file.`;
-
-const ENTRY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function monthKey(now = new Date()): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -133,64 +129,6 @@ function parseJsonLoose(text: string): unknown {
   }
 }
 
-function validateCurationResponse(raw: unknown): CurationResponse {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new Error("Curation response is not an object");
-  }
-
-  const obj = raw as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
-  const expected = ["active_state", "archive_entries", "archive_summary", "curation_notes"].sort();
-  if (keys.length !== expected.length || keys.some((key, idx) => key !== expected[idx])) {
-    throw new Error("Curation response must contain exactly: active_state, archive_entries, archive_summary, curation_notes");
-  }
-
-  if (typeof obj.active_state !== "string" || !obj.active_state.trim()) {
-    throw new Error("Missing/empty active_state");
-  }
-  if (!Array.isArray(obj.archive_entries)) {
-    throw new Error("archive_entries must be an array");
-  }
-  if (typeof obj.archive_summary !== "string") {
-    throw new Error("archive_summary must be a string");
-  }
-  if (typeof obj.curation_notes !== "string") {
-    throw new Error("curation_notes must be a string");
-  }
-
-  const archiveEntries: ArchiveEntry[] = obj.archive_entries.map((entry) => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-      throw new Error("Invalid archive entry object");
-    }
-
-    const row = entry as Record<string, unknown>;
-    const entryKeys = Object.keys(row).sort();
-    const expectedEntryKeys = ["content", "date", "summary", "title"].sort();
-    if (entryKeys.length !== expectedEntryKeys.length || entryKeys.some((key, idx) => key !== expectedEntryKeys[idx])) {
-      throw new Error("Archive entry must contain exactly: date, title, summary, content");
-    }
-
-    const date = typeof row.date === "string" ? row.date.trim() : "";
-    const title = typeof row.title === "string" ? row.title.trim() : "";
-    const summary = typeof row.summary === "string" ? row.summary.trim() : "";
-    const content = typeof row.content === "string" ? row.content.trim() : "";
-
-    if (!ENTRY_DATE_RE.test(date)) throw new Error("Archive entry date must match YYYY-MM-DD");
-    if (!title) throw new Error("Archive entry title is required");
-    if (!summary) throw new Error("Archive entry summary is required");
-    if (!content) throw new Error("Archive entry content is required");
-
-    return { date, title, summary, content };
-  });
-
-  return {
-    active_state: obj.active_state.trim(),
-    archive_entries: archiveEntries,
-    archive_summary: obj.archive_summary.trim(),
-    curation_notes: obj.curation_notes.trim(),
-  };
-}
-
 async function ensureArchiveDir(archiveDir: string): Promise<void> {
   await mkdir(archiveDir, { recursive: true });
 }
@@ -202,43 +140,23 @@ function extractArchivedEntries(content: string): string {
   return content.slice(markerIdx + marker.length).trim();
 }
 
-function buildArchiveDocument(
-  label: string,
-  summary: string,
-  existingEntries: string,
-  newEntryBlocks: string,
-): string {
-  const sections: string[] = [
-    `# Proteus Archive - ${label}`,
-    "",
-    "## Summary",
-    summary || "No summary yet.",
-    "",
-    "---",
-    "",
-    "## Archived Entries",
-  ];
-
-  if (existingEntries) {
-    sections.push("", existingEntries.trim());
-  }
-  if (newEntryBlocks) {
-    sections.push("", newEntryBlocks.trim());
-  }
-
-  return `${sections.join("\n").trimEnd()}\n`;
-}
-
-function buildEntryBlocks(entries: ArchiveEntry[]): string {
-  return entries
-    .map((entry) => `### ${entry.date} - ${entry.title}\n> ${entry.summary}\n\n${entry.content}\n`)
-    .join("\n");
-}
-
 export async function curateProteusMemory(reason?: string): Promise<CurationResult> {
   return await withStateLock(async () => {
     const currentState = await loadSessionState();
-    if (!currentState || currentState.length < 100) {
+    const missedTurns = await readMissedTurns();
+    const replayedState = appendMissedTurnsToState(currentState, missedTurns);
+
+    if (!replayedState || replayedState.length < 100) {
+      if (missedTurns.length > 0) {
+        await writeStateRaw(replayedState);
+        await clearMissedTurns();
+        await resetCurationFlag();
+        return {
+          success: true,
+          archived: 0,
+          note: `State too small to curate. Replayed ${missedTurns.length} missed turn(s).`,
+        };
+      }
       return { success: true, archived: 0, note: "State too small to curate." };
     }
 
@@ -263,7 +181,7 @@ export async function curateProteusMemory(reason?: string): Promise<CurationResu
             "",
             "---",
             "",
-            currentState,
+            replayedState,
           ].filter(Boolean).join("\n"),
         },
       ],
@@ -299,17 +217,19 @@ export async function curateProteusMemory(reason?: string): Promise<CurationResu
       await writeFile(tmpPath, updatedArchive, "utf8");
 
       const verification = await readFile(tmpPath, "utf8");
-      const expectedBlocks = parsed.archive_entries.map((entry) => `### ${entry.date} - ${entry.title}`);
-      const allPresent = expectedBlocks.every((block) => verification.includes(block));
-      if (!allPresent) {
+      const verify = verifyArchiveWrite(verification, parsed.archive_entries);
+      if (!verify.ok) {
         await unlink(tmpPath).catch(() => undefined);
-        throw new Error("Archive verification failed - not all entries found in staged write.");
+        throw new Error(verify.reason ?? "Archive verification failed.");
       }
 
       await rename(tmpPath, archivePath);
     }
 
     await writeStateRaw(parsed.active_state);
+    if (missedTurns.length > 0) {
+      await clearMissedTurns();
+    }
     await resetCurationFlag();
 
     return {

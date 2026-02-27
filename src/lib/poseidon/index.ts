@@ -27,13 +27,14 @@ import {
   loadHistory,
 } from "@/lib/poseidon/conversations";
 import { loadBehavior } from "@/lib/poseidon/behavior";
-import { appendConversationTurnToState, getRecoverySummary, loadSessionState } from "@/lib/poseidon/state";
+import { getRecoverySummary, loadSessionState } from "@/lib/poseidon/state";
 import { chat } from "@/lib/poseidon/proteus";
 import { toolDefinitions, handleToolCall } from "@/lib/poseidon/tools";
 import { sendStartupAnimation } from "@/lib/poseidon/animations";
 import { startTriton, stopTriton } from "@/lib/poseidon/triton";
 import { scheduleNereus, stopNereus, buildBriefing } from "@/lib/poseidon/nereus";
 import { schedulePoseidon, stopPoseidon, sendReckoning } from "@/lib/poseidon/poseidon-god";
+import { persistTurnWithRetry } from "@/lib/poseidon/turn-persistence";
 
 const bot = new Telegraf(config.telegram.botToken);
 const heartbeatPath = path.resolve(process.cwd(), config.stateDir, "heartbeat.json");
@@ -166,9 +167,7 @@ bot.on("text", async (ctx) => {
     );
 
     await addMessage("assistant", response.persistText);
-    await appendConversationTurnToState(userMessage, response.persistText).catch((error) => {
-      console.warn("[poseidon] failed to auto-persist conversation turn:", error);
-    });
+    await persistTurnWithRetry(userMessage, response.persistText);
     await ctx.reply(response.displayText, { parse_mode: "Markdown" }).catch(async () => {
       await ctx.reply(response.displayText);
     });
@@ -192,6 +191,15 @@ async function launchBotWithRetry(maxAttempts = 5): Promise<void> {
       console.warn(`[poseidon] 409 conflict on attempt ${attempt}/${maxAttempts}, retrying in ${delay / 1000}s...`);
       await new Promise((r) => setTimeout(r, delay));
     }
+  }
+}
+
+async function detectPendingOfflineMessages(): Promise<boolean> {
+  try {
+    const pending = await bot.telegram.getUpdates(0, 1, 0, []);
+    return pending.length > 0;
+  } catch {
+    return false;
   }
 }
 
@@ -239,6 +247,7 @@ async function start() {
     writeHeartbeat({ event: "heartbeat" }).catch(() => undefined);
   }, 60_000).unref();
 
+  const hadPendingOfflineMessages = await detectPendingOfflineMessages();
   await launchBotWithRetry();
   botStatus = "ok";
   console.log("[poseidon] Proteus online");
@@ -260,6 +269,14 @@ async function start() {
     if (recovery) {
       await bot.telegram.sendMessage(config.telegram.ownerId, recovery);
       console.log("[poseidon] Recovery context sent");
+    }
+
+    if (hadPendingOfflineMessages) {
+      await bot.telegram.sendMessage(
+        config.telegram.ownerId,
+        "I was offline and missed some messages. Let me know if you want me to pick up where we left off.",
+      );
+      console.log("[poseidon] Offline-gap notification sent");
     }
   } catch (err) {
     console.warn("[poseidon] Could not send startup message:", err);
