@@ -177,8 +177,9 @@ bot.on("text", async (ctx) => {
   }
 });
 
-async function launchBotWithRetry(maxAttempts = 5): Promise<void> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+async function launchBotWithRetry(): Promise<void> {
+  let attempt = 1;
+  while (true) {
     try {
       await bot.launch({ dropPendingUpdates: true });
       return;
@@ -186,18 +187,22 @@ async function launchBotWithRetry(maxAttempts = 5): Promise<void> {
       const is409 =
         error instanceof Error && "response" in error &&
         (error as { response?: { error_code?: number } }).response?.error_code === 409;
-      if (!is409 || attempt === maxAttempts) throw error;
-      const delay = attempt * 3_000;
-      console.warn(`[poseidon] 409 conflict on attempt ${attempt}/${maxAttempts}, retrying in ${delay / 1000}s...`);
+      if (!is409) throw error;
+
+      const delay = Math.min(30_000, attempt * 3_000);
+      console.warn(
+        `[poseidon] 409 conflict (another poller active), retrying in ${delay / 1000}s...`,
+      );
       await new Promise((r) => setTimeout(r, delay));
+      attempt += 1;
     }
   }
 }
 
 async function detectPendingOfflineMessages(): Promise<boolean> {
   try {
-    const pending = await bot.telegram.getUpdates(0, 1, 0, []);
-    return pending.length > 0;
+    const info = await bot.telegram.getWebhookInfo();
+    return (info.pending_update_count ?? 0) > 0;
   } catch {
     return false;
   }
