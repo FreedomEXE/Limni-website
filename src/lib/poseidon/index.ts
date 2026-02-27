@@ -107,8 +107,44 @@ bot.on("text", async (ctx) => {
   }
 });
 
+async function launchBotWithRetry(maxAttempts = 5): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await bot.launch({ dropPendingUpdates: true });
+      return;
+    } catch (error: unknown) {
+      const is409 =
+        error instanceof Error && "response" in error &&
+        (error as { response?: { error_code?: number } }).response?.error_code === 409;
+      if (!is409 || attempt === maxAttempts) throw error;
+      const delay = attempt * 3_000;
+      console.warn(`[poseidon] 409 conflict on attempt ${attempt}/${maxAttempts}, retrying in ${delay / 1000}s...`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+}
+
 async function start() {
   console.log("[poseidon] Starting...");
+
+  // Start health HTTP server FIRST so Render sees port binding immediately
+  const PORT = Number(process.env.PORT) || 10000;
+  const startedAt = new Date().toISOString();
+  let botStatus = "starting";
+  createServer((_req, res) => {
+    const payload = JSON.stringify({
+      status: botStatus,
+      service: "poseidon",
+      uptime: process.uptime(),
+      startedAt,
+      pid: process.pid,
+    });
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(payload);
+  }).listen(PORT, () => {
+    console.log(`[poseidon] Health server listening on port ${PORT}`);
+  });
+
   const diag = await diagnoseContext();
   console.log(`[poseidon] Memory loaded: ${diag.loaded.join(", ")}`);
   if (diag.missing.length) {
@@ -131,25 +167,10 @@ async function start() {
   setInterval(() => {
     writeHeartbeat({ event: "heartbeat" }).catch(() => undefined);
   }, 60_000).unref();
-  await bot.launch({ dropPendingUpdates: true });
-  console.log("[poseidon] Proteus online");
 
-  // Health HTTP server for Render health checks
-  const PORT = Number(process.env.PORT) || 10000;
-  const startedAt = new Date().toISOString();
-  createServer((_req, res) => {
-    const payload = JSON.stringify({
-      status: "ok",
-      service: "poseidon",
-      uptime: process.uptime(),
-      startedAt,
-      pid: process.pid,
-    });
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(payload);
-  }).listen(PORT, () => {
-    console.log(`[poseidon] Health server listening on port ${PORT}`);
-  });
+  await launchBotWithRetry();
+  botStatus = "ok";
+  console.log("[poseidon] Proteus online");
 
   // Animated startup message to Freedom
   try {
