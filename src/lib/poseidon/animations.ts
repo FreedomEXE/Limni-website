@@ -111,16 +111,94 @@ const ALERT_LABELS: Record<AlertStyle, string> = {
   stale_data: "STALE DATA",
 };
 
-export function buildTritonHeader(style: AlertStyle): string {
+export type TritonPriority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+
+const TRITON_PRIORITY_ICONS: Record<TritonPriority, string> = {
+  CRITICAL: "\u{1F534}",
+  HIGH: "\u26A1",
+  MEDIUM: "\u{1F4E1}",
+  LOW: "\u{1F4CB}",
+};
+
+function isTritonPriority(value: string): value is TritonPriority {
+  return value === "CRITICAL" || value === "HIGH" || value === "MEDIUM" || value === "LOW";
+}
+
+function buildLegacyTritonHeader(style: AlertStyle): string {
   return [TOP, cRow("T R I T O N"), cRow(ALERT_LABELS[style] ?? "ALERT"), BTM].join("\n");
 }
 
-export function buildNereusHeader(): string {
-  return [TOP, cRow("N E R E U S"), cRow("Session Briefing"), BTM].join("\n");
+export function buildTritonHeader(styleOrPriority: AlertStyle | TritonPriority): string {
+  if (isTritonPriority(styleOrPriority)) {
+    return `${TRITON_PRIORITY_ICONS[styleOrPriority]} TRITON\n${"━".repeat(24)}`;
+  }
+  return buildLegacyTritonHeader(styleOrPriority);
 }
 
-export function buildPoseidonHeader(): string {
-  return [TOP, cRow("P O S E I D O N"), cRow("Daily Oversight"), BTM].join("\n");
+export function buildNereusHeader(sessionType: string, dateStr: string, timeStr: string): string {
+  const label = sessionType === "pre_asia" ? "Pre-Asia Briefing" : "Pre-NY Briefing";
+  return [
+    TOP,
+    cRow("N E R E U S"),
+    cRow("The Old Man of the Sea"),
+    MID,
+    row(` ${label}`),
+    row(` ${dateStr} \u00B7 ${timeStr} UTC`),
+    BTM,
+  ].join("\n");
+}
+
+export function buildPoseidonHeader(dateStr?: string): string {
+  return [
+    "\u2550".repeat(30),
+    "       P O S E I D O N",
+    "        \u2500\u2500\u2500 \u2629 \u2500\u2500\u2500",
+    "       Daily Reckoning",
+    dateStr ? `       ${dateStr}` : null,
+    "\u2550".repeat(30),
+  ].filter(Boolean).join("\n");
+}
+
+const POSEIDON_FRAMES = [
+  "\u2550".repeat(30),
+
+  "\u2550".repeat(30) + "\n" +
+  "       P O S E I D O N",
+
+  "\u2550".repeat(30) + "\n" +
+  "       P O S E I D O N\n" +
+  "        \u2500\u2500\u2500 \u2629 \u2500\u2500\u2500",
+
+  "\u2550".repeat(30) + "\n" +
+  "       P O S E I D O N\n" +
+  "        \u2500\u2500\u2500 \u2629 \u2500\u2500\u2500\n" +
+  "       Daily Reckoning",
+];
+
+const POSEIDON_FRAME_DELAY = 800;
+
+export async function sendPoseidonAnimation(
+  telegram: Telegram,
+  chatId: number,
+): Promise<void> {
+  try {
+    const msg = await telegram.sendMessage(chatId, pre(POSEIDON_FRAMES[0]), {
+      parse_mode: "HTML",
+    });
+
+    for (let i = 1; i < POSEIDON_FRAMES.length; i++) {
+      await sleep(POSEIDON_FRAME_DELAY);
+      await telegram.editMessageText(
+        chatId,
+        msg.message_id,
+        undefined,
+        pre(POSEIDON_FRAMES[i]),
+        { parse_mode: "HTML" },
+      );
+    }
+  } catch (error) {
+    console.warn("[poseidon.animation] Poseidon animation failed:", error);
+  }
 }
 
 /**

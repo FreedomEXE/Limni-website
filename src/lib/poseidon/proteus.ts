@@ -25,17 +25,45 @@ export type ChatMessage = {
   content: string;
 };
 
+export type ChatResponse = {
+  displayText: string;
+  persistText: string;
+};
+
+function summarizeToolResult(result: string, maxChars = 120): string {
+  const compact = result.replace(/\s+/g, " ").trim();
+  if (!compact) return "no data";
+  if (compact.length <= maxChars) return compact;
+  return `${compact.slice(0, maxChars)}...`;
+}
+
+function buildChatResponse(lastText: string, toolsUsed: string[]): ChatResponse {
+  const displayText = lastText || "No response generated.";
+  if (!toolsUsed.length) {
+    return { displayText, persistText: displayText };
+  }
+
+  const capped = toolsUsed.slice(0, 6);
+  const overflow = toolsUsed.length > 6 ? `; +${toolsUsed.length - 6} more` : "";
+  const toolNote = `\n\n[Tools used: ${capped.join("; ")}${overflow}]`;
+  return {
+    displayText,
+    persistText: `${displayText}${toolNote}`,
+  };
+}
+
 export async function chat(
   systemPrompt: string,
   messages: ChatMessage[],
   tools: Anthropic.Tool[],
-): Promise<string> {
+): Promise<ChatResponse> {
   const transcript = messages.map((msg) => ({
     role: msg.role,
     content: msg.content,
   })) as Anthropic.MessageParam[];
 
   let lastText = "";
+  const toolsUsed: string[] = [];
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     const response = await client.messages.create({
@@ -56,7 +84,7 @@ export async function chat(
 
     const toolUses = blocks.filter((block) => block.type === "tool_use");
     if (!toolUses.length) {
-      return lastText || "No response generated.";
+      return buildChatResponse(lastText, toolsUsed);
     }
 
     transcript.push({
@@ -64,19 +92,32 @@ export async function chat(
       content: response.content as Anthropic.ContentBlock[],
     });
 
-    const toolResultBlocks = await Promise.all(
+    const toolExecutions = await Promise.all(
       toolUses.map(async (toolUse) => {
         const id = String(toolUse.id ?? "");
         const name = String(toolUse.name ?? "");
         const input = (toolUse.input ?? {}) as Record<string, unknown>;
         const result = await handleToolCall(name, input);
         return {
-          type: "tool_result",
-          tool_use_id: id,
-          content: result,
+          id,
+          name,
+          result,
         };
       }),
     );
+
+    for (const execution of toolExecutions) {
+      const summary = summarizeToolResult(execution.result);
+      toolsUsed.push(`${execution.name} -> ${summary}`);
+    }
+
+    const toolResultBlocks = toolExecutions.map((execution) => {
+      return {
+        type: "tool_result",
+        tool_use_id: execution.id,
+        content: execution.result,
+      };
+    });
 
     transcript.push({
       role: "user",
@@ -84,5 +125,8 @@ export async function chat(
     });
   }
 
-  return lastText || "I reached the tool-use limit before finishing your request.";
+  return buildChatResponse(
+    lastText || "I reached the tool-use limit before finishing your request.",
+    toolsUsed,
+  );
 }

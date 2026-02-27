@@ -29,7 +29,8 @@ type ContextDiagnosis = {
 };
 
 const MEMORY_FILES: MemorySpec[] = [
-  { filename: "PROTEUS_CORE.md", maxChars: 3000 },
+  { filename: "PROTEUS_CORE.md", maxChars: 4000 },
+  { filename: "LIMNI_PLATFORM.md", maxChars: 4000 },
   { filename: "TRADING_FRAMEWORK.md", maxChars: 5000 },
   { filename: "BOT_OPERATIONS.md", maxChars: 4000 },
   { filename: "MARKET_KNOWLEDGE.md", maxChars: 3000 },
@@ -77,18 +78,6 @@ export async function diagnoseContext(): Promise<ContextDiagnosis> {
 export async function loadSystemPrompt(): Promise<string> {
   const sections: string[] = [];
 
-  sections.push(
-    [
-      "You are Proteus, Freedom's AI trading strategist for Limni Labs.",
-      "Operate with high precision and concise, actionable answers.",
-      "CRITICAL: You have ZERO knowledge of current bot state, market data, weekly bias, positions, trades, or signals.",
-      "You MUST call the appropriate tool BEFORE making ANY claim about live data.",
-      "If you haven't called a tool in this conversation, you don't know the current state — period.",
-      "If a tool fails or returns empty, say exactly that. Never fill gaps with plausible guesses.",
-      "On first message, greet Freedom naturally. Do NOT present any status data unless you called a tool first.",
-    ].join(" "),
-  );
-
   for (const spec of MEMORY_FILES) {
     const fullPath = path.resolve(process.cwd(), config.memoryDir, spec.filename);
     const content = await safeRead(fullPath, spec.maxChars);
@@ -105,12 +94,10 @@ export async function loadSystemPrompt(): Promise<string> {
   // Session state instructions (always present)
   sections.push([
     "## SESSION STATE PROTOCOL",
-    "You have an update_session_state tool. USE IT after significant conversations.",
-    "Update your state when: Freedom makes a decision, you discuss strategy changes,",
-    "an important trade happens, or any context you'd want to remember after a restart.",
-    "Your session state is loaded into every conversation — it IS your long-term memory.",
-    "Never say you 'can't remember' — check your session state and conversation history.",
-    "If something is genuinely not in your context, say you don't have that specific info.",
+    "Use `update_session_state` after meaningful decisions, strategy changes, or important trades.",
+    "Your session state is loaded into every conversation and is your long-term memory.",
+    "Check session state and history before saying you do not remember something.",
+    "If context is genuinely missing, say you do not have that specific information.",
   ].join("\n"));
 
   const composed = sections.join("\n\n");
@@ -119,4 +106,3 @@ export async function loadSystemPrompt(): Promise<string> {
   }
   return composed;
 }
-

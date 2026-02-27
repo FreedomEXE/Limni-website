@@ -74,9 +74,26 @@ export async function addMessage(role: "user" | "assistant", content: string): P
   await saveHistory();
 }
 
+export async function bufferMessage(content: string, userName?: string): Promise<void> {
+  await loadHistory();
+  const tagged = userName ? `[${userName}]: ${content}` : content;
+
+  const last = history[history.length - 1];
+  if (last && last.role === "user") {
+    last.content += `\n${tagged}`;
+    last.timestamp = Date.now();
+  } else {
+    history.push({ role: "user", content: tagged, timestamp: Date.now() });
+  }
+
+  if (history.length > config.maxConversationHistory) {
+    history = history.slice(-config.maxConversationHistory);
+  }
+  await saveHistory();
+}
+
 export async function clearHistory(): Promise<void> {
   await loadHistory();
   history = [];
   await saveHistory();
 }
-

@@ -42,6 +42,8 @@ export const config = {
   },
   models: {
     proteus: process.env.PROTEUS_MODEL?.trim() || "claude-sonnet-4-5-20250929",
+    nereus: process.env.NEREUS_MODEL?.trim() || "claude-haiku-4-5-20251001",
+    poseidon: process.env.POSEIDON_MODEL?.trim() || "claude-opus-4-20250918",
   },
   db: {
     connectionString: requireEnv("DATABASE_URL"),
