@@ -53,6 +53,11 @@ bot.use(async (ctx, next) => {
   return next();
 });
 
+bot.command("start", async (ctx) => {
+  await writeHeartbeat({ event: "start_command" }).catch(() => undefined);
+  await ctx.reply("Proteus online. Send me a message to begin.");
+});
+
 bot.command("health", async (ctx) => {
   await writeHeartbeat({ event: "health_command" }).catch(() => undefined);
   const diag = await diagnoseContext();
