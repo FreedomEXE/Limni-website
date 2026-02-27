@@ -1,4 +1,4 @@
-import { access, mkdtemp, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -113,13 +113,20 @@ describe("poseidon memory pipeline hardening", () => {
     expect(bad.ok).toBe(false);
   });
 
-  it("retries turn persistence once, then saves to missed_turns.json", async () => {
-    const env = await setupPoseidonEnv();
+  it("retries turn persistence once, then saves to missed_turns via fallback", async () => {
+    await setupPoseidonEnv();
 
     const failingAppend = vi
       .fn()
-      .mockRejectedValueOnce(new Error("disk write failure #1"))
-      .mockRejectedValueOnce(new Error("disk write failure #2"));
+      .mockRejectedValueOnce(new Error("db write failure #1"))
+      .mockRejectedValueOnce(new Error("db write failure #2"));
+
+    // Track what gets written to the missed turns KV store
+    const missedTurnsStore: string[] = [];
+    const mockKvGet = vi.fn().mockResolvedValue("[]");
+    const mockKvSet = vi.fn().mockImplementation(async (_key: string, value: string) => {
+      missedTurnsStore.push(value);
+    });
 
     vi.doMock("@/lib/poseidon/state", async (importOriginal) => {
       const actual = await importOriginal<typeof import("@/lib/poseidon/state")>();
@@ -129,19 +136,25 @@ describe("poseidon memory pipeline hardening", () => {
       };
     });
 
+    vi.doMock("@/lib/poseidon/state-db", () => ({
+      kvGet: mockKvGet,
+      kvSet: mockKvSet,
+    }));
+
     const { persistTurnWithRetry } = await import("@/lib/poseidon/turn-persistence");
-    const { readMissedTurns } = await import("@/lib/poseidon/missed-turns");
 
     await persistTurnWithRetry("user test", "assistant test", { retryDelayMs: 0 });
 
     expect(failingAppend).toHaveBeenCalledTimes(2);
-    const missed = await readMissedTurns();
-    expect(missed).toHaveLength(1);
-    expect(missed[0]?.user_message).toBe("user test");
-    expect(missed[0]?.assistant_message).toBe("assistant test");
 
-    const missedFile = path.join(env.stateDirAbs, "missed_turns.json");
-    await expect(access(missedFile)).resolves.toBeUndefined();
+    // Verify missed turn was written via kvSet
+    expect(mockKvSet).toHaveBeenCalled();
+    const lastWrite = missedTurnsStore[missedTurnsStore.length - 1];
+    expect(lastWrite).toBeDefined();
+    const parsed = JSON.parse(lastWrite!);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]?.user_message).toBe("user test");
+    expect(parsed[0]?.assistant_message).toBe("assistant test");
   });
 
   it("supports reentrant state locking without deadlock", async () => {

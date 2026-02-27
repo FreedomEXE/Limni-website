@@ -6,14 +6,13 @@
  *
  * Description:
  * Stores and reads curation request flags raised by memory pressure checks.
+ * Persisted to database (poseidon_kv table) for deploy safety.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { config } from "@/lib/poseidon/config";
+import { kvGet, kvSet } from "@/lib/poseidon/state-db";
 
 export type CurationFlag = {
   requested: boolean;
@@ -21,7 +20,7 @@ export type CurationFlag = {
   setAt: string;
 };
 
-const FLAG_PATH = path.resolve(process.cwd(), config.stateDir, "curation_flag.json");
+const KV_KEY = "curation_flag";
 
 function defaultFlag(): CurationFlag {
   return {
@@ -29,10 +28,6 @@ function defaultFlag(): CurationFlag {
     reason: "",
     setAt: "",
   };
-}
-
-async function ensureDir(): Promise<void> {
-  await mkdir(path.dirname(FLAG_PATH), { recursive: true });
 }
 
 function asFlag(raw: unknown): CurationFlag {
@@ -49,9 +44,9 @@ function asFlag(raw: unknown): CurationFlag {
 }
 
 export async function readCurationFlag(): Promise<CurationFlag> {
-  await ensureDir();
   try {
-    const raw = await readFile(FLAG_PATH, "utf8");
+    const raw = await kvGet(KV_KEY);
+    if (!raw) return defaultFlag();
     return asFlag(JSON.parse(raw));
   } catch {
     return defaultFlag();
@@ -59,8 +54,7 @@ export async function readCurationFlag(): Promise<CurationFlag> {
 }
 
 export async function writeCurationFlag(flag: CurationFlag): Promise<void> {
-  await ensureDir();
-  await writeFile(FLAG_PATH, JSON.stringify(flag, null, 2), "utf8");
+  await kvSet(KV_KEY, JSON.stringify(flag));
 }
 
 export async function resetCurationFlag(): Promise<void> {

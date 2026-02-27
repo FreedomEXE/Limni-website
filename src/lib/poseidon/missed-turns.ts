@@ -7,14 +7,13 @@
  * Description:
  * Fallback persistence for conversation turns when state writes fail.
  * Poseidon replays these turns during curation and then clears the queue.
+ * Stored in the database (poseidon_kv table) for deploy-safe persistence.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { config } from "@/lib/poseidon/config";
+import { kvGet, kvSet } from "@/lib/poseidon/state-db";
 import { withStateLock } from "@/lib/poseidon/state-mutex";
 
 export type MissedTurn = {
@@ -24,12 +23,8 @@ export type MissedTurn = {
   error: string;
 };
 
-const MISSED_TURNS_PATH = path.resolve(process.cwd(), config.stateDir, "missed_turns.json");
+const KV_KEY = "missed_turns";
 const MAX_MISSED_TURNS = 200;
-
-async function ensureDir(): Promise<void> {
-  await mkdir(path.dirname(MISSED_TURNS_PATH), { recursive: true });
-}
 
 function asMissedTurn(raw: unknown): MissedTurn | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -49,9 +44,9 @@ function asMissedTurn(raw: unknown): MissedTurn | null {
 }
 
 async function readRawMissedTurns(): Promise<MissedTurn[]> {
-  await ensureDir();
   try {
-    const raw = await readFile(MISSED_TURNS_PATH, "utf8");
+    const raw = await kvGet(KV_KEY);
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
@@ -84,14 +79,13 @@ export async function appendMissedTurn(
       ? turns.slice(-MAX_MISSED_TURNS)
       : turns;
 
-    await writeFile(MISSED_TURNS_PATH, JSON.stringify(capped, null, 2), "utf8");
+    await kvSet(KV_KEY, JSON.stringify(capped));
   });
 }
 
 export async function clearMissedTurns(): Promise<void> {
   await withStateLock(async () => {
-    await ensureDir();
-    await writeFile(MISSED_TURNS_PATH, "[]", "utf8");
+    await kvSet(KV_KEY, "[]");
   });
 }
 

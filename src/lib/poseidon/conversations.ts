@@ -5,15 +5,14 @@
  * File: conversations.ts
  *
  * Description:
- * Persists Proteus chat history to local JSON state so Telegram context
- * survives process restarts with bounded history length.
+ * Persists Proteus chat history to the database (poseidon_kv table) so
+ * Telegram context survives container restarts with bounded history length.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { kvGet, kvSet } from "@/lib/poseidon/state-db";
 import { config } from "@/lib/poseidon/config";
 
 export interface Message {
@@ -24,37 +23,35 @@ export interface Message {
 
 type ChatMessage = Pick<Message, "role" | "content">;
 
-const conversationsPath = path.resolve(process.cwd(), config.stateDir, "conversations.json");
+const KV_KEY = "conversations";
 let loaded = false;
 let history: Message[] = [];
 
-async function ensureStateDir() {
-  await mkdir(path.dirname(conversationsPath), { recursive: true });
-}
-
 async function saveHistory() {
-  await ensureStateDir();
-  await writeFile(conversationsPath, JSON.stringify(history, null, 2), "utf8");
+  await kvSet(KV_KEY, JSON.stringify(history));
 }
 
 export async function loadHistory() {
   if (loaded) return;
   loaded = true;
-  await ensureStateDir();
   try {
-    const raw = await readFile(conversationsPath, "utf8");
-    const parsed = JSON.parse(raw) as Message[];
-    if (Array.isArray(parsed)) {
-      history = parsed
-        .filter((row) => row && (row.role === "user" || row.role === "assistant") && typeof row.content === "string")
-        .map((row) => ({
-          role: row.role,
-          content: row.content,
-          timestamp: Number.isFinite(row.timestamp) ? row.timestamp : Date.now(),
-        }))
-        .slice(-config.maxConversationHistory);
+    const raw = await kvGet(KV_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Message[];
+      if (Array.isArray(parsed)) {
+        history = parsed
+          .filter((row) => row && (row.role === "user" || row.role === "assistant") && typeof row.content === "string")
+          .map((row) => ({
+            role: row.role,
+            content: row.content,
+            timestamp: Number.isFinite(row.timestamp) ? row.timestamp : Date.now(),
+          }))
+          .slice(-config.maxConversationHistory);
+      }
     }
-  } catch {
+    console.log(`[poseidon.conversations] Loaded ${history.length} messages from DB`);
+  } catch (error) {
+    console.error("[poseidon.conversations] Failed to load from DB:", error);
     history = [];
     await saveHistory();
   }

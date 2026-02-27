@@ -5,17 +5,16 @@
  * File: behavior.ts
  *
  * Description:
- * Runtime behavior flag storage for Poseidon, persisted to local JSON and
- * used by tools/commands to toggle alert and verbosity behavior safely.
+ * Runtime behavior flag storage for Poseidon, persisted to the database
+ * (poseidon_kv table) and used by tools/commands to toggle alert and
+ * verbosity behavior safely across restarts.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { kvGet, kvSet } from "@/lib/poseidon/state-db";
 import type { PoseidonBehaviorKey } from "@/lib/poseidon/config";
-import { config } from "@/lib/poseidon/config";
 
 export type BehaviorState = {
   alertsEnabled: boolean;
@@ -33,31 +32,29 @@ const defaultBehavior: BehaviorState = {
   verboseMode: false,
 };
 
-const behaviorPath = path.resolve(process.cwd(), config.stateDir, "behavior.json");
+const KV_KEY = "behavior";
 let loaded = false;
 let behaviorState: BehaviorState = { ...defaultBehavior };
 
-async function ensureStateDir() {
-  await mkdir(path.dirname(behaviorPath), { recursive: true });
-}
-
 async function saveBehavior() {
-  await ensureStateDir();
-  await writeFile(behaviorPath, JSON.stringify(behaviorState, null, 2), "utf8");
+  await kvSet(KV_KEY, JSON.stringify(behaviorState));
 }
 
 export async function loadBehavior(): Promise<BehaviorState> {
   if (loaded) return behaviorState;
   loaded = true;
-  await ensureStateDir();
   try {
-    const raw = await readFile(behaviorPath, "utf8");
-    const parsed = JSON.parse(raw) as Partial<BehaviorState>;
-    behaviorState = {
-      ...defaultBehavior,
-      ...parsed,
-    };
-  } catch {
+    const raw = await kvGet(KV_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<BehaviorState>;
+      behaviorState = {
+        ...defaultBehavior,
+        ...parsed,
+      };
+    }
+    console.log("[poseidon.behavior] Loaded behavior from DB");
+  } catch (error) {
+    console.error("[poseidon.behavior] Failed to load from DB:", error);
     behaviorState = { ...defaultBehavior };
     await saveBehavior();
   }
@@ -78,4 +75,3 @@ export async function setBehavior(flag: PoseidonBehaviorKey, value: boolean): Pr
   await saveBehavior();
   return { ...behaviorState };
 }
-
