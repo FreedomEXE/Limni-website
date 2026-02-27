@@ -79,8 +79,16 @@ nul
 *.jpeg
 *.jpg
 
-# Poseidon runtime state (persisted locally, not in git)
-docs/ai/poseidon/state/
+# Poseidon runtime state
+docs/ai/poseidon/state/*
+!docs/ai/poseidon/state/.gitkeep
+!docs/ai/poseidon/state/PROTEUS_STATE.md
+docs/ai/poseidon/state/conversations.json
+docs/ai/poseidon/state/behavior.json
+docs/ai/poseidon/state/heartbeat.json
+docs/ai/poseidon/state/triton_state.json
+docs/ai/poseidon/state/activity_log.json
+docs/ai/poseidon/state/curation_flag.json
 
 # Python helper scripts
 scripts/*.py

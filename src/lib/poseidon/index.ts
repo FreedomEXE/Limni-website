@@ -27,7 +27,7 @@ import {
   loadHistory,
 } from "@/lib/poseidon/conversations";
 import { loadBehavior } from "@/lib/poseidon/behavior";
-import { getRecoverySummary, loadSessionState } from "@/lib/poseidon/state";
+import { appendConversationTurnToState, getRecoverySummary, loadSessionState } from "@/lib/poseidon/state";
 import { chat } from "@/lib/poseidon/proteus";
 import { toolDefinitions, handleToolCall } from "@/lib/poseidon/tools";
 import { sendStartupAnimation } from "@/lib/poseidon/animations";
@@ -76,8 +76,6 @@ bot.command("start", async (ctx) => {
       stateRecovered: !!recovery,
     });
   }
-
-  await clearHistory();
 
   const systemPrompt = await loadSystemPrompt();
   const greeting = await chat(
@@ -168,6 +166,9 @@ bot.on("text", async (ctx) => {
     );
 
     await addMessage("assistant", response.persistText);
+    await appendConversationTurnToState(userMessage, response.persistText).catch((error) => {
+      console.warn("[poseidon] failed to auto-persist conversation turn:", error);
+    });
     await ctx.reply(response.displayText, { parse_mode: "Markdown" }).catch(async () => {
       await ctx.reply(response.displayText);
     });
