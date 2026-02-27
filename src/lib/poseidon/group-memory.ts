@@ -303,23 +303,38 @@ export async function saveGroupArchive(groupId: number, content: string): Promis
 /**
  * Build a conversation-style history from recent group messages
  * for passing to Proteus as chat context.
+ *
+ * Consecutive user messages are merged into a single "user" turn
+ * because the Anthropic API requires strictly alternating roles.
+ * Without merging, the model hallucinates fake user messages.
  */
 export async function buildGroupChatHistory(
   groupId: number,
   limit = 30,
 ): Promise<Array<{ role: "user" | "assistant"; content: string }>> {
   const messages = await getRecentGroupMessages(groupId, limit);
-  const botId = config.telegram.ownerId; // Proteus messages are logged under this ID when responding
+  const botId = config.telegram.ownerId;
 
-  return messages
+  const raw = messages
     .filter((msg) => msg.text?.trim())
     .map((msg) => {
-      // Messages from the bot itself are "assistant" role
-      // All others are "user" role with username prefix
       if (msg.userId === botId) {
         return { role: "assistant" as const, content: msg.text };
       }
       const tag = msg.username ? `@${msg.username}` : `User#${msg.userId}`;
       return { role: "user" as const, content: `[${tag}]: ${msg.text}` };
     });
+
+  // Merge consecutive same-role messages into single turns
+  const merged: Array<{ role: "user" | "assistant"; content: string }> = [];
+  for (const entry of raw) {
+    const last = merged[merged.length - 1];
+    if (last && last.role === entry.role) {
+      last.content += `\n${entry.content}`;
+    } else {
+      merged.push({ ...entry });
+    }
+  }
+
+  return merged;
 }
