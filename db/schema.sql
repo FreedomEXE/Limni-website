@@ -283,6 +283,21 @@ CREATE TABLE IF NOT EXISTS bot_states (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Poseidon Runtime KV State
+CREATE TABLE IF NOT EXISTS poseidon_kv (
+  key VARCHAR(100) PRIMARY KEY,
+  value TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO poseidon_kv (key, value) VALUES
+  ('session_state', ''),
+  ('conversations', '[]'),
+  ('behavior', '{}'),
+  ('missed_turns', '[]'),
+  ('curation_flag', '{}')
+ON CONFLICT (key) DO NOTHING;
+
 -- Research Lab Runs
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 

@@ -56,7 +56,9 @@ export async function loadBehavior(): Promise<BehaviorState> {
   } catch (error) {
     console.error("[poseidon.behavior] Failed to load from DB:", error);
     behaviorState = { ...defaultBehavior };
-    await saveBehavior();
+    await saveBehavior().catch((persistError) => {
+      console.error("[poseidon.behavior] Failed to persist fallback behavior:", persistError);
+    });
   }
   return behaviorState;
 }

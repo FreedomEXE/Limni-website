@@ -53,7 +53,9 @@ export async function loadHistory() {
   } catch (error) {
     console.error("[poseidon.conversations] Failed to load from DB:", error);
     history = [];
-    await saveHistory();
+    await saveHistory().catch((persistError) => {
+      console.error("[poseidon.conversations] Failed to persist fallback history:", persistError);
+    });
   }
 }
 
