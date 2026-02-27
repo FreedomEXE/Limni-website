@@ -424,9 +424,15 @@ function is409Error(error: unknown): boolean {
 }
 
 const MAX_LAUNCH_ATTEMPTS = 20;
+let shutdownRequested = false;
 
 async function launchBotWithRetry(): Promise<void> {
   for (let attempt = 1; attempt <= MAX_LAUNCH_ATTEMPTS; attempt += 1) {
+    if (shutdownRequested) {
+      console.log("[poseidon] Shutdown requested, aborting launch retry loop.");
+      process.exit(0);
+    }
+
     try {
       // Clear any stale webhook/polling state before each attempt
       await bot.telegram.deleteWebhook({ drop_pending_updates: true }).catch(() => undefined);
@@ -466,6 +472,27 @@ async function detectPendingOfflineMessages(): Promise<boolean> {
 
 async function start() {
   console.log("[poseidon] Starting...");
+
+  // Register shutdown handlers IMMEDIATELY so SIGTERM kills the process
+  // even if we're stuck in the launch retry loop
+  function handleShutdown(signal: string) {
+    console.log(`[poseidon] ${signal} received, shutting down...`);
+    shutdownRequested = true;
+    stopPoseidon();
+    stopNereus();
+    stopTriton();
+    try { bot.stop(signal); } catch { /* may not be running */ }
+
+    // Force exit after 5s grace period — prevents zombie instances
+    // that keep retrying and block the next deploy
+    setTimeout(() => {
+      console.log("[poseidon] Forcing exit after grace period.");
+      process.exit(0);
+    }, 5_000).unref();
+  }
+
+  process.once("SIGINT", () => handleShutdown("SIGINT"));
+  process.once("SIGTERM", () => handleShutdown("SIGTERM"));
 
   // Start health HTTP server FIRST so Render sees port binding immediately
   const PORT = Number(process.env.PORT) || 10000;
@@ -556,18 +583,6 @@ async function start() {
     console.warn("[poseidon] Could not send startup message:", err);
   }
 
-  process.once("SIGINT", () => {
-    stopPoseidon();
-    stopNereus();
-    stopTriton();
-    bot.stop("SIGINT");
-  });
-  process.once("SIGTERM", () => {
-    stopPoseidon();
-    stopNereus();
-    stopTriton();
-    bot.stop("SIGTERM");
-  });
 }
 
 start().catch((error) => {
