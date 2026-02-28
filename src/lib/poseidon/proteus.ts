@@ -19,12 +19,12 @@ import { handleToolCall } from "@/lib/poseidon/tools";
 import type { SystemPromptParts } from "@/lib/poseidon/memory";
 
 const client = new Anthropic({ apiKey: config.anthropic.apiKey });
-const MAX_TOOL_ROUNDS = 3;
+const DEFAULT_MAX_TOOL_ROUNDS = 4;
 const CLAUDE_TIMEOUT_MS = 90_000;
 const TOOL_TIMEOUT_MS = 15_000;
 const TYPING_KEEPALIVE_MS = 4_000;
-const DEFAULT_MAX_OUTPUT_TOKENS = 1_200;
-const DEFAULT_MAX_RESPONSE_CHARS = 8_000;
+const DEFAULT_MAX_OUTPUT_TOKENS = 900;
+const DEFAULT_MAX_RESPONSE_CHARS = 5_000;
 const MAX_PERSIST_CHARS = 10_000;
 
 export type ChatMessage = {
@@ -40,6 +40,9 @@ export type ChatResponse = {
 export type ChatOptions = {
   /** Override the default model (e.g. Haiku for group mode) */
   model?: string;
+  maxOutputTokens?: number;
+  maxToolRounds?: number;
+  requestTimeoutMs?: number;
 };
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -51,6 +54,11 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 
 const MAX_OUTPUT_TOKENS = parsePositiveInt(process.env.PROTEUS_MAX_OUTPUT_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS);
 const MAX_RESPONSE_CHARS = parsePositiveInt(process.env.PROTEUS_MAX_RESPONSE_CHARS, DEFAULT_MAX_RESPONSE_CHARS);
+const MAX_TOOL_ROUNDS = parsePositiveInt(process.env.PROTEUS_MAX_TOOL_ROUNDS, DEFAULT_MAX_TOOL_ROUNDS);
+const CLAUDE_REQUEST_TIMEOUT_MS = parsePositiveInt(
+  process.env.PROTEUS_REQUEST_TIMEOUT_MS,
+  CLAUDE_TIMEOUT_MS,
+);
 
 function summarizeToolResult(result: string, maxChars = 120): string {
   const compact = result.replace(/\s+/g, " ").trim();
@@ -82,6 +90,20 @@ function buildChatResponse(lastText: string, toolsUsed: string[]): ChatResponse 
     displayText,
     persistText,
   };
+}
+
+function extractTextFromContent(content: Anthropic.Message["content"]): string {
+  const blocks = content as unknown as Array<Record<string, unknown>>;
+  return blocks
+    .filter((block) => block.type === "text" && typeof block.text === "string")
+    .map((block) => String(block.text))
+    .join("\n")
+    .trim();
+}
+
+function extractToolUseBlocks(content: Anthropic.Message["content"]): Array<Record<string, unknown>> {
+  const blocks = content as unknown as Array<Record<string, unknown>>;
+  return blocks.filter((block) => block.type === "tool_use");
 }
 
 function isRetryableError(error: unknown): boolean {
@@ -126,6 +148,33 @@ async function callClaudeWithRetry(
   }
 
   throw new Error("Unreachable");
+}
+
+async function forceFinalTextWithoutTools(
+  model: string,
+  maxOutputTokens: number,
+  requestTimeoutMs: number,
+  systemParam: string | Anthropic.TextBlockParam[],
+  transcript: Anthropic.MessageParam[],
+): Promise<string> {
+  const finalizeInstruction: Anthropic.MessageParam = {
+    role: "user",
+    content:
+      "Tool phase is complete. Respond to Freedom now with your final answer in plain text. Do not call tools.",
+  };
+
+  const response = await withTimeout(
+    callClaudeWithRetry({
+      model,
+      max_tokens: maxOutputTokens,
+      system: systemParam,
+      messages: [...transcript, finalizeInstruction],
+    }),
+    requestTimeoutMs,
+    "Claude finalization call",
+  );
+
+  return extractTextFromContent(response.content);
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -194,6 +243,15 @@ export async function chat(
 
   const systemParam = buildSystemParam(systemPrompt);
   const model = options?.model || config.models.proteus;
+  const maxOutputTokens = options?.maxOutputTokens && options.maxOutputTokens > 0
+    ? Math.floor(options.maxOutputTokens)
+    : MAX_OUTPUT_TOKENS;
+  const maxToolRounds = options?.maxToolRounds && options.maxToolRounds > 0
+    ? Math.floor(options.maxToolRounds)
+    : MAX_TOOL_ROUNDS;
+  const requestTimeoutMs = options?.requestTimeoutMs && options.requestTimeoutMs > 0
+    ? Math.floor(options.requestTimeoutMs)
+    : CLAUDE_REQUEST_TIMEOUT_MS;
 
   let typingInterval: NodeJS.Timeout | null = null;
   if (typingFn) {
@@ -206,32 +264,45 @@ export async function chat(
 
   let lastText = "";
   const toolsUsed: string[] = [];
+  const toolsEnabled = tools.length > 0;
+  const roundLimit = toolsEnabled ? maxToolRounds : 1;
 
   try {
-    for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+    for (let round = 0; round < roundLimit; round += 1) {
+      const requestParams: Anthropic.MessageCreateParamsNonStreaming = {
+        model,
+        max_tokens: maxOutputTokens,
+        system: systemParam,
+        messages: transcript,
+        ...(toolsEnabled ? { tools } : {}),
+      };
       const response = await withTimeout(
-        callClaudeWithRetry({
-          model,
-          max_tokens: MAX_OUTPUT_TOKENS,
-          system: systemParam,
-          messages: transcript,
-          tools,
-        }),
-        CLAUDE_TIMEOUT_MS,
+        callClaudeWithRetry(requestParams),
+        requestTimeoutMs,
         "Claude API call",
       );
 
-      const blocks = response.content as unknown as Array<Record<string, unknown>>;
-      const textBlocks = blocks
-        .filter((block) => block.type === "text" && typeof block.text === "string")
-        .map((block) => String(block.text));
-      if (textBlocks.length) {
-        lastText = textBlocks.join("\n").trim();
+      const roundText = extractTextFromContent(response.content);
+      if (roundText) {
+        lastText = roundText;
       }
 
-      const toolUses = blocks.filter((block) => block.type === "tool_use");
-      if (!toolUses.length) {
+      const rawToolUses = extractToolUseBlocks(response.content);
+      if (!rawToolUses.length) {
         return buildChatResponse(lastText, toolsUsed);
+      }
+      const toolUses = rawToolUses.filter(
+        (block) =>
+          typeof block.id === "string" &&
+          block.id.trim().length > 0 &&
+          typeof block.name === "string" &&
+          block.name.trim().length > 0,
+      );
+      if (!toolUses.length) {
+        return buildChatResponse(
+          lastText || "I hit a tool formatting issue and returned without tool execution.",
+          toolsUsed,
+        );
       }
 
       transcript.push({
@@ -280,8 +351,25 @@ export async function chat(
       });
     }
 
+    if (toolsEnabled) {
+      try {
+        const finalized = await forceFinalTextWithoutTools(
+          model,
+          maxOutputTokens,
+          requestTimeoutMs,
+          systemParam,
+          transcript,
+        );
+        if (finalized) {
+          return buildChatResponse(finalized, toolsUsed);
+        }
+      } catch (error) {
+        console.warn("[proteus] finalization after tool rounds failed:", error);
+      }
+    }
+
     return buildChatResponse(
-      lastText || "I reached the tool-use limit before finishing your request.",
+      lastText || "I hit an internal tool loop, but your request is saved. Send 'continue' and I will finish directly.",
       toolsUsed,
     );
   } finally {

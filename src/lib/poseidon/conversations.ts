@@ -22,15 +22,47 @@ export interface Message {
 }
 
 type ChatMessage = Pick<Message, "role" | "content">;
+type PersistMode = "await" | "defer";
+type PersistOptions = {
+  persist?: PersistMode;
+};
 
 const KV_KEY = "conversations";
-const MAX_HISTORY_MESSAGE_CHARS = 3_000;
+const DEFAULT_MAX_HISTORY_MESSAGE_CHARS = 2_000;
+const DEFAULT_MAX_HISTORY_TOTAL_CHARS = 12_000;
 const HISTORY_TRUNCATION_NOTE = "\n[Message truncated to keep conversation context responsive.]";
 let loaded = false;
 let history: Message[] = [];
 
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (!value?.trim()) return fallback;
+  const parsed = Number(value.trim());
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+const MAX_HISTORY_MESSAGE_CHARS = parsePositiveInt(
+  process.env.PROTEUS_MAX_HISTORY_MESSAGE_CHARS,
+  DEFAULT_MAX_HISTORY_MESSAGE_CHARS,
+);
+const MAX_HISTORY_TOTAL_CHARS = parsePositiveInt(
+  process.env.PROTEUS_MAX_HISTORY_TOTAL_CHARS,
+  DEFAULT_MAX_HISTORY_TOTAL_CHARS,
+);
+
 async function saveHistory() {
   await kvSet(KV_KEY, JSON.stringify(history));
+}
+
+async function persistHistory(mode: PersistMode = "await"): Promise<void> {
+  const write = saveHistory();
+  if (mode === "defer") {
+    void write.catch((error) => {
+      console.error("[poseidon.conversations] Deferred save failed:", error);
+    });
+    return;
+  }
+  await write;
 }
 
 function clampHistoryContent(content: string): string {
@@ -70,19 +102,39 @@ export async function loadHistory() {
 
 export async function getHistory(): Promise<ChatMessage[]> {
   await loadHistory();
-  return history.map((message) => ({ role: message.role, content: clampHistoryContent(message.content) }));
+  const out: ChatMessage[] = [];
+  let usedChars = 0;
+
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const row = history[i];
+    const content = clampHistoryContent(row.content);
+    const next = usedChars + content.length;
+    if (out.length > 0 && next > MAX_HISTORY_TOTAL_CHARS) break;
+    out.push({ role: row.role, content });
+    usedChars = next;
+  }
+
+  return out.reverse();
 }
 
-export async function addMessage(role: "user" | "assistant", content: string): Promise<void> {
+export async function addMessage(
+  role: "user" | "assistant",
+  content: string,
+  options: PersistOptions = {},
+): Promise<void> {
   await loadHistory();
   history.push({ role, content: clampHistoryContent(content), timestamp: Date.now() });
   if (history.length > config.maxConversationHistory) {
     history = history.slice(-config.maxConversationHistory);
   }
-  await saveHistory();
+  await persistHistory(options.persist ?? "await");
 }
 
-export async function bufferMessage(content: string, userName?: string): Promise<void> {
+export async function bufferMessage(
+  content: string,
+  userName?: string,
+  options: PersistOptions = {},
+): Promise<void> {
   await loadHistory();
   const tagged = clampHistoryContent(userName ? `[${userName}]: ${content}` : content);
 
@@ -97,7 +149,7 @@ export async function bufferMessage(content: string, userName?: string): Promise
   if (history.length > config.maxConversationHistory) {
     history = history.slice(-config.maxConversationHistory);
   }
-  await saveHistory();
+  await persistHistory(options.persist ?? "await");
 }
 
 export async function clearHistory(): Promise<void> {

@@ -28,7 +28,7 @@ import {
 } from "@/lib/poseidon/conversations";
 import { getBehavior, loadBehavior } from "@/lib/poseidon/behavior";
 import { getRecoverySummary, getStateSize, loadSessionState } from "@/lib/poseidon/state";
-import { chat } from "@/lib/poseidon/proteus";
+import { chat, type ChatMessage, type ChatOptions, type ChatResponse } from "@/lib/poseidon/proteus";
 import { toolDefinitions, handleToolCall, getGroupToolDefinitions, setActiveGroupId } from "@/lib/poseidon/tools";
 import { sendStartupAnimation } from "@/lib/poseidon/animations";
 import { getTritonRuntimeStatus, startTriton, stopTriton } from "@/lib/poseidon/triton";
@@ -104,6 +104,70 @@ function canInterject(): boolean {
   const now = Date.now();
   if (now - lastInterjectionAt < config.group.interjectionCooldownMs) return false;
   return true;
+}
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (!value?.trim()) return fallback;
+  const parsed = Number(value.trim());
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+const FAST_REPLY_MAX_OUTPUT_TOKENS = parsePositiveInt(
+  process.env.PROTEUS_FAST_MAX_OUTPUT_TOKENS,
+  420,
+);
+const FAST_REPLY_TIMEOUT_MS = parsePositiveInt(
+  process.env.PROTEUS_FAST_TIMEOUT_MS,
+  45_000,
+);
+const FAST_REPLY_MODEL = process.env.PROTEUS_FAST_MODEL?.trim() || config.models.proteus;
+
+const PRIVATE_TOOL_INTENT_PATTERNS = [
+  /\b(price|live|ticker|quote|current)\b/i,
+  /\b(bitget|bot state|state|signal|trade|trades|position|positions|entry|exit)\b/i,
+  /\b(liquidation|heatmap|funding|open interest|oi|snapshot|bias|range|session range)\b/i,
+  /\b(briefing|reckoning|leaderboard|scores?)\b/i,
+  /\b(remember|save this|update session state|archive|curation)\b/i,
+  /\b(sql|database|query|status|health)\b/i,
+];
+
+function shouldEnablePrivateTools(message: string): boolean {
+  const text = (message || "").trim();
+  if (!text) return false;
+  if (text.length > 700) return true;
+  if (/^\/ask\s+/i.test(text)) return true;
+  return PRIVATE_TOOL_INTENT_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+type SystemPromptParam = Parameters<typeof chat>[0];
+type ToolsParam = Parameters<typeof chat>[2];
+
+async function chatWithFallback(
+  systemPrompt: SystemPromptParam,
+  messages: ChatMessage[],
+  tools: ToolsParam,
+  typingFn?: () => Promise<unknown>,
+  options?: ChatOptions,
+): Promise<ChatResponse> {
+  try {
+    return await chat(systemPrompt, messages, tools, typingFn, options);
+  } catch (primaryError) {
+    console.warn("[poseidon] primary chat failed, attempting degraded fallback:", primaryError);
+    const fallbackOptions: ChatOptions = {
+      model: FAST_REPLY_MODEL,
+      maxOutputTokens: FAST_REPLY_MAX_OUTPUT_TOKENS,
+      maxToolRounds: 1,
+      requestTimeoutMs: FAST_REPLY_TIMEOUT_MS,
+    };
+    try {
+      return await chat(systemPrompt, messages, [], typingFn, fallbackOptions);
+    } catch (fallbackError) {
+      const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError);
+      const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+      throw new Error(`Primary chat failed: ${primaryMessage}; fallback failed: ${fallbackMessage}`);
+    }
+  }
 }
 
 const chatQueues = new Map<number, Promise<unknown>>();
@@ -394,7 +458,7 @@ bot.on("text", async (ctx) => {
           });
           // Forward to private handler via DM (use full private prompt + tools)
           const privatePrompt = await loadSystemPrompt();
-          const dmResponse = await chat(
+          const dmResponse = await chatWithFallback(
             privatePrompt,
             [{ role: "user", content: userMessage }],
             toolDefinitions,
@@ -430,7 +494,7 @@ bot.on("text", async (ctx) => {
           const groupHistory = await buildGroupChatHistory(groupId, 30);
           const groupTools = getGroupToolDefinitions();
 
-          response = await chat(
+          response = await chatWithFallback(
             systemPrompt,
             groupHistory,
             groupTools,
@@ -473,19 +537,32 @@ bot.on("text", async (ctx) => {
       await bufferMessage(
         userMessage,
         ctx.from?.username || ctx.from?.first_name || undefined,
+        { persist: "defer" },
       );
       const history = await getHistory();
+      const toolsEnabled = shouldEnablePrivateTools(userMessage);
+      const chatOptions = toolsEnabled
+        ? undefined
+        : {
+          model: FAST_REPLY_MODEL,
+          maxOutputTokens: FAST_REPLY_MAX_OUTPUT_TOKENS,
+          maxToolRounds: 1,
+          requestTimeoutMs: FAST_REPLY_TIMEOUT_MS,
+        };
 
-      const response = await chat(
+      const response = await chatWithFallback(
         systemPrompt,
         history,
-        toolDefinitions,
+        toolsEnabled ? toolDefinitions : [],
         () => ctx.sendChatAction("typing"),
+        chatOptions,
       );
 
-      await addMessage("assistant", response.persistText);
-      await persistTurnWithRetry(userMessage, response.persistText);
       await sendTelegramText(ctx.telegram, chatId, response.displayText, { parseMode: "Markdown" });
+      await addMessage("assistant", response.persistText, { persist: "defer" });
+      void persistTurnWithRetry(userMessage, response.persistText).catch((persistError) => {
+        console.error("[poseidon] deferred turn persist failed:", persistError);
+      });
     } catch (error) {
       console.error("[poseidon] text handler error:", error);
       const errorMessage = error instanceof Error ? error.message : String(error);

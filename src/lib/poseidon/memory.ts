@@ -30,6 +30,11 @@ type ContextDiagnosis = {
   totalChars: number;
 };
 
+type StaticPromptCacheEntry = {
+  value: string;
+  expiresAt: number;
+};
+
 const MEMORY_FILES: MemorySpec[] = [
   { filename: "PROTEUS_CORE.md", maxChars: 5000 },
   { filename: "LIMNI_PLATFORM.md", maxChars: 5000 },
@@ -49,6 +54,8 @@ const GROUP_MEMORY_FILES: MemorySpec[] = [
   { filename: "MARKET_KNOWLEDGE.md", maxChars: 4000 },
 ];
 const MAX_SYSTEM_PROMPT_CHARS = 50_000;
+const DEFAULT_MAX_SESSION_STATE_PROMPT_CHARS = 8_000;
+const DEFAULT_STATIC_MEMORY_CACHE_TTL_MS = 60_000;
 const SESSION_STATE_PROTOCOL = [
   "## SESSION STATE PROTOCOL",
   "Use `update_session_state` after meaningful decisions, strategy changes, or important trades.",
@@ -56,6 +63,23 @@ const SESSION_STATE_PROTOCOL = [
   "Check session state and history before saying you do not remember something.",
   "If context is genuinely missing, say you do not have that specific information.",
 ].join("\n");
+const staticPromptCache = new Map<string, StaticPromptCacheEntry>();
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (!value?.trim()) return fallback;
+  const parsed = Number(value.trim());
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+const MAX_SESSION_STATE_PROMPT_CHARS = parsePositiveInt(
+  process.env.PROTEUS_MAX_SESSION_STATE_PROMPT_CHARS,
+  DEFAULT_MAX_SESSION_STATE_PROMPT_CHARS,
+);
+const STATIC_MEMORY_CACHE_TTL_MS = parsePositiveInt(
+  process.env.PROTEUS_STATIC_MEMORY_CACHE_TTL_MS,
+  DEFAULT_STATIC_MEMORY_CACHE_TTL_MS,
+);
 
 export function capStateToNewestWindow(state: string, maxChars: number): string {
   if (maxChars <= 0) return "";
@@ -81,6 +105,29 @@ async function safeRead(filePath: string, maxChars: number): Promise<string | nu
     );
     return null;
   }
+}
+
+async function loadStaticMemoryPart(specs: MemorySpec[], cacheKey: string): Promise<string> {
+  const now = Date.now();
+  const cached = staticPromptCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const sections: string[] = [];
+  for (const spec of specs) {
+    const fullPath = path.resolve(process.cwd(), config.memoryDir, spec.filename);
+    const content = await safeRead(fullPath, spec.maxChars);
+    if (!content) continue;
+    sections.push(`## ${spec.filename}\n${content}`);
+  }
+
+  const value = sections.join("\n\n");
+  staticPromptCache.set(cacheKey, {
+    value,
+    expiresAt: now + STATIC_MEMORY_CACHE_TTL_MS,
+  });
+  return value;
 }
 
 export async function diagnoseContext(): Promise<ContextDiagnosis> {
@@ -113,17 +160,7 @@ export type SystemPromptParts = {
 };
 
 export async function loadSystemPrompt(): Promise<SystemPromptParts> {
-  const sections: string[] = [];
-
-  for (const spec of MEMORY_FILES) {
-    const fullPath = path.resolve(process.cwd(), config.memoryDir, spec.filename);
-    const content = await safeRead(fullPath, spec.maxChars);
-    if (!content) continue;
-    sections.push(`## ${spec.filename}\n${content}`);
-  }
-
-  // Static part = memory files joined (stable across calls, ideal for caching)
-  const staticPart = sections.join("\n\n");
+  const staticPart = await loadStaticMemoryPart(MEMORY_FILES, "private");
 
   // Load session state (perpetual memory across restarts)
   const sessionState = await loadSessionState();
@@ -151,14 +188,25 @@ export async function loadSystemPrompt(): Promise<SystemPromptParts> {
 
     // Budget for state: total limit minus static, protocol, and joining overhead
     const protocolAndPadding = SESSION_STATE_PROTOCOL.length + 20; // joining padding
-    const availableForState =
+    const availableForStateBudget =
       MAX_SYSTEM_PROMPT_CHARS -
       staticPart.length -
       statePrefix.length -
       truncationNote.length -
       protocolAndPadding;
+    const availableForState = Math.min(
+      MAX_SESSION_STATE_PROMPT_CHARS,
+      Math.max(0, availableForStateBudget),
+    );
 
     const cappedState = capStateToNewestWindow(sessionState, availableForState);
+    if (!cappedState) {
+      dynamicSections.push(
+        "## CURRENT SESSION STATE\n[State omitted from this turn due to prompt budget; run curation if this persists.]",
+      );
+      dynamicSections.push(SESSION_STATE_PROTOCOL);
+      return { staticPart, dynamicPart: dynamicSections.join("\n\n") };
+    }
     const stateSection = cappedState.length === sessionState.length
       ? `${statePrefix}${cappedState}`
       : `${statePrefix}${cappedState}${truncationNote}`;
@@ -178,12 +226,9 @@ export async function loadSystemPrompt(): Promise<SystemPromptParts> {
  */
 export async function loadGroupSystemPrompt(groupId: number): Promise<string> {
   const sections: string[] = [];
-
-  for (const spec of GROUP_MEMORY_FILES) {
-    const fullPath = path.resolve(process.cwd(), config.memoryDir, spec.filename);
-    const content = await safeRead(fullPath, spec.maxChars);
-    if (!content) continue;
-    sections.push(`## ${spec.filename}\n${content}`);
+  const staticPart = await loadStaticMemoryPart(GROUP_MEMORY_FILES, "group");
+  if (staticPart) {
+    sections.push(staticPart);
   }
 
   // Load group active context from DB

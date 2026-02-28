@@ -62,6 +62,33 @@ type GroupMemberRow = {
   last_seen_utc: Date;
 };
 
+const DEFAULT_GROUP_HISTORY_MESSAGE_CHARS = 700;
+const DEFAULT_GROUP_HISTORY_TOTAL_CHARS = 14_000;
+const GROUP_HISTORY_TRUNCATION_NOTE = " [truncated]";
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (!value?.trim()) return fallback;
+  const parsed = Number(value.trim());
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+const MAX_GROUP_HISTORY_MESSAGE_CHARS = parsePositiveInt(
+  process.env.PROTEUS_GROUP_HISTORY_MESSAGE_CHARS,
+  DEFAULT_GROUP_HISTORY_MESSAGE_CHARS,
+);
+const MAX_GROUP_HISTORY_TOTAL_CHARS = parsePositiveInt(
+  process.env.PROTEUS_GROUP_HISTORY_TOTAL_CHARS,
+  DEFAULT_GROUP_HISTORY_TOTAL_CHARS,
+);
+
+function clampGroupHistoryText(text: string): string {
+  const normalized = (text || "").replace(/\s+/g, " ").trim();
+  if (normalized.length <= MAX_GROUP_HISTORY_MESSAGE_CHARS) return normalized;
+  const budget = Math.max(100, MAX_GROUP_HISTORY_MESSAGE_CHARS - GROUP_HISTORY_TRUNCATION_NOTE.length);
+  return `${normalized.slice(0, budget).trimEnd()}${GROUP_HISTORY_TRUNCATION_NOTE}`;
+}
+
 // ─── Member Management ───────────────────────
 
 /**
@@ -318,11 +345,12 @@ export async function buildGroupChatHistory(
   const raw = messages
     .filter((msg) => msg.text?.trim())
     .map((msg) => {
+      const text = clampGroupHistoryText(msg.text);
       if (msg.userId === botId) {
-        return { role: "assistant" as const, content: msg.text };
+        return { role: "assistant" as const, content: text };
       }
       const tag = msg.username ? `@${msg.username}` : `User#${msg.userId}`;
-      return { role: "user" as const, content: `[${tag}]: ${msg.text}` };
+      return { role: "user" as const, content: `[${tag}]: ${text}` };
     });
 
   // Merge consecutive same-role messages into single turns
@@ -336,5 +364,15 @@ export async function buildGroupChatHistory(
     }
   }
 
-  return merged;
+  const budgeted: Array<{ role: "user" | "assistant"; content: string }> = [];
+  let usedChars = 0;
+  for (let i = merged.length - 1; i >= 0; i -= 1) {
+    const row = merged[i];
+    const next = usedChars + row.content.length;
+    if (budgeted.length > 0 && next > MAX_GROUP_HISTORY_TOTAL_CHARS) break;
+    budgeted.push(row);
+    usedChars = next;
+  }
+
+  return budgeted.reverse();
 }
