@@ -68,6 +68,7 @@ const DEFAULT_CACHE_TTL_MS = 30_000;
 const CRYPTO_WEEKLY_SUMMARY_PATH = "docs/bots/backtest-weekly-summary.json";
 const CRYPTO_RUN_HISTORY_PATH = "docs/bots/backtest-run-history.json";
 const DEFAULT_CRYPTO_VARIANT_KEY = "D";
+const PINNED_MT5_VARIANT_ID = "tiered__t1t2__weighted";
 const MT5_REPORT_CANDIDATES = [
   "reports/katarakti-phase1-backtest-latest-phase2_full_atr_nohard.json",
   "reports/katarakti-phase1-backtest-latest.json",
@@ -234,7 +235,7 @@ async function readMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
   const loaded = await readMt5Report();
   if (!loaded) return null;
 
-  const preferredVariantId = process.env.KATARAKTI_MT5_VARIANT_ID?.trim() || null;
+  const preferredVariantId = process.env.KATARAKTI_MT5_VARIANT_ID?.trim() || PINNED_MT5_VARIANT_ID;
   const selected = pickBestMt5Variant(loaded.report.variants ?? [], preferredVariantId);
   if (!selected) return null;
 
@@ -289,4 +290,3 @@ export async function readKataraktiMarketSnapshots(): Promise<KataraktiHistoryBy
     }),
   );
 }
-
