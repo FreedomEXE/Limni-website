@@ -10,6 +10,10 @@ import {
   PERFORMANCE_V3_MODELS,
 } from "@/lib/performance/modelConfig";
 import { computeTieredForWeeksAllSystems } from "@/lib/performance/tiered";
+import {
+  readKataraktiMarketSnapshots,
+  type KataraktiMarketSnapshot,
+} from "@/lib/performance/kataraktiHistory";
 
 const V1_MODELS: PerformanceModel[] = PERFORMANCE_V1_MODELS;
 const V2_MODELS: PerformanceModel[] = PERFORMANCE_V2_MODELS;
@@ -178,6 +182,21 @@ function toBotComparisonMetrics(rows: BotWeeklyAggregateRow[]): ComparisonMetric
   );
 }
 
+function toKataraktiComparisonMetrics(
+  snapshot: KataraktiMarketSnapshot | null,
+): ComparisonMetrics | null {
+  if (!snapshot) return null;
+  const weeks = snapshot.weeks;
+  return {
+    totalReturn: snapshot.totalPnlUsd,
+    weeks,
+    winRate: snapshot.winRatePct,
+    sharpe: snapshot.sharpe,
+    avgWeekly: weeks > 0 ? snapshot.totalPnlUsd / weeks : 0,
+    trades: snapshot.totalTrades,
+  };
+}
+
 export async function GET() {
   try {
     const currentWeekOpenUtc = getCanonicalWeekOpenUtc();
@@ -238,13 +257,14 @@ export async function GET() {
       ),
     };
 
-    const [bitgetWeeklyRows, mt5WeeklyRows] = await Promise.all([
+    const [snapshotByMarket, bitgetWeeklyRows, mt5WeeklyRows] = await Promise.all([
+      readKataraktiMarketSnapshots(),
       readBotWeeklyAggregates(
         `SELECT
            COALESCE(SUM(pnl_usd), 0)::double precision AS return_value,
            COUNT(*) FILTER (WHERE pnl_usd > 0)::int AS wins,
            COUNT(*)::int AS priced_trades
-         FROM bitget_trades
+         FROM bitget_bot_trades
          WHERE bot_id = $1
            AND exit_time_utc IS NOT NULL
          GROUP BY DATE_TRUNC('week', COALESCE(exit_time_utc, entry_time_utc))
@@ -267,6 +287,9 @@ export async function GET() {
       ),
     ]);
 
+    const cryptoSnapshotMetrics = toKataraktiComparisonMetrics(snapshotByMarket.crypto_futures);
+    const mt5SnapshotMetrics = toKataraktiComparisonMetrics(snapshotByMarket.mt5_forex);
+
     return NextResponse.json({
       v1: v1Metrics,
       v2: v2Metrics,
@@ -278,8 +301,8 @@ export async function GET() {
       },
       tiered,
       katarakti: {
-        crypto_futures: toBotComparisonMetrics(bitgetWeeklyRows),
-        mt5_forex: toBotComparisonMetrics(mt5WeeklyRows),
+        crypto_futures: cryptoSnapshotMetrics ?? toBotComparisonMetrics(bitgetWeeklyRows),
+        mt5_forex: mt5SnapshotMetrics ?? toBotComparisonMetrics(mt5WeeklyRows),
       },
       weeksAnalyzed: selectedWeeks.size,
     });

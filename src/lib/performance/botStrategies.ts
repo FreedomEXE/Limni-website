@@ -14,6 +14,7 @@
 
 import { queryOne } from "@/lib/db";
 import type { StrategySummary } from "@/components/performance/StrategyPerformanceSummary";
+import { readKataraktiMarketSnapshots } from "@/lib/performance/kataraktiHistory";
 
 type TradeAgg = {
   total_trades: number | string;
@@ -37,7 +38,7 @@ type StrategyConfig = {
   name: string;
   href: string;
   status: StrategySummary["status"];
-  table: "bitget_trades" | "katarakti_trades";
+  fallbackTable: "bitget_bot_trades" | "katarakti_trades";
   botId: string;
 };
 
@@ -47,7 +48,7 @@ const STRATEGY_CONFIGS: readonly StrategyConfig[] = [
     name: "Katarakti (Bitget)",
     href: "/automation/bots/bitget",
     status: "LIVE",
-    table: "bitget_trades",
+    fallbackTable: "bitget_bot_trades",
     botId: "bitget_perp_v2",
   },
   {
@@ -55,7 +56,7 @@ const STRATEGY_CONFIGS: readonly StrategyConfig[] = [
     name: "Katarakti (MT5 Forex)",
     href: "/automation/bots/mt5-forex",
     status: "LIVE",
-    table: "katarakti_trades",
+    fallbackTable: "katarakti_trades",
     botId: "katarakti_v1",
   },
 ];
@@ -68,7 +69,7 @@ async function readTradeAggregateForStrategy(
        COUNT(*)::int AS total_trades,
        COUNT(*) FILTER (WHERE pnl_usd > 0)::int AS wins,
        COALESCE(SUM(pnl_usd), 0)::double precision AS total_pnl
-     FROM ${config.table}
+     FROM ${config.fallbackTable}
      WHERE bot_id = $1
        AND exit_time_utc IS NOT NULL`,
     [config.botId],
@@ -87,14 +88,38 @@ function hasAggregate(
 }
 
 export async function readBotStrategySummaries(): Promise<StrategySummary[]> {
+  const snapshotsByMarket = await readKataraktiMarketSnapshots();
+  const snapshotSummaries = STRATEGY_CONFIGS
+    .map((config) => {
+      const snapshot = snapshotsByMarket[config.market];
+      if (!snapshot) return null;
+      return {
+        market: config.market,
+        name: config.name,
+        href: config.href,
+        totalTrades: snapshot.totalTrades,
+        wins: snapshot.wins,
+        totalPnlUsd: snapshot.totalPnlUsd,
+        maxDrawdownPct: snapshot.maxDrawdownPct,
+        status: config.status,
+      } satisfies StrategySummary;
+    })
+    .filter((entry): entry is StrategySummary => entry !== null);
+
+  if (snapshotSummaries.length === STRATEGY_CONFIGS.length) {
+    return snapshotSummaries;
+  }
+
   const aggregates: StrategyAggregateResult[] = await Promise.all(
-    STRATEGY_CONFIGS.map(async (config) => ({
+    STRATEGY_CONFIGS
+      .filter((config) => !snapshotsByMarket[config.market])
+      .map(async (config) => ({
       config,
       aggregate: await readTradeAggregateForStrategy(config),
-    })),
+      })),
   );
 
-  return aggregates
+  const fallbackSummaries = aggregates
     .filter(hasAggregate)
     .map(({ config, aggregate }) => ({
       market: config.market,
@@ -106,4 +131,15 @@ export async function readBotStrategySummaries(): Promise<StrategySummary[]> {
       maxDrawdownPct: null,
       status: config.status,
     }));
+
+  const fallbackByMarket = new Map(
+    fallbackSummaries.map((summary) => [summary.market, summary] as const),
+  );
+  const snapshotByMarket = new Map(
+    snapshotSummaries.map((summary) => [summary.market, summary] as const),
+  );
+
+  return STRATEGY_CONFIGS
+    .map((config) => snapshotByMarket.get(config.market) ?? fallbackByMarket.get(config.market) ?? null)
+    .filter((summary): summary is StrategySummary => summary !== null);
 }
