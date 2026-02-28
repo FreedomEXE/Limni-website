@@ -1,7 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import AutomationResearchCards from "@/components/automation/AutomationResearchCards";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
-import WeekSelector from "@/components/accounts/WeekSelector";
+import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import QueryBuilder from "@/components/filters/QueryBuilder";
 import KpiGroup from "@/components/metrics/KpiGroup";
 import KpiCard from "@/components/metrics/KpiCard";
@@ -30,7 +30,7 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
     async () =>
       buildPerModelBasketSummary({
         timeframe: "H1",
-        limitWeeks: 8,
+        limitWeeks: 52,
         includeCurrentWeek: false,
         trailStartPct: 10,
         trailOffsetPct: 5,
@@ -48,12 +48,11 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
       }
     });
   });
-  const performanceWeeks = await listPerformanceWeeks(12);
+  const performanceWeeks = await listPerformanceWeeks(52);
   const normalizedWeekOptions = buildDataWeekOptions({
     historicalWeeks: [...Array.from(weekLabelMap.keys()), ...performanceWeeks],
     currentWeekOpenUtc,
     includeAll: false,
-    limit: 12,
   }).filter((week): week is string => week !== "all");
   const weekOptions = normalizedWeekOptions.map((value) => ({
     value,
@@ -117,10 +116,11 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
             </span>
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <WeekSelector
-              weekOptions={weekOptions.map((option) => option.value)}
+            <ScrollableWeekStrip
+              options={weekOptions.map((option) => option.value)}
+              selected={selectedWeek ?? weekOptions[0]?.value ?? ""}
               currentWeek={currentWeekOpenUtc}
-              selectedWeek={selectedWeek ?? ""}
+              label="Week"
             />
             <DebugReadout
               items={[

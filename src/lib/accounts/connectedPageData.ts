@@ -14,13 +14,12 @@ export async function resolveConnectedWeekContext(options: {
   weekParamValue: string | null;
 }) {
   const { accountKey, weekParamValue } = options;
-  const weekOptions = await listWeekOptionsForAccount(accountKey, true, 4);
+  const weekOptions = await listWeekOptionsForAccount(accountKey, true, 52);
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const weekOptionsWithUpcoming = buildDataWeekOptions({
     historicalWeeks: weekOptions.filter((week): week is string => week !== "all"),
     currentWeekOpenUtc,
     includeAll: true,
-    limit: 4,
   }) as WeekOption[];
   const selectedWeek =
     resolveWeekSelection({

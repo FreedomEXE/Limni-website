@@ -1,6 +1,6 @@
 "use client";
 
-import WeekSelector from "@/components/accounts/WeekSelector";
+import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import type { WeekOption } from "@/lib/weekState";
 import type { ReactNode } from "react";
 
@@ -55,11 +55,12 @@ export default function AccountPageHeader(props: AccountPageHeaderProps) {
         {sourceBadge}
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <WeekSelector
-          weekOptions={weekOptions}
+        <ScrollableWeekStrip
+          options={weekOptions}
+          selected={selectedWeek}
           currentWeek={currentWeek}
-          selectedWeek={selectedWeek}
           labelMode={weekLabelMode}
+          label="Period"
         />
         <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
           Last refresh {lastSync ?? "—"}

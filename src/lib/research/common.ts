@@ -36,7 +36,6 @@ export function buildWeekOptionsFromCurve(
     historicalWeeks,
     currentWeekOpenUtc,
     includeAll: false,
-    limit: 12,
   }).filter((week): week is string => week !== "all");
   return weeks.map((week) => ({ value: week, label: weekLabelFromOpen(week) }));
 }

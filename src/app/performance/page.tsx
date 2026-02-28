@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import PerformancePeriodSelector from "@/components/performance/PerformancePeriodSelector";
+import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
 import type { ComponentProps } from "react";
 import { listAssetClasses } from "@/lib/cotMarkets";
@@ -243,7 +243,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const assetClasses = listAssetClasses();
   const models = PERFORMANCE_MODELS;
 
-  const desiredWeeks = 5;
+  const desiredWeeks = 52;
   let weekOptions: string[] = [];
   const displayWeekOpenUtc = getDisplayWeekOpenUtc();
   const tradingWeekOpenUtc = getCanonicalWeekOpenUtc();
@@ -471,14 +471,13 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Last refresh Historical snapshots
               </span>
-              {weekOptions.length > 0 ? (
-                <PerformancePeriodSelector
-                  mode="week"
-                  options={weekSelectorOptions.map((option) => ({
-                    value: option,
-                    label: option === "all" ? "All time" : formatWeekOption(option),
-                  }))}
-                  selectedValue={selectedWeek ?? weekOptions[0]}
+              {weekSelectorOptions.length > 0 ? (
+                <ScrollableWeekStrip
+                  options={weekSelectorOptions}
+                  selected={selectedWeek ?? weekOptions[0]}
+                  currentWeek={displayWeekOpenUtc}
+                  label="Week"
+                  replaceState
                 />
               ) : (
                 <div className="text-xs text-[color:var(--muted)]">
@@ -874,23 +873,21 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               Last refresh{" "}
               {lastRefreshText}
             </span>
-            {weekOptions.length > 0 ? (
-              <PerformancePeriodSelector
-                mode="week"
-                options={weekSelectorOptions.map((option) => ({
-                  value: option,
-                  label: option === "all" ? "All time" : formatWeekOption(option),
-                }))}
-                selectedValue={selectedWeek ?? weekOptions[0]}
+            {weekSelectorOptions.length > 0 ? (
+              <ScrollableWeekStrip
+                options={weekSelectorOptions}
+                selected={selectedWeek ?? weekOptions[0]}
+                currentWeek={displayWeekOpenUtc}
+                label="Week"
+                replaceState
               />
             ) : reportOptions.length > 0 ? (
-              <PerformancePeriodSelector
-                mode="report"
-                options={reportOptions.map((option) => ({
-                  value: option,
-                  label: formatDateET(option),
-                }))}
-                selectedValue={selectedReport ?? reportOptions[0]}
+              <ScrollableWeekStrip
+                options={reportOptions}
+                selected={selectedReport ?? reportOptions[0]}
+                label="Report"
+                paramName="report"
+                replaceState
               />
             ) : (
               <div className="text-xs text-[color:var(--muted)]">

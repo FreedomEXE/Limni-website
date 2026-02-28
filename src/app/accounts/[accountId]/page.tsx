@@ -48,7 +48,7 @@ export default async function AccountPage({ params, searchParams }: AccountPageP
   } = await resolveMt5WeekContext({
     accountId,
     requestedWeek,
-    desiredWeeks: 4,
+    desiredWeeks: 52,
   });
   const {
     account,

@@ -8,6 +8,7 @@ import {
 } from "@/lib/news/store";
 import { refreshNewsSnapshot, shouldRefreshForPendingActuals } from "@/lib/news/refresh";
 import NewsContentTabs from "@/components/news/NewsContentTabs";
+import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import { buildNormalizedWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import type { NewsEvent, NewsWeeklySnapshot } from "@/lib/news/types";
@@ -288,35 +289,18 @@ export default async function NewsPage({ searchParams }: PageProps) {
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <form action="/news" method="get" className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="view" value={view} />
-              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Week
-              </label>
-              {weekOptions.length > 0 ? (
-                <>
-                  <select
-                    name="week"
-                    defaultValue={selectedWeek ?? undefined}
-                    className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-                  >
-                    {weekOptions.map((week) => (
-                      <option key={week} value={week}>
-                        {weekLabel(week)}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="submit"
-                    className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]"
-                  >
-                    View
-                  </button>
-                </>
-              ) : (
-                <span className="text-xs text-[color:var(--muted)]">No weeks with news data yet.</span>
-              )}
-            </form>
+            {weekOptions.length > 0 ? (
+              <ScrollableWeekStrip
+                options={weekOptions}
+                selected={selectedWeek ?? weekOptions[0] ?? ""}
+                currentWeek={currentWeekOpenUtc}
+                label="Week"
+                paramName="week"
+                preserveParams={["view"]}
+              />
+            ) : (
+              <span className="text-xs text-[color:var(--muted)]">No weeks with news data yet.</span>
+            )}
             <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
               {snapshot ? `Last refresh ${formatDateTimeET(snapshot.fetched_at)}` : "No snapshot yet"}
             </div>

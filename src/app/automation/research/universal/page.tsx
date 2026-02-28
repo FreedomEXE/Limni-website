@@ -4,7 +4,7 @@ import EquityCurveChart from "@/components/research/EquityCurveChart";
 import { buildUniversalBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
-import WeekSelector from "@/components/accounts/WeekSelector";
+import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import KpiGroup from "@/components/metrics/KpiGroup";
 import KpiCard from "@/components/metrics/KpiCard";
 import DebugReadout from "@/components/DebugReadout";
@@ -28,7 +28,7 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
     async () =>
       buildUniversalBasketSummary({
         timeframe: "H1",
-        limitWeeks: 8,
+        limitWeeks: 52,
         includeCurrentWeek: false,
       }),
     ["research-universal-h1-8w"],
@@ -36,7 +36,7 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
   );
   const universalSummary = await getUniversalSummary();
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  const performanceWeeks = await listPerformanceWeeks(12);
+  const performanceWeeks = await listPerformanceWeeks(52);
   const weekOptions = buildDataWeekOptions({
     historicalWeeks: [
       ...universalSummary.by_week.map((row) => row.week_open_utc),
@@ -44,7 +44,6 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
     ],
     currentWeekOpenUtc,
     includeAll: false,
-    limit: 12,
   }).filter((week): week is string => week !== "all");
   const selectedWeek =
     (resolveWeekSelection({
@@ -93,10 +92,11 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
             </span>
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <WeekSelector
-              weekOptions={weekOptions}
+            <ScrollableWeekStrip
+              options={weekOptions}
+              selected={selectedWeek ?? weekOptions[0] ?? ""}
               currentWeek={currentWeekOpenUtc}
-              selectedWeek={selectedWeek ?? ""}
+              label="Week"
             />
             <DebugReadout
               items={[

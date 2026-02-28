@@ -2,7 +2,7 @@ import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
 import AutomationResearchCards from "@/components/automation/AutomationResearchCards";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
-import WeekSelector from "@/components/accounts/WeekSelector";
+import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import QueryBuilder from "@/components/filters/QueryBuilder";
 import KpiGroup from "@/components/metrics/KpiGroup";
 import KpiCard from "@/components/metrics/KpiCard";
@@ -57,7 +57,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
       buildSymbolResearchSummary({
         modelFilter: model,
         includeCurrentWeek: false,
-        limitWeeks: 8,
+        limitWeeks: 52,
       }),
     [`research-symbols-m1-8w-${selectedModel}`],
     { revalidate: 900 },
@@ -74,7 +74,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
 
   const summary = summaryAll;
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  const performanceWeeks = await listPerformanceWeeks(12);
+  const performanceWeeks = await listPerformanceWeeks(52);
   const weekOptions = buildWeekOptionsFromCurve(
     summary.equity_curve,
     currentWeekOpenUtc,
@@ -150,10 +150,11 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <WeekSelector
-              weekOptions={weekOptions.map((option) => option.value)}
+            <ScrollableWeekStrip
+              options={weekOptions.map((option) => option.value)}
+              selected={selectedWeek ?? weekOptions[0]?.value ?? ""}
               currentWeek={currentWeekOpenUtc}
-              selectedWeek={selectedWeek ?? ""}
+              label="Week"
             />
             <DebugReadout
               items={[

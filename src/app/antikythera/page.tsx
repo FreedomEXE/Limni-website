@@ -13,6 +13,7 @@ import { listPerformanceWeeks, readPerformanceSnapshotsByWeek } from "@/lib/perf
 import { DateTime } from "luxon";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import AntikytheraControls from "@/components/antikythera/AntikytheraControls";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -75,12 +76,11 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
   }
 
   const currentWeekOpen = getDisplayWeekOpenUtc();
-  const recentWeeks = await listPerformanceWeeks(24);
+  const recentWeeks = await listPerformanceWeeks(52);
   const weeks = buildDataWeekOptions({
     historicalWeeks: recentWeeks,
     currentWeekOpenUtc: currentWeekOpen,
     includeAll: false,
-    limit: 12,
   }).filter((item): item is string => item !== "all");
 
   let mappedWeekFromReport: string | null = null;
@@ -323,57 +323,14 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
           data-cot-surface="true"
           className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
         >
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <form action="/antikythera" method="get" className="flex flex-wrap items-center gap-2">
-              <input type="hidden" name="view" value={view} />
-              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Trading week
-              </label>
-              <select
-                name="report"
-                defaultValue={selectedReportDate ?? ""}
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                {availableDates.map((date) => (
-                  <option key={date} value={date}>
-                    {(() => {
-                      const report = DateTime.fromISO(date, { zone: "America/New_York" });
-                      if (!report.isValid) {
-                        return formatDateET(date);
-                      }
-                      const daysUntilMonday = (8 - report.weekday) % 7;
-                      const monday = report
-                        .plus({ days: daysUntilMonday })
-                        .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-                      return formatDateET(monday.toUTC().toISO());
-                    })()}
-                  </option>
-                ))}
-              </select>
-              <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Asset class
-              </label>
-              <select
-                name="asset"
-                defaultValue={selectedAsset ?? "all"}
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                <option value="all">ALL</option>
-                {assetClasses.map((asset) => (
-                  <option key={asset.id} value={asset.id}>
-                    {asset.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                View
-              </button>
-            </form>
-            <ViewToggle value={view} items={viewItems} />
-          </div>
+          <AntikytheraControls
+            availableDates={availableDates}
+            selectedReportDate={selectedReportDate}
+            assetClasses={assetClasses.map((a) => ({ id: a.id, label: a.label }))}
+            selectedAsset={selectedAsset}
+            view={view}
+            viewItems={viewItems}
+          />
           <div className="mt-6">
             <SignalHeatmap
               signals={filteredSignals.map((signal) => ({
