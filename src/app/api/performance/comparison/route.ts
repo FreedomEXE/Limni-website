@@ -3,7 +3,6 @@ import { readAllPerformanceSnapshots } from "@/lib/performanceSnapshots";
 import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import { DateTime } from "luxon";
 import type { PerformanceModel } from "@/lib/performanceLab";
-import { query } from "@/lib/db";
 import {
   PERFORMANCE_V1_MODELS,
   PERFORMANCE_V2_MODELS,
@@ -35,12 +34,6 @@ type ComparisonMetrics = {
 };
 
 type SnapshotRow = Awaited<ReturnType<typeof readAllPerformanceSnapshots>>[number];
-type BotWeeklyAggregateRow = {
-  return_value: number | string;
-  wins: number | string;
-  priced_trades: number | string;
-  week_open_utc?: Date | string;
-};
 
 function isClosedSnapshot(snapshot: SnapshotRow, currentWeekMillis: number): boolean {
   const weekMillis = DateTime.fromISO(snapshot.week_open_utc, { zone: "utc" }).toMillis();
@@ -139,6 +132,9 @@ function computeMetrics(
   selectedWeeks: Set<string>,
 ): ComparisonMetrics {
   const weekTotals = new Map<string, number>();
+  const tradeReturns: number[] = [];
+  let fallbackPricedTrades = 0;
+  let fallbackEstimatedWins = 0;
 
   for (const snapshot of snapshots) {
     if (!models.includes(snapshot.model)) {
@@ -150,16 +146,36 @@ function computeMetrics(
     }
     const current = weekTotals.get(weekKey) ?? 0;
     weekTotals.set(weekKey, current + snapshot.percent);
+    fallbackPricedTrades += Number.isFinite(snapshot.priced) ? snapshot.priced : 0;
+    for (const trade of snapshot.returns ?? []) {
+      if (!trade || !Number.isFinite(trade.percent)) {
+        continue;
+      }
+      tradeReturns.push(trade.percent);
+    }
+    if ((snapshot.returns?.length ?? 0) === 0) {
+      const winRate = Number(snapshot.stats?.win_rate);
+      if (Number.isFinite(winRate) && snapshot.priced > 0) {
+        fallbackEstimatedWins += Math.round((snapshot.priced * winRate) / 100);
+      }
+    }
   }
 
   const weekReturns = Array.from(weekTotals.values());
-  const wins = weekReturns.filter((value) => value > 0).length;
+  const trades = tradeReturns.length > 0 ? tradeReturns.length : fallbackPricedTrades;
+  const wins =
+    tradeReturns.length > 0
+      ? tradeReturns.filter((value) => value > 0).length
+      : fallbackEstimatedWins;
   return buildComparisonMetricsFromWeeklySeries({
     weekReturns,
-    trades: weekReturns.length,
+    trades,
     wins,
-    avgTrade: weekReturns.length > 0 ? weekReturns.reduce((sum, value) => sum + value, 0) / weekReturns.length : null,
-    profitFactor: null,
+    avgTrade:
+      tradeReturns.length > 0
+        ? tradeReturns.reduce((sum, value) => sum + value, 0) / tradeReturns.length
+        : null,
+    profitFactor: tradeReturns.length > 0 ? computeProfitFactorFromReturns(tradeReturns) : null,
     maxDrawdown: null,
   });
 }
@@ -179,31 +195,6 @@ function computeMetricsFromWeeklyRows(
     profitFactor: null,
     maxDrawdown: null,
   });
-}
-
-async function readBotWeeklyAggregates(
-  sql: string,
-  params: readonly unknown[],
-): Promise<BotWeeklyAggregateRow[]> {
-  try {
-    return await query<BotWeeklyAggregateRow>(sql, params);
-  } catch (error) {
-    console.warn(
-      "[performance-comparison] bot aggregate query failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-    return [];
-  }
-}
-
-function toBotComparisonMetrics(rows: BotWeeklyAggregateRow[]): ComparisonMetrics {
-  return computeMetricsFromWeeklyRows(
-    rows.map((row) => ({
-      return_percent: Number(row.return_value) || 0,
-      priced_trades: Number(row.priced_trades) || 0,
-      wins: Number(row.wins) || 0,
-    })),
-  );
 }
 
 function toKataraktiComparisonMetrics(
@@ -279,35 +270,7 @@ export async function GET(request: NextRequest) {
       ),
     };
 
-    const [snapshotByMarket, bitgetWeeklyRows, mt5WeeklyRows] = await Promise.all([
-      readKataraktiMarketSnapshots(),
-      readBotWeeklyAggregates(
-        `SELECT
-           COALESCE(SUM(pnl_usd), 0)::double precision AS return_value,
-           COUNT(*) FILTER (WHERE pnl_usd > 0)::int AS wins,
-           COUNT(*)::int AS priced_trades
-         FROM bitget_bot_trades
-         WHERE bot_id = $1
-           AND exit_time_utc IS NOT NULL
-         GROUP BY DATE_TRUNC('week', COALESCE(exit_time_utc, entry_time_utc))
-         ORDER BY DATE_TRUNC('week', COALESCE(exit_time_utc, entry_time_utc)) DESC
-         LIMIT $2`,
-        ["bitget_perp_v2", COMPARISON_WEEKS],
-      ),
-      readBotWeeklyAggregates(
-        `SELECT
-           COALESCE(SUM(pnl_usd), 0)::double precision AS return_value,
-           COUNT(*) FILTER (WHERE pnl_usd > 0)::int AS wins,
-           COUNT(*)::int AS priced_trades
-         FROM katarakti_trades
-         WHERE bot_id = $1
-           AND exit_time_utc IS NOT NULL
-         GROUP BY DATE_TRUNC('week', COALESCE(week_anchor, exit_time_utc, entry_time_utc))
-         ORDER BY DATE_TRUNC('week', COALESCE(week_anchor, exit_time_utc, entry_time_utc)) DESC
-         LIMIT $2`,
-        ["katarakti_v1", COMPARISON_WEEKS],
-      ),
-    ]);
+    const snapshotByMarket = await readKataraktiMarketSnapshots();
 
     const cryptoSnapshotMetrics = snapshotByMarket.crypto_futures
       ? toKataraktiComparisonMetrics(
@@ -320,6 +283,19 @@ export async function GET(request: NextRequest) {
         )
       : null;
 
+    const emptyKataraktiMetrics: ComparisonMetrics = {
+      totalReturn: 0,
+      weeks: 0,
+      winRate: 0,
+      sharpe: 0,
+      avgWeekly: 0,
+      maxDrawdown: null,
+      trades: 0,
+      tradeWinRate: 0,
+      avgTrade: null,
+      profitFactor: null,
+    };
+
     return NextResponse.json({
       v1: v1Metrics,
       v2: v2Metrics,
@@ -331,8 +307,8 @@ export async function GET(request: NextRequest) {
       },
       tiered,
       katarakti: {
-        crypto_futures: cryptoSnapshotMetrics ?? toBotComparisonMetrics(bitgetWeeklyRows),
-        mt5_forex: mt5SnapshotMetrics ?? toBotComparisonMetrics(mt5WeeklyRows),
+        crypto_futures: cryptoSnapshotMetrics ?? emptyKataraktiMetrics,
+        mt5_forex: mt5SnapshotMetrics ?? emptyKataraktiMetrics,
       },
       weeksAnalyzed: selectedWeekList.length,
     });

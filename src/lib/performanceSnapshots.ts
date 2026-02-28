@@ -328,8 +328,10 @@ export async function readAllPerformanceSnapshots(limit = 520) {
     priced: number;
     total: number;
     percent: string;
+    returns: ModelPerformance["returns"] | null;
+    stats: ModelPerformance["stats"] | null;
   }>(
-    `SELECT week_open_utc, asset_class, model, report_date, priced, total, percent
+    `SELECT week_open_utc, asset_class, model, report_date, priced, total, percent, returns, stats
      FROM performance_snapshots
      ORDER BY week_open_utc DESC
      LIMIT $1`,
@@ -345,6 +347,8 @@ export async function readAllPerformanceSnapshots(limit = 520) {
       priced: row.priced,
       total: row.total,
       percent: Number(row.percent),
+      returns: row.returns ?? [],
+      stats: row.stats ?? null,
     }))
     .filter((row) => !isExcludedPerformanceWeek(row.week_open_utc));
 
@@ -403,6 +407,10 @@ export async function readAllPerformanceSnapshots(limit = 520) {
       model: row.model,
       report_date: row.report_date,
       percent: row.percent,
+      priced: row.priced,
+      total: row.total,
+      returns: row.returns,
+      stats: row.stats,
     }));
   });
 }

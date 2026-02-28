@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
 import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
+import { query } from "@/lib/db";
+import { KATARAKTI_SEED_SNAPSHOTS } from "@/lib/performance/kataraktiSeed";
 
 export type KataraktiMarket = "crypto_futures" | "mt5_forex";
 
@@ -103,6 +105,23 @@ type Mt5BacktestReport = {
   variants?: Mt5Variant[];
 };
 
+type LiveBitgetTradeRow = {
+  week_open_utc: Date | string;
+  direction: string;
+  entry_price: number | string;
+  exit_price: number | string;
+  pnl_usd: number | string;
+};
+
+type LiveMt5TradeRow = {
+  week_open_utc: Date | string;
+  direction: string;
+  entry_price: number | string;
+  exit_price: number | string;
+  pnl_pct: number | string | null;
+  pnl_usd: number | string;
+};
+
 const DEFAULT_STARTING_EQUITY_USD = 100_000;
 const DEFAULT_CACHE_TTL_MS = 30_000;
 const CRYPTO_WEEKLY_SUMMARY_PATH = "docs/bots/backtest-weekly-summary.json";
@@ -181,6 +200,201 @@ function weightedAverage(items: Array<{ value: number | null; weight: number }>)
   }
   if (totalWeight <= 0) return null;
   return weightedSum / totalWeight;
+}
+
+function directionAdjustedReturnPct(direction: string, entryPrice: number, exitPrice: number) {
+  if (!Number.isFinite(entryPrice) || !Number.isFinite(exitPrice) || entryPrice <= 0) return 0;
+  if (direction === "SHORT") {
+    return ((entryPrice - exitPrice) / entryPrice) * 100;
+  }
+  return ((exitPrice - entryPrice) / entryPrice) * 100;
+}
+
+function sortWeeksAsc<T extends { weekOpenUtc: string }>(rows: T[]) {
+  return [...rows].sort(
+    (left, right) =>
+      new Date(left.weekOpenUtc).getTime() - new Date(right.weekOpenUtc).getTime(),
+  );
+}
+
+async function safeQuery<T>(sql: string, params?: readonly unknown[]): Promise<T[]> {
+  try {
+    return await query<T>(sql, params);
+  } catch {
+    return [];
+  }
+}
+
+function buildWeeklyFromLiveTrades(
+  rows: Array<{
+    weekOpenUtc: string;
+    returnPct: number;
+    pnlUsd: number;
+  }>,
+): KataraktiWeeklySnapshot[] {
+  const byWeek = new Map<string, Array<{ returnPct: number; pnlUsd: number }>>();
+  for (const row of rows) {
+    const weekRows = byWeek.get(row.weekOpenUtc) ?? [];
+    weekRows.push({ returnPct: row.returnPct, pnlUsd: row.pnlUsd });
+    byWeek.set(row.weekOpenUtc, weekRows);
+  }
+
+  return sortWeeksAsc(
+    Array.from(byWeek.entries()).map(([weekOpenUtc, trades]) => {
+      let runningPct = 0;
+      let minRunningPct = 0;
+      let grossProfit = 0;
+      let grossLoss = 0;
+      let wins = 0;
+      let losses = 0;
+      for (const trade of trades) {
+        runningPct += trade.returnPct;
+        if (runningPct < minRunningPct) {
+          minRunningPct = runningPct;
+        }
+        if (trade.returnPct > 0) {
+          wins += 1;
+          grossProfit += trade.returnPct;
+        } else if (trade.returnPct < 0) {
+          losses += 1;
+          grossLoss += Math.abs(trade.returnPct);
+        }
+      }
+
+      const returnPct = trades.reduce((sum, trade) => sum + trade.returnPct, 0);
+      const tradeCount = trades.length;
+      return {
+        weekOpenUtc,
+        returnPct,
+        trades: tradeCount,
+        wins,
+        losses,
+        winRatePct: tradeCount > 0 ? (wins / tradeCount) * 100 : 0,
+        avgTradePct: tradeCount > 0 ? returnPct / tradeCount : null,
+        profitFactor: computeProfitFactor(grossProfit, grossLoss),
+        staticDrawdownPct: Math.abs(minRunningPct),
+        grossProfitUsd: grossProfit,
+        grossLossUsd: grossLoss,
+      } satisfies KataraktiWeeklySnapshot;
+    }),
+  );
+}
+
+function buildSeedWeeklySnapshots(market: KataraktiMarket): KataraktiWeeklySnapshot[] {
+  const seed = KATARAKTI_SEED_SNAPSHOTS[market];
+  return sortWeeksAsc(
+    seed.weekly.map((row) => {
+      const grossProfit = row.returnPct > 0 ? row.returnPct : 0;
+      const grossLoss = row.returnPct < 0 ? Math.abs(row.returnPct) : 0;
+      return {
+        weekOpenUtc: row.weekOpenUtc,
+        returnPct: row.returnPct,
+        trades: row.trades,
+        wins: row.wins,
+        losses: row.losses,
+        winRatePct: row.trades > 0 ? (row.wins / row.trades) * 100 : 0,
+        avgTradePct: row.trades > 0 ? row.returnPct / row.trades : null,
+        profitFactor: computeProfitFactor(grossProfit, grossLoss),
+        staticDrawdownPct: row.staticDrawdownPct,
+        grossProfitUsd: grossProfit,
+        grossLossUsd: grossLoss,
+      } satisfies KataraktiWeeklySnapshot;
+    }),
+  );
+}
+
+function toSnapshotFromWeekly(options: {
+  market: KataraktiMarket;
+  sourcePath: string;
+  selectedVariantId: string | null;
+  weekly: KataraktiWeeklySnapshot[];
+  totalReturnPctOverride?: number | null;
+  maxDrawdownOverride?: number | null;
+  startingEquityUsdOverride?: number | null;
+}) {
+  const weekly = sortWeeksAsc(options.weekly);
+  if (weekly.length === 0) return null;
+  const weeklyReturnsPct = weekly.map((week) => week.returnPct);
+  const totalReturnPct =
+    options.totalReturnPctOverride ?? weeklyReturnsPct.reduce((sum, value) => sum + value, 0);
+  const startingEquityUsd = options.startingEquityUsdOverride ?? getConfiguredStartingEquityUsd(DEFAULT_STARTING_EQUITY_USD);
+  const totalPnlUsd = (totalReturnPct / 100) * startingEquityUsd;
+  const totalTrades = weekly.reduce((sum, week) => sum + week.trades, 0);
+  const wins = weekly.reduce((sum, week) => sum + week.wins, 0);
+  const grossProfit = weekly.reduce((sum, week) => sum + week.grossProfitUsd, 0);
+  const grossLoss = weekly.reduce((sum, week) => sum + week.grossLossUsd, 0);
+  const computedMaxDrawdown = weekly.reduce(
+    (max, week) => Math.max(max, week.staticDrawdownPct),
+    0,
+  );
+  const maxDrawdownPct =
+    computedMaxDrawdown > 0
+      ? computedMaxDrawdown
+      : options.maxDrawdownOverride ?? null;
+  const winRatePct = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
+  return {
+    market: options.market,
+    sourcePath: options.sourcePath,
+    selectedVariantId: options.selectedVariantId,
+    weekly,
+    weeks: weekly.length,
+    weeklyReturnsPct,
+    totalReturnPct,
+    totalPnlUsd,
+    totalTrades,
+    wins,
+    winRatePct,
+    tradeWinRatePct: winRatePct,
+    avgTradePct: weightedAverage(
+      weekly.map((week) => ({
+        value: week.avgTradePct,
+        weight: week.trades,
+      })),
+    ),
+    profitFactor: computeProfitFactor(grossProfit, grossLoss),
+    maxDrawdownPct,
+    sharpe: computeSharpe(weeklyReturnsPct),
+  } satisfies KataraktiMarketSnapshot;
+}
+
+function appendLiveWeeks(options: {
+  market: KataraktiMarket;
+  base: KataraktiMarketSnapshot | null;
+  live: KataraktiWeeklySnapshot[];
+}) {
+  if (options.live.length === 0) {
+    return options.base;
+  }
+
+  const baseWeeks = options.base ? sortWeeksAsc(options.base.weekly) : [];
+  const latestBaseWeek = baseWeeks.length > 0 ? baseWeeks[baseWeeks.length - 1].weekOpenUtc : null;
+  const appendedLive = latestBaseWeek
+    ? options.live.filter(
+        (week) =>
+          new Date(week.weekOpenUtc).getTime() > new Date(latestBaseWeek).getTime(),
+      )
+    : options.live;
+  const mergedWeekly = [...baseWeeks, ...appendedLive];
+  if (mergedWeekly.length === 0) {
+    return null;
+  }
+  const liveReturnPct = appendedLive.reduce((sum, week) => sum + week.returnPct, 0);
+  const mergedTotalReturn = options.base
+    ? options.base.totalReturnPct + liveReturnPct
+    : mergedWeekly.reduce((sum, week) => sum + week.returnPct, 0);
+  const mergedSource = options.base
+    ? `${options.base.sourcePath}+db:sim`
+    : "db:sim";
+
+  return toSnapshotFromWeekly({
+    market: options.market,
+    sourcePath: mergedSource,
+    selectedVariantId: options.base?.selectedVariantId ?? null,
+    weekly: mergedWeekly,
+    totalReturnPctOverride: mergedTotalReturn,
+    maxDrawdownOverride: options.base?.maxDrawdownPct ?? null,
+    startingEquityUsdOverride: null,
+  });
 }
 
 function getConfiguredCryptoBacktestStartBalanceUsd() {
@@ -436,6 +650,83 @@ async function readJsonFile<T>(relativePath: string): Promise<T | null> {
   }
 }
 
+async function readLiveCryptoWeeklyFromDb(): Promise<KataraktiWeeklySnapshot[]> {
+  const rows = await safeQuery<LiveBitgetTradeRow>(
+    `SELECT
+       DATE_TRUNC('week', COALESCE(exit_time_utc, entry_time_utc))::timestamptz AS week_open_utc,
+       direction,
+       entry_price,
+       exit_price,
+       COALESCE(pnl_usd, 0)::double precision AS pnl_usd
+     FROM bitget_bot_trades
+     WHERE bot_id = $1
+       AND exit_time_utc IS NOT NULL
+       AND COALESCE(LOWER(metadata->>'dryRun'), 'false') = 'true'
+     ORDER BY COALESCE(exit_time_utc, entry_time_utc) ASC, id ASC`,
+    ["bitget_perp_v2"],
+  );
+
+  if (rows.length === 0) return [];
+  return buildWeeklyFromLiveTrades(
+    rows.flatMap((row) => {
+      const weekOpenUtc = canonicalWeek(
+        row.week_open_utc instanceof Date
+          ? row.week_open_utc.toISOString()
+          : parseIsoUtc(row.week_open_utc),
+      );
+      if (!weekOpenUtc) return [];
+      const entryPrice = toNumber(row.entry_price) ?? 0;
+      const exitPrice = toNumber(row.exit_price) ?? 0;
+      return [{
+        weekOpenUtc,
+        returnPct: directionAdjustedReturnPct(String(row.direction ?? "LONG"), entryPrice, exitPrice),
+        pnlUsd: toNumber(row.pnl_usd) ?? 0,
+      }];
+    }),
+  );
+}
+
+async function readLiveMt5WeeklyFromDb(): Promise<KataraktiWeeklySnapshot[]> {
+  const rows = await safeQuery<LiveMt5TradeRow>(
+    `SELECT
+       DATE_TRUNC('week', COALESCE(week_anchor::timestamptz, exit_time_utc, entry_time_utc))::timestamptz AS week_open_utc,
+       direction,
+       entry_price,
+       exit_price,
+       pnl_pct,
+       COALESCE(pnl_usd, 0)::double precision AS pnl_usd
+     FROM katarakti_trades
+     WHERE bot_id = $1
+       AND exit_time_utc IS NOT NULL
+     ORDER BY COALESCE(exit_time_utc, entry_time_utc) ASC, id ASC`,
+    ["katarakti_v1"],
+  );
+
+  if (rows.length === 0) return [];
+  return buildWeeklyFromLiveTrades(
+    rows.flatMap((row) => {
+      const weekOpenUtc = canonicalWeek(
+        row.week_open_utc instanceof Date
+          ? row.week_open_utc.toISOString()
+          : parseIsoUtc(row.week_open_utc),
+      );
+      if (!weekOpenUtc) return [];
+      const pnlPct = toNumber(row.pnl_pct);
+      const entryPrice = toNumber(row.entry_price) ?? 0;
+      const exitPrice = toNumber(row.exit_price) ?? 0;
+      const returnPct =
+        pnlPct !== null
+          ? pnlPct
+          : directionAdjustedReturnPct(String(row.direction ?? "LONG"), entryPrice, exitPrice);
+      return [{
+        weekOpenUtc,
+        returnPct,
+        pnlUsd: toNumber(row.pnl_usd) ?? 0,
+      }];
+    }),
+  );
+}
+
 async function readCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | null> {
   const weeklySummaryPath = process.env.KATARAKTI_CRYPTO_WEEKLY_PATH?.trim() || CRYPTO_WEEKLY_SUMMARY_PATH;
   const weeklyRows = await readJsonFile<CryptoWeeklySummaryRow[]>(weeklySummaryPath);
@@ -459,63 +750,46 @@ async function readCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | nu
     ? toNumber(latestRun.max_dd_pct[variantKey])
     : null;
 
-  let weekly =
+  let weeklyFromFiles =
     await buildCryptoWeeklyFromTradeLog({
       variantKey,
       runHistoryWeeks,
     });
-  if (!weekly || weekly.length === 0) {
-    weekly = buildCryptoWeeklyFromSummary(summaryRows);
-  }
-  if (!weekly || weekly.length === 0) {
-    return null;
+  if (!weeklyFromFiles || weeklyFromFiles.length === 0) {
+    weeklyFromFiles = buildCryptoWeeklyFromSummary(summaryRows);
   }
 
-  const weeklyReturnsPct = weekly.map((week) => week.returnPct);
-  const startingEquityUsd = getConfiguredStartingEquityUsd(DEFAULT_STARTING_EQUITY_USD);
-  const totalReturnPct =
-    runHistoryReturnPct ??
-    weeklyReturnsPct.reduce((sum, value) => sum + value, 0);
-  const totalPnlUsd = (totalReturnPct / 100) * startingEquityUsd;
+  const fileSnapshot =
+    weeklyFromFiles && weeklyFromFiles.length > 0
+      ? toSnapshotFromWeekly({
+          market: "crypto_futures",
+          sourcePath: weeklySummaryPath,
+          selectedVariantId: variantKey,
+          weekly: weeklyFromFiles,
+          totalReturnPctOverride: runHistoryReturnPct,
+          maxDrawdownOverride: runHistoryDrawdownPct,
+          startingEquityUsdOverride: null,
+        })
+      : null;
 
-  const totalTrades = weekly.reduce((sum, week) => sum + week.trades, 0);
-  const wins = weekly.reduce((sum, week) => sum + week.wins, 0);
-  const grossProfitUsd = weekly.reduce((sum, week) => sum + week.grossProfitUsd, 0);
-  const grossLossUsd = weekly.reduce((sum, week) => sum + week.grossLossUsd, 0);
-  const avgTradePct = weightedAverage(
-    weekly.map((week) => ({
-      value: week.avgTradePct,
-      weight: week.trades,
-    })),
-  );
-  const maxStaticDrawdownPct = weekly.reduce(
-    (max, week) => Math.max(max, week.staticDrawdownPct),
-    0,
-  );
-  const maxDrawdownPct =
-    maxStaticDrawdownPct > 0
-      ? maxStaticDrawdownPct
-      : runHistoryDrawdownPct;
-  const winRatePct = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
-
-  return {
+  const seed = KATARAKTI_SEED_SNAPSHOTS.crypto_futures;
+  const seedSnapshot = toSnapshotFromWeekly({
     market: "crypto_futures",
-    sourcePath: weeklySummaryPath,
-    selectedVariantId: variantKey,
-    weekly,
-    weeks: weeklyReturnsPct.length,
-    weeklyReturnsPct,
-    totalReturnPct,
-    totalPnlUsd,
-    totalTrades,
-    wins,
-    winRatePct,
-    tradeWinRatePct: winRatePct,
-    avgTradePct,
-    profitFactor: computeProfitFactor(grossProfitUsd, grossLossUsd),
-    maxDrawdownPct,
-    sharpe: computeSharpe(weeklyReturnsPct),
-  };
+    sourcePath: seed.sourceLabel,
+    selectedVariantId: seed.selectedVariantId,
+    weekly: buildSeedWeeklySnapshots("crypto_futures"),
+    totalReturnPctOverride: seed.totalReturnPct,
+    maxDrawdownOverride: seed.maxDrawdownPct,
+    startingEquityUsdOverride: seed.startingEquityUsd,
+  });
+
+  const base = fileSnapshot ?? seedSnapshot;
+  const liveWeekly = await readLiveCryptoWeeklyFromDb();
+  return appendLiveWeeks({
+    market: "crypto_futures",
+    base,
+    live: liveWeekly,
+  });
 }
 
 function pickBestMt5Variant(
@@ -558,200 +832,73 @@ async function readMt5Report() {
 
 async function readMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
   const loaded = await readMt5Report();
-  if (!loaded) return null;
-
   const preferredVariantId = process.env.KATARAKTI_MT5_VARIANT_ID?.trim() || PINNED_MT5_VARIANT_ID;
-  const selected = pickBestMt5Variant(loaded.report.variants ?? [], preferredVariantId);
-  if (!selected) return null;
 
-  const variantWeeklyRows = Array.isArray(selected.weekly) ? selected.weekly : [];
-  const parsedWeeklyRows = variantWeeklyRows
-    .map((row) => {
-      const rawWeek = parseIsoUtc(row.week_open_utc);
-      const weekOpenUtc = canonicalWeek(rawWeek);
-      const returnPct = toNumber(row.week_return_pct);
-      if (!weekOpenUtc || returnPct === null) return null;
-      const trades = toInteger(row.trades);
-      const wins = toInteger(row.wins);
-      const losses = toInteger(row.losses);
-      const reportedWinRate = toNumber(row.win_rate_pct);
-      return {
-        weekOpenUtc,
-        returnPct,
-        trades,
-        wins,
-        losses,
-        reportedWinRate,
-      };
-    })
-    .filter((row): row is NonNullable<typeof row> => row !== null)
-    .sort(
-      (left, right) =>
-        new Date(left.weekOpenUtc).getTime() - new Date(right.weekOpenUtc).getTime(),
-    );
-
-  const tradeLogRows = Array.isArray(selected.trades)
-    ? selected.trades
+  let fileSnapshot: KataraktiMarketSnapshot | null = null;
+  if (loaded) {
+    const selected = pickBestMt5Variant(loaded.report.variants ?? [], preferredVariantId);
+    if (selected) {
+      const variantWeeklyRows = Array.isArray(selected.weekly) ? selected.weekly : [];
+      const weeklyFromFiles = variantWeeklyRows
         .map((row) => {
-          const weekOpenUtc =
-            canonicalWeek(parseIsoUtc(row.weekOpenUtc)) ??
-            canonicalWeek(parseIsoUtc(row.week_open_utc));
-          if (!weekOpenUtc) return null;
-          const netPnlUsd = toNumber(row.netPnlUsd) ?? toNumber(row.net_pnl_usd) ?? 0;
-          const returnPctOnEntryEquity =
-            toNumber(row.returnPctOnEntryEquity) ??
-            toNumber(row.return_pct_on_entry_equity);
-          const exitTimeMs =
-            toNumber(row.exitTimeMs) ??
-            toNumber(row.exit_time_ms);
-          const exitTimeUtc =
-            parseIsoUtc(row.exitTimeUtc) ??
-            parseIsoUtc(row.exit_time_utc);
+          const rawWeek = parseIsoUtc(row.week_open_utc);
+          const weekOpenUtc = canonicalWeek(rawWeek);
+          const returnPct = toNumber(row.week_return_pct);
+          if (!weekOpenUtc || returnPct === null) return null;
+          const trades = toInteger(row.trades);
+          const wins = toInteger(row.wins);
+          const losses = toInteger(row.losses);
+          const grossProfit = returnPct > 0 ? returnPct : 0;
+          const grossLoss = returnPct < 0 ? Math.abs(returnPct) : 0;
           return {
             weekOpenUtc,
-            netPnlUsd,
-            returnPctOnEntryEquity,
-            exitTimeMs,
-            exitTimeUtc,
-          };
+            returnPct,
+            trades,
+            wins,
+            losses,
+            winRatePct: trades > 0 ? (wins / trades) * 100 : 0,
+            avgTradePct: trades > 0 ? returnPct / trades : null,
+            profitFactor: computeProfitFactor(grossProfit, grossLoss),
+            staticDrawdownPct: returnPct < 0 ? Math.abs(returnPct) : 0,
+            grossProfitUsd: grossProfit,
+            grossLossUsd: grossLoss,
+          } satisfies KataraktiWeeklySnapshot;
         })
-        .filter((row): row is NonNullable<typeof row> => row !== null)
-    : [];
-  const tradesByWeek = tradeLogRows.reduce((map, row) => {
-    const list = map.get(row.weekOpenUtc) ?? [];
-    list.push(row);
-    map.set(row.weekOpenUtc, list);
-    return map;
-  }, new Map<string, typeof tradeLogRows>());
+        .filter((row): row is KataraktiWeeklySnapshot => row !== null);
 
-  const totalReturnPct = toNumber(selected.headline?.total_return_pct) ?? 0;
-  const startingEquityUsd =
-    getConfiguredStartingEquityUsd(
-      toNumber(loaded.report.config?.starting_equity_usd) ?? DEFAULT_STARTING_EQUITY_USD,
-    );
-  const totalPnlUsd = (totalReturnPct / 100) * startingEquityUsd;
-
-  let weekStartBalance = toNumber(selected.headline?.start_equity_usd) ?? startingEquityUsd;
-  const weekly: KataraktiWeeklySnapshot[] = parsedWeeklyRows.map((row) => {
-    const weekTrades = tradesByWeek.get(row.weekOpenUtc) ?? [];
-    const sortedTrades = [...weekTrades].sort((left, right) => {
-      const leftTime =
-        left.exitTimeMs ??
-        (left.exitTimeUtc ? new Date(left.exitTimeUtc).getTime() : Number.POSITIVE_INFINITY);
-      const rightTime =
-        right.exitTimeMs ??
-        (right.exitTimeUtc ? new Date(right.exitTimeUtc).getTime() : Number.POSITIVE_INFINITY);
-      return leftTime - rightTime;
-    });
-    const computedWins = sortedTrades.filter((trade) => trade.netPnlUsd > 0).length;
-    const computedLosses = sortedTrades.filter((trade) => trade.netPnlUsd < 0).length;
-    const computedTrades = sortedTrades.length;
-    const trades = row.trades > 0 ? row.trades : computedTrades;
-    const wins = row.wins > 0 || computedWins === 0 ? row.wins : computedWins;
-    const losses = row.losses > 0 || computedLosses === 0 ? row.losses : computedLosses;
-    const winRatePct =
-      row.reportedWinRate !== null
-        ? row.reportedWinRate
-        : trades > 0
-          ? (wins / trades) * 100
-          : 0;
-
-    let minBalance = weekStartBalance;
-    let runningBalance = weekStartBalance;
-    let grossProfitUsd = 0;
-    let grossLossUsd = 0;
-    const tradeReturns: number[] = [];
-    for (const trade of sortedTrades) {
-      runningBalance += trade.netPnlUsd;
-      if (runningBalance < minBalance) {
-        minBalance = runningBalance;
-      }
-      if (trade.netPnlUsd > 0) grossProfitUsd += trade.netPnlUsd;
-      if (trade.netPnlUsd < 0) grossLossUsd += Math.abs(trade.netPnlUsd);
-      if (trade.returnPctOnEntryEquity !== null) {
-        tradeReturns.push(trade.returnPctOnEntryEquity);
-      }
+      const headlineTotalReturn = toNumber(selected.headline?.total_return_pct);
+      const headlineMaxDd = toNumber(selected.headline?.max_drawdown_pct);
+      const reportStartingEquity = toNumber(loaded.report.config?.starting_equity_usd);
+      fileSnapshot = toSnapshotFromWeekly({
+        market: "mt5_forex",
+        sourcePath: loaded.sourcePath,
+        selectedVariantId: selected.id ? String(selected.id) : preferredVariantId,
+        weekly: weeklyFromFiles,
+        totalReturnPctOverride: headlineTotalReturn,
+        maxDrawdownOverride: headlineMaxDd,
+        startingEquityUsdOverride: reportStartingEquity,
+      });
     }
+  }
 
-    const staticDrawdownPct =
-      trades > 0
-        ? ((weekStartBalance - minBalance) / weekStartBalance) * 100
-        : row.returnPct < 0
-          ? Math.abs(row.returnPct)
-          : 0;
-
-    const avgTradePct =
-      tradeReturns.length > 0
-        ? tradeReturns.reduce((sum, value) => sum + value, 0) / tradeReturns.length
-        : trades > 0
-          ? row.returnPct / trades
-          : null;
-
-    const week = {
-      weekOpenUtc: row.weekOpenUtc,
-      returnPct: row.returnPct,
-      trades,
-      wins,
-      losses,
-      winRatePct,
-      avgTradePct,
-      profitFactor: computeProfitFactor(grossProfitUsd, grossLossUsd),
-      staticDrawdownPct,
-      grossProfitUsd,
-      grossLossUsd,
-    } satisfies KataraktiWeeklySnapshot;
-
-    weekStartBalance = weekStartBalance * (1 + (row.returnPct / 100));
-    return week;
+  const seed = KATARAKTI_SEED_SNAPSHOTS.mt5_forex;
+  const seedSnapshot = toSnapshotFromWeekly({
+    market: "mt5_forex",
+    sourcePath: seed.sourceLabel,
+    selectedVariantId: preferredVariantId || seed.selectedVariantId,
+    weekly: buildSeedWeeklySnapshots("mt5_forex"),
+    totalReturnPctOverride: seed.totalReturnPct,
+    maxDrawdownOverride: seed.maxDrawdownPct,
+    startingEquityUsdOverride: seed.startingEquityUsd,
   });
 
-  const weeklyReturnsPct = weekly.map((week) => week.returnPct);
-  const winsFromWeeks = weekly.reduce((sum, week) => sum + week.wins, 0);
-  const tradesFromWeeks = weekly.reduce((sum, week) => sum + week.trades, 0);
-  const headlineTrades = toInteger(selected.headline?.trades);
-  const totalTrades = headlineTrades > 0 ? headlineTrades : tradesFromWeeks;
-  const headlineWinRate = toNumber(selected.headline?.win_rate_pct);
-  const winRatePct = headlineWinRate !== null
-    ? headlineWinRate
-    : totalTrades > 0
-      ? (winsFromWeeks / totalTrades) * 100
-      : 0;
-  const avgTradePct = weightedAverage(
-    weekly.map((week) => ({
-      value: week.avgTradePct,
-      weight: week.trades,
-    })),
-  ) ?? toNumber(selected.headline?.avg_trade_return_pct);
-  const grossProfitUsd = weekly.reduce((sum, week) => sum + week.grossProfitUsd, 0);
-  const grossLossUsd = weekly.reduce((sum, week) => sum + week.grossLossUsd, 0);
-  const maxStaticDrawdownPct = weekly.reduce(
-    (max, week) => Math.max(max, week.staticDrawdownPct),
-    0,
-  );
-  const headlineMaxDrawdownPct = toNumber(selected.headline?.max_drawdown_pct);
-  const maxDrawdownPct =
-    maxStaticDrawdownPct > 0
-      ? maxStaticDrawdownPct
-      : headlineMaxDrawdownPct;
-
-  return {
+  const base = fileSnapshot ?? seedSnapshot;
+  const liveWeekly = await readLiveMt5WeeklyFromDb();
+  return appendLiveWeeks({
     market: "mt5_forex",
-    sourcePath: loaded.sourcePath,
-    selectedVariantId: selected.id ? String(selected.id) : null,
-    weekly,
-    weeks: weeklyReturnsPct.length,
-    weeklyReturnsPct,
-    totalReturnPct,
-    totalPnlUsd,
-    totalTrades,
-    wins: winsFromWeeks,
-    winRatePct,
-    tradeWinRatePct: totalTrades > 0 ? (winsFromWeeks / totalTrades) * 100 : 0,
-    avgTradePct,
-    profitFactor: computeProfitFactor(grossProfitUsd, grossLossUsd),
-    maxDrawdownPct,
-    sharpe: computeSharpe(weeklyReturnsPct),
-  };
+    base,
+    live: liveWeekly,
+  });
 }
 
 export async function readKataraktiMarketSnapshots(): Promise<KataraktiHistoryByMarket> {
