@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import { clearRuntimeCacheByPrefix } from "@/lib/runtimeCache";
 
 const { queryMock } = vi.hoisted(() => ({
   queryMock: vi.fn(),
@@ -13,6 +14,7 @@ import { listPerformanceWeeks, readPerformanceSnapshotsByWeek } from "@/lib/perf
 describe("performanceSnapshots week handling", () => {
   beforeEach(() => {
     queryMock.mockReset();
+    clearRuntimeCacheByPrefix("performanceSnapshots:");
   });
 
   test("listPerformanceWeeks deduplicates logical weeks before limit", async () => {

@@ -16,7 +16,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { DateTime } from "luxon";
-import { fetchBitgetCandleSeries, fetchBitgetFuturesSnapshot } from "@/lib/bitget";
+import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { fetchBitgetAccount } from "@/lib/bitgetTrade";
 import { query, queryOne } from "@/lib/db";
 import { readBotState, writeBotState } from "@/lib/botState";
@@ -147,10 +147,12 @@ const CORE_SYMBOLS: readonly CoreSymbol[] = ["BTC", "ETH"];
 const HANDSHAKE_WINDOW_MINUTES = Number(process.env.BITGET_BOT_HANDSHAKE_WINDOW_MINUTES ?? "60");
 const WEEKLY_MAX_ENTRIES = Number(process.env.BITGET_BOT_WEEKLY_MAX_ENTRIES_PER_SYMBOL ?? "5");
 const INITIAL_LEVERAGE = Number(process.env.BITGET_BOT_INITIAL_LEVERAGE ?? "5");
-const HANDSHAKE_MARGIN_PCT_PER_SYMBOL = Math.max(
-  0,
-  Math.min(0.5, Number(process.env.BITGET_BOT_HANDSHAKE_MARGIN_PCT_PER_SYMBOL ?? "0.45")),
-);
+const HANDSHAKE_MARGIN_PCT_PER_SYMBOL = (() => {
+  const raw = Number(process.env.BITGET_BOT_HANDSHAKE_MARGIN_PCT_PER_SYMBOL ?? "0.45");
+  const fallback = 0.45;
+  if (!Number.isFinite(raw)) return fallback;
+  return Math.max(0, Math.min(0.5, raw));
+})();
 const DRY_RUN = String(process.env.BITGET_BOT_DRY_RUN ?? "true").toLowerCase() !== "false";
 const LIQ_ADVISORY_ENABLED = String(process.env.BITGET_LIQ_ADVISORY_ENABLED ?? "true").toLowerCase() !== "false";
 const LIQ_ADVISORY_INTERVAL = (process.env.BITGET_LIQ_ADVISORY_INTERVAL ?? "1d").trim() || "1d";
@@ -945,10 +947,6 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
     const candleMap = {} as Record<CoreSymbol, BotCandle[]>;
     for (const symbol of CORE_SYMBOLS) {
       candleMap[symbol] = await fetchRawMinuteCandles(symbol, candleStart, candleEnd);
-      await fetchBitgetCandleSeries(symbol, {
-        openUtc: now.minus({ hours: 24 }),
-        closeUtc: now,
-      }).catch(() => []);
     }
     await persistSessionRanges(candleMap, nowIso);
 

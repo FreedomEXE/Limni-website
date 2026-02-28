@@ -14,7 +14,11 @@ describe("accounts week options", () => {
       "2026-02-16",
       4,
     );
-    expect(result).toEqual(["2026-02-09", "2026-02-02"]);
+    expect(result).toEqual([
+      "2026-02-16T00:00:00.000Z",
+      "2026-02-09T00:00:00.000Z",
+      "2026-02-02T00:00:00.000Z",
+    ]);
   });
 
   test("resolves requested week with fallback", () => {
