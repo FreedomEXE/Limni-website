@@ -43,7 +43,11 @@ import {
   computeTieredWeekForAllSystems,
   TIERED_DISPLAY_LABELS,
 } from "@/lib/performance/tiered";
-import { readBotStrategySummaries } from "@/lib/performance/botStrategies";
+import { readKataraktiMarketSnapshots } from "@/lib/performance/kataraktiHistory";
+import {
+  buildKataraktiModelPerformance,
+  KATARAKTI_CARD_MODEL,
+} from "@/lib/performance/kataraktiMetrics";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -65,6 +69,55 @@ function resolvePerformanceStyle(value: string | null | undefined): "universal" 
 
 function resolveKataraktiMarket(value: string | null | undefined): "crypto_futures" | "mt5_forex" {
   return value === "mt5_forex" ? "mt5_forex" : "crypto_futures";
+}
+
+const KATARAKTI_MODEL_LABELS = {
+  ...PERFORMANCE_MODEL_LABELS,
+  [KATARAKTI_CARD_MODEL]: "Katarakti",
+};
+
+function buildKataraktiDescription(period: string | null | undefined) {
+  if (!period || period === "all") {
+    return "All-time historical snapshots for the selected market.";
+  }
+  return `${weekLabelFromOpen(period)}. Historical snapshot for the selected market.`;
+}
+
+function buildKataraktiGridPropsByMarket(options: {
+  snapshots: Awaited<ReturnType<typeof readKataraktiMarketSnapshots>>;
+  period: string | null | undefined;
+}): ComponentProps<typeof PerformanceViewSection>["kataraktiGridPropsByMarket"] {
+  const description = buildKataraktiDescription(options.period);
+  const makeGrid = (
+    market: "crypto_futures" | "mt5_forex",
+    label: string,
+  ) => {
+    const snapshot = options.snapshots[market];
+    const model = snapshot
+      ? buildKataraktiModelPerformance(snapshot, options.period ?? "all")
+      : null;
+    return {
+      combined: {
+        id: "combined",
+        label,
+        description,
+        models: model ? [model] : [],
+      },
+      perAsset: [],
+      labels: KATARAKTI_MODEL_LABELS,
+      calibration: undefined,
+      allTime: {
+        combined: [],
+        perAsset: {},
+      },
+      showAllTime: false,
+    };
+  };
+
+  return {
+    crypto_futures: makeGrid("crypto_futures", "Crypto Futures"),
+    mt5_forex: makeGrid("mt5_forex", "MT5 Forex"),
+  };
 }
 
 function listClosedHistoricalWeeksFromPerformanceRows(
@@ -237,21 +290,32 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   }
 
   const weekSelectorOptions = weekOptions.length > 0 ? ["all", ...weekOptions] : weekOptions;
-  const selectedWeek = resolveSelectedPerformanceWeek({
+  const resolvedSelectedWeek = resolveSelectedPerformanceWeek({
     weekParamValue,
     weekOptions: weekSelectorOptions,
     currentWeekOpenUtc: displayWeekOpenUtc,
   });
+  const selectedWeek =
+    weekParamValue == null && weekSelectorOptions.includes("all")
+      ? "all"
+      : resolvedSelectedWeek;
 
-  let botStrategies: Awaited<ReturnType<typeof readBotStrategySummaries>> = [];
+  let kataraktiSnapshots: Awaited<ReturnType<typeof readKataraktiMarketSnapshots>> = {
+    crypto_futures: null,
+    mt5_forex: null,
+  };
   try {
-    botStrategies = await readBotStrategySummaries();
+    kataraktiSnapshots = await readKataraktiMarketSnapshots();
   } catch (error) {
     console.error(
-      "Bot strategy summaries failed:",
+      "Katarakti snapshots failed:",
       error instanceof Error ? error.message : String(error),
     );
   }
+  const kataraktiGridPropsByMarket = buildKataraktiGridPropsByMarket({
+    snapshots: kataraktiSnapshots,
+    period: selectedWeek ?? "all",
+  });
 
   if (selectedWeek === "all") {
     const branchStartMs = perfNowMs();
@@ -434,7 +498,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             initialView={view}
             initialSystem={initialSystem}
             initialKataraktiMarket={initialKataraktiMarket}
-            botStrategies={botStrategies}
             initialStyle={initialStyle}
             universalGridProps={{
               combined: {
@@ -458,6 +521,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               showAllTime: false,
             }}
             tieredGridPropsBySystem={tieredGridPropsBySystem}
+            kataraktiGridPropsByMarket={kataraktiGridPropsByMarket}
           />
         </div>
       </DashboardLayout>
@@ -851,7 +915,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           initialView={view}
           initialSystem={initialSystem}
           initialKataraktiMarket={initialKataraktiMarket}
-          botStrategies={botStrategies}
           initialStyle={initialStyle}
           universalGridProps={{
             combined: {
@@ -879,6 +942,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             showAllTime: false,
           }}
           tieredGridPropsBySystem={tieredGridPropsBySystem}
+          kataraktiGridPropsByMarket={kataraktiGridPropsByMarket}
         />
       </div>
     </DashboardLayout>

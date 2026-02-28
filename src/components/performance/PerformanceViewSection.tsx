@@ -8,13 +8,10 @@ import {
 } from "@/lib/performance/modelConfig";
 import type { PerformanceModel } from "@/lib/performanceLab";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
-import StrategyPerformanceSummary, {
-  type StrategySummary,
-  type StrategyMarket,
-} from "@/components/performance/StrategyPerformanceSummary";
 import PerformanceViewCards, {
   PERFORMANCE_VIEW_CARDS,
 } from "@/components/performance/PerformanceViewCards";
+import type { KataraktiMarket } from "@/lib/performance/kataraktiHistory";
 
 type PerformanceStyle = "universal" | "tiered" | "katarakti";
 
@@ -23,12 +20,12 @@ const TIERED_DISPLAY_MODELS: PerformanceModel[] = [
   "dealer",
   "commercial",
 ];
+const KATARAKTI_DISPLAY_MODELS: PerformanceModel[] = ["antikythera_v3"];
 
 type PerformanceViewSectionProps = {
   initialView: PerformanceView;
   initialSystem: PerformanceSystem;
-  initialKataraktiMarket: StrategyMarket;
-  botStrategies: StrategySummary[];
+  initialKataraktiMarket: KataraktiMarket;
   initialStyle?: PerformanceStyle;
   universalGridProps: Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined" | "perAsset"> & {
     combined: ComponentProps<typeof PerformanceGrid>["combined"];
@@ -41,21 +38,28 @@ type PerformanceViewSectionProps = {
       perAsset: ComponentProps<typeof PerformanceGrid>["perAsset"];
     }
   >>;
+  kataraktiGridPropsByMarket?: Partial<Record<
+    KataraktiMarket,
+    Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined" | "perAsset"> & {
+      combined: ComponentProps<typeof PerformanceGrid>["combined"];
+      perAsset: ComponentProps<typeof PerformanceGrid>["perAsset"];
+    }
+  >>;
 };
 
 export default function PerformanceViewSection({
   initialView,
   initialSystem,
   initialKataraktiMarket,
-  botStrategies,
   initialStyle = "universal",
   universalGridProps,
   tieredGridPropsBySystem,
+  kataraktiGridPropsByMarket,
 }: PerformanceViewSectionProps) {
   const [view, setView] = useState<PerformanceView>(initialView);
   const [system, setSystem] = useState<PerformanceSystem>(initialSystem);
   const [style, setStyle] = useState<PerformanceStyle>(initialStyle);
-  const [kataraktiMarket, setKataraktiMarket] = useState<StrategyMarket>(initialKataraktiMarket);
+  const [kataraktiMarket, setKataraktiMarket] = useState<KataraktiMarket>(initialKataraktiMarket);
 
   useEffect(() => {
     const onSystemChange = (event: Event) => {
@@ -71,7 +75,7 @@ export default function PerformanceViewSection({
       }
     };
     const onKataraktiMarketChange = (event: Event) => {
-      const custom = event as CustomEvent<StrategyMarket>;
+      const custom = event as CustomEvent<KataraktiMarket>;
       if (custom.detail === "crypto_futures" || custom.detail === "mt5_forex") {
         setKataraktiMarket(custom.detail);
       }
@@ -102,28 +106,23 @@ export default function PerformanceViewSection({
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
   }, [view, system, style, kataraktiMarket]);
 
-  const selectedBotStrategies = botStrategies.filter((strategy) => strategy.market === kataraktiMarket);
-
-  if (style === "katarakti") {
-    return (
-      <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-        {selectedBotStrategies.length > 0 ? (
-          <StrategyPerformanceSummary strategies={selectedBotStrategies} />
-        ) : (
-          <p className="text-sm text-[color:var(--muted)]">
-            No strategy snapshots are available for the selected Katarakti market yet.
-          </p>
-        )}
-      </section>
-    );
-  }
-
   const usingTiered = style === "tiered" && Boolean(tieredGridPropsBySystem?.[system]);
-  const baseGridProps = usingTiered
-    ? tieredGridPropsBySystem?.[system] ?? universalGridProps
-    : universalGridProps;
+  const usingKatarakti = style === "katarakti";
+  const baseGridProps = usingKatarakti
+    ? kataraktiGridPropsByMarket?.[kataraktiMarket] ?? {
+        ...universalGridProps,
+        combined: { ...universalGridProps.combined, models: [] },
+        perAsset: [],
+      }
+    : usingTiered
+      ? tieredGridPropsBySystem?.[system] ?? universalGridProps
+      : universalGridProps;
 
-  const activeModels = usingTiered ? TIERED_DISPLAY_MODELS : PERFORMANCE_SYSTEM_MODEL_MAP[system];
+  const activeModels = usingKatarakti
+    ? KATARAKTI_DISPLAY_MODELS
+    : usingTiered
+      ? TIERED_DISPLAY_MODELS
+      : PERFORMANCE_SYSTEM_MODEL_MAP[system];
   const modelSet = new Set(activeModels);
   const filteredCombined = {
     ...baseGridProps.combined,

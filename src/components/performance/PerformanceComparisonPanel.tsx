@@ -12,7 +12,11 @@ type ComparisonMetrics = {
   winRate: number;
   sharpe: number;
   avgWeekly: number;
-  trades?: number;
+  maxDrawdown: number | null;
+  trades: number;
+  tradeWinRate: number;
+  avgTrade: number | null;
+  profitFactor: number | null;
 };
 
 type ComparisonData = {
@@ -35,9 +39,20 @@ type ComparisonData = {
   };
 };
 
-function formatSignedUsd(value: number) {
-  const prefix = value >= 0 ? "+" : "-";
-  return `${prefix}$${Math.abs(value).toFixed(2)}`;
+function formatSignedPercent(value: number, digits = 2) {
+  const prefix = value >= 0 ? "+" : "";
+  return `${prefix}${value.toFixed(digits)}%`;
+}
+
+function formatPercentOrDash(value: number | null, digits = 2) {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `${value.toFixed(digits)}%`;
+}
+
+function formatProfitFactor(value: number | null) {
+  if (value === null || Number.isNaN(value)) return "—";
+  if (!Number.isFinite(value)) return "∞";
+  return value.toFixed(2);
 }
 
 export default function PerformanceComparisonPanel() {
@@ -48,6 +63,7 @@ export default function PerformanceComparisonPanel() {
   const requestedSystem = searchParams.get("system");
   const requestedStyle = searchParams.get("style");
   const requestedMarket = searchParams.get("market");
+  const requestedWeek = searchParams.get("week") ?? "all";
   const initialTab = requestedSystem === "v2" || requestedSystem === "v3" ? requestedSystem : "v1";
   const initialStyle: PerformanceStyle =
     requestedStyle === "tiered" || requestedStyle === "katarakti" ? requestedStyle : "universal";
@@ -59,8 +75,10 @@ export default function PerformanceComparisonPanel() {
 
   useEffect(() => {
     async function fetchData() {
+      setLoading(true);
+      setError(null);
       try {
-        const response = await fetch("/api/performance/comparison");
+        const response = await fetch(`/api/performance/comparison?week=${encodeURIComponent(requestedWeek)}`);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -77,21 +95,21 @@ export default function PerformanceComparisonPanel() {
       }
     }
     fetchData();
-  }, []);
+  }, [requestedWeek]);
 
   const universalMetrics = data?.universal ?? {
-    v1: data?.v1 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 },
-    v2: data?.v2 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 },
-    v3: data?.v3 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0 },
+    v1: data?.v1 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+    v2: data?.v2 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+    v3: data?.v3 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
   };
   const tieredMetrics = data?.tiered ?? {
-    v1: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
-    v2: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
-    v3: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
+    v1: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+    v2: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+    v3: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
   };
   const kataraktiMetrics = data?.katarakti ?? {
-    crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
-    mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
+    crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+    mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
   };
   const metricSet = activeStyle === "tiered" ? tieredMetrics : universalMetrics;
   const v1Metrics = metricSet.v1;
@@ -313,17 +331,29 @@ export default function PerformanceComparisonPanel() {
           <div className={badgeClass}>{activeBadge}</div>
         </div>
 
-        <div className="mb-4">
-          <div className={`text-2xl font-bold ${valueClass}`}>
-            {activeStyle === "katarakti"
-              ? formatSignedUsd(activeMetrics.totalReturn)
-              : `${activeMetrics.totalReturn >= 0 ? "+" : ""}${activeMetrics.totalReturn.toFixed(2)}%`}
+        <div className="mb-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3 text-[9px] uppercase tracking-[0.15em]">
+            <div>
+              <div className={labelClass}>Total Return</div>
+              <div className={`mt-1 text-sm font-semibold ${valueClass}`}>
+                {formatSignedPercent(activeMetrics.totalReturn)}
+              </div>
+            </div>
+            <div>
+              <div className={labelClass}>Max DD</div>
+              <div className={`mt-1 text-sm font-semibold ${valueClass}`}>
+                {formatPercentOrDash(activeMetrics.maxDrawdown)}
+              </div>
+            </div>
           </div>
-          <div className={`text-[10px] uppercase tracking-[0.2em] ${labelClass}`}>
-            {activeStyle === "katarakti" ? "Total PnL" : "Total Return"}
+          <div className={`text-center text-2xl font-bold ${valueClass}`}>
+            {formatSignedPercent(activeMetrics.totalReturn)}
+          </div>
+          <div className={`text-center text-[10px] uppercase tracking-[0.2em] ${labelClass}`}>
+            Total return
           </div>
           {activeStyle === "tiered" ? (
-            <div className={`mt-1 text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+            <div className={`text-center text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
               Scaled to universal margin
             </div>
           ) : null}
@@ -335,7 +365,15 @@ export default function PerformanceComparisonPanel() {
               {activeMetrics.winRate.toFixed(0)}%
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
-              Win Rate
+              Weekly Win
+            </div>
+          </div>
+          <div>
+            <div className={`text-sm font-semibold ${valueClass}`}>
+              {activeMetrics.weeks}
+            </div>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+              Weeks
             </div>
           </div>
           <div>
@@ -348,20 +386,49 @@ export default function PerformanceComparisonPanel() {
           </div>
           <div>
             <div className={`text-sm font-semibold ${valueClass}`}>
-              {activeStyle === "katarakti"
-                ? formatSignedUsd(activeMetrics.avgWeekly)
-                : `${activeMetrics.avgWeekly >= 0 ? "+" : ""}${activeMetrics.avgWeekly.toFixed(2)}%`}
+              {formatSignedPercent(activeMetrics.avgWeekly)}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
-              {activeStyle === "katarakti" ? "Avg Weekly PnL" : "Avg Weekly"}
+              Avg Weekly
+            </div>
+          </div>
+        </div>
+
+        <div className="my-3 h-px bg-[var(--panel-border)]/70" />
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <div className={`text-sm font-semibold ${valueClass}`}>
+              {activeMetrics.tradeWinRate.toFixed(1)}%
+            </div>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+              Trade Win
             </div>
           </div>
           <div>
             <div className={`text-sm font-semibold ${valueClass}`}>
-              {activeMetrics.trades ?? activeMetrics.weeks}
+              {activeMetrics.avgTrade !== null
+                ? formatSignedPercent(activeMetrics.avgTrade, 2)
+                : "—"}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
-              {activeStyle === "tiered" || activeStyle === "katarakti" ? "Trades" : "Weeks"}
+              Avg Trade
+            </div>
+          </div>
+          <div>
+            <div className={`text-sm font-semibold ${valueClass}`}>
+              {activeMetrics.trades}
+            </div>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+              Trades
+            </div>
+          </div>
+          <div>
+            <div className={`text-sm font-semibold ${valueClass}`}>
+              {formatProfitFactor(activeMetrics.profitFactor)}
+            </div>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+              Profit Factor
             </div>
           </div>
         </div>
