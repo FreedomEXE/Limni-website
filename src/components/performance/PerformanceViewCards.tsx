@@ -2,7 +2,13 @@
 
 import type { PerformanceView } from "@/lib/performance/pageState";
 
-const VIEWS: Array<{ id: PerformanceView; label: string; description: string }> = [
+export type ViewCardDefinition<T extends string> = {
+  id: T;
+  label: string;
+  description: string;
+};
+
+export const PERFORMANCE_VIEW_CARDS: Array<ViewCardDefinition<PerformanceView>> = [
   { id: "summary", label: "Summary", description: "Key metrics and model ranking." },
   { id: "simulation", label: "Simulation", description: "Trailing-stop and sizing perspective." },
   { id: "basket", label: "Basket", description: "See every pair, direction, and return." },
@@ -10,16 +16,29 @@ const VIEWS: Array<{ id: PerformanceView; label: string; description: string }> 
   { id: "notes", label: "Notes", description: "Weekly observations and takeaways." },
 ];
 
-export default function PerformanceViewCards({
+type PerformanceViewCardsProps<T extends string> = {
+  activeView: T;
+  onViewChange: (next: T) => void;
+  views: ReadonlyArray<ViewCardDefinition<T>>;
+};
+
+export default function PerformanceViewCards<T extends string>({
   activeView,
   onViewChange,
-}: {
-  activeView: PerformanceView;
-  onViewChange: (next: PerformanceView) => void;
-}) {
+  views,
+}: PerformanceViewCardsProps<T>) {
+  const mdColsClass =
+    views.length >= 5
+      ? "md:grid-cols-5"
+      : views.length === 4
+        ? "md:grid-cols-4"
+        : views.length === 3
+          ? "md:grid-cols-3"
+          : "md:grid-cols-2";
+
   return (
-    <div className="grid gap-3 md:grid-cols-5">
-      {VIEWS.map((view) => {
+    <div className={`grid gap-3 ${mdColsClass}`}>
+      {views.map((view) => {
         const selected = view.id === activeView;
         return (
           <button

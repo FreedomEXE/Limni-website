@@ -1,5 +1,7 @@
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import AutomationSectionCards from "@/components/automation/AutomationSectionCards";
+import AutomationResearchCards from "@/components/automation/AutomationResearchCards";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
 import WeekSelector from "@/components/accounts/WeekSelector";
 import QueryBuilder from "@/components/filters/QueryBuilder";
@@ -129,6 +131,9 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        <AutomationSectionCards active="research" />
+        <AutomationResearchCards active="symbols" />
+
         <header className="space-y-4">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">Research</h1>
         </header>

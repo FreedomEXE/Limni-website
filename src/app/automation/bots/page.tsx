@@ -14,6 +14,8 @@
 
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
+import AutomationSectionCards from "@/components/automation/AutomationSectionCards";
+import AutomationBotsCards from "@/components/automation/AutomationBotsCards";
 import { readBotState } from "@/lib/botState";
 import { readMt5Accounts } from "@/lib/mt5Store";
 
@@ -106,6 +108,9 @@ export default async function AutomationBotsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        <AutomationSectionCards active="bots" />
+        <AutomationBotsCards active="overview" />
+
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">
             Bots

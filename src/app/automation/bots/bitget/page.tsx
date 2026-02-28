@@ -13,6 +13,8 @@
 -----------------------------------------------*/
 
 import DashboardLayout from "@/components/DashboardLayout";
+import AutomationSectionCards from "@/components/automation/AutomationSectionCards";
+import AutomationBotsCards from "@/components/automation/AutomationBotsCards";
 import BitgetBotTabs from "@/components/bitget-bot/BitgetBotTabs";
 import LiveStateTab from "@/components/bitget-bot/LiveStateTab";
 import TradeHistoryTab from "@/components/bitget-bot/TradeHistoryTab";
@@ -59,6 +61,9 @@ export default async function BitgetBotPage({ searchParams }: PageProps) {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <AutomationSectionCards active="bots" />
+        <AutomationBotsCards active="bitget" />
+
         <header className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">
             Automation / Bots / Bitget

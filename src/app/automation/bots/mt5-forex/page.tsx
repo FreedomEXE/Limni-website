@@ -13,6 +13,8 @@
 -----------------------------------------------*/
 
 import DashboardLayout from "@/components/DashboardLayout";
+import AutomationSectionCards from "@/components/automation/AutomationSectionCards";
+import AutomationBotsCards from "@/components/automation/AutomationBotsCards";
 import Mt5ForexTabs from "@/components/mt5-forex/Mt5ForexTabs";
 import LiveStateTab from "@/components/mt5-forex/LiveStateTab";
 import TradeHistoryTab from "@/components/mt5-forex/TradeHistoryTab";
@@ -67,6 +69,9 @@ export default async function Mt5ForexBotPage({ searchParams }: PageProps) {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <AutomationSectionCards active="bots" />
+        <AutomationBotsCards active="katarakti" />
+
         <header className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">
             Automation / Bots / MT5 Forex

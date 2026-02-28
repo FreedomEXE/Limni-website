@@ -3,7 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
@@ -30,6 +30,7 @@ type NavItem = {
 type SubNavItem = {
   href: string;
   label: string;
+  matchPrefixes?: string[];
 };
 
 const TOP_LEVEL: NavItem[] = [
@@ -96,18 +97,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const viewParam = activeSection === "accounts" ? accountViewFromUrl : viewParamRaw;
   const [rootLockSection, setRootLockSection] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [accountViewOverride, setAccountViewOverride] = useState<AccountPageView | null>(null);
   const navMode: "root" | "section" =
     activeSection && rootLockSection === activeSection ? "root" : activeSection ? "section" : "root";
-  const effectiveAccountView = accountViewOverride ?? accountViewFromUrl;
-
-  useEffect(() => {
-    if (activeSection !== "accounts") {
-      setAccountViewOverride(null);
-      return;
-    }
-    setAccountViewOverride(accountViewFromUrl);
-  }, [accountViewFromUrl, activeSection, pathname]);
+  const effectiveAccountView = accountViewFromUrl;
 
   const accountBasePath = useMemo(() => {
     if (pathname.startsWith("/accounts/connected/")) {
@@ -119,7 +111,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return "/accounts";
   }, [pathname]);
 
-  const subNavItems = useMemo<SubNavItem[]>(() => {
+  const subNavItems: SubNavItem[] = (() => {
     if (!activeSection) return [];
     if (activeSection === "data") {
       return [
@@ -139,12 +131,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
     if (activeSection === "automation") {
       return [
-        { href: "/automation/bots", label: "Bots" },
-        { href: "/automation/research/lab", label: "Research · Lab" },
-        { href: "/automation/research/universal", label: "Research · Universal" },
-        { href: "/automation/research/baskets", label: "Research · Baskets" },
-        { href: "/automation/research/symbols", label: "Research · Symbols" },
-        { href: "/automation/research/bank", label: "Research · Bank" },
+        {
+          href: "/automation/bots",
+          label: "Bots",
+          matchPrefixes: ["/automation/bots", "/automation/solana-meme-bot"],
+        },
+        {
+          href: "/automation/research",
+          label: "Research",
+          matchPrefixes: ["/automation/research"],
+        },
       ];
     }
     if (activeSection === "accounts") {
@@ -168,7 +164,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       return [{ href: "/status", label: "System Status" }];
     }
     return [];
-  }, [activeSection, accountBasePath]);
+  })();
 
   const handleOpenSection = (sectionKey: string) => {
     setRootLockSection(null);
@@ -194,10 +190,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const handleAccountViewChange = (nextView: AccountPageView) => {
     setMobileOpen(false);
-    setAccountViewOverride(nextView);
-    const url = new URL(window.location.href);
-    url.searchParams.set("view", nextView);
-    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", nextView);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     window.dispatchEvent(new CustomEvent("accounts-view-change", { detail: nextView }));
   };
 
@@ -289,7 +284,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 : null;
           const resolvedViewParam =
             activeSection === "accounts" ? effectiveAccountView : viewParam;
-          const isActive = isActiveHref(item.href, pathname, resolvedViewParam, defaultView);
+          const isActive =
+            item.matchPrefixes && item.matchPrefixes.length > 0
+              ? item.matchPrefixes.some((prefix) => pathname.startsWith(prefix))
+              : isActiveHref(item.href, pathname, resolvedViewParam, defaultView);
           const { path: itemPath, params: itemParams } = parseHref(item.href);
           const accountItemView = itemParams.get("view");
           const isLocalAccountToggle =

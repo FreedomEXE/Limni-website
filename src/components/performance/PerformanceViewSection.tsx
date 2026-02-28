@@ -8,7 +8,9 @@ import {
 } from "@/lib/performance/modelConfig";
 import type { PerformanceModel } from "@/lib/performanceLab";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
-import PerformanceViewCards from "@/components/performance/PerformanceViewCards";
+import PerformanceViewCards, {
+  PERFORMANCE_VIEW_CARDS,
+} from "@/components/performance/PerformanceViewCards";
 
 type PerformanceStyle = "universal" | "tiered";
 
@@ -96,7 +98,11 @@ export default function PerformanceViewSection({
 
   return (
     <>
-      <PerformanceViewCards activeView={view} onViewChange={setView} />
+      <PerformanceViewCards
+        activeView={view}
+        onViewChange={setView}
+        views={PERFORMANCE_VIEW_CARDS}
+      />
       <PerformanceGrid
         {...baseGridProps}
         combined={filteredCombined}
