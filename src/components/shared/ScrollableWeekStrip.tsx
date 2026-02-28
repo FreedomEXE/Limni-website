@@ -35,7 +35,7 @@ type ScrollableWeekStripProps = {
   labelFormatter?: (value: WeekOption) => string;
   /** URL search param name for the week. Default "week". */
   paramName?: string;
-  /** Additional params to preserve across navigation. */
+  /** Optional whitelist of params to preserve. Defaults to preserving all existing params. */
   preserveParams?: string[];
   /** If true, calls router.replace instead of router.push. Default false. */
   replaceState?: boolean;
@@ -47,7 +47,10 @@ type ScrollableWeekStripProps = {
 
 function formatWeekLabel(week: WeekOption, labelMode: "week_open_utc" | "monday_et"): string {
   if (week === "all") return "All Time";
-  const parsed = DateTime.fromISO(week, { zone: "utc" });
+  const parsed =
+    labelMode === "monday_et"
+      ? DateTime.fromISO(week, { zone: "America/New_York" })
+      : DateTime.fromISO(week, { zone: "utc" });
   if (!parsed.isValid) return week;
   const labelDate =
     labelMode === "monday_et"
@@ -131,16 +134,21 @@ export default function ScrollableWeekStrip({
       onChange(week);
       return;
     }
-    const params = new URLSearchParams(window.location.search);
-    params.set(paramName, week);
-    if (preserveParams) {
-      const current = new URLSearchParams(window.location.search);
+    const current = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams();
+    if (preserveParams && preserveParams.length > 0) {
       for (const key of preserveParams) {
         const val = current.get(key);
         if (val) params.set(key, val);
       }
+    } else {
+      current.forEach((value, key) => {
+        params.append(key, value);
+      });
     }
-    const url = `${pathname}?${params.toString()}`;
+    params.set(paramName, week);
+    const qs = params.toString();
+    const url = qs.length > 0 ? `${pathname}?${qs}` : pathname;
     if (replaceState) {
       router.replace(url, { scroll: false });
     } else {
@@ -153,12 +161,12 @@ export default function ScrollableWeekStrip({
   };
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={`flex min-w-0 flex-1 items-center gap-2 ${className}`}>
       <span className="shrink-0 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
         {label}
       </span>
 
-      <div className="relative flex min-w-0 flex-1 items-center">
+      <div className="relative min-w-0 flex-1">
         {canScrollLeft ? (
           <button
             type="button"
@@ -174,7 +182,7 @@ export default function ScrollableWeekStrip({
 
         <div
           ref={scrollRef}
-          className="scrollbar-hidden flex gap-1.5 overflow-x-auto scroll-smooth px-1 py-1"
+          className="scrollbar-hidden flex w-full gap-1.5 overflow-x-auto scroll-smooth px-1 py-1"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {options.map((week) => {

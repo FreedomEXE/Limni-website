@@ -97,6 +97,7 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
               selected={selectedWeek ?? weekOptions[0] ?? ""}
               currentWeek={currentWeekOpenUtc}
               label="Week"
+              preserveParams={["mode"]}
             />
             <DebugReadout
               items={[

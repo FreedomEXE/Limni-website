@@ -125,9 +125,9 @@ function MiniHistogram({ returns }: { returns: Array<{ pair: string; percent: nu
   const max = Math.max(...sample.map((item) => Math.abs(item.percent)), 0.1);
   return (
     <div className="flex h-10 items-end gap-1">
-      {sample.map((item) => (
+      {sample.map((item, index) => (
         <div
-          key={item.pair}
+          key={`${item.pair}-${index}`}
           className={`${item.percent >= 0 ? "bg-emerald-400" : "bg-rose-400"} flex-1 rounded-sm`}
           style={{ height: `${Math.max(10, (Math.abs(item.percent) / max) * 100)}%` }}
         />
@@ -202,6 +202,22 @@ export default function PerformanceModal({
     calibration && calibration.accountSize
       ? (calibration.accountSize * performance.percent) / 100
       : null;
+  const basketDetails =
+    performance.pair_details.length > 0
+      ? performance.pair_details
+      : performance.returns.map((row) => ({
+          pair: row.pair,
+          direction:
+            row.percent > 0
+              ? ("LONG" as const)
+              : row.percent < 0
+                ? ("SHORT" as const)
+                : ("NEUTRAL" as const),
+          reason: ["Weekly aggregate return"],
+          percent: row.percent,
+        }));
+  const basketHeading = "Basket Breakdown";
+  const basketRowTypeLabel = performance.pair_details.length > 0 ? "trade" : "weekly";
 
   const saveNotes = () => {
     localStorage.setItem(notesKey, notes);
@@ -352,7 +368,7 @@ export default function PerformanceModal({
               <HomeCard
                 title="Basket"
                 icon="M"
-                description="All pairs in the basket with directions and returns"
+                description="Row-level basket breakdown with directions and returns"
                 onClick={() => setView("basket")}
               />
               <HomeCard
@@ -557,16 +573,20 @@ export default function PerformanceModal({
             <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  All Pairs
+                  {basketHeading}
                 </p>
                 <span className="text-xs text-[color:var(--muted)]">
-                  {performance.pair_details.length} pairs
+                  {basketDetails.length} {basketRowTypeLabel} rows
                 </span>
               </div>
               <div className="mt-3 max-h-[50vh] space-y-3 overflow-y-auto text-xs text-[color:var(--muted)]">
-                {performance.pair_details.map((detail) => (
+                {basketDetails.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2">
+                    No breakdown rows available for this period.
+                  </div>
+                ) : basketDetails.map((detail, index) => (
                   <div
-                    key={detail.pair}
+                    key={`${detail.pair}-${detail.direction}-${index}`}
                     className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"
                   >
                     <div className="flex items-center justify-between text-sm">
@@ -592,7 +612,7 @@ export default function PerformanceModal({
                     </div>
                     <ul className="mt-1 text-[11px] text-[color:var(--muted)]">
                       {detail.reason.map((item) => (
-                        <li key={`${detail.pair}-${item}`}>- {item}</li>
+                        <li key={`${detail.pair}-${index}-${item}`}>- {item}</li>
                       ))}
                     </ul>
                   </div>

@@ -24,7 +24,6 @@ import type { SentimentAggregate } from "@/lib/sentiment/types";
 import {
   listPerformanceWeeks,
   readPerformanceSnapshotsByWeek,
-  weekLabelFromOpen,
 } from "@/lib/performanceSnapshots";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";

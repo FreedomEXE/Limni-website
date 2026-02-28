@@ -1,13 +1,12 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import SignalHeatmap from "@/components/SignalHeatmap";
-import ViewToggle from "@/components/ViewToggle";
 import SummaryCards from "@/components/SummaryCards";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { ANTIKYTHERA_MAX_SIGNALS } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import { getAggregatesForWeekStartWithBackfill, getLatestAggregatesLocked } from "@/lib/sentiment/store";
-import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
+import { formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { listPerformanceWeeks, readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import { DateTime } from "luxon";

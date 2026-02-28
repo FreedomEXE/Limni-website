@@ -60,8 +60,8 @@ export default function AntikytheraControls({
   };
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
         <ScrollableWeekStrip
           options={availableDates}
           selected={selectedReportDate ?? availableDates[0] ?? ""}
@@ -69,6 +69,7 @@ export default function AntikytheraControls({
           paramName="report"
           preserveParams={["asset", "view"]}
           labelFormatter={reportDateLabel}
+          className="w-full"
         />
         <div className="flex items-center gap-2">
           <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -88,7 +89,9 @@ export default function AntikytheraControls({
           </select>
         </div>
       </div>
-      <ViewToggle value={view} items={viewItems} />
+      <div className="shrink-0">
+        <ViewToggle value={view} items={viewItems} />
+      </div>
     </div>
   );
 }

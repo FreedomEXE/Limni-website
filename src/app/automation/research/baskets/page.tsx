@@ -121,6 +121,7 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
               selected={selectedWeek ?? weekOptions[0]?.value ?? ""}
               currentWeek={currentWeekOpenUtc}
               label="Week"
+              preserveParams={["model", "mode"]}
             />
             <DebugReadout
               items={[

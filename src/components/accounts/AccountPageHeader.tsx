@@ -54,13 +54,14 @@ export default function AccountPageHeader(props: AccountPageHeaderProps) {
         {statusBadge}
         {sourceBadge}
       </div>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
         <ScrollableWeekStrip
           options={weekOptions}
           selected={selectedWeek}
           currentWeek={currentWeek}
           labelMode={weekLabelMode}
           label="Period"
+          preserveParams={["view"]}
         />
         <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
           Last refresh {lastSync ?? "—"}

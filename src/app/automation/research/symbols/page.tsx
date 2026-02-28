@@ -155,6 +155,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
               selected={selectedWeek ?? weekOptions[0]?.value ?? ""}
               currentWeek={currentWeekOpenUtc}
               label="Week"
+              preserveParams={["model", "mode", "symbols"]}
             />
             <DebugReadout
               items={[

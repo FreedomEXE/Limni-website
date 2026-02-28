@@ -21,6 +21,14 @@ export type KataraktiWeeklySnapshot = {
   grossLossUsd: number;
 };
 
+export type KataraktiTradeDetail = {
+  weekOpenUtc: string;
+  pair: string;
+  direction: "LONG" | "SHORT" | "NEUTRAL";
+  percent: number | null;
+  reason: string[];
+};
+
 export type KataraktiMarketSnapshot = {
   market: KataraktiMarket;
   sourcePath: string;
@@ -38,6 +46,7 @@ export type KataraktiMarketSnapshot = {
   profitFactor: number | null;
   maxDrawdownPct: number | null;
   sharpe: number;
+  tradeDetailsByWeek: Record<string, KataraktiTradeDetail[]>;
 };
 
 export type KataraktiHistoryByMarket = Record<KataraktiMarket, KataraktiMarketSnapshot | null>;
@@ -81,6 +90,19 @@ type Mt5TradeLogRow = {
   id?: unknown;
   weekOpenUtc?: unknown;
   week_open_utc?: unknown;
+  pair?: unknown;
+  symbol?: unknown;
+  direction?: unknown;
+  entrySource?: unknown;
+  entry_source?: unknown;
+  exitReason?: unknown;
+  exit_reason?: unknown;
+  exitStep?: unknown;
+  exit_step?: unknown;
+  entryTimeUtc?: unknown;
+  entry_time_utc?: unknown;
+  entryTimeMs?: unknown;
+  entry_time_ms?: unknown;
   exitTimeMs?: unknown;
   exit_time_ms?: unknown;
   exitTimeUtc?: unknown;
@@ -210,6 +232,28 @@ function directionAdjustedReturnPct(direction: string, entryPrice: number, exitP
   return ((exitPrice - entryPrice) / entryPrice) * 100;
 }
 
+function normalizeDirection(value: unknown): "LONG" | "SHORT" | "NEUTRAL" {
+  if (value === "LONG" || value === "SHORT" || value === "NEUTRAL") {
+    return value;
+  }
+  return "NEUTRAL";
+}
+
+function normalizePairLabel(value: unknown, fallback: string) {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim().toUpperCase();
+  if (!trimmed) return fallback;
+  if (trimmed.includes("USD")) return trimmed;
+  if (trimmed.length <= 6) return `${trimmed}USD`;
+  return trimmed;
+}
+
+function buildReasonList(items: Array<string | null | undefined>) {
+  return items
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item) => item.length > 0);
+}
+
 function sortWeeksAsc<T extends { weekOpenUtc: string }>(rows: T[]) {
   return [...rows].sort(
     (left, right) =>
@@ -308,6 +352,7 @@ function toSnapshotFromWeekly(options: {
   sourcePath: string;
   selectedVariantId: string | null;
   weekly: KataraktiWeeklySnapshot[];
+  tradeDetailsByWeek?: Record<string, KataraktiTradeDetail[]>;
   totalReturnPctOverride?: number | null;
   maxDrawdownOverride?: number | null;
   startingEquityUsdOverride?: number | null;
@@ -332,6 +377,30 @@ function toSnapshotFromWeekly(options: {
       ? computedMaxDrawdown
       : options.maxDrawdownOverride ?? null;
   const winRatePct = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
+  const tradeDetailsByWeek = Object.fromEntries(
+    Object.entries(options.tradeDetailsByWeek ?? {})
+      .flatMap(([weekOpenUtc, details]) => {
+        const canonical = canonicalWeek(parseIsoUtc(weekOpenUtc));
+        if (!canonical || !Array.isArray(details) || details.length === 0) {
+          return [];
+        }
+        const normalizedDetails = details
+          .map((detail) => ({
+            weekOpenUtc: canonical,
+            pair: typeof detail.pair === "string" && detail.pair.trim().length > 0
+              ? detail.pair.trim()
+              : "TRADE",
+            direction: normalizeDirection(detail.direction),
+            percent: detail.percent,
+            reason: buildReasonList(detail.reason),
+          }))
+          .filter((detail) => Number.isFinite(detail.percent ?? 0) || detail.reason.length > 0);
+        if (normalizedDetails.length === 0) {
+          return [];
+        }
+        return [[canonical, normalizedDetails] as const];
+      }),
+  );
   return {
     market: options.market,
     sourcePath: options.sourcePath,
@@ -354,6 +423,7 @@ function toSnapshotFromWeekly(options: {
     profitFactor: computeProfitFactor(grossProfit, grossLoss),
     maxDrawdownPct,
     sharpe: computeSharpe(weeklyReturnsPct),
+    tradeDetailsByWeek,
   } satisfies KataraktiMarketSnapshot;
 }
 
@@ -361,6 +431,7 @@ function appendLiveWeeks(options: {
   market: KataraktiMarket;
   base: KataraktiMarketSnapshot | null;
   live: KataraktiWeeklySnapshot[];
+  liveTradeDetailsByWeek?: Record<string, KataraktiTradeDetail[]>;
 }) {
   if (options.live.length === 0) {
     return options.base;
@@ -385,12 +456,17 @@ function appendLiveWeeks(options: {
   const mergedSource = options.base
     ? `${options.base.sourcePath}+db:sim`
     : "db:sim";
+  const mergedTradeDetailsByWeek = {
+    ...(options.base?.tradeDetailsByWeek ?? {}),
+    ...(options.liveTradeDetailsByWeek ?? {}),
+  };
 
   return toSnapshotFromWeekly({
     market: options.market,
     sourcePath: mergedSource,
     selectedVariantId: options.base?.selectedVariantId ?? null,
     weekly: mergedWeekly,
+    tradeDetailsByWeek: mergedTradeDetailsByWeek,
     totalReturnPctOverride: mergedTotalReturn,
     maxDrawdownOverride: options.base?.maxDrawdownPct ?? null,
     startingEquityUsdOverride: null,
@@ -405,9 +481,16 @@ function getConfiguredCryptoBacktestStartBalanceUsd() {
 type CryptoTradeLogRow = {
   id?: unknown;
   strategy?: unknown;
+  symbol?: unknown;
+  direction?: unknown;
+  trigger?: unknown;
+  exit_reason?: unknown;
+  entry_time_utc?: unknown;
   week_open_utc?: unknown;
   exit_time_utc?: unknown;
   exitTimeUtc?: unknown;
+  entry_price?: unknown;
+  exit_price?: unknown;
   pnl_usd?: unknown;
   unlevered_pnl_pct?: unknown;
   balance_after_usd?: unknown;
@@ -416,10 +499,16 @@ type CryptoTradeLogRow = {
 type ParsedCryptoTrade = {
   id: number;
   strategy: string;
+  symbol: string;
+  direction: "LONG" | "SHORT" | "NEUTRAL";
+  trigger: string | null;
+  exitReason: string | null;
+  entryTimeUtc: string | null;
   weekOpenUtc: string;
   exitTimeUtc: string | null;
   pnlUsd: number;
   unleveredPnlPct: number | null;
+  returnPct: number | null;
   balanceAfterUsd: number | null;
 };
 
@@ -432,17 +521,72 @@ function parseCryptoTradeRows(rows: unknown[]): ParsedCryptoTrade[] {
     const weekOpenUtc = canonicalWeek(parseIsoUtc(row.week_open_utc));
     if (!weekOpenUtc) return [];
     const id = toInteger(row.id);
+    const symbol = normalizePairLabel(row.symbol, `TRADE_${id || "X"}`);
+    const direction = normalizeDirection(row.direction);
+    const trigger = typeof row.trigger === "string" ? row.trigger.trim() : null;
+    const exitReason = typeof row.exit_reason === "string" ? row.exit_reason.trim() : null;
+    const entryTimeUtc = parseIsoUtc(row.entry_time_utc);
     const exitTimeUtc = parseIsoUtc(row.exit_time_utc) ?? parseIsoUtc(row.exitTimeUtc);
+    const unleveredPnlPct = toNumber(row.unlevered_pnl_pct);
+    const entryPrice = toNumber(row.entry_price);
+    const exitPrice = toNumber(row.exit_price);
+    const returnPct =
+      unleveredPnlPct ??
+      (entryPrice !== null && exitPrice !== null
+        ? directionAdjustedReturnPct(direction, entryPrice, exitPrice)
+        : null);
     return [{
       id,
       strategy,
+      symbol,
+      direction,
+      trigger,
+      exitReason,
+      entryTimeUtc,
       weekOpenUtc,
       exitTimeUtc,
       pnlUsd: toNumber(row.pnl_usd) ?? 0,
-      unleveredPnlPct: toNumber(row.unlevered_pnl_pct),
+      unleveredPnlPct,
+      returnPct,
       balanceAfterUsd: toNumber(row.balance_after_usd),
     }];
   });
+}
+
+function buildCryptoTradeDetailsByWeek(
+  trades: ParsedCryptoTrade[],
+): Record<string, KataraktiTradeDetail[]> {
+  const sorted = [...trades].sort((left, right) => {
+    const leftTime = left.exitTimeUtc
+      ? new Date(left.exitTimeUtc).getTime()
+      : left.entryTimeUtc
+        ? new Date(left.entryTimeUtc).getTime()
+        : Number.POSITIVE_INFINITY;
+    const rightTime = right.exitTimeUtc
+      ? new Date(right.exitTimeUtc).getTime()
+      : right.entryTimeUtc
+        ? new Date(right.entryTimeUtc).getTime()
+        : Number.POSITIVE_INFINITY;
+    if (leftTime !== rightTime) return leftTime - rightTime;
+    return left.id - right.id;
+  });
+  const byWeek = new Map<string, KataraktiTradeDetail[]>();
+  for (const trade of sorted) {
+    const details = byWeek.get(trade.weekOpenUtc) ?? [];
+    details.push({
+      weekOpenUtc: trade.weekOpenUtc,
+      pair: trade.symbol,
+      direction: trade.direction,
+      percent: trade.returnPct,
+      reason: buildReasonList([
+        `Strategy ${trade.strategy}`,
+        trade.trigger ? `Trigger ${trade.trigger}` : null,
+        trade.exitReason ? `Exit ${trade.exitReason}` : null,
+      ]),
+    });
+    byWeek.set(trade.weekOpenUtc, details);
+  }
+  return Object.fromEntries(byWeek.entries());
 }
 
 function resolveCryptoStrategyName(trades: ParsedCryptoTrade[], variantKey: string): string | null {
@@ -511,7 +655,10 @@ function buildStaticDrawdownPctFromTradePnl(
 async function buildCryptoWeeklyFromTradeLog(options: {
   variantKey: string;
   runHistoryWeeks: string[];
-}): Promise<KataraktiWeeklySnapshot[] | null> {
+}): Promise<{
+  weekly: KataraktiWeeklySnapshot[];
+  tradeDetailsByWeek: Record<string, KataraktiTradeDetail[]>;
+} | null> {
   const tradeLogPath = process.env.KATARAKTI_CRYPTO_TRADE_LOG_PATH?.trim() || CRYPTO_TRADE_LOG_PATH;
   const rawRows = await readJsonFile<unknown[]>(tradeLogPath);
   if (!Array.isArray(rawRows) || rawRows.length === 0) {
@@ -592,7 +739,10 @@ async function buildCryptoWeeklyFromTradeLog(options: {
     weekStartBalance += weekPnlUsd;
   }
 
-  return weekly;
+  return {
+    weekly,
+    tradeDetailsByWeek: buildCryptoTradeDetailsByWeek(strategyTrades),
+  };
 }
 
 function buildCryptoWeeklyFromSummary(rows: CryptoWeeklySummaryRow[]): KataraktiWeeklySnapshot[] {
@@ -824,13 +974,15 @@ async function readCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | nu
     ? toNumber(latestRun.max_dd_pct[variantKey])
     : null;
 
-  let weeklyFromFiles =
-    await buildCryptoWeeklyFromTradeLog({
-      variantKey,
-      runHistoryWeeks,
-    });
+  const tradeLogSnapshot = await buildCryptoWeeklyFromTradeLog({
+    variantKey,
+    runHistoryWeeks,
+  });
+  let weeklyFromFiles = tradeLogSnapshot?.weekly ?? null;
+  let tradeDetailsByWeekFromFiles = tradeLogSnapshot?.tradeDetailsByWeek ?? {};
   if (!weeklyFromFiles || weeklyFromFiles.length === 0) {
     weeklyFromFiles = buildCryptoWeeklyFromSummary(summaryRows);
+    tradeDetailsByWeekFromFiles = {};
   }
 
   const fileSnapshot =
@@ -840,6 +992,7 @@ async function readCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | nu
           sourcePath: weeklySummaryPath,
           selectedVariantId: variantKey,
           weekly: weeklyFromFiles,
+          tradeDetailsByWeek: tradeDetailsByWeekFromFiles,
           totalReturnPctOverride: runHistoryReturnPct,
           maxDrawdownOverride: runHistoryDrawdownPct,
           startingEquityUsdOverride: null,
@@ -908,6 +1061,78 @@ async function readMt5Report() {
   return null;
 }
 
+function buildMt5TradeDetailsByWeek(
+  trades: Mt5TradeLogRow[],
+): Record<string, KataraktiTradeDetail[]> {
+  const parsed = trades.flatMap((trade, index) => {
+    const rawWeek = parseIsoUtc(trade.weekOpenUtc) ?? parseIsoUtc(trade.week_open_utc);
+    const weekOpenUtc = canonicalWeek(rawWeek);
+    if (!weekOpenUtc) {
+      return [];
+    }
+    const pair = normalizePairLabel(
+      trade.pair ?? trade.symbol,
+      `TRADE_${toInteger(trade.id) || index + 1}`,
+    );
+    const direction = normalizeDirection(trade.direction);
+    const percent =
+      toNumber(trade.returnPctOnEntryEquity) ??
+      toNumber(trade.return_pct_on_entry_equity);
+    const entryTimeMs = toNumber(trade.entryTimeMs) ?? toNumber(trade.entry_time_ms);
+    const exitTimeMs = toNumber(trade.exitTimeMs) ?? toNumber(trade.exit_time_ms);
+    const entryTimeUtc = parseIsoUtc(trade.entryTimeUtc) ?? parseIsoUtc(trade.entry_time_utc);
+    const exitTimeUtc = parseIsoUtc(trade.exitTimeUtc) ?? parseIsoUtc(trade.exit_time_utc);
+    const sortTimeMs =
+      (exitTimeMs && Number.isFinite(exitTimeMs) ? exitTimeMs : null) ??
+      (entryTimeMs && Number.isFinite(entryTimeMs) ? entryTimeMs : null) ??
+      (exitTimeUtc ? new Date(exitTimeUtc).getTime() : null) ??
+      (entryTimeUtc ? new Date(entryTimeUtc).getTime() : null) ??
+      Number.POSITIVE_INFINITY;
+    return [{
+      weekOpenUtc,
+      sortTimeMs,
+      detail: {
+        weekOpenUtc,
+        pair,
+        direction,
+        percent,
+        reason: buildReasonList([
+          typeof trade.entrySource === "string"
+            ? `Source ${trade.entrySource}`
+            : typeof trade.entry_source === "string"
+              ? `Source ${trade.entry_source}`
+              : null,
+          typeof trade.exitReason === "string"
+            ? `Exit ${trade.exitReason}`
+            : typeof trade.exit_reason === "string"
+              ? `Exit ${trade.exit_reason}`
+              : null,
+          typeof trade.exitStep === "string"
+            ? `Step ${trade.exitStep}`
+            : typeof trade.exit_step === "string"
+              ? `Step ${trade.exit_step}`
+              : null,
+        ]),
+      } satisfies KataraktiTradeDetail,
+    }];
+  });
+
+  const grouped = new Map<string, Array<{ sortTimeMs: number; detail: KataraktiTradeDetail }>>();
+  for (const row of parsed) {
+    const items = grouped.get(row.weekOpenUtc) ?? [];
+    items.push({ sortTimeMs: row.sortTimeMs, detail: row.detail });
+    grouped.set(row.weekOpenUtc, items);
+  }
+
+  const ordered = Array.from(grouped.entries()).map(([weekOpenUtc, items]) => [
+    weekOpenUtc,
+    items
+      .sort((left, right) => left.sortTimeMs - right.sortTimeMs)
+      .map((item) => item.detail),
+  ] as const);
+  return Object.fromEntries(ordered);
+}
+
 async function readMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
   const loaded = await readMt5Report();
   const preferredVariantId = process.env.KATARAKTI_MT5_VARIANT_ID?.trim() || PINNED_MT5_VARIANT_ID;
@@ -947,11 +1172,15 @@ async function readMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
       const headlineTotalReturn = toNumber(selected.headline?.total_return_pct);
       const headlineMaxDd = toNumber(selected.headline?.max_drawdown_pct);
       const reportStartingEquity = toNumber(loaded.report.config?.starting_equity_usd);
+      const tradeDetailsByWeek = buildMt5TradeDetailsByWeek(
+        Array.isArray(selected.trades) ? selected.trades : [],
+      );
       fileSnapshot = toSnapshotFromWeekly({
         market: "mt5_forex",
         sourcePath: loaded.sourcePath,
         selectedVariantId: selected.id ? String(selected.id) : preferredVariantId,
         weekly: weeklyFromFiles,
+        tradeDetailsByWeek,
         totalReturnPctOverride: headlineTotalReturn,
         maxDrawdownOverride: headlineMaxDd,
         startingEquityUsdOverride: reportStartingEquity,

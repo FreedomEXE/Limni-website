@@ -17,7 +17,6 @@ import { buildKataraktiPeriodMetrics } from "@/lib/performance/kataraktiMetrics"
 const V1_MODELS: PerformanceModel[] = PERFORMANCE_V1_MODELS;
 const V2_MODELS: PerformanceModel[] = PERFORMANCE_V2_MODELS;
 const V3_MODELS: PerformanceModel[] = PERFORMANCE_V3_MODELS;
-const COMPARISON_WEEKS = 52;
 const SNAPSHOT_SCAN_LIMIT = 1200;
 
 type ComparisonMetrics = {

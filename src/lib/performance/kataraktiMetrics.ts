@@ -4,6 +4,7 @@ import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import type {
   KataraktiMarketSnapshot,
+  KataraktiTradeDetail,
   KataraktiWeeklySnapshot,
 } from "@/lib/performance/kataraktiHistory";
 
@@ -46,6 +47,11 @@ function normalizeWeek(weekOpenUtc: string): string {
 function resolveSelectedWeek(period: KataraktiPeriodValue): string | null {
   if (!period || period === "all") return null;
   return normalizeWeek(period);
+}
+
+function buildTradeReturnLabel(trade: KataraktiTradeDetail, index: number) {
+  const suffix = trade.direction === "NEUTRAL" ? `#${index + 1}` : trade.direction;
+  return `${trade.pair} ${suffix}`;
 }
 
 export function selectKataraktiWeeks(
@@ -141,16 +147,21 @@ export function buildKataraktiModelPerformance(
   snapshot: KataraktiMarketSnapshot,
   period: KataraktiPeriodValue,
 ): ModelPerformance | null {
+  const selectedWeek = resolveSelectedWeek(period);
   const weeks = selectKataraktiWeeks(snapshot, period);
   if (weeks.length === 0) {
     return null;
   }
   const metrics = buildKataraktiPeriodMetrics(snapshot, period);
-  const returns = weeks.map((week) => ({
+
+  const selectedWeekTrades =
+    selectedWeek !== null ? snapshot.tradeDetailsByWeek[selectedWeek] ?? [] : [];
+
+  const weeklyReturns = weeks.map((week) => ({
     pair: weekLabelFromOpen(week.weekOpenUtc),
     percent: week.returnPct,
   }));
-  const pairDetails = weeks.map((week) => ({
+  const weeklyPairDetails = weeks.map((week) => ({
     pair: weekLabelFromOpen(week.weekOpenUtc),
     direction:
       week.returnPct > 0 ? ("LONG" as const) : week.returnPct < 0 ? ("SHORT" as const) : ("NEUTRAL" as const),
@@ -161,12 +172,39 @@ export function buildKataraktiModelPerformance(
     ],
     percent: week.returnPct,
   }));
+  const tradeReturns = selectedWeekTrades.flatMap((trade, index) =>
+    typeof trade.percent === "number" && Number.isFinite(trade.percent)
+      ? [{
+          pair: buildTradeReturnLabel(trade, index),
+          percent: trade.percent,
+        }]
+      : [],
+  );
+
+  const returns =
+    selectedWeek !== null && selectedWeekTrades.length > 0
+      ? tradeReturns
+      : weeklyReturns;
+  const pairDetails =
+    selectedWeek !== null && selectedWeekTrades.length > 0
+      ? selectedWeekTrades
+      : weeklyPairDetails;
+  const pricedCount =
+    selectedWeek !== null && selectedWeekTrades.length > 0
+      ? selectedWeekTrades.filter(
+          (trade) => typeof trade.percent === "number" && Number.isFinite(trade.percent),
+        ).length
+      : returns.length;
+  const totalCount =
+    selectedWeek !== null && selectedWeekTrades.length > 0
+      ? selectedWeekTrades.length
+      : returns.length;
 
   return {
     model: KATARAKTI_CARD_MODEL,
     percent: metrics.totalReturnPct,
-    priced: returns.length,
-    total: returns.length,
+    priced: pricedCount,
+    total: totalCount,
     note: snapshot.selectedVariantId
       ? `Katarakti variant ${snapshot.selectedVariantId}`
       : "Katarakti snapshot",

@@ -26,13 +26,6 @@ function pickParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function weekLabel(weekOpenUtc: string) {
-  const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).setZone("America/Toronto");
-  if (!parsed.isValid) return weekOpenUtc;
-  const monday = parsed.weekday === 7 ? parsed.plus({ days: 1 }).startOf("day") : parsed.startOf("day");
-  return `Week of ${monday.toFormat("MMM dd, yyyy")}`;
-}
-
 function eventMs(event: NewsEvent) {
   if (!event.datetime_utc) return null;
   const ms = Date.parse(event.datetime_utc);

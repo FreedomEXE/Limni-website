@@ -31,7 +31,7 @@ import {
 } from "@/lib/performanceSnapshots";
 import { computeModelPerformance } from "@/lib/performanceLab";
 import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
-import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
+import { formatDateTimeET, latestIso } from "@/lib/time";
 import { simulateTrailingForGroupsFromRows } from "@/lib/universalBasket";
 import { getCanonicalWeekOpenUtc, getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
@@ -57,10 +57,6 @@ type PerformancePageProps = {
     | Record<string, string | string[] | undefined>
     | Promise<Record<string, string | string[] | undefined>>;
 };
-
-function formatWeekOption(value: string) {
-  return weekLabelFromOpen(value);
-}
 
 function resolvePerformanceStyle(value: string | null | undefined): "universal" | "tiered" | "katarakti" {
   if (value === "tiered" || value === "katarakti") return value;
@@ -477,6 +473,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                   selected={selectedWeek ?? weekOptions[0]}
                   currentWeek={displayWeekOpenUtc}
                   label="Week"
+                  preserveParams={["view", "system", "style", "market", "report"]}
                   replaceState
                 />
               ) : (
@@ -879,6 +876,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 selected={selectedWeek ?? weekOptions[0]}
                 currentWeek={displayWeekOpenUtc}
                 label="Week"
+                preserveParams={["view", "system", "style", "market", "report"]}
                 replaceState
               />
             ) : reportOptions.length > 0 ? (
@@ -887,6 +885,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 selected={selectedReport ?? reportOptions[0]}
                 label="Report"
                 paramName="report"
+                preserveParams={["view", "system", "style", "market", "week"]}
                 replaceState
               />
             ) : (

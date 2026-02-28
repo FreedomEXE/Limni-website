@@ -207,9 +207,9 @@ function MiniHistogram({ returns }: { returns: Array<{ pair: string; percent: nu
   const max = Math.max(...sample.map((item) => Math.abs(item.percent)), 0.1);
   return (
     <div className="flex h-10 items-end gap-1">
-      {sample.map((item) => (
+      {sample.map((item, index) => (
         <div
-          key={item.pair}
+          key={`${item.pair}-${index}`}
           className={`${item.percent >= 0 ? "bg-emerald-400" : "bg-rose-400"} flex-1 rounded-sm`}
           style={{ height: `${Math.max(10, (Math.abs(item.percent) / max) * 100)}%` }}
         />
@@ -251,7 +251,25 @@ function PerformanceCard({
     calibrationSize && Number.isFinite(calibrationSize)
       ? (calibrationSize * performance.percent) / 100
       : null;
-  const topPairs = performance.pair_details.slice(0, 4);
+  const hasDetailedRows = performance.pair_details.length > 0;
+  const rowCount = hasDetailedRows
+    ? performance.pair_details.length
+    : performance.returns.length;
+  const rowTypeLabel = hasDetailedRows ? "trade" : "weekly";
+  const topRows =
+    hasDetailedRows
+      ? performance.pair_details.slice(0, 4)
+      : performance.returns.slice(0, 4).map((item) => ({
+          pair: item.pair,
+          direction:
+            item.percent > 0
+              ? ("LONG" as const)
+              : item.percent < 0
+                ? ("SHORT" as const)
+                : ("NEUTRAL" as const),
+          percent: item.percent,
+          reason: ["Weekly aggregate return"],
+        }));
   return (
     <button
       type="button"
@@ -341,19 +359,19 @@ function PerformanceCard({
       {view === "basket" ? (
         <div className="mt-4 space-y-2 text-xs text-[color:var(--muted)]">
           <div className="flex items-center justify-between">
-            <span className="uppercase tracking-[0.2em]">Top pairs</span>
-            <span>{performance.priced}/{performance.total} priced</span>
+            <span className="uppercase tracking-[0.2em]">Breakdown</span>
+            <span>{rowCount} {rowTypeLabel} rows</span>
           </div>
-          {topPairs.length === 0 ? (
+          {topRows.length === 0 ? (
             <div className="rounded-lg border border-dashed border-[var(--panel-border)] px-3 py-2 text-[color:var(--muted)]">
-              No pair details available.
+              No breakdown rows available.
             </div>
           ) : (
-            topPairs.map((pair) => (
-              <div key={`${pair.pair}-${pair.direction}`} className="flex items-center justify-between">
+            topRows.map((pair, index) => (
+              <div key={`${pair.pair}-${pair.direction}-${index}`} className="flex items-center justify-between">
                 <span className="font-semibold text-[var(--foreground)]">{pair.pair}</span>
                 <span className={pair.direction === "LONG" ? "text-emerald-600" : pair.direction === "SHORT" ? "text-rose-600" : ""}>
-                  {pair.direction}
+                  {pair.direction === "NEUTRAL" ? formatPercent(pair.percent ?? 0) : pair.direction}
                 </span>
               </div>
             ))
