@@ -650,6 +650,80 @@ async function readJsonFile<T>(relativePath: string): Promise<T | null> {
   }
 }
 
+type SimWeeklyRow = {
+  week_open_utc: Date | string;
+  return_pct: number | string;
+  trades: number | string;
+  wins: number | string;
+  losses: number | string;
+  static_drawdown_pct: number | string;
+  gross_profit_pct: number | string;
+  gross_loss_pct: number | string;
+};
+
+async function readSimWeeklyFromDb(market: KataraktiMarket): Promise<KataraktiWeeklySnapshot[]> {
+  const rows = await safeQuery<SimWeeklyRow>(
+    `SELECT
+       week_open_utc,
+       return_pct,
+       trades,
+       wins,
+       losses,
+       static_drawdown_pct,
+       gross_profit_pct,
+       gross_loss_pct
+     FROM katarakti_sim_weekly
+     WHERE market = $1
+     ORDER BY week_open_utc ASC`,
+    [market],
+  );
+
+  if (rows.length === 0) return [];
+  return sortWeeksAsc(
+    rows.flatMap((row) => {
+      const weekOpenUtc = canonicalWeek(
+        row.week_open_utc instanceof Date
+          ? row.week_open_utc.toISOString()
+          : parseIsoUtc(row.week_open_utc),
+      );
+      if (!weekOpenUtc) return [];
+      const returnPct = toNumber(row.return_pct) ?? 0;
+      const trades = toInteger(row.trades);
+      const wins = toInteger(row.wins);
+      const losses = toInteger(row.losses);
+      const grossProfitPct = toNumber(row.gross_profit_pct) ?? (returnPct > 0 ? returnPct : 0);
+      const grossLossPct = toNumber(row.gross_loss_pct) ?? (returnPct < 0 ? Math.abs(returnPct) : 0);
+      return [{
+        weekOpenUtc,
+        returnPct,
+        trades,
+        wins,
+        losses,
+        winRatePct: trades > 0 ? (wins / trades) * 100 : 0,
+        avgTradePct: trades > 0 ? returnPct / trades : null,
+        profitFactor: computeProfitFactor(grossProfitPct, grossLossPct),
+        staticDrawdownPct: toNumber(row.static_drawdown_pct) ?? 0,
+        grossProfitUsd: grossProfitPct,
+        grossLossUsd: grossLossPct,
+      } satisfies KataraktiWeeklySnapshot];
+    }),
+  );
+}
+
+function mergeSimAndLiveWeekly(
+  sim: KataraktiWeeklySnapshot[],
+  live: KataraktiWeeklySnapshot[],
+): KataraktiWeeklySnapshot[] {
+  const simByWeek = new Map(sim.map((week) => [week.weekOpenUtc, week]));
+  const merged = [...sim];
+  for (const liveWeek of live) {
+    if (!simByWeek.has(liveWeek.weekOpenUtc)) {
+      merged.push(liveWeek);
+    }
+  }
+  return sortWeeksAsc(merged);
+}
+
 async function readLiveCryptoWeeklyFromDb(): Promise<KataraktiWeeklySnapshot[]> {
   const rows = await safeQuery<LiveBitgetTradeRow>(
     `SELECT
@@ -784,11 +858,15 @@ async function readCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | nu
   });
 
   const base = fileSnapshot ?? seedSnapshot;
-  const liveWeekly = await readLiveCryptoWeeklyFromDb();
+  const [simWeekly, liveWeekly] = await Promise.all([
+    readSimWeeklyFromDb("crypto_futures"),
+    readLiveCryptoWeeklyFromDb(),
+  ]);
+  const mergedWeekly = mergeSimAndLiveWeekly(simWeekly, liveWeekly);
   return appendLiveWeeks({
     market: "crypto_futures",
     base,
-    live: liveWeekly,
+    live: mergedWeekly,
   });
 }
 
@@ -893,11 +971,15 @@ async function readMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
   });
 
   const base = fileSnapshot ?? seedSnapshot;
-  const liveWeekly = await readLiveMt5WeeklyFromDb();
+  const [simWeekly, liveWeekly] = await Promise.all([
+    readSimWeeklyFromDb("mt5_forex"),
+    readLiveMt5WeeklyFromDb(),
+  ]);
+  const mergedWeekly = mergeSimAndLiveWeekly(simWeekly, liveWeekly);
   return appendLiveWeeks({
     market: "mt5_forex",
     base,
-    live: liveWeekly,
+    live: mergedWeekly,
   });
 }
 

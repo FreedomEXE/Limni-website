@@ -494,3 +494,25 @@ CREATE TABLE IF NOT EXISTS katarakti_weekly_bias (
 );
 
 CREATE INDEX IF NOT EXISTS idx_katarakti_bias_week ON katarakti_weekly_bias (week_anchor DESC);
+
+-- Katarakti simulation weekly results (bot-independent performance tracking)
+CREATE TABLE IF NOT EXISTS katarakti_sim_weekly (
+  id            SERIAL PRIMARY KEY,
+  market        TEXT NOT NULL CHECK (market IN ('crypto_futures', 'mt5_forex')),
+  week_open_utc TIMESTAMPTZ NOT NULL,
+  return_pct    DOUBLE PRECISION NOT NULL,
+  trades        INT NOT NULL DEFAULT 0,
+  wins          INT NOT NULL DEFAULT 0,
+  losses        INT NOT NULL DEFAULT 0,
+  static_drawdown_pct DOUBLE PRECISION NOT NULL DEFAULT 0,
+  gross_profit_pct    DOUBLE PRECISION NOT NULL DEFAULT 0,
+  gross_loss_pct      DOUBLE PRECISION NOT NULL DEFAULT 0,
+  source        TEXT NOT NULL DEFAULT 'manual',
+  notes         TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (market, week_open_utc)
+);
+
+CREATE INDEX IF NOT EXISTS idx_katarakti_sim_weekly_market
+  ON katarakti_sim_weekly (market, week_open_utc DESC);
