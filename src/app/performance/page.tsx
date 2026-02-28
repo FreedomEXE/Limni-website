@@ -43,7 +43,6 @@ import {
   computeTieredWeekForAllSystems,
   TIERED_DISPLAY_LABELS,
 } from "@/lib/performance/tiered";
-import StrategyPerformanceSummary from "@/components/performance/StrategyPerformanceSummary";
 import { readBotStrategySummaries } from "@/lib/performance/botStrategies";
 
 export const dynamic = "force-dynamic";
@@ -59,8 +58,13 @@ function formatWeekOption(value: string) {
   return weekLabelFromOpen(value);
 }
 
-function resolvePerformanceStyle(value: string | null | undefined): "universal" | "tiered" {
-  return value === "tiered" ? "tiered" : "universal";
+function resolvePerformanceStyle(value: string | null | undefined): "universal" | "tiered" | "katarakti" {
+  if (value === "tiered" || value === "katarakti") return value;
+  return "universal";
+}
+
+function resolveKataraktiMarket(value: string | null | undefined): "crypto_futures" | "mt5_forex" {
+  return value === "mt5_forex" ? "mt5_forex" : "crypto_futures";
 }
 
 function listClosedHistoricalWeeksFromPerformanceRows(
@@ -176,9 +180,12 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const systemParamValue = Array.isArray(systemParam) ? systemParam[0] : systemParam;
   const styleParam = resolvedSearchParams?.style;
   const styleParamValue = Array.isArray(styleParam) ? styleParam[0] : styleParam;
+  const marketParam = resolvedSearchParams?.market;
+  const marketParamValue = Array.isArray(marketParam) ? marketParam[0] : marketParam;
 
   const initialSystem = resolvePerformanceSystem(systemParamValue);
   const initialStyle = resolvePerformanceStyle(styleParamValue);
+  const initialKataraktiMarket = resolveKataraktiMarket(marketParamValue);
   const view = resolvePerformanceView(viewParamValue);
   const assetClasses = listAssetClasses();
   const models = PERFORMANCE_MODELS;
@@ -393,7 +400,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 Performance
               </h1>
               <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-                Universal systems (V1/V2/V3)
+                Universal / Tiered / Katarakti
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -426,6 +433,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           <PerformanceViewSection
             initialView={view}
             initialSystem={initialSystem}
+            initialKataraktiMarket={initialKataraktiMarket}
+            botStrategies={botStrategies}
             initialStyle={initialStyle}
             universalGridProps={{
               combined: {
@@ -450,8 +459,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             }}
             tieredGridPropsBySystem={tieredGridPropsBySystem}
           />
-
-          <StrategyPerformanceSummary strategies={botStrategies} />
         </div>
       </DashboardLayout>
     );
@@ -795,7 +802,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 Performance
               </h1>
               <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-                Universal systems (V1/V2/V3)
+                Universal / Tiered / Katarakti
               </p>
             </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -843,6 +850,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         <PerformanceViewSection
           initialView={view}
           initialSystem={initialSystem}
+          initialKataraktiMarket={initialKataraktiMarket}
+          botStrategies={botStrategies}
           initialStyle={initialStyle}
           universalGridProps={{
             combined: {
@@ -871,8 +880,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           }}
           tieredGridPropsBySystem={tieredGridPropsBySystem}
         />
-
-        <StrategyPerformanceSummary strategies={botStrategies} />
       </div>
     </DashboardLayout>
   );

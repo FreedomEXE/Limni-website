@@ -33,6 +33,7 @@ async function safeQueryOne<T>(
 }
 
 type StrategyConfig = {
+  market: StrategySummary["market"];
   name: string;
   href: string;
   status: StrategySummary["status"];
@@ -42,13 +43,15 @@ type StrategyConfig = {
 
 const STRATEGY_CONFIGS: readonly StrategyConfig[] = [
   {
-    name: "Crypto Perp Bot (Bitget)",
+    market: "crypto_futures",
+    name: "Katarakti (Bitget)",
     href: "/automation/bots/bitget",
     status: "LIVE",
     table: "bitget_trades",
     botId: "bitget_perp_v2",
   },
   {
+    market: "mt5_forex",
     name: "Katarakti (MT5 Forex)",
     href: "/automation/bots/mt5-forex",
     status: "LIVE",
@@ -94,6 +97,7 @@ export async function readBotStrategySummaries(): Promise<StrategySummary[]> {
   return aggregates
     .filter(hasAggregate)
     .map(({ config, aggregate }) => ({
+      market: config.market,
       name: config.name,
       href: config.href,
       totalTrades: Number(aggregate.total_trades) || 0,

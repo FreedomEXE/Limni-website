@@ -14,7 +14,10 @@
 
 import Link from "next/link";
 
+export type StrategyMarket = "crypto_futures" | "mt5_forex";
+
 export type StrategySummary = {
+  market: StrategyMarket;
   name: string;
   href: string;
   totalTrades: number;

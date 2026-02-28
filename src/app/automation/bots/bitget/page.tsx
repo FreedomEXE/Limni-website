@@ -13,7 +13,6 @@
 -----------------------------------------------*/
 
 import DashboardLayout from "@/components/DashboardLayout";
-import AutomationSectionCards from "@/components/automation/AutomationSectionCards";
 import AutomationBotsCards from "@/components/automation/AutomationBotsCards";
 import BitgetBotTabs from "@/components/bitget-bot/BitgetBotTabs";
 import LiveStateTab from "@/components/bitget-bot/LiveStateTab";
@@ -61,18 +60,15 @@ export default async function BitgetBotPage({ searchParams }: PageProps) {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <AutomationSectionCards active="bots" />
-        <AutomationBotsCards active="bitget" />
-
         <header className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">
-            Automation / Bots / Bitget
+            Automation / Bots / Katarakti Bitget
           </p>
           <h1 className="mt-2 text-3xl font-semibold text-[var(--foreground)]">
-            Crypto Perp Bot (Bitget)
+            Katarakti (Bitget)
           </h1>
           <p className="mt-2 text-sm text-[color:var(--muted)]">
-            BTC/ETH perp automation with COT bias, session sweeps, and handshake confirmation.
+            Crypto futures sweep-entry automation with COT bias and handshake confirmation.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${lifecycleBadge.toneClass}`}>
@@ -86,6 +82,8 @@ export default async function BitgetBotPage({ searchParams }: PageProps) {
             </span>
           </div>
         </header>
+
+        <AutomationBotsCards active="bitget" />
 
         <BitgetBotTabs activeTab={activeTab} />
 

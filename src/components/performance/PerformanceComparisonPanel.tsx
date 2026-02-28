@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+type PerformanceStyle = "universal" | "tiered" | "katarakti";
+type KataraktiMarket = "crypto_futures" | "mt5_forex";
+
 type ComparisonMetrics = {
   totalReturn: number;
   weeks: number;
@@ -26,7 +29,16 @@ type ComparisonData = {
     v2: ComparisonMetrics;
     v3: ComparisonMetrics;
   };
+  katarakti?: {
+    crypto_futures: ComparisonMetrics;
+    mt5_forex: ComparisonMetrics;
+  };
 };
+
+function formatSignedUsd(value: number) {
+  const prefix = value >= 0 ? "+" : "-";
+  return `${prefix}$${Math.abs(value).toFixed(2)}`;
+}
 
 export default function PerformanceComparisonPanel() {
   const searchParams = useSearchParams();
@@ -35,10 +47,15 @@ export default function PerformanceComparisonPanel() {
   const [loading, setLoading] = useState(true);
   const requestedSystem = searchParams.get("system");
   const requestedStyle = searchParams.get("style");
+  const requestedMarket = searchParams.get("market");
   const initialTab = requestedSystem === "v2" || requestedSystem === "v3" ? requestedSystem : "v1";
-  const initialStyle = requestedStyle === "tiered" ? "tiered" : "universal";
+  const initialStyle: PerformanceStyle =
+    requestedStyle === "tiered" || requestedStyle === "katarakti" ? requestedStyle : "universal";
+  const initialMarket: KataraktiMarket =
+    requestedMarket === "mt5_forex" ? "mt5_forex" : "crypto_futures";
   const [activeTab, setActiveTab] = useState<"v1" | "v2" | "v3">(initialTab);
-  const [activeStyle, setActiveStyle] = useState<"universal" | "tiered">(initialStyle);
+  const [activeStyle, setActiveStyle] = useState<PerformanceStyle>(initialStyle);
+  const [activeMarket, setActiveMarket] = useState<KataraktiMarket>(initialMarket);
 
   useEffect(() => {
     async function fetchData() {
@@ -72,16 +89,34 @@ export default function PerformanceComparisonPanel() {
     v2: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
     v3: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
   };
+  const kataraktiMetrics = data?.katarakti ?? {
+    crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
+    mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, trades: 0 },
+  };
   const metricSet = activeStyle === "tiered" ? tieredMetrics : universalMetrics;
   const v1Metrics = metricSet.v1;
   const v2Metrics = metricSet.v2;
   const v3Metrics = metricSet.v3;
-  const activeMetrics = activeTab === "v1" ? v1Metrics : activeTab === "v2" ? v2Metrics : v3Metrics;
+  const activeMetrics = activeStyle === "katarakti"
+    ? kataraktiMetrics[activeMarket]
+    : activeTab === "v1"
+      ? v1Metrics
+      : activeTab === "v2"
+        ? v2Metrics
+        : v3Metrics;
   const activeVersionLabel = activeTab === "v1" ? "V1" : activeTab === "v2" ? "V2" : "V3";
-  const activeLabel =
-    activeStyle === "tiered" ? `Tiered ${activeVersionLabel}` : `Universal ${activeVersionLabel}`;
-  const activeBadge =
-    activeStyle === "tiered"
+  const activeLabel = activeStyle === "katarakti"
+    ? activeMarket === "crypto_futures"
+      ? "Katarakti (Crypto Futures)"
+      : "Katarakti (MT5 Forex)"
+    : activeStyle === "tiered"
+      ? `Tiered ${activeVersionLabel}`
+      : `Universal ${activeVersionLabel}`;
+  const activeBadge = activeStyle === "katarakti"
+    ? activeMarket === "crypto_futures"
+      ? "Crypto Futures"
+      : "MT5 Forex"
+    : activeStyle === "tiered"
       ? activeTab === "v2"
         ? "Tiered (2 tiers)"
         : "Tiered (3 tiers)"
@@ -91,34 +126,60 @@ export default function PerformanceComparisonPanel() {
           ? "3 Baskets"
           : "4 Baskets";
   const activeCardClass =
-    activeTab === "v1"
+    activeStyle === "katarakti"
+      ? activeMarket === "crypto_futures"
+        ? "rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4"
+        : "rounded-2xl border border-teal-400/40 bg-teal-500/10 p-4"
+      : activeTab === "v1"
       ? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4"
       : activeTab === "v2"
         ? "rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4"
         : "rounded-2xl border border-cyan-400/40 bg-cyan-500/10 p-4";
   const valueClass =
-    activeTab === "v1"
+    activeStyle === "katarakti"
+      ? activeMarket === "crypto_futures"
+        ? "text-amber-900 dark:text-amber-100"
+        : "text-teal-900 dark:text-teal-100"
+      : activeTab === "v1"
       ? "text-[var(--foreground)]"
       : activeTab === "v2"
         ? "text-emerald-900 dark:text-emerald-100"
         : "text-cyan-900 dark:text-cyan-100";
   const labelClass =
-    activeTab === "v1"
+    activeStyle === "katarakti"
+      ? activeMarket === "crypto_futures"
+        ? "text-amber-700 dark:text-amber-300"
+        : "text-teal-700 dark:text-teal-300"
+      : activeTab === "v1"
       ? "text-[color:var(--muted)]"
       : activeTab === "v2"
         ? "text-emerald-700 dark:text-emerald-300"
         : "text-cyan-700 dark:text-cyan-300";
   const badgeClass =
-    activeTab === "v1"
+    activeStyle === "katarakti"
+      ? activeMarket === "crypto_futures"
+        ? "rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-amber-800 dark:text-amber-200"
+        : "rounded-full bg-teal-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-teal-800 dark:text-teal-200"
+      : activeTab === "v1"
       ? "rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]"
       : activeTab === "v2"
         ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-emerald-800 dark:text-emerald-200"
         : "rounded-full bg-cyan-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-cyan-800 dark:text-cyan-200";
-  const hasHistoricalData = v1Metrics.weeks > 0 || v2Metrics.weeks > 0 || v3Metrics.weeks > 0;
-  const setStyle = (next: "universal" | "tiered") => {
+  const hasHistoricalData =
+    v1Metrics.weeks > 0 ||
+    v2Metrics.weeks > 0 ||
+    v3Metrics.weeks > 0 ||
+    kataraktiMetrics.crypto_futures.weeks > 0 ||
+    kataraktiMetrics.mt5_forex.weeks > 0;
+  const setStyle = (next: PerformanceStyle) => {
     setActiveStyle(next);
     const url = new URL(window.location.href);
     url.searchParams.set("style", next);
+    if (next === "katarakti") {
+      url.searchParams.set("market", activeMarket);
+    } else {
+      url.searchParams.delete("market");
+    }
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(new CustomEvent("performance-style-change", { detail: next }));
   };
@@ -130,6 +191,14 @@ export default function PerformanceComparisonPanel() {
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(new CustomEvent("performance-system-change", { detail: next }));
   };
+  const setMarket = (next: KataraktiMarket) => {
+    setActiveMarket(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("style", "katarakti");
+    url.searchParams.set("market", next);
+    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+    window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: next }));
+  };
 
   return (
     <div className="flex-1 space-y-4 p-4">
@@ -139,7 +208,7 @@ export default function PerformanceComparisonPanel() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <button
           type="button"
           onClick={() => setStyle("universal")}
@@ -162,43 +231,81 @@ export default function PerformanceComparisonPanel() {
         >
           Tiered
         </button>
+        <button
+          type="button"
+          onClick={() => setStyle("katarakti")}
+          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+            activeStyle === "katarakti"
+              ? "border-amber-400/50 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+          }`}
+        >
+          Katarakti
+        </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        <button
-          type="button"
-          onClick={() => setSystem("v1")}
-          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-            activeTab === "v1"
-              ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-[var(--accent)]/40"
-          }`}
-        >
-          Universal V1
-        </button>
-        <button
-          type="button"
-          onClick={() => setSystem("v2")}
-          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-            activeTab === "v2"
-              ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
-              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-emerald-400/50"
-          }`}
-        >
-          Universal V2
-        </button>
-        <button
-          type="button"
-          onClick={() => setSystem("v3")}
-          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-            activeTab === "v3"
-              ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-800 dark:text-cyan-200"
-              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-cyan-400/50"
-          }`}
-        >
-          Universal V3
-        </button>
-      </div>
+      {activeStyle === "katarakti" ? (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setMarket("crypto_futures")}
+            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+              activeMarket === "crypto_futures"
+                ? "border-amber-400/50 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+                : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-amber-400/50"
+            }`}
+          >
+            Crypto Futures
+          </button>
+          <button
+            type="button"
+            onClick={() => setMarket("mt5_forex")}
+            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+              activeMarket === "mt5_forex"
+                ? "border-teal-400/50 bg-teal-500/10 text-teal-800 dark:text-teal-200"
+                : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-teal-400/50"
+            }`}
+          >
+            MT5 Forex
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => setSystem("v1")}
+            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+              activeTab === "v1"
+                ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-[var(--accent)]/40"
+            }`}
+          >
+            Universal V1
+          </button>
+          <button
+            type="button"
+            onClick={() => setSystem("v2")}
+            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+              activeTab === "v2"
+                ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+                : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-emerald-400/50"
+            }`}
+          >
+            Universal V2
+          </button>
+          <button
+            type="button"
+            onClick={() => setSystem("v3")}
+            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+              activeTab === "v3"
+                ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-800 dark:text-cyan-200"
+                : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-cyan-400/50"
+            }`}
+          >
+            Universal V3
+          </button>
+        </div>
+      )}
 
       <div className={activeCardClass}>
         <div className="mb-3 flex items-center justify-between">
@@ -208,11 +315,12 @@ export default function PerformanceComparisonPanel() {
 
         <div className="mb-4">
           <div className={`text-2xl font-bold ${valueClass}`}>
-            {activeMetrics.totalReturn >= 0 ? "+" : ""}
-            {activeMetrics.totalReturn.toFixed(2)}%
+            {activeStyle === "katarakti"
+              ? formatSignedUsd(activeMetrics.totalReturn)
+              : `${activeMetrics.totalReturn >= 0 ? "+" : ""}${activeMetrics.totalReturn.toFixed(2)}%`}
           </div>
           <div className={`text-[10px] uppercase tracking-[0.2em] ${labelClass}`}>
-            Total Return
+            {activeStyle === "katarakti" ? "Total PnL" : "Total Return"}
           </div>
           {activeStyle === "tiered" ? (
             <div className={`mt-1 text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
@@ -240,11 +348,12 @@ export default function PerformanceComparisonPanel() {
           </div>
           <div>
             <div className={`text-sm font-semibold ${valueClass}`}>
-              {activeMetrics.avgWeekly >= 0 ? "+" : ""}
-              {activeMetrics.avgWeekly.toFixed(2)}%
+              {activeStyle === "katarakti"
+                ? formatSignedUsd(activeMetrics.avgWeekly)
+                : `${activeMetrics.avgWeekly >= 0 ? "+" : ""}${activeMetrics.avgWeekly.toFixed(2)}%`}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
-              Avg Weekly
+              {activeStyle === "katarakti" ? "Avg Weekly PnL" : "Avg Weekly"}
             </div>
           </div>
           <div>
@@ -252,7 +361,7 @@ export default function PerformanceComparisonPanel() {
               {activeMetrics.trades ?? activeMetrics.weeks}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
-              {activeStyle === "tiered" ? "Trades" : "Weeks"}
+              {activeStyle === "tiered" || activeStyle === "katarakti" ? "Trades" : "Weeks"}
             </div>
           </div>
         </div>
@@ -285,7 +394,7 @@ export default function PerformanceComparisonPanel() {
         </div>
       ) : null}
 
-      {!loading && !error && activeTab !== "v1" ? (
+      {!loading && !error && activeStyle !== "katarakti" && activeTab !== "v1" ? (
         <div className="rounded-2xl border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-3 py-2 text-center">
           <div className="text-xs font-semibold text-[var(--foreground)]">
             {activeMetrics.totalReturn > v1Metrics.totalReturn ? "↑" : "↓"}{" "}

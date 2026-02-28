@@ -1,5 +1,4 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import AutomationSectionCards from "@/components/automation/AutomationSectionCards";
 import AutomationResearchCards from "@/components/automation/AutomationResearchCards";
 import KpiGroup from "@/components/metrics/KpiGroup";
 import KpiCard from "@/components/metrics/KpiCard";
@@ -49,9 +48,6 @@ export default async function BankResearchPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <AutomationSectionCards active="research" />
-        <AutomationResearchCards active="bank" />
-
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">Research</h1>
           <p className="text-sm text-[color:var(--muted)]">
@@ -61,6 +57,8 @@ export default async function BankResearchPage() {
             Updated {formatDateTimeET(futures.generated_at)}
           </p>
         </header>
+
+        <AutomationResearchCards active="bank" />
 
         <section
           data-cot-surface="true"

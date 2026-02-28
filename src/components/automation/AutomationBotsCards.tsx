@@ -13,8 +13,8 @@ const BOT_CARDS: ReadonlyArray<AutomationViewCard<BotPageKey>> = [
   },
   {
     id: "bitget",
-    label: "Bitget",
-    description: "BTC/ETH perp automation monitoring.",
+    label: "Katarakti (Bitget)",
+    description: "Crypto futures sweep-entry automation monitoring.",
     href: "/automation/bots/bitget",
   },
   {

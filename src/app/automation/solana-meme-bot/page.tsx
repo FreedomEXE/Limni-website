@@ -1,5 +1,4 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import AutomationSectionCards from "@/components/automation/AutomationSectionCards";
 import AutomationBotsCards from "@/components/automation/AutomationBotsCards";
 import { fetchBitgetFuturesSnapshot, fetchBitgetPriceChange } from "@/lib/bitget";
 import { getRecentRegimeDays, upsertRegimeDay } from "@/lib/market-regime";
@@ -298,9 +297,6 @@ export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <AutomationSectionCards active="bots" />
-        <AutomationBotsCards active="solana" />
-
         <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">
@@ -322,6 +318,9 @@ export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
             </span>
           </div>
         </header>
+
+        <AutomationBotsCards active="solana" />
+
         {!summary && summaryError ? (
           <section className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
             <div className="flex flex-col gap-2">

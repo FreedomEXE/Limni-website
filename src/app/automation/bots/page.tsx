@@ -14,7 +14,6 @@
 
 import Link from "next/link";
 import DashboardLayout from "@/components/DashboardLayout";
-import AutomationSectionCards from "@/components/automation/AutomationSectionCards";
 import AutomationBotsCards from "@/components/automation/AutomationBotsCards";
 import { readBotState } from "@/lib/botState";
 import { readMt5Accounts } from "@/lib/mt5Store";
@@ -108,14 +107,13 @@ export default async function AutomationBotsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <AutomationSectionCards active="bots" />
-        <AutomationBotsCards active="overview" />
-
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-[var(--foreground)]">
             Bots
           </h1>
         </header>
+
+        <AutomationBotsCards active="overview" />
 
         <section className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -142,14 +140,14 @@ export default async function AutomationBotsPage() {
           >
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Crypto Perp Bot (Bitget)
+                Katarakti (Bitget)
               </h2>
               <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${bitgetBadge.tone}`}>
                 {bitgetBadge.label}
               </span>
             </div>
             <p className="mt-2 text-sm text-[color:var(--muted)]">
-              BTC/ETH perp automation with unified signal alignment.
+              Crypto futures sweep entries with unified signal alignment.
             </p>
             <div className="mt-4 grid gap-2 text-xs text-[var(--accent-strong)]">
               <span>10x leverage, unlevered trail</span>

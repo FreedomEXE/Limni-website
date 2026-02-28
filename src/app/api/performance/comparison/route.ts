@@ -3,6 +3,7 @@ import { readAllPerformanceSnapshots } from "@/lib/performanceSnapshots";
 import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import { DateTime } from "luxon";
 import type { PerformanceModel } from "@/lib/performanceLab";
+import { query } from "@/lib/db";
 import {
   PERFORMANCE_V1_MODELS,
   PERFORMANCE_V2_MODELS,
@@ -26,6 +27,11 @@ type ComparisonMetrics = {
 };
 
 type SnapshotRow = Awaited<ReturnType<typeof readAllPerformanceSnapshots>>[number];
+type BotWeeklyAggregateRow = {
+  return_value: number | string;
+  wins: number | string;
+  priced_trades: number | string;
+};
 
 function getWeekBucketKey(snapshot: SnapshotRow): string {
   if (snapshot.report_date) {
@@ -147,6 +153,31 @@ function computeMetricsFromWeeklyRows(
   };
 }
 
+async function readBotWeeklyAggregates(
+  sql: string,
+  params: readonly unknown[],
+): Promise<BotWeeklyAggregateRow[]> {
+  try {
+    return await query<BotWeeklyAggregateRow>(sql, params);
+  } catch (error) {
+    console.warn(
+      "[performance-comparison] bot aggregate query failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+    return [];
+  }
+}
+
+function toBotComparisonMetrics(rows: BotWeeklyAggregateRow[]): ComparisonMetrics {
+  return computeMetricsFromWeeklyRows(
+    rows.map((row) => ({
+      return_percent: Number(row.return_value) || 0,
+      priced_trades: Number(row.priced_trades) || 0,
+      wins: Number(row.wins) || 0,
+    })),
+  );
+}
+
 export async function GET() {
   try {
     const currentWeekOpenUtc = getCanonicalWeekOpenUtc();
@@ -207,6 +238,35 @@ export async function GET() {
       ),
     };
 
+    const [bitgetWeeklyRows, mt5WeeklyRows] = await Promise.all([
+      readBotWeeklyAggregates(
+        `SELECT
+           COALESCE(SUM(pnl_usd), 0)::double precision AS return_value,
+           COUNT(*) FILTER (WHERE pnl_usd > 0)::int AS wins,
+           COUNT(*)::int AS priced_trades
+         FROM bitget_trades
+         WHERE bot_id = $1
+           AND exit_time_utc IS NOT NULL
+         GROUP BY DATE_TRUNC('week', COALESCE(exit_time_utc, entry_time_utc))
+         ORDER BY DATE_TRUNC('week', COALESCE(exit_time_utc, entry_time_utc)) DESC
+         LIMIT $2`,
+        ["bitget_perp_v2", COMPARISON_WEEKS],
+      ),
+      readBotWeeklyAggregates(
+        `SELECT
+           COALESCE(SUM(pnl_usd), 0)::double precision AS return_value,
+           COUNT(*) FILTER (WHERE pnl_usd > 0)::int AS wins,
+           COUNT(*)::int AS priced_trades
+         FROM katarakti_trades
+         WHERE bot_id = $1
+           AND exit_time_utc IS NOT NULL
+         GROUP BY DATE_TRUNC('week', COALESCE(week_anchor, exit_time_utc, entry_time_utc))
+         ORDER BY DATE_TRUNC('week', COALESCE(week_anchor, exit_time_utc, entry_time_utc)) DESC
+         LIMIT $2`,
+        ["katarakti_v1", COMPARISON_WEEKS],
+      ),
+    ]);
+
     return NextResponse.json({
       v1: v1Metrics,
       v2: v2Metrics,
@@ -217,6 +277,10 @@ export async function GET() {
         v3: v3Metrics,
       },
       tiered,
+      katarakti: {
+        crypto_futures: toBotComparisonMetrics(bitgetWeeklyRows),
+        mt5_forex: toBotComparisonMetrics(mt5WeeklyRows),
+      },
       weeksAnalyzed: selectedWeeks.size,
     });
   } catch (error) {

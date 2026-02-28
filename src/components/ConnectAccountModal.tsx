@@ -94,7 +94,7 @@ function StepRow({ label, state }: { label: string; state: StepState }) {
 export default function ConnectAccountModal({ onClose }: { onClose: () => void }) {
   const [provider, setProvider] = useState<Provider>("bitget");
   const [label, setLabel] = useState("");
-  const [accountId, setAccountId] = useState("");
+  const [accountId] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiSecret, setApiSecret] = useState("");
   const [apiPassphrase, setApiPassphrase] = useState("");
@@ -115,7 +115,7 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
   });
 
   const botLabel = useMemo(() => {
-    if (provider === "bitget") return "Crypto Perp Bot (Bitget)";
+    if (provider === "bitget") return "Katarakti (Bitget)";
     return "Manual MT5 Setup";
   }, [provider]);
 
