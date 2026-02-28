@@ -88,7 +88,7 @@ export default async function BitgetBotPage({ searchParams }: PageProps) {
         <BitgetBotTabs activeTab={activeTab} />
 
         {activeTab === "live" ? (
-          <LiveStateTab botState={data.botState} ranges={data.ranges} nowIso={nowIso} />
+          <LiveStateTab botState={data.botState} ranges={data.ranges} signals={data.signals} nowIso={nowIso} />
         ) : null}
         {activeTab === "trades" ? (
           <TradeHistoryTab trades={data.trades} />

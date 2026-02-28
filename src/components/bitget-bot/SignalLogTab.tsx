@@ -12,6 +12,8 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
+"use client";
+
 import {
   toIsoString,
   toNumber,
@@ -28,6 +30,14 @@ function fmtUtc(value: unknown) {
   const ts = Date.parse(iso);
   if (!Number.isFinite(ts)) return iso;
   return new Date(ts).toLocaleString();
+}
+
+function fmtUtcExact(value: unknown) {
+  const iso = toIsoString(value);
+  if (!iso) return "—";
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return iso;
+  return `${new Date(ts).toISOString().replace("T", " ").slice(0, 19)} UTC`;
 }
 
 function statusTone(status: string) {
@@ -48,7 +58,21 @@ function statusTone(status: string) {
 
 export default function SignalLogTab({ signals }: SignalLogTabProps) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm">
+    <section className="space-y-3">
+      <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 text-xs text-[color:var(--muted)] shadow-sm">
+        <p className="font-semibold uppercase tracking-[0.16em] text-[var(--foreground)]">
+          Signal Rules
+        </p>
+        <p className="mt-2">
+          Sweep requires range breach ({">="}0.1%, or {">="}0.3% when bias tier is neutral), rejection back inside range,
+          and displacement body {">="}0.1%.
+        </p>
+        <p className="mt-1">
+          Handshake Group ID appears only after both BTC and ETH confirm inside the handshake window.
+          While waiting, status stays CANDIDATE and group ID remains pending.
+        </p>
+      </div>
+      <section className="overflow-hidden rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm">
       <div className="max-h-[760px] overflow-auto">
         <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 bg-[var(--panel)]/95 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)] backdrop-blur">
@@ -92,8 +116,12 @@ export default function SignalLogTab({ signals }: SignalLogTabProps) {
                         {signal.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-[color:var(--muted)]">{signal.handshake_group_id ?? "—"}</td>
-                    <td className="px-4 py-3 text-[color:var(--muted)]">{fmtUtc(signal.confirm_time_utc)}</td>
+                    <td className="px-4 py-3 text-xs text-[color:var(--muted)]">
+                      {signal.handshake_group_id ?? (signal.status === "CANDIDATE" ? "Pending counter-signal" : "—")}
+                    </td>
+                    <td className="px-4 py-3 text-[color:var(--muted)]" title={fmtUtcExact(signal.confirm_time_utc)}>
+                      {fmtUtc(signal.confirm_time_utc)}
+                    </td>
                   </tr>
                 );
               })
@@ -101,6 +129,7 @@ export default function SignalLogTab({ signals }: SignalLogTabProps) {
           </tbody>
         </table>
       </div>
+      </section>
     </section>
   );
 }

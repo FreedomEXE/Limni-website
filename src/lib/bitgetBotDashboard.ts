@@ -160,20 +160,50 @@ export async function readBitgetBotStatusData(): Promise<BitgetBotStatusPayload>
     ),
     safeQuery<BitgetSignalRow>(
       `SELECT *
-         FROM bitget_bot_signals
-        WHERE bot_id = $1
-          AND ABS(EXTRACT(EPOCH FROM (created_at - confirm_time_utc))) < 3600
-        ORDER BY created_at DESC
+         FROM (
+               SELECT DISTINCT ON (
+                        day_utc,
+                        symbol,
+                        session_window,
+                        confirm_time_utc,
+                        direction
+                      )
+                      *
+                 FROM bitget_bot_signals
+                WHERE bot_id = $1
+                  AND ABS(EXTRACT(EPOCH FROM (created_at - confirm_time_utc))) < 3600
+                ORDER BY day_utc,
+                         symbol,
+                         session_window,
+                         confirm_time_utc,
+                         direction,
+                         CASE status
+                           WHEN 'HANDSHAKE_CONFIRMED' THEN 0
+                           WHEN 'CANDIDATE' THEN 1
+                           WHEN 'REJECTED' THEN 2
+                           WHEN 'EXPIRED' THEN 3
+                           ELSE 9
+                         END,
+                         created_at DESC
+              ) deduped
+        ORDER BY confirm_time_utc DESC, created_at DESC
         LIMIT 200`,
       [BOT_ID],
     ),
     safeQuery<BitgetRangeRow>(
-      `SELECT *,
-              day_utc::text AS day_utc_text
-         FROM bitget_bot_ranges
-        WHERE bot_id = $1
-        ORDER BY day_utc DESC, symbol
-        LIMIT 60`,
+      `SELECT *
+         FROM (
+               SELECT DISTINCT ON (symbol, range_source)
+                      *,
+                      day_utc::text AS day_utc_text
+                 FROM bitget_bot_ranges
+                WHERE bot_id = $1
+                ORDER BY symbol,
+                         range_source,
+                         locked_at_utc DESC,
+                         day_utc DESC
+              ) latest
+        ORDER BY range_source, symbol`,
       [BOT_ID],
     ),
     safeQuery<OiSnapshotRow>(

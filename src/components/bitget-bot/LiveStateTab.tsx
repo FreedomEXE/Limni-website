@@ -17,11 +17,13 @@ import {
   toIsoString,
   toNumber,
   type BitgetRangeRow,
+  type BitgetSignalRow,
 } from "@/components/bitget-bot/types";
 
 type LiveStateTabProps = {
   botState: BitgetBotStateV1 | null;
   ranges: BitgetRangeRow[];
+  signals: BitgetSignalRow[];
   nowIso: string;
 };
 
@@ -64,10 +66,15 @@ function resolveRange(
   if (!filtered.length) return null;
   return filtered
     .sort((a, b) => {
+      const aLocked = Date.parse(String(a.locked_at_utc));
+      const bLocked = Date.parse(String(b.locked_at_utc));
+      if (Number.isFinite(aLocked) && Number.isFinite(bLocked) && aLocked !== bLocked) {
+        return bLocked - aLocked;
+      }
       const aDay = (a.day_utc_text ?? String(a.day_utc).slice(0, 10));
       const bDay = (b.day_utc_text ?? String(b.day_utc).slice(0, 10));
       if (aDay !== bDay) return bDay.localeCompare(aDay);
-      return Date.parse(String(b.locked_at_utc)) - Date.parse(String(a.locked_at_utc));
+      return 0;
     })[0];
 }
 
@@ -86,6 +93,39 @@ function isRangeStale(dayText: string | null, nowIso: string) {
   nowDayStart.setUTCHours(0, 0, 0, 0);
   const yesterdayStartMs = nowDayStart.getTime() - 24 * 60 * 60 * 1000;
   return dayMs < yesterdayStartMs;
+}
+
+function resolveLatestSignal(rows: BitgetSignalRow[], symbol: "BTC" | "ETH") {
+  const filtered = rows.filter((row) => row.symbol === symbol);
+  if (!filtered.length) return null;
+  return filtered
+    .sort((a, b) => {
+      const aConfirm = Date.parse(String(a.confirm_time_utc));
+      const bConfirm = Date.parse(String(b.confirm_time_utc));
+      if (Number.isFinite(aConfirm) && Number.isFinite(bConfirm) && aConfirm !== bConfirm) {
+        return bConfirm - aConfirm;
+      }
+      const aCreated = Date.parse(String(a.created_at));
+      const bCreated = Date.parse(String(b.created_at));
+      if (Number.isFinite(aCreated) && Number.isFinite(bCreated) && aCreated !== bCreated) {
+        return bCreated - aCreated;
+      }
+      return Number(b.id) - Number(a.id);
+    })[0];
+}
+
+function sweepBadgeTone(signal: BitgetSignalRow | null) {
+  if (!signal) return "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]";
+  if (signal.status === "HANDSHAKE_CONFIRMED") return "border-emerald-300/40 bg-emerald-500/10 text-emerald-200";
+  if (signal.status === "CANDIDATE") return "border-amber-300/40 bg-amber-500/10 text-amber-200";
+  return "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]";
+}
+
+function sweepStatusLabel(signal: BitgetSignalRow | null) {
+  if (!signal) return "No qualified sweep";
+  if (signal.status === "CANDIDATE" && !signal.handshake_group_id) return "Sweep confirmed, waiting counterpart";
+  if (signal.status === "HANDSHAKE_CONFIRMED") return "Handshake confirmed";
+  return signal.status;
 }
 
 function expiryCountdown(expiryTs: number | null | undefined, nowIso: string) {
@@ -189,11 +229,13 @@ function RangeCell({
   );
 }
 
-export default function LiveStateTab({ botState, ranges, nowIso }: LiveStateTabProps) {
+export default function LiveStateTab({ botState, ranges, signals, nowIso }: LiveStateTabProps) {
   const btcAsiaLondon = resolveRange(ranges, "BTC", "ASIA+LONDON");
   const ethAsiaLondon = resolveRange(ranges, "ETH", "ASIA+LONDON");
   const btcUs = resolveRange(ranges, "BTC", "US");
   const ethUs = resolveRange(ranges, "ETH", "US");
+  const btcSignal = resolveLatestSignal(signals, "BTC");
+  const ethSignal = resolveLatestSignal(signals, "ETH");
 
   const weeklyBias = botState?.weeklyBias;
   const btcBias = weeklyBias?.btc;
@@ -263,6 +305,9 @@ export default function LiveStateTab({ botState, ranges, nowIso }: LiveStateTabP
                   <RangeCell label="BTC" range={block.btc} nowIso={nowIso} />
                   <RangeCell label="ETH" range={block.eth} nowIso={nowIso} />
                 </div>
+                <p className="mt-2 text-xs text-[color:var(--muted)]">
+                  Updated: {fmtUtc(block.btc?.locked_at_utc ?? block.eth?.locked_at_utc ?? null)}
+                </p>
               </div>
             ))}
           </div>
@@ -284,6 +329,38 @@ export default function LiveStateTab({ botState, ranges, nowIso }: LiveStateTabP
           </div>
         </article>
 
+        <article className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            Sweep Status
+          </h3>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {[
+              { symbol: "BTC", signal: btcSignal },
+              { symbol: "ETH", signal: ethSignal },
+            ].map(({ symbol, signal }) => (
+              <div key={symbol} className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-[var(--foreground)]">{symbol}</h4>
+                  <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${sweepBadgeTone(signal)}`}>
+                    {signal?.status ?? "NONE"}
+                  </span>
+                </div>
+                <div className="mt-3 space-y-1 text-xs text-[color:var(--muted)]">
+                  <p>{sweepStatusLabel(signal)}</p>
+                  <p>Direction: <span className="font-semibold text-[var(--foreground)]">{signal?.direction ?? "—"}</span></p>
+                  <p>Sweep %: <span className="font-semibold text-[var(--foreground)]">{fmtPct(signal?.sweep_pct, 3)}</span></p>
+                  <p>Displacement %: <span className="font-semibold text-[var(--foreground)]">{fmtPct(signal?.displacement_pct, 3)}</span></p>
+                  <p>Session: <span className="font-semibold text-[var(--foreground)]">{signal?.session_window ?? "—"}</span></p>
+                  <p>Confirm Time: <span className="font-semibold text-[var(--foreground)]">{fmtUtc(signal?.confirm_time_utc ?? null)}</span></p>
+                  <p>Handshake Group: <span className="font-semibold text-[var(--foreground)]">{signal?.handshake_group_id ?? "Pending"}</span></p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      <section>
         <article className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
             Open Positions

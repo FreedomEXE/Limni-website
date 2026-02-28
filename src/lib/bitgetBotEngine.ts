@@ -587,6 +587,27 @@ async function safeInsertSignal(params: {
   metadata?: Record<string, unknown>;
 }) {
   try {
+    const existing = await queryOne<{ id: number }>(
+      `SELECT id
+         FROM bitget_bot_signals
+        WHERE bot_id = $1
+          AND day_utc = $2::date
+          AND symbol = $3
+          AND session_window = $4
+          AND confirm_time_utc = $5::timestamptz
+          AND direction = $6
+        LIMIT 1`,
+      [
+        BOT_ID,
+        params.dayUtc,
+        params.symbol,
+        params.sessionWindow,
+        params.confirmTimeUtc,
+        params.direction,
+      ],
+    );
+    if (existing) return;
+
     await query(
       `INSERT INTO bitget_bot_signals
         (bot_id, day_utc, symbol, session_window, confirm_time_utc,
