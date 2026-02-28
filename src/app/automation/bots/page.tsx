@@ -69,9 +69,10 @@ function isFresh(iso: string | null | undefined, minutes = 10) {
 }
 
 export default async function AutomationBotsPage() {
-  const [mt5Accounts, bitgetState] = await Promise.all([
+  const [mt5Accounts, bitgetState, kataraktiState] = await Promise.all([
     readMt5Accounts().catch(() => []),
     readBotState("bitget_perp_v2"),
+    readBotState("katarakti_v1"),
   ]);
 
   const mt5Fresh = mt5Accounts.some((account) => isFresh(account.last_sync_utc, 15));
@@ -87,8 +88,20 @@ export default async function AutomationBotsPage() {
           : bitgetLifecycle === "ERROR"
             ? "ERROR"
             : "OFF";
+  const kataraktiLifecycle = String((kataraktiState?.state as { lifecycle?: string } | undefined)?.lifecycle ?? "");
+  const kataraktiStatus: BotStatus =
+    !kataraktiState || kataraktiLifecycle === "" || kataraktiLifecycle === "IDLE" || kataraktiLifecycle === "KILLED"
+      ? "OFF"
+      : ["POSITION_OPEN", "TRAILING"].includes(kataraktiLifecycle)
+        ? "ON"
+        : ["SCANNING", "WEEK_READY"].includes(kataraktiLifecycle)
+          ? "WATCHING"
+          : kataraktiLifecycle === "ERROR"
+            ? "ERROR"
+            : "OFF";
   const mt5Badge = statusBadge(mt5Status);
   const bitgetBadge = statusBadge(bitgetStatus);
+  const kataraktiBadge = statusBadge(kataraktiStatus);
 
   return (
     <DashboardLayout>
@@ -136,6 +149,27 @@ export default async function AutomationBotsPage() {
             <div className="mt-4 grid gap-2 text-xs text-[var(--accent-strong)]">
               <span>10x leverage, unlevered trail</span>
               <span>All-model alignment filter</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/automation/bots/mt5-forex"
+            className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className="flex items-start justify-between">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">
+                Katarakti (MT5 Forex)
+              </h2>
+              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${kataraktiBadge.tone}`}>
+                {kataraktiBadge.label}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-[color:var(--muted)]">
+              Individual pair sweep entries across 36 FX, index, and commodity instruments.
+            </p>
+            <div className="mt-4 grid gap-2 text-xs text-[var(--accent-strong)]">
+              <span>Tiered bias sizing (T1/T2)</span>
+              <span>Stepped stop management</span>
             </div>
           </Link>
 

@@ -2,7 +2,7 @@
 
 > Owner: Freedom_EXE  
 > Status: Design Spec (not active in live logic)  
-> Last updated: 2026-02-27
+> Last updated: 2026-02-28
 
 ---
 
@@ -144,6 +144,57 @@ For each candidate trade, compute features at entry time:
    - Density between entry and intended target corridor.
    - Used to select scaling milestones.
 
+### 6.1 Normalization (Required for Robust Thresholds)
+
+Avoid raw USD thresholds as primary decision inputs. Raw values drift with regime and symbol.
+
+Use normalized features at entry:
+
+- `fuel_0_5pct_usd`: directional liquidation fuel between `0%` and `5%` in trade direction.
+- `fuel_5_10pct_usd`: directional liquidation fuel between `5%` and `10%` in trade direction.
+- `oi_at_entry_usd`: open interest snapshot at entry.
+- `fuel_0_5_oi = fuel_0_5pct_usd / max(oi_at_entry_usd, 1)`
+- `fuel_5_10_oi = fuel_5_10pct_usd / max(oi_at_entry_usd, 1)`
+- `wave_ratio = fuel_5_10_oi / max(fuel_0_5_oi, epsilon)` (second-wave strength vs first-wave strength).
+
+Add context normalization using rolling baseline:
+
+- `fuel_0_5_regime_ratio = fuel_0_5_oi / median(fuel_0_5_oi, lookback=30d)`
+- `wave_ratio_regime = wave_ratio / median(wave_ratio, lookback=30d)`
+
+This keeps the logic comparable across BTC/ETH and across volatility/liquidity regimes.
+
+### 6.2 Confidence Scoring (Prefer Over Hard Labels)
+
+Use a confidence score first, then map to mode (`SCALP` / `DAY` / `SWING`), instead of hard if/else from one threshold pair.
+
+Suggested score components:
+
+1. Multi-timeframe agreement score (how many TFs show strong directional fuel).
+2. Weekly second-wave score (`wave_ratio` and `fuel_5_10_oi` strength).
+3. Near-field opposing-risk penalty (`0-2%` opposing density).
+4. Data quality penalty (stale/missing snapshots).
+
+Then map score bands:
+
+- high confidence -> `SWING`
+- medium confidence -> `DAY`
+- low confidence -> `SCALP`
+
+Keep mapping values configurable; do not hardcode in strategy logic.
+
+### 6.3 Momentum Gate for Extension Legs
+
+Even with strong weekly second-wave structure, do not assume extension to `-10%` without live momentum confirmation.
+
+For extension legs (for example beyond `-5%` target zone), require continuation gate:
+
+- displacement/close confirmation beyond local structure,
+- no immediate opposing squeeze dominance in near-field,
+- optional short-horizon trend check (for example 15m/1h continuation).
+
+If gate fails, force conservative exit behavior (flatten extension leg, keep core rules intact).
+
 ---
 
 ## 7. Dynamic Milestone Logic (Candidate)
@@ -201,6 +252,10 @@ Mirror for LONG setup.
 
 This should start as a paper-only flag, not hard live gate.
 
+Implementation note:
+
+- evaluate skip/wait primarily on normalized features (`*_oi`, regime ratios), not absolute USD alone.
+
 ---
 
 ## 9. Backtest Design
@@ -233,6 +288,64 @@ Minimum:
 
 - 8-12 weeks snapshot history for first cut
 - 20+ weeks preferred for decision-quality confidence.
+
+Calibration note (as of 2026-02-28):
+
+- Current liquidation summary history is only `2026-02-26` to `2026-02-27`.
+- Current heatmap history is only `2026-02-27`.
+- Any thresholds used before minimum window is reached must be marked `provisional`.
+
+### 9.4 Provisional Threshold Policy
+
+Before minimum data window is reached:
+
+1. Keep thresholds in config (not code constants embedded in strategy flow).
+2. Tag every liquidation-mode decision with threshold version.
+3. Store raw feature vector + normalized vector in trade metadata.
+4. Refit thresholds only on scheduled cadence (for example weekly), not ad hoc per trade.
+
+### 9.5 Config Schema (v0.1, Provisional)
+
+Define liquidation logic via runtime config so values can be tuned without rewriting core strategy flow.
+
+| Key | Type | Default | Purpose |
+|---|---|---|---|
+| `LIQ_INTEL_ENABLED` | boolean | `false` | Master switch for liquidation intelligence logic. |
+| `LIQ_INTEL_EXECUTION_MODE` | enum(`off`,`paper`,`live`) | `paper` | `paper` logs decisions only; `live` can affect execution. |
+| `LIQ_INTEL_PROVISIONAL` | boolean | `true` | Marks thresholds as provisional until minimum history is reached. |
+| `LIQ_INTEL_THRESHOLD_VERSION` | string | `liq_v0_1_provisional` | Version tag written to every decision/trade record. |
+| `LIQ_INTEL_MIN_HISTORY_WEEKS` | number | `8` | Minimum snapshot history required before non-provisional promotion. |
+| `LIQ_INTEL_REFIT_CADENCE_DAYS` | number | `7` | Scheduled threshold recalibration cadence. |
+| `LIQ_INTEL_TFS` | csv | `6h,1d,7d,30d` | Timeframes used for classification (must exist in snapshot store). |
+| `LIQ_INTEL_NEARFIELD_BAND_PCT` | number | `2` | Near-field opposing-risk band width. |
+| `LIQ_INTEL_WAVE1_END_PCT` | number | `5` | End of first directional wave. |
+| `LIQ_INTEL_WAVE2_END_PCT` | number | `10` | End of second directional wave. |
+| `LIQ_INTEL_SCORE_SWING_MIN` | number | `0.70` | Minimum confidence score for `SWING`. |
+| `LIQ_INTEL_SCORE_DAY_MIN` | number | `0.45` | Minimum confidence score for `DAY`; below becomes `SCALP`. |
+| `LIQ_INTEL_MOMENTUM_GATE_ENABLED` | boolean | `true` | Requires continuation confirmation before extension-leg hold. |
+| `LIQ_INTEL_MOMENTUM_GATE_MIN_DISPLACEMENT_PCT` | number | `0.25` | Minimum close/displacement confirmation for extension. |
+| `LIQ_INTEL_SKIPWAIT_RISK_MULT` | number | `1.20` | Skip/wait trigger multiplier when opposing near-field risk dominates. |
+
+Implementation guardrails:
+
+1. Unknown/missing config values should fallback to defaults and emit warnings.
+2. Invalid numeric ranges should hard-fail startup in `live` mode and soft-fail in `paper` mode.
+3. Changes to any threshold key should auto-bump effective decision fingerprint in logs.
+
+### 9.6 Trade Metadata Fields (Required for Evaluation)
+
+Persist these per entry decision (paper + live) for later calibration:
+
+- `liquidation_mode`: `SCALP` / `DAY` / `SWING`
+- `liquidation_confidence_score`: normalized score `[0,1]`
+- `liquidation_threshold_version`: config version string
+- `liq_fuel_0_5_usd`, `liq_fuel_5_10_usd`
+- `liq_fuel_0_5_oi`, `liq_fuel_5_10_oi`
+- `liq_wave_ratio`
+- `liq_nearfield_opposing_0_2_oi`
+- `liq_mtf_agreement_score`
+- `liq_momentum_gate_passed` (boolean)
+- `liq_decision_reason` (short machine-readable reason code)
 
 ---
 

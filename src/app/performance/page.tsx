@@ -15,7 +15,6 @@ import {
   PERFORMANCE_MODELS,
   PERFORMANCE_MODEL_LABELS,
   resolvePerformanceSystem,
-  type PerformanceSystem,
 } from "@/lib/performance/modelConfig";
 import {
   buildPerformanceWeekFlags,
@@ -44,6 +43,8 @@ import {
   computeTieredWeekForAllSystems,
   TIERED_DISPLAY_LABELS,
 } from "@/lib/performance/tiered";
+import StrategyPerformanceSummary from "@/components/performance/StrategyPerformanceSummary";
+import { readBotStrategySummaries } from "@/lib/performance/botStrategies";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -234,6 +235,16 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     weekOptions: weekSelectorOptions,
     currentWeekOpenUtc: displayWeekOpenUtc,
   });
+
+  let botStrategies: Awaited<ReturnType<typeof readBotStrategySummaries>> = [];
+  try {
+    botStrategies = await readBotStrategySummaries();
+  } catch (error) {
+    console.error(
+      "Bot strategy summaries failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
 
   if (selectedWeek === "all") {
     const branchStartMs = perfNowMs();
@@ -439,6 +450,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             }}
             tieredGridPropsBySystem={tieredGridPropsBySystem}
           />
+
+          <StrategyPerformanceSummary strategies={botStrategies} />
         </div>
       </DashboardLayout>
     );
@@ -858,6 +871,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           }}
           tieredGridPropsBySystem={tieredGridPropsBySystem}
         />
+
+        <StrategyPerformanceSummary strategies={botStrategies} />
       </div>
     </DashboardLayout>
   );

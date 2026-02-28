@@ -32,7 +32,7 @@ type CoreSymbol = "BTC" | "ETH";
 type Direction = "LONG" | "SHORT" | "NEUTRAL";
 type Tier = "HIGH" | "MEDIUM" | "NEUTRAL";
 type ExitReason = "STOP_LOSS" | "TRAILING_STOP" | "TAKE_PROFIT" | "EOD_CLOSE" | "WEEK_CLOSE" | "BREAKEVEN_STOP";
-type Trigger = "RANGE_SWEEP" | "NY_OPEN_BASELINE";
+type Trigger = "RANGE_SWEEP" | "NY_OPEN_BASELINE" | "WEEKLY_BIAS_HOLD";
 
 type EntryMode = "independent" | "handshake";
 type RiskModel = "v3_current" | "scaling";
@@ -50,11 +50,16 @@ type StrategyKey =
   | "J_handshake_scaling_overnight_funding_oi_reverse"
   | "K_3way_handshake_scaling_overnight_alts"
   | "D_v3_baseline_independent_current_risk"
+  | "L_weekly_bias_hold_scaling"
   | "daily_ny_open_short";
 
-type SessionWindow = "ASIA_LONDON_RANGE_NY_ENTRY" | "US_RANGE_ASIA_LONDON_ENTRY" | "NY_OPEN_BASELINE";
+type SessionWindow =
+  | "ASIA_LONDON_RANGE_NY_ENTRY"
+  | "US_RANGE_ASIA_LONDON_ENTRY"
+  | "NY_OPEN_BASELINE"
+  | "WEEKLY_BIAS_HOLD";
 type RangeSource = "ASIA+LONDON" | "US" | "NONE";
-type EntrySession = "NY" | "ASIA_LONDON";
+type EntrySession = "NY" | "ASIA_LONDON" | "WEEKLY";
 type SessionGapMode = "baseline" | "extended_ny" | "extended_asia" | "split";
 
 type SessionFilters = {
@@ -278,6 +283,7 @@ type BacktestOutput = {
     J_handshake_scaling_overnight_funding_oi_reverse: StrategyTotals;
     K_3way_handshake_scaling_overnight_alts: StrategyTotals;
     D_v3_baseline_independent_current_risk: StrategyTotals;
+    L_weekly_bias_hold_scaling: StrategyTotals;
     daily_ny_open_short: StrategyTotals;
   };
   handshake_diagnostics: {
@@ -296,6 +302,7 @@ type BacktestOutput = {
     I_handshake_scaling_overnight_oi_reverse: Array<{ milestone: string; times: number; pct_of_trades: number }>;
     J_handshake_scaling_overnight_funding_oi_reverse: Array<{ milestone: string; times: number; pct_of_trades: number }>;
     K_3way_handshake_scaling_overnight_alts: Array<{ milestone: string; times: number; pct_of_trades: number }>;
+    L_weekly_bias_hold_scaling: Array<{ milestone: string; times: number; pct_of_trades: number }>;
   };
   alt_3way_diagnostics: {
     total_core_handshakes: number;
@@ -597,6 +604,7 @@ const ALL_STRATEGY_KEYS: StrategyKey[] = [
   "J_handshake_scaling_overnight_funding_oi_reverse",
   "K_3way_handshake_scaling_overnight_alts",
   "D_v3_baseline_independent_current_risk",
+  "L_weekly_bias_hold_scaling",
   "daily_ny_open_short",
 ];
 
@@ -1734,6 +1742,71 @@ function planBaselineTradeForDay(params: {
   };
 }
 
+function planWeeklyBiasHoldTrade(params: {
+  symbol: SymbolBase;
+  weekOpenUtc: string;
+  candles: Candle[];
+  weekIndices: number[];
+  bias: WeeklyBias;
+}): PlannedTrade | null {
+  const { symbol, weekOpenUtc, candles, weekIndices, bias } = params;
+  if (bias.bias === "NEUTRAL" || !weekIndices.length) return null;
+
+  const entryIdx = weekIndices[0];
+  const entryCandle = candles[entryIdx];
+  const entryPrice = entryCandle.open;
+  if (!(entryPrice > 0)) return null;
+
+  const direction = bias.bias as "LONG" | "SHORT";
+  const sim = simulateScalingRisk(candles, weekIndices, entryIdx, entryPrice, direction, "WEEK_CLOSE");
+
+  return {
+    strategy: "L_weekly_bias_hold_scaling",
+    symbol,
+    weekOpenUtc,
+    dayUtc: getUtcDateKey(entryCandle.ts),
+    tier: bias.tier,
+    weeklyBias: bias.bias,
+    trigger: "WEEKLY_BIAS_HOLD",
+    sessionWindow: "WEEKLY_BIAS_HOLD",
+    rangeSource: "NONE",
+    entrySession: "WEEKLY",
+    entryMode: "independent",
+    riskModel: "scaling",
+    direction,
+    entryTs: entryCandle.ts,
+    entryPrice,
+    stopPrice: sim.stopPrice,
+    stopDistancePct: sim.stopDistancePct,
+    atr: sim.atr,
+    sessionRangeHigh: null,
+    sessionRangeLow: null,
+    sweepPrice: null,
+    sweepPct: null,
+    sweepToEntryBars: null,
+    exitTs: sim.exitTs,
+    exitPrice: sim.exitPrice,
+    exitReason: sim.exitReason,
+    unleveredPnlPct: sim.unleveredPnlPct,
+    rMultiple: sim.rMultiple,
+    initialLeverage: sim.initialLeverage,
+    pnlLeverage: sim.pnlLeverage,
+    maxLeverageReached: sim.maxLeverageReached,
+    breakevenReached: sim.breakevenReached,
+    milestonesHit: sim.milestonesHit,
+    releaseFractions: sim.releaseFractions,
+    allocationPct: ALLOCATION_BY_TIER[bias.tier],
+    gateSource: "none",
+    altChangePct4h: null,
+    btcChangePct4h: null,
+    relativeSpike: null,
+    spikeZScore: null,
+    altAtrPct: null,
+    handshakePartnerSymbol: null,
+    handshakeDelayMinutes: null,
+  };
+}
+
 function executePlannedTrades(
   plans: PlannedTrade[],
   startingBalance: number,
@@ -1883,6 +1956,7 @@ function strategyLabel(key: StrategyKey) {
   if (key === "J_handshake_scaling_overnight_funding_oi_reverse") return "J) Handshake + Scaling + Overnight + Funding + OI Reverse";
   if (key === "K_3way_handshake_scaling_overnight_alts") return "K) 3-Way Handshake + Scaling + Overnight Hold (Alt Expansion)";
   if (key === "D_v3_baseline_independent_current_risk") return "D) v3 Baseline (Independent + Current Risk)";
+  if (key === "L_weekly_bias_hold_scaling") return "L) Weekly Bias Hold (Scaling, No Sweep)";
   return "Daily NY Open Short";
 }
 
@@ -1940,6 +2014,7 @@ function buildMarkdownReport(output: BacktestOutput) {
   lines.push(`| J) Handshake + Scaling + Overnight + Funding + OI Reverse | ${output.baseline_comparison.J_handshake_scaling_overnight_funding_oi_reverse.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.J_handshake_scaling_overnight_funding_oi_reverse.winRatePct.toFixed(2)}% | ${output.baseline_comparison.J_handshake_scaling_overnight_funding_oi_reverse.avgR.toFixed(3)} | ${output.baseline_comparison.J_handshake_scaling_overnight_funding_oi_reverse.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.J_handshake_scaling_overnight_funding_oi_reverse.trades} | ${output.baseline_comparison.J_handshake_scaling_overnight_funding_oi_reverse.tradesPerWeek.toFixed(2)} |`);
   lines.push(`| K) 3-Way Handshake + Scaling + Overnight Hold (Alt Expansion) | ${output.baseline_comparison.K_3way_handshake_scaling_overnight_alts.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.K_3way_handshake_scaling_overnight_alts.winRatePct.toFixed(2)}% | ${output.baseline_comparison.K_3way_handshake_scaling_overnight_alts.avgR.toFixed(3)} | ${output.baseline_comparison.K_3way_handshake_scaling_overnight_alts.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.K_3way_handshake_scaling_overnight_alts.trades} | ${output.baseline_comparison.K_3way_handshake_scaling_overnight_alts.tradesPerWeek.toFixed(2)} |`);
   lines.push(`| D) v3 Baseline (Independent + Current Risk) | ${output.baseline_comparison.D_v3_baseline_independent_current_risk.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.D_v3_baseline_independent_current_risk.winRatePct.toFixed(2)}% | ${output.baseline_comparison.D_v3_baseline_independent_current_risk.avgR.toFixed(3)} | ${output.baseline_comparison.D_v3_baseline_independent_current_risk.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.D_v3_baseline_independent_current_risk.trades} | ${output.baseline_comparison.D_v3_baseline_independent_current_risk.tradesPerWeek.toFixed(2)} |`);
+  lines.push(`| L) Weekly Bias Hold (Scaling, No Sweep) | ${output.baseline_comparison.L_weekly_bias_hold_scaling.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.L_weekly_bias_hold_scaling.winRatePct.toFixed(2)}% | ${output.baseline_comparison.L_weekly_bias_hold_scaling.avgR.toFixed(3)} | ${output.baseline_comparison.L_weekly_bias_hold_scaling.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.L_weekly_bias_hold_scaling.trades} | ${output.baseline_comparison.L_weekly_bias_hold_scaling.tradesPerWeek.toFixed(2)} |`);
   lines.push(`| Daily NY Open Short | ${output.baseline_comparison.daily_ny_open_short.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.daily_ny_open_short.winRatePct.toFixed(2)}% | ${output.baseline_comparison.daily_ny_open_short.avgR.toFixed(3)} | ${output.baseline_comparison.daily_ny_open_short.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.daily_ny_open_short.trades} | ${output.baseline_comparison.daily_ny_open_short.tradesPerWeek.toFixed(2)} |`);
   lines.push("");
 
@@ -2845,6 +2920,7 @@ async function main() {
       const key = d.toISODate();
       if (key) dateKeys.push(key);
     }
+    const weekFirstDayKey = dateKeys[0] ?? "";
 
     const weekStartPrimary = strategyState[primaryStrategy].balance;
     let weekWins = 0;
@@ -2861,6 +2937,21 @@ async function main() {
       const plansByStrategy = {} as Record<StrategyKey, PlannedTrade[]>;
       for (const key of ALL_STRATEGY_KEYS) {
         plansByStrategy[key] = [];
+      }
+      if (dayUtc === weekFirstDayKey) {
+        for (const symbol of SYMBOLS) {
+          if (weeklyEntries.L_weekly_bias_hold_scaling[symbol] >= 1) continue;
+          const candles = candlesBySymbol[symbol];
+          if (!candles.length) continue;
+          const weekPlan = planWeeklyBiasHoldTrade({
+            symbol,
+            weekOpenUtc,
+            candles,
+            weekIndices: weekIndicesBySymbol[symbol],
+            bias: biases[symbol],
+          });
+          if (weekPlan) plansByStrategy.L_weekly_bias_hold_scaling.push(weekPlan);
+        }
       }
 
       const sessionDefinitions: Array<{
@@ -3349,6 +3440,7 @@ async function main() {
   const totalsJ = computeStrategyTotals(strategyState.J_handshake_scaling_overnight_funding_oi_reverse.trades, STARTING_BALANCE_USD, strategyState.J_handshake_scaling_overnight_funding_oi_reverse.balance, strategyState.J_handshake_scaling_overnight_funding_oi_reverse.maxDd, weekOpens.length);
   const totalsK = computeStrategyTotals(strategyState.K_3way_handshake_scaling_overnight_alts.trades, STARTING_BALANCE_USD, strategyState.K_3way_handshake_scaling_overnight_alts.balance, strategyState.K_3way_handshake_scaling_overnight_alts.maxDd, weekOpens.length);
   const totalsD = computeStrategyTotals(strategyState.D_v3_baseline_independent_current_risk.trades, STARTING_BALANCE_USD, strategyState.D_v3_baseline_independent_current_risk.balance, strategyState.D_v3_baseline_independent_current_risk.maxDd, weekOpens.length);
+  const totalsL = computeStrategyTotals(strategyState.L_weekly_bias_hold_scaling.trades, STARTING_BALANCE_USD, strategyState.L_weekly_bias_hold_scaling.balance, strategyState.L_weekly_bias_hold_scaling.maxDd, weekOpens.length);
   const totalsBaseline = computeStrategyTotals(strategyState.daily_ny_open_short.trades, STARTING_BALANCE_USD, strategyState.daily_ny_open_short.balance, strategyState.daily_ny_open_short.maxDd, weekOpens.length);
 
   const primaryTrades = strategyState[primaryStrategy].trades;
@@ -3481,6 +3573,8 @@ async function main() {
   else recommendations.push("Combined funding + OI reverse filters did not improve C returns in this sample.");
   if (totalsK.totalReturnPct > totalsC.totalReturnPct) recommendations.push("3-way alt expansion outperformed core C strategy in this sample.");
   else recommendations.push("3-way alt expansion did not outperform core C strategy in this sample.");
+  if (totalsL.totalReturnPct > totalsC.totalReturnPct) recommendations.push("Weekly bias hold outperformed C; entry timing edge remains unproven.");
+  else recommendations.push("C outperformed weekly bias hold; sweep/handshake timing adds value in this sample.");
   if (totalsA.totalReturnPct > totalsD.totalReturnPct) recommendations.push("Handshake alone added value versus independent current-risk entries.");
   else recommendations.push("Handshake alone did not improve current-risk performance.");
   if (totalsB.totalReturnPct > totalsD.totalReturnPct) recommendations.push("Scaling risk model improved independent entries.");
@@ -3586,6 +3680,14 @@ async function main() {
         trades: totalsD.trades,
         tradesPerWeek: round(totalsD.tradesPerWeek),
       },
+      L_weekly_bias_hold_scaling: {
+        totalReturnPct: round(totalsL.totalReturnPct),
+        winRatePct: round(totalsL.winRatePct),
+        avgR: round(totalsL.avgR),
+        maxDrawdownPct: round(totalsL.maxDrawdownPct),
+        trades: totalsL.trades,
+        tradesPerWeek: round(totalsL.tradesPerWeek),
+      },
       daily_ny_open_short: {
         totalReturnPct: round(totalsBaseline.totalReturnPct),
         winRatePct: round(totalsBaseline.winRatePct),
@@ -3643,6 +3745,11 @@ async function main() {
         pct_of_trades: round(r.pct_of_trades),
       })),
       K_3way_handshake_scaling_overnight_alts: milestoneRows("K_3way_handshake_scaling_overnight_alts").map((r) => ({
+        milestone: r.milestone,
+        times: r.times,
+        pct_of_trades: round(r.pct_of_trades),
+      })),
+      L_weekly_bias_hold_scaling: milestoneRows("L_weekly_bias_hold_scaling").map((r) => ({
         milestone: r.milestone,
         times: r.times,
         pct_of_trades: round(r.pct_of_trades),
@@ -3744,6 +3851,7 @@ async function main() {
       J: round(output.baseline_comparison.J_handshake_scaling_overnight_funding_oi_reverse.totalReturnPct),
       K: round(output.baseline_comparison.K_3way_handshake_scaling_overnight_alts.totalReturnPct),
       D: round(output.baseline_comparison.D_v3_baseline_independent_current_risk.totalReturnPct),
+      L: round(output.baseline_comparison.L_weekly_bias_hold_scaling.totalReturnPct),
       Daily: round(output.baseline_comparison.daily_ny_open_short.totalReturnPct),
     },
     max_dd_pct: {
@@ -3758,6 +3866,7 @@ async function main() {
       J: round(output.baseline_comparison.J_handshake_scaling_overnight_funding_oi_reverse.maxDrawdownPct),
       K: round(output.baseline_comparison.K_3way_handshake_scaling_overnight_alts.maxDrawdownPct),
       D: round(output.baseline_comparison.D_v3_baseline_independent_current_risk.maxDrawdownPct),
+      L: round(output.baseline_comparison.L_weekly_bias_hold_scaling.maxDrawdownPct),
       Daily: round(output.baseline_comparison.daily_ny_open_short.maxDrawdownPct),
     },
     trades: {
@@ -3772,6 +3881,7 @@ async function main() {
       J: output.baseline_comparison.J_handshake_scaling_overnight_funding_oi_reverse.trades,
       K: output.baseline_comparison.K_3way_handshake_scaling_overnight_alts.trades,
       D: output.baseline_comparison.D_v3_baseline_independent_current_risk.trades,
+      L: output.baseline_comparison.L_weekly_bias_hold_scaling.trades,
       Daily: output.baseline_comparison.daily_ny_open_short.trades,
     },
   });
@@ -3789,6 +3899,7 @@ async function main() {
   console.log(`J return: ${output.baseline_comparison.J_handshake_scaling_overnight_funding_oi_reverse.totalReturnPct.toFixed(2)}%`);
   console.log(`K return: ${output.baseline_comparison.K_3way_handshake_scaling_overnight_alts.totalReturnPct.toFixed(2)}%`);
   console.log(`D return: ${output.baseline_comparison.D_v3_baseline_independent_current_risk.totalReturnPct.toFixed(2)}%`);
+  console.log(`L return: ${output.baseline_comparison.L_weekly_bias_hold_scaling.totalReturnPct.toFixed(2)}%`);
   console.log(`Daily NY Open return: ${output.baseline_comparison.daily_ny_open_short.totalReturnPct.toFixed(2)}%`);
   console.log(`Primary diagnostics - sweeps:${primarySweepEvents} wrongDir:${primarySkippedWrongDirection} noReject:${primarySkippedNoRejection} noDisp:${primarySkippedNoDisplacement} stopWide:${primarySkippedStopTooWide} noBal:${primarySkippedNoBalance}`);
 }
