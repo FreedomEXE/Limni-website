@@ -1,4 +1,5 @@
-const TIME_ZONE = "America/Toronto";
+// Canonical display timezone for the app: Toronto/New York (Eastern Time).
+const TIME_ZONE = "America/New_York";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: TIME_ZONE,

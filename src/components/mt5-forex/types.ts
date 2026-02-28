@@ -119,6 +119,7 @@ export function toIsoString(value: unknown) {
 }
 
 const SHORT_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
   month: "short",
   day: "numeric",
   hour: "2-digit",
@@ -131,7 +132,7 @@ export function formatShortDateTime(value: unknown) {
   if (!iso) return "—";
   const ts = Date.parse(iso);
   if (!Number.isFinite(ts)) return iso;
-  return SHORT_DATE_TIME_FORMATTER.format(new Date(ts));
+  return `${SHORT_DATE_TIME_FORMATTER.format(new Date(ts))} ET`;
 }
 
 export function formatCompactUsd(value: unknown) {

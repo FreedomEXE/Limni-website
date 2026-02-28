@@ -51,6 +51,15 @@ export type SignalDiagnostics = {
   skippedNoDisplacement: number;
 };
 
+export type UnqualifiedSweep = {
+  direction: "LONG" | "SHORT";
+  sweepTs: number;
+  sweepPct: number;
+  sweepPrice: number;
+  reason: "no_rejection" | "no_displacement" | "wrong_direction";
+  displacementPct?: number;
+};
+
 export type HandshakeEvaluation = {
   triggered: boolean;
   reason: "ok" | "single_symbol" | "timing_miss" | "no_signal";
@@ -166,20 +175,27 @@ export function detectSignalForWindow(
   candles: BotCandle[],
   biasDirection: Direction,
   tier: ConfidenceTier,
-): { signal: SweepSignal | null; diagnostics: SignalDiagnostics } {
+): { signal: SweepSignal | null; diagnostics: SignalDiagnostics; bestUnqualified: UnqualifiedSweep | null } {
   const diagnostics: SignalDiagnostics = {
     sweepEvents: 0,
     skippedWrongDirection: 0,
     skippedNoRejection: 0,
     skippedNoDisplacement: 0,
   };
+  let bestUnqualified: UnqualifiedSweep | null = null;
 
   if (!candles.length || !range.locked) {
-    return { signal: null, diagnostics };
+    return { signal: null, diagnostics, bestUnqualified };
   }
 
   const allowedDirections = allowedDirectionsForBias(biasDirection, tier);
   const minSweep = tier === "NEUTRAL" ? NEUTRAL_SWEEP_MIN_PCT : SWEEP_MIN_PCT;
+
+  function trackUnqualified(dir: "LONG" | "SHORT", sweepPct: number, wick: number, ts: number, reason: UnqualifiedSweep["reason"], displacementPct?: number) {
+    if (!bestUnqualified || sweepPct > bestUnqualified.sweepPct) {
+      bestUnqualified = { direction: dir, sweepTs: ts, sweepPct, sweepPrice: wick, reason, displacementPct };
+    }
+  }
 
   for (let i = 0; i < candles.length; i += 1) {
     const sweepCandle = candles[i];
@@ -202,6 +218,7 @@ export function detectSignalForWindow(
     for (const candidate of candidates) {
       if (!allowedDirections.includes(candidate.dir)) {
         diagnostics.skippedWrongDirection += 1;
+        trackUnqualified(candidate.dir, candidate.sweepPct, candidate.wick, sweepCandle.ts, "wrong_direction");
         continue;
       }
 
@@ -226,6 +243,7 @@ export function detectSignalForWindow(
 
       if (!rejection) {
         diagnostics.skippedNoRejection += 1;
+        trackUnqualified(candidate.dir, candidate.sweepPct, candidate.wick, sweepCandle.ts, "no_rejection");
         continue;
       }
 
@@ -235,6 +253,7 @@ export function detectSignalForWindow(
 
       if (!(bodyPct >= DISPLACEMENT_BODY_MIN_PCT)) {
         diagnostics.skippedNoDisplacement += 1;
+        trackUnqualified(candidate.dir, candidate.sweepPct, candidate.wick, sweepCandle.ts, "no_displacement", bodyPct);
         continue;
       }
 
@@ -249,11 +268,12 @@ export function detectSignalForWindow(
           sweepToEntryBars: rejection.barsAhead,
         },
         diagnostics,
+        bestUnqualified,
       };
     }
   }
 
-  return { signal: null, diagnostics };
+  return { signal: null, diagnostics, bestUnqualified };
 }
 
 export function evaluateHandshake(

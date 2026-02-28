@@ -26,6 +26,9 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# Cache
+.cache/
+
 # Data files
 data/
 *.json

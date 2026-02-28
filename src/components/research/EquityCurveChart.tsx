@@ -168,8 +168,8 @@ export default function EquityCurveChart({
       tsMs: pointTs.getTime(),
       x: toXFromTs(pointTs.getTime()),
       label: pointTs.toLocaleString("en-US", spanDays > 2
-        ? { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }
-        : { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }),
+        ? { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" }
+        : { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" }),
     };
   });
 

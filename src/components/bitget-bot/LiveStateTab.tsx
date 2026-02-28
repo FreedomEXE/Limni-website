@@ -19,6 +19,7 @@ import {
   type BitgetRangeRow,
   type BitgetSignalRow,
 } from "@/components/bitget-bot/types";
+import { formatDateTimeET } from "@/lib/time";
 
 type LiveStateTabProps = {
   botState: BitgetBotStateV1 | null;
@@ -52,9 +53,7 @@ function fmtPct(value: unknown, digits = 2) {
 function fmtUtc(value: unknown) {
   const iso = toIsoString(value);
   if (!iso) return "—";
-  const ts = Date.parse(iso);
-  if (!Number.isFinite(ts)) return iso;
-  return new Date(ts).toLocaleString();
+  return formatDateTimeET(iso, iso);
 }
 
 function resolveRange(

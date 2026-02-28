@@ -147,6 +147,10 @@ const CORE_SYMBOLS: readonly CoreSymbol[] = ["BTC", "ETH"];
 const HANDSHAKE_WINDOW_MINUTES = Number(process.env.BITGET_BOT_HANDSHAKE_WINDOW_MINUTES ?? "60");
 const WEEKLY_MAX_ENTRIES = Number(process.env.BITGET_BOT_WEEKLY_MAX_ENTRIES_PER_SYMBOL ?? "5");
 const INITIAL_LEVERAGE = Number(process.env.BITGET_BOT_INITIAL_LEVERAGE ?? "5");
+const HANDSHAKE_MARGIN_PCT_PER_SYMBOL = Math.max(
+  0,
+  Math.min(0.5, Number(process.env.BITGET_BOT_HANDSHAKE_MARGIN_PCT_PER_SYMBOL ?? "0.45")),
+);
 const DRY_RUN = String(process.env.BITGET_BOT_DRY_RUN ?? "true").toLowerCase() !== "false";
 const LIQ_ADVISORY_ENABLED = String(process.env.BITGET_LIQ_ADVISORY_ENABLED ?? "true").toLowerCase() !== "false";
 const LIQ_ADVISORY_INTERVAL = (process.env.BITGET_LIQ_ADVISORY_INTERVAL ?? "1d").trim() || "1d";
@@ -228,11 +232,6 @@ function getWeekWindow(nowUtc = DateTime.utc()) {
 function previousUtcDay(day: string) {
   const dt = DateTime.fromISO(day, { zone: "utc" });
   return dt.minus({ days: 1 }).toISODate() ?? day;
-}
-
-function isSundayUtcDay(day: string) {
-  const dt = DateTime.fromISO(day, { zone: "utc" });
-  return dt.isValid && dt.weekday === 7;
 }
 
 function getUtcDay(ts: number) {
@@ -958,21 +957,6 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
       transitionState(state, "WATCHING_RANGE", transitions, "outside entry window");
     } else {
       const currentDayUtc = now.toISODate() ?? getUtcDay(now.toMillis());
-      if (isSundayUtcDay(currentDayUtc)) {
-        transitionState(state, "WATCHING_RANGE", transitions, "sunday skip");
-        state.lastTickUtc = nowIso;
-        state.lastError = errors.length ? errors.join(" | ") : null;
-        await writeBotState(BOT_ID, state);
-        return {
-          ok: errors.length === 0,
-          lifecycle: state.lifecycle,
-          transitions,
-          positions: state.positions,
-          dryRun: DRY_RUN,
-          errors,
-          tickDurationMs: Date.now() - startedMs,
-        };
-      }
 
       const rangeDay = window === "ASIA_LONDON_RANGE_NY_ENTRY"
         ? currentDayUtc
@@ -1020,6 +1004,24 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
             status: "CANDIDATE",
             metadata: { tier: btcBias.tier, bias: btcBias.bias },
           });
+        } else if (btcDetect.bestUnqualified) {
+          const uq = btcDetect.bestUnqualified;
+          await safeInsertSignal({
+            dayUtc: currentDayUtc,
+            symbol: "BTC",
+            sessionWindow: window,
+            confirmTimeUtc: new Date(uq.sweepTs).toISOString(),
+            direction: uq.direction,
+            sweepPct: uq.sweepPct,
+            displacementPct: uq.displacementPct ?? 0,
+            status: "UNQUALIFIED",
+            metadata: {
+              tier: btcBias.tier,
+              bias: btcBias.bias,
+              reason: uq.reason,
+              diagnostics: btcDetect.diagnostics,
+            },
+          });
         }
         if (ethDetect.signal) {
           await safeInsertSignal({
@@ -1032,6 +1034,24 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
             displacementPct: ethDetect.signal.displacementPct,
             status: "CANDIDATE",
             metadata: { tier: ethBias.tier, bias: ethBias.bias },
+          });
+        } else if (ethDetect.bestUnqualified) {
+          const uq = ethDetect.bestUnqualified;
+          await safeInsertSignal({
+            dayUtc: currentDayUtc,
+            symbol: "ETH",
+            sessionWindow: window,
+            confirmTimeUtc: new Date(uq.sweepTs).toISOString(),
+            direction: uq.direction,
+            sweepPct: uq.sweepPct,
+            displacementPct: uq.displacementPct ?? 0,
+            status: "UNQUALIFIED",
+            metadata: {
+              tier: ethBias.tier,
+              bias: ethBias.bias,
+              reason: uq.reason,
+              diagnostics: ethDetect.diagnostics,
+            },
           });
         }
 
@@ -1055,7 +1075,7 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
           const account = await fetchBitgetAccount().catch(() => null);
           const equity = Number(account?.available ?? account?.usdtEquity ?? account?.equity ?? NaN);
           const allocEquity = Number.isFinite(equity) && equity > 0 ? equity : getEquityFallback();
-          const marginPerSymbol = allocEquity * 0.5;
+          const marginPerSymbol = allocEquity * HANDSHAKE_MARGIN_PCT_PER_SYMBOL;
           const entryWeekId = state.entriesThisWeek.weekOpenUtc;
           const handshakeGroupId = `${entryWeekId}:${window}:${handshake.entryTs}`;
 

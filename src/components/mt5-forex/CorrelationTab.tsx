@@ -20,6 +20,7 @@ import {
   toIsoString,
   type CorrelationMatrixRow,
 } from "@/components/mt5-forex/types";
+import { formatDateTimeET } from "@/lib/time";
 
 type CorrelationTabProps = {
   correlationMatrix: CorrelationMatrixRow[];
@@ -92,13 +93,7 @@ export default function CorrelationTab({
         </h3>
         {computedAt && (
           <span className="text-xs text-[color:var(--muted)]">
-            Computed: {new Date(computedAt).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
-            })}
+            Computed: {formatDateTimeET(computedAt)}
           </span>
         )}
       </div>

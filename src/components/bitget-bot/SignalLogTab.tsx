@@ -19,6 +19,7 @@ import {
   toNumber,
   type BitgetSignalRow,
 } from "@/components/bitget-bot/types";
+import { formatDateTimeET } from "@/lib/time";
 
 type SignalLogTabProps = {
   signals: BitgetSignalRow[];
@@ -27,17 +28,25 @@ type SignalLogTabProps = {
 function fmtUtc(value: unknown) {
   const iso = toIsoString(value);
   if (!iso) return "—";
-  const ts = Date.parse(iso);
-  if (!Number.isFinite(ts)) return iso;
-  return new Date(ts).toLocaleString();
+  return formatDateTimeET(iso, iso);
 }
 
 function fmtUtcExact(value: unknown) {
   const iso = toIsoString(value);
   if (!iso) return "—";
-  const ts = Date.parse(iso);
-  if (!Number.isFinite(ts)) return iso;
-  return `${new Date(ts).toISOString().replace("T", " ").slice(0, 19)} UTC`;
+  return formatDateTimeET(iso, iso);
+}
+
+const UNQUALIFIED_REASON_LABELS: Record<string, string> = {
+  no_rejection: "No rejection",
+  no_displacement: "No displacement",
+  wrong_direction: "Wrong direction",
+};
+
+function unqualifiedReason(metadata: Record<string, unknown> | null | undefined): string {
+  if (!metadata) return "—";
+  const reason = typeof metadata.reason === "string" ? metadata.reason : null;
+  return reason ? (UNQUALIFIED_REASON_LABELS[reason] ?? reason) : "—";
 }
 
 function statusTone(status: string) {
@@ -46,6 +55,9 @@ function statusTone(status: string) {
   }
   if (status === "CANDIDATE") {
     return "border-sky-300/40 bg-sky-500/10 text-sky-200";
+  }
+  if (status === "UNQUALIFIED") {
+    return "border-amber-300/40 bg-amber-500/10 text-amber-200";
   }
   if (status === "REJECTED") {
     return "border-rose-300/40 bg-rose-500/10 text-rose-200";
@@ -70,6 +82,10 @@ export default function SignalLogTab({ signals }: SignalLogTabProps) {
         <p className="mt-1">
           Handshake Group ID appears only after both BTC and ETH confirm inside the handshake window.
           While waiting, status stays CANDIDATE and group ID remains pending.
+        </p>
+        <p className="mt-1">
+          UNQUALIFIED signals are near-miss sweeps that breached the range but failed rejection or displacement.
+          The reason column shows why the sweep didn&apos;t qualify.
         </p>
       </div>
       <section className="overflow-hidden rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm">
@@ -117,7 +133,12 @@ export default function SignalLogTab({ signals }: SignalLogTabProps) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-[color:var(--muted)]">
-                      {signal.handshake_group_id ?? (signal.status === "CANDIDATE" ? "Pending counter-signal" : "—")}
+                      {signal.handshake_group_id
+                        ?? (signal.status === "CANDIDATE"
+                          ? "Pending counter-signal"
+                          : signal.status === "UNQUALIFIED"
+                            ? unqualifiedReason(signal.metadata)
+                            : "—")}
                     </td>
                     <td className="px-4 py-3 text-[color:var(--muted)]" title={fmtUtcExact(signal.confirm_time_utc)}>
                       {fmtUtc(signal.confirm_time_utc)}

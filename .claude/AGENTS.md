@@ -143,6 +143,15 @@ Deploy: Vercel (frontend + crons), Render (worker bots).
 
 ---
 
+## Timezone Policy
+
+- All user-facing dates/times must be displayed in Eastern Time using `America/New_York` (Toronto/New York market time).
+- Do not use local machine/browser timezone defaults for UI timestamps.
+- Prefer shared format helpers in `src/lib/time.ts` (`formatDateET`, `formatTimeET`, `formatDateTimeET`) for consistency.
+- If showing timezone text, use `ET`.
+
+---
+
 ## Process Safety
 
 **NEVER kill processes broadly — this can terminate your own connection!**

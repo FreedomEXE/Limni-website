@@ -20,6 +20,7 @@ import {
   toNumber,
   type BitgetTradeRow,
 } from "@/components/bitget-bot/types";
+import { formatDateTimeET } from "@/lib/time";
 
 type TradeHistoryTabProps = {
   trades: BitgetTradeRow[];
@@ -28,9 +29,7 @@ type TradeHistoryTabProps = {
 function fmtUtc(value: unknown) {
   const iso = toIsoString(value);
   if (!iso) return "—";
-  const ts = Date.parse(iso);
-  if (!Number.isFinite(ts)) return iso;
-  return new Date(ts).toLocaleString();
+  return formatDateTimeET(iso, iso);
 }
 
 function fmtPrice(value: unknown) {

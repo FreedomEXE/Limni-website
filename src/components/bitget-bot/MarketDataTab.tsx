@@ -24,6 +24,7 @@ import {
   type OiSnapshotRow,
   type BitgetTradeRow,
 } from "@/components/bitget-bot/types";
+import { formatDateET, formatDateTimeET } from "@/lib/time";
 
 type MarketDataTabProps = {
   oi: OiSnapshotRow[];
@@ -136,7 +137,7 @@ function TimeSeriesChart({
   });
   const xTicks = [0, 0.25, 0.5, 0.75, 1].map((r) => {
     const ts = minTs + spanTs * r;
-    return { x: toX(ts), label: new Date(ts).toLocaleDateString() };
+    return { x: toX(ts), label: formatDateET(new Date(ts).toISOString(), "—") };
   });
 
   const zeroY = toY(0);
@@ -295,7 +296,9 @@ export default function MarketDataTab({
                   {symbol} Liquidation Snapshot
                 </h4>
                 <span className="text-xs text-[color:var(--muted)]">
-                  {toIsoString(row?.snapshot_time_utc) ? new Date(toIsoString(row?.snapshot_time_utc) as string).toLocaleString() : "—"}
+                  {toIsoString(row?.snapshot_time_utc)
+                    ? formatDateTimeET(toIsoString(row?.snapshot_time_utc) as string, "—")
+                    : "—"}
                 </span>
               </div>
 

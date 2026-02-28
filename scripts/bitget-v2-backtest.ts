@@ -42,6 +42,7 @@ type StrategyKey =
   | "A_handshake_current_risk"
   | "B_independent_scaling_risk"
   | "C_handshake_scaling_risk"
+  | "M_4h_close_entry"
   | "E_handshake_scaling_overnight_funding"
   | "F_handshake_scaling_overnight_oi"
   | "G_handshake_scaling_overnight_funding_oi"
@@ -275,6 +276,7 @@ type BacktestOutput = {
     A_handshake_current_risk: StrategyTotals;
     B_independent_scaling_risk: StrategyTotals;
     C_handshake_scaling_risk: StrategyTotals;
+    M_4h_close_entry: StrategyTotals;
     E_handshake_scaling_overnight_funding: StrategyTotals;
     F_handshake_scaling_overnight_oi: StrategyTotals;
     G_handshake_scaling_overnight_funding_oi: StrategyTotals;
@@ -295,6 +297,7 @@ type BacktestOutput = {
   scaling_milestones: {
     B_independent_scaling_risk: Array<{ milestone: string; times: number; pct_of_trades: number }>;
     C_handshake_scaling_risk: Array<{ milestone: string; times: number; pct_of_trades: number }>;
+    M_4h_close_entry: Array<{ milestone: string; times: number; pct_of_trades: number }>;
     E_handshake_scaling_overnight_funding: Array<{ milestone: string; times: number; pct_of_trades: number }>;
     F_handshake_scaling_overnight_oi: Array<{ milestone: string; times: number; pct_of_trades: number }>;
     G_handshake_scaling_overnight_funding_oi: Array<{ milestone: string; times: number; pct_of_trades: number }>;
@@ -502,13 +505,20 @@ const FUNDING_EXTREME_THRESHOLD = 0.0001;
 const BITGET_BASE_URL = "https://api.bitget.com";
 const BITGET_PRODUCT_TYPE = process.env.BITGET_PRODUCT_TYPE ?? "USDT-FUTURES";
 
-const HANDSHAKE_MAX_DELAY_MINUTES = 60;
+const HANDSHAKE_MAX_DELAY_MINUTES = Number(process.env.HANDSHAKE_WINDOW_MIN ?? "60");
 const HANDSHAKE_MAX_DELAY_MS = HANDSHAKE_MAX_DELAY_MINUTES * 60_000;
+const BACKTEST_FAST_MODE = process.env.BACKTEST_FAST === "1";
+const BACKTEST_DISABLE_ALT_UNIVERSE =
+  BACKTEST_FAST_MODE || process.env.BACKTEST_DISABLE_ALT_UNIVERSE === "1";
+const BACKTEST_SKIP_SESSION_GAP =
+  BACKTEST_FAST_MODE || process.env.BACKTEST_SKIP_SESSION_GAP === "1";
+const BACKTEST_INCLUDE_SUNDAYS = process.env.BACKTEST_INCLUDE_SUNDAYS === "1";
 const ALT_HANDSHAKE_WINDOW_MIN = 60;
 const ALT_HANDSHAKE_WINDOW_MS = ALT_HANDSHAKE_WINDOW_MIN * 60_000;
+const FOUR_HOUR_MS = 4 * 60 * 60 * 1000;
 const ALT_ALLOCATION_PCT = 0.1;
 const MAX_ALT_POSITIONS = 3;
-const ALT_FETCH_DELAY_MS = 500;
+const ALT_FETCH_DELAY_MS = BACKTEST_FAST_MODE ? 0 : 500;
 const MIN_ALT_M5_ROWS_PER_WEEK = 1000;
 const FUNDING_NEUTRAL_BAND = 0.00005; // 0.005%
 const OI_PROXY_LOOKBACK_BARS = 48; // 4h on M5
@@ -531,6 +541,14 @@ const VARIANT_CONFIGS: VariantConfig[] = [
   {
     key: "C_handshake_scaling_risk",
     label: "C) Handshake + Scaling + Overnight Hold",
+    entryMode: "handshake",
+    riskModel: "scaling",
+    scalingHoldOvernight: true,
+    filterMode: "none",
+  },
+  {
+    key: "M_4h_close_entry",
+    label: "M) 4H Close Entry (Sweep Only, No Displacement)",
     entryMode: "handshake",
     riskModel: "scaling",
     scalingHoldOvernight: true,
@@ -596,6 +614,7 @@ const ALL_STRATEGY_KEYS: StrategyKey[] = [
   "A_handshake_current_risk",
   "B_independent_scaling_risk",
   "C_handshake_scaling_risk",
+  "M_4h_close_entry",
   "E_handshake_scaling_overnight_funding",
   "F_handshake_scaling_overnight_oi",
   "G_handshake_scaling_overnight_funding_oi",
@@ -1260,6 +1279,101 @@ function detectSignalForWindow(params: {
   return { signal: null, diagnostics };
 }
 
+function detectSweepOnlySignalsForWindow(params: {
+  symbol: SymbolBase;
+  weekOpenUtc: string;
+  dayUtc: string;
+  m1Candles: Candle[];
+  sessionIndices: number[];
+  referenceCandles: Candle[];
+  range: DailyRange;
+  bias: WeeklyBias;
+  sessionWindow: SessionWindow;
+  rangeSource: RangeSource;
+  entrySession: EntrySession;
+}): { byDirection: Partial<Record<"LONG" | "SHORT", { signal: SignalCandidate; sweepTs: number }>>; diagnostics: DaySweepDiagnostics } {
+  const {
+    symbol,
+    weekOpenUtc,
+    dayUtc,
+    m1Candles,
+    sessionIndices,
+    referenceCandles,
+    range,
+    bias,
+    sessionWindow,
+    rangeSource,
+    entrySession,
+  } = params;
+  const diagnostics: DaySweepDiagnostics = {
+    sweepEvents: 0,
+    skippedWrongDirection: 0,
+    skippedNoRejection: 0,
+    skippedNoDisplacement: 0,
+    skippedStopTooWide: 0,
+  };
+  const byDirection: Partial<Record<"LONG" | "SHORT", { signal: SignalCandidate; sweepTs: number }>> = {};
+  if (!sessionIndices.length) return { byDirection, diagnostics };
+
+  const allowedDirections = allowedDirectionsForBias(bias);
+  if (!allowedDirections.length) return { byDirection, diagnostics };
+  const minSweep = bias.tier === "NEUTRAL" ? NEUTRAL_SWEEP_MIN_PCT : SWEEP_MIN_PCT;
+
+  for (const sweepIdx of sessionIndices) {
+    const sweepCandle = m1Candles[sweepIdx];
+    if (!sweepCandle) continue;
+
+    const upSweepPct = ((sweepCandle.high - range.high) / range.high) * 100;
+    const downSweepPct = ((range.low - sweepCandle.low) / range.low) * 100;
+
+    const candidates: Array<{ dir: "LONG" | "SHORT"; sweepPct: number; wick: number }> = [];
+    if (upSweepPct >= minSweep) candidates.push({ dir: "SHORT", sweepPct: upSweepPct, wick: sweepCandle.high });
+    if (downSweepPct >= minSweep) candidates.push({ dir: "LONG", sweepPct: downSweepPct, wick: sweepCandle.low });
+
+    diagnostics.sweepEvents += candidates.length;
+    if (!candidates.length) continue;
+
+    for (const candidate of candidates) {
+      if (!allowedDirections.includes(candidate.dir)) {
+        diagnostics.skippedWrongDirection += 1;
+        continue;
+      }
+      if (byDirection[candidate.dir]) continue; // First sweep per symbol+direction.
+
+      const refIdx = findIndexAtOrBeforeTs(referenceCandles, sweepCandle.ts);
+      if (refIdx === null) continue;
+
+      byDirection[candidate.dir] = {
+        sweepTs: sweepCandle.ts,
+        signal: {
+          symbol,
+          weekOpenUtc,
+          dayUtc,
+          tier: bias.tier,
+          weeklyBias: bias.bias,
+          direction: candidate.dir,
+          sessionWindow,
+          rangeSource,
+          entrySession,
+          rangeHigh: range.high,
+          rangeLow: range.low,
+          sweepPrice: candidate.wick,
+          sweepPct: candidate.sweepPct,
+          sweepToEntryBars: 0,
+          sweepIdx: refIdx,
+          confirmIdx: refIdx,
+        },
+      };
+    }
+  }
+
+  return { byDirection, diagnostics };
+}
+
+function next4hBoundaryAfterTs(ts: number) {
+  return Math.floor(ts / FOUR_HOUR_MS + 1) * FOUR_HOUR_MS;
+}
+
 function findIndexByTs(candles: Candle[], sessionIndices: number[], ts: number): number | null {
   for (const idx of sessionIndices) {
     if (candles[idx]?.ts === ts) return idx;
@@ -1902,8 +2016,61 @@ function executePlannedTrades(
     open.push(...openLeft);
   }
 
-  for (const plan of sorted) {
+  for (let i = 0; i < sorted.length; i += 1) {
+    const plan = sorted[i];
     closeMatured(plan.entryTs);
+
+    const isCoreHandshakePairLead =
+      plan.entryMode === "handshake"
+      && plan.gateSource === "core_handshake";
+
+    if (isCoreHandshakePairLead) {
+      const group: PlannedTrade[] = [plan];
+      let j = i + 1;
+      while (j < sorted.length) {
+        const next = sorted[j];
+        if (
+          next.entryTs !== plan.entryTs
+          || next.entryMode !== "handshake"
+          || next.gateSource !== "core_handshake"
+          || next.weekOpenUtc !== plan.weekOpenUtc
+          || next.dayUtc !== plan.dayUtc
+          || next.sessionWindow !== plan.sessionWindow
+        ) {
+          break;
+        }
+        group.push(next);
+        j += 1;
+      }
+      i = j - 1;
+
+      const reserved = open.reduce((s, p) => s + p.reservedMargin, 0);
+      const available = Math.max(0, balance - reserved);
+      const groupBudget = available * plan.allocationPct;
+      const perLegMargin = group.length > 0 ? groupBudget / group.length : 0;
+      if (!(perLegMargin > 0)) {
+        skippedNoBalance += group.length;
+        continue;
+      }
+
+      for (const groupedPlan of group) {
+        const releaseEvents = groupedPlan.releaseFractions.map((r) => ({ ts: r.ts, amount: perLegMargin * r.fraction }));
+        const levPct = groupedPlan.unleveredPnlPct * groupedPlan.pnlLeverage;
+        const rawPnl = perLegMargin * (levPct / 100);
+        const pnlUsd = Math.max(-perLegMargin, rawPnl);
+
+        open.push({
+          plan: groupedPlan,
+          initialMargin: perLegMargin,
+          reservedMargin: perLegMargin,
+          freedMargin: 0,
+          pendingReleases: releaseEvents,
+          pnlUsd,
+        });
+      }
+      continue;
+    }
+
     const reserved = open.reduce((s, p) => s + p.reservedMargin, 0);
     const available = Math.max(0, balance - reserved);
     const initialMargin = available * plan.allocationPct;
@@ -1948,6 +2115,7 @@ function strategyLabel(key: StrategyKey) {
   if (key === "A_handshake_current_risk") return "A) Handshake + Current Risk";
   if (key === "B_independent_scaling_risk") return "B) Independent + Scaling Risk";
   if (key === "C_handshake_scaling_risk") return "C) Handshake + Scaling + Overnight Hold";
+  if (key === "M_4h_close_entry") return "M) 4H Close Entry (Sweep Only, No Displacement)";
   if (key === "E_handshake_scaling_overnight_funding") return "E) Handshake + Scaling + Overnight + Funding Filter";
   if (key === "F_handshake_scaling_overnight_oi") return "F) Handshake + Scaling + Overnight + OI Delta Filter";
   if (key === "G_handshake_scaling_overnight_funding_oi") return "G) Handshake + Scaling + Overnight + Funding + OI";
@@ -2006,6 +2174,7 @@ function buildMarkdownReport(output: BacktestOutput) {
   lines.push(`| A) Handshake + Current Risk | ${output.baseline_comparison.A_handshake_current_risk.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.A_handshake_current_risk.winRatePct.toFixed(2)}% | ${output.baseline_comparison.A_handshake_current_risk.avgR.toFixed(3)} | ${output.baseline_comparison.A_handshake_current_risk.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.A_handshake_current_risk.trades} | ${output.baseline_comparison.A_handshake_current_risk.tradesPerWeek.toFixed(2)} |`);
   lines.push(`| B) Independent + Scaling Risk | ${output.baseline_comparison.B_independent_scaling_risk.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.B_independent_scaling_risk.winRatePct.toFixed(2)}% | ${output.baseline_comparison.B_independent_scaling_risk.avgR.toFixed(3)} | ${output.baseline_comparison.B_independent_scaling_risk.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.B_independent_scaling_risk.trades} | ${output.baseline_comparison.B_independent_scaling_risk.tradesPerWeek.toFixed(2)} |`);
   lines.push(`| C) Handshake + Scaling + Overnight Hold | ${output.baseline_comparison.C_handshake_scaling_risk.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.C_handshake_scaling_risk.winRatePct.toFixed(2)}% | ${output.baseline_comparison.C_handshake_scaling_risk.avgR.toFixed(3)} | ${output.baseline_comparison.C_handshake_scaling_risk.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.C_handshake_scaling_risk.trades} | ${output.baseline_comparison.C_handshake_scaling_risk.tradesPerWeek.toFixed(2)} |`);
+  lines.push(`| M) 4H Close Entry (Sweep Only, No Displacement) | ${output.baseline_comparison.M_4h_close_entry.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.M_4h_close_entry.winRatePct.toFixed(2)}% | ${output.baseline_comparison.M_4h_close_entry.avgR.toFixed(3)} | ${output.baseline_comparison.M_4h_close_entry.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.M_4h_close_entry.trades} | ${output.baseline_comparison.M_4h_close_entry.tradesPerWeek.toFixed(2)} |`);
   lines.push(`| E) Handshake + Scaling + Overnight + Funding Filter | ${output.baseline_comparison.E_handshake_scaling_overnight_funding.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.E_handshake_scaling_overnight_funding.winRatePct.toFixed(2)}% | ${output.baseline_comparison.E_handshake_scaling_overnight_funding.avgR.toFixed(3)} | ${output.baseline_comparison.E_handshake_scaling_overnight_funding.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.E_handshake_scaling_overnight_funding.trades} | ${output.baseline_comparison.E_handshake_scaling_overnight_funding.tradesPerWeek.toFixed(2)} |`);
   lines.push(`| F) Handshake + Scaling + Overnight + OI Delta Filter | ${output.baseline_comparison.F_handshake_scaling_overnight_oi.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.F_handshake_scaling_overnight_oi.winRatePct.toFixed(2)}% | ${output.baseline_comparison.F_handshake_scaling_overnight_oi.avgR.toFixed(3)} | ${output.baseline_comparison.F_handshake_scaling_overnight_oi.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.F_handshake_scaling_overnight_oi.trades} | ${output.baseline_comparison.F_handshake_scaling_overnight_oi.tradesPerWeek.toFixed(2)} |`);
   lines.push(`| G) Handshake + Scaling + Overnight + Funding + OI | ${output.baseline_comparison.G_handshake_scaling_overnight_funding_oi.totalReturnPct.toFixed(2)}% | ${output.baseline_comparison.G_handshake_scaling_overnight_funding_oi.winRatePct.toFixed(2)}% | ${output.baseline_comparison.G_handshake_scaling_overnight_funding_oi.avgR.toFixed(3)} | ${output.baseline_comparison.G_handshake_scaling_overnight_funding_oi.maxDrawdownPct.toFixed(2)}% | ${output.baseline_comparison.G_handshake_scaling_overnight_funding_oi.trades} | ${output.baseline_comparison.G_handshake_scaling_overnight_funding_oi.tradesPerWeek.toFixed(2)} |`);
@@ -2107,6 +2276,14 @@ function buildMarkdownReport(output: BacktestOutput) {
   lines.push("| Milestone | Times Reached | % of Trades |");
   lines.push("| --- | ---: | ---: |");
   for (const row of output.scaling_milestones.C_handshake_scaling_risk) {
+    lines.push(`| ${row.milestone} | ${row.times} | ${row.pct_of_trades.toFixed(2)}% |`);
+  }
+  lines.push("");
+
+  lines.push("#### M) 4H Close Entry (Sweep Only, No Displacement)", "");
+  lines.push("| Milestone | Times Reached | % of Trades |");
+  lines.push("| --- | ---: | ---: |");
+  for (const row of output.scaling_milestones.M_4h_close_entry) {
     lines.push(`| ${row.milestone} | ${row.times} | ${row.pct_of_trades.toFixed(2)}% |`);
   }
   lines.push("");
@@ -2468,7 +2645,7 @@ async function runSessionGapVariantComparison(params: {
     }
 
     for (const dayUtc of dateKeys) {
-      if (isSundayUtc(dayUtc)) continue;
+      if (!BACKTEST_INCLUDE_SUNDAYS && isSundayUtc(dayUtc)) continue;
 
       for (const variant of SESSION_GAP_VARIANTS) {
         const modePack = rangesByMode[variant.mode];
@@ -2665,10 +2842,24 @@ async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL missing.");
 
   const weekOpens = getLastCompletedWeekOpens(WEEKS_TO_BACKTEST);
-  const altList = loadAltSymbolsFromScreener(weekOpens);
+  const altListRaw = loadAltSymbolsFromScreener(weekOpens);
+  const altList = BACKTEST_DISABLE_ALT_UNIVERSE
+    ? {
+      defaultSymbols: [] as SymbolBase[],
+      allSymbols: [] as SymbolBase[],
+      source: "disabled via BACKTEST_DISABLE_ALT_UNIVERSE/BACKTEST_FAST",
+      byWeek: new Map<string, SymbolBase[]>(),
+    }
+    : altListRaw;
   ALT_SYMBOLS = [...altList.defaultSymbols];
   ALL_SYMBOLS = [...CORE_SYMBOLS, ...altList.allSymbols];
   console.log(`Variant K alt symbols (${altList.source}): ${altList.allSymbols.join(", ") || "none"}`);
+  if (BACKTEST_FAST_MODE) {
+    console.log("Backtest fast mode: ON (alt universe disabled, session-gap comparison skipped).");
+  }
+  if (BACKTEST_INCLUDE_SUNDAYS) {
+    console.log("Backtest day filter: Sundays INCLUDED.");
+  }
   const cotHistory = await readSnapshotHistory("crypto", 260);
   if (!cotHistory.length) throw new Error("No crypto COT snapshots found.");
 
@@ -2838,6 +3029,7 @@ async function main() {
     }
 
     const candlesBySymbol = {} as Record<SymbolBase, Candle[]>;
+    const rawM1BySymbol = {} as Record<SymbolBase, Candle[]>;
     const asiaLondonRangesBySymbol = {} as Record<SymbolBase, Map<string, DailyRange>>;
     const usRangesBySymbol = {} as Record<SymbolBase, Map<string, DailyRange>>;
     const weekIndicesBySymbol = {} as Record<SymbolBase, number[]>;
@@ -2847,12 +3039,13 @@ async function main() {
       try {
         let m1ExistingRows = 0;
         let h1ExistingRows = 0;
-        if (symbol === "BTC" || symbol === "ETH") {
+        if (!BACKTEST_FAST_MODE && (symbol === "BTC" || symbol === "ETH")) {
           m1ExistingRows = (await fetchBitgetMinuteSeries(symbol, { openUtc: weekOpen, closeUtc: weekClose })).length;
           h1ExistingRows = (await fetchBitgetCandleSeries(symbol, { openUtc: weekOpen, closeUtc: weekClose })).length;
         }
         const rawM1 = await fetchRawM1Candles(symbol, weekDataOpen, weekClose);
         const m5 = aggregateM1ToM5(rawM1);
+        rawM1BySymbol[symbol] = rawM1;
 
         if (activeAltSymbols.includes(symbol) && m5.length < MIN_ALT_M5_ROWS_PER_WEEK) {
           candlesBySymbol[symbol] = [];
@@ -2893,6 +3086,7 @@ async function main() {
         });
       } catch (error) {
         candlesBySymbol[symbol] = [];
+        rawM1BySymbol[symbol] = [];
         asiaLondonRangesBySymbol[symbol] = new Map();
         usRangesBySymbol[symbol] = new Map();
         weekIndicesBySymbol[symbol] = [];
@@ -2932,7 +3126,7 @@ async function main() {
     }
 
     for (const dayUtc of dateKeys) {
-      if (isSundayUtc(dayUtc)) continue;
+      if (!BACKTEST_INCLUDE_SUNDAYS && isSundayUtc(dayUtc)) continue;
 
       const plansByStrategy = {} as Record<StrategyKey, PlannedTrade[]>;
       for (const key of ALL_STRATEGY_KEYS) {
@@ -3018,6 +3212,69 @@ async function main() {
         const btcSignal = signalBySymbol.get("BTC");
         const ethSignal = signalBySymbol.get("ETH");
         let handshakeReady: { entryTs: number; delayMinutes: number; btcConfirmTs: number; ethConfirmTs: number } | null = null;
+        let fourHourHandshakeReady:
+          | {
+            entryTs: number;
+            delayMinutes: number;
+            btcSignal: SignalCandidate;
+            ethSignal: SignalCandidate;
+          }
+          | null = null;
+
+        const sweepOnlyByCore = new Map<CoreSymbol, Partial<Record<"LONG" | "SHORT", { signal: SignalCandidate; sweepTs: number }>>>();
+        for (const symbol of CORE_SYMBOLS) {
+          const m1Candles = rawM1BySymbol[symbol] ?? [];
+          const m5Candles = candlesBySymbol[symbol] ?? [];
+          if (!m1Candles.length || !m5Candles.length) continue;
+          const range = sessionDef.rangeForSymbol(symbol);
+          if (!range?.locked) continue;
+          const m1Indices = sessionDef.entrySession === "NY"
+            ? nyCandleIndicesForDay(m1Candles, dayUtc)
+            : asiaLondonCandleIndicesForDay(m1Candles, dayUtc);
+          if (!m1Indices.length) continue;
+          const detectedSweepOnly = detectSweepOnlySignalsForWindow({
+            symbol,
+            weekOpenUtc,
+            dayUtc,
+            m1Candles,
+            sessionIndices: m1Indices,
+            referenceCandles: m5Candles,
+            range,
+            bias: biases[symbol],
+            sessionWindow: sessionDef.sessionWindow,
+            rangeSource: sessionDef.rangeSource,
+            entrySession: sessionDef.entrySession,
+          });
+          if (detectedSweepOnly.byDirection.LONG || detectedSweepOnly.byDirection.SHORT) {
+            sweepOnlyByCore.set(symbol, detectedSweepOnly.byDirection);
+          }
+        }
+
+        const btcSweepOnly = sweepOnlyByCore.get("BTC");
+        const ethSweepOnly = sweepOnlyByCore.get("ETH");
+        if (btcSweepOnly && ethSweepOnly) {
+          const directions: Array<"SHORT" | "LONG"> = ["SHORT", "LONG"];
+          for (const direction of directions) {
+            const btcDirSignal = btcSweepOnly[direction];
+            const ethDirSignal = ethSweepOnly[direction];
+            if (!btcDirSignal || !ethDirSignal) continue;
+            const laterSweepTs = Math.max(btcDirSignal.sweepTs, ethDirSignal.sweepTs);
+            const boundaryTs = next4hBoundaryAfterTs(laterSweepTs);
+            const entryCloseTs = boundaryTs - 300_000;
+            const btcEntryIdx = findIndexByTs(candlesBySymbol.BTC, weekIndicesBySymbol.BTC, entryCloseTs);
+            const ethEntryIdx = findIndexByTs(candlesBySymbol.ETH, weekIndicesBySymbol.ETH, entryCloseTs);
+            if (btcEntryIdx === null || ethEntryIdx === null) continue;
+            const delayMinutes = Math.abs(btcDirSignal.sweepTs - ethDirSignal.sweepTs) / 60_000;
+            if (!fourHourHandshakeReady || entryCloseTs < fourHourHandshakeReady.entryTs) {
+              fourHourHandshakeReady = {
+                entryTs: entryCloseTs,
+                delayMinutes,
+                btcSignal: btcDirSignal.signal,
+                ethSignal: ethDirSignal.signal,
+              };
+            }
+          }
+        }
 
         if ((btcSignal && !ethSignal) || (!btcSignal && ethSignal)) {
           handshakeMissedSingle += 1;
@@ -3065,6 +3322,53 @@ async function main() {
               plansByStrategy[variant.key].push(plan);
             }
           } else {
+            if (variant.key === "M_4h_close_entry") {
+              if (!fourHourHandshakeReady) continue;
+              if (weeklyEntries[variant.key].BTC >= MAX_ENTRIES_PER_SYMBOL_PER_WEEK) continue;
+              if (weeklyEntries[variant.key].ETH >= MAX_ENTRIES_PER_SYMBOL_PER_WEEK) continue;
+
+              const zeroDiagnostics: DaySweepDiagnostics = {
+                sweepEvents: 0,
+                skippedWrongDirection: 0,
+                skippedNoRejection: 0,
+                skippedNoDisplacement: 0,
+                skippedStopTooWide: 0,
+              };
+              const btcPlanM = planTradeFromSignal({
+                strategy: variant.key,
+                entryMode: variant.entryMode,
+                riskModel: variant.riskModel,
+                signal: fourHourHandshakeReady.btcSignal,
+                candles: candlesBySymbol.BTC,
+                sessionIndices: weekIndicesBySymbol.BTC,
+                scalingExitIndices: weekIndicesBySymbol.BTC,
+                scalingNoTriggerExitReason: "WEEK_CLOSE",
+                entryTsOverride: fourHourHandshakeReady.entryTs,
+                gateSource: "core_handshake",
+                handshakePartnerSymbol: "ETH",
+                handshakeDelayMinutes: fourHourHandshakeReady.delayMinutes,
+                diagnostics: zeroDiagnostics,
+              });
+              const ethPlanM = planTradeFromSignal({
+                strategy: variant.key,
+                entryMode: variant.entryMode,
+                riskModel: variant.riskModel,
+                signal: fourHourHandshakeReady.ethSignal,
+                candles: candlesBySymbol.ETH,
+                sessionIndices: weekIndicesBySymbol.ETH,
+                scalingExitIndices: weekIndicesBySymbol.ETH,
+                scalingNoTriggerExitReason: "WEEK_CLOSE",
+                entryTsOverride: fourHourHandshakeReady.entryTs,
+                gateSource: "core_handshake",
+                handshakePartnerSymbol: "BTC",
+                handshakeDelayMinutes: fourHourHandshakeReady.delayMinutes,
+                diagnostics: zeroDiagnostics,
+              });
+              if (btcPlanM && ethPlanM) {
+                plansByStrategy[variant.key].push(btcPlanM, ethPlanM);
+              }
+              continue;
+            }
             if (!handshakeReady || !btcSignal || !ethSignal) continue;
             if (weeklyEntries[variant.key].BTC >= MAX_ENTRIES_PER_SYMBOL_PER_WEEK) continue;
             if (weeklyEntries[variant.key].ETH >= MAX_ENTRIES_PER_SYMBOL_PER_WEEK) continue;
@@ -3432,6 +3736,7 @@ async function main() {
   const totalsA = computeStrategyTotals(strategyState.A_handshake_current_risk.trades, STARTING_BALANCE_USD, strategyState.A_handshake_current_risk.balance, strategyState.A_handshake_current_risk.maxDd, weekOpens.length);
   const totalsB = computeStrategyTotals(strategyState.B_independent_scaling_risk.trades, STARTING_BALANCE_USD, strategyState.B_independent_scaling_risk.balance, strategyState.B_independent_scaling_risk.maxDd, weekOpens.length);
   const totalsC = computeStrategyTotals(strategyState.C_handshake_scaling_risk.trades, STARTING_BALANCE_USD, strategyState.C_handshake_scaling_risk.balance, strategyState.C_handshake_scaling_risk.maxDd, weekOpens.length);
+  const totalsM = computeStrategyTotals(strategyState.M_4h_close_entry.trades, STARTING_BALANCE_USD, strategyState.M_4h_close_entry.balance, strategyState.M_4h_close_entry.maxDd, weekOpens.length);
   const totalsE = computeStrategyTotals(strategyState.E_handshake_scaling_overnight_funding.trades, STARTING_BALANCE_USD, strategyState.E_handshake_scaling_overnight_funding.balance, strategyState.E_handshake_scaling_overnight_funding.maxDd, weekOpens.length);
   const totalsF = computeStrategyTotals(strategyState.F_handshake_scaling_overnight_oi.trades, STARTING_BALANCE_USD, strategyState.F_handshake_scaling_overnight_oi.balance, strategyState.F_handshake_scaling_overnight_oi.maxDd, weekOpens.length);
   const totalsG = computeStrategyTotals(strategyState.G_handshake_scaling_overnight_funding_oi.trades, STARTING_BALANCE_USD, strategyState.G_handshake_scaling_overnight_funding_oi.balance, strategyState.G_handshake_scaling_overnight_funding_oi.maxDd, weekOpens.length);
@@ -3559,6 +3864,8 @@ async function main() {
   const recommendations: string[] = [];
   if (totalsC.totalReturnPct > totalsD.totalReturnPct) recommendations.push("Handshake + scaling outperformed v3 baseline in this sample.");
   else recommendations.push("Handshake + scaling did not beat v3 baseline; refine entry coupling or risk ladder.");
+  if (totalsM.totalReturnPct > totalsC.totalReturnPct) recommendations.push("Variant M (4H close entry) outperformed C in this sample.");
+  else recommendations.push("Variant M (4H close entry) did not outperform C in this sample.");
   if (totalsE.totalReturnPct > totalsC.totalReturnPct) recommendations.push("Funding filter improved C returns in this sample.");
   else recommendations.push("Funding filter did not improve C returns in this sample.");
   if (totalsF.totalReturnPct > totalsC.totalReturnPct) recommendations.push("OI delta filter improved C returns in this sample.");
@@ -3615,6 +3922,14 @@ async function main() {
         maxDrawdownPct: round(totalsC.maxDrawdownPct),
         trades: totalsC.trades,
         tradesPerWeek: round(totalsC.tradesPerWeek),
+      },
+      M_4h_close_entry: {
+        totalReturnPct: round(totalsM.totalReturnPct),
+        winRatePct: round(totalsM.winRatePct),
+        avgR: round(totalsM.avgR),
+        maxDrawdownPct: round(totalsM.maxDrawdownPct),
+        trades: totalsM.trades,
+        tradesPerWeek: round(totalsM.tradesPerWeek),
       },
       E_handshake_scaling_overnight_funding: {
         totalReturnPct: round(totalsE.totalReturnPct),
@@ -3710,6 +4025,11 @@ async function main() {
         pct_of_trades: round(r.pct_of_trades),
       })),
       C_handshake_scaling_risk: milestoneRows("C_handshake_scaling_risk").map((r) => ({
+        milestone: r.milestone,
+        times: r.times,
+        pct_of_trades: round(r.pct_of_trades),
+      })),
+      M_4h_close_entry: milestoneRows("M_4h_close_entry").map((r) => ({
         milestone: r.milestone,
         times: r.times,
         pct_of_trades: round(r.pct_of_trades),
@@ -3813,12 +4133,14 @@ async function main() {
   writeFileSync(path.join(docsDir, "backtest-trade-log.json"), JSON.stringify(output.trades, null, 2), "utf8");
   writeFileSync(path.join(docsDir, "backtest-weekly-summary.json"), JSON.stringify(output.weekly, null, 2), "utf8");
   writeFileSync(path.join(docsDir, "bitget-v2-backtest-results.md"), buildMarkdownReport(output), "utf8");
-  await runSessionGapVariantComparison({
-    weekOpens,
-    cotHistory,
-    fundingBySymbol,
-    baselineReference: output.baseline_comparison.C_handshake_scaling_risk,
-  });
+  if (!BACKTEST_SKIP_SESSION_GAP) {
+    await runSessionGapVariantComparison({
+      weekOpens,
+      cotHistory,
+      fundingBySymbol,
+      baselineReference: output.baseline_comparison.C_handshake_scaling_risk,
+    });
+  }
 
   const historyPath = path.join(docsDir, "backtest-run-history.json");
   type HistoryEntry = {
@@ -3843,6 +4165,7 @@ async function main() {
       A: round(output.baseline_comparison.A_handshake_current_risk.totalReturnPct),
       B: round(output.baseline_comparison.B_independent_scaling_risk.totalReturnPct),
       C: round(output.baseline_comparison.C_handshake_scaling_risk.totalReturnPct),
+      M: round(output.baseline_comparison.M_4h_close_entry.totalReturnPct),
       E: round(output.baseline_comparison.E_handshake_scaling_overnight_funding.totalReturnPct),
       F: round(output.baseline_comparison.F_handshake_scaling_overnight_oi.totalReturnPct),
       G: round(output.baseline_comparison.G_handshake_scaling_overnight_funding_oi.totalReturnPct),
@@ -3858,6 +4181,7 @@ async function main() {
       A: round(output.baseline_comparison.A_handshake_current_risk.maxDrawdownPct),
       B: round(output.baseline_comparison.B_independent_scaling_risk.maxDrawdownPct),
       C: round(output.baseline_comparison.C_handshake_scaling_risk.maxDrawdownPct),
+      M: round(output.baseline_comparison.M_4h_close_entry.maxDrawdownPct),
       E: round(output.baseline_comparison.E_handshake_scaling_overnight_funding.maxDrawdownPct),
       F: round(output.baseline_comparison.F_handshake_scaling_overnight_oi.maxDrawdownPct),
       G: round(output.baseline_comparison.G_handshake_scaling_overnight_funding_oi.maxDrawdownPct),
@@ -3873,6 +4197,7 @@ async function main() {
       A: output.baseline_comparison.A_handshake_current_risk.trades,
       B: output.baseline_comparison.B_independent_scaling_risk.trades,
       C: output.baseline_comparison.C_handshake_scaling_risk.trades,
+      M: output.baseline_comparison.M_4h_close_entry.trades,
       E: output.baseline_comparison.E_handshake_scaling_overnight_funding.trades,
       F: output.baseline_comparison.F_handshake_scaling_overnight_oi.trades,
       G: output.baseline_comparison.G_handshake_scaling_overnight_funding_oi.trades,
@@ -3891,6 +4216,7 @@ async function main() {
   console.log(`A return: ${output.baseline_comparison.A_handshake_current_risk.totalReturnPct.toFixed(2)}%`);
   console.log(`B return: ${output.baseline_comparison.B_independent_scaling_risk.totalReturnPct.toFixed(2)}%`);
   console.log(`C return: ${output.baseline_comparison.C_handshake_scaling_risk.totalReturnPct.toFixed(2)}%`);
+  console.log(`M return: ${output.baseline_comparison.M_4h_close_entry.totalReturnPct.toFixed(2)}%`);
   console.log(`E return: ${output.baseline_comparison.E_handshake_scaling_overnight_funding.totalReturnPct.toFixed(2)}%`);
   console.log(`F return: ${output.baseline_comparison.F_handshake_scaling_overnight_oi.totalReturnPct.toFixed(2)}%`);
   console.log(`G return: ${output.baseline_comparison.G_handshake_scaling_overnight_funding_oi.totalReturnPct.toFixed(2)}%`);

@@ -180,8 +180,9 @@ export async function readBitgetBotStatusData(): Promise<BitgetBotStatusPayload>
                          CASE status
                            WHEN 'HANDSHAKE_CONFIRMED' THEN 0
                            WHEN 'CANDIDATE' THEN 1
-                           WHEN 'REJECTED' THEN 2
-                           WHEN 'EXPIRED' THEN 3
+                           WHEN 'UNQUALIFIED' THEN 2
+                           WHEN 'REJECTED' THEN 3
+                           WHEN 'EXPIRED' THEN 4
                            ELSE 9
                          END,
                          created_at DESC

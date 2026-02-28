@@ -3,6 +3,7 @@ import AutomationBotsCards from "@/components/automation/AutomationBotsCards";
 import { fetchBitgetFuturesSnapshot, fetchBitgetPriceChange } from "@/lib/bitget";
 import { getRecentRegimeDays, upsertRegimeDay } from "@/lib/market-regime";
 import type { RegimeRecord } from "@/lib/market-regime";
+import { formatDateET, formatDateTimeET } from "@/lib/time";
 
 type TrenchbotToken = {
   token_address: string;
@@ -314,7 +315,7 @@ export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
               Simulating
             </span>
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Last refresh: {summary ? new Date(summary.updated_at).toLocaleString() : "Offline"}
+              Last refresh: {summary ? formatDateTimeET(summary.updated_at, "Offline") : "Offline"}
             </span>
           </div>
         </header>
@@ -609,7 +610,7 @@ export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
               {[
                 { label: "Start", value: formatUsd(summary?.sim.start_balance) },
                 { label: "Position", value: formatUsd(summary?.sim.position_size) },
-                { label: "Reset", value: summary?.sim.reset_iso ? new Date(summary.sim.reset_iso).toLocaleDateString() : "—" },
+                { label: "Reset", value: summary?.sim.reset_iso ? formatDateET(summary.sim.reset_iso, "—") : "—" },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -728,7 +729,7 @@ export default async function SolanaMemeBotPage({ searchParams }: PageProps) {
               </div>
             </div>
             <div className="mt-5 rounded-2xl border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/60 p-4 text-xs text-[color:var(--muted)]">
-              Reset: {summary?.sim.reset_iso ? new Date(summary.sim.reset_iso).toLocaleString() : "—"}
+              Reset: {summary?.sim.reset_iso ? formatDateTimeET(summary.sim.reset_iso, "—") : "—"}
             </div>
           </div>
         </section>
