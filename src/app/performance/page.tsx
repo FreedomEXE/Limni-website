@@ -36,6 +36,7 @@ import { simulateTrailingForGroupsFromRows } from "@/lib/universalBasket";
 import { getCanonicalWeekOpenUtc, getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
+import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
 import { DateTime } from "luxon";
 import {
   buildTieredAllTimeViewsFromWeekly,
@@ -51,6 +52,19 @@ import {
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+const PERFORMANCE_PAGE_CACHE_TTL_MS = Number(
+  process.env.PERFORMANCE_PAGE_CACHE_TTL_MS ?? "15000",
+);
+
+function getPerformancePageCacheTtlMs() {
+  if (
+    Number.isFinite(PERFORMANCE_PAGE_CACHE_TTL_MS) &&
+    PERFORMANCE_PAGE_CACHE_TTL_MS >= 0
+  ) {
+    return Math.floor(PERFORMANCE_PAGE_CACHE_TTL_MS);
+  }
+  return 15000;
+}
 
 type PerformancePageProps = {
   searchParams?:
@@ -77,6 +91,21 @@ function buildKataraktiDescription(period: string | null | undefined) {
     return "All-time historical snapshots for the selected market.";
   }
   return `${weekLabelFromOpen(period)}. Historical snapshot for the selected market.`;
+}
+
+function isReportDateCurrentTradingWeek(
+  reportDate: string,
+  currentWeekOpenUtc: string,
+) {
+  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
+  if (!report.isValid) return false;
+  const daysUntilMonday = (8 - report.weekday) % 7;
+  const mondayUtc = report
+    .plus({ days: daysUntilMonday })
+    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+    .toUTC()
+    .toISO();
+  return mondayUtc === currentWeekOpenUtc;
 }
 
 function buildKataraktiGridPropsByMarket(options: {
@@ -154,6 +183,42 @@ async function getPerformanceSentimentForWeek(weekOpenUtc: string) {
     return [];
   }
   return getAggregatesForWeekStartWithBackfill(weekOpenUtc, weekClose);
+}
+
+async function getCachedTieredAllSystemsForWeeks(weeks: string[]) {
+  const normalizedWeeks = weeks.filter((week) => typeof week === "string" && week.length > 0);
+  if (normalizedWeeks.length === 0) {
+    return { v1: [], v2: [], v3: [] } as Awaited<
+      ReturnType<typeof computeTieredForWeeksAllSystems>
+    >;
+  }
+  const key = `performancePage:tiered:all_time:${normalizedWeeks.join(",")}`;
+  return getOrSetRuntimeCache(
+    key,
+    getPerformancePageCacheTtlMs(),
+    () => computeTieredForWeeksAllSystems({ weeks: normalizedWeeks }),
+  );
+}
+
+async function getCachedTrailingForGroups(options: {
+  weekOpenUtc: string;
+  groups: Parameters<typeof simulateTrailingForGroupsFromRows>[0]["groups"];
+}) {
+  const key = `performancePage:trailing:${options.weekOpenUtc}:${options.groups
+    .map((group) => `${group.key}:${group.rows.length}`)
+    .join("|")}`;
+  return getOrSetRuntimeCache(
+    key,
+    getPerformancePageCacheTtlMs(),
+    () =>
+      simulateTrailingForGroupsFromRows({
+        weekOpenUtc: options.weekOpenUtc,
+        groups: options.groups,
+        trailStartPct: 10,
+        trailOffsetPct: 5,
+        timeframe: "H1",
+      }),
+  );
 }
 
 function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
@@ -371,7 +436,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         const tieredWeeklyBySystem = await timed(
           "all_time.computeTieredForWeeksAllSystems",
           { weeks: closedWeeks.length },
-          () => computeTieredForWeeksAllSystems({ weeks: closedWeeks }),
+          () => getCachedTieredAllSystemsForWeeks(closedWeeks),
         );
         const tieredViews = timedSync(
           "all_time.buildTieredAllTimeViewsFromWeekly",
@@ -667,13 +732,11 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     const trailingByGroup = await timed(
       "historical_week.simulateTrailingForGroupsFromRows",
       { selectedWeek: historicalWeekOpenUtc, groupCount: groups.length },
-      () => simulateTrailingForGroupsFromRows({
-        weekOpenUtc: historicalWeekOpenUtc,
-        groups,
-        trailStartPct: 10,
-        trailOffsetPct: 5,
-        timeframe: "H1",
-      }),
+      () =>
+        getCachedTrailingForGroups({
+          weekOpenUtc: historicalWeekOpenUtc,
+          groups,
+        }),
     );
 
     const byAsset = timedSync(
@@ -886,6 +949,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 label="Report"
                 paramName="report"
                 preserveParams={["view", "system", "style", "market", "week"]}
+                isCurrentOption={(value) =>
+                  isReportDateCurrentTradingWeek(String(value), displayWeekOpenUtc)
+                }
                 replaceState
               />
             ) : (

@@ -171,6 +171,7 @@ export function buildKataraktiModelPerformance(
       `Static DD ${week.staticDrawdownPct.toFixed(2)}%`,
     ],
     percent: week.returnPct,
+    children: snapshot.tradeDetailsByWeek[week.weekOpenUtc] ?? [],
   }));
   const tradeReturns = selectedWeekTrades.flatMap((trade, index) =>
     typeof trade.percent === "number" && Number.isFinite(trade.percent)

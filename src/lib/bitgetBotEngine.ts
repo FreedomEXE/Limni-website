@@ -818,7 +818,7 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
   const lockAcquired = await acquireLock();
   if (!lockAcquired) {
     return {
-      ok: false,
+      ok: true,
       lifecycle: "IDLE",
       transitions: ["SKIP: advisory lock busy"],
       positions: [],

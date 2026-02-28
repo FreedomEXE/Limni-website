@@ -36,6 +36,12 @@ export type ModelPerformance = {
     direction: Direction;
     reason: string[];
     percent: number | null;
+    children?: Array<{
+      pair: string;
+      direction: Direction;
+      reason: string[];
+      percent: number | null;
+    }>;
   }>;
   stats: {
     avg_return: number;

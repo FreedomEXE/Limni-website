@@ -129,19 +129,25 @@ type Mt5BacktestReport = {
 
 type LiveBitgetTradeRow = {
   week_open_utc: Date | string;
+  symbol: string;
   direction: string;
   entry_price: number | string;
   exit_price: number | string;
   pnl_usd: number | string;
+  exit_reason: string | null;
+  session_window: string | null;
 };
 
 type LiveMt5TradeRow = {
   week_open_utc: Date | string;
+  symbol: string;
   direction: string;
   entry_price: number | string;
   exit_price: number | string;
   pnl_pct: number | string | null;
   pnl_usd: number | string;
+  exit_reason: string | null;
+  exit_step: string | null;
 };
 
 const DEFAULT_STARTING_EQUITY_USD = 100_000;
@@ -324,6 +330,30 @@ function buildWeeklyFromLiveTrades(
   );
 }
 
+type LiveTradeRow = {
+  weekOpenUtc: string;
+  pair: string;
+  direction: "LONG" | "SHORT" | "NEUTRAL";
+  percent: number | null;
+  reason: string[];
+};
+
+function buildTradeDetailsByWeek(rows: LiveTradeRow[]) {
+  const byWeek = new Map<string, KataraktiTradeDetail[]>();
+  for (const row of rows) {
+    const list = byWeek.get(row.weekOpenUtc) ?? [];
+    list.push({
+      weekOpenUtc: row.weekOpenUtc,
+      pair: row.pair,
+      direction: row.direction,
+      percent: row.percent,
+      reason: row.reason,
+    });
+    byWeek.set(row.weekOpenUtc, list);
+  }
+  return Object.fromEntries(byWeek.entries());
+}
+
 function buildSeedWeeklySnapshots(market: KataraktiMarket): KataraktiWeeklySnapshot[] {
   const seed = KATARAKTI_SEED_SNAPSHOTS[market];
   return sortWeeksAsc(
@@ -456,9 +486,15 @@ function appendLiveWeeks(options: {
   const mergedSource = options.base
     ? `${options.base.sourcePath}+db:sim`
     : "db:sim";
+  const appendedWeeks = new Set(appendedLive.map((week) => week.weekOpenUtc));
+  const filteredLiveTradeDetailsByWeek = Object.fromEntries(
+    Object.entries(options.liveTradeDetailsByWeek ?? {}).filter(([week]) =>
+      appendedWeeks.has(week),
+    ),
+  );
   const mergedTradeDetailsByWeek = {
     ...(options.base?.tradeDetailsByWeek ?? {}),
-    ...(options.liveTradeDetailsByWeek ?? {}),
+    ...filteredLiveTradeDetailsByWeek,
   };
 
   return toSnapshotFromWeekly({
@@ -874,14 +910,20 @@ function mergeSimAndLiveWeekly(
   return sortWeeksAsc(merged);
 }
 
-async function readLiveCryptoWeeklyFromDb(): Promise<KataraktiWeeklySnapshot[]> {
+async function readLiveCryptoWeeklyFromDb(): Promise<{
+  weekly: KataraktiWeeklySnapshot[];
+  tradeDetailsByWeek: Record<string, KataraktiTradeDetail[]>;
+}> {
   const rows = await safeQuery<LiveBitgetTradeRow>(
     `SELECT
        DATE_TRUNC('week', COALESCE(exit_time_utc, entry_time_utc))::timestamptz AS week_open_utc,
+       symbol,
        direction,
        entry_price,
        exit_price,
-       COALESCE(pnl_usd, 0)::double precision AS pnl_usd
+       COALESCE(pnl_usd, 0)::double precision AS pnl_usd,
+       exit_reason,
+       session_window
      FROM bitget_bot_trades
      WHERE bot_id = $1
        AND exit_time_utc IS NOT NULL
@@ -890,35 +932,67 @@ async function readLiveCryptoWeeklyFromDb(): Promise<KataraktiWeeklySnapshot[]> 
     ["bitget_perp_v2"],
   );
 
-  if (rows.length === 0) return [];
-  return buildWeeklyFromLiveTrades(
-    rows.flatMap((row) => {
-      const weekOpenUtc = canonicalWeek(
-        row.week_open_utc instanceof Date
-          ? row.week_open_utc.toISOString()
-          : parseIsoUtc(row.week_open_utc),
-      );
-      if (!weekOpenUtc) return [];
-      const entryPrice = toNumber(row.entry_price) ?? 0;
-      const exitPrice = toNumber(row.exit_price) ?? 0;
-      return [{
-        weekOpenUtc,
-        returnPct: directionAdjustedReturnPct(String(row.direction ?? "LONG"), entryPrice, exitPrice),
-        pnlUsd: toNumber(row.pnl_usd) ?? 0,
-      }];
-    }),
-  );
+  if (rows.length === 0) {
+    return { weekly: [], tradeDetailsByWeek: {} };
+  }
+  const normalizedRows = rows.flatMap((row) => {
+    const weekOpenUtc = canonicalWeek(
+      row.week_open_utc instanceof Date
+        ? row.week_open_utc.toISOString()
+        : parseIsoUtc(row.week_open_utc),
+    );
+    if (!weekOpenUtc) return [];
+    const entryPrice = toNumber(row.entry_price) ?? 0;
+    const exitPrice = toNumber(row.exit_price) ?? 0;
+    const direction = normalizeDirection(row.direction);
+    const returnPct = directionAdjustedReturnPct(direction, entryPrice, exitPrice);
+    return [{
+      weekOpenUtc,
+      pair: normalizePairLabel(row.symbol, "CRYPTO"),
+      direction,
+      returnPct,
+      pnlUsd: toNumber(row.pnl_usd) ?? 0,
+      reason: buildReasonList([
+        row.exit_reason ? `Exit ${row.exit_reason}` : null,
+        row.session_window ? `Session ${row.session_window}` : null,
+      ]),
+    }];
+  });
+  return {
+    weekly: buildWeeklyFromLiveTrades(
+      normalizedRows.map((row) => ({
+        weekOpenUtc: row.weekOpenUtc,
+        returnPct: row.returnPct,
+        pnlUsd: row.pnlUsd,
+      })),
+    ),
+    tradeDetailsByWeek: buildTradeDetailsByWeek(
+      normalizedRows.map((row) => ({
+        weekOpenUtc: row.weekOpenUtc,
+        pair: row.pair,
+        direction: row.direction,
+        percent: row.returnPct,
+        reason: row.reason,
+      })),
+    ),
+  };
 }
 
-async function readLiveMt5WeeklyFromDb(): Promise<KataraktiWeeklySnapshot[]> {
+async function readLiveMt5WeeklyFromDb(): Promise<{
+  weekly: KataraktiWeeklySnapshot[];
+  tradeDetailsByWeek: Record<string, KataraktiTradeDetail[]>;
+}> {
   const rows = await safeQuery<LiveMt5TradeRow>(
     `SELECT
        DATE_TRUNC('week', COALESCE(week_anchor::timestamptz, exit_time_utc, entry_time_utc))::timestamptz AS week_open_utc,
+       symbol,
        direction,
        entry_price,
        exit_price,
        pnl_pct,
-       COALESCE(pnl_usd, 0)::double precision AS pnl_usd
+       COALESCE(pnl_usd, 0)::double precision AS pnl_usd,
+       exit_reason,
+       exit_step
      FROM katarakti_trades
      WHERE bot_id = $1
        AND exit_time_utc IS NOT NULL
@@ -926,29 +1000,54 @@ async function readLiveMt5WeeklyFromDb(): Promise<KataraktiWeeklySnapshot[]> {
     ["katarakti_v1"],
   );
 
-  if (rows.length === 0) return [];
-  return buildWeeklyFromLiveTrades(
-    rows.flatMap((row) => {
-      const weekOpenUtc = canonicalWeek(
-        row.week_open_utc instanceof Date
-          ? row.week_open_utc.toISOString()
-          : parseIsoUtc(row.week_open_utc),
-      );
-      if (!weekOpenUtc) return [];
-      const pnlPct = toNumber(row.pnl_pct);
-      const entryPrice = toNumber(row.entry_price) ?? 0;
-      const exitPrice = toNumber(row.exit_price) ?? 0;
-      const returnPct =
-        pnlPct !== null
-          ? pnlPct
-          : directionAdjustedReturnPct(String(row.direction ?? "LONG"), entryPrice, exitPrice);
-      return [{
-        weekOpenUtc,
-        returnPct,
-        pnlUsd: toNumber(row.pnl_usd) ?? 0,
-      }];
-    }),
-  );
+  if (rows.length === 0) {
+    return { weekly: [], tradeDetailsByWeek: {} };
+  }
+  const normalizedRows = rows.flatMap((row) => {
+    const weekOpenUtc = canonicalWeek(
+      row.week_open_utc instanceof Date
+        ? row.week_open_utc.toISOString()
+        : parseIsoUtc(row.week_open_utc),
+    );
+    if (!weekOpenUtc) return [];
+    const direction = normalizeDirection(row.direction);
+    const pnlPct = toNumber(row.pnl_pct);
+    const entryPrice = toNumber(row.entry_price) ?? 0;
+    const exitPrice = toNumber(row.exit_price) ?? 0;
+    const returnPct =
+      pnlPct !== null
+        ? pnlPct
+        : directionAdjustedReturnPct(direction, entryPrice, exitPrice);
+    return [{
+      weekOpenUtc,
+      pair: normalizePairLabel(row.symbol, "FX"),
+      direction,
+      returnPct,
+      pnlUsd: toNumber(row.pnl_usd) ?? 0,
+      reason: buildReasonList([
+        row.exit_reason ? `Exit ${row.exit_reason}` : null,
+        row.exit_step ? `Step ${row.exit_step}` : null,
+      ]),
+    }];
+  });
+  return {
+    weekly: buildWeeklyFromLiveTrades(
+      normalizedRows.map((row) => ({
+        weekOpenUtc: row.weekOpenUtc,
+        returnPct: row.returnPct,
+        pnlUsd: row.pnlUsd,
+      })),
+    ),
+    tradeDetailsByWeek: buildTradeDetailsByWeek(
+      normalizedRows.map((row) => ({
+        weekOpenUtc: row.weekOpenUtc,
+        pair: row.pair,
+        direction: row.direction,
+        percent: row.returnPct,
+        reason: row.reason,
+      })),
+    ),
+  };
 }
 
 async function readCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | null> {
@@ -1011,15 +1110,16 @@ async function readCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | nu
   });
 
   const base = fileSnapshot ?? seedSnapshot;
-  const [simWeekly, liveWeekly] = await Promise.all([
+  const [simWeekly, liveSnapshot] = await Promise.all([
     readSimWeeklyFromDb("crypto_futures"),
     readLiveCryptoWeeklyFromDb(),
   ]);
-  const mergedWeekly = mergeSimAndLiveWeekly(simWeekly, liveWeekly);
+  const mergedWeekly = mergeSimAndLiveWeekly(simWeekly, liveSnapshot.weekly);
   return appendLiveWeeks({
     market: "crypto_futures",
     base,
     live: mergedWeekly,
+    liveTradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
   });
 }
 
@@ -1200,15 +1300,16 @@ async function readMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
   });
 
   const base = fileSnapshot ?? seedSnapshot;
-  const [simWeekly, liveWeekly] = await Promise.all([
+  const [simWeekly, liveSnapshot] = await Promise.all([
     readSimWeeklyFromDb("mt5_forex"),
     readLiveMt5WeeklyFromDb(),
   ]);
-  const mergedWeekly = mergeSimAndLiveWeekly(simWeekly, liveWeekly);
+  const mergedWeekly = mergeSimAndLiveWeekly(simWeekly, liveSnapshot.weekly);
   return appendLiveWeeks({
     market: "mt5_forex",
     base,
     live: mergedWeekly,
+    liveTradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
   });
 }
 

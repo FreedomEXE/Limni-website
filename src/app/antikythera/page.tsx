@@ -327,6 +327,7 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
             selectedReportDate={selectedReportDate}
             assetClasses={assetClasses.map((a) => ({ id: a.id, label: a.label }))}
             selectedAsset={selectedAsset}
+            currentWeekOpenUtc={currentWeekOpen}
             view={view}
             viewItems={viewItems}
           />

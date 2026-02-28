@@ -26,16 +26,18 @@ import {
   clearHistory,
   loadHistory,
 } from "@/lib/poseidon/conversations";
-import { loadBehavior } from "@/lib/poseidon/behavior";
-import { getRecoverySummary, loadSessionState } from "@/lib/poseidon/state";
+import { getBehavior, loadBehavior } from "@/lib/poseidon/behavior";
+import { getRecoverySummary, getStateSize, loadSessionState } from "@/lib/poseidon/state";
 import { chat } from "@/lib/poseidon/proteus";
 import { toolDefinitions, handleToolCall, getGroupToolDefinitions, setActiveGroupId } from "@/lib/poseidon/tools";
 import { sendStartupAnimation } from "@/lib/poseidon/animations";
-import { startTriton, stopTriton } from "@/lib/poseidon/triton";
-import { scheduleNereus, stopNereus, buildBriefing } from "@/lib/poseidon/nereus";
-import { schedulePoseidon, stopPoseidon, sendReckoning } from "@/lib/poseidon/poseidon-god";
+import { getTritonRuntimeStatus, startTriton, stopTriton } from "@/lib/poseidon/triton";
+import { getNereusScheduleStatus, scheduleNereus, stopNereus, buildBriefing } from "@/lib/poseidon/nereus";
+import { getPoseidonScheduleStatus, schedulePoseidon, stopPoseidon, sendReckoning } from "@/lib/poseidon/poseidon-god";
 import { persistTurnWithRetry } from "@/lib/poseidon/turn-persistence";
 import { isOwnerInGroup, isRestrictedQuery } from "@/lib/poseidon/group-policy";
+import { sendTelegramText } from "@/lib/poseidon/telegram-delivery";
+import { readCurationFlag } from "@/lib/poseidon/curation-flag";
 import {
   upsertGroupMember,
   logGroupMessage,
@@ -104,6 +106,39 @@ function canInterject(): boolean {
   return true;
 }
 
+const chatQueues = new Map<number, Promise<unknown>>();
+
+async function runSerializedByChat<T>(chatId: number, task: () => Promise<T>): Promise<T> {
+  const previous = chatQueues.get(chatId) ?? Promise.resolve();
+  const current = previous
+    .catch(() => undefined)
+    .then(async () => task());
+  chatQueues.set(chatId, current);
+
+  void current.finally(() => {
+    if (chatQueues.get(chatId) === current) {
+      chatQueues.delete(chatId);
+    }
+  }).catch(() => undefined);
+
+  return current;
+}
+
+let botUsernamePromise: Promise<string> | null = null;
+
+async function getBotUsername(): Promise<string> {
+  if (!botUsernamePromise) {
+    botUsernamePromise = bot.telegram
+      .getMe()
+      .then((botInfo) => botInfo.username || "ProteusBot")
+      .catch((error) => {
+        console.warn("[poseidon] getMe failed, using fallback bot username:", error);
+        return "ProteusBot";
+      });
+  }
+  return botUsernamePromise;
+}
+
 function shouldProteusRespond(text: string, botUsername: string): { respond: boolean; reason: string } {
   // Check explicit mention
   const mentionRegex = new RegExp(`@${botUsername}\\b`, "i");
@@ -155,13 +190,12 @@ bot.command("start", async (ctx) => {
   const dbOk = await checkDbConnection();
   const recovery = await getRecoverySummary();
   const chatId = ctx.chat?.id;
-  if (typeof chatId === "number") {
-    await sendStartupAnimation(ctx.telegram, chatId, {
-      memoryFiles: diag.loaded.length,
-      dbConnected: dbOk,
-      stateRecovered: !!recovery,
-    });
-  }
+  if (typeof chatId !== "number") return;
+  await sendStartupAnimation(ctx.telegram, chatId, {
+    memoryFiles: diag.loaded.length,
+    dbConnected: dbOk,
+    stateRecovered: !!recovery,
+  });
 
   const systemPrompt = await loadSystemPrompt();
   const greeting = await chat(
@@ -177,9 +211,7 @@ bot.command("start", async (ctx) => {
   );
 
   await addMessage("assistant", greeting.persistText);
-  await ctx.reply(greeting.displayText, { parse_mode: "Markdown" }).catch(async () => {
-    await ctx.reply(greeting.displayText);
-  });
+  await sendTelegramText(ctx.telegram, chatId, greeting.displayText, { parseMode: "Markdown" });
 });
 
 bot.command("health", async (ctx) => {
@@ -199,7 +231,9 @@ bot.command("status", async (ctx) => {
   await writeHeartbeat({ event: "status_command" }).catch(() => undefined);
   const state = await handleToolCall("get_bot_state", {});
   const payload = `\`\`\`\n${state}\n\`\`\``;
-  await ctx.reply(payload, { parse_mode: "Markdown" });
+  const chatId = ctx.chat?.id;
+  if (typeof chatId !== "number") return;
+  await sendTelegramText(ctx.telegram, chatId, payload, { parseMode: "Markdown" });
 });
 
 bot.command("clear", async (ctx) => {
@@ -211,12 +245,14 @@ bot.command("clear", async (ctx) => {
 bot.command("briefing", async (ctx) => {
   await writeHeartbeat({ event: "briefing_command" }).catch(() => undefined);
   await ctx.sendChatAction("typing");
+  const chatId = ctx.chat?.id;
+  if (typeof chatId !== "number") return;
   try {
     const message = await buildBriefing("pre_ny");
-    await ctx.reply(message, { parse_mode: "HTML" });
+    await sendTelegramText(ctx.telegram, chatId, message, { parseMode: "HTML" });
   } catch (error) {
     console.error("[poseidon] briefing command error:", error);
-    await ctx.reply("Nereus could not assemble the briefing. Check logs.");
+    await sendTelegramText(ctx.telegram, chatId, "Nereus could not assemble the briefing. Check logs.");
   }
 });
 
@@ -240,9 +276,9 @@ bot.command("leaderboard", async (ctx) => {
 
   try {
     const board = await formatLeaderboard(targetGroupId);
-    await ctx.reply(board, { parse_mode: "Markdown" }).catch(async () => {
-      await ctx.reply(board);
-    });
+    const chatId = ctx.chat?.id;
+    if (typeof chatId !== "number") return;
+    await sendTelegramText(ctx.telegram, chatId, board, { parseMode: "Markdown" });
   } catch (error) {
     console.error("[poseidon] leaderboard error:", error);
     await ctx.reply("Could not load leaderboard.");
@@ -259,12 +295,58 @@ bot.command("scores", async (ctx) => {
   }
   try {
     const board = await formatLeaderboard(targetGroupId);
-    await ctx.reply(board, { parse_mode: "Markdown" }).catch(async () => {
-      await ctx.reply(board);
-    });
+    const chatId = ctx.chat?.id;
+    if (typeof chatId !== "number") return;
+    await sendTelegramText(ctx.telegram, chatId, board, { parseMode: "Markdown" });
   } catch (error) {
     console.error("[poseidon] scores error:", error);
     await ctx.reply("Could not load scores.");
+  }
+});
+
+bot.command("deitystatus", async (ctx) => {
+  const chatId = ctx.chat?.id;
+  if (typeof chatId !== "number") return;
+  if (ctx.from?.id !== config.telegram.ownerId) return;
+
+  try {
+    const [behavior, curationFlag, stateSize] = await Promise.all([
+      getBehavior(),
+      readCurationFlag(),
+      getStateSize(),
+    ]);
+    const triton = getTritonRuntimeStatus();
+    const nereus = getNereusScheduleStatus();
+    const poseidon = getPoseidonScheduleStatus();
+
+    const lines = [
+      "Deity Runtime Status",
+      "",
+      `Triton: ${triton.running ? "running" : "stopped"}${triton.inFlight ? " (polling)" : ""}`,
+      `Triton last poll: ${triton.lastPollFinishedAt ?? "n/a"}${triton.lastPollDurationMs !== null ? ` (${triton.lastPollDurationMs}ms)` : ""}`,
+      `Triton last error: ${triton.lastPollError ?? "none"}`,
+      `Triton skipped tick: ${triton.lastPollSkippedAt ?? "n/a"}`,
+      "",
+      `Nereus schedule: ${nereus.active ? "active" : "inactive"}`,
+      `Nereus next pre-asia: ${nereus.preAsiaNextUtc}`,
+      `Nereus next pre-ny: ${nereus.preNyNextUtc}`,
+      "",
+      `Poseidon schedule: ${poseidon.active ? "active" : "inactive"}`,
+      `Poseidon next reckoning: ${poseidon.nextReckoningUtc}`,
+      `Curation flag: ${curationFlag.requested ? `requested (${curationFlag.reason || "no reason"})` : "clear"}`,
+      "",
+      `State size: ${stateSize} chars`,
+      `Behavior alertsEnabled: ${behavior.alertsEnabled}`,
+      `Behavior milestoneAlerts: ${behavior.milestoneAlerts}`,
+      `Behavior biasAlerts: ${behavior.biasAlerts}`,
+      `Behavior errorAlerts: ${behavior.errorAlerts}`,
+      `Behavior verboseMode: ${behavior.verboseMode}`,
+    ];
+
+    await sendTelegramText(ctx.telegram, chatId, lines.join("\n"));
+  } catch (error) {
+    console.error("[poseidon] deitystatus error:", error);
+    await sendTelegramText(ctx.telegram, chatId, "Could not load deity runtime status.");
   }
 });
 
@@ -275,155 +357,155 @@ bot.on("text", async (ctx) => {
   if (userMessage.startsWith("/")) return;
 
   const chatType = ctx.chat?.type as ChatType;
+  const chatId = ctx.chat?.id;
+  if (typeof chatId !== "number") return;
 
-  // ─── GROUP TEXT HANDLER ──────────────────────
-  if (isGroupChat(chatType)) {
-    const groupId = ctx.chat?.id;
-    const userId = ctx.from?.id;
-    if (!groupId || !userId) return;
+  await runSerializedByChat(chatId, async () => {
+    // ─── GROUP TEXT HANDLER ──────────────────────
+    if (isGroupChat(chatType)) {
+      const groupId = chatId;
+      const userId = ctx.from?.id;
+      if (!userId) return;
 
-    try {
-      // Always log + register member
-      await upsertGroupMember(
-        groupId,
-        userId,
-        ctx.from?.username || null,
-        ctx.from?.first_name || null,
-      );
-      await logGroupMessage(
-        groupId,
-        ctx.message.message_id,
-        userId,
-        userMessage,
-      );
-
-      // Get bot username for mention detection
-      const botInfo = await bot.telegram.getMe();
-      const botUsername = botInfo.username || "ProteusBot";
-
-      // Determine if Proteus should respond
-      const decision = shouldProteusRespond(userMessage, botUsername);
-
-      // Freedom asking restricted data in group → DM redirect
-      if (decision.respond && isOwnerInGroup(userId) && isRestrictedQuery(userMessage)) {
-        await ctx.reply("Sent you the details privately.", {
-          reply_parameters: { message_id: ctx.message.message_id },
-        });
-        // Forward to private handler via DM (use full private prompt + tools)
-        const privatePrompt = await loadSystemPrompt();
-        const dmResponse = await chat(
-          privatePrompt,
-          [{ role: "user", content: userMessage }],
-          toolDefinitions,
+      try {
+        // Always log + register member
+        await upsertGroupMember(
+          groupId,
+          userId,
+          ctx.from?.username || null,
+          ctx.from?.first_name || null,
         );
-        await ctx.telegram.sendMessage(config.telegram.ownerId, dmResponse.displayText, {
-          parse_mode: "Markdown",
-        }).catch(async () => {
-          await ctx.telegram.sendMessage(config.telegram.ownerId, dmResponse.displayText);
+        await logGroupMessage(
+          groupId,
+          ctx.message.message_id,
+          userId,
+          userMessage,
+        );
+
+        const botUsername = await getBotUsername();
+
+        // Determine if Proteus should respond
+        const decision = shouldProteusRespond(userMessage, botUsername);
+
+        // Freedom asking restricted data in group → DM redirect
+        if (decision.respond && isOwnerInGroup(userId) && isRestrictedQuery(userMessage)) {
+          await sendTelegramText(ctx.telegram, groupId, "Sent you the details privately.", {
+            replyToMessageId: ctx.message.message_id,
+          });
+          // Forward to private handler via DM (use full private prompt + tools)
+          const privatePrompt = await loadSystemPrompt();
+          const dmResponse = await chat(
+            privatePrompt,
+            [{ role: "user", content: userMessage }],
+            toolDefinitions,
+          );
+          await sendTelegramText(ctx.telegram, config.telegram.ownerId, dmResponse.displayText, {
+            parseMode: "Markdown",
+          });
+          return;
+        }
+
+        if (!decision.respond) return;
+
+        // Mark interjection timestamp
+        if (decision.reason === "interjection") {
+          lastInterjectionAt = Date.now();
+        }
+
+        // Update message as triggering Proteus
+        await logGroupMessage(
+          groupId,
+          ctx.message.message_id,
+          userId,
+          userMessage,
+          "text",
+          true,
+        );
+
+        // Build group system prompt and chat history
+        let response: Awaited<ReturnType<typeof chat>>;
+        setActiveGroupId(groupId);
+        try {
+          const systemPrompt = await loadGroupSystemPrompt(groupId);
+          const groupHistory = await buildGroupChatHistory(groupId, 30);
+          const groupTools = getGroupToolDefinitions();
+
+          response = await chat(
+            systemPrompt,
+            groupHistory,
+            groupTools,
+            () => ctx.sendChatAction("typing"),
+          );
+        } finally {
+          setActiveGroupId(null);
+        }
+
+        // Log Proteus's response as a group message too
+        await logGroupMessage(groupId, null, config.telegram.ownerId, response.persistText, "text", false);
+
+        await sendTelegramText(ctx.telegram, groupId, response.displayText, {
+          parseMode: "Markdown",
+          replyToMessageId: ctx.message.message_id,
         });
-        return;
+      } catch (error) {
+        console.error("[poseidon] group text handler error:", error);
+        // DM Freedom the error instead of spamming the group
+        const errMsg = error instanceof Error ? error.message : String(error);
+        await sendTelegramText(
+          ctx.telegram,
+          config.telegram.ownerId,
+          `⚠️ Group handler error: ${errMsg.slice(0, 500)}`,
+        ).catch(() => undefined);
       }
-
-      if (!decision.respond) return;
-
-      // Mark interjection timestamp
-      if (decision.reason === "interjection") {
-        lastInterjectionAt = Date.now();
-      }
-
-      // Update message as triggering Proteus
-      await logGroupMessage(
-        groupId,
-        ctx.message.message_id,
-        userId,
-        userMessage,
-        "text",
-        true,
-      );
-
-      // Build group system prompt and chat history
-      setActiveGroupId(groupId);
-      const systemPrompt = await loadGroupSystemPrompt(groupId);
-      const groupHistory = await buildGroupChatHistory(groupId, 30);
-      const groupTools = getGroupToolDefinitions();
-
-      const response = await chat(
-        systemPrompt,
-        groupHistory,
-        groupTools,
-        () => ctx.sendChatAction("typing"),
-      );
-
-      setActiveGroupId(null);
-
-      // Log Proteus's response as a group message too
-      await logGroupMessage(groupId, null, config.telegram.ownerId, response.persistText, "text", false);
-
-      await ctx.reply(response.displayText, {
-        parse_mode: "Markdown",
-        reply_parameters: { message_id: ctx.message.message_id },
-      }).catch(async () => {
-        await ctx.reply(response.displayText, {
-          reply_parameters: { message_id: ctx.message.message_id },
-        });
-      });
-    } catch (error) {
-      console.error("[poseidon] group text handler error:", error);
-      // DM Freedom the error instead of spamming the group
-      const errMsg = error instanceof Error ? error.message : String(error);
-      await ctx.telegram.sendMessage(
-        config.telegram.ownerId,
-        `⚠️ Group handler error: ${errMsg.slice(0, 500)}`,
-      ).catch(() => undefined);
-    }
-    return;
-  }
-
-  // ─── PRIVATE TEXT HANDLER ────────────────────
-  try {
-    await writeHeartbeat({ event: "text_message" }).catch(() => undefined);
-    const systemPrompt = await loadSystemPrompt();
-    const historyBefore = await getHistory();
-    const isNewConversation = historyBefore.length === 0;
-    if (isNewConversation) {
-      systemPrompt.dynamicPart += "\n\nThis is the start of a new conversation. Greet Freedom briefly. Do NOT call any tools unless he asks for specific data.";
-    }
-
-    await bufferMessage(
-      userMessage,
-      ctx.from?.username || ctx.from?.first_name || undefined,
-    );
-    const history = await getHistory();
-
-    const response = await chat(
-      systemPrompt,
-      history,
-      toolDefinitions,
-      () => ctx.sendChatAction("typing"),
-    );
-
-    await addMessage("assistant", response.persistText);
-    await persistTurnWithRetry(userMessage, response.persistText);
-    await ctx.reply(response.displayText, { parse_mode: "Markdown" }).catch(async () => {
-      await ctx.reply(response.displayText);
-    });
-  } catch (error) {
-    console.error("[poseidon] text handler error:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    await persistTurnWithRetry(
-      userMessage,
-      `[System error while generating response] ${errorMessage.slice(0, 400)}`,
-    ).catch(() => undefined);
-
-    if (/timed out/i.test(errorMessage)) {
-      await ctx.reply(
-        "Proteus timed out while processing that request. Your message was still logged to memory. Send it again and I will continue.",
-      );
       return;
     }
 
-    await ctx.reply("Proteus hit an error while processing that request. Try again.");
-  }
+    // ─── PRIVATE TEXT HANDLER ────────────────────
+    try {
+      await writeHeartbeat({ event: "text_message" }).catch(() => undefined);
+      const systemPrompt = await loadSystemPrompt();
+      const historyBefore = await getHistory();
+      const isNewConversation = historyBefore.length === 0;
+      if (isNewConversation) {
+        systemPrompt.dynamicPart += "\n\nThis is the start of a new conversation. Greet Freedom briefly. Do NOT call any tools unless he asks for specific data.";
+      }
+
+      await bufferMessage(
+        userMessage,
+        ctx.from?.username || ctx.from?.first_name || undefined,
+      );
+      const history = await getHistory();
+
+      const response = await chat(
+        systemPrompt,
+        history,
+        toolDefinitions,
+        () => ctx.sendChatAction("typing"),
+      );
+
+      await addMessage("assistant", response.persistText);
+      await persistTurnWithRetry(userMessage, response.persistText);
+      await sendTelegramText(ctx.telegram, chatId, response.displayText, { parseMode: "Markdown" });
+    } catch (error) {
+      console.error("[poseidon] text handler error:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      await persistTurnWithRetry(
+        userMessage,
+        `[System error while generating response] ${errorMessage.slice(0, 400)}`,
+      ).catch(() => undefined);
+
+      if (/timed out/i.test(errorMessage)) {
+        await sendTelegramText(
+          ctx.telegram,
+          chatId,
+          "Proteus timed out while processing that request. Your message was still logged to memory. Send it again and I will continue.",
+        );
+        return;
+      }
+
+      await sendTelegramText(ctx.telegram, chatId, "Proteus hit an error while processing that request. Try again.");
+    }
+  });
 });
 
 function is409Error(error: unknown): boolean {
@@ -558,9 +640,36 @@ async function start() {
   await launchBotWithRetry();
   botStatus = "ok";
   console.log("[poseidon] Proteus online");
-  await startTriton(bot.telegram, config.telegram.ownerId);
-  scheduleNereus(bot.telegram, config.telegram.ownerId);
-  schedulePoseidon(bot.telegram, config.telegram.ownerId);
+  try {
+    await startTriton(bot.telegram, config.telegram.ownerId);
+  } catch (error) {
+    console.error("[poseidon] Triton failed to start:", error);
+    await sendTelegramText(
+      bot.telegram,
+      config.telegram.ownerId,
+      `⚠️ Triton failed to start: ${error instanceof Error ? error.message : String(error)}`,
+    ).catch(() => undefined);
+  }
+  try {
+    scheduleNereus(bot.telegram, config.telegram.ownerId);
+  } catch (error) {
+    console.error("[poseidon] Nereus scheduler failed to start:", error);
+    await sendTelegramText(
+      bot.telegram,
+      config.telegram.ownerId,
+      `⚠️ Nereus scheduler failed: ${error instanceof Error ? error.message : String(error)}`,
+    ).catch(() => undefined);
+  }
+  try {
+    schedulePoseidon(bot.telegram, config.telegram.ownerId);
+  } catch (error) {
+    console.error("[poseidon] Poseidon scheduler failed to start:", error);
+    await sendTelegramText(
+      bot.telegram,
+      config.telegram.ownerId,
+      `⚠️ Poseidon scheduler failed: ${error instanceof Error ? error.message : String(error)}`,
+    ).catch(() => undefined);
+  }
 
   // Group scoring schedule
   if (config.group.enabled && config.group.groupId) {
@@ -587,12 +696,13 @@ async function start() {
 
     // Send recovery context as follow-up if available
     if (recovery) {
-      await bot.telegram.sendMessage(config.telegram.ownerId, recovery);
+      await sendTelegramText(bot.telegram, config.telegram.ownerId, recovery);
       console.log("[poseidon] Recovery context sent");
     }
 
     if (hadPendingOfflineMessages) {
-      await bot.telegram.sendMessage(
+      await sendTelegramText(
+        bot.telegram,
         config.telegram.ownerId,
         "I was offline and missed some messages. Let me know if you want me to pick up where we left off.",
       );

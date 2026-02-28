@@ -12,9 +12,18 @@ import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import { buildNormalizedWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import type { NewsEvent, NewsWeeklySnapshot } from "@/lib/news/types";
+import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
 
 export const revalidate = 60;
 export const dynamic = "force-dynamic";
+const MAX_NEWS_WEEKS = 52;
+const NEWS_PAGE_CACHE_TTL_MS = Number(process.env.NEWS_PAGE_CACHE_TTL_MS ?? "30000");
+
+function getNewsPageCacheTtlMs() {
+  return Number.isFinite(NEWS_PAGE_CACHE_TTL_MS) && NEWS_PAGE_CACHE_TTL_MS >= 0
+    ? Math.floor(NEWS_PAGE_CACHE_TTL_MS)
+    : 30000;
+}
 
 type PageProps = {
   searchParams?:
@@ -130,11 +139,17 @@ function countActualValues(events: NewsEvent[]) {
 }
 
 async function findBestSnapshotForDisplayWeek(displayWeekOpenUtc: string) {
-  const weeks = await listNewsWeeks(24);
+  const weeks = await listNewsWeeks(MAX_NEWS_WEEKS);
+  const entries = await Promise.all(
+    weeks.map(async (week) => ({
+      week,
+      snapshot: await readNewsWeeklySnapshot(week),
+    })),
+  );
   let best: NewsWeeklySnapshot | null = null;
   let bestActual = -1;
-  for (const week of weeks) {
-    const candidate = await readNewsWeeklySnapshot(week);
+  for (const entry of entries) {
+    const candidate = entry.snapshot;
     if (!candidate) continue;
     if (!hasEventsForWeek(candidate.calendar, displayWeekOpenUtc)) continue;
     const actualCount = countActualValues(candidate.calendar);
@@ -148,10 +163,17 @@ async function findBestSnapshotForDisplayWeek(displayWeekOpenUtc: string) {
 
 async function normalizeNewsWeekKeys(weeks: string[], currentWeekOpenUtc: string) {
   const validWeeks: string[] = [];
-  let wroteAny = false;
+  const snapshots = await Promise.all(
+    weeks.map(async (week) => ({
+      week,
+      snapshot: await readNewsWeeklySnapshot(week),
+    })),
+  );
+  const rewriteTasks: Array<Promise<void>> = [];
 
-  for (const week of weeks) {
-    const snapshot = await readNewsWeeklySnapshot(week);
+  for (const entry of snapshots) {
+    const week = entry.week;
+    const snapshot = entry.snapshot;
     if (!snapshot) continue;
     if (isWeekSnapshotUsable(snapshot, week, currentWeekOpenUtc)) {
       validWeeks.push(week);
@@ -159,30 +181,51 @@ async function normalizeNewsWeekKeys(weeks: string[], currentWeekOpenUtc: string
     }
     const inferredWeek = inferWeekFromEvents(snapshot.calendar);
     if (inferredWeek && inferredWeek !== week) {
-      await writeNewsWeeklySnapshot({
-        week_open_utc: inferredWeek,
-        source: snapshot.source,
-        announcements: snapshot.announcements,
-        calendar: snapshot.calendar,
-      });
-      wroteAny = true;
+      rewriteTasks.push(
+        writeNewsWeeklySnapshot({
+          week_open_utc: inferredWeek,
+          source: snapshot.source,
+          announcements: snapshot.announcements,
+          calendar: snapshot.calendar,
+        }),
+      );
     }
   }
 
-  if (!wroteAny) {
+  if (rewriteTasks.length === 0) {
     return validWeeks;
   }
+  await Promise.all(rewriteTasks);
 
-  const refreshedWeeks = await listNewsWeeks(520);
+  const refreshedWeeks = await listNewsWeeks(MAX_NEWS_WEEKS);
+  const refreshedSnapshots = await Promise.all(
+    refreshedWeeks.map(async (week) => ({
+      week,
+      snapshot: await readNewsWeeklySnapshot(week),
+    })),
+  );
   const refreshedValid: string[] = [];
-  for (const week of refreshedWeeks) {
-    const snapshot = await readNewsWeeklySnapshot(week);
+  for (const entry of refreshedSnapshots) {
+    const week = entry.week;
+    const snapshot = entry.snapshot;
     if (!snapshot) continue;
     if (isWeekSnapshotUsable(snapshot, week, currentWeekOpenUtc)) {
       refreshedValid.push(week);
     }
   }
   return refreshedValid;
+}
+
+async function getNormalizedNewsWeeksCached(
+  weeks: string[],
+  currentWeekOpenUtc: string,
+) {
+  const key = `newsPage:normalizedWeeks:${currentWeekOpenUtc}:${weeks.join(",")}`;
+  return getOrSetRuntimeCache(
+    key,
+    getNewsPageCacheTtlMs(),
+    () => normalizeNewsWeekKeys(weeks, currentWeekOpenUtc),
+  );
 }
 
 export default async function NewsPage({ searchParams }: PageProps) {
@@ -193,12 +236,12 @@ export default async function NewsPage({ searchParams }: PageProps) {
     viewParam === "announcements" || viewParam === "impact" ? viewParam : "calendar";
 
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  let newsWeeks = await listNewsWeeks(520);
+  let newsWeeks = await listNewsWeeks(MAX_NEWS_WEEKS);
   if (newsWeeks.length === 0 || !newsWeeks.includes(currentWeekOpenUtc)) {
     await refreshNewsSnapshot();
-    newsWeeks = await listNewsWeeks(520);
+    newsWeeks = await listNewsWeeks(MAX_NEWS_WEEKS);
   }
-  newsWeeks = await normalizeNewsWeekKeys(newsWeeks, currentWeekOpenUtc);
+  newsWeeks = await getNormalizedNewsWeeksCached(newsWeeks, currentWeekOpenUtc);
 
   // Show only weeks that actually have news data.
   const weekOptions = buildNormalizedWeekOptions({
@@ -208,7 +251,7 @@ export default async function NewsPage({ searchParams }: PageProps) {
     includeCurrent: false,
     includeFuture: true,
     currentPosition: "sorted",
-    limit: 520,
+    limit: MAX_NEWS_WEEKS,
   }).filter((item): item is string => item !== "all");
   let selectedWeek = weekOptions.length
     ? ((resolveWeekSelection({

@@ -24,11 +24,20 @@ export interface Message {
 type ChatMessage = Pick<Message, "role" | "content">;
 
 const KV_KEY = "conversations";
+const MAX_HISTORY_MESSAGE_CHARS = 3_000;
+const HISTORY_TRUNCATION_NOTE = "\n[Message truncated to keep conversation context responsive.]";
 let loaded = false;
 let history: Message[] = [];
 
 async function saveHistory() {
   await kvSet(KV_KEY, JSON.stringify(history));
+}
+
+function clampHistoryContent(content: string): string {
+  const normalized = (content || "").trim();
+  if (normalized.length <= MAX_HISTORY_MESSAGE_CHARS) return normalized;
+  const budget = Math.max(200, MAX_HISTORY_MESSAGE_CHARS - HISTORY_TRUNCATION_NOTE.length);
+  return `${normalized.slice(0, budget).trimEnd()}${HISTORY_TRUNCATION_NOTE}`;
 }
 
 export async function loadHistory() {
@@ -43,7 +52,7 @@ export async function loadHistory() {
           .filter((row) => row && (row.role === "user" || row.role === "assistant") && typeof row.content === "string")
           .map((row) => ({
             role: row.role,
-            content: row.content,
+            content: clampHistoryContent(row.content),
             timestamp: Number.isFinite(row.timestamp) ? row.timestamp : Date.now(),
           }))
           .slice(-config.maxConversationHistory);
@@ -61,12 +70,12 @@ export async function loadHistory() {
 
 export async function getHistory(): Promise<ChatMessage[]> {
   await loadHistory();
-  return history.map((message) => ({ role: message.role, content: message.content }));
+  return history.map((message) => ({ role: message.role, content: clampHistoryContent(message.content) }));
 }
 
 export async function addMessage(role: "user" | "assistant", content: string): Promise<void> {
   await loadHistory();
-  history.push({ role, content, timestamp: Date.now() });
+  history.push({ role, content: clampHistoryContent(content), timestamp: Date.now() });
   if (history.length > config.maxConversationHistory) {
     history = history.slice(-config.maxConversationHistory);
   }
@@ -75,11 +84,11 @@ export async function addMessage(role: "user" | "assistant", content: string): P
 
 export async function bufferMessage(content: string, userName?: string): Promise<void> {
   await loadHistory();
-  const tagged = userName ? `[${userName}]: ${content}` : content;
+  const tagged = clampHistoryContent(userName ? `[${userName}]: ${content}` : content);
 
   const last = history[history.length - 1];
   if (last && last.role === "user") {
-    last.content += `\n${tagged}`;
+    last.content = clampHistoryContent(`${last.content}\n${tagged}`);
     last.timestamp = Date.now();
   } else {
     history.push({ role: "user", content: tagged, timestamp: Date.now() });

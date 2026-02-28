@@ -136,6 +136,12 @@ function MiniHistogram({ returns }: { returns: Array<{ pair: string; percent: nu
   );
 }
 
+function inferBreakdownRowType(rows: Array<{ pair: string }>): "trade" | "weekly" {
+  if (rows.length === 0) return "trade";
+  const weeklyLikeCount = rows.filter((row) => /^week of\b/i.test(row.pair.trim())).length;
+  return weeklyLikeCount >= Math.ceil(rows.length * 0.6) ? "weekly" : "trade";
+}
+
 function HomeCard({
   title,
   icon,
@@ -176,6 +182,7 @@ export default function PerformanceModal({
   );
   const [view, setView] = useState<ViewMode>(initialView);
   const [simulationMode, setSimulationMode] = useState<"hold" | "trailing">("hold");
+  const [expandedBreakdowns, setExpandedBreakdowns] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState(() => {
     if (typeof window === "undefined") {
       return "";
@@ -215,9 +222,12 @@ export default function PerformanceModal({
                 : ("NEUTRAL" as const),
           reason: ["Weekly aggregate return"],
           percent: row.percent,
+          children: [],
         }));
   const basketHeading = "Basket Breakdown";
-  const basketRowTypeLabel = performance.pair_details.length > 0 ? "trade" : "weekly";
+  const basketRowTypeLabel = inferBreakdownRowType(
+    basketDetails.map((row) => ({ pair: row.pair })),
+  );
 
   const saveNotes = () => {
     localStorage.setItem(notesKey, notes);
@@ -227,6 +237,10 @@ export default function PerformanceModal({
   useEffect(() => {
     setView(initialView);
   }, [initialView]);
+
+  useEffect(() => {
+    setExpandedBreakdowns({});
+  }, [sectionLabel, modelLabel, performance.percent, performance.pair_details.length]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -584,39 +598,94 @@ export default function PerformanceModal({
                   <div className="rounded-lg border border-dashed border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2">
                     No breakdown rows available for this period.
                   </div>
-                ) : basketDetails.map((detail, index) => (
-                  <div
-                    key={`${detail.pair}-${detail.direction}-${index}`}
-                    className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"
-                  >
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-semibold text-[var(--foreground)]">
-                        {detail.pair}
-                      </span>
-                      <span
-                        className={`text-xs font-semibold ${
-                          detail.direction === "LONG"
-                            ? "text-emerald-700"
-                            : detail.direction === "SHORT"
-                            ? "text-rose-700"
-                            : "text-[color:var(--muted)]"
-                        }`}
-                      >
-                        {detail.direction}
-                      </span>
+                ) : basketDetails.map((detail, index) => {
+                  const rowKey = `${detail.pair}-${detail.direction}-${index}`;
+                  const childRows = detail.children ?? [];
+                  const expandable = childRows.length > 0;
+                  const expanded = Boolean(expandedBreakdowns[rowKey]);
+                  const weeklySummaryRow = /^week of\b/i.test(detail.pair.trim());
+                  return (
+                    <div
+                      key={rowKey}
+                      className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold text-[var(--foreground)]">
+                          {detail.pair}
+                        </span>
+                        <span
+                          className={`text-xs font-semibold ${
+                            detail.direction === "LONG"
+                              ? "text-emerald-700"
+                              : detail.direction === "SHORT"
+                              ? "text-rose-700"
+                              : "text-[color:var(--muted)]"
+                          }`}
+                        >
+                          {detail.direction}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-[color:var(--muted)]">
+                        {detail.percent === null
+                          ? "No price data yet."
+                          : `Return: ${formatPercent(detail.percent)}`}
+                      </div>
+                      <ul className="mt-1 text-[11px] text-[color:var(--muted)]">
+                        {detail.reason.map((item) => (
+                          <li key={`${detail.pair}-${index}-${item}`}>- {item}</li>
+                        ))}
+                      </ul>
+                      {expandable ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedBreakdowns((previous) => ({
+                              ...previous,
+                              [rowKey]: !previous[rowKey],
+                            }))
+                          }
+                          className="mt-2 rounded-md border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                        >
+                          {expanded ? "Hide trades" : `Show trades (${childRows.length})`}
+                        </button>
+                      ) : weeklySummaryRow ? (
+                        <div className="mt-2 text-[10px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
+                          Trade rows unavailable for this week
+                        </div>
+                      ) : null}
+                      {expandable && expanded ? (
+                        <div className="mt-2 space-y-2 border-t border-[var(--panel-border)] pt-2">
+                          {childRows.map((child, childIndex) => (
+                            <div
+                              key={`${rowKey}-child-${childIndex}`}
+                              className="rounded-md border border-[var(--panel-border)]/70 bg-[var(--panel)] px-2 py-1.5"
+                            >
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-[var(--foreground)]">{child.pair}</span>
+                                <span
+                                  className={
+                                    child.direction === "LONG"
+                                      ? "text-emerald-700"
+                                      : child.direction === "SHORT"
+                                      ? "text-rose-700"
+                                      : "text-[color:var(--muted)]"
+                                  }
+                                >
+                                  {child.direction}
+                                </span>
+                              </div>
+                              <div className="mt-1 text-[11px] text-[color:var(--muted)]">
+                                {child.percent === null
+                                  ? "No price data yet."
+                                  : `Return: ${formatPercent(child.percent)}`}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="mt-1 text-xs text-[color:var(--muted)]">
-                      {detail.percent === null
-                        ? "No price data yet."
-                        : `Return: ${formatPercent(detail.percent)}`}
-                    </div>
-                    <ul className="mt-1 text-[11px] text-[color:var(--muted)]">
-                      {detail.reason.map((item) => (
-                        <li key={`${detail.pair}-${index}-${item}`}>- {item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

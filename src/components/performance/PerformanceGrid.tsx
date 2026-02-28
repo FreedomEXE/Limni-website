@@ -252,10 +252,11 @@ function PerformanceCard({
       ? (calibrationSize * performance.percent) / 100
       : null;
   const hasDetailedRows = performance.pair_details.length > 0;
-  const rowCount = hasDetailedRows
-    ? performance.pair_details.length
-    : performance.returns.length;
-  const rowTypeLabel = hasDetailedRows ? "trade" : "weekly";
+  const breakdownRows = hasDetailedRows ? performance.pair_details : performance.returns;
+  const rowCount = breakdownRows.length;
+  const rowTypeLabel = inferBreakdownRowType(
+    breakdownRows.map((row) => ({ pair: row.pair })),
+  );
   const topRows =
     hasDetailedRows
       ? performance.pair_details.slice(0, 4)
@@ -434,6 +435,12 @@ function PerformanceCard({
       </div>
     </button>
   );
+}
+
+function inferBreakdownRowType(rows: Array<{ pair: string }>): "trade" | "weekly" {
+  if (rows.length === 0) return "trade";
+  const weeklyLikeCount = rows.filter((row) => /^week of\b/i.test(row.pair.trim())).length;
+  return weeklyLikeCount >= Math.ceil(rows.length * 0.6) ? "weekly" : "trade";
 }
 
 export default function PerformanceGrid({

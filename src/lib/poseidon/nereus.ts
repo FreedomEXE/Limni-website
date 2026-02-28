@@ -20,6 +20,7 @@ import { appendActivityLog } from "@/lib/poseidon/activity-log";
 import { config } from "@/lib/poseidon/config";
 import { buildNereusHeader } from "@/lib/poseidon/animations";
 import { assembleBriefingData, type SessionType } from "@/lib/poseidon/nereus-queries";
+import { sendTelegramText } from "@/lib/poseidon/telegram-delivery";
 
 // ─── Nereus Personality ───────────────────
 
@@ -105,7 +106,7 @@ async function sendBriefing(
 ): Promise<void> {
   try {
     const message = await buildBriefing(sessionType);
-    await telegram.sendMessage(ownerId, message, { parse_mode: "HTML" });
+    await sendTelegramText(telegram, ownerId, message, { parseMode: "HTML" });
     await appendActivityLog({
       deity: "nereus",
       timestamp: new Date().toISOString(),
@@ -134,6 +135,22 @@ let preAsiaTimeout: NodeJS.Timeout | null = null;
 let preAsiaInterval: NodeJS.Timeout | null = null;
 let preNyTimeout: NodeJS.Timeout | null = null;
 let preNyInterval: NodeJS.Timeout | null = null;
+
+type NereusScheduleStatus = {
+  active: boolean;
+  preAsiaNextUtc: string;
+  preNyNextUtc: string;
+};
+
+export function getNereusScheduleStatus(now = new Date()): NereusScheduleStatus {
+  const preAsiaMs = msUntilUtcTime(23, 30);
+  const preNyMs = msUntilUtcTime(12, 30);
+  return {
+    active: Boolean(preAsiaTimeout || preAsiaInterval || preNyTimeout || preNyInterval),
+    preAsiaNextUtc: new Date(now.getTime() + preAsiaMs).toISOString(),
+    preNyNextUtc: new Date(now.getTime() + preNyMs).toISOString(),
+  };
+}
 
 export function scheduleNereus(telegram: Telegram, ownerId: number): void {
   const DAY_MS = 24 * 60 * 60_000;

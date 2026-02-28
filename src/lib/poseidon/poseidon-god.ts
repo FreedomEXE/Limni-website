@@ -24,6 +24,7 @@ import { readCurationFlag } from "@/lib/poseidon/curation-flag";
 import { buildPoseidonHeader, sendPoseidonAnimation } from "@/lib/poseidon/animations";
 import { curateProteusMemory } from "@/lib/poseidon/poseidon-curator";
 import { getCronStatusSummary } from "@/lib/cronStatus";
+import { sendTelegramText } from "@/lib/poseidon/telegram-delivery";
 
 // ─── Poseidon Personality ─────────────────
 
@@ -407,6 +408,9 @@ function formatPoseidonReckoning(reckoning: string): string {
 // ─── Send Reckoning ───────────────────────
 
 export async function sendReckoning(telegram: Telegram, ownerId: number): Promise<void> {
+  let reckoningDelivered = false;
+  let reckoningError: unknown = null;
+
   try {
     await sendPoseidonAnimation(telegram, ownerId);
 
@@ -414,36 +418,44 @@ export async function sendReckoning(telegram: Telegram, ownerId: number): Promis
     const reckoning = await getReckoningFromOpus(data);
     const message = formatPoseidonReckoning(reckoning);
 
-    await telegram.sendMessage(ownerId, message, { parse_mode: "HTML" });
+    await sendTelegramText(telegram, ownerId, message, { parseMode: "HTML" });
+    reckoningDelivered = true;
     console.log("[poseidon-god] Daily Reckoning delivered");
-
-    try {
-      const flag = await readCurationFlag();
-      const reason = flag.requested
-        ? `daily scheduled curation (priority: elevated; ${flag.reason})`
-        : "daily scheduled curation";
-      const curationResult = await curateProteusMemory(reason);
-      if (!curationResult.success) {
-        console.warn(`[poseidon-curator] Curation incomplete: ${curationResult.note}`);
-      } else if (curationResult.archived > 0) {
-        console.log(
-          `[poseidon-curator] Archived ${curationResult.archived} entries: ${curationResult.note}`,
-        );
-      }
-    } catch (err) {
-      console.error("[poseidon-curator] Daily curation failed:", err);
-    }
-
-    await resetActivityLog().catch((error) => {
-      console.warn("[poseidon-god] Failed to reset activity log:", error);
-    });
   } catch (err) {
+    reckoningError = err;
     console.error("[poseidon-god] Reckoning failed:", err);
     try {
-      await telegram.sendMessage(ownerId, "Poseidon could not complete the Daily Reckoning. Check logs.");
+      await sendTelegramText(telegram, ownerId, "Poseidon could not complete the Daily Reckoning. Check logs.");
     } catch {
       // Silent — don't crash
     }
+  }
+
+  try {
+    const flag = await readCurationFlag();
+    const reason = flag.requested
+      ? `daily scheduled curation (priority: elevated; ${flag.reason})`
+      : "daily scheduled curation";
+    const fullReason = reckoningError
+      ? `${reason}; reckoning status=failed (${reckoningError instanceof Error ? reckoningError.message : String(reckoningError)})`
+      : `${reason}; reckoning status=delivered`;
+
+    const curationResult = await curateProteusMemory(fullReason);
+    if (!curationResult.success) {
+      console.warn(`[poseidon-curator] Curation incomplete: ${curationResult.note}`);
+    } else if (curationResult.archived > 0) {
+      console.log(
+        `[poseidon-curator] Archived ${curationResult.archived} entries: ${curationResult.note}`,
+      );
+    }
+  } catch (err) {
+    console.error("[poseidon-curator] Daily curation failed:", err);
+  }
+
+  if (reckoningDelivered) {
+    await resetActivityLog().catch((error) => {
+      console.warn("[poseidon-god] Failed to reset activity log:", error);
+    });
   }
 }
 
@@ -461,6 +473,19 @@ function msUntilUtcTime(hour: number, minute: number): number {
 
 let reckoningTimeout: NodeJS.Timeout | null = null;
 let reckoningInterval: NodeJS.Timeout | null = null;
+
+type PoseidonScheduleStatus = {
+  active: boolean;
+  nextReckoningUtc: string;
+};
+
+export function getPoseidonScheduleStatus(now = new Date()): PoseidonScheduleStatus {
+  const nextMs = msUntilUtcTime(6, 0);
+  return {
+    active: Boolean(reckoningTimeout || reckoningInterval),
+    nextReckoningUtc: new Date(now.getTime() + nextMs).toISOString(),
+  };
+}
 
 export function schedulePoseidon(telegram: Telegram, ownerId: number): void {
   const DAY_MS = 24 * 60 * 60_000;

@@ -23,6 +23,9 @@ const MAX_TOOL_ROUNDS = 3;
 const CLAUDE_TIMEOUT_MS = 90_000;
 const TOOL_TIMEOUT_MS = 15_000;
 const TYPING_KEEPALIVE_MS = 4_000;
+const DEFAULT_MAX_OUTPUT_TOKENS = 1_200;
+const DEFAULT_MAX_RESPONSE_CHARS = 8_000;
+const MAX_PERSIST_CHARS = 10_000;
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -39,6 +42,16 @@ export type ChatOptions = {
   model?: string;
 };
 
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (!value?.trim()) return fallback;
+  const parsed = Number(value.trim());
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+const MAX_OUTPUT_TOKENS = parsePositiveInt(process.env.PROTEUS_MAX_OUTPUT_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS);
+const MAX_RESPONSE_CHARS = parsePositiveInt(process.env.PROTEUS_MAX_RESPONSE_CHARS, DEFAULT_MAX_RESPONSE_CHARS);
+
 function summarizeToolResult(result: string, maxChars = 120): string {
   const compact = result.replace(/\s+/g, " ").trim();
   if (!compact) return "no data";
@@ -46,18 +59,28 @@ function summarizeToolResult(result: string, maxChars = 120): string {
   return `${compact.slice(0, maxChars)}...`;
 }
 
+function clampResponseText(text: string, maxChars: number): string {
+  const normalized = (text || "").trim();
+  if (!normalized) return "No response generated.";
+  if (normalized.length <= maxChars) return normalized;
+  const note = "\n\n[Response truncated to keep Telegram delivery fast. Ask me to continue if needed.]";
+  const budget = Math.max(300, maxChars - note.length);
+  return `${normalized.slice(0, budget).trimEnd()}${note}`;
+}
+
 function buildChatResponse(lastText: string, toolsUsed: string[]): ChatResponse {
-  const displayText = lastText || "No response generated.";
+  const displayText = clampResponseText(lastText || "No response generated.", MAX_RESPONSE_CHARS);
   if (!toolsUsed.length) {
-    return { displayText, persistText: displayText };
+    return { displayText, persistText: clampResponseText(displayText, MAX_PERSIST_CHARS) };
   }
 
   const capped = toolsUsed.slice(0, 6);
   const overflow = toolsUsed.length > 6 ? `; +${toolsUsed.length - 6} more` : "";
   const toolNote = `\n\n[Tools used: ${capped.join("; ")}${overflow}]`;
+  const persistText = clampResponseText(`${displayText}${toolNote}`, MAX_PERSIST_CHARS);
   return {
     displayText,
-    persistText: `${displayText}${toolNote}`,
+    persistText,
   };
 }
 
@@ -189,7 +212,7 @@ export async function chat(
       const response = await withTimeout(
         callClaudeWithRetry({
           model,
-          max_tokens: 4096,
+          max_tokens: MAX_OUTPUT_TOKENS,
           system: systemParam,
           messages: transcript,
           tools,

@@ -12,6 +12,7 @@ import {
   getAssetClass,
   getAssetClassDefinition,
   listAssetClasses,
+  type AssetClass,
 } from "@/lib/cotMarkets";
 import {
   derivePairDirectionsWithNeutral,
@@ -24,9 +25,26 @@ import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import { getPairPerformance } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const DASHBOARD_PAIR_PRICING_TIMEOUT_MS = Number(
+  process.env.DASHBOARD_PAIR_PRICING_TIMEOUT_MS ?? "2500",
+);
+const DASHBOARD_ENABLE_ALL_ASSET_PAIR_PRICING =
+  process.env.DASHBOARD_ENABLE_ALL_ASSET_PAIR_PRICING === "1";
+
+function getDashboardPairPricingTimeoutMs() {
+  if (
+    Number.isFinite(DASHBOARD_PAIR_PRICING_TIMEOUT_MS) &&
+    DASHBOARD_PAIR_PRICING_TIMEOUT_MS > 0
+  ) {
+    return DASHBOARD_PAIR_PRICING_TIMEOUT_MS;
+  }
+  return 2500;
+}
 
 function buildResponse(
   snapshot: Awaited<ReturnType<typeof readSnapshot>>,
@@ -121,6 +139,78 @@ function buildBiasDetails({
   ];
 }
 
+async function safeListSnapshotDates(assetClass: AssetClass): Promise<string[]> {
+  try {
+    return await listSnapshotDates(assetClass);
+  } catch (error) {
+    console.error(
+      `Bias page: listSnapshotDates failed for ${assetClass}:`,
+      error instanceof Error ? error.message : String(error),
+    );
+    return [];
+  }
+}
+
+async function safeReadSnapshot(
+  options: Parameters<typeof readSnapshot>[0],
+): Promise<Awaited<ReturnType<typeof readSnapshot>>> {
+  try {
+    return await readSnapshot(options);
+  } catch (error) {
+    const assetClass = options?.assetClass ?? "fx";
+    console.error(
+      `Bias page: readSnapshot failed for ${assetClass}:`,
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
+  }
+}
+
+async function safeGetPairPerformance(
+  pairs: Record<string, PairSnapshot>,
+  options: Parameters<typeof getPairPerformance>[1],
+): Promise<Awaited<ReturnType<typeof getPairPerformance>>> {
+  const fallback = {
+    performance: {},
+    note: "Pricing unavailable.",
+    missingPairs: Object.keys(pairs),
+  };
+  const timeoutMs = getDashboardPairPricingTimeoutMs();
+  let timeoutHandle: NodeJS.Timeout | null = null;
+  const timeoutPromise = new Promise<Awaited<ReturnType<typeof getPairPerformance>>>((resolve) => {
+    timeoutHandle = setTimeout(() => {
+      resolve({
+        ...fallback,
+        note: `Pricing timeout (${timeoutMs}ms).`,
+      });
+    }, timeoutMs);
+  });
+
+  try {
+    const pricingPromise = getPairPerformance(pairs, options).catch((error) => {
+      console.error(
+        "Bias page: getPairPerformance failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+      return fallback;
+    });
+    const result = await Promise.race([pricingPromise, timeoutPromise]);
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+    return result;
+  } catch (error) {
+    console.error(
+      "Bias page: getPairPerformance failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+    return fallback;
+  }
+}
+
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const assetParam = resolvedSearchParams?.asset;
@@ -130,6 +220,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const rawAsset = Array.isArray(assetParam) ? assetParam[0] : assetParam;
   const isAll = rawAsset === "all" || !rawAsset;
   const assetClass = getAssetClass(rawAsset);
+  const currentWeekOpen = getDisplayWeekOpenUtc();
   const biasMode = getBiasMode(
     Array.isArray(biasParam) ? biasParam[0] : biasParam,
   );
@@ -141,7 +232,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const assetClasses = listAssetClasses();
   const availableDates = isAll
     ? await Promise.all(
-        assetClasses.map((asset) => listSnapshotDates(asset.id)),
+        assetClasses.map((asset) => safeListSnapshotDates(asset.id)),
       ).then((lists) => {
         const union = new Set<string>();
         lists.forEach((list) => {
@@ -149,7 +240,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         });
         return Array.from(union);
       })
-    : await listSnapshotDates(assetClass);
+    : await safeListSnapshotDates(assetClass);
   const orderedDates = [...availableDates].sort((a, b) => b.localeCompare(a));
   const selectedReportDate =
     reportDate && orderedDates.includes(reportDate)
@@ -162,11 +253,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const snapshot = isAll
     ? null
     : selectedReportDate
-      ? await readSnapshot({
+      ? await safeReadSnapshot({
           assetClass,
           reportDate: selectedReportDate,
         })
-      : await readSnapshot({ assetClass });
+      : await safeReadSnapshot({ assetClass });
   const data = buildResponse(snapshot, assetClass);
   const assetDefinition = getAssetClassDefinition(assetClass);
   const currencyRows = [] as Array<{
@@ -197,8 +288,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     const snapshots = await Promise.all(
       assetClasses.map((asset) =>
         selectedReportDate
-          ? readSnapshot({ assetClass: asset.id, reportDate: selectedReportDate })
-          : readSnapshot({ assetClass: asset.id }),
+          ? safeReadSnapshot({ assetClass: asset.id, reportDate: selectedReportDate })
+          : safeReadSnapshot({ assetClass: asset.id }),
       ),
     );
     const snapshotEntries = assetClasses
@@ -267,11 +358,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           }
         }
 
-        const perfResult = await getPairPerformance(allPairs, {
-          assetClass: entry.asset.id,
-          reportDate: entrySnapshot.report_date,
-          isLatestReport: false,
-        });
+        const perfResult = DASHBOARD_ENABLE_ALL_ASSET_PAIR_PRICING
+          ? await safeGetPairPerformance(allPairs, {
+              assetClass: entry.asset.id,
+              reportDate: entrySnapshot.report_date,
+              isLatestReport: false,
+            })
+          : {
+              performance: {},
+              note: "Pair pricing disabled in all-asset view.",
+              missingPairs: [],
+            };
 
         return {
           assetLabel: entry.asset.label,
@@ -374,8 +471,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       }))
       .sort((a, b) => a.pairDef.pair.localeCompare(b.pairDef.pair));
     const perfResult =
-      pairRows.length > 0
-        ? await getPairPerformance(allPairs, {
+      pairRows.length > 0 && Object.keys(data.currencies).length > 0
+        ? await safeGetPairPerformance(allPairs, {
             assetClass,
             reportDate: data.report_date || selectedReportDate,
             isLatestReport: false,
@@ -436,7 +533,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     if (isAll) {
       const previousSnapshots = await Promise.all(
         assetClasses.map((asset) =>
-          readSnapshot({ assetClass: asset.id, reportDate: previousReportDate }),
+          safeReadSnapshot({ assetClass: asset.id, reportDate: previousReportDate }),
         ),
       );
       previousSnapshots.forEach((prevSnapshot, index) => {
@@ -455,7 +552,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         });
       });
     } else {
-      const previousSnapshot = await readSnapshot({
+      const previousSnapshot = await safeReadSnapshot({
         assetClass,
         reportDate: previousReportDate,
       });
@@ -557,6 +654,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               selectedReport={selectedReportDate ?? ""}
               selectedBias={selectedBiasForFilter}
               selectedView={view}
+              currentWeekOpenUtc={currentWeekOpen}
             />
             <ViewToggle value={view} items={viewItems} />
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import type { WeekOption } from "@/lib/weekState";
 import type { ReactNode } from "react";
@@ -35,12 +36,13 @@ export default function AccountPageHeader(props: AccountPageHeaderProps) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <a
+        <Link
           href={onBackHref}
+          scroll={false}
           className="rounded-full border border-[var(--panel-border)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
         >
           Back
-        </a>
+        </Link>
         <div>
           <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
             Account

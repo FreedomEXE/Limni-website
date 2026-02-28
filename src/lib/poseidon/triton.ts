@@ -36,6 +36,7 @@ import {
   type MonitorState,
   type TritonMonitorName,
 } from "@/lib/poseidon/triton-monitors";
+import { sendTelegramText } from "@/lib/poseidon/telegram-delivery";
 
 type TritonPersistedState = {
   version: number;
@@ -53,6 +54,38 @@ const tritonStatePath = path.resolve(process.cwd(), config.stateDir, "triton_sta
 let pollInterval: NodeJS.Timeout | null = null;
 let saveInterval: NodeJS.Timeout | null = null;
 let monitorState: Record<TritonMonitorName, MonitorState> = createEmptyMonitorState();
+let pollInFlight = false;
+let lastPollStartedAt: string | null = null;
+let lastPollFinishedAt: string | null = null;
+let lastPollDurationMs: number | null = null;
+let lastPollError: string | null = null;
+let lastPollSkippedAt: string | null = null;
+
+export type TritonRuntimeStatus = {
+  running: boolean;
+  pollIntervalMs: number;
+  saveIntervalMs: number;
+  inFlight: boolean;
+  lastPollStartedAt: string | null;
+  lastPollFinishedAt: string | null;
+  lastPollDurationMs: number | null;
+  lastPollError: string | null;
+  lastPollSkippedAt: string | null;
+};
+
+export function getTritonRuntimeStatus(): TritonRuntimeStatus {
+  return {
+    running: Boolean(pollInterval),
+    pollIntervalMs: POLL_INTERVAL_MS,
+    saveIntervalMs: SAVE_INTERVAL_MS,
+    inFlight: pollInFlight,
+    lastPollStartedAt,
+    lastPollFinishedAt,
+    lastPollDurationMs,
+    lastPollError,
+    lastPollSkippedAt,
+  };
+}
 
 function createEmptyMonitorState(): Record<TritonMonitorName, MonitorState> {
   return {
@@ -178,7 +211,7 @@ async function runMonitors(sendAlerts: boolean, telegram?: Telegram, ownerId?: n
 
     const payload = formatTritonAlert(alert.type, alert.priority, alert.body);
     try {
-      await telegram.sendMessage(ownerId, payload);
+      await sendTelegramText(telegram, ownerId, payload);
       await appendActivityLog({
         deity: "triton",
         timestamp: new Date().toISOString(),
@@ -217,9 +250,28 @@ export async function startTriton(telegram: Telegram, ownerId: number): Promise<
   await saveTritonState().catch(() => undefined);
 
   pollInterval = setInterval(() => {
+    if (pollInFlight) {
+      lastPollSkippedAt = new Date().toISOString();
+      return;
+    }
+
+    pollInFlight = true;
+    lastPollStartedAt = new Date().toISOString();
+    const startedMs = Date.now();
+
     runMonitors(true, telegram, ownerId)
+      .then(() => {
+        lastPollError = null;
+      })
       .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        lastPollError = message;
         console.error("[triton] poll error:", error);
+      })
+      .finally(() => {
+        lastPollDurationMs = Date.now() - startedMs;
+        lastPollFinishedAt = new Date().toISOString();
+        pollInFlight = false;
       });
   }, POLL_INTERVAL_MS);
   pollInterval.unref();
@@ -243,5 +295,6 @@ export function stopTriton(): void {
     clearInterval(saveInterval);
     saveInterval = null;
   }
+  pollInFlight = false;
   saveTritonState().catch(() => undefined);
 }

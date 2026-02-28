@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { DateTime } from "luxon";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import ViewToggle from "@/components/ViewToggle";
@@ -26,6 +26,7 @@ type AntikytheraControlsProps = {
   selectedReportDate: string | undefined;
   assetClasses: Array<{ id: string; label: string }>;
   selectedAsset: string | undefined;
+  currentWeekOpenUtc?: string;
   view: ViewOption;
   viewItems: Array<{ value: ViewOption; label: string; href: string }>;
 };
@@ -45,18 +46,33 @@ export default function AntikytheraControls({
   selectedReportDate,
   assetClasses,
   selectedAsset,
+  currentWeekOpenUtc,
   view,
   viewItems,
 }: AntikytheraControlsProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const handleAssetChange = (asset: string) => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(searchParams.toString());
     params.set("asset", asset);
     if (selectedReportDate) params.set("report", selectedReportDate);
     params.set("view", view);
-    router.push(`${pathname}?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const isCurrentReportOption = (value: string) => {
+    if (!currentWeekOpenUtc) return false;
+    const report = DateTime.fromISO(value, { zone: "America/New_York" });
+    if (!report.isValid) return false;
+    const daysUntilMonday = (8 - report.weekday) % 7;
+    const mondayUtc = report
+      .plus({ days: daysUntilMonday })
+      .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
+      .toUTC()
+      .toISO();
+    return mondayUtc === currentWeekOpenUtc;
   };
 
   return (
@@ -69,6 +85,7 @@ export default function AntikytheraControls({
           paramName="report"
           preserveParams={["asset", "view"]}
           labelFormatter={reportDateLabel}
+          isCurrentOption={(value) => isCurrentReportOption(String(value))}
           className="w-full"
         />
         <div className="flex items-center gap-2">

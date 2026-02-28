@@ -1,10 +1,10 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import SentimentHeatmap, {
   type MyfxbookPositioning,
 } from "@/components/SentimentHeatmap";
 import ViewToggle from "@/components/ViewToggle";
 import SummaryCards from "@/components/SummaryCards";
+import SentimentFilters from "@/components/sentiment/SentimentFilters";
 import { fetchLiquidationSummary } from "@/lib/coinank";
 import { fetchBitgetFuturesSnapshot } from "@/lib/bitget";
 import { fetchCryptoSpotPrice } from "@/lib/cryptoPrices";
@@ -368,40 +368,19 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-col gap-3">
-              <ScrollableWeekStrip
-                options={weeks}
-                selected={selectedWeek ?? weeks[0]}
-                currentWeek={currentWeekOpen}
-                label="Week"
-                preserveParams={["view", "asset"]}
-              />
-              <form action="/sentiment" method="get" className="flex flex-wrap items-center gap-2">
-                <input type="hidden" name="view" value={view} />
-                <input type="hidden" name="week" value={selectedWeek ?? ""} />
-                <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  Asset class
-                </label>
-                <select
-                  name="asset"
-                  defaultValue={assetClass}
-                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                >
-                  <option value="all">ALL</option>
-                  {Object.entries(SENTIMENT_ASSET_CLASSES).map(([id, info]) => (
-                    <option key={id} value={id}>
-                      {info.label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="submit"
-                  className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                >
-                  View
-                </button>
-              </form>
-            </div>
+            <SentimentFilters
+              weeks={weeks}
+              selectedWeek={selectedWeek}
+              currentWeekOpen={currentWeekOpen}
+              selectedAsset={assetClass}
+              assetOptions={[
+                { id: "all", label: "ALL" },
+                ...Object.entries(SENTIMENT_ASSET_CLASSES).map(([id, info]) => ({
+                  id,
+                  label: info.label,
+                })),
+              ]}
+            />
             <ViewToggle value={view} items={viewItems} />
           </div>
 

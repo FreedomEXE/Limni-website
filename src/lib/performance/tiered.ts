@@ -14,8 +14,11 @@ import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import type { BasketSignal } from "@/lib/basketSignals";
 import { groupSignals } from "@/lib/plannedTrades";
 import { findLotMapEntry, type LotMapRow } from "@/lib/accounts/mt5ViewHelpers";
+import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
 
 const DEFAULT_ACCOUNT_SIZE_USD = Number(process.env.PERFORMANCE_TIERED_ACCOUNT_SIZE_USD ?? "100000");
+const TIERED_CACHE_TTL_MS = Number(process.env.PERFORMANCE_TIERED_CACHE_TTL_MS ?? "15000");
+const TIERED_WEEK_CONCURRENCY = Number(process.env.PERFORMANCE_TIERED_WEEK_CONCURRENCY ?? "6");
 
 type Direction = "LONG" | "SHORT" | "NEUTRAL";
 type Tier = 1 | 2 | 3;
@@ -130,6 +133,42 @@ const TIER_MODEL_MAP: Record<Tier, PerformanceModel> = {
   3: "commercial",
 };
 
+function getTieredCacheTtlMs() {
+  return Number.isFinite(TIERED_CACHE_TTL_MS) && TIERED_CACHE_TTL_MS >= 0
+    ? Math.floor(TIERED_CACHE_TTL_MS)
+    : 15000;
+}
+
+function getTieredWeekConcurrency() {
+  if (!Number.isFinite(TIERED_WEEK_CONCURRENCY)) {
+    return 6;
+  }
+  return Math.max(1, Math.floor(TIERED_WEEK_CONCURRENCY));
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+) {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(Math.max(1, concurrency), items.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+        if (currentIndex >= items.length) {
+          return;
+        }
+        results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+      }
+    }),
+  );
+  return results;
+}
+
 export const TIERED_DISPLAY_LABELS: Record<PerformanceModel, string> = {
   blended: "Blended",
   dealer: "Tier 2",
@@ -183,26 +222,6 @@ function rowKey(assetClass: AssetClass, model: PerformanceModel) {
 
 function normalizeDirection(value: unknown): Direction {
   return value === "LONG" || value === "SHORT" ? value : "NEUTRAL";
-}
-
-function emptyModelPerformance(model: PerformanceModel, note: string): ModelPerformance {
-  return {
-    model,
-    percent: 0,
-    priced: 0,
-    total: 0,
-    note,
-    returns: [],
-    pair_details: [],
-    stats: {
-      avg_return: 0,
-      median_return: 0,
-      win_rate: 0,
-      volatility: 0,
-      best_pair: null,
-      worst_pair: null,
-    },
-  };
 }
 
 function emptyTierBucket(): TierBucket {
@@ -550,38 +569,40 @@ async function computeTieredWeekShared(options: {
   const accountSizeUsd = Number.isFinite(options.accountSizeUsd ?? DEFAULT_ACCOUNT_SIZE_USD)
     ? (options.accountSizeUsd ?? DEFAULT_ACCOUNT_SIZE_USD)
     : DEFAULT_ACCOUNT_SIZE_USD;
+  const cacheKey = `performanceTiered:shared:${options.weekOpenUtc}:${accountSizeUsd}`;
+  return getOrSetRuntimeCache(cacheKey, getTieredCacheTtlMs(), async () => {
+    const account = await loadEightcapAccount();
+    if (!account) {
+      return null;
+    }
+    const liveLotMap = parseLotMapRows(account.lot_map);
+    if (liveLotMap.length === 0) {
+      return null;
+    }
 
-  const account = await loadEightcapAccount();
-  if (!account) {
-    return null;
-  }
-  const liveLotMap = parseLotMapRows(account.lot_map);
-  if (liveLotMap.length === 0) {
-    return null;
-  }
+    const frozen = await loadClosestFrozenPlan(account.account_id, options.weekOpenUtc);
+    const frozenLotMap = parseLotMapRows(frozen?.lot_map ?? null);
+    const lotMapRows = frozenLotMap.length > 0 ? frozenLotMap : liveLotMap;
 
-  const frozen = await loadClosestFrozenPlan(account.account_id, options.weekOpenUtc);
-  const frozenLotMap = parseLotMapRows(frozen?.lot_map ?? null);
-  const lotMapRows = frozenLotMap.length > 0 ? frozenLotMap : liveLotMap;
+    const baselineEquity =
+      toNum(frozenLotMap.length > 0 ? frozen?.baseline_equity : account.baseline_equity) ??
+      toNum(account.baseline_equity) ??
+      accountSizeUsd;
+    const accountScale = baselineEquity > 0 ? accountSizeUsd / baselineEquity : 1;
 
-  const baselineEquity =
-    toNum(frozenLotMap.length > 0 ? frozen?.baseline_equity : account.baseline_equity) ??
-    toNum(account.baseline_equity) ??
-    accountSizeUsd;
-  const accountScale = baselineEquity > 0 ? accountSizeUsd / baselineEquity : 1;
-
-  const [rows, marketReturns] = await Promise.all([
-    loadWeekSnapshotRows(options.weekOpenUtc),
-    loadMarketReturns(options.weekOpenUtc),
-  ]);
-  return {
-    weekOpenUtc: options.weekOpenUtc,
-    accountSizeUsd,
-    rows,
-    marketReturns,
-    lotMapRows,
-    accountScale,
-  };
+    const [rows, marketReturns] = await Promise.all([
+      loadWeekSnapshotRows(options.weekOpenUtc),
+      loadMarketReturns(options.weekOpenUtc),
+    ]);
+    return {
+      weekOpenUtc: options.weekOpenUtc,
+      accountSizeUsd,
+      rows,
+      marketReturns,
+      lotMapRows,
+      accountScale,
+    };
+  });
 }
 
 function computeTieredWeekFromShared(shared: NonNullable<Awaited<ReturnType<typeof computeTieredWeekShared>>>, system: PerformanceSystem): TieredWeekComputed {
@@ -796,25 +817,42 @@ export async function computeTieredForWeeksAllSystems(options: {
   weeks: string[];
   accountSizeUsd?: number;
 }) {
-  const bySystem: Record<PerformanceSystem, TieredWeekComputed[]> = {
-    v1: [],
-    v2: [],
-    v3: [],
-  };
-
-  for (const week of options.weeks) {
-    const result = await computeTieredWeekForAllSystems({
-      weekOpenUtc: week,
-      accountSizeUsd: options.accountSizeUsd,
-    });
-    (["v1", "v2", "v3"] as const).forEach((system) => {
-      if (result[system]) {
-        bySystem[system].push(result[system]!);
-      }
-    });
+  const weeks = options.weeks.filter((week) => typeof week === "string" && week.length > 0);
+  if (weeks.length === 0) {
+    return { v1: [], v2: [], v3: [] } satisfies Record<PerformanceSystem, TieredWeekComputed[]>;
   }
+  const accountSizeUsd = Number.isFinite(options.accountSizeUsd ?? DEFAULT_ACCOUNT_SIZE_USD)
+    ? (options.accountSizeUsd ?? DEFAULT_ACCOUNT_SIZE_USD)
+    : DEFAULT_ACCOUNT_SIZE_USD;
+  const cacheKey = `performanceTiered:allSystems:${accountSizeUsd}:${weeks.join(",")}`;
+  return getOrSetRuntimeCache(cacheKey, getTieredCacheTtlMs(), async () => {
+    const bySystem: Record<PerformanceSystem, TieredWeekComputed[]> = {
+      v1: [],
+      v2: [],
+      v3: [],
+    };
 
-  return bySystem;
+    const results = await mapWithConcurrency(
+      weeks,
+      getTieredWeekConcurrency(),
+      async (week) => ({
+        week,
+        result: await computeTieredWeekForAllSystems({
+          weekOpenUtc: week,
+          accountSizeUsd,
+        }),
+      }),
+    );
+    for (const entry of results) {
+      (["v1", "v2", "v3"] as const).forEach((system) => {
+        if (entry.result[system]) {
+          bySystem[system].push(entry.result[system]!);
+        }
+      });
+    }
+
+    return bySystem;
+  });
 }
 
 export function buildTieredAllTimeViewsFromWeekly(
