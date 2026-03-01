@@ -15,6 +15,7 @@ import type { BasketSignal } from "@/lib/basketSignals";
 import { groupSignals } from "@/lib/plannedTrades";
 import { findLotMapEntry, type LotMapRow } from "@/lib/accounts/mt5ViewHelpers";
 import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
+import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 
 const DEFAULT_ACCOUNT_SIZE_USD = Number(process.env.PERFORMANCE_TIERED_ACCOUNT_SIZE_USD ?? "100000");
 const TIERED_CACHE_TTL_MS = Number(process.env.PERFORMANCE_TIERED_CACHE_TTL_MS ?? "15000");
@@ -220,6 +221,40 @@ function rowKey(assetClass: AssetClass, model: PerformanceModel) {
   return `${assetClass}|${model}`;
 }
 
+function getLegacyWeekOpenUtc(now = DateTime.utc()): string {
+  const nyNow = now.setZone("America/New_York");
+  const weekday = nyNow.weekday; // 1=Mon ... 7=Sun
+  let monday = nyNow;
+  if (weekday === 7) {
+    monday = nyNow.plus({ days: 1 });
+  } else {
+    const daysSinceMonday = (weekday + 6) % 7;
+    monday = nyNow.minus({ days: daysSinceMonday });
+  }
+
+  const open = monday.set({
+    hour: 0,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+
+  return open.toUTC().toISO() ?? now.toUTC().toISO() ?? "";
+}
+
+function getEquivalentWeekOpenCandidates(weekOpenUtc: string): string[] {
+  const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  if (!parsed.isValid) {
+    return [weekOpenUtc];
+  }
+  const candidates = [
+    weekOpenUtc,
+    getCanonicalWeekOpenUtc(parsed),
+    getLegacyWeekOpenUtc(parsed),
+  ].filter((value) => typeof value === "string" && value.length > 0);
+  return Array.from(new Set(candidates));
+}
+
 function normalizeDirection(value: unknown): Direction {
   return value === "LONG" || value === "SHORT" ? value : "NEUTRAL";
 }
@@ -269,12 +304,14 @@ function classifyTierForVotes(longCount: number, shortCount: number, neutralCoun
   return null;
 }
 
-async function loadEightcapAccount(): Promise<Mt5AccountRow | null> {
+async function loadTieredSizingAccount(): Promise<Mt5AccountRow | null> {
   const rows = await query<Mt5AccountRow>(
     `SELECT account_id, label, broker, server, currency, equity, baseline_equity, lot_map
        FROM mt5_accounts
-      WHERE LOWER(broker) LIKE '%eightcap%'
-      ORDER BY equity DESC`,
+      ORDER BY
+        CASE WHEN LOWER(COALESCE(broker, '')) LIKE '%eightcap%' THEN 0 ELSE 1 END,
+        CASE WHEN UPPER(COALESCE(status, '')) = 'ACTIVE' THEN 0 ELSE 1 END,
+        COALESCE(updated_at, last_sync_utc, NOW()) DESC`,
   );
   const filtered = rows.filter((row) => parseLotMapRows(row.lot_map).length > 0);
   return filtered[0] ?? null;
@@ -323,6 +360,7 @@ function deriveAntikytheraV2Rows(rows: SnapshotModelRow[]): SnapshotModelRow[] {
 }
 
 async function loadWeekSnapshotRows(weekOpenUtc: string): Promise<SnapshotModelRow[]> {
+  const weekCandidates = getEquivalentWeekOpenCandidates(weekOpenUtc);
   const models: PerformanceModel[] = Array.from(
     new Set([
       ...PERFORMANCE_V1_MODELS,
@@ -342,9 +380,9 @@ async function loadWeekSnapshotRows(weekOpenUtc: string): Promise<SnapshotModelR
   }>(
     `SELECT asset_class, model, pair_details
      FROM performance_snapshots
-     WHERE week_open_utc = $1
+     WHERE week_open_utc = ANY($1::timestamptz[])
        AND model = ANY($2::text[])`,
-    [weekOpenUtc, models],
+    [weekCandidates, models],
   );
 
   const parsed = rows
@@ -571,7 +609,7 @@ async function computeTieredWeekShared(options: {
     : DEFAULT_ACCOUNT_SIZE_USD;
   const cacheKey = `performanceTiered:shared:${options.weekOpenUtc}:${accountSizeUsd}`;
   return getOrSetRuntimeCache(cacheKey, getTieredCacheTtlMs(), async () => {
-    const account = await loadEightcapAccount();
+    const account = await loadTieredSizingAccount();
     if (!account) {
       return null;
     }

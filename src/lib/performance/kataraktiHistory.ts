@@ -1322,40 +1322,62 @@ async function readMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
 }
 
 async function readLiteCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | null> {
-  const liveSnapshot = await readLiveCryptoWeeklyFromDb({
-    botId: "katarakti_crypto_lite",
-    dryRunOnly: false,
-  });
-  if (liveSnapshot.weekly.length === 0) {
-    return null;
-  }
-  return toSnapshotFromWeekly({
+  const [coreSnapshot, liveSnapshot] = await Promise.all([
+    readCryptoFuturesSnapshot(),
+    readLiveCryptoWeeklyFromDb({
+      botId: "katarakti_crypto_lite",
+      dryRunOnly: false,
+    }),
+  ]);
+  const liteBase = coreSnapshot
+    ? {
+        ...coreSnapshot,
+        sourcePath: `${coreSnapshot.sourcePath}+lite-fallback`,
+        selectedVariantId: "lite_fallback_core",
+      }
+    : null;
+  const merged = appendLiveWeeks({
     market: "crypto_futures",
-    sourcePath: "db:live:katarakti_crypto_lite",
-    selectedVariantId: "lite",
-    weekly: liveSnapshot.weekly,
-    tradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
-    totalReturnPctOverride: null,
-    maxDrawdownOverride: null,
-    startingEquityUsdOverride: null,
+    base: liteBase,
+    live: liveSnapshot.weekly,
+    liveTradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
   });
+  if (!merged) return null;
+  return {
+    ...merged,
+    selectedVariantId: "lite",
+    sourcePath: liveSnapshot.weekly.length > 0
+      ? `${merged.sourcePath}+db:live:katarakti_crypto_lite`
+      : merged.sourcePath,
+  };
 }
 
 async function readLiteMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
-  const liveSnapshot = await readLiveMt5WeeklyFromDb("katarakti_cfd_lite");
-  if (liveSnapshot.weekly.length === 0) {
-    return null;
-  }
-  return toSnapshotFromWeekly({
+  const [coreSnapshot, liveSnapshot] = await Promise.all([
+    readMt5ForexSnapshot(),
+    readLiveMt5WeeklyFromDb("katarakti_cfd_lite"),
+  ]);
+  const liteBase = coreSnapshot
+    ? {
+        ...coreSnapshot,
+        sourcePath: `${coreSnapshot.sourcePath}+lite-fallback`,
+        selectedVariantId: "lite_fallback_core",
+      }
+    : null;
+  const merged = appendLiveWeeks({
     market: "mt5_forex",
-    sourcePath: "db:live:katarakti_cfd_lite",
-    selectedVariantId: "lite",
-    weekly: liveSnapshot.weekly,
-    tradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
-    totalReturnPctOverride: null,
-    maxDrawdownOverride: null,
-    startingEquityUsdOverride: null,
+    base: liteBase,
+    live: liveSnapshot.weekly,
+    liveTradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
   });
+  if (!merged) return null;
+  return {
+    ...merged,
+    selectedVariantId: "lite",
+    sourcePath: liveSnapshot.weekly.length > 0
+      ? `${merged.sourcePath}+db:live:katarakti_cfd_lite`
+      : merged.sourcePath,
+  };
 }
 
 export async function readKataraktiMarketSnapshots(): Promise<KataraktiHistoryByMarket> {
