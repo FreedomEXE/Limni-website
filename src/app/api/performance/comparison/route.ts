@@ -187,6 +187,19 @@ function computeSharpe(returns: number[]) {
   return stdDev > 0 ? avg / stdDev : 0;
 }
 
+function computeSharpeWithSingleWeekFallback(
+  weeklyReturns: number[],
+  fallbackReturns: number[],
+) {
+  if (weeklyReturns.length > 1) {
+    return computeSharpe(weeklyReturns);
+  }
+  if (fallbackReturns.length > 1) {
+    return computeSharpe(fallbackReturns);
+  }
+  return computeSharpe(weeklyReturns);
+}
+
 function computeProfitFactorFromReturns(returns: number[]): number | null {
   const grossProfit = returns.filter((value) => value > 0).reduce((sum, value) => sum + value, 0);
   const grossLoss = Math.abs(
@@ -207,6 +220,7 @@ function computeStaticMaxDrawdownFromWeeklyReturns(returns: number[]): number | 
 
 function buildComparisonMetricsFromWeeklySeries(options: {
   weekReturns: number[];
+  sharpeFallbackReturns?: number[];
   trades: number;
   wins: number;
   avgTrade: number | null;
@@ -223,7 +237,10 @@ function buildComparisonMetricsFromWeeklySeries(options: {
     totalReturn,
     weeks,
     winRate: weeklyWinRate,
-    sharpe: computeSharpe(options.weekReturns),
+    sharpe: computeSharpeWithSingleWeekFallback(
+      options.weekReturns,
+      options.sharpeFallbackReturns ?? [],
+    ),
     avgWeekly,
     maxDrawdown: options.maxDrawdown ?? computeStaticMaxDrawdownFromWeeklyReturns(options.weekReturns),
     trades: options.trades,
@@ -276,6 +293,7 @@ function computeMetrics(
       : fallbackEstimatedWins;
   return buildComparisonMetricsFromWeeklySeries({
     weekReturns,
+    sharpeFallbackReturns: tradeReturns,
     trades,
     wins,
     avgTrade:
@@ -315,6 +333,7 @@ function computeMetricsFromWeeklyRows(
       : null;
   return buildComparisonMetricsFromWeeklySeries({
     weekReturns,
+    sharpeFallbackReturns: tradeReturns,
     trades: totalTrades,
     wins,
     avgTrade:

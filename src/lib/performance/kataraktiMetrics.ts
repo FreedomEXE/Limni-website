@@ -41,6 +41,19 @@ function computeSharpe(weeklyReturnsPct: number[]) {
   return stdDev > 0 ? mean / stdDev : 0;
 }
 
+function computeSharpeWithSingleWeekFallback(
+  weeklyReturnsPct: number[],
+  fallbackReturnsPct: number[],
+) {
+  if (weeklyReturnsPct.length > 1) {
+    return computeSharpe(weeklyReturnsPct);
+  }
+  if (fallbackReturnsPct.length > 1) {
+    return computeSharpe(fallbackReturnsPct);
+  }
+  return computeSharpe(weeklyReturnsPct);
+}
+
 function normalizeWeek(weekOpenUtc: string): string {
   return normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
 }
@@ -123,7 +136,14 @@ export function buildKataraktiPeriodMetrics(
           0,
         )
       : null;
-  const rawSharpe = computeSharpe(weeklyReturns);
+  const tradeReturnsPct = weeks.flatMap((week) =>
+    (snapshot.tradeDetailsByWeek[week.weekOpenUtc] ?? []).flatMap((trade) =>
+      typeof trade.percent === "number" && Number.isFinite(trade.percent)
+        ? [trade.percent]
+        : [],
+    ),
+  );
+  const rawSharpe = computeSharpeWithSingleWeekFallback(weeklyReturns, tradeReturnsPct);
   const sharpe =
     period === "all" || period === null || period === undefined
       ? rawSharpe * ANNUALIZATION_FACTOR

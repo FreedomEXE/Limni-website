@@ -87,6 +87,36 @@ function formatMoney(value: number) {
   return `${sign}$${abs.toFixed(0)}`;
 }
 
+function computeStaticMaxDrawdownFromReturns(returns: Array<{ pair: string; percent: number }>): number | null {
+  if (returns.length === 0) return null;
+  const maxDrawdown = returns.reduce((max, item) => {
+    if (!Number.isFinite(item.percent) || item.percent >= 0) return max;
+    return Math.max(max, Math.abs(item.percent));
+  }, 0);
+  return maxDrawdown > 0 ? maxDrawdown : null;
+}
+
+function computeProfitFactorFromReturns(returns: Array<{ pair: string; percent: number }>): number | null {
+  if (returns.length === 0) return null;
+  const grossProfit = returns
+    .filter((item) => Number.isFinite(item.percent) && item.percent > 0)
+    .reduce((sum, item) => sum + item.percent, 0);
+  const grossLoss = Math.abs(
+    returns
+      .filter((item) => Number.isFinite(item.percent) && item.percent < 0)
+      .reduce((sum, item) => sum + item.percent, 0),
+  );
+  if (grossLoss > 0) return grossProfit / grossLoss;
+  if (grossProfit > 0) return Number.POSITIVE_INFINITY;
+  return null;
+}
+
+function formatProfitFactor(value: number | null) {
+  if (value === null || Number.isNaN(value)) return "—";
+  if (!Number.isFinite(value)) return "∞";
+  return value.toFixed(2);
+}
+
 type PerformanceTier = {
   label: string;
   accent: string;
@@ -239,9 +269,10 @@ function PerformanceCard({
 }) {
   const tier = getPerformanceTier(performance.percent, performance.stats.win_rate);
   const badge = getConfidenceBadge(performance);
-  const coverage = performance.total > 0 ? performance.priced / performance.total : 0;
   const sharpeProxy =
     performance.stats.volatility > 0 ? performance.stats.avg_return / performance.stats.volatility : 0;
+  const maxDrawdown = computeStaticMaxDrawdownFromReturns(performance.returns);
+  const profitFactor = computeProfitFactorFromReturns(performance.returns);
   const displayPercent =
     view === "simulation" && performance.trailing
       ? performance.trailing.locked_percent
@@ -301,20 +332,20 @@ function PerformanceCard({
               value={`${performance.stats.win_rate.toFixed(0)}%`}
               good={performance.stats.win_rate > 55}
             />
-              <MetricPill
-                label="Sharpe (Wk)"
-                value={sharpeProxy.toFixed(2)}
-                good={sharpeProxy > 1}
-              />
             <MetricPill
-              label="Coverage"
-              value={`${Math.round(coverage * 100)}%`}
-              good={coverage > 0.8}
+              label="Sharpe (Wk)"
+              value={sharpeProxy.toFixed(2)}
+              good={sharpeProxy > 1}
             />
             <MetricPill
-              label="Volatility"
-              value={`${performance.stats.volatility.toFixed(1)}%`}
-              good={performance.stats.volatility < 2}
+              label="Max DD"
+              value={maxDrawdown !== null ? `${maxDrawdown.toFixed(2)}%` : "—"}
+              good={maxDrawdown === null || maxDrawdown <= 2}
+            />
+            <MetricPill
+              label="Profit Factor"
+              value={formatProfitFactor(profitFactor)}
+              good={profitFactor !== null && profitFactor > 1}
             />
           </div>
           <div className="mt-4 flex items-center justify-between gap-2">
