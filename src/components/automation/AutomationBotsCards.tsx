@@ -2,7 +2,7 @@ import AutomationViewCards, {
   type AutomationViewCard,
 } from "@/components/automation/AutomationViewCards";
 
-type BotPageKey = "overview" | "bitget" | "katarakti" | "solana";
+type BotPageKey = "overview" | "bitget" | "bitget-lite" | "katarakti" | "katarakti-lite" | "solana";
 
 const BOT_CARDS: ReadonlyArray<AutomationViewCard<BotPageKey>> = [
   {
@@ -18,10 +18,22 @@ const BOT_CARDS: ReadonlyArray<AutomationViewCard<BotPageKey>> = [
     href: "/automation/bots/bitget",
   },
   {
+    id: "bitget-lite",
+    label: "Katarakti Crypto Lite",
+    description: "Simplified crypto entry rules for side-by-side validation.",
+    href: "/automation/bots/bitget-lite",
+  },
+  {
     id: "katarakti",
-    label: "Katarakti",
-    description: "MT5 sweep-entry dashboard and diagnostics.",
+    label: "Katarakti (CFD)",
+    description: "CFD sweep-entry dashboard and diagnostics.",
     href: "/automation/bots/mt5-forex",
+  },
+  {
+    id: "katarakti-lite",
+    label: "Katarakti CFD Lite",
+    description: "Simplified CFD entry rules for side-by-side validation.",
+    href: "/automation/bots/mt5-forex-lite",
   },
   {
     id: "solana",

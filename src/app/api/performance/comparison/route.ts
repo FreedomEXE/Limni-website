@@ -10,7 +10,7 @@ import {
 } from "@/lib/performance/modelConfig";
 import { computeTieredForWeeksAllSystems } from "@/lib/performance/tiered";
 import {
-  readKataraktiMarketSnapshots,
+  readKataraktiMarketSnapshotsByVariant,
 } from "@/lib/performance/kataraktiHistory";
 import { buildKataraktiPeriodMetrics } from "@/lib/performance/kataraktiMetrics";
 
@@ -269,18 +269,10 @@ export async function GET(request: NextRequest) {
       ),
     };
 
-    const snapshotByMarket = await readKataraktiMarketSnapshots();
-
-    const cryptoSnapshotMetrics = snapshotByMarket.crypto_futures
-      ? toKataraktiComparisonMetrics(
-          buildKataraktiPeriodMetrics(snapshotByMarket.crypto_futures, requestedWeek ?? "all"),
-        )
-      : null;
-    const mt5SnapshotMetrics = snapshotByMarket.mt5_forex
-      ? toKataraktiComparisonMetrics(
-          buildKataraktiPeriodMetrics(snapshotByMarket.mt5_forex, requestedWeek ?? "all"),
-        )
-      : null;
+    const [coreSnapshotsByMarket, liteSnapshotsByMarket] = await Promise.all([
+      readKataraktiMarketSnapshotsByVariant("core"),
+      readKataraktiMarketSnapshotsByVariant("lite"),
+    ]);
 
     const emptyKataraktiMetrics: ComparisonMetrics = {
       totalReturn: 0,
@@ -306,8 +298,30 @@ export async function GET(request: NextRequest) {
       },
       tiered,
       katarakti: {
-        crypto_futures: cryptoSnapshotMetrics ?? emptyKataraktiMetrics,
-        mt5_forex: mt5SnapshotMetrics ?? emptyKataraktiMetrics,
+        core: {
+          crypto_futures: coreSnapshotsByMarket.crypto_futures
+            ? toKataraktiComparisonMetrics(
+                buildKataraktiPeriodMetrics(coreSnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
+              ) ?? emptyKataraktiMetrics
+            : emptyKataraktiMetrics,
+          mt5_forex: coreSnapshotsByMarket.mt5_forex
+            ? toKataraktiComparisonMetrics(
+                buildKataraktiPeriodMetrics(coreSnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
+              ) ?? emptyKataraktiMetrics
+            : emptyKataraktiMetrics,
+        },
+        lite: {
+          crypto_futures: liteSnapshotsByMarket.crypto_futures
+            ? toKataraktiComparisonMetrics(
+                buildKataraktiPeriodMetrics(liteSnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
+              ) ?? emptyKataraktiMetrics
+            : emptyKataraktiMetrics,
+          mt5_forex: liteSnapshotsByMarket.mt5_forex
+            ? toKataraktiComparisonMetrics(
+                buildKataraktiPeriodMetrics(liteSnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
+              ) ?? emptyKataraktiMetrics
+            : emptyKataraktiMetrics,
+        },
       },
       weeksAnalyzed: selectedWeekList.length,
     });

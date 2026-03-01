@@ -53,7 +53,7 @@ const STRATEGY_CONFIGS: readonly StrategyConfig[] = [
   },
   {
     market: "mt5_forex",
-    name: "Katarakti (MT5 Forex)",
+    name: "Katarakti (CFD)",
     href: "/automation/bots/mt5-forex",
     status: "LIVE",
     fallbackTable: "katarakti_trades",

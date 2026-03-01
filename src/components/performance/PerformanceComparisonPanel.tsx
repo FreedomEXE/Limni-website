@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 type PerformanceStyle = "universal" | "tiered" | "katarakti";
 type KataraktiMarket = "crypto_futures" | "mt5_forex";
+type KataraktiVariant = "core" | "lite";
 
 type ComparisonMetrics = {
   totalReturn: number;
@@ -34,8 +35,14 @@ type ComparisonData = {
     v3: ComparisonMetrics;
   };
   katarakti?: {
-    crypto_futures: ComparisonMetrics;
-    mt5_forex: ComparisonMetrics;
+    core: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+    lite: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
   };
 };
 
@@ -63,15 +70,19 @@ export default function PerformanceComparisonPanel() {
   const requestedSystem = searchParams.get("system");
   const requestedStyle = searchParams.get("style");
   const requestedMarket = searchParams.get("market");
+  const requestedVariant = searchParams.get("variant");
   const requestedWeek = searchParams.get("week") ?? "all";
   const initialTab = requestedSystem === "v2" || requestedSystem === "v3" ? requestedSystem : "v1";
   const initialStyle: PerformanceStyle =
     requestedStyle === "tiered" || requestedStyle === "katarakti" ? requestedStyle : "universal";
   const initialMarket: KataraktiMarket =
     requestedMarket === "mt5_forex" ? "mt5_forex" : "crypto_futures";
+  const initialVariant: KataraktiVariant =
+    requestedVariant === "lite" ? "lite" : "core";
   const [activeTab, setActiveTab] = useState<"v1" | "v2" | "v3">(initialTab);
   const [activeStyle, setActiveStyle] = useState<PerformanceStyle>(initialStyle);
   const [activeMarket, setActiveMarket] = useState<KataraktiMarket>(initialMarket);
+  const [activeVariant, setActiveVariant] = useState<KataraktiVariant>(initialVariant);
 
   useEffect(() => {
     async function fetchData() {
@@ -108,15 +119,21 @@ export default function PerformanceComparisonPanel() {
     v3: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
   };
   const kataraktiMetrics = data?.katarakti ?? {
-    crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-    mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+    core: {
+      crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+      mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+    },
+    lite: {
+      crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+      mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+    },
   };
   const metricSet = activeStyle === "tiered" ? tieredMetrics : universalMetrics;
   const v1Metrics = metricSet.v1;
   const v2Metrics = metricSet.v2;
   const v3Metrics = metricSet.v3;
   const activeMetrics = activeStyle === "katarakti"
-    ? kataraktiMetrics[activeMarket]
+    ? kataraktiMetrics[activeVariant][activeMarket]
     : activeTab === "v1"
       ? v1Metrics
       : activeTab === "v2"
@@ -125,15 +142,13 @@ export default function PerformanceComparisonPanel() {
   const activeVersionLabel = activeTab === "v1" ? "V1" : activeTab === "v2" ? "V2" : "V3";
   const activeLabel = activeStyle === "katarakti"
     ? activeMarket === "crypto_futures"
-      ? "Katarakti (Crypto Futures)"
-      : "Katarakti (MT5 Forex)"
+      ? activeVariant === "lite" ? "Katarakti Crypto Lite" : "Katarakti (Crypto Futures)"
+      : activeVariant === "lite" ? "Katarakti CFD Lite" : "Katarakti (CFD)"
     : activeStyle === "tiered"
       ? `Tiered ${activeVersionLabel}`
       : `Universal ${activeVersionLabel}`;
   const activeBadge = activeStyle === "katarakti"
-    ? activeMarket === "crypto_futures"
-      ? "Crypto Futures"
-      : "MT5 Forex"
+    ? `${activeMarket === "crypto_futures" ? "Crypto Futures" : "CFD"} ${activeVariant === "lite" ? "Lite" : "Core"}`
     : activeStyle === "tiered"
       ? activeTab === "v2"
         ? "Tiered (2 tiers)"
@@ -146,8 +161,12 @@ export default function PerformanceComparisonPanel() {
   const activeCardClass =
     activeStyle === "katarakti"
       ? activeMarket === "crypto_futures"
-        ? "rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4"
-        : "rounded-2xl border border-teal-400/40 bg-teal-500/10 p-4"
+        ? activeVariant === "lite"
+          ? "rounded-2xl border border-sky-400/40 bg-sky-500/10 p-4"
+          : "rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4"
+        : activeVariant === "lite"
+          ? "rounded-2xl border border-cyan-400/40 bg-cyan-500/10 p-4"
+          : "rounded-2xl border border-teal-400/40 bg-teal-500/10 p-4"
       : activeTab === "v1"
       ? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4"
       : activeTab === "v2"
@@ -156,8 +175,12 @@ export default function PerformanceComparisonPanel() {
   const valueClass =
     activeStyle === "katarakti"
       ? activeMarket === "crypto_futures"
-        ? "text-amber-900 dark:text-amber-100"
-        : "text-teal-900 dark:text-teal-100"
+        ? activeVariant === "lite"
+          ? "text-sky-900 dark:text-sky-100"
+          : "text-amber-900 dark:text-amber-100"
+        : activeVariant === "lite"
+          ? "text-cyan-900 dark:text-cyan-100"
+          : "text-teal-900 dark:text-teal-100"
       : activeTab === "v1"
       ? "text-[var(--foreground)]"
       : activeTab === "v2"
@@ -166,8 +189,12 @@ export default function PerformanceComparisonPanel() {
   const labelClass =
     activeStyle === "katarakti"
       ? activeMarket === "crypto_futures"
-        ? "text-amber-700 dark:text-amber-300"
-        : "text-teal-700 dark:text-teal-300"
+        ? activeVariant === "lite"
+          ? "text-sky-700 dark:text-sky-300"
+          : "text-amber-700 dark:text-amber-300"
+        : activeVariant === "lite"
+          ? "text-cyan-700 dark:text-cyan-300"
+          : "text-teal-700 dark:text-teal-300"
       : activeTab === "v1"
       ? "text-[color:var(--muted)]"
       : activeTab === "v2"
@@ -176,8 +203,12 @@ export default function PerformanceComparisonPanel() {
   const badgeClass =
     activeStyle === "katarakti"
       ? activeMarket === "crypto_futures"
-        ? "rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-amber-800 dark:text-amber-200"
-        : "rounded-full bg-teal-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-teal-800 dark:text-teal-200"
+        ? activeVariant === "lite"
+          ? "rounded-full bg-sky-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-sky-800 dark:text-sky-200"
+          : "rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-amber-800 dark:text-amber-200"
+        : activeVariant === "lite"
+          ? "rounded-full bg-cyan-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-cyan-800 dark:text-cyan-200"
+          : "rounded-full bg-teal-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-teal-800 dark:text-teal-200"
       : activeTab === "v1"
       ? "rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]"
       : activeTab === "v2"
@@ -187,16 +218,20 @@ export default function PerformanceComparisonPanel() {
     v1Metrics.weeks > 0 ||
     v2Metrics.weeks > 0 ||
     v3Metrics.weeks > 0 ||
-    kataraktiMetrics.crypto_futures.weeks > 0 ||
-    kataraktiMetrics.mt5_forex.weeks > 0;
+    kataraktiMetrics.core.crypto_futures.weeks > 0 ||
+    kataraktiMetrics.core.mt5_forex.weeks > 0 ||
+    kataraktiMetrics.lite.crypto_futures.weeks > 0 ||
+    kataraktiMetrics.lite.mt5_forex.weeks > 0;
   const setStyle = (next: PerformanceStyle) => {
     setActiveStyle(next);
     const url = new URL(window.location.href);
     url.searchParams.set("style", next);
     if (next === "katarakti") {
       url.searchParams.set("market", activeMarket);
+      url.searchParams.set("variant", activeVariant);
     } else {
       url.searchParams.delete("market");
+      url.searchParams.delete("variant");
     }
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(new CustomEvent("performance-style-change", { detail: next }));
@@ -214,8 +249,18 @@ export default function PerformanceComparisonPanel() {
     const url = new URL(window.location.href);
     url.searchParams.set("style", "katarakti");
     url.searchParams.set("market", next);
+    url.searchParams.set("variant", activeVariant);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: next }));
+  };
+  const setVariant = (next: KataraktiVariant) => {
+    setActiveVariant(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("style", "katarakti");
+    url.searchParams.set("market", activeMarket);
+    url.searchParams.set("variant", next);
+    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+    window.dispatchEvent(new CustomEvent("performance-katarakti-variant-change", { detail: next }));
   };
 
   return (
@@ -263,29 +308,55 @@ export default function PerformanceComparisonPanel() {
       </div>
 
       {activeStyle === "katarakti" ? (
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setMarket("crypto_futures")}
-            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-              activeMarket === "crypto_futures"
-                ? "border-amber-400/50 bg-amber-500/10 text-amber-800 dark:text-amber-200"
-                : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-amber-400/50"
-            }`}
-          >
-            Crypto Futures
-          </button>
-          <button
-            type="button"
-            onClick={() => setMarket("mt5_forex")}
-            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-              activeMarket === "mt5_forex"
-                ? "border-teal-400/50 bg-teal-500/10 text-teal-800 dark:text-teal-200"
-                : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-teal-400/50"
-            }`}
-          >
-            MT5 Forex
-          </button>
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setMarket("crypto_futures")}
+              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                activeMarket === "crypto_futures"
+                  ? "border-amber-400/50 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-amber-400/50"
+              }`}
+            >
+              Crypto Futures
+            </button>
+            <button
+              type="button"
+              onClick={() => setMarket("mt5_forex")}
+              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                activeMarket === "mt5_forex"
+                  ? "border-teal-400/50 bg-teal-500/10 text-teal-800 dark:text-teal-200"
+                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-teal-400/50"
+              }`}
+            >
+              CFD
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setVariant("core")}
+              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                activeVariant === "core"
+                  ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-[var(--accent)]/40"
+              }`}
+            >
+              Core
+            </button>
+            <button
+              type="button"
+              onClick={() => setVariant("lite")}
+              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                activeVariant === "lite"
+                  ? "border-sky-400/50 bg-sky-500/10 text-sky-800 dark:text-sky-200"
+                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-sky-400/50"
+              }`}
+            >
+              Lite
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-2">

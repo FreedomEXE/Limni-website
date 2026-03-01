@@ -11,7 +11,7 @@ import PerformanceGrid from "@/components/performance/PerformanceGrid";
 import PerformanceViewCards, {
   PERFORMANCE_VIEW_CARDS,
 } from "@/components/performance/PerformanceViewCards";
-import type { KataraktiMarket } from "@/lib/performance/kataraktiHistory";
+import type { KataraktiMarket, KataraktiVariant } from "@/lib/performance/kataraktiHistory";
 
 type PerformanceStyle = "universal" | "tiered" | "katarakti";
 
@@ -26,6 +26,7 @@ type PerformanceViewSectionProps = {
   initialView: PerformanceView;
   initialSystem: PerformanceSystem;
   initialKataraktiMarket: KataraktiMarket;
+  initialKataraktiVariant: KataraktiVariant;
   initialStyle?: PerformanceStyle;
   universalGridProps: Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined" | "perAsset"> & {
     combined: ComponentProps<typeof PerformanceGrid>["combined"];
@@ -38,12 +39,15 @@ type PerformanceViewSectionProps = {
       perAsset: ComponentProps<typeof PerformanceGrid>["perAsset"];
     }
   >>;
-  kataraktiGridPropsByMarket?: Partial<Record<
-    KataraktiMarket,
-    Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined" | "perAsset"> & {
-      combined: ComponentProps<typeof PerformanceGrid>["combined"];
-      perAsset: ComponentProps<typeof PerformanceGrid>["perAsset"];
-    }
+  kataraktiGridPropsByVariantAndMarket?: Partial<Record<
+    KataraktiVariant,
+    Partial<Record<
+      KataraktiMarket,
+      Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined" | "perAsset"> & {
+        combined: ComponentProps<typeof PerformanceGrid>["combined"];
+        perAsset: ComponentProps<typeof PerformanceGrid>["perAsset"];
+      }
+    >>
   >>;
 };
 
@@ -51,15 +55,17 @@ export default function PerformanceViewSection({
   initialView,
   initialSystem,
   initialKataraktiMarket,
+  initialKataraktiVariant,
   initialStyle = "universal",
   universalGridProps,
   tieredGridPropsBySystem,
-  kataraktiGridPropsByMarket,
+  kataraktiGridPropsByVariantAndMarket,
 }: PerformanceViewSectionProps) {
   const [view, setView] = useState<PerformanceView>(initialView);
   const [system, setSystem] = useState<PerformanceSystem>(initialSystem);
   const [style, setStyle] = useState<PerformanceStyle>(initialStyle);
   const [kataraktiMarket, setKataraktiMarket] = useState<KataraktiMarket>(initialKataraktiMarket);
+  const [kataraktiVariant, setKataraktiVariant] = useState<KataraktiVariant>(initialKataraktiVariant);
 
   useEffect(() => {
     const onSystemChange = (event: Event) => {
@@ -80,13 +86,21 @@ export default function PerformanceViewSection({
         setKataraktiMarket(custom.detail);
       }
     };
+    const onKataraktiVariantChange = (event: Event) => {
+      const custom = event as CustomEvent<KataraktiVariant>;
+      if (custom.detail === "core" || custom.detail === "lite") {
+        setKataraktiVariant(custom.detail);
+      }
+    };
     window.addEventListener("performance-system-change", onSystemChange);
     window.addEventListener("performance-style-change", onStyleChange);
     window.addEventListener("performance-katarakti-market-change", onKataraktiMarketChange);
+    window.addEventListener("performance-katarakti-variant-change", onKataraktiVariantChange);
     return () => {
       window.removeEventListener("performance-system-change", onSystemChange);
       window.removeEventListener("performance-style-change", onStyleChange);
       window.removeEventListener("performance-katarakti-market-change", onKataraktiMarketChange);
+      window.removeEventListener("performance-katarakti-variant-change", onKataraktiVariantChange);
     };
   }, []);
 
@@ -100,16 +114,18 @@ export default function PerformanceViewSection({
     url.searchParams.set("style", style);
     if (style === "katarakti") {
       url.searchParams.set("market", kataraktiMarket);
+      url.searchParams.set("variant", kataraktiVariant);
     } else {
       url.searchParams.delete("market");
+      url.searchParams.delete("variant");
     }
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-  }, [view, system, style, kataraktiMarket]);
+  }, [view, system, style, kataraktiMarket, kataraktiVariant]);
 
   const usingTiered = style === "tiered" && Boolean(tieredGridPropsBySystem?.[system]);
   const usingKatarakti = style === "katarakti";
   const baseGridProps = usingKatarakti
-    ? kataraktiGridPropsByMarket?.[kataraktiMarket] ?? {
+    ? kataraktiGridPropsByVariantAndMarket?.[kataraktiVariant]?.[kataraktiMarket] ?? {
         ...universalGridProps,
         combined: { ...universalGridProps.combined, models: [] },
         perAsset: [],

@@ -44,7 +44,11 @@ import {
   computeTieredWeekForAllSystems,
   TIERED_DISPLAY_LABELS,
 } from "@/lib/performance/tiered";
-import { readKataraktiMarketSnapshots } from "@/lib/performance/kataraktiHistory";
+import {
+  readKataraktiMarketSnapshotsByVariant,
+  type KataraktiHistoryByMarket,
+  type KataraktiVariant,
+} from "@/lib/performance/kataraktiHistory";
 import {
   buildKataraktiModelPerformance,
   KATARAKTI_CARD_MODEL,
@@ -81,6 +85,10 @@ function resolveKataraktiMarket(value: string | null | undefined): "crypto_futur
   return value === "mt5_forex" ? "mt5_forex" : "crypto_futures";
 }
 
+function resolveKataraktiVariant(value: string | null | undefined): KataraktiVariant {
+  return value === "lite" ? "lite" : "core";
+}
+
 const KATARAKTI_MODEL_LABELS = {
   ...PERFORMANCE_MODEL_LABELS,
   [KATARAKTI_CARD_MODEL]: "Katarakti",
@@ -108,16 +116,17 @@ function isReportDateCurrentTradingWeek(
   return mondayUtc === currentWeekOpenUtc;
 }
 
-function buildKataraktiGridPropsByMarket(options: {
-  snapshots: Awaited<ReturnType<typeof readKataraktiMarketSnapshots>>;
+function buildKataraktiGridPropsByVariantAndMarket(options: {
+  snapshotsByVariant: Record<KataraktiVariant, KataraktiHistoryByMarket>;
   period: string | null | undefined;
-}): ComponentProps<typeof PerformanceViewSection>["kataraktiGridPropsByMarket"] {
+}): ComponentProps<typeof PerformanceViewSection>["kataraktiGridPropsByVariantAndMarket"] {
   const description = buildKataraktiDescription(options.period);
   const makeGrid = (
+    variant: KataraktiVariant,
     market: "crypto_futures" | "mt5_forex",
     label: string,
   ) => {
-    const snapshot = options.snapshots[market];
+    const snapshot = options.snapshotsByVariant[variant][market];
     const model = snapshot
       ? buildKataraktiModelPerformance(snapshot, options.period ?? "all")
       : null;
@@ -140,8 +149,14 @@ function buildKataraktiGridPropsByMarket(options: {
   };
 
   return {
-    crypto_futures: makeGrid("crypto_futures", "Crypto Futures"),
-    mt5_forex: makeGrid("mt5_forex", "MT5 Forex"),
+    core: {
+      crypto_futures: makeGrid("core", "crypto_futures", "Crypto Futures"),
+      mt5_forex: makeGrid("core", "mt5_forex", "CFD"),
+    },
+    lite: {
+      crypto_futures: makeGrid("lite", "crypto_futures", "Crypto Futures Lite"),
+      mt5_forex: makeGrid("lite", "mt5_forex", "CFD Lite"),
+    },
   };
 }
 
@@ -296,10 +311,13 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const styleParamValue = Array.isArray(styleParam) ? styleParam[0] : styleParam;
   const marketParam = resolvedSearchParams?.market;
   const marketParamValue = Array.isArray(marketParam) ? marketParam[0] : marketParam;
+  const variantParam = resolvedSearchParams?.variant;
+  const variantParamValue = Array.isArray(variantParam) ? variantParam[0] : variantParam;
 
   const initialSystem = resolvePerformanceSystem(systemParamValue);
   const initialStyle = resolvePerformanceStyle(styleParamValue);
   const initialKataraktiMarket = resolveKataraktiMarket(marketParamValue);
+  const initialKataraktiVariant = resolveKataraktiVariant(variantParamValue);
   const view = resolvePerformanceView(viewParamValue);
   const assetClasses = listAssetClasses();
   const models = PERFORMANCE_MODELS;
@@ -361,20 +379,33 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       ? "all"
       : resolvedSelectedWeek;
 
-  let kataraktiSnapshots: Awaited<ReturnType<typeof readKataraktiMarketSnapshots>> = {
-    crypto_futures: null,
-    mt5_forex: null,
+  let kataraktiSnapshotsByVariant: Record<KataraktiVariant, KataraktiHistoryByMarket> = {
+    core: {
+      crypto_futures: null,
+      mt5_forex: null,
+    },
+    lite: {
+      crypto_futures: null,
+      mt5_forex: null,
+    },
   };
   try {
-    kataraktiSnapshots = await readKataraktiMarketSnapshots();
+    const [coreSnapshots, liteSnapshots] = await Promise.all([
+      readKataraktiMarketSnapshotsByVariant("core"),
+      readKataraktiMarketSnapshotsByVariant("lite"),
+    ]);
+    kataraktiSnapshotsByVariant = {
+      core: coreSnapshots,
+      lite: liteSnapshots,
+    };
   } catch (error) {
     console.error(
       "Katarakti snapshots failed:",
       error instanceof Error ? error.message : String(error),
     );
   }
-  const kataraktiGridPropsByMarket = buildKataraktiGridPropsByMarket({
-    snapshots: kataraktiSnapshots,
+  const kataraktiGridPropsByVariantAndMarket = buildKataraktiGridPropsByVariantAndMarket({
+    snapshotsByVariant: kataraktiSnapshotsByVariant,
     period: selectedWeek ?? "all",
   });
 
@@ -538,7 +569,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                   selected={selectedWeek ?? weekOptions[0]}
                   currentWeek={displayWeekOpenUtc}
                   label="Week"
-                  preserveParams={["view", "system", "style", "market", "report"]}
+                  preserveParams={["view", "system", "style", "market", "variant", "report"]}
                   replaceState
                 />
               ) : (
@@ -559,6 +590,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             initialView={view}
             initialSystem={initialSystem}
             initialKataraktiMarket={initialKataraktiMarket}
+            initialKataraktiVariant={initialKataraktiVariant}
             initialStyle={initialStyle}
             universalGridProps={{
               combined: {
@@ -582,7 +614,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               showAllTime: false,
             }}
             tieredGridPropsBySystem={tieredGridPropsBySystem}
-            kataraktiGridPropsByMarket={kataraktiGridPropsByMarket}
+            kataraktiGridPropsByVariantAndMarket={kataraktiGridPropsByVariantAndMarket}
           />
         </div>
       </DashboardLayout>
@@ -939,7 +971,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 selected={selectedWeek ?? weekOptions[0]}
                 currentWeek={displayWeekOpenUtc}
                 label="Week"
-                preserveParams={["view", "system", "style", "market", "report"]}
+                preserveParams={["view", "system", "style", "market", "variant", "report"]}
                 replaceState
               />
             ) : reportOptions.length > 0 ? (
@@ -948,7 +980,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 selected={selectedReport ?? reportOptions[0]}
                 label="Report"
                 paramName="report"
-                preserveParams={["view", "system", "style", "market", "week"]}
+                preserveParams={["view", "system", "style", "market", "variant", "week"]}
                 isCurrentOption={(value) =>
                   isReportDateCurrentTradingWeek(String(value), displayWeekOpenUtc)
                 }
@@ -977,6 +1009,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           initialView={view}
           initialSystem={initialSystem}
           initialKataraktiMarket={initialKataraktiMarket}
+          initialKataraktiVariant={initialKataraktiVariant}
           initialStyle={initialStyle}
           universalGridProps={{
             combined: {
@@ -1004,9 +1037,10 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             showAllTime: false,
           }}
           tieredGridPropsBySystem={tieredGridPropsBySystem}
-          kataraktiGridPropsByMarket={kataraktiGridPropsByMarket}
+          kataraktiGridPropsByVariantAndMarket={kataraktiGridPropsByVariantAndMarket}
         />
       </div>
     </DashboardLayout>
   );
 }
+

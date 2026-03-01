@@ -70,10 +70,12 @@ function isFresh(iso: string | null | undefined, minutes = 10) {
 }
 
 export default async function AutomationBotsPage() {
-  const [mt5Accounts, bitgetState, kataraktiState] = await Promise.all([
+  const [mt5Accounts, bitgetState, bitgetLiteState, kataraktiState, kataraktiLiteState] = await Promise.all([
     readMt5Accounts().catch(() => []),
     readBotState("bitget_perp_v2"),
+    readBotState("katarakti_crypto_lite"),
     readBotState("katarakti_v1"),
+    readBotState("katarakti_cfd_lite"),
   ]);
 
   const mt5Fresh = mt5Accounts.some((account) => isFresh(account.last_sync_utc, 15));
@@ -100,9 +102,33 @@ export default async function AutomationBotsPage() {
           : kataraktiLifecycle === "ERROR"
             ? "ERROR"
             : "OFF";
+  const bitgetLiteLifecycle = String((bitgetLiteState?.state as { lifecycle?: string } | undefined)?.lifecycle ?? "");
+  const bitgetLiteStatus: BotStatus =
+    !bitgetLiteState || bitgetLiteLifecycle === "" || bitgetLiteLifecycle === "IDLE" || bitgetLiteLifecycle === "KILLED"
+      ? "OFF"
+      : ["POSITION_OPEN", "SCALING", "TRAILING"].includes(bitgetLiteLifecycle)
+        ? "ON"
+        : ["WATCHING_SWEEP", "WATCHING_RANGE", "AWAITING_HANDSHAKE", "WEEK_READY"].includes(bitgetLiteLifecycle)
+          ? "WATCHING"
+          : bitgetLiteLifecycle === "ERROR"
+            ? "ERROR"
+            : "OFF";
+  const kataraktiLiteLifecycle = String((kataraktiLiteState?.state as { lifecycle?: string } | undefined)?.lifecycle ?? "");
+  const kataraktiLiteStatus: BotStatus =
+    !kataraktiLiteState || kataraktiLiteLifecycle === "" || kataraktiLiteLifecycle === "IDLE" || kataraktiLiteLifecycle === "KILLED"
+      ? "OFF"
+      : ["POSITION_OPEN", "TRAILING"].includes(kataraktiLiteLifecycle)
+        ? "ON"
+        : ["SCANNING", "WEEK_READY"].includes(kataraktiLiteLifecycle)
+          ? "WATCHING"
+          : kataraktiLiteLifecycle === "ERROR"
+            ? "ERROR"
+            : "OFF";
   const mt5Badge = statusBadge(mt5Status);
   const bitgetBadge = statusBadge(bitgetStatus);
   const kataraktiBadge = statusBadge(kataraktiStatus);
+  const bitgetLiteBadge = statusBadge(bitgetLiteStatus);
+  const kataraktiLiteBadge = statusBadge(kataraktiLiteStatus);
 
   return (
     <DashboardLayout>
@@ -115,7 +141,127 @@ export default async function AutomationBotsPage() {
 
         <AutomationBotsCards active="overview" />
 
-        <section className="grid gap-4 lg:grid-cols-3">
+        <section className="grid gap-4 xl:grid-cols-2">
+          <article className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Crypto Systems
+              </h2>
+              <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Core vs Lite
+              </span>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Link
+                href="/automation/bots/bitget"
+                className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex items-start justify-between">
+                  <h3 className="text-base font-semibold text-[var(--foreground)]">
+                    Katarakti (Crypto)
+                  </h3>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${bitgetBadge.tone}`}>
+                    {bitgetBadge.label}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-[color:var(--muted)]">
+                  Crypto futures sweep entries with unified signal alignment.
+                </p>
+                <div className="mt-4 grid gap-2 text-xs text-[var(--accent-strong)]">
+                  <span>10x leverage, unlevered trail</span>
+                  <span>All-model alignment filter</span>
+                </div>
+              </Link>
+
+              <Link
+                href="/automation/bots/bitget-lite"
+                className="rounded-2xl border border-sky-300/30 bg-[var(--panel)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold text-[var(--foreground)]">
+                      Katarakti Crypto Lite
+                    </h3>
+                    <span className="rounded-full border border-sky-300/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-sky-200">
+                      Lite
+                    </span>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${bitgetLiteBadge.tone}`}>
+                    {bitgetLiteBadge.label}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-[color:var(--muted)]">
+                  Simplified sustained-deviation entries for side-by-side live comparison.
+                </p>
+                <div className="mt-4 grid gap-2 text-xs text-sky-200/80">
+                  <span>No handshake requirement</span>
+                  <span>Weekly bias filter retained</span>
+                </div>
+              </Link>
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                CFD Systems
+              </h2>
+              <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                Core vs Lite
+              </span>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Link
+                href="/automation/bots/mt5-forex"
+                className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex items-start justify-between">
+                  <h3 className="text-base font-semibold text-[var(--foreground)]">
+                    Katarakti (CFD)
+                  </h3>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${kataraktiBadge.tone}`}>
+                    {kataraktiBadge.label}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-[color:var(--muted)]">
+                  Individual pair sweep entries across FX, index, and commodity instruments.
+                </p>
+                <div className="mt-4 grid gap-2 text-xs text-[var(--accent-strong)]">
+                  <span>Tiered bias sizing (T1/T2)</span>
+                  <span>Stepped stop management</span>
+                </div>
+              </Link>
+
+              <Link
+                href="/automation/bots/mt5-forex-lite"
+                className="rounded-2xl border border-teal-300/30 bg-[var(--panel)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-semibold text-[var(--foreground)]">
+                      Katarakti CFD Lite
+                    </h3>
+                    <span className="rounded-full border border-teal-300/40 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-teal-200">
+                      Lite
+                    </span>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${kataraktiLiteBadge.tone}`}>
+                    {kataraktiLiteBadge.label}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-[color:var(--muted)]">
+                  Simplified re-entry rules for comparative execution alongside the core CFD system.
+                </p>
+                <div className="mt-4 grid gap-2 text-xs text-teal-200/80">
+                  <span>3-minute dwell then re-entry</span>
+                  <span>Weekly bias filter retained</span>
+                </div>
+              </Link>
+            </div>
+          </article>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold text-[var(--foreground)]">
@@ -133,48 +279,6 @@ export default async function AutomationBotsPage() {
               <span>Global equity trail</span>
             </div>
           </div>
-
-          <Link
-            href="/automation/bots/bitget"
-            className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <div className="flex items-start justify-between">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Katarakti (Bitget)
-              </h2>
-              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${bitgetBadge.tone}`}>
-                {bitgetBadge.label}
-              </span>
-            </div>
-            <p className="mt-2 text-sm text-[color:var(--muted)]">
-              Crypto futures sweep entries with unified signal alignment.
-            </p>
-            <div className="mt-4 grid gap-2 text-xs text-[var(--accent-strong)]">
-              <span>10x leverage, unlevered trail</span>
-              <span>All-model alignment filter</span>
-            </div>
-          </Link>
-
-          <Link
-            href="/automation/bots/mt5-forex"
-            className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--panel)] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <div className="flex items-start justify-between">
-              <h2 className="text-lg font-semibold text-[var(--foreground)]">
-                Katarakti (MT5 Forex)
-              </h2>
-              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${kataraktiBadge.tone}`}>
-                {kataraktiBadge.label}
-              </span>
-            </div>
-            <p className="mt-2 text-sm text-[color:var(--muted)]">
-              Individual pair sweep entries across 36 FX, index, and commodity instruments.
-            </p>
-            <div className="mt-4 grid gap-2 text-xs text-[var(--accent-strong)]">
-              <span>Tiered bias sizing (T1/T2)</span>
-              <span>Stepped stop management</span>
-            </div>
-          </Link>
 
           <Link
             href="/automation/solana-meme-bot"

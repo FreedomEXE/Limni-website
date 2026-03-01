@@ -6,6 +6,7 @@ import { query } from "@/lib/db";
 import { KATARAKTI_SEED_SNAPSHOTS } from "@/lib/performance/kataraktiSeed";
 
 export type KataraktiMarket = "crypto_futures" | "mt5_forex";
+export type KataraktiVariant = "core" | "lite";
 
 export type KataraktiWeeklySnapshot = {
   weekOpenUtc: string;
@@ -910,10 +911,18 @@ function mergeSimAndLiveWeekly(
   return sortWeeksAsc(merged);
 }
 
-async function readLiveCryptoWeeklyFromDb(): Promise<{
+async function readLiveCryptoWeeklyFromDb(options?: {
+  botId?: string;
+  dryRunOnly?: boolean;
+}): Promise<{
   weekly: KataraktiWeeklySnapshot[];
   tradeDetailsByWeek: Record<string, KataraktiTradeDetail[]>;
 }> {
+  const botId = options?.botId ?? "bitget_perp_v2";
+  const dryRunOnly = options?.dryRunOnly ?? true;
+  const dryRunClause = dryRunOnly
+    ? "\n       AND COALESCE(LOWER(metadata->>'dryRun'), 'false') = 'true'"
+    : "";
   const rows = await safeQuery<LiveBitgetTradeRow>(
     `SELECT
        DATE_TRUNC('week', COALESCE(exit_time_utc, entry_time_utc))::timestamptz AS week_open_utc,
@@ -926,10 +935,9 @@ async function readLiveCryptoWeeklyFromDb(): Promise<{
        session_window
      FROM bitget_bot_trades
      WHERE bot_id = $1
-       AND exit_time_utc IS NOT NULL
-       AND COALESCE(LOWER(metadata->>'dryRun'), 'false') = 'true'
+       AND exit_time_utc IS NOT NULL${dryRunClause}
      ORDER BY COALESCE(exit_time_utc, entry_time_utc) ASC, id ASC`,
-    ["bitget_perp_v2"],
+    [botId],
   );
 
   if (rows.length === 0) {
@@ -978,7 +986,7 @@ async function readLiveCryptoWeeklyFromDb(): Promise<{
   };
 }
 
-async function readLiveMt5WeeklyFromDb(): Promise<{
+async function readLiveMt5WeeklyFromDb(botId = "katarakti_v1"): Promise<{
   weekly: KataraktiWeeklySnapshot[];
   tradeDetailsByWeek: Record<string, KataraktiTradeDetail[]>;
 }> {
@@ -997,7 +1005,7 @@ async function readLiveMt5WeeklyFromDb(): Promise<{
      WHERE bot_id = $1
        AND exit_time_utc IS NOT NULL
      ORDER BY COALESCE(exit_time_utc, entry_time_utc) ASC, id ASC`,
-    ["katarakti_v1"],
+    [botId],
   );
 
   if (rows.length === 0) {
@@ -1313,6 +1321,43 @@ async function readMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
   });
 }
 
+async function readLiteCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | null> {
+  const liveSnapshot = await readLiveCryptoWeeklyFromDb({
+    botId: "katarakti_crypto_lite",
+    dryRunOnly: false,
+  });
+  if (liveSnapshot.weekly.length === 0) {
+    return null;
+  }
+  return toSnapshotFromWeekly({
+    market: "crypto_futures",
+    sourcePath: "db:live:katarakti_crypto_lite",
+    selectedVariantId: "lite",
+    weekly: liveSnapshot.weekly,
+    tradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
+    totalReturnPctOverride: null,
+    maxDrawdownOverride: null,
+    startingEquityUsdOverride: null,
+  });
+}
+
+async function readLiteMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
+  const liveSnapshot = await readLiveMt5WeeklyFromDb("katarakti_cfd_lite");
+  if (liveSnapshot.weekly.length === 0) {
+    return null;
+  }
+  return toSnapshotFromWeekly({
+    market: "mt5_forex",
+    sourcePath: "db:live:katarakti_cfd_lite",
+    selectedVariantId: "lite",
+    weekly: liveSnapshot.weekly,
+    tradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
+    totalReturnPctOverride: null,
+    maxDrawdownOverride: null,
+    startingEquityUsdOverride: null,
+  });
+}
+
 export async function readKataraktiMarketSnapshots(): Promise<KataraktiHistoryByMarket> {
   return getOrSetRuntimeCache(
     "performance:kataraktiHistory:markets",
@@ -1320,6 +1365,22 @@ export async function readKataraktiMarketSnapshots(): Promise<KataraktiHistoryBy
     async () => ({
       crypto_futures: await readCryptoFuturesSnapshot(),
       mt5_forex: await readMt5ForexSnapshot(),
+    }),
+  );
+}
+
+export async function readKataraktiMarketSnapshotsByVariant(
+  variant: KataraktiVariant,
+): Promise<KataraktiHistoryByMarket> {
+  if (variant === "core") {
+    return readKataraktiMarketSnapshots();
+  }
+  return getOrSetRuntimeCache(
+    "performance:kataraktiHistory:markets:lite",
+    getConfiguredCacheTtlMs(),
+    async () => ({
+      crypto_futures: await readLiteCryptoFuturesSnapshot(),
+      mt5_forex: await readLiteMt5ForexSnapshot(),
     }),
   );
 }
