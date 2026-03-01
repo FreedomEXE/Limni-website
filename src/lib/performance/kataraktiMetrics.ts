@@ -9,6 +9,7 @@ import type {
 } from "@/lib/performance/kataraktiHistory";
 
 export const KATARAKTI_CARD_MODEL = "antikythera_v3" as const;
+const ANNUALIZATION_FACTOR = Math.sqrt(52);
 
 export type KataraktiPeriodValue = "all" | string | null | undefined;
 
@@ -122,12 +123,17 @@ export function buildKataraktiPeriodMetrics(
           0,
         )
       : null;
+  const rawSharpe = computeSharpe(weeklyReturns);
+  const sharpe =
+    period === "all" || period === null || period === undefined
+      ? rawSharpe * ANNUALIZATION_FACTOR
+      : rawSharpe;
 
   return {
     totalReturnPct,
     weeks: weeksCount,
     weeklyWinRatePct: weeksCount > 0 ? (weekWins / weeksCount) * 100 : 0,
-    sharpe: computeSharpe(weeklyReturns),
+    sharpe,
     avgWeeklyPct: weeksCount > 0 ? totalReturnPct / weeksCount : 0,
     maxDrawdownPct:
       maxDrawdownFromWeeks !== null && maxDrawdownFromWeeks > 0

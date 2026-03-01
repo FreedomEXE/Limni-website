@@ -12,6 +12,7 @@ type ComparisonMetrics = {
   weeks: number;
   winRate: number;
   sharpe: number;
+  sharpeAnnualized?: boolean;
   avgWeekly: number;
   maxDrawdown: number | null;
   trades: number;
@@ -20,6 +21,9 @@ type ComparisonMetrics = {
   profitFactor: number | null;
   profitFactorInfinite?: boolean;
 };
+
+const WEEKLY_SHARPE_GOOD_THRESHOLD = 1;
+const ANNUALIZED_SHARPE_GOOD_THRESHOLD = 7;
 
 type ComparisonData = {
   v1: ComparisonMetrics;
@@ -224,6 +228,14 @@ export default function PerformanceComparisonPanel() {
     kataraktiMetrics.core.mt5_forex.weeks > 0 ||
     kataraktiMetrics.lite.crypto_futures.weeks > 0 ||
     kataraktiMetrics.lite.mt5_forex.weeks > 0;
+  const sharpeLabel = activeMetrics.sharpeAnnualized ? "Sharpe (Ann.)" : "Sharpe (Wk)";
+  const sharpeGoodThreshold = activeMetrics.sharpeAnnualized
+    ? ANNUALIZED_SHARPE_GOOD_THRESHOLD
+    : WEEKLY_SHARPE_GOOD_THRESHOLD;
+  const sharpeValueClass =
+    activeMetrics.sharpe > sharpeGoodThreshold
+      ? "text-emerald-700 dark:text-emerald-300"
+      : valueClass;
   const setStyle = (next: PerformanceStyle) => {
     setActiveStyle(next);
     const url = new URL(window.location.href);
@@ -450,11 +462,11 @@ export default function PerformanceComparisonPanel() {
             </div>
           </div>
           <div>
-            <div className={`text-sm font-semibold ${valueClass}`}>
+            <div className={`text-sm font-semibold ${sharpeValueClass}`}>
               {activeMetrics.sharpe.toFixed(2)}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
-              Sharpe
+              {sharpeLabel}
             </div>
           </div>
           <div>

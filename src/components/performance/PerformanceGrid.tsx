@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import type { ModelPerformance, PerformanceModel } from "@/lib/performanceLab";
 import PerformanceModal from "@/components/performance/PerformanceModal";
 
@@ -301,11 +301,11 @@ function PerformanceCard({
               value={`${performance.stats.win_rate.toFixed(0)}%`}
               good={performance.stats.win_rate > 55}
             />
-            <MetricPill
-              label="Sharpe"
-              value={sharpeProxy.toFixed(2)}
-              good={sharpeProxy > 1}
-            />
+              <MetricPill
+                label="Sharpe (Wk)"
+                value={sharpeProxy.toFixed(2)}
+                good={sharpeProxy > 1}
+              />
             <MetricPill
               label="Coverage"
               value={`${Math.round(coverage * 100)}%`}
@@ -461,18 +461,13 @@ export default function PerformanceGrid({
   const [selectedSectionId, setSelectedSectionId] = useState(
     sections[0]?.id ?? "combined",
   );
-  const [modalAccountSize, setModalAccountSize] = useState(calibration?.accountSize ?? 100000);
+  const [modalAccountSizeOverride, setModalAccountSizeOverride] = useState<number | null>(null);
+  const modalAccountSize = modalAccountSizeOverride ?? calibration?.accountSize ?? 100000;
   const [selectedModel, setSelectedModel] = useState<{
     sectionLabel: string;
     modelLabel: string;
     performance: ModelPerformance;
   } | null>(null);
-
-  useEffect(() => {
-    if (calibration?.accountSize && Number.isFinite(calibration.accountSize)) {
-      setModalAccountSize(calibration.accountSize);
-    }
-  }, [calibration?.accountSize]);
 
   const resolvedSectionId = sections.find((section) => section.id === selectedSectionId)
     ? selectedSectionId
@@ -591,7 +586,7 @@ export default function PerformanceGrid({
           performance={selectedModel.performance}
           onClose={() => setSelectedModel(null)}
           accountSize={modalAccountSize}
-          setAccountSize={setModalAccountSize}
+          setAccountSize={setModalAccountSizeOverride}
           initialView={view}
           calibration={calibration}
         />

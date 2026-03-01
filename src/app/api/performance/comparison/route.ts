@@ -24,12 +24,14 @@ const V1_MODELS: PerformanceModel[] = PERFORMANCE_V1_MODELS;
 const V2_MODELS: PerformanceModel[] = PERFORMANCE_V2_MODELS;
 const V3_MODELS: PerformanceModel[] = PERFORMANCE_V3_MODELS;
 const SNAPSHOT_SCAN_LIMIT = 1200;
+const ANNUALIZATION_FACTOR = Math.sqrt(52);
 
 type ComparisonMetrics = {
   totalReturn: number;
   weeks: number;
   winRate: number;
   sharpe: number;
+  sharpeAnnualized?: boolean;
   avgWeekly: number;
   maxDrawdown: number | null;
   trades: number;
@@ -329,10 +331,22 @@ function computeMetricsFromWeeklyRows(
   });
 }
 
-function sanitizeComparisonMetrics(metrics: ComparisonMetrics): ComparisonMetrics {
+function finalizeComparisonMetrics(
+  metrics: ComparisonMetrics,
+  options: {
+    annualizeSharpe: boolean;
+    sharpeAlreadyAnnualized?: boolean;
+  },
+): ComparisonMetrics {
+  const sharpe =
+    options.annualizeSharpe && !options.sharpeAlreadyAnnualized
+      ? metrics.sharpe * ANNUALIZATION_FACTOR
+      : metrics.sharpe;
   const profitFactorInfinite = metrics.profitFactor !== null && !Number.isFinite(metrics.profitFactor);
   return {
     ...metrics,
+    sharpe,
+    sharpeAnnualized: options.annualizeSharpe,
     profitFactor: profitFactorInfinite ? null : metrics.profitFactor,
     profitFactorInfinite,
   };
@@ -385,10 +399,20 @@ export async function GET(request: NextRequest) {
       }
     }
     const selectedWeeks = new Set(selectedWeekList);
+    const annualizeSharpe = requestedWeek === null;
 
-    const v1Metrics = sanitizeComparisonMetrics(computeMetrics(comparisonSnapshots, V1_MODELS, selectedWeeks));
-    const v2Metrics = sanitizeComparisonMetrics(computeMetrics(comparisonSnapshots, V2_MODELS, selectedWeeks));
-    const v3Metrics = sanitizeComparisonMetrics(computeMetrics(comparisonSnapshots, V3_MODELS, selectedWeeks));
+    const v1Metrics = finalizeComparisonMetrics(
+      computeMetrics(comparisonSnapshots, V1_MODELS, selectedWeeks),
+      { annualizeSharpe },
+    );
+    const v2Metrics = finalizeComparisonMetrics(
+      computeMetrics(comparisonSnapshots, V2_MODELS, selectedWeeks),
+      { annualizeSharpe },
+    );
+    const v3Metrics = finalizeComparisonMetrics(
+      computeMetrics(comparisonSnapshots, V3_MODELS, selectedWeeks),
+      { annualizeSharpe },
+    );
 
     const selectedWeekOpens = selectedWeekList.sort(
       (a, b) =>
@@ -400,7 +424,7 @@ export async function GET(request: NextRequest) {
       weeks: selectedWeekOpens,
     });
     const tiered = {
-      v1: sanitizeComparisonMetrics(computeMetricsFromWeeklyRows(
+      v1: finalizeComparisonMetrics(computeMetricsFromWeeklyRows(
         tieredWeeklyBySystem.v1.map((row) => ({
           return_percent: row.summary.return_percent,
           priced_trades: row.summary.priced_trades,
@@ -421,8 +445,8 @@ export async function GET(request: NextRequest) {
             return Math.max(max, modelMax);
           }, 0),
         })),
-      )),
-      v2: sanitizeComparisonMetrics(computeMetricsFromWeeklyRows(
+      ), { annualizeSharpe }),
+      v2: finalizeComparisonMetrics(computeMetricsFromWeeklyRows(
         tieredWeeklyBySystem.v2.map((row) => ({
           return_percent: row.summary.return_percent,
           priced_trades: row.summary.priced_trades,
@@ -443,8 +467,8 @@ export async function GET(request: NextRequest) {
             return Math.max(max, modelMax);
           }, 0),
         })),
-      )),
-      v3: sanitizeComparisonMetrics(computeMetricsFromWeeklyRows(
+      ), { annualizeSharpe }),
+      v3: finalizeComparisonMetrics(computeMetricsFromWeeklyRows(
         tieredWeeklyBySystem.v3.map((row) => ({
           return_percent: row.summary.return_percent,
           priced_trades: row.summary.priced_trades,
@@ -465,7 +489,7 @@ export async function GET(request: NextRequest) {
             return Math.max(max, modelMax);
           }, 0),
         })),
-      )),
+      ), { annualizeSharpe }),
     };
 
     const [coreSnapshotsByMarket, liteSnapshotsByMarket] = await Promise.all([
@@ -478,6 +502,7 @@ export async function GET(request: NextRequest) {
       weeks: 0,
       winRate: 0,
       sharpe: 0,
+      sharpeAnnualized: false,
       avgWeekly: 0,
       maxDrawdown: null,
       trades: 0,
@@ -500,33 +525,53 @@ export async function GET(request: NextRequest) {
       katarakti: {
         core: {
           crypto_futures: coreSnapshotsByMarket.crypto_futures
-            ? sanitizeComparisonMetrics(
+            ? finalizeComparisonMetrics(
                 toKataraktiComparisonMetrics(
                   buildKataraktiPeriodMetrics(coreSnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
                 ) ?? emptyKataraktiMetrics,
+                {
+                  annualizeSharpe,
+                  // buildKataraktiPeriodMetrics annualizes when period is "all".
+                  sharpeAlreadyAnnualized: annualizeSharpe,
+                },
               )
             : emptyKataraktiMetrics,
           mt5_forex: coreSnapshotsByMarket.mt5_forex
-            ? sanitizeComparisonMetrics(
+            ? finalizeComparisonMetrics(
                 toKataraktiComparisonMetrics(
                   buildKataraktiPeriodMetrics(coreSnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
                 ) ?? emptyKataraktiMetrics,
+                {
+                  annualizeSharpe,
+                  // buildKataraktiPeriodMetrics annualizes when period is "all".
+                  sharpeAlreadyAnnualized: annualizeSharpe,
+                },
               )
             : emptyKataraktiMetrics,
         },
         lite: {
           crypto_futures: liteSnapshotsByMarket.crypto_futures
-            ? sanitizeComparisonMetrics(
+            ? finalizeComparisonMetrics(
                 toKataraktiComparisonMetrics(
                   buildKataraktiPeriodMetrics(liteSnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
                 ) ?? emptyKataraktiMetrics,
+                {
+                  annualizeSharpe,
+                  // buildKataraktiPeriodMetrics annualizes when period is "all".
+                  sharpeAlreadyAnnualized: annualizeSharpe,
+                },
               )
             : emptyKataraktiMetrics,
           mt5_forex: liteSnapshotsByMarket.mt5_forex
-            ? sanitizeComparisonMetrics(
+            ? finalizeComparisonMetrics(
                 toKataraktiComparisonMetrics(
                   buildKataraktiPeriodMetrics(liteSnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
                 ) ?? emptyKataraktiMetrics,
+                {
+                  annualizeSharpe,
+                  // buildKataraktiPeriodMetrics annualizes when period is "all".
+                  sharpeAlreadyAnnualized: annualizeSharpe,
+                },
               )
             : emptyKataraktiMetrics,
         },

@@ -412,11 +412,11 @@ export default function PerformanceModal({
                     value={`${stats.win_rate.toFixed(0)}%`}
                     good={stats.win_rate > 55}
                   />
-                  <MetricPill
-                    label="Sharpe"
-                    value={sharpeProxy.toFixed(2)}
-                    good={sharpeProxy > 1}
-                  />
+                    <MetricPill
+                      label="Sharpe (Wk)"
+                      value={sharpeProxy.toFixed(2)}
+                      good={sharpeProxy > 1}
+                    />
                   <MetricPill
                     label="Coverage"
                     value={`${performance.priced}/${performance.total}`}
@@ -731,11 +731,11 @@ export default function PerformanceModal({
                     value={`${stats.volatility.toFixed(2)}%`}
                     good={stats.volatility < 2}
                   />
-                  <MetricPill
-                    label="Sharpe Proxy"
-                    value={sharpeProxy.toFixed(2)}
-                    good={sharpeProxy > 1}
-                  />
+                    <MetricPill
+                      label="Sharpe Proxy (Wk)"
+                      value={sharpeProxy.toFixed(2)}
+                      good={sharpeProxy > 1}
+                    />
                   {performance.trailing && (
                     <MetricPill
                       label="Max Drawdown"
