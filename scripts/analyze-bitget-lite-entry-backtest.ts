@@ -1028,7 +1028,156 @@ function fmtPf(value: number) {
   return value.toFixed(2);
 }
 
-// mainOld and its helpers removed — dead code with broken readSnapshotHistory reference
+// mainOld removed — dead code with broken readSnapshotHistory reference
+// (helpers below were shared with mainLite and are still needed)
+
+function buildSymbolsForWeek(weekOpens: string[], weekToAlts: Map<string, string[]>, includeAlts: boolean) {
+  const out = new Map<string, Set<string>>();
+  for (const week of weekOpens) {
+    const set = new Set<string>(CORE_SYMBOLS);
+    if (includeAlts) {
+      for (const alt of weekToAlts.get(week) ?? []) set.add(alt);
+    }
+    out.set(week, set);
+  }
+  return out;
+}
+
+function runLiteScenario(params: {
+  weekOpens: string[];
+  symbolsForWeek: Map<string, Set<string>>;
+  biasByWeek: Map<string, WeeklyBiasForSymbol>;
+  candlesBySymbol: Map<string, Candle[]>;
+  config: EntryConfig;
+}) {
+  const { weekOpens, symbolsForWeek, biasByWeek, candlesBySymbol, config } = params;
+  const candidates: TradeRecord[] = [];
+
+  for (const weekOpenUtc of weekOpens) {
+    const weekBias = biasByWeek.get(weekOpenUtc);
+    if (!weekBias || weekBias.direction === "NEUTRAL" || weekBias.tier === "NEUTRAL") continue;
+    const direction = weekBias.direction as "LONG" | "SHORT";
+    const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+    const weekClose = weekOpen.plus({ weeks: 1 });
+    const weekDataOpen = weekOpen.minus({ days: 1 });
+    const weekDataOpenMs = weekDataOpen.toMillis();
+    const weekCloseMs = weekClose.toMillis();
+    const weekSymbols = symbolsForWeek.get(weekOpenUtc) ?? new Set<string>();
+
+    const perSymbol = new Map<string, {
+      candles: Candle[];
+      asiaLondonRanges: Map<string, DailyRange>;
+      usRanges: Map<string, DailyRange>;
+      weekIndices: number[];
+    }>();
+
+    for (const symbol of weekSymbols) {
+      const allCandles = candlesBySymbol.get(symbol);
+      if (!allCandles?.length) continue;
+      const weekCandles = sliceCandles(allCandles, weekDataOpenMs, weekCloseMs);
+      const expectedM1 = (weekCloseMs - weekDataOpenMs) / 60_000;
+      const coverage = expectedM1 > 0 ? weekCandles.length / expectedM1 : 0;
+      if (!weekCandles.length || coverage < 0.7) continue;
+      perSymbol.set(symbol, {
+        candles: weekCandles,
+        asiaLondonRanges: buildDailyRanges(weekCandles),
+        usRanges: buildUsSessionRanges(weekCandles),
+        weekIndices: weekIndicesForSymbol(weekCandles, weekOpen, weekClose),
+      });
+    }
+
+    const dateKeys: string[] = [];
+    for (let d = weekOpen.startOf("day"); d < weekClose; d = d.plus({ days: 1 })) {
+      const key = d.toISODate();
+      if (key) dateKeys.push(key);
+    }
+
+    for (const dayUtc of dateKeys) {
+      if (!BACKTEST_INCLUDE_SUNDAYS && isSundayUtc(dayUtc)) continue;
+      for (const symbol of weekSymbols) {
+        const state = perSymbol.get(symbol);
+        if (!state) continue;
+        const { candles, asiaLondonRanges, usRanges, weekIndices } = state;
+        if (!weekIndices.length) continue;
+
+        const sessionDefinitions: Array<{
+          sessionWindow: SessionWindow;
+          range: DailyRange | undefined;
+          sessionIndices: number[];
+          windowEndTs: number;
+        }> = [
+          {
+            sessionWindow: "ASIA_LONDON_RANGE_NY_ENTRY",
+            range: asiaLondonRanges.get(dayUtc),
+            sessionIndices: asiaLondonWindowIndices(candles, dayUtc),
+            windowEndTs: Math.min(dayHourTs(addDays(dayUtc, 1), 8), weekCloseMs),
+          },
+          {
+            sessionWindow: "US_RANGE_ASIA_LONDON_ENTRY",
+            range: usRanges.get(previousUtcDateKey(dayUtc)),
+            sessionIndices: usWindowIndices(candles, dayUtc),
+            windowEndTs: Math.min(dayHourTs(dayUtc, 13), weekCloseMs),
+          },
+        ];
+
+        for (const session of sessionDefinitions) {
+          if (!session.range?.locked || !session.sessionIndices.length) continue;
+          const entry = findLiteEntry({
+            candles,
+            indices: session.sessionIndices,
+            range: session.range,
+            direction,
+            dwell: config.dwell,
+            closeLocation: config.closeLocation,
+            windowEndTs: session.windowEndTs,
+          });
+          if (!entry) continue;
+          const entryCandle = candles[entry.entryIndex];
+          if (!entryCandle || !(entryCandle.close > 0)) continue;
+          const sim = simulateScalingRisk(
+            candles,
+            weekIndices,
+            entry.entryIndex,
+            entryCandle.close,
+            direction,
+            START_LEVERAGE,
+            "WEEK_CLOSE",
+          );
+          candidates.push({
+            weekOpenUtc,
+            dayUtc,
+            symbol,
+            sessionWindow: session.sessionWindow,
+            direction,
+            entryTs: entryCandle.ts,
+            exitTs: sim.exitTs,
+            entryPrice: entryCandle.close,
+            exitPrice: sim.exitPrice,
+            unleveredPnlPct: sim.unleveredPnlPct,
+            leveragedPnlPct: Math.max(-100, sim.unleveredPnlPct * sim.pnlLeverage),
+            exitReason: sim.exitReason,
+            maxLeverageReached: sim.maxLeverageReached,
+            breakevenReached: sim.breakevenReached,
+            milestonesHit: sim.milestonesHit,
+          });
+        }
+      }
+    }
+  }
+
+  const executed = executeWithSizing(candidates);
+  const metrics = computeScenarioMetrics(executed);
+  return { candidates, executed, metrics };
+}
+
+function bestGridRun<T extends { config: EntryConfig; metrics: ScenarioMetrics }>(rows: T[]) {
+  return [...rows].sort((a, b) => {
+    if (b.metrics.totalPnlUsd !== a.metrics.totalPnlUsd) return b.metrics.totalPnlUsd - a.metrics.totalPnlUsd;
+    if (b.metrics.profitFactor !== a.metrics.profitFactor) return b.metrics.profitFactor - a.metrics.profitFactor;
+    if (a.metrics.maxDrawdownPct !== b.metrics.maxDrawdownPct) return a.metrics.maxDrawdownPct - b.metrics.maxDrawdownPct;
+    return b.metrics.trades - a.metrics.trades;
+  })[0];
+}
 
 async function mainLite() {
   loadEnvFromFile();
@@ -1161,7 +1310,7 @@ async function mainLite() {
 
     const highCorrAlts = altSymbols.filter((s) => {
       const c = corrBySymbol.get(s);
-      return c !== null && c > 0.75;
+      return c !== undefined && c !== null && c > 0.75;
     });
     const highCorrRun = computeScenarioMetrics(bestAltRun.executed.filter((t) => highCorrAlts.includes(t.symbol)));
 
