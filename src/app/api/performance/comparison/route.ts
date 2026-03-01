@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readAllPerformanceSnapshots } from "@/lib/performanceSnapshots";
 import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import { DateTime } from "luxon";
-import type { PerformanceModel } from "@/lib/performanceLab";
+import { computeModelPerformance, type PerformanceModel } from "@/lib/performanceLab";
 import {
   PERFORMANCE_V1_MODELS,
   PERFORMANCE_V2_MODELS,
@@ -13,6 +13,12 @@ import {
   readKataraktiMarketSnapshotsByVariant,
 } from "@/lib/performance/kataraktiHistory";
 import { buildKataraktiPeriodMetrics } from "@/lib/performance/kataraktiMetrics";
+import { listAssetClasses } from "@/lib/cotMarkets";
+import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
+import type { PairSnapshot } from "@/lib/cotTypes";
+import { readSnapshot } from "@/lib/cotStore";
+import { getPairPerformance } from "@/lib/pricePerformance";
+import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
 
 const V1_MODELS: PerformanceModel[] = PERFORMANCE_V1_MODELS;
 const V2_MODELS: PerformanceModel[] = PERFORMANCE_V2_MODELS;
@@ -30,9 +36,89 @@ type ComparisonMetrics = {
   tradeWinRate: number;
   avgTrade: number | null;
   profitFactor: number | null;
+  profitFactorInfinite?: boolean;
 };
 
 type SnapshotRow = Awaited<ReturnType<typeof readAllPerformanceSnapshots>>[number];
+
+function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
+  const pairDefs = PAIRS_BY_ASSET_CLASS[assetId as keyof typeof PAIRS_BY_ASSET_CLASS] ?? [];
+  const pairs: Record<string, PairSnapshot> = {};
+  for (const pair of pairDefs) {
+    pairs[pair.pair] = {
+      direction: "LONG",
+      base_bias: "NEUTRAL",
+      quote_bias: "NEUTRAL",
+    };
+  }
+  return pairs;
+}
+
+async function getPerformanceSentimentForWeek(weekOpenUtc: string) {
+  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  const weekClose = weekOpen.isValid
+    ? weekOpen.plus({ days: 7 }).toUTC().toISO()
+    : null;
+  if (!weekClose) {
+    return [];
+  }
+  return getAggregatesForWeekStartWithBackfill(weekOpenUtc, weekClose);
+}
+
+async function buildFallbackSnapshotsForRequestedWeek(
+  requestedWeek: string,
+  currentWeekMillis: number,
+): Promise<SnapshotRow[]> {
+  const weekMillis = DateTime.fromISO(requestedWeek, { zone: "utc" }).toMillis();
+  if (!Number.isFinite(weekMillis)) {
+    return [];
+  }
+  const isFutureWeek = weekMillis > currentWeekMillis;
+  const models = Array.from(new Set<PerformanceModel>([
+    ...V1_MODELS,
+    ...V2_MODELS,
+    ...V3_MODELS,
+  ]));
+  const assetClasses = listAssetClasses();
+  const sentiment = await getPerformanceSentimentForWeek(requestedWeek);
+  const out: SnapshotRow[] = [];
+
+  for (const asset of assetClasses) {
+    const snapshot = await readSnapshot({ assetClass: asset.id });
+    if (!snapshot) {
+      continue;
+    }
+
+    const performance = await getPairPerformance(buildAllPairs(asset.id), {
+      assetClass: asset.id,
+      reportDate: snapshot.report_date,
+      isLatestReport: !isFutureWeek,
+    });
+
+    for (const model of models) {
+      const computed = await computeModelPerformance({
+        model,
+        assetClass: asset.id,
+        snapshot,
+        sentiment,
+        performance,
+      });
+      out.push({
+        week_open_utc: requestedWeek,
+        asset_class: asset.id,
+        model,
+        report_date: snapshot.report_date,
+        percent: computed.percent,
+        priced: computed.priced,
+        total: computed.total,
+        returns: computed.returns,
+        stats: computed.stats,
+      });
+    }
+  }
+
+  return out;
+}
 
 function isClosedSnapshot(snapshot: SnapshotRow, currentWeekMillis: number): boolean {
   const weekMillis = DateTime.fromISO(snapshot.week_open_utc, { zone: "utc" }).toMillis();
@@ -49,6 +135,26 @@ function pickClosedWeeks(
     if (!isClosedSnapshot(snapshot, currentWeekMillis)) {
       continue;
     }
+    const key = normalizeWeekOpenUtc(snapshot.week_open_utc) ?? snapshot.week_open_utc;
+    const weekMillis = DateTime.fromISO(snapshot.week_open_utc, { zone: "utc" }).toMillis();
+    if (!Number.isFinite(weekMillis)) {
+      continue;
+    }
+    const existing = weekByKey.get(key);
+    if (existing === undefined || weekMillis > existing) {
+      weekByKey.set(key, weekMillis);
+    }
+  }
+
+  return Array.from(weekByKey.entries())
+    .sort((a, b) => a[1] - b[1])
+    .map(([key]) => key);
+}
+
+function pickAllWeeks(snapshots: SnapshotRow[]): string[] {
+  const weekByKey = new Map<string, number>();
+
+  for (const snapshot of snapshots) {
     const key = normalizeWeekOpenUtc(snapshot.week_open_utc) ?? snapshot.week_open_utc;
     const weekMillis = DateTime.fromISO(snapshot.week_open_utc, { zone: "utc" }).toMillis();
     if (!Number.isFinite(weekMillis)) {
@@ -180,20 +286,56 @@ function computeMetrics(
 }
 
 function computeMetricsFromWeeklyRows(
-  weeklyRows: Array<{ return_percent: number; priced_trades: number; wins: number }>,
+  weeklyRows: Array<{
+    return_percent: number;
+    priced_trades: number;
+    wins: number;
+    trade_returns: number[];
+    week_max_drawdown: number | null;
+  }>,
 ): ComparisonMetrics {
   const weekReturns = weeklyRows.map((row) => row.return_percent);
-  const totalTrades = weeklyRows.reduce((sum, row) => sum + row.priced_trades, 0);
-  const wins = weeklyRows.reduce((sum, row) => sum + row.wins, 0);
+  const tradeReturns = weeklyRows.flatMap((row) =>
+    row.trade_returns.filter((value) => Number.isFinite(value)),
+  );
+  const totalTrades =
+    tradeReturns.length > 0
+      ? tradeReturns.length
+      : weeklyRows.reduce((sum, row) => sum + row.priced_trades, 0);
+  const wins =
+    tradeReturns.length > 0
+      ? tradeReturns.filter((value) => value > 0).length
+      : weeklyRows.reduce((sum, row) => sum + row.wins, 0);
   const totalReturn = weekReturns.reduce((sum, value) => sum + value, 0);
+  const maxDrawdown =
+    weeklyRows.length > 0
+      ? weeklyRows.reduce((max, row) => Math.max(max, row.week_max_drawdown ?? 0), 0)
+      : null;
   return buildComparisonMetricsFromWeeklySeries({
     weekReturns,
     trades: totalTrades,
     wins,
-    avgTrade: totalTrades > 0 ? totalReturn / totalTrades : null,
-    profitFactor: null,
-    maxDrawdown: null,
+    avgTrade:
+      tradeReturns.length > 0
+        ? tradeReturns.reduce((sum, value) => sum + value, 0) / tradeReturns.length
+        : totalTrades > 0
+          ? totalReturn / totalTrades
+          : null,
+    profitFactor:
+      tradeReturns.length > 0
+        ? computeProfitFactorFromReturns(tradeReturns)
+        : null,
+    maxDrawdown,
   });
+}
+
+function sanitizeComparisonMetrics(metrics: ComparisonMetrics): ComparisonMetrics {
+  const profitFactorInfinite = metrics.profitFactor !== null && !Number.isFinite(metrics.profitFactor);
+  return {
+    ...metrics,
+    profitFactor: profitFactorInfinite ? null : metrics.profitFactor,
+    profitFactorInfinite,
+  };
 }
 
 function toKataraktiComparisonMetrics(
@@ -227,14 +369,26 @@ export async function GET(request: NextRequest) {
     // Scan a wide enough history window to reliably backfill the selected weeks.
     const snapshots = await readAllPerformanceSnapshots(SNAPSHOT_SCAN_LIMIT);
     const closedWeeks = pickClosedWeeks(snapshots, currentWeekMillis);
-    const selectedWeekList = requestedWeek
-      ? closedWeeks.filter((week) => week === requestedWeek)
+    const allWeeks = pickAllWeeks(snapshots);
+    let comparisonSnapshots = snapshots;
+    let selectedWeekList = requestedWeek
+      ? allWeeks.filter((week) => week === requestedWeek)
       : closedWeeks;
+    if (requestedWeek && selectedWeekList.length === 0) {
+      const fallbackSnapshots = await buildFallbackSnapshotsForRequestedWeek(
+        requestedWeek,
+        currentWeekMillis,
+      );
+      if (fallbackSnapshots.length > 0) {
+        comparisonSnapshots = [...snapshots, ...fallbackSnapshots];
+        selectedWeekList = [requestedWeek];
+      }
+    }
     const selectedWeeks = new Set(selectedWeekList);
 
-    const v1Metrics = computeMetrics(snapshots, V1_MODELS, selectedWeeks);
-    const v2Metrics = computeMetrics(snapshots, V2_MODELS, selectedWeeks);
-    const v3Metrics = computeMetrics(snapshots, V3_MODELS, selectedWeeks);
+    const v1Metrics = sanitizeComparisonMetrics(computeMetrics(comparisonSnapshots, V1_MODELS, selectedWeeks));
+    const v2Metrics = sanitizeComparisonMetrics(computeMetrics(comparisonSnapshots, V2_MODELS, selectedWeeks));
+    const v3Metrics = sanitizeComparisonMetrics(computeMetrics(comparisonSnapshots, V3_MODELS, selectedWeeks));
 
     const selectedWeekOpens = selectedWeekList.sort(
       (a, b) =>
@@ -246,27 +400,72 @@ export async function GET(request: NextRequest) {
       weeks: selectedWeekOpens,
     });
     const tiered = {
-      v1: computeMetricsFromWeeklyRows(
+      v1: sanitizeComparisonMetrics(computeMetricsFromWeeklyRows(
         tieredWeeklyBySystem.v1.map((row) => ({
           return_percent: row.summary.return_percent,
           priced_trades: row.summary.priced_trades,
           wins: row.summary.wins,
+          trade_returns: row.combined.flatMap((model) =>
+            (model.returns ?? [])
+              .map((entry) => entry.percent)
+              .filter((value) => Number.isFinite(value)),
+          ),
+          week_max_drawdown: row.combined.reduce((max, model) => {
+            const modelMax = (model.returns ?? []).reduce(
+              (innerMax, entry) =>
+                Number.isFinite(entry.percent) && entry.percent < 0
+                  ? Math.max(innerMax, Math.abs(entry.percent))
+                  : innerMax,
+              0,
+            );
+            return Math.max(max, modelMax);
+          }, 0),
         })),
-      ),
-      v2: computeMetricsFromWeeklyRows(
+      )),
+      v2: sanitizeComparisonMetrics(computeMetricsFromWeeklyRows(
         tieredWeeklyBySystem.v2.map((row) => ({
           return_percent: row.summary.return_percent,
           priced_trades: row.summary.priced_trades,
           wins: row.summary.wins,
+          trade_returns: row.combined.flatMap((model) =>
+            (model.returns ?? [])
+              .map((entry) => entry.percent)
+              .filter((value) => Number.isFinite(value)),
+          ),
+          week_max_drawdown: row.combined.reduce((max, model) => {
+            const modelMax = (model.returns ?? []).reduce(
+              (innerMax, entry) =>
+                Number.isFinite(entry.percent) && entry.percent < 0
+                  ? Math.max(innerMax, Math.abs(entry.percent))
+                  : innerMax,
+              0,
+            );
+            return Math.max(max, modelMax);
+          }, 0),
         })),
-      ),
-      v3: computeMetricsFromWeeklyRows(
+      )),
+      v3: sanitizeComparisonMetrics(computeMetricsFromWeeklyRows(
         tieredWeeklyBySystem.v3.map((row) => ({
           return_percent: row.summary.return_percent,
           priced_trades: row.summary.priced_trades,
           wins: row.summary.wins,
+          trade_returns: row.combined.flatMap((model) =>
+            (model.returns ?? [])
+              .map((entry) => entry.percent)
+              .filter((value) => Number.isFinite(value)),
+          ),
+          week_max_drawdown: row.combined.reduce((max, model) => {
+            const modelMax = (model.returns ?? []).reduce(
+              (innerMax, entry) =>
+                Number.isFinite(entry.percent) && entry.percent < 0
+                  ? Math.max(innerMax, Math.abs(entry.percent))
+                  : innerMax,
+              0,
+            );
+            return Math.max(max, modelMax);
+          }, 0),
         })),
-      ),
+      )),
     };
 
     const [coreSnapshotsByMarket, liteSnapshotsByMarket] = await Promise.all([
@@ -285,6 +484,7 @@ export async function GET(request: NextRequest) {
       tradeWinRate: 0,
       avgTrade: null,
       profitFactor: null,
+      profitFactorInfinite: false,
     };
 
     return NextResponse.json({
@@ -300,26 +500,34 @@ export async function GET(request: NextRequest) {
       katarakti: {
         core: {
           crypto_futures: coreSnapshotsByMarket.crypto_futures
-            ? toKataraktiComparisonMetrics(
-                buildKataraktiPeriodMetrics(coreSnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
-              ) ?? emptyKataraktiMetrics
+            ? sanitizeComparisonMetrics(
+                toKataraktiComparisonMetrics(
+                  buildKataraktiPeriodMetrics(coreSnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
+                ) ?? emptyKataraktiMetrics,
+              )
             : emptyKataraktiMetrics,
           mt5_forex: coreSnapshotsByMarket.mt5_forex
-            ? toKataraktiComparisonMetrics(
-                buildKataraktiPeriodMetrics(coreSnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
-              ) ?? emptyKataraktiMetrics
+            ? sanitizeComparisonMetrics(
+                toKataraktiComparisonMetrics(
+                  buildKataraktiPeriodMetrics(coreSnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
+                ) ?? emptyKataraktiMetrics,
+              )
             : emptyKataraktiMetrics,
         },
         lite: {
           crypto_futures: liteSnapshotsByMarket.crypto_futures
-            ? toKataraktiComparisonMetrics(
-                buildKataraktiPeriodMetrics(liteSnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
-              ) ?? emptyKataraktiMetrics
+            ? sanitizeComparisonMetrics(
+                toKataraktiComparisonMetrics(
+                  buildKataraktiPeriodMetrics(liteSnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
+                ) ?? emptyKataraktiMetrics,
+              )
             : emptyKataraktiMetrics,
           mt5_forex: liteSnapshotsByMarket.mt5_forex
-            ? toKataraktiComparisonMetrics(
-                buildKataraktiPeriodMetrics(liteSnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
-              ) ?? emptyKataraktiMetrics
+            ? sanitizeComparisonMetrics(
+                toKataraktiComparisonMetrics(
+                  buildKataraktiPeriodMetrics(liteSnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
+                ) ?? emptyKataraktiMetrics,
+              )
             : emptyKataraktiMetrics,
         },
       },

@@ -18,6 +18,7 @@ type ComparisonMetrics = {
   tradeWinRate: number;
   avgTrade: number | null;
   profitFactor: number | null;
+  profitFactorInfinite?: boolean;
 };
 
 type ComparisonData = {
@@ -56,7 +57,8 @@ function formatPercentOrDash(value: number | null, digits = 2) {
   return `${value.toFixed(digits)}%`;
 }
 
-function formatProfitFactor(value: number | null) {
+function formatProfitFactor(value: number | null, profitFactorInfinite?: boolean) {
+  if (profitFactorInfinite) return "∞";
   if (value === null || Number.isNaN(value)) return "—";
   if (!Number.isFinite(value)) return "∞";
   return value.toFixed(2);
@@ -496,7 +498,7 @@ export default function PerformanceComparisonPanel() {
           </div>
           <div>
             <div className={`text-sm font-semibold ${valueClass}`}>
-              {formatProfitFactor(activeMetrics.profitFactor)}
+              {formatProfitFactor(activeMetrics.profitFactor, activeMetrics.profitFactorInfinite)}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
               Profit Factor
