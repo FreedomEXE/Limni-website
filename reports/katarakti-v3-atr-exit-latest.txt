@@ -1,0 +1,78 @@
+/-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------/
+
+Weeks tested: [2026-01-19, 2026-01-26, 2026-02-02, 2026-02-09, 2026-02-16]
+Start equity: $10000.00
+Risk per trade: 1.00%
+Max concurrent positions: 8
+Max portfolio risk: 8.00%
+Sweep threshold: 0.00% (any breach at 0.00%)
+
+ATR exit config (Phase 2 defaults):
+- ATR_PERIOD=14
+- ATR_BREAKEVEN_TRIGGER_X=1
+- ATR_LOCK1_TRIGGER_X=2, ATR_LOCK1_LOCK_X=0.8
+- ATR_LOCK2_TRIGGER_X=3, ATR_LOCK2_LOCK_X=1.8
+- ATR_TRAIL_ACTIVATE_X=3, ATR_TRAIL_OFFSET_X=1.5
+- EXIT_MODE=stepped_no_hard_sl
+- LOCK_STYLE=atr
+
+=== KATARAKTI V3 + ATR EXIT (SUSTAINED_N=240) ===
+Per-asset-class breakdown:
+| Asset Class | Pairs | Trades | WR% | PnL ($) | PF |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FX | 28 | 27 | 33.33 | -$41.73 | 0.79 |
+| Indices | 3 | 12 | 41.67 | +$1.82 | 1.01 |
+| Commodities | 3 | 0 | 0.00 | +$0.00 | 0.00 |
+| Crypto | 2 | 8 | 25.00 | +$72.78 | 1.88 |
+
+Top 10 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| ETHUSD | 4 | 50.00 | +$134.34 |
+| AUDCAD | 3 | 66.67 | +$50.49 |
+| AUDCHF | 5 | 20.00 | +$13.63 |
+| AUDNZD | 7 | 28.57 | +$6.52 |
+| NIKKEIUSD | 7 | 42.86 | +$6.01 |
+| GBPAUD | 3 | 66.67 | +$4.42 |
+| EURGBP | 2 | 50.00 | +$4.01 |
+| SPXUSD | 5 | 40.00 | -$4.19 |
+| AUDUSD | 1 | 0.00 | -$21.88 |
+| USDCAD | 3 | 0.00 | -$39.88 |
+
+Bottom 5 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| BTCUSD | 4 | 0.00 | -$61.56 |
+| EURCAD | 3 | 33.33 | -$59.03 |
+| USDCAD | 3 | 0.00 | -$39.88 |
+| AUDUSD | 1 | 0.00 | -$21.88 |
+| SPXUSD | 5 | 40.00 | -$4.19 |
+
+Exit step distribution:
+| Step | Count | % |
+| --- | ---: | ---: |
+| hard_sl | 0 | 0.00 |
+| breakeven | 19 | 40.43 |
+| lock_015 | 7 | 14.89 |
+| lock_035 | 0 | 0.00 |
+| lock_055 | 0 | 0.00 |
+| trailing | 4 | 8.51 |
+| week_close | 17 | 36.17 |
+
+Overall summary:
+| N | Trades | WR% | Total PnL | PF | Max DD% | Total Return % |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 240 | 47 | 34.04 | +$32.87 | 1.06 | 2.87 | +0.33% |
+
+Combined summary:
+| N | Trades | WR% | Total PnL | PF | Max DD% | Total Return % |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 240 | 47 | 34.04 | +$32.87 | 1.06 | 2.87 | +0.33% |
+
+Comparison vs current Phase 2:
+| System | Trades | WR% | Total Return | Max DD% | PF |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Phase 2 (current) | 30 | 36.7% | +21.62% | 0.56% | 36.85 |
+| V3 N=240 + ATR exit | 47 | 34.04% | +0.33% | 2.87% | 1.06 |

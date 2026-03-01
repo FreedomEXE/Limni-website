@@ -1,0 +1,67 @@
+/-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------/
+
+=== TEST A — N=45 EXIT MULTIPLIER FOLLOW-UP ===
+
+Runs executed:
+- Grid A3 (Baseline): `SUSTAINED_N=45`
+- Grid A2 (Mid): `SUSTAINED_N=45 RW_HARD_STOP_X=1.25 RW_BE_TRIGGER_X=0.4 RW_LOCK1_TRIGGER_X=0.8 RW_LOCK1_LOCK_X=0.25 RW_LOCK2_TRIGGER_X=1.25 RW_LOCK2_LOCK_X=0.65 RW_TRAIL_ACTIVATE_X=1.75 RW_TRAIL_OFFSET_X=0.6`
+- Grid A1 (Aggressive): `SUSTAINED_N=45 RW_HARD_STOP_X=1.0 RW_BE_TRIGGER_X=0.3 RW_LOCK1_TRIGGER_X=0.6 RW_LOCK1_LOCK_X=0.2 RW_LOCK2_TRIGGER_X=1.0 RW_LOCK2_LOCK_X=0.5 RW_TRAIL_ACTIVATE_X=1.5 RW_TRAIL_OFFSET_X=0.5`
+
+| Grid | Hard SL | BE→ | L1→ | L2→ | Trail→ | Trades | WR% | PnL | PF | Max DD% |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Baseline | 1.50 | 0.50 | 1.00/0.30 | 1.50/0.80 | 2.00/0.75 | 94 | 35.11 | +$881.79 | 1.61 | 3.91 |
+| Mid | 1.25 | 0.40 | 0.80/0.25 | 1.25/0.65 | 1.75/0.60 | 97 | 35.05 | +$774.03 | 1.61 | 3.43 |
+| Aggressive | 1.00 | 0.30 | 0.60/0.20 | 1.00/0.50 | 1.50/0.50 | 99 | 32.32 | +$202.43 | 1.16 | 3.49 |
+
+Exit step distribution (count / %):
+
+| Step | Baseline | Mid | Aggressive |
+| --- | ---: | ---: | ---: |
+| hard_stop | 12 (12.77%) | 10 (10.31%) | 10 (10.10%) |
+| breakeven_stop | 40 (42.55%) | 44 (45.36%) | 49 (49.49%) |
+| lock1_stop | 12 (12.77%) | 16 (16.49%) | 21 (21.21%) |
+| lock2_stop | 4 (4.26%) | 10 (10.31%) | 7 (7.07%) |
+| trailing_stop | 11 (11.70%) | 4 (4.12%) | 4 (4.04%) |
+| week_close | 15 (15.96%) | 13 (13.40%) | 8 (8.08%) |
+
+Test A takeaway:
+- Tightening did NOT improve trailing participation; trailing exits dropped from 11.70% (baseline) to ~4% (mid/aggressive).
+- Mid improved drawdown (3.43% vs 3.91%) but reduced total PnL.
+- Aggressive increased trade count but degraded WR, PF, and PnL materially.
+- Baseline remains best PnL/PF profile among tested N=45 grids.
+
+=== TEST B — COMMODITY INVESTIGATION (XAUUSD/XAGUSD/WTIUSD) ===
+
+1) Requested DB query result:
+- Query attempted:
+  SELECT symbol, COUNT(*) as candle_count, MIN(ts) as first_candle, MAX(ts) as last_candle
+  FROM oanda_candles_h1
+  WHERE symbol IN ('XAU_USD', 'XAG_USD', 'BCO_USD', 'WTICO_USD')
+  GROUP BY symbol;
+- Result in this environment: `relation "oanda_candles_h1" does not exist`
+- Additional schema scan found no non-system tables matching `%oanda%` or `%candle%`.
+
+2) OANDA mapping check (`src/lib/oandaPrices.ts`):
+- `XAUUSD -> XAU_USD`
+- `XAGUSD -> XAG_USD`
+- `WTIUSD -> WTICO_USD`
+
+3) Commodity debug run from the backtest (API-fed candles):
+- Added env-gated diagnostics (`KATARAKTI_RW_DEBUG_COMMODITIES=1`) to print commodity load counts and bias/session status.
+- Candle load confirmed (not a fetch/mapping gap):
+  - WTIUSD: M1=35094, H1=595
+  - XAGUSD: M1=35530, H1=595
+  - XAUUSD: M1=35532, H1=595
+- Weekly bias outcome for all commodities across all tested weeks:
+  - `bias=NEUTRAL` every week for WTIUSD, XAGUSD, XAUUSD
+- Current range-width script only trades directional bias (`LONG`/`SHORT`) and skips neutrals.
+
+Commodity conclusion:
+- Zero commodity trades are caused by the weekly bias gate (all-neutral commodities), not by missing candle data or incorrect OANDA symbol mapping.
+- Because bias never becomes directional, range building/sweep/sustained checks are never entered for commodities in live trade flow.
+
+Artifacts:
+- Grid raw outputs: `reports/tmp-rw-followup/grid-baseline.txt`, `reports/tmp-rw-followup/grid-mid.txt`, `reports/tmp-rw-followup/grid-aggressive.txt`
+- Commodity debug output: `reports/tmp-rw-followup/commodity-debug.txt`

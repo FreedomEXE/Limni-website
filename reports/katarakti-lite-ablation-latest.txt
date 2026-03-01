@@ -1,0 +1,333 @@
+/-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------/
+
+Weeks tested: [2026-01-19, 2026-01-26, 2026-02-02, 2026-02-09, 2026-02-16]
+Start equity: $10000.00
+Risk per trade: 1.00%
+Max concurrent positions: 8
+Max portfolio risk: 8.00%
+Sweep threshold: 0.10%
+
+Exit engine: ATR Phase 2 defaults (stepped_no_hard_sl)
+- ATR_PERIOD=14
+- ATR_BREAKEVEN_TRIGGER_X=1
+- ATR_LOCK1_TRIGGER_X=2, ATR_LOCK1_LOCK_X=0.8
+- ATR_LOCK2_TRIGGER_X=3, ATR_LOCK2_LOCK_X=1.8
+- ATR_TRAIL_ACTIVATE_X=3, ATR_TRAIL_OFFSET_X=1.5
+
+=== Baseline: Phase2 Entry + Handshake ===
+Config: sweep=0.10% dwell=0 closeLoc=off atrFloor=off handshake=on
+
+Per-asset-class breakdown:
+| Asset Class | Pairs | Trades | WR% | PnL ($) | PF |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FX | 28 | 4 | 0.00 | +$0.00 | 0.00 |
+| Indices | 3 | 5 | 20.00 | -$10.84 | 0.71 |
+| Commodities | 3 | 0 | 0.00 | +$0.00 | 0.00 |
+| Crypto | 2 | 10 | 40.00 | +$1067.02 | INF |
+
+Top 10 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| ETHUSD | 5 | 40.00 | +$818.31 |
+| BTCUSD | 5 | 40.00 | +$248.72 |
+| SPXUSD | 2 | 50.00 | +$26.07 |
+| AUDCHF | 2 | 0.00 | +$0.00 |
+| AUDUSD | 1 | 0.00 | +$0.00 |
+| GBPAUD | 1 | 0.00 | +$0.00 |
+| NIKKEIUSD | 3 | 0.00 | -$36.91 |
+
+Bottom 5 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| NIKKEIUSD | 3 | 0.00 | -$36.91 |
+| AUDCHF | 2 | 0.00 | +$0.00 |
+| AUDUSD | 1 | 0.00 | +$0.00 |
+| GBPAUD | 1 | 0.00 | +$0.00 |
+| SPXUSD | 2 | 50.00 | +$26.07 |
+
+Exit step distribution:
+| Step | Count | % |
+| --- | ---: | ---: |
+| hard_sl | 0 | 0.00 |
+| breakeven | 13 | 68.42 |
+| lock_015 | 2 | 10.53 |
+| lock_035 | 0 | 0.00 |
+| lock_055 | 0 | 0.00 |
+| trailing | 3 | 15.79 |
+| week_close | 1 | 5.26 |
+
+Overall:
+| Variant | Trades | WR% | Total PnL | PF | Max DD% | Total Return % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| phase2_baseline_handshake | 19 | 26.32 | +$1056.18 | 29.62 | 0.33 | +10.56% |
+
+=== Ablation 1: Remove Handshake ===
+Config: sweep=0.10% dwell=0 closeLoc=off atrFloor=off handshake=off
+
+Per-asset-class breakdown:
+| Asset Class | Pairs | Trades | WR% | PnL ($) | PF |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FX | 28 | 5 | 0.00 | +$0.00 | 0.00 |
+| Indices | 3 | 6 | 33.33 | +$70.39 | INF |
+| Commodities | 3 | 0 | 0.00 | +$0.00 | 0.00 |
+| Crypto | 2 | 10 | 40.00 | +$1067.37 | INF |
+
+Top 10 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| ETHUSD | 5 | 40.00 | +$818.31 |
+| BTCUSD | 5 | 40.00 | +$249.06 |
+| NIKKEIUSD | 3 | 33.33 | +$41.74 |
+| SPXUSD | 3 | 33.33 | +$28.64 |
+| AUDCAD | 1 | 0.00 | +$0.00 |
+| AUDCHF | 2 | 0.00 | +$0.00 |
+| AUDUSD | 1 | 0.00 | +$0.00 |
+| GBPAUD | 1 | 0.00 | +$0.00 |
+
+Bottom 5 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| AUDCAD | 1 | 0.00 | +$0.00 |
+| AUDCHF | 2 | 0.00 | +$0.00 |
+| AUDUSD | 1 | 0.00 | +$0.00 |
+| GBPAUD | 1 | 0.00 | +$0.00 |
+| SPXUSD | 3 | 33.33 | +$28.64 |
+
+Exit step distribution:
+| Step | Count | % |
+| --- | ---: | ---: |
+| hard_sl | 0 | 0.00 |
+| breakeven | 15 | 71.43 |
+| lock_015 | 3 | 14.29 |
+| lock_035 | 0 | 0.00 |
+| lock_055 | 0 | 0.00 |
+| trailing | 3 | 14.29 |
+| week_close | 0 | 0.00 |
+
+Overall:
+| Variant | Trades | WR% | Total PnL | PF | Max DD% | Total Return % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| phase2_no_handshake | 21 | 28.57 | +$1137.75 | INF | 0.00 | +11.38% |
+
+=== Ablation 2: Re-entry Only (No Displacement) ===
+Config: sweep=0.10% dwell=0 closeLoc=off atrFloor=off handshake=off
+
+Per-asset-class breakdown:
+| Asset Class | Pairs | Trades | WR% | PnL ($) | PF |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FX | 28 | 23 | 39.13 | +$140.56 | 1.92 |
+| Indices | 3 | 6 | 33.33 | +$29.02 | 1.56 |
+| Commodities | 3 | 0 | 0.00 | +$0.00 | 0.00 |
+| Crypto | 2 | 10 | 50.00 | +$1446.01 | INF |
+
+Top 10 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| ETHUSD | 5 | 60.00 | +$1195.34 |
+| BTCUSD | 5 | 40.00 | +$250.67 |
+| EURCAD | 2 | 100.00 | +$100.93 |
+| GBPAUD | 5 | 40.00 | +$51.00 |
+| NIKKEIUSD | 3 | 33.33 | +$43.74 |
+| AUDCHF | 3 | 33.33 | +$36.49 |
+| AUDCAD | 2 | 50.00 | +$31.38 |
+| EURUSD | 1 | 100.00 | +$23.24 |
+| AUDNZD | 5 | 20.00 | +$11.96 |
+| EURGBP | 1 | 100.00 | +$8.17 |
+
+Bottom 5 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| USDCAD | 2 | 0.00 | -$64.99 |
+| AUDUSD | 2 | 0.00 | -$57.61 |
+| SPXUSD | 3 | 33.33 | -$14.72 |
+| EURGBP | 1 | 100.00 | +$8.17 |
+| AUDNZD | 5 | 20.00 | +$11.96 |
+
+Exit step distribution:
+| Step | Count | % |
+| --- | ---: | ---: |
+| hard_sl | 0 | 0.00 |
+| breakeven | 18 | 46.15 |
+| lock_015 | 4 | 10.26 |
+| lock_035 | 0 | 0.00 |
+| lock_055 | 0 | 0.00 |
+| trailing | 12 | 30.77 |
+| week_close | 5 | 12.82 |
+
+Overall:
+| Variant | Trades | WR% | Total PnL | PF | Max DD% | Total Return % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| reentry_no_displacement | 39 | 41.03 | +$1615.59 | 8.90 | 1.24 | +16.16% |
+
+=== Ablation 3: Re-entry + Close Location ===
+Config: sweep=0.10% dwell=0 closeLoc=0.40 atrFloor=off handshake=off
+
+Per-asset-class breakdown:
+| Asset Class | Pairs | Trades | WR% | PnL ($) | PF |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FX | 28 | 23 | 39.13 | +$189.26 | 2.80 |
+| Indices | 3 | 6 | 33.33 | +$80.96 | INF |
+| Commodities | 3 | 0 | 0.00 | +$0.00 | 0.00 |
+| Crypto | 2 | 10 | 50.00 | +$1446.66 | INF |
+
+Top 10 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| ETHUSD | 5 | 60.00 | +$1195.34 |
+| BTCUSD | 5 | 40.00 | +$251.32 |
+| EURCAD | 2 | 100.00 | +$100.93 |
+| GBPAUD | 5 | 40.00 | +$51.36 |
+| NIKKEIUSD | 3 | 33.33 | +$43.94 |
+| SPXUSD | 3 | 33.33 | +$37.02 |
+| AUDCHF | 3 | 33.33 | +$36.65 |
+| AUDCAD | 2 | 50.00 | +$31.38 |
+| EURUSD | 1 | 100.00 | +$23.24 |
+| AUDNZD | 5 | 20.00 | +$10.39 |
+
+Bottom 5 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| USDCAD | 2 | 0.00 | -$65.32 |
+| AUDUSD | 2 | 0.00 | -$7.58 |
+| EURGBP | 1 | 100.00 | +$8.20 |
+| AUDNZD | 5 | 20.00 | +$10.39 |
+| EURUSD | 1 | 100.00 | +$23.24 |
+
+Exit step distribution:
+| Step | Count | % |
+| --- | ---: | ---: |
+| hard_sl | 0 | 0.00 |
+| breakeven | 19 | 48.72 |
+| lock_015 | 4 | 10.26 |
+| lock_035 | 0 | 0.00 |
+| lock_055 | 0 | 0.00 |
+| trailing | 12 | 30.77 |
+| week_close | 4 | 10.26 |
+
+Overall:
+| Variant | Trades | WR% | Total PnL | PF | Max DD% | Total Return % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| reentry_close_location | 39 | 41.03 | +$1716.88 | 17.33 | 0.82 | +17.17% |
+
+=== Ablation 4: Re-entry + Close Location + Dwell ===
+Config: sweep=0.10% dwell=3 closeLoc=0.40 atrFloor=off handshake=off
+
+Per-asset-class breakdown:
+| Asset Class | Pairs | Trades | WR% | PnL ($) | PF |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FX | 28 | 23 | 43.48 | +$227.18 | 3.14 |
+| Indices | 3 | 6 | 50.00 | +$110.07 | INF |
+| Commodities | 3 | 0 | 0.00 | +$0.00 | 0.00 |
+| Crypto | 2 | 10 | 50.00 | +$1467.08 | INF |
+
+Top 10 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| ETHUSD | 5 | 60.00 | +$1215.19 |
+| BTCUSD | 5 | 40.00 | +$251.89 |
+| EURCAD | 2 | 100.00 | +$100.93 |
+| NIKKEIUSD | 3 | 66.67 | +$72.77 |
+| AUDCAD | 2 | 100.00 | +$69.12 |
+| GBPAUD | 5 | 40.00 | +$51.67 |
+| SPXUSD | 3 | 33.33 | +$37.30 |
+| AUDCHF | 3 | 33.33 | +$36.92 |
+| EURUSD | 1 | 100.00 | +$23.24 |
+| AUDNZD | 5 | 20.00 | +$10.47 |
+
+Bottom 5 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| USDCAD | 2 | 0.00 | -$65.80 |
+| AUDUSD | 2 | 0.00 | -$7.64 |
+| EURGBP | 1 | 100.00 | +$8.26 |
+| AUDNZD | 5 | 20.00 | +$10.47 |
+| EURUSD | 1 | 100.00 | +$23.24 |
+
+Exit step distribution:
+| Step | Count | % |
+| --- | ---: | ---: |
+| hard_sl | 0 | 0.00 |
+| breakeven | 17 | 43.59 |
+| lock_015 | 5 | 12.82 |
+| lock_035 | 0 | 0.00 |
+| lock_055 | 0 | 0.00 |
+| trailing | 13 | 33.33 |
+| week_close | 4 | 10.26 |
+
+Overall:
+| Variant | Trades | WR% | Total PnL | PF | Max DD% | Total Return % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| reentry_close_location_dwell | 39 | 46.15 | +$1804.33 | 18.03 | 0.82 | +18.04% |
+
+=== Ablation 5: Re-entry + Close Location + Dwell + ATR Sweep Floor ===
+Config: sweep=0.10% dwell=3 closeLoc=0.40 atrFloor=0.10xATR handshake=off
+
+Per-asset-class breakdown:
+| Asset Class | Pairs | Trades | WR% | PnL ($) | PF |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FX | 28 | 23 | 43.48 | +$227.18 | 3.14 |
+| Indices | 3 | 6 | 50.00 | +$110.07 | INF |
+| Commodities | 3 | 0 | 0.00 | +$0.00 | 0.00 |
+| Crypto | 2 | 10 | 50.00 | +$1467.08 | INF |
+
+Top 10 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| ETHUSD | 5 | 60.00 | +$1215.19 |
+| BTCUSD | 5 | 40.00 | +$251.89 |
+| EURCAD | 2 | 100.00 | +$100.93 |
+| NIKKEIUSD | 3 | 66.67 | +$72.77 |
+| AUDCAD | 2 | 100.00 | +$69.12 |
+| GBPAUD | 5 | 40.00 | +$51.67 |
+| SPXUSD | 3 | 33.33 | +$37.30 |
+| AUDCHF | 3 | 33.33 | +$36.92 |
+| EURUSD | 1 | 100.00 | +$23.24 |
+| AUDNZD | 5 | 20.00 | +$10.47 |
+
+Bottom 5 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) |
+| --- | ---: | ---: | ---: |
+| USDCAD | 2 | 0.00 | -$65.80 |
+| AUDUSD | 2 | 0.00 | -$7.64 |
+| EURGBP | 1 | 100.00 | +$8.26 |
+| AUDNZD | 5 | 20.00 | +$10.47 |
+| EURUSD | 1 | 100.00 | +$23.24 |
+
+Exit step distribution:
+| Step | Count | % |
+| --- | ---: | ---: |
+| hard_sl | 0 | 0.00 |
+| breakeven | 17 | 43.59 |
+| lock_015 | 5 | 12.82 |
+| lock_035 | 0 | 0.00 |
+| lock_055 | 0 | 0.00 |
+| trailing | 13 | 33.33 |
+| week_close | 4 | 10.26 |
+
+Overall:
+| Variant | Trades | WR% | Total PnL | PF | Max DD% | Total Return % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| reentry_close_location_dwell_atr_floor | 39 | 46.15 | +$1804.33 | 18.03 | 0.82 | +18.04% |
+
+Combined ablation summary:
+| Variant | Trades | WR% | Total PnL | PF | Max DD% | Total Return % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| phase2_baseline_handshake | 19 | 26.32 | +$1056.18 | 29.62 | 0.33 | +10.56% |
+| phase2_no_handshake | 21 | 28.57 | +$1137.75 | INF | 0.00 | +11.38% |
+| reentry_no_displacement | 39 | 41.03 | +$1615.59 | 8.90 | 1.24 | +16.16% |
+| reentry_close_location | 39 | 41.03 | +$1716.88 | 17.33 | 0.82 | +17.17% |
+| reentry_close_location_dwell | 39 | 46.15 | +$1804.33 | 18.03 | 0.82 | +18.04% |
+| reentry_close_location_dwell_atr_floor | 39 | 46.15 | +$1804.33 | 18.03 | 0.82 | +18.04% |
+
+Comparison vs current Katarakti Phase 2 (official):
+| System | Trades | WR% | Total Return | Max DD% | PF |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Phase 2 (current) | 30 | 36.7% | +21.62% | 0.56% | 36.85 |
+| phase2_baseline_handshake | 19 | 26.32% | +10.56% | 0.33% | 29.62 |
+| phase2_no_handshake | 21 | 28.57% | +11.38% | 0.00% | INF |
+| reentry_no_displacement | 39 | 41.03% | +16.16% | 1.24% | 8.90 |
+| reentry_close_location | 39 | 41.03% | +17.17% | 0.82% | 17.33 |
+| reentry_close_location_dwell | 39 | 46.15% | +18.04% | 0.82% | 18.03 |
+| reentry_close_location_dwell_atr_floor | 39 | 46.15% | +18.04% | 0.82% | 18.03 |

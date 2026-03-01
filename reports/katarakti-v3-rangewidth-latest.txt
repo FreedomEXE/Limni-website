@@ -1,0 +1,70 @@
+/-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------/
+
+Weeks tested: [2026-01-19, 2026-01-26, 2026-02-02, 2026-02-09, 2026-02-16]
+Start equity: $10000.00
+Risk per trade: 1.00%
+Max concurrent positions: 8
+Max portfolio risk: 8.00%
+
+Range-width exit multipliers:
+- RW_HARD_STOP_X=1.5
+- RW_BE_TRIGGER_X=0.5
+- RW_LOCK1_TRIGGER_X=1, RW_LOCK1_LOCK_X=0.3
+- RW_LOCK2_TRIGGER_X=1.5, RW_LOCK2_LOCK_X=0.8
+- RW_TRAIL_ACTIVATE_X=2, RW_TRAIL_OFFSET_X=0.75
+
+=== KATARAKTI V3 RANGE-WIDTH NORMALIZED ===
+Config: SUSTAINED_N=45, SWEEP_RANGE_MULT=0.0
+
+Per-asset-class breakdown:
+| Asset Class | Pairs | Trades | WR% | PnL ($) | PF  | Avg RW |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| FX | 28 | 57 | 28.07 | +$439.83 | 1.57 | 0.003766 |
+| Indices | 3 | 18 | 38.89 | +$24.20 | 1.06 | 307.211111 |
+| Commodities | 3 | 0 | 0.00 | +$0.00 | 0.00 | 0.000000 |
+| Crypto | 2 | 19 | 52.63 | +$417.76 | 2.59 | 1009.586316 |
+
+Top 10 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) | Avg Range Width |
+| --- | ---: | ---: | ---: | ---: |
+| GBPAUD | 9 | 55.56 | +$328.46 | 0.007821 |
+| AUDCAD | 5 | 40.00 | +$231.67 | 0.005000 |
+| ETHUSD | 11 | 54.55 | +$227.96 | 81.949091 |
+| BTCUSD | 8 | 50.00 | +$189.81 | 2285.087500 |
+| AUDNZD | 10 | 40.00 | +$159.04 | 0.002704 |
+| AUDUSD | 4 | 50.00 | +$92.77 | 0.002850 |
+| SPXUSD | 12 | 41.67 | +$85.68 | 41.858333 |
+| EURUSD | 2 | 0.00 | +$0.00 | 0.003870 |
+| EURCAD | 5 | 20.00 | -$8.74 | 0.005232 |
+| AUDCHF | 10 | 10.00 | -$39.91 | 0.002386 |
+
+Bottom 5 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) | Avg Range Width |
+| --- | ---: | ---: | ---: | ---: |
+| USDCAD | 6 | 16.67 | -$194.67 | 0.002465 |
+| EURGBP | 6 | 0.00 | -$128.79 | 0.001383 |
+| NIKKEIUSD | 6 | 33.33 | -$61.48 | 837.916667 |
+| AUDCHF | 10 | 10.00 | -$39.91 | 0.002386 |
+| EURCAD | 5 | 20.00 | -$8.74 | 0.005232 |
+
+Exit step distribution:
+| Step | Count | %   |
+| --- | ---: | ---: |
+| hard_stop | 12 | 12.77 |
+| breakeven_stop | 40 | 42.55 |
+| lock1_stop | 12 | 12.77 |
+| lock2_stop | 4 | 4.26 |
+| trailing_stop | 11 | 11.70 |
+| week_close | 15 | 15.96 |
+
+Overall:
+| N | Trades | WR% | Total PnL | PF | Max DD% | Avg RW (pips/points) |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 45 | 94 | 35.11 | +$881.79 | 1.61 | 3.91 | 262.895263 |
+
+Combined summary:
+| N | Trades | WR% | Total PnL | PF | Max DD% | Avg RW (pips/points) |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 45 | 94 | 35.11 | +$881.79 | 1.61 | 3.91 | 262.895263 |
