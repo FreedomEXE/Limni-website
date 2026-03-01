@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
+import PerformanceHeaderContext from "@/components/performance/PerformanceHeaderContext";
 import type { ComponentProps } from "react";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
@@ -555,9 +556,13 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               <h1 className="text-3xl font-semibold text-[var(--foreground)]">
                 Performance
               </h1>
-              <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-                Universal / Tiered / Katarakti
-              </p>
+              <PerformanceHeaderContext
+                initialStyle={initialStyle}
+                initialSystem={initialSystem}
+                initialKataraktiMarket={initialKataraktiMarket}
+                initialKataraktiVariant={initialKataraktiVariant}
+                className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]"
+              />
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -956,9 +961,13 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               <h1 className="text-3xl font-semibold text-[var(--foreground)]">
                 Performance
               </h1>
-              <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-                Universal / Tiered / Katarakti
-              </p>
+              <PerformanceHeaderContext
+                initialStyle={initialStyle}
+                initialSystem={initialSystem}
+                initialKataraktiMarket={initialKataraktiMarket}
+                initialKataraktiVariant={initialKataraktiVariant}
+                className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]"
+              />
             </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
