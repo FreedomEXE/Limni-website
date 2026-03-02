@@ -16,6 +16,7 @@ input bool ManualMode = false;
 input bool EmergencyCryptoRecoveryMode = false;
 input string EmergencyCryptoRecoveryDateEt = "";
 input string StrategyVariantId = "universal_v1";
+input string StrategyDisplayName = "";
 enum StrategyProfile
 {
   PROFILE_CUSTOM = 0,
@@ -308,6 +309,7 @@ bool g_reconstructionAttempted = false;
 datetime g_basketTpArmedAt = 0;
 bool g_basketTpGraceLogged = false;
 datetime g_lastSwapGuardWarn = 0;
+datetime g_lastAutoTradingWarn = 0;
 double g_weekStartBalance = 0.0;
 datetime g_lastDailyClose = 0;
 datetime g_lastDailyReopen = 0;
@@ -340,6 +342,9 @@ string GV_LAST_WEEK_PEAK = "LastWeekPeak";
 string GV_ADAPTIVE_PEAK_SUM = "AdaptivePeakSum";
 string GV_ADAPTIVE_PEAK_COUNT = "AdaptivePeakCount";
 string GV_POST_FRIDAY_HOLD = "PostFridayHold";
+string GV_LAST_DAILY_CLOSE = "LastDailyClose";
+string GV_LAST_DAILY_REOPEN = "LastDailyReopen";
+string GV_DAILY_FLAT_ACTIVE = "DailyFlatActive";
 string CACHE_FILE = "LimniCotCache.json";
 string g_scopePrefix = "Limni_";
 string g_cacheFile = "LimniCotCache.json";
@@ -348,6 +353,7 @@ string DASH_SHADOW = "LimniDash_shadow";
 string DASH_ACCENT = "LimniDash_accent";
 string DASH_DIVIDER = "LimniDash_divider";
 string DASH_COL_DIVIDER = "LimniDash_col_divider";
+string DASH_BANNER = "LimniDash_banner";
 string DASH_TITLE = "LimniDash_title";
 string DASH_MAP_TITLE = "LimniDash_map_title";
 
@@ -357,11 +363,19 @@ string g_lastStopLossReason = "";
 string g_lastOrderFailureKey = "";
 string g_dashboardLines[];
 string g_dashboardRightLines[];
+string g_dashboardSignalA[];
+string g_dashboardSignalB[];
+string g_dashboardSignalD[];
+string g_dashboardSignalC[];
+string g_dashboardSignalS[];
 bool g_dashboardReady = false;
+bool g_dashboardNeedsResize = true;
 int g_dashWidth = 0;
 int g_dashLineHeight = 0;
+int g_dashMapLineHeight = 0;
 int g_dashPadding = 0;
 int g_dashFontSize = 0;
+int g_dashRightFontSize = 0;
 int g_dashTitleSize = 0;
 int g_dashAccentWidth = 0;
 int g_dashShadowOffset = 0;
@@ -370,6 +384,7 @@ int g_dashLeftWidth = 0;
 int g_dashRightWidth = 0;
 int g_dashLeftX = 0;
 int g_dashRightX = 0;
+int g_dashRightContentX = 0;
 string g_allowedKeys[];
 bool g_allowedKeyPrefixes[];
 bool g_allowedKeysReady = false;
@@ -491,9 +506,25 @@ void LogIndexSkip(const string symbol, const string reason, const string reasonK
 void LogIndexSkipsForAll(const string reason, const string reasonKey);
 void LogMissingIndexPairs(const string &symbols[]);
 string TruncateForLog(const string value, int maxLen);
+string InferAssetClassFromSymbol(const string symbol);
 void InitDashboard();
 void UpdateDashboard();
 void DestroyDashboard();
+void DeleteDashboardObjectsByPrefix(const string prefix);
+void PurgeDashboardObjects();
+void BuildSectorLotMap(color headingColor, color textColor, color dimColor);
+void InsertSortedSymbol(string &bucket[], const string symbol);
+void AppendSectorLotMap(const string sectorName, const string bucketAssetClass, const string &symbols[],
+                        int totalCount, int &lineIndex, int mapCount, color headingColor, color textColor, color dimColor);
+int GetModelSignalForSymbol(const string symbol, const string model);
+color SignalColorForDirection(int dir);
+void ClearSignalMarkers(int lineIndex);
+void SetSignalMarkers(int lineIndex, int sigA, int sigB, int sigD, int sigC, int sigS);
+string RepeatChar(const string ch, int count);
+string PadRightText(const string value, int width);
+string PadLeftText(const string value, int width);
+string BuildBoxBorder(int innerWidth);
+string BuildBoxLine(const string text, int innerWidth);
 void SetLabelText(const string name, const string text, color textColor);
 string StateToString(EAState state);
 string FormatDuration(int seconds);
@@ -526,6 +557,7 @@ void RunReconstructionIfNeeded();
 double GetLegRiskScale();
 string RiskModeToString();
 string StrategyModeToString();
+string FormatStrategyBanner();
 string GetProfileLabel();
 string GetAccountClassLabel();
 string GetUserLabel();
@@ -545,10 +577,12 @@ bool EnforceFiveersSwapFlatWindow(datetime nowGmt);
 bool IsDailyFlatReopenEnabled();
 string GetAssetClassForSymbol(const string symbol);
 datetime ConvertEtToGmt(int hourEt, int minuteEt, datetime nowGmt);
+datetime ConvertGmtToEt(datetime valueGmt);
 bool ShouldExecuteDailyClose(datetime nowGmt);
 bool ExecuteDailyClose(datetime nowGmt);
 bool ShouldExecuteDailyReopen(datetime nowGmt);
 bool ExecuteDailyReopen(datetime nowGmt);
+bool IsTerminalAutoTradingEnabled();
 bool IsSundayCryptoCarrySymbol(const string symbol);
 bool IsBasketTakeProfitEnabled();
 double GetEffectiveBasketTakeProfitPct();
@@ -598,6 +632,9 @@ bool EnsureCycleTrailBaselineInitialized(const string contextTag);
 //+------------------------------------------------------------------+
 int OnInit()
 {
+  // Always wipe any stale dashboard artifacts left by prior templates/versions.
+  PurgeDashboardObjects();
+
   g_trade.SetExpertMagicNumber(MagicNumber);
   g_trade.SetDeviationInPoints(SlippagePoints);
   g_scopePrefix = BuildScopePrefix();
@@ -666,8 +703,10 @@ int OnInit()
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
-  SaveState();
   DestroyDashboard();
+  PurgeDashboardObjects();
+  ChartRedraw();
+  SaveState();
   EventKillTimer();
 }
 
@@ -859,6 +898,7 @@ void PollApiIfDue()
   g_lastApiErrorTime = 0;
 
   int count = ArraySize(symbols);
+  int previousSymbolCount = ArraySize(g_brokerSymbols);
   ArrayResize(g_apiSymbolsRaw, count);
   for(int i = 0; i < count; i++)
   {
@@ -905,11 +945,27 @@ void PollApiIfDue()
     g_brokerSymbols[idx] = resolved;
     g_directions[idx] = dir;
     g_models[idx] = model;
-    g_assetClasses[idx] = (i < ArraySize(assetClasses) ? assetClasses[i] : "fx");
+    string resolvedAssetClass = (i < ArraySize(assetClasses) ? assetClasses[i] : "");
+    StringTrimLeft(resolvedAssetClass);
+    StringTrimRight(resolvedAssetClass);
+    StringToLower(resolvedAssetClass);
+    if(resolvedAssetClass == "" || resolvedAssetClass == "unknown" || resolvedAssetClass == "all")
+      resolvedAssetClass = InferAssetClassFromSymbol(resolved != "" ? resolved : symbols[i]);
+    g_assetClasses[idx] = resolvedAssetClass;
     AddAcceptedModelCount(model, dir);
     Log(StringFormat("Signal %d ACCEPTED: symbol=%s->%s model=%s dir=%d asset=%s",
                      i, symbols[i], resolved, model, dir,
-                     (i < ArraySize(assetClasses) ? assetClasses[i] : "fx")));
+                     resolvedAssetClass));
+  }
+
+  int updatedSymbolCount = ArraySize(g_brokerSymbols);
+  bool symbolCountChanged = (updatedSymbolCount != previousSymbolCount);
+  if(symbolCountChanged)
+    g_dashboardNeedsResize = true;
+  if(ShowDashboard && g_dashboardNeedsResize && symbolCountChanged)
+  {
+    InitDashboard();
+    g_dashboardNeedsResize = false;
   }
 
   Log(StringFormat("API ok. trading_allowed=%s, report_date=%s, pairs=%d",
@@ -1564,6 +1620,36 @@ bool IsIndexSymbol(const string symbol)
           StringFind(key, "JP225") >= 0);
 }
 
+string InferAssetClassFromSymbol(const string symbol)
+{
+  string upper = symbol;
+  StringToUpper(upper);
+  string key = NormalizeSymbolKey(upper);
+  if(key == "")
+    return "fx";
+
+  if(StringFind(key, "BTC") >= 0 ||
+     StringFind(key, "ETH") >= 0 ||
+     StringFind(key, "XBT") >= 0)
+    return "crypto";
+
+  if(IsIndexSymbol(symbol))
+    return "indices";
+
+  if(StringFind(key, "XAU") >= 0 ||
+     StringFind(key, "XAG") >= 0 ||
+     StringFind(key, "WTI") >= 0 ||
+     StringFind(key, "USOIL") >= 0 ||
+     StringFind(key, "USOUSD") >= 0 ||
+     StringFind(key, "XTI") >= 0 ||
+     StringFind(key, "BRENT") >= 0 ||
+     StringFind(key, "UKOIL") >= 0 ||
+     StringFind(key, "USCRUDE") >= 0)
+    return "commodities";
+
+  return "fx";
+}
+
 string NormalizeSymbolKey(const string value)
 {
   string out = "";
@@ -1981,7 +2067,19 @@ bool BuildSizingPolicy(const string symbol, const string assetClass, const Symbo
 
 double GetLotForSymbol(const string symbol, const string assetClass)
 {
-  return GetOneToOneLotForSymbol(symbol, assetClass);
+  int netSignal = GetNetSignalForSymbol(symbol);
+  int netMagnitude = MathAbs(netSignal);
+  if(netMagnitude <= 0)
+    return 0.0;
+
+  LegSizingResult sizing;
+  if(!EvaluateLegSizing(symbol, assetClass, sizing))
+    return 0.0;
+
+  double netLot = sizing.finalLot * netMagnitude;
+  if(IsFiveersMode())
+    netLot = NormalizeVolumeWithPolicy(symbol, netLot, true, SizingMaxOvershootPct, netLot);
+  return netLot;
 }
 
 double GetOneToOneLotForSymbol(const string symbol, const string assetClass)
@@ -2033,6 +2131,22 @@ string StrategyModeToString()
   if(mode == PROFILE_AUTO)
     return "AUTO";
   return "CUSTOM";
+}
+
+string FormatStrategyBanner()
+{
+  string banner = StrategyDisplayName;
+  StringTrimLeft(banner);
+  StringTrimRight(banner);
+  if(banner != "")
+    return banner;
+
+  banner = StrategyVariantId;
+  StringTrimLeft(banner);
+  StringTrimRight(banner);
+  StringReplace(banner, "_", " ");
+  StringToUpper(banner);
+  return banner;
 }
 
 string GetProfileLabel()
@@ -2307,6 +2421,15 @@ datetime ConvertEtToGmt(int hourEt, int minuteEt, datetime nowGmt)
   return targetGmt;
 }
 
+datetime ConvertGmtToEt(datetime valueGmt)
+{
+  if(valueGmt <= 0)
+    return 0;
+  bool dst = IsUsdDstUtc(valueGmt);
+  int offset = dst ? -4 : -5;
+  return valueGmt + offset * 3600;
+}
+
 bool ShouldExecuteDailyClose(datetime nowGmt)
 {
   if(!IsDailyFlatReopenEnabled())
@@ -2314,20 +2437,33 @@ bool ShouldExecuteDailyClose(datetime nowGmt)
   if(!HasOpenPositions())
     return false;
 
+  // Evaluate calendar windows in ET (not GMT) to avoid accidental Sunday evening triggers.
+  datetime nowEt = ConvertGmtToEt(nowGmt);
+  if(nowEt <= 0)
+    return false;
+  MqlDateTime etStruct;
+  TimeToStruct(nowEt, etStruct);
+  if(etStruct.day_of_week == 0 || etStruct.day_of_week == 6)
+    return false;
+
   datetime closeTimeGmt = ConvertEtToGmt(FiveersDailyCloseHourEt, FiveersDailyCloseMinuteEt, nowGmt);
   datetime reopenTimeGmt = ConvertEtToGmt(FiveersDailyReopenHourEt, FiveersDailyReopenMinuteEt, nowGmt);
 
-  MqlDateTime nowStruct, lastCloseStruct;
-  TimeToStruct(nowGmt, nowStruct);
-  TimeToStruct(g_lastDailyClose, lastCloseStruct);
+  MqlDateTime nowEtStruct, lastCloseEtStruct;
+  TimeToStruct(nowEt, nowEtStruct);
+  datetime lastCloseEt = ConvertGmtToEt(g_lastDailyClose);
+  TimeToStruct(lastCloseEt, lastCloseEtStruct);
 
-  bool alreadyClosedToday = (lastCloseStruct.year == nowStruct.year &&
-                              lastCloseStruct.mon == nowStruct.mon &&
-                              lastCloseStruct.day == nowStruct.day);
+  bool alreadyClosedToday = (lastCloseEtStruct.year == nowEtStruct.year &&
+                              lastCloseEtStruct.mon == nowEtStruct.mon &&
+                              lastCloseEtStruct.day == nowEtStruct.day);
   if(alreadyClosedToday)
     return false;
 
   if(nowGmt < closeTimeGmt)
+    return false;
+  // Do not execute the daily close once the reopen window has already started.
+  if(nowGmt >= reopenTimeGmt)
     return false;
 
   return true;
@@ -2339,6 +2475,7 @@ bool ExecuteDailyClose(datetime nowGmt)
   {
     g_lastDailyClose = nowGmt;
     g_dailyFlatActive = true;
+    SaveState();
     return false;
   }
 
@@ -2404,6 +2541,9 @@ bool ExecuteDailyClose(datetime nowGmt)
 
   g_lastDailyClose = nowGmt;
   g_dailyFlatActive = true;
+  // Clear stale rate-limit timestamps so post-reopen reconciliation can continue immediately.
+  ArrayResize(g_orderTimes, 0);
+  SaveState();
   Log(StringFormat("5ERS daily flat executed at %.0f ET. Closed %d positions for reopen at %.0f ET.",
                    (double)FiveersDailyCloseHourEt + FiveersDailyCloseMinuteEt / 60.0,
                    closedCount,
@@ -2418,19 +2558,35 @@ bool ShouldExecuteDailyReopen(datetime nowGmt)
   if(!g_dailyFlatActive)
     return false;
 
+  datetime nowEt = ConvertGmtToEt(nowGmt);
+  if(nowEt <= 0)
+    return false;
+  MqlDateTime nowEtStruct;
+  TimeToStruct(nowEt, nowEtStruct);
+
   datetime reopenTimeGmt = ConvertEtToGmt(FiveersDailyReopenHourEt, FiveersDailyReopenMinuteEt, nowGmt);
 
-  MqlDateTime nowStruct, lastReopenStruct;
-  TimeToStruct(nowGmt, nowStruct);
-  TimeToStruct(g_lastDailyReopen, lastReopenStruct);
+  datetime lastReopenEt = ConvertGmtToEt(g_lastDailyReopen);
+  MqlDateTime lastReopenEtStruct;
+  TimeToStruct(lastReopenEt, lastReopenEtStruct);
 
-  bool alreadyReopenedToday = (lastReopenStruct.year == nowStruct.year &&
-                                lastReopenStruct.mon == nowStruct.mon &&
-                                lastReopenStruct.day == nowStruct.day);
+  bool alreadyReopenedToday = (lastReopenEtStruct.year == nowEtStruct.year &&
+                                lastReopenEtStruct.mon == nowEtStruct.mon &&
+                                lastReopenEtStruct.day == nowEtStruct.day);
   if(alreadyReopenedToday)
     return false;
 
   if(nowGmt < reopenTimeGmt)
+    return false;
+
+  // Reopen only on the same ET day as the flat close.
+  datetime lastCloseEt = ConvertGmtToEt(g_lastDailyClose);
+  MqlDateTime lastCloseEtStruct;
+  TimeToStruct(lastCloseEt, lastCloseEtStruct);
+  bool hasSameDayClose = (lastCloseEtStruct.year == nowEtStruct.year &&
+                          lastCloseEtStruct.mon == nowEtStruct.mon &&
+                          lastCloseEtStruct.day == nowEtStruct.day);
+  if(!hasSameDayClose)
     return false;
 
   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -2441,6 +2597,7 @@ bool ShouldExecuteDailyReopen(datetime nowGmt)
     {
       Log(StringFormat("5ERS daily reopen skipped: week target hit (%.2f%% >= %.2f%%)", weekProfitPct, FiveersDailyTargetPct));
       g_dailyFlatActive = false;
+      SaveState();
       return false;
     }
   }
@@ -2448,12 +2605,30 @@ bool ShouldExecuteDailyReopen(datetime nowGmt)
   return true;
 }
 
+bool IsTerminalAutoTradingEnabled()
+{
+  return (TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) != 0 &&
+          MQLInfoInteger(MQL_TRADE_ALLOWED) != 0);
+}
+
 bool ExecuteDailyReopen(datetime nowGmt)
 {
+  if(!IsTerminalAutoTradingEnabled())
+  {
+    datetime nowWarn = TimeCurrent();
+    if(g_lastAutoTradingWarn == 0 || (nowWarn - g_lastAutoTradingWarn) >= 60)
+    {
+      LogTradeError("AutoTrading disabled by client/terminal. Daily reopen deferred until enabled.");
+      g_lastAutoTradingWarn = nowWarn;
+    }
+    return false;
+  }
+
   if(ArraySize(g_dailyClosedPositions) == 0)
   {
     g_lastDailyReopen = nowGmt;
     g_dailyFlatActive = false;
+    SaveState();
     Log("5ERS daily reopen: no cached positions to reopen.");
     return false;
   }
@@ -2494,6 +2669,8 @@ bool ExecuteDailyReopen(datetime nowGmt)
   g_lastDailyReopen = nowGmt;
   g_dailyFlatActive = false;
   ArrayResize(g_dailyClosedPositions, 0);
+  ArrayResize(g_orderTimes, 0);
+  SaveState();
 
   Log(StringFormat("5ERS daily reopen executed at %.0f ET. Reopened %d/%d positions (balance %.2f).",
                    (double)FiveersDailyReopenHourEt + FiveersDailyReopenMinuteEt / 60.0,
@@ -3846,6 +4023,16 @@ void TryAddPositions()
   // Block new entries during daily flat window
   if(IsDailyFlatReopenEnabled() && g_dailyFlatActive)
   {
+    return;
+  }
+  if(!IsTerminalAutoTradingEnabled())
+  {
+    datetime nowWarn = TimeCurrent();
+    if(g_lastAutoTradingWarn == 0 || (nowWarn - g_lastAutoTradingWarn) >= 60)
+    {
+      LogTradeError("AutoTrading disabled by client/terminal. Skipping new entries until enabled.");
+      g_lastAutoTradingWarn = nowWarn;
+    }
     return;
   }
   bool accountStructureBlocked = false;
@@ -5640,6 +5827,15 @@ void LoadState()
         g_maxDrawdownPct = GlobalVariableGet(ScopeKey(GV_MAX_DD));
       if(GlobalVariableCheck(ScopeKey(GV_LAST_PUSH)))
         g_lastPush = (datetime)GlobalVariableGet(ScopeKey(GV_LAST_PUSH));
+      g_lastDailyClose = 0;
+      g_lastDailyReopen = 0;
+      g_dailyFlatActive = false;
+      if(GlobalVariableCheck(ScopeKey(GV_LAST_DAILY_CLOSE)))
+        g_lastDailyClose = (datetime)GlobalVariableGet(ScopeKey(GV_LAST_DAILY_CLOSE));
+      if(GlobalVariableCheck(ScopeKey(GV_LAST_DAILY_REOPEN)))
+        g_lastDailyReopen = (datetime)GlobalVariableGet(ScopeKey(GV_LAST_DAILY_REOPEN));
+      if(GlobalVariableCheck(ScopeKey(GV_DAILY_FLAT_ACTIVE)))
+        g_dailyFlatActive = (GlobalVariableGet(ScopeKey(GV_DAILY_FLAT_ACTIVE)) > 0.5);
       double balanceNow = AccountInfoDouble(ACCOUNT_BALANCE);
       if(balanceNow > 0.0 && (g_baselineEquity <= 0.0 || g_baselineEquity < (balanceNow * 0.25) || g_baselineEquity > (balanceNow * 4.0)))
       {
@@ -5660,6 +5856,9 @@ void LoadState()
   g_cyclePeakEquity = 0.0;
   g_weekPeakEquity = 0.0;
   g_maxDrawdownPct = 0.0;
+  g_lastDailyClose = 0;
+  g_lastDailyReopen = 0;
+  g_dailyFlatActive = false;
   if(GlobalVariableCheck(ScopeKey(GV_LAST_PUSH)))
     g_lastPush = (datetime)GlobalVariableGet(ScopeKey(GV_LAST_PUSH));
   else
@@ -5684,6 +5883,9 @@ void SaveState()
   GlobalVariableSet(ScopeKey(GV_ADAPTIVE_PEAK_SUM), g_adaptivePeakSumPct);
   GlobalVariableSet(ScopeKey(GV_ADAPTIVE_PEAK_COUNT), (double)g_adaptivePeakCount);
   GlobalVariableSet(ScopeKey(GV_POST_FRIDAY_HOLD), g_postFridayRolloverHold ? 1.0 : 0.0);
+  GlobalVariableSet(ScopeKey(GV_LAST_DAILY_CLOSE), (double)g_lastDailyClose);
+  GlobalVariableSet(ScopeKey(GV_LAST_DAILY_REOPEN), (double)g_lastDailyReopen);
+  GlobalVariableSet(ScopeKey(GV_DAILY_FLAT_ACTIVE), g_dailyFlatActive ? 1.0 : 0.0);
 }
 
 void LoadApiCache()
@@ -5729,9 +5931,15 @@ void LoadApiCache()
       g_apiSymbols[i] = symbols[i];
       g_directions[i] = dirs[i];
       g_models[i] = NormalizeModelName(i < ArraySize(models) ? models[i] : "blended");
-      g_assetClasses[i] = (i < ArraySize(assetClasses) ? assetClasses[i] : "fx");
       if(ResolveSymbol(symbols[i], resolved))
         g_brokerSymbols[i] = resolved;
+      string resolvedAssetClass = (i < ArraySize(assetClasses) ? assetClasses[i] : "");
+      StringTrimLeft(resolvedAssetClass);
+      StringTrimRight(resolvedAssetClass);
+      StringToLower(resolvedAssetClass);
+      if(resolvedAssetClass == "" || resolvedAssetClass == "unknown" || resolvedAssetClass == "all")
+        resolvedAssetClass = InferAssetClassFromSymbol(resolved != "" ? resolved : symbols[i]);
+      g_assetClasses[i] = resolvedAssetClass;
     }
     Log("Loaded cached API response.");
   }
@@ -5774,7 +5982,11 @@ void ResetState()
   g_lastApiErrorTime = 0;
   g_lastRolloverHoldWarn = 0;
   g_lastSwapGuardWarn = 0;
+  g_lastAutoTradingWarn = 0;
   g_lastDataRefreshUtc = "";
+  g_lastDailyClose = 0;
+  g_lastDailyReopen = 0;
+  g_dailyFlatActive = false;
   ArrayResize(g_apiSymbolsRaw, 0);
 
   GlobalVariableDel(ScopeKey(GV_WEEK_START));
@@ -5793,6 +6005,9 @@ void ResetState()
   GlobalVariableDel(ScopeKey(GV_ADAPTIVE_PEAK_SUM));
   GlobalVariableDel(ScopeKey(GV_ADAPTIVE_PEAK_COUNT));
   GlobalVariableDel(ScopeKey(GV_POST_FRIDAY_HOLD));
+  GlobalVariableDel(ScopeKey(GV_LAST_DAILY_CLOSE));
+  GlobalVariableDel(ScopeKey(GV_LAST_DAILY_REOPEN));
+  GlobalVariableDel(ScopeKey(GV_DAILY_FLAT_ACTIVE));
 
   FileDelete(g_cacheFile, FILE_COMMON);
   Log("State reset on init.");
@@ -5895,57 +6110,124 @@ string TruncateForLog(const string value, int maxLen)
 //+------------------------------------------------------------------+
 void InitDashboard()
 {
+  DestroyDashboard();
+  PurgeDashboardObjects();
   if(!ShowDashboard)
     return;
 
-  DestroyDashboard();
-
   int minWidth = (DashboardView == DASH_COMPACT ? 960 : 1100);
   g_dashWidth = MathMax(DashboardWidth, minWidth);
+  long chartWidthPixels = 0;
+  if(ChartGetInteger(0, CHART_WIDTH_IN_PIXELS, 0, chartWidthPixels))
+  {
+    int usableWidth = (int)chartWidthPixels - DashboardX - 28;
+    if(usableWidth > g_dashWidth)
+      g_dashWidth = usableWidth;
+  }
   bool compactDash = (DashboardView == DASH_COMPACT);
-  g_dashLineHeight = MathMax(DashboardLineHeight, (compactDash ? 38 : 30));
-  g_dashPadding = compactDash ? MathMax(DashboardPadding, 26) : MathMax(DashboardPadding, 20);
+  g_dashLineHeight = (compactDash ? MathMax(22, DashboardLineHeight - 6) : MathMax(DashboardLineHeight, 30));
+  g_dashPadding = compactDash ? MathMax(16, DashboardPadding - 6) : MathMax(DashboardPadding, 20);
   g_dashFontSize = compactDash ? MathMax(15, DashboardFontSize - 1) : MathMax(DashboardFontSize, 16);
   g_dashTitleSize = compactDash ? MathMax(18, DashboardTitleSize - 2) : MathMax(DashboardTitleSize, 20);
   g_dashAccentWidth = MathMax(DashboardAccentWidth, 10);
   g_dashShadowOffset = MathMax(DashboardShadowOffset, 6);
-  g_dashColumnGap = MathMax(DashboardColumnGap, 12);
+  if(compactDash)
+    g_dashColumnGap = MathMax(24, DashboardColumnGap);
+  else
+    g_dashColumnGap = MathMax(DashboardColumnGap, 12);
 
   int lineCount = (DashboardView == DASH_COMPACT ? 27 : 20);
-  int mapLines = (DashboardView == DASH_COMPACT ? 0 : MathMax(6, LotMapMaxLines));
+  int symbolCount = ArraySize(g_brokerSymbols);
+  int mapLines = lineCount;
+  if(compactDash)
+  {
+    // Compact still needs to render all symbols in the lot map.
+    int requiredMapLines = symbolCount + 13; // header block + group headers/separators + footer
+    mapLines = MathMax(lineCount, requiredMapLines);
+  }
+  else
+  {
+    int maxMapLines = (LotMapMaxLines > 0 ? LotMapMaxLines : symbolCount + 12);
+    mapLines = MathMax(18, MathMin(symbolCount + 12, maxMapLines));
+  }
   ArrayResize(g_dashboardLines, lineCount);
   for(int i = 0; i < lineCount; i++)
     g_dashboardLines[i] = StringFormat("LimniDash_line_%d", i);
   ArrayResize(g_dashboardRightLines, mapLines);
   for(int i = 0; i < mapLines; i++)
     g_dashboardRightLines[i] = StringFormat("LimniDash_map_%d", i);
+  ArrayResize(g_dashboardSignalA, mapLines);
+  ArrayResize(g_dashboardSignalB, mapLines);
+  ArrayResize(g_dashboardSignalD, mapLines);
+  ArrayResize(g_dashboardSignalC, mapLines);
+  ArrayResize(g_dashboardSignalS, mapLines);
+  for(int i = 0; i < mapLines; i++)
+  {
+    g_dashboardSignalA[i] = StringFormat("LimniDash_sigA_%d", i);
+    g_dashboardSignalB[i] = StringFormat("LimniDash_sigB_%d", i);
+    g_dashboardSignalD[i] = StringFormat("LimniDash_sigD_%d", i);
+    g_dashboardSignalC[i] = StringFormat("LimniDash_sigC_%d", i);
+    g_dashboardSignalS[i] = StringFormat("LimniDash_sigS_%d", i);
+  }
 
-  int headerHeight = g_dashLineHeight + (compactDash ? 18 : 12);
-  int rows = lineCount > mapLines ? lineCount : mapLines;
-  int height = g_dashPadding * 2 + headerHeight + rows * g_dashLineHeight;
+  int bannerLineHeight = g_dashLineHeight;
+  int headerHeight = bannerLineHeight + g_dashLineHeight + (compactDash ? 18 : 12);
+  g_dashRightFontSize = (compactDash ? g_dashFontSize : MathMax(12, g_dashFontSize - 2));
+  g_dashMapLineHeight = (compactDash ? g_dashLineHeight : MathMax(g_dashRightFontSize + 6, 18));
+  long chartHeightPixels = 0;
+  if(ChartGetInteger(0, CHART_HEIGHT_IN_PIXELS, 0, chartHeightPixels))
+  {
+    int availableRowsHeight = (int)chartHeightPixels - DashboardY - (g_dashPadding * 2) - headerHeight - 16;
+    if(availableRowsHeight > 0 && mapLines > 0)
+    {
+      int fitLineHeight = availableRowsHeight / mapLines;
+      int minMapLineHeight = g_dashRightFontSize + 6;
+      if(fitLineHeight > 0 && fitLineHeight >= minMapLineHeight)
+        g_dashMapLineHeight = MathMax(minMapLineHeight, MathMin(g_dashMapLineHeight, fitLineHeight));
+    }
+  }
+
+  int leftRowsHeight = lineCount * g_dashLineHeight;
+  int rightRowsHeight = mapLines * g_dashMapLineHeight;
+  int height = g_dashPadding * 2 + headerHeight + MathMax(leftRowsHeight, rightRowsHeight);
   int accentWidth = g_dashAccentWidth;
   int contentX = DashboardX + g_dashPadding + accentWidth;
   int contentWidth = g_dashWidth - (g_dashPadding * 2) - accentWidth;
-  if(DashboardView == DASH_COMPACT)
+  int availableWidth = contentWidth - g_dashColumnGap;
+  if(availableWidth < 0)
+    availableWidth = 0;
+  int minPanelWidth = (DashboardView == DASH_COMPACT ? 360 : 280);
+  int panelWidth = availableWidth / 2;
+  if(panelWidth < minPanelWidth)
+    panelWidth = minPanelWidth;
+  int totalPanelsWidth = panelWidth * 2 + g_dashColumnGap;
+  if(totalPanelsWidth > contentWidth)
   {
-    g_dashLeftWidth = contentWidth;
-    g_dashRightWidth = 0;
-    g_dashLeftX = contentX;
-    g_dashRightX = contentX;
+    panelWidth = (contentWidth - g_dashColumnGap) / 2;
+    if(panelWidth < 120)
+      panelWidth = 120;
+    totalPanelsWidth = panelWidth * 2 + g_dashColumnGap;
   }
-  else
+  int layoutOffset = (contentWidth - totalPanelsWidth) / 2;
+  if(layoutOffset < 0)
+    layoutOffset = 0;
+
+  g_dashLeftWidth = panelWidth;
+  g_dashRightWidth = panelWidth;
+  g_dashLeftX = contentX + layoutOffset;
+  g_dashRightX = g_dashLeftX + g_dashLeftWidth + g_dashColumnGap;
+
+  g_dashRightContentX = g_dashRightX;
+  if(g_dashRightWidth > 0)
   {
-    g_dashLeftWidth = (contentWidth - g_dashColumnGap) * 2 / 3;
-    if(g_dashLeftWidth < 520)
-      g_dashLeftWidth = 520;
-    g_dashRightWidth = contentWidth - g_dashLeftWidth - g_dashColumnGap;
-    if(g_dashRightWidth < 240)
-    {
-      g_dashRightWidth = 240;
-      g_dashLeftWidth = contentWidth - g_dashRightWidth - g_dashColumnGap;
-    }
-    g_dashLeftX = contentX;
-    g_dashRightX = contentX + g_dashLeftWidth + g_dashColumnGap;
+    int mapCharWidth = (int)MathRound((double)g_dashRightFontSize * 0.45);
+    if(mapCharWidth < 5)
+      mapCharWidth = 5;
+    int rightInnerWidth = MathMax(30, EstimateDashMaxChars(g_dashRightWidth - 10) - 4);
+    int mapPixelWidth = (rightInnerWidth + 4) * mapCharWidth;
+    int maxShift = g_dashRightWidth - mapPixelWidth - 12;
+    if(maxShift > 0)
+      g_dashRightContentX = g_dashRightX + (maxShift / 2);
   }
 
   if(ObjectFind(0, DASH_SHADOW) < 0)
@@ -6012,7 +6294,7 @@ void InitDashboard()
     ObjectSetInteger(0, DASH_DIVIDER, OBJPROP_HIDDEN, true);
   }
 
-  if(DashboardView == DASH_COMPACT)
+  if(g_dashRightWidth <= 0)
   {
     ObjectDelete(0, DASH_COL_DIVIDER);
   }
@@ -6022,43 +6304,51 @@ void InitDashboard()
     ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_CORNER, DashboardCorner);
     ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_XDISTANCE, g_dashRightX - (g_dashColumnGap / 2));
     ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + headerHeight - 6);
-    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_XSIZE, 1);
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_XSIZE, 2);
     ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_YSIZE, height - headerHeight);
-    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_COLOR, C'226,232,240');
-    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_BGCOLOR, C'226,232,240');
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_COLOR, C'148,163,184');
+    ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_BGCOLOR, C'148,163,184');
     ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_BORDER_TYPE, BORDER_FLAT);
     ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_BACK, false);
     ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_SELECTABLE, false);
     ObjectSetInteger(0, DASH_COL_DIVIDER, OBJPROP_HIDDEN, true);
   }
 
+  if(ObjectFind(0, DASH_BANNER) < 0)
+  {
+    ObjectCreate(0, DASH_BANNER, OBJ_LABEL, 0, 0, 0);
+    ObjectSetInteger(0, DASH_BANNER, OBJPROP_CORNER, DashboardCorner);
+    ObjectSetInteger(0, DASH_BANNER, OBJPROP_XDISTANCE, contentX + (contentWidth / 2));
+    ObjectSetInteger(0, DASH_BANNER, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + 1);
+    ObjectSetInteger(0, DASH_BANNER, OBJPROP_FONTSIZE, g_dashTitleSize + 4);
+    ObjectSetString(0, DASH_BANNER, OBJPROP_FONT, "Segoe UI Semibold");
+    ObjectSetInteger(0, DASH_BANNER, OBJPROP_ANCHOR, ANCHOR_CENTER);
+    ObjectSetInteger(0, DASH_BANNER, OBJPROP_SELECTABLE, false);
+    ObjectSetInteger(0, DASH_BANNER, OBJPROP_HIDDEN, true);
+  }
+
+  int titleY = DashboardY + g_dashPadding + bannerLineHeight + 1;
   if(ObjectFind(0, DASH_TITLE) < 0)
   {
     ObjectCreate(0, DASH_TITLE, OBJ_LABEL, 0, 0, 0);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_CORNER, DashboardCorner);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_XDISTANCE, g_dashLeftX);
-    ObjectSetInteger(0, DASH_TITLE, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + 1);
+    ObjectSetInteger(0, DASH_TITLE, OBJPROP_YDISTANCE, titleY);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_FONTSIZE, g_dashTitleSize);
     ObjectSetString(0, DASH_TITLE, OBJPROP_FONT, compactDash ? "Consolas" : "Segoe UI Semibold");
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_SELECTABLE, false);
     ObjectSetInteger(0, DASH_TITLE, OBJPROP_HIDDEN, true);
   }
 
-  if(compactDash)
-  {
-    ObjectDelete(0, DASH_MAP_TITLE);
-  }
-  else if(ObjectFind(0, DASH_MAP_TITLE) < 0)
-  {
+  if(ObjectFind(0, DASH_MAP_TITLE) < 0)
     ObjectCreate(0, DASH_MAP_TITLE, OBJ_LABEL, 0, 0, 0);
-    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_CORNER, DashboardCorner);
-    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_XDISTANCE, g_dashRightX);
-    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_YDISTANCE, DashboardY + g_dashPadding + 1);
-    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_FONTSIZE, g_dashTitleSize - 2);
-    ObjectSetString(0, DASH_MAP_TITLE, OBJPROP_FONT, "Segoe UI Semibold");
-    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_SELECTABLE, false);
-    ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_HIDDEN, true);
-  }
+  ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_CORNER, DashboardCorner);
+  ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_XDISTANCE, g_dashRightContentX);
+  ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_YDISTANCE, titleY);
+  ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_FONTSIZE, compactDash ? MathMax(14, g_dashTitleSize - 5) : g_dashTitleSize - 2);
+  ObjectSetString(0, DASH_MAP_TITLE, OBJPROP_FONT, "Segoe UI Semibold");
+  ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_SELECTABLE, false);
+  ObjectSetInteger(0, DASH_MAP_TITLE, OBJPROP_HIDDEN, true);
 
   for(int i = 0; i < lineCount; i++)
   {
@@ -6083,25 +6373,112 @@ void InitDashboard()
   for(int i = 0; i < mapLines; i++)
   {
     const string name = g_dashboardRightLines[i];
-    if(ObjectFind(0, name) >= 0)
-      continue;
-    ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+    if(ObjectFind(0, name) < 0)
+      ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
     ObjectSetInteger(0, name, OBJPROP_CORNER, DashboardCorner);
-    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, g_dashRightX);
+    ObjectSetInteger(0, name, OBJPROP_XDISTANCE, g_dashRightContentX);
     ObjectSetInteger(
       0,
       name,
       OBJPROP_YDISTANCE,
-      DashboardY + g_dashPadding + headerHeight + i * g_dashLineHeight
+      DashboardY + g_dashPadding + headerHeight + i * g_dashMapLineHeight
     );
-    ObjectSetInteger(0, name, OBJPROP_FONTSIZE, g_dashFontSize);
-    ObjectSetString(0, name, OBJPROP_FONT, "Segoe UI");
+    ObjectSetInteger(0, name, OBJPROP_FONTSIZE, g_dashRightFontSize);
+    ObjectSetString(0, name, OBJPROP_FONT, "Consolas");
     ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
     ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
   }
 
+  {
+    int signalCharWidth = (int)MathRound((double)g_dashRightFontSize * 0.58);
+    if(signalCharWidth < 5)
+      signalCharWidth = 5;
+    int signalGap = MathMax(8, signalCharWidth + 4);
+    // Compute innerWidth the same way BuildSectorLotMap does, then place markers near the right map border.
+    int rightInnerWidth = MathMax(30, EstimateDashMaxChars(g_dashRightWidth - 10) - 4);
+    int mapCharWidth = (int)MathRound((double)g_dashRightFontSize * 0.45);
+    if(mapCharWidth < 5)
+      mapCharWidth = 5;
+    int borderChars = rightInnerWidth + 4;  // "| " + innerWidth + " |"
+    int borderEndX = g_dashRightContentX + mapCharWidth * borderChars;
+    int signalStartX = borderEndX + MathMax(8, mapCharWidth);
+    int minSignalStart = g_dashRightX + (int)MathRound((double)g_dashRightWidth * 0.68);
+    int maxSignalStart = g_dashRightX + g_dashRightWidth - (signalGap * 5) - 8;
+    if(minSignalStart > 0 && signalStartX < minSignalStart)
+      signalStartX = minSignalStart;
+    if(maxSignalStart > 0 && signalStartX > maxSignalStart)
+      signalStartX = maxSignalStart;
+    for(int i = 0; i < mapLines; i++)
+    {
+      string signalNames[5];
+      signalNames[0] = g_dashboardSignalA[i];
+      signalNames[1] = g_dashboardSignalB[i];
+      signalNames[2] = g_dashboardSignalD[i];
+      signalNames[3] = g_dashboardSignalC[i];
+      signalNames[4] = g_dashboardSignalS[i];
+      for(int k = 0; k < 5; k++)
+      {
+        if(ObjectFind(0, signalNames[k]) < 0)
+          ObjectCreate(0, signalNames[k], OBJ_LABEL, 0, 0, 0);
+        ObjectSetInteger(0, signalNames[k], OBJPROP_CORNER, DashboardCorner);
+        ObjectSetInteger(0, signalNames[k], OBJPROP_XDISTANCE, signalStartX + k * signalGap);
+        ObjectSetInteger(
+          0,
+          signalNames[k],
+          OBJPROP_YDISTANCE,
+          DashboardY + g_dashPadding + headerHeight + i * g_dashMapLineHeight
+        );
+        ObjectSetInteger(0, signalNames[k], OBJPROP_FONTSIZE, MathMax(8, g_dashRightFontSize - 1));
+        ObjectSetString(0, signalNames[k], OBJPROP_FONT, "Consolas");
+        ObjectSetInteger(0, signalNames[k], OBJPROP_SELECTABLE, false);
+        ObjectSetInteger(0, signalNames[k], OBJPROP_HIDDEN, true);
+        ObjectSetString(0, signalNames[k], OBJPROP_TEXT, " ");
+        ObjectSetInteger(0, signalNames[k], OBJPROP_COLOR, C'148,163,184');
+      }
+    }
+  }
+
   g_dashboardReady = true;
   UpdateDashboard();
+}
+
+//+------------------------------------------------------------------+
+void DeleteDashboardObjectsByPrefix(const string prefix)
+{
+  if(prefix == "")
+    return;
+
+  // Retry passes in case object ordering shifts while deleting.
+  for(int pass = 0; pass < 3; pass++)
+  {
+    int total = ObjectsTotal(0, -1, -1);
+    bool deletedAny = false;
+    for(int i = total - 1; i >= 0; i--)
+    {
+      string name = ObjectName(0, i, -1, -1);
+      if(name == "")
+        continue;
+      if(StringFind(name, prefix) != 0)
+        continue;
+      if(ObjectDelete(0, name))
+        deletedAny = true;
+    }
+    if(!deletedAny)
+      break;
+  }
+}
+
+void PurgeDashboardObjects()
+{
+  // Catch-all for any historical/current dashboard object naming.
+  DeleteDashboardObjectsByPrefix("LimniDash_");
+  DeleteDashboardObjectsByPrefix("LimniDash_line_");
+  DeleteDashboardObjectsByPrefix("LimniDash_map_");
+  DeleteDashboardObjectsByPrefix("LimniDash_sigA_");
+  DeleteDashboardObjectsByPrefix("LimniDash_sigB_");
+  DeleteDashboardObjectsByPrefix("LimniDash_sigD_");
+  DeleteDashboardObjectsByPrefix("LimniDash_sigC_");
+  DeleteDashboardObjectsByPrefix("LimniDash_sigS_");
 }
 
 //+------------------------------------------------------------------+
@@ -6112,12 +6489,24 @@ void DestroyDashboard()
   ObjectDelete(0, DASH_ACCENT);
   ObjectDelete(0, DASH_DIVIDER);
   ObjectDelete(0, DASH_COL_DIVIDER);
+  ObjectDelete(0, DASH_BANNER);
   ObjectDelete(0, DASH_TITLE);
   ObjectDelete(0, DASH_MAP_TITLE);
   for(int i = 0; i < ArraySize(g_dashboardLines); i++)
     ObjectDelete(0, g_dashboardLines[i]);
   for(int i = 0; i < ArraySize(g_dashboardRightLines); i++)
     ObjectDelete(0, g_dashboardRightLines[i]);
+  for(int i = 0; i < ArraySize(g_dashboardSignalA); i++)
+    ObjectDelete(0, g_dashboardSignalA[i]);
+  for(int i = 0; i < ArraySize(g_dashboardSignalB); i++)
+    ObjectDelete(0, g_dashboardSignalB[i]);
+  for(int i = 0; i < ArraySize(g_dashboardSignalD); i++)
+    ObjectDelete(0, g_dashboardSignalD[i]);
+  for(int i = 0; i < ArraySize(g_dashboardSignalC); i++)
+    ObjectDelete(0, g_dashboardSignalC[i]);
+  for(int i = 0; i < ArraySize(g_dashboardSignalS); i++)
+    ObjectDelete(0, g_dashboardSignalS[i]);
+  PurgeDashboardObjects();
   g_dashboardReady = false;
 }
 
@@ -6126,6 +6515,17 @@ void UpdateDashboard()
 {
   if(!ShowDashboard || !g_dashboardReady)
     return;
+
+  if(DashboardView == DASH_COMPACT)
+  {
+    int requiredMapLines = ArraySize(g_brokerSymbols) + 13;
+    if(ArraySize(g_dashboardRightLines) < requiredMapLines)
+    {
+      g_dashboardNeedsResize = true;
+      InitDashboard();
+      return;
+    }
+  }
 
   datetime now = TimeCurrent();
   int totalLegs = ArraySize(g_brokerSymbols);
@@ -6279,50 +6679,54 @@ void UpdateDashboard()
                       : "Peak equity: --";
   bool compact = (DashboardView == DASH_COMPACT);
   int usedLeft = 0;
+  int compactBodyMax = MathMax(26, EstimateDashMaxChars(g_dashLeftWidth - 18) - 3);
+  int compactMetaMax = MathMax(20, compactBodyMax - 10);
 
   color headingColor = C'15,118,110';
 
+  SetLabelText(DASH_BANNER, FormatStrategyBanner(), headingColor);
   SetLabelText(DASH_TITLE, "Limni Basket EA | " + userLabel, C'15,23,42');
+  SetLabelText(DASH_MAP_TITLE, " ", headingColor);
   if(compact)
   {
-    SetLabelText(DASH_TITLE, "[ LIMNI_BASKET_EA | " + userLabel + " ]", C'15,23,42');
-    SetLabelText(g_dashboardLines[0], "+----------------------------------------------------------+", dimColor);
-    SetLabelText(g_dashboardLines[1], "| STATUS                                                   |", headingColor);
+    string boxBorder = BuildBoxBorder(compactBodyMax);
+    SetLabelText(g_dashboardLines[0], boxBorder, dimColor);
+    SetLabelText(g_dashboardLines[1], BuildBoxLine("STATUS", compactBodyMax), headingColor);
     SetLabelText(g_dashboardLines[2], StringFormat("| state=%s trading=%s api=%s",
                                                     stateText,
                                                     g_tradingAllowed ? "allowed" : "blocked",
                                                     g_apiOk ? "ok" : "fail"), stateColor);
     SetLabelText(g_dashboardLines[3], "| " + brokerLine, dimColor);
-    SetLabelText(g_dashboardLines[4], StringFormat("| %s | %s", serverLine, structureLine), dimColor);
+    SetLabelText(g_dashboardLines[4], "| " + CompactText(StringFormat("%s | %s", serverLine, structureLine), compactBodyMax), dimColor);
     SetLabelText(g_dashboardLines[5], StringFormat("| class=%s profile=%s user=%s",
                                                     CompactText(accountClassLabel, 14),
                                                     CompactText(profileLabel, 12),
                                                     CompactText(userLabel, 22)), dimColor);
-    SetLabelText(g_dashboardLines[6], "| " + basketGuardLine, dimColor);
-    SetLabelText(g_dashboardLines[7], "| " + trailLine, dimColor);
-    SetLabelText(g_dashboardLines[8], "+----------------------------------------------------------+", dimColor);
+    SetLabelText(g_dashboardLines[6], "| " + CompactText(basketGuardLine, compactBodyMax), dimColor);
+    SetLabelText(g_dashboardLines[7], "| " + CompactText(trailLine, compactBodyMax), dimColor);
+    SetLabelText(g_dashboardLines[8], boxBorder, dimColor);
 
-    SetLabelText(g_dashboardLines[9], "| SYNC                                                     |", headingColor);
-    SetLabelText(g_dashboardLines[10], "| " + CompactText(snapshotLine, 58), showWaitingSnapshot ? warnColor : dimColor);
+    SetLabelText(g_dashboardLines[9], BuildBoxLine("SYNC", compactBodyMax), headingColor);
+    SetLabelText(g_dashboardLines[10], "| " + CompactText(snapshotLine, compactBodyMax), showWaitingSnapshot ? warnColor : dimColor);
     SetLabelText(g_dashboardLines[11], StringFormat("| %s | poll=%s",
-                                                    CompactText(cacheLine, 30),
+                                                    CompactText(cacheLine, compactMetaMax),
                                                     FormatDuration(pollRemaining)),
                  showWaitingSnapshot ? warnColor : dimColor);
     SetLabelText(g_dashboardLines[12], "| report=" + reportText, dimColor);
-    SetLabelText(g_dashboardLines[13], "| refresh=" + CompactText(refreshText, 48), dimColor);
-    SetLabelText(g_dashboardLines[14], "+----------------------------------------------------------+", dimColor);
+    SetLabelText(g_dashboardLines[13], "| refresh=" + CompactText(refreshText, compactBodyMax), dimColor);
+    SetLabelText(g_dashboardLines[14], boxBorder, dimColor);
 
-    SetLabelText(g_dashboardLines[15], "| ACCOUNT                                                  |", headingColor);
-    SetLabelText(g_dashboardLines[16], "| " + equityLine, textColor);
-    SetLabelText(g_dashboardLines[17], "| " + pnlLine, pnlColor);
-    SetLabelText(g_dashboardLines[18], "| " + ddLine + " | " + peakLine, ddColor);
-    SetLabelText(g_dashboardLines[19], "+----------------------------------------------------------+", dimColor);
+    SetLabelText(g_dashboardLines[15], BuildBoxLine("ACCOUNT", compactBodyMax), headingColor);
+    SetLabelText(g_dashboardLines[16], "| " + CompactText(equityLine, compactBodyMax), textColor);
+    SetLabelText(g_dashboardLines[17], "| " + CompactText(pnlLine, compactBodyMax), pnlColor);
+    SetLabelText(g_dashboardLines[18], "| " + CompactText(ddLine + " | " + peakLine, compactBodyMax), ddColor);
+    SetLabelText(g_dashboardLines[19], boxBorder, dimColor);
 
-    SetLabelText(g_dashboardLines[20], "| POSITIONS                                                |", headingColor);
-    SetLabelText(g_dashboardLines[21], "| " + positionLine + " | " + lotsLine, textColor);
-    SetLabelText(g_dashboardLines[22], "| " + CompactText(plannedModelLine, 58), dimColor);
-    SetLabelText(g_dashboardLines[23], "+----------------------------------------------------------+", dimColor);
-    SetLabelText(g_dashboardLines[24], "| CHECKS                                                   |", headingColor);
+    SetLabelText(g_dashboardLines[20], BuildBoxLine("POSITIONS", compactBodyMax), headingColor);
+    SetLabelText(g_dashboardLines[21], "| " + CompactText(positionLine + " | " + lotsLine, compactBodyMax), textColor);
+    SetLabelText(g_dashboardLines[22], "| " + CompactText(plannedModelLine, compactBodyMax), dimColor);
+    SetLabelText(g_dashboardLines[23], boxBorder, dimColor);
+    SetLabelText(g_dashboardLines[24], BuildBoxLine("CHECKS", compactBodyMax), headingColor);
     string alertLine = (g_lastApiError == "" ? "Alerts: none" : "Alerts: " + errorText);
     if(!universeGateReady)
     {
@@ -6341,14 +6745,13 @@ void UpdateDashboard()
     string checksSummary = StringFormat("pairs=%d/%d open_pairs=%d miss=%s",
                                         totalPairs, expectedPairs, openPairs,
                                         missingPairs == "none" ? "none" : CompactText(missingPairs, 18));
-    SetLabelText(g_dashboardLines[25], "| " + CompactText(alertLine + " | " + checksSummary, 58),
+    SetLabelText(g_dashboardLines[25], "| " + CompactText(alertLine + " | " + checksSummary, compactBodyMax),
                  (!universeGateReady || missingPairs != "none") ? warnColor : errorColor);
-    SetLabelText(g_dashboardLines[26], "+----------------------------------------------------------+", dimColor);
+    SetLabelText(g_dashboardLines[26], boxBorder, dimColor);
     usedLeft = 27;
   }
   else
   {
-    SetLabelText(DASH_MAP_TITLE, "LOT MAP", headingColor);
     SetLabelText(g_dashboardLines[0], "SYSTEM", headingColor);
     SetLabelText(g_dashboardLines[1], StringFormat("State: %s  |  Trading: %s", stateText, g_tradingAllowed ? "Allowed" : "Blocked"), stateColor);
     SetLabelText(g_dashboardLines[2], apiLine, apiColor);
@@ -6382,48 +6785,412 @@ void UpdateDashboard()
   for(int i = usedLeft; i < ArraySize(g_dashboardLines); i++)
     SetLabelText(g_dashboardLines[i], " ", dimColor);
 
-  int mapCount = ArraySize(g_dashboardRightLines);
-  if(compact)
-  {
-    for(int i = 0; i < mapCount; i++)
-      SetLabelText(g_dashboardRightLines[i], " ", dimColor);
-  }
-  else
-  {
-    int totalSymbols = ArraySize(g_brokerSymbols);
-    bool hasOverflow = (totalSymbols > mapCount);
-    int displayCount = totalSymbols;
-    if(hasOverflow && mapCount > 1)
-      displayCount = mapCount - 1;
-    else
-      displayCount = MathMin(displayCount, mapCount);
+  BuildSectorLotMap(headingColor, textColor, dimColor);
+}
 
-    for(int i = 0; i < mapCount; i++)
+//+------------------------------------------------------------------+
+string RepeatChar(const string ch, int count)
+{
+  if(count <= 0)
+    return "";
+  string out = "";
+  for(int i = 0; i < count; i++)
+    out += ch;
+  return out;
+}
+
+string PadRightText(const string value, int width)
+{
+  if(width <= 0)
+    return "";
+  string out = CompactText(value, width);
+  int deficit = width - StringLen(out);
+  if(deficit > 0)
+    out += RepeatChar(" ", deficit);
+  return out;
+}
+
+string PadLeftText(const string value, int width)
+{
+  if(width <= 0)
+    return "";
+  string out = CompactText(value, width);
+  int deficit = width - StringLen(out);
+  if(deficit > 0)
+    out = RepeatChar(" ", deficit) + out;
+  return out;
+}
+
+string BuildBoxBorder(int innerWidth)
+{
+  if(innerWidth < 12)
+    innerWidth = 12;
+  return "+" + RepeatChar("-", innerWidth + 2) + "+";
+}
+
+string BuildBoxLine(const string text, int innerWidth)
+{
+  if(innerWidth < 12)
+    innerWidth = 12;
+  return "| " + PadRightText(text, innerWidth) + " |";
+}
+
+//+------------------------------------------------------------------+
+void InsertSortedSymbol(string &bucket[], const string symbol)
+{
+  int count = ArraySize(bucket);
+  for(int i = 0; i < count; i++)
+  {
+    if(StringCompare(bucket[i], symbol, false) == 0)
+      return;
+  }
+  ArrayResize(bucket, count + 1);
+  bucket[count] = symbol;
+  for(int i = count; i > 0; i--)
+  {
+    if(StringCompare(bucket[i - 1], bucket[i], false) <= 0)
+      break;
+    string tmp = bucket[i - 1];
+    bucket[i - 1] = bucket[i];
+    bucket[i] = tmp;
+  }
+}
+
+void AppendSectorLotMap(const string sectorName, const string bucketAssetClass, const string &symbols[],
+                        int totalCount, int &lineIndex, int mapCount, color headingColor, color textColor, color dimColor)
+{
+  int count = ArraySize(symbols);
+  if(lineIndex >= mapCount)
+    return;
+
+  int innerWidth = MathMax(30, EstimateDashMaxChars(g_dashRightWidth - 10) - 4);
+  int dirWidth = 5;
+  int lotWidth = 7;
+  int symbolWidth = MathMax(6, MathMin(12, innerWidth - (dirWidth + lotWidth + 9)));
+
+  int qualifiedCount = 0;
+  for(int i = 0; i < count; i++)
+  {
+    string symbol = symbols[i];
+    if(symbol == "")
+      continue;
+    if(GetNetSignalForSymbol(symbol) != 0)
+      qualifiedCount++;
+  }
+
+  string sectionLabel = StringFormat("%s (%d/%d)", sectorName, qualifiedCount, totalCount);
+  SetLabelText(g_dashboardRightLines[lineIndex],
+               BuildBoxLine(sectionLabel, innerWidth),
+               headingColor);
+  ClearSignalMarkers(lineIndex);
+  lineIndex++;
+
+  if(count <= 0)
+    return;
+
+  for(int i = 0; i < count && lineIndex < mapCount; i++)
+  {
+    string symbol = symbols[i];
+    double lot = GetLotForSymbol(symbol, bucketAssetClass);
+    int netDir = GetNetSignalForSymbol(symbol);
+    string dirText = "NEUT";
+    color rowColor = textColor;
+    if(netDir > 0)
     {
-      if(i < displayCount)
+      dirText = "LONG";
+      rowColor = C'34,197,94';
+    }
+    else if(netDir < 0)
+    {
+      dirText = "SHORT";
+      rowColor = C'239,68,68';
+    }
+
+    string row = PadRightText(CompactText(symbol, symbolWidth), symbolWidth) + " | " +
+                 PadRightText(dirText, dirWidth) + " | " +
+                 PadLeftText(DoubleToString(lot, 2), lotWidth);
+    SetLabelText(g_dashboardRightLines[lineIndex],
+                 BuildBoxLine(row, innerWidth),
+                 rowColor);
+    int sigA = GetModelSignalForSymbol(symbol, "antikythera");
+    int sigB = GetModelSignalForSymbol(symbol, "blended");
+    int sigD = GetModelSignalForSymbol(symbol, "dealer");
+    int sigC = GetModelSignalForSymbol(symbol, "commercial");
+    int sigS = GetModelSignalForSymbol(symbol, "sentiment");
+    SetSignalMarkers(lineIndex, sigA, sigB, sigD, sigC, sigS);
+    lineIndex++;
+  }
+}
+
+void BuildSectorLotMap(color headingColor, color textColor, color dimColor)
+{
+  int mapCount = ArraySize(g_dashboardRightLines);
+  if(mapCount <= 0)
+    return;
+
+  string forexAllSymbols[];
+  string indicesAllSymbols[];
+  string commoditiesAllSymbols[];
+  string cryptoAllSymbols[];
+  string forexSymbols[];
+  string indicesSymbols[];
+  string commoditiesSymbols[];
+  string cryptoSymbols[];
+  int total = ArraySize(g_brokerSymbols);
+  for(int i = 0; i < total; i++)
+  {
+    string symbol = g_brokerSymbols[i];
+    if(symbol == "")
+      continue;
+
+    string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
+    StringTrimLeft(assetClass);
+    StringTrimRight(assetClass);
+    StringToLower(assetClass);
+    if(assetClass == "" || assetClass == "unknown" || assetClass == "all")
+      assetClass = InferAssetClassFromSymbol(symbol);
+    else if(assetClass == "fx")
+    {
+      string inferred = InferAssetClassFromSymbol(symbol);
+      if(inferred != "fx")
+        assetClass = inferred;
+    }
+
+    bool nonNeutral = (GetNetSignalForSymbol(symbol) != 0);
+    if(assetClass == "indices")
+    {
+      InsertSortedSymbol(indicesAllSymbols, symbol);
+      if(nonNeutral)
+        InsertSortedSymbol(indicesSymbols, symbol);
+    }
+    else if(assetClass == "commodities")
+    {
+      InsertSortedSymbol(commoditiesAllSymbols, symbol);
+      if(nonNeutral)
+        InsertSortedSymbol(commoditiesSymbols, symbol);
+    }
+    else if(assetClass == "crypto")
+    {
+      InsertSortedSymbol(cryptoAllSymbols, symbol);
+      if(nonNeutral)
+        InsertSortedSymbol(cryptoSymbols, symbol);
+    }
+    else
+    {
+      InsertSortedSymbol(forexAllSymbols, symbol);
+      if(nonNeutral)
+        InsertSortedSymbol(forexSymbols, symbol);
+    }
+  }
+
+  int lineIndex = 0;
+  int innerWidth = MathMax(30, EstimateDashMaxChars(g_dashRightWidth - 10) - 4);
+  int dirWidth = 5;
+  int lotWidth = 7;
+  int symbolWidth = MathMax(6, MathMin(12, innerWidth - (dirWidth + lotWidth + 9)));
+
+  string border = BuildBoxBorder(innerWidth);
+  string header = PadRightText("Symbol", symbolWidth) + " | " +
+                  PadRightText("Dir", dirWidth) + " | " +
+                  PadLeftText("Lot", lotWidth);
+  if(lineIndex < mapCount)
+  {
+    SetLabelText(g_dashboardRightLines[lineIndex], border, dimColor);
+    ClearSignalMarkers(lineIndex);
+    lineIndex++;
+  }
+  if(lineIndex < mapCount)
+  {
+    SetLabelText(g_dashboardRightLines[lineIndex], BuildBoxLine("WEEKLY LOT MAP", innerWidth), headingColor);
+    ClearSignalMarkers(lineIndex);
+    lineIndex++;
+  }
+  if(lineIndex < mapCount)
+  {
+    SetLabelText(g_dashboardRightLines[lineIndex], border, dimColor);
+    ClearSignalMarkers(lineIndex);
+    lineIndex++;
+  }
+  if(lineIndex < mapCount)
+  {
+    SetLabelText(g_dashboardRightLines[lineIndex], BuildBoxLine(header, innerWidth), headingColor);
+    // Show A B D C S as column header labels in heading color
+    if(lineIndex < ArraySize(g_dashboardSignalA))
+    {
+      string sigNames[5];
+      sigNames[0] = g_dashboardSignalA[lineIndex];
+      sigNames[1] = g_dashboardSignalB[lineIndex];
+      sigNames[2] = g_dashboardSignalD[lineIndex];
+      sigNames[3] = g_dashboardSignalC[lineIndex];
+      sigNames[4] = g_dashboardSignalS[lineIndex];
+      string sigLabels[5];
+      sigLabels[0] = "A"; sigLabels[1] = "B"; sigLabels[2] = "D"; sigLabels[3] = "C"; sigLabels[4] = "S";
+      for(int k = 0; k < 5; k++)
       {
-        string symbol = g_brokerSymbols[i];
-        if(symbol == "")
+        if(ObjectFind(0, sigNames[k]) >= 0)
         {
-          SetLabelText(g_dashboardRightLines[i], "--", dimColor);
-          continue;
+          ObjectSetString(0, sigNames[k], OBJPROP_TEXT, sigLabels[k]);
+          ObjectSetInteger(0, sigNames[k], OBJPROP_COLOR, headingColor);
         }
-        string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
-        double lot = GetLotForSymbol(symbol, assetClass);
-        SetLabelText(g_dashboardRightLines[i],
-                     StringFormat("%-10s  %s  %.2f", symbol, CompactText(assetClass, 8), lot),
-                     textColor);
-      }
-      else if(i == mapCount - 1 && hasOverflow)
-      {
-        int remaining = totalSymbols - displayCount;
-        SetLabelText(g_dashboardRightLines[i], StringFormat("... +%d more", remaining), dimColor);
-      }
-      else
-      {
-        SetLabelText(g_dashboardRightLines[i], " ", dimColor);
       }
     }
+    lineIndex++;
+  }
+  if(lineIndex < mapCount)
+  {
+    SetLabelText(g_dashboardRightLines[lineIndex], border, dimColor);
+    ClearSignalMarkers(lineIndex);
+    lineIndex++;
+  }
+
+  string groupNames[4];
+  string groupAssets[4];
+  int groupTotals[4];
+  int groupIndices[4];
+  groupNames[0] = "FOREX";
+  groupAssets[0] = "fx";
+  groupTotals[0] = ArraySize(forexAllSymbols);
+  groupIndices[0] = 0;
+  groupNames[1] = "INDICES";
+  groupAssets[1] = "indices";
+  groupTotals[1] = ArraySize(indicesAllSymbols);
+  groupIndices[1] = 1;
+  groupNames[2] = "COMMODITIES";
+  groupAssets[2] = "commodities";
+  groupTotals[2] = ArraySize(commoditiesAllSymbols);
+  groupIndices[2] = 2;
+  groupNames[3] = "CRYPTO";
+  groupAssets[3] = "crypto";
+  groupTotals[3] = ArraySize(cryptoAllSymbols);
+  groupIndices[3] = 3;
+
+  int activeGroups = 0;
+  for(int g = 0; g < 4; g++)
+  {
+    if(groupTotals[g] > 0)
+      activeGroups++;
+  }
+
+  int emittedGroups = 0;
+  for(int g = 0; g < 4 && lineIndex < mapCount; g++)
+  {
+    if(groupTotals[g] <= 0)
+      continue;
+
+    if(groupIndices[g] == 0)
+      AppendSectorLotMap(groupNames[g], groupAssets[g], forexSymbols, groupTotals[g], lineIndex, mapCount, headingColor, textColor, dimColor);
+    else if(groupIndices[g] == 1)
+      AppendSectorLotMap(groupNames[g], groupAssets[g], indicesSymbols, groupTotals[g], lineIndex, mapCount, headingColor, textColor, dimColor);
+    else if(groupIndices[g] == 2)
+      AppendSectorLotMap(groupNames[g], groupAssets[g], commoditiesSymbols, groupTotals[g], lineIndex, mapCount, headingColor, textColor, dimColor);
+    else
+      AppendSectorLotMap(groupNames[g], groupAssets[g], cryptoSymbols, groupTotals[g], lineIndex, mapCount, headingColor, textColor, dimColor);
+
+    emittedGroups++;
+    if(emittedGroups < activeGroups && lineIndex < mapCount)
+    {
+      SetLabelText(g_dashboardRightLines[lineIndex], border, dimColor);
+      ClearSignalMarkers(lineIndex);
+      lineIndex++;
+    }
+  }
+  if(lineIndex < mapCount)
+  {
+    SetLabelText(g_dashboardRightLines[lineIndex], border, dimColor);
+    ClearSignalMarkers(lineIndex);
+    lineIndex++;
+  }
+  for(int i = lineIndex; i < mapCount; i++)
+  {
+    SetLabelText(g_dashboardRightLines[i], " ", dimColor);
+    ClearSignalMarkers(i);
+  }
+}
+
+int GetModelSignalForSymbol(const string symbol, const string model)
+{
+  int net = 0;
+  string targetModel = NormalizeModelName(model);
+  for(int i = 0; i < ArraySize(g_brokerSymbols); i++)
+  {
+    if(g_brokerSymbols[i] != symbol)
+      continue;
+    string symbolModel = NormalizeModelName(i < ArraySize(g_models) ? g_models[i] : "blended");
+    if(symbolModel != targetModel)
+      continue;
+    if(i >= ArraySize(g_directions))
+      continue;
+    int dir = g_directions[i];
+    if(dir > 0)
+      net++;
+    else if(dir < 0)
+      net--;
+  }
+  if(net > 0)
+    return 1;
+  if(net < 0)
+    return -1;
+  return 0;
+}
+
+color SignalColorForDirection(int dir)
+{
+  if(dir > 0)
+    return C'34,197,94';
+  if(dir < 0)
+    return C'239,68,68';
+  return C'148,163,184';
+}
+
+void ClearSignalMarkers(int lineIndex)
+{
+  if(lineIndex < 0 || lineIndex >= ArraySize(g_dashboardSignalA))
+    return;
+  string names[5];
+  names[0] = g_dashboardSignalA[lineIndex];
+  names[1] = g_dashboardSignalB[lineIndex];
+  names[2] = g_dashboardSignalD[lineIndex];
+  names[3] = g_dashboardSignalC[lineIndex];
+  names[4] = g_dashboardSignalS[lineIndex];
+  for(int i = 0; i < 5; i++)
+  {
+    if(ObjectFind(0, names[i]) < 0)
+      continue;
+    ObjectSetString(0, names[i], OBJPROP_TEXT, " ");
+    ObjectSetInteger(0, names[i], OBJPROP_COLOR, C'148,163,184');
+  }
+}
+
+void SetSignalMarkers(int lineIndex, int sigA, int sigB, int sigD, int sigC, int sigS)
+{
+  if(lineIndex < 0 || lineIndex >= ArraySize(g_dashboardSignalA))
+    return;
+
+  string names[5];
+  names[0] = g_dashboardSignalA[lineIndex];
+  names[1] = g_dashboardSignalB[lineIndex];
+  names[2] = g_dashboardSignalD[lineIndex];
+  names[3] = g_dashboardSignalC[lineIndex];
+  names[4] = g_dashboardSignalS[lineIndex];
+  string labels[5];
+  labels[0] = "A";
+  labels[1] = "B";
+  labels[2] = "D";
+  labels[3] = "C";
+  labels[4] = "S";
+  int dirs[5];
+  dirs[0] = sigA;
+  dirs[1] = sigB;
+  dirs[2] = sigD;
+  dirs[3] = sigC;
+  dirs[4] = sigS;
+
+  for(int i = 0; i < 5; i++)
+  {
+    if(ObjectFind(0, names[i]) < 0)
+      continue;
+    ObjectSetString(0, names[i], OBJPROP_TEXT, labels[i]);
+    ObjectSetInteger(0, names[i], OBJPROP_COLOR, SignalColorForDirection(dirs[i]));
   }
 }
 
@@ -6522,10 +7289,7 @@ string LeftDashboardText(const string value)
 
 string RightDashboardText(const string value)
 {
-  int width = g_dashRightWidth - 10;
-  if(width <= 0)
-    width = 300;
-  return FitDashboardText(value, width);
+  return value;
 }
 
 string EnsureTrailingSlash(const string url)
@@ -7761,14 +8525,98 @@ string BuildLotMapArray()
   string result = "[";
   bool firstRow = true;
   int total = ArraySize(g_brokerSymbols);
+  string seenSymbols[];
+  ArrayResize(seenSymbols, 0);
   for(int i = 0; i < total; i++)
   {
     string symbol = g_brokerSymbols[i];
     if(symbol == "")
       continue;
+
+    bool seen = false;
+    for(int j = 0; j < ArraySize(seenSymbols); j++)
+    {
+      if(seenSymbols[j] == symbol)
+      {
+        seen = true;
+        break;
+      }
+    }
+    if(seen)
+      continue;
+    int seenSize = ArraySize(seenSymbols);
+    ArrayResize(seenSymbols, seenSize + 1);
+    seenSymbols[seenSize] = symbol;
+
     string assetClass = (i < ArraySize(g_assetClasses) ? g_assetClasses[i] : "fx");
+    StringTrimLeft(assetClass);
+    StringTrimRight(assetClass);
+    StringToLower(assetClass);
+    if(assetClass == "" || assetClass == "unknown" || assetClass == "all")
+      assetClass = InferAssetClassFromSymbol(symbol);
+
+    int netSignal = GetNetSignalForSymbol(symbol);
+    int netMagnitude = MathAbs(netSignal);
     LegSizingResult sizing;
-    bool ok = EvaluateLegSizing(symbol, assetClass, sizing);
+    sizing.ok = false;
+    sizing.reasonKey = "";
+    sizing.profile = StrategyModeToString();
+    sizing.toleranceMode = (SizingTolerance == SIZING_STRICT_UNDER_TARGET
+                            ? "strict_under_target"
+                            : "nearest_step_bounded_overshoot");
+    sizing.targetLot = 0.0;
+    sizing.solvedLotRaw = 0.0;
+    sizing.postClampLot = 0.0;
+    sizing.finalLot = 0.0;
+    sizing.deviationPct = 0.0;
+    sizing.equityPerSymbol = 0.0;
+    sizing.targetRiskUsd = 0.0;
+    sizing.marginRequired = 0.0;
+    sizing.move1pctUsd = 0.0;
+    sizing.move1pctPerLotUsd = 0.0;
+    sizing.move1pctCapUsd = 0.0;
+    sizing.specPrice = 0.0;
+    sizing.specTickSize = 0.0;
+    sizing.specTickValue = 0.0;
+    sizing.specContractSize = 0.0;
+    sizing.specMinLot = 0.0;
+    sizing.specMaxLot = 0.0;
+    sizing.specLotStep = 0.0;
+    bool ok = (netMagnitude > 0 && EvaluateLegSizing(symbol, assetClass, sizing));
+    double netLot = 0.0;
+    double targetNetLot = 0.0;
+    double solvedNetLotRaw = 0.0;
+    double postClampNetLot = 0.0;
+    double targetRiskUsd = 0.0;
+    double marginRequired = 0.0;
+    double move1pctUsd = 0.0;
+    double deviationPct = 0.0;
+    string sizingStatus = "flat";
+    string sizingReason = "net_zero";
+    if(ok)
+    {
+      netLot = sizing.finalLot * netMagnitude;
+      targetNetLot = sizing.targetLot * netMagnitude;
+      solvedNetLotRaw = sizing.solvedLotRaw * netMagnitude;
+      postClampNetLot = sizing.postClampLot * netMagnitude;
+      targetRiskUsd = sizing.targetRiskUsd * netMagnitude;
+      marginRequired = sizing.marginRequired * netMagnitude;
+      move1pctUsd = sizing.move1pctUsd * netMagnitude;
+      if(IsFiveersMode())
+      {
+        netLot = NormalizeVolumeWithPolicy(symbol, netLot, true, SizingMaxOvershootPct, netLot);
+        postClampNetLot = netLot;
+      }
+      if(targetNetLot > 0.0)
+        deviationPct = (netLot - targetNetLot) / targetNetLot * 100.0;
+      sizingStatus = "sized";
+      sizingReason = "";
+    }
+    else if(netMagnitude > 0)
+    {
+      sizingStatus = "unsized";
+      sizingReason = sizing.reasonKey;
+    }
 
     if(!firstRow)
       result += ",";
@@ -7777,14 +8625,15 @@ string BuildLotMapArray()
     result += "{";
     result += "\"symbol\":\"" + JsonEscape(symbol) + "\",";
     result += "\"asset_class\":\"" + JsonEscape(assetClass) + "\",";
-    result += "\"lot\":" + DoubleToString(ok ? sizing.finalLot : 0.0, 4) + ",";
-    result += "\"target_lot\":" + DoubleToString(sizing.targetLot, 4) + ",";
-    result += "\"solved_lot_raw\":" + DoubleToString(sizing.solvedLotRaw, 4) + ",";
-    result += "\"post_clamp_lot\":" + DoubleToString(sizing.postClampLot, 4) + ",";
-    result += "\"deviation_pct\":" + DoubleToString(sizing.deviationPct, 2) + ",";
-    result += "\"target_risk_usd\":" + DoubleToString(sizing.targetRiskUsd, 2) + ",";
-    result += "\"margin_required\":" + DoubleToString(sizing.marginRequired, 2) + ",";
-    result += "\"move_1pct_usd\":" + DoubleToString(ok ? sizing.move1pctUsd : 0.0, 2) + ",";
+    result += "\"net_signal\":" + IntegerToString(netSignal) + ",";
+    result += "\"lot\":" + DoubleToString(netLot, 4) + ",";
+    result += "\"target_lot\":" + DoubleToString(targetNetLot, 4) + ",";
+    result += "\"solved_lot_raw\":" + DoubleToString(solvedNetLotRaw, 4) + ",";
+    result += "\"post_clamp_lot\":" + DoubleToString(postClampNetLot, 4) + ",";
+    result += "\"deviation_pct\":" + DoubleToString(deviationPct, 2) + ",";
+    result += "\"target_risk_usd\":" + DoubleToString(targetRiskUsd, 2) + ",";
+    result += "\"margin_required\":" + DoubleToString(marginRequired, 2) + ",";
+    result += "\"move_1pct_usd\":" + DoubleToString(move1pctUsd, 2) + ",";
     result += "\"move_1pct_per_lot_usd\":" + DoubleToString(sizing.move1pctPerLotUsd, 2) + ",";
     result += "\"move_1pct_cap_usd\":" + DoubleToString(sizing.move1pctCapUsd, 2) + ",";
     result += "\"sizing_profile\":\"" + JsonEscape(sizing.profile) + "\",";
@@ -7796,8 +8645,8 @@ string BuildLotMapArray()
     result += "\"spec_volume_min\":" + DoubleToString(sizing.specMinLot, 4) + ",";
     result += "\"spec_volume_max\":" + DoubleToString(sizing.specMaxLot, 4) + ",";
     result += "\"spec_volume_step\":" + DoubleToString(sizing.specLotStep, 6) + ",";
-    result += "\"sizing_status\":\"" + JsonEscape(ok ? "sized" : "unsized") + "\",";
-    result += "\"sizing_reason\":\"" + JsonEscape(ok ? "" : sizing.reasonKey) + "\"";
+    result += "\"sizing_status\":\"" + JsonEscape(sizingStatus) + "\",";
+    result += "\"sizing_reason\":\"" + JsonEscape(sizingReason) + "\"";
     result += "}";
   }
   result += "]";

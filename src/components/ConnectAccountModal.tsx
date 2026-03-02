@@ -25,10 +25,10 @@ const MT5_DOWNLOAD_FILES: Mt5DownloadFile[] = [
   {
     key: "ea",
     title: "Limni Basket Bot (Expert Advisor)",
-    fileName: "LimniBasketEA.ex5",
-    href: "/downloads/LimniBasketEA.ex5",
+    fileName: "LimniEA-v2.0.ex5",
+    href: "/downloads/LimniEA-v2.0.ex5",
     instructions: [
-      "In MT5, open File > Open Data Folder and copy LimniBasketEA.ex5 into MQL5/Experts.",
+      "In MT5, open File > Open Data Folder and copy LimniEA-v2.0.ex5 into MQL5/Experts.",
       "Restart MT5 or right-click Navigator > Experts > Refresh.",
       "Drag the EA onto one chart, then enable Algo Trading.",
       "In EA Inputs, set PushUrl, PushToken, and LicenseKey if licensing is required.",

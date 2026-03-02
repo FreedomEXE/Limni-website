@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+
+# Warn (without blocking) when MT5 source changes are staged without updated compiled files.
+staged_files="$(git diff --cached --name-only --diff-filter=ACMRT)"
+
+if printf '%s\n' "$staged_files" | grep -Eq '^mt5/.*\.mq5$'; then
+  if ! printf '%s\n' "$staged_files" | grep -Eq '^public/downloads/.*\.ex5$'; then
+    echo "⚠️ WARNING: .mq5 source files changed but no .ex5 files in public/downloads/ were updated. Did you forget to compile and copy the updated .ex5?"
+  fi
+fi
+
+exit 0
