@@ -1,0 +1,312 @@
+{
+  "_meta": {
+    "copyright": "Property of Freedom_EXE (c) 2026",
+    "description": "EA-Website canonical contract",
+    "version": "1.0.0",
+    "generated_at_utc": "2026-03-02T00:00:00Z"
+  },
+  "enums": {
+    "reason_code": [
+      "basket_tp",
+      "basket_sl",
+      "trail_lock",
+      "friday_winner_close",
+      "friday_prop_close",
+      "sunday_crypto_close",
+      "sunday_rollover_reopen",
+      "swap_guard_close",
+      "daily_flat_close",
+      "daily_reopen",
+      "weekly_flip",
+      "added_loser",
+      "manual",
+      "signal",
+      "generic",
+      "not_allowed",
+      "unresolved_symbol",
+      "duplicate_open",
+      "crypto_not_open",
+      "not_tradable",
+      "invalid_volume",
+      "sizing_guard",
+      "order_failed",
+      "max_volume_reached",
+      "max_positions",
+      "rate_limit",
+      "pending_leg_fill",
+      "entry_window_closed",
+      "add_window_closed",
+      "max_loser_adds",
+      "reconcile_keep",
+      "reconcile_close",
+      "kill_switch",
+      "risk_capital_source",
+      "compliance_sl_basis"
+    ],
+    "event_type": [
+      "decision",
+      "lifecycle",
+      "health",
+      "error"
+    ],
+    "state_key": [
+      "baseline_equity",
+      "trailing_active",
+      "week_start_gmt",
+      "report_date",
+      "basket_state",
+      "trading_allowed",
+      "last_sync_utc",
+      "last_api_error",
+      "data_source",
+      "reconstruction_status",
+      "risk_capital_usd",
+      "policy_version",
+      "contract_version"
+    ]
+  },
+  "payloads": {
+    "SignalsResponseSchema": {
+      "type": "object",
+      "required": ["report_date", "trading_allowed", "pairs", "trail_profile", "contract_version"],
+      "properties": {
+        "report_date": { "type": "string" },
+        "trading_allowed": { "type": "boolean" },
+        "pairs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["symbol", "direction", "model", "asset_class"],
+            "properties": {
+              "symbol": { "type": "string" },
+              "direction": { "type": "enum", "values": ["LONG", "SHORT"] },
+              "model": { "type": "string" },
+              "asset_class": { "type": "string" }
+            }
+          }
+        },
+        "trail_profile": {
+          "type": "object",
+          "required": ["avg_peak_pct", "start_pct", "offset_pct"],
+          "properties": {
+            "avg_peak_pct": { "type": "number" },
+            "start_pct": { "type": "number" },
+            "offset_pct": { "type": "number" }
+          }
+        },
+        "portfolio_strategy": {
+          "type": "object",
+          "required": ["family", "version"],
+          "properties": {
+            "family": { "type": "enum", "values": ["universal", "tiered", "composite_tiered"] },
+            "version": { "type": "enum", "values": ["v1", "v2", "v3"] },
+            "overlap_mode": { "type": "enum", "values": ["stacked", "dedup_weighted"] },
+            "weights": {
+              "type": "object",
+              "properties": {
+                "tier1": { "type": "number" },
+                "tier2": { "type": "number" },
+                "tier3": { "type": "number" }
+              }
+            },
+            "voters": { "type": "array", "items": { "type": "string" } },
+            "blocks": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "portfolio_plan": {
+          "type": "object",
+          "required": ["plan_id", "report_date", "legs"],
+          "properties": {
+            "plan_id": { "type": "string" },
+            "report_date": { "type": "string" },
+            "legs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["symbol", "direction", "asset_class", "weight_multiplier", "source_family", "source_version", "reason_code"],
+                "properties": {
+                  "symbol": { "type": "string" },
+                  "direction": { "type": "enum", "values": ["LONG", "SHORT"] },
+                  "asset_class": { "type": "string" },
+                  "model_hint": { "type": "string" },
+                  "tier": { "type": "enum", "values": [1, 2, 3] },
+                  "weight_multiplier": { "type": "number" },
+                  "source_family": { "type": "enum", "values": ["universal", "tiered", "composite_tiered"] },
+                  "source_version": { "type": "enum", "values": ["v1", "v2", "v3"] },
+                  "source_block": { "type": "string" },
+                  "reason_code": { "type": "enum_ref", "ref": "reason_code" },
+                  "vote_trace": {
+                    "type": "object",
+                    "required": ["voters", "long_votes", "short_votes", "neutral_votes"],
+                    "properties": {
+                      "voters": { "type": "array", "items": { "type": "string" } },
+                      "long_votes": { "type": "number" },
+                      "short_votes": { "type": "number" },
+                      "neutral_votes": { "type": "number" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "contract_version": { "type": "string" }
+      }
+    },
+    "PolicyResponseSchema": {
+      "type": "object",
+      "required": ["risk_mode", "leg_scale", "sizing_capital_mode", "asset_filter", "trail_start_pct", "trail_offset_pct", "basket_tp_pct", "basket_sl_pct", "max_positions", "policy_version"],
+      "properties": {
+        "risk_mode": { "type": "enum", "values": ["high", "low", "god"] },
+        "leg_scale": { "type": "number" },
+        "sizing_capital_mode": { "type": "enum", "values": ["balance", "equity", "prop_max_daily_dd"] },
+        "risk_capital_usd": { "type": "number" },
+        "prop_nominal_account_usd": { "type": "number" },
+        "prop_max_daily_drawdown_usd": { "type": "number" },
+        "per_trade_sl_compliance_mode": { "type": "enum", "values": ["none", "prop_pct_of_nominal"] },
+        "per_trade_sl_cap_pct_of_nominal": { "type": "number" },
+        "asset_filter": { "type": "array", "items": { "type": "string" } },
+        "trail_start_pct": { "type": "number" },
+        "trail_offset_pct": { "type": "number" },
+        "basket_tp_pct": { "type": "number" },
+        "basket_sl_pct": { "type": "number" },
+        "max_positions": { "type": "number" },
+        "policy_version": { "type": "string" }
+      }
+    },
+    "KillSwitchResponseSchema": {
+      "type": "object",
+      "required": ["halt", "liquidate", "reason", "issued_at"],
+      "properties": {
+        "halt": { "type": "boolean" },
+        "liquidate": { "type": "boolean" },
+        "reason": { "type": "string" },
+        "issued_at": { "type": "string" }
+      }
+    },
+    "VersionCheckResponseSchema": {
+      "type": "object",
+      "required": ["required_version", "deprecated", "upgrade_required", "grace_period_ends"],
+      "properties": {
+        "required_version": { "type": "string" },
+        "deprecated": { "type": "boolean" },
+        "upgrade_required": { "type": "boolean" },
+        "grace_period_ends": {
+          "type": "union",
+          "anyOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "EventPushSchema": {
+      "type": "object",
+      "required": ["event_id", "account_id", "ts_utc", "ea_version", "event_type", "reason_code", "metadata"],
+      "properties": {
+        "event_id": { "type": "string" },
+        "account_id": { "type": "string" },
+        "ts_utc": { "type": "string" },
+        "ea_version": { "type": "string" },
+        "event_type": { "type": "enum_ref", "ref": "event_type" },
+        "reason_code": { "type": "enum_ref", "ref": "reason_code" },
+        "symbol": { "type": "string" },
+        "ticket": { "type": "number" },
+        "action": { "type": "enum", "values": ["open", "close", "skip"] },
+        "lot": { "type": "number" },
+        "price": { "type": "number" },
+        "retcode": { "type": "number" },
+        "metadata": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "HeartbeatPushSchema": {
+      "type": "object",
+      "required": ["account_id", "ts_utc", "ea_version", "state", "open_positions", "basket_pnl_pct", "equity", "errors_last_hour"],
+      "properties": {
+        "account_id": { "type": "string" },
+        "ts_utc": { "type": "string" },
+        "ea_version": { "type": "string" },
+        "state": { "type": "enum", "values": ["idle", "ready", "active", "paused", "closed"] },
+        "open_positions": { "type": "number" },
+        "basket_pnl_pct": { "type": "number" },
+        "equity": { "type": "number" },
+        "errors_last_hour": { "type": "number" }
+      }
+    },
+    "PositionSnapshotPushSchema": {
+      "type": "object",
+      "required": ["account_id", "ts_utc", "positions"],
+      "properties": {
+        "account_id": { "type": "string" },
+        "ts_utc": { "type": "string" },
+        "positions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ticket", "symbol", "type", "lots", "profit", "swap", "open_time"],
+            "properties": {
+              "ticket": { "type": "number" },
+              "symbol": { "type": "string" },
+              "type": { "type": "enum", "values": ["BUY", "SELL"] },
+              "lots": { "type": "number" },
+              "profit": { "type": "number" },
+              "swap": { "type": "number" },
+              "open_time": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "LegacyPushSchema": {
+      "type": "object",
+      "required": ["account_id"],
+      "properties": {
+        "account_id": { "type": "string" },
+        "label": { "type": "string" },
+        "broker": { "type": "string" },
+        "server": { "type": "string" },
+        "status": { "type": "string" },
+        "trade_mode": { "type": "enum", "values": ["AUTO", "MANUAL"] },
+        "currency": { "type": "string" },
+        "equity": { "type": "number" },
+        "balance": { "type": "number" },
+        "margin": { "type": "number" },
+        "free_margin": { "type": "number" },
+        "basket_state": { "type": "string" },
+        "open_positions": { "type": "number" },
+        "open_pairs": { "type": "number" },
+        "total_lots": { "type": "number" },
+        "baseline_equity": { "type": "number" },
+        "locked_profit_pct": { "type": "number" },
+        "basket_pnl_pct": { "type": "number" },
+        "weekly_pnl_pct": { "type": "number" },
+        "risk_used_pct": { "type": "number" },
+        "trade_count_week": { "type": "number" },
+        "win_rate_pct": { "type": "number" },
+        "max_drawdown_pct": { "type": "number" },
+        "report_date": { "type": "string" },
+        "api_ok": { "type": "boolean" },
+        "trading_allowed": { "type": "boolean" },
+        "last_api_error": { "type": "string" },
+        "next_add_seconds": { "type": "number" },
+        "next_poll_seconds": { "type": "number" },
+        "last_sync_utc": { "type": "string" },
+        "data_source": { "type": "string" },
+        "reconstruction_status": { "type": "string" },
+        "reconstruction_note": { "type": "string" },
+        "reconstruction_window_start_utc": { "type": "string" },
+        "reconstruction_window_end_utc": { "type": "string" },
+        "reconstruction_market_closed_segments": { "type": "number" },
+        "reconstruction_trades": { "type": "number" },
+        "reconstruction_week_realized": { "type": "number" },
+        "license_key": { "type": "string" },
+        "positions": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "closed_positions": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "lot_map": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "lot_map_updated_utc": { "type": "string" },
+        "planning_diagnostics": { "type": "object", "additionalProperties": true },
+        "recent_logs": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

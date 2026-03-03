@@ -88,7 +88,7 @@ export default function PerformanceViewSection({
     };
     const onKataraktiVariantChange = (event: Event) => {
       const custom = event as CustomEvent<KataraktiVariant>;
-      if (custom.detail === "core" || custom.detail === "lite") {
+      if (custom.detail === "core" || custom.detail === "lite" || custom.detail === "v3") {
         setKataraktiVariant(custom.detail);
       }
     };

@@ -1,5 +1,10 @@
 # Market Knowledge
 
+<!-- IMPORTANT: This file is a STATIC SUMMARY for prompt context only.
+     It is NOT the authoritative source of operational truth.
+     Poseidon must query APIs/database for current state.
+     This file may be outdated - never trust it over live queries. -->
+
 > Proteus system prompt knowledge: market data sources, what's active vs passive, and session structure.
 
 ---

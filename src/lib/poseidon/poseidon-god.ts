@@ -25,6 +25,7 @@ import { buildPoseidonHeader, sendPoseidonAnimation } from "@/lib/poseidon/anima
 import { curateProteusMemory } from "@/lib/poseidon/poseidon-curator";
 import { getCronStatusSummary } from "@/lib/cronStatus";
 import { sendTelegramText } from "@/lib/poseidon/telegram-delivery";
+import { kvSet } from "@/lib/poseidon/state-db";
 
 // ─── Poseidon Personality ─────────────────
 
@@ -419,13 +420,15 @@ export async function sendReckoning(telegram: Telegram, ownerId: number): Promis
     const message = formatPoseidonReckoning(reckoning);
 
     await sendTelegramText(telegram, ownerId, message, { parseMode: "HTML" });
+    await kvSet("poseidon_last_run", new Date().toISOString()).catch(() => undefined);
     reckoningDelivered = true;
     console.log("[poseidon-god] Daily Reckoning delivered");
   } catch (err) {
     reckoningError = err;
     console.error("[poseidon-god] Reckoning failed:", err);
     try {
-      await sendTelegramText(telegram, ownerId, "Poseidon could not complete the Daily Reckoning. Check logs.");
+      const msg = err instanceof Error ? err.message : String(err);
+      await sendTelegramText(telegram, ownerId, `⚠️ [poseidon-god] Reckoning failed: ${msg.slice(0, 400)}`);
     } catch {
       // Silent — don't crash
     }
@@ -489,6 +492,7 @@ export function getPoseidonScheduleStatus(now = new Date()): PoseidonScheduleSta
 
 export function schedulePoseidon(telegram: Telegram, ownerId: number): void {
   const DAY_MS = 24 * 60 * 60_000;
+  const scheduleStatus = getPoseidonScheduleStatus();
 
   reckoningTimeout = setTimeout(() => {
     sendReckoning(telegram, ownerId).catch((e) =>
@@ -503,7 +507,7 @@ export function schedulePoseidon(telegram: Telegram, ownerId: number): void {
   }, msUntilUtcTime(6, 0));
   reckoningTimeout.unref();
 
-  console.log("[poseidon-god] Daily Reckoning scheduled: 06:00 UTC");
+  console.log(`[poseidon-god] Scheduled - next reckoning at: ${scheduleStatus.nextReckoningUtc}`);
 }
 
 export function stopPoseidon(): void {

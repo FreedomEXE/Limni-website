@@ -1,0 +1,39 @@
+Bitget Liquidation Sweep Simple Backtest
+Generated UTC: 2026-03-03T13:55:16.752Z
+Weeks: 2026-01-19, 2026-01-26, 2026-02-02, 2026-02-09, 2026-02-16, 2026-02-23
+Symbols: BTC, ETH
+Offsets: 0.05
+Signals tracked: 1452
+Slot mode: per_symbol
+Weekly bias filter: enabled (COT + sentiment)
+Min sweep depth filter: 0.30%
+Entry trigger: first touch of liq level (no re-entry block)
+Execution constraint: max 1 open trade per symbol
+Position sizing: 25% of account
+Leverage: 5x
+Exit model: 10% initial stop + milestone ratchet (BE/trailing/session-end)
+Starting equity (metrics): $1000.00
+Max sessions to fill: 2
+
+Offset   | Symbol   |  Signals |    Fills |    Fill% |    Avg PnL |   Win Rate |  Avg Holdh |   Total PnL$ |  Total Ret |   Max DD
+----------------------------------------------------------------------------------------------------------------------------------
+5.00%    | BTC      |      698 |        3 |    0.43% |     69.80% |     66.67% |       9.86 |       571.78 |     57.18% |    2.08%
+5.00%    | ETH      |      754 |       87 |   11.54% |      0.98% |     96.55% |       0.45 |       228.90 |     22.89% |    7.25%
+5.00%    | ALL      |     1452 |       90 |    6.20% |      3.28% |     95.56% |       0.76 |       924.77 |     92.48% |    8.24%
+
+Per-trade fields tracked:
+symbol, date, direction, session_range_level, limit_price, filled, fill_time, sessions_elapsed, max_excursion_pct, hold_hours, pnl_pct, exit_reason, max_milestone
+
+Filled trades: 90
+Unfilled signals: 1362
+Blocked by open-trade rule: 505
+
+Exit reason breakdown by offset:
+- 5.00%: session_end=87, trailing=1, breakeven=2, stop=0
+
+Milestone distribution by offset:
+- 5.00%: m0=84, m1=1, m2=4, m3=0, m4=1
+
+Lock diagnostics by symbol:
+- BTC: prelock_fills=235, blocked=232, final_fills=3
+- ETH: prelock_fills=360, blocked=273, final_fills=87

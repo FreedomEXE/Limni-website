@@ -17,6 +17,17 @@ Proteus is live and functional but has two categories of problems:
 
 2. **Crash/silence issues** — Proteus goes silent mid-conversation due to unhandled API errors, token limits, and missing timeout logic. Freedom sees "Proteus hit an error" or just... nothing.
 
+## Resolution Update (2026-03-02): Authoritative Runtime State
+
+To resolve prior policy conflicts across Poseidon docs:
+
+- Authoritative runtime state is database-backed in `poseidon_kv`.
+- Files under `docs/ai/poseidon/state/` are seed/fallback artifacts only.
+- `PROTEUS_STATE.md` remains a committed seed template.
+- Runtime JSON files (`conversations.json`, `behavior.json`, `heartbeat.json`) are non-authoritative and should not be treated as source-of-truth.
+
+If any guidance in this document conflicts with the above, this section takes precedence.
+
 This prompt fixes both. It also adds Poseidon as the memory curator, gives Poseidon awareness of Triton/Nereus activity, and hardens Proteus against crashes.
 
 ### Codex Review Findings (All Accepted)

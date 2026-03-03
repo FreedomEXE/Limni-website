@@ -21,6 +21,7 @@ import { config } from "@/lib/poseidon/config";
 import { buildNereusHeader } from "@/lib/poseidon/animations";
 import { assembleBriefingData, type SessionType } from "@/lib/poseidon/nereus-queries";
 import { sendTelegramText } from "@/lib/poseidon/telegram-delivery";
+import { kvSet } from "@/lib/poseidon/state-db";
 
 // ─── Nereus Personality ───────────────────
 
@@ -107,6 +108,7 @@ async function sendBriefing(
   try {
     const message = await buildBriefing(sessionType);
     await sendTelegramText(telegram, ownerId, message, { parseMode: "HTML" });
+    await kvSet("nereus_last_run", new Date().toISOString()).catch(() => undefined);
     await appendActivityLog({
       deity: "nereus",
       timestamp: new Date().toISOString(),
@@ -116,6 +118,12 @@ async function sendBriefing(
     console.log(`[nereus] ${sessionType} briefing sent`);
   } catch (err) {
     console.error(`[nereus] ${sessionType} briefing failed:`, err);
+    const message = err instanceof Error ? err.message : String(err);
+    await sendTelegramText(
+      telegram,
+      ownerId,
+      `⚠️ [nereus] Briefing failed: ${message.slice(0, 400)}`,
+    ).catch(() => undefined);
   }
 }
 
@@ -154,6 +162,7 @@ export function getNereusScheduleStatus(now = new Date()): NereusScheduleStatus 
 
 export function scheduleNereus(telegram: Telegram, ownerId: number): void {
   const DAY_MS = 24 * 60 * 60_000;
+  const scheduleStatus = getNereusScheduleStatus();
 
   // Pre-Asia: 23:30 UTC
   preAsiaTimeout = setTimeout(() => {
@@ -183,7 +192,8 @@ export function scheduleNereus(telegram: Telegram, ownerId: number): void {
   }, msUntilUtcTime(12, 30));
   preNyTimeout.unref();
 
-  console.log("[nereus] Briefings scheduled: Pre-Asia 23:30 UTC, Pre-NY 12:30 UTC");
+  console.log(`[nereus] Scheduled - next briefing at: ${scheduleStatus.preAsiaNextUtc} (Pre-Asia)`);
+  console.log(`[nereus] Scheduled - next briefing at: ${scheduleStatus.preNyNextUtc} (Pre-NY)`);
 }
 
 export function stopNereus(): void {

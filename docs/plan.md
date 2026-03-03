@@ -59,6 +59,73 @@ This plan is designed for institutional hedge fund operations with CTO review an
 - Server-side coordination required (handled by website orchestration service)
 - **Worth it**: cost is 0.0001% of AUM, client safety/compliance worth infinitely more
 
+## 2.6) Poseidon Operations Layer
+
+### Architecture Principle
+**Poseidon is the autonomous operations brain for the full trading infrastructure, with zero manual memory maintenance.**
+
+### System Scope
+1. Poseidon is the existing AI operations system composed of:
+   - `Proteus`
+   - `Triton`
+   - `Nereus`
+   - `Poseidon God`
+2. Poseidon consumes the EA/bot telemetry streams already defined in this architecture:
+   - heartbeats
+   - decision events
+   - position snapshots
+   - kill-switch state/events
+3. Human escalation target is `Freedom`; human contact occurs only when Poseidon cannot self-resolve an issue through deterministic or approved autonomous actions.
+
+### 1) Poseidon Core (Rule-Based Monitoring — Phase 1)
+1. A lightweight deterministic operations engine runs 24/7 with zero LLM dependency/cost.
+2. Core responsibilities:
+   - heartbeat watchdog across all EA/bot instances (including auto-restart and kill-switch escalation paths)
+   - execution verification (expected signals/plans vs actual trades; mismatch detection)
+   - sizing-drift detection, PnL anomaly detection, and latency monitoring
+   - version drift detection across EA instances and strategy runtimes
+3. Self-healing follows a strict escalation ladder:
+   - retry → restart → kill-switch → Telegram alert to `Freedom`
+4. This layer is the operational foundation that higher intelligence layers build on.
+
+### 2) Poseidon Intelligence (AI-Enhanced — Phase 2)
+1. Layer existing `Poseidon God` reasoning on top of the deterministic core.
+2. Intelligence must be self-discovering by querying APIs/database state to determine:
+   - currently deployed strategies and where they are running
+   - account inventory and active configurations
+   - executed trades and decision rationale (reason codes from decision events)
+   - current system health status across all running instances
+3. Responsibilities:
+   - anomaly reasoning (e.g., underperformance diagnostics correlated with market conditions/regime shifts)
+   - cross-account pattern detection (systemic failures vs isolated account issues)
+   - natural-language daily/weekly reporting via Telegram
+   - strategic recommendations based on observed multi-account performance
+
+### 3) Self-Discovery Principle (Hard Requirement)
+1. Every infrastructure service must expose state through queryable APIs and/or database tables.
+2. Poseidon context is runtime-discovered, never manually curated:
+   - new strategy registered in `StrategyRegistry` → discovered on next query cycle
+   - new account provisioned → discovered on next query cycle
+   - policy/config change applied → discovered on next query cycle
+3. Hard architectural rule: **if Poseidon cannot discover it programmatically, it does not exist in the system.**
+
+### 4) Reporting Cadence
+1. Real-time: critical alerts only (failures, kill-switch events, execution mismatches).
+2. Daily: Telegram operations summary (`PnL`, active strategies, anomalies, automated actions taken).
+3. Weekly: comparative performance analysis across strategies and accounts.
+
+### 5) Containerization for Portability
+1. All services are containerized with Docker Compose for environment portability (current VPS topology now, bare-metal later).
+2. High-level stack:
+   - one runtime instance per trading account:
+     - MT5 accounts on dedicated Windows VPS instances
+     - Bitget/crypto bots as Linux containers
+   - Limni website control plane services
+   - Poseidon services
+   - PostgreSQL
+3. Migration to bare metal preserves service topology by reusing the same compose-defined stack on different hosts.
+4. MT5 constraint: MT5 account runtimes remain on separate Windows VPS instances and integrate through the shared API contract (not Linux containers).
+
 ## 3) Target End State
 1. **EA becomes thin execution agent** (orchestrates modules, minimal business logic).
 2. **Logic split across focused `.mqh` modules** with strict interfaces.
@@ -77,13 +144,20 @@ mt5/Experts/
   Include/
     Core/
       Context.mqh                    # Shared state structs, config, constants
-      Orchestrator.mqh               # Main event loop coordination
+      Orchestrator.mqh               # Main event loop coordination + lifecycle dispatch by strategy config
     Domain/
       Models.mqh                     # DTOs for signals, positions, decisions
       Enums.mqh                      # Reason codes, event types, state flags
     Strategy/
       PortfolioPlanEngine.mqh        # Applies normalized portfolio plan -> executable legs
-      StrategyRegistry.mqh           # Resolves configured strategy family/version/blocks
+      StrategyRegistry.mqh           # Resolves configured strategy family/version/blocks + lifecycle type
+      Lifecycles/
+        WeeklyBasketLifecycle/
+          WeeklyBasketLifecycle.mqh  # Universal/Tiered weekly basket lifecycle orchestration
+        IntradayLifecycle/
+          IntradayLifecycle.mqh      # Katarakti/day-trade intraday lifecycle orchestration
+        CryptoPerpsLifecycle/
+          CryptoPerpsLifecycle.mqh   # Bitget/future crypto perps lifecycle orchestration
       Blocks/
         UniversalBuilder.mqh         # Universal V1/V2/V3 portfolio construction
         TieredBuilder.mqh            # Tiered V1/V2/V3 portfolio construction
@@ -112,6 +186,33 @@ mt5/Experts/
     Generated/
       Contract.mqh                   # Generated from website SSOT contract (enums, validation)
 ```
+
+### Strategy Lifecycle Abstraction
+1. Introduce a lifecycle dispatch layer in `StrategyRegistry` so strategy resolution returns both:
+   - strategy variant/manifests (`family`, `version`, configured blocks)
+   - `lifecycle_type` (execution lifecycle contract)
+2. `Orchestrator` dispatches to the resolved lifecycle module based on strategy config, instead of assuming one universal pipeline for all strategies.
+3. Lifecycle modules own entry/exit/position-management behavior, while sharing common infrastructure:
+   - `BrokerAdapter`
+   - `RiskBudgetEngine`
+   - `SizingEngine`
+   - `TelemetryAgent`
+   - `StateStore`
+   - `AuditLog`
+   - `Dashboard`
+4. Initial lifecycle types:
+   - `WeeklyBasketLifecycle`:
+     - Scope: `Universal V1/V2/V3`, `Tiered V1/V2/V3`
+     - Flow: COT/sentiment signal → `PortfolioPlanEngine` → `EntryEngine` → `BasketManager`
+     - Responsibilities: basket TP/trailing, weekly reconcile, Friday-Sunday rollover
+   - `IntradayLifecycle`:
+     - Scope: `Katarakti Phase 2`, `Katarakti Lite`, future day-trade strategies
+     - Flow: `SessionRange` builder → `SweepDetection` → `PerTradeManager`
+     - Responsibilities: ATR-based per-trade exits, no basket grouping, no weekly rollover
+   - `CryptoPerpsLifecycle`:
+     - Scope: `Bitget V2`, `Bitget V3`, future crypto strategies
+     - Flow: `SessionRange` → Handshake/SustainedDeviation → `ScalingManager`
+     - Responsibilities: milestone-based leverage scaling, trailing stops, week-close
 
 ### 4A) Strategy Composition Design (Future-Proof)
 1. Separate **execution profile** from **portfolio strategy**:
@@ -393,6 +494,12 @@ Payload: {
 3. Ensure trading path works even if telemetry/UI fails.
 4. Ship to 50 accounts, monitor 1 week.
 
+### Phase 5.5: Deploy Poseidon Core (Rule Engine Monitoring)
+1. Deploy deterministic Poseidon Core services for 24/7 monitoring across all EA/bot instances.
+2. Enable heartbeat watchdog, execution verification, sizing/PnL anomaly checks, latency and version-drift checks.
+3. Wire self-healing escalation ladder (`retry -> restart -> kill-switch -> Telegram`) with full audit logging.
+4. Run in shadow mode first, then enable autonomous actions per account policy.
+
 ### Phase 6: Website Service Build-out (Parallel)
 1. Build account registry service (track all EA instances, versions, health).
 2. Build policy distribution service (push client-specific configs to EAs).
@@ -407,6 +514,12 @@ Payload: {
 2. Remove dead code and duplicated logic.
 3. Final parity report across all accounts.
 4. Signoff and rollout to all production accounts.
+
+### Phase 8: Layer Poseidon Intelligence (AI Reasoning + Reporting)
+1. Add Poseidon Intelligence on top of Poseidon Core using self-discovered API/database context.
+2. Enable anomaly reasoning and cross-account pattern analysis workflows.
+3. Enable daily/weekly Telegram reporting for operations and strategy performance.
+4. Add recommendation loop for strategy/policy improvements with human approval controls.
 
 ## 8) Quality Gates Per Phase
 1. **Compile gate**: EA compile must pass with zero warnings.
@@ -452,27 +565,145 @@ Payload: {
 4. No direct order placement path from LLM.
 5. LLM advisory outputs logged for audit trail.
 
-## 12) Open Decisions for CTO + Claude Review
-1. API security contract: endpoint auth model, request signing (HMAC), nonce/timestamp replay protection, and key rotation policy.
-2. Version governance precedence: exact rule for `pinned_ea_version` vs `auto_upgrade_enabled` (pinned must override auto-upgrade).
-3. Canonical trading calendar policy: ET/DST handling, Friday/Sunday rollover windows, and holiday/session exceptions.
-4. Operational SLOs: heartbeat SLA, alert thresholds, incident response windows, RTO/RPO targets.
-5. Final contract versioning scheme (`semver` vs date-based vs hash-based).
-6. Event retention policy and archival cadence (hot storage vs cold archive).
-7. Required minimum telemetry for production accounts (heartbeat interval, event sampling).
-8. Broker-profile policy packs and override hierarchy (global → client tier → account).
-9. Release cadence for refactor phases during live operations (weekly? bi-weekly?).
-10. Client onboarding workflow (how to add new account + VPS provisioning).
-11. Cross-account risk limit policy (max exposure per currency, model, asset class).
-12. Kill-switch activation criteria (what triggers emergency liquidate?).
+## 12) API Security Contract
+**Status:** Resolves former Open Decision #1 (API security contract).
 
-## 13) Deliverables Checklist
+### Authentication Model: Token + HMAC-SHA256 with Canonical Request Signing
+Every request from an EA to the website includes:
+- `x-mt5-token` (account identifier)
+- `x-mt5-key-id` (signing key version identifier)
+- `x-mt5-timestamp` (Unix epoch seconds, UTC)
+- `x-mt5-nonce` (unique request ID for mutating/write routes only; omitted for read-only GET)
+- `x-mt5-signature` (HMAC-SHA256 over canonical request string)
+
+Canonical request string format:
+```text
+METHOD\n
+PATH\n
+QUERY_STRING\n
+TIMESTAMP\n
+NONCE\n
+SHA256(REQUEST_BODY)
+```
+
+Where:
+- `METHOD` = uppercase HTTP method (`GET`, `POST`)
+- `PATH` = request path (e.g., `/api/mt5/push`)
+- `QUERY_STRING` = sorted query parameters (empty string if none)
+- `TIMESTAMP` = `x-mt5-timestamp`
+- `NONCE` = `x-mt5-nonce` (empty string for read-only routes)
+- `SHA256(REQUEST_BODY)` = hex-encoded SHA-256 hash of raw request body (use empty-body hash for GET with no body)
+
+Signature:
+- `HMAC-SHA256(account_secret, canonical_string)`
+
+### Server-Side Verification Algorithm
+For each incoming request:
+1. Extract `x-mt5-token`, `x-mt5-key-id`, `x-mt5-timestamp`, `x-mt5-nonce`, `x-mt5-signature`.
+2. Reject if required headers are missing (`400`).
+3. Look up account by token. Reject if not found (`401`).
+4. Look up signing key by `key_id`. Reject if unknown or revoked (`401`).
+5. Validate timestamp is within `±60s` of server time. Reject if stale (`401`, `REQUEST_EXPIRED`).
+6. For write endpoints, validate nonce has not been seen in TTL cache (`60-120s` window). Reject duplicate (`409`, `DUPLICATE_REQUEST`). Store nonce on success.
+7. Rebuild canonical string, compute expected HMAC, and constant-time compare against provided signature. Reject mismatch (`401`, `INVALID_SIGNATURE`).
+8. For telemetry push (`/api/mt5/events`), additionally require unique `event_id` in payload and reject duplicates (`409`, `DUPLICATE_EVENT`).
+9. If all checks pass, continue to route handler.
+
+Error codes:
+- `MISSING_AUTH_HEADERS` (`400`)
+- `UNKNOWN_ACCOUNT` (`401`)
+- `UNKNOWN_KEY_ID` (`401`)
+- `REVOKED_KEY` (`401`)
+- `REQUEST_EXPIRED` (`401`)
+- `DUPLICATE_REQUEST` (`409`)
+- `DUPLICATE_EVENT` (`409`)
+- `INVALID_SIGNATURE` (`401`)
+- `IP_NOT_ALLOWED` (`403`) when IP allowlisting is enabled
+
+### Replay Protection
+1. Read-only endpoints (`GET /api/mt5/signals`, `/api/mt5/policy`, `/api/mt5/kill-switch`, `/api/mt5/version-check`):
+   - timestamp window only (`±60s`)
+   - no nonce required
+2. Write endpoints (`POST /api/mt5/events`, `/api/mt5/heartbeat`, `/api/mt5/positions-snapshot`):
+   - timestamp window (`±60s`) + nonce uniqueness via short-TTL in-memory cache (`120s`)
+   - no database writes for nonce tracking
+3. Telemetry push (`/api/mt5/events`):
+   - enforce unique `event_id`
+   - reject duplicate `event_id` with `409`
+
+### Key Rotation: Dual-Key Rolling Model
+Each account has two key slots (`primary`, `secondary`); server accepts valid signatures from either active key.
+
+Key record schema:
+- `account_id`, `key_id`, `key_slot` (`primary|secondary`), `encrypted_secret`, `created_at`, `expires_at`, `revoked_at`
+
+Rotation state machine:
+1. `STEADY`: only primary active, secondary empty.
+2. `ROTATING`: new secondary generated; both keys valid while EA picks up new key.
+3. `PROMOTED`: secondary promoted to primary; old primary enters grace (`7 days`).
+4. `EXPIRED`: old key rejected after grace period.
+
+Rotation cadence:
+- every `90 days`
+- automated reminder via Poseidon
+- manual trigger via admin API
+
+Immediate revoke path:
+- admin may set `revoked_at` immediately for any key (compromise response)
+- immediate revoke bypasses grace period
+
+### Transport Security
+1. HTTPS enforced (`TLS 1.2+`) for all EA↔Website calls.
+2. Strict host validation: EA must validate certificate hostname.
+3. IP allowlisting is optional defense-in-depth at edge/middleware, not primary auth.
+4. Primary protection remains token + HMAC + freshness checks.
+5. If allowlisting enabled, reject unknown IP with `403` (`IP_NOT_ALLOWED`) before auth processing.
+
+### Credential Storage
+Server-side:
+1. Store signing secrets encrypted with `AES-256-GCM` using envelope encryption.
+2. Keep encryption key in environment (`MT5_SECRET_ENCRYPTION_KEY`), never in database.
+3. Secrets remain recoverable for HMAC verification (not hashed).
+4. Keep key metadata (`key_id`, slot, timestamps, revoke status) in plaintext columns for lookup/indexing.
+
+EA-side phased policy:
+1. Phase 1 (dev/canary, Freedom-controlled VPS): EA input parameter allowed.
+2. Phase 2 (institutional/client accounts): encrypted file on VPS with per-machine decryption key; EA decrypts on init; secret not exposed in MT5 terminal UI.
+
+### MQL5 Implementation Notes
+MQL5 native primitives are sufficient:
+- `CryptEncode(CRYPT_HMAC_SHA256, ...)` for request signing
+- `CryptEncode(CRYPT_HASH_SHA256, ...)` for request body hash
+- `WebRequest()` for HTTPS calls with custom headers
+
+No external libraries required for signing.
+
+## 13) Open Decisions for CTO + Claude Review
+1. Version governance precedence: exact rule for `pinned_ea_version` vs `auto_upgrade_enabled` (pinned must override auto-upgrade).
+2. Canonical trading calendar policy: ET/DST handling, Friday/Sunday rollover windows, and holiday/session exceptions.
+3. Operational SLOs: heartbeat SLA, alert thresholds, incident response windows, RTO/RPO targets.
+4. Final contract versioning scheme (`semver` vs date-based vs hash-based).
+5. Event retention policy and archival cadence (hot storage vs cold archive).
+6. Required minimum telemetry for production accounts (heartbeat interval, event sampling).
+7. Broker-profile policy packs and override hierarchy (global → client tier → account).
+8. Release cadence for refactor phases during live operations (weekly? bi-weekly?).
+9. Client onboarding workflow (how to add new account + VPS provisioning).
+10. Cross-account risk limit policy (max exposure per currency, model, asset class).
+11. Kill-switch activation criteria (what triggers emergency liquidate?).
+
+## 14) Deliverables Checklist
 
 ### Core Infrastructure
 - [ ] `contracts/mt5_event_contract.json` (contract source)
 - [ ] TS and MQL generated contract artifacts + CI validation
 - [ ] New event tables + migrations (`mt5_decision_events`, `mt5_position_lifecycle_events`, etc.)
 - [ ] API contract validation middleware
+- [ ] API security middleware: canonical request reconstruction + constant-time HMAC verification
+- [ ] Nonce replay TTL cache for write endpoints (`120s`) + `DUPLICATE_REQUEST` handling
+- [ ] Telemetry `event_id` idempotency enforcement + `DUPLICATE_EVENT` handling
+- [ ] Dual-key signing key store + rotation/revoke admin API (`primary`/`secondary`, `key_id`)
+- [ ] Secret encryption service (`AES-256-GCM` envelope encryption) with `MT5_SECRET_ENCRYPTION_KEY`
+- [ ] Optional IP allowlisting middleware toggle + `IP_NOT_ALLOWED` handling
 
 ### EA Modules
 - [ ] `RolloverEngine.mqh` with parity tests
@@ -483,6 +714,7 @@ Payload: {
 - [ ] `BrokerAdapter.mqh` + `StateStore.mqh` with recovery tests
 - [ ] `TelemetryAgent.mqh` + `Dashboard.mqh` isolated from trading logic
 - [ ] Main EA reduced to orchestration (<500 lines)
+- [ ] MQL5 canonical signing utility (body hash + canonical string + HMAC headers: token/key-id/timestamp/nonce/signature)
 
 ### Website Services
 - [ ] Account registry service (track EA instances, versions, health)
@@ -501,7 +733,7 @@ Payload: {
 - [ ] Client onboarding guide
 - [ ] Version upgrade procedure
 
-## 14) Recovery & Reconnect Protocol
+## 15) Recovery & Reconnect Protocol
 
 ### On EA Init (or after crash/reconnect)
 1. EA queries website for current state:
@@ -536,7 +768,7 @@ Payload: {
 4. If mismatch detected, server instructs close or keep per position.
 5. EA logs recovery event with pre-crash state snapshot.
 
-## 15) Version Control & Deployment
+## 16) Version Control & Deployment
 
 ### Per-Account Version Pinning
 Website tracks EA version per account:
@@ -566,7 +798,7 @@ Response includes: required_ea_version, deprecated_version_list
 5. If stable: promote to prod tier (website updates `required_ea_version`).
 6. Old version accounts auto-upgrade on next init (if `auto_upgrade_enabled`).
 
-## 16) Operations Dashboard (Website)
+## 17) Operations Dashboard (Website)
 
 ### Account Health Grid
 Real-time view of all EA instances:
@@ -609,7 +841,7 @@ Global:
 - Force upgrade to specific version
 ```
 
-## 17) Website Service Architecture
+## 18) Website Service Architecture
 
 ### Required Services (Parallel to EA Refactor)
 
@@ -655,7 +887,7 @@ Global:
 - Best-execution evidence (capture broker quotes at order time)
 - Regulatory audit export (complete decision timeline, immutable)
 
-## 18) Failure Modes & Runbooks
+## 19) Failure Modes & Runbooks
 
 ### 1. EA Crashes Mid-Rollover
 **Detection**: heartbeat missing for >2 min

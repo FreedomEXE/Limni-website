@@ -14,7 +14,10 @@
 
 import { queryOne } from "@/lib/db";
 import type { StrategySummary } from "@/components/performance/StrategyPerformanceSummary";
-import { readKataraktiMarketSnapshots } from "@/lib/performance/kataraktiHistory";
+import {
+  readKataraktiMarketSnapshots,
+  readKataraktiMarketSnapshotsByVariant,
+} from "@/lib/performance/kataraktiHistory";
 
 type TradeAgg = {
   total_trades: number | string;
@@ -50,6 +53,14 @@ const STRATEGY_CONFIGS: readonly StrategyConfig[] = [
     status: "LIVE",
     fallbackTable: "bitget_bot_trades",
     botId: "bitget_perp_v2",
+  },
+  {
+    market: "crypto_futures",
+    name: "Katarakti v3 (Liq Sweep)",
+    href: "/automation/bots/bitget-v3",
+    status: "BACKTEST",
+    fallbackTable: "bitget_bot_trades",
+    botId: "katarakti_v3_liq_sweep",
   },
   {
     market: "mt5_forex",
@@ -88,10 +99,19 @@ function hasAggregate(
 }
 
 export async function readBotStrategySummaries(): Promise<StrategySummary[]> {
-  const snapshotsByMarket = await readKataraktiMarketSnapshots();
+  const [snapshotsByMarket, v3SnapshotsByMarket] = await Promise.all([
+    readKataraktiMarketSnapshots(),
+    readKataraktiMarketSnapshotsByVariant("v3"),
+  ]);
+  const resolveSnapshotForConfig = (config: StrategyConfig) => {
+    if (config.botId === "katarakti_v3_liq_sweep") {
+      return v3SnapshotsByMarket.crypto_futures;
+    }
+    return snapshotsByMarket[config.market];
+  };
   const snapshotSummaries = STRATEGY_CONFIGS
     .map((config) => {
-      const snapshot = snapshotsByMarket[config.market];
+      const snapshot = resolveSnapshotForConfig(config);
       if (!snapshot) return null;
       return {
         market: config.market,
@@ -112,7 +132,7 @@ export async function readBotStrategySummaries(): Promise<StrategySummary[]> {
 
   const aggregates: StrategyAggregateResult[] = await Promise.all(
     STRATEGY_CONFIGS
-      .filter((config) => !snapshotsByMarket[config.market])
+      .filter((config) => !resolveSnapshotForConfig(config))
       .map(async (config) => ({
       config,
       aggregate: await readTradeAggregateForStrategy(config),

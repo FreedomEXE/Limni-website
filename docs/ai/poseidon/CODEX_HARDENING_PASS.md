@@ -188,6 +188,8 @@ Note: Node.js is single-threaded so true reentrancy in the pthread sense doesn't
 
 **Problem**: `PROTEUS_STATE.md` is committed to git. If repo access broadens, trading positions and psychological notes are exposed.
 
+> Resolution update (2026-03-02): Runtime state is now authoritative in `poseidon_kv`. File-based state is seed/fallback only. `PROTEUS_STATE.md` is retained as a committed seed template, while runtime JSON state files should remain non-authoritative and excluded from runtime persistence workflows.
+
 **Fix**: Add `PROTEUS_STATE.md` to `.gitignore`. The state file lives on the Render server's filesystem — it doesn't need to be in git. Archives similarly should be gitignored since they contain the same sensitive data.
 
 Add to `.gitignore`:

@@ -511,9 +511,10 @@ export async function GET(request: NextRequest) {
       ), { annualizeSharpe }),
     };
 
-    const [coreSnapshotsByMarket, liteSnapshotsByMarket] = await Promise.all([
+    const [coreSnapshotsByMarket, liteSnapshotsByMarket, v3SnapshotsByMarket] = await Promise.all([
       readKataraktiMarketSnapshotsByVariant("core"),
       readKataraktiMarketSnapshotsByVariant("lite"),
+      readKataraktiMarketSnapshotsByVariant("v3"),
     ]);
 
     const emptyKataraktiMetrics: ComparisonMetrics = {
@@ -589,6 +590,30 @@ export async function GET(request: NextRequest) {
                 {
                   annualizeSharpe,
                   // buildKataraktiPeriodMetrics annualizes when period is "all".
+                  sharpeAlreadyAnnualized: annualizeSharpe,
+                },
+              )
+            : emptyKataraktiMetrics,
+        },
+        v3: {
+          crypto_futures: v3SnapshotsByMarket.crypto_futures
+            ? finalizeComparisonMetrics(
+                toKataraktiComparisonMetrics(
+                  buildKataraktiPeriodMetrics(v3SnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
+                ) ?? emptyKataraktiMetrics,
+                {
+                  annualizeSharpe,
+                  sharpeAlreadyAnnualized: annualizeSharpe,
+                },
+              )
+            : emptyKataraktiMetrics,
+          mt5_forex: v3SnapshotsByMarket.mt5_forex
+            ? finalizeComparisonMetrics(
+                toKataraktiComparisonMetrics(
+                  buildKataraktiPeriodMetrics(v3SnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
+                ) ?? emptyKataraktiMetrics,
+                {
+                  annualizeSharpe,
                   sharpeAlreadyAnnualized: annualizeSharpe,
                 },
               )

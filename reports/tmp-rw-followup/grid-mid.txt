@@ -1,0 +1,72 @@
+/-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------/
+
+Weeks tested: [2026-01-19, 2026-01-26, 2026-02-02, 2026-02-09, 2026-02-16]
+Start equity: $10000.00
+Risk per trade: 1.00%
+Max concurrent positions: 8
+Max portfolio risk: 8.00%
+
+Range-width exit multipliers:
+- RW_HARD_STOP_X=1.25
+- RW_BE_TRIGGER_X=0.4
+- RW_LOCK1_TRIGGER_X=0.8, RW_LOCK1_LOCK_X=0.25
+- RW_LOCK2_TRIGGER_X=1.25, RW_LOCK2_LOCK_X=0.65
+- RW_TRAIL_ACTIVATE_X=1.75, RW_TRAIL_OFFSET_X=0.6
+
+=== KATARAKTI V3 RANGE-WIDTH NORMALIZED ===
+Config: SUSTAINED_N=45, SWEEP_RANGE_MULT=0.0
+
+Per-asset-class breakdown:
+| Asset Class | Pairs | Trades | WR% | PnL ($) | PF  | Avg RW |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| FX | 28 | 59 | 32.20 | +$534.89 | 1.78 | 0.003806 |
+| Indices | 3 | 18 | 33.33 | +$109.31 | 1.53 | 309.711111 |
+| Commodities | 3 | 0 | 0.00 | +$0.00 | 0.00 | 0.000000 |
+| Crypto | 2 | 20 | 45.00 | +$129.83 | 1.35 | 960.979000 |
+
+Top 10 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) | Avg Range Width |
+| --- | ---: | ---: | ---: | ---: |
+| GBPAUD | 9 | 66.67 | +$318.65 | 0.007821 |
+| AUDNZD | 11 | 36.36 | +$239.49 | 0.002814 |
+| SPXUSD | 12 | 33.33 | +$168.88 | 41.858333 |
+| AUDCAD | 5 | 20.00 | +$156.28 | 0.005000 |
+| BTCUSD | 8 | 37.50 | +$133.69 | 2285.087500 |
+| AUDUSD | 4 | 50.00 | +$51.06 | 0.002850 |
+| EURCAD | 5 | 20.00 | +$5.67 | 0.005232 |
+| EURUSD | 2 | 0.00 | +$0.00 | 0.003870 |
+| ETHUSD | 12 | 50.00 | -$3.86 | 78.240000 |
+| NIKKEIUSD | 6 | 33.33 | -$59.57 | 845.416667 |
+
+Bottom 5 pairs by PnL:
+| Pair | Trades | WR% | PnL ($) | Avg Range Width |
+| --- | ---: | ---: | ---: | ---: |
+| EURGBP | 6 | 33.33 | -$89.75 | 0.001383 |
+| USDCAD | 7 | 14.29 | -$83.83 | 0.002966 |
+| AUDCHF | 10 | 20.00 | -$62.67 | 0.002386 |
+| NIKKEIUSD | 6 | 33.33 | -$59.57 | 845.416667 |
+| ETHUSD | 12 | 50.00 | -$3.86 | 78.240000 |
+
+Exit step distribution:
+| Step | Count | %   |
+| --- | ---: | ---: |
+| hard_stop | 10 | 10.31 |
+| breakeven_stop | 44 | 45.36 |
+| lock1_stop | 16 | 16.49 |
+| lock2_stop | 10 | 10.31 |
+| trailing_stop | 4 | 4.12 |
+| week_close | 13 | 13.40 |
+
+Overall:
+| N | Trades | WR% | Total PnL | PF | Max DD% | Avg RW (pips/points) |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 45 | 97 | 35.05 | +$774.03 | 1.61 | 3.43 | 255.614480 |
+
+Combined summary:
+| N | Trades | WR% | Total PnL | PF | Max DD% | Avg RW (pips/points) |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 45 | 97 | 35.05 | +$774.03 | 1.61 | 3.43 | 255.614480 |
+
+Wrote C:\Users\User\Documents\GitHub\limni-website\reports\katarakti-v3-rangewidth-latest.txt

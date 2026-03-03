@@ -16,9 +16,15 @@
 
 ## Deities (Poseidon / Nereus / Triton)
 
-- [ ] Poseidon god scheduler — silent since deploy, likely broken. Debug on Render logs
-- [ ] Nereus briefings — not firing. Check schedule, cron logic, and Render logs
-- [ ] Triton alerts — same. Verify it starts and runs post-deploy
+- [x] Poseidon god scheduler — startup schedule logging added, failure alerting added, and successful run telemetry persisted to `poseidon_kv` (`poseidon_last_run`)
+- [x] Nereus briefings — UTC schedule verification + startup logs added, failure alerting added, and successful run telemetry persisted to `poseidon_kv` (`nereus_last_run`)
+- [x] Triton alerts — polling startup verification added, monitor-failure surfacing + alerting added, and successful cycle telemetry persisted to `poseidon_kv` (`triton_last_run`)
+
+## Truth-Source Authority (Resolved 2026-03-02)
+
+- [x] Static memory files now explicitly marked as non-authoritative for operational facts
+- [x] System prompt now enforces live-query-first rule for current platform/account/trade state
+- [x] Runtime state policy aligned: DB (`poseidon_kv`) is authoritative, state files are seed/fallback only
 
 ## API Costs
 

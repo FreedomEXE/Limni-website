@@ -1,3 +1,6 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
 import { NextResponse } from "next/server";
 
 import { ensureMt5AccountSchema, upsertMt5Account } from "@/lib/mt5Store";
@@ -5,6 +8,8 @@ import type { Mt5AccountSnapshot, Mt5LotMapEntry } from "@/lib/mt5Store";
 import { isReconstructionEnabledForAccount } from "@/lib/config/eaFeatures";
 import { emitReconstructionEvent } from "@/lib/monitoring/reconstructionMetrics";
 import { validateMt5License } from "@/lib/mt5Licensing";
+import { LegacyPushSchema } from "@/lib/mt5/contracts";
+import { toValidationResponse, validateMt5Payload } from "@/lib/mt5/validatePayload";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -237,6 +242,12 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
+
+  const payloadValidation = validateMt5Payload(LegacyPushSchema, payload);
+  if (!payloadValidation.ok) {
+    return NextResponse.json(toValidationResponse(payloadValidation.error), { status: 400 });
+  }
+  payload = payloadValidation.data as unknown as Record<string, unknown>;
 
   const accountId = parseString(payload.account_id);
   if (!accountId) {

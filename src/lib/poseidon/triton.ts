@@ -37,6 +37,7 @@ import {
   type TritonMonitorName,
 } from "@/lib/poseidon/triton-monitors";
 import { sendTelegramText } from "@/lib/poseidon/telegram-delivery";
+import { kvSet } from "@/lib/poseidon/state-db";
 
 type TritonPersistedState = {
   version: number;
@@ -173,6 +174,7 @@ function shouldDeliverAlert(alert: TritonAlert, behavior: BehaviorState): boolea
 
 async function runMonitors(sendAlerts: boolean, telegram?: Telegram, ownerId?: number): Promise<void> {
   const pendingAlerts: TritonAlert[] = [];
+  const monitorFailures: string[] = [];
 
   for (const monitorName of TRITON_MONITOR_ORDER) {
     try {
@@ -185,8 +187,16 @@ async function runMonitors(sendAlerts: boolean, telegram?: Telegram, ownerId?: n
       }
     } catch (error) {
       console.error(`[triton] monitor failed: ${monitorName}`, error);
+      const message = error instanceof Error ? error.message : String(error);
+      monitorFailures.push(`${monitorName}: ${message}`);
     }
   }
+
+  if (monitorFailures.length > 0) {
+    throw new Error(`Monitor failures: ${monitorFailures.join(" | ").slice(0, 500)}`);
+  }
+
+  await kvSet("triton_last_run", new Date().toISOString()).catch(() => undefined);
 
   if (!sendAlerts || !telegram || typeof ownerId !== "number") {
     return;
@@ -267,6 +277,11 @@ export async function startTriton(telegram: Telegram, ownerId: number): Promise<
         const message = error instanceof Error ? error.message : String(error);
         lastPollError = message;
         console.error("[triton] poll error:", error);
+        void sendTelegramText(
+          telegram,
+          ownerId,
+          `⚠️ [triton] Alert cycle failed: ${message.slice(0, 400)}`,
+        ).catch(() => undefined);
       })
       .finally(() => {
         lastPollDurationMs = Date.now() - startedMs;
@@ -283,7 +298,7 @@ export async function startTriton(telegram: Telegram, ownerId: number): Promise<
   }, SAVE_INTERVAL_MS);
   saveInterval.unref();
 
-  console.log("[triton] Monitoring started (30s poll interval)");
+  console.log("[triton] Polling started - interval: 30s");
 }
 
 export function stopTriton(): void {

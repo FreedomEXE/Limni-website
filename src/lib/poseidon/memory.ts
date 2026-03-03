@@ -62,6 +62,7 @@ const SESSION_STATE_PROTOCOL = [
   "Your session state is loaded into every conversation and is your long-term memory.",
   "Check session state and history before saying you do not remember something.",
   "If context is genuinely missing, say you do not have that specific information.",
+  "RULE: When answering current system-state questions (bot status, account health, trade history, strategy configs, market data), ALWAYS query live tools. Never rely on static knowledge files for operational facts.",
 ].join("\n");
 const staticPromptCache = new Map<string, StaticPromptCacheEntry>();
 

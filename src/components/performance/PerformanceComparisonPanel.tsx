@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 type PerformanceStyle = "universal" | "tiered" | "katarakti";
 type KataraktiMarket = "crypto_futures" | "mt5_forex";
-type KataraktiVariant = "core" | "lite";
+type KataraktiVariant = "core" | "lite" | "v3";
 
 type ComparisonMetrics = {
   totalReturn: number;
@@ -48,6 +48,10 @@ type ComparisonData = {
       crypto_futures: ComparisonMetrics;
       mt5_forex: ComparisonMetrics;
     };
+    v3: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
   };
 };
 
@@ -84,7 +88,7 @@ export default function PerformanceComparisonPanel() {
   const initialMarket: KataraktiMarket =
     requestedMarket === "mt5_forex" ? "mt5_forex" : "crypto_futures";
   const initialVariant: KataraktiVariant =
-    requestedVariant === "lite" ? "lite" : "core";
+    requestedVariant === "lite" ? "lite" : requestedVariant === "v3" ? "v3" : "core";
   const [activeTab, setActiveTab] = useState<"v1" | "v2" | "v3">(initialTab);
   const [activeStyle, setActiveStyle] = useState<PerformanceStyle>(initialStyle);
   const [activeMarket, setActiveMarket] = useState<KataraktiMarket>(initialMarket);
@@ -133,6 +137,10 @@ export default function PerformanceComparisonPanel() {
       crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
       mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
     },
+    v3: {
+      crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+      mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
+    },
   };
   const metricSet = activeStyle === "tiered" ? tieredMetrics : universalMetrics;
   const v1Metrics = metricSet.v1;
@@ -148,13 +156,21 @@ export default function PerformanceComparisonPanel() {
   const activeVersionLabel = activeTab === "v1" ? "V1" : activeTab === "v2" ? "V2" : "V3";
   const activeLabel = activeStyle === "katarakti"
     ? activeMarket === "crypto_futures"
-      ? activeVariant === "lite" ? "Katarakti Crypto Lite" : "Katarakti (Crypto Futures)"
-      : activeVariant === "lite" ? "Katarakti CFD Lite" : "Katarakti (CFD)"
+      ? activeVariant === "lite"
+        ? "Katarakti Crypto Lite"
+        : activeVariant === "v3"
+          ? "Katarakti v3 (Liq Sweep)"
+          : "Katarakti (Crypto Futures)"
+      : activeVariant === "lite"
+        ? "Katarakti CFD Lite"
+        : activeVariant === "v3"
+          ? "Katarakti CFD v3 (Pending)"
+          : "Katarakti (CFD)"
     : activeStyle === "tiered"
       ? `Tiered ${activeVersionLabel}`
       : `Universal ${activeVersionLabel}`;
   const activeBadge = activeStyle === "katarakti"
-    ? `${activeMarket === "crypto_futures" ? "Crypto Futures" : "CFD"} ${activeVariant === "lite" ? "Lite" : "Core"}`
+    ? `${activeMarket === "crypto_futures" ? "Crypto Futures" : "CFD"} ${activeVariant === "lite" ? "Lite" : activeVariant === "v3" ? "v3" : "Core"}`
     : activeStyle === "tiered"
       ? activeTab === "v2"
         ? "Tiered (2 tiers)"
@@ -169,9 +185,13 @@ export default function PerformanceComparisonPanel() {
       ? activeMarket === "crypto_futures"
         ? activeVariant === "lite"
           ? "rounded-2xl border border-sky-400/40 bg-sky-500/10 p-4"
+          : activeVariant === "v3"
+            ? "rounded-2xl border border-fuchsia-400/40 bg-fuchsia-500/10 p-4"
           : "rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4"
         : activeVariant === "lite"
           ? "rounded-2xl border border-cyan-400/40 bg-cyan-500/10 p-4"
+          : activeVariant === "v3"
+            ? "rounded-2xl border border-violet-400/40 bg-violet-500/10 p-4"
           : "rounded-2xl border border-teal-400/40 bg-teal-500/10 p-4"
       : activeTab === "v1"
       ? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4"
@@ -183,9 +203,13 @@ export default function PerformanceComparisonPanel() {
       ? activeMarket === "crypto_futures"
         ? activeVariant === "lite"
           ? "text-sky-900 dark:text-sky-100"
+          : activeVariant === "v3"
+            ? "text-fuchsia-900 dark:text-fuchsia-100"
           : "text-amber-900 dark:text-amber-100"
         : activeVariant === "lite"
           ? "text-cyan-900 dark:text-cyan-100"
+          : activeVariant === "v3"
+            ? "text-violet-900 dark:text-violet-100"
           : "text-teal-900 dark:text-teal-100"
       : activeTab === "v1"
       ? "text-[var(--foreground)]"
@@ -197,9 +221,13 @@ export default function PerformanceComparisonPanel() {
       ? activeMarket === "crypto_futures"
         ? activeVariant === "lite"
           ? "text-sky-700 dark:text-sky-300"
+          : activeVariant === "v3"
+            ? "text-fuchsia-700 dark:text-fuchsia-300"
           : "text-amber-700 dark:text-amber-300"
         : activeVariant === "lite"
           ? "text-cyan-700 dark:text-cyan-300"
+          : activeVariant === "v3"
+            ? "text-violet-700 dark:text-violet-300"
           : "text-teal-700 dark:text-teal-300"
       : activeTab === "v1"
       ? "text-[color:var(--muted)]"
@@ -211,9 +239,13 @@ export default function PerformanceComparisonPanel() {
       ? activeMarket === "crypto_futures"
         ? activeVariant === "lite"
           ? "rounded-full bg-sky-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-sky-800 dark:text-sky-200"
+          : activeVariant === "v3"
+            ? "rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-fuchsia-800 dark:text-fuchsia-200"
           : "rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-amber-800 dark:text-amber-200"
         : activeVariant === "lite"
           ? "rounded-full bg-cyan-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-cyan-800 dark:text-cyan-200"
+          : activeVariant === "v3"
+            ? "rounded-full bg-violet-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-violet-800 dark:text-violet-200"
           : "rounded-full bg-teal-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-teal-800 dark:text-teal-200"
       : activeTab === "v1"
       ? "rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]"
@@ -227,7 +259,9 @@ export default function PerformanceComparisonPanel() {
     kataraktiMetrics.core.crypto_futures.weeks > 0 ||
     kataraktiMetrics.core.mt5_forex.weeks > 0 ||
     kataraktiMetrics.lite.crypto_futures.weeks > 0 ||
-    kataraktiMetrics.lite.mt5_forex.weeks > 0;
+    kataraktiMetrics.lite.mt5_forex.weeks > 0 ||
+    kataraktiMetrics.v3.crypto_futures.weeks > 0 ||
+    kataraktiMetrics.v3.mt5_forex.weeks > 0;
   const sharpeLabel = activeMetrics.sharpeAnnualized ? "Sharpe (Ann.)" : "Sharpe (Wk)";
   const sharpeGoodThreshold = activeMetrics.sharpeAnnualized
     ? ANNUALIZED_SHARPE_GOOD_THRESHOLD
@@ -347,7 +381,7 @@ export default function PerformanceComparisonPanel() {
               CFD
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => setVariant("core")}
@@ -369,6 +403,17 @@ export default function PerformanceComparisonPanel() {
               }`}
             >
               Lite
+            </button>
+            <button
+              type="button"
+              onClick={() => setVariant("v3")}
+              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                activeVariant === "v3"
+                  ? "border-fuchsia-400/50 bg-fuchsia-500/10 text-fuchsia-800 dark:text-fuchsia-200"
+                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-fuchsia-400/50"
+              }`}
+            >
+              v3
             </button>
           </div>
         </div>

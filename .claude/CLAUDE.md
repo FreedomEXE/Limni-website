@@ -154,3 +154,14 @@ npm run bot:bitget   # Start Bitget bot (v2)
 - **Extensive documentation is MANDATORY** for anything we build that would require it. If docs don't already exist for a system/feature and they should, create them proactively.
 - Bot strategies, architecture decisions, data pipelines, and API integrations must all have dedicated docs.
 - Keep docs in `docs/` folder, organized by domain (e.g., `docs/bots/`, `docs/api/`, `docs/architecture/`).
+
+---
+
+## Active Work: EA Modular Refactor (IN PROGRESS)
+
+> **Read these files before resuming work:**
+> - `docs/plan.md` — Master architecture plan
+> - `docs/ea-refactor-progress.md` — Current progress, completed work, and next steps
+> - `docs/institutional-audit-comparison.md` — Audit findings that shaped the approach
+>
+> **Delete this section from CLAUDE.md once the refactor is complete.**

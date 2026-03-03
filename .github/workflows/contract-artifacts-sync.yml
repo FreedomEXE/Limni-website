@@ -1,0 +1,43 @@
+# -----------------------------------------------
+#   Property of Freedom_EXE  (c) 2026
+# -----------------------------------------------
+name: Contract Artifacts Sync
+
+on:
+  push:
+    paths:
+      - "contracts/**"
+      - "scripts/generate-contracts.ts"
+      - "src/lib/mt5/**"
+      - "mt5/Experts/Include/Generated/**"
+      - ".github/workflows/contract-artifacts-sync.yml"
+  pull_request:
+    paths:
+      - "contracts/**"
+      - "scripts/generate-contracts.ts"
+      - "src/lib/mt5/**"
+      - "mt5/Experts/Include/Generated/**"
+      - ".github/workflows/contract-artifacts-sync.yml"
+
+jobs:
+  verify-generated-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Regenerate contracts
+        run: npx tsx scripts/generate-contracts.ts
+
+      - name: Verify generated artifacts are committed
+        run: git diff --exit-code -- src/lib/mt5/contracts.ts mt5/Experts/Include/Generated/Contract.mqh

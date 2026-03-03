@@ -60,7 +60,7 @@ export default function PerformanceHeaderContext({
 
     const onKataraktiVariantChange = (event: Event) => {
       const custom = event as CustomEvent<KataraktiVariant>;
-      if (custom.detail === "core" || custom.detail === "lite") {
+      if (custom.detail === "core" || custom.detail === "lite" || custom.detail === "v3") {
         setKataraktiVariant(custom.detail);
       }
     };
@@ -81,7 +81,7 @@ export default function PerformanceHeaderContext({
       if (marketParam === "crypto_futures" || marketParam === "mt5_forex") {
         setKataraktiMarket(marketParam);
       }
-      if (variantParam === "core" || variantParam === "lite") {
+      if (variantParam === "core" || variantParam === "lite" || variantParam === "v3") {
         setKataraktiVariant(variantParam);
       }
     };
@@ -117,4 +117,3 @@ export default function PerformanceHeaderContext({
     </p>
   );
 }
-

@@ -7,6 +7,7 @@ process.env.DATABASE_URL =
 import fs from "node:fs";
 import path from "node:path";
 import { DateTime } from "luxon";
+import { getCanonicalWeekOpenUtc } from "../src/lib/weekAnchor";
 import { getPool, query } from "../src/lib/db";
 import { readMarketSnapshot } from "../src/lib/priceStore";
 import { PAIRS_BY_ASSET_CLASS } from "../src/lib/cotPairs";
@@ -215,13 +216,8 @@ type BaselineSummary = {
   };
 };
 
-const WEEKS = [
-  "2026-01-19T00:00:00.000Z",
-  "2026-01-26T00:00:00.000Z",
-  "2026-02-02T00:00:00.000Z",
-  "2026-02-09T00:00:00.000Z",
-  "2026-02-16T00:00:00.000Z",
-] as const;
+const WEEKS_TO_BACKTEST = Number(process.env.BACKTEST_WEEKS ?? "5");
+const WEEKS = getLastCompletedWeekOpens(WEEKS_TO_BACKTEST);
 
 const STARTING_EQUITY_USD = Number(process.env.KATARAKTI_STARTING_EQUITY_USD ?? "100000");
 const FETCH_CONCURRENCY = Number(process.env.KATARAKTI_FETCH_CONCURRENCY ?? "6");
@@ -391,6 +387,18 @@ function loadDotEnv() {
       if (!process.env[key]) process.env[key] = value;
     }
   }
+}
+
+function getLastCompletedWeekOpens(count: number) {
+  const currentWeekOpen = DateTime.fromISO(getCanonicalWeekOpenUtc(), { zone: "utc" });
+  if (!currentWeekOpen.isValid) {
+    throw new Error("Failed to resolve canonical week anchor.");
+  }
+  const out: string[] = [];
+  for (let i = count; i >= 1; i -= 1) {
+    out.push(currentWeekOpen.minus({ weeks: i }).toUTC().toISO() ?? "");
+  }
+  return out.filter(Boolean);
 }
 
 function round(value: number, digits = 6) {
@@ -2686,7 +2694,10 @@ async function main() {
 
   const report = {
     generated_utc: DateTime.utc().toISO(),
-    spec_date_utc: "2026-02-27",
+    spec_date_utc:
+      DateTime.fromISO(WEEKS[WEEKS.length - 1], { zone: "utc" })
+        .plus({ weeks: 1 })
+        .toISODate() ?? DateTime.utc().toISODate(),
     test_plan: TEST_PLAN,
     config: {
       weeks: [...WEEKS],

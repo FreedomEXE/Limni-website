@@ -1,3 +1,6 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
 import { DateTime } from "luxon";
 import { query, queryOne, transaction } from "./db";
 
@@ -1198,4 +1201,286 @@ export async function getMt5AccountById(
     console.error("Error getting MT5 account by ID:", error);
     throw error;
   }
+}
+
+export type Mt5KillSwitchState = {
+  account_id: string;
+  halt: boolean;
+  liquidate: boolean;
+  reason: string;
+  issued_by: string;
+  issued_at: string;
+  cleared_at: string | null;
+  updated_at: string;
+};
+
+export type Mt5RiskEventSeverity = "low" | "medium" | "high" | "critical";
+
+export type Mt5Heartbeat = {
+  account_id: string;
+  ts_utc: string;
+  ea_version: string;
+  state: string;
+  open_positions: number;
+  basket_pnl_pct: number;
+  equity: number;
+  errors_last_hour: number;
+};
+
+export type Mt5StaleAccount = {
+  account_id: string;
+  last_heartbeat: string;
+  minutes_stale: number;
+};
+
+async function ensureMt5SafetySchema(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS mt5_kill_switches (
+      account_id VARCHAR(50) PRIMARY KEY,
+      halt BOOLEAN NOT NULL DEFAULT FALSE,
+      liquidate BOOLEAN NOT NULL DEFAULT FALSE,
+      reason TEXT NOT NULL DEFAULT '',
+      issued_by VARCHAR(100) NOT NULL DEFAULT 'system',
+      issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      cleared_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS mt5_risk_events (
+      id SERIAL PRIMARY KEY,
+      account_id VARCHAR(50) NOT NULL,
+      event_type VARCHAR(50) NOT NULL,
+      severity VARCHAR(20) NOT NULL DEFAULT 'medium',
+      reason TEXT NOT NULL,
+      metadata JSONB DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_mt5_risk_events_account ON mt5_risk_events(account_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_mt5_risk_events_type ON mt5_risk_events(event_type)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_mt5_risk_events_created ON mt5_risk_events(created_at)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS mt5_heartbeats (
+      id SERIAL PRIMARY KEY,
+      account_id VARCHAR(50) NOT NULL,
+      ts_utc TIMESTAMPTZ NOT NULL,
+      ea_version VARCHAR(20) NOT NULL,
+      state VARCHAR(20) NOT NULL,
+      open_positions INT NOT NULL DEFAULT 0,
+      basket_pnl_pct DECIMAL(10,4) DEFAULT 0,
+      equity DECIMAL(15,2) DEFAULT 0,
+      errors_last_hour INT NOT NULL DEFAULT 0,
+      received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_mt5_heartbeats_account ON mt5_heartbeats(account_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_mt5_heartbeats_ts ON mt5_heartbeats(ts_utc)`);
+}
+
+function parseIsoDate(value: string): Date {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date();
+  }
+  return parsed;
+}
+
+export async function readMt5KillSwitch(accountId: string): Promise<Mt5KillSwitchState> {
+  await ensureMt5SafetySchema();
+  const row = await queryOne<{
+    account_id: string;
+    halt: boolean;
+    liquidate: boolean;
+    reason: string;
+    issued_by: string;
+    issued_at: Date;
+    cleared_at: Date | null;
+    updated_at: Date;
+  }>(
+    `SELECT account_id, halt, liquidate, reason, issued_by, issued_at, cleared_at, updated_at
+     FROM mt5_kill_switches
+     WHERE account_id = $1
+     LIMIT 1`,
+    [accountId],
+  );
+
+  if (!row) {
+    const nowIso = new Date(0).toISOString();
+    return {
+      account_id: accountId,
+      halt: false,
+      liquidate: false,
+      reason: "",
+      issued_by: "system",
+      issued_at: nowIso,
+      cleared_at: null,
+      updated_at: nowIso,
+    };
+  }
+
+  return {
+    account_id: row.account_id,
+    halt: row.halt,
+    liquidate: row.liquidate,
+    reason: row.reason,
+    issued_by: row.issued_by,
+    issued_at: row.issued_at.toISOString(),
+    cleared_at: row.cleared_at ? row.cleared_at.toISOString() : null,
+    updated_at: row.updated_at.toISOString(),
+  };
+}
+
+export async function upsertMt5KillSwitch(
+  accountId: string,
+  halt: boolean,
+  liquidate: boolean,
+  reason: string,
+  issuedBy: string,
+): Promise<Mt5KillSwitchState> {
+  await ensureMt5SafetySchema();
+  await query(
+    `INSERT INTO mt5_kill_switches (
+      account_id, halt, liquidate, reason, issued_by, issued_at, cleared_at, updated_at
+    ) VALUES ($1, $2, $3, $4, $5, NOW(), NULL, NOW())
+    ON CONFLICT (account_id) DO UPDATE SET
+      halt = EXCLUDED.halt,
+      liquidate = EXCLUDED.liquidate,
+      reason = EXCLUDED.reason,
+      issued_by = EXCLUDED.issued_by,
+      issued_at = NOW(),
+      cleared_at = NULL,
+      updated_at = NOW()`,
+    [accountId, halt, liquidate, reason, issuedBy],
+  );
+  return await readMt5KillSwitch(accountId);
+}
+
+export async function clearMt5KillSwitch(accountId: string): Promise<Mt5KillSwitchState> {
+  await ensureMt5SafetySchema();
+  await query(
+    `INSERT INTO mt5_kill_switches (
+      account_id, halt, liquidate, reason, issued_by, issued_at, cleared_at, updated_at
+    ) VALUES ($1, FALSE, FALSE, '', 'system', NOW(), NOW(), NOW())
+    ON CONFLICT (account_id) DO UPDATE SET
+      halt = FALSE,
+      liquidate = FALSE,
+      reason = '',
+      cleared_at = NOW(),
+      updated_at = NOW()`,
+    [accountId],
+  );
+  return await readMt5KillSwitch(accountId);
+}
+
+export async function logMt5RiskEvent(
+  accountId: string,
+  eventType: string,
+  severity: Mt5RiskEventSeverity,
+  reason: string,
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  await ensureMt5SafetySchema();
+  await query(
+    `INSERT INTO mt5_risk_events (account_id, event_type, severity, reason, metadata, created_at)
+     VALUES ($1, $2, $3, $4, $5::jsonb, NOW())`,
+    [accountId, eventType, severity, reason, JSON.stringify(metadata)],
+  );
+}
+
+export async function insertMt5Heartbeat(data: Mt5Heartbeat): Promise<void> {
+  await ensureMt5SafetySchema();
+  const tsUtc = parseIsoDate(data.ts_utc);
+
+  await query(
+    `INSERT INTO mt5_heartbeats (
+      account_id, ts_utc, ea_version, state, open_positions, basket_pnl_pct, equity, errors_last_hour, received_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+    [
+      data.account_id,
+      tsUtc,
+      data.ea_version,
+      data.state,
+      data.open_positions,
+      data.basket_pnl_pct,
+      data.equity,
+      data.errors_last_hour,
+    ],
+  );
+
+  await query(
+    `UPDATE mt5_accounts
+     SET last_sync_utc = $2, updated_at = NOW()
+     WHERE account_id = $1`,
+    [data.account_id, tsUtc],
+  );
+}
+
+export async function readLatestHeartbeat(accountId: string): Promise<Mt5Heartbeat | null> {
+  await ensureMt5SafetySchema();
+  const row = await queryOne<{
+    account_id: string;
+    ts_utc: Date;
+    ea_version: string;
+    state: string;
+    open_positions: number;
+    basket_pnl_pct: string;
+    equity: string;
+    errors_last_hour: number;
+  }>(
+    `SELECT account_id, ts_utc, ea_version, state, open_positions, basket_pnl_pct, equity, errors_last_hour
+     FROM mt5_heartbeats
+     WHERE account_id = $1
+     ORDER BY ts_utc DESC
+     LIMIT 1`,
+    [accountId],
+  );
+
+  if (!row) return null;
+  return {
+    account_id: row.account_id,
+    ts_utc: row.ts_utc.toISOString(),
+    ea_version: row.ea_version,
+    state: row.state,
+    open_positions: Number(row.open_positions ?? 0),
+    basket_pnl_pct: Number(row.basket_pnl_pct ?? 0),
+    equity: Number(row.equity ?? 0),
+    errors_last_hour: Number(row.errors_last_hour ?? 0),
+  };
+}
+
+export async function readStaleAccounts(thresholdMinutes: number): Promise<Mt5StaleAccount[]> {
+  await ensureMt5SafetySchema();
+  const safeThreshold = Number.isFinite(thresholdMinutes) && thresholdMinutes > 0
+    ? Math.floor(thresholdMinutes)
+    : 5;
+
+  const rows = await query<{
+    account_id: string;
+    last_sync_utc: Date;
+    minutes_stale: string;
+  }>(
+    `SELECT account_id,
+            last_sync_utc,
+            EXTRACT(EPOCH FROM (NOW() - last_sync_utc)) / 60.0 AS minutes_stale
+     FROM mt5_accounts
+     WHERE last_sync_utc < NOW() - make_interval(mins => $1)
+     ORDER BY last_sync_utc ASC`,
+    [safeThreshold],
+  );
+
+  return rows.map((row) => ({
+    account_id: row.account_id,
+    last_heartbeat: row.last_sync_utc.toISOString(),
+    minutes_stale: Number(row.minutes_stale),
+  }));
+}
+
+export async function readMt5AccountCount(): Promise<number> {
+  const row = await queryOne<{ total: string }>(
+    `SELECT COUNT(*)::text AS total FROM mt5_accounts`,
+  );
+  return Number(row?.total ?? 0);
 }

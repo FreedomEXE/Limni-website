@@ -87,7 +87,9 @@ function resolveKataraktiMarket(value: string | null | undefined): "crypto_futur
 }
 
 function resolveKataraktiVariant(value: string | null | undefined): KataraktiVariant {
-  return value === "lite" ? "lite" : "core";
+  if (value === "lite") return "lite";
+  if (value === "v3") return "v3";
+  return "core";
 }
 
 const KATARAKTI_MODEL_LABELS = {
@@ -127,15 +129,20 @@ function buildKataraktiGridPropsByVariantAndMarket(options: {
     market: "crypto_futures" | "mt5_forex",
     label: string,
   ) => {
-    const snapshot = options.snapshotsByVariant[variant][market];
+    const snapshot = options.snapshotsByVariant[variant]?.[market] ?? null;
     const model = snapshot
       ? buildKataraktiModelPerformance(snapshot, options.period ?? "all")
       : null;
+    const fallbackIndicator = snapshot?.fallbackLabel ? " (Core baseline)" : "";
+    const gridLabel = `${label}${fallbackIndicator}`;
+    const gridDescription = snapshot?.fallbackLabel
+      ? `${description} ${snapshot.fallbackLabel}`
+      : description;
     return {
       combined: {
         id: "combined",
-        label,
-        description,
+        label: gridLabel,
+        description: gridDescription,
         models: model ? [model] : [],
       },
       perAsset: [],
@@ -157,6 +164,10 @@ function buildKataraktiGridPropsByVariantAndMarket(options: {
     lite: {
       crypto_futures: makeGrid("lite", "crypto_futures", "Crypto Futures Lite"),
       mt5_forex: makeGrid("lite", "mt5_forex", "CFD Lite"),
+    },
+    v3: {
+      crypto_futures: makeGrid("v3", "crypto_futures", "Katarakti v3 (Liq Sweep)"),
+      mt5_forex: makeGrid("v3", "mt5_forex", "CFD v3 (Pending)"),
     },
   };
 }
@@ -389,15 +400,21 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       crypto_futures: null,
       mt5_forex: null,
     },
+    v3: {
+      crypto_futures: null,
+      mt5_forex: null,
+    },
   };
   try {
-    const [coreSnapshots, liteSnapshots] = await Promise.all([
+    const [coreSnapshots, liteSnapshots, v3Snapshots] = await Promise.all([
       readKataraktiMarketSnapshotsByVariant("core"),
       readKataraktiMarketSnapshotsByVariant("lite"),
+      readKataraktiMarketSnapshotsByVariant("v3"),
     ]);
     kataraktiSnapshotsByVariant = {
       core: coreSnapshots,
       lite: liteSnapshots,
+      v3: v3Snapshots,
     };
   } catch (error) {
     console.error(
