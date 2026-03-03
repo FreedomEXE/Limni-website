@@ -1,3 +1,15 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: src/lib/performance/kataraktiMetrics.ts
+ *
+ * Description:
+ * Computes period-level metrics and model cards for Katarakti snapshots.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
 import type { ModelPerformance } from "@/lib/performanceLab";
 import { computeReturnStats } from "@/lib/performanceLab";
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
@@ -56,6 +68,26 @@ function computeSharpeWithSingleWeekFallback(
 
 function normalizeWeek(weekOpenUtc: string): string {
   return normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
+}
+
+function computeCurveMaxDrawdownFromWeeklyReturns(weeklyReturnsPct: number[]) {
+  if (weeklyReturnsPct.length === 0) return null;
+  let equity = 100;
+  let peak = equity;
+  let maxDrawdown = 0;
+  for (const weeklyReturn of weeklyReturnsPct) {
+    equity *= 1 + weeklyReturn / 100;
+    if (equity > peak) {
+      peak = equity;
+      continue;
+    }
+    if (peak <= 0) continue;
+    const drawdown = ((peak - equity) / peak) * 100;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  }
+  return maxDrawdown > 0 ? maxDrawdown : null;
 }
 
 function resolveSelectedWeek(period: KataraktiPeriodValue): string | null {
@@ -129,13 +161,15 @@ export function buildKataraktiPeriodMetrics(
   const profitFactor =
     aggregateProfitFactor(weeks) ??
     (selectedWeek === null ? snapshot.profitFactor : null);
-  const maxDrawdownFromWeeks =
+  const maxDrawdownFromCurve = computeCurveMaxDrawdownFromWeeklyReturns(weeklyReturns);
+  const maxStaticWeekDrawdown =
     weeks.length > 0
-      ? weeks.reduce(
-          (max, week) => Math.max(max, week.staticDrawdownPct),
-          0,
-        )
-      : null;
+      ? weeks.reduce((max, week) => Math.max(max, week.staticDrawdownPct), 0)
+      : 0;
+  const maxDrawdownFromWeeks = Math.max(
+    maxDrawdownFromCurve ?? 0,
+    maxStaticWeekDrawdown,
+  );
   const tradeReturnsPct = weeks.flatMap((week) =>
     (snapshot.tradeDetailsByWeek[week.weekOpenUtc] ?? []).flatMap((trade) =>
       typeof trade.percent === "number" && Number.isFinite(trade.percent)
@@ -155,12 +189,11 @@ export function buildKataraktiPeriodMetrics(
     weeklyWinRatePct: weeksCount > 0 ? (weekWins / weeksCount) * 100 : 0,
     sharpe,
     avgWeeklyPct: weeksCount > 0 ? totalReturnPct / weeksCount : 0,
-    maxDrawdownPct:
-      maxDrawdownFromWeeks !== null && maxDrawdownFromWeeks > 0
-        ? maxDrawdownFromWeeks
-        : selectedWeek === null
-          ? snapshot.maxDrawdownPct
-          : null,
+    maxDrawdownPct: maxDrawdownFromWeeks > 0
+      ? maxDrawdownFromWeeks
+      : selectedWeek === null
+        ? snapshot.maxDrawdownPct
+        : null,
     trades,
     tradeWins,
     tradeWinRatePct: trades > 0 ? (tradeWins / trades) * 100 : 0,
@@ -174,11 +207,20 @@ export function buildKataraktiModelPerformance(
   period: KataraktiPeriodValue,
 ): ModelPerformance | null {
   const selectedWeek = resolveSelectedWeek(period);
-  const weeks = selectKataraktiWeeks(snapshot, period);
+  let effectivePeriod = period;
+  let weeks = selectKataraktiWeeks(snapshot, period);
+  if (
+    selectedWeek !== null &&
+    weeks.length === 0 &&
+    snapshot.weekly.length > 0
+  ) {
+    effectivePeriod = "all";
+    weeks = selectKataraktiWeeks(snapshot, effectivePeriod);
+  }
   if (weeks.length === 0) {
     return null;
   }
-  const metrics = buildKataraktiPeriodMetrics(snapshot, period);
+  const metrics = buildKataraktiPeriodMetrics(snapshot, effectivePeriod);
 
   const selectedWeekTrades =
     selectedWeek !== null ? snapshot.tradeDetailsByWeek[selectedWeek] ?? [] : [];

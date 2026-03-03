@@ -3386,6 +3386,7 @@ type LiteVariantResult = {
 };
 
 const LITE_REPORT_PATH = path.join(process.cwd(), "reports", "katarakti-lite-parameter-sweep-latest.txt");
+const LITE_JSON_REPORT_PATH = path.join(process.cwd(), "reports", "katarakti-lite-parameter-sweep-latest.json");
 const LITE_START_EQUITY_USD = Number(process.env.KATARAKTI_LITE_START_EQUITY_USD ?? "10000");
 const LITE_RISK_PER_TRADE_PCT = Number(process.env.KATARAKTI_LITE_RISK_PER_TRADE_PCT ?? "1");
 const LITE_MAX_CONCURRENT_POSITIONS = Number(process.env.KATARAKTI_LITE_MAX_CONCURRENT_POSITIONS ?? "8");
@@ -3398,6 +3399,178 @@ const LITE_ATR_SWEEP_FLOOR_X = Number(process.env.KATARAKTI_LITE_ATR_SWEEP_FLOOR
 const LITE_SWEEP_DWELLS = (process.env.KATARAKTI_LITE_SWEEP_DWELLS ?? "2,3,5").trim();
 const LITE_SWEEP_CLOSE_LOCS = (process.env.KATARAKTI_LITE_SWEEP_CLOSE_LOCS ?? "0.35,0.40,0.45").trim();
 const LITE_SWEEP_ATR_FLOORS = (process.env.KATARAKTI_LITE_SWEEP_ATR_FLOORS ?? "off,0.1,0.2,0.3").trim();
+
+type LiteSimpleTradeRow = {
+  symbol: string;
+  direction: SignalDirection;
+  entry_time_utc: string;
+  exit_time_utc: string;
+  entry_price: number;
+  exit_price: number;
+  pnl_pct: number;
+  pnl_usd: number;
+  exit_reason: string;
+  max_milestone: number;
+  leverage_at_exit: number;
+};
+
+type LiteSimpleWeeklyRow = {
+  week_open_utc: string;
+  trades: number;
+  wins: number;
+  losses: number;
+  pnl_usd: number;
+  pnl_pct: number;
+  max_drawdown_pct: number;
+};
+
+type LiteSimpleReport = {
+  meta: {
+    botId: string;
+    market: "mt5_forex";
+    generatedUtc: string;
+    weeks: string[];
+    selectedVariantId: string;
+    startEquityUsd: number;
+  };
+  weekly: LiteSimpleWeeklyRow[];
+  summary: {
+    total_trades: number;
+    total_pnl_usd: number;
+    total_return_pct: number;
+    win_rate_pct: number;
+    max_drawdown_pct: number;
+    avg_pnl_pct: number;
+    profit_factor: number | null;
+  };
+  trades: LiteSimpleTradeRow[];
+};
+
+function roundSimple(value: number, digits = 6) {
+  const p = 10 ** digits;
+  return Math.round(value * p) / p;
+}
+
+function milestoneFromExitStep(step: StopStep): number {
+  if (step === "trailing") return 4;
+  if (step === "lock_055") return 3;
+  if (step === "lock_035" || step === "lock_015" || step === "breakeven") return 2;
+  return 0;
+}
+
+function weekOpenUtcFromTs(ts: number) {
+  return DateTime.fromMillis(ts, { zone: "utc" })
+    .startOf("week")
+    .toUTC()
+    .toISO() ?? "";
+}
+
+function buildLiteSimpleReport(options: {
+  weekOpens: string[];
+  selected: LiteVariantResult;
+  startEquityUsd: number;
+}): LiteSimpleReport {
+  const trades = [...options.selected.trades].sort((a, b) => a.entryTimeMs - b.entryTimeMs || a.exitTimeMs - b.exitTimeMs);
+  const byWeek = new Map<string, LiteTrade[]>();
+  for (const trade of trades) {
+    const weekOpenUtc = weekOpenUtcFromTs(trade.entryTimeMs);
+    if (!weekOpenUtc) continue;
+    const bucket = byWeek.get(weekOpenUtc) ?? [];
+    bucket.push(trade);
+    byWeek.set(weekOpenUtc, bucket);
+  }
+
+  let rollingWeekStartEquity = options.startEquityUsd;
+  const weekly: LiteSimpleWeeklyRow[] = options.weekOpens.map((weekOpenUtc) => {
+    const weekTrades = [...(byWeek.get(weekOpenUtc) ?? [])]
+      .sort((a, b) => a.exitTimeMs - b.exitTimeMs || a.entryTimeMs - b.entryTimeMs);
+    let equity = rollingWeekStartEquity;
+    let peak = equity;
+    let maxDrawdownPct = 0;
+    let pnlUsd = 0;
+    let wins = 0;
+    let losses = 0;
+    for (const trade of weekTrades) {
+      pnlUsd += trade.netPnlUsd;
+      if (trade.netPnlUsd > 0) wins += 1;
+      if (trade.netPnlUsd < 0) losses += 1;
+      equity += trade.netPnlUsd;
+      if (equity > peak) peak = equity;
+      if (peak > 0) {
+        const drawdownPct = ((peak - equity) / peak) * 100;
+        if (drawdownPct > maxDrawdownPct) maxDrawdownPct = drawdownPct;
+      }
+    }
+    rollingWeekStartEquity += pnlUsd;
+    return {
+      week_open_utc: weekOpenUtc,
+      trades: weekTrades.length,
+      wins,
+      losses,
+      pnl_usd: roundSimple(pnlUsd),
+      pnl_pct: roundSimple(options.startEquityUsd > 0 ? (pnlUsd / options.startEquityUsd) * 100 : 0),
+      max_drawdown_pct: roundSimple(maxDrawdownPct),
+    };
+  });
+
+  const totalTrades = trades.length;
+  const totalPnlUsd = trades.reduce((sum, trade) => sum + trade.netPnlUsd, 0);
+  const totalWins = trades.filter((trade) => trade.netPnlUsd > 0).length;
+  const grossWins = trades
+    .filter((trade) => trade.netPnlUsd > 0)
+    .reduce((sum, trade) => sum + trade.netPnlUsd, 0);
+  const grossLossAbs = Math.abs(
+    trades
+      .filter((trade) => trade.netPnlUsd < 0)
+      .reduce((sum, trade) => sum + trade.netPnlUsd, 0),
+  );
+  const maxDrawdownPct = weekly.reduce((max, row) => Math.max(max, row.max_drawdown_pct), 0);
+  const avgPnlPct = totalTrades > 0
+    ? trades.reduce((sum, trade) => {
+      const entryEq = liteEntryEquity(options.startEquityUsd, trades, trade.entryTimeMs);
+      return sum + (entryEq > 0 ? (trade.netPnlUsd / entryEq) * 100 : 0);
+    }, 0) / totalTrades
+    : 0;
+
+  const simpleTrades: LiteSimpleTradeRow[] = trades.map((trade) => {
+    const entryEq = liteEntryEquity(options.startEquityUsd, trades, trade.entryTimeMs);
+    return {
+      symbol: trade.pair,
+      direction: trade.direction,
+      entry_time_utc: new Date(trade.entryTimeMs).toISOString(),
+      exit_time_utc: new Date(trade.exitTimeMs).toISOString(),
+      entry_price: roundSimple(trade.entryPrice),
+      exit_price: roundSimple(trade.exitPrice),
+      pnl_pct: roundSimple(entryEq > 0 ? (trade.netPnlUsd / entryEq) * 100 : 0),
+      pnl_usd: roundSimple(trade.netPnlUsd),
+      exit_reason: trade.exitStep,
+      max_milestone: milestoneFromExitStep(trade.exitStep),
+      leverage_at_exit: 1,
+    };
+  });
+
+  return {
+    meta: {
+      botId: "katarakti_cfd_lite",
+      market: "mt5_forex",
+      generatedUtc: new Date().toISOString(),
+      weeks: [...options.weekOpens],
+      selectedVariantId: options.selected.variant.id,
+      startEquityUsd: options.startEquityUsd,
+    },
+    weekly,
+    summary: {
+      total_trades: totalTrades,
+      total_pnl_usd: roundSimple(totalPnlUsd),
+      total_return_pct: roundSimple(options.startEquityUsd > 0 ? (totalPnlUsd / options.startEquityUsd) * 100 : 0),
+      win_rate_pct: roundSimple(totalTrades > 0 ? (totalWins / totalTrades) * 100 : 0),
+      max_drawdown_pct: roundSimple(maxDrawdownPct),
+      avg_pnl_pct: roundSimple(avgPnlPct),
+      profit_factor: grossLossAbs > 0 ? roundSimple(grossWins / grossLossAbs) : (grossWins > 0 ? Number.POSITIVE_INFINITY : null),
+    },
+    trades: simpleTrades,
+  };
+}
 
 function parseNumberList(raw: string) {
   return raw
@@ -4171,8 +4344,22 @@ async function mainLiteParameterSweep() {
   const report = lines.join("\n");
   fs.mkdirSync(path.dirname(LITE_REPORT_PATH), { recursive: true });
   fs.writeFileSync(LITE_REPORT_PATH, report, "utf8");
+  const selectedLite = [...nonBaseline]
+    .sort((a, b) => b.totalReturnPct - a.totalReturnPct || a.maxDrawdownPct - b.maxDrawdownPct)[0]
+    ?? [...results].sort((a, b) => b.totalReturnPct - a.totalReturnPct || a.maxDrawdownPct - b.maxDrawdownPct)[0];
+  if (selectedLite) {
+    const liteJson = buildLiteSimpleReport({
+      weekOpens: WEEKS,
+      selected: selectedLite,
+      startEquityUsd: LITE_START_EQUITY_USD,
+    });
+    fs.writeFileSync(LITE_JSON_REPORT_PATH, JSON.stringify(liteJson, null, 2), "utf8");
+  }
   console.log(report);
   console.log(`Wrote ${LITE_REPORT_PATH}`);
+  if (selectedLite) {
+    console.log(`Wrote ${LITE_JSON_REPORT_PATH}`);
+  }
 
   await getPool().end();
 }

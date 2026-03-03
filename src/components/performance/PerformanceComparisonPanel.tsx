@@ -72,6 +72,19 @@ function formatProfitFactor(value: number | null, profitFactorInfinite?: boolean
   return value.toFixed(2);
 }
 
+function resolveKataraktiSelection(options: {
+  market: KataraktiMarket;
+  variant: KataraktiVariant;
+}) {
+  if (options.variant === "v3") {
+    return {
+      market: "crypto_futures" as const,
+      variant: options.variant,
+    };
+  }
+  return options;
+}
+
 export default function PerformanceComparisonPanel() {
   const searchParams = useSearchParams();
   const [data, setData] = useState<ComparisonData | null>(null);
@@ -85,10 +98,16 @@ export default function PerformanceComparisonPanel() {
   const initialTab = requestedSystem === "v2" || requestedSystem === "v3" ? requestedSystem : "v1";
   const initialStyle: PerformanceStyle =
     requestedStyle === "tiered" || requestedStyle === "katarakti" ? requestedStyle : "universal";
-  const initialMarket: KataraktiMarket =
+  const initialRequestedMarket: KataraktiMarket =
     requestedMarket === "mt5_forex" ? "mt5_forex" : "crypto_futures";
-  const initialVariant: KataraktiVariant =
+  const initialRequestedVariant: KataraktiVariant =
     requestedVariant === "lite" ? "lite" : requestedVariant === "v3" ? "v3" : "core";
+  const initialSelection = resolveKataraktiSelection({
+    market: initialRequestedMarket,
+    variant: initialRequestedVariant,
+  });
+  const initialMarket = initialSelection.market;
+  const initialVariant = initialSelection.variant;
   const [activeTab, setActiveTab] = useState<"v1" | "v2" | "v3">(initialTab);
   const [activeStyle, setActiveStyle] = useState<PerformanceStyle>(initialStyle);
   const [activeMarket, setActiveMarket] = useState<KataraktiMarket>(initialMarket);
@@ -293,22 +312,32 @@ export default function PerformanceComparisonPanel() {
     window.dispatchEvent(new CustomEvent("performance-system-change", { detail: next }));
   };
   const setMarket = (next: KataraktiMarket) => {
-    setActiveMarket(next);
+    const nextSelection = resolveKataraktiSelection({
+      market: next,
+      variant: activeVariant,
+    });
+    setActiveMarket(nextSelection.market);
     const url = new URL(window.location.href);
     url.searchParams.set("style", "katarakti");
-    url.searchParams.set("market", next);
-    url.searchParams.set("variant", activeVariant);
+    url.searchParams.set("market", nextSelection.market);
+    url.searchParams.set("variant", nextSelection.variant);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-    window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: next }));
+    window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: nextSelection.market }));
   };
   const setVariant = (next: KataraktiVariant) => {
-    setActiveVariant(next);
+    const nextSelection = resolveKataraktiSelection({
+      market: activeMarket,
+      variant: next,
+    });
+    setActiveVariant(nextSelection.variant);
+    setActiveMarket(nextSelection.market);
     const url = new URL(window.location.href);
     url.searchParams.set("style", "katarakti");
-    url.searchParams.set("market", activeMarket);
-    url.searchParams.set("variant", next);
+    url.searchParams.set("market", nextSelection.market);
+    url.searchParams.set("variant", nextSelection.variant);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-    window.dispatchEvent(new CustomEvent("performance-katarakti-variant-change", { detail: next }));
+    window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: nextSelection.market }));
+    window.dispatchEvent(new CustomEvent("performance-katarakti-variant-change", { detail: nextSelection.variant }));
   };
 
   return (
@@ -372,11 +401,15 @@ export default function PerformanceComparisonPanel() {
             <button
               type="button"
               onClick={() => setMarket("mt5_forex")}
+              disabled={activeVariant === "v3"}
               className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
                 activeMarket === "mt5_forex"
                   ? "border-teal-400/50 bg-teal-500/10 text-teal-800 dark:text-teal-200"
-                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-teal-400/50"
+                  : activeVariant === "v3"
+                    ? "cursor-not-allowed border-[var(--panel-border)] bg-[var(--panel)]/40 text-[var(--foreground)]/40"
+                    : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-teal-400/50"
               }`}
+              title={activeVariant === "v3" ? "Katarakti v3 is crypto futures only." : undefined}
             >
               CFD
             </button>

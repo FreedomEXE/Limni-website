@@ -1,3 +1,16 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: src/components/performance/PerformanceGrid.tsx
+ *
+ * Description:
+ * Renders model performance cards and all-time summaries for the
+ * Performance page across summary/simulation/basket/research views.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
@@ -87,12 +100,24 @@ function formatMoney(value: number) {
   return `${sign}$${abs.toFixed(0)}`;
 }
 
-function computeStaticMaxDrawdownFromReturns(returns: Array<{ pair: string; percent: number }>): number | null {
+function computeMaxDrawdownFromReturns(returns: Array<{ pair: string; percent: number }>): number | null {
   if (returns.length === 0) return null;
-  const maxDrawdown = returns.reduce((max, item) => {
-    if (!Number.isFinite(item.percent) || item.percent >= 0) return max;
-    return Math.max(max, Math.abs(item.percent));
-  }, 0);
+  let equity = 100;
+  let peak = equity;
+  let maxDrawdown = 0;
+  for (const item of returns) {
+    if (!Number.isFinite(item.percent)) continue;
+    equity *= 1 + item.percent / 100;
+    if (equity > peak) {
+      peak = equity;
+      continue;
+    }
+    if (peak <= 0) continue;
+    const drawdown = ((peak - equity) / peak) * 100;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  }
   return maxDrawdown > 0 ? maxDrawdown : null;
 }
 
@@ -271,7 +296,7 @@ function PerformanceCard({
   const badge = getConfidenceBadge(performance);
   const sharpeProxy =
     performance.stats.volatility > 0 ? performance.stats.avg_return / performance.stats.volatility : 0;
-  const maxDrawdown = computeStaticMaxDrawdownFromReturns(performance.returns);
+  const maxDrawdown = computeMaxDrawdownFromReturns(performance.returns);
   const profitFactor = computeProfitFactorFromReturns(performance.returns);
   const displayPercent =
     view === "simulation" && performance.trailing

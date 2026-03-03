@@ -159,6 +159,7 @@ const CLOSE_LOCATION_VALUES = (process.env.BITGET_LITE_CLOSE_LOC_VALUES ?? "0.35
   .filter((v) => Number.isFinite(v) && v > 0 && v < 1)
   .sort((a, b) => a - b);
 const REPORT_PATH = path.join(process.cwd(), "reports", "bitget-lite-entry-latest.txt");
+const JSON_REPORT_PATH = path.join(process.cwd(), "reports", "bitget-lite-entry-latest.json");
 
 const SCALING_INITIAL_STOP_PCT = 10;
 const SCALING_MILESTONES = [1, 2, 3, 4] as const;
@@ -867,6 +868,54 @@ type ScenarioMetrics = {
   worstLossUsd: number;
 };
 
+type SimpleBacktestTradeRow = {
+  symbol: string;
+  direction: "LONG" | "SHORT";
+  entry_time_utc: string;
+  exit_time_utc: string;
+  entry_price: number;
+  exit_price: number;
+  pnl_pct: number;
+  pnl_usd: number;
+  exit_reason: string;
+  max_milestone: number;
+  leverage_at_exit: number;
+};
+
+type SimpleBacktestWeeklyRow = {
+  week_open_utc: string;
+  trades: number;
+  wins: number;
+  losses: number;
+  pnl_usd: number;
+  pnl_pct: number;
+  max_drawdown_pct: number;
+};
+
+type SimpleBacktestReport = {
+  meta: {
+    botId: string;
+    market: "crypto_futures";
+    generatedUtc: string;
+    weeks: string[];
+    selectedConfig: string;
+    startEquityUsd: number;
+    allocationPct: number;
+    startLeverage: number;
+  };
+  weekly: SimpleBacktestWeeklyRow[];
+  summary: {
+    total_trades: number;
+    total_pnl_usd: number;
+    total_return_pct: number;
+    win_rate_pct: number;
+    max_drawdown_pct: number;
+    avg_pnl_pct: number;
+    profit_factor: number | null;
+  };
+  trades: SimpleBacktestTradeRow[];
+};
+
 function equityAtEntry(startEquity: number, executed: ExecutedTrade[], entryTs: number) {
   let equity = startEquity;
   for (const trade of executed) {
@@ -1026,6 +1075,114 @@ function fmtCorr(value: number | null) {
 function fmtPf(value: number) {
   if (!Number.isFinite(value)) return "INF";
   return value.toFixed(2);
+}
+
+function round(value: number, digits = 6) {
+  const p = 10 ** digits;
+  return Math.round(value * p) / p;
+}
+
+function buildSimpleBacktestReport(options: {
+  botId: string;
+  weekOpens: string[];
+  selectedConfig: string;
+  executed: ExecutedTrade[];
+  startEquityUsd: number;
+}): SimpleBacktestReport {
+  const executed = [...options.executed].sort((a, b) => a.entryTs - b.entryTs || a.exitTs - b.exitTs);
+  let rollingWeekStartEquity = options.startEquityUsd;
+  const weekly: SimpleBacktestWeeklyRow[] = options.weekOpens.map((weekOpenUtc) => {
+    const weekTrades = executed
+      .filter((trade) => trade.weekOpenUtc === weekOpenUtc)
+      .sort((a, b) => a.exitTs - b.exitTs || a.entryTs - b.entryTs);
+    let equity = rollingWeekStartEquity;
+    let peak = equity;
+    let maxDrawdownPct = 0;
+    let pnlUsd = 0;
+    let wins = 0;
+    let losses = 0;
+    for (const trade of weekTrades) {
+      pnlUsd += trade.pnlUsd;
+      if (trade.pnlUsd > 0) wins += 1;
+      if (trade.pnlUsd < 0) losses += 1;
+      equity += trade.pnlUsd;
+      if (equity > peak) peak = equity;
+      if (peak > 0) {
+        const drawdownPct = ((peak - equity) / peak) * 100;
+        if (drawdownPct > maxDrawdownPct) maxDrawdownPct = drawdownPct;
+      }
+    }
+    rollingWeekStartEquity += pnlUsd;
+    return {
+      week_open_utc: weekOpenUtc,
+      trades: weekTrades.length,
+      wins,
+      losses,
+      pnl_usd: round(pnlUsd),
+      pnl_pct: round(options.startEquityUsd > 0 ? (pnlUsd / options.startEquityUsd) * 100 : 0),
+      max_drawdown_pct: round(maxDrawdownPct),
+    };
+  });
+
+  const totalPnlUsd = executed.reduce((sum, trade) => sum + trade.pnlUsd, 0);
+  const totalTrades = executed.length;
+  const wins = executed.filter((trade) => trade.pnlUsd > 0).length;
+  const grossWins = executed
+    .filter((trade) => trade.pnlUsd > 0)
+    .reduce((sum, trade) => sum + trade.pnlUsd, 0);
+  const grossLossAbs = Math.abs(
+    executed
+      .filter((trade) => trade.pnlUsd < 0)
+      .reduce((sum, trade) => sum + trade.pnlUsd, 0),
+  );
+  const maxDrawdownPct = weekly.reduce((max, row) => Math.max(max, row.max_drawdown_pct), 0);
+  const avgPnlPct = totalTrades > 0
+    ? executed.reduce((sum, trade) => {
+      const entryEq = trade.equityAtEntryUsd > 0 ? trade.equityAtEntryUsd : options.startEquityUsd;
+      return sum + (entryEq > 0 ? (trade.pnlUsd / entryEq) * 100 : 0);
+    }, 0) / totalTrades
+    : 0;
+
+  const trades: SimpleBacktestTradeRow[] = executed.map((trade) => {
+    const entryEq = trade.equityAtEntryUsd > 0 ? trade.equityAtEntryUsd : options.startEquityUsd;
+    return {
+      symbol: trade.symbol,
+      direction: trade.direction,
+      entry_time_utc: new Date(trade.entryTs).toISOString(),
+      exit_time_utc: new Date(trade.exitTs).toISOString(),
+      entry_price: round(trade.entryPrice),
+      exit_price: round(trade.exitPrice),
+      pnl_pct: round(entryEq > 0 ? (trade.pnlUsd / entryEq) * 100 : 0),
+      pnl_usd: round(trade.pnlUsd),
+      exit_reason: trade.exitReason.toLowerCase(),
+      max_milestone: trade.milestonesHit.length > 0 ? Math.max(...trade.milestonesHit) : 0,
+      leverage_at_exit: trade.maxLeverageReached,
+    };
+  });
+
+  return {
+    meta: {
+      botId: options.botId,
+      market: "crypto_futures",
+      generatedUtc: new Date().toISOString(),
+      weeks: [...options.weekOpens],
+      selectedConfig: options.selectedConfig,
+      startEquityUsd: options.startEquityUsd,
+      allocationPct: ALLOCATION_PCT,
+      startLeverage: START_LEVERAGE,
+    },
+    weekly,
+    summary: {
+      total_trades: totalTrades,
+      total_pnl_usd: round(totalPnlUsd),
+      total_return_pct: round(options.startEquityUsd > 0 ? (totalPnlUsd / options.startEquityUsd) * 100 : 0),
+      win_rate_pct: round(totalTrades > 0 ? (wins / totalTrades) * 100 : 0),
+      max_drawdown_pct: round(maxDrawdownPct),
+      avg_pnl_pct: round(avgPnlPct),
+      profit_factor: grossLossAbs > 0 ? round(grossWins / grossLossAbs) : (grossWins > 0 ? Number.POSITIVE_INFINITY : null),
+    },
+    trades,
+  };
 }
 
 // mainOld removed — dead code with broken readSnapshotHistory reference
@@ -1368,8 +1525,17 @@ async function mainLite() {
 
   const reportText = reportLines.join("\n");
   writeFileSync(REPORT_PATH, reportText, "utf8");
+  const jsonReport = buildSimpleBacktestReport({
+    botId: "katarakti_crypto_lite",
+    weekOpens,
+    selectedConfig: `d${bestCore.config.dwell}/c${bestCore.config.closeLocation.toFixed(2)}`,
+    executed: bestCore.executed,
+    startEquityUsd: STARTING_EQUITY_USD,
+  });
+  writeFileSync(JSON_REPORT_PATH, JSON.stringify(jsonReport, null, 2), "utf8");
   console.log(reportText);
   console.log(`\nReport written: ${REPORT_PATH}`);
+  console.log(`JSON report written: ${JSON_REPORT_PATH}`);
 }
 
 mainLite()

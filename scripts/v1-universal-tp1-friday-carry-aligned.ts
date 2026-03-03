@@ -1,3 +1,16 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: scripts/v1-universal-tp1-friday-carry-aligned.ts
+ *
+ * Description:
+ * Universal V1 weekly TP/carry simulator with optional ADR emergency stops,
+ * net vs non-net signal construction, and week-level risk diagnostics.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
 import fs from "node:fs";
 import path from "node:path";
 import { DateTime } from "luxon";
@@ -5,6 +18,7 @@ import { readPerformanceSnapshotsByWeek } from "../src/lib/performanceSnapshots"
 import { groupSignals } from "../src/lib/plannedTrades";
 import { PERFORMANCE_V1_MODELS } from "../src/lib/performance/modelConfig";
 import { getPerformanceWindow } from "../src/lib/pricePerformance";
+import { getCanonicalWeekOpenUtc } from "../src/lib/weekAnchor";
 import type { AssetClass } from "../src/lib/cotMarkets";
 import { getOandaInstrument } from "../src/lib/oandaPrices";
 import type { PerformanceModel } from "../src/lib/performanceLab";
@@ -21,7 +35,7 @@ type OhlcPoint = {
 
 type WeekLeg = {
   key: string;
-  model: PerformanceModel;
+  model_key: string;
   asset_class: AssetClass;
   pair: string;
   direction: Direction;
@@ -37,11 +51,12 @@ type WeekPlan = {
 
 type OpenPosition = {
   key: string;
-  model: PerformanceModel;
+  model_key: string;
   asset_class: AssetClass;
   pair: string;
   direction: Direction;
   entry_price: number;
+  stop_price: number | null;
 };
 
 type WeekStats = {
@@ -51,19 +66,32 @@ type WeekStats = {
   opened_new: number;
   closed_refresh_unaligned: number;
   closed_tp_1pct: number;
+  closed_stop_adr: number;
   closed_friday_profit: number;
+  closed_friday_forced: number;
   open_positions_end: number;
+  week_start_equity_pct: number;
+  week_min_equity_pct: number;
+  week_drawdown_pct: number;
   week_floating_pct: number;
+  week_realized_delta_pct: number;
   week_end_equity_pct: number;
   week_delta_equity_pct: number;
 };
 
 type SeriesForSymbol = {
   points: OhlcPoint[];
-  by_ts: Map<number, OhlcPoint>;
+  week_points: OhlcPoint[];
+  by_ts_week: Map<number, OhlcPoint>;
 };
 
 const HIT_TP_PCT = Number(process.env.TP_PCT ?? "1");
+const BACKTEST_WEEKS = Number(process.env.BACKTEST_WEEKS ?? "6");
+const STOP_MODE = (process.env.STOP_MODE ?? "none").toLowerCase();
+const UNIVERSAL_MODE = (process.env.UNIVERSAL_MODE ?? "non_net").toLowerCase();
+const CARRY_MODE = (process.env.CARRY_MODE ?? "aligned").toLowerCase();
+const ADR_LOOKBACK_DAYS = Number(process.env.ADR_LOOKBACK_DAYS ?? "20");
+const ADR_STOP_MULTIPLIER = Number(process.env.ADR_STOP_MULTIPLIER ?? "1");
 const FETCH_CONCURRENCY = Number(process.env.FETCH_CONCURRENCY ?? "8");
 const OANDA_PRACTICE_URL = "https://api-fxpractice.oanda.com";
 const OANDA_LIVE_URL = "https://api-fxtrade.oanda.com";
@@ -129,8 +157,76 @@ function pctMove(entry: number, mark: number, direction: Direction): number {
   return direction === "LONG" ? raw : -raw;
 }
 
-function keyForLeg(model: PerformanceModel, assetClass: AssetClass, pair: string, direction: Direction) {
-  return `${model}|${assetClass}|${pair}|${direction}`;
+function keyForLeg(modelKey: string, assetClass: AssetClass, pair: string, direction: Direction) {
+  return `${modelKey}|${assetClass}|${pair}|${direction}`;
+}
+
+function getLastCompletedWeekOpens(weeks: number): string[] {
+  const count = Math.max(1, Math.trunc(weeks));
+  const thisWeekOpen = getCanonicalWeekOpenUtc(DateTime.utc());
+  const thisWeek = DateTime.fromISO(thisWeekOpen, { zone: "utc" });
+  const out: string[] = [];
+  for (let i = count; i >= 1; i -= 1) {
+    out.push(thisWeek.minus({ weeks: i }).toUTC().toISO() ?? "");
+  }
+  return out.filter(Boolean);
+}
+
+function priceAtOrBeforeTs(points: OhlcPoint[], ts: number): number | null {
+  if (!points.length) return null;
+  let lo = 0;
+  let hi = points.length - 1;
+  let idx = -1;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const midTs = points[mid]!.ts;
+    if (midTs <= ts) {
+      idx = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  if (idx < 0) return null;
+  return points[idx]!.close;
+}
+
+function computeAdrAbs(points: OhlcPoint[], beforeTs: number): number | null {
+  const daily = new Map<string, { high: number; low: number }>();
+  for (const point of points) {
+    if (point.ts >= beforeTs) continue;
+    const day = DateTime.fromMillis(point.ts, { zone: "utc" }).toISODate();
+    if (!day) continue;
+    const prev = daily.get(day);
+    if (!prev) {
+      daily.set(day, { high: point.high, low: point.low });
+      continue;
+    }
+    prev.high = Math.max(prev.high, point.high);
+    prev.low = Math.min(prev.low, point.low);
+  }
+  const days = Array.from(daily.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(-Math.max(1, ADR_LOOKBACK_DAYS));
+  if (!days.length) return null;
+  const avgRange = days.reduce((sum, [, row]) => sum + Math.max(0, row.high - row.low), 0) / days.length;
+  return avgRange > 0 ? avgRange : null;
+}
+
+function computeFloatingPctAtTs(
+  positions: Map<string, OpenPosition>,
+  seriesBySymbol: Map<string, SeriesForSymbol | null>,
+  ts: number,
+): number {
+  let floating = 0;
+  for (const pos of positions.values()) {
+    const series = seriesBySymbol.get(pairKey(pos.asset_class, pos.pair));
+    if (!series) continue;
+    const mark = priceAtOrBeforeTs(series.week_points, ts);
+    if (!Number.isFinite(mark)) continue;
+    floating += pctMove(pos.entry_price, mark as number, pos.direction);
+  }
+  return floating;
 }
 
 function pairKey(assetClass: AssetClass, pair: string) {
@@ -300,8 +396,9 @@ async function fetchSeriesForWeekSymbol(
   reportDate: string | null,
 ): Promise<SeriesForSymbol | null> {
   const window = resolveWindow(weekOpenUtc, assetClass, reportDate);
-  const fromUtc = DateTime.fromISO(window.openUtc.toISO() ?? "", { zone: "utc" });
+  const weekOpen = DateTime.fromISO(window.openUtc.toISO() ?? "", { zone: "utc" });
   const toUtc = DateTime.fromISO(window.closeUtc.toISO() ?? "", { zone: "utc" });
+  const fromUtc = weekOpen.minus({ days: ADR_LOOKBACK_DAYS + 5 });
   if (!fromUtc.isValid || !toUtc.isValid || toUtc.toMillis() <= fromUtc.toMillis()) {
     return null;
   }
@@ -317,9 +414,14 @@ async function fetchSeriesForWeekSymbol(
       points = await fetchOandaOhlcSeries(symbol, fromUtc, toUtc);
     }
     if (!points.length) return null;
+    const weekOpenTs = weekOpen.toMillis();
+    const weekCloseTs = toUtc.toMillis();
+    const weekPoints = points.filter((p) => p.ts >= weekOpenTs && p.ts < weekCloseTs);
+    if (!weekPoints.length) return null;
     return {
       points,
-      by_ts: new Map(points.map((p) => [p.ts, p])),
+      week_points: weekPoints,
+      by_ts_week: new Map(weekPoints.map((p) => [p.ts, p])),
     };
   } catch {
     return null;
@@ -357,15 +459,32 @@ async function buildWeekPlan(weekOpenUtc: string): Promise<WeekPlan> {
     }
   }
 
-  const plannedPairs = groupSignals(allSignals, PERFORMANCE_V1_MODELS, { dropNetted: false });
+  const isNetMode = UNIVERSAL_MODE === "net";
+  const plannedPairs = groupSignals(allSignals, PERFORMANCE_V1_MODELS, { dropNetted: isNetMode });
   const desiredLegs: WeekLeg[] = [];
   for (const pair of plannedPairs) {
     const assetClass = pair.assetClass as AssetClass;
+    if (isNetMode) {
+      if (pair.net === 0) continue;
+      const direction: Direction = pair.net > 0 ? "LONG" : "SHORT";
+      const units = Math.abs(pair.net);
+      for (let idx = 0; idx < units; idx += 1) {
+        const modelKey = `net_${idx + 1}`;
+        desiredLegs.push({
+          key: keyForLeg(modelKey, assetClass, pair.symbol, direction),
+          model_key: modelKey,
+          asset_class: assetClass,
+          pair: pair.symbol,
+          direction,
+        });
+      }
+      continue;
+    }
     for (const leg of pair.legs) {
       if (leg.direction !== "LONG" && leg.direction !== "SHORT") continue;
       desiredLegs.push({
         key: keyForLeg(leg.model, assetClass, pair.symbol, leg.direction),
-        model: leg.model,
+        model_key: leg.model,
         asset_class: assetClass,
         pair: pair.symbol,
         direction: leg.direction,
@@ -385,12 +504,9 @@ async function buildWeekPlan(weekOpenUtc: string): Promise<WeekPlan> {
 async function main() {
   loadDotEnv();
 
-  const compare = JSON.parse(
-    fs.readFileSync("reports/eightcap-3k-5week-floor-clamped-compare-latest.json", "utf8"),
-  ) as { weeks: string[] };
-  const weeks = [...(compare.weeks ?? [])].sort((a, b) => Date.parse(a) - Date.parse(b));
+  const weeks = getLastCompletedWeekOpens(BACKTEST_WEEKS).sort((a, b) => Date.parse(a) - Date.parse(b));
   if (!weeks.length) {
-    throw new Error("No weeks found in compare report.");
+    throw new Error("No weeks found for BACKTEST_WEEKS.");
   }
 
   const weekPlans = await Promise.all(weeks.map((w) => buildWeekPlan(w)));
@@ -403,7 +519,15 @@ async function main() {
   let totalOpened = 0;
   let totalTp = 0;
   let totalFridayProfit = 0;
+  let totalFridayForced = 0;
+  let totalStopAdr = 0;
   let totalRefreshUnaligned = 0;
+  let closedCount = 0;
+  let wins = 0;
+  let losses = 0;
+  let sumWinPct = 0;
+  let sumLossPctAbs = 0;
+  let maxWeeklyDrawdownPct = 0;
 
   for (const plan of weekPlans) {
     totalDesired += plan.desired_legs.length;
@@ -439,15 +563,30 @@ async function main() {
     let weekOpened = 0;
     let weekTp = 0;
     let weekFridayProfit = 0;
+    let weekFridayForced = 0;
+    let weekStopAdr = 0;
     let weekRefreshUnaligned = 0;
+    const realizedAtWeekStart = realizedPct;
+    const weekStartEquityPct = prevEndEquityPct;
+    const weekStartEquityAbs = 100 + weekStartEquityPct;
+    let weekMinEquityAbs = weekStartEquityAbs;
 
     // Weekly refresh: close losers/winners that are no longer aligned.
     for (const [key, pos] of Array.from(openPositions.entries())) {
       if (plan.desired_keys.has(key)) continue;
       const series = seriesBySymbol.get(pairKey(pos.asset_class, pos.pair));
-      if (!series || !series.points.length) continue;
-      const openPrice = series.points[0]!.open;
-      realizedPct += pctMove(pos.entry_price, openPrice, pos.direction);
+      if (!series || !series.week_points.length) continue;
+      const openPrice = series.week_points[0]!.open;
+      const pnlPct = pctMove(pos.entry_price, openPrice, pos.direction);
+      realizedPct += pnlPct;
+      closedCount += 1;
+      if (pnlPct > 0) {
+        wins += 1;
+        sumWinPct += pnlPct;
+      } else if (pnlPct < 0) {
+        losses += 1;
+        sumLossPctAbs += Math.abs(pnlPct);
+      }
       openPositions.delete(key);
       weekRefreshUnaligned += 1;
     }
@@ -456,16 +595,27 @@ async function main() {
     for (const leg of plan.desired_legs) {
       if (openPositions.has(leg.key)) continue;
       const series = seriesBySymbol.get(pairKey(leg.asset_class, leg.pair));
-      if (!series || !series.points.length) continue;
-      const entry = series.points[0]!.open;
+      if (!series || !series.week_points.length) continue;
+      const entryBar = series.week_points[0]!;
+      const entry = entryBar.open;
       if (!(entry > 0)) continue;
+      let stopPrice: number | null = null;
+      if (STOP_MODE === "adr") {
+        const adrAbs = computeAdrAbs(series.points, entryBar.ts);
+        if (adrAbs && Number.isFinite(adrAbs) && adrAbs > 0) {
+          const stopDistance = adrAbs * ADR_STOP_MULTIPLIER;
+          stopPrice = leg.direction === "LONG" ? entry - stopDistance : entry + stopDistance;
+          if (!(stopPrice > 0)) stopPrice = null;
+        }
+      }
       openPositions.set(leg.key, {
         key: leg.key,
-        model: leg.model,
+        model_key: leg.model_key,
         asset_class: leg.asset_class,
         pair: leg.pair,
         direction: leg.direction,
         entry_price: entry,
+        stop_price: stopPrice,
       });
       weekOpened += 1;
     }
@@ -474,16 +624,43 @@ async function main() {
     const timestamps = Array.from(
       new Set(
         Array.from(seriesBySymbol.values())
-          .flatMap((series) => series?.points.map((p) => p.ts) ?? []),
+          .flatMap((series) => series?.week_points.map((p) => p.ts) ?? []),
       ),
     ).sort((a, b) => a - b);
+
+    if (timestamps.length > 0) {
+      const startFloating = computeFloatingPctAtTs(openPositions, seriesBySymbol, timestamps[0]!);
+      const startEquityAbs = 100 + realizedPct + startFloating;
+      if (startEquityAbs < weekMinEquityAbs) {
+        weekMinEquityAbs = startEquityAbs;
+      }
+    }
 
     for (const ts of timestamps) {
       for (const [key, pos] of Array.from(openPositions.entries())) {
         const series = seriesBySymbol.get(pairKey(pos.asset_class, pos.pair));
         if (!series) continue;
-        const bar = series.by_ts.get(ts);
+        const bar = series.by_ts_week.get(ts);
         if (!bar) continue;
+
+        if (STOP_MODE === "adr" && pos.stop_price && Number.isFinite(pos.stop_price)) {
+          const stopHit = pos.direction === "LONG" ? bar.low <= pos.stop_price : bar.high >= pos.stop_price;
+          if (stopHit) {
+            const pnlPct = pctMove(pos.entry_price, pos.stop_price, pos.direction);
+            realizedPct += pnlPct;
+            closedCount += 1;
+            if (pnlPct > 0) {
+              wins += 1;
+              sumWinPct += pnlPct;
+            } else if (pnlPct < 0) {
+              losses += 1;
+              sumLossPctAbs += Math.abs(pnlPct);
+            }
+            openPositions.delete(key);
+            weekStopAdr += 1;
+            continue;
+          }
+        }
 
         const tpPrice =
           pos.direction === "LONG"
@@ -492,20 +669,52 @@ async function main() {
         const hit = pos.direction === "LONG" ? bar.high >= tpPrice : bar.low <= tpPrice;
         if (!hit) continue;
 
-        realizedPct += HIT_TP_PCT;
+        const pnlPct = HIT_TP_PCT;
+        realizedPct += pnlPct;
+        closedCount += 1;
+        wins += 1;
+        sumWinPct += pnlPct;
         openPositions.delete(key);
         weekTp += 1;
       }
+
+      const tsFloating = computeFloatingPctAtTs(openPositions, seriesBySymbol, ts);
+      const tsEquityAbs = 100 + realizedPct + tsFloating;
+      if (tsEquityAbs < weekMinEquityAbs) {
+        weekMinEquityAbs = tsEquityAbs;
+      }
     }
 
-    // Friday close: close remaining winners only.
+    // Friday close policy:
+    // - aligned carry mode: close winners only, carry losers if still aligned
+    // - none: force close all remaining positions at week close
     for (const [key, pos] of Array.from(openPositions.entries())) {
       const series = seriesBySymbol.get(pairKey(pos.asset_class, pos.pair));
-      if (!series || !series.points.length) continue;
-      const closePrice = series.points[series.points.length - 1]!.close;
+      if (!series || !series.week_points.length) continue;
+      const closePrice = series.week_points[series.week_points.length - 1]!.close;
       const pnlPct = pctMove(pos.entry_price, closePrice, pos.direction);
+
+      if (CARRY_MODE === "none") {
+        realizedPct += pnlPct;
+        closedCount += 1;
+        if (pnlPct > 0) {
+          wins += 1;
+          sumWinPct += pnlPct;
+          weekFridayProfit += 1;
+        } else if (pnlPct < 0) {
+          losses += 1;
+          sumLossPctAbs += Math.abs(pnlPct);
+        }
+        openPositions.delete(key);
+        weekFridayForced += 1;
+        continue;
+      }
+
       if (pnlPct > 0) {
         realizedPct += pnlPct;
+        closedCount += 1;
+        wins += 1;
+        sumWinPct += pnlPct;
         openPositions.delete(key);
         weekFridayProfit += 1;
       }
@@ -514,17 +723,31 @@ async function main() {
     let floatingPct = 0;
     for (const pos of openPositions.values()) {
       const series = seriesBySymbol.get(pairKey(pos.asset_class, pos.pair));
-      if (!series || !series.points.length) continue;
-      const closePrice = series.points[series.points.length - 1]!.close;
+      if (!series || !series.week_points.length) continue;
+      const closePrice = series.week_points[series.week_points.length - 1]!.close;
       floatingPct += pctMove(pos.entry_price, closePrice, pos.direction);
     }
     const endEquityPct = realizedPct + floatingPct;
     const deltaEquityPct = endEquityPct - prevEndEquityPct;
+    const weekRealizedDeltaPct = realizedPct - realizedAtWeekStart;
+    const endEquityAbs = 100 + endEquityPct;
+    if (endEquityAbs < weekMinEquityAbs) {
+      weekMinEquityAbs = endEquityAbs;
+    }
+    const weekDrawdownPct =
+      weekStartEquityAbs > 0
+        ? Math.max(0, ((weekStartEquityAbs - weekMinEquityAbs) / weekStartEquityAbs) * 100)
+        : 0;
+    if (weekDrawdownPct > maxWeeklyDrawdownPct) {
+      maxWeeklyDrawdownPct = weekDrawdownPct;
+    }
     prevEndEquityPct = endEquityPct;
 
     totalOpened += weekOpened;
     totalTp += weekTp;
     totalFridayProfit += weekFridayProfit;
+    totalFridayForced += weekFridayForced;
+    totalStopAdr += weekStopAdr;
     totalRefreshUnaligned += weekRefreshUnaligned;
 
     weekly.push({
@@ -534,9 +757,15 @@ async function main() {
       opened_new: weekOpened,
       closed_refresh_unaligned: weekRefreshUnaligned,
       closed_tp_1pct: weekTp,
+      closed_stop_adr: weekStopAdr,
       closed_friday_profit: weekFridayProfit,
+      closed_friday_forced: weekFridayForced,
       open_positions_end: openPositions.size,
+      week_start_equity_pct: round(weekStartEquityPct, 4),
+      week_min_equity_pct: round(weekMinEquityAbs - 100, 4),
+      week_drawdown_pct: round(weekDrawdownPct, 4),
       week_floating_pct: round(floatingPct, 4),
+      week_realized_delta_pct: round(weekRealizedDeltaPct, 4),
       week_end_equity_pct: round(endEquityPct, 4),
       week_delta_equity_pct: round(deltaEquityPct, 4),
     });
@@ -544,6 +773,10 @@ async function main() {
 
   const finalFloatingPct = weekly.length ? weekly[weekly.length - 1]!.week_floating_pct : 0;
   const finalEquityPct = round(realizedPct + finalFloatingPct, 4);
+  const maxDrawdownPct = round(maxWeeklyDrawdownPct, 4);
+  const winRatePct = closedCount ? (wins / closedCount) * 100 : 0;
+  const avgClosedPnlPct = closedCount ? realizedPct / closedCount : 0;
+  const profitFactor = sumLossPctAbs > 0 ? sumWinPct / sumLossPctAbs : sumWinPct > 0 ? Number.POSITIVE_INFINITY : 0;
 
   const out = {
     generated_utc: DateTime.utc().toISO(),
@@ -551,17 +784,41 @@ async function main() {
     weeks,
     rules: [
       `TP: close any open trade immediately when +${HIT_TP_PCT.toFixed(2)}% favorable move is hit intraweek.`,
-      "Friday: close any remaining open trade only if currently in profit.",
-      "Carry: keep remaining losers open into next week only if exact key stays aligned (model + asset + pair + direction).",
-      "Weekly refresh: if a carried trade is no longer aligned, close it at current week open.",
+      CARRY_MODE === "none"
+        ? "Friday: force close all remaining open trades at week close (no carry)."
+        : "Friday: close any remaining open trade only if currently in profit.",
+      CARRY_MODE === "none"
+        ? "Carry: disabled."
+        : "Carry: keep remaining losers open into next week only if exact key stays aligned (model + asset + pair + direction).",
+      CARRY_MODE === "none"
+        ? "Weekly refresh: not expected to trigger under no-carry mode."
+        : "Weekly refresh: if a carried trade is no longer aligned, close it at current week open.",
       "No sizing/scaling: pure 1:1 percent accounting per trade leg.",
     ],
+    config: {
+      backtest_weeks: weeks.length,
+      universal_mode: UNIVERSAL_MODE,
+      carry_mode: CARRY_MODE,
+      stop_mode: STOP_MODE,
+      adr_lookback_days: ADR_LOOKBACK_DAYS,
+      adr_stop_multiplier: ADR_STOP_MULTIPLIER,
+      tp_pct: HIT_TP_PCT,
+    },
     totals: {
       desired_legs: totalDesired,
       opened_positions: totalOpened,
       closed_tp_1pct: totalTp,
+      closed_stop_adr: totalStopAdr,
       closed_friday_profit: totalFridayProfit,
+      closed_friday_forced: totalFridayForced,
       closed_refresh_unaligned: totalRefreshUnaligned,
+      closed_positions: closedCount,
+      wins,
+      losses,
+      win_rate_pct: round(winRatePct, 4),
+      avg_closed_pnl_pct: round(avgClosedPnlPct, 4),
+      profit_factor: Number.isFinite(profitFactor) ? round(profitFactor, 4) : "INF",
+      max_drawdown_pct: maxDrawdownPct,
       open_positions_end: openPositions.size,
       realized_pct: round(realizedPct, 4),
       floating_pct: round(finalFloatingPct, 4),
@@ -584,24 +841,46 @@ async function main() {
   md.push("");
   md.push(`Generated: ${out.generated_utc}`);
   md.push(`Weeks: ${weeks.join(", ")}`);
+  md.push(`Universal mode: ${UNIVERSAL_MODE}`);
+  md.push(`Carry mode: ${CARRY_MODE}`);
+  md.push(`Stop mode: ${STOP_MODE}`);
+  if (STOP_MODE === "adr") {
+    md.push(`ADR stop: ${ADR_STOP_MULTIPLIER}x ADR(${ADR_LOOKBACK_DAYS})`);
+  }
   md.push("");
   md.push("## Totals");
   md.push(`- Desired legs: ${out.totals.desired_legs}`);
   md.push(`- Opened positions: ${out.totals.opened_positions}`);
   md.push(`- Closed at TP (+${HIT_TP_PCT.toFixed(2)}%): ${out.totals.closed_tp_1pct}`);
+  md.push(`- Closed at ADR stop: ${out.totals.closed_stop_adr}`);
   md.push(`- Closed Friday in profit: ${out.totals.closed_friday_profit}`);
+  md.push(`- Closed Friday forced (no-carry): ${out.totals.closed_friday_forced}`);
   md.push(`- Closed on refresh (unaligned): ${out.totals.closed_refresh_unaligned}`);
+  md.push(`- Closed positions total: ${out.totals.closed_positions}`);
+  md.push(`- Wins / Losses: ${out.totals.wins} / ${out.totals.losses}`);
+  md.push(`- Win rate: ${Number(out.totals.win_rate_pct).toFixed(2)}%`);
+  md.push(`- Avg closed PnL %: ${Number(out.totals.avg_closed_pnl_pct).toFixed(4)}%`);
+  md.push(
+    `- Profit factor: ${
+      typeof out.totals.profit_factor === "string"
+        ? out.totals.profit_factor
+        : Number(out.totals.profit_factor).toFixed(4)
+    }`,
+  );
+  md.push(`- Max drawdown %: ${Number(out.totals.max_drawdown_pct).toFixed(4)}%`);
   md.push(`- Open positions at end: ${out.totals.open_positions_end}`);
   md.push(`- Realized PnL %: ${out.totals.realized_pct.toFixed(4)}%`);
   md.push(`- Floating PnL % (end): ${out.totals.floating_pct.toFixed(4)}%`);
   md.push(`- Equity PnL % (realized + floating): ${out.totals.equity_pct.toFixed(4)}%`);
   md.push("");
   md.push("## Weekly");
-  md.push("| Week | Desired | Opened | TP Closes | Friday Profit Closes | Refresh Unaligned Closes | Open End | Floating % | End Equity % | Delta Equity % |");
-  md.push("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+  md.push(
+    "| Week | Desired | Opened | TP Closes | ADR Stop Closes | Friday Profit Closes | Friday Forced Closes | Refresh Unaligned Closes | Open End | Start Equity % | Min Equity % | Week DD % | Realized Delta % | Floating % | End Equity % | Delta Equity % |",
+  );
+  md.push("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
   for (const row of weekly) {
     md.push(
-      `| ${row.week_label} | ${row.desired_legs} | ${row.opened_new} | ${row.closed_tp_1pct} | ${row.closed_friday_profit} | ${row.closed_refresh_unaligned} | ${row.open_positions_end} | ${row.week_floating_pct.toFixed(4)}% | ${row.week_end_equity_pct.toFixed(4)}% | ${row.week_delta_equity_pct.toFixed(4)}% |`,
+      `| ${row.week_label} | ${row.desired_legs} | ${row.opened_new} | ${row.closed_tp_1pct} | ${row.closed_stop_adr} | ${row.closed_friday_profit} | ${row.closed_friday_forced} | ${row.closed_refresh_unaligned} | ${row.open_positions_end} | ${row.week_start_equity_pct.toFixed(4)}% | ${row.week_min_equity_pct.toFixed(4)}% | ${row.week_drawdown_pct.toFixed(4)}% | ${row.week_realized_delta_pct.toFixed(4)}% | ${row.week_floating_pct.toFixed(4)}% | ${row.week_end_equity_pct.toFixed(4)}% | ${row.week_delta_equity_pct.toFixed(4)}% |`,
     );
   }
   md.push("");

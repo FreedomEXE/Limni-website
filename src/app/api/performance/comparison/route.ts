@@ -1,3 +1,16 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: src/app/api/performance/comparison/route.ts
+ *
+ * Description:
+ * Builds comparison metrics payloads for Universal, Tiered, and Katarakti
+ * systems across selected historical periods.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
 import { NextRequest, NextResponse } from "next/server";
 import { readAllPerformanceSnapshots } from "@/lib/performanceSnapshots";
 import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "@/lib/weekAnchor";
@@ -11,6 +24,7 @@ import {
 import { computeTieredForWeeksAllSystems } from "@/lib/performance/tiered";
 import {
   readKataraktiMarketSnapshotsByVariant,
+  type KataraktiMarketSnapshot,
 } from "@/lib/performance/kataraktiHistory";
 import { buildKataraktiPeriodMetrics } from "@/lib/performance/kataraktiMetrics";
 import { listAssetClasses } from "@/lib/cotMarkets";
@@ -210,12 +224,24 @@ function computeProfitFactorFromReturns(returns: number[]): number | null {
   return null;
 }
 
-function computeStaticMaxDrawdownFromWeeklyReturns(returns: number[]): number | null {
+function computeMaxDrawdownFromWeeklyReturns(returns: number[]): number | null {
   if (returns.length === 0) return null;
-  return returns.reduce(
-    (max, value) => Math.max(max, value < 0 ? Math.abs(value) : 0),
-    0,
-  );
+  let equity = 100;
+  let peak = equity;
+  let maxDrawdown = 0;
+  for (const value of returns) {
+    equity *= 1 + value / 100;
+    if (equity > peak) {
+      peak = equity;
+      continue;
+    }
+    if (peak <= 0) continue;
+    const drawdown = ((peak - equity) / peak) * 100;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  }
+  return maxDrawdown > 0 ? maxDrawdown : null;
 }
 
 function buildComparisonMetricsFromWeeklySeries(options: {
@@ -242,7 +268,7 @@ function buildComparisonMetricsFromWeeklySeries(options: {
       options.sharpeFallbackReturns ?? [],
     ),
     avgWeekly,
-    maxDrawdown: options.maxDrawdown ?? computeStaticMaxDrawdownFromWeeklyReturns(options.weekReturns),
+    maxDrawdown: options.maxDrawdown ?? computeMaxDrawdownFromWeeklyReturns(options.weekReturns),
     trades: options.trades,
     tradeWinRate,
     avgTrade: options.avgTrade,
@@ -327,10 +353,11 @@ function computeMetricsFromWeeklyRows(
       ? tradeReturns.filter((value) => value > 0).length
       : weeklyRows.reduce((sum, row) => sum + row.wins, 0);
   const totalReturn = weekReturns.reduce((sum, value) => sum + value, 0);
-  const maxDrawdown =
-    weeklyRows.length > 0
-      ? weeklyRows.reduce((max, row) => Math.max(max, row.week_max_drawdown ?? 0), 0)
-      : null;
+  const curveMaxDrawdown = computeMaxDrawdownFromWeeklyReturns(weekReturns) ?? 0;
+  const staticMaxDrawdown = weeklyRows.length > 0
+    ? weeklyRows.reduce((max, row) => Math.max(max, row.week_max_drawdown ?? 0), 0)
+    : 0;
+  const maxDrawdown = Math.max(curveMaxDrawdown, staticMaxDrawdown) || null;
   return buildComparisonMetricsFromWeeklySeries({
     weekReturns,
     sharpeFallbackReturns: tradeReturns,
@@ -387,6 +414,24 @@ function toKataraktiComparisonMetrics(
     avgTrade: metrics.avgTradePct,
     profitFactor: metrics.profitFactor,
   };
+}
+
+function resolveKataraktiMetricsWithFallback(options: {
+  snapshot: KataraktiMarketSnapshot;
+  requestedWeek: string | null;
+}) {
+  const primary = buildKataraktiPeriodMetrics(
+    options.snapshot,
+    options.requestedWeek ?? "all",
+  );
+  if (
+    options.requestedWeek !== null &&
+    primary.weeks === 0 &&
+    options.snapshot.weekly.length > 0
+  ) {
+    return buildKataraktiPeriodMetrics(options.snapshot, "all");
+  }
+  return primary;
 }
 
 export async function GET(request: NextRequest) {
@@ -547,7 +592,10 @@ export async function GET(request: NextRequest) {
           crypto_futures: coreSnapshotsByMarket.crypto_futures
             ? finalizeComparisonMetrics(
                 toKataraktiComparisonMetrics(
-                  buildKataraktiPeriodMetrics(coreSnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
+                  resolveKataraktiMetricsWithFallback({
+                    snapshot: coreSnapshotsByMarket.crypto_futures,
+                    requestedWeek,
+                  }),
                 ) ?? emptyKataraktiMetrics,
                 {
                   annualizeSharpe,
@@ -559,7 +607,10 @@ export async function GET(request: NextRequest) {
           mt5_forex: coreSnapshotsByMarket.mt5_forex
             ? finalizeComparisonMetrics(
                 toKataraktiComparisonMetrics(
-                  buildKataraktiPeriodMetrics(coreSnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
+                  resolveKataraktiMetricsWithFallback({
+                    snapshot: coreSnapshotsByMarket.mt5_forex,
+                    requestedWeek,
+                  }),
                 ) ?? emptyKataraktiMetrics,
                 {
                   annualizeSharpe,
@@ -573,7 +624,10 @@ export async function GET(request: NextRequest) {
           crypto_futures: liteSnapshotsByMarket.crypto_futures
             ? finalizeComparisonMetrics(
                 toKataraktiComparisonMetrics(
-                  buildKataraktiPeriodMetrics(liteSnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
+                  resolveKataraktiMetricsWithFallback({
+                    snapshot: liteSnapshotsByMarket.crypto_futures,
+                    requestedWeek,
+                  }),
                 ) ?? emptyKataraktiMetrics,
                 {
                   annualizeSharpe,
@@ -585,7 +639,10 @@ export async function GET(request: NextRequest) {
           mt5_forex: liteSnapshotsByMarket.mt5_forex
             ? finalizeComparisonMetrics(
                 toKataraktiComparisonMetrics(
-                  buildKataraktiPeriodMetrics(liteSnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
+                  resolveKataraktiMetricsWithFallback({
+                    snapshot: liteSnapshotsByMarket.mt5_forex,
+                    requestedWeek,
+                  }),
                 ) ?? emptyKataraktiMetrics,
                 {
                   annualizeSharpe,
@@ -599,7 +656,10 @@ export async function GET(request: NextRequest) {
           crypto_futures: v3SnapshotsByMarket.crypto_futures
             ? finalizeComparisonMetrics(
                 toKataraktiComparisonMetrics(
-                  buildKataraktiPeriodMetrics(v3SnapshotsByMarket.crypto_futures, requestedWeek ?? "all"),
+                  resolveKataraktiMetricsWithFallback({
+                    snapshot: v3SnapshotsByMarket.crypto_futures,
+                    requestedWeek,
+                  }),
                 ) ?? emptyKataraktiMetrics,
                 {
                   annualizeSharpe,

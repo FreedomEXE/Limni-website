@@ -114,6 +114,7 @@ export async function readBotStrategySummaries(): Promise<StrategySummary[]> {
       const snapshot = resolveSnapshotForConfig(config);
       if (!snapshot) return null;
       return {
+        botId: config.botId,
         market: config.market,
         name: config.name,
         href: config.href,
@@ -122,12 +123,12 @@ export async function readBotStrategySummaries(): Promise<StrategySummary[]> {
         totalPnlUsd: snapshot.totalPnlUsd,
         maxDrawdownPct: snapshot.maxDrawdownPct,
         status: config.status,
-      } satisfies StrategySummary;
+      };
     })
-    .filter((entry): entry is StrategySummary => entry !== null);
+    .filter((entry): entry is ({ botId: string } & StrategySummary) => entry !== null);
 
   if (snapshotSummaries.length === STRATEGY_CONFIGS.length) {
-    return snapshotSummaries;
+    return snapshotSummaries.map(({ botId: _botId, ...summary }) => summary);
   }
 
   const aggregates: StrategyAggregateResult[] = await Promise.all(
@@ -142,6 +143,7 @@ export async function readBotStrategySummaries(): Promise<StrategySummary[]> {
   const fallbackSummaries = aggregates
     .filter(hasAggregate)
     .map(({ config, aggregate }) => ({
+      botId: config.botId,
       market: config.market,
       name: config.name,
       href: config.href,
@@ -152,14 +154,15 @@ export async function readBotStrategySummaries(): Promise<StrategySummary[]> {
       status: config.status,
     }));
 
-  const fallbackByMarket = new Map(
-    fallbackSummaries.map((summary) => [summary.market, summary] as const),
+  const fallbackByBotId = new Map(
+    fallbackSummaries.map((summary) => [summary.botId, summary] as const),
   );
-  const snapshotByMarket = new Map(
-    snapshotSummaries.map((summary) => [summary.market, summary] as const),
+  const snapshotByBotId = new Map(
+    snapshotSummaries.map((summary) => [summary.botId, summary] as const),
   );
 
   return STRATEGY_CONFIGS
-    .map((config) => snapshotByMarket.get(config.market) ?? fallbackByMarket.get(config.market) ?? null)
-    .filter((summary): summary is StrategySummary => summary !== null);
+    .map((config) => snapshotByBotId.get(config.botId) ?? fallbackByBotId.get(config.botId) ?? null)
+    .filter((summary): summary is StrategySummary => summary !== null)
+    .map(({ botId: _botId, ...summary }) => summary);
 }

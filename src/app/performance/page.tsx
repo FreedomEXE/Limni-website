@@ -92,6 +92,19 @@ function resolveKataraktiVariant(value: string | null | undefined): KataraktiVar
   return "core";
 }
 
+function resolveKataraktiSelection(options: {
+  market: "crypto_futures" | "mt5_forex";
+  variant: KataraktiVariant;
+}) {
+  if (options.variant === "v3") {
+    return {
+      market: "crypto_futures" as const,
+      variant: options.variant,
+    };
+  }
+  return options;
+}
+
 const KATARAKTI_MODEL_LABELS = {
   ...PERFORMANCE_MODEL_LABELS,
   [KATARAKTI_CARD_MODEL]: "Katarakti",
@@ -133,10 +146,18 @@ function buildKataraktiGridPropsByVariantAndMarket(options: {
     const model = snapshot
       ? buildKataraktiModelPerformance(snapshot, options.period ?? "all")
       : null;
-    const fallbackIndicator = snapshot?.fallbackLabel ? " (Core baseline)" : "";
+    const fallbackLabel = snapshot?.fallbackLabel?.trim() ?? "";
+    const fallbackIndicator =
+      fallbackLabel.length === 0
+        ? ""
+        : fallbackLabel.includes("Core baseline")
+          ? " (Core baseline)"
+          : fallbackLabel.toLowerCase().includes("pending")
+            ? " (Pending)"
+            : " (Fallback)";
     const gridLabel = `${label}${fallbackIndicator}`;
-    const gridDescription = snapshot?.fallbackLabel
-      ? `${description} ${snapshot.fallbackLabel}`
+    const gridDescription = fallbackLabel
+      ? `${description} ${fallbackLabel}`
       : description;
     return {
       combined: {
@@ -328,8 +349,12 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
 
   const initialSystem = resolvePerformanceSystem(systemParamValue);
   const initialStyle = resolvePerformanceStyle(styleParamValue);
-  const initialKataraktiMarket = resolveKataraktiMarket(marketParamValue);
-  const initialKataraktiVariant = resolveKataraktiVariant(variantParamValue);
+  const resolvedKataraktiSelection = resolveKataraktiSelection({
+    market: resolveKataraktiMarket(marketParamValue),
+    variant: resolveKataraktiVariant(variantParamValue),
+  });
+  const initialKataraktiMarket = resolvedKataraktiSelection.market;
+  const initialKataraktiVariant = resolvedKataraktiSelection.variant;
   const view = resolvePerformanceView(viewParamValue);
   const assetClasses = listAssetClasses();
   const models = PERFORMANCE_MODELS;

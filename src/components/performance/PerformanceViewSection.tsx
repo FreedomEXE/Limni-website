@@ -15,6 +15,19 @@ import type { KataraktiMarket, KataraktiVariant } from "@/lib/performance/katara
 
 type PerformanceStyle = "universal" | "tiered" | "katarakti";
 
+function resolveKataraktiSelection(options: {
+  market: KataraktiMarket;
+  variant: KataraktiVariant;
+}) {
+  if (options.variant === "v3") {
+    return {
+      market: "crypto_futures" as const,
+      variant: options.variant,
+    };
+  }
+  return options;
+}
+
 const TIERED_DISPLAY_MODELS: PerformanceModel[] = [
   "antikythera_v3",
   "dealer",
@@ -64,8 +77,12 @@ export default function PerformanceViewSection({
   const [view, setView] = useState<PerformanceView>(initialView);
   const [system, setSystem] = useState<PerformanceSystem>(initialSystem);
   const [style, setStyle] = useState<PerformanceStyle>(initialStyle);
-  const [kataraktiMarket, setKataraktiMarket] = useState<KataraktiMarket>(initialKataraktiMarket);
-  const [kataraktiVariant, setKataraktiVariant] = useState<KataraktiVariant>(initialKataraktiVariant);
+  const initialSelection = resolveKataraktiSelection({
+    market: initialKataraktiMarket,
+    variant: initialKataraktiVariant,
+  });
+  const [kataraktiMarket, setKataraktiMarket] = useState<KataraktiMarket>(initialSelection.market);
+  const [kataraktiVariant, setKataraktiVariant] = useState<KataraktiVariant>(initialSelection.variant);
 
   useEffect(() => {
     const onSystemChange = (event: Event) => {
@@ -83,13 +100,22 @@ export default function PerformanceViewSection({
     const onKataraktiMarketChange = (event: Event) => {
       const custom = event as CustomEvent<KataraktiMarket>;
       if (custom.detail === "crypto_futures" || custom.detail === "mt5_forex") {
-        setKataraktiMarket(custom.detail);
+        const resolved = resolveKataraktiSelection({
+          market: custom.detail,
+          variant: kataraktiVariant,
+        });
+        setKataraktiMarket(resolved.market);
       }
     };
     const onKataraktiVariantChange = (event: Event) => {
       const custom = event as CustomEvent<KataraktiVariant>;
       if (custom.detail === "core" || custom.detail === "lite" || custom.detail === "v3") {
-        setKataraktiVariant(custom.detail);
+        const resolved = resolveKataraktiSelection({
+          market: kataraktiMarket,
+          variant: custom.detail,
+        });
+        setKataraktiVariant(resolved.variant);
+        setKataraktiMarket(resolved.market);
       }
     };
     window.addEventListener("performance-system-change", onSystemChange);
@@ -102,7 +128,7 @@ export default function PerformanceViewSection({
       window.removeEventListener("performance-katarakti-market-change", onKataraktiMarketChange);
       window.removeEventListener("performance-katarakti-variant-change", onKataraktiVariantChange);
     };
-  }, []);
+  }, [kataraktiMarket, kataraktiVariant]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
