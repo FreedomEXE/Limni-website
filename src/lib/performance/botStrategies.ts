@@ -163,6 +163,6 @@ export async function readBotStrategySummaries(): Promise<StrategySummary[]> {
 
   return STRATEGY_CONFIGS
     .map((config) => snapshotByBotId.get(config.botId) ?? fallbackByBotId.get(config.botId) ?? null)
-    .filter((summary): summary is StrategySummary => summary !== null)
+    .filter((summary): summary is ({ botId: string } & StrategySummary) => summary !== null)
     .map(({ botId: _botId, ...summary }) => summary);
 }
