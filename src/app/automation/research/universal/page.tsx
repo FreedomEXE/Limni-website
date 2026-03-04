@@ -12,6 +12,7 @@ import { listPerformanceWeeks } from "@/lib/performanceSnapshots";
 import { computeMaxDrawdown, computeStaticDrawdown, pickParam } from "@/lib/research/common";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import { buildPerformanceComparisonPayload } from "@/app/api/performance/comparison/route";
 
 export const revalidate = 900;
 
@@ -62,6 +63,9 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
   const selectedWeekStaticDrawdown = selectedUniversalWeek
     ? computeStaticDrawdown(selectedUniversalWeek.equity_curve)
     : 0;
+  const comparison = await buildPerformanceComparisonPayload("all");
+  const universalV1Comparison = comparison.strategies.universal_v1?.metrics ?? comparison.v1;
+  const universalV1Source = comparison.strategies.universal_v1?.source?.mode ?? "unknown";
 
   return (
     <DashboardLayout>
@@ -112,15 +116,15 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
             <KpiGroup title="Performance" description="Overall results and headline weekly stats.">
               <KpiCard
                 label="Total return"
-                value={`${universalSummary.overall.total_percent.toFixed(2)}%`}
-                tone={universalSummary.overall.total_percent >= 0 ? "positive" : "negative"}
+                value={`${universalV1Comparison.totalReturn.toFixed(2)}%`}
+                tone={universalV1Comparison.totalReturn >= 0 ? "positive" : "negative"}
                 emphasis="primary"
               />
               <KpiCard
                 label="Avg weekly"
-                value={`${universalSummary.overall.avg_weekly_percent.toFixed(2)}%`}
+                value={`${universalV1Comparison.avgWeekly.toFixed(2)}%`}
               />
-              <KpiCard label="Win rate" value={`${universalSummary.overall.win_rate.toFixed(0)}%`} />
+              <KpiCard label="Win rate" value={`${universalV1Comparison.winRate.toFixed(0)}%`} />
             </KpiGroup>
 
             <KpiGroup title="Risk" description="Drawdown and trailing lock behavior.">
@@ -128,12 +132,15 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
                 label="Locked total"
                 value={`${universalSummary.overall.simulated_locked_total_percent.toFixed(2)}%`}
               />
-              <KpiCard label="Weeks" value={`${universalSummary.overall.weeks}`} />
+              <KpiCard label="Weeks" value={`${universalV1Comparison.weeks}`} />
               <KpiCard
                 label="Trail start"
                 value={`${universalSummary.assumptions.trail_start_pct.toFixed(0)}%`}
               />
             </KpiGroup>
+            <div className="text-[10px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
+              Source: {universalV1Source.replaceAll("_", " ")}
+            </div>
 
             {selectedUniversalWeek ? (
               <KpiGroup title="Selected Week" description="Week-specific stats for the chosen window.">

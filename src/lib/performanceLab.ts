@@ -51,6 +51,10 @@ export type ModelPerformance = {
     best_pair: { pair: string; percent: number } | null;
     worst_pair: { pair: string; percent: number } | null;
   };
+  diagnostics?: {
+    max_drawdown?: number | null;
+    profit_factor?: number | null;
+  };
   trailing?: {
     peak_percent: number;
     locked_percent: number;

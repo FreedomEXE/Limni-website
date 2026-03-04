@@ -45,6 +45,33 @@ type StrategiesResponse = {
   error?: string;
 };
 
+type ComparisonMetrics = {
+  totalReturn: number;
+  weeks: number;
+  winRate: number;
+  sharpe: number;
+  avgWeekly: number;
+  maxDrawdown: number | null;
+  trades: number;
+  tradeWinRate: number;
+};
+
+type ComparisonSource = {
+  mode: "strategy_backtest_db" | "performance_snapshots" | "tiered_derived" | "katarakti_snapshot" | "unavailable";
+  sourcePath: string;
+  fallbackLabel?: string | null;
+};
+
+type StrategyComparisonEntry = {
+  entryId: string;
+  metrics: ComparisonMetrics;
+  source: ComparisonSource;
+};
+
+type ComparisonResponse = {
+  strategies?: Record<string, StrategyComparisonEntry>;
+};
+
 const FAMILY_ORDER = ["universal", "tiered", "katarakti"] as const;
 
 function familyLabel(family: string) {
@@ -71,11 +98,22 @@ function formatDate(value: string | null | undefined) {
   return iso.toISOString().slice(0, 10);
 }
 
-function statusConfig(entry: StrategyExplorerEntry) {
+function statusConfig(options: {
+  entry: StrategyExplorerEntry;
+  hasSnapshotMetrics: boolean;
+  sourceMode: ComparisonSource["mode"] | null;
+}) {
+  const { entry, hasSnapshotMetrics, sourceMode } = options;
   if (entry.hasDbRun) {
     return {
       dotClass: "bg-emerald-500",
       label: "DB Connected",
+    };
+  }
+  if (hasSnapshotMetrics && sourceMode && sourceMode !== "unavailable") {
+    return {
+      dotClass: "bg-cyan-500",
+      label: "Snapshot Source",
     };
   }
   if (entry.pending) {
@@ -94,6 +132,7 @@ export default function StrategiesExplorerClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [entries, setEntries] = useState<StrategyExplorerEntry[]>([]);
+  const [comparisonStrategies, setComparisonStrategies] = useState<Record<string, StrategyComparisonEntry>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -102,20 +141,24 @@ export default function StrategiesExplorerClient() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/research/strategies", {
-          cache: "no-store",
-        });
-        const payload = (await response.json()) as StrategiesResponse;
-        if (!response.ok || !payload.ok) {
+        const [coverageResponse, comparisonResponse] = await Promise.all([
+          fetch("/api/research/strategies", { cache: "no-store" }),
+          fetch("/api/performance/comparison?week=all", { cache: "no-store" }),
+        ]);
+        const payload = (await coverageResponse.json()) as StrategiesResponse;
+        const comparisonPayload = (await comparisonResponse.json()) as ComparisonResponse;
+        if (!coverageResponse.ok || !payload.ok) {
           throw new Error(payload.error ?? "Failed to load strategies.");
         }
         if (!cancelled) {
           setEntries(Array.isArray(payload.entries) ? payload.entries : []);
+          setComparisonStrategies(comparisonPayload.strategies ?? {});
         }
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : String(loadError));
           setEntries([]);
+          setComparisonStrategies({});
         }
       } finally {
         if (!cancelled) {
@@ -198,7 +241,23 @@ export default function StrategiesExplorerClient() {
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {familyEntries.map((entry) => {
-                const status = statusConfig(entry);
+                const comparison = comparisonStrategies[entry.entryId];
+                const metrics = comparison?.metrics;
+                const sourceMode = comparison?.source?.mode ?? null;
+                const hasSnapshotMetrics = Boolean(metrics && metrics.weeks > 0);
+                const status = statusConfig({
+                  entry,
+                  hasSnapshotMetrics,
+                  sourceMode,
+                });
+                const weeks = entry.weeklyCount > 0 ? entry.weeklyCount : metrics?.weeks ?? 0;
+                const trades = entry.tradeCount > 0 ? entry.tradeCount : metrics?.trades ?? 0;
+                const totalReturn = metrics ? metrics.totalReturn : entry.totalReturn;
+                const maxDrawdown = metrics ? metrics.maxDrawdown : entry.maxDrawdown;
+                const weeklyWinRate = metrics ? metrics.winRate : entry.weeklyWinRate;
+                const sharpe = metrics ? metrics.sharpe : entry.sharpe;
+                const avgWeekly = metrics ? metrics.avgWeekly : entry.avgWeekly;
+                const tradeWinRate = metrics ? metrics.tradeWinRate : entry.tradeWinRate;
                 return (
                   <article
                     key={entry.entryId}
@@ -217,20 +276,20 @@ export default function StrategiesExplorerClient() {
                         <span>{status.label}</span>
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[color:var(--muted)]">
-                        <span>Weeks: {entry.weeklyCount}</span>
-                        <span>Trades: {entry.tradeCount}</span>
+                        <span>Weeks: {weeks}</span>
+                        <span>Trades: {trades}</span>
                         <span>Run: {entry.runId ?? "—"}</span>
                         <span>Generated: {formatDate(entry.generatedUtc)}</span>
                       </div>
                     </div>
 
                     <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3">
-                      <Metric label="Total Return" value={formatPercent(entry.totalReturn)} />
-                      <Metric label="Max DD" value={formatPercent(entry.maxDrawdown)} />
-                      <Metric label="Weekly Win%" value={formatPercent(entry.weeklyWinRate)} />
-                      <Metric label="Sharpe" value={formatSharpe(entry.sharpe)} />
-                      <Metric label="Avg Weekly" value={formatPercent(entry.avgWeekly)} />
-                      <Metric label="Trade Win%" value={formatPercent(entry.tradeWinRate)} />
+                      <Metric label="Total Return" value={formatPercent(totalReturn)} />
+                      <Metric label="Max DD" value={formatPercent(maxDrawdown)} />
+                      <Metric label="Weekly Win%" value={formatPercent(weeklyWinRate)} />
+                      <Metric label="Sharpe" value={formatSharpe(sharpe)} />
+                      <Metric label="Avg Weekly" value={formatPercent(avgWeekly)} />
+                      <Metric label="Trade Win%" value={formatPercent(tradeWinRate)} />
                     </div>
 
                     <p className="mt-3 text-xs text-[color:var(--muted)]">
@@ -238,6 +297,11 @@ export default function StrategiesExplorerClient() {
                         ? `Latest data: ${formatDate(entry.latestWeekOpenUtc)}`
                         : "No data"}
                     </p>
+                    {comparison?.source ? (
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
+                        Source: {comparison.source.mode.replaceAll("_", " ")}
+                      </p>
+                    ) : null}
                   </article>
                 );
               })}

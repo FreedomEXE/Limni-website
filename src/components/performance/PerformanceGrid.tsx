@@ -296,8 +296,12 @@ function PerformanceCard({
   const badge = getConfidenceBadge(performance);
   const sharpeProxy =
     performance.stats.volatility > 0 ? performance.stats.avg_return / performance.stats.volatility : 0;
-  const maxDrawdown = computeMaxDrawdownFromReturns(performance.returns);
-  const profitFactor = computeProfitFactorFromReturns(performance.returns);
+  const maxDrawdown =
+    performance.diagnostics?.max_drawdown ??
+    computeMaxDrawdownFromReturns(performance.returns);
+  const profitFactor =
+    performance.diagnostics?.profit_factor ??
+    computeProfitFactorFromReturns(performance.returns);
   const displayPercent =
     view === "simulation" && performance.trailing
       ? performance.trailing.locked_percent

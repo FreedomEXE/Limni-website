@@ -30,8 +30,10 @@ import { buildKataraktiPeriodMetrics } from "@/lib/performance/kataraktiMetrics"
 import {
   listPerformanceStrategyEntries,
   resolveComparisonSourceKey,
+  resolveStrategySummarySourcePolicy,
   type PerformanceComparisonSourceKey,
   type PerformanceStrategyEntry,
+  type StrategySummarySourcePolicy,
 } from "@/lib/performance/strategyRegistry";
 import { readStrategyBacktestWeeklySeries } from "@/lib/performance/strategyBacktestHistory";
 import { listAssetClasses } from "@/lib/cotMarkets";
@@ -73,6 +75,64 @@ type StrategyComparisonEntry = {
   entryId: string;
   metrics: ComparisonMetrics;
   source: ComparisonSourceMeta;
+};
+
+export type PerformanceComparisonPayload = {
+  strategies: Record<string, StrategyComparisonEntry>;
+  v1: ComparisonMetrics;
+  v2: ComparisonMetrics;
+  v3: ComparisonMetrics;
+  universal: {
+    v1: ComparisonMetrics;
+    v2: ComparisonMetrics;
+    v3: ComparisonMetrics;
+  };
+  tiered: {
+    v1: ComparisonMetrics;
+    v2: ComparisonMetrics;
+    v3: ComparisonMetrics;
+  };
+  katarakti: {
+    core: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+    lite: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+    v3: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+  };
+  sources: {
+    universal: {
+      v1: ComparisonSourceMeta;
+      v2: ComparisonSourceMeta;
+      v3: ComparisonSourceMeta;
+    };
+    tiered: {
+      v1: ComparisonSourceMeta;
+      v2: ComparisonSourceMeta;
+      v3: ComparisonSourceMeta;
+    };
+    katarakti: {
+      core: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+      lite: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+      v3: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+    };
+  };
+  weeksAnalyzed: number;
 };
 
 function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
@@ -432,6 +492,28 @@ function finalizeComparisonMetrics(
   };
 }
 
+function scoreMetricsCoverage(metrics: ComparisonMetrics) {
+  return metrics.weeks * 1_000_000 + metrics.trades;
+}
+
+function shouldPreferUniversalV1Backtest(options: {
+  requestedWeek: string | null;
+  dbMetrics: ComparisonMetrics;
+  snapshotMetrics: ComparisonMetrics;
+  dbFellBackToAllTime: boolean;
+  sourcePolicy: StrategySummarySourcePolicy;
+}) {
+  if (options.sourcePolicy === "prefer_snapshots") return false;
+  if (options.sourcePolicy === "prefer_db") return options.dbMetrics.weeks > 0;
+  if (options.dbMetrics.weeks <= 0) return false;
+  if (options.snapshotMetrics.weeks <= 0) return true;
+  if (options.requestedWeek !== null) {
+    if (options.dbFellBackToAllTime) return false;
+    return scoreMetricsCoverage(options.dbMetrics) >= scoreMetricsCoverage(options.snapshotMetrics);
+  }
+  return scoreMetricsCoverage(options.dbMetrics) >= scoreMetricsCoverage(options.snapshotMetrics);
+}
+
 function toKataraktiComparisonMetrics(
   metrics: ReturnType<typeof buildKataraktiPeriodMetrics> | null,
 ): ComparisonMetrics | null {
@@ -647,13 +729,13 @@ function buildStrategiesMap(options: {
   return strategies;
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const weekParam = request.nextUrl.searchParams.get("week");
-    const requestedWeek =
-      weekParam && weekParam !== "all"
-        ? (normalizeWeekOpenUtc(weekParam) ?? weekParam)
-        : null;
+export async function buildPerformanceComparisonPayload(
+  weekParam: string | null,
+): Promise<PerformanceComparisonPayload> {
+  const requestedWeek =
+    weekParam && weekParam !== "all"
+      ? (normalizeWeekOpenUtc(weekParam) ?? weekParam)
+      : null;
     const currentWeekOpenUtc = getCanonicalWeekOpenUtc();
     const currentWeekMillis = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" }).toMillis();
 
@@ -686,12 +768,26 @@ export async function GET(request: NextRequest) {
       fallbackToAllTime: true,
     });
 
-    const v1Metrics = finalizeComparisonMetrics(
-      universalV1Backtest && universalV1Backtest.rows.length > 0
-        ? computeMetricsFromWeeklyRows(universalV1Backtest.rows)
-        : computeMetrics(comparisonSnapshots, V1_MODELS, selectedWeeks),
+    const v1SnapshotMetrics = finalizeComparisonMetrics(
+      computeMetrics(comparisonSnapshots, V1_MODELS, selectedWeeks),
       { annualizeSharpe },
     );
+    const v1BacktestMetrics = universalV1Backtest && universalV1Backtest.rows.length > 0
+      ? finalizeComparisonMetrics(
+          computeMetricsFromWeeklyRows(universalV1Backtest.rows),
+          { annualizeSharpe },
+        )
+      : null;
+    const useBacktestV1 = v1BacktestMetrics
+      ? shouldPreferUniversalV1Backtest({
+          requestedWeek,
+          dbMetrics: v1BacktestMetrics,
+          snapshotMetrics: v1SnapshotMetrics,
+          dbFellBackToAllTime: universalV1Backtest?.fellBackToAllTime ?? false,
+          sourcePolicy: resolveStrategySummarySourcePolicy("universal_v1"),
+        })
+      : false;
+    const v1Metrics = useBacktestV1 && v1BacktestMetrics ? v1BacktestMetrics : v1SnapshotMetrics;
     const v2Metrics = finalizeComparisonMetrics(
       computeMetrics(comparisonSnapshots, V2_MODELS, selectedWeeks),
       { annualizeSharpe },
@@ -925,7 +1021,7 @@ export async function GET(request: NextRequest) {
       };
     } = {
       universal: {
-        v1: universalV1Backtest && universalV1Backtest.rows.length > 0
+        v1: useBacktestV1 && universalV1Backtest && universalV1Backtest.rows.length > 0
           ? {
               mode: "strategy_backtest_db",
               sourcePath: universalV1Backtest.sourcePath,
@@ -997,7 +1093,7 @@ export async function GET(request: NextRequest) {
       kataraktiSources: sources.katarakti,
     });
 
-    return NextResponse.json({
+    return {
       strategies,
       v1: v1Metrics,
       v2: v2Metrics,
@@ -1007,7 +1103,15 @@ export async function GET(request: NextRequest) {
       katarakti,
       sources,
       weeksAnalyzed: selectedWeekList.length,
-    });
+    };
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const payload = await buildPerformanceComparisonPayload(
+      request.nextUrl.searchParams.get("week"),
+    );
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Performance comparison API error:", error);
     return NextResponse.json(

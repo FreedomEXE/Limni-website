@@ -24,6 +24,7 @@ export type KataraktiRegistryVariant = "core" | "lite" | "v3";
 export type KataraktiRegistryMarket = "crypto_futures" | "mt5_forex";
 export type KataraktiRegistryMode = "legacy_core" | "db_first" | "unavailable";
 export type PerformanceStrategyFamily = "universal" | "tiered" | "katarakti";
+export type StrategySummarySourcePolicy = "coverage_auto" | "prefer_db" | "prefer_snapshots";
 
 export type PerformanceStrategyTheme = {
   // Full Tailwind class strings; do not dynamically construct.
@@ -58,6 +59,7 @@ export type PerformanceStrategyEntry = {
   backtestBotId?: string;
   backtestVariant?: string;
   backtestMarket?: string;
+  summarySourcePolicy?: StrategySummarySourcePolicy;
   requiredMarket?: KataraktiRegistryMarket;
   forcesCryptoOnly?: boolean;
   displayModels?: readonly PerformanceModel[];
@@ -257,6 +259,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     backtestBotId: "universal_v1_tp1_friday_carry_aligned",
     backtestVariant: "v1",
     backtestMarket: "multi_asset",
+    summarySourcePolicy: "coverage_auto",
     displayModels: PERFORMANCE_V1_MODELS,
   },
   {
@@ -553,6 +556,13 @@ export function resolveDisplayModelsForEntry(
     return PERFORMANCE_SYSTEM_MODEL_MAP[entry.systemVersion];
   }
   return PERFORMANCE_V1_MODELS;
+}
+
+export function resolveStrategySummarySourcePolicy(
+  entryId: string,
+): StrategySummarySourcePolicy {
+  const entry = getPerformanceStrategyEntry(entryId);
+  return entry?.summarySourcePolicy ?? "coverage_auto";
 }
 
 export function getKataraktiStrategyRegistryEntry(

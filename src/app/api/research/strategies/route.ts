@@ -61,7 +61,10 @@ export async function GET() {
     for (const entry of registryEntries) {
       const dbRun = dbRuns.find((run) => {
         if (entry.backtestBotId) {
-          return run.botId === entry.backtestBotId;
+          if (run.botId !== entry.backtestBotId) return false;
+          if (entry.backtestVariant && run.variant !== entry.backtestVariant) return false;
+          if (entry.backtestMarket && run.market !== entry.backtestMarket) return false;
+          return true;
         }
         if (entry.kataraktiVariant && entry.market) {
           return run.variant === entry.kataraktiVariant && run.market === entry.market;

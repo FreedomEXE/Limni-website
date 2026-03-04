@@ -29,6 +29,10 @@ import {
 type KataraktiMarket = "crypto_futures" | "mt5_forex";
 type KataraktiVariant = "core" | "lite" | "v3";
 type SystemVersion = "v1" | "v2" | "v3";
+type KataraktiSelectionDetail = {
+  market: KataraktiMarket;
+  variant: KataraktiVariant;
+};
 
 type ComparisonMetrics = {
   totalReturn: number;
@@ -352,6 +356,12 @@ export default function PerformanceComparisonPanel() {
       setActiveKataraktiVariant(variant);
       url.searchParams.set("market", market);
       url.searchParams.set("variant", variant);
+      window.dispatchEvent(
+        new CustomEvent<KataraktiSelectionDetail>(
+          "performance-katarakti-selection-change",
+          { detail: { market, variant } },
+        ),
+      );
     } else {
       url.searchParams.delete("market");
       url.searchParams.delete("variant");
@@ -384,8 +394,12 @@ export default function PerformanceComparisonPanel() {
     url.searchParams.set("market", market);
     url.searchParams.set("variant", variant);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-    window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: market }));
-    window.dispatchEvent(new CustomEvent("performance-katarakti-variant-change", { detail: variant }));
+    window.dispatchEvent(
+      new CustomEvent<KataraktiSelectionDetail>(
+        "performance-katarakti-selection-change",
+        { detail: { market, variant } },
+      ),
+    );
   };
 
   const setKataraktiVariant = (next: KataraktiVariant) => {
@@ -403,8 +417,12 @@ export default function PerformanceComparisonPanel() {
     url.searchParams.set("market", market);
     url.searchParams.set("variant", variant);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-    window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: market }));
-    window.dispatchEvent(new CustomEvent("performance-katarakti-variant-change", { detail: variant }));
+    window.dispatchEvent(
+      new CustomEvent<KataraktiSelectionDetail>(
+        "performance-katarakti-selection-change",
+        { detail: { market, variant } },
+      ),
+    );
   };
 
   const activeTheme = activeEntry?.theme;

@@ -100,6 +100,21 @@ function buildTradeReturnLabel(trade: KataraktiTradeDetail, index: number) {
   return `${trade.pair} ${suffix}`;
 }
 
+function getTradesForWeek(
+  snapshot: KataraktiMarketSnapshot,
+  weekOpenUtc: string,
+): KataraktiTradeDetail[] {
+  const direct = snapshot.tradeDetailsByWeek[weekOpenUtc];
+  if (direct) return direct;
+  const canonicalTarget = normalizeWeek(weekOpenUtc);
+  for (const [key, trades] of Object.entries(snapshot.tradeDetailsByWeek)) {
+    if (normalizeWeek(key) === canonicalTarget) {
+      return trades;
+    }
+  }
+  return [];
+}
+
 export function selectKataraktiWeeks(
   snapshot: KataraktiMarketSnapshot,
   period: KataraktiPeriodValue,
@@ -223,7 +238,7 @@ export function buildKataraktiModelPerformance(
   const metrics = buildKataraktiPeriodMetrics(snapshot, effectivePeriod);
 
   const selectedWeekTrades =
-    selectedWeek !== null ? snapshot.tradeDetailsByWeek[selectedWeek] ?? [] : [];
+    selectedWeek !== null ? getTradesForWeek(snapshot, selectedWeek) : [];
 
   const weeklyReturns = weeks.map((week) => ({
     pair: weekLabelFromOpen(week.weekOpenUtc),
@@ -231,15 +246,14 @@ export function buildKataraktiModelPerformance(
   }));
   const weeklyPairDetails = weeks.map((week) => ({
     pair: weekLabelFromOpen(week.weekOpenUtc),
-    direction:
-      week.returnPct > 0 ? ("LONG" as const) : week.returnPct < 0 ? ("SHORT" as const) : ("NEUTRAL" as const),
+    direction: "NEUTRAL" as const,
     reason: [
       `Trades ${week.trades}`,
       `Win rate ${week.winRatePct.toFixed(1)}%`,
       `Static DD ${week.staticDrawdownPct.toFixed(2)}%`,
     ],
     percent: week.returnPct,
-    children: snapshot.tradeDetailsByWeek[week.weekOpenUtc] ?? [],
+    children: getTradesForWeek(snapshot, week.weekOpenUtc),
   }));
   const tradeReturns = selectedWeekTrades.flatMap((trade, index) =>
     typeof trade.percent === "number" && Number.isFinite(trade.percent)
@@ -280,5 +294,9 @@ export function buildKataraktiModelPerformance(
     returns,
     pair_details: pairDetails,
     stats: computeReturnStats(returns),
+    diagnostics: {
+      max_drawdown: metrics.maxDrawdownPct,
+      profit_factor: metrics.profitFactor,
+    },
   };
 }

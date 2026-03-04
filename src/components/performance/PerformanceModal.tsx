@@ -615,14 +615,16 @@ export default function PerformanceModal({
                         </span>
                         <span
                           className={`text-xs font-semibold ${
-                            detail.direction === "LONG"
+                            weeklySummaryRow
+                              ? "text-[color:var(--muted)]"
+                              : detail.direction === "LONG"
                               ? "text-emerald-700"
                               : detail.direction === "SHORT"
                               ? "text-rose-700"
                               : "text-[color:var(--muted)]"
                           }`}
                         >
-                          {detail.direction}
+                          {weeklySummaryRow ? "WEEKLY" : detail.direction}
                         </span>
                       </div>
                       <div className="mt-1 text-xs text-[color:var(--muted)]">
@@ -648,10 +650,6 @@ export default function PerformanceModal({
                         >
                           {expanded ? "Hide trades" : `Show trades (${childRows.length})`}
                         </button>
-                      ) : weeklySummaryRow ? (
-                        <div className="mt-2 text-[10px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
-                          Trade rows unavailable for this week
-                        </div>
                       ) : null}
                       {expandable && expanded ? (
                         <div className="mt-2 space-y-2 border-t border-[var(--panel-border)] pt-2">

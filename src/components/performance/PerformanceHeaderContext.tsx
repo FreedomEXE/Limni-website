@@ -59,29 +59,21 @@ export default function PerformanceHeaderContext({
       }
     };
 
-    const onKataraktiMarketChange = (event: Event) => {
-      const custom = event as CustomEvent<KataraktiMarket>;
-      if (custom.detail === "crypto_futures" || custom.detail === "mt5_forex") {
+    const onKataraktiSelectionChange = (event: Event) => {
+      const custom = event as CustomEvent<{ market: KataraktiMarket; variant: KataraktiVariant }>;
+      const market = custom.detail?.market;
+      const variant = custom.detail?.variant;
+      if (
+        (market === "crypto_futures" || market === "mt5_forex")
+        && (variant === "core" || variant === "lite" || variant === "v3")
+      ) {
         const resolved = resolveActiveStrategyEntry({
           family: "katarakti",
-          kataraktiVariant,
-          kataraktiMarket: custom.detail,
+          kataraktiVariant: variant,
+          kataraktiMarket: market,
         });
-        setKataraktiMarket(resolved?.market ?? custom.detail);
-        setKataraktiVariant(resolved?.kataraktiVariant ?? kataraktiVariant);
-      }
-    };
-
-    const onKataraktiVariantChange = (event: Event) => {
-      const custom = event as CustomEvent<KataraktiVariant>;
-      if (custom.detail === "core" || custom.detail === "lite" || custom.detail === "v3") {
-        const resolved = resolveActiveStrategyEntry({
-          family: "katarakti",
-          kataraktiVariant: custom.detail,
-          kataraktiMarket,
-        });
-        setKataraktiVariant(resolved?.kataraktiVariant ?? custom.detail);
-        setKataraktiMarket(resolved?.market ?? kataraktiMarket);
+        setKataraktiMarket(resolved?.market ?? market);
+        setKataraktiVariant(resolved?.kataraktiVariant ?? variant);
       }
     };
 
@@ -112,18 +104,16 @@ export default function PerformanceHeaderContext({
 
     window.addEventListener("performance-system-change", onSystemChange);
     window.addEventListener("performance-style-change", onStyleChange);
-    window.addEventListener("performance-katarakti-market-change", onKataraktiMarketChange);
-    window.addEventListener("performance-katarakti-variant-change", onKataraktiVariantChange);
+    window.addEventListener("performance-katarakti-selection-change", onKataraktiSelectionChange);
     window.addEventListener("popstate", syncFromUrl);
 
     return () => {
       window.removeEventListener("performance-system-change", onSystemChange);
       window.removeEventListener("performance-style-change", onStyleChange);
-      window.removeEventListener("performance-katarakti-market-change", onKataraktiMarketChange);
-      window.removeEventListener("performance-katarakti-variant-change", onKataraktiVariantChange);
+      window.removeEventListener("performance-katarakti-selection-change", onKataraktiSelectionChange);
       window.removeEventListener("popstate", syncFromUrl);
     };
-  }, [kataraktiMarket, kataraktiVariant]);
+  }, []);
 
   const text = useMemo(() => {
     const entry = resolveActiveStrategyEntry({
