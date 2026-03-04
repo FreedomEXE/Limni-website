@@ -9,28 +9,14 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PerformanceSystem } from "@/lib/performance/modelConfig";
 import type { KataraktiMarket, KataraktiVariant } from "@/lib/performance/kataraktiHistory";
-
-type PerformanceStyle = "universal" | "tiered" | "katarakti";
-
-function resolveKataraktiSelection(options: {
-  market: KataraktiMarket;
-  variant: KataraktiVariant;
-}) {
-  if (options.variant === "v3") {
-    return {
-      market: "crypto_futures" as const,
-      variant: options.variant,
-    };
-  }
-  return options;
-}
-
-function marketLabel(market: KataraktiMarket) {
-  return market === "mt5_forex" ? "CFD" : "CRYPTO FUTURES";
-}
+import {
+  PERFORMANCE_FAMILY_META,
+  resolveActiveStrategyEntry,
+  type PerformanceStrategyFamily,
+} from "@/lib/performance/strategyRegistry";
 
 type PerformanceHeaderContextProps = {
-  initialStyle: PerformanceStyle;
+  initialStyle: PerformanceStrategyFamily;
   initialSystem: PerformanceSystem;
   initialKataraktiMarket: KataraktiMarket;
   initialKataraktiVariant: KataraktiVariant;
@@ -44,14 +30,19 @@ export default function PerformanceHeaderContext({
   initialKataraktiVariant,
   className,
 }: PerformanceHeaderContextProps) {
-  const [style, setStyle] = useState<PerformanceStyle>(initialStyle);
+  const [style, setStyle] = useState<PerformanceStrategyFamily>(initialStyle);
   const [system, setSystem] = useState<PerformanceSystem>(initialSystem);
-  const initialSelection = resolveKataraktiSelection({
-    market: initialKataraktiMarket,
-    variant: initialKataraktiVariant,
+  const initialEntry = resolveActiveStrategyEntry({
+    family: "katarakti",
+    kataraktiVariant: initialKataraktiVariant,
+    kataraktiMarket: initialKataraktiMarket,
   });
-  const [kataraktiMarket, setKataraktiMarket] = useState<KataraktiMarket>(initialSelection.market);
-  const [kataraktiVariant, setKataraktiVariant] = useState<KataraktiVariant>(initialSelection.variant);
+  const [kataraktiMarket, setKataraktiMarket] = useState<KataraktiMarket>(
+    initialEntry?.market ?? initialKataraktiMarket,
+  );
+  const [kataraktiVariant, setKataraktiVariant] = useState<KataraktiVariant>(
+    initialEntry?.kataraktiVariant ?? initialKataraktiVariant,
+  );
 
   useEffect(() => {
     const onSystemChange = (event: Event) => {
@@ -62,7 +53,7 @@ export default function PerformanceHeaderContext({
     };
 
     const onStyleChange = (event: Event) => {
-      const custom = event as CustomEvent<PerformanceStyle>;
+      const custom = event as CustomEvent<PerformanceStrategyFamily>;
       if (custom.detail === "universal" || custom.detail === "tiered" || custom.detail === "katarakti") {
         setStyle(custom.detail);
       }
@@ -71,23 +62,26 @@ export default function PerformanceHeaderContext({
     const onKataraktiMarketChange = (event: Event) => {
       const custom = event as CustomEvent<KataraktiMarket>;
       if (custom.detail === "crypto_futures" || custom.detail === "mt5_forex") {
-        const resolved = resolveKataraktiSelection({
-          market: custom.detail,
-          variant: kataraktiVariant,
+        const resolved = resolveActiveStrategyEntry({
+          family: "katarakti",
+          kataraktiVariant,
+          kataraktiMarket: custom.detail,
         });
-        setKataraktiMarket(resolved.market);
+        setKataraktiMarket(resolved?.market ?? custom.detail);
+        setKataraktiVariant(resolved?.kataraktiVariant ?? kataraktiVariant);
       }
     };
 
     const onKataraktiVariantChange = (event: Event) => {
       const custom = event as CustomEvent<KataraktiVariant>;
       if (custom.detail === "core" || custom.detail === "lite" || custom.detail === "v3") {
-        const resolved = resolveKataraktiSelection({
-          market: kataraktiMarket,
-          variant: custom.detail,
+        const resolved = resolveActiveStrategyEntry({
+          family: "katarakti",
+          kataraktiVariant: custom.detail,
+          kataraktiMarket,
         });
-        setKataraktiVariant(resolved.variant);
-        setKataraktiMarket(resolved.market);
+        setKataraktiVariant(resolved?.kataraktiVariant ?? custom.detail);
+        setKataraktiMarket(resolved?.market ?? kataraktiMarket);
       }
     };
 
@@ -107,12 +101,13 @@ export default function PerformanceHeaderContext({
       const nextMarket = marketParam === "mt5_forex" ? "mt5_forex" : "crypto_futures";
       const nextVariant =
         variantParam === "lite" ? "lite" : variantParam === "v3" ? "v3" : "core";
-      const resolved = resolveKataraktiSelection({
-        market: nextMarket,
-        variant: nextVariant,
+      const resolved = resolveActiveStrategyEntry({
+        family: "katarakti",
+        kataraktiVariant: nextVariant,
+        kataraktiMarket: nextMarket,
       });
-      setKataraktiMarket(resolved.market);
-      setKataraktiVariant(resolved.variant);
+      setKataraktiMarket(resolved?.market ?? nextMarket);
+      setKataraktiVariant(resolved?.kataraktiVariant ?? nextVariant);
     };
 
     window.addEventListener("performance-system-change", onSystemChange);
@@ -131,13 +126,23 @@ export default function PerformanceHeaderContext({
   }, [kataraktiMarket, kataraktiVariant]);
 
   const text = useMemo(() => {
-    if (style === "katarakti") {
-      return `KATARAKTI / ${marketLabel(kataraktiMarket)} / ${kataraktiVariant.toUpperCase()}`;
+    const entry = resolveActiveStrategyEntry({
+      family: style,
+      systemVersion: system,
+      kataraktiVariant,
+      kataraktiMarket,
+    });
+    if (!entry) {
+      return style.toUpperCase();
     }
-    if (style === "tiered") {
-      return `TIERED / ${system.toUpperCase()}`;
+    const familyLabel = PERFORMANCE_FAMILY_META[entry.family].label.toUpperCase();
+    if (entry.family === "katarakti") {
+      const marketText = entry.market === "mt5_forex" ? "CFD" : "CRYPTO FUTURES";
+      const variantText = (entry.kataraktiVariant ?? kataraktiVariant).toUpperCase();
+      return `${familyLabel} / ${marketText} / ${variantText}`;
     }
-    return `UNIVERSAL / ${system.toUpperCase()}`;
+    const versionText = (entry.systemVersion ?? system).toUpperCase();
+    return `${familyLabel} / ${versionText}`;
   }, [style, system, kataraktiMarket, kataraktiVariant]);
 
   return (

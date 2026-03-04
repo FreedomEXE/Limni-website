@@ -2,45 +2,24 @@
 
 import { useEffect, useState, type ComponentProps } from "react";
 import type { PerformanceView } from "@/lib/performance/pageState";
-import {
-  PERFORMANCE_SYSTEM_MODEL_MAP,
-  type PerformanceSystem,
-} from "@/lib/performance/modelConfig";
-import type { PerformanceModel } from "@/lib/performanceLab";
+import type { PerformanceSystem } from "@/lib/performance/modelConfig";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
 import PerformanceViewCards, {
   PERFORMANCE_VIEW_CARDS,
 } from "@/components/performance/PerformanceViewCards";
 import type { KataraktiMarket, KataraktiVariant } from "@/lib/performance/kataraktiHistory";
-
-type PerformanceStyle = "universal" | "tiered" | "katarakti";
-
-function resolveKataraktiSelection(options: {
-  market: KataraktiMarket;
-  variant: KataraktiVariant;
-}) {
-  if (options.variant === "v3") {
-    return {
-      market: "crypto_futures" as const,
-      variant: options.variant,
-    };
-  }
-  return options;
-}
-
-const TIERED_DISPLAY_MODELS: PerformanceModel[] = [
-  "antikythera_v3",
-  "dealer",
-  "commercial",
-];
-const KATARAKTI_DISPLAY_MODELS: PerformanceModel[] = ["antikythera_v3"];
+import {
+  resolveActiveStrategyEntry,
+  resolveDisplayModelsForEntry,
+  type PerformanceStrategyFamily,
+} from "@/lib/performance/strategyRegistry";
 
 type PerformanceViewSectionProps = {
   initialView: PerformanceView;
   initialSystem: PerformanceSystem;
   initialKataraktiMarket: KataraktiMarket;
   initialKataraktiVariant: KataraktiVariant;
-  initialStyle?: PerformanceStyle;
+  initialStyle?: PerformanceStrategyFamily;
   universalGridProps: Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined" | "perAsset"> & {
     combined: ComponentProps<typeof PerformanceGrid>["combined"];
     perAsset: ComponentProps<typeof PerformanceGrid>["perAsset"];
@@ -76,13 +55,18 @@ export default function PerformanceViewSection({
 }: PerformanceViewSectionProps) {
   const [view, setView] = useState<PerformanceView>(initialView);
   const [system, setSystem] = useState<PerformanceSystem>(initialSystem);
-  const [style, setStyle] = useState<PerformanceStyle>(initialStyle);
-  const initialSelection = resolveKataraktiSelection({
-    market: initialKataraktiMarket,
-    variant: initialKataraktiVariant,
+  const [style, setStyle] = useState<PerformanceStrategyFamily>(initialStyle);
+  const initialEntry = resolveActiveStrategyEntry({
+    family: "katarakti",
+    kataraktiVariant: initialKataraktiVariant,
+    kataraktiMarket: initialKataraktiMarket,
   });
-  const [kataraktiMarket, setKataraktiMarket] = useState<KataraktiMarket>(initialSelection.market);
-  const [kataraktiVariant, setKataraktiVariant] = useState<KataraktiVariant>(initialSelection.variant);
+  const [kataraktiMarket, setKataraktiMarket] = useState<KataraktiMarket>(
+    initialEntry?.market ?? initialKataraktiMarket,
+  );
+  const [kataraktiVariant, setKataraktiVariant] = useState<KataraktiVariant>(
+    initialEntry?.kataraktiVariant ?? initialKataraktiVariant,
+  );
 
   useEffect(() => {
     const onSystemChange = (event: Event) => {
@@ -92,7 +76,7 @@ export default function PerformanceViewSection({
       }
     };
     const onStyleChange = (event: Event) => {
-      const custom = event as CustomEvent<PerformanceStyle>;
+      const custom = event as CustomEvent<PerformanceStrategyFamily>;
       if (custom.detail === "universal" || custom.detail === "tiered" || custom.detail === "katarakti") {
         setStyle(custom.detail);
       }
@@ -100,22 +84,25 @@ export default function PerformanceViewSection({
     const onKataraktiMarketChange = (event: Event) => {
       const custom = event as CustomEvent<KataraktiMarket>;
       if (custom.detail === "crypto_futures" || custom.detail === "mt5_forex") {
-        const resolved = resolveKataraktiSelection({
-          market: custom.detail,
-          variant: kataraktiVariant,
+        const resolved = resolveActiveStrategyEntry({
+          family: "katarakti",
+          kataraktiVariant,
+          kataraktiMarket: custom.detail,
         });
-        setKataraktiMarket(resolved.market);
+        setKataraktiMarket(resolved?.market ?? custom.detail);
+        setKataraktiVariant(resolved?.kataraktiVariant ?? kataraktiVariant);
       }
     };
     const onKataraktiVariantChange = (event: Event) => {
       const custom = event as CustomEvent<KataraktiVariant>;
       if (custom.detail === "core" || custom.detail === "lite" || custom.detail === "v3") {
-        const resolved = resolveKataraktiSelection({
-          market: kataraktiMarket,
-          variant: custom.detail,
+        const resolved = resolveActiveStrategyEntry({
+          family: "katarakti",
+          kataraktiVariant: custom.detail,
+          kataraktiMarket,
         });
-        setKataraktiVariant(resolved.variant);
-        setKataraktiMarket(resolved.market);
+        setKataraktiVariant(resolved?.kataraktiVariant ?? custom.detail);
+        setKataraktiMarket(resolved?.market ?? kataraktiMarket);
       }
     };
     window.addEventListener("performance-system-change", onSystemChange);
@@ -150,6 +137,12 @@ export default function PerformanceViewSection({
 
   const usingTiered = style === "tiered" && Boolean(tieredGridPropsBySystem?.[system]);
   const usingKatarakti = style === "katarakti";
+  const activeEntry = resolveActiveStrategyEntry({
+    family: style,
+    systemVersion: system,
+    kataraktiVariant,
+    kataraktiMarket,
+  });
   const baseGridProps = usingKatarakti
     ? kataraktiGridPropsByVariantAndMarket?.[kataraktiVariant]?.[kataraktiMarket] ?? {
         ...universalGridProps,
@@ -160,11 +153,7 @@ export default function PerformanceViewSection({
       ? tieredGridPropsBySystem?.[system] ?? universalGridProps
       : universalGridProps;
 
-  const activeModels = usingKatarakti
-    ? KATARAKTI_DISPLAY_MODELS
-    : usingTiered
-      ? TIERED_DISPLAY_MODELS
-      : PERFORMANCE_SYSTEM_MODEL_MAP[system];
+  const activeModels = resolveDisplayModelsForEntry(activeEntry);
   const modelSet = new Set(activeModels);
   const filteredCombined = {
     ...baseGridProps.combined,

@@ -12,6 +12,14 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
+import {
+  PERFORMANCE_SYSTEM_MODEL_MAP,
+  PERFORMANCE_V1_MODELS,
+  PERFORMANCE_V2_MODELS,
+  PERFORMANCE_V3_MODELS,
+} from "@/lib/performance/modelConfig";
+import type { PerformanceModel } from "@/lib/performanceLab";
+
 export type KataraktiRegistryVariant = "core" | "lite" | "v3";
 export type KataraktiRegistryMarket = "crypto_futures" | "mt5_forex";
 export type KataraktiRegistryMode = "legacy_core" | "db_first" | "unavailable";
@@ -52,6 +60,7 @@ export type PerformanceStrategyEntry = {
   backtestMarket?: string;
   requiredMarket?: KataraktiRegistryMarket;
   forcesCryptoOnly?: boolean;
+  displayModels?: readonly PerformanceModel[];
 };
 
 export type PerformanceFamilyMeta = {
@@ -225,6 +234,14 @@ const THEME_VIOLET: PerformanceStrategyTheme = {
   tabInactiveHoverClass: "hover:border-violet-400/50",
 };
 
+const TIERED_DISPLAY_MODELS: readonly PerformanceModel[] = [
+  "antikythera_v3",
+  "dealer",
+  "commercial",
+];
+
+const KATARAKTI_DISPLAY_MODELS: readonly PerformanceModel[] = ["antikythera_v3"];
+
 const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
   {
     entryId: "universal_v1",
@@ -240,6 +257,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     backtestBotId: "universal_v1_tp1_friday_carry_aligned",
     backtestVariant: "v1",
     backtestMarket: "multi_asset",
+    displayModels: PERFORMANCE_V1_MODELS,
   },
   {
     entryId: "universal_v2",
@@ -252,6 +270,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     theme: THEME_EMERALD,
     dataMode: "performance_snapshots",
     systemVersion: "v2",
+    displayModels: PERFORMANCE_V2_MODELS,
   },
   {
     entryId: "universal_v3",
@@ -264,6 +283,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     theme: THEME_CYAN,
     dataMode: "performance_snapshots",
     systemVersion: "v3",
+    displayModels: PERFORMANCE_V3_MODELS,
   },
   {
     entryId: "tiered_v1",
@@ -276,6 +296,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     theme: THEME_DEFAULT,
     dataMode: "tiered_derived",
     systemVersion: "v1",
+    displayModels: TIERED_DISPLAY_MODELS,
   },
   {
     entryId: "tiered_v2",
@@ -288,6 +309,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     theme: THEME_EMERALD,
     dataMode: "tiered_derived",
     systemVersion: "v2",
+    displayModels: TIERED_DISPLAY_MODELS,
   },
   {
     entryId: "tiered_v3",
@@ -300,6 +322,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     theme: THEME_CYAN,
     dataMode: "tiered_derived",
     systemVersion: "v3",
+    displayModels: TIERED_DISPLAY_MODELS,
   },
   {
     entryId: "katarakti_core_crypto",
@@ -313,6 +336,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     dataMode: "katarakti_snapshot",
     market: "crypto_futures",
     kataraktiVariant: "core",
+    displayModels: KATARAKTI_DISPLAY_MODELS,
   },
   {
     entryId: "katarakti_core_mt5",
@@ -326,6 +350,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     dataMode: "katarakti_snapshot",
     market: "mt5_forex",
     kataraktiVariant: "core",
+    displayModels: KATARAKTI_DISPLAY_MODELS,
   },
   {
     entryId: "katarakti_lite_crypto",
@@ -339,6 +364,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     dataMode: "katarakti_snapshot",
     market: "crypto_futures",
     kataraktiVariant: "lite",
+    displayModels: KATARAKTI_DISPLAY_MODELS,
   },
   {
     entryId: "katarakti_lite_mt5",
@@ -352,6 +378,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     dataMode: "katarakti_snapshot",
     market: "mt5_forex",
     kataraktiVariant: "lite",
+    displayModels: KATARAKTI_DISPLAY_MODELS,
   },
   {
     entryId: "katarakti_v3_crypto",
@@ -366,6 +393,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     market: "crypto_futures",
     kataraktiVariant: "v3",
     forcesCryptoOnly: true,
+    displayModels: KATARAKTI_DISPLAY_MODELS,
   },
   {
     entryId: "katarakti_v3_mt5",
@@ -382,6 +410,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     pending: true,
     pendingLabel: "CFD v3 pending",
     requiredMarket: "mt5_forex",
+    displayModels: KATARAKTI_DISPLAY_MODELS,
   },
 ];
 
@@ -512,6 +541,18 @@ export function resolveComparisonSourceKey(
     kataraktiVariant: entry.kataraktiVariant,
     kataraktiMarket: entry.market,
   };
+}
+
+export function resolveDisplayModelsForEntry(
+  entry: PerformanceStrategyEntry | null,
+): readonly PerformanceModel[] {
+  if (entry?.displayModels && entry.displayModels.length > 0) {
+    return entry.displayModels;
+  }
+  if (entry?.systemVersion) {
+    return PERFORMANCE_SYSTEM_MODEL_MAP[entry.systemVersion];
+  }
+  return PERFORMANCE_V1_MODELS;
 }
 
 export function getKataraktiStrategyRegistryEntry(
