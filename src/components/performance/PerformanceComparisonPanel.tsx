@@ -22,6 +22,13 @@ type ComparisonMetrics = {
   profitFactorInfinite?: boolean;
 };
 
+type ComparisonSourceMeta = {
+  mode: "strategy_backtest_db" | "performance_snapshots" | "tiered_derived" | "katarakti_snapshot" | "unavailable";
+  sourcePath: string;
+  fallbackLabel?: string | null;
+  fallbackToAllTime?: boolean;
+};
+
 const WEEKLY_SHARPE_GOOD_THRESHOLD = 1;
 const ANNUALIZED_SHARPE_GOOD_THRESHOLD = 7;
 
@@ -51,6 +58,32 @@ type ComparisonData = {
     v3: {
       crypto_futures: ComparisonMetrics;
       mt5_forex: ComparisonMetrics;
+    };
+  };
+  sources?: {
+    universal: {
+      v1: ComparisonSourceMeta;
+      v2: ComparisonSourceMeta;
+      v3: ComparisonSourceMeta;
+    };
+    tiered: {
+      v1: ComparisonSourceMeta;
+      v2: ComparisonSourceMeta;
+      v3: ComparisonSourceMeta;
+    };
+    katarakti: {
+      core: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+      lite: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+      v3: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
     };
   };
 };
@@ -83,6 +116,27 @@ function resolveKataraktiSelection(options: {
     };
   }
   return options;
+}
+
+function buildSourceLabel(source: ComparisonSourceMeta | null | undefined) {
+  if (!source) return "Source unavailable";
+  const fallbackSuffix = source.fallbackToAllTime ? " (all-time fallback)" : "";
+  if (source.mode === "strategy_backtest_db") {
+    return `Source: backtest DB${fallbackSuffix}`;
+  }
+  if (source.mode === "tiered_derived") {
+    return "Source: derived from performance snapshots";
+  }
+  if (source.mode === "katarakti_snapshot") {
+    if (source.fallbackLabel && source.fallbackLabel.trim().length > 0) {
+      return `Source: ${source.fallbackLabel}`;
+    }
+    return "Source: Katarakti snapshot";
+  }
+  if (source.mode === "performance_snapshots") {
+    return "Source: performance snapshots";
+  }
+  return "Source unavailable";
 }
 
 export default function PerformanceComparisonPanel() {
@@ -199,6 +253,13 @@ export default function PerformanceComparisonPanel() {
         : activeTab === "v2"
           ? "3 Baskets"
           : "4 Baskets";
+  const activeSource =
+    activeStyle === "katarakti"
+      ? data?.sources?.katarakti?.[activeVariant]?.[activeMarket]
+      : activeStyle === "tiered"
+        ? data?.sources?.tiered?.[activeTab]
+        : data?.sources?.universal?.[activeTab];
+  const activeSourceLabel = buildSourceLabel(activeSource);
   const activeCardClass =
     activeStyle === "katarakti"
       ? activeMarket === "crypto_futures"
@@ -492,6 +553,9 @@ export default function PerformanceComparisonPanel() {
         <div className="mb-3 flex items-center justify-between">
           <div className={`text-sm font-semibold ${valueClass}`}>{activeLabel}</div>
           <div className={badgeClass}>{activeBadge}</div>
+        </div>
+        <div className={`mb-2 text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+          {activeSourceLabel}
         </div>
 
         <div className="mb-4 space-y-3">

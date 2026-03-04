@@ -1,5 +1,5 @@
 Bitget Liquidation Sweep Simple Backtest
-Generated UTC: 2026-03-03T13:55:16.752Z
+Generated UTC: 2026-03-03T20:48:32.569Z
 Weeks: 2026-01-19, 2026-01-26, 2026-02-02, 2026-02-09, 2026-02-16, 2026-02-23
 Symbols: BTC, ETH
 Offsets: 0.05

@@ -27,6 +27,7 @@ import {
   type KataraktiMarketSnapshot,
 } from "@/lib/performance/kataraktiHistory";
 import { buildKataraktiPeriodMetrics } from "@/lib/performance/kataraktiMetrics";
+import { readStrategyBacktestWeeklySeries } from "@/lib/performance/strategyBacktestHistory";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import type { PairSnapshot } from "@/lib/cotTypes";
@@ -56,6 +57,12 @@ type ComparisonMetrics = {
 };
 
 type SnapshotRow = Awaited<ReturnType<typeof readAllPerformanceSnapshots>>[number];
+type ComparisonSourceMeta = {
+  mode: "strategy_backtest_db" | "performance_snapshots" | "tiered_derived" | "katarakti_snapshot" | "unavailable";
+  sourcePath: string;
+  fallbackLabel?: string | null;
+  fallbackToAllTime?: boolean;
+};
 
 function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
   const pairDefs = PAIRS_BY_ASSET_CLASS[assetId as keyof typeof PAIRS_BY_ASSET_CLASS] ?? [];
@@ -338,6 +345,8 @@ function computeMetricsFromWeeklyRows(
     wins: number;
     trade_returns: number[];
     week_max_drawdown: number | null;
+    gross_profit_pct?: number | null;
+    gross_loss_pct?: number | null;
   }>,
 ): ComparisonMetrics {
   const weekReturns = weeklyRows.map((row) => row.return_percent);
@@ -358,6 +367,20 @@ function computeMetricsFromWeeklyRows(
     ? weeklyRows.reduce((max, row) => Math.max(max, row.week_max_drawdown ?? 0), 0)
     : 0;
   const maxDrawdown = Math.max(curveMaxDrawdown, staticMaxDrawdown) || null;
+  const grossProfitPct = weeklyRows.reduce(
+    (sum, row) => sum + (Number.isFinite(row.gross_profit_pct) ? (row.gross_profit_pct as number) : 0),
+    0,
+  );
+  const grossLossPct = weeklyRows.reduce(
+    (sum, row) => sum + (Number.isFinite(row.gross_loss_pct) ? (row.gross_loss_pct as number) : 0),
+    0,
+  );
+  const grossProfitFactor =
+    grossLossPct > 0
+      ? grossProfitPct / grossLossPct
+      : grossProfitPct > 0
+        ? Number.POSITIVE_INFINITY
+        : null;
   return buildComparisonMetricsFromWeeklySeries({
     weekReturns,
     sharpeFallbackReturns: tradeReturns,
@@ -372,7 +395,7 @@ function computeMetricsFromWeeklyRows(
     profitFactor:
       tradeReturns.length > 0
         ? computeProfitFactorFromReturns(tradeReturns)
-        : null,
+        : grossProfitFactor,
     maxDrawdown,
   });
 }
@@ -434,6 +457,23 @@ function resolveKataraktiMetricsWithFallback(options: {
   return primary;
 }
 
+function buildKataraktiSourceMeta(snapshot: KataraktiMarketSnapshot | null): ComparisonSourceMeta {
+  if (!snapshot) {
+    return {
+      mode: "unavailable",
+      sourcePath: "unavailable",
+      fallbackLabel: null,
+      fallbackToAllTime: false,
+    };
+  }
+  return {
+    mode: "katarakti_snapshot",
+    sourcePath: snapshot.sourcePath,
+    fallbackLabel: snapshot.fallbackLabel ?? null,
+    fallbackToAllTime: false,
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const weekParam = request.nextUrl.searchParams.get("week");
@@ -465,8 +505,18 @@ export async function GET(request: NextRequest) {
     const selectedWeeks = new Set(selectedWeekList);
     const annualizeSharpe = requestedWeek === null;
 
+    const universalV1Backtest = await readStrategyBacktestWeeklySeries({
+      botId: "universal_v1_tp1_friday_carry_aligned",
+      variant: "v1",
+      market: "multi_asset",
+      requestedWeek,
+      fallbackToAllTime: true,
+    });
+
     const v1Metrics = finalizeComparisonMetrics(
-      computeMetrics(comparisonSnapshots, V1_MODELS, selectedWeeks),
+      universalV1Backtest && universalV1Backtest.rows.length > 0
+        ? computeMetricsFromWeeklyRows(universalV1Backtest.rows)
+        : computeMetrics(comparisonSnapshots, V1_MODELS, selectedWeeks),
       { annualizeSharpe },
     );
     const v2Metrics = finalizeComparisonMetrics(
@@ -678,6 +728,69 @@ export async function GET(request: NextRequest) {
                 },
               )
             : emptyKataraktiMetrics,
+        },
+      },
+      sources: {
+        universal: {
+          v1: universalV1Backtest && universalV1Backtest.rows.length > 0
+            ? {
+                mode: "strategy_backtest_db",
+                sourcePath: universalV1Backtest.sourcePath,
+                fallbackToAllTime: universalV1Backtest.fellBackToAllTime,
+                fallbackLabel: null,
+              }
+            : {
+                mode: "performance_snapshots",
+                sourcePath: "db:performance_snapshots",
+                fallbackToAllTime: false,
+                fallbackLabel: null,
+              },
+          v2: {
+            mode: "performance_snapshots",
+            sourcePath: "db:performance_snapshots",
+            fallbackToAllTime: false,
+            fallbackLabel: null,
+          },
+          v3: {
+            mode: "performance_snapshots",
+            sourcePath: "db:performance_snapshots",
+            fallbackToAllTime: false,
+            fallbackLabel: null,
+          },
+        },
+        tiered: {
+          v1: {
+            mode: "tiered_derived",
+            sourcePath: "derived:performance_snapshots+tiered",
+            fallbackToAllTime: false,
+            fallbackLabel: null,
+          },
+          v2: {
+            mode: "tiered_derived",
+            sourcePath: "derived:performance_snapshots+tiered",
+            fallbackToAllTime: false,
+            fallbackLabel: null,
+          },
+          v3: {
+            mode: "tiered_derived",
+            sourcePath: "derived:performance_snapshots+tiered",
+            fallbackToAllTime: false,
+            fallbackLabel: null,
+          },
+        },
+        katarakti: {
+          core: {
+            crypto_futures: buildKataraktiSourceMeta(coreSnapshotsByMarket.crypto_futures),
+            mt5_forex: buildKataraktiSourceMeta(coreSnapshotsByMarket.mt5_forex),
+          },
+          lite: {
+            crypto_futures: buildKataraktiSourceMeta(liteSnapshotsByMarket.crypto_futures),
+            mt5_forex: buildKataraktiSourceMeta(liteSnapshotsByMarket.mt5_forex),
+          },
+          v3: {
+            crypto_futures: buildKataraktiSourceMeta(v3SnapshotsByMarket.crypto_futures),
+            mt5_forex: buildKataraktiSourceMeta(v3SnapshotsByMarket.mt5_forex),
+          },
         },
       },
       weeksAnalyzed: selectedWeekList.length,

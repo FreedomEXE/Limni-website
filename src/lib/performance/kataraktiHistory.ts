@@ -17,6 +17,7 @@ import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
 import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import { query } from "@/lib/db";
 import { KATARAKTI_SEED_SNAPSHOTS } from "@/lib/performance/kataraktiSeed";
+import { getKataraktiStrategyRegistryEntry } from "@/lib/performance/strategyRegistry";
 
 export type KataraktiMarket = "crypto_futures" | "mt5_forex";
 export type KataraktiVariant = "core" | "lite" | "v3";
@@ -165,6 +166,37 @@ type LiveMt5TradeRow = {
   exit_step: string | null;
 };
 
+type StrategyBacktestRunRow = {
+  id: number | string;
+  generated_utc: Date | string;
+};
+
+type StrategyBacktestWeeklyRow = {
+  week_open_utc: Date | string;
+  return_pct: number | string;
+  trades: number | string;
+  wins: number | string;
+  losses: number | string;
+  stop_hits: number | string;
+  drawdown_pct: number | string;
+  gross_profit_pct: number | string;
+  gross_loss_pct: number | string;
+  equity_end_pct: number | string | null;
+  pnl_usd: number | string | null;
+};
+
+type StrategyBacktestTradeRow = {
+  week_open_utc: Date | string;
+  symbol: string | null;
+  direction: string | null;
+  entry_time_utc: Date | string | null;
+  exit_time_utc: Date | string | null;
+  pnl_pct: number | string | null;
+  exit_reason: string | null;
+  max_milestone: number | string | null;
+  leverage_at_exit: number | string | null;
+};
+
 const DEFAULT_STARTING_EQUITY_USD = 100_000;
 const DEFAULT_CACHE_TTL_MS = 30_000;
 const CRYPTO_WEEKLY_SUMMARY_PATH = "docs/bots/backtest-weekly-summary.json";
@@ -176,15 +208,6 @@ const MT5_REPORT_CANDIDATES = [
   "reports/katarakti-phase1-backtest-latest-phase2_full_atr_nohard.json",
   "reports/katarakti-phase1-backtest-latest.json",
 ] as const;
-const V3_LIQ_SWEEP_REPORT_PATH = "reports/bitget-liq-sweep-simple-latest.json";
-const LITE_CRYPTO_REPORT_CANDIDATES = [
-  "reports/bitget-lite-entry-latest.json",
-] as const;
-const LITE_MT5_REPORT_CANDIDATES = [
-  "reports/katarakti-lite-parameter-sweep-latest.json",
-  "reports/katarakti-lite-ablation-latest.json",
-] as const;
-const LITE_FALLBACK_LABEL = "Showing Core baseline — Lite backtest pending";
 const LITE_PENDING_LABEL = "Lite backtest pending";
 
 function toNumber(value: unknown): number | null {
@@ -211,10 +234,6 @@ function getConfiguredCacheTtlMs() {
   const configured = toNumber(process.env.KATARAKTI_HISTORY_CACHE_TTL_MS);
   if (configured === null || configured < 0) return DEFAULT_CACHE_TTL_MS;
   return Math.floor(configured);
-}
-
-function isLiteCoreFallbackEnabled() {
-  return process.env.KATARAKTI_LITE_ALLOW_CORE_FALLBACK === "1";
 }
 
 function parseWinLoss(value: unknown) {
@@ -1055,6 +1074,285 @@ async function readFirstValidSimpleBacktestSnapshot(options: {
   return null;
 }
 
+function buildTradeDetailsFromBacktestStoreTrades(
+  trades: StrategyBacktestTradeRow[],
+): Record<string, KataraktiTradeDetail[]> {
+  const parsed = trades.flatMap((trade, index) => {
+    const weekOpenUtc = canonicalWeek(
+      trade.week_open_utc instanceof Date
+        ? trade.week_open_utc.toISOString()
+        : parseIsoUtc(trade.week_open_utc),
+    );
+    if (!weekOpenUtc) return [];
+    const entryIso = trade.entry_time_utc instanceof Date
+      ? trade.entry_time_utc.toISOString()
+      : parseIsoUtc(trade.entry_time_utc);
+    const exitIso = trade.exit_time_utc instanceof Date
+      ? trade.exit_time_utc.toISOString()
+      : parseIsoUtc(trade.exit_time_utc);
+    const sortTs =
+      (exitIso ? new Date(exitIso).getTime() : null) ??
+      (entryIso ? new Date(entryIso).getTime() : null) ??
+      Number.POSITIVE_INFINITY;
+    const milestone = toNumber(trade.max_milestone);
+    const leverage = toNumber(trade.leverage_at_exit);
+    return [{
+      weekOpenUtc,
+      sortTs,
+      detail: {
+        weekOpenUtc,
+        pair: normalizePairLabel(trade.symbol, `TRADE_${index + 1}`),
+        direction: normalizeDirection(trade.direction),
+        percent: toNumber(trade.pnl_pct),
+        reason: buildReasonList([
+          typeof trade.exit_reason === "string" ? `Exit ${trade.exit_reason}` : null,
+          milestone !== null ? `Milestone ${Math.round(milestone)}` : null,
+          leverage !== null ? `Lev ${leverage}x` : null,
+        ]),
+      } satisfies KataraktiTradeDetail,
+    }];
+  });
+  const byWeek = new Map<string, Array<{ sortTs: number; detail: KataraktiTradeDetail }>>();
+  for (const row of parsed) {
+    const list = byWeek.get(row.weekOpenUtc) ?? [];
+    list.push({ sortTs: row.sortTs, detail: row.detail });
+    byWeek.set(row.weekOpenUtc, list);
+  }
+  return Object.fromEntries(
+    Array.from(byWeek.entries()).map(([weekOpenUtc, rows]) => [
+      weekOpenUtc,
+      rows
+        .sort((left, right) => left.sortTs - right.sortTs)
+        .map((row) => row.detail),
+    ]),
+  );
+}
+
+async function readBacktestStoreSnapshot(options: {
+  market: KataraktiMarket;
+  variant: KataraktiVariant;
+  selectedVariantId: string;
+  botId: string;
+  configKey?: string | null;
+}): Promise<KataraktiMarketSnapshot | null> {
+  const runQueryBase =
+    `SELECT id, generated_utc
+     FROM strategy_backtest_runs
+     WHERE bot_id = $1
+       AND variant = $2
+       AND market = $3`;
+  const runRows = options.configKey
+    ? await safeQuery<StrategyBacktestRunRow>(
+        `${runQueryBase}
+         AND config_key = $4
+         ORDER BY generated_utc DESC, id DESC
+         LIMIT 1`,
+        [options.botId, options.variant, options.market, options.configKey],
+      )
+    : await safeQuery<StrategyBacktestRunRow>(
+        `${runQueryBase}
+         ORDER BY generated_utc DESC, id DESC
+         LIMIT 1`,
+        [options.botId, options.variant, options.market],
+      );
+  const runId = toInteger(runRows[0]?.id);
+  if (runId <= 0) return null;
+
+  const weeklyRows = await safeQuery<StrategyBacktestWeeklyRow>(
+    `SELECT
+       week_open_utc,
+       return_pct,
+       trades,
+       wins,
+       losses,
+       stop_hits,
+       drawdown_pct,
+       gross_profit_pct,
+       gross_loss_pct,
+       equity_end_pct,
+       pnl_usd
+     FROM strategy_backtest_weekly
+     WHERE run_id = $1
+     ORDER BY week_open_utc ASC`,
+    [runId],
+  );
+  if (weeklyRows.length === 0) return null;
+
+  const tradeRows = await safeQuery<StrategyBacktestTradeRow>(
+    `SELECT
+       week_open_utc,
+       symbol,
+       direction,
+       entry_time_utc,
+       exit_time_utc,
+       pnl_pct,
+       exit_reason,
+       max_milestone,
+       leverage_at_exit
+     FROM strategy_backtest_trades
+     WHERE run_id = $1
+     ORDER BY COALESCE(exit_time_utc, entry_time_utc) ASC, id ASC`,
+    [runId],
+  );
+  const tradeDetailsByWeek = buildTradeDetailsFromBacktestStoreTrades(tradeRows);
+
+  const weekly = sortWeeksAsc(
+    weeklyRows.flatMap((row) => {
+      const weekOpenUtc = canonicalWeek(
+        row.week_open_utc instanceof Date
+          ? row.week_open_utc.toISOString()
+          : parseIsoUtc(row.week_open_utc),
+      );
+      const returnPct = toNumber(row.return_pct);
+      if (!weekOpenUtc || returnPct === null) return [];
+      const tradeReturns = (tradeDetailsByWeek[weekOpenUtc] ?? [])
+        .map((trade) => trade.percent)
+        .filter((value): value is number => value !== null && Number.isFinite(value));
+      const trades = toInteger(row.trades) || tradeReturns.length;
+      const fallbackWins = tradeReturns.filter((value) => value > 0).length;
+      const fallbackLosses = tradeReturns.filter((value) => value < 0).length;
+      const wins = toInteger(row.wins) || fallbackWins;
+      const losses = toInteger(row.losses) || fallbackLosses;
+      const grossProfit = toNumber(row.gross_profit_pct) ?? tradeReturns
+        .filter((value) => value > 0)
+        .reduce((sum, value) => sum + value, 0);
+      const grossLoss = toNumber(row.gross_loss_pct) ?? Math.abs(
+        tradeReturns
+          .filter((value) => value < 0)
+          .reduce((sum, value) => sum + value, 0),
+      );
+      const avgTradePct = tradeReturns.length > 0
+        ? tradeReturns.reduce((sum, value) => sum + value, 0) / tradeReturns.length
+        : trades > 0
+          ? returnPct / trades
+          : null;
+      return [{
+        weekOpenUtc,
+        returnPct,
+        trades,
+        wins,
+        losses,
+        winRatePct: trades > 0 ? (wins / trades) * 100 : 0,
+        avgTradePct,
+        profitFactor: computeProfitFactor(grossProfit, grossLoss),
+        staticDrawdownPct: toNumber(row.drawdown_pct) ?? (returnPct < 0 ? Math.abs(returnPct) : 0),
+        grossProfitUsd: grossProfit,
+        grossLossUsd: grossLoss,
+      } satisfies KataraktiWeeklySnapshot];
+    }),
+  );
+  if (weekly.length === 0) return null;
+
+  return toSnapshotFromWeekly({
+    market: options.market,
+    sourcePath: `db:strategy_backtest_runs:${runId}`,
+    selectedVariantId: options.selectedVariantId,
+    weekly,
+    tradeDetailsByWeek,
+    totalReturnPctOverride: null,
+    maxDrawdownOverride: null,
+    startingEquityUsdOverride: null,
+  });
+}
+
+function resolveRegistryCandidatePaths(options: {
+  preferredEnvVar?: string;
+  candidates?: readonly string[];
+}) {
+  const preferred = options.preferredEnvVar
+    ? process.env[options.preferredEnvVar]?.trim()
+    : null;
+  const out = new Set<string>();
+  if (preferred) out.add(preferred);
+  for (const candidate of options.candidates ?? []) {
+    if (candidate && candidate.trim().length > 0) out.add(candidate);
+  }
+  return Array.from(out);
+}
+
+function resolveRegistryFallbackLabel(options: {
+  pendingLabel?: string | null;
+  hasDbBackfill: boolean;
+  hasFileBackfill: boolean;
+  hasLiveData: boolean;
+}) {
+  if (options.hasDbBackfill) return null;
+  if (options.hasFileBackfill) return "Using file fallback — migrate backtest to DB";
+  if (options.hasLiveData) {
+    return options.pendingLabel ?? LITE_PENDING_LABEL;
+  }
+  return options.pendingLabel ?? null;
+}
+
+async function readRegistryDbFirstSnapshot(options: {
+  variant: KataraktiVariant;
+  market: KataraktiMarket;
+}) {
+  const entry = getKataraktiStrategyRegistryEntry(options.variant, options.market);
+  if (!entry || entry.mode !== "db_first" || !entry.backtestBotId || !entry.selectedVariantId) {
+    return null;
+  }
+
+  const configuredKey = entry.backtestConfigKeyEnvVar
+    ? process.env[entry.backtestConfigKeyEnvVar]?.trim() ?? null
+    : null;
+  const dbSnapshot = await readBacktestStoreSnapshot({
+    market: options.market,
+    variant: options.variant,
+    selectedVariantId: entry.selectedVariantId,
+    botId: entry.backtestBotId,
+    configKey: configuredKey,
+  });
+
+  const candidatePaths = resolveRegistryCandidatePaths({
+    preferredEnvVar: entry.fileFallback?.preferredEnvVar,
+    candidates: entry.fileFallback?.candidates,
+  });
+  const fileSnapshot =
+    dbSnapshot === null && candidatePaths.length > 0
+      ? await readFirstValidSimpleBacktestSnapshot({
+          market: options.market,
+          selectedVariantId: entry.selectedVariantId,
+          candidatePaths,
+        })
+      : null;
+  const base = dbSnapshot ?? fileSnapshot;
+
+  let live = { weekly: [] as KataraktiWeeklySnapshot[], tradeDetailsByWeek: {} as Record<string, KataraktiTradeDetail[]> };
+  if (entry.live?.botId) {
+    live = options.market === "crypto_futures"
+      ? await readLiveCryptoWeeklyFromDb({
+          botId: entry.live.botId,
+          dryRunOnly: entry.live.dryRunOnly ?? false,
+        })
+      : await readLiveMt5WeeklyFromDb(entry.live.botId);
+  }
+
+  const merged = appendLiveWeeks({
+    market: options.market,
+    base,
+    live: live.weekly,
+    liveTradeDetailsByWeek: live.tradeDetailsByWeek,
+  });
+  if (!merged) return null;
+
+  const fallbackLabel = resolveRegistryFallbackLabel({
+    pendingLabel: entry.pendingLabel,
+    hasDbBackfill: Boolean(dbSnapshot),
+    hasFileBackfill: Boolean(fileSnapshot),
+    hasLiveData: live.weekly.length > 0,
+  });
+  const sourcePath = live.weekly.length > 0 && entry.live?.botId
+    ? `${merged.sourcePath}+db:live:${entry.live.botId}`
+    : merged.sourcePath;
+  return {
+    ...merged,
+    selectedVariantId: entry.selectedVariantId,
+    fallbackLabel,
+    sourcePath,
+  } satisfies KataraktiMarketSnapshot;
+}
+
 type SimWeeklyRow = {
   week_open_utc: Date | string;
   return_pct: number | string;
@@ -1350,57 +1648,23 @@ async function readCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | nu
 }
 
 async function readV3LiqSweepSnapshot(): Promise<KataraktiMarketSnapshot | null> {
-  const preferredPath = process.env.KATARAKTI_V3_LIQ_SWEEP_REPORT_PATH?.trim();
-  const candidatePaths = preferredPath ? [preferredPath, V3_LIQ_SWEEP_REPORT_PATH] : [V3_LIQ_SWEEP_REPORT_PATH];
-  const snapshot = await readFirstValidSimpleBacktestSnapshot({
+  return readRegistryDbFirstSnapshot({
+    variant: "v3",
     market: "crypto_futures",
-    selectedVariantId: "v3_liq_sweep",
-    candidatePaths,
   });
-  if (!snapshot) return null;
-
-  const liveSnapshot = await readLiveCryptoWeeklyFromDb({
-    botId: "katarakti_v3_liq_sweep",
-    dryRunOnly: false,
-  });
-  const merged = appendLiveWeeks({
-    market: "crypto_futures",
-    base: snapshot,
-    live: liveSnapshot.weekly,
-    liveTradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
-  });
-  if (!merged) return null;
-  return {
-    ...merged,
-    selectedVariantId: "v3_liq_sweep",
-    fallbackLabel: null,
-    sourcePath: liveSnapshot.weekly.length > 0
-      ? `${merged.sourcePath}+db:live:katarakti_v3_liq_sweep`
-      : merged.sourcePath,
-  };
 }
 
 async function readLiteCryptoSnapshotFromReport(): Promise<KataraktiMarketSnapshot | null> {
-  const preferredPath = process.env.KATARAKTI_LITE_CRYPTO_REPORT_PATH?.trim();
-  const candidatePaths = preferredPath
-    ? [preferredPath, ...LITE_CRYPTO_REPORT_CANDIDATES]
-    : [...LITE_CRYPTO_REPORT_CANDIDATES];
-  return readFirstValidSimpleBacktestSnapshot({
+  return readRegistryDbFirstSnapshot({
+    variant: "lite",
     market: "crypto_futures",
-    selectedVariantId: "lite",
-    candidatePaths,
   });
 }
 
 async function readLiteMt5SnapshotFromReport(): Promise<KataraktiMarketSnapshot | null> {
-  const preferredPath = process.env.KATARAKTI_LITE_MT5_REPORT_PATH?.trim();
-  const candidatePaths = preferredPath
-    ? [preferredPath, ...LITE_MT5_REPORT_CANDIDATES]
-    : [...LITE_MT5_REPORT_CANDIDATES];
-  return readFirstValidSimpleBacktestSnapshot({
+  return readRegistryDbFirstSnapshot({
+    variant: "lite",
     market: "mt5_forex",
-    selectedVariantId: "lite",
-    candidatePaths,
   });
 }
 
@@ -1595,86 +1859,11 @@ async function readMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
 }
 
 async function readLiteCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | null> {
-  const [liteReportSnapshot, coreSnapshot, liveSnapshot] = await Promise.all([
-    readLiteCryptoSnapshotFromReport(),
-    readCryptoFuturesSnapshot(),
-    readLiveCryptoWeeklyFromDb({
-      botId: "katarakti_crypto_lite",
-      dryRunOnly: false,
-    }),
-  ]);
-  const allowCoreFallback = isLiteCoreFallbackEnabled();
-  const usedCoreFallback = !liteReportSnapshot && allowCoreFallback && Boolean(coreSnapshot);
-  const liteBase = liteReportSnapshot ?? (
-    allowCoreFallback && coreSnapshot
-      ? {
-          ...coreSnapshot,
-          sourcePath: `${coreSnapshot.sourcePath}+lite-fallback-core`,
-          selectedVariantId: "lite_fallback_core",
-          fallbackLabel: LITE_FALLBACK_LABEL,
-        }
-      : null
-  );
-  const merged = appendLiveWeeks({
-    market: "crypto_futures",
-    base: liteBase,
-    live: liveSnapshot.weekly,
-    liveTradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
-  });
-  if (!merged) {
-    return null;
-  }
-  return {
-    ...merged,
-    selectedVariantId: usedCoreFallback ? "lite_fallback_core" : "lite",
-    fallbackLabel: usedCoreFallback
-      ? LITE_FALLBACK_LABEL
-      : !liteReportSnapshot && liveSnapshot.weekly.length === 0
-        ? LITE_PENDING_LABEL
-        : null,
-    sourcePath: liveSnapshot.weekly.length > 0
-      ? `${merged.sourcePath}+db:live:katarakti_crypto_lite`
-      : merged.sourcePath,
-  };
+  return readLiteCryptoSnapshotFromReport();
 }
 
 async function readLiteMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
-  const [liteReportSnapshot, coreSnapshot, liveSnapshot] = await Promise.all([
-    readLiteMt5SnapshotFromReport(),
-    readMt5ForexSnapshot(),
-    readLiveMt5WeeklyFromDb("katarakti_cfd_lite"),
-  ]);
-  const allowCoreFallback = isLiteCoreFallbackEnabled();
-  const usedCoreFallback = !liteReportSnapshot && allowCoreFallback && Boolean(coreSnapshot);
-  const liteBase = liteReportSnapshot ?? (
-    allowCoreFallback && coreSnapshot
-      ? {
-          ...coreSnapshot,
-          sourcePath: `${coreSnapshot.sourcePath}+lite-fallback-core`,
-          selectedVariantId: "lite_fallback_core",
-          fallbackLabel: LITE_FALLBACK_LABEL,
-        }
-      : null
-  );
-  const merged = appendLiveWeeks({
-    market: "mt5_forex",
-    base: liteBase,
-    live: liveSnapshot.weekly,
-    liveTradeDetailsByWeek: liveSnapshot.tradeDetailsByWeek,
-  });
-  if (!merged) return null;
-  return {
-    ...merged,
-    selectedVariantId: usedCoreFallback ? "lite_fallback_core" : "lite",
-    fallbackLabel: usedCoreFallback
-      ? LITE_FALLBACK_LABEL
-      : !liteReportSnapshot && liveSnapshot.weekly.length === 0
-        ? LITE_PENDING_LABEL
-        : null,
-    sourcePath: liveSnapshot.weekly.length > 0
-      ? `${merged.sourcePath}+db:live:katarakti_cfd_lite`
-      : merged.sourcePath,
-  };
+  return readLiteMt5SnapshotFromReport();
 }
 
 export async function readKataraktiMarketSnapshots(): Promise<KataraktiHistoryByMarket> {

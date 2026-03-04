@@ -5,6 +5,8 @@ node_modules/
 
 # Testing
 coverage/
+!src/app/api/performance/coverage/
+!src/app/api/performance/coverage/**
 
 # Next.js
 .next/

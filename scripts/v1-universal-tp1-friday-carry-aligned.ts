@@ -22,6 +22,7 @@ import { getCanonicalWeekOpenUtc } from "../src/lib/weekAnchor";
 import type { AssetClass } from "../src/lib/cotMarkets";
 import { getOandaInstrument } from "../src/lib/oandaPrices";
 import type { PerformanceModel } from "../src/lib/performanceLab";
+import { upsertStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestStore";
 
 type Direction = "LONG" | "SHORT";
 
@@ -77,6 +78,40 @@ type WeekStats = {
   week_realized_delta_pct: number;
   week_end_equity_pct: number;
   week_delta_equity_pct: number;
+};
+
+type UniversalBacktestOutput = {
+  generated_utc: string | null;
+  config: {
+    backtest_weeks: number;
+    universal_mode: string;
+    carry_mode: string;
+    stop_mode: string;
+    adr_lookback_days: number;
+    adr_stop_multiplier: number;
+    tp_pct: number;
+  };
+  totals: {
+    desired_legs: number;
+    opened_positions: number;
+    closed_tp_1pct: number;
+    closed_stop_adr: number;
+    closed_friday_profit: number;
+    closed_friday_forced: number;
+    closed_refresh_unaligned: number;
+    closed_positions: number;
+    wins: number;
+    losses: number;
+    win_rate_pct: number;
+    avg_closed_pnl_pct: number;
+    profit_factor: number | string;
+    max_drawdown_pct: number;
+    open_positions_end: number;
+    realized_pct: number;
+    floating_pct: number;
+    equity_pct: number;
+  };
+  weekly: WeekStats[];
 };
 
 type SeriesForSymbol = {
@@ -501,6 +536,77 @@ async function buildWeekPlan(weekOpenUtc: string): Promise<WeekPlan> {
   };
 }
 
+function approximateWeeklyWinsLosses(week: WeekStats) {
+  const closedCount =
+    week.closed_tp_1pct
+    + week.closed_stop_adr
+    + week.closed_friday_profit
+    + week.closed_friday_forced
+    + week.closed_refresh_unaligned;
+  let wins = week.closed_tp_1pct + week.closed_friday_profit;
+  let losses = week.closed_stop_adr + week.closed_friday_forced;
+  const unresolved = Math.max(0, closedCount - wins - losses);
+  if (unresolved > 0) {
+    if (week.week_realized_delta_pct >= 0) {
+      wins += unresolved;
+    } else {
+      losses += unresolved;
+    }
+  }
+  return { wins, losses, closedCount };
+}
+
+async function persistUniversalBacktestToDb(out: UniversalBacktestOutput) {
+  if (!process.env.DATABASE_URL) {
+    console.log("DB upsert skipped: DATABASE_URL is not configured.");
+    return;
+  }
+
+  const weeklyRows = out.weekly.map((week) => {
+    const grossProfitPct = Math.max(0, week.week_realized_delta_pct);
+    const grossLossPct = Math.abs(Math.min(0, week.week_realized_delta_pct));
+    const approx = approximateWeeklyWinsLosses(week);
+    return {
+      weekOpenUtc: week.week_open_utc,
+      returnPct: week.week_delta_equity_pct,
+      trades: approx.closedCount,
+      wins: approx.wins,
+      losses: approx.losses,
+      stopHits: week.closed_stop_adr,
+      drawdownPct: week.week_drawdown_pct,
+      grossProfitPct,
+      grossLossPct,
+      equityEndPct: week.week_end_equity_pct,
+      pnlUsd: null,
+    };
+  });
+
+  const result = await upsertStrategyBacktestSnapshot({
+    run: {
+      botId: "universal_v1_tp1_friday_carry_aligned",
+      variant: "v1",
+      market: "multi_asset",
+      strategyName: "Universal v1 TP1 Friday Carry Aligned",
+      carryMode: out.config.carry_mode,
+      stopMode: out.config.stop_mode,
+      adrMultiplier: out.config.stop_mode === "adr" ? out.config.adr_stop_multiplier : null,
+      universalMode: out.config.universal_mode,
+      backtestWeeks: out.config.backtest_weeks,
+      generatedUtc: out.generated_utc,
+      configJson: {
+        ...out.config,
+        totals: out.totals,
+      },
+    },
+    weekly: weeklyRows,
+    trades: [],
+  });
+
+  console.log(
+    `DB upsert complete (universal v1): run_id=${result.runId}, weekly=${result.weeklyUpserted}, trades=${result.tradesInserted}`,
+  );
+}
+
 async function main() {
   loadDotEnv();
 
@@ -893,6 +999,12 @@ async function main() {
   console.log(`Wrote ${mdPath}`);
   console.log(`Wrote ${latestJsonPath}`);
   console.log(`Wrote ${latestMdPath}`);
+  try {
+    await persistUniversalBacktestToDb(out);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`DB upsert skipped (universal v1): ${message}`);
+  }
 }
 
 main().catch((error) => {

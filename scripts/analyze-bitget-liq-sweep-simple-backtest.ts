@@ -30,6 +30,7 @@ import type { SentimentAggregate } from "../src/lib/sentiment/types";
 import { classifyWeeklyBias } from "../src/lib/bitgetBotSignals";
 import { computeScalingState } from "../src/lib/bitgetBotRisk";
 import { getCanonicalWeekOpenUtc } from "../src/lib/weekAnchor";
+import { upsertStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestStore";
 
 type SymbolBase = "BTC" | "ETH";
 type Direction = "LONG" | "SHORT" | "NEUTRAL";
@@ -1397,6 +1398,107 @@ function buildJsonReport(options: {
   };
 }
 
+function deriveWeekOpenUtcFromIso(isoUtc: string | null | undefined) {
+  if (!isoUtc) return null;
+  const parsed = DateTime.fromISO(isoUtc, { zone: "utc" });
+  if (!parsed.isValid) return null;
+  return getCanonicalWeekOpenUtc(parsed);
+}
+
+async function persistJsonReportToDb(report: LiqSweepJsonReport) {
+  if (!process.env.DATABASE_URL) {
+    console.log("DB upsert skipped: DATABASE_URL is not configured.");
+    return;
+  }
+
+  const tradesByWeek = new Map<string, LiqSweepJsonReport["trades"]>();
+  for (const trade of report.trades) {
+    const weekOpenUtc = deriveWeekOpenUtcFromIso(trade.entry_time_utc);
+    if (!weekOpenUtc) continue;
+    const rows = tradesByWeek.get(weekOpenUtc) ?? [];
+    rows.push(trade);
+    tradesByWeek.set(weekOpenUtc, rows);
+  }
+
+  let runningEquityPct = 0;
+  const weeklyRows = report.weekly.map((week) => {
+    const weekTrades = tradesByWeek.get(week.week_open_utc) ?? [];
+    const grossProfitPct = weekTrades
+      .filter((trade) => Number.isFinite(trade.pnl_pct) && trade.pnl_pct > 0)
+      .reduce((sum, trade) => sum + trade.pnl_pct, 0);
+    const grossLossPct = Math.abs(
+      weekTrades
+        .filter((trade) => Number.isFinite(trade.pnl_pct) && trade.pnl_pct < 0)
+        .reduce((sum, trade) => sum + trade.pnl_pct, 0),
+    );
+    const stopHits = weekTrades.filter((trade) => trade.exit_reason === "stop").length;
+    runningEquityPct += week.pnl_pct;
+    return {
+      weekOpenUtc: week.week_open_utc,
+      returnPct: week.pnl_pct,
+      trades: week.trades,
+      wins: week.wins,
+      losses: week.losses,
+      stopHits,
+      drawdownPct: week.max_drawdown_pct,
+      grossProfitPct,
+      grossLossPct,
+      equityEndPct: runningEquityPct,
+      pnlUsd: week.pnl_usd,
+    };
+  });
+
+  const tradeRows = report.trades.flatMap((trade) => {
+    const weekOpenUtc = deriveWeekOpenUtcFromIso(trade.entry_time_utc);
+    if (!weekOpenUtc) return [];
+    return [{
+      weekOpenUtc,
+      symbol: trade.symbol,
+      direction: trade.direction,
+      entryTimeUtc: trade.entry_time_utc,
+      exitTimeUtc: trade.exit_time_utc,
+      entryPrice: trade.entry_price,
+      exitPrice: trade.exit_price,
+      pnlPct: trade.pnl_pct,
+      pnlUsd: trade.pnl_usd,
+      exitReason: trade.exit_reason,
+      maxMilestone: trade.max_milestone,
+      leverageAtExit: trade.leverage_at_exit,
+      metadata: {
+        offset_pct: report.meta.offsetPct,
+        slot_mode: report.meta.slotMode,
+      },
+    }];
+  });
+
+  const result = await upsertStrategyBacktestSnapshot({
+    run: {
+      botId: report.meta.botId,
+      variant: "v3",
+      market: report.meta.market,
+      strategyName: "Katarakti v3 (Liq Sweep)",
+      backtestWeeks: report.meta.weeks.length,
+      offsetPct: report.meta.offsetPct,
+      slotMode: report.meta.slotMode,
+      positionAllocationPct: report.meta.positionAllocationPct,
+      generatedUtc: report.meta.generatedUtc,
+      configJson: {
+        offsetPct: report.meta.offsetPct,
+        slotMode: report.meta.slotMode,
+        leverage: report.meta.leverage,
+        positionAllocationPct: report.meta.positionAllocationPct,
+        weeks: report.meta.weeks,
+      },
+    },
+    weekly: weeklyRows,
+    trades: tradeRows,
+  });
+
+  console.log(
+    `DB upsert complete (liq sweep): run_id=${result.runId}, weekly=${result.weeklyUpserted}, trades=${result.tradesInserted}`,
+  );
+}
+
 function buildReport(
   weekOpens: string[],
   offsets: number[],
@@ -1553,6 +1655,12 @@ async function main() {
     const jsonPath = path.resolve(process.cwd(), "reports/bitget-liq-sweep-simple-latest.json");
     writeFileSync(jsonPath, JSON.stringify(jsonReport, null, 2), "utf8");
     console.log(`JSON written: ${jsonPath}`);
+    try {
+      await persistJsonReportToDb(jsonReport);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`DB upsert skipped (liq sweep): ${message}`);
+    }
   }
 }
 

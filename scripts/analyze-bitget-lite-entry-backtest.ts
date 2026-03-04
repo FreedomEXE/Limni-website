@@ -23,6 +23,7 @@ import { DateTime } from "luxon";
 import { getPool, query } from "../src/lib/db";
 import { classifyWeeklyBias } from "../src/lib/bitgetBotSignals";
 import { getCanonicalWeekOpenUtc } from "../src/lib/weekAnchor";
+import { upsertStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestStore";
 
 type SymbolBase = string;
 type CoreSymbol = "BTC" | "ETH";
@@ -916,6 +917,87 @@ type SimpleBacktestReport = {
   trades: SimpleBacktestTradeRow[];
 };
 
+function deriveWeekOpenUtcFromIso(isoUtc: string | null | undefined) {
+  if (!isoUtc) return null;
+  const parsed = DateTime.fromISO(isoUtc, { zone: "utc" });
+  if (!parsed.isValid) return null;
+  return getCanonicalWeekOpenUtc(parsed);
+}
+
+async function persistLiteCryptoReportToDb(report: SimpleBacktestReport) {
+  if (!process.env.DATABASE_URL) {
+    console.log("DB upsert skipped: DATABASE_URL is not configured.");
+    return;
+  }
+
+  let runningEquityPct = 0;
+  const weeklyRows = report.weekly.map((week) => {
+    const grossProfitPct = Math.max(0, week.pnl_pct);
+    const grossLossPct = Math.abs(Math.min(0, week.pnl_pct));
+    runningEquityPct += week.pnl_pct;
+    return {
+      weekOpenUtc: week.week_open_utc,
+      returnPct: week.pnl_pct,
+      trades: week.trades,
+      wins: week.wins,
+      losses: week.losses,
+      stopHits: 0,
+      drawdownPct: week.max_drawdown_pct,
+      grossProfitPct,
+      grossLossPct,
+      equityEndPct: runningEquityPct,
+      pnlUsd: week.pnl_usd,
+    };
+  });
+
+  const tradeRows = report.trades.flatMap((trade) => {
+    const weekOpenUtc = deriveWeekOpenUtcFromIso(trade.entry_time_utc);
+    if (!weekOpenUtc) return [];
+    return [{
+      weekOpenUtc,
+      symbol: trade.symbol,
+      direction: trade.direction,
+      entryTimeUtc: trade.entry_time_utc,
+      exitTimeUtc: trade.exit_time_utc,
+      entryPrice: trade.entry_price,
+      exitPrice: trade.exit_price,
+      pnlPct: trade.pnl_pct,
+      pnlUsd: trade.pnl_usd,
+      exitReason: trade.exit_reason,
+      maxMilestone: trade.max_milestone,
+      leverageAtExit: trade.leverage_at_exit,
+      metadata: {
+        selected_config: report.meta.selectedConfig,
+      },
+    }];
+  });
+
+  const result = await upsertStrategyBacktestSnapshot({
+    run: {
+      botId: report.meta.botId,
+      variant: "lite",
+      market: report.meta.market,
+      strategyName: "Katarakti Lite (Crypto Futures)",
+      backtestWeeks: report.meta.weeks.length,
+      positionAllocationPct: report.meta.allocationPct,
+      generatedUtc: report.meta.generatedUtc,
+      configJson: {
+        selectedConfig: report.meta.selectedConfig,
+        startEquityUsd: report.meta.startEquityUsd,
+        startLeverage: report.meta.startLeverage,
+        allocationPct: report.meta.allocationPct,
+        weeks: report.meta.weeks,
+      },
+    },
+    weekly: weeklyRows,
+    trades: tradeRows,
+  });
+
+  console.log(
+    `DB upsert complete (lite crypto): run_id=${result.runId}, weekly=${result.weeklyUpserted}, trades=${result.tradesInserted}`,
+  );
+}
+
 function equityAtEntry(startEquity: number, executed: ExecutedTrade[], entryTs: number) {
   let equity = startEquity;
   for (const trade of executed) {
@@ -1533,6 +1615,7 @@ async function mainLite() {
     startEquityUsd: STARTING_EQUITY_USD,
   });
   writeFileSync(JSON_REPORT_PATH, JSON.stringify(jsonReport, null, 2), "utf8");
+  await persistLiteCryptoReportToDb(jsonReport);
   console.log(reportText);
   console.log(`\nReport written: ${REPORT_PATH}`);
   console.log(`JSON report written: ${JSON_REPORT_PATH}`);

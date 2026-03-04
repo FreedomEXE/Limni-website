@@ -14,6 +14,7 @@ import { PAIRS_BY_ASSET_CLASS } from "../src/lib/cotPairs";
 import type { AssetClass } from "../src/lib/cotMarkets";
 import { getOandaInstrument } from "../src/lib/oandaPrices";
 import { PERFORMANCE_V1_MODELS } from "../src/lib/performance/modelConfig";
+import { upsertStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestStore";
 import type { PerformanceModel } from "../src/lib/performanceLab";
 
 type Direction = "LONG" | "SHORT" | "NEUTRAL";
@@ -3446,6 +3447,13 @@ type LiteSimpleReport = {
   trades: LiteSimpleTradeRow[];
 };
 
+function deriveWeekOpenUtcFromIso(isoUtc: string | null | undefined) {
+  if (!isoUtc) return null;
+  const parsed = DateTime.fromISO(isoUtc, { zone: "utc" });
+  if (!parsed.isValid) return null;
+  return getCanonicalWeekOpenUtc(parsed);
+}
+
 function roundSimple(value: number, digits = 6) {
   const p = 10 ** digits;
   return Math.round(value * p) / p;
@@ -3570,6 +3578,78 @@ function buildLiteSimpleReport(options: {
     },
     trades: simpleTrades,
   };
+}
+
+async function persistLiteMt5ReportToDb(report: LiteSimpleReport) {
+  if (!process.env.DATABASE_URL) {
+    console.log("DB upsert skipped: DATABASE_URL is not configured.");
+    return;
+  }
+
+  let runningEquityPct = 0;
+  const weeklyRows = report.weekly.map((week) => {
+    const grossProfitPct = Math.max(0, week.pnl_pct);
+    const grossLossPct = Math.abs(Math.min(0, week.pnl_pct));
+    runningEquityPct += week.pnl_pct;
+    return {
+      weekOpenUtc: week.week_open_utc,
+      returnPct: week.pnl_pct,
+      trades: week.trades,
+      wins: week.wins,
+      losses: week.losses,
+      stopHits: 0,
+      drawdownPct: week.max_drawdown_pct,
+      grossProfitPct,
+      grossLossPct,
+      equityEndPct: runningEquityPct,
+      pnlUsd: week.pnl_usd,
+    };
+  });
+
+  const tradeRows = report.trades.flatMap((trade) => {
+    const weekOpenUtc = deriveWeekOpenUtcFromIso(trade.entry_time_utc);
+    if (!weekOpenUtc) return [];
+    return [{
+      weekOpenUtc,
+      symbol: trade.symbol,
+      direction: trade.direction,
+      entryTimeUtc: trade.entry_time_utc,
+      exitTimeUtc: trade.exit_time_utc,
+      entryPrice: trade.entry_price,
+      exitPrice: trade.exit_price,
+      pnlPct: trade.pnl_pct,
+      pnlUsd: trade.pnl_usd,
+      exitReason: trade.exit_reason,
+      maxMilestone: trade.max_milestone,
+      leverageAtExit: trade.leverage_at_exit,
+      metadata: {
+        selected_variant_id: report.meta.selectedVariantId,
+      },
+    }];
+  });
+
+  const result = await upsertStrategyBacktestSnapshot({
+    run: {
+      botId: report.meta.botId,
+      variant: "lite",
+      market: report.meta.market,
+      strategyName: "Katarakti Lite (CFD)",
+      backtestWeeks: report.meta.weeks.length,
+      generatedUtc: report.meta.generatedUtc,
+      configJson: {
+        selectedVariantId: report.meta.selectedVariantId,
+        startEquityUsd: report.meta.startEquityUsd,
+        weeks: report.meta.weeks,
+        sourceScript: "analyze-katarakti-lite-parameter-sweep",
+      },
+    },
+    weekly: weeklyRows,
+    trades: tradeRows,
+  });
+
+  console.log(
+    `DB upsert complete (lite cfd parameter sweep): run_id=${result.runId}, weekly=${result.weeklyUpserted}, trades=${result.tradesInserted}`,
+  );
 }
 
 function parseNumberList(raw: string) {
@@ -4354,6 +4434,7 @@ async function mainLiteParameterSweep() {
       startEquityUsd: LITE_START_EQUITY_USD,
     });
     fs.writeFileSync(LITE_JSON_REPORT_PATH, JSON.stringify(liteJson, null, 2), "utf8");
+    await persistLiteMt5ReportToDb(liteJson);
   }
   console.log(report);
   console.log(`Wrote ${LITE_REPORT_PATH}`);
