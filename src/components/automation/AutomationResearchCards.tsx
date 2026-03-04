@@ -1,10 +1,16 @@
 import AutomationViewCards, {
-  type AutomationViewCard,
+type AutomationViewCard,
 } from "@/components/automation/AutomationViewCards";
 
-type ResearchPageKey = "lab" | "universal" | "baskets" | "symbols" | "bank";
+type ResearchPageKey = "lab" | "universal" | "baskets" | "symbols" | "bank" | "strategies";
 
 const RESEARCH_CARDS: ReadonlyArray<AutomationViewCard<ResearchPageKey>> = [
+  {
+    id: "strategies",
+    label: "Strategies",
+    description: "DB-backed strategy backtest runs, coverage, and metrics.",
+    href: "/automation/research/strategies",
+  },
   {
     id: "lab",
     label: "Lab",
