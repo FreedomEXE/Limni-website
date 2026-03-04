@@ -1,11 +1,34 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: PerformanceComparisonPanel.tsx
+ *
+ * Description:
+ * Registry-driven comparison panel for Universal, Tiered, and Katarakti
+ * strategies using the legacy comparison API response shape.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import {
+  PERFORMANCE_FAMILY_META,
+  getPerformanceFamilyTabGroups,
+  listPerformanceStrategyEntries,
+  listPerformanceStrategyEntriesByFamily,
+  resolveActiveStrategyEntry,
+  resolveComparisonSourceKey,
+  type PerformanceStrategyEntry,
+  type PerformanceStrategyFamily,
+} from "@/lib/performance/strategyRegistry";
 
-type PerformanceStyle = "universal" | "tiered" | "katarakti";
 type KataraktiMarket = "crypto_futures" | "mt5_forex";
 type KataraktiVariant = "core" | "lite" | "v3";
+type SystemVersion = "v1" | "v2" | "v3";
 
 type ComparisonMetrics = {
   totalReturn: number;
@@ -23,14 +46,16 @@ type ComparisonMetrics = {
 };
 
 type ComparisonSourceMeta = {
-  mode: "strategy_backtest_db" | "performance_snapshots" | "tiered_derived" | "katarakti_snapshot" | "unavailable";
+  mode:
+    | "strategy_backtest_db"
+    | "performance_snapshots"
+    | "tiered_derived"
+    | "katarakti_snapshot"
+    | "unavailable";
   sourcePath: string;
   fallbackLabel?: string | null;
   fallbackToAllTime?: boolean;
 };
-
-const WEEKLY_SHARPE_GOOD_THRESHOLD = 1;
-const ANNUALIZED_SHARPE_GOOD_THRESHOLD = 7;
 
 type ComparisonData = {
   v1: ComparisonMetrics;
@@ -88,6 +113,22 @@ type ComparisonData = {
   };
 };
 
+const WEEKLY_SHARPE_GOOD_THRESHOLD = 1;
+const ANNUALIZED_SHARPE_GOOD_THRESHOLD = 7;
+
+const EMPTY_METRICS: ComparisonMetrics = {
+  totalReturn: 0,
+  weeks: 0,
+  winRate: 0,
+  sharpe: 0,
+  avgWeekly: 0,
+  maxDrawdown: null,
+  trades: 0,
+  tradeWinRate: 0,
+  avgTrade: null,
+  profitFactor: null,
+};
+
 function formatSignedPercent(value: number, digits = 2) {
   const prefix = value >= 0 ? "+" : "";
   return `${prefix}${value.toFixed(digits)}%`;
@@ -103,19 +144,6 @@ function formatProfitFactor(value: number | null, profitFactorInfinite?: boolean
   if (value === null || Number.isNaN(value)) return "—";
   if (!Number.isFinite(value)) return "∞";
   return value.toFixed(2);
-}
-
-function resolveKataraktiSelection(options: {
-  market: KataraktiMarket;
-  variant: KataraktiVariant;
-}) {
-  if (options.variant === "v3") {
-    return {
-      market: "crypto_futures" as const,
-      variant: options.variant,
-    };
-  }
-  return options;
 }
 
 function buildSourceLabel(source: ComparisonSourceMeta | null | undefined) {
@@ -139,33 +167,93 @@ function buildSourceLabel(source: ComparisonSourceMeta | null | undefined) {
   return "Source unavailable";
 }
 
+function parseRequestedSystem(value: string | null): SystemVersion {
+  return value === "v2" || value === "v3" ? value : "v1";
+}
+
+function parseRequestedFamily(value: string | null): PerformanceStrategyFamily {
+  if (value === "tiered" || value === "katarakti") return value;
+  return "universal";
+}
+
+function parseRequestedKataraktiVariant(value: string | null): KataraktiVariant {
+  if (value === "lite" || value === "v3") return value;
+  return "core";
+}
+
+function parseRequestedKataraktiMarket(value: string | null): KataraktiMarket | undefined {
+  if (value === "crypto_futures" || value === "mt5_forex") return value;
+  return undefined;
+}
+
+function getMetricsForEntry(data: ComparisonData | null, entry: PerformanceStrategyEntry | null): ComparisonMetrics {
+  if (!data || !entry) return EMPTY_METRICS;
+  const key = resolveComparisonSourceKey(entry);
+  if (!key) return EMPTY_METRICS;
+  if (key.family === "universal" && key.systemVersion) {
+    return data.universal?.[key.systemVersion] ?? data[key.systemVersion] ?? EMPTY_METRICS;
+  }
+  if (key.family === "tiered" && key.systemVersion) {
+    return data.tiered?.[key.systemVersion] ?? EMPTY_METRICS;
+  }
+  if (key.family === "katarakti" && key.kataraktiVariant && key.kataraktiMarket) {
+    return data.katarakti?.[key.kataraktiVariant]?.[key.kataraktiMarket] ?? EMPTY_METRICS;
+  }
+  return EMPTY_METRICS;
+}
+
+function getSourceForEntry(data: ComparisonData | null, entry: PerformanceStrategyEntry | null) {
+  if (!data || !entry) return null;
+  const key = resolveComparisonSourceKey(entry);
+  if (!key) return null;
+  if (key.family === "universal" && key.systemVersion) {
+    return data.sources?.universal?.[key.systemVersion] ?? null;
+  }
+  if (key.family === "tiered" && key.systemVersion) {
+    return data.sources?.tiered?.[key.systemVersion] ?? null;
+  }
+  if (key.family === "katarakti" && key.kataraktiVariant && key.kataraktiMarket) {
+    return data.sources?.katarakti?.[key.kataraktiVariant]?.[key.kataraktiMarket] ?? null;
+  }
+  return null;
+}
+
+function marketLabel(market: KataraktiMarket) {
+  return market === "mt5_forex" ? "CFD" : "Crypto Futures";
+}
+
+function marketSort(a: KataraktiMarket, b: KataraktiMarket) {
+  if (a === b) return 0;
+  if (a === "crypto_futures") return -1;
+  return 1;
+}
+
 export default function PerformanceComparisonPanel() {
   const searchParams = useSearchParams();
   const [data, setData] = useState<ComparisonData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const requestedSystem = searchParams.get("system");
-  const requestedStyle = searchParams.get("style");
-  const requestedMarket = searchParams.get("market");
-  const requestedVariant = searchParams.get("variant");
+
   const requestedWeek = searchParams.get("week") ?? "all";
-  const initialTab = requestedSystem === "v2" || requestedSystem === "v3" ? requestedSystem : "v1";
-  const initialStyle: PerformanceStyle =
-    requestedStyle === "tiered" || requestedStyle === "katarakti" ? requestedStyle : "universal";
-  const initialRequestedMarket: KataraktiMarket =
-    requestedMarket === "mt5_forex" ? "mt5_forex" : "crypto_futures";
-  const initialRequestedVariant: KataraktiVariant =
-    requestedVariant === "lite" ? "lite" : requestedVariant === "v3" ? "v3" : "core";
-  const initialSelection = resolveKataraktiSelection({
-    market: initialRequestedMarket,
-    variant: initialRequestedVariant,
+  const initialFamily = parseRequestedFamily(searchParams.get("style"));
+  const initialSystemVersion = parseRequestedSystem(searchParams.get("system"));
+  const initialVariant = parseRequestedKataraktiVariant(searchParams.get("variant"));
+  const initialMarket = parseRequestedKataraktiMarket(searchParams.get("market"));
+  const initialKataraktiEntry = resolveActiveStrategyEntry({
+    family: "katarakti",
+    kataraktiVariant: initialVariant,
+    // Explicitly pass market only when provided in URL so v3 defaults to crypto.
+    kataraktiMarket: initialMarket,
   });
-  const initialMarket = initialSelection.market;
-  const initialVariant = initialSelection.variant;
-  const [activeTab, setActiveTab] = useState<"v1" | "v2" | "v3">(initialTab);
-  const [activeStyle, setActiveStyle] = useState<PerformanceStyle>(initialStyle);
-  const [activeMarket, setActiveMarket] = useState<KataraktiMarket>(initialMarket);
-  const [activeVariant, setActiveVariant] = useState<KataraktiVariant>(initialVariant);
+
+  const [activeFamily, setActiveFamily] = useState<PerformanceStrategyFamily>(initialFamily);
+  const [activeSystemVersion, setActiveSystemVersion] = useState<SystemVersion>(initialSystemVersion);
+  const [activeKataraktiVariant, setActiveKataraktiVariant] = useState<KataraktiVariant>(
+    initialKataraktiEntry?.kataraktiVariant ?? initialVariant,
+  );
+  const [activeKataraktiMarket, setActiveKataraktiMarket] = useState<KataraktiMarket>(
+    initialKataraktiEntry?.market ?? "crypto_futures",
+  );
 
   useEffect(() => {
     async function fetchData() {
@@ -180,7 +268,7 @@ export default function PerformanceComparisonPanel() {
         if (json.error) {
           throw new Error(json.error);
         }
-        setData(json);
+        setData(json as ComparisonData);
       } catch (err) {
         console.error("PerformanceComparisonPanel error:", err);
         setError(err instanceof Error ? err.message : String(err));
@@ -191,157 +279,27 @@ export default function PerformanceComparisonPanel() {
     fetchData();
   }, [requestedWeek]);
 
-  const universalMetrics = data?.universal ?? {
-    v1: data?.v1 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-    v2: data?.v2 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-    v3: data?.v3 ?? { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-  };
-  const tieredMetrics = data?.tiered ?? {
-    v1: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-    v2: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-    v3: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-  };
-  const kataraktiMetrics = data?.katarakti ?? {
-    core: {
-      crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-      mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-    },
-    lite: {
-      crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-      mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-    },
-    v3: {
-      crypto_futures: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-      mt5_forex: { totalReturn: 0, weeks: 0, winRate: 0, sharpe: 0, avgWeekly: 0, maxDrawdown: null, trades: 0, tradeWinRate: 0, avgTrade: null, profitFactor: null },
-    },
-  };
-  const metricSet = activeStyle === "tiered" ? tieredMetrics : universalMetrics;
-  const v1Metrics = metricSet.v1;
-  const v2Metrics = metricSet.v2;
-  const v3Metrics = metricSet.v3;
-  const activeMetrics = activeStyle === "katarakti"
-    ? kataraktiMetrics[activeVariant][activeMarket]
-    : activeTab === "v1"
-      ? v1Metrics
-      : activeTab === "v2"
-        ? v2Metrics
-        : v3Metrics;
-  const activeVersionLabel = activeTab === "v1" ? "V1" : activeTab === "v2" ? "V2" : "V3";
-  const activeLabel = activeStyle === "katarakti"
-    ? activeMarket === "crypto_futures"
-      ? activeVariant === "lite"
-        ? "Katarakti Crypto Lite"
-        : activeVariant === "v3"
-          ? "Katarakti v3 (Liq Sweep)"
-          : "Katarakti (Crypto Futures)"
-      : activeVariant === "lite"
-        ? "Katarakti CFD Lite"
-        : activeVariant === "v3"
-          ? "Katarakti CFD v3 (Pending)"
-          : "Katarakti (CFD)"
-    : activeStyle === "tiered"
-      ? `Tiered ${activeVersionLabel}`
-      : `Universal ${activeVersionLabel}`;
-  const activeBadge = activeStyle === "katarakti"
-    ? `${activeMarket === "crypto_futures" ? "Crypto Futures" : "CFD"} ${activeVariant === "lite" ? "Lite" : activeVariant === "v3" ? "v3" : "Core"}`
-    : activeStyle === "tiered"
-      ? activeTab === "v2"
-        ? "Tiered (2 tiers)"
-        : "Tiered (3 tiers)"
-      : activeTab === "v1"
-        ? "5 Baskets"
-        : activeTab === "v2"
-          ? "3 Baskets"
-          : "4 Baskets";
-  const activeSource =
-    activeStyle === "katarakti"
-      ? data?.sources?.katarakti?.[activeVariant]?.[activeMarket]
-      : activeStyle === "tiered"
-        ? data?.sources?.tiered?.[activeTab]
-        : data?.sources?.universal?.[activeTab];
-  const activeSourceLabel = buildSourceLabel(activeSource);
-  const activeCardClass =
-    activeStyle === "katarakti"
-      ? activeMarket === "crypto_futures"
-        ? activeVariant === "lite"
-          ? "rounded-2xl border border-sky-400/40 bg-sky-500/10 p-4"
-          : activeVariant === "v3"
-            ? "rounded-2xl border border-fuchsia-400/40 bg-fuchsia-500/10 p-4"
-          : "rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4"
-        : activeVariant === "lite"
-          ? "rounded-2xl border border-cyan-400/40 bg-cyan-500/10 p-4"
-          : activeVariant === "v3"
-            ? "rounded-2xl border border-violet-400/40 bg-violet-500/10 p-4"
-          : "rounded-2xl border border-teal-400/40 bg-teal-500/10 p-4"
-      : activeTab === "v1"
-      ? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4"
-      : activeTab === "v2"
-        ? "rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4"
-        : "rounded-2xl border border-cyan-400/40 bg-cyan-500/10 p-4";
-  const valueClass =
-    activeStyle === "katarakti"
-      ? activeMarket === "crypto_futures"
-        ? activeVariant === "lite"
-          ? "text-sky-900 dark:text-sky-100"
-          : activeVariant === "v3"
-            ? "text-fuchsia-900 dark:text-fuchsia-100"
-          : "text-amber-900 dark:text-amber-100"
-        : activeVariant === "lite"
-          ? "text-cyan-900 dark:text-cyan-100"
-          : activeVariant === "v3"
-            ? "text-violet-900 dark:text-violet-100"
-          : "text-teal-900 dark:text-teal-100"
-      : activeTab === "v1"
-      ? "text-[var(--foreground)]"
-      : activeTab === "v2"
-        ? "text-emerald-900 dark:text-emerald-100"
-        : "text-cyan-900 dark:text-cyan-100";
-  const labelClass =
-    activeStyle === "katarakti"
-      ? activeMarket === "crypto_futures"
-        ? activeVariant === "lite"
-          ? "text-sky-700 dark:text-sky-300"
-          : activeVariant === "v3"
-            ? "text-fuchsia-700 dark:text-fuchsia-300"
-          : "text-amber-700 dark:text-amber-300"
-        : activeVariant === "lite"
-          ? "text-cyan-700 dark:text-cyan-300"
-          : activeVariant === "v3"
-            ? "text-violet-700 dark:text-violet-300"
-          : "text-teal-700 dark:text-teal-300"
-      : activeTab === "v1"
-      ? "text-[color:var(--muted)]"
-      : activeTab === "v2"
-        ? "text-emerald-700 dark:text-emerald-300"
-        : "text-cyan-700 dark:text-cyan-300";
-  const badgeClass =
-    activeStyle === "katarakti"
-      ? activeMarket === "crypto_futures"
-        ? activeVariant === "lite"
-          ? "rounded-full bg-sky-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-sky-800 dark:text-sky-200"
-          : activeVariant === "v3"
-            ? "rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-fuchsia-800 dark:text-fuchsia-200"
-          : "rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-amber-800 dark:text-amber-200"
-        : activeVariant === "lite"
-          ? "rounded-full bg-cyan-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-cyan-800 dark:text-cyan-200"
-          : activeVariant === "v3"
-            ? "rounded-full bg-violet-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-violet-800 dark:text-violet-200"
-          : "rounded-full bg-teal-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-teal-800 dark:text-teal-200"
-      : activeTab === "v1"
-      ? "rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]"
-      : activeTab === "v2"
-        ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-emerald-800 dark:text-emerald-200"
-        : "rounded-full bg-cyan-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-cyan-800 dark:text-cyan-200";
-  const hasHistoricalData =
-    v1Metrics.weeks > 0 ||
-    v2Metrics.weeks > 0 ||
-    v3Metrics.weeks > 0 ||
-    kataraktiMetrics.core.crypto_futures.weeks > 0 ||
-    kataraktiMetrics.core.mt5_forex.weeks > 0 ||
-    kataraktiMetrics.lite.crypto_futures.weeks > 0 ||
-    kataraktiMetrics.lite.mt5_forex.weeks > 0 ||
-    kataraktiMetrics.v3.crypto_futures.weeks > 0 ||
-    kataraktiMetrics.v3.mt5_forex.weeks > 0;
+  const familyEntriesByFamily = useMemo(
+    () => ({
+      universal: listPerformanceStrategyEntriesByFamily("universal"),
+      tiered: listPerformanceStrategyEntriesByFamily("tiered"),
+      katarakti: listPerformanceStrategyEntriesByFamily("katarakti"),
+    }),
+    [],
+  );
+
+  const activeEntry = resolveActiveStrategyEntry({
+    family: activeFamily,
+    systemVersion: activeSystemVersion,
+    kataraktiVariant: activeKataraktiVariant,
+    kataraktiMarket: activeKataraktiMarket,
+  });
+  const activeMetrics = getMetricsForEntry(data, activeEntry);
+  const activeSourceLabel = buildSourceLabel(getSourceForEntry(data, activeEntry));
+
+  const hasHistoricalData = listPerformanceStrategyEntries().some(
+    (entry) => getMetricsForEntry(data, entry).weeks > 0,
+  );
   const sharpeLabel = activeMetrics.sharpeAnnualized ? "Sharpe (Ann.)" : "Sharpe (Wk)";
   const sharpeGoodThreshold = activeMetrics.sharpeAnnualized
     ? ANNUALIZED_SHARPE_GOOD_THRESHOLD
@@ -349,14 +307,40 @@ export default function PerformanceComparisonPanel() {
   const sharpeValueClass =
     activeMetrics.sharpe > sharpeGoodThreshold
       ? "text-emerald-700 dark:text-emerald-300"
-      : valueClass;
-  const setStyle = (next: PerformanceStyle) => {
-    setActiveStyle(next);
+      : activeEntry?.theme.valueClass ?? "text-[var(--foreground)]";
+
+  const baselineEntry =
+    activeFamily === "katarakti" || activeEntry?.systemVersion === "v1"
+      ? null
+      : resolveActiveStrategyEntry({
+          family: activeFamily,
+          systemVersion: "v1",
+        });
+  const baselineMetrics = getMetricsForEntry(data, baselineEntry);
+  const showDelta = Boolean(
+    !loading
+    && !error
+    && activeFamily !== "katarakti"
+    && activeEntry?.systemVersion
+    && activeEntry.systemVersion !== "v1",
+  );
+
+  const setFamily = (next: PerformanceStrategyFamily) => {
+    setActiveFamily(next);
     const url = new URL(window.location.href);
     url.searchParams.set("style", next);
     if (next === "katarakti") {
-      url.searchParams.set("market", activeMarket);
-      url.searchParams.set("variant", activeVariant);
+      const resolved = resolveActiveStrategyEntry({
+        family: "katarakti",
+        kataraktiVariant: activeKataraktiVariant,
+        kataraktiMarket: activeKataraktiMarket,
+      });
+      const market = resolved?.market ?? activeKataraktiMarket;
+      const variant = resolved?.kataraktiVariant ?? activeKataraktiVariant;
+      setActiveKataraktiMarket(market);
+      setActiveKataraktiVariant(variant);
+      url.searchParams.set("market", market);
+      url.searchParams.set("variant", variant);
     } else {
       url.searchParams.delete("market");
       url.searchParams.delete("variant");
@@ -364,42 +348,67 @@ export default function PerformanceComparisonPanel() {
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(new CustomEvent("performance-style-change", { detail: next }));
   };
-  const setSystem = (next: "v1" | "v2" | "v3") => {
-    setActiveTab(next);
+
+  const setSystemVersion = (next: SystemVersion) => {
+    setActiveSystemVersion(next);
     const url = new URL(window.location.href);
+    url.searchParams.set("style", activeFamily);
     url.searchParams.set("system", next);
-    url.searchParams.set("style", activeStyle);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(new CustomEvent("performance-system-change", { detail: next }));
   };
-  const setMarket = (next: KataraktiMarket) => {
-    const nextSelection = resolveKataraktiSelection({
-      market: next,
-      variant: activeVariant,
+
+  const setKataraktiMarket = (next: KataraktiMarket) => {
+    const resolved = resolveActiveStrategyEntry({
+      family: "katarakti",
+      kataraktiVariant: activeKataraktiVariant,
+      kataraktiMarket: next,
     });
-    setActiveMarket(nextSelection.market);
+    const market = resolved?.market ?? next;
+    const variant = resolved?.kataraktiVariant ?? activeKataraktiVariant;
+    setActiveKataraktiMarket(market);
+    setActiveKataraktiVariant(variant);
     const url = new URL(window.location.href);
     url.searchParams.set("style", "katarakti");
-    url.searchParams.set("market", nextSelection.market);
-    url.searchParams.set("variant", nextSelection.variant);
+    url.searchParams.set("market", market);
+    url.searchParams.set("variant", variant);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-    window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: nextSelection.market }));
+    window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: market }));
+    window.dispatchEvent(new CustomEvent("performance-katarakti-variant-change", { detail: variant }));
   };
-  const setVariant = (next: KataraktiVariant) => {
-    const nextSelection = resolveKataraktiSelection({
-      market: activeMarket,
-      variant: next,
+
+  const setKataraktiVariant = (next: KataraktiVariant) => {
+    const resolved = resolveActiveStrategyEntry({
+      family: "katarakti",
+      kataraktiVariant: next,
+      kataraktiMarket: activeKataraktiMarket,
     });
-    setActiveVariant(nextSelection.variant);
-    setActiveMarket(nextSelection.market);
+    const market = resolved?.market ?? activeKataraktiMarket;
+    const variant = resolved?.kataraktiVariant ?? next;
+    setActiveKataraktiMarket(market);
+    setActiveKataraktiVariant(variant);
     const url = new URL(window.location.href);
     url.searchParams.set("style", "katarakti");
-    url.searchParams.set("market", nextSelection.market);
-    url.searchParams.set("variant", nextSelection.variant);
+    url.searchParams.set("market", market);
+    url.searchParams.set("variant", variant);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-    window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: nextSelection.market }));
-    window.dispatchEvent(new CustomEvent("performance-katarakti-variant-change", { detail: nextSelection.variant }));
+    window.dispatchEvent(new CustomEvent("performance-katarakti-market-change", { detail: market }));
+    window.dispatchEvent(new CustomEvent("performance-katarakti-variant-change", { detail: variant }));
   };
+
+  const activeTheme = activeEntry?.theme;
+  const activeLabel = activeEntry?.label ?? "Strategy";
+  const activeBadge = activeEntry?.badge ?? "N/A";
+  const familyTabs: PerformanceStrategyFamily[] = ["universal", "tiered", "katarakti"];
+  const systemGroups = getPerformanceFamilyTabGroups(activeFamily === "katarakti" ? "universal" : activeFamily);
+  const kataraktiMarkets = Array.from(
+    new Set(
+      familyEntriesByFamily.katarakti
+        .map((entry) => entry.market)
+        .filter((market): market is KataraktiMarket => market === "crypto_futures" || market === "mt5_forex"),
+    ),
+  ).sort(marketSort);
+  const kataraktiTabs = getPerformanceFamilyTabGroups("katarakti");
 
   return (
     <div className="flex-1 space-y-4 p-4">
@@ -410,177 +419,140 @@ export default function PerformanceComparisonPanel() {
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <button
-          type="button"
-          onClick={() => setStyle("universal")}
-          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-            activeStyle === "universal"
-              ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
-          }`}
-        >
-          Universal
-        </button>
-        <button
-          type="button"
-          onClick={() => setStyle("tiered")}
-          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-            activeStyle === "tiered"
-              ? "border-sky-400/50 bg-sky-500/10 text-sky-800 dark:text-sky-200"
-              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
-          }`}
-        >
-          Tiered
-        </button>
-        <button
-          type="button"
-          onClick={() => setStyle("katarakti")}
-          className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-            activeStyle === "katarakti"
-              ? "border-amber-400/50 bg-amber-500/10 text-amber-800 dark:text-amber-200"
-              : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
-          }`}
-        >
-          Katarakti
-        </button>
+        {familyTabs.map((family) => {
+          const meta = PERFORMANCE_FAMILY_META[family];
+          const isActive = activeFamily === family;
+          return (
+            <button
+              key={family}
+              type="button"
+              onClick={() => setFamily(family)}
+              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                isActive
+                  ? meta.tabActiveClass
+                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+              }`}
+            >
+              {meta.label}
+            </button>
+          );
+        })}
       </div>
 
-      {activeStyle === "katarakti" ? (
+      {activeFamily === "katarakti" ? (
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setMarket("crypto_futures")}
-              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-                activeMarket === "crypto_futures"
-                  ? "border-amber-400/50 bg-amber-500/10 text-amber-800 dark:text-amber-200"
-                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-amber-400/50"
-              }`}
-            >
-              Crypto Futures
-            </button>
-            <button
-              type="button"
-              onClick={() => setMarket("mt5_forex")}
-              disabled={activeVariant === "v3"}
-              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-                activeMarket === "mt5_forex"
-                  ? "border-teal-400/50 bg-teal-500/10 text-teal-800 dark:text-teal-200"
-                  : activeVariant === "v3"
-                    ? "cursor-not-allowed border-[var(--panel-border)] bg-[var(--panel)]/40 text-[var(--foreground)]/40"
-                    : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-teal-400/50"
-              }`}
-              title={activeVariant === "v3" ? "Katarakti v3 is crypto futures only." : undefined}
-            >
-              CFD
-            </button>
+            {kataraktiMarkets.map((market) => {
+              const marketEntry = resolveActiveStrategyEntry({
+                family: "katarakti",
+                kataraktiVariant: activeKataraktiVariant,
+                kataraktiMarket: market,
+              });
+              const marketTheme = marketEntry?.theme ?? activeTheme;
+              const isActive = market === activeKataraktiMarket;
+              return (
+                <button
+                  key={market}
+                  type="button"
+                  onClick={() => setKataraktiMarket(market)}
+                  className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                    isActive
+                      ? marketTheme?.tabActiveClass ?? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                      : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+                  } ${marketTheme?.tabInactiveHoverClass ?? ""}`}
+                >
+                  {marketLabel(market)}
+                </button>
+              );
+            })}
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => setVariant("core")}
-              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-                activeVariant === "core"
-                  ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-[var(--accent)]/40"
-              }`}
-            >
-              Core
-            </button>
-            <button
-              type="button"
-              onClick={() => setVariant("lite")}
-              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-                activeVariant === "lite"
-                  ? "border-sky-400/50 bg-sky-500/10 text-sky-800 dark:text-sky-200"
-                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-sky-400/50"
-              }`}
-            >
-              Lite
-            </button>
-            <button
-              type="button"
-              onClick={() => setVariant("v3")}
-              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-                activeVariant === "v3"
-                  ? "border-fuchsia-400/50 bg-fuchsia-500/10 text-fuchsia-800 dark:text-fuchsia-200"
-                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-fuchsia-400/50"
-              }`}
-            >
-              v3
-            </button>
+            {kataraktiTabs.map((tab) => {
+              const tabVariant = tab.tabId as KataraktiVariant;
+              const tabEntry = resolveActiveStrategyEntry({
+                family: "katarakti",
+                kataraktiVariant: tabVariant,
+                kataraktiMarket: activeKataraktiMarket,
+              });
+              const isActive = activeKataraktiVariant === tabVariant;
+              const tabTheme = tabEntry?.theme ?? activeTheme;
+              return (
+                <button
+                  key={tab.tabId}
+                  type="button"
+                  onClick={() => setKataraktiVariant(tabVariant)}
+                  className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                    isActive
+                      ? tabTheme?.tabActiveClass ?? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                      : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+                  } ${tabTheme?.tabInactiveHoverClass ?? ""}`}
+                >
+                  {tab.tabLabel}
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => setSystem("v1")}
-            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-              activeTab === "v1"
-                ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-[var(--accent)]/40"
-            }`}
-          >
-            Universal V1
-          </button>
-          <button
-            type="button"
-            onClick={() => setSystem("v2")}
-            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-              activeTab === "v2"
-                ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
-                : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-emerald-400/50"
-            }`}
-          >
-            Universal V2
-          </button>
-          <button
-            type="button"
-            onClick={() => setSystem("v3")}
-            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-              activeTab === "v3"
-                ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-800 dark:text-cyan-200"
-                : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80 hover:border-cyan-400/50"
-            }`}
-          >
-            Universal V3
-          </button>
+          {systemGroups.map((group) => {
+            const version = group.tabId as SystemVersion;
+            const groupEntry = resolveActiveStrategyEntry({
+              family: activeFamily,
+              systemVersion: version,
+            });
+            const isActive = activeSystemVersion === version;
+            const groupTheme = groupEntry?.theme ?? activeTheme;
+            return (
+              <button
+                key={group.tabId}
+                type="button"
+                onClick={() => setSystemVersion(version)}
+                className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                  isActive
+                    ? groupTheme?.tabActiveClass ?? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+                } ${groupTheme?.tabInactiveHoverClass ?? ""}`}
+              >
+                {group.tabLabel}
+              </button>
+            );
+          })}
         </div>
       )}
 
-      <div className={activeCardClass}>
+      <div className={activeTheme?.cardClass ?? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4"}>
         <div className="mb-3 flex items-center justify-between">
-          <div className={`text-sm font-semibold ${valueClass}`}>{activeLabel}</div>
-          <div className={badgeClass}>{activeBadge}</div>
+          <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>{activeLabel}</div>
+          <div className={activeTheme?.badgeClass ?? "rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]"}>{activeBadge}</div>
         </div>
-        <div className={`mb-2 text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+        <div className={`mb-2 text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
           {activeSourceLabel}
         </div>
 
         <div className="mb-4 space-y-3">
           <div className="grid grid-cols-2 gap-3 text-[9px] uppercase tracking-[0.15em]">
             <div>
-              <div className={labelClass}>Total Return</div>
-              <div className={`mt-1 text-sm font-semibold ${valueClass}`}>
+              <div className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Total Return</div>
+              <div className={`mt-1 text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
                 {formatSignedPercent(activeMetrics.totalReturn)}
               </div>
             </div>
             <div>
-              <div className={labelClass}>Max DD</div>
-              <div className={`mt-1 text-sm font-semibold ${valueClass}`}>
+              <div className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Max DD</div>
+              <div className={`mt-1 text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
                 {formatPercentOrDash(activeMetrics.maxDrawdown)}
               </div>
             </div>
           </div>
-          <div className={`text-center text-2xl font-bold ${valueClass}`}>
+          <div className={`text-center text-2xl font-bold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
             {formatSignedPercent(activeMetrics.totalReturn)}
           </div>
-          <div className={`text-center text-[10px] uppercase tracking-[0.2em] ${labelClass}`}>
+          <div className={`text-center text-[10px] uppercase tracking-[0.2em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
             Total return
           </div>
-          {activeStyle === "tiered" ? (
-            <div className={`text-center text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+          {activeFamily === "tiered" ? (
+            <div className={`text-center text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Scaled to universal margin
             </div>
           ) : null}
@@ -588,18 +560,18 @@ export default function PerformanceComparisonPanel() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className={`text-sm font-semibold ${valueClass}`}>
+            <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
               {activeMetrics.winRate.toFixed(0)}%
             </div>
-            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Weekly Win
             </div>
           </div>
           <div>
-            <div className={`text-sm font-semibold ${valueClass}`}>
+            <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
               {activeMetrics.weeks}
             </div>
-            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Weeks
             </div>
           </div>
@@ -607,15 +579,15 @@ export default function PerformanceComparisonPanel() {
             <div className={`text-sm font-semibold ${sharpeValueClass}`}>
               {activeMetrics.sharpe.toFixed(2)}
             </div>
-            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               {sharpeLabel}
             </div>
           </div>
           <div>
-            <div className={`text-sm font-semibold ${valueClass}`}>
+            <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
               {formatSignedPercent(activeMetrics.avgWeekly)}
             </div>
-            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Avg Weekly
             </div>
           </div>
@@ -625,36 +597,36 @@ export default function PerformanceComparisonPanel() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className={`text-sm font-semibold ${valueClass}`}>
+            <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
               {activeMetrics.tradeWinRate.toFixed(1)}%
             </div>
-            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Trade Win
             </div>
           </div>
           <div>
-            <div className={`text-sm font-semibold ${valueClass}`}>
+            <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
               {activeMetrics.avgTrade !== null
                 ? formatSignedPercent(activeMetrics.avgTrade, 2)
                 : "—"}
             </div>
-            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Avg Trade
             </div>
           </div>
           <div>
-            <div className={`text-sm font-semibold ${valueClass}`}>
+            <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
               {activeMetrics.trades}
             </div>
-            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Trades
             </div>
           </div>
           <div>
-            <div className={`text-sm font-semibold ${valueClass}`}>
+            <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
               {formatProfitFactor(activeMetrics.profitFactor, activeMetrics.profitFactorInfinite)}
             </div>
-            <div className={`text-[9px] uppercase tracking-[0.15em] ${labelClass}`}>
+            <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Profit Factor
             </div>
           </div>
@@ -688,14 +660,14 @@ export default function PerformanceComparisonPanel() {
         </div>
       ) : null}
 
-      {!loading && !error && activeStyle !== "katarakti" && activeTab !== "v1" ? (
+      {showDelta ? (
         <div className="rounded-2xl border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-3 py-2 text-center">
           <div className="text-xs font-semibold text-[var(--foreground)]">
-            {activeMetrics.totalReturn > v1Metrics.totalReturn ? "↑" : "↓"}{" "}
-            {Math.abs(activeMetrics.totalReturn - v1Metrics.totalReturn).toFixed(2)}%
+            {activeMetrics.totalReturn > baselineMetrics.totalReturn ? "↑" : "↓"}{" "}
+            {Math.abs(activeMetrics.totalReturn - baselineMetrics.totalReturn).toFixed(2)}%
           </div>
           <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
-            {activeTab.toUpperCase()} vs V1 Delta
+            {(activeEntry?.systemVersion ?? "v2").toUpperCase()} vs V1 Delta
           </div>
         </div>
       ) : null}
