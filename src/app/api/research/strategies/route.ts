@@ -135,13 +135,13 @@ export async function GET() {
             const totalWins = series.rows.reduce((sum, row) => sum + row.wins, 0);
             const tradeWinRate = totalTrades > 0 ? (totalWins / totalTrades) * 100 : 0;
 
-            metrics = {
-              totalReturn,
-              maxDrawdown: maxDrawdown > 0 ? maxDrawdown : null,
-              weeklyWinRate,
-              sharpe,
-              avgWeekly,
-              trades: totalTrades,
+              metrics = {
+                totalReturn,
+                maxDrawdown,
+                weeklyWinRate,
+                sharpe,
+                avgWeekly,
+                trades: totalTrades,
               tradeWinRate,
             };
           }

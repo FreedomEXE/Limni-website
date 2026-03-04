@@ -302,8 +302,8 @@ function computeProfitFactorFromReturns(returns: number[]): number | null {
   return null;
 }
 
-function computeMaxDrawdownFromWeeklyReturns(returns: number[]): number | null {
-  if (returns.length === 0) return null;
+function computeSeriesMaxDrawdownFromReturns(returns: number[]): number {
+  if (returns.length === 0) return 0;
   let equity = 100;
   let peak = equity;
   let maxDrawdown = 0;
@@ -319,7 +319,15 @@ function computeMaxDrawdownFromWeeklyReturns(returns: number[]): number | null {
       maxDrawdown = drawdown;
     }
   }
-  return maxDrawdown > 0 ? maxDrawdown : null;
+  return maxDrawdown;
+}
+
+function computeWorstWeekDrawdownFromWeeklyReturns(returns: number[]): number {
+  if (returns.length === 0) return 0;
+  return returns.reduce((maxLoss, value) => {
+    if (!Number.isFinite(value) || value >= 0) return maxLoss;
+    return Math.max(maxLoss, Math.abs(value));
+  }, 0);
 }
 
 function buildComparisonMetricsFromWeeklySeries(options: {
@@ -346,7 +354,7 @@ function buildComparisonMetricsFromWeeklySeries(options: {
       options.sharpeFallbackReturns ?? [],
     ),
     avgWeekly,
-    maxDrawdown: options.maxDrawdown ?? computeMaxDrawdownFromWeeklyReturns(options.weekReturns),
+    maxDrawdown: options.maxDrawdown ?? computeWorstWeekDrawdownFromWeeklyReturns(options.weekReturns),
     trades: options.trades,
     tradeWinRate,
     avgTrade: options.avgTrade,
@@ -390,6 +398,11 @@ function computeMetrics(
   }
 
   const weekReturns = Array.from(weekTotals.values());
+  const weeklyDrawdown = computeWorstWeekDrawdownFromWeeklyReturns(weekReturns);
+  const intraWeekDrawdown =
+    selectedWeeks.size === 1 && tradeReturns.length > 0
+      ? computeSeriesMaxDrawdownFromReturns(tradeReturns)
+      : 0;
   const trades = tradeReturns.length > 0 ? tradeReturns.length : fallbackPricedTrades;
   const wins =
     tradeReturns.length > 0
@@ -405,7 +418,7 @@ function computeMetrics(
         ? tradeReturns.reduce((sum, value) => sum + value, 0) / tradeReturns.length
         : null,
     profitFactor: tradeReturns.length > 0 ? computeProfitFactorFromReturns(tradeReturns) : null,
-    maxDrawdown: null,
+    maxDrawdown: Math.max(weeklyDrawdown, intraWeekDrawdown),
   });
 }
 
@@ -433,11 +446,21 @@ function computeMetricsFromWeeklyRows(
       ? tradeReturns.filter((value) => value > 0).length
       : weeklyRows.reduce((sum, row) => sum + row.wins, 0);
   const totalReturn = weekReturns.reduce((sum, value) => sum + value, 0);
-  const curveMaxDrawdown = computeMaxDrawdownFromWeeklyReturns(weekReturns) ?? 0;
+  const worstWeekDrawdown = computeWorstWeekDrawdownFromWeeklyReturns(weekReturns);
+  const intraWeekDrawdown =
+    weeklyRows.length === 1 && tradeReturns.length > 0
+      ? computeSeriesMaxDrawdownFromReturns(tradeReturns)
+      : 0;
   const staticMaxDrawdown = weeklyRows.length > 0
-    ? weeklyRows.reduce((max, row) => Math.max(max, row.week_max_drawdown ?? 0), 0)
+    ? weeklyRows.reduce((max, row) => {
+        const value =
+          typeof row.week_max_drawdown === "number" && Number.isFinite(row.week_max_drawdown)
+            ? row.week_max_drawdown
+            : 0;
+        return Math.max(max, value);
+      }, 0)
     : 0;
-  const maxDrawdown = Math.max(curveMaxDrawdown, staticMaxDrawdown) || null;
+  const maxDrawdown = Math.max(worstWeekDrawdown, staticMaxDrawdown, intraWeekDrawdown);
   const grossProfitPct = weeklyRows.reduce(
     (sum, row) => sum + (Number.isFinite(row.gross_profit_pct) ? (row.gross_profit_pct as number) : 0),
     0,

@@ -70,24 +70,12 @@ function normalizeWeek(weekOpenUtc: string): string {
   return normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
 }
 
-function computeCurveMaxDrawdownFromWeeklyReturns(weeklyReturnsPct: number[]) {
-  if (weeklyReturnsPct.length === 0) return null;
-  let equity = 100;
-  let peak = equity;
-  let maxDrawdown = 0;
-  for (const weeklyReturn of weeklyReturnsPct) {
-    equity *= 1 + weeklyReturn / 100;
-    if (equity > peak) {
-      peak = equity;
-      continue;
-    }
-    if (peak <= 0) continue;
-    const drawdown = ((peak - equity) / peak) * 100;
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
-    }
-  }
-  return maxDrawdown > 0 ? maxDrawdown : null;
+function computeWorstWeekDrawdownFromWeeklyReturns(weeklyReturnsPct: number[]) {
+  if (weeklyReturnsPct.length === 0) return 0;
+  return weeklyReturnsPct.reduce((maxLoss, weeklyReturn) => {
+    if (!Number.isFinite(weeklyReturn) || weeklyReturn >= 0) return maxLoss;
+    return Math.max(maxLoss, Math.abs(weeklyReturn));
+  }, 0);
 }
 
 function resolveSelectedWeek(period: KataraktiPeriodValue): string | null {
@@ -176,13 +164,13 @@ export function buildKataraktiPeriodMetrics(
   const profitFactor =
     aggregateProfitFactor(weeks) ??
     (selectedWeek === null ? snapshot.profitFactor : null);
-  const maxDrawdownFromCurve = computeCurveMaxDrawdownFromWeeklyReturns(weeklyReturns);
+  const maxDrawdownFromWorstWeek = computeWorstWeekDrawdownFromWeeklyReturns(weeklyReturns);
   const maxStaticWeekDrawdown =
     weeks.length > 0
       ? weeks.reduce((max, week) => Math.max(max, week.staticDrawdownPct), 0)
       : 0;
   const maxDrawdownFromWeeks = Math.max(
-    maxDrawdownFromCurve ?? 0,
+    maxDrawdownFromWorstWeek,
     maxStaticWeekDrawdown,
   );
   const tradeReturnsPct = weeks.flatMap((week) =>
@@ -204,7 +192,7 @@ export function buildKataraktiPeriodMetrics(
     weeklyWinRatePct: weeksCount > 0 ? (weekWins / weeksCount) * 100 : 0,
     sharpe,
     avgWeeklyPct: weeksCount > 0 ? totalReturnPct / weeksCount : 0,
-    maxDrawdownPct: maxDrawdownFromWeeks > 0
+    maxDrawdownPct: weeksCount > 0
       ? maxDrawdownFromWeeks
       : selectedWeek === null
         ? snapshot.maxDrawdownPct

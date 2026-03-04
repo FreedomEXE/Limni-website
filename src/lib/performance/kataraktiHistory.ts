@@ -447,7 +447,7 @@ function toSnapshotFromWeekly(options: {
   const wins = weekly.reduce((sum, week) => sum + week.wins, 0);
   const grossProfit = weekly.reduce((sum, week) => sum + week.grossProfitUsd, 0);
   const grossLoss = weekly.reduce((sum, week) => sum + week.grossLossUsd, 0);
-  const curveMaxDrawdown = computeMaxDrawdownFromWeeklyReturns(weeklyReturnsPct);
+  const worstWeekDrawdown = computeWorstWeekDrawdownFromWeeklyReturns(weeklyReturnsPct);
   const computedMaxDrawdown = weekly.reduce(
     (max, week) => Math.max(max, week.staticDrawdownPct),
     0,
@@ -455,10 +455,10 @@ function toSnapshotFromWeekly(options: {
   const overrideMaxDrawdown = options.maxDrawdownOverride ?? 0;
   const maxDrawdownCandidate = Math.max(
     computedMaxDrawdown,
-    curveMaxDrawdown,
+    worstWeekDrawdown,
     overrideMaxDrawdown,
   );
-  const maxDrawdownPct = maxDrawdownCandidate > 0 ? maxDrawdownCandidate : null;
+  const maxDrawdownPct = maxDrawdownCandidate > 0 ? maxDrawdownCandidate : 0;
   const winRatePct = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
   const tradeDetailsByWeek = Object.fromEntries(
     Object.entries(options.tradeDetailsByWeek ?? {})
@@ -875,24 +875,12 @@ function computeSharpe(weeklyReturnsPct: number[]) {
   return stdDev > 0 ? mean / stdDev : 0;
 }
 
-function computeMaxDrawdownFromWeeklyReturns(weeklyReturnsPct: number[]) {
+function computeWorstWeekDrawdownFromWeeklyReturns(weeklyReturnsPct: number[]) {
   if (weeklyReturnsPct.length === 0) return 0;
-  let equity = 100;
-  let peak = equity;
-  let maxDrawdown = 0;
-  for (const weekReturn of weeklyReturnsPct) {
-    equity *= 1 + weekReturn / 100;
-    if (equity > peak) {
-      peak = equity;
-      continue;
-    }
-    if (peak <= 0) continue;
-    const drawdown = ((peak - equity) / peak) * 100;
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
-    }
-  }
-  return maxDrawdown;
+  return weeklyReturnsPct.reduce((maxLoss, weekReturn) => {
+    if (!Number.isFinite(weekReturn) || weekReturn >= 0) return maxLoss;
+    return Math.max(maxLoss, Math.abs(weekReturn));
+  }, 0);
 }
 
 async function readJsonFile<T>(relativePath: string): Promise<T | null> {

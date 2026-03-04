@@ -102,6 +102,15 @@ function formatMoney(value: number) {
 
 function computeMaxDrawdownFromReturns(returns: Array<{ pair: string; percent: number }>): number | null {
   if (returns.length === 0) return null;
+  const weeklyLikeCount = returns.filter((item) => /^week of\b/i.test(item.pair.trim())).length;
+  const treatAsWeeklySeries = weeklyLikeCount >= Math.ceil(returns.length * 0.6);
+  if (treatAsWeeklySeries) {
+    const worstWeekLoss = returns.reduce((maxLoss, item) => {
+      if (!Number.isFinite(item.percent) || item.percent >= 0) return maxLoss;
+      return Math.max(maxLoss, Math.abs(item.percent));
+    }, 0);
+    return worstWeekLoss;
+  }
   let equity = 100;
   let peak = equity;
   let maxDrawdown = 0;
@@ -118,7 +127,7 @@ function computeMaxDrawdownFromReturns(returns: Array<{ pair: string; percent: n
       maxDrawdown = drawdown;
     }
   }
-  return maxDrawdown > 0 ? maxDrawdown : null;
+  return maxDrawdown;
 }
 
 function computeProfitFactorFromReturns(returns: Array<{ pair: string; percent: number }>): number | null {
