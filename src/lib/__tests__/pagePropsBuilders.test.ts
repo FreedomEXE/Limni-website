@@ -16,7 +16,6 @@ describe("page props builders", () => {
         balance: 100,
         currency: "USD",
         recent_logs: [],
-        basket_pnl_pct: 1,
       },
       weekOptions: ["2026-02-09"],
       currentWeekOpenUtc: "2026-02-09",

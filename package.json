@@ -14,6 +14,7 @@
     "research:bank": "tsx scripts/research-bank-participation.ts",
     "research:katarakti-phase1": "tsx scripts/katarakti-phase1-backtest.ts",
     "performance:cleanup-duplicates": "tsx scripts/cleanup-performance-snapshot-duplicates.ts",
+    "performance:coverage:check": "tsx scripts/check-performance-coverage.ts",
     "db:migrate": "tsx db/migrate.ts",
     "bot:bitget": "tsx bots/bitget-perp-bot.ts",
     "bot:oanda": "tsx bots/oanda-universal-bot.ts",

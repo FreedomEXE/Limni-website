@@ -22,7 +22,7 @@ import { getCanonicalWeekOpenUtc } from "../src/lib/weekAnchor";
 import type { AssetClass } from "../src/lib/cotMarkets";
 import { getOandaInstrument } from "../src/lib/oandaPrices";
 import type { PerformanceModel } from "../src/lib/performanceLab";
-import { upsertStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestStore";
+import { persistStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestIngestion";
 
 type Direction = "LONG" | "SHORT";
 
@@ -557,11 +557,6 @@ function approximateWeeklyWinsLosses(week: WeekStats) {
 }
 
 async function persistUniversalBacktestToDb(out: UniversalBacktestOutput) {
-  if (!process.env.DATABASE_URL) {
-    console.log("DB upsert skipped: DATABASE_URL is not configured.");
-    return;
-  }
-
   const weeklyRows = out.weekly.map((week) => {
     const grossProfitPct = Math.max(0, week.week_realized_delta_pct);
     const grossLossPct = Math.abs(Math.min(0, week.week_realized_delta_pct));
@@ -581,30 +576,29 @@ async function persistUniversalBacktestToDb(out: UniversalBacktestOutput) {
     };
   });
 
-  const result = await upsertStrategyBacktestSnapshot({
-    run: {
-      botId: "universal_v1_tp1_friday_carry_aligned",
-      variant: "v1",
-      market: "multi_asset",
-      strategyName: "Universal v1 TP1 Friday Carry Aligned",
-      carryMode: out.config.carry_mode,
-      stopMode: out.config.stop_mode,
-      adrMultiplier: out.config.stop_mode === "adr" ? out.config.adr_stop_multiplier : null,
-      universalMode: out.config.universal_mode,
-      backtestWeeks: out.config.backtest_weeks,
-      generatedUtc: out.generated_utc,
-      configJson: {
-        ...out.config,
-        totals: out.totals,
+  await persistStrategyBacktestSnapshot({
+    context: "universal v1",
+    snapshot: {
+      run: {
+        botId: "universal_v1_tp1_friday_carry_aligned",
+        variant: "v1",
+        market: "multi_asset",
+        strategyName: "Universal v1 TP1 Friday Carry Aligned",
+        carryMode: out.config.carry_mode,
+        stopMode: out.config.stop_mode,
+        adrMultiplier: out.config.stop_mode === "adr" ? out.config.adr_stop_multiplier : null,
+        universalMode: out.config.universal_mode,
+        backtestWeeks: out.config.backtest_weeks,
+        generatedUtc: out.generated_utc,
+        configJson: {
+          ...out.config,
+          totals: out.totals,
+        },
       },
+      weekly: weeklyRows,
+      trades: [],
     },
-    weekly: weeklyRows,
-    trades: [],
   });
-
-  console.log(
-    `DB upsert complete (universal v1): run_id=${result.runId}, weekly=${result.weeklyUpserted}, trades=${result.tradesInserted}`,
-  );
 }
 
 async function main() {

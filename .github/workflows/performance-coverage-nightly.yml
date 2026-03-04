@@ -1,0 +1,41 @@
+# -----------------------------------------------
+#   Property of Freedom_EXE  (c) 2026
+# -----------------------------------------------
+name: Performance Coverage Nightly
+
+on:
+  schedule:
+    - cron: "15 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  coverage-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify DATABASE_URL secret
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "Missing required GitHub secret: DATABASE_URL"
+            exit 1
+          fi
+
+      - name: Run performance coverage check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PERFORMANCE_COVERAGE_ALERT_WEBHOOK_URL: ${{ secrets.PERFORMANCE_COVERAGE_ALERT_WEBHOOK_URL }}
+        run: npm run performance:coverage:check

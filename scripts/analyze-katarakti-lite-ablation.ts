@@ -14,7 +14,7 @@ import { PAIRS_BY_ASSET_CLASS } from "../src/lib/cotPairs";
 import type { AssetClass } from "../src/lib/cotMarkets";
 import { getOandaInstrument } from "../src/lib/oandaPrices";
 import { PERFORMANCE_V1_MODELS } from "../src/lib/performance/modelConfig";
-import { upsertStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestStore";
+import { persistStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestIngestion";
 import type { PerformanceModel } from "../src/lib/performanceLab";
 
 type Direction = "LONG" | "SHORT" | "NEUTRAL";
@@ -3578,11 +3578,6 @@ function buildLiteSimpleReport(options: {
 }
 
 async function persistLiteMt5ReportToDb(report: LiteSimpleReport) {
-  if (!process.env.DATABASE_URL) {
-    console.log("DB upsert skipped: DATABASE_URL is not configured.");
-    return;
-  }
-
   let runningEquityPct = 0;
   const weeklyRows = report.weekly.map((week) => {
     const grossProfitPct = Math.max(0, week.pnl_pct);
@@ -3625,28 +3620,27 @@ async function persistLiteMt5ReportToDb(report: LiteSimpleReport) {
     }];
   });
 
-  const result = await upsertStrategyBacktestSnapshot({
-    run: {
-      botId: report.meta.botId,
-      variant: "lite",
-      market: report.meta.market,
-      strategyName: "Katarakti Lite (CFD)",
-      backtestWeeks: report.meta.weeks.length,
-      generatedUtc: report.meta.generatedUtc,
-      configJson: {
-        selectedVariantId: report.meta.selectedVariantId,
-        startEquityUsd: report.meta.startEquityUsd,
-        weeks: report.meta.weeks,
-        sourceScript: "analyze-katarakti-lite-ablation",
+  await persistStrategyBacktestSnapshot({
+    context: "lite cfd ablation",
+    snapshot: {
+      run: {
+        botId: report.meta.botId,
+        variant: "lite",
+        market: report.meta.market,
+        strategyName: "Katarakti Lite (CFD)",
+        backtestWeeks: report.meta.weeks.length,
+        generatedUtc: report.meta.generatedUtc,
+        configJson: {
+          selectedVariantId: report.meta.selectedVariantId,
+          startEquityUsd: report.meta.startEquityUsd,
+          weeks: report.meta.weeks,
+          sourceScript: "analyze-katarakti-lite-ablation",
+        },
       },
+      weekly: weeklyRows,
+      trades: tradeRows,
     },
-    weekly: weeklyRows,
-    trades: tradeRows,
   });
-
-  console.log(
-    `DB upsert complete (lite cfd ablation): run_id=${result.runId}, weekly=${result.weeklyUpserted}, trades=${result.tradesInserted}`,
-  );
 }
 
 function findIndexAtOrBefore(candles: OhlcCandle[], ts: number) {

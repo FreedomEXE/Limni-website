@@ -63,9 +63,17 @@ describe("performance page totals helpers", () => {
         },
       ],
       labelWithAsset: true,
-      trailingByCombinedModel: { "combined:sentiment": { trailLockPct: 1 } },
+      trailingByCombinedModel: {
+        "combined:sentiment": {
+          peak_percent: 1,
+          locked_percent: 0.5,
+          trailing_hit: false,
+          peak_day: null,
+          max_drawdown: 0.2,
+        },
+      },
     });
     expect(totals[0]?.returns[0]?.pair).toBe("EURUSD (FX)");
-    expect(totals[0]?.trailing).toEqual({ trailLockPct: 1 });
+    expect(totals[0]?.trailing?.peak_percent).toBe(1);
   });
 });

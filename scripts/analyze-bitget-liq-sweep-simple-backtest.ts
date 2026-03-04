@@ -30,7 +30,7 @@ import type { SentimentAggregate } from "../src/lib/sentiment/types";
 import { classifyWeeklyBias } from "../src/lib/bitgetBotSignals";
 import { computeScalingState } from "../src/lib/bitgetBotRisk";
 import { getCanonicalWeekOpenUtc } from "../src/lib/weekAnchor";
-import { upsertStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestStore";
+import { persistStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestIngestion";
 
 type SymbolBase = "BTC" | "ETH";
 type Direction = "LONG" | "SHORT" | "NEUTRAL";
@@ -1406,11 +1406,6 @@ function deriveWeekOpenUtcFromIso(isoUtc: string | null | undefined) {
 }
 
 async function persistJsonReportToDb(report: LiqSweepJsonReport) {
-  if (!process.env.DATABASE_URL) {
-    console.log("DB upsert skipped: DATABASE_URL is not configured.");
-    return;
-  }
-
   const tradesByWeek = new Map<string, LiqSweepJsonReport["trades"]>();
   for (const trade of report.trades) {
     const weekOpenUtc = deriveWeekOpenUtcFromIso(trade.entry_time_utc);
@@ -1471,32 +1466,31 @@ async function persistJsonReportToDb(report: LiqSweepJsonReport) {
     }];
   });
 
-  const result = await upsertStrategyBacktestSnapshot({
-    run: {
-      botId: report.meta.botId,
-      variant: "v3",
-      market: report.meta.market,
-      strategyName: "Katarakti v3 (Liq Sweep)",
-      backtestWeeks: report.meta.weeks.length,
-      offsetPct: report.meta.offsetPct,
-      slotMode: report.meta.slotMode,
-      positionAllocationPct: report.meta.positionAllocationPct,
-      generatedUtc: report.meta.generatedUtc,
-      configJson: {
+  await persistStrategyBacktestSnapshot({
+    context: "liq sweep",
+    snapshot: {
+      run: {
+        botId: report.meta.botId,
+        variant: "v3",
+        market: report.meta.market,
+        strategyName: "Katarakti v3 (Liq Sweep)",
+        backtestWeeks: report.meta.weeks.length,
         offsetPct: report.meta.offsetPct,
         slotMode: report.meta.slotMode,
-        leverage: report.meta.leverage,
         positionAllocationPct: report.meta.positionAllocationPct,
-        weeks: report.meta.weeks,
+        generatedUtc: report.meta.generatedUtc,
+        configJson: {
+          offsetPct: report.meta.offsetPct,
+          slotMode: report.meta.slotMode,
+          leverage: report.meta.leverage,
+          positionAllocationPct: report.meta.positionAllocationPct,
+          weeks: report.meta.weeks,
+        },
       },
+      weekly: weeklyRows,
+      trades: tradeRows,
     },
-    weekly: weeklyRows,
-    trades: tradeRows,
   });
-
-  console.log(
-    `DB upsert complete (liq sweep): run_id=${result.runId}, weekly=${result.weeklyUpserted}, trades=${result.tradesInserted}`,
-  );
 }
 
 function buildReport(

@@ -5,17 +5,18 @@ import {
   serializeResearchConfigToParams,
   validateResearchConfig,
 } from "@/lib/research/labConfigQuery";
+import type { ResearchConfig } from "@/lib/research/types";
 
 describe("research/labConfigQuery", () => {
   it("round-trips config through URL params", () => {
-    const config = {
+    const config: ResearchConfig = {
       ...defaultResearchConfig(),
       mode: "as_traded_replay" as const,
       accountKey: "oanda:001-test",
       provider: "oanda" as const,
-      models: ["dealer", "sentiment"] as const,
+      models: ["dealer", "sentiment"],
       universe: {
-        assetClasses: ["fx", "indices"] as const,
+        assetClasses: ["fx", "indices"],
         symbols: ["EURUSD", "GBPUSD"],
       },
       execution: {

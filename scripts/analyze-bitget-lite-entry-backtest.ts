@@ -23,7 +23,7 @@ import { DateTime } from "luxon";
 import { getPool, query } from "../src/lib/db";
 import { classifyWeeklyBias } from "../src/lib/bitgetBotSignals";
 import { getCanonicalWeekOpenUtc } from "../src/lib/weekAnchor";
-import { upsertStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestStore";
+import { persistStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestIngestion";
 
 type SymbolBase = string;
 type CoreSymbol = "BTC" | "ETH";
@@ -925,11 +925,6 @@ function deriveWeekOpenUtcFromIso(isoUtc: string | null | undefined) {
 }
 
 async function persistLiteCryptoReportToDb(report: SimpleBacktestReport) {
-  if (!process.env.DATABASE_URL) {
-    console.log("DB upsert skipped: DATABASE_URL is not configured.");
-    return;
-  }
-
   let runningEquityPct = 0;
   const weeklyRows = report.weekly.map((week) => {
     const grossProfitPct = Math.max(0, week.pnl_pct);
@@ -972,30 +967,29 @@ async function persistLiteCryptoReportToDb(report: SimpleBacktestReport) {
     }];
   });
 
-  const result = await upsertStrategyBacktestSnapshot({
-    run: {
-      botId: report.meta.botId,
-      variant: "lite",
-      market: report.meta.market,
-      strategyName: "Katarakti Lite (Crypto Futures)",
-      backtestWeeks: report.meta.weeks.length,
-      positionAllocationPct: report.meta.allocationPct,
-      generatedUtc: report.meta.generatedUtc,
-      configJson: {
-        selectedConfig: report.meta.selectedConfig,
-        startEquityUsd: report.meta.startEquityUsd,
-        startLeverage: report.meta.startLeverage,
-        allocationPct: report.meta.allocationPct,
-        weeks: report.meta.weeks,
+  await persistStrategyBacktestSnapshot({
+    context: "lite crypto",
+    snapshot: {
+      run: {
+        botId: report.meta.botId,
+        variant: "lite",
+        market: report.meta.market,
+        strategyName: "Katarakti Lite (Crypto Futures)",
+        backtestWeeks: report.meta.weeks.length,
+        positionAllocationPct: report.meta.allocationPct,
+        generatedUtc: report.meta.generatedUtc,
+        configJson: {
+          selectedConfig: report.meta.selectedConfig,
+          startEquityUsd: report.meta.startEquityUsd,
+          startLeverage: report.meta.startLeverage,
+          allocationPct: report.meta.allocationPct,
+          weeks: report.meta.weeks,
+        },
       },
+      weekly: weeklyRows,
+      trades: tradeRows,
     },
-    weekly: weeklyRows,
-    trades: tradeRows,
   });
-
-  console.log(
-    `DB upsert complete (lite crypto): run_id=${result.runId}, weekly=${result.weeklyUpserted}, trades=${result.tradesInserted}`,
-  );
 }
 
 function equityAtEntry(startEquity: number, executed: ExecutedTrade[], entryTs: number) {
