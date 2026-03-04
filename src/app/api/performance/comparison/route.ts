@@ -27,6 +27,12 @@ import {
   type KataraktiMarketSnapshot,
 } from "@/lib/performance/kataraktiHistory";
 import { buildKataraktiPeriodMetrics } from "@/lib/performance/kataraktiMetrics";
+import {
+  listPerformanceStrategyEntries,
+  resolveComparisonSourceKey,
+  type PerformanceComparisonSourceKey,
+  type PerformanceStrategyEntry,
+} from "@/lib/performance/strategyRegistry";
 import { readStrategyBacktestWeeklySeries } from "@/lib/performance/strategyBacktestHistory";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
@@ -62,6 +68,11 @@ type ComparisonSourceMeta = {
   sourcePath: string;
   fallbackLabel?: string | null;
   fallbackToAllTime?: boolean;
+};
+type StrategyComparisonEntry = {
+  entryId: string;
+  metrics: ComparisonMetrics;
+  source: ComparisonSourceMeta;
 };
 
 function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
@@ -474,6 +485,168 @@ function buildKataraktiSourceMeta(snapshot: KataraktiMarketSnapshot | null): Com
   };
 }
 
+function resolveMetricsFromSourceKey(
+  sourceKey: PerformanceComparisonSourceKey,
+  options: {
+    universalMetrics: {
+      v1: ComparisonMetrics;
+      v2: ComparisonMetrics;
+      v3: ComparisonMetrics;
+    };
+    tieredMetrics: {
+      v1: ComparisonMetrics;
+      v2: ComparisonMetrics;
+      v3: ComparisonMetrics;
+    };
+    kataraktiMetrics: {
+      core: {
+        crypto_futures: ComparisonMetrics;
+        mt5_forex: ComparisonMetrics;
+      };
+      lite: {
+        crypto_futures: ComparisonMetrics;
+        mt5_forex: ComparisonMetrics;
+      };
+      v3: {
+        crypto_futures: ComparisonMetrics;
+        mt5_forex: ComparisonMetrics;
+      };
+    };
+  },
+) {
+  if (sourceKey.family === "universal" && sourceKey.systemVersion) {
+    return options.universalMetrics[sourceKey.systemVersion] ?? null;
+  }
+  if (sourceKey.family === "tiered" && sourceKey.systemVersion) {
+    return options.tieredMetrics[sourceKey.systemVersion] ?? null;
+  }
+  if (sourceKey.family === "katarakti" && sourceKey.kataraktiVariant && sourceKey.kataraktiMarket) {
+    return options.kataraktiMetrics[sourceKey.kataraktiVariant]?.[sourceKey.kataraktiMarket] ?? null;
+  }
+  return null;
+}
+
+function resolveSourceFromSourceKey(
+  sourceKey: PerformanceComparisonSourceKey,
+  options: {
+    universalSources: {
+      v1: ComparisonSourceMeta;
+      v2: ComparisonSourceMeta;
+      v3: ComparisonSourceMeta;
+    };
+    tieredSources: {
+      v1: ComparisonSourceMeta;
+      v2: ComparisonSourceMeta;
+      v3: ComparisonSourceMeta;
+    };
+    kataraktiSources: {
+      core: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+      lite: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+      v3: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+    };
+  },
+) {
+  if (sourceKey.family === "universal" && sourceKey.systemVersion) {
+    return options.universalSources[sourceKey.systemVersion] ?? null;
+  }
+  if (sourceKey.family === "tiered" && sourceKey.systemVersion) {
+    return options.tieredSources[sourceKey.systemVersion] ?? null;
+  }
+  if (sourceKey.family === "katarakti" && sourceKey.kataraktiVariant && sourceKey.kataraktiMarket) {
+    return options.kataraktiSources[sourceKey.kataraktiVariant]?.[sourceKey.kataraktiMarket] ?? null;
+  }
+  return null;
+}
+
+function buildStrategiesMap(options: {
+  entries: PerformanceStrategyEntry[];
+  emptyMetrics: ComparisonMetrics;
+  universalMetrics: {
+    v1: ComparisonMetrics;
+    v2: ComparisonMetrics;
+    v3: ComparisonMetrics;
+  };
+  tieredMetrics: {
+    v1: ComparisonMetrics;
+    v2: ComparisonMetrics;
+    v3: ComparisonMetrics;
+  };
+  kataraktiMetrics: {
+    core: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+    lite: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+    v3: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+  };
+  universalSources: {
+    v1: ComparisonSourceMeta;
+    v2: ComparisonSourceMeta;
+    v3: ComparisonSourceMeta;
+  };
+  tieredSources: {
+    v1: ComparisonSourceMeta;
+    v2: ComparisonSourceMeta;
+    v3: ComparisonSourceMeta;
+  };
+  kataraktiSources: {
+    core: {
+      crypto_futures: ComparisonSourceMeta;
+      mt5_forex: ComparisonSourceMeta;
+    };
+    lite: {
+      crypto_futures: ComparisonSourceMeta;
+      mt5_forex: ComparisonSourceMeta;
+    };
+    v3: {
+      crypto_futures: ComparisonSourceMeta;
+      mt5_forex: ComparisonSourceMeta;
+    };
+  };
+}) {
+  const strategies: Record<string, StrategyComparisonEntry> = {};
+  for (const entry of options.entries) {
+    const sourceKey = resolveComparisonSourceKey(entry);
+    if (!sourceKey) continue;
+    const metrics =
+      resolveMetricsFromSourceKey(sourceKey, {
+        universalMetrics: options.universalMetrics,
+        tieredMetrics: options.tieredMetrics,
+        kataraktiMetrics: options.kataraktiMetrics,
+      }) ?? options.emptyMetrics;
+    const source =
+      resolveSourceFromSourceKey(sourceKey, {
+        universalSources: options.universalSources,
+        tieredSources: options.tieredSources,
+        kataraktiSources: options.kataraktiSources,
+      }) ?? {
+        mode: "unavailable",
+        sourcePath: "unavailable",
+      };
+    strategies[entry.entryId] = {
+      entryId: entry.entryId,
+      metrics,
+      source,
+    };
+  }
+  return strategies;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const weekParam = request.nextUrl.searchParams.get("week");
@@ -627,172 +800,212 @@ export async function GET(request: NextRequest) {
       profitFactorInfinite: false,
     };
 
-    return NextResponse.json({
+    const universal = {
       v1: v1Metrics,
       v2: v2Metrics,
       v3: v3Metrics,
-      universal: {
-        v1: v1Metrics,
-        v2: v2Metrics,
-        v3: v3Metrics,
+    };
+    const katarakti = {
+      core: {
+        crypto_futures: coreSnapshotsByMarket.crypto_futures
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                resolveKataraktiMetricsWithFallback({
+                  snapshot: coreSnapshotsByMarket.crypto_futures,
+                  requestedWeek,
+                }),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                // buildKataraktiPeriodMetrics annualizes when period is "all".
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+        mt5_forex: coreSnapshotsByMarket.mt5_forex
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                resolveKataraktiMetricsWithFallback({
+                  snapshot: coreSnapshotsByMarket.mt5_forex,
+                  requestedWeek,
+                }),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                // buildKataraktiPeriodMetrics annualizes when period is "all".
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
       },
-      tiered,
+      lite: {
+        crypto_futures: liteSnapshotsByMarket.crypto_futures
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                resolveKataraktiMetricsWithFallback({
+                  snapshot: liteSnapshotsByMarket.crypto_futures,
+                  requestedWeek,
+                }),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                // buildKataraktiPeriodMetrics annualizes when period is "all".
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+        mt5_forex: liteSnapshotsByMarket.mt5_forex
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                resolveKataraktiMetricsWithFallback({
+                  snapshot: liteSnapshotsByMarket.mt5_forex,
+                  requestedWeek,
+                }),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                // buildKataraktiPeriodMetrics annualizes when period is "all".
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+      },
+      v3: {
+        crypto_futures: v3SnapshotsByMarket.crypto_futures
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                resolveKataraktiMetricsWithFallback({
+                  snapshot: v3SnapshotsByMarket.crypto_futures,
+                  requestedWeek,
+                }),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+        mt5_forex: v3SnapshotsByMarket.mt5_forex
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                buildKataraktiPeriodMetrics(v3SnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+      },
+    };
+    const sources: {
+      universal: {
+        v1: ComparisonSourceMeta;
+        v2: ComparisonSourceMeta;
+        v3: ComparisonSourceMeta;
+      };
+      tiered: {
+        v1: ComparisonSourceMeta;
+        v2: ComparisonSourceMeta;
+        v3: ComparisonSourceMeta;
+      };
       katarakti: {
         core: {
-          crypto_futures: coreSnapshotsByMarket.crypto_futures
-            ? finalizeComparisonMetrics(
-                toKataraktiComparisonMetrics(
-                  resolveKataraktiMetricsWithFallback({
-                    snapshot: coreSnapshotsByMarket.crypto_futures,
-                    requestedWeek,
-                  }),
-                ) ?? emptyKataraktiMetrics,
-                {
-                  annualizeSharpe,
-                  // buildKataraktiPeriodMetrics annualizes when period is "all".
-                  sharpeAlreadyAnnualized: annualizeSharpe,
-                },
-              )
-            : emptyKataraktiMetrics,
-          mt5_forex: coreSnapshotsByMarket.mt5_forex
-            ? finalizeComparisonMetrics(
-                toKataraktiComparisonMetrics(
-                  resolveKataraktiMetricsWithFallback({
-                    snapshot: coreSnapshotsByMarket.mt5_forex,
-                    requestedWeek,
-                  }),
-                ) ?? emptyKataraktiMetrics,
-                {
-                  annualizeSharpe,
-                  // buildKataraktiPeriodMetrics annualizes when period is "all".
-                  sharpeAlreadyAnnualized: annualizeSharpe,
-                },
-              )
-            : emptyKataraktiMetrics,
-        },
+          crypto_futures: ComparisonSourceMeta;
+          mt5_forex: ComparisonSourceMeta;
+        };
         lite: {
-          crypto_futures: liteSnapshotsByMarket.crypto_futures
-            ? finalizeComparisonMetrics(
-                toKataraktiComparisonMetrics(
-                  resolveKataraktiMetricsWithFallback({
-                    snapshot: liteSnapshotsByMarket.crypto_futures,
-                    requestedWeek,
-                  }),
-                ) ?? emptyKataraktiMetrics,
-                {
-                  annualizeSharpe,
-                  // buildKataraktiPeriodMetrics annualizes when period is "all".
-                  sharpeAlreadyAnnualized: annualizeSharpe,
-                },
-              )
-            : emptyKataraktiMetrics,
-          mt5_forex: liteSnapshotsByMarket.mt5_forex
-            ? finalizeComparisonMetrics(
-                toKataraktiComparisonMetrics(
-                  resolveKataraktiMetricsWithFallback({
-                    snapshot: liteSnapshotsByMarket.mt5_forex,
-                    requestedWeek,
-                  }),
-                ) ?? emptyKataraktiMetrics,
-                {
-                  annualizeSharpe,
-                  // buildKataraktiPeriodMetrics annualizes when period is "all".
-                  sharpeAlreadyAnnualized: annualizeSharpe,
-                },
-              )
-            : emptyKataraktiMetrics,
+          crypto_futures: ComparisonSourceMeta;
+          mt5_forex: ComparisonSourceMeta;
+        };
+        v3: {
+          crypto_futures: ComparisonSourceMeta;
+          mt5_forex: ComparisonSourceMeta;
+        };
+      };
+    } = {
+      universal: {
+        v1: universalV1Backtest && universalV1Backtest.rows.length > 0
+          ? {
+              mode: "strategy_backtest_db",
+              sourcePath: universalV1Backtest.sourcePath,
+              fallbackToAllTime: universalV1Backtest.fellBackToAllTime,
+              fallbackLabel: null,
+            }
+          : {
+              mode: "performance_snapshots",
+              sourcePath: "db:performance_snapshots",
+              fallbackToAllTime: false,
+              fallbackLabel: null,
+            },
+        v2: {
+          mode: "performance_snapshots",
+          sourcePath: "db:performance_snapshots",
+          fallbackToAllTime: false,
+          fallbackLabel: null,
         },
         v3: {
-          crypto_futures: v3SnapshotsByMarket.crypto_futures
-            ? finalizeComparisonMetrics(
-                toKataraktiComparisonMetrics(
-                  resolveKataraktiMetricsWithFallback({
-                    snapshot: v3SnapshotsByMarket.crypto_futures,
-                    requestedWeek,
-                  }),
-                ) ?? emptyKataraktiMetrics,
-                {
-                  annualizeSharpe,
-                  sharpeAlreadyAnnualized: annualizeSharpe,
-                },
-              )
-            : emptyKataraktiMetrics,
-          mt5_forex: v3SnapshotsByMarket.mt5_forex
-            ? finalizeComparisonMetrics(
-                toKataraktiComparisonMetrics(
-                  buildKataraktiPeriodMetrics(v3SnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
-                ) ?? emptyKataraktiMetrics,
-                {
-                  annualizeSharpe,
-                  sharpeAlreadyAnnualized: annualizeSharpe,
-                },
-              )
-            : emptyKataraktiMetrics,
+          mode: "performance_snapshots",
+          sourcePath: "db:performance_snapshots",
+          fallbackToAllTime: false,
+          fallbackLabel: null,
         },
       },
-      sources: {
-        universal: {
-          v1: universalV1Backtest && universalV1Backtest.rows.length > 0
-            ? {
-                mode: "strategy_backtest_db",
-                sourcePath: universalV1Backtest.sourcePath,
-                fallbackToAllTime: universalV1Backtest.fellBackToAllTime,
-                fallbackLabel: null,
-              }
-            : {
-                mode: "performance_snapshots",
-                sourcePath: "db:performance_snapshots",
-                fallbackToAllTime: false,
-                fallbackLabel: null,
-              },
-          v2: {
-            mode: "performance_snapshots",
-            sourcePath: "db:performance_snapshots",
-            fallbackToAllTime: false,
-            fallbackLabel: null,
-          },
-          v3: {
-            mode: "performance_snapshots",
-            sourcePath: "db:performance_snapshots",
-            fallbackToAllTime: false,
-            fallbackLabel: null,
-          },
+      tiered: {
+        v1: {
+          mode: "tiered_derived",
+          sourcePath: "derived:performance_snapshots+tiered",
+          fallbackToAllTime: false,
+          fallbackLabel: null,
         },
-        tiered: {
-          v1: {
-            mode: "tiered_derived",
-            sourcePath: "derived:performance_snapshots+tiered",
-            fallbackToAllTime: false,
-            fallbackLabel: null,
-          },
-          v2: {
-            mode: "tiered_derived",
-            sourcePath: "derived:performance_snapshots+tiered",
-            fallbackToAllTime: false,
-            fallbackLabel: null,
-          },
-          v3: {
-            mode: "tiered_derived",
-            sourcePath: "derived:performance_snapshots+tiered",
-            fallbackToAllTime: false,
-            fallbackLabel: null,
-          },
+        v2: {
+          mode: "tiered_derived",
+          sourcePath: "derived:performance_snapshots+tiered",
+          fallbackToAllTime: false,
+          fallbackLabel: null,
         },
-        katarakti: {
-          core: {
-            crypto_futures: buildKataraktiSourceMeta(coreSnapshotsByMarket.crypto_futures),
-            mt5_forex: buildKataraktiSourceMeta(coreSnapshotsByMarket.mt5_forex),
-          },
-          lite: {
-            crypto_futures: buildKataraktiSourceMeta(liteSnapshotsByMarket.crypto_futures),
-            mt5_forex: buildKataraktiSourceMeta(liteSnapshotsByMarket.mt5_forex),
-          },
-          v3: {
-            crypto_futures: buildKataraktiSourceMeta(v3SnapshotsByMarket.crypto_futures),
-            mt5_forex: buildKataraktiSourceMeta(v3SnapshotsByMarket.mt5_forex),
-          },
+        v3: {
+          mode: "tiered_derived",
+          sourcePath: "derived:performance_snapshots+tiered",
+          fallbackToAllTime: false,
+          fallbackLabel: null,
         },
       },
+      katarakti: {
+        core: {
+          crypto_futures: buildKataraktiSourceMeta(coreSnapshotsByMarket.crypto_futures),
+          mt5_forex: buildKataraktiSourceMeta(coreSnapshotsByMarket.mt5_forex),
+        },
+        lite: {
+          crypto_futures: buildKataraktiSourceMeta(liteSnapshotsByMarket.crypto_futures),
+          mt5_forex: buildKataraktiSourceMeta(liteSnapshotsByMarket.mt5_forex),
+        },
+        v3: {
+          crypto_futures: buildKataraktiSourceMeta(v3SnapshotsByMarket.crypto_futures),
+          mt5_forex: buildKataraktiSourceMeta(v3SnapshotsByMarket.mt5_forex),
+        },
+      },
+    };
+    const strategies = buildStrategiesMap({
+      entries: listPerformanceStrategyEntries(),
+      emptyMetrics: emptyKataraktiMetrics,
+      universalMetrics: universal,
+      tieredMetrics: tiered,
+      kataraktiMetrics: katarakti,
+      universalSources: sources.universal,
+      tieredSources: sources.tiered,
+      kataraktiSources: sources.katarakti,
+    });
+
+    return NextResponse.json({
+      strategies,
+      v1: v1Metrics,
+      v2: v2Metrics,
+      v3: v3Metrics,
+      universal,
+      tiered,
+      katarakti,
+      sources,
       weeksAnalyzed: selectedWeekList.length,
     });
   } catch (error) {

@@ -57,6 +57,12 @@ type ComparisonSourceMeta = {
   fallbackToAllTime?: boolean;
 };
 
+type StrategyComparisonEntry = {
+  entryId: string;
+  metrics: ComparisonMetrics;
+  source: ComparisonSourceMeta;
+};
+
 type ComparisonData = {
   v1: ComparisonMetrics;
   v2: ComparisonMetrics;
@@ -111,6 +117,7 @@ type ComparisonData = {
       };
     };
   };
+  strategies?: Record<string, StrategyComparisonEntry>;
 };
 
 const WEEKLY_SHARPE_GOOD_THRESHOLD = 1;
@@ -188,6 +195,8 @@ function parseRequestedKataraktiMarket(value: string | null): KataraktiMarket | 
 
 function getMetricsForEntry(data: ComparisonData | null, entry: PerformanceStrategyEntry | null): ComparisonMetrics {
   if (!data || !entry) return EMPTY_METRICS;
+  const flat = data.strategies?.[entry.entryId];
+  if (flat) return flat.metrics;
   const key = resolveComparisonSourceKey(entry);
   if (!key) return EMPTY_METRICS;
   if (key.family === "universal" && key.systemVersion) {
@@ -204,6 +213,8 @@ function getMetricsForEntry(data: ComparisonData | null, entry: PerformanceStrat
 
 function getSourceForEntry(data: ComparisonData | null, entry: PerformanceStrategyEntry | null) {
   if (!data || !entry) return null;
+  const flat = data.strategies?.[entry.entryId];
+  if (flat) return flat.source;
   const key = resolveComparisonSourceKey(entry);
   if (!key) return null;
   if (key.family === "universal" && key.systemVersion) {
