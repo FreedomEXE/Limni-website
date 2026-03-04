@@ -16,6 +16,7 @@ import {
   PERFORMANCE_MODELS,
   PERFORMANCE_MODEL_LABELS,
   resolvePerformanceSystem,
+  type PerformanceSystem,
 } from "@/lib/performance/modelConfig";
 import {
   buildPerformanceWeekFlags,
@@ -54,6 +55,11 @@ import {
   buildKataraktiModelPerformance,
   KATARAKTI_CARD_MODEL,
 } from "@/lib/performance/kataraktiMetrics";
+import {
+  listPerformanceStrategyEntriesByFamily,
+  resolveActiveStrategyEntry,
+  type PerformanceStrategyFamily,
+} from "@/lib/performance/strategyRegistry";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -77,44 +83,47 @@ type PerformancePageProps = {
     | Promise<Record<string, string | string[] | undefined>>;
 };
 
-function resolvePerformanceStyle(value: string | null | undefined): "universal" | "tiered" | "katarakti" {
-  if (value === "tiered" || value === "katarakti") return value;
-  return "universal";
-}
-
-function resolveKataraktiMarket(value: string | null | undefined): "crypto_futures" | "mt5_forex" {
-  return value === "mt5_forex" ? "mt5_forex" : "crypto_futures";
-}
-
-function resolveKataraktiVariant(value: string | null | undefined): KataraktiVariant {
-  if (value === "lite") return "lite";
-  if (value === "v3") return "v3";
-  return "core";
-}
-
-function resolveKataraktiSelection(options: {
-  market: "crypto_futures" | "mt5_forex";
-  variant: KataraktiVariant;
-}) {
-  if (options.variant === "v3") {
-    return {
-      market: "crypto_futures" as const,
-      variant: options.variant,
-    };
-  }
-  return options;
-}
-
 const KATARAKTI_MODEL_LABELS = {
   ...PERFORMANCE_MODEL_LABELS,
   [KATARAKTI_CARD_MODEL]: "Katarakti",
 };
+
+type TieredGridPropsBySystem = NonNullable<
+  ComponentProps<typeof PerformanceViewSection>["tieredGridPropsBySystem"]
+>;
+type TieredGridProps = NonNullable<TieredGridPropsBySystem[PerformanceSystem]>;
 
 function buildKataraktiDescription(period: string | null | undefined) {
   if (!period || period === "all") {
     return "All-time historical snapshots for the selected market.";
   }
   return `${weekLabelFromOpen(period)}. Historical snapshot for the selected market.`;
+}
+
+function buildTieredGridProps(options: {
+  combinedModels: TieredGridProps["combined"]["models"];
+  perAssetModels: Record<string, TieredGridProps["perAsset"][number]["models"]>;
+  description: string;
+  assetClasses: ReturnType<typeof listAssetClasses>;
+}): TieredGridProps {
+  return {
+    combined: {
+      id: "combined",
+      label: "Combined Basket",
+      description: options.description,
+      models: options.combinedModels,
+    },
+    perAsset: options.assetClasses.map((asset) => ({
+      id: asset.id,
+      label: asset.label,
+      description: "Filter tiered performance for this asset class.",
+      models: options.perAssetModels[asset.id] ?? [],
+    })),
+    labels: TIERED_DISPLAY_LABELS,
+    calibration: undefined,
+    allTime: { combined: [], perAsset: {} },
+    showAllTime: false,
+  };
 }
 
 function isReportDateCurrentTradingWeek(
@@ -137,11 +146,15 @@ function buildKataraktiGridPropsByVariantAndMarket(options: {
   period: string | null | undefined;
 }): ComponentProps<typeof PerformanceViewSection>["kataraktiGridPropsByVariantAndMarket"] {
   const description = buildKataraktiDescription(options.period);
+  const kataraktiEntries = listPerformanceStrategyEntriesByFamily("katarakti");
   const makeGrid = (
     variant: KataraktiVariant,
     market: "crypto_futures" | "mt5_forex",
-    label: string,
   ) => {
+    const registryEntry = kataraktiEntries.find(
+      (entry) => entry.kataraktiVariant === variant && entry.market === market,
+    );
+    const label = registryEntry?.label ?? `${market} ${variant}`;
     const snapshot = options.snapshotsByVariant[variant]?.[market] ?? null;
     const model = snapshot
       ? buildKataraktiModelPerformance(snapshot, options.period ?? "all")
@@ -177,20 +190,16 @@ function buildKataraktiGridPropsByVariantAndMarket(options: {
     };
   };
 
-  return {
-    core: {
-      crypto_futures: makeGrid("core", "crypto_futures", "Crypto Futures"),
-      mt5_forex: makeGrid("core", "mt5_forex", "CFD"),
-    },
-    lite: {
-      crypto_futures: makeGrid("lite", "crypto_futures", "Crypto Futures Lite"),
-      mt5_forex: makeGrid("lite", "mt5_forex", "CFD Lite"),
-    },
-    v3: {
-      crypto_futures: makeGrid("v3", "crypto_futures", "Katarakti v3 (Liq Sweep)"),
-      mt5_forex: makeGrid("v3", "mt5_forex", "CFD v3 (Pending)"),
-    },
-  };
+  const variants: KataraktiVariant[] = ["core", "lite", "v3"];
+  const markets: Array<"crypto_futures" | "mt5_forex"> = ["crypto_futures", "mt5_forex"];
+  const result: Record<string, Record<string, ReturnType<typeof makeGrid>>> = {};
+  for (const variant of variants) {
+    result[variant] = {};
+    for (const market of markets) {
+      result[variant][market] = makeGrid(variant, market);
+    }
+  }
+  return result as ComponentProps<typeof PerformanceViewSection>["kataraktiGridPropsByVariantAndMarket"];
 }
 
 function listClosedHistoricalWeeksFromPerformanceRows(
@@ -348,13 +357,20 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const variantParamValue = Array.isArray(variantParam) ? variantParam[0] : variantParam;
 
   const initialSystem = resolvePerformanceSystem(systemParamValue);
-  const initialStyle = resolvePerformanceStyle(styleParamValue);
-  const resolvedKataraktiSelection = resolveKataraktiSelection({
-    market: resolveKataraktiMarket(marketParamValue),
-    variant: resolveKataraktiVariant(variantParamValue),
+  const initialStyle: PerformanceStrategyFamily =
+    styleParamValue === "tiered" || styleParamValue === "katarakti"
+      ? styleParamValue
+      : "universal";
+  const rawMarket = marketParamValue === "mt5_forex" ? "mt5_forex" : "crypto_futures";
+  const rawVariant: KataraktiVariant =
+    variantParamValue === "lite" ? "lite" : variantParamValue === "v3" ? "v3" : "core";
+  const initialKataraktiEntry = resolveActiveStrategyEntry({
+    family: "katarakti",
+    kataraktiVariant: rawVariant,
+    kataraktiMarket: rawMarket,
   });
-  const initialKataraktiMarket = resolvedKataraktiSelection.market;
-  const initialKataraktiVariant = resolvedKataraktiSelection.variant;
+  const initialKataraktiMarket = initialKataraktiEntry?.market ?? rawMarket;
+  const initialKataraktiVariant = initialKataraktiEntry?.kataraktiVariant ?? rawVariant;
   const view = resolvePerformanceView(viewParamValue);
   const assetClasses = listAssetClasses();
   const models = PERFORMANCE_MODELS;
@@ -517,61 +533,27 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           { weeks: closedWeeks.length },
           () => buildTieredAllTimeViewsFromWeekly(tieredWeeklyBySystem),
         );
+        const tieredDescription =
+          "All asset classes aggregated. All-time tiered view (scaled to universal margin).";
         tieredGridPropsBySystem = {
-          v1: {
-            combined: {
-              id: "combined",
-              label: "Combined Basket",
-              description: "All asset classes aggregated. All-time tiered view (scaled to universal margin).",
-              models: tieredViews.v1.combined,
-            },
-            perAsset: assetClasses.map((asset) => ({
-              id: asset.id,
-              label: asset.label,
-              description: "Filter tiered performance for this asset class.",
-              models: tieredViews.v1.perAsset[asset.id] ?? [],
-            })),
-            labels: TIERED_DISPLAY_LABELS,
-            calibration: undefined,
-            allTime: { combined: [], perAsset: {} },
-            showAllTime: false,
-          },
-          v2: {
-            combined: {
-              id: "combined",
-              label: "Combined Basket",
-              description: "All asset classes aggregated. All-time tiered view (scaled to universal margin).",
-              models: tieredViews.v2.combined,
-            },
-            perAsset: assetClasses.map((asset) => ({
-              id: asset.id,
-              label: asset.label,
-              description: "Filter tiered performance for this asset class.",
-              models: tieredViews.v2.perAsset[asset.id] ?? [],
-            })),
-            labels: TIERED_DISPLAY_LABELS,
-            calibration: undefined,
-            allTime: { combined: [], perAsset: {} },
-            showAllTime: false,
-          },
-          v3: {
-            combined: {
-              id: "combined",
-              label: "Combined Basket",
-              description: "All asset classes aggregated. All-time tiered view (scaled to universal margin).",
-              models: tieredViews.v3.combined,
-            },
-            perAsset: assetClasses.map((asset) => ({
-              id: asset.id,
-              label: asset.label,
-              description: "Filter tiered performance for this asset class.",
-              models: tieredViews.v3.perAsset[asset.id] ?? [],
-            })),
-            labels: TIERED_DISPLAY_LABELS,
-            calibration: undefined,
-            allTime: { combined: [], perAsset: {} },
-            showAllTime: false,
-          },
+          v1: buildTieredGridProps({
+            combinedModels: tieredViews.v1.combined,
+            perAssetModels: tieredViews.v1.perAsset,
+            description: tieredDescription,
+            assetClasses,
+          }),
+          v2: buildTieredGridProps({
+            combinedModels: tieredViews.v2.combined,
+            perAssetModels: tieredViews.v2.perAsset,
+            description: tieredDescription,
+            assetClasses,
+          }),
+          v3: buildTieredGridProps({
+            combinedModels: tieredViews.v3.combined,
+            perAssetModels: tieredViews.v3.perAsset,
+            description: tieredDescription,
+            assetClasses,
+          }),
         };
       }
     } catch (error) {
@@ -943,26 +925,14 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
         if (!result) {
           return acc;
         }
-        acc[system] = {
-          combined: {
-            id: "combined",
-            label: "Combined Basket",
-            description: `${weekLabelFromOpen(selectedWeek)}. Tiered ${system.toUpperCase()} (scaled to universal margin).`,
-            models: result.combined,
-          },
-          perAsset: assetClasses.map((asset) => ({
-            id: asset.id,
-            label: asset.label,
-            description: "Filter tiered performance for this asset class.",
-            models: result.perAsset[asset.id] ?? [],
-          })),
-          labels: TIERED_DISPLAY_LABELS,
-          calibration: undefined,
-          allTime: { combined: [], perAsset: {} },
-          showAllTime: false,
-        };
+        acc[system] = buildTieredGridProps({
+          combinedModels: result.combined,
+          perAssetModels: result.perAsset,
+          description: `${weekLabelFromOpen(selectedWeek)}. Tiered ${system.toUpperCase()} (scaled to universal margin).`,
+          assetClasses,
+        });
         return acc;
-      }, {} as NonNullable<ComponentProps<typeof PerformanceViewSection>["tieredGridPropsBySystem"]>);
+      }, {} as TieredGridPropsBySystem);
     } catch (error) {
       console.error(
         "Tiered weekly performance build failed:",
