@@ -206,6 +206,7 @@ async function buildFallbackSnapshotsForRequestedWeek(
         priced: computed.priced,
         total: computed.total,
         returns: computed.returns,
+        pair_details: computed.pair_details,
         stats: computed.stats,
       });
     }
@@ -368,6 +369,7 @@ function computeMetrics(
   selectedWeeks: Set<string>,
 ): ComparisonMetrics {
   const weekTotals = new Map<string, number>();
+  const weekTradeReturns = new Map<string, number[]>();
   const tradeReturns: number[] = [];
   let fallbackPricedTrades = 0;
   let fallbackEstimatedWins = 0;
@@ -388,6 +390,9 @@ function computeMetrics(
         continue;
       }
       tradeReturns.push(trade.percent);
+      const weekReturns = weekTradeReturns.get(weekKey) ?? [];
+      weekReturns.push(trade.percent);
+      weekTradeReturns.set(weekKey, weekReturns);
     }
     if ((snapshot.returns?.length ?? 0) === 0) {
       const winRate = Number(snapshot.stats?.win_rate);
@@ -399,6 +404,10 @@ function computeMetrics(
 
   const weekReturns = Array.from(weekTotals.values());
   const weeklyDrawdown = computeWorstWeekDrawdownFromWeeklyReturns(weekReturns);
+  const worstWeekTradeDrawdown = Array.from(weekTradeReturns.values()).reduce((maxDrawdown, values) => {
+    const weekDrawdown = computeSeriesMaxDrawdownFromReturns(values);
+    return Math.max(maxDrawdown, weekDrawdown);
+  }, 0);
   const intraWeekDrawdown =
     selectedWeeks.size === 1 && tradeReturns.length > 0
       ? computeSeriesMaxDrawdownFromReturns(tradeReturns)
@@ -418,7 +427,7 @@ function computeMetrics(
         ? tradeReturns.reduce((sum, value) => sum + value, 0) / tradeReturns.length
         : null,
     profitFactor: tradeReturns.length > 0 ? computeProfitFactorFromReturns(tradeReturns) : null,
-    maxDrawdown: Math.max(weeklyDrawdown, intraWeekDrawdown),
+    maxDrawdown: Math.max(weeklyDrawdown, worstWeekTradeDrawdown, intraWeekDrawdown),
   });
 }
 
