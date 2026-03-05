@@ -130,6 +130,46 @@ function computeMaxDrawdownFromReturns(returns: Array<{ pair: string; percent: n
   return maxDrawdown;
 }
 
+function computeMaxDrawdownFromPairDetails(
+  pairDetails: ModelPerformance["pair_details"],
+): number | null {
+  if (pairDetails.length === 0) return null;
+  let worstWeekDrawdown = 0;
+  for (const detail of pairDetails) {
+    const childReturns = (detail.children ?? []).flatMap((child) =>
+      typeof child.percent === "number" && Number.isFinite(child.percent) ? [child.percent] : [],
+    );
+    const worstChildLoss = childReturns.reduce((maxLoss, value) => {
+      if (value >= 0) return maxLoss;
+      return Math.max(maxLoss, Math.abs(value));
+    }, 0);
+    let weekSeriesDrawdown = 0;
+    if (childReturns.length > 0) {
+      let equity = 100;
+      let peak = equity;
+      for (const value of childReturns) {
+        equity *= 1 + value / 100;
+        if (equity > peak) {
+          peak = equity;
+          continue;
+        }
+        if (peak <= 0) continue;
+        const drawdown = ((peak - equity) / peak) * 100;
+        if (drawdown > weekSeriesDrawdown) {
+          weekSeriesDrawdown = drawdown;
+        }
+      }
+    }
+    const weekReturnLoss =
+      typeof detail.percent === "number" && detail.percent < 0 ? Math.abs(detail.percent) : 0;
+    const weekDrawdown = Math.max(weekSeriesDrawdown, worstChildLoss, weekReturnLoss);
+    if (weekDrawdown > worstWeekDrawdown) {
+      worstWeekDrawdown = weekDrawdown;
+    }
+  }
+  return worstWeekDrawdown;
+}
+
 function computeProfitFactorFromReturns(returns: Array<{ pair: string; percent: number }>): number | null {
   if (returns.length === 0) return null;
   const grossProfit = returns
@@ -307,6 +347,7 @@ function PerformanceCard({
     performance.stats.volatility > 0 ? performance.stats.avg_return / performance.stats.volatility : 0;
   const maxDrawdown =
     performance.diagnostics?.max_drawdown ??
+    computeMaxDrawdownFromPairDetails(performance.pair_details) ??
     computeMaxDrawdownFromReturns(performance.returns);
   const profitFactor =
     performance.diagnostics?.profit_factor ??
@@ -420,8 +461,8 @@ function PerformanceCard({
           />
           <MetricPill
             label="Max DD"
-            value={`${performance.trailing?.max_drawdown?.toFixed(2) ?? "0.00"}%`}
-            good={(performance.trailing?.max_drawdown ?? 0) < 5}
+            value={`${(performance.trailing?.max_drawdown ?? maxDrawdown ?? 0).toFixed(2)}%`}
+            good={(performance.trailing?.max_drawdown ?? maxDrawdown ?? 0) < 5}
           />
         </div>
       ) : null}
