@@ -115,7 +115,10 @@ function resolveLatestSignal(rows: BitgetSignalRow[], symbol: "BTC" | "ETH") {
 
 function sweepBadgeTone(signal: BitgetSignalRow | null) {
   if (!signal) return "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]";
-  if (signal.status === "HANDSHAKE_CONFIRMED") return "border-emerald-300/40 bg-emerald-500/10 text-emerald-200";
+  if (signal.status === "ENTRY_CONFIRMED") return "border-emerald-300/40 bg-emerald-500/10 text-emerald-200";
+  if (signal.status === "HANDSHAKE_MATCHED") return "border-sky-300/40 bg-sky-500/10 text-sky-200";
+  if (signal.status === "ENTRY_FAILED") return "border-rose-300/40 bg-rose-500/10 text-rose-200";
+  if (signal.status === "HANDSHAKE_CONFIRMED") return "border-amber-300/40 bg-amber-500/10 text-amber-200";
   if (signal.status === "CANDIDATE") return "border-amber-300/40 bg-amber-500/10 text-amber-200";
   return "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]";
 }
@@ -123,7 +126,10 @@ function sweepBadgeTone(signal: BitgetSignalRow | null) {
 function sweepStatusLabel(signal: BitgetSignalRow | null) {
   if (!signal) return "No qualified sweep";
   if (signal.status === "CANDIDATE" && !signal.handshake_group_id) return "Sweep confirmed, waiting counterpart";
-  if (signal.status === "HANDSHAKE_CONFIRMED") return "Handshake confirmed";
+  if (signal.status === "HANDSHAKE_MATCHED") return "Handshake matched, waiting entry";
+  if (signal.status === "ENTRY_CONFIRMED") return "Entry confirmed";
+  if (signal.status === "ENTRY_FAILED") return "Entry failed";
+  if (signal.status === "HANDSHAKE_CONFIRMED") return "Handshake confirmed (legacy)";
   return signal.status;
 }
 

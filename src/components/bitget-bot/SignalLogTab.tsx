@@ -50,8 +50,14 @@ function unqualifiedReason(metadata: Record<string, unknown> | null | undefined)
 }
 
 function statusTone(status: string) {
-  if (status === "HANDSHAKE_CONFIRMED") {
+  if (status === "ENTRY_CONFIRMED") {
     return "border-emerald-300/40 bg-emerald-500/10 text-emerald-200";
+  }
+  if (status === "HANDSHAKE_MATCHED" || status === "HANDSHAKE_CONFIRMED") {
+    return "border-sky-300/40 bg-sky-500/10 text-sky-200";
+  }
+  if (status === "ENTRY_FAILED") {
+    return "border-rose-300/40 bg-rose-500/10 text-rose-200";
   }
   if (status === "CANDIDATE") {
     return "border-sky-300/40 bg-sky-500/10 text-sky-200";
@@ -86,6 +92,10 @@ export default function SignalLogTab({ signals }: SignalLogTabProps) {
         <p className="mt-1">
           UNQUALIFIED signals are near-miss sweeps that breached the range but failed rejection or displacement.
           The reason column shows why the sweep didn&apos;t qualify.
+        </p>
+        <p className="mt-1">
+          HANDSHAKE_MATCHED means both symbols aligned; ENTRY_CONFIRMED means both entry orders succeeded.
+          ENTRY_FAILED captures failed/partial entry attempts.
         </p>
       </div>
       <section className="overflow-hidden rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] shadow-sm">

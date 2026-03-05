@@ -178,11 +178,14 @@ export async function readBitgetLiteBotStatusData(): Promise<BitgetBotStatusPayl
                          confirm_time_utc,
                          direction,
                          CASE status
-                           WHEN 'HANDSHAKE_CONFIRMED' THEN 0
-                           WHEN 'CANDIDATE' THEN 1
-                           WHEN 'UNQUALIFIED' THEN 2
-                           WHEN 'REJECTED' THEN 3
-                           WHEN 'EXPIRED' THEN 4
+                           WHEN 'ENTRY_CONFIRMED' THEN 0
+                           WHEN 'HANDSHAKE_MATCHED' THEN 1
+                           WHEN 'HANDSHAKE_CONFIRMED' THEN 2
+                           WHEN 'ENTRY_FAILED' THEN 3
+                           WHEN 'CANDIDATE' THEN 4
+                           WHEN 'UNQUALIFIED' THEN 5
+                           WHEN 'REJECTED' THEN 6
+                           WHEN 'EXPIRED' THEN 7
                            ELSE 9
                          END,
                          created_at DESC

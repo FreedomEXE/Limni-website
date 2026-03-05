@@ -50,8 +50,14 @@ function unqualifiedReason(metadata: Record<string, unknown> | null | undefined)
 }
 
 function statusTone(status: string) {
-  if (status === "HANDSHAKE_CONFIRMED") {
+  if (status === "ENTRY_CONFIRMED") {
     return "border-emerald-300/40 bg-emerald-500/10 text-emerald-200";
+  }
+  if (status === "HANDSHAKE_MATCHED" || status === "HANDSHAKE_CONFIRMED") {
+    return "border-sky-300/40 bg-sky-500/10 text-sky-200";
+  }
+  if (status === "ENTRY_FAILED") {
+    return "border-rose-300/40 bg-rose-500/10 text-rose-200";
   }
   if (status === "CANDIDATE") {
     return "border-sky-300/40 bg-sky-500/10 text-sky-200";

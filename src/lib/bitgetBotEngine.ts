@@ -122,6 +122,7 @@ export type BitgetBotStateV1 = {
   handshake: HandshakeState;
   positions: LivePositionState[];
   entriesThisWeek: { weekOpenUtc: string; BTC: number; ETH: number };
+  attemptedHandshakeGroupIds: string[];
   lastTickUtc: string;
   lastError: string | null;
 };
@@ -208,6 +209,7 @@ function defaultState(nowIso: string, weekOpenUtc: string): BitgetBotStateV1 {
       BTC: 0,
       ETH: 0,
     },
+    attemptedHandshakeGroupIds: [],
     lastTickUtc: nowIso,
     lastError: null,
   };
@@ -640,26 +642,58 @@ async function safeAttachHandshakeGroup(params: {
   sessionWindow: SessionWindow;
   confirmTimeUtc: string;
   handshakeGroupId: string;
+  status?: "HANDSHAKE_MATCHED" | "HANDSHAKE_CONFIRMED";
+  metadata?: Record<string, unknown>;
 }) {
   try {
+    const status = params.status ?? "HANDSHAKE_MATCHED";
+    const metadata = {
+      handshake_group_id: params.handshakeGroupId,
+      ...(params.metadata ?? {}),
+    };
     await query(
       `UPDATE bitget_bot_signals
           SET handshake_group_id = $1,
-              status = 'HANDSHAKE_CONFIRMED',
-              metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb
-        WHERE bot_id = $3
-          AND day_utc = $4::date
-          AND symbol = $5
-          AND session_window = $6
-          AND confirm_time_utc = $7::timestamptz`,
+              status = $2,
+              metadata = COALESCE(metadata, '{}'::jsonb) || $3::jsonb
+        WHERE bot_id = $4
+          AND day_utc = $5::date
+          AND symbol = $6
+          AND session_window = $7
+          AND confirm_time_utc = $8::timestamptz`,
       [
         params.handshakeGroupId,
-        JSON.stringify({ handshake_group_id: params.handshakeGroupId }),
+        status,
+        JSON.stringify(metadata),
         BOT_ID,
         params.dayUtc,
         params.symbol,
         params.sessionWindow,
         params.confirmTimeUtc,
+      ],
+    );
+  } catch {
+    // Non-fatal while migrations are pending.
+  }
+}
+
+async function safeUpdateSignalGroupStatus(params: {
+  handshakeGroupId: string;
+  status: "ENTRY_CONFIRMED" | "ENTRY_FAILED";
+  metadata?: Record<string, unknown>;
+}) {
+  try {
+    await query(
+      `UPDATE bitget_bot_signals
+          SET status = $1,
+              metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb
+        WHERE bot_id = $3
+          AND handshake_group_id = $4`,
+      [
+        params.status,
+        JSON.stringify(params.metadata ?? {}),
+        BOT_ID,
+        params.handshakeGroupId,
       ],
     );
   } catch {
@@ -855,6 +889,9 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
     const { weekOpenUtc, weekClose } = getWeekWindow(now);
     const loaded = await readBotState<BitgetBotStateV1>(BOT_ID);
     state = loaded?.state ?? defaultState(nowIso, weekOpenUtc);
+    if (!Array.isArray(state.attemptedHandshakeGroupIds)) {
+      state.attemptedHandshakeGroupIds = [];
+    }
     state.lockOwner = LOCK_KEY;
     state.lockAcquiredAtUtc = nowIso;
 
@@ -895,6 +932,7 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
         expiryTs: null,
       };
       state.entriesThisWeek = { weekOpenUtc, BTC: 0, ETH: 0 };
+      state.attemptedHandshakeGroupIds = [];
       transitionState(state, "IDLE", transitions, "new week reset");
     }
 
@@ -1084,6 +1122,7 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
               sessionWindow: window,
               confirmTimeUtc: new Date(btcDetect.signal.confirmTs).toISOString(),
               handshakeGroupId,
+              status: "HANDSHAKE_MATCHED",
             });
           }
           if (ethDetect.signal) {
@@ -1093,139 +1132,208 @@ export async function tick(options?: TickOptions): Promise<TickResult> {
               sessionWindow: window,
               confirmTimeUtc: new Date(ethDetect.signal.confirmTs).toISOString(),
               handshakeGroupId,
+              status: "HANDSHAKE_MATCHED",
             });
           }
 
-          const btcDirection = asRiskDirection(btcDetect.signal?.direction ?? "NEUTRAL");
-          const ethDirection = asRiskDirection(ethDetect.signal?.direction ?? "NEUTRAL");
-          if (!btcDirection || !ethDirection) {
-            errors.push("Handshake triggered but one or more symbol directions are not executable.");
+          const alreadyAttempted = state.attemptedHandshakeGroupIds.includes(handshakeGroupId);
+          if (alreadyAttempted) {
+            transitionState(
+              state,
+              "AWAITING_HANDSHAKE",
+              transitions,
+              "handshake matched; entry already attempted",
+            );
           } else {
-            const btcOpen = await openPosition(
-              "BTCUSDT",
-              btcDirection,
-              marginPerSymbol,
-              INITIAL_LEVERAGE,
-              { botId: BOT_ID, weekId: entryWeekId, actionTsMs: handshake.entryTs },
-            );
-            const ethOpen = await openPosition(
-              "ETHUSDT",
-              ethDirection,
-              marginPerSymbol,
-              INITIAL_LEVERAGE,
-              { botId: BOT_ID, weekId: entryWeekId, actionTsMs: handshake.entryTs },
-            );
+            state.attemptedHandshakeGroupIds.push(handshakeGroupId);
 
-            if (!btcOpen.ok || !ethOpen.ok) {
-              errors.push(`Entry failed BTC:${btcOpen.message ?? "ok"} ETH:${ethOpen.message ?? "ok"}`);
+            const btcDirection = asRiskDirection(btcDetect.signal?.direction ?? "NEUTRAL");
+            const ethDirection = asRiskDirection(ethDetect.signal?.direction ?? "NEUTRAL");
+
+            if (!btcDirection || !ethDirection) {
+              errors.push("Handshake triggered but one or more symbol directions are not executable.");
+              await safeUpdateSignalGroupStatus({
+                handshakeGroupId,
+                status: "ENTRY_FAILED",
+                metadata: { reason: "invalid_direction" },
+              });
             } else {
-              const entryTimeUtc = new Date(handshake.entryTs).toISOString();
-              const btcPrice = btcOpen.price ?? 0;
-              const ethPrice = ethOpen.price ?? 0;
-              const btcInitialStop = btcDirection === "LONG" ? btcPrice * 0.9 : btcPrice * 1.1;
-              const ethInitialStop = ethDirection === "LONG" ? ethPrice * 0.9 : ethPrice * 1.1;
+              const btcOpen = await openPosition(
+                "BTCUSDT",
+                btcDirection,
+                marginPerSymbol,
+                INITIAL_LEVERAGE,
+                { botId: BOT_ID, weekId: entryWeekId, actionTsMs: handshake.entryTs }
+              );
+              const ethOpen = await openPosition(
+                "ETHUSDT",
+                ethDirection,
+                marginPerSymbol,
+                INITIAL_LEVERAGE,
+                { botId: BOT_ID, weekId: entryWeekId, actionTsMs: handshake.entryTs }
+              );
 
-              const btcStopOrder = await setStopLoss("BTCUSDT", btcInitialStop, {
-                botId: BOT_ID,
-                weekId: entryWeekId,
-                direction: btcDirection,
-                actionTsMs: handshake.entryTs,
-              });
-              const ethStopOrder = await setStopLoss("ETHUSDT", ethInitialStop, {
-                botId: BOT_ID,
-                weekId: entryWeekId,
-                direction: ethDirection,
-                actionTsMs: handshake.entryTs,
-              });
-              if (!btcStopOrder.ok || !ethStopOrder.ok) {
-                errors.push(
-                  `Initial stop placement failed BTC:${btcStopOrder.message ?? "ok"} ETH:${ethStopOrder.message ?? "ok"}`,
-                );
-              }
+              if (!btcOpen.ok || !ethOpen.ok) {
+                errors.push(`Entry failed BTC:${btcOpen.message ?? "ok"} ETH:${ethOpen.message ?? "ok"}`);
 
-              const [btcMarketTag, ethMarketTag] = await Promise.all([
-                fetchEntryMarketMetadata("BTC", btcPrice, btcDirection, entryTimeUtc),
-                fetchEntryMarketMetadata("ETH", ethPrice, ethDirection, entryTimeUtc),
-              ]);
+                let unwindError: string | null = null;
+                if (btcOpen.ok && !ethOpen.ok) {
+                  const unwind = await closePosition("BTCUSDT", {
+                    botId: BOT_ID,
+                    weekId: entryWeekId,
+                    direction: btcDirection,
+                    actionTsMs: handshake.entryTs,
+                    priceHint: btcOpen.price ?? undefined,
+                  });
+                  if (!unwind.ok) {
+                    unwindError = `BTC unwind failed: ${unwind.message ?? "unknown"}`;
+                    errors.push(unwindError);
+                  }
+                } else if (!btcOpen.ok && ethOpen.ok) {
+                  const unwind = await closePosition("ETHUSDT", {
+                    botId: BOT_ID,
+                    weekId: entryWeekId,
+                    direction: ethDirection,
+                    actionTsMs: handshake.entryTs,
+                    priceHint: ethOpen.price ?? undefined,
+                  });
+                  if (!unwind.ok) {
+                    unwindError = `ETH unwind failed: ${unwind.message ?? "unknown"}`;
+                    errors.push(unwindError);
+                  }
+                }
 
-              state.positions.push({
-                symbol: "BTC",
-                direction: btcDirection,
-                entryTs: handshake.entryTs,
-                entryPrice: btcPrice,
-                stopPrice: btcInitialStop,
-                initialLeverage: INITIAL_LEVERAGE,
-                currentLeverage: INITIAL_LEVERAGE,
-                maxLeverageReached: INITIAL_LEVERAGE,
-                milestonesHit: [],
-                breakevenReached: false,
-                trailingActive: false,
-                trailingOffsetPct: null,
-                sessionWindow: window,
-                peakPrice: btcPrice,
-                marginUsd: marginPerSymbol,
-                entryTimeUtc,
-              });
-              state.positions.push({
-                symbol: "ETH",
-                direction: ethDirection,
-                entryTs: handshake.entryTs,
-                entryPrice: ethPrice,
-                stopPrice: ethInitialStop,
-                initialLeverage: INITIAL_LEVERAGE,
-                currentLeverage: INITIAL_LEVERAGE,
-                maxLeverageReached: INITIAL_LEVERAGE,
-                milestonesHit: [],
-                breakevenReached: false,
-                trailingActive: false,
-                trailingOffsetPct: null,
-                sessionWindow: window,
-                peakPrice: ethPrice,
-                marginUsd: marginPerSymbol,
-                entryTimeUtc,
-              });
-              state.entriesThisWeek.BTC += 1;
-              state.entriesThisWeek.ETH += 1;
-              transitionState(state, "POSITION_OPEN", transitions, "handshake entry confirmed");
-
-              await safeInsertTradeOpen({
-                symbol: "BTC",
-                direction: btcDirection,
-                sessionWindow: window,
-                rangeSource: window === "ASIA_LONDON_RANGE_NY_ENTRY" ? "ASIA+LONDON" : "US",
-                entryTimeUtc,
-                entryPrice: btcPrice,
-                stopPrice: btcInitialStop,
-                initialLeverage: INITIAL_LEVERAGE,
-                metadata: {
-                  dryRun: DRY_RUN,
-                  handshakeDelayMinutes: handshake.delayMinutes,
+                await safeUpdateSignalGroupStatus({
                   handshakeGroupId,
-                  marketData: btcMarketTag,
-                },
-              });
-              await safeInsertTradeOpen({
-                symbol: "ETH",
-                direction: ethDirection,
-                sessionWindow: window,
-                rangeSource: window === "ASIA_LONDON_RANGE_NY_ENTRY" ? "ASIA+LONDON" : "US",
-                entryTimeUtc,
-                entryPrice: ethPrice,
-                stopPrice: ethInitialStop,
-                initialLeverage: INITIAL_LEVERAGE,
-                metadata: {
-                  dryRun: DRY_RUN,
-                  handshakeDelayMinutes: handshake.delayMinutes,
-                  handshakeGroupId,
-                  marketData: ethMarketTag,
-                },
-              });
+                  status: "ENTRY_FAILED",
+                  metadata: {
+                    reason: "open_position_failed",
+                    btc_ok: btcOpen.ok,
+                    eth_ok: ethOpen.ok,
+                    btc_message: btcOpen.message ?? null,
+                    eth_message: ethOpen.message ?? null,
+                    unwind_error: unwindError,
+                  },
+                });
+              } else {
+                const entryTimeUtc = new Date(handshake.entryTs).toISOString();
+                const btcPrice = btcOpen.price ?? 0;
+                const ethPrice = ethOpen.price ?? 0;
+                const btcInitialStop = btcDirection === "LONG" ? btcPrice * 0.9 : btcPrice * 1.1;
+                const ethInitialStop = ethDirection === "LONG" ? ethPrice * 0.9 : ethPrice * 1.1;
 
-              if (state.entriesThisWeek.BTC === 1 && state.entriesThisWeek.ETH === 1) {
-                await sendBotNotification(
-                  "Bitget bot first entry this week",
-                  `<p>Entered BTC ${btcDirection} and ETH ${ethDirection} in ${window} at ${entryTimeUtc}.</p>`,
-                );
+                const btcStopOrder = await setStopLoss("BTCUSDT", btcInitialStop, {
+                  botId: BOT_ID,
+                  weekId: entryWeekId,
+                  direction: btcDirection,
+                  actionTsMs: handshake.entryTs,
+                });
+                const ethStopOrder = await setStopLoss("ETHUSDT", ethInitialStop, {
+                  botId: BOT_ID,
+                  weekId: entryWeekId,
+                  direction: ethDirection,
+                  actionTsMs: handshake.entryTs,
+                });
+                if (!btcStopOrder.ok || !ethStopOrder.ok) {
+                  errors.push(
+                    `Initial stop placement failed BTC:${btcStopOrder.message ?? "ok"} ETH:${ethStopOrder.message ?? "ok"}`
+                  );
+                }
+
+                const [btcMarketTag, ethMarketTag] = await Promise.all([
+                  fetchEntryMarketMetadata("BTC", btcPrice, btcDirection, entryTimeUtc),
+                  fetchEntryMarketMetadata("ETH", ethPrice, ethDirection, entryTimeUtc),
+                ]);
+
+                state.positions.push({
+                  symbol: "BTC",
+                  direction: btcDirection,
+                  entryTs: handshake.entryTs,
+                  entryPrice: btcPrice,
+                  stopPrice: btcInitialStop,
+                  initialLeverage: INITIAL_LEVERAGE,
+                  currentLeverage: INITIAL_LEVERAGE,
+                  maxLeverageReached: INITIAL_LEVERAGE,
+                  milestonesHit: [],
+                  breakevenReached: false,
+                  trailingActive: false,
+                  trailingOffsetPct: null,
+                  sessionWindow: window,
+                  peakPrice: btcPrice,
+                  marginUsd: marginPerSymbol,
+                  entryTimeUtc,
+                });
+                state.positions.push({
+                  symbol: "ETH",
+                  direction: ethDirection,
+                  entryTs: handshake.entryTs,
+                  entryPrice: ethPrice,
+                  stopPrice: ethInitialStop,
+                  initialLeverage: INITIAL_LEVERAGE,
+                  currentLeverage: INITIAL_LEVERAGE,
+                  maxLeverageReached: INITIAL_LEVERAGE,
+                  milestonesHit: [],
+                  breakevenReached: false,
+                  trailingActive: false,
+                  trailingOffsetPct: null,
+                  sessionWindow: window,
+                  peakPrice: ethPrice,
+                  marginUsd: marginPerSymbol,
+                  entryTimeUtc,
+                });
+                state.entriesThisWeek.BTC += 1;
+                state.entriesThisWeek.ETH += 1;
+                transitionState(state, "POSITION_OPEN", transitions, "handshake entry confirmed");
+
+                await safeUpdateSignalGroupStatus({
+                  handshakeGroupId,
+                  status: "ENTRY_CONFIRMED",
+                  metadata: {
+                    entry_time_utc: entryTimeUtc,
+                    btc_entry_price: btcPrice,
+                    eth_entry_price: ethPrice,
+                  },
+                });
+
+                await safeInsertTradeOpen({
+                  symbol: "BTC",
+                  direction: btcDirection,
+                  sessionWindow: window,
+                  rangeSource: window === "ASIA_LONDON_RANGE_NY_ENTRY" ? "ASIA+LONDON" : "US",
+                  entryTimeUtc,
+                  entryPrice: btcPrice,
+                  stopPrice: btcInitialStop,
+                  initialLeverage: INITIAL_LEVERAGE,
+                  metadata: {
+                    dryRun: DRY_RUN,
+                    handshakeDelayMinutes: handshake.delayMinutes,
+                    handshakeGroupId,
+                    marketData: btcMarketTag,
+                  },
+                });
+                await safeInsertTradeOpen({
+                  symbol: "ETH",
+                  direction: ethDirection,
+                  sessionWindow: window,
+                  rangeSource: window === "ASIA_LONDON_RANGE_NY_ENTRY" ? "ASIA+LONDON" : "US",
+                  entryTimeUtc,
+                  entryPrice: ethPrice,
+                  stopPrice: ethInitialStop,
+                  initialLeverage: INITIAL_LEVERAGE,
+                  metadata: {
+                    dryRun: DRY_RUN,
+                    handshakeDelayMinutes: handshake.delayMinutes,
+                    handshakeGroupId,
+                    marketData: ethMarketTag,
+                  },
+                });
+
+                if (state.entriesThisWeek.BTC === 1 && state.entriesThisWeek.ETH === 1) {
+                  await sendBotNotification(
+                    "Bitget bot first entry this week",
+                    `<p>Entered BTC ${btcDirection} and ETH ${ethDirection} in ${window} at ${entryTimeUtc}.</p>`
+                  );
+                }
               }
             }
           }
