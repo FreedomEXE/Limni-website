@@ -621,10 +621,21 @@ function buildMetricsFromGateReportMode(options: {
 
 function readGateOverlayPayload(annualizeSharpe: boolean): GateOverlayPayload {
   const envPath = process.env.PERFORMANCE_GATE_COMPARISON_PATH?.trim();
+  const skipOnlyMode = process.env.PERFORMANCE_GATE_SKIP_ONLY !== "0";
+  const defaultReportCandidates = skipOnlyMode
+    ? [
+        path.resolve(process.cwd(), "reports", "bias-gate", "strategy-comparison-reduce-as-skip.json"),
+        path.resolve(process.cwd(), "reports", "bias-gate", "strategy-comparison-latest.json"),
+        path.resolve(process.cwd(), "reports", "bias-gate", "strategy-comparison-standard-reduce.json"),
+      ]
+    : [
+        path.resolve(process.cwd(), "reports", "bias-gate", "strategy-comparison-latest.json"),
+        path.resolve(process.cwd(), "reports", "bias-gate", "strategy-comparison-standard-reduce.json"),
+        path.resolve(process.cwd(), "reports", "bias-gate", "strategy-comparison-reduce-as-skip.json"),
+      ];
   const candidates = [
     envPath ? path.resolve(process.cwd(), envPath) : null,
-    path.resolve(process.cwd(), "reports", "bias-gate", "strategy-comparison-latest.json"),
-    path.resolve(process.cwd(), "reports", "bias-gate", "strategy-comparison-standard-reduce.json"),
+    ...defaultReportCandidates,
   ].filter((value): value is string => Boolean(value));
 
   let selectedPath: string | null = null;

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type GateDecision = "PASS" | "REDUCE" | "SKIP" | "NO_DATA";
+type GateDecision = "PASS" | "SKIP" | "NO_DATA";
 
 type GatedSetupSignal = {
   assetClass: string;
@@ -29,7 +29,6 @@ type GatedSetupsPayload = {
   summary: {
     total: number;
     pass: number;
-    reduce: number;
     skip: number;
     noData: number;
     actionable: number;
@@ -38,11 +37,11 @@ type GatedSetupsPayload = {
     neutralTier: number;
   };
   signals: GatedSetupSignal[];
+  skipOnlyMode: boolean;
 };
 
 function decisionClass(decision: GateDecision) {
   if (decision === "PASS") return "border-emerald-300 bg-emerald-50 text-emerald-700";
-  if (decision === "REDUCE") return "border-amber-300 bg-amber-50 text-amber-700";
   if (decision === "SKIP") return "border-rose-300 bg-rose-50 text-rose-700";
   return "border-slate-300 bg-slate-100 text-slate-600";
 }
@@ -109,11 +108,11 @@ export default function PerformanceGatedSetups() {
         <div>
           <h2 className="text-lg font-semibold text-[var(--foreground)]">Current Gated Setups</h2>
           <p className="text-sm text-[color:var(--muted)]">
-            Weekly board with gate decision per setup.
+            Weekly board with binary gate decision per setup (PASS/SKIP).
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {(["ALL", "PASS", "REDUCE", "SKIP", "NO_DATA"] as const).map((item) => (
+          {(["ALL", "PASS", "SKIP", "NO_DATA"] as const).map((item) => (
             <button
               key={item}
               type="button"
@@ -166,6 +165,11 @@ export default function PerformanceGatedSetups() {
               <div className="truncate text-xs font-semibold text-[var(--foreground)]">{data.sourcePath}</div>
             </div>
           </div>
+          {data.skipOnlyMode ? (
+            <div className="mb-2 text-xs text-[color:var(--muted)]">
+              Skip-only mode is active. Any REDUCE signal is treated as SKIP.
+            </div>
+          ) : null}
 
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
             <table className="min-w-full divide-y divide-[var(--panel-border)] text-xs">
@@ -214,4 +218,3 @@ export default function PerformanceGatedSetups() {
     </section>
   );
 }
-

@@ -12,7 +12,7 @@
 -----------------------------------------------*/
 
 export const DEFAULT_GATE_OVERLAY_REPORT = {
-  "generated_utc": "2026-03-16T18:02:23.194Z",
+  "generated_utc": "2026-03-16T16:04:50.442Z",
   "scope": {
     "weeks_used": 8,
     "week_open_utc": [
@@ -27,7 +27,7 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
     ]
   },
   "assumptions": {
-    "reduce_mode": "STANDARD_REDUCE_HALF_SIZE"
+    "reduce_mode": "REDUCE_TREATED_AS_SKIP"
   },
   "comparisons": [
     {
@@ -42,39 +42,39 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         "tradeWinRatePct": 56.61
       },
       "gated": {
-        "totalReturn": 97.2207,
+        "totalReturn": 101.1463,
         "weeks": 8,
         "winRatePct": 62.5,
-        "avgWeeklyPct": 12.1526,
-        "maxDrawdownPct": 1.390271,
-        "trades": 460,
-        "tradeWinRatePct": 50
+        "avgWeeklyPct": 12.6433,
+        "maxDrawdownPct": 1.187662,
+        "trades": 390,
+        "tradeWinRatePct": 54.1
       },
       "delta": {
-        "totalReturnPct": 15.7308,
+        "totalReturnPct": 19.6564,
         "winRatePct": -25,
-        "avgWeeklyPct": 1.9664,
-        "maxDrawdownPct": -21.833249,
-        "trades": -342,
-        "tradeWinRatePct": -6.61
+        "avgWeeklyPct": 2.4571,
+        "maxDrawdownPct": -22.035858,
+        "trades": -412,
+        "tradeWinRatePct": -2.51
       },
       "gateActivity": {
-        "skippedTrades": 342,
-        "reducedTrades": 70,
+        "skippedTrades": 412,
+        "reducedTrades": 0,
         "passedOrNoDataTrades": 390
       },
       "weekly": [
         {
           "baselineReturn": 36.5359,
-          "gatedReturn": 28.694640234111763
+          "gatedReturn": 29.241375204019352
         },
         {
           "baselineReturn": 26.519699999999993,
-          "gatedReturn": 34.325809758286724
+          "gatedReturn": 35.464339614213756
         },
         {
           "baselineReturn": 14.69794,
-          "gatedReturn": 11.060101321495864
+          "gatedReturn": 11.594073412734383
         },
         {
           "baselineReturn": 10.18086,
@@ -86,15 +86,15 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         },
         {
           "baselineReturn": 4.44628,
-          "gatedReturn": -1.0842730853388836
+          "gatedReturn": -0.5637635667236753
         },
         {
           "baselineReturn": 2.7122599999999997,
-          "gatedReturn": 12.71692446713953
+          "gatedReturn": 13.815755190784547
         },
         {
           "baselineReturn": -23.22352,
-          "gatedReturn": -1.2746970640553712
+          "gatedReturn": -1.187662441960531
         }
       ]
     },
@@ -110,39 +110,39 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         "tradeWinRatePct": 62.47
       },
       "gated": {
-        "totalReturn": 101.1176,
+        "totalReturn": 105.1834,
         "weeks": 8,
         "winRatePct": 87.5,
-        "avgWeeklyPct": 12.6397,
-        "maxDrawdownPct": 2.644472,
-        "trades": 202,
-        "tradeWinRatePct": 55.94
+        "avgWeeklyPct": 13.1479,
+        "maxDrawdownPct": 2.220162,
+        "trades": 169,
+        "tradeWinRatePct": 63.31
       },
       "delta": {
-        "totalReturnPct": 0.4615,
+        "totalReturnPct": 4.5273,
         "winRatePct": 0,
-        "avgWeeklyPct": 0.0577,
-        "maxDrawdownPct": -22.418928,
-        "trades": -243,
-        "tradeWinRatePct": -6.53
+        "avgWeeklyPct": 0.5659,
+        "maxDrawdownPct": -22.843238,
+        "trades": -276,
+        "tradeWinRatePct": 0.84
       },
       "gateActivity": {
-        "skippedTrades": 243,
-        "reducedTrades": 33,
+        "skippedTrades": 276,
+        "reducedTrades": 0,
         "passedOrNoDataTrades": 169
       },
       "weekly": [
         {
           "baselineReturn": 49.0645,
-          "gatedReturn": 35.648313930110525
+          "gatedReturn": 35.48779109558923
         },
         {
           "baselineReturn": 25.974,
-          "gatedReturn": 31.842232796747407
+          "gatedReturn": 32.53664538880441
         },
         {
           "baselineReturn": 16.052699999999998,
-          "gatedReturn": 9.972598149448894
+          "gatedReturn": 10.49274815542801
         },
         {
           "baselineReturn": 6.754300000000001,
@@ -154,15 +154,15 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         },
         {
           "baselineReturn": 5.364366666666666,
-          "gatedReturn": 0.09384419863577402
+          "gatedReturn": 1.18565077289799
         },
         {
           "baselineReturn": 5.9046666666666665,
-          "gatedReturn": 10.118688190033376
+          "gatedReturn": 11.614322867961597
         },
         {
           "baselineReturn": -25.0634,
-          "gatedReturn": -2.644472045522072
+          "gatedReturn": -2.22016200044478
         }
       ]
     },
@@ -178,39 +178,39 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         "tradeWinRatePct": 55.83
       },
       "gated": {
-        "totalReturn": 87.6294,
+        "totalReturn": 89.9584,
         "weeks": 8,
         "winRatePct": 62.5,
-        "avgWeeklyPct": 10.9537,
-        "maxDrawdownPct": 3.735562,
-        "trades": 351,
-        "tradeWinRatePct": 51
+        "avgWeeklyPct": 11.2448,
+        "maxDrawdownPct": 3.75983,
+        "trades": 310,
+        "tradeWinRatePct": 53.55
       },
       "delta": {
-        "totalReturnPct": 20.1785,
+        "totalReturnPct": 22.5075,
         "winRatePct": -12.5,
-        "avgWeeklyPct": 2.5223,
-        "maxDrawdownPct": -21.170107,
-        "trades": -215,
-        "tradeWinRatePct": -4.83
+        "avgWeeklyPct": 2.8134,
+        "maxDrawdownPct": -21.145839,
+        "trades": -256,
+        "tradeWinRatePct": -2.28
       },
       "gateActivity": {
-        "skippedTrades": 215,
-        "reducedTrades": 41,
+        "skippedTrades": 256,
+        "reducedTrades": 0,
         "passedOrNoDataTrades": 310
       },
       "weekly": [
         {
           "baselineReturn": 30.33515,
-          "gatedReturn": 24.286557452440572
+          "gatedReturn": 24.66695270145859
         },
         {
           "baselineReturn": 30.955349999999996,
-          "gatedReturn": 35.22059016282421
+          "gatedReturn": 35.74139960686696
         },
         {
           "baselineReturn": 16.31995,
-          "gatedReturn": 13.166416282608225
+          "gatedReturn": 13.556528787092562
         },
         {
           "baselineReturn": 8.42825,
@@ -222,15 +222,15 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         },
         {
           "baselineReturn": 2.8231,
-          "gatedReturn": -1.009703375547841
+          "gatedReturn": -1.0346581453318193
         },
         {
           "baselineReturn": -1.4992249999999998,
-          "gatedReturn": 7.840245978862289
+          "gatedReturn": 8.520074486260274
         },
         {
           "baselineReturn": -23.7627,
-          "gatedReturn": -1.514347708262937
+          "gatedReturn": -1.1315292752089698
         }
       ]
     },
@@ -246,39 +246,39 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         "tradeWinRatePct": 63.32
       },
       "gated": {
-        "totalReturn": 334.5901,
+        "totalReturn": 357.8142,
         "weeks": 8,
         "winRatePct": 100,
-        "avgWeeklyPct": 41.8238,
+        "avgWeeklyPct": 44.7268,
         "maxDrawdownPct": 0,
-        "trades": 105,
-        "tradeWinRatePct": 58.1
+        "trades": 86,
+        "tradeWinRatePct": 67.44
       },
       "delta": {
-        "totalReturnPct": -57.1959,
+        "totalReturnPct": -33.9718,
         "winRatePct": 12.5,
-        "avgWeeklyPct": -7.1494,
+        "avgWeeklyPct": -4.2464,
         "maxDrawdownPct": -36.2961,
-        "trades": -94,
-        "tradeWinRatePct": -5.22
+        "trades": -113,
+        "tradeWinRatePct": 4.12
       },
       "gateActivity": {
-        "skippedTrades": 94,
-        "reducedTrades": 19,
+        "skippedTrades": 113,
+        "reducedTrades": 0,
         "passedOrNoDataTrades": 86
       },
       "weekly": [
         {
           "baselineReturn": 178.4185,
-          "gatedReturn": 127.6716726013569
+          "gatedReturn": 126.85616194300076
         },
         {
           "baselineReturn": 33.7893,
-          "gatedReturn": 74.53161775017276
+          "gatedReturn": 76.95457314233538
         },
         {
           "baselineReturn": 25.8572,
-          "gatedReturn": 8.103956330200486
+          "gatedReturn": 14.46591169790204
         },
         {
           "baselineReturn": 79.1049,
@@ -290,15 +290,15 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         },
         {
           "baselineReturn": 37.3492,
-          "gatedReturn": 5.6722738495155705
+          "gatedReturn": 7.807351897376094
         },
         {
           "baselineReturn": 13.0457,
-          "gatedReturn": 36.55378879738615
+          "gatedReturn": 48.78212294637701
         },
         {
           "baselineReturn": -36.2961,
-          "gatedReturn": 6.334938354486718
+          "gatedReturn": 7.226202356314454
         }
       ]
     },
@@ -314,39 +314,39 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         "tradeWinRatePct": 65.07
       },
       "gated": {
-        "totalReturn": 154.4666,
+        "totalReturn": 165.7449,
         "weeks": 8,
         "winRatePct": 87.5,
-        "avgWeeklyPct": 19.3083,
-        "maxDrawdownPct": 9.775762,
-        "trades": 94,
-        "tradeWinRatePct": 58.51
+        "avgWeeklyPct": 20.7181,
+        "maxDrawdownPct": 7.561833,
+        "trades": 79,
+        "tradeWinRatePct": 68.35
       },
       "delta": {
-        "totalReturnPct": -46.9163,
+        "totalReturnPct": -35.638,
         "winRatePct": 0,
-        "avgWeeklyPct": -5.8646,
-        "maxDrawdownPct": -25.684538,
-        "trades": -115,
-        "tradeWinRatePct": -6.56
+        "avgWeeklyPct": -4.4548,
+        "maxDrawdownPct": -27.898467,
+        "trades": -130,
+        "tradeWinRatePct": 3.28
       },
       "gateActivity": {
-        "skippedTrades": 115,
-        "reducedTrades": 15,
+        "skippedTrades": 130,
+        "reducedTrades": 0,
         "passedOrNoDataTrades": 79
       },
       "weekly": [
         {
           "baselineReturn": 105.0138,
-          "gatedReturn": 68.57815287315275
+          "gatedReturn": 68.12521978243718
         },
         {
           "baselineReturn": 24.4759,
-          "gatedReturn": 37.89256601884618
+          "gatedReturn": 39.011949151654285
         },
         {
           "baselineReturn": 26.7271,
-          "gatedReturn": 7.3440946693624305
+          "gatedReturn": 7.907149460919239
         },
         {
           "baselineReturn": 0.9529,
@@ -358,15 +358,15 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         },
         {
           "baselineReturn": 17.6882,
-          "gatedReturn": 2.6863226998296517
+          "gatedReturn": 3.6974744368425236
         },
         {
           "baselineReturn": 7.2798,
-          "gatedReturn": 20.397806850820935
+          "gatedReturn": 27.221473909558
         },
         {
           "baselineReturn": -35.4603,
-          "gatedReturn": -9.775762366879091
+          "gatedReturn": -7.561832822684597
         }
       ]
     },
@@ -382,25 +382,25 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         "tradeWinRatePct": 66.48
       },
       "gated": {
-        "totalReturn": 144.4153,
+        "totalReturn": 153.1136,
         "weeks": 8,
         "winRatePct": 75,
-        "avgWeeklyPct": 18.0519,
-        "maxDrawdownPct": 16.951569,
-        "trades": 101,
-        "tradeWinRatePct": 59.41
+        "avgWeeklyPct": 19.1392,
+        "maxDrawdownPct": 9.224189,
+        "trades": 88,
+        "tradeWinRatePct": 65.91
       },
       "delta": {
-        "totalReturnPct": -79.7853,
+        "totalReturnPct": -71.087,
         "winRatePct": 0,
-        "avgWeeklyPct": -9.9732,
-        "maxDrawdownPct": -25.412497,
-        "trades": -75,
-        "tradeWinRatePct": -7.07
+        "avgWeeklyPct": -8.8859,
+        "maxDrawdownPct": -33.139877,
+        "trades": -88,
+        "tradeWinRatePct": -0.57
       },
       "gateActivity": {
-        "skippedTrades": 75,
-        "reducedTrades": 13,
+        "skippedTrades": 88,
+        "reducedTrades": 0,
         "passedOrNoDataTrades": 88
       },
       "weekly": [
@@ -414,7 +414,7 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         },
         {
           "baselineReturn": 25.915,
-          "gatedReturn": 13.089079854189588
+          "gatedReturn": 13.834236206236572
         },
         {
           "baselineReturn": 37.2938,
@@ -426,15 +426,15 @@ export const DEFAULT_GATE_OVERLAY_REPORT = {
         },
         {
           "baselineReturn": 27.9665,
-          "gatedReturn": 15.109778037282219
+          "gatedReturn": 14.797571382421674
         },
         {
           "baselineReturn": -5.9719,
-          "gatedReturn": -10.447116500409042
+          "gatedReturn": -5.185919498340853
         },
         {
           "baselineReturn": -38.7035,
-          "gatedReturn": -7.263252690948822
+          "gatedReturn": -4.259145452698945
         }
       ]
     }

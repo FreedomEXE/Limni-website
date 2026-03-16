@@ -3,7 +3,9 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { DEFAULT_GATED_SETUPS_BOARD } from "@/lib/performance/gatedSetupsDefault";
 
-type GateDecision = "PASS" | "REDUCE" | "SKIP" | "NO_DATA";
+const SKIP_ONLY_MODE = process.env.PERFORMANCE_GATE_SKIP_ONLY !== "0";
+
+type GateDecision = "PASS" | "SKIP" | "NO_DATA";
 type SignalTier = "HIGH" | "MEDIUM" | "NEUTRAL";
 type SignalDirection = "LONG" | "SHORT" | "NEUTRAL";
 
@@ -32,7 +34,6 @@ type GatedSetupsPayload = {
   summary: {
     total: number;
     pass: number;
-    reduce: number;
     skip: number;
     noData: number;
     actionable: number;
@@ -41,6 +42,7 @@ type GatedSetupsPayload = {
     neutralTier: number;
   };
   signals: GatedSetupSignal[];
+  skipOnlyMode: boolean;
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -67,7 +69,10 @@ function toInt(value: unknown): number {
 
 function normalizeDecision(value: unknown): GateDecision {
   const normalized = String(value ?? "").trim().toUpperCase();
-  if (normalized === "PASS" || normalized === "REDUCE" || normalized === "SKIP") {
+  if (normalized === "REDUCE") {
+    return SKIP_ONLY_MODE ? "SKIP" : "PASS";
+  }
+  if (normalized === "PASS" || normalized === "SKIP") {
     return normalized;
   }
   return "NO_DATA";
@@ -115,9 +120,8 @@ function parsePayload(raw: Record<string, unknown>, sourcePath: string): GatedSe
     if (tierRank !== 0) return tierRank;
     const decisionWeight = (value: GateDecision) => {
       if (value === "PASS") return 0;
-      if (value === "REDUCE") return 1;
-      if (value === "SKIP") return 2;
-      return 3;
+      if (value === "SKIP") return 1;
+      return 2;
     };
     const decisionRank = decisionWeight(a.gateDecision) - decisionWeight(b.gateDecision);
     if (decisionRank !== 0) return decisionRank;
@@ -127,7 +131,6 @@ function parsePayload(raw: Record<string, unknown>, sourcePath: string): GatedSe
   const summary = {
     total: sortedSignals.length,
     pass: sortedSignals.filter((item) => item.gateDecision === "PASS").length,
-    reduce: sortedSignals.filter((item) => item.gateDecision === "REDUCE").length,
     skip: sortedSignals.filter((item) => item.gateDecision === "SKIP").length,
     noData: sortedSignals.filter((item) => item.gateDecision === "NO_DATA").length,
     actionable: sortedSignals.filter((item) => item.gateDecision !== "SKIP").length,
@@ -151,6 +154,7 @@ function parsePayload(raw: Record<string, unknown>, sourcePath: string): GatedSe
     weeksUsedForStability,
     summary,
     signals: sortedSignals,
+    skipOnlyMode: SKIP_ONLY_MODE,
   };
 }
 
@@ -191,4 +195,3 @@ export async function GET() {
     );
   }
 }
-
