@@ -705,6 +705,9 @@ export default function PerformanceGrid({
                 {comparisonOverlay.gateActivity ? ` • Skip ${comparisonOverlay.gateActivity.skippedTrades} / Reduce ${comparisonOverlay.gateActivity.reducedTrades}` : ""}
               </div>
             ) : null}
+            <div className="mt-1 text-[11px] text-[color:var(--muted)]">
+              DD is portfolio max drawdown from the weekly equity curve.
+            </div>
             {selectedOverlayMetrics ? (
               <div className="mt-1 text-xs text-[color:var(--muted)]">
                 Active: {selectedOverlayMetrics.trades} trades • Trade win {selectedOverlayMetrics.tradeWinRate.toFixed(1)}% • Avg weekly {formatPercent(selectedOverlayMetrics.avgWeekly)}

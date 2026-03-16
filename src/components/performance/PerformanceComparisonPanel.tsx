@@ -189,10 +189,10 @@ function buildSourceLabel(source: ComparisonSourceMeta | null | undefined) {
   if (!source) return "Source unavailable";
   const fallbackSuffix = source.fallbackToAllTime ? " (all-time fallback)" : "";
   if (source.mode === "strategy_backtest_db") {
-    return `Source: backtest DB${fallbackSuffix}`;
+    return `Source: backtest DB (net strategy curve)${fallbackSuffix}`;
   }
   if (source.mode === "tiered_derived") {
-    return "Source: derived from performance snapshots";
+    return "Source: derived from performance snapshots (synthetic aggregate)";
   }
   if (source.mode === "katarakti_snapshot") {
     if (source.fallbackLabel && source.fallbackLabel.trim().length > 0) {

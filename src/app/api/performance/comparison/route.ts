@@ -38,6 +38,7 @@ import {
   type StrategySummarySourcePolicy,
 } from "@/lib/performance/strategyRegistry";
 import { readStrategyBacktestWeeklySeries } from "@/lib/performance/strategyBacktestHistory";
+import { DEFAULT_GATE_OVERLAY_REPORT } from "@/lib/performance/gateOverlayDefault";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import type { PairSnapshot } from "@/lib/cotTypes";
@@ -633,6 +634,14 @@ function readGateOverlayPayload(annualizeSharpe: boolean): GateOverlayPayload {
       }
     } catch {
       // Ignore parse errors and continue candidate probing.
+    }
+  }
+
+  if (!payloadRaw || !selectedPath) {
+    const embeddedPayload = DEFAULT_GATE_OVERLAY_REPORT as unknown as Record<string, unknown>;
+    if (Array.isArray(embeddedPayload.comparisons)) {
+      payloadRaw = embeddedPayload;
+      selectedPath = "embedded:src/lib/performance/gateOverlayDefault.ts";
     }
   }
 
