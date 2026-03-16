@@ -67,8 +67,38 @@ type MenthorqDailyCoverage = {
   latestCaptureUtc: string | null;
 };
 
+type TradingProfile = {
+  id: string;
+  label: string;
+  maxLeverageByAsset: Record<string, number>;
+  isTradable: (signal: GatedSetupSignal) => boolean;
+};
+
 function normalizePair(value: unknown): string {
   return String(value ?? "").trim().toUpperCase();
+}
+
+const GAMMA_SYMBOL_PREFIXES = [
+  "6E",
+  "6B",
+  "6J",
+  "6A",
+  "6S",
+  "6C",
+  "6N",
+  "DX",
+  "ES",
+  "NQ",
+  "GC",
+  "SI",
+  "CL",
+] as const;
+
+function normalizeGammaSymbol(value: unknown): string {
+  const raw = normalizePair(value).replace(/[^A-Z0-9]/g, "");
+  if (!raw) return "";
+  const prefix = GAMMA_SYMBOL_PREFIXES.find((candidate) => raw.startsWith(candidate));
+  return prefix ?? raw;
 }
 
 function toFinite(value: unknown, fallback = 0): number {
@@ -214,7 +244,7 @@ function readMenthorqCoverage(nowUtc: DateTime): MenthorqDailyCoverage {
   const uniqueSymbolsToday = Array.from(
     new Set(
       todayRows
-        .map((row) => normalizePair(row.page_symbol || row.symbol_input || row.symbol || ""))
+        .map((row) => normalizeGammaSymbol(row.page_symbol || row.symbol_input || row.symbol || ""))
         .filter(Boolean),
     ),
   ).sort();
@@ -232,6 +262,56 @@ function readMenthorqCoverage(nowUtc: DateTime): MenthorqDailyCoverage {
     rowsToday: todayRows.length,
     uniqueSymbolsToday,
     latestCaptureUtc,
+  };
+}
+
+function readMenthorqPairMap(): Map<string, { base: string | null; quote: string | null; enabled: boolean }> {
+  const csvPath = process.env.PERFORMANCE_MENTHORQ_PAIR_MAP_CSV?.trim()
+    ? path.resolve(process.cwd(), process.env.PERFORMANCE_MENTHORQ_PAIR_MAP_CSV)
+    : path.resolve(process.cwd(), "reports", "bias-gate", "menthorq-gamma-symbol-map-template.csv");
+  const rows = parseCsvObjects(csvPath);
+  const out = new Map<string, { base: string | null; quote: string | null; enabled: boolean }>();
+  for (const row of rows) {
+    const pair = normalizePair(row.pair || "");
+    if (!pair) continue;
+    const base = normalizeGammaSymbol(row.base_gamma_symbol || row.base_symbol || row.base || "") || null;
+    const quote = normalizeGammaSymbol(row.quote_gamma_symbol || row.quote_symbol || row.quote || "") || null;
+    const enabledRaw = String(row.enabled ?? "1").trim().toLowerCase();
+    const enabled = !(enabledRaw === "0" || enabledRaw === "false" || enabledRaw === "no" || enabledRaw === "off");
+    out.set(pair, { base, quote, enabled });
+  }
+  return out;
+}
+
+function resolveProfile(): TradingProfile {
+  const profileId = String(process.env.DAILY_SELECTOR_PROFILE ?? "bitget_mt5")
+    .trim()
+    .toLowerCase();
+
+  if (profileId !== "bitget_mt5") {
+    return {
+      id: "default",
+      label: "Default (all assets)",
+      maxLeverageByAsset: { fx: 50, commodities: 20, crypto: 20, indices: 20 },
+      isTradable: (signal) =>
+        signal.direction !== "NEUTRAL" &&
+        ["fx", "commodities", "crypto", "indices"].includes(signal.assetClass),
+    };
+  }
+
+  const allowedCommodityPairs = new Set(["XAUUSD", "XAGUSD"]);
+  const allowedCryptoPairs = new Set(["BTCUSD", "ETHUSD"]);
+  return {
+    id: "bitget_mt5",
+    label: "Bitget MT5 (FX + Metals + BTC/ETH, no indices)",
+    maxLeverageByAsset: { fx: 500, commodities: 100, crypto: 75 },
+    isTradable: (signal) => {
+      if (signal.direction !== "LONG" && signal.direction !== "SHORT") return false;
+      if (signal.assetClass === "fx") return true;
+      if (signal.assetClass === "commodities") return allowedCommodityPairs.has(normalizePair(signal.pair));
+      if (signal.assetClass === "crypto") return allowedCryptoPairs.has(normalizePair(signal.pair));
+      return false;
+    },
   };
 }
 
@@ -253,10 +333,18 @@ async function loadPayload(): Promise<GatedSetupsPayload> {
 async function main() {
   loadEnvConfig(process.cwd());
   const nowUtc = DateTime.utc();
+  const profile = resolveProfile();
+  const strictOverlay =
+    String(process.env.DAILY_SELECTOR_STRICT_OVERLAY ?? "true").trim().toLowerCase() !== "false";
   const payload = await loadPayload();
   const coverage = readMenthorqCoverage(nowUtc);
+  const menthorqPairMap = readMenthorqPairMap();
+  const symbolsToday = new Set(coverage.uniqueSymbolsToday.map((symbol) => normalizeGammaSymbol(symbol)));
 
-  const candidates = payload.signals
+  const tradableSignals = payload.signals.filter((signal) => profile.isTradable(signal));
+  const excludedSignals = payload.signals.filter((signal) => !profile.isTradable(signal));
+
+  let candidates = tradableSignals
     .filter((signal) => signal.gateDecision === "PASS")
     .filter((signal) => signal.direction === "LONG" || signal.direction === "SHORT")
     .map((signal) => {
@@ -265,22 +353,73 @@ async function main() {
     })
     .sort((a, b) => b.score - a.score);
 
+  const droppedByStrictOverlay: Array<{ pair: string; reason: string }> = [];
+  if (strictOverlay) {
+    candidates = candidates.filter((entry) => {
+      const source = String(entry.signal.gateDecisionSource ?? "");
+      if (entry.signal.assetClass === "crypto") {
+        const ok = source === "CRYPTO_LIQUIDATION_LIVE";
+        if (!ok) {
+          droppedByStrictOverlay.push({
+            pair: entry.signal.pair,
+            reason: "requires_live_liquidation_overlay",
+          });
+        }
+        return ok;
+      }
+
+      const map = menthorqPairMap.get(normalizePair(entry.signal.pair));
+      if (!map || !map.enabled) {
+        droppedByStrictOverlay.push({
+          pair: entry.signal.pair,
+          reason: "menthorq_pair_not_mapped_or_disabled",
+        });
+        return false;
+      }
+
+      const required = [map.base, map.quote].filter((value): value is string => Boolean(value));
+      const missing = required.filter((symbol) => !symbolsToday.has(symbol));
+      if (missing.length > 0) {
+        droppedByStrictOverlay.push({
+          pair: entry.signal.pair,
+          reason: `missing_menthorq_symbols:${missing.join("+")}`,
+        });
+        return false;
+      }
+
+      const ok = source.includes("MENTHORQ");
+      if (!ok) {
+        droppedByStrictOverlay.push({
+          pair: entry.signal.pair,
+          reason: "requires_menthorq_overlay_source",
+        });
+      }
+      return ok;
+    });
+  }
+
   const top = candidates[0] ?? null;
-  const fxCandidates = candidates.filter((entry) => entry.signal.assetClass === "fx");
-  const missingFxGamma = fxCandidates.filter(
-    (entry) => !String(entry.signal.gateDecisionSource ?? "").includes("MENTHORQ"),
-  );
-  const coverageOk = coverage.rowsToday >= 4 && coverage.uniqueSymbolsToday.length >= 4;
 
   console.log(`\n=== Daily Max Conviction Selector (${nowUtc.toISO()}) ===`);
+  console.log(`Profile: ${profile.label} (${profile.id})`);
+  console.log(`Strict overlay mode: ${strictOverlay ? "ON" : "OFF"}`);
   console.log(`Board source: ${payload.sourcePath}`);
   console.log(`Current week: ${payload.currentWeekOpenUtc ?? "n/a"}`);
   console.log(
     `MenthorQ coverage today: rows=${coverage.rowsToday}, symbols=${coverage.uniqueSymbolsToday.join(",") || "none"}, latest=${coverage.latestCaptureUtc ?? "n/a"}`,
   );
+  console.log(`Tradable universe this run: ${tradableSignals.length}/${payload.signals.length} setups`);
+  if (excludedSignals.length > 0) {
+    console.log(
+      `Excluded by profile: ${excludedSignals.map((signal) => `${signal.pair}:${signal.assetClass}`).join(", ")}`,
+    );
+  }
 
   if (candidates.length === 0) {
-    console.log("No PASS candidates available.");
+    console.log("No tradable PASS candidates met strict conditions.");
+    if (droppedByStrictOverlay.length > 0) {
+      console.table(droppedByStrictOverlay);
+    }
     process.exit(0);
   }
 
@@ -292,6 +431,7 @@ async function main() {
       direction: entry.signal.direction,
       tier: entry.signal.tier,
       source: entry.signal.gateDecisionSource ?? "WEEKLY_BOARD",
+      maxLev: profile.maxLeverageByAsset[entry.signal.assetClass] ?? null,
       score: Number(entry.score.toFixed(2)),
       consistency8w: Number((entry.signal.consistency8w * 100).toFixed(0)),
       actionable8w: entry.signal.actionable8w,
@@ -304,22 +444,15 @@ async function main() {
 
   console.log("\nTop pick:");
   console.log(
-    `${top.signal.pair} ${top.signal.direction} | score=${top.score.toFixed(2)} | tier=${top.signal.tier} | source=${top.signal.gateDecisionSource ?? "WEEKLY_BOARD"}`,
+    `${top.signal.pair} ${top.signal.direction} | score=${top.score.toFixed(2)} | tier=${top.signal.tier} | source=${top.signal.gateDecisionSource ?? "WEEKLY_BOARD"} | maxLev=${profile.maxLeverageByAsset[top.signal.assetClass] ?? "n/a"}x`,
   );
   console.log(`Reasons: ${top.signal.gateReasons.join(", ") || "n/a"}`);
   if (top.notes.length > 0) {
     console.log(`Scoring notes: ${top.notes.join(" | ")}`);
   }
-
-  if (!coverageOk) {
-    console.log(
-      "\nDATA WARNING: MenthorQ daily pull is incomplete for a 7pm max-size decision. Refresh capture before sizing up.",
-    );
-  }
-  if (missingFxGamma.length > 0) {
-    console.log(
-      `FX WARNING: ${missingFxGamma.length} FX PASS candidates lack MenthorQ overlay (source still weekly board).`,
-    );
+  if (droppedByStrictOverlay.length > 0) {
+    console.log("\nDropped by strict overlay checks:");
+    console.table(droppedByStrictOverlay);
   }
 }
 
@@ -327,4 +460,3 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });
-
