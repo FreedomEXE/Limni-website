@@ -19,6 +19,8 @@ type GatedSetupSignal = {
   actionable8w: number;
   flips8w: number;
   consistency8w: number;
+  gateDecisionSource?: string;
+  gateAsOfUtc?: string | null;
 };
 
 type GatedSetupsPayload = {
@@ -180,6 +182,7 @@ export default function PerformanceGatedSetups() {
                   <th className="px-3 py-2">Dir</th>
                   <th className="px-3 py-2">Tier</th>
                   <th className="px-3 py-2">Gate</th>
+                  <th className="px-3 py-2">Source</th>
                   <th className="px-3 py-2">Reasons</th>
                   <th className="px-3 py-2">Consistency</th>
                   <th className="px-3 py-2">8W Active</th>
@@ -199,6 +202,9 @@ export default function PerformanceGatedSetups() {
                       <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${decisionClass(row.gateDecision)}`}>
                         {row.gateDecision}
                       </span>
+                    </td>
+                    <td className="max-w-[220px] truncate px-3 py-2 text-[var(--foreground)]/80" title={row.gateAsOfUtc ?? ""}>
+                      {row.gateDecisionSource ?? "WEEKLY_BOARD"}
                     </td>
                     <td className="max-w-[360px] truncate px-3 py-2 text-[var(--foreground)]/80" title={row.gateReasons.join(", ")}>
                       {row.gateReasons.length > 0 ? row.gateReasons.join(", ") : "—"}
