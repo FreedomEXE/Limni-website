@@ -6,13 +6,15 @@ export type PerformanceView =
   | "simulation"
   | "basket"
   | "research"
-  | "notes";
+  | "notes"
+  | "setups";
 
 export function resolvePerformanceView(value: string | null | undefined): PerformanceView {
   return value === "simulation" ||
     value === "basket" ||
     value === "research" ||
-    value === "notes"
+    value === "notes" ||
+    value === "setups"
     ? value
     : "summary";
 }

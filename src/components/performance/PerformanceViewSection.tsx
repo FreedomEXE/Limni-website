@@ -8,6 +8,7 @@ import PerformanceGrid from "@/components/performance/PerformanceGrid";
 import PerformanceViewCards, {
   PERFORMANCE_VIEW_CARDS,
 } from "@/components/performance/PerformanceViewCards";
+import PerformanceGatedSetups from "@/components/performance/PerformanceGatedSetups";
 import type { KataraktiMarket, KataraktiVariant } from "@/lib/performance/kataraktiHistory";
 import {
   resolveActiveStrategyEntry,
@@ -267,24 +268,28 @@ export default function PerformanceViewSection({
         onViewChange={setView}
         views={PERFORMANCE_VIEW_CARDS}
       />
-      <PerformanceGrid
-        {...baseGridProps}
-        combined={filteredCombined}
-        perAsset={filteredPerAsset}
-        view={view}
-        comparisonOverlay={
-          activeOverlay
-            ? {
-                mode: activeComparisonMode,
-                standard: activeOverlay.standard,
-                gated: activeOverlay.gated,
-                gateAvailable: activeOverlay.gateAvailable,
-                delta: activeOverlay.delta,
-                gateActivity: activeOverlay.gateActivity,
-              }
-            : undefined
-        }
-      />
+      {view === "setups" ? (
+        <PerformanceGatedSetups />
+      ) : (
+        <PerformanceGrid
+          {...baseGridProps}
+          combined={filteredCombined}
+          perAsset={filteredPerAsset}
+          view={view}
+          comparisonOverlay={
+            activeOverlay
+              ? {
+                  mode: activeComparisonMode,
+                  standard: activeOverlay.standard,
+                  gated: activeOverlay.gated,
+                  gateAvailable: activeOverlay.gateAvailable,
+                  delta: activeOverlay.delta,
+                  gateActivity: activeOverlay.gateActivity,
+                }
+              : undefined
+          }
+        />
+      )}
     </>
   );
 }

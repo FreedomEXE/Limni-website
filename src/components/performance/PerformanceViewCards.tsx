@@ -14,6 +14,7 @@ export const PERFORMANCE_VIEW_CARDS: Array<ViewCardDefinition<PerformanceView>> 
   { id: "basket", label: "Basket", description: "See every pair, direction, and return." },
   { id: "research", label: "Research", description: "Diagnostics and pair-level distribution." },
   { id: "notes", label: "Notes", description: "Weekly observations and takeaways." },
+  { id: "setups", label: "Gated Setups", description: "Current-week gate decisions and reasons." },
 ];
 
 type PerformanceViewCardsProps<T extends string> = {

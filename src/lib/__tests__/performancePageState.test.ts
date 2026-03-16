@@ -9,6 +9,7 @@ describe("performance page state helpers", () => {
   test("resolves performance view safely", () => {
     expect(resolvePerformanceView("summary")).toBe("summary");
     expect(resolvePerformanceView("simulation")).toBe("simulation");
+    expect(resolvePerformanceView("setups")).toBe("setups");
     expect(resolvePerformanceView("unknown")).toBe("summary");
     expect(resolvePerformanceView(null)).toBe("summary");
   });
