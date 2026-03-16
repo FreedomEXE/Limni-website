@@ -54,6 +54,7 @@ type ComparisonSourceMeta = {
     | "strategy_backtest_db"
     | "performance_snapshots"
     | "tiered_derived"
+    | "strategy_comparison_report"
     | "katarakti_snapshot"
     | "unavailable";
   sourcePath: string;
@@ -193,6 +194,9 @@ function buildSourceLabel(source: ComparisonSourceMeta | null | undefined) {
   }
   if (source.mode === "tiered_derived") {
     return "Source: derived from performance snapshots (synthetic aggregate)";
+  }
+  if (source.mode === "strategy_comparison_report") {
+    return "Source: strategy comparison baseline (8-week net curve)";
   }
   if (source.mode === "katarakti_snapshot") {
     if (source.fallbackLabel && source.fallbackLabel.trim().length > 0) {

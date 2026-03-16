@@ -70,7 +70,13 @@ type ComparisonMetrics = {
 
 type SnapshotRow = Awaited<ReturnType<typeof readAllPerformanceSnapshots>>[number];
 type ComparisonSourceMeta = {
-  mode: "strategy_backtest_db" | "performance_snapshots" | "tiered_derived" | "katarakti_snapshot" | "unavailable";
+  mode:
+    | "strategy_backtest_db"
+    | "performance_snapshots"
+    | "tiered_derived"
+    | "strategy_comparison_report"
+    | "katarakti_snapshot"
+    | "unavailable";
   sourcePath: string;
   fallbackLabel?: string | null;
   fallbackToAllTime?: boolean;
@@ -1302,6 +1308,75 @@ export async function buildPerformanceComparisonPayload(
         },
       },
     };
+    const gating = requestedWeek === null
+      ? readGateOverlayPayload(annualizeSharpe)
+      : buildUnavailableGateOverlayPayload();
+
+    const applyGateBaseline = (entryId: string): ComparisonMetrics | null =>
+      gating.available ? (gating.byStrategy[entryId]?.standard ?? null) : null;
+
+    const gateV1 = applyGateBaseline("universal_v1");
+    const gateV2 = applyGateBaseline("universal_v2");
+    const gateV3 = applyGateBaseline("universal_v3");
+    const gateT1 = applyGateBaseline("tiered_v1");
+    const gateT2 = applyGateBaseline("tiered_v2");
+    const gateT3 = applyGateBaseline("tiered_v3");
+
+    if (gateV1) {
+      universal.v1 = gateV1;
+      sources.universal.v1 = {
+        mode: "strategy_comparison_report",
+        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
+        fallbackToAllTime: false,
+        fallbackLabel: "8-week baseline from strategy gate comparison report",
+      };
+    }
+    if (gateV2) {
+      universal.v2 = gateV2;
+      sources.universal.v2 = {
+        mode: "strategy_comparison_report",
+        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
+        fallbackToAllTime: false,
+        fallbackLabel: "8-week baseline from strategy gate comparison report",
+      };
+    }
+    if (gateV3) {
+      universal.v3 = gateV3;
+      sources.universal.v3 = {
+        mode: "strategy_comparison_report",
+        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
+        fallbackToAllTime: false,
+        fallbackLabel: "8-week baseline from strategy gate comparison report",
+      };
+    }
+    if (gateT1) {
+      tiered.v1 = gateT1;
+      sources.tiered.v1 = {
+        mode: "strategy_comparison_report",
+        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
+        fallbackToAllTime: false,
+        fallbackLabel: "8-week baseline from strategy gate comparison report",
+      };
+    }
+    if (gateT2) {
+      tiered.v2 = gateT2;
+      sources.tiered.v2 = {
+        mode: "strategy_comparison_report",
+        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
+        fallbackToAllTime: false,
+        fallbackLabel: "8-week baseline from strategy gate comparison report",
+      };
+    }
+    if (gateT3) {
+      tiered.v3 = gateT3;
+      sources.tiered.v3 = {
+        mode: "strategy_comparison_report",
+        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
+        fallbackToAllTime: false,
+        fallbackLabel: "8-week baseline from strategy gate comparison report",
+      };
+    }
+
     const strategies = buildStrategiesMap({
       entries: listPerformanceStrategyEntries(),
       emptyMetrics: emptyKataraktiMetrics,
@@ -1312,15 +1387,12 @@ export async function buildPerformanceComparisonPayload(
       tieredSources: sources.tiered,
       kataraktiSources: sources.katarakti,
     });
-    const gating = requestedWeek === null
-      ? readGateOverlayPayload(annualizeSharpe)
-      : buildUnavailableGateOverlayPayload();
 
     return {
       strategies,
-      v1: v1Metrics,
-      v2: v2Metrics,
-      v3: v3Metrics,
+      v1: universal.v1,
+      v2: universal.v2,
+      v3: universal.v3,
       universal,
       tiered,
       katarakti,
