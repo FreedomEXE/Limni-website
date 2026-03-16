@@ -141,6 +141,29 @@ function normalizePair(value: unknown): string {
   return String(value ?? "").trim().toUpperCase();
 }
 
+const GAMMA_SYMBOL_PREFIXES = [
+  "6E",
+  "6B",
+  "6J",
+  "6A",
+  "6S",
+  "6C",
+  "6N",
+  "DX",
+  "ES",
+  "NQ",
+  "GC",
+  "SI",
+  "CL",
+] as const;
+
+function normalizeGammaSymbol(value: unknown): string {
+  const raw = normalizePair(value).replace(/[^A-Z0-9]/g, "");
+  if (!raw) return "";
+  const prefix = GAMMA_SYMBOL_PREFIXES.find((candidate) => raw.startsWith(candidate));
+  return prefix ?? raw;
+}
+
 function normalizeDecision(value: unknown): GateDecision {
   const normalized = String(value ?? "").trim().toUpperCase();
   if (normalized === "REDUCE") {
@@ -346,7 +369,7 @@ function resolveGammaSnapshotForDate(
   symbol: string,
   targetDateIso: string,
 ): GammaSnapshotEntry | null {
-  const series = context.bySymbol.get(normalizePair(symbol));
+  const series = context.bySymbol.get(normalizeGammaSymbol(symbol));
   if (!series || series.length === 0) return null;
 
   const targetMs = Date.parse(`${targetDateIso}T00:00:00.000Z`);
@@ -386,7 +409,7 @@ function buildGammaContext(): GammaContext | null {
   const bySymbol = new Map<string, GammaSnapshotEntry[]>();
   for (const row of snapshotRows) {
     const dateIso = String(row.date ?? "").trim();
-    const symbol = normalizePair(row.page_symbol || row.symbol_input || row.symbol || "");
+    const symbol = normalizeGammaSymbol(row.page_symbol || row.symbol_input || row.symbol || "");
     if (!symbol || !dateIso) continue;
     const dayMs = Date.parse(`${dateIso}T00:00:00.000Z`);
     if (!Number.isFinite(dayMs)) continue;
@@ -405,8 +428,8 @@ function buildGammaContext(): GammaContext | null {
   const pairMap = new Map<string, GammaPairMapEntry>();
   for (const row of mapRows) {
     const pair = normalizePair(row.pair || "");
-    const base = normalizePair(row.base_gamma_symbol || row.base_symbol || row.base || "");
-    const quote = normalizePair(row.quote_gamma_symbol || row.quote_symbol || row.quote || "");
+    const base = normalizeGammaSymbol(row.base_gamma_symbol || row.base_symbol || row.base || "");
+    const quote = normalizeGammaSymbol(row.quote_gamma_symbol || row.quote_symbol || row.quote || "");
     const enabledRaw = String(row.enabled ?? "1").trim().toLowerCase();
     const enabled = !(enabledRaw === "0" || enabledRaw === "false" || enabledRaw === "no");
     if (!pair || (!base && !quote)) continue;
