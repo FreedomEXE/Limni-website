@@ -16,6 +16,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import type { ModelPerformance, PerformanceModel } from "@/lib/performanceLab";
 import PerformanceModal from "@/components/performance/PerformanceModal";
+import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown";
 
 type Section = {
   id: string;
@@ -58,6 +59,42 @@ type PerformanceGridProps = {
     trades: number;
   };
   showAllTime?: boolean;
+  comparisonOverlay?: {
+    mode: "standard" | "gated";
+    standard: {
+      totalReturn: number;
+      winRate: number;
+      sharpe: number;
+      maxDrawdown: number | null;
+      profitFactor: number | null;
+      tradeWinRate: number;
+      avgWeekly: number;
+      trades: number;
+    };
+    gated: {
+      totalReturn: number;
+      winRate: number;
+      sharpe: number;
+      maxDrawdown: number | null;
+      profitFactor: number | null;
+      tradeWinRate: number;
+      avgWeekly: number;
+      trades: number;
+    } | null;
+    gateAvailable: boolean;
+    delta: {
+      totalReturnPct: number;
+      maxDrawdownPct: number;
+      winRatePct: number;
+      tradeWinRatePct: number;
+      trades: number;
+    } | null;
+    gateActivity: {
+      skippedTrades: number;
+      reducedTrades: number;
+      passedOrNoDataTrades: number;
+    } | null;
+  };
 };
 
 const MODEL_ORDER: PerformanceModel[] = [
@@ -105,11 +142,7 @@ function computeMaxDrawdownFromReturns(returns: Array<{ pair: string; percent: n
   const weeklyLikeCount = returns.filter((item) => /^week of\b/i.test(item.pair.trim())).length;
   const treatAsWeeklySeries = weeklyLikeCount >= Math.ceil(returns.length * 0.6);
   if (treatAsWeeklySeries) {
-    const worstWeekLoss = returns.reduce((maxLoss, item) => {
-      if (!Number.isFinite(item.percent) || item.percent >= 0) return maxLoss;
-      return Math.max(maxLoss, Math.abs(item.percent));
-    }, 0);
-    return worstWeekLoss;
+    return computeMaxDrawdownFromPercentReturns(returns.map((item) => item.percent));
   }
   let equity = 100;
   let peak = equity;
@@ -561,6 +594,7 @@ export default function PerformanceGrid({
   calibration,
   view = "summary",
   showAllTime = true,
+  comparisonOverlay,
 }: PerformanceGridProps) {
   const sections = useMemo(() => {
     return [combined, ...perAsset].map((section) => ({
@@ -588,6 +622,10 @@ export default function PerformanceGrid({
       : allTime.perAsset[resolvedSectionId] ?? allTime.combined;
   const selectedSection =
     sections.find((section) => section.id === resolvedSectionId) ?? sections[0];
+  const selectedOverlayMetrics =
+    comparisonOverlay?.mode === "gated" && comparisonOverlay.gateAvailable && comparisonOverlay.gated
+      ? comparisonOverlay.gated
+      : comparisonOverlay?.standard ?? null;
 
   return (
     <>
@@ -613,6 +651,67 @@ export default function PerformanceGrid({
             ))}
           </div>
         </div>
+        {comparisonOverlay && resolvedSectionId === "combined" ? (
+          <div className="mb-4 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]">
+                Strategy Comparison
+              </div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-strong)]">
+                Mode: {comparisonOverlay.mode}
+              </div>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <div
+                className={`rounded-lg border px-3 py-2 ${
+                  comparisonOverlay.mode === "standard"
+                    ? "border-[var(--accent)]/40 bg-[var(--accent)]/10"
+                    : "border-[var(--panel-border)] bg-[var(--panel)]"
+                }`}
+              >
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Standard</div>
+                <div className="mt-1 text-xs text-[var(--foreground)]">
+                  Return {formatPercent(comparisonOverlay.standard.totalReturn)} • DD {comparisonOverlay.standard.maxDrawdown !== null ? `${comparisonOverlay.standard.maxDrawdown.toFixed(2)}%` : "—"} • Win {comparisonOverlay.standard.winRate.toFixed(1)}%
+                </div>
+                <div className="text-xs text-[color:var(--muted)]">
+                  Sharpe {comparisonOverlay.standard.sharpe.toFixed(2)} • PF {formatProfitFactor(comparisonOverlay.standard.profitFactor)}
+                </div>
+              </div>
+              <div
+                className={`rounded-lg border px-3 py-2 ${
+                  comparisonOverlay.mode === "gated" && comparisonOverlay.gateAvailable
+                    ? "border-[var(--accent)]/40 bg-[var(--accent)]/10"
+                    : "border-[var(--panel-border)] bg-[var(--panel)]"
+                }`}
+              >
+                <div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Gated</div>
+                {comparisonOverlay.gateAvailable && comparisonOverlay.gated ? (
+                  <>
+                    <div className="mt-1 text-xs text-[var(--foreground)]">
+                      Return {formatPercent(comparisonOverlay.gated.totalReturn)} • DD {comparisonOverlay.gated.maxDrawdown !== null ? `${comparisonOverlay.gated.maxDrawdown.toFixed(2)}%` : "—"} • Win {comparisonOverlay.gated.winRate.toFixed(1)}%
+                    </div>
+                    <div className="text-xs text-[color:var(--muted)]">
+                      Sharpe {comparisonOverlay.gated.sharpe.toFixed(2)} • PF {formatProfitFactor(comparisonOverlay.gated.profitFactor)}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-1 text-xs text-[color:var(--muted)]">No gated overlay for this selection.</div>
+                )}
+              </div>
+            </div>
+            {comparisonOverlay.gateAvailable && comparisonOverlay.delta ? (
+              <div className="mt-2 text-xs text-[color:var(--muted)]">
+                Delta: Return {formatPercent(comparisonOverlay.delta.totalReturnPct)} • DD {comparisonOverlay.delta.maxDrawdownPct.toFixed(2)}% • Win {comparisonOverlay.delta.winRatePct.toFixed(1)}%
+                {comparisonOverlay.gateActivity ? ` • Skip ${comparisonOverlay.gateActivity.skippedTrades} / Reduce ${comparisonOverlay.gateActivity.reducedTrades}` : ""}
+              </div>
+            ) : null}
+            {selectedOverlayMetrics ? (
+              <div className="mt-1 text-xs text-[color:var(--muted)]">
+                Active: {selectedOverlayMetrics.trades} trades • Trade win {selectedOverlayMetrics.tradeWinRate.toFixed(1)}% • Avg weekly {formatPercent(selectedOverlayMetrics.avgWeekly)}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {sections.map((section) =>
           section.id === selectedSectionId ? (
             <div key={section.id}>

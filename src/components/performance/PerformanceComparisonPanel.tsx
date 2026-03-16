@@ -67,6 +67,33 @@ type StrategyComparisonEntry = {
   source: ComparisonSourceMeta;
 };
 
+type GateOverlayStrategyMetrics = {
+  standard: ComparisonMetrics;
+  gated: ComparisonMetrics;
+  delta: {
+    totalReturnPct: number;
+    maxDrawdownPct: number;
+    winRatePct: number;
+    tradeWinRatePct: number;
+    trades: number;
+  };
+  gateActivity: {
+    skippedTrades: number;
+    reducedTrades: number;
+    passedOrNoDataTrades: number;
+  } | null;
+};
+
+type GateOverlayData = {
+  available: boolean;
+  sourcePath: string | null;
+  generatedUtc: string | null;
+  weeksUsed: number | null;
+  weekOpenUtc: string[];
+  reduceMode: string | null;
+  byStrategy: Record<string, GateOverlayStrategyMetrics>;
+};
+
 type ComparisonData = {
   v1: ComparisonMetrics;
   v2: ComparisonMetrics;
@@ -121,6 +148,7 @@ type ComparisonData = {
       };
     };
   };
+  gating?: GateOverlayData;
   strategies?: Record<string, StrategyComparisonEntry>;
 };
 
@@ -197,6 +225,10 @@ function parseRequestedKataraktiMarket(value: string | null): KataraktiMarket | 
   return undefined;
 }
 
+function parseRequestedStatsView(value: string | null): "standard" | "gated" {
+  return value === "gated" ? "gated" : "standard";
+}
+
 function getMetricsForEntry(data: ComparisonData | null, entry: PerformanceStrategyEntry | null): ComparisonMetrics {
   if (!data || !entry) return EMPTY_METRICS;
   const flat = data.strategies?.[entry.entryId];
@@ -233,6 +265,11 @@ function getSourceForEntry(data: ComparisonData | null, entry: PerformanceStrate
   return null;
 }
 
+function getGateOverlayForEntry(data: ComparisonData | null, entry: PerformanceStrategyEntry | null) {
+  if (!data?.gating?.available || !entry) return null;
+  return data.gating.byStrategy[entry.entryId] ?? null;
+}
+
 function marketLabel(market: KataraktiMarket) {
   return market === "mt5_forex" ? "CFD" : "Crypto Futures";
 }
@@ -254,6 +291,7 @@ export default function PerformanceComparisonPanel() {
   const initialSystemVersion = parseRequestedSystem(searchParams.get("system"));
   const initialVariant = parseRequestedKataraktiVariant(searchParams.get("variant"));
   const initialMarket = parseRequestedKataraktiMarket(searchParams.get("market"));
+  const initialStatsView = parseRequestedStatsView(searchParams.get("stats"));
   const initialKataraktiEntry = resolveActiveStrategyEntry({
     family: "katarakti",
     kataraktiVariant: initialVariant,
@@ -269,6 +307,7 @@ export default function PerformanceComparisonPanel() {
   const [activeKataraktiMarket, setActiveKataraktiMarket] = useState<KataraktiMarket>(
     initialKataraktiEntry?.market ?? "crypto_futures",
   );
+  const [activeStatsView, setActiveStatsView] = useState<"standard" | "gated">(initialStatsView);
 
   useEffect(() => {
     async function fetchData() {
@@ -309,8 +348,25 @@ export default function PerformanceComparisonPanel() {
     kataraktiVariant: activeKataraktiVariant,
     kataraktiMarket: activeKataraktiMarket,
   });
-  const activeMetrics = getMetricsForEntry(data, activeEntry);
-  const activeSourceLabel = buildSourceLabel(getSourceForEntry(data, activeEntry));
+  const hasGateOverlay = Boolean(data?.gating?.available);
+  const gateOverlayForActiveEntry = getGateOverlayForEntry(data, activeEntry);
+  const usingGatedView =
+    activeFamily !== "katarakti"
+    && activeStatsView === "gated"
+    && hasGateOverlay
+    && gateOverlayForActiveEntry !== null;
+  const effectiveStatsView: "standard" | "gated" = usingGatedView ? "gated" : "standard";
+  const activeMetrics = usingGatedView
+    ? gateOverlayForActiveEntry.gated
+    : getMetricsForEntry(data, activeEntry);
+  const baseSourceLabel = buildSourceLabel(getSourceForEntry(data, activeEntry));
+  const activeSourceLabel = usingGatedView
+    ? `Source: gated overlay (${data?.gating?.reduceMode ?? "configured"})`
+    : baseSourceLabel;
+  const gateWindowLabel = usingGatedView && data?.gating
+    ? `${data.gating.weeksUsed ?? activeMetrics.weeks} weeks • ${data.gating.weekOpenUtc.length} anchors`
+    : null;
+  const gateActivity = usingGatedView ? gateOverlayForActiveEntry?.gateActivity ?? null : null;
 
   const hasHistoricalData = listPerformanceStrategyEntries().some(
     (entry) => getMetricsForEntry(data, entry).weeks > 0,
@@ -331,7 +387,10 @@ export default function PerformanceComparisonPanel() {
           family: activeFamily,
           systemVersion: "v1",
         });
-  const baselineMetrics = getMetricsForEntry(data, baselineEntry);
+  const baselineGateOverlay = getGateOverlayForEntry(data, baselineEntry);
+  const baselineMetrics = usingGatedView && baselineGateOverlay
+    ? baselineGateOverlay.gated
+    : getMetricsForEntry(data, baselineEntry);
   const showDelta = Boolean(
     !loading
     && !error
@@ -342,6 +401,10 @@ export default function PerformanceComparisonPanel() {
 
   const setFamily = (next: PerformanceStrategyFamily) => {
     setActiveFamily(next);
+    if (next === "katarakti") {
+      setActiveStatsView("standard");
+      window.dispatchEvent(new CustomEvent("performance-stats-view-change", { detail: "standard" }));
+    }
     const url = new URL(window.location.href);
     url.searchParams.set("style", next);
     if (next === "katarakti") {
@@ -365,6 +428,10 @@ export default function PerformanceComparisonPanel() {
     } else {
       url.searchParams.delete("market");
       url.searchParams.delete("variant");
+      url.searchParams.set("stats", activeStatsView);
+    }
+    if (next === "katarakti") {
+      url.searchParams.delete("stats");
     }
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(new CustomEvent("performance-style-change", { detail: next }));
@@ -375,6 +442,9 @@ export default function PerformanceComparisonPanel() {
     const url = new URL(window.location.href);
     url.searchParams.set("style", activeFamily);
     url.searchParams.set("system", next);
+    if (activeFamily !== "katarakti") {
+      url.searchParams.set("stats", activeStatsView);
+    }
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(new CustomEvent("performance-system-change", { detail: next }));
   };
@@ -393,6 +463,7 @@ export default function PerformanceComparisonPanel() {
     url.searchParams.set("style", "katarakti");
     url.searchParams.set("market", market);
     url.searchParams.set("variant", variant);
+    url.searchParams.delete("stats");
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(
       new CustomEvent<KataraktiSelectionDetail>(
@@ -416,6 +487,7 @@ export default function PerformanceComparisonPanel() {
     url.searchParams.set("style", "katarakti");
     url.searchParams.set("market", market);
     url.searchParams.set("variant", variant);
+    url.searchParams.delete("stats");
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
     window.dispatchEvent(
       new CustomEvent<KataraktiSelectionDetail>(
@@ -423,6 +495,18 @@ export default function PerformanceComparisonPanel() {
         { detail: { market, variant } },
       ),
     );
+  };
+
+  const setStatsView = (next: "standard" | "gated") => {
+    if (activeFamily === "katarakti") return;
+    if (next === "gated" && !hasGateOverlay) return;
+    setActiveStatsView(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("style", activeFamily);
+    url.searchParams.set("system", activeSystemVersion);
+    url.searchParams.set("stats", next);
+    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+    window.dispatchEvent(new CustomEvent("performance-stats-view-change", { detail: next }));
   };
 
   const activeTheme = activeEntry?.theme;
@@ -523,30 +607,57 @@ export default function PerformanceComparisonPanel() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
-          {systemGroups.map((group) => {
-            const version = group.tabId as SystemVersion;
-            const groupEntry = resolveActiveStrategyEntry({
-              family: activeFamily,
-              systemVersion: version,
-            });
-            const isActive = activeSystemVersion === version;
-            const groupTheme = groupEntry?.theme ?? activeTheme;
-            return (
-              <button
-                key={group.tabId}
-                type="button"
-                onClick={() => setSystemVersion(version)}
-                className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-                  isActive
-                    ? groupTheme?.tabActiveClass ?? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                    : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
-                } ${groupTheme?.tabInactiveHoverClass ?? ""}`}
-              >
-                {group.tabLabel}
-              </button>
-            );
-          })}
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            {systemGroups.map((group) => {
+              const version = group.tabId as SystemVersion;
+              const groupEntry = resolveActiveStrategyEntry({
+                family: activeFamily,
+                systemVersion: version,
+              });
+              const isActive = activeSystemVersion === version;
+              const groupTheme = groupEntry?.theme ?? activeTheme;
+              return (
+                <button
+                  key={group.tabId}
+                  type="button"
+                  onClick={() => setSystemVersion(version)}
+                  className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                    isActive
+                      ? groupTheme?.tabActiveClass ?? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                      : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+                  } ${groupTheme?.tabInactiveHoverClass ?? ""}`}
+                >
+                  {group.tabLabel}
+                </button>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setStatsView("standard")}
+              className={`rounded-xl border px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
+                activeStatsView === "standard"
+                  ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+              }`}
+            >
+              Standard
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatsView("gated")}
+              disabled={!hasGateOverlay}
+              className={`rounded-xl border px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.14em] transition ${
+                activeStatsView === "gated" && hasGateOverlay
+                  ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+              } ${!hasGateOverlay ? "cursor-not-allowed opacity-60" : ""}`}
+            >
+              Gated
+            </button>
+          </div>
         </div>
       )}
 
@@ -558,6 +669,11 @@ export default function PerformanceComparisonPanel() {
         <div className={`mb-2 text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
           {activeSourceLabel}
         </div>
+        {usingGatedView && gateWindowLabel ? (
+          <div className={`mb-2 text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
+            Gate Window: {gateWindowLabel}
+          </div>
+        ) : null}
 
         <div className="mb-4 space-y-3">
           <div className="grid grid-cols-2 gap-3 text-[9px] uppercase tracking-[0.15em]">
@@ -696,7 +812,17 @@ export default function PerformanceComparisonPanel() {
             {Math.abs(activeMetrics.totalReturn - baselineMetrics.totalReturn).toFixed(2)}%
           </div>
           <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
-            {(activeEntry?.systemVersion ?? "v2").toUpperCase()} vs V1 Delta
+            {(activeEntry?.systemVersion ?? "v2").toUpperCase()} vs V1 Delta ({effectiveStatsView.toUpperCase()})
+          </div>
+        </div>
+      ) : null}
+      {usingGatedView && gateActivity ? (
+        <div className="rounded-2xl border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-3 py-2 text-center">
+          <div className="text-[9px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
+            Gate Activity
+          </div>
+          <div className="mt-1 text-xs font-semibold text-[var(--foreground)]">
+            Skip {gateActivity.skippedTrades} · Reduce {gateActivity.reducedTrades} · Pass/NoData {gateActivity.passedOrNoDataTrades}
           </div>
         </div>
       ) : null}

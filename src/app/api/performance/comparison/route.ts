@@ -12,6 +12,8 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 import { NextRequest, NextResponse } from "next/server";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { readAllPerformanceSnapshots } from "@/lib/performanceSnapshots";
 import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import { DateTime } from "luxon";
@@ -42,6 +44,7 @@ import type { PairSnapshot } from "@/lib/cotTypes";
 import { readSnapshot } from "@/lib/cotStore";
 import { getPairPerformance } from "@/lib/pricePerformance";
 import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
+import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown";
 
 const V1_MODELS: PerformanceModel[] = PERFORMANCE_V1_MODELS;
 const V2_MODELS: PerformanceModel[] = PERFORMANCE_V2_MODELS;
@@ -76,6 +79,45 @@ type StrategyComparisonEntry = {
   metrics: ComparisonMetrics;
   source: ComparisonSourceMeta;
 };
+
+type GateOverlayStrategyMetrics = {
+  standard: ComparisonMetrics;
+  gated: ComparisonMetrics;
+  delta: {
+    totalReturnPct: number;
+    maxDrawdownPct: number;
+    winRatePct: number;
+    tradeWinRatePct: number;
+    trades: number;
+  };
+  gateActivity: {
+    skippedTrades: number;
+    reducedTrades: number;
+    passedOrNoDataTrades: number;
+  } | null;
+};
+
+type GateOverlayPayload = {
+  available: boolean;
+  sourcePath: string | null;
+  generatedUtc: string | null;
+  weeksUsed: number | null;
+  weekOpenUtc: string[];
+  reduceMode: string | null;
+  byStrategy: Record<string, GateOverlayStrategyMetrics>;
+};
+
+function buildUnavailableGateOverlayPayload(): GateOverlayPayload {
+  return {
+    available: false,
+    sourcePath: null,
+    generatedUtc: null,
+    weeksUsed: null,
+    weekOpenUtc: [],
+    reduceMode: null,
+    byStrategy: {},
+  };
+}
 
 export type PerformanceComparisonPayload = {
   strategies: Record<string, StrategyComparisonEntry>;
@@ -132,6 +174,7 @@ export type PerformanceComparisonPayload = {
       };
     };
   };
+  gating: GateOverlayPayload;
   weeksAnalyzed: number;
 };
 
@@ -303,32 +346,8 @@ function computeProfitFactorFromReturns(returns: number[]): number | null {
   return null;
 }
 
-function computeSeriesMaxDrawdownFromReturns(returns: number[]): number {
-  if (returns.length === 0) return 0;
-  let equity = 100;
-  let peak = equity;
-  let maxDrawdown = 0;
-  for (const value of returns) {
-    equity *= 1 + value / 100;
-    if (equity > peak) {
-      peak = equity;
-      continue;
-    }
-    if (peak <= 0) continue;
-    const drawdown = ((peak - equity) / peak) * 100;
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
-    }
-  }
-  return maxDrawdown;
-}
-
-function computeWorstWeekDrawdownFromWeeklyReturns(returns: number[]): number {
-  if (returns.length === 0) return 0;
-  return returns.reduce((maxLoss, value) => {
-    if (!Number.isFinite(value) || value >= 0) return maxLoss;
-    return Math.max(maxLoss, Math.abs(value));
-  }, 0);
+function computeCumulativeMaxDrawdownFromWeeklyReturns(returns: number[]): number {
+  return computeMaxDrawdownFromPercentReturns(returns);
 }
 
 function buildComparisonMetricsFromWeeklySeries(options: {
@@ -355,7 +374,7 @@ function buildComparisonMetricsFromWeeklySeries(options: {
       options.sharpeFallbackReturns ?? [],
     ),
     avgWeekly,
-    maxDrawdown: options.maxDrawdown ?? computeWorstWeekDrawdownFromWeeklyReturns(options.weekReturns),
+    maxDrawdown: options.maxDrawdown ?? computeCumulativeMaxDrawdownFromWeeklyReturns(options.weekReturns),
     trades: options.trades,
     tradeWinRate,
     avgTrade: options.avgTrade,
@@ -368,8 +387,7 @@ function computeMetrics(
   models: PerformanceModel[],
   selectedWeeks: Set<string>,
 ): ComparisonMetrics {
-  const weekTotals = new Map<string, number>();
-  const weekTradeReturns = new Map<string, number[]>();
+  const weekModelTotals = new Map<string, Map<PerformanceModel, number>>();
   const tradeReturns: number[] = [];
   let fallbackPricedTrades = 0;
   let fallbackEstimatedWins = 0;
@@ -382,17 +400,16 @@ function computeMetrics(
     if (!selectedWeeks.has(weekKey)) {
       continue;
     }
-    const current = weekTotals.get(weekKey) ?? 0;
-    weekTotals.set(weekKey, current + snapshot.percent);
+    const byModel = weekModelTotals.get(weekKey) ?? new Map<PerformanceModel, number>();
+    const modelTotal = byModel.get(snapshot.model) ?? 0;
+    byModel.set(snapshot.model, modelTotal + snapshot.percent);
+    weekModelTotals.set(weekKey, byModel);
     fallbackPricedTrades += Number.isFinite(snapshot.priced) ? snapshot.priced : 0;
     for (const trade of snapshot.returns ?? []) {
       if (!trade || !Number.isFinite(trade.percent)) {
         continue;
       }
       tradeReturns.push(trade.percent);
-      const weekReturns = weekTradeReturns.get(weekKey) ?? [];
-      weekReturns.push(trade.percent);
-      weekTradeReturns.set(weekKey, weekReturns);
     }
     if ((snapshot.returns?.length ?? 0) === 0) {
       const winRate = Number(snapshot.stats?.win_rate);
@@ -402,16 +419,19 @@ function computeMetrics(
     }
   }
 
-  const weekReturns = Array.from(weekTotals.values());
-  const weeklyDrawdown = computeWorstWeekDrawdownFromWeeklyReturns(weekReturns);
-  const worstWeekTradeDrawdown = Array.from(weekTradeReturns.values()).reduce((maxDrawdown, values) => {
-    const weekDrawdown = computeSeriesMaxDrawdownFromReturns(values);
-    return Math.max(maxDrawdown, weekDrawdown);
-  }, 0);
-  const intraWeekDrawdown =
-    selectedWeeks.size === 1 && tradeReturns.length > 0
-      ? computeSeriesMaxDrawdownFromReturns(tradeReturns)
-      : 0;
+  const weekReturns = Array.from(weekModelTotals.entries())
+    .sort(
+      (a, b) =>
+        DateTime.fromISO(a[0], { zone: "utc" }).toMillis() -
+        DateTime.fromISO(b[0], { zone: "utc" }).toMillis(),
+    )
+    .map(([, modelTotals]) => {
+      const participatingModels = models.filter((model) => modelTotals.has(model));
+      const denominator = participatingModels.length > 0 ? participatingModels.length : Math.max(models.length, 1);
+      const summed = Array.from(modelTotals.values()).reduce((sum, value) => sum + value, 0);
+      return summed / denominator;
+    });
+  const weeklyDrawdown = computeCumulativeMaxDrawdownFromWeeklyReturns(weekReturns);
   const trades = tradeReturns.length > 0 ? tradeReturns.length : fallbackPricedTrades;
   const wins =
     tradeReturns.length > 0
@@ -427,12 +447,13 @@ function computeMetrics(
         ? tradeReturns.reduce((sum, value) => sum + value, 0) / tradeReturns.length
         : null,
     profitFactor: tradeReturns.length > 0 ? computeProfitFactorFromReturns(tradeReturns) : null,
-    maxDrawdown: Math.max(weeklyDrawdown, worstWeekTradeDrawdown, intraWeekDrawdown),
+    maxDrawdown: weeklyDrawdown,
   });
 }
 
 function computeMetricsFromWeeklyRows(
   weeklyRows: Array<{
+    week_open_utc: string;
     return_percent: number;
     priced_trades: number;
     wins: number;
@@ -442,26 +463,29 @@ function computeMetricsFromWeeklyRows(
     gross_loss_pct?: number | null;
   }>,
 ): ComparisonMetrics {
-  const weekReturns = weeklyRows.map((row) => row.return_percent);
-  const tradeReturns = weeklyRows.flatMap((row) =>
+  const sortedRows = [...weeklyRows].sort(
+    (a, b) =>
+      DateTime.fromISO(a.week_open_utc, { zone: "utc" }).toMillis() -
+      DateTime.fromISO(b.week_open_utc, { zone: "utc" }).toMillis(),
+  );
+  const weekReturns = sortedRows.map((row) => row.return_percent);
+  const tradeReturns = sortedRows.flatMap((row) =>
     row.trade_returns.filter((value) => Number.isFinite(value)),
   );
   const totalTrades =
     tradeReturns.length > 0
       ? tradeReturns.length
-      : weeklyRows.reduce((sum, row) => sum + row.priced_trades, 0);
+      : sortedRows.reduce((sum, row) => sum + row.priced_trades, 0);
   const wins =
     tradeReturns.length > 0
       ? tradeReturns.filter((value) => value > 0).length
-      : weeklyRows.reduce((sum, row) => sum + row.wins, 0);
+      : sortedRows.reduce((sum, row) => sum + row.wins, 0);
   const totalReturn = weekReturns.reduce((sum, value) => sum + value, 0);
-  const worstWeekDrawdown = computeWorstWeekDrawdownFromWeeklyReturns(weekReturns);
-  const intraWeekDrawdown =
-    weeklyRows.length === 1 && tradeReturns.length > 0
-      ? computeSeriesMaxDrawdownFromReturns(tradeReturns)
-      : 0;
-  const staticMaxDrawdown = weeklyRows.length > 0
-    ? weeklyRows.reduce((max, row) => {
+  const weeklyCurveDrawdown = computeCumulativeMaxDrawdownFromWeeklyReturns(weekReturns);
+  // Week-level curve drawdown is the authoritative portfolio-level DD metric.
+  // Static per-week DD from legacy rows can be over-counted when basket legs offset.
+  const staticMaxDrawdown = sortedRows.length > 0
+    ? sortedRows.reduce((max, row) => {
         const value =
           typeof row.week_max_drawdown === "number" && Number.isFinite(row.week_max_drawdown)
             ? row.week_max_drawdown
@@ -469,12 +493,12 @@ function computeMetricsFromWeeklyRows(
         return Math.max(max, value);
       }, 0)
     : 0;
-  const maxDrawdown = Math.max(worstWeekDrawdown, staticMaxDrawdown, intraWeekDrawdown);
-  const grossProfitPct = weeklyRows.reduce(
+  const maxDrawdown = weekReturns.length > 0 ? weeklyCurveDrawdown : staticMaxDrawdown;
+  const grossProfitPct = sortedRows.reduce(
     (sum, row) => sum + (Number.isFinite(row.gross_profit_pct) ? (row.gross_profit_pct as number) : 0),
     0,
   );
-  const grossLossPct = weeklyRows.reduce(
+  const grossLossPct = sortedRows.reduce(
     (sum, row) => sum + (Number.isFinite(row.gross_loss_pct) ? (row.gross_loss_pct as number) : 0),
     0,
   );
@@ -521,6 +545,185 @@ function finalizeComparisonMetrics(
     sharpeAnnualized: options.annualizeSharpe,
     profitFactor: profitFactorInfinite ? null : metrics.profitFactor,
     profitFactorInfinite,
+  };
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toInteger(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.trunc(parsed));
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function buildMetricsFromGateReportMode(options: {
+  modeRecord: Record<string, unknown>;
+  weeklyReturns: number[];
+  annualizeSharpe: boolean;
+}): ComparisonMetrics {
+  const totalReturn =
+    toFiniteNumber(options.modeRecord.totalReturn) ??
+    options.weeklyReturns.reduce((sum, value) => sum + value, 0);
+  const weeks =
+    toInteger(options.modeRecord.weeks) || options.weeklyReturns.length;
+  const winRate =
+    toFiniteNumber(options.modeRecord.winRatePct) ??
+    (weeks > 0
+      ? (options.weeklyReturns.filter((value) => value > 0).length / weeks) * 100
+      : 0);
+  const avgWeekly =
+    toFiniteNumber(options.modeRecord.avgWeeklyPct) ??
+    (weeks > 0 ? totalReturn / weeks : 0);
+  const maxDrawdown =
+    toFiniteNumber(options.modeRecord.maxDrawdownPct) ??
+    computeCumulativeMaxDrawdownFromWeeklyReturns(options.weeklyReturns);
+  const trades = toInteger(options.modeRecord.trades);
+  const tradeWinRate = toFiniteNumber(options.modeRecord.tradeWinRatePct) ?? 0;
+
+  const rawMetrics: ComparisonMetrics = {
+    totalReturn,
+    weeks,
+    winRate,
+    sharpe: computeSharpeWithSingleWeekFallback(options.weeklyReturns, []),
+    avgWeekly,
+    maxDrawdown,
+    trades,
+    tradeWinRate,
+    avgTrade: null,
+    profitFactor: computeProfitFactorFromReturns(options.weeklyReturns),
+  };
+
+  return finalizeComparisonMetrics(rawMetrics, {
+    annualizeSharpe: options.annualizeSharpe,
+  });
+}
+
+function readGateOverlayPayload(annualizeSharpe: boolean): GateOverlayPayload {
+  const envPath = process.env.PERFORMANCE_GATE_COMPARISON_PATH?.trim();
+  const candidates = [
+    envPath ? path.resolve(process.cwd(), envPath) : null,
+    path.resolve(process.cwd(), "reports", "bias-gate", "strategy-comparison-latest.json"),
+    path.resolve(process.cwd(), "reports", "bias-gate", "strategy-comparison-standard-reduce.json"),
+  ].filter((value): value is string => Boolean(value));
+
+  let selectedPath: string | null = null;
+  let payloadRaw: Record<string, unknown> | null = null;
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(candidate, "utf8")) as Record<string, unknown>;
+      if (Array.isArray(parsed.comparisons)) {
+        selectedPath = candidate;
+        payloadRaw = parsed;
+        break;
+      }
+    } catch {
+      // Ignore parse errors and continue candidate probing.
+    }
+  }
+
+  if (!payloadRaw || !selectedPath) {
+    return buildUnavailableGateOverlayPayload();
+  }
+
+  const comparisons = asArray(payloadRaw.comparisons);
+  const byStrategy: Record<string, GateOverlayStrategyMetrics> = {};
+
+  for (const raw of comparisons) {
+    const row = asRecord(raw);
+    const strategy = String(row.strategy ?? "").trim();
+    if (!strategy) continue;
+
+    const baseline = asRecord(row.baseline);
+    const gated = asRecord(row.gated);
+    const weekly = asArray(row.weekly);
+    const baselineWeeklyReturns = weekly
+      .map((item) => toFiniteNumber(asRecord(item).baselineReturn))
+      .filter((value): value is number => value !== null);
+    const gatedWeeklyReturns = weekly
+      .map((item) => toFiniteNumber(asRecord(item).gatedReturn))
+      .filter((value): value is number => value !== null);
+
+    const standardMetrics = buildMetricsFromGateReportMode({
+      modeRecord: baseline,
+      weeklyReturns: baselineWeeklyReturns,
+      annualizeSharpe,
+    });
+    const gatedMetrics = buildMetricsFromGateReportMode({
+      modeRecord: gated,
+      weeklyReturns: gatedWeeklyReturns,
+      annualizeSharpe,
+    });
+
+    const deltaRaw = asRecord(row.delta);
+    const gateActivityRaw = asRecord(row.gateActivity);
+    const gateActivity =
+      Object.keys(gateActivityRaw).length > 0
+        ? {
+            skippedTrades: toInteger(gateActivityRaw.skippedTrades),
+            reducedTrades: toInteger(gateActivityRaw.reducedTrades),
+            passedOrNoDataTrades: toInteger(gateActivityRaw.passedOrNoDataTrades),
+          }
+        : null;
+    const deltaMaxDrawdown =
+      toFiniteNumber(deltaRaw.maxDrawdownPct)
+      ?? (gatedMetrics.maxDrawdown !== null && standardMetrics.maxDrawdown !== null
+        ? gatedMetrics.maxDrawdown - standardMetrics.maxDrawdown
+        : 0);
+
+    byStrategy[strategy] = {
+      standard: standardMetrics,
+      gated: gatedMetrics,
+      delta: {
+        totalReturnPct:
+          toFiniteNumber(deltaRaw.totalReturnPct) ??
+          gatedMetrics.totalReturn - standardMetrics.totalReturn,
+        maxDrawdownPct: deltaMaxDrawdown,
+        winRatePct:
+          toFiniteNumber(deltaRaw.winRatePct) ??
+          gatedMetrics.winRate - standardMetrics.winRate,
+        tradeWinRatePct:
+          toFiniteNumber(deltaRaw.tradeWinRatePct) ??
+          gatedMetrics.tradeWinRate - standardMetrics.tradeWinRate,
+        trades:
+          toFiniteNumber(deltaRaw.trades) ??
+          gatedMetrics.trades - standardMetrics.trades,
+      },
+      gateActivity,
+    };
+  }
+
+  const scope = asRecord(payloadRaw.scope);
+  const weekOpenUtc = asArray(scope.week_open_utc).map((item) => String(item)).filter(Boolean);
+  const weeksUsed = toFiniteNumber(scope.weeks_used);
+  const assumptions = asRecord(payloadRaw.assumptions);
+  const reduceModeRaw = assumptions.reduce_mode;
+  const reduceMode = typeof reduceModeRaw === "string" ? reduceModeRaw : null;
+  const generatedRaw = payloadRaw.generated_utc;
+  const generatedUtc = typeof generatedRaw === "string" ? generatedRaw : null;
+
+  return {
+    available: Object.keys(byStrategy).length > 0,
+    sourcePath: selectedPath,
+    generatedUtc,
+    weeksUsed: weeksUsed === null ? null : Math.trunc(weeksUsed),
+    weekOpenUtc,
+    reduceMode,
+    byStrategy,
   };
 }
 
@@ -841,6 +1044,7 @@ export async function buildPerformanceComparisonPayload(
     const tiered = {
       v1: finalizeComparisonMetrics(computeMetricsFromWeeklyRows(
         tieredWeeklyBySystem.v1.map((row) => ({
+          week_open_utc: row.week_open_utc,
           return_percent: row.summary.return_percent,
           priced_trades: row.summary.priced_trades,
           wins: row.summary.wins,
@@ -849,20 +1053,12 @@ export async function buildPerformanceComparisonPayload(
               .map((entry) => entry.percent)
               .filter((value) => Number.isFinite(value)),
           ),
-          week_max_drawdown: row.combined.reduce((max, model) => {
-            const modelMax = (model.returns ?? []).reduce(
-              (innerMax, entry) =>
-                Number.isFinite(entry.percent) && entry.percent < 0
-                  ? Math.max(innerMax, Math.abs(entry.percent))
-                  : innerMax,
-              0,
-            );
-            return Math.max(max, modelMax);
-          }, 0),
+          week_max_drawdown: null,
         })),
       ), { annualizeSharpe }),
       v2: finalizeComparisonMetrics(computeMetricsFromWeeklyRows(
         tieredWeeklyBySystem.v2.map((row) => ({
+          week_open_utc: row.week_open_utc,
           return_percent: row.summary.return_percent,
           priced_trades: row.summary.priced_trades,
           wins: row.summary.wins,
@@ -871,20 +1067,12 @@ export async function buildPerformanceComparisonPayload(
               .map((entry) => entry.percent)
               .filter((value) => Number.isFinite(value)),
           ),
-          week_max_drawdown: row.combined.reduce((max, model) => {
-            const modelMax = (model.returns ?? []).reduce(
-              (innerMax, entry) =>
-                Number.isFinite(entry.percent) && entry.percent < 0
-                  ? Math.max(innerMax, Math.abs(entry.percent))
-                  : innerMax,
-              0,
-            );
-            return Math.max(max, modelMax);
-          }, 0),
+          week_max_drawdown: null,
         })),
       ), { annualizeSharpe }),
       v3: finalizeComparisonMetrics(computeMetricsFromWeeklyRows(
         tieredWeeklyBySystem.v3.map((row) => ({
+          week_open_utc: row.week_open_utc,
           return_percent: row.summary.return_percent,
           priced_trades: row.summary.priced_trades,
           wins: row.summary.wins,
@@ -893,16 +1081,7 @@ export async function buildPerformanceComparisonPayload(
               .map((entry) => entry.percent)
               .filter((value) => Number.isFinite(value)),
           ),
-          week_max_drawdown: row.combined.reduce((max, model) => {
-            const modelMax = (model.returns ?? []).reduce(
-              (innerMax, entry) =>
-                Number.isFinite(entry.percent) && entry.percent < 0
-                  ? Math.max(innerMax, Math.abs(entry.percent))
-                  : innerMax,
-              0,
-            );
-            return Math.max(max, modelMax);
-          }, 0),
+          week_max_drawdown: null,
         })),
       ), { annualizeSharpe }),
     };
@@ -1124,6 +1303,9 @@ export async function buildPerformanceComparisonPayload(
       tieredSources: sources.tiered,
       kataraktiSources: sources.katarakti,
     });
+    const gating = requestedWeek === null
+      ? readGateOverlayPayload(annualizeSharpe)
+      : buildUnavailableGateOverlayPayload();
 
     return {
       strategies,
@@ -1134,6 +1316,7 @@ export async function buildPerformanceComparisonPayload(
       tiered,
       katarakti,
       sources,
+      gating,
       weeksAnalyzed: selectedWeekList.length,
     };
 }

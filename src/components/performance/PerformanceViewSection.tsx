@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ComponentProps } from "react";
+import { useSearchParams } from "next/navigation";
 import type { PerformanceView } from "@/lib/performance/pageState";
 import type { PerformanceSystem } from "@/lib/performance/modelConfig";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
@@ -11,8 +12,65 @@ import type { KataraktiMarket, KataraktiVariant } from "@/lib/performance/katara
 import {
   resolveActiveStrategyEntry,
   resolveDisplayModelsForEntry,
+  type PerformanceStrategyEntry,
   type PerformanceStrategyFamily,
 } from "@/lib/performance/strategyRegistry";
+type StatsViewMode = "standard" | "gated";
+
+type ComparisonMetricsLite = {
+  totalReturn: number;
+  winRate: number;
+  sharpe: number;
+  maxDrawdown: number | null;
+  profitFactor: number | null;
+  tradeWinRate: number;
+  avgWeekly: number;
+  trades: number;
+};
+
+type ComparisonApiPayload = {
+  strategies?: Record<string, { metrics: ComparisonMetricsLite }>;
+  gating?: {
+    available: boolean;
+    byStrategy: Record<string, {
+      standard: ComparisonMetricsLite;
+      gated: ComparisonMetricsLite;
+      delta: {
+        totalReturnPct: number;
+        maxDrawdownPct: number;
+        winRatePct: number;
+        tradeWinRatePct: number;
+        trades: number;
+      };
+      gateActivity: {
+        skippedTrades: number;
+        reducedTrades: number;
+        passedOrNoDataTrades: number;
+      } | null;
+    }>;
+  };
+};
+
+function parseStatsView(value: string | null): StatsViewMode {
+  return value === "gated" ? "gated" : "standard";
+}
+
+function getOverlayForEntry(
+  payload: ComparisonApiPayload | null,
+  entry: PerformanceStrategyEntry | null,
+) {
+  if (!payload || !entry) return null;
+  const base = payload.strategies?.[entry.entryId]?.metrics ?? null;
+  if (!base) return null;
+  const gate = payload.gating?.byStrategy?.[entry.entryId] ?? null;
+  return {
+    standard: gate?.standard ?? base,
+    gated: gate?.gated ?? null,
+    delta: gate?.delta ?? null,
+    gateActivity: gate?.gateActivity ?? null,
+    gateAvailable: Boolean(payload.gating?.available && gate),
+  };
+}
 
 type PerformanceViewSectionProps = {
   initialView: PerformanceView;
@@ -53,9 +111,14 @@ export default function PerformanceViewSection({
   tieredGridPropsBySystem,
   kataraktiGridPropsByVariantAndMarket,
 }: PerformanceViewSectionProps) {
+  const searchParams = useSearchParams();
   const [view, setView] = useState<PerformanceView>(initialView);
   const [system, setSystem] = useState<PerformanceSystem>(initialSystem);
   const [style, setStyle] = useState<PerformanceStrategyFamily>(initialStyle);
+  const requestedWeek = searchParams.get("week") ?? "all";
+  const requestedStatsView = parseStatsView(searchParams.get("stats"));
+  const [statsView, setStatsView] = useState<StatsViewMode>(requestedStatsView);
+  const [comparisonPayload, setComparisonPayload] = useState<ComparisonApiPayload | null>(null);
   const initialEntry = resolveActiveStrategyEntry({
     family: "katarakti",
     kataraktiVariant: initialKataraktiVariant,
@@ -67,6 +130,33 @@ export default function PerformanceViewSection({
   const [kataraktiVariant, setKataraktiVariant] = useState<KataraktiVariant>(
     initialEntry?.kataraktiVariant ?? initialKataraktiVariant,
   );
+
+  useEffect(() => {
+    setStatsView(requestedStatsView);
+  }, [requestedStatsView]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchComparison() {
+      try {
+        const response = await fetch(
+          `/api/performance/comparison?week=${encodeURIComponent(requestedWeek)}`,
+        );
+        if (!response.ok) return;
+        const json = (await response.json()) as ComparisonApiPayload & { error?: string };
+        if (cancelled || json.error) return;
+        setComparisonPayload(json);
+      } catch {
+        if (!cancelled) {
+          setComparisonPayload(null);
+        }
+      }
+    }
+    fetchComparison();
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedWeek]);
 
   useEffect(() => {
     const onSystemChange = (event: Event) => {
@@ -100,13 +190,21 @@ export default function PerformanceViewSection({
         setKataraktiVariant(resolved?.kataraktiVariant ?? variant);
       }
     };
+    const onStatsViewChange = (event: Event) => {
+      const custom = event as CustomEvent<StatsViewMode>;
+      if (custom.detail === "standard" || custom.detail === "gated") {
+        setStatsView(custom.detail);
+      }
+    };
     window.addEventListener("performance-system-change", onSystemChange);
     window.addEventListener("performance-style-change", onStyleChange);
     window.addEventListener("performance-katarakti-selection-change", onKataraktiSelectionChange);
+    window.addEventListener("performance-stats-view-change", onStatsViewChange);
     return () => {
       window.removeEventListener("performance-system-change", onSystemChange);
       window.removeEventListener("performance-style-change", onStyleChange);
       window.removeEventListener("performance-katarakti-selection-change", onKataraktiSelectionChange);
+      window.removeEventListener("performance-stats-view-change", onStatsViewChange);
     };
   }, []);
 
@@ -121,12 +219,14 @@ export default function PerformanceViewSection({
     if (style === "katarakti") {
       url.searchParams.set("market", kataraktiMarket);
       url.searchParams.set("variant", kataraktiVariant);
+      url.searchParams.delete("stats");
     } else {
       url.searchParams.delete("market");
       url.searchParams.delete("variant");
+      url.searchParams.set("stats", statsView);
     }
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-  }, [view, system, style, kataraktiMarket, kataraktiVariant]);
+  }, [view, system, style, kataraktiMarket, kataraktiVariant, statsView]);
 
   const usingTiered = style === "tiered" && Boolean(tieredGridPropsBySystem?.[system]);
   const usingKatarakti = style === "katarakti";
@@ -136,6 +236,9 @@ export default function PerformanceViewSection({
     kataraktiVariant,
     kataraktiMarket,
   });
+  const activeOverlay = getOverlayForEntry(comparisonPayload, activeEntry);
+  const activeComparisonMode: StatsViewMode =
+    style === "katarakti" ? "standard" : statsView;
   const baseGridProps = usingKatarakti
     ? kataraktiGridPropsByVariantAndMarket?.[kataraktiVariant]?.[kataraktiMarket] ?? {
         ...universalGridProps,
@@ -169,6 +272,18 @@ export default function PerformanceViewSection({
         combined={filteredCombined}
         perAsset={filteredPerAsset}
         view={view}
+        comparisonOverlay={
+          activeOverlay
+            ? {
+                mode: activeComparisonMode,
+                standard: activeOverlay.standard,
+                gated: activeOverlay.gated,
+                gateAvailable: activeOverlay.gateAvailable,
+                delta: activeOverlay.delta,
+                gateActivity: activeOverlay.gateActivity,
+              }
+            : undefined
+        }
       />
     </>
   );
