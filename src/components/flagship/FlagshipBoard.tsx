@@ -144,9 +144,9 @@ function normalizeGate(value: string | null | undefined): GateDecision {
 }
 
 function stateClass(state: TrendState) {
-  if (state === "BULLISH") return "bg-emerald-500/10 text-emerald-700 border-emerald-500/30";
-  if (state === "BEARISH") return "bg-rose-500/10 text-rose-700 border-rose-500/30";
-  return "bg-slate-500/10 text-slate-600 border-slate-500/20";
+  if (state === "BULLISH") return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
+  if (state === "BEARISH") return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
+  return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
 function stateLabel(state: TrendState) {
@@ -156,9 +156,9 @@ function stateLabel(state: TrendState) {
 }
 
 function gateClass(gate: GateDecision) {
-  if (gate === "PASS") return "bg-emerald-500/10 text-emerald-700 border-emerald-500/30";
-  if (gate === "SKIP") return "bg-rose-500/10 text-rose-700 border-rose-500/30";
-  return "bg-slate-500/10 text-slate-600 border-slate-500/20";
+  if (gate === "PASS") return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
+  if (gate === "SKIP") return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
+  return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
 function deriveOverlayState(signal: GatedSetupSignal | null): TrendState {
@@ -357,19 +357,22 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   }, [assetStrength, currencyStrength, dailySentiment, gatedData, selectedSession]);
 
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
+  const passCount = matrixRows.filter((row) => row.gate === "PASS").length;
+  const skipCount = matrixRows.filter((row) => row.gate === "SKIP").length;
+  const noDataCount = matrixRows.filter((row) => row.gate === "NO_DATA").length;
 
   return (
-    <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 md:p-5">
+    <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
       <header className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">Flagship</p>
-            <h1 className="text-2xl font-semibold text-[var(--foreground)]">Session Matrix</h1>
-            <p className="text-xs text-[color:var(--muted)]">Strategy {strategy}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Flagship</p>
+            <h1 className="text-xl font-semibold text-[var(--foreground)] md:text-2xl">Session Matrix</h1>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Strategy {strategy}</p>
           </div>
-          <div className="text-right text-xs text-[color:var(--muted)]">
+          <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-right text-xs text-[color:var(--muted)]">
             <div>Updated {formatDateTimeET(gatedData?.generatedUtc ?? null, "Unknown")}</div>
-            <div>{activeSession ? `Active ${activeSession}` : "Off-hours 21:00-00:00 UTC"}</div>
+            <div className="font-semibold">{activeSession ? `Active ${activeSession}` : "Off-hours 21:00-00:00 UTC"}</div>
           </div>
         </div>
 
@@ -381,10 +384,10 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                 key={session}
                 type="button"
                 onClick={() => setSelectedSession(session)}
-                className={`rounded-lg border px-3 py-2 text-left transition ${
+                className={`rounded-lg border px-3 py-2 text-left transition-colors ${
                   isSelected
                     ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                    : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)] hover:text-[var(--foreground)]"
+                    : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)] hover:bg-[var(--panel)]/80 hover:text-[var(--foreground)]"
                 }`}
               >
                 <div className="text-xs font-semibold uppercase tracking-[0.14em]">{session}</div>
@@ -392,6 +395,13 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
               </button>
             );
           })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/55 px-3 py-2 text-[11px] text-[color:var(--muted)]">
+          <span className="font-semibold uppercase tracking-[0.12em]">Legend</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-emerald-500/12 px-2 py-0.5 text-emerald-700 dark:text-emerald-300">B = Bullish</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/35 bg-rose-500/12 px-2 py-0.5 text-rose-700 dark:text-rose-300">S = Bearish</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-slate-600 dark:text-slate-300">N = Neutral</span>
         </div>
       </header>
 
@@ -408,9 +418,29 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
       ) : null}
 
       {!loading && !error ? (
-        <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
+        <div className="space-y-2">
+          <div className="grid gap-2 sm:grid-cols-4">
+            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Visible Pairs</div>
+              <div className="text-lg font-semibold text-[var(--foreground)]">{matrixRows.length}</div>
+            </div>
+            <div className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">Pass</div>
+              <div className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">{passCount}</div>
+            </div>
+            <div className="rounded-lg border border-rose-500/35 bg-rose-500/10 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-rose-700 dark:text-rose-300">Skip</div>
+              <div className="text-lg font-semibold text-rose-700 dark:text-rose-300">{skipCount}</div>
+            </div>
+            <div className="rounded-lg border border-slate-500/25 bg-slate-500/10 px-3 py-2">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">No Data</div>
+              <div className="text-lg font-semibold text-slate-700 dark:text-slate-300">{noDataCount}</div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
           <table className="min-w-full text-xs">
-            <thead className="bg-[var(--panel)]/70 text-left uppercase tracking-[0.14em] text-[color:var(--muted)]">
+            <thead className="sticky top-0 z-10 bg-[var(--panel)] text-left uppercase tracking-[0.14em] text-[color:var(--muted)]">
               <tr>
                 <th className="px-3 py-2">Pair</th>
                 <th className="px-3 py-2">Dealer</th>
@@ -421,42 +451,42 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                 <th className="px-3 py-2">Gate</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/30">
+            <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
               {matrixRows.map((row) => (
-                <tr key={row.pair}>
+                <tr key={row.pair} className="transition-colors hover:bg-[var(--panel)]/70">
                   <td className="px-3 py-2 font-semibold text-[var(--foreground)]">
                     {row.pair}
                     <span className="ml-2 text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
                       {row.assetClass}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.dealer)}`}>
+                  <td className="px-3 py-2 align-middle">
+                    <span title={row.dealer} className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.dealer)}`}>
                       {stateLabel(row.dealer)}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.commercial)}`}>
+                  <td className="px-3 py-2 align-middle">
+                    <span title={row.commercial} className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.commercial)}`}>
                       {stateLabel(row.commercial)}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.sentimentDaily)}`}>
+                  <td className="px-3 py-2 align-middle">
+                    <span title={row.sentimentDaily} className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.sentimentDaily)}`}>
                       {stateLabel(row.sentimentDaily)}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.overlay)}`}>
+                  <td className="px-3 py-2 align-middle">
+                    <span title={row.overlay} className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.overlay)}`}>
                       {stateLabel(row.overlay)}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.strength1h)}`}>
+                  <td className="px-3 py-2 align-middle">
+                    <span title={row.strength1h} className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.strength1h)}`}>
                       {stateLabel(row.strength1h)}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <span className={`inline-flex rounded border px-2 py-0.5 font-semibold uppercase ${gateClass(row.gate)}`}>
+                  <td className="px-3 py-2 align-middle">
+                    <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>
                       {row.gate}
                     </span>
                   </td>
@@ -465,8 +495,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
             </tbody>
           </table>
         </div>
+        </div>
       ) : null}
     </section>
   );
 }
-
