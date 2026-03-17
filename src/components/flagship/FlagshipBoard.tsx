@@ -479,7 +479,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         pair: pairRow.pair,
         assetClass: pairRow.assetClass,
         tier: normalizeTier(signal?.tier),
-        gate: normalizeGate(signal?.gateDecision),
+        gate: signal ? normalizeGate(signal.gateDecision) : "SKIP",
         dealer: directionToState(signal?.dealer as SignalDirection),
         commercial: directionToState(signal?.commercial as SignalDirection),
         sentimentDaily: directionToState(sentimentDirection),
