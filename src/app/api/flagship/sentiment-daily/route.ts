@@ -15,6 +15,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  buildDailySentimentLock,
   readDailySentimentHistory,
   readDailySentimentLockByDate,
   readLatestDailySentimentLock,
@@ -40,12 +41,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ snapshotDateUtc: date, rows });
     }
 
-    const latest = await readLatestDailySentimentLock();
-    if (!latest) {
-      return NextResponse.json({ snapshotDateUtc: null, rows: [] });
-    }
+    try {
+      const latest = await readLatestDailySentimentLock();
+      if (!latest) {
+        return NextResponse.json({ snapshotDateUtc: null, rows: [] });
+      }
 
-    return NextResponse.json(latest);
+      return NextResponse.json(latest);
+    } catch {
+      // Fallback path for transient read/table issues.
+      const fallback = await buildDailySentimentLock();
+      return NextResponse.json(fallback);
+    }
   } catch (error) {
     return NextResponse.json(
       {

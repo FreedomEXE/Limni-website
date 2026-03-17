@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { SESSION_ELIGIBILITY, SESSION_WINDOWS_UTC, defaultSessionFromUtcDate, sessionForUtcHour, type SessionName } from "@/lib/flagship/sessionConfig";
@@ -215,6 +215,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [assetStrength, setAssetStrength] = useState<AssetStrengthPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const hasGatedDataRef = useRef(false);
   const [nowUtc, setNowUtc] = useState<Date>(() => new Date());
   const [selectedSession, setSelectedSession] = useState<SessionName>(() => defaultSessionFromUtcDate(new Date()));
 
@@ -234,37 +236,81 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
     let cancelled = false;
     async function fetchBoardData() {
       try {
-        setLoading(true);
+        const nextWarnings: string[] = [];
         setError(null);
-        const [gatedRes, sentimentRes, currencyRes, assetRes] = await Promise.all([
+
+        const [gatedRes, sentimentRes, currencyRes, assetRes] = await Promise.allSettled([
           fetch("/api/performance/gated-setups", { cache: "no-store" }),
           fetch("/api/flagship/sentiment-daily", { cache: "no-store" }),
           fetch("/api/flagship/currency-strength", { cache: "no-store" }),
           fetch("/api/flagship/asset-strength", { cache: "no-store" }),
         ]);
 
-        if (!gatedRes.ok) throw new Error(`gated-setups HTTP ${gatedRes.status}`);
-        if (!sentimentRes.ok) throw new Error(`sentiment-daily HTTP ${sentimentRes.status}`);
-        if (!currencyRes.ok) throw new Error(`currency-strength HTTP ${currencyRes.status}`);
-        if (!assetRes.ok) throw new Error(`asset-strength HTTP ${assetRes.status}`);
+        let gatedJson: GatedSetupsPayload | null = null;
+        let sentimentJson: DailySentimentPayload | null = null;
+        let currencyJson: CurrencyStrengthPayload | null = null;
+        let assetJson: AssetStrengthPayload | null = null;
 
-        const [gatedJson, sentimentJson, currencyJson, assetJson] = await Promise.all([
-          gatedRes.json() as Promise<GatedSetupsPayload>,
-          sentimentRes.json() as Promise<DailySentimentPayload>,
-          currencyRes.json() as Promise<CurrencyStrengthPayload>,
-          assetRes.json() as Promise<AssetStrengthPayload>,
-        ]);
+        if (gatedRes.status === "fulfilled") {
+          if (gatedRes.value.ok) {
+            gatedJson = (await gatedRes.value.json()) as GatedSetupsPayload;
+          } else {
+            nextWarnings.push(`gated-setups HTTP ${gatedRes.value.status}`);
+          }
+        } else {
+          nextWarnings.push("gated-setups request failed");
+        }
+
+        if (sentimentRes.status === "fulfilled") {
+          if (sentimentRes.value.ok) {
+            sentimentJson = (await sentimentRes.value.json()) as DailySentimentPayload;
+          } else {
+            nextWarnings.push(`sentiment-daily HTTP ${sentimentRes.value.status}`);
+          }
+        } else {
+          nextWarnings.push("sentiment-daily request failed");
+        }
+
+        if (currencyRes.status === "fulfilled") {
+          if (currencyRes.value.ok) {
+            currencyJson = (await currencyRes.value.json()) as CurrencyStrengthPayload;
+          } else {
+            nextWarnings.push(`currency-strength HTTP ${currencyRes.value.status}`);
+          }
+        } else {
+          nextWarnings.push("currency-strength request failed");
+        }
+
+        if (assetRes.status === "fulfilled") {
+          if (assetRes.value.ok) {
+            assetJson = (await assetRes.value.json()) as AssetStrengthPayload;
+          } else {
+            nextWarnings.push(`asset-strength HTTP ${assetRes.value.status}`);
+          }
+        } else {
+          nextWarnings.push("asset-strength request failed");
+        }
 
         if (!cancelled) {
-          setGatedData(gatedJson);
-          setDailySentiment(sentimentJson);
-          setCurrencyStrength(currencyJson);
-          setAssetStrength(assetJson);
+          if (gatedJson) {
+            setGatedData(gatedJson);
+            hasGatedDataRef.current = true;
+          } else if (!hasGatedDataRef.current) {
+            setError("Failed to load gated setups.");
+          }
+          if (sentimentJson) setDailySentiment(sentimentJson);
+          if (currencyJson) setCurrencyStrength(currencyJson);
+          if (assetJson) setAssetStrength(assetJson);
+          setWarnings(nextWarnings);
           setLoading(false);
         }
       } catch (fetchError) {
         if (!cancelled) {
-          setError(fetchError instanceof Error ? fetchError.message : String(fetchError));
+          if (!hasGatedDataRef.current) {
+            setError(fetchError instanceof Error ? fetchError.message : String(fetchError));
+          } else {
+            setWarnings((prev) => [...prev, fetchError instanceof Error ? fetchError.message : String(fetchError)]);
+          }
           setLoading(false);
         }
       }
@@ -414,6 +460,17 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
       {error ? (
         <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-700">
           {error}
+        </div>
+      ) : null}
+
+      {warnings.length > 0 ? (
+        <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+          <div className="font-semibold uppercase tracking-[0.12em]">Source warnings</div>
+          <ul className="mt-1 list-disc pl-4">
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
         </div>
       ) : null}
 
