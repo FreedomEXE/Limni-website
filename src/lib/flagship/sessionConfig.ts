@@ -10,6 +10,9 @@ export const SESSION_WINDOWS_UTC: Record<SessionName, { startHour: number; endHo
 };
 
 const ALL_SESSIONS: SessionName[] = ["ASIA", "LONDON", "NY"];
+const ASIA_CURRENCIES = new Set(["AUD", "NZD", "JPY"]);
+const LONDON_CURRENCIES = new Set(["EUR", "GBP", "CHF"]);
+const NY_CURRENCIES = new Set(["USD", "CAD"]);
 
 export const SESSION_ELIGIBILITY = new Map<string, SessionName[]>();
 
@@ -19,7 +22,31 @@ function registerAll(assetClass: AssetClass) {
   }
 }
 
-registerAll("fx");
+function deriveFxSessions(base: string, quote: string): SessionName[] {
+  const currencies = [base.toUpperCase(), quote.toUpperCase()];
+  const hasAsia = currencies.some((currency) => ASIA_CURRENCIES.has(currency));
+  const hasLondon = currencies.some((currency) => LONDON_CURRENCIES.has(currency));
+  const hasNy = currencies.some((currency) => NY_CURRENCIES.has(currency));
+
+  const sessions = new Set<SessionName>();
+
+  if (hasAsia) sessions.add("ASIA");
+  if (hasLondon || hasAsia) sessions.add("LONDON");
+  if (hasNy) sessions.add("NY");
+
+  // Ensure every pair stays tradable in at least one session.
+  if (sessions.size === 0) sessions.add("LONDON");
+
+  return Array.from(sessions);
+}
+
+for (const pairDef of PAIRS_BY_ASSET_CLASS.fx) {
+  SESSION_ELIGIBILITY.set(
+    pairDef.pair.trim().toUpperCase(),
+    deriveFxSessions(pairDef.base, pairDef.quote),
+  );
+}
+
 registerAll("crypto");
 
 SESSION_ELIGIBILITY.set("XAUUSD", ["LONDON", "NY"]);
@@ -47,4 +74,3 @@ export function defaultSessionFromUtcDate(nowUtc: Date): SessionName {
   const active = sessionForUtcHour(nowUtc.getUTCHours());
   return active ?? "ASIA";
 }
-
