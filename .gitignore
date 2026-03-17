@@ -96,3 +96,9 @@ docs/ai/poseidon/state/missed_turns.json
 
 # Python helper scripts
 scripts/*.py
+
+.vercel
+
+# MenthorQ browser-capture artifacts
+reports/bias-gate/menthorq-captures/
+reports/bias-gate/menthorq-gamma-daily.csv

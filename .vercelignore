@@ -1,0 +1,17 @@
+/data/
+/sports/
+/research/
+/screenshots/
+/temp/
+/contracts/
+/db/
+/mt5/
+
+/public/scalp-bot/
+
+/reports/
+!/reports/bias-gate/
+!/reports/bias-gate/*.json
+!/reports/bias-gate/*.md
+
+/reports/bias-gate/menthorq-captures/
