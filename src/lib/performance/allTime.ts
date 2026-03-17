@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import { computeReturnStats, type PerformanceModel } from "@/lib/performanceLab";
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
+import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown";
 
 type AllTimeRow = {
   week_open_utc: string;
@@ -219,7 +220,16 @@ function buildHistoricalWeekReturns(
 ): AllTimeWeekReturn[] {
   return Array.from(weekMap.entries())
     .filter(([week]) => isClosedHistoricalWeek(week, currentWeekMillis, nowUtcMillis))
-    .map(([week, value]) => ({ week, value }));
+    .map(([week, value]) => ({ week, value }))
+    .sort(
+      (left, right) =>
+        DateTime.fromISO(right.week, { zone: "utc" }).toMillis() -
+        DateTime.fromISO(left.week, { zone: "utc" }).toMillis(),
+    );
+}
+
+function computeCumulativeDrawdownFromWeeklyReturns(returns: number[]) {
+  return computeMaxDrawdownFromPercentReturns(returns);
 }
 
 export function buildAllTimeStats(
@@ -256,19 +266,17 @@ export function buildAllTimePerformance(
   return models.map((model) => {
     const weekMap = weekTotalsByModel.get(model) ?? new Map<string, number>();
     const weekAggregates = weekAggregatesByModel.get(model) ?? new Map<string, AllTimeWeekAggregate>();
-    const weekReturns: AllTimePerformanceReturn[] = buildHistoricalWeekReturns(
+    const historicalWeeks = buildHistoricalWeekReturns(
       weekMap,
       currentWeekMillis,
       nowUtcMillis,
-    ).map(({ week, value }) => ({
-      pair: weekLabelFromOpen(week),
-      percent: value,
-    }));
-    const weekBreakdown = buildHistoricalWeekReturns(
-      weekMap,
-      currentWeekMillis,
-      nowUtcMillis,
-    ).map(({ week, value }) => {
+    );
+    const weekReturns: AllTimePerformanceReturn[] = historicalWeeks
+      .map(({ week, value }) => ({
+        pair: weekLabelFromOpen(week),
+        percent: value,
+      }));
+    const weekBreakdown = historicalWeeks.map(({ week, value }) => {
       const aggregate = weekAggregates.get(week) ?? {
         percent: value,
         children: [],
@@ -304,23 +312,6 @@ export function buildAllTimePerformance(
         typeof child.percent === "number" && Number.isFinite(child.percent) ? [child.percent] : [],
       ),
     );
-    const worstWeekDrawdown = weekBreakdown.reduce((maxDrawdown, week) => {
-      const childReturns = (week.children ?? []).flatMap((child) =>
-        typeof child.percent === "number" && Number.isFinite(child.percent) ? [child.percent] : [],
-      );
-      const worstTradeLoss = childReturns.reduce((maxLoss, value) => {
-        if (value >= 0) return maxLoss;
-        return Math.max(maxLoss, Math.abs(value));
-      }, 0);
-      const weekReturnDrawdown =
-        typeof week.percent === "number" && week.percent < 0 ? Math.abs(week.percent) : 0;
-      const weekDrawdown = Math.max(
-        computeDrawdownFromTradeReturns(childReturns),
-        worstTradeLoss,
-        weekReturnDrawdown,
-      );
-      return Math.max(maxDrawdown, weekDrawdown);
-    }, 0);
     const totalPercent = weekReturns.reduce((sum, item) => sum + item.percent, 0);
     const stats = computeReturnStats(weekReturns);
     const weeks = weekReturns.length;
@@ -334,7 +325,18 @@ export function buildAllTimePerformance(
       pair_details: weekBreakdown,
       stats,
       diagnostics: {
-        max_drawdown: weeks > 0 ? worstWeekDrawdown : null,
+        max_drawdown:
+          weeks > 0
+            ? computeCumulativeDrawdownFromWeeklyReturns(
+                [...historicalWeeks]
+                  .sort(
+                    (left, right) =>
+                      DateTime.fromISO(left.week, { zone: "utc" }).toMillis() -
+                      DateTime.fromISO(right.week, { zone: "utc" }).toMillis(),
+                  )
+                  .map((item) => item.value),
+              )
+            : null,
         profit_factor: computeProfitFactorFromTradeReturns(allTradeReturns),
       },
     };

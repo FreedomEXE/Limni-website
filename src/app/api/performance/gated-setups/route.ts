@@ -10,6 +10,7 @@ import {
   buildLiquidationAdvisory,
   type LiquidationTradeDirection,
 } from "@/lib/bitgetLiquidationFeatures";
+import { readLatestMenthorqSnapshots } from "@/lib/menthorqOverlay";
 
 const SKIP_ONLY_MODE = process.env.PERFORMANCE_GATE_SKIP_ONLY !== "0";
 const DEFAULT_WEEKLY_BOARD_PATH = path.resolve(
@@ -102,6 +103,8 @@ type GammaContext = {
   pairMap: Map<string, GammaPairMapEntry>;
   maxAgeDays: number;
 };
+
+type GammaContextSource = "DB" | "CSV" | null;
 
 type CryptoDynamicGate = {
   decision: GateDecision;
@@ -390,19 +393,39 @@ function resolveGammaSnapshotForDate(
   return best;
 }
 
-function buildGammaContext(): GammaContext | null {
-  const gammaCsvEnv = process.env.PERFORMANCE_MENTHORQ_GAMMA_CSV?.trim();
+function buildGammaPairMap(): Map<string, GammaPairMapEntry> | null {
   const mapCsvEnv = process.env.PERFORMANCE_MENTHORQ_PAIR_MAP_CSV?.trim();
-  const gammaCsvPath = gammaCsvEnv
-    ? path.resolve(process.cwd(), gammaCsvEnv)
-    : DEFAULT_MENTHORQ_GAMMA_CSV;
   const mapCsvPath = mapCsvEnv
     ? path.resolve(process.cwd(), mapCsvEnv)
     : DEFAULT_MENTHORQ_MAP_CSV;
-
-  const snapshotRows = parseCsvObjects(gammaCsvPath);
   const mapRows = parseCsvObjects(mapCsvPath);
-  if (snapshotRows.length === 0 || mapRows.length === 0) {
+  if (mapRows.length === 0) return null;
+
+  const pairMap = new Map<string, GammaPairMapEntry>();
+  for (const row of mapRows) {
+    const pair = normalizePair(row.pair || "");
+    const base = normalizeGammaSymbol(row.base_gamma_symbol || row.base_symbol || row.base || "");
+    const quote = normalizeGammaSymbol(row.quote_gamma_symbol || row.quote_symbol || row.quote || "");
+    const enabledRaw = String(row.enabled ?? "1").trim().toLowerCase();
+    const enabled = !(enabledRaw === "0" || enabledRaw === "false" || enabledRaw === "no");
+    if (!pair || (!base && !quote)) continue;
+    pairMap.set(pair, {
+      pair,
+      baseSymbol: base || null,
+      quoteSymbol: quote || null,
+      enabled,
+    });
+  }
+  return pairMap.size > 0 ? pairMap : null;
+}
+
+function buildGammaContextFromCsv(pairMap: Map<string, GammaPairMapEntry>, maxAgeDays: number): GammaContext | null {
+  const gammaCsvEnv = process.env.PERFORMANCE_MENTHORQ_GAMMA_CSV?.trim();
+  const gammaCsvPath = gammaCsvEnv
+    ? path.resolve(process.cwd(), gammaCsvEnv)
+    : DEFAULT_MENTHORQ_GAMMA_CSV;
+  const snapshotRows = parseCsvObjects(gammaCsvPath);
+  if (snapshotRows.length === 0) {
     return null;
   }
 
@@ -425,28 +448,62 @@ function buildGammaContext(): GammaContext | null {
     list.sort((a, b) => a.dateMs - b.dateMs);
   }
 
-  const pairMap = new Map<string, GammaPairMapEntry>();
-  for (const row of mapRows) {
-    const pair = normalizePair(row.pair || "");
-    const base = normalizeGammaSymbol(row.base_gamma_symbol || row.base_symbol || row.base || "");
-    const quote = normalizeGammaSymbol(row.quote_gamma_symbol || row.quote_symbol || row.quote || "");
-    const enabledRaw = String(row.enabled ?? "1").trim().toLowerCase();
-    const enabled = !(enabledRaw === "0" || enabledRaw === "false" || enabledRaw === "no");
-    if (!pair || (!base && !quote)) continue;
-    pairMap.set(pair, {
-      pair,
-      baseSymbol: base || null,
-      quoteSymbol: quote || null,
-      enabled,
-    });
-  }
-  if (pairMap.size === 0) return null;
-
   return {
     bySymbol,
     pairMap,
-    maxAgeDays: Math.max(1, Math.trunc(parseNumberEnv("PERFORMANCE_MENTHORQ_MAX_AGE_DAYS", 8))),
+    maxAgeDays,
   };
+}
+
+async function buildGammaContextFromDb(
+  pairMap: Map<string, GammaPairMapEntry>,
+  maxAgeDays: number,
+  targetDateIso: string,
+): Promise<{ context: GammaContext | null; reason: string }> {
+  try {
+    const latest = await readLatestMenthorqSnapshots();
+    if (!latest || latest.rows.length === 0) {
+      return { context: null, reason: "MENTHORQ_DB_NO_ROWS" };
+    }
+
+    const targetMs = Date.parse(`${targetDateIso}T00:00:00.000Z`);
+    const latestMs = Date.parse(`${latest.snapshotDateUtc}T00:00:00.000Z`);
+    if (!Number.isFinite(targetMs) || !Number.isFinite(latestMs)) {
+      return { context: null, reason: "MENTHORQ_DB_STALE" };
+    }
+
+    const ageDays = Math.floor((targetMs - latestMs) / 86_400_000);
+    if (ageDays > maxAgeDays) {
+      return { context: null, reason: "MENTHORQ_DB_STALE" };
+    }
+
+    const bySymbol = new Map<string, GammaSnapshotEntry[]>();
+    for (const row of latest.rows) {
+      const symbol = normalizeGammaSymbol(row.symbol);
+      if (!symbol) continue;
+      const dateIso = latest.snapshotDateUtc;
+      const dayMs = Date.parse(`${dateIso}T00:00:00.000Z`);
+      if (!Number.isFinite(dayMs)) continue;
+      bySymbol.set(symbol, [
+        {
+          dateIso,
+          dateMs: dayMs,
+          condition: parseGammaCondition(row.gammaCondition),
+        },
+      ]);
+    }
+
+    return {
+      context: {
+        bySymbol,
+        pairMap,
+        maxAgeDays,
+      },
+      reason: "MENTHORQ_DB_CONTEXT_USED",
+    };
+  } catch {
+    return { context: null, reason: "MENTHORQ_DB_NO_ROWS" };
+  }
 }
 
 function evaluateMenthorqGate(options: {
@@ -728,8 +785,31 @@ async function evaluateLiveCryptoLiquidationGate(
 }
 
 async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedSetupsPayload> {
-  const gammaContext = buildGammaContext();
   const gammaTargetDateIso = toDayIso(new Date().toISOString());
+  const maxAgeDays = Math.max(1, Math.trunc(parseNumberEnv("PERFORMANCE_MENTHORQ_MAX_AGE_DAYS", 8)));
+  const pairMap = buildGammaPairMap();
+  let gammaContext: GammaContext | null = null;
+  let gammaSource: GammaContextSource = null;
+  const gammaBootstrapReasons: string[] = [];
+
+  if (pairMap) {
+    const dbContext = await buildGammaContextFromDb(pairMap, maxAgeDays, gammaTargetDateIso);
+    if (dbContext.context) {
+      gammaContext = dbContext.context;
+      gammaSource = "DB";
+      gammaBootstrapReasons.push("MENTHORQ_DB_CONTEXT_USED");
+    } else {
+      gammaBootstrapReasons.push(dbContext.reason);
+      const csvContext = buildGammaContextFromCsv(pairMap, maxAgeDays);
+      if (csvContext) {
+        gammaContext = csvContext;
+        gammaSource = "CSV";
+        gammaBootstrapReasons.push("MENTHORQ_CSV_FALLBACK_USED");
+      }
+    }
+  } else {
+    gammaBootstrapReasons.push("MENTHORQ_PAIR_MAP_MISSING");
+  }
 
   const signals = await Promise.all(
     payload.signals.map(async (signal): Promise<GatedSetupSignal> => {
@@ -756,8 +836,20 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
         return next;
       }
 
-      if (!gammaContext || next.direction === "NEUTRAL") {
+      if (next.direction === "NEUTRAL") {
         return next;
+      }
+
+      if (!gammaContext) {
+        return {
+          ...next,
+          gateDecision: next.gateDecision === "PASS" ? "NO_DATA" : next.gateDecision,
+          gateReasons: dedupeStrings([
+            ...next.gateReasons,
+            ...gammaBootstrapReasons,
+            "MENTHORQ_CONTEXT_UNAVAILABLE",
+          ]),
+        };
       }
 
       const gamma = evaluateMenthorqGate({
@@ -767,15 +859,30 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
         context: gammaContext,
       });
 
+      const combinedReasons = dedupeStrings([
+        ...next.gateReasons,
+        ...gammaBootstrapReasons,
+        ...gamma.reasons,
+      ]);
+
       if (gamma.decision === "NO_DATA") {
-        return next;
+        return {
+          ...next,
+          gateDecision: next.gateDecision === "PASS" ? "NO_DATA" : next.gateDecision,
+          gateReasons: combinedReasons,
+          gateDecisionSource:
+            next.gateDecisionSource === "WEEKLY_BOARD" && gammaSource
+              ? "WEEKLY_BOARD_PLUS_MENTHORQ"
+              : next.gateDecisionSource,
+          gateAsOfUtc: gamma.asOfUtc ?? next.gateAsOfUtc,
+        };
       }
 
       if (gamma.decision === "SKIP") {
         return {
           ...next,
           gateDecision: "SKIP",
-          gateReasons: dedupeStrings([...next.gateReasons, ...gamma.reasons]),
+          gateReasons: combinedReasons,
           gateDecisionSource:
             next.gateDecisionSource === "WEEKLY_BOARD"
               ? "WEEKLY_BOARD_PLUS_MENTHORQ"
@@ -788,7 +895,7 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
         return {
           ...next,
           gateDecision: "PASS",
-          gateReasons: dedupeStrings([...next.gateReasons, ...gamma.reasons]),
+          gateReasons: combinedReasons,
           gateDecisionSource: "MENTHORQ_GAMMA_DAILY",
           gateAsOfUtc: gamma.asOfUtc,
         };
@@ -796,7 +903,7 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
 
       return {
         ...next,
-        gateReasons: dedupeStrings([...next.gateReasons, ...gamma.reasons]),
+        gateReasons: combinedReasons,
         gateDecisionSource:
           next.gateDecisionSource === "WEEKLY_BOARD"
             ? "WEEKLY_BOARD_PLUS_MENTHORQ"

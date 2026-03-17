@@ -281,27 +281,7 @@ async function main() {
     await rl.question("");
   };
 
-  let chromium: {
-    launchPersistentContext: (userDataDir: string, options: Record<string, unknown>) => Promise<{
-      pages: () => Array<{
-        goto: (url: string, options?: Record<string, unknown>) => Promise<unknown>;
-        waitForTimeout: (ms: number) => Promise<void>;
-        screenshot: (options: Record<string, unknown>) => Promise<void>;
-        content: () => Promise<string>;
-        url: () => string;
-        evaluate: <T>(fn: () => T) => Promise<T>;
-      }>;
-      newPage: () => Promise<{
-        goto: (url: string, options?: Record<string, unknown>) => Promise<unknown>;
-        waitForTimeout: (ms: number) => Promise<void>;
-        screenshot: (options: Record<string, unknown>) => Promise<void>;
-        content: () => Promise<string>;
-        url: () => string;
-        evaluate: <T>(fn: () => T) => Promise<T>;
-      }>;
-      close: () => Promise<void>;
-    }>;
-  };
+  let chromium: any;
 
   try {
     const mod = await import("playwright");

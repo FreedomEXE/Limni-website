@@ -1,5 +1,13 @@
 # TODO
 
+## Positioning Risk Gate + HTF Structure Re-Evaluation
+- Spec doc:
+  - `docs/bots/positioning-risk-gate-htf-structure-spec.md`
+- Immediate focus:
+  - activate liquidation advisory as enforced crypto pre-flight gate (paper mode first)
+  - require all liquidation timeframes (`6h`, `1d`, `7d`, `30d`) in gate decision
+  - pilot HTF structure overlay (`W1`, `D1`, `H4`) to avoid entries at extremes
+
 ## Performance Deep Analysis UI
 - See detailed implementation checklist in `docs/TODO_PERFORMANCE_DEEP_ANALYSIS_UI.md`.
 - Integrate weekly deep-analysis stats into Performance view:

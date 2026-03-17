@@ -18,6 +18,7 @@ import path from "node:path";
 import { loadEnvConfig } from "@next/env";
 import { DateTime } from "luxon";
 import { GET } from "../src/app/api/performance/gated-setups/route";
+import { readLatestMenthorqSnapshots } from "../src/lib/menthorqOverlay";
 
 type GateDecision = "PASS" | "SKIP" | "NO_DATA";
 type SignalDirection = "LONG" | "SHORT" | "NEUTRAL";
@@ -59,6 +60,7 @@ type RankedSignal = {
 };
 
 type MenthorqDailyCoverage = {
+  source: "DB" | "CSV" | "NONE";
   path: string;
   exists: boolean;
   rowsTotal: number;
@@ -223,13 +225,44 @@ function scoreSignal(signal: GatedSetupSignal, pairSummary: PairSummary | null):
   };
 }
 
-function readMenthorqCoverage(nowUtc: DateTime): MenthorqDailyCoverage {
+async function readMenthorqCoverage(nowUtc: DateTime): Promise<MenthorqDailyCoverage> {
+  const todayIso = nowUtc.toFormat("yyyy-LL-dd");
+  try {
+    const latestDb = await readLatestMenthorqSnapshots();
+    if (latestDb && latestDb.snapshotDateUtc === todayIso && latestDb.rows.length > 0) {
+      const uniqueSymbolsToday = Array.from(
+        new Set(
+          latestDb.rows
+            .map((row) => normalizeGammaSymbol(row.symbol))
+            .filter(Boolean),
+        ),
+      ).sort();
+      const latestCaptureUtc = latestDb.rows
+        .map((row) => String(row.capturedAtUtc ?? "").trim())
+        .filter((value) => value.length > 0)
+        .sort()
+        .slice(-1)[0] ?? null;
+      return {
+        source: "DB",
+        path: "db:menthorq_overlay_snapshots",
+        exists: true,
+        rowsTotal: latestDb.rows.length,
+        rowsToday: latestDb.rows.length,
+        uniqueSymbolsToday,
+        latestCaptureUtc,
+      };
+    }
+  } catch {
+    // Fall through to CSV fallback
+  }
+
   const csvPath = process.env.PERFORMANCE_MENTHORQ_GAMMA_CSV?.trim()
     ? path.resolve(process.cwd(), process.env.PERFORMANCE_MENTHORQ_GAMMA_CSV)
     : path.resolve(process.cwd(), "reports", "bias-gate", "menthorq-gamma-daily.csv");
   const rows = parseCsvObjects(csvPath);
   if (rows.length === 0) {
     return {
+      source: "NONE",
       path: csvPath,
       exists: existsSync(csvPath),
       rowsTotal: 0,
@@ -239,7 +272,6 @@ function readMenthorqCoverage(nowUtc: DateTime): MenthorqDailyCoverage {
     };
   }
 
-  const todayIso = nowUtc.toFormat("yyyy-LL-dd");
   const todayRows = rows.filter((row) => String(row.date ?? "").trim() === todayIso);
   const uniqueSymbolsToday = Array.from(
     new Set(
@@ -256,6 +288,7 @@ function readMenthorqCoverage(nowUtc: DateTime): MenthorqDailyCoverage {
     .slice(-1)[0] ?? null;
 
   return {
+    source: "CSV",
     path: csvPath,
     exists: true,
     rowsTotal: rows.length,
@@ -337,7 +370,7 @@ async function main() {
   const strictOverlay =
     String(process.env.DAILY_SELECTOR_STRICT_OVERLAY ?? "true").trim().toLowerCase() !== "false";
   const payload = await loadPayload();
-  const coverage = readMenthorqCoverage(nowUtc);
+  const coverage = await readMenthorqCoverage(nowUtc);
   const menthorqPairMap = readMenthorqPairMap();
   const symbolsToday = new Set(coverage.uniqueSymbolsToday.map((symbol) => normalizeGammaSymbol(symbol)));
 
@@ -406,7 +439,7 @@ async function main() {
   console.log(`Board source: ${payload.sourcePath}`);
   console.log(`Current week: ${payload.currentWeekOpenUtc ?? "n/a"}`);
   console.log(
-    `MenthorQ coverage today: rows=${coverage.rowsToday}, symbols=${coverage.uniqueSymbolsToday.join(",") || "none"}, latest=${coverage.latestCaptureUtc ?? "n/a"}`,
+    `MenthorQ coverage (${coverage.source}) today: rows=${coverage.rowsToday}, symbols=${coverage.uniqueSymbolsToday.join(",") || "none"}, latest=${coverage.latestCaptureUtc ?? "n/a"}`,
   );
   console.log(`Tradable universe this run: ${tradableSignals.length}/${payload.signals.length} setups`);
   if (excludedSignals.length > 0) {

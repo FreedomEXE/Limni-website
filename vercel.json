@@ -121,6 +121,22 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/currency-strength",
+      "schedule": "2 * * * *"
+    },
+    {
+      "path": "/api/cron/asset-strength",
+      "schedule": "3 * * * *"
+    },
+    {
+      "path": "/api/cron/sentiment-daily-lock",
+      "schedule": "12 * * * *"
+    },
+    {
+      "path": "/api/cron/menthorq-overlay-import",
+      "schedule": "15 * * * *"
+    },
+    {
       "path": "/api/cron/bitget-bot",
       "schedule": "* * * * *"
     }

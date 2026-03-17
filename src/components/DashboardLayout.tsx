@@ -38,7 +38,7 @@ const TOP_LEVEL: NavItem[] = [
   { key: "performance", href: "/performance", label: "Performance", letter: "I" },
   { key: "automation", href: "/automation", label: "Automation", letter: "M" },
   { key: "accounts", href: "/accounts", label: "Accounts", letter: "N" },
-  { key: "status", href: "/status", label: "Status", letter: "I" },
+  { key: "flagship", href: "/flagship", label: "Flagship", letter: "I" },
   { key: "news", href: "/news", label: "News", letter: "N" },
 ];
 
@@ -47,7 +47,7 @@ const SECTION_LABELS: Record<string, string> = {
   performance: "Performance",
   automation: "Automation",
   accounts: "Accounts",
-  status: "Status",
+  flagship: "Flagship",
   news: "News",
 };
 
@@ -58,8 +58,8 @@ function resolveSection(pathname: string) {
   if (pathname.startsWith("/performance")) return "performance";
   if (pathname.startsWith("/automation")) return "automation";
   if (pathname.startsWith("/accounts")) return "accounts";
+  if (pathname.startsWith("/flagship")) return "flagship";
   if (pathname.startsWith("/news")) return "news";
-  if (pathname.startsWith("/status")) return "status";
   return null;
 }
 
@@ -158,10 +158,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         { href: "/news?view=calendar", label: "Calendar" },
         { href: "/news?view=announcements", label: "Announcements" },
         { href: "/news?view=impact", label: "Impact" },
+        { href: "/status", label: "Status" },
       ];
     }
-    if (activeSection === "status") {
-      return [{ href: "/status", label: "System Status" }];
+    if (activeSection === "flagship") {
+      return [
+        { href: "/flagship", label: "Board" },
+        { href: "/flagship?view=research", label: "Research" },
+      ];
     }
     return [];
   })();
