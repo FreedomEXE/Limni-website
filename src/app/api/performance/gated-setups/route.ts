@@ -3,6 +3,12 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { DEFAULT_GATED_SETUPS_BOARD } from "@/lib/performance/gatedSetupsDefault";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
+import type { AssetClass } from "@/lib/cotMarkets";
+import { readSnapshot } from "@/lib/cotStore";
+import {
+  derivePairDirectionsByBaseWithNeutral,
+  derivePairDirectionsWithNeutral,
+} from "@/lib/cotCompute";
 import {
   readNearestLiquidationHeatmapSnapshot,
   type LiquidationHeatmapSnapshotRow,
@@ -12,8 +18,10 @@ import {
   type LiquidationTradeDirection,
 } from "@/lib/bitgetLiquidationFeatures";
 import { readLatestMenthorqSnapshots } from "@/lib/menthorqOverlay";
+import { readLatestDailySentimentLock } from "@/lib/sentiment/daily";
 
 const SKIP_ONLY_MODE = process.env.PERFORMANCE_GATE_SKIP_ONLY !== "0";
+const FORCE_PASS_SKIP_OUTPUT = process.env.PERFORMANCE_GATE_ALLOW_NO_DATA === "1" ? false : true;
 const DEFAULT_WEEKLY_BOARD_PATH = path.resolve(
   process.cwd(),
   "reports",
@@ -212,6 +220,11 @@ function dedupeStrings(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
+function normalizeGateOutputDecision(decision: GateDecision): GateDecision {
+  if (!FORCE_PASS_SKIP_OUTPUT) return decision;
+  return decision === "NO_DATA" ? "SKIP" : decision;
+}
+
 function normalizeReasonsForDecision(decision: GateDecision, reasons: string[]): string[] {
   const deduped = dedupeStrings(reasons.map((reason) => String(reason).trim().toUpperCase()));
   if (deduped.length === 0) {
@@ -245,6 +258,143 @@ function normalizeReasonsForDecision(decision: GateDecision, reasons: string[]):
   if (decision === "PASS") return ["PASS_SIGNAL_VALIDATED"];
   if (decision === "SKIP") return ["SKIP_SIGNAL_BLOCKED"];
   return ["NO_DATA_SIGNAL_UNAVAILABLE"];
+}
+
+function classifyDirectionTier(votes: SignalDirection[]): {
+  direction: SignalDirection;
+  tier: SignalTier;
+  gateDecision: GateDecision;
+  gateReasons: string[];
+} {
+  const longVotes = votes.filter((vote) => vote === "LONG").length;
+  const shortVotes = votes.filter((vote) => vote === "SHORT").length;
+
+  if (longVotes >= 2 && longVotes > shortVotes) {
+    return {
+      direction: "LONG",
+      tier: longVotes === 3 ? "HIGH" : "MEDIUM",
+      gateDecision: "PASS",
+      gateReasons: ["PASS_BIAS_ALIGNMENT"],
+    };
+  }
+
+  if (shortVotes >= 2 && shortVotes > longVotes) {
+    return {
+      direction: "SHORT",
+      tier: shortVotes === 3 ? "HIGH" : "MEDIUM",
+      gateDecision: "PASS",
+      gateReasons: ["PASS_BIAS_ALIGNMENT"],
+    };
+  }
+
+  return {
+    direction: "NEUTRAL",
+    tier: "NEUTRAL",
+    gateDecision: "SKIP",
+    gateReasons: ["SKIP_BIAS_INSUFFICIENT_ALIGNMENT"],
+  };
+}
+
+type PairCotDirections = {
+  dealer: SignalDirection;
+  commercial: SignalDirection;
+};
+
+function buildCotDirectionsForAsset(
+  assetClass: AssetClass,
+  snapshot: Awaited<ReturnType<typeof readSnapshot>>,
+): Map<string, PairCotDirections> {
+  const out = new Map<string, PairCotDirections>();
+  const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
+  if (!pairDefs?.length || !snapshot) return out;
+
+  const dealerPairs =
+    assetClass === "fx"
+      ? derivePairDirectionsWithNeutral(snapshot.currencies, pairDefs, "dealer")
+      : derivePairDirectionsByBaseWithNeutral(snapshot.currencies, pairDefs, "dealer");
+  const commercialPairs =
+    assetClass === "fx"
+      ? derivePairDirectionsWithNeutral(snapshot.currencies, pairDefs, "commercial")
+      : derivePairDirectionsByBaseWithNeutral(snapshot.currencies, pairDefs, "commercial");
+
+  for (const pairDef of pairDefs) {
+    const pair = normalizePair(pairDef.pair);
+    out.set(pair, {
+      dealer: normalizeDirection(dealerPairs[pair]?.direction),
+      commercial: normalizeDirection(commercialPairs[pair]?.direction),
+    });
+  }
+
+  return out;
+}
+
+async function buildLiveUniverseSeed(): Promise<GatedSetupsPayload> {
+  const assetClasses: AssetClass[] = ["fx", "indices", "crypto", "commodities"];
+  const snapshots = await Promise.all(assetClasses.map((assetClass) => readSnapshot({ assetClass })));
+  const latestReportDate = snapshots
+    .map((snapshot) => snapshot?.report_date ?? null)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .slice(-1)[0] ?? null;
+
+  const cotByPair = new Map<string, PairCotDirections>();
+  for (const assetClass of assetClasses) {
+    const snapshot = snapshots[assetClasses.indexOf(assetClass)];
+    const map = buildCotDirectionsForAsset(assetClass, snapshot);
+    for (const [pair, directions] of map.entries()) {
+      cotByPair.set(pair, directions);
+    }
+  }
+
+  const dailySentiment = await readLatestDailySentimentLock().catch(() => null);
+  const sentimentByPair = new Map<string, SignalDirection>(
+    (dailySentiment?.rows ?? []).map((row) => [normalizePair(row.symbol), normalizeDirection(row.sentimentDirection)]),
+  );
+
+  const signals: GatedSetupSignal[] = [];
+  for (const assetClass of assetClasses) {
+    for (const pairDef of PAIRS_BY_ASSET_CLASS[assetClass]) {
+      const pair = normalizePair(pairDef.pair);
+      const cot = cotByPair.get(pair);
+      const dealer = cot?.dealer ?? "NEUTRAL";
+      const commercial = cot?.commercial ?? "NEUTRAL";
+      const sentiment = sentimentByPair.get(pair) ?? "NEUTRAL";
+      const classified = classifyDirectionTier([dealer, commercial, sentiment]);
+
+      signals.push({
+        assetClass,
+        pair,
+        dealer,
+        commercial,
+        sentiment,
+        direction: classified.direction,
+        tier: classified.tier,
+        gateDecision: normalizeGateOutputDecision(classified.gateDecision),
+        gateReasons: normalizeReasonsForDecision(
+          normalizeGateOutputDecision(classified.gateDecision),
+          classified.gateReasons,
+        ),
+        basePct: null,
+        quotePct: null,
+        actionable8w: 0,
+        flips8w: 0,
+        consistency8w: 0,
+        gateDecisionSource: "WEEKLY_BOARD",
+        gateAsOfUtc: null,
+      });
+    }
+  }
+
+  const sortedSignals = sortSignals(signals);
+  return {
+    sourcePath: "live:cot_snapshots+sentiment_daily",
+    generatedUtc: new Date().toISOString(),
+    currentWeekOpenUtc: null,
+    weeksUsedForStability: latestReportDate ? [latestReportDate] : [],
+    summary: buildSummary(sortedSignals),
+    signals: sortedSignals,
+    skipOnlyMode: SKIP_ONLY_MODE,
+  };
 }
 
 function sortSignals(signals: GatedSetupSignal[]): GatedSetupSignal[] {
@@ -996,10 +1146,11 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
             "MENTHORQ_CONTEXT_UNAVAILABLE",
           ]),
         );
+        const decision = normalizeGateOutputDecision(noDataDecision);
         return {
           ...next,
-          gateDecision: noDataDecision,
-          gateReasons: noDataReasons,
+          gateDecision: decision,
+          gateReasons: normalizeReasonsForDecision(decision, noDataReasons),
         };
       }
 
@@ -1018,10 +1169,11 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
 
       if (gamma.decision === "NO_DATA") {
         const noDataDecision = next.gateDecision === "PASS" ? "NO_DATA" : next.gateDecision;
+        const decision = normalizeGateOutputDecision(noDataDecision);
         return {
           ...next,
-          gateDecision: noDataDecision,
-          gateReasons: normalizeReasonsForDecision(noDataDecision, combinedReasons),
+          gateDecision: decision,
+          gateReasons: normalizeReasonsForDecision(decision, combinedReasons),
           gateDecisionSource:
             next.gateDecisionSource === "WEEKLY_BOARD" && gammaSource
               ? "WEEKLY_BOARD_PLUS_MENTHORQ"
@@ -1066,17 +1218,29 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
   );
 
   const sortedSignals = sortSignals(signals);
+  const normalizedSignals = sortedSignals.map((signal) => {
+    const decision = normalizeGateOutputDecision(signal.gateDecision);
+    const reasons = [...signal.gateReasons];
+    if (decision === "SKIP" && signal.gateDecision === "NO_DATA") {
+      reasons.push("SKIP_FROM_OVERLAY_NO_DATA");
+    }
+    return {
+      ...signal,
+      gateDecision: decision,
+      gateReasons: normalizeReasonsForDecision(decision, reasons),
+    };
+  });
   return {
     ...payload,
-    signals: sortedSignals,
-    summary: buildSummary(sortedSignals),
+    signals: normalizedSignals,
+    summary: buildSummary(normalizedSignals),
   };
 }
 
 export async function GET() {
   try {
-    const staticPayload = readStaticGatedSetups();
-    const payload = await applyDynamicOverlays(staticPayload);
+    const livePayload = await buildLiveUniverseSeed().catch(() => readStaticGatedSetups());
+    const payload = await applyDynamicOverlays(livePayload);
     return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json(
