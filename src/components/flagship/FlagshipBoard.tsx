@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { SESSION_ELIGIBILITY, SESSION_WINDOWS_UTC, defaultSessionFromUtcDate, sessionForUtcHour, type SessionName } from "@/lib/flagship/sessionConfig";
@@ -352,6 +352,43 @@ function formatScore(score: number) {
   return String(score);
 }
 
+function decodeReason(reason: string) {
+  const key = String(reason ?? "").trim().toUpperCase();
+  const dictionary: Record<string, string> = {
+    PASS_BIAS_ALIGNMENT: "At least 2 of 3 bias votes aligned in one direction.",
+    SKIP_BIAS_INSUFFICIENT_ALIGNMENT: "Bias votes are split, so there is no clear directional edge.",
+    MENTHORQ_GAMMA_PASS_ALIGNED: "MenthorQ gamma structure supports this direction.",
+    MENTHORQ_GAMMA_SKIP_CONFLICT: "MenthorQ gamma structure conflicts with this direction.",
+    MENTHORQ_PROXY_SHARED_SYMBOL_NEUTRAL: "Proxy gamma symbols are shared on both legs, treated as neutral.",
+    SKIP_FROM_OVERLAY_NO_DATA: "Overlay data was unavailable, so the setup is blocked.",
+    PASS_LIQUIDATION_DYNAMIC: "Crypto liquidation structure supports this direction.",
+    SKIP_OPPOSING_DOMINANCE_MULTI_TF: "Opposing liquidation pressure dominates across multiple timeframes.",
+    SKIP_LOW_RATIO_1D_7D: "Fuel/risk ratio is unfavorable on both 1D and 7D windows.",
+  };
+  if (dictionary[key]) return dictionary[key];
+  return key
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b[a-z]/g, (char) => char.toUpperCase());
+}
+
+function describeState(label: string, state: TrendState) {
+  if (state === "BULLISH") return `${label}: bullish pressure.`;
+  if (state === "BEARISH") return `${label}: bearish pressure.`;
+  return `${label}: neutral / mixed pressure.`;
+}
+
+function describeGate(gate: GateDecision, reasons: string[]) {
+  const prefix =
+    gate === "PASS"
+      ? "Gate: PASS. Setup is tradable."
+      : gate === "SKIP"
+        ? "Gate: SKIP. Setup is blocked."
+        : "Gate: NO DATA.";
+  const decoded = reasons.map((reason) => decodeReason(reason));
+  return { prefix, decoded };
+}
+
 export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [gatedData, setGatedData] = useState<GatedSetupsPayload | null>(null);
   const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
@@ -368,6 +405,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [refreshTick, setRefreshTick] = useState(0);
   const [nowUtc, setNowUtc] = useState<Date>(() => new Date());
   const [selectedSession, setSelectedSession] = useState<SessionName>(() => defaultSessionFromUtcDate(new Date()));
+  const [expandedPairs, setExpandedPairs] = useState<string[]>([]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowUtc(new Date()), 60_000);
@@ -589,6 +627,11 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const passCount = matrixRows.filter((row) => row.gate === "PASS").length;
   const skipCount = matrixRows.filter((row) => row.gate === "SKIP").length;
   const noDataCount = matrixRows.filter((row) => row.gate === "NO_DATA").length;
+  const togglePairExpanded = (pair: string) => {
+    setExpandedPairs((previous) =>
+      previous.includes(pair) ? previous.filter((item) => item !== pair) : [...previous, pair],
+    );
+  };
 
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
@@ -696,10 +739,20 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
             <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
               {matrixRows.map((row) => {
                 const score = rowDirectionalScore(row);
+                const isExpanded = expandedPairs.includes(row.pair);
+                const gateExplanation = describeGate(row.gate, row.gateReasons);
                 return (
-                <tr key={row.pair} className={`transition-colors ${rowHighlightClass(row)}`}>
+                <Fragment key={row.pair}>
+                <tr className={`transition-colors ${rowHighlightClass(row)}`}>
                   <td className="px-3 py-2 font-semibold text-[var(--foreground)]">
-                    <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => togglePairExpanded(row.pair)}
+                      className="group flex items-center gap-2 text-left"
+                    >
+                      <span className="inline-flex w-3 justify-center text-[11px] text-[color:var(--muted)] transition-transform group-hover:text-[var(--foreground)]">
+                        {isExpanded ? "▾" : "▸"}
+                      </span>
                       <span
                         title={score > 0 ? `Bullish consensus ${formatScore(score)}` : score < 0 ? `Bearish consensus ${formatScore(score)}` : "Neutral consensus 0"}
                         className={`inline-flex h-2.5 w-2.5 rounded-full ${rowPolarityDotClass(score)}`}
@@ -714,7 +767,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                       >
                         {formatScore(score)}
                       </span>
-                    </div>
+                    </button>
                   </td>
                   <td className="px-3 py-2 align-middle">
                     <span title={row.dealer} className={`inline-flex w-7 cursor-help justify-center rounded border px-2 py-0.5 font-semibold transition-colors hover:brightness-110 ${stateClass(row.dealer)}`}>
@@ -750,6 +803,43 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                     </span>
                   </td>
                 </tr>
+                {isExpanded ? (
+                  <tr className="bg-[var(--panel)]/75">
+                    <td colSpan={7} className="px-4 py-3">
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
+                          {describeState("Dealer", row.dealer)}
+                        </div>
+                        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
+                          {describeState("Commercial", row.commercial)}
+                        </div>
+                        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
+                          {describeState("Sentiment", row.sentimentDaily)}
+                        </div>
+                        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
+                          {describeState("Overlay", row.overlay)}
+                        </div>
+                        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
+                          {describeState("Strength 1h", row.strength1h)}
+                        </div>
+                        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
+                          {`Consensus score: ${formatScore(score)} (Dealer + Commercial + Sentiment + Overlay).`}
+                        </div>
+                      </div>
+                      <div className="mt-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs text-[color:var(--foreground)]">
+                        <div className="font-semibold">{gateExplanation.prefix}</div>
+                        <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-[color:var(--muted)]">
+                          {gateExplanation.decoded.map((line) => (
+                            <span key={`${row.pair}-${line}`} className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-0.5">
+                              {line}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
+                </Fragment>
               )})}
             </tbody>
           </table>
