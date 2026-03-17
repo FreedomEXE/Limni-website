@@ -2,7 +2,7 @@ pair,base_gamma_symbol,quote_gamma_symbol,enabled,notes
 EURUSD,6E,,1,no DX mode: base-only
 GBPUSD,6B,,1,no DX mode: base-only
 AUDUSD,6A,,1,no DX mode: base-only
-NZDUSD,6N,,0,trial unavailable: NZD futures not exposed
+NZDUSD,6A,,1,NZD proxy via AUD futures
 USDJPY,,6J,1,no DX mode: quote-only (inverse USD leg)
 USDCHF,,6S,1,no DX mode: quote-only (inverse USD leg)
 USDCAD,,6C,1,no DX mode: quote-only (inverse USD leg)
@@ -13,8 +13,11 @@ EURCHF,6E,6S,1,cross pair dual mapping
 CADCHF,6C,6S,1,cross pair dual mapping
 CADJPY,6C,6J,1,cross pair dual mapping
 AUDCHF,6A,6S,1,cross pair dual mapping
-NZDCAD,6N,6C,0,trial unavailable: NZD futures not exposed
+NZDCAD,6A,6C,1,NZD proxy via AUD futures
+AUDNZD,6A,6A,1,shared proxy symbol -> neutral overlay
 SPXUSD,ES,,1,index proxy base-only
 NDXUSD,NQ,,1,index proxy base-only
+NIKKEIUSD,,6J,1,JPY proxy inverted (quote-side mapping)
 XAUUSD,GC,,1,commodity proxy base-only
 XAGUSD,SI,,1,commodity proxy base-only
+WTIUSD,CL,,1,commodity proxy base-only

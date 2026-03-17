@@ -133,7 +133,8 @@ const CURRENCY_MENTHORQ_SYMBOL: Record<string, string> = {
   AUD: "6A",
   CHF: "6S",
   CAD: "6C",
-  NZD: "6N",
+  // MenthorQ trial coverage fallback: proxy NZD with AUD futures.
+  NZD: "6A",
 };
 
 const ASSET_MENTHORQ_SYMBOL: Record<string, string> = {
@@ -157,6 +158,12 @@ function directionToState(direction: SignalDirection): TrendState {
 function conditionToState(condition: MenthorqOverlayCondition | null | undefined): TrendState {
   if (condition === "POSITIVE") return "BULLISH";
   if (condition === "NEGATIVE") return "BEARISH";
+  return "NEUTRAL";
+}
+
+function invertState(state: TrendState): TrendState {
+  if (state === "BULLISH") return "BEARISH";
+  if (state === "BEARISH") return "BULLISH";
   return "NEUTRAL";
 }
 
@@ -229,6 +236,11 @@ function deriveMenthorqOverlayForPair(
   menthorqBySymbol: Map<string, MenthorqOverlayCondition>,
 ): TrendState {
   if (pairRow.assetClass === "crypto") return "NEUTRAL";
+
+  if (pairRow.assetClass === "indices" && pairRow.base === "NIKKEI") {
+    // Nikkei proxy: invert JPY futures condition.
+    return invertState(conditionToState(menthorqBySymbol.get("6J")));
+  }
 
   if (pairRow.assetClass === "indices" || pairRow.assetClass === "commodities") {
     const symbol = ASSET_MENTHORQ_SYMBOL[pairRow.base];

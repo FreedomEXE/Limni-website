@@ -44,7 +44,8 @@ const DEFAULT_FX_GAMMA_SYMBOL_BY_CURRENCY: Record<string, string> = {
   AUD: "6A",
   CHF: "6S",
   CAD: "6C",
-  NZD: "6N",
+  // MenthorQ trial coverage fallback: proxy NZD with AUD futures.
+  NZD: "6A",
 };
 const DEFAULT_ASSET_GAMMA_SYMBOL_BY_BASE: Record<string, string> = {
   SPX: "ES",
@@ -419,18 +420,28 @@ function buildGammaPairMap(): Map<string, GammaPairMapEntry> | null {
     const baseSymbol = base === "USD" ? "" : DEFAULT_FX_GAMMA_SYMBOL_BY_CURRENCY[base] ?? "";
     const quoteSymbol = quote === "USD" ? "" : DEFAULT_FX_GAMMA_SYMBOL_BY_CURRENCY[quote] ?? "";
     if (!baseSymbol && !quoteSymbol) continue;
-    const hasNzd = base === "NZD" || quote === "NZD";
     pairMap.set(pair, {
       pair,
       baseSymbol: baseSymbol || null,
       quoteSymbol: quoteSymbol || null,
-      enabled: !hasNzd,
+      enabled: true,
     });
   }
 
   for (const row of PAIRS_BY_ASSET_CLASS.indices) {
     const pair = normalizePair(row.pair);
-    const baseSymbol = DEFAULT_ASSET_GAMMA_SYMBOL_BY_BASE[normalizePair(row.base)] ?? "";
+    const base = normalizePair(row.base);
+    // Nikkei proxy: invert JPY futures leg (quote-side mapping).
+    if (base === "NIKKEI") {
+      pairMap.set(pair, {
+        pair,
+        baseSymbol: null,
+        quoteSymbol: DEFAULT_FX_GAMMA_SYMBOL_BY_CURRENCY.JPY,
+        enabled: true,
+      });
+      continue;
+    }
+    const baseSymbol = DEFAULT_ASSET_GAMMA_SYMBOL_BY_BASE[base] ?? "";
     if (!baseSymbol) continue;
     pairMap.set(pair, {
       pair,
@@ -473,6 +484,28 @@ function buildGammaPairMap(): Map<string, GammaPairMapEntry> | null {
       });
     }
   }
+
+  // Force proxy overrides regardless of CSV template defaults.
+  for (const row of PAIRS_BY_ASSET_CLASS.fx) {
+    const pair = normalizePair(row.pair);
+    const base = normalizePair(row.base);
+    const quote = normalizePair(row.quote);
+    if (base !== "NZD" && quote !== "NZD") continue;
+    pairMap.set(pair, {
+      pair,
+      baseSymbol: base === "USD" ? null : DEFAULT_FX_GAMMA_SYMBOL_BY_CURRENCY[base] ?? null,
+      quoteSymbol: quote === "USD" ? null : DEFAULT_FX_GAMMA_SYMBOL_BY_CURRENCY[quote] ?? null,
+      enabled: true,
+    });
+  }
+
+  pairMap.set("NIKKEIUSD", {
+    pair: "NIKKEIUSD",
+    baseSymbol: null,
+    quoteSymbol: DEFAULT_FX_GAMMA_SYMBOL_BY_CURRENCY.JPY,
+    enabled: true,
+  });
+
   return pairMap.size > 0 ? pairMap : null;
 }
 
@@ -586,6 +619,22 @@ function evaluateMenthorqGate(options: {
     : null;
   if (!baseSnapshot && !quoteSnapshot) {
     return { decision: "NO_DATA", reasons: ["MENTHORQ_SYMBOL_DATA_MISSING"], asOfUtc: null };
+  }
+
+  const hasSharedProxySymbol =
+    Boolean(map.baseSymbol) &&
+    Boolean(map.quoteSymbol) &&
+    normalizeGammaSymbol(map.baseSymbol) === normalizeGammaSymbol(map.quoteSymbol);
+
+  if (hasSharedProxySymbol) {
+    const asOfUtc = (baseSnapshot?.dateIso ?? quoteSnapshot?.dateIso)
+      ? `${(baseSnapshot?.dateIso ?? quoteSnapshot?.dateIso) as string}T00:00:00.000Z`
+      : null;
+    return {
+      decision: "PASS",
+      reasons: ["MENTHORQ_PROXY_SHARED_SYMBOL_NEUTRAL"],
+      asOfUtc,
+    };
   }
 
   const desiredBase = options.direction;
