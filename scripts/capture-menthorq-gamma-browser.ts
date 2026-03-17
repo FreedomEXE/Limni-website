@@ -38,6 +38,7 @@ type CliConfig = {
   allowUnknown: boolean;
   parseRetries: number;
   parseRetryDelayMs: number;
+  gammaReadyTimeoutMs: number;
 };
 
 type CaptureRow = {
@@ -142,8 +143,12 @@ function parseArgs(): CliConfig {
     allowUnknownRaw === "1" || allowUnknownRaw === "true" || allowUnknownRaw === "yes" || allowUnknownRaw === "on";
   const parseRetriesRaw = Number(byKey.get("parse-retries") ?? "2");
   const parseRetryDelayMsRaw = Number(byKey.get("parse-retry-delay-ms") ?? "1500");
+  const gammaReadyTimeoutMsRaw = Number(byKey.get("gamma-ready-timeout-ms") ?? "12000");
   const parseRetries = Number.isFinite(parseRetriesRaw) ? Math.max(0, Math.trunc(parseRetriesRaw)) : 2;
   const parseRetryDelayMs = Number.isFinite(parseRetryDelayMsRaw) ? Math.max(250, Math.trunc(parseRetryDelayMsRaw)) : 1500;
+  const gammaReadyTimeoutMs = Number.isFinite(gammaReadyTimeoutMsRaw)
+    ? Math.max(1000, Math.trunc(gammaReadyTimeoutMsRaw))
+    : 12000;
   const headedRaw = String(byKey.get("headed") ?? "true").trim().toLowerCase();
   const headed = headedRaw !== "0" && headedRaw !== "false" && headedRaw !== "no" && headedRaw !== "off";
 
@@ -164,6 +169,7 @@ function parseArgs(): CliConfig {
     allowUnknown,
     parseRetries,
     parseRetryDelayMs,
+    gammaReadyTimeoutMs,
   };
 }
 
@@ -407,6 +413,15 @@ async function main() {
       const url = config.urlTemplate.replaceAll("{symbol}", encodeURIComponent(symbol));
       await navigateAndSettle(url, "via URL template");
     } else {
+      if (!interactive) {
+        manifest.push({
+          date: config.date,
+          symbol_input: symbol,
+          skipped: "missing_symbol_url_mapping_non_interactive",
+        });
+        console.error(`[${symbol}] skipped: no URL map/template in non-interactive mode.`);
+        continue;
+      }
       await waitForContinue(`Navigate manually to symbol ${symbol} in the browser, then press Enter.`);
       await page.waitForTimeout(800);
     }
@@ -452,7 +467,23 @@ async function main() {
       break;
     }
 
-    let parsed = parseMetricsFromText(bodyText);
+    try {
+      await page.waitForFunction(
+        () => {
+          const text = (document.body?.innerText ?? "").toLowerCase();
+          const hasGammaLabel = text.includes("gamma condition");
+          const hasGammaValue =
+            text.includes("positive") || text.includes("negative") || text.includes("neutral");
+          return hasGammaLabel && hasGammaValue;
+        },
+        { timeout: config.gammaReadyTimeoutMs },
+      );
+    } catch {
+      // Continue with retries below even if gamma readiness wait times out.
+    }
+
+    const initialParseText = await page.evaluate(() => document.body?.innerText ?? "");
+    let parsed = parseMetricsFromText(initialParseText);
     for (let attempt = 0; attempt < config.parseRetries && parsed.gammaCondition === ""; attempt += 1) {
       await page.waitForTimeout(config.parseRetryDelayMs);
       const retryText = await page.evaluate(() => document.body?.innerText ?? "");
