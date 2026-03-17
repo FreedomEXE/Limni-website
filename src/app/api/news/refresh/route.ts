@@ -19,7 +19,7 @@ function isAuthorized(request: Request) {
   if (secret) {
     return querySecret === secret || bearerSecret === secret;
   }
-  return true;
+  return false;
 }
 
 export async function POST(request: Request) {

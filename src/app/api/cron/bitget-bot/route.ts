@@ -15,33 +15,13 @@
 import { NextResponse } from "next/server";
 import { tick } from "@/lib/bitgetBotEngine";
 import { getBitgetEnv } from "@/lib/bitgetTrade";
+import { isCronAuthorized } from "@/lib/cronAuth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 55;
 
-function isAuthorized(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    return true;
-  }
-  const headerSecret = request.headers.get("x-cron-secret");
-  const authHeader = request.headers.get("authorization");
-  const vercelCron = request.headers.get("x-vercel-cron");
-  const bearerSecret = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice("Bearer ".length)
-    : null;
-  const url = new URL(request.url);
-  const querySecret = url.searchParams.get("secret");
-  return (
-    headerSecret === secret ||
-    querySecret === secret ||
-    bearerSecret === secret ||
-    vercelCron === "1"
-  );
-}
-
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
