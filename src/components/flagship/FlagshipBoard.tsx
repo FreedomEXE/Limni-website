@@ -308,6 +308,22 @@ function gateRank(gate: GateDecision) {
   return 2;
 }
 
+function rowDirectionalScore(row: MatrixRow) {
+  const values = [row.dealer, row.commercial, row.sentimentDaily, row.overlay];
+  return values.reduce((acc, state) => {
+    if (state === "BULLISH") return acc + 1;
+    if (state === "BEARISH") return acc - 1;
+    return acc;
+  }, 0);
+}
+
+function rowHighlightClass(row: MatrixRow) {
+  const score = rowDirectionalScore(row);
+  if (score > 0) return "bg-emerald-500/[0.06] hover:bg-emerald-500/[0.11]";
+  if (score < 0) return "bg-rose-500/[0.06] hover:bg-rose-500/[0.11]";
+  return "bg-slate-500/[0.04] hover:bg-slate-500/[0.1]";
+}
+
 export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [gatedData, setGatedData] = useState<GatedSetupsPayload | null>(null);
   const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
@@ -551,7 +567,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
       <header className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Flagship</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Matrix</p>
             <h1 className="text-xl font-semibold text-[var(--foreground)] md:text-2xl">Session Matrix</h1>
             <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Strategy {strategy}</p>
           </div>
@@ -596,12 +612,6 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/55 px-3 py-2 text-[11px] text-[color:var(--muted)]">
-          <span className="font-semibold uppercase tracking-[0.12em]">Legend</span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-emerald-500/12 px-2 py-0.5 text-emerald-700 dark:text-emerald-300">B = Bullish</span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/35 bg-rose-500/12 px-2 py-0.5 text-rose-700 dark:text-rose-300">S = Bearish</span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-slate-600 dark:text-slate-300">N = Neutral</span>
-        </div>
       </header>
 
       {loading ? (
@@ -649,7 +659,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                 <th className="px-3 py-2">Pair</th>
                 <th className="px-3 py-2">Dealer</th>
                 <th className="px-3 py-2">Commercial</th>
-                <th className="px-3 py-2">Sent D</th>
+                <th className="px-3 py-2">Sentiment</th>
                 <th className="px-3 py-2">Overlay</th>
                 <th className="px-3 py-2">Strength 1h</th>
                 <th className="px-3 py-2">Gate</th>
@@ -657,7 +667,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
             </thead>
             <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
               {matrixRows.map((row) => (
-                <tr key={row.pair} className="transition-colors hover:bg-[var(--panel)]/70">
+                <tr key={row.pair} className={`transition-colors ${rowHighlightClass(row)}`}>
                   <td className="px-3 py-2 font-semibold text-[var(--foreground)]">
                     {row.pair}
                     <span className="ml-2 text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
@@ -701,6 +711,12 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/55 px-3 py-2 text-[11px] text-[color:var(--muted)]">
+          <span className="font-semibold uppercase tracking-[0.12em]">Legend</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-emerald-500/12 px-2 py-0.5 text-emerald-700 dark:text-emerald-300">B = Bullish</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/35 bg-rose-500/12 px-2 py-0.5 text-rose-700 dark:text-rose-300">S = Bearish</span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-slate-600 dark:text-slate-300">N = Neutral</span>
         </div>
         </div>
       ) : null}

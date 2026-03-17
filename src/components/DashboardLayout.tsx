@@ -38,7 +38,7 @@ const TOP_LEVEL: NavItem[] = [
   { key: "performance", href: "/performance", label: "Performance", letter: "I" },
   { key: "automation", href: "/automation", label: "Automation", letter: "M" },
   { key: "accounts", href: "/accounts", label: "Accounts", letter: "N" },
-  { key: "flagship", href: "/flagship", label: "Flagship", letter: "I" },
+  { key: "flagship", href: "/flagship", label: "Matrix", letter: "I" },
   { key: "news", href: "/news", label: "News", letter: "N" },
 ];
 
@@ -47,7 +47,7 @@ const SECTION_LABELS: Record<string, string> = {
   performance: "Performance",
   automation: "Automation",
   accounts: "Accounts",
-  flagship: "Flagship",
+  flagship: "Matrix",
   news: "News",
 };
 
@@ -164,7 +164,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (activeSection === "flagship") {
       return [
         { href: "/flagship", label: "Board" },
-        { href: "/flagship?view=research", label: "Research" },
       ];
     }
     return [];
