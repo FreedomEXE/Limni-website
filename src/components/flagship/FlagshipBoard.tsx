@@ -319,9 +319,37 @@ function rowDirectionalScore(row: MatrixRow) {
 
 function rowHighlightClass(row: MatrixRow) {
   const score = rowDirectionalScore(row);
-  if (score > 0) return "bg-emerald-500/[0.06] hover:bg-emerald-500/[0.11]";
-  if (score < 0) return "bg-rose-500/[0.06] hover:bg-rose-500/[0.11]";
-  return "bg-slate-500/[0.04] hover:bg-slate-500/[0.1]";
+  const intensity = Math.min(4, Math.max(1, Math.abs(score)));
+  if (score > 0) {
+    if (intensity >= 4) return "bg-emerald-500/[0.16] hover:bg-emerald-500/[0.23]";
+    if (intensity === 3) return "bg-emerald-500/[0.12] hover:bg-emerald-500/[0.19]";
+    if (intensity === 2) return "bg-emerald-500/[0.09] hover:bg-emerald-500/[0.15]";
+    return "bg-emerald-500/[0.06] hover:bg-emerald-500/[0.12]";
+  }
+  if (score < 0) {
+    if (intensity >= 4) return "bg-rose-500/[0.16] hover:bg-rose-500/[0.23]";
+    if (intensity === 3) return "bg-rose-500/[0.12] hover:bg-rose-500/[0.19]";
+    if (intensity === 2) return "bg-rose-500/[0.09] hover:bg-rose-500/[0.15]";
+    return "bg-rose-500/[0.06] hover:bg-rose-500/[0.12]";
+  }
+  return "bg-slate-500/[0.05] hover:bg-slate-500/[0.12]";
+}
+
+function rowPolarityDotClass(score: number) {
+  if (score > 0) return "bg-emerald-500/80 shadow-[0_0_0_2px_rgba(16,185,129,0.16)]";
+  if (score < 0) return "bg-rose-500/80 shadow-[0_0_0_2px_rgba(244,63,94,0.16)]";
+  return "bg-slate-400/70 shadow-[0_0_0_2px_rgba(148,163,184,0.16)]";
+}
+
+function scoreChipClass(score: number) {
+  if (score > 0) return "border-emerald-500/45 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+  if (score < 0) return "border-rose-500/45 bg-rose-500/15 text-rose-700 dark:text-rose-300";
+  return "border-slate-500/35 bg-slate-500/12 text-slate-700 dark:text-slate-300";
+}
+
+function formatScore(score: number) {
+  if (score > 0) return `+${score}`;
+  return String(score);
 }
 
 export default function FlagshipBoard({ strategy }: { strategy: string }) {
@@ -666,13 +694,27 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
-              {matrixRows.map((row) => (
+              {matrixRows.map((row) => {
+                const score = rowDirectionalScore(row);
+                return (
                 <tr key={row.pair} className={`transition-colors ${rowHighlightClass(row)}`}>
                   <td className="px-3 py-2 font-semibold text-[var(--foreground)]">
-                    {row.pair}
-                    <span className="ml-2 text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
-                      {row.assetClass}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        title={score > 0 ? `Bullish consensus ${formatScore(score)}` : score < 0 ? `Bearish consensus ${formatScore(score)}` : "Neutral consensus 0"}
+                        className={`inline-flex h-2.5 w-2.5 rounded-full ${rowPolarityDotClass(score)}`}
+                      />
+                      <span>{row.pair}</span>
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
+                        {row.assetClass}
+                      </span>
+                      <span
+                        title="Consensus score from Dealer + Commercial + Sentiment + Overlay"
+                        className={`inline-flex rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${scoreChipClass(score)}`}
+                      >
+                        {formatScore(score)}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-3 py-2 align-middle">
                     <span title={row.dealer} className={`inline-flex w-7 cursor-help justify-center rounded border px-2 py-0.5 font-semibold transition-colors hover:brightness-110 ${stateClass(row.dealer)}`}>
@@ -708,7 +750,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                     </span>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
