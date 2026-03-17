@@ -39,6 +39,17 @@ type DailySentimentPayload = {
   rows: DailySentimentRow[];
 };
 
+type CotMatrixRow = {
+  pair: string;
+  dealerDirection: SignalDirection;
+  commercialDirection: SignalDirection;
+};
+
+type CotMatrixPayload = {
+  generatedUtc: string | null;
+  rows: CotMatrixRow[];
+};
+
 type CurrencyStrengthWindowResult = {
   snapshotTimeUtc: string;
   window: "1h" | "4h" | "24h";
@@ -285,6 +296,7 @@ function gateRank(gate: GateDecision) {
 
 export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [gatedData, setGatedData] = useState<GatedSetupsPayload | null>(null);
+  const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
   const [dailySentiment, setDailySentiment] = useState<DailySentimentPayload | null>(null);
   const [currencyStrength, setCurrencyStrength] = useState<CurrencyStrengthPayload | null>(null);
   const [assetStrength, setAssetStrength] = useState<AssetStrengthPayload | null>(null);
@@ -319,8 +331,9 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         const nextWarnings: string[] = [];
         setError(null);
 
-        const [gatedRes, sentimentRes, currencyRes, assetRes, menthorqRes] = await Promise.allSettled([
+        const [gatedRes, cotRes, sentimentRes, currencyRes, assetRes, menthorqRes] = await Promise.allSettled([
           fetch("/api/performance/gated-setups", { cache: "no-store" }),
+          fetch("/api/flagship/cot-matrix", { cache: "no-store" }),
           fetch("/api/flagship/sentiment-daily", { cache: "no-store" }),
           fetch("/api/flagship/currency-strength", { cache: "no-store" }),
           fetch("/api/flagship/asset-strength", { cache: "no-store" }),
@@ -328,6 +341,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         ]);
 
         let gatedJson: GatedSetupsPayload | null = null;
+        let cotJson: CotMatrixPayload | null = null;
         let sentimentJson: DailySentimentPayload | null = null;
         let currencyJson: CurrencyStrengthPayload | null = null;
         let assetJson: AssetStrengthPayload | null = null;
@@ -341,6 +355,16 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           }
         } else {
           nextWarnings.push("gated-setups request failed");
+        }
+
+        if (cotRes.status === "fulfilled") {
+          if (cotRes.value.ok) {
+            cotJson = (await cotRes.value.json()) as CotMatrixPayload;
+          } else {
+            nextWarnings.push(`cot-matrix HTTP ${cotRes.value.status}`);
+          }
+        } else {
+          nextWarnings.push("cot-matrix request failed");
         }
 
         if (sentimentRes.status === "fulfilled") {
@@ -390,6 +414,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           } else if (!hasGatedDataRef.current) {
             setError("Failed to load gated setups.");
           }
+          if (cotJson) setCotMatrix(cotJson);
           if (sentimentJson) setDailySentiment(sentimentJson);
           if (currencyJson) setCurrencyStrength(currencyJson);
           if (assetJson) setAssetStrength(assetJson);
@@ -423,6 +448,10 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
     for (const signal of gatedData?.signals ?? []) {
       gatedByPair.set(normalizeKey(signal.pair), signal);
     }
+    const cotByPair = new Map<string, CotMatrixRow>();
+    for (const row of cotMatrix?.rows ?? []) {
+      cotByPair.set(normalizeKey(row.pair), row);
+    }
 
     const dailySentimentBySymbol = new Map<string, SignalDirection>();
     for (const row of dailySentiment?.rows ?? []) {
@@ -451,6 +480,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
     const rows: MatrixRow[] = UNIVERSE.map((pairRow) => {
       const key = normalizeKey(pairRow.pair);
       const signal = gatedByPair.get(key) ?? null;
+      const cotSignal = cotByPair.get(key) ?? null;
       const sentimentDirection = dailySentimentBySymbol.get(key) ?? "NEUTRAL";
 
       let strength1h: TrendState = "NEUTRAL";
@@ -481,8 +511,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         assetClass: pairRow.assetClass,
         tier: normalizeTier(signal?.tier),
         gate: signal ? normalizeGate(signal.gateDecision) : "NO_DATA",
-        dealer: directionToState(signal?.dealer as SignalDirection),
-        commercial: directionToState(signal?.commercial as SignalDirection),
+        dealer: directionToState(cotSignal?.dealerDirection ?? "NEUTRAL"),
+        commercial: directionToState(cotSignal?.commercialDirection ?? "NEUTRAL"),
         sentimentDaily: directionToState(sentimentDirection),
         overlay: menthorqOverlayState !== "NEUTRAL" ? menthorqOverlayState : deriveOverlayState(signal),
         strength1h,
@@ -502,7 +532,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         if (tierDiff !== 0) return tierDiff;
         return a.pair.localeCompare(b.pair);
       });
-  }, [assetStrength, currencyStrength, dailySentiment, gatedData, menthorqOverlay, selectedSession]);
+  }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, gatedData, menthorqOverlay, selectedSession]);
 
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
   const passCount = matrixRows.filter((row) => row.gate === "PASS").length;
