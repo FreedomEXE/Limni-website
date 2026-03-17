@@ -3,10 +3,10 @@ import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 
 export type SessionName = "ASIA" | "LONDON" | "NY";
 
-export const SESSION_WINDOWS_UTC: Record<SessionName, { startHour: number; endHour: number; label: string }> = {
-  ASIA: { startHour: 0, endHour: 8, label: "00:00-08:00 UTC" },
-  LONDON: { startHour: 8, endHour: 13, label: "08:00-13:00 UTC" },
-  NY: { startHour: 13, endHour: 21, label: "13:00-21:00 UTC" },
+export const SESSION_WINDOWS_UTC: Record<SessionName, { startHour: number; endHour: number }> = {
+  ASIA: { startHour: 0, endHour: 8 },
+  LONDON: { startHour: 8, endHour: 13 },
+  NY: { startHour: 13, endHour: 21 },
 };
 
 const ALL_SESSIONS: SessionName[] = ["ASIA", "LONDON", "NY"];
@@ -73,4 +73,41 @@ export function sessionForUtcHour(hourUtc: number): SessionName | null {
 export function defaultSessionFromUtcDate(nowUtc: Date): SessionName {
   const active = sessionForUtcHour(nowUtc.getUTCHours());
   return active ?? "ASIA";
+}
+
+function formatEtHour(dateUtc: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(dateUtc);
+}
+
+export function sessionWindowLabelEt(session: SessionName, referenceUtc: Date = new Date()): string {
+  const window = SESSION_WINDOWS_UTC[session];
+  const startUtc = new Date(
+    Date.UTC(
+      referenceUtc.getUTCFullYear(),
+      referenceUtc.getUTCMonth(),
+      referenceUtc.getUTCDate(),
+      window.startHour,
+      0,
+      0,
+      0,
+    ),
+  );
+  const endUtc = new Date(
+    Date.UTC(
+      referenceUtc.getUTCFullYear(),
+      referenceUtc.getUTCMonth(),
+      referenceUtc.getUTCDate(),
+      window.endHour,
+      0,
+      0,
+      0,
+    ),
+  );
+
+  return `${formatEtHour(startUtc)}-${formatEtHour(endUtc)} ET`;
 }

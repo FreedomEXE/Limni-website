@@ -3,7 +3,13 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
-import { SESSION_ELIGIBILITY, SESSION_WINDOWS_UTC, defaultSessionFromUtcDate, sessionForUtcHour, type SessionName } from "@/lib/flagship/sessionConfig";
+import {
+  SESSION_ELIGIBILITY,
+  defaultSessionFromUtcDate,
+  sessionForUtcHour,
+  sessionWindowLabelEt,
+  type SessionName,
+} from "@/lib/flagship/sessionConfig";
 import { formatDateTimeET } from "@/lib/time";
 
 type TrendState = "BULLISH" | "BEARISH" | "NEUTRAL";
@@ -645,7 +651,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           <div className="space-y-2">
             <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-right text-xs text-[color:var(--muted)]">
               <div>Data {formatDateTimeET(lastRefreshedUtc ?? gatedData?.generatedUtc ?? null, "Unknown")}</div>
-              <div className="font-semibold">{activeSession ? `Active ${activeSession}` : "Off-hours 21:00-00:00 UTC"}</div>
+              <div className="font-semibold">{activeSession ? `Active ${activeSession}` : "Off-hours 17:00-20:00 ET"}</div>
             </div>
             <button
               type="button"
@@ -677,7 +683,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                 }`}
               >
                 <div className="text-xs font-semibold uppercase tracking-[0.14em]">{session}</div>
-                <div className="text-[11px]">{SESSION_WINDOWS_UTC[session].label}</div>
+                <div className="text-[11px]">{sessionWindowLabelEt(session, nowUtc)}</div>
               </button>
             );
           })}
