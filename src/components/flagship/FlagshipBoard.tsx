@@ -68,6 +68,17 @@ type AssetStrengthPayload = {
   strengths: AssetStrengthWindowResult[];
 };
 
+type MenthorqOverlayCondition = "POSITIVE" | "NEGATIVE" | "NEUTRAL" | "UNKNOWN";
+
+type MenthorqOverlayRow = {
+  symbol: string;
+  gammaCondition: MenthorqOverlayCondition;
+};
+
+type MenthorqOverlayPayload = {
+  rows: MenthorqOverlayRow[];
+};
+
 type PairUniverseRow = {
   pair: string;
   assetClass: AssetClass;
@@ -115,6 +126,24 @@ const UNIVERSE: PairUniverseRow[] = [
   })),
 ];
 
+const CURRENCY_MENTHORQ_SYMBOL: Record<string, string> = {
+  EUR: "6E",
+  GBP: "6B",
+  JPY: "6J",
+  AUD: "6A",
+  CHF: "6S",
+  CAD: "6C",
+  NZD: "6N",
+};
+
+const ASSET_MENTHORQ_SYMBOL: Record<string, string> = {
+  SPX: "ES",
+  NDX: "NQ",
+  XAU: "GC",
+  XAG: "SI",
+  WTI: "CL",
+};
+
 function normalizeKey(value: string | null | undefined) {
   return String(value ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
@@ -122,6 +151,12 @@ function normalizeKey(value: string | null | undefined) {
 function directionToState(direction: SignalDirection): TrendState {
   if (direction === "LONG") return "BULLISH";
   if (direction === "SHORT") return "BEARISH";
+  return "NEUTRAL";
+}
+
+function conditionToState(condition: MenthorqOverlayCondition | null | undefined): TrendState {
+  if (condition === "POSITIVE") return "BULLISH";
+  if (condition === "NEGATIVE") return "BEARISH";
   return "NEUTRAL";
 }
 
@@ -189,6 +224,33 @@ function deriveOverlayState(signal: GatedSetupSignal | null): TrendState {
   return "NEUTRAL";
 }
 
+function deriveMenthorqOverlayForPair(
+  pairRow: PairUniverseRow,
+  menthorqBySymbol: Map<string, MenthorqOverlayCondition>,
+): TrendState {
+  if (pairRow.assetClass === "crypto") return "NEUTRAL";
+
+  if (pairRow.assetClass === "indices" || pairRow.assetClass === "commodities") {
+    const symbol = ASSET_MENTHORQ_SYMBOL[pairRow.base];
+    return conditionToState(symbol ? menthorqBySymbol.get(symbol) : "UNKNOWN");
+  }
+
+  const baseSymbol = CURRENCY_MENTHORQ_SYMBOL[pairRow.base];
+  const quoteSymbol = CURRENCY_MENTHORQ_SYMBOL[pairRow.quote];
+  const baseState = conditionToState(baseSymbol ? menthorqBySymbol.get(baseSymbol) : "UNKNOWN");
+  const quoteState = conditionToState(quoteSymbol ? menthorqBySymbol.get(quoteSymbol) : "UNKNOWN");
+
+  if (baseState === "NEUTRAL" && quoteState === "NEUTRAL") return "NEUTRAL";
+  if (baseState !== "NEUTRAL" && quoteState === "NEUTRAL") return baseState;
+  if (baseState === "NEUTRAL" && quoteState !== "NEUTRAL") {
+    return quoteState === "BULLISH" ? "BEARISH" : "BULLISH";
+  }
+  if (baseState === quoteState) return "NEUTRAL";
+  if (baseState === "BULLISH" && quoteState === "BEARISH") return "BULLISH";
+  if (baseState === "BEARISH" && quoteState === "BULLISH") return "BEARISH";
+  return "NEUTRAL";
+}
+
 function getAlignmentCount(row: MatrixRow) {
   const values = [row.dealer, row.commercial, row.sentimentDaily, row.overlay, row.strength1h];
   const bulls = values.filter((state) => state === "BULLISH").length;
@@ -213,10 +275,14 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [dailySentiment, setDailySentiment] = useState<DailySentimentPayload | null>(null);
   const [currencyStrength, setCurrencyStrength] = useState<CurrencyStrengthPayload | null>(null);
   const [assetStrength, setAssetStrength] = useState<AssetStrengthPayload | null>(null);
+  const [menthorqOverlay, setMenthorqOverlay] = useState<MenthorqOverlayPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const hasGatedDataRef = useRef(false);
+  const [lastRefreshedUtc, setLastRefreshedUtc] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
   const [nowUtc, setNowUtc] = useState<Date>(() => new Date());
   const [selectedSession, setSelectedSession] = useState<SessionName>(() => defaultSessionFromUtcDate(new Date()));
 
@@ -236,20 +302,23 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
     let cancelled = false;
     async function fetchBoardData() {
       try {
+        setRefreshing(true);
         const nextWarnings: string[] = [];
         setError(null);
 
-        const [gatedRes, sentimentRes, currencyRes, assetRes] = await Promise.allSettled([
+        const [gatedRes, sentimentRes, currencyRes, assetRes, menthorqRes] = await Promise.allSettled([
           fetch("/api/performance/gated-setups", { cache: "no-store" }),
           fetch("/api/flagship/sentiment-daily", { cache: "no-store" }),
           fetch("/api/flagship/currency-strength", { cache: "no-store" }),
           fetch("/api/flagship/asset-strength", { cache: "no-store" }),
+          fetch("/api/flagship/menthorq-overlay", { cache: "no-store" }),
         ]);
 
         let gatedJson: GatedSetupsPayload | null = null;
         let sentimentJson: DailySentimentPayload | null = null;
         let currencyJson: CurrencyStrengthPayload | null = null;
         let assetJson: AssetStrengthPayload | null = null;
+        let menthorqJson: MenthorqOverlayPayload | null = null;
 
         if (gatedRes.status === "fulfilled") {
           if (gatedRes.value.ok) {
@@ -291,6 +360,16 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           nextWarnings.push("asset-strength request failed");
         }
 
+        if (menthorqRes.status === "fulfilled") {
+          if (menthorqRes.value.ok) {
+            menthorqJson = (await menthorqRes.value.json()) as MenthorqOverlayPayload;
+          } else {
+            nextWarnings.push(`menthorq-overlay HTTP ${menthorqRes.value.status}`);
+          }
+        } else {
+          nextWarnings.push("menthorq-overlay request failed");
+        }
+
         if (!cancelled) {
           if (gatedJson) {
             setGatedData(gatedJson);
@@ -301,8 +380,11 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           if (sentimentJson) setDailySentiment(sentimentJson);
           if (currencyJson) setCurrencyStrength(currencyJson);
           if (assetJson) setAssetStrength(assetJson);
+          if (menthorqJson) setMenthorqOverlay(menthorqJson);
           setWarnings(nextWarnings);
           setLoading(false);
+          setRefreshing(false);
+          setLastRefreshedUtc(new Date().toISOString());
         }
       } catch (fetchError) {
         if (!cancelled) {
@@ -312,17 +394,16 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
             setWarnings((prev) => [...prev, fetchError instanceof Error ? fetchError.message : String(fetchError)]);
           }
           setLoading(false);
+          setRefreshing(false);
         }
       }
     }
 
     fetchBoardData();
-    const interval = window.setInterval(fetchBoardData, 60_000);
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
     };
-  }, []);
+  }, [refreshTick]);
 
   const matrixRows = useMemo(() => {
     const gatedByPair = new Map<string, GatedSetupSignal>();
@@ -347,6 +428,11 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
       for (const strengthRow of row.strengths) {
         asset1hMap.set(`${row.assetClass}:${normalizeKey(strengthRow.asset)}`, Number(strengthRow.raw));
       }
+    }
+
+    const menthorqBySymbol = new Map<string, MenthorqOverlayCondition>();
+    for (const row of menthorqOverlay?.rows ?? []) {
+      menthorqBySymbol.set(normalizeKey(row.symbol), row.gammaCondition);
     }
 
     const rows: MatrixRow[] = UNIVERSE.map((pairRow) => {
@@ -375,6 +461,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         }
       }
 
+      const menthorqOverlayState = deriveMenthorqOverlayForPair(pairRow, menthorqBySymbol);
+
       return {
         pair: pairRow.pair,
         assetClass: pairRow.assetClass,
@@ -383,7 +471,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         dealer: directionToState(signal?.dealer as SignalDirection),
         commercial: directionToState(signal?.commercial as SignalDirection),
         sentimentDaily: directionToState(sentimentDirection),
-        overlay: deriveOverlayState(signal),
+        overlay: menthorqOverlayState !== "NEUTRAL" ? menthorqOverlayState : deriveOverlayState(signal),
         strength1h,
         sessionEligible: SESSION_ELIGIBILITY.get(pairRow.pair) ?? ["ASIA", "LONDON", "NY"],
       };
@@ -400,12 +488,14 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         if (tierDiff !== 0) return tierDiff;
         return a.pair.localeCompare(b.pair);
       });
-  }, [assetStrength, currencyStrength, dailySentiment, gatedData, selectedSession]);
+  }, [assetStrength, currencyStrength, dailySentiment, gatedData, menthorqOverlay, selectedSession]);
 
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
   const passCount = matrixRows.filter((row) => row.gate === "PASS").length;
   const skipCount = matrixRows.filter((row) => row.gate === "SKIP").length;
   const noDataCount = matrixRows.filter((row) => row.gate === "NO_DATA").length;
+  const overlayNeutralCount = matrixRows.filter((row) => row.overlay === "NEUTRAL").length;
+  const missingGateCount = matrixRows.filter((row) => row.gate === "NO_DATA").length;
 
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
@@ -416,9 +506,23 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
             <h1 className="text-xl font-semibold text-[var(--foreground)] md:text-2xl">Session Matrix</h1>
             <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Strategy {strategy}</p>
           </div>
-          <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-right text-xs text-[color:var(--muted)]">
-            <div>Updated {formatDateTimeET(gatedData?.generatedUtc ?? null, "Unknown")}</div>
-            <div className="font-semibold">{activeSession ? `Active ${activeSession}` : "Off-hours 21:00-00:00 UTC"}</div>
+          <div className="space-y-2">
+            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-right text-xs text-[color:var(--muted)]">
+              <div>Data {formatDateTimeET(lastRefreshedUtc ?? gatedData?.generatedUtc ?? null, "Unknown")}</div>
+              <div className="font-semibold">{activeSession ? `Active ${activeSession}` : "Off-hours 21:00-00:00 UTC"}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRefreshTick((value) => value + 1)}
+              disabled={refreshing}
+              className={`w-full rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${
+                refreshing
+                  ? "cursor-not-allowed border-[var(--panel-border)] bg-[var(--panel)]/50 text-[color:var(--muted)]"
+                  : "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)] hover:bg-[var(--accent)]/20"
+              }`}
+            >
+              {refreshing ? "Refreshing..." : "Refresh"}
+            </button>
           </div>
         </div>
 
@@ -492,6 +596,14 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
             <div className="rounded-lg border border-slate-500/25 bg-slate-500/10 px-3 py-2">
               <div className="text-[10px] uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">No Data</div>
               <div className="text-lg font-semibold text-slate-700 dark:text-slate-300">{noDataCount}</div>
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 px-3 py-2 text-[11px] text-[color:var(--muted)]">
+              Missing gate rows this session: <span className="font-semibold text-[var(--foreground)]">{missingGateCount}</span>
+            </div>
+            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 px-3 py-2 text-[11px] text-[color:var(--muted)]">
+              Neutral overlay rows this session: <span className="font-semibold text-[var(--foreground)]">{overlayNeutralCount}</span>
             </div>
           </div>
 

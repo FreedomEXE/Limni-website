@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { DEFAULT_GATED_SETUPS_BOARD } from "@/lib/performance/gatedSetupsDefault";
+import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import {
   readNearestLiquidationHeatmapSnapshot,
   type LiquidationHeatmapSnapshotRow,
@@ -36,6 +37,22 @@ const CRYPTO_SYMBOL_BY_PAIR = new Map<string, "BTC" | "ETH">([
   ["ETHUSD", "ETH"],
 ]);
 const HEATMAP_INTERVALS = ["6h", "1d", "7d", "30d"] as const;
+const DEFAULT_FX_GAMMA_SYMBOL_BY_CURRENCY: Record<string, string> = {
+  EUR: "6E",
+  GBP: "6B",
+  JPY: "6J",
+  AUD: "6A",
+  CHF: "6S",
+  CAD: "6C",
+  NZD: "6N",
+};
+const DEFAULT_ASSET_GAMMA_SYMBOL_BY_BASE: Record<string, string> = {
+  SPX: "ES",
+  NDX: "NQ",
+  XAU: "GC",
+  XAG: "SI",
+  WTI: "CL",
+};
 
 type GateDecision = "PASS" | "SKIP" | "NO_DATA";
 type SignalTier = "HIGH" | "MEDIUM" | "NEUTRAL";
@@ -394,27 +411,67 @@ function resolveGammaSnapshotForDate(
 }
 
 function buildGammaPairMap(): Map<string, GammaPairMapEntry> | null {
+  const pairMap = new Map<string, GammaPairMapEntry>();
+  for (const row of PAIRS_BY_ASSET_CLASS.fx) {
+    const pair = normalizePair(row.pair);
+    const base = normalizePair(row.base);
+    const quote = normalizePair(row.quote);
+    const baseSymbol = base === "USD" ? "" : DEFAULT_FX_GAMMA_SYMBOL_BY_CURRENCY[base] ?? "";
+    const quoteSymbol = quote === "USD" ? "" : DEFAULT_FX_GAMMA_SYMBOL_BY_CURRENCY[quote] ?? "";
+    if (!baseSymbol && !quoteSymbol) continue;
+    const hasNzd = base === "NZD" || quote === "NZD";
+    pairMap.set(pair, {
+      pair,
+      baseSymbol: baseSymbol || null,
+      quoteSymbol: quoteSymbol || null,
+      enabled: !hasNzd,
+    });
+  }
+
+  for (const row of PAIRS_BY_ASSET_CLASS.indices) {
+    const pair = normalizePair(row.pair);
+    const baseSymbol = DEFAULT_ASSET_GAMMA_SYMBOL_BY_BASE[normalizePair(row.base)] ?? "";
+    if (!baseSymbol) continue;
+    pairMap.set(pair, {
+      pair,
+      baseSymbol,
+      quoteSymbol: null,
+      enabled: true,
+    });
+  }
+
+  for (const row of PAIRS_BY_ASSET_CLASS.commodities) {
+    const pair = normalizePair(row.pair);
+    const baseSymbol = DEFAULT_ASSET_GAMMA_SYMBOL_BY_BASE[normalizePair(row.base)] ?? "";
+    if (!baseSymbol) continue;
+    pairMap.set(pair, {
+      pair,
+      baseSymbol,
+      quoteSymbol: null,
+      enabled: true,
+    });
+  }
+
   const mapCsvEnv = process.env.PERFORMANCE_MENTHORQ_PAIR_MAP_CSV?.trim();
   const mapCsvPath = mapCsvEnv
     ? path.resolve(process.cwd(), mapCsvEnv)
     : DEFAULT_MENTHORQ_MAP_CSV;
   const mapRows = parseCsvObjects(mapCsvPath);
-  if (mapRows.length === 0) return null;
-
-  const pairMap = new Map<string, GammaPairMapEntry>();
-  for (const row of mapRows) {
-    const pair = normalizePair(row.pair || "");
-    const base = normalizeGammaSymbol(row.base_gamma_symbol || row.base_symbol || row.base || "");
-    const quote = normalizeGammaSymbol(row.quote_gamma_symbol || row.quote_symbol || row.quote || "");
-    const enabledRaw = String(row.enabled ?? "1").trim().toLowerCase();
-    const enabled = !(enabledRaw === "0" || enabledRaw === "false" || enabledRaw === "no");
-    if (!pair || (!base && !quote)) continue;
-    pairMap.set(pair, {
-      pair,
-      baseSymbol: base || null,
-      quoteSymbol: quote || null,
-      enabled,
-    });
+  if (mapRows.length > 0) {
+    for (const row of mapRows) {
+      const pair = normalizePair(row.pair || "");
+      const base = normalizeGammaSymbol(row.base_gamma_symbol || row.base_symbol || row.base || "");
+      const quote = normalizeGammaSymbol(row.quote_gamma_symbol || row.quote_symbol || row.quote || "");
+      const enabledRaw = String(row.enabled ?? "1").trim().toLowerCase();
+      const enabled = !(enabledRaw === "0" || enabledRaw === "false" || enabledRaw === "no");
+      if (!pair || (!base && !quote)) continue;
+      pairMap.set(pair, {
+        pair,
+        baseSymbol: base || null,
+        quoteSymbol: quote || null,
+        enabled,
+      });
+    }
   }
   return pairMap.size > 0 ? pairMap : null;
 }
