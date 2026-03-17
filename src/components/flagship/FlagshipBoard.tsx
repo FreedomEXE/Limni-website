@@ -215,6 +215,20 @@ function gateClass(gate: GateDecision) {
   return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
+function formatGateTooltip(gate: GateDecision, reasons: string[]) {
+  const prettyReasons = reasons
+    .map((reason) =>
+      String(reason)
+        .trim()
+        .replace(/_/g, " ")
+        .replace(/\s+/g, " ")
+        .toUpperCase(),
+    )
+    .filter(Boolean);
+  if (prettyReasons.length === 0) return gate;
+  return `${gate}: ${prettyReasons.join(" | ")}`;
+}
+
 function deriveOverlayState(signal: GatedSetupSignal | null): TrendState {
   if (!signal) return "NEUTRAL";
   const reasons = (signal.gateReasons ?? []).map((reason) => String(reason).toUpperCase());
@@ -315,13 +329,6 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
     const timer = window.setInterval(() => setNowUtc(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    const current = sessionForUtcHour(nowUtc.getUTCHours());
-    if (current) {
-      setSelectedSession(current);
-    }
-  }, [nowUtc]);
 
   useEffect(() => {
     let cancelled = false;
@@ -538,19 +545,6 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const passCount = matrixRows.filter((row) => row.gate === "PASS").length;
   const skipCount = matrixRows.filter((row) => row.gate === "SKIP").length;
   const noDataCount = matrixRows.filter((row) => row.gate === "NO_DATA").length;
-  const overlayNeutralCount = matrixRows.filter((row) => row.overlay === "NEUTRAL").length;
-  const missingGateCount = matrixRows.filter((row) => row.gate === "NO_DATA").length;
-  const topNoDataReasons = (() => {
-    const reasonCounts = new Map<string, number>();
-    for (const row of matrixRows) {
-      if (row.gate !== "NO_DATA") continue;
-      const reason = row.gateReasons[0] ?? "UNKNOWN_NO_DATA_REASON";
-      reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
-    }
-    return Array.from(reasonCounts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6);
-  })();
 
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
@@ -623,13 +617,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
       ) : null}
 
       {warnings.length > 0 ? (
-        <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-          <div className="font-semibold uppercase tracking-[0.12em]">Source warnings</div>
-          <ul className="mt-1 list-disc pl-4">
-            {warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
-            ))}
-          </ul>
+        <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-300">
+          Data warnings: {warnings.join(" | ")}
         </div>
       ) : null}
 
@@ -653,30 +642,6 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
               <div className="text-lg font-semibold text-slate-700 dark:text-slate-300">{noDataCount}</div>
             </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 px-3 py-2 text-[11px] text-[color:var(--muted)]">
-              Missing gate rows this session: <span className="font-semibold text-[var(--foreground)]">{missingGateCount}</span>
-            </div>
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 px-3 py-2 text-[11px] text-[color:var(--muted)]">
-              Neutral overlay rows this session: <span className="font-semibold text-[var(--foreground)]">{overlayNeutralCount}</span>
-            </div>
-          </div>
-          {topNoDataReasons.length > 0 ? (
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 px-3 py-2 text-[11px] text-[color:var(--muted)]">
-              <div className="mb-1 font-semibold uppercase tracking-[0.12em]">No-Data Reasons</div>
-              <div className="flex flex-wrap gap-2">
-                {topNoDataReasons.map(([reason, count]) => (
-                  <span
-                    key={reason}
-                    className="inline-flex items-center rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-[10px] text-slate-700 dark:text-slate-300"
-                  >
-                    {reason} ({count})
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
           <table className="min-w-full text-xs">
             <thead className="sticky top-0 z-10 bg-[var(--panel)] text-left uppercase tracking-[0.14em] text-[color:var(--muted)]">
@@ -688,7 +653,6 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                 <th className="px-3 py-2">Overlay</th>
                 <th className="px-3 py-2">Strength 1h</th>
                 <th className="px-3 py-2">Gate</th>
-                <th className="px-3 py-2">Gate Why</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
@@ -701,39 +665,38 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                     </span>
                   </td>
                   <td className="px-3 py-2 align-middle">
-                    <span title={row.dealer} className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.dealer)}`}>
+                    <span title={row.dealer} className={`inline-flex w-7 cursor-help justify-center rounded border px-2 py-0.5 font-semibold transition-colors hover:brightness-110 ${stateClass(row.dealer)}`}>
                       {stateLabel(row.dealer)}
                     </span>
                   </td>
                   <td className="px-3 py-2 align-middle">
-                    <span title={row.commercial} className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.commercial)}`}>
+                    <span title={row.commercial} className={`inline-flex w-7 cursor-help justify-center rounded border px-2 py-0.5 font-semibold transition-colors hover:brightness-110 ${stateClass(row.commercial)}`}>
                       {stateLabel(row.commercial)}
                     </span>
                   </td>
                   <td className="px-3 py-2 align-middle">
-                    <span title={row.sentimentDaily} className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.sentimentDaily)}`}>
+                    <span title={row.sentimentDaily} className={`inline-flex w-7 cursor-help justify-center rounded border px-2 py-0.5 font-semibold transition-colors hover:brightness-110 ${stateClass(row.sentimentDaily)}`}>
                       {stateLabel(row.sentimentDaily)}
                     </span>
                   </td>
                   <td className="px-3 py-2 align-middle">
-                    <span title={row.overlay} className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.overlay)}`}>
+                    <span title={row.overlay} className={`inline-flex w-7 cursor-help justify-center rounded border px-2 py-0.5 font-semibold transition-colors hover:brightness-110 ${stateClass(row.overlay)}`}>
                       {stateLabel(row.overlay)}
                     </span>
                   </td>
                   <td className="px-3 py-2 align-middle">
-                    <span title={row.strength1h} className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.strength1h)}`}>
+                    <span title={row.strength1h} className={`inline-flex w-7 cursor-help justify-center rounded border px-2 py-0.5 font-semibold transition-colors hover:brightness-110 ${stateClass(row.strength1h)}`}>
                       {stateLabel(row.strength1h)}
                     </span>
                   </td>
                   <td className="px-3 py-2 align-middle">
                     <span
-                      title={row.gateReasons.join(" | ")}
-                      className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}
+                      title={formatGateTooltip(row.gate, row.gateReasons)}
+                      className={`inline-flex cursor-help rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors hover:brightness-110 ${gateClass(row.gate)}`}
                     >
                       {row.gate}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-[10px] text-[color:var(--muted)]">{row.gateReasons[0] ?? "-"}</td>
                 </tr>
               ))}
             </tbody>

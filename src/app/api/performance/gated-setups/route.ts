@@ -212,6 +212,41 @@ function dedupeStrings(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
+function normalizeReasonsForDecision(decision: GateDecision, reasons: string[]): string[] {
+  const deduped = dedupeStrings(reasons.map((reason) => String(reason).trim().toUpperCase()));
+  if (deduped.length === 0) {
+    if (decision === "PASS") return ["PASS_SIGNAL_VALIDATED"];
+    if (decision === "SKIP") return ["SKIP_SIGNAL_BLOCKED"];
+    return ["NO_DATA_SIGNAL_UNAVAILABLE"];
+  }
+
+  const isPassReason = (reason: string) =>
+    reason === "COT_PASS" ||
+    reason.startsWith("PASS_") ||
+    reason.includes("_PASS_");
+  const isSkipReason = (reason: string) =>
+    reason.startsWith("SKIP_") ||
+    reason.includes("_SKIP_");
+  const isNoDataReason = (reason: string) =>
+    reason === "NO_DATA" ||
+    reason.startsWith("NO_DATA_") ||
+    reason.includes("_NO_DATA_");
+
+  let filtered = deduped;
+  if (decision === "SKIP") {
+    filtered = deduped.filter((reason) => !isPassReason(reason));
+  } else if (decision === "PASS") {
+    filtered = deduped.filter((reason) => !isSkipReason(reason) && !isNoDataReason(reason));
+  } else {
+    filtered = deduped.filter((reason) => !isPassReason(reason));
+  }
+
+  if (filtered.length > 0) return filtered;
+  if (decision === "PASS") return ["PASS_SIGNAL_VALIDATED"];
+  if (decision === "SKIP") return ["SKIP_SIGNAL_BLOCKED"];
+  return ["NO_DATA_SIGNAL_UNAVAILABLE"];
+}
+
 function sortSignals(signals: GatedSetupSignal[]): GatedSetupSignal[] {
   return [...signals].sort((a, b) => {
     const tierRank = a.tier === b.tier ? 0 : a.tier === "HIGH" ? -1 : b.tier === "HIGH" ? 1 : 0;
@@ -273,7 +308,12 @@ function parsePayload(raw: Record<string, unknown>, sourcePath: string): GatedSe
       ];
     });
 
-  const sortedSignals = sortSignals(parsedSignals);
+  const normalizedSignals = parsedSignals.map((signal) => ({
+    ...signal,
+    gateReasons: normalizeReasonsForDecision(signal.gateDecision, signal.gateReasons),
+  }));
+
+  const sortedSignals = sortSignals(normalizedSignals);
   const summary = buildSummary(sortedSignals);
 
   const generatedRaw = raw.generated_utc;
@@ -928,7 +968,7 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
             next = {
               ...next,
               gateDecision: liveGate.decision,
-              gateReasons: liveGate.reasons,
+              gateReasons: normalizeReasonsForDecision(liveGate.decision, liveGate.reasons),
               gateDecisionSource: "CRYPTO_LIQUIDATION_LIVE",
               gateAsOfUtc: liveGate.asOfUtc,
             };
@@ -947,14 +987,19 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
       }
 
       if (!gammaContext) {
-        return {
-          ...next,
-          gateDecision: next.gateDecision === "PASS" ? "NO_DATA" : next.gateDecision,
-          gateReasons: dedupeStrings([
+        const noDataDecision = next.gateDecision === "PASS" ? "NO_DATA" : next.gateDecision;
+        const noDataReasons = normalizeReasonsForDecision(
+          noDataDecision,
+          dedupeStrings([
             ...next.gateReasons,
             ...gammaBootstrapReasons,
             "MENTHORQ_CONTEXT_UNAVAILABLE",
           ]),
+        );
+        return {
+          ...next,
+          gateDecision: noDataDecision,
+          gateReasons: noDataReasons,
         };
       }
 
@@ -972,10 +1017,11 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
       ]);
 
       if (gamma.decision === "NO_DATA") {
+        const noDataDecision = next.gateDecision === "PASS" ? "NO_DATA" : next.gateDecision;
         return {
           ...next,
-          gateDecision: next.gateDecision === "PASS" ? "NO_DATA" : next.gateDecision,
-          gateReasons: combinedReasons,
+          gateDecision: noDataDecision,
+          gateReasons: normalizeReasonsForDecision(noDataDecision, combinedReasons),
           gateDecisionSource:
             next.gateDecisionSource === "WEEKLY_BOARD" && gammaSource
               ? "WEEKLY_BOARD_PLUS_MENTHORQ"
@@ -988,7 +1034,7 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
         return {
           ...next,
           gateDecision: "SKIP",
-          gateReasons: combinedReasons,
+          gateReasons: normalizeReasonsForDecision("SKIP", combinedReasons),
           gateDecisionSource:
             next.gateDecisionSource === "WEEKLY_BOARD"
               ? "WEEKLY_BOARD_PLUS_MENTHORQ"
@@ -1001,7 +1047,7 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
         return {
           ...next,
           gateDecision: "PASS",
-          gateReasons: combinedReasons,
+          gateReasons: normalizeReasonsForDecision("PASS", combinedReasons),
           gateDecisionSource: "MENTHORQ_GAMMA_DAILY",
           gateAsOfUtc: gamma.asOfUtc,
         };
@@ -1009,7 +1055,7 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
 
       return {
         ...next,
-        gateReasons: combinedReasons,
+        gateReasons: normalizeReasonsForDecision(next.gateDecision, combinedReasons),
         gateDecisionSource:
           next.gateDecisionSource === "WEEKLY_BOARD"
             ? "WEEKLY_BOARD_PLUS_MENTHORQ"

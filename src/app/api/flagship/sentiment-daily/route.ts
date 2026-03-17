@@ -50,15 +50,22 @@ export async function GET(request: Request) {
       return NextResponse.json(latest);
     } catch {
       // Fallback path for transient read/table issues.
-      const fallback = await buildDailySentimentLock();
-      return NextResponse.json(fallback);
+      try {
+        const fallback = await buildDailySentimentLock();
+        return NextResponse.json(fallback);
+      } catch {
+        return NextResponse.json({
+          snapshotDateUtc: null,
+          rows: [],
+          warning: "SENTIMENT_DAILY_UNAVAILABLE",
+        });
+      }
     }
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to read daily sentiment lock",
-      },
-      { status: 500 },
-    );
+    return NextResponse.json({
+      snapshotDateUtc: null,
+      rows: [],
+      warning: error instanceof Error ? error.message : "Failed to read daily sentiment lock",
+    });
   }
 }
