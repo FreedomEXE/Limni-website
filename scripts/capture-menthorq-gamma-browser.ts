@@ -34,6 +34,7 @@ type CliConfig = {
   urlMapFile: string;
   useUrlMap: boolean;
   assumeLoggedIn: boolean;
+  continueOnAuthFailure: boolean;
 };
 
 type CaptureRow = {
@@ -125,6 +126,14 @@ function parseArgs(): CliConfig {
   const assumeLoggedInRaw = String(byKey.get("assume-logged-in") ?? "false").trim().toLowerCase();
   const assumeLoggedIn =
     assumeLoggedInRaw === "1" || assumeLoggedInRaw === "true" || assumeLoggedInRaw === "yes" || assumeLoggedInRaw === "on";
+  const continueOnAuthFailureRaw = String(byKey.get("continue-on-auth-failure") ?? "true")
+    .trim()
+    .toLowerCase();
+  const continueOnAuthFailure =
+    continueOnAuthFailureRaw !== "0" &&
+    continueOnAuthFailureRaw !== "false" &&
+    continueOnAuthFailureRaw !== "no" &&
+    continueOnAuthFailureRaw !== "off";
   const headedRaw = String(byKey.get("headed") ?? "true").trim().toLowerCase();
   const headed = headedRaw !== "0" && headedRaw !== "false" && headedRaw !== "no" && headedRaw !== "off";
 
@@ -141,6 +150,7 @@ function parseArgs(): CliConfig {
     urlMapFile,
     useUrlMap,
     assumeLoggedIn,
+    continueOnAuthFailure,
   };
 }
 
@@ -390,6 +400,19 @@ async function main() {
           `Login to MenthorQ in the persistent browser profile and rerun.`,
       );
       hadAuthFailure = true;
+      if (config.continueOnAuthFailure) {
+        manifest.push({
+          date: config.date,
+          symbol_input: symbol,
+          source_url: page.url(),
+          auth_failure: authPageReason,
+          screenshot_path: shotPath,
+          html_path: htmlPath,
+          text_path: textPath,
+        });
+        console.error(`[${symbol}] continuing to next symbol because continue-on-auth-failure=true`);
+        continue;
+      }
       break;
     }
 
@@ -465,7 +488,11 @@ async function main() {
   );
 
   if (hadAuthFailure) {
-    console.error("Capture aborted due to authentication/landing-page detection. No new CSV rows were written for failed symbols.");
+    console.error(
+      config.continueOnAuthFailure
+        ? "Capture completed with one or more auth/landing-page failures. Successful symbols were still written."
+        : "Capture aborted due to authentication/landing-page detection. No new CSV rows were written for failed symbols.",
+    );
   } else {
     console.log(`Capture complete. CSV: ${path.resolve(process.cwd(), config.outCsv)}`);
     console.log(`Artifacts: ${captureDir}`);
