@@ -97,6 +97,7 @@ type MatrixRow = {
   overlay: TrendState;
   strength1h: TrendState;
   sessionEligible: SessionName[];
+  gateReasons: string[];
 };
 
 const UNIVERSE: PairUniverseRow[] = [
@@ -479,13 +480,14 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         pair: pairRow.pair,
         assetClass: pairRow.assetClass,
         tier: normalizeTier(signal?.tier),
-        gate: signal ? normalizeGate(signal.gateDecision) : "SKIP",
+        gate: signal ? normalizeGate(signal.gateDecision) : "NO_DATA",
         dealer: directionToState(signal?.dealer as SignalDirection),
         commercial: directionToState(signal?.commercial as SignalDirection),
         sentimentDaily: directionToState(sentimentDirection),
         overlay: menthorqOverlayState !== "NEUTRAL" ? menthorqOverlayState : deriveOverlayState(signal),
         strength1h,
         sessionEligible: SESSION_ELIGIBILITY.get(pairRow.pair) ?? ["ASIA", "LONDON", "NY"],
+        gateReasons: signal?.gateReasons?.length ? signal.gateReasons : ["NO_WEEKLY_SIGNAL_FOR_PAIR"],
       };
     });
 
@@ -508,6 +510,17 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const noDataCount = matrixRows.filter((row) => row.gate === "NO_DATA").length;
   const overlayNeutralCount = matrixRows.filter((row) => row.overlay === "NEUTRAL").length;
   const missingGateCount = matrixRows.filter((row) => row.gate === "NO_DATA").length;
+  const topNoDataReasons = (() => {
+    const reasonCounts = new Map<string, number>();
+    for (const row of matrixRows) {
+      if (row.gate !== "NO_DATA") continue;
+      const reason = row.gateReasons[0] ?? "UNKNOWN_NO_DATA_REASON";
+      reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+    }
+    return Array.from(reasonCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+  })();
 
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
@@ -618,6 +631,21 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
               Neutral overlay rows this session: <span className="font-semibold text-[var(--foreground)]">{overlayNeutralCount}</span>
             </div>
           </div>
+          {topNoDataReasons.length > 0 ? (
+            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 px-3 py-2 text-[11px] text-[color:var(--muted)]">
+              <div className="mb-1 font-semibold uppercase tracking-[0.12em]">No-Data Reasons</div>
+              <div className="flex flex-wrap gap-2">
+                {topNoDataReasons.map(([reason, count]) => (
+                  <span
+                    key={reason}
+                    className="inline-flex items-center rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-[10px] text-slate-700 dark:text-slate-300"
+                  >
+                    {reason} ({count})
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
           <table className="min-w-full text-xs">
@@ -630,6 +658,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                 <th className="px-3 py-2">Overlay</th>
                 <th className="px-3 py-2">Strength 1h</th>
                 <th className="px-3 py-2">Gate</th>
+                <th className="px-3 py-2">Gate Why</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
@@ -667,10 +696,14 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                     </span>
                   </td>
                   <td className="px-3 py-2 align-middle">
-                    <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>
+                    <span
+                      title={row.gateReasons.join(" | ")}
+                      className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}
+                    >
                       {row.gate}
                     </span>
                   </td>
+                  <td className="px-3 py-2 text-[10px] text-[color:var(--muted)]">{row.gateReasons[0] ?? "-"}</td>
                 </tr>
               ))}
             </tbody>
