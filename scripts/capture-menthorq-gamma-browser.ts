@@ -35,6 +35,9 @@ type CliConfig = {
   useUrlMap: boolean;
   assumeLoggedIn: boolean;
   continueOnAuthFailure: boolean;
+  allowUnknown: boolean;
+  parseRetries: number;
+  parseRetryDelayMs: number;
 };
 
 type CaptureRow = {
@@ -134,6 +137,13 @@ function parseArgs(): CliConfig {
     continueOnAuthFailureRaw !== "false" &&
     continueOnAuthFailureRaw !== "no" &&
     continueOnAuthFailureRaw !== "off";
+  const allowUnknownRaw = String(byKey.get("allow-unknown") ?? "false").trim().toLowerCase();
+  const allowUnknown =
+    allowUnknownRaw === "1" || allowUnknownRaw === "true" || allowUnknownRaw === "yes" || allowUnknownRaw === "on";
+  const parseRetriesRaw = Number(byKey.get("parse-retries") ?? "2");
+  const parseRetryDelayMsRaw = Number(byKey.get("parse-retry-delay-ms") ?? "1500");
+  const parseRetries = Number.isFinite(parseRetriesRaw) ? Math.max(0, Math.trunc(parseRetriesRaw)) : 2;
+  const parseRetryDelayMs = Number.isFinite(parseRetryDelayMsRaw) ? Math.max(250, Math.trunc(parseRetryDelayMsRaw)) : 1500;
   const headedRaw = String(byKey.get("headed") ?? "true").trim().toLowerCase();
   const headed = headedRaw !== "0" && headedRaw !== "false" && headedRaw !== "no" && headedRaw !== "off";
 
@@ -151,6 +161,9 @@ function parseArgs(): CliConfig {
     useUrlMap,
     assumeLoggedIn,
     continueOnAuthFailure,
+    allowUnknown,
+    parseRetries,
+    parseRetryDelayMs,
   };
 }
 
@@ -206,17 +219,40 @@ function regexFirst(text: string, regex: RegExp): string {
   return String(match[1] ?? "").trim();
 }
 
+function firstNonEmptyLineAfter(lines: string[], markerRegex: RegExp): string {
+  const index = lines.findIndex((line) => markerRegex.test(line));
+  if (index < 0) return "";
+  for (let i = index + 1; i < Math.min(lines.length, index + 8); i += 1) {
+    const candidate = lines[i].trim();
+    if (candidate.length > 0) return candidate;
+  }
+  return "";
+}
+
 function parseMetricsFromText(text: string): ParsedMetrics {
   const compact = text.replace(/\r/g, "");
+  const lines = compact
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 
   const pageSymbol =
     regexFirst(compact, /\b([A-Z0-9]{1,4}[A-Z]\d{4})\b/) ||
     regexFirst(compact, /\b([A-Z]{1,4}\d{2,4})\b/) ||
     "";
-  const gammaCondition =
+
+  const gammaFromRegex =
     regexFirst(compact, /Gamma Condition\s*[:\-]?\s*(Positive|Negative|Neutral)/i) ||
-    regexFirst(compact, /Gamma\s*[:\-]?\s*(Positive|Negative|Neutral)/i) ||
-    "";
+    regexFirst(compact, /\bGamma\s*(Positive|Negative|Neutral)\b/i) ||
+    regexFirst(compact, /GAMMA CONDITION[\s:.\-]*\n?\s*(POSITIVE|NEGATIVE|NEUTRAL)/i) ||
+    regexFirst(compact, /\b(POSITIVE|NEGATIVE|NEUTRAL)\s+GAMMA\b/i);
+  const gammaFromLineScanRaw = firstNonEmptyLineAfter(lines, /gamma condition/i);
+  const gammaFromLineScan =
+    /positive/i.test(gammaFromLineScanRaw) ? "Positive" :
+      /negative/i.test(gammaFromLineScanRaw) ? "Negative" :
+        /neutral/i.test(gammaFromLineScanRaw) ? "Neutral" : "";
+  const gammaCondition = gammaFromRegex || gammaFromLineScan || "";
+
   const netGex =
     regexFirst(compact, /Net GEX\s*[:\-]?\s*([+\-]?\d[\d,]*(?:\.\d+)?\s*[KMB]?(?:M|B)?)/i) ||
     "";
@@ -416,7 +452,15 @@ async function main() {
       break;
     }
 
-    const parsed = parseMetricsFromText(bodyText);
+    let parsed = parseMetricsFromText(bodyText);
+    for (let attempt = 0; attempt < config.parseRetries && parsed.gammaCondition === ""; attempt += 1) {
+      await page.waitForTimeout(config.parseRetryDelayMs);
+      const retryText = await page.evaluate(() => document.body?.innerText ?? "");
+      parsed = parseMetricsFromText(retryText);
+      if (parsed.gammaCondition !== "") {
+        break;
+      }
+    }
     const capturedAtUtc = new Date().toISOString();
     const safeSymbol = sanitizeFilePart(symbol);
     const shotPath = path.join(captureDir, `${safeSymbol}.png`);
@@ -433,6 +477,21 @@ async function main() {
     }
     if (!tickerLooksExpected(symbol, page.url())) {
       noteParts.push(`Ticker mismatch in URL: observed=${tickerFromUrl(page.url()) || "unknown"}`);
+    }
+
+    if (parsed.gammaCondition === "" && !config.allowUnknown) {
+      manifest.push({
+        date: config.date,
+        symbol_input: symbol,
+        source_url: page.url(),
+        parse_confidence: parsed.confidence,
+        parse_failed: "gamma_condition_missing",
+        screenshot_path: shotPath,
+        html_path: htmlPath,
+        text_path: textPath,
+      });
+      console.error(`[${symbol}] skipped write: gamma condition unavailable after retries.`);
+      continue;
     }
 
     const row: CaptureRow = {
