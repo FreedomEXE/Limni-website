@@ -31,7 +31,7 @@ function deriveFxSessions(base: string, quote: string): SessionName[] {
   const sessions = new Set<SessionName>();
 
   if (hasAsia) sessions.add("ASIA");
-  if (hasLondon || hasAsia) sessions.add("LONDON");
+  if (hasLondon) sessions.add("LONDON");
   if (hasNy) sessions.add("NY");
 
   // Ensure every pair stays tradable in at least one session.
@@ -49,11 +49,11 @@ for (const pairDef of PAIRS_BY_ASSET_CLASS.fx) {
 
 registerAll("crypto");
 
-SESSION_ELIGIBILITY.set("XAUUSD", ["LONDON", "NY"]);
-SESSION_ELIGIBILITY.set("XAGUSD", ["LONDON", "NY"]);
-SESSION_ELIGIBILITY.set("WTIUSD", ["LONDON", "NY"]);
+SESSION_ELIGIBILITY.set("XAUUSD", [...ALL_SESSIONS]);
+SESSION_ELIGIBILITY.set("XAGUSD", [...ALL_SESSIONS]);
+SESSION_ELIGIBILITY.set("WTIUSD", [...ALL_SESSIONS]);
 
-SESSION_ELIGIBILITY.set("NIKKEIUSD", ["ASIA", "LONDON"]);
+SESSION_ELIGIBILITY.set("NIKKEIUSD", ["ASIA"]);
 SESSION_ELIGIBILITY.set("SPXUSD", ["NY"]);
 SESSION_ELIGIBILITY.set("NDXUSD", ["NY"]);
 
