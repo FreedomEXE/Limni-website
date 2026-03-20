@@ -23,6 +23,9 @@ import {
   type BitgetHourlyCandle,
 } from "@/lib/bitget";
 import { readAllLatestAssetStrengths } from "@/lib/assetStrength";
+import { derivePairDirectionsByBaseWithNeutral } from "@/lib/cotCompute";
+import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
+import { readSnapshot } from "@/lib/cotStore";
 import { CRYPTO_UNIVERSE, type CryptoUniverseEntry } from "@/lib/flagship/cryptoUniverse";
 import {
   type CryptoAnchorRegime,
@@ -34,6 +37,7 @@ import {
   type CryptoTimeframeKey,
 } from "@/lib/flagship/cryptoMatrix";
 import type { MatrixTrendState } from "@/lib/flagship/matrixStyles";
+import { readLatestDailySentimentLock } from "@/lib/sentiment/daily";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -123,6 +127,61 @@ function classifyDirection(votes: MatrixTrendState[]): CryptoBiasDirection {
   return "NEUTRAL";
 }
 
+function directionToState(direction: "LONG" | "SHORT" | "NEUTRAL"): MatrixTrendState {
+  if (direction === "LONG") return "BULLISH";
+  if (direction === "SHORT") return "BEARISH";
+  return "NEUTRAL";
+}
+
+function majorityBias(votes: MatrixTrendState[]): CryptoBiasDirection {
+  const bulls = votes.filter((vote) => vote === "BULLISH").length;
+  const bears = votes.filter((vote) => vote === "BEARISH").length;
+  if (bulls >= 2) return "LONG";
+  if (bears >= 2) return "SHORT";
+  return "NEUTRAL";
+}
+
+async function readWeeklyCryptoBias() {
+  const [snapshot, sentimentLock] = await Promise.all([
+    readSnapshot({ assetClass: "crypto" }),
+    readLatestDailySentimentLock().catch(() => null),
+  ]);
+
+  const pairDefs = PAIRS_BY_ASSET_CLASS.crypto;
+  const dealerPairs = snapshot
+    ? derivePairDirectionsByBaseWithNeutral(snapshot.currencies, pairDefs, "dealer")
+    : {};
+  const commercialPairs = snapshot
+    ? derivePairDirectionsByBaseWithNeutral(snapshot.currencies, pairDefs, "commercial")
+    : {};
+  const sentimentByPair = new Map(
+    (sentimentLock?.rows ?? [])
+      .filter((row) => row.symbol === "BTCUSD" || row.symbol === "ETHUSD")
+      .map((row) => [row.symbol, row.sentimentDirection]),
+  );
+
+  const bySymbol = new Map<"BTC" | "ETH", Omit<CryptoAnchorRegime, "direction" | "tier" | "votes" | "symbol">>();
+
+  for (const pairDef of pairDefs) {
+    const pair = pairDef.pair.toUpperCase();
+    const symbol = pairDef.base.toUpperCase() as "BTC" | "ETH";
+    const dealerBias = directionToState(dealerPairs[pair]?.direction ?? "NEUTRAL");
+    const commercialBias = directionToState(commercialPairs[pair]?.direction ?? "NEUTRAL");
+    const sentimentBias = directionToState(sentimentByPair.get(pair) ?? "NEUTRAL");
+
+    bySymbol.set(symbol, {
+      weeklyBias: majorityBias([dealerBias, commercialBias, sentimentBias]),
+      dealerBias,
+      commercialBias,
+      sentimentBias,
+      cotReportDate: snapshot?.report_date ?? null,
+      sentimentDate: sentimentLock?.snapshotDateUtc ?? null,
+    });
+  }
+
+  return bySymbol;
+}
+
 async function buildAnchorRegime(symbol: "BTC" | "ETH"): Promise<CryptoAnchorRegime> {
   const [h4, h1, m15] = await Promise.all([
     fetchLastCompletedCandle(symbol, "H4"),
@@ -139,6 +198,12 @@ async function buildAnchorRegime(symbol: "BTC" | "ETH"): Promise<CryptoAnchorReg
   const voteValues = Object.values(votes);
   return {
     symbol,
+    weeklyBias: "NEUTRAL",
+    dealerBias: "NEUTRAL",
+    commercialBias: "NEUTRAL",
+    sentimentBias: "NEUTRAL",
+    cotReportDate: null,
+    sentimentDate: null,
     direction: classifyDirection(voteValues),
     tier: classifyTier(voteValues),
     votes,
@@ -177,42 +242,31 @@ function buildCandleDetail(candle: BitgetHourlyCandle | null): CryptoCandleDetai
 
 function deriveAltBias(
   row: CryptoUniverseEntry,
-  btcRegime: CryptoAnchorRegime,
-  ethRegime: CryptoAnchorRegime,
+  btcWeeklyBias: CryptoBiasDirection,
+  ethWeeklyBias: CryptoBiasDirection,
   altTrend: MatrixTrendState,
-): { bias: CryptoBiasDirection; btcVote: MatrixTrendState; ethVote: MatrixTrendState } {
-  const btcVote = deriveAnchorVote(row.btcCorrelation7d, btcRegime);
-  const ethVote = deriveAnchorVote(row.btcCorrelation7d, ethRegime); // Phase 1 proxy for ETH correlation.
-
+): { bias: CryptoBiasDirection; biasSource: CryptoMatrixRow["biasSource"] } {
   if (row.symbol === "BTC") {
-    return {
-      bias: btcRegime.direction,
-      btcVote,
-      ethVote: toTrendState(ethRegime.direction),
-    };
+    return { bias: btcWeeklyBias, biasSource: "BTC" };
   }
 
   if (row.symbol === "ETH") {
-    return {
-      bias: ethRegime.direction,
-      btcVote: toTrendState(btcRegime.direction),
-      ethVote,
-    };
+    return { bias: ethWeeklyBias, biasSource: "ETH" };
   }
 
-  if (btcVote === "NEUTRAL") {
-    return { bias: "NEUTRAL", btcVote, ethVote };
+  if (btcWeeklyBias !== "NEUTRAL" && btcWeeklyBias === ethWeeklyBias) {
+    return { bias: btcWeeklyBias, biasSource: "BTC_ETH" };
   }
 
-  if (altTrend !== "NEUTRAL" && altTrend !== btcVote) {
-    return { bias: "NEUTRAL", btcVote, ethVote };
+  if (btcWeeklyBias !== "NEUTRAL" && ethWeeklyBias === "NEUTRAL") {
+    return { bias: btcWeeklyBias, biasSource: "BTC" };
   }
 
-  return {
-    bias: btcVote === "BULLISH" ? "LONG" : "SHORT",
-    btcVote,
-    ethVote,
-  };
+  if (ethWeeklyBias !== "NEUTRAL" && btcWeeklyBias === "NEUTRAL") {
+    return { bias: ethWeeklyBias, biasSource: "ETH" };
+  }
+
+  return { bias: "NEUTRAL", biasSource: "MIXED" };
 }
 
 async function mapWithConcurrency<T, R>(
@@ -301,12 +355,36 @@ function strengthStateFromScore(score: number | null): MatrixTrendState | null {
 
 export async function GET() {
   try {
-    const [btcRegime, ethRegime, anchorMarketData, strengthBySymbol] = await Promise.all([
+    const [btcDirectionRegime, ethDirectionRegime, anchorMarketData, strengthBySymbol, weeklyBiasBySymbol] = await Promise.all([
       buildAnchorRegime("BTC"),
       buildAnchorRegime("ETH"),
       readAnchorMarketData(),
       readCryptoStrengths(),
+      readWeeklyCryptoBias(),
     ]);
+
+    const btcRegime: CryptoAnchorRegime = {
+      ...btcDirectionRegime,
+      ...(weeklyBiasBySymbol.get("BTC") ?? {
+        weeklyBias: "NEUTRAL",
+        dealerBias: "NEUTRAL",
+        commercialBias: "NEUTRAL",
+        sentimentBias: "NEUTRAL",
+        cotReportDate: null,
+        sentimentDate: null,
+      }),
+    };
+    const ethRegime: CryptoAnchorRegime = {
+      ...ethDirectionRegime,
+      ...(weeklyBiasBySymbol.get("ETH") ?? {
+        weeklyBias: "NEUTRAL",
+        dealerBias: "NEUTRAL",
+        commercialBias: "NEUTRAL",
+        sentimentBias: "NEUTRAL",
+        cotReportDate: null,
+        sentimentDate: null,
+      }),
+    };
 
     const altRows = await mapWithConcurrency(CRYPTO_UNIVERSE, 4, async (entry) => {
       try {
@@ -331,7 +409,9 @@ export async function GET() {
       const altFetch = altFetchBySymbol.get(entry.symbol);
       const altTrend = altFetch?.altTrend ?? "NEUTRAL";
       const altTrendCandle = altFetch?.altTrendCandle ?? null;
-      const { bias, btcVote, ethVote } = deriveAltBias(entry, btcRegime, ethRegime, altTrend);
+      const { bias, biasSource } = deriveAltBias(entry, btcRegime.weeklyBias, ethRegime.weeklyBias, altTrend);
+      const btcVote = deriveAnchorVote(entry.btcCorrelation7d, btcRegime);
+      const ethVote = deriveAnchorVote(entry.btcCorrelation7d, ethRegime);
       const strength = strengthBySymbol.get(entry.symbol) ?? { "1h": null, "4h": null, "24h": null };
       const oiLatest =
         entry.symbol === "BTC" || entry.symbol === "ETH"
@@ -354,6 +434,7 @@ export async function GET() {
         compositeScore: entry.compositeScore,
         btcCorrelation7d: entry.btcCorrelation7d,
         bias,
+        biasSource,
         btcVote,
         ethVote,
         altTrend,

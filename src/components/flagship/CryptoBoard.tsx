@@ -16,12 +16,6 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 
-import type { SessionName } from "@/lib/flagship/sessionConfig";
-import {
-  defaultSessionFromUtcDate,
-  sessionForUtcHour,
-  sessionWindowLabelEt,
-} from "@/lib/flagship/sessionConfig";
 import type {
   CryptoAnchorRegime,
   CryptoBiasDirection,
@@ -51,7 +45,7 @@ function arrowForState(state: MatrixTrendState) {
 }
 
 function regimeBannerClass(regime: CryptoAnchorRegime) {
-  const state = toTrendState(regime.direction);
+  const state = toTrendState(regime.weeklyBias);
   if (state === "BULLISH") return "border-emerald-500/35 bg-emerald-500/10";
   if (state === "BEARISH") return "border-rose-500/35 bg-rose-500/10";
   return "border-slate-500/25 bg-slate-500/10";
@@ -63,31 +57,28 @@ function tierBadgeClass(tier: CryptoMatrixRow["tier"]) {
   return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
 }
 
-function formatFundingGlyph(rate: number | null) {
+function formatFunding(rate: number | null) {
   if (rate === null || !Number.isFinite(rate)) return "—";
-  if (rate > 0.0001) return "+";
-  if (rate < -0.0001) return "−";
-  return "~";
+  const bps = rate * 10000;
+  return `${bps > 0 ? "+" : ""}${bps.toFixed(1)}bp`;
 }
 
 function fundingClass(rate: number | null) {
   if (rate === null || !Number.isFinite(rate)) return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
-  if (rate > 0.0001) return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
-  if (rate < -0.0001) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
+  if (rate > 0) return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
+  if (rate < 0) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
   return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
-function formatOiGlyph(deltaPct: number | null) {
+function formatOi(deltaPct: number | null) {
   if (deltaPct === null || !Number.isFinite(deltaPct)) return "—";
-  if (deltaPct > 5) return "↑";
-  if (deltaPct < -5) return "↓";
-  return "—";
+  return `${deltaPct > 0 ? "+" : ""}${deltaPct.toFixed(0)}%`;
 }
 
 function oiClass(deltaPct: number | null) {
   if (deltaPct === null || !Number.isFinite(deltaPct)) return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
-  if (deltaPct > 5) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  if (deltaPct < -5) return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
+  if (deltaPct > 0) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
+  if (deltaPct < 0) return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
   return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
@@ -103,14 +94,7 @@ export default function CryptoBoard() {
   const [error, setError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [lastRefreshedUtc, setLastRefreshedUtc] = useState<string | null>(null);
-  const [nowUtc, setNowUtc] = useState<Date>(() => new Date());
-  const [selectedSession, setSelectedSession] = useState<SessionName>(() => defaultSessionFromUtcDate(new Date()));
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNowUtc(new Date()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,8 +130,27 @@ export default function CryptoBoard() {
     };
   }, [refreshTick]);
 
-  const rows = useMemo(() => data?.rows ?? [], [data]);
-  const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
+  const rows = useMemo(() => {
+    const raw = data?.rows ?? [];
+    const opportunityRank = (row: CryptoMatrixRow) => {
+      if (row.rank === 0) return -1;
+      const biasState = toTrendState(row.bias);
+      if (biasState === "BEARISH" && row.altTrend === "BULLISH") return 0;
+      if (biasState === "BULLISH" && row.altTrend === "BEARISH") return 0;
+      if (biasState !== "NEUTRAL" && row.altTrend === "NEUTRAL") return 1;
+      if (biasState !== "NEUTRAL" && row.altTrend === biasState) return 2;
+      return 3;
+    };
+
+    return [...raw].sort((a, b) => {
+      if (a.rank === 0 && b.rank === 0) return a.symbol.localeCompare(b.symbol);
+      if (a.rank === 0) return -1;
+      if (b.rank === 0) return 1;
+      const oppDiff = opportunityRank(a) - opportunityRank(b);
+      if (oppDiff !== 0) return oppDiff;
+      return a.rank - b.rank;
+    });
+  }, [data]);
 
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
@@ -161,7 +164,7 @@ export default function CryptoBoard() {
           <div className="space-y-2">
             <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-right text-xs text-[color:var(--muted)]">
               <div>Data {formatDateTimeET(lastRefreshedUtc ?? data?.generatedUtc ?? null, "Unknown")}</div>
-              <div className="font-semibold">{activeSession ? `Active ${activeSession}` : "Off-hours 17:00-20:00 ET"}</div>
+              <div className="font-semibold">Crypto 24/7</div>
             </div>
             <button
               type="button"
@@ -188,13 +191,19 @@ export default function CryptoBoard() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-[var(--foreground)]">{regime.symbol}</span>
-                    <span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${biasChipClass(toTrendState(regime.direction))}`}>
-                      {regime.direction}
+                    <span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${biasChipClass(toTrendState(regime.weeklyBias))}`}>
+                      {regime.weeklyBias}
                     </span>
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">{regime.tier}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Weekly Bias</span>
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[color:var(--muted)]">
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${stateClass(regime.dealerBias)}`}>Dealer {stateLabel(regime.dealerBias)}</span>
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${stateClass(regime.commercialBias)}`}>Comm {stateLabel(regime.commercialBias)}</span>
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${stateClass(regime.sentimentBias)}`}>Sent {stateLabel(regime.sentimentBias)}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[color:var(--muted)]">
+                  <span className="font-semibold uppercase tracking-[0.12em]">Direction</span>
                   {(["H4", "H1", "M15"] as const).map((timeframe) => (
                     <span
                       key={`${regime.symbol}-${timeframe}`}
@@ -204,29 +213,14 @@ export default function CryptoBoard() {
                       <span>{arrowForState(regime.votes[timeframe])}</span>
                     </span>
                   ))}
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-2 py-0.5">
+                    {regime.direction} {regime.tier}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         ) : null}
-
-        <div className="grid grid-cols-3 gap-2">
-          {(["ASIA", "LONDON", "NY"] as SessionName[]).map((session) => (
-            <button
-              key={session}
-              type="button"
-              onClick={() => setSelectedSession(session)}
-              className={`rounded-lg border px-3 py-2 text-left transition-colors ${
-                selectedSession === session
-                  ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                  : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)] hover:bg-[var(--panel)]/80 hover:text-[var(--foreground)]"
-              }`}
-            >
-              <div className="text-xs font-semibold uppercase tracking-[0.14em]">{session}</div>
-              <div className="text-[11px]">{sessionWindowLabelEt(session, nowUtc)}</div>
-            </button>
-          ))}
-        </div>
       </header>
 
       {loading ? <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 p-3 text-sm text-[color:var(--muted)]">Loading crypto matrix...</div> : null}
@@ -251,7 +245,8 @@ export default function CryptoBoard() {
               <thead className="sticky top-0 z-10 bg-[var(--panel)] text-left uppercase tracking-[0.14em] text-[color:var(--muted)]">
                 <tr>
                   <th className="border-b border-r border-[var(--panel-border)] px-3 py-3" rowSpan={2}>Coin</th>
-                  <th className="border-b border-r border-[var(--panel-border)] bg-slate-500/[0.06] px-3 py-3 text-center" colSpan={4}>Direction</th>
+                  <th className="border-b border-r border-[var(--panel-border)] bg-slate-500/[0.06] px-3 py-3 text-center" colSpan={1}>Core Bias</th>
+                  <th className="border-b border-r border-[var(--panel-border)] bg-slate-500/[0.06] px-3 py-3 text-center" colSpan={3}>Direction</th>
                   <th className="border-b border-r border-[var(--panel-border)] bg-amber-500/[0.07] px-3 py-3 text-center" colSpan={3}>Context</th>
                   <th className="border-b border-r border-[var(--panel-border)] bg-sky-500/[0.07] px-3 py-3 text-center">Trigger</th>
                   <th className="border-b border-[var(--panel-border)] bg-emerald-500/[0.07] px-3 py-3 text-center">Sizing</th>
@@ -261,7 +256,7 @@ export default function CryptoBoard() {
                   <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">BTC</th>
                   <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">ETH</th>
                   <th className="border-b border-r border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Alt</th>
-                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">OI</th>
+                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">OI 24h</th>
                   <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Fund</th>
                   <th className="border-b border-r border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Str</th>
                   <th className="border-b border-r border-[var(--panel-border)] bg-sky-500/[0.05] px-3 py-2">Trigger</th>
@@ -302,8 +297,8 @@ export default function CryptoBoard() {
                         <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.btcVote)}`}>{stateLabel(row.btcVote)}</span></td>
                         <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.ethVote)}`}>{stateLabel(row.ethVote)}</span></td>
                         <td className="border-r border-[var(--panel-border)] bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.altTrend)}`}>{stateLabel(row.altTrend)}</span></td>
-                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[2.75rem] justify-center rounded border px-2 py-0.5 font-semibold ${oiClass(row.oiDelta24hPct)}`}>{formatOiGlyph(row.oiDelta24hPct)}</span></td>
-                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[2.75rem] justify-center rounded border px-2 py-0.5 font-semibold ${fundingClass(row.fundingRate)}`}>{formatFundingGlyph(row.fundingRate)}</span></td>
+                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[3.75rem] justify-center rounded border px-2 py-0.5 font-semibold ${oiClass(row.oiDelta24hPct)}`}>{formatOi(row.oiDelta24hPct)}</span></td>
+                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${fundingClass(row.fundingRate)}`}>{formatFunding(row.fundingRate)}</span></td>
                         <td className="border-r border-[var(--panel-border)] bg-amber-500/[0.04] px-3 py-2">
                           {row.strengthState === null ? (
                             <span className="inline-flex min-w-[2.75rem] justify-center rounded border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 font-semibold text-slate-600 dark:text-slate-300">—</span>
@@ -319,11 +314,12 @@ export default function CryptoBoard() {
                           <td colSpan={10} className="px-4 py-3">
                             <div className="grid gap-2 md:grid-cols-3">
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
-                                <div className="font-semibold text-[var(--foreground)]">Direction Stack</div>
-                                <div className="mt-1">BTC vote {stateLabel(row.btcVote)} | ETH vote {stateLabel(row.ethVote)} | Alt trend {stateLabel(row.altTrend)}</div>
+                                <div className="font-semibold text-[var(--foreground)]">Bias + Direction</div>
+                                <div className="mt-1">Weekly bias: {row.bias} ({row.biasSource})</div>
+                                <div>BTC dir {stateLabel(row.btcVote)} | ETH dir {stateLabel(row.ethVote)} | Alt dir {stateLabel(row.altTrend)}</div>
                                 <div>Corr to BTC: {row.btcCorrelation7d.toFixed(3)} | Score: {row.compositeScore.toFixed(2)}</div>
-                                <div className="mt-1">BTC regime: {data?.regimes.btc.votes.H4 ?? "—"} / {data?.regimes.btc.votes.H1 ?? "—"} / {data?.regimes.btc.votes.M15 ?? "—"}</div>
-                                <div>ETH regime: {data?.regimes.eth.votes.H4 ?? "—"} / {data?.regimes.eth.votes.H1 ?? "—"} / {data?.regimes.eth.votes.M15 ?? "—"}</div>
+                                <div className="mt-1">BTC weekly: D {stateLabel(data?.regimes.btc.dealerBias ?? "NEUTRAL")} / C {stateLabel(data?.regimes.btc.commercialBias ?? "NEUTRAL")} / S {stateLabel(data?.regimes.btc.sentimentBias ?? "NEUTRAL")}</div>
+                                <div>ETH weekly: D {stateLabel(data?.regimes.eth.dealerBias ?? "NEUTRAL")} / C {stateLabel(data?.regimes.eth.commercialBias ?? "NEUTRAL")} / S {stateLabel(data?.regimes.eth.sentimentBias ?? "NEUTRAL")}</div>
                                 {row.altTrendCandle ? (
                                   <div className="mt-1">Alt 4H OHLC: O {row.altTrendCandle.open.toFixed(4)} | H {row.altTrendCandle.high.toFixed(4)} | L {row.altTrendCandle.low.toFixed(4)} | C {row.altTrendCandle.close.toFixed(4)}</div>
                                 ) : (
@@ -340,7 +336,7 @@ export default function CryptoBoard() {
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Trigger</div>
                                 <div className="mt-1">Awaiting validation - Stoch+RSI not yet validated on crypto timeframes.</div>
-                                <div className="mt-1">Session tabs are workflow buckets only in Phase 1. All rows remain visible across ASIA / LONDON / NY.</div>
+                                <div className="mt-1">Crypto runs 24/7. This board is not session-filtered.</div>
                               </div>
                             </div>
                           </td>

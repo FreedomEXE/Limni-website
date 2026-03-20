@@ -34,6 +34,12 @@ export type CryptoCandleDetail = {
 
 export type CryptoAnchorRegime = {
   symbol: "BTC" | "ETH";
+  weeklyBias: CryptoBiasDirection;
+  dealerBias: MatrixTrendState;
+  commercialBias: MatrixTrendState;
+  sentimentBias: MatrixTrendState;
+  cotReportDate: string | null;
+  sentimentDate: string | null;
   direction: CryptoBiasDirection;
   tier: CryptoConfidenceTier;
   votes: Record<CryptoTimeframeKey, MatrixTrendState>;
@@ -47,6 +53,7 @@ export type CryptoMatrixRow = {
   compositeScore: number;
   btcCorrelation7d: number;
   bias: CryptoBiasDirection;
+  biasSource: "BTC" | "ETH" | "BTC_ETH" | "MIXED";
   btcVote: MatrixTrendState;
   ethVote: MatrixTrendState;
   altTrend: MatrixTrendState;
