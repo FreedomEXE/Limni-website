@@ -554,8 +554,6 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, gatedData, liveSizing, menthorqOverlay, selectedSession]);
 
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
-  const directionalCount = matrixRows.filter((row) => row.bias !== "NEUTRAL").length;
-  const passCount = matrixRows.filter((row) => row.gate === "PASS").length;
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
       <header className="space-y-3">
@@ -607,14 +605,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
       {loading ? <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 p-3 text-sm text-[color:var(--muted)]">Loading matrix...</div> : null}
       {error ? <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-700">{error}</div> : null}
       {!loading && !error ? (
-        <div className="space-y-3">
-          <div className="grid gap-2 sm:grid-cols-4">
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"><div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Visible Pairs</div><div className="text-lg font-semibold text-[var(--foreground)]">{matrixRows.length}</div></div>
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"><div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Directional Bias</div><div className="text-lg font-semibold text-[var(--foreground)]">{directionalCount}</div></div>
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"><div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Gate Pass</div><div className="text-lg font-semibold text-[var(--foreground)]">{passCount}</div></div>
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"><div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Sizing</div><div className="text-lg font-semibold text-[var(--foreground)]">TBD</div></div>
-          </div>
-
+        <div className="space-y-2">
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
             <table className="min-w-full border-separate border-spacing-0 text-xs">
               <colgroup>
