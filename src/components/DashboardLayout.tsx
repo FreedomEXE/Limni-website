@@ -163,7 +163,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
     if (activeSection === "flagship") {
       return [
-        { href: "/flagship", label: "Board" },
+        { href: "/flagship", label: "CFD Matrix" },
+        { href: "/flagship/crypto", label: "Crypto Matrix" },
       ];
     }
     return [];

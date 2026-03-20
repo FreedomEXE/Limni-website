@@ -10,10 +10,22 @@ import {
   sessionWindowLabelEt,
   type SessionName,
 } from "@/lib/flagship/sessionConfig";
+import {
+  biasChipClass,
+  contextClass,
+  formatPct,
+  gateClass,
+  rowHighlightClass,
+  stateClass,
+  stateLabel,
+  type MatrixContextView,
+  type MatrixGateDecision,
+  type MatrixTrendState,
+} from "@/lib/flagship/matrixStyles";
 import { formatDateTimeET } from "@/lib/time";
 
-type TrendState = "BULLISH" | "BEARISH" | "NEUTRAL";
-type GateDecision = "PASS" | "SKIP" | "NO_DATA";
+type TrendState = MatrixTrendState;
+type GateDecision = MatrixGateDecision;
 type SignalDirection = "LONG" | "SHORT" | "NEUTRAL";
 type SignalTier = "HIGH" | "MEDIUM" | "NEUTRAL";
 type AssetClass = "fx" | "indices" | "crypto" | "commodities";
@@ -227,36 +239,6 @@ function normalizeGate(value: string | null | undefined): GateDecision {
   return "NO_DATA";
 }
 
-function stateClass(state: TrendState) {
-  if (state === "BULLISH") return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  if (state === "BEARISH") return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
-  return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
-}
-
-function stateLabel(state: TrendState) {
-  if (state === "BULLISH") return "B";
-  if (state === "BEARISH") return "S";
-  return "N";
-}
-
-function gateClass(gate: GateDecision) {
-  if (gate === "PASS") return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  if (gate === "SKIP") return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
-  return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
-}
-
-function biasChipClass(bias: TrendState) {
-  if (bias === "BULLISH") return "border-emerald-500/40 bg-emerald-500/14 text-emerald-700 dark:text-emerald-300";
-  if (bias === "BEARISH") return "border-rose-500/40 bg-rose-500/14 text-rose-700 dark:text-rose-300";
-  return "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300";
-}
-
-function rowHighlightClass(bias: TrendState) {
-  if (bias === "BULLISH") return "bg-emerald-500/[0.07] hover:bg-emerald-500/[0.13]";
-  if (bias === "BEARISH") return "bg-rose-500/[0.07] hover:bg-rose-500/[0.13]";
-  return "bg-slate-500/[0.04] hover:bg-slate-500/[0.08]";
-}
-
 function deriveOverlayState(
   pairRow: PairUniverseRow,
   signal: GatedSetupSignal | null,
@@ -310,11 +292,6 @@ function formatLot(value: number | null) {
   return value.toFixed(2);
 }
 
-function formatPct(value: number | null, digits = 2) {
-  if (value === null || !Number.isFinite(value)) return "—";
-  return `${value.toFixed(digits)}%`;
-}
-
 function decodeReason(reason: string) {
   return String(reason ?? "")
     .trim()
@@ -342,7 +319,7 @@ function gateRank(gate: GateDecision) {
   return 2;
 }
 
-function deriveContextView(bias: TrendState, overlay: TrendState, strength: TrendState): MatrixRow["contextView"] {
+function deriveContextView(bias: TrendState, overlay: TrendState, strength: TrendState): MatrixContextView {
   if (bias === "NEUTRAL") return "N/A";
   const active = [overlay, strength].filter((state) => state !== "NEUTRAL");
   if (active.length === 0) return "MIXED";
@@ -351,13 +328,6 @@ function deriveContextView(bias: TrendState, overlay: TrendState, strength: Tren
   if (aligned > 0 && opposed === 0) return "CONFIRM";
   if (opposed > 0 && aligned === 0) return "CONFLICT";
   return "MIXED";
-}
-
-function contextClass(view: MatrixRow["contextView"]) {
-  if (view === "CONFIRM") return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  if (view === "CONFLICT") return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
-  if (view === "MIXED") return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
-  return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
 export default function FlagshipBoard({ strategy }: { strategy: string }) {

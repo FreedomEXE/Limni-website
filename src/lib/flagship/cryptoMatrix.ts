@@ -1,0 +1,72 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: cryptoMatrix.ts
+ *
+ * Description:
+ * Shared types for the Phase 1 crypto matrix API and UI.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
+import type { MatrixTrendState } from "@/lib/flagship/matrixStyles";
+import type { CryptoUniverseTier } from "@/lib/flagship/cryptoUniverse";
+
+export type CryptoBiasDirection = "LONG" | "SHORT" | "NEUTRAL";
+export type CryptoConfidenceTier = "HIGH" | "MEDIUM" | "NEUTRAL";
+export type CryptoTimeframeKey = "H4" | "H1" | "M15";
+
+export type CryptoTfVote = {
+  timeframe: CryptoTimeframeKey;
+  direction: MatrixTrendState;
+};
+
+export type CryptoCandleDetail = {
+  ts: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  bodyPct: number;
+} | null;
+
+export type CryptoAnchorRegime = {
+  symbol: "BTC" | "ETH";
+  direction: CryptoBiasDirection;
+  tier: CryptoConfidenceTier;
+  votes: Record<CryptoTimeframeKey, MatrixTrendState>;
+};
+
+export type CryptoMatrixRow = {
+  symbol: string;
+  bitgetSymbol: string;
+  tier: CryptoUniverseTier;
+  rank: number;
+  compositeScore: number;
+  btcCorrelation7d: number;
+  bias: CryptoBiasDirection;
+  btcVote: MatrixTrendState;
+  ethVote: MatrixTrendState;
+  altTrend: MatrixTrendState;
+  altTrendCandle: CryptoCandleDetail;
+  oiDelta24hPct: number | null;
+  openInterest: number | null;
+  fundingRate: number | null;
+  strength1h: number | null;
+  strength4h: number | null;
+  strength24h: number | null;
+  strengthState: MatrixTrendState | null;
+  trigger: string;
+  sizing: string;
+};
+
+export type CryptoMatrixPayload = {
+  generatedUtc: string;
+  regimes: {
+    btc: CryptoAnchorRegime;
+    eth: CryptoAnchorRegime;
+  };
+  rows: CryptoMatrixRow[];
+};

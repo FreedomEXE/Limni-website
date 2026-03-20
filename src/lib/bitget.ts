@@ -41,10 +41,12 @@ type BitgetCandleResponse = {
 export type BitgetHourlyCandle = {
   ts: number;
   open: number;
+  high: number;
+  low: number;
   close: number;
 };
 
-type BitgetGranularity = "M1" | "H1";
+type BitgetGranularity = "M1" | "M15" | "H1" | "H4";
 
 const BASE_URL = "https://api.bitget.com";
 
@@ -79,7 +81,7 @@ export type BitgetFuturesSnapshot = {
 };
 
 export async function fetchBitgetFuturesSnapshot(
-  symbolBase: "BTC" | "ETH" | "SOL",
+  symbolBase: string,
 ): Promise<BitgetFuturesSnapshot> {
   const productType = getProductType();
   const symbol = `${symbolBase}USDT`;
@@ -110,7 +112,7 @@ export async function fetchBitgetFuturesSnapshot(
 }
 
 export async function fetchBitgetCandleRange(
-  symbolBase: "BTC" | "ETH" | "SOL",
+  symbolBase: string,
   window: { openUtc: DateTime; closeUtc: DateTime },
 ): Promise<{ open: number; close: number; openTime: string; closeTime: string } | null> {
   const productType = getProductType();
@@ -161,28 +163,56 @@ export async function fetchBitgetCandleRange(
 }
 
 export async function fetchBitgetCandleSeries(
-  symbolBase: "BTC" | "ETH" | "SOL",
+  symbolBase: string,
   window: { openUtc: DateTime; closeUtc: DateTime },
 ): Promise<BitgetHourlyCandle[]> {
   return fetchBitgetSeries(symbolBase, window, "H1");
 }
 
 export async function fetchBitgetMinuteSeries(
-  symbolBase: "BTC" | "ETH" | "SOL",
+  symbolBase: string,
   window: { openUtc: DateTime; closeUtc: DateTime },
 ): Promise<BitgetHourlyCandle[]> {
   return fetchBitgetSeries(symbolBase, window, "M1");
 }
 
+export async function fetchBitget15mSeries(
+  symbolBase: string,
+  window: { openUtc: DateTime; closeUtc: DateTime },
+): Promise<BitgetHourlyCandle[]> {
+  return fetchBitgetSeries(symbolBase, window, "M15");
+}
+
+export async function fetchBitget4hSeries(
+  symbolBase: string,
+  window: { openUtc: DateTime; closeUtc: DateTime },
+): Promise<BitgetHourlyCandle[]> {
+  return fetchBitgetSeries(symbolBase, window, "H4");
+}
+
 async function fetchBitgetSeries(
-  symbolBase: "BTC" | "ETH" | "SOL",
+  symbolBase: string,
   window: { openUtc: DateTime; closeUtc: DateTime },
   granularity: BitgetGranularity,
 ): Promise<BitgetHourlyCandle[]> {
   const productType = getProductType();
   const symbol = `${symbolBase}USDT`;
-  const stepMs = granularity === "M1" ? 60 * 1000 : 60 * 60 * 1000;
-  const granularityParam = granularity === "M1" ? "1m" : "3600";
+  const stepMs =
+    granularity === "M1"
+      ? 60 * 1000
+      : granularity === "M15"
+        ? 15 * 60 * 1000
+        : granularity === "H4"
+          ? 4 * 60 * 60 * 1000
+          : 60 * 60 * 1000;
+  const granularityParam =
+    granularity === "M1"
+      ? "1m"
+      : granularity === "M15"
+        ? "900"
+        : granularity === "H4"
+          ? "14400"
+          : "3600";
   const all = new Map<number, BitgetHourlyCandle>();
   let cursor = window.openUtc.toMillis();
   const closeMs = window.closeUtc.toMillis();
@@ -211,12 +241,16 @@ async function fetchBitgetSeries(
       .map((row) => ({
         ts: Number(row[0]),
         open: Number(row[1]),
+        high: Number(row[2]),
+        low: Number(row[3]),
         close: Number(row[4]),
       }))
       .filter(
         (row) =>
           Number.isFinite(row.ts) &&
           Number.isFinite(row.open) &&
+          Number.isFinite(row.high) &&
+          Number.isFinite(row.low) &&
           Number.isFinite(row.close),
       )
       .filter((row) => row.ts >= window.openUtc.toMillis() && row.ts < closeMs)
@@ -242,7 +276,7 @@ async function fetchBitgetSeries(
 }
 
 export async function fetchBitgetPriceChange(
-  symbolBase: "BTC" | "ETH" | "SOL",
+  symbolBase: string,
   hours: number,
 ): Promise<{ open: number; close: number; percent: number } | null> {
   if (hours <= 0) {
