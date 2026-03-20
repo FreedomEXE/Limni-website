@@ -329,6 +329,13 @@ function tierRank(tier: SignalTier) {
   return 2;
 }
 
+function assetClassRank(assetClass: AssetClass) {
+  if (assetClass === "fx") return 0;
+  if (assetClass === "commodities") return 1;
+  if (assetClass === "indices") return 2;
+  return 3;
+}
+
 function gateRank(gate: GateDecision) {
   if (gate === "PASS") return 0;
   if (gate === "SKIP") return 1;
@@ -529,7 +536,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           tier: normalizeTier(signal?.tier),
           sessionEligible: SESSION_ELIGIBILITY.get(pairRow.pair) ?? ["ASIA", "LONDON", "NY"],
           gateReasons: signal?.gateReasons?.length ? signal.gateReasons : ["NO_WEEKLY_SIGNAL_FOR_PAIR"],
-          sizing: sizing?.recommendedLotsPer100k.find((row) => row.riskBudgetPct === 0.5)?.conservative ?? null,
+          sizing: null,
           triggerLabel: "TBD",
           noTargetRatePct: sizing?.noTargetRatePct ?? null,
           avgReturnPct: sizing?.avgReturnPct ?? null,
@@ -538,12 +545,10 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
       })
       .filter((row) => row.sessionEligible.includes(selectedSession))
       .sort((a, b) => {
-        const biasDiff = Number(a.bias === "NEUTRAL") - Number(b.bias === "NEUTRAL");
-        if (biasDiff !== 0) return biasDiff;
-        const gateDiff = gateRank(a.gate) - gateRank(b.gate);
-        if (gateDiff !== 0) return gateDiff;
-        const tierDiff = tierRank(a.tier) - tierRank(b.tier);
-        if (tierDiff !== 0) return tierDiff;
+        const neutralDiff = Number(a.bias === "NEUTRAL") - Number(b.bias === "NEUTRAL");
+        if (neutralDiff !== 0) return neutralDiff;
+        const assetDiff = assetClassRank(a.assetClass) - assetClassRank(b.assetClass);
+        if (assetDiff !== 0) return assetDiff;
         return a.pair.localeCompare(b.pair);
       });
   }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, gatedData, liveSizing, menthorqOverlay, selectedSession]);
@@ -551,14 +556,6 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
   const directionalCount = matrixRows.filter((row) => row.bias !== "NEUTRAL").length;
   const passCount = matrixRows.filter((row) => row.gate === "PASS").length;
-  const avgLot05 = (() => {
-    const values = matrixRows
-      .filter((row) => row.assetClass === "fx" && row.sizing !== null)
-      .map((row) => row.sizing as number);
-    if (values.length === 0) return null;
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
-  })();
-
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
       <header className="space-y-3">
@@ -609,15 +606,13 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
 
       {loading ? <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 p-3 text-sm text-[color:var(--muted)]">Loading matrix...</div> : null}
       {error ? <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-700">{error}</div> : null}
-      {warnings.length > 0 ? <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-300">Data warnings: {warnings.join(" | ")}</div> : null}
-
       {!loading && !error ? (
         <div className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-4">
             <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"><div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Visible Pairs</div><div className="text-lg font-semibold text-[var(--foreground)]">{matrixRows.length}</div></div>
             <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"><div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Directional Bias</div><div className="text-lg font-semibold text-[var(--foreground)]">{directionalCount}</div></div>
             <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"><div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Gate Pass</div><div className="text-lg font-semibold text-[var(--foreground)]">{passCount}</div></div>
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"><div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Avg Lot .50</div><div className="text-lg font-semibold text-[var(--foreground)]">{avgLot05 === null ? "—" : avgLot05.toFixed(2)}</div></div>
+            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2"><div className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--muted)]">Sizing</div><div className="text-lg font-semibold text-[var(--foreground)]">TBD</div></div>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
@@ -679,7 +674,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                         <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.overlay)}`}>{stateLabel(row.overlay)}</span></td>
                         <td className="border-r border-[var(--panel-border)] bg-amber-500/[0.04] px-3 py-2"><span title={row.strengthDelta1h === null ? "No strength data" : `${row.strengthDelta1h > 0 ? "+" : ""}${row.strengthDelta1h}`} className={`inline-flex min-w-[3.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.strength1h)}`}>{row.strengthDelta1h === null ? "—" : `${row.strengthDelta1h > 0 ? "+" : ""}${row.strengthDelta1h.toFixed(0)}`}</span></td>
                         <td className="border-r border-[var(--panel-border)] bg-sky-500/[0.04] px-3 py-2"><span className="inline-flex min-w-[3.75rem] justify-center rounded border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">{row.triggerLabel}</span></td>
-                        <td className="bg-emerald-500/[0.04] px-3 py-2 font-mono text-[var(--foreground)]">{formatLot(row.sizing)}</td>
+                        <td className="bg-emerald-500/[0.04] px-3 py-2 font-mono text-[var(--foreground)]">TBD</td>
                       </tr>
                       {isExpanded ? (
                         <tr className="bg-[var(--panel)]/75">
@@ -692,8 +687,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Sizing</div>
-                                <div>Current live sizing: {formatLot(row.sizing)} lots / 100k</div>
-                                <div>Model: conservative 0.5% budget</div>
+                                <div>Live sizing: TBD</div>
+                                <div>Model: TBD</div>
                                 <div>Trigger scaffold: {row.triggerLabel}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
