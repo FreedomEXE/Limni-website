@@ -141,9 +141,8 @@ type MatrixRow = {
   tier: SignalTier;
   sessionEligible: SessionName[];
   gateReasons: string[];
-  lotConservative05: number | null;
-  lotConservative10: number | null;
-  p95MaePct: number | null;
+  sizing: number | null;
+  triggerLabel: string;
   noTargetRatePct: number | null;
   avgReturnPct: number | null;
   tradeCount: number | null;
@@ -314,19 +313,6 @@ function formatLot(value: number | null) {
 function formatPct(value: number | null, digits = 2) {
   if (value === null || !Number.isFinite(value)) return "—";
   return `${value.toFixed(digits)}%`;
-}
-
-function riskBand(p95MaePct: number | null) {
-  if (p95MaePct === null || !Number.isFinite(p95MaePct)) {
-    return { label: "N/A", className: "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300" };
-  }
-  if (p95MaePct <= 0.75) {
-    return { label: "Tight", className: "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300" };
-  }
-  if (p95MaePct <= 1.5) {
-    return { label: "Balanced", className: "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300" };
-  }
-  return { label: "Wide", className: "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300" };
 }
 
 function decodeReason(reason: string) {
@@ -543,9 +529,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           tier: normalizeTier(signal?.tier),
           sessionEligible: SESSION_ELIGIBILITY.get(pairRow.pair) ?? ["ASIA", "LONDON", "NY"],
           gateReasons: signal?.gateReasons?.length ? signal.gateReasons : ["NO_WEEKLY_SIGNAL_FOR_PAIR"],
-          lotConservative05: sizing?.recommendedLotsPer100k.find((row) => row.riskBudgetPct === 0.5)?.conservative ?? null,
-          lotConservative10: sizing?.recommendedLotsPer100k.find((row) => row.riskBudgetPct === 1)?.conservative ?? null,
-          p95MaePct: sizing?.p95MaePct ?? null,
+          sizing: sizing?.recommendedLotsPer100k.find((row) => row.riskBudgetPct === 0.5)?.conservative ?? null,
+          triggerLabel: "TBD",
           noTargetRatePct: sizing?.noTargetRatePct ?? null,
           avgReturnPct: sizing?.avgReturnPct ?? null,
           tradeCount: sizing?.trades ?? null,
@@ -568,8 +553,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const passCount = matrixRows.filter((row) => row.gate === "PASS").length;
   const avgLot05 = (() => {
     const values = matrixRows
-      .filter((row) => row.assetClass === "fx" && row.lotConservative05 !== null)
-      .map((row) => row.lotConservative05 as number);
+      .filter((row) => row.assetClass === "fx" && row.sizing !== null)
+      .map((row) => row.sizing as number);
     if (values.length === 0) return null;
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   })();
@@ -582,17 +567,11 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Matrix</p>
             <h1 className="text-xl font-semibold text-[var(--foreground)] md:text-2xl">Live Session Matrix</h1>
             <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Strategy {strategy}</p>
-            <p className="max-w-3xl text-sm text-[color:var(--muted)]">
-              Locked bias is Dealer + Commercial + Daily Sentiment. Overlay and strength stay visible for context. Lot sizes are FX-only and come from the latest backtest report.
-            </p>
           </div>
           <div className="space-y-2">
             <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-right text-xs text-[color:var(--muted)]">
               <div>Data {formatDateTimeET(lastRefreshedUtc ?? gatedData?.generatedUtc ?? null, "Unknown")}</div>
               <div className="font-semibold">{activeSession ? `Active ${activeSession}` : "Off-hours 17:00-20:00 ET"}</div>
-              <div className="text-[10px] uppercase tracking-[0.12em]">
-                {liveSizing?.positionSizingResearch?.recommendation?.bestModelUnder5PctDrawdown ?? "Sizing pending"}
-              </div>
             </div>
             <button
               type="button"
@@ -642,34 +621,46 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
-            <table className="min-w-full text-xs">
+            <table className="min-w-full border-separate border-spacing-0 text-xs">
+              <colgroup>
+                <col className="w-[18rem]" />
+                <col className="w-[7rem]" />
+                <col className="w-[5rem]" />
+                <col className="w-[5rem]" />
+                <col className="w-[6rem]" />
+                <col className="w-[7rem]" />
+                <col className="w-[5rem]" />
+                <col className="w-[6rem]" />
+                <col className="w-[6rem]" />
+                <col className="w-[6rem]" />
+              </colgroup>
               <thead className="sticky top-0 z-10 bg-[var(--panel)] text-left uppercase tracking-[0.14em] text-[color:var(--muted)]">
                 <tr>
-                  <th className="px-3 py-2" rowSpan={2}>Pair</th>
-                  <th className="px-3 py-2 text-center" colSpan={4}>Core Bias</th>
-                  <th className="px-3 py-2 text-center" colSpan={3}>Context</th>
-                  <th className="px-3 py-2 text-center" colSpan={2}>Sizing</th>
+                  <th className="border-b border-r border-[var(--panel-border)] px-3 py-3" rowSpan={2}>Pair</th>
+                  <th className="border-b border-r border-[var(--panel-border)] bg-slate-500/[0.06] px-3 py-3 text-center" colSpan={4}>Core Bias</th>
+                  <th className="border-b border-r border-[var(--panel-border)] bg-amber-500/[0.07] px-3 py-3 text-center" colSpan={3}>Context</th>
+                  <th className="border-b border-r border-[var(--panel-border)] bg-sky-500/[0.07] px-3 py-3 text-center" colSpan={1}>Trigger</th>
+                  <th className="border-b border-[var(--panel-border)] bg-emerald-500/[0.07] px-3 py-3 text-center" colSpan={1}>Sizing</th>
                 </tr>
                 <tr>
-                  <th className="px-3 py-2">Bias</th>
-                  <th className="px-3 py-2">Dealer</th>
-                  <th className="px-3 py-2">Commercial</th>
-                  <th className="px-3 py-2">Sentiment</th>
-                  <th className="px-3 py-2">Read</th>
-                  <th className="px-3 py-2">Overlay</th>
-                  <th className="px-3 py-2">Strength</th>
-                  <th className="px-3 py-2">Lot .50</th>
-                  <th className="px-3 py-2">Risk</th>
+                  <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Bias</th>
+                  <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Dealer</th>
+                  <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Commercial</th>
+                  <th className="border-b border-r border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Sentiment</th>
+                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Context</th>
+                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Overlay</th>
+                  <th className="border-b border-r border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Strength</th>
+                  <th className="border-b border-r border-[var(--panel-border)] bg-sky-500/[0.05] px-3 py-2">Trigger</th>
+                  <th className="border-b border-[var(--panel-border)] bg-emerald-500/[0.05] px-3 py-2">Sizing</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
                 {matrixRows.map((row) => {
                   const isExpanded = expandedPairs.includes(row.pair);
-                  const risk = riskBand(row.p95MaePct);
                   return (
                     <Fragment key={row.pair}>
                       <tr className={`transition-colors ${rowHighlightClass(row.bias)}`}>
-                        <td className="px-3 py-2 font-semibold text-[var(--foreground)]">
+                        <td className="border-r border-[var(--panel-border)] px-3 py-2 font-semibold text-[var(--foreground)]">
                           <button
                             type="button"
                             onClick={() => setExpandedPairs((previous) => previous.includes(row.pair) ? previous.filter((item) => item !== row.pair) : [...previous, row.pair])}
@@ -680,15 +671,15 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                             <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">{row.assetClass}</span>
                           </button>
                         </td>
-                        <td className="px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${biasChipClass(row.bias)}`}>{row.bias === "BULLISH" ? "LONG" : row.bias === "BEARISH" ? "SHORT" : "NEUTRAL"}</span></td>
-                        <td className="px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.dealer)}`}>{stateLabel(row.dealer)}</span></td>
-                        <td className="px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.commercial)}`}>{stateLabel(row.commercial)}</span></td>
-                        <td className="px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.sentimentDaily)}`}>{stateLabel(row.sentimentDaily)}</span></td>
-                        <td className="px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${contextClass(row.contextView)}`}>{row.contextView}</span></td>
-                        <td className="px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.overlay)}`}>{stateLabel(row.overlay)}</span></td>
-                        <td className="px-3 py-2"><span title={row.strengthDelta1h === null ? "No strength data" : `${row.strengthDelta1h > 0 ? "+" : ""}${row.strengthDelta1h}`} className={`inline-flex min-w-[3.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.strength1h)}`}>{row.strengthDelta1h === null ? "—" : `${row.strengthDelta1h > 0 ? "+" : ""}${row.strengthDelta1h.toFixed(0)}`}</span></td>
-                        <td className="px-3 py-2 font-mono text-[var(--foreground)]">{formatLot(row.lotConservative05)}</td>
-                        <td className="px-3 py-2"><span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${risk.className}`}>{risk.label}</span></td>
+                        <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${biasChipClass(row.bias)}`}>{row.bias === "BULLISH" ? "LONG" : row.bias === "BEARISH" ? "SHORT" : "NEUTRAL"}</span></td>
+                        <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.dealer)}`}>{stateLabel(row.dealer)}</span></td>
+                        <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.commercial)}`}>{stateLabel(row.commercial)}</span></td>
+                        <td className="border-r border-[var(--panel-border)] bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.sentimentDaily)}`}>{stateLabel(row.sentimentDaily)}</span></td>
+                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${contextClass(row.contextView)}`}>{row.contextView}</span></td>
+                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.overlay)}`}>{stateLabel(row.overlay)}</span></td>
+                        <td className="border-r border-[var(--panel-border)] bg-amber-500/[0.04] px-3 py-2"><span title={row.strengthDelta1h === null ? "No strength data" : `${row.strengthDelta1h > 0 ? "+" : ""}${row.strengthDelta1h}`} className={`inline-flex min-w-[3.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.strength1h)}`}>{row.strengthDelta1h === null ? "—" : `${row.strengthDelta1h > 0 ? "+" : ""}${row.strengthDelta1h.toFixed(0)}`}</span></td>
+                        <td className="border-r border-[var(--panel-border)] bg-sky-500/[0.04] px-3 py-2"><span className="inline-flex min-w-[3.75rem] justify-center rounded border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">{row.triggerLabel}</span></td>
+                        <td className="bg-emerald-500/[0.04] px-3 py-2 font-mono text-[var(--foreground)]">{formatLot(row.sizing)}</td>
                       </tr>
                       {isExpanded ? (
                         <tr className="bg-[var(--panel)]/75">
@@ -701,9 +692,9 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Sizing</div>
-                                <div>Conservative 0.5: {formatLot(row.lotConservative05)} lots / 100k</div>
-                                <div>Conservative 1.0: {formatLot(row.lotConservative10)} lots / 100k</div>
-                                <div>P95 MAE: {formatPct(row.p95MaePct, 2)}</div>
+                                <div>Current live sizing: {formatLot(row.sizing)} lots / 100k</div>
+                                <div>Model: conservative 0.5% budget</div>
+                                <div>Trigger scaffold: {row.triggerLabel}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Trade Profile</div>
@@ -735,10 +726,9 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
 
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/55 px-3 py-2 text-[11px] text-[color:var(--muted)]">
             <span className="font-semibold uppercase tracking-[0.12em]">Legend</span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-emerald-500/12 px-2 py-0.5 text-emerald-700 dark:text-emerald-300">Bias = 2 of 3 votes</span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-slate-600 dark:text-slate-300">Overlay + strength are informational</span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/35 bg-amber-500/12 px-2 py-0.5 text-amber-700 dark:text-amber-300">Read = context only, not the core bias</span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-0.5">Lot sizes are per 100k account</span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/35 bg-emerald-500/12 px-2 py-0.5 text-emerald-700 dark:text-emerald-300">B = Bullish</span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/35 bg-rose-500/12 px-2 py-0.5 text-rose-700 dark:text-rose-300">S = Bearish</span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-slate-600 dark:text-slate-300">N = Neutral</span>
           </div>
         </div>
       ) : null}
