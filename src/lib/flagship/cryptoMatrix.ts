@@ -64,6 +64,9 @@ export type CryptoMatrixRow = {
   oiDelta24hPct: number | null;
   openInterest: number | null;
   fundingRate: number | null;
+  liquidationTilt: "ABOVE" | "BELOW" | "BALANCED" | "NONE" | null;
+  largestAboveNotional: number | null;
+  largestBelowNotional: number | null;
   strength1h: number | null;
   strength4h: number | null;
   strength24h: number | null;

@@ -129,6 +129,18 @@ type LiveSizingPayload = {
   } | null;
 };
 
+type PriceMoveRow = {
+  pair: string;
+  change24hPct: number | null;
+  openPrice: number | null;
+  closePrice: number | null;
+};
+
+type PriceMovesPayload = {
+  generatedUtc: string | null;
+  rows: PriceMoveRow[];
+};
+
 type PairUniverseRow = {
   pair: string;
   assetClass: AssetClass;
@@ -158,6 +170,7 @@ type MatrixRow = {
   noTargetRatePct: number | null;
   avgReturnPct: number | null;
   tradeCount: number | null;
+  move24hPct: number | null;
 };
 
 const UNIVERSE: PairUniverseRow[] = [
@@ -330,6 +343,20 @@ function deriveContextView(bias: TrendState, overlay: TrendState, strength: Tren
   return "MIXED";
 }
 
+function formatMove(change24hPct: number | null) {
+  if (change24hPct === null || !Number.isFinite(change24hPct)) return "—";
+  return `${change24hPct > 0 ? "+" : ""}${change24hPct.toFixed(1)}%`;
+}
+
+function moveClass(change24hPct: number | null) {
+  if (change24hPct === null || !Number.isFinite(change24hPct)) {
+    return "text-[color:var(--muted)]";
+  }
+  if (change24hPct > 0) return "text-emerald-700 dark:text-emerald-300";
+  if (change24hPct < 0) return "text-rose-700 dark:text-rose-300";
+  return "text-[color:var(--muted)]";
+}
+
 export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [gatedData, setGatedData] = useState<GatedSetupsPayload | null>(null);
   const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
@@ -338,6 +365,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [assetStrength, setAssetStrength] = useState<AssetStrengthPayload | null>(null);
   const [menthorqOverlay, setMenthorqOverlay] = useState<MenthorqOverlayPayload | null>(null);
   const [liveSizing, setLiveSizing] = useState<LiveSizingPayload | null>(null);
+  const [priceMoves, setPriceMoves] = useState<PriceMovesPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -362,7 +390,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         setError(null);
         const nextWarnings: string[] = [];
 
-        const [gatedRes, cotRes, sentimentRes, currencyRes, assetRes, overlayRes, sizingRes] = await Promise.allSettled([
+        const [gatedRes, cotRes, sentimentRes, currencyRes, assetRes, overlayRes, sizingRes, movesRes] = await Promise.allSettled([
           fetch("/api/performance/gated-setups", { cache: "no-store" }),
           fetch("/api/flagship/cot-matrix", { cache: "no-store" }),
           fetch("/api/flagship/sentiment-daily", { cache: "no-store" }),
@@ -370,6 +398,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           fetch("/api/flagship/asset-strength", { cache: "no-store" }),
           fetch("/api/flagship/menthorq-overlay", { cache: "no-store" }),
           fetch("/api/flagship/live-sizing", { cache: "no-store" }),
+          fetch("/api/flagship/price-moves", { cache: "no-store" }),
         ]);
 
         const readJson = async <T,>(response: PromiseSettledResult<Response>, label: string) => {
@@ -380,7 +409,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           return null;
         };
 
-        const [gatedJson, cotJson, sentimentJson, currencyJson, assetJson, overlayJson, sizingJson] = await Promise.all([
+        const [gatedJson, cotJson, sentimentJson, currencyJson, assetJson, overlayJson, sizingJson, movesJson] = await Promise.all([
           readJson<GatedSetupsPayload>(gatedRes, "gated-setups"),
           readJson<CotMatrixPayload>(cotRes, "cot-matrix"),
           readJson<DailySentimentPayload>(sentimentRes, "sentiment-daily"),
@@ -388,6 +417,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           readJson<AssetStrengthPayload>(assetRes, "asset-strength"),
           readJson<MenthorqOverlayPayload>(overlayRes, "menthorq-overlay"),
           readJson<LiveSizingPayload>(sizingRes, "live-sizing"),
+          readJson<PriceMovesPayload>(movesRes, "price-moves"),
         ]);
 
         if (!cancelled) {
@@ -401,6 +431,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           setAssetStrength(assetJson);
           setMenthorqOverlay(overlayJson);
           setLiveSizing(sizingJson);
+          setPriceMoves(movesJson);
           setWarnings(nextWarnings);
           setLastRefreshedUtc(new Date().toISOString());
           setLoading(false);
@@ -448,6 +479,9 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
 
     const sizingByPair = new Map<string, LiveSizingPairRiskProfile>();
     for (const row of liveSizing?.positionSizingResearch?.pairRiskProfiles ?? []) sizingByPair.set(normalizeKey(row.pair), row);
+
+    const moveByPair = new Map<string, number | null>();
+    for (const row of priceMoves?.rows ?? []) moveByPair.set(normalizeKey(row.pair), row.change24hPct);
 
     return UNIVERSE
       .map((pairRow) => {
@@ -511,6 +545,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           noTargetRatePct: sizing?.noTargetRatePct ?? null,
           avgReturnPct: sizing?.avgReturnPct ?? null,
           tradeCount: sizing?.trades ?? null,
+          move24hPct: moveByPair.get(key) ?? null,
         } satisfies MatrixRow;
       })
       .filter((row) => row.sessionEligible.includes(selectedSession))
@@ -521,7 +556,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         if (assetDiff !== 0) return assetDiff;
         return a.pair.localeCompare(b.pair);
       });
-  }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, gatedData, liveSizing, menthorqOverlay, selectedSession]);
+  }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, gatedData, liveSizing, menthorqOverlay, priceMoves, selectedSession]);
 
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
   return (
@@ -625,6 +660,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                             <span className="inline-flex w-3 justify-center text-[11px] text-[color:var(--muted)]">{isExpanded ? "▾" : "▸"}</span>
                             <span>{row.pair}</span>
                             <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">{row.assetClass}</span>
+                            <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${moveClass(row.move24hPct)}`}>{formatMove(row.move24hPct)}</span>
                           </button>
                         </td>
                         <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${biasChipClass(row.bias)}`}>{row.bias === "BULLISH" ? "LONG" : row.bias === "BEARISH" ? "SHORT" : "NEUTRAL"}</span></td>
@@ -645,6 +681,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                                 <div className="font-semibold text-[var(--foreground)]">Bias Stack</div>
                                 <div className="mt-1">Dealer {row.dealer}, Commercial {row.commercial}, Sentiment {row.sentimentDaily}</div>
                                 <div>Overlay {row.overlay}, Strength {row.strength1h}, Context {row.contextView}</div>
+                                <div>Move 24h: {formatMove(row.move24hPct)}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Sizing</div>

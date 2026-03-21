@@ -40,6 +40,7 @@ import {
   type CryptoTimeframeKey,
 } from "@/lib/flagship/cryptoMatrix";
 import type { MatrixTrendState } from "@/lib/flagship/matrixStyles";
+import { readNearestLiquidationHeatmapSnapshot } from "@/lib/marketSnapshots";
 import { readSnapshot } from "@/lib/cotStore";
 import { readLatestDailySentimentLock } from "@/lib/sentiment/daily";
 
@@ -60,6 +61,13 @@ type OiRow = {
 type FundingRow = {
   symbol: string;
   funding_rate: string | number;
+};
+
+type LiquidationRow = {
+  symbol: string;
+  dominant_side: "long" | "short" | "flat" | string;
+  largest_above_notional: string | number | null;
+  largest_below_notional: string | number | null;
 };
 
 type StrengthMap = Record<"1h" | "4h" | "24h", number | null>;
@@ -326,7 +334,7 @@ async function mapWithConcurrency<T, R>(
 
 async function readAnchorMarketData() {
   const symbols = ["BTC", "ETH"];
-  const [latestOiRows, oi24Rows, fundingRows] = await Promise.all([
+  const [latestOiRows, oi24Rows, fundingRows, liquidationRows, heatmapSnapshots] = await Promise.all([
     query<OiRow>(
       `SELECT DISTINCT ON (symbol) symbol, open_interest
          FROM market_oi_snapshots
@@ -349,12 +357,72 @@ async function readAnchorMarketData() {
         ORDER BY symbol, snapshot_time_utc DESC`,
       [symbols],
     ),
+    query<LiquidationRow>(
+      `SELECT DISTINCT ON (symbol)
+          symbol,
+          dominant_side,
+          largest_above_notional,
+          largest_below_notional
+         FROM market_liquidation_snapshots
+        WHERE symbol = ANY($1::text[])
+        ORDER BY symbol, snapshot_time_utc DESC`,
+      [symbols],
+    ),
+    Promise.all(
+      symbols.map((symbol) =>
+        readNearestLiquidationHeatmapSnapshot({
+          symbol,
+          atUtc: new Date().toISOString(),
+          interval: "1d",
+          exchangeGroup: "binance_bybit",
+          maxAgeMinutes: 720,
+        }).catch(() => null),
+      ),
+    ),
   ]);
+
+  const heatmapBySymbol = new Map(
+    heatmapSnapshots
+      .filter((row): row is NonNullable<typeof row> => Boolean(row))
+      .map((row) => {
+        const bands = row.bands_json as {
+          longs?: Array<{ band_pct?: number; estimated_liquidations_usd?: number }>;
+          shorts?: Array<{ band_pct?: number; estimated_liquidations_usd?: number }>;
+        };
+        const longs = Array.isArray(bands.longs) ? bands.longs : [];
+        const shorts = Array.isArray(bands.shorts) ? bands.shorts : [];
+        const pickBand = (items: typeof longs) =>
+          items.find((item) => Number(item.band_pct) === 5) ??
+          items.find((item) => Number(item.band_pct) === 2) ??
+          items[0] ??
+          null;
+        const aboveBand = pickBand(shorts);
+        const belowBand = pickBand(longs);
+        return [
+          row.symbol.toUpperCase(),
+          {
+            largestAboveNotional: toNumber(aboveBand?.estimated_liquidations_usd) ?? 0,
+            largestBelowNotional: toNumber(belowBand?.estimated_liquidations_usd) ?? 0,
+          },
+        ] as const;
+      }),
+  );
 
   return {
     oiLatestBySymbol: new Map(latestOiRows.map((row) => [row.symbol.toUpperCase(), toNumber(row.open_interest)])),
     oi24BySymbol: new Map(oi24Rows.map((row) => [row.symbol.toUpperCase(), toNumber(row.open_interest)])),
     fundingBySymbol: new Map(fundingRows.map((row) => [row.symbol.toUpperCase(), toNumber(row.funding_rate)])),
+    liquidationBySymbol: new Map(
+      liquidationRows.map((row) => [
+        row.symbol.toUpperCase(),
+        {
+          dominantSide: String(row.dominant_side ?? "flat").toLowerCase(),
+          largestAboveNotional: toNumber(row.largest_above_notional),
+          largestBelowNotional: toNumber(row.largest_below_notional),
+        },
+      ]),
+    ),
+    heatmapBySymbol,
   };
 }
 
@@ -546,6 +614,18 @@ function applyTrendOpportunityBonus(
   return round(baseScore + bonus, 4);
 }
 
+function deriveLiquidationTilt(params: {
+  largestAboveNotional: number | null;
+  largestBelowNotional: number | null;
+}) {
+  const above = params.largestAboveNotional ?? 0;
+  const below = params.largestBelowNotional ?? 0;
+  if (!(above > 0) && !(below > 0)) return "NONE" as const;
+  if (above > below * 1.15) return "ABOVE" as const;
+  if (below > above * 1.15) return "BELOW" as const;
+  return "BALANCED" as const;
+}
+
 export async function GET() {
   try {
     const [
@@ -639,6 +719,10 @@ export async function GET() {
         oiLatestDb !== null && oi24 !== null && oi24 > 0
           ? ((oiLatestDb - oi24) / oi24) * 100
           : null;
+      const liquidation =
+        anchorMarketData.heatmapBySymbol.get(symbol) ??
+        anchorMarketData.liquidationBySymbol.get(symbol) ??
+        null;
 
       return {
         symbol,
@@ -664,6 +748,11 @@ export async function GET() {
         oiDelta24hPct,
         openInterest: ticker?.openInterestUsd ?? oiLatestDb,
         fundingRate: ticker?.fundingRate ?? anchorMarketData.fundingBySymbol.get(symbol) ?? null,
+        liquidationTilt: liquidation
+          ? deriveLiquidationTilt(liquidation)
+          : null,
+        largestAboveNotional: liquidation?.largestAboveNotional ?? null,
+        largestBelowNotional: liquidation?.largestBelowNotional ?? null,
         strength1h: strength["1h"],
         strength4h: strength["4h"],
         strength24h: strength["24h"],
@@ -696,6 +785,9 @@ export async function GET() {
         oiDelta24hPct: null,
         openInterest: candidate.openInterestUsd,
         fundingRate: candidate.fundingRate,
+        liquidationTilt: null,
+        largestAboveNotional: null,
+        largestBelowNotional: null,
         strength1h: strength["1h"],
         strength4h: strength["4h"],
         strength24h: strength["24h"],

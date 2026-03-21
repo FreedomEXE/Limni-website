@@ -51,13 +51,6 @@ function regimeBannerClass(regime: CryptoAnchorRegime) {
   return "border-slate-500/25 bg-slate-500/10";
 }
 
-function tierBadgeClass(tier: CryptoMatrixRow["tier"]) {
-  if (tier === "ANCHOR") return "border-sky-500/35 bg-sky-500/12 text-sky-700 dark:text-sky-300";
-  if (tier === "A") return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  if (tier === "B") return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
-  return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
-}
-
 function formatFunding(rate: number | null) {
   if (rate === null || !Number.isFinite(rate)) return "—";
   const bps = rate * 10000;
@@ -73,6 +66,26 @@ function formatCompactUsd(value: number | null) {
   return `$${value.toFixed(0)}`;
 }
 
+function formatLiquidationTilt(row: CryptoMatrixRow) {
+  if (!row.liquidationTilt || row.liquidationTilt === "NONE") return "—";
+  if (row.liquidationTilt === "ABOVE") return "ABOVE";
+  if (row.liquidationTilt === "BELOW") return "BELOW";
+  return "BAL";
+}
+
+function liquidationClass(row: CryptoMatrixRow) {
+  if (!row.liquidationTilt || row.liquidationTilt === "NONE") {
+    return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
+  }
+  if (row.liquidationTilt === "ABOVE") {
+    return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
+  }
+  if (row.liquidationTilt === "BELOW") {
+    return "border-sky-500/35 bg-sky-500/12 text-sky-700 dark:text-sky-300";
+  }
+  return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
+}
+
 function fundingClass(rate: number | null) {
   if (rate === null || !Number.isFinite(rate)) return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
   if (rate > 0) return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
@@ -83,21 +96,6 @@ function fundingClass(rate: number | null) {
 function formatMove(change24hPct: number | null) {
   if (change24hPct === null || !Number.isFinite(change24hPct)) return "—";
   return `${change24hPct > 0 ? "+" : ""}${change24hPct.toFixed(1)}%`;
-}
-
-function moveClass(change24hPct: number | null, bias: CryptoBiasDirection) {
-  if (change24hPct === null || !Number.isFinite(change24hPct)) return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
-  if (bias === "SHORT") {
-    if (change24hPct > 0) return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
-    if (change24hPct < 0) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  }
-  if (bias === "LONG") {
-    if (change24hPct < 0) return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
-    if (change24hPct > 0) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  }
-  if (change24hPct > 0) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  if (change24hPct < 0) return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
-  return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
 function oiClass(openInterest: number | null) {
@@ -264,7 +262,7 @@ export default function CryptoBoard() {
                   <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">BTC</th>
                   <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">ETH</th>
                   <th className="border-b border-r border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Alt</th>
-                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Move</th>
+                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Liq</th>
                   <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">OI</th>
                   <th className="border-b border-r border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Fund</th>
                   <th className="border-b border-r border-[var(--panel-border)] bg-sky-500/[0.05] px-3 py-2">Trigger</th>
@@ -292,7 +290,6 @@ export default function CryptoBoard() {
                             <span className="inline-flex w-3 justify-center text-[11px] text-[color:var(--muted)]">{expanded ? "▾" : "▸"}</span>
                             <div className="flex flex-wrap items-center gap-2">
                               <span>{row.rank > 0 ? `#${row.rank} ${row.symbol}` : row.symbol}</span>
-                              <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${tierBadgeClass(row.tier)}`}>{row.tier}</span>
                               <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-[color:var(--muted)]">{formatMove(row.change24hPct)} · {formatCompactUsd(row.volume24hUsd)}</span>
                             </div>
                           </button>
@@ -305,7 +302,7 @@ export default function CryptoBoard() {
                         <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.btcVote)}`}>{stateLabel(row.btcVote)}</span></td>
                         <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.ethVote)}`}>{stateLabel(row.ethVote)}</span></td>
                         <td className="border-r border-[var(--panel-border)] bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.altTrend)}`}>{stateLabel(row.altTrend)}</span></td>
-                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${moveClass(row.change24hPct, row.bias)}`}>{formatMove(row.change24hPct)}</span></td>
+                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${liquidationClass(row)}`}>{formatLiquidationTilt(row)}</span></td>
                         <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[4.75rem] justify-center rounded border px-2 py-0.5 font-semibold ${oiClass(row.openInterest)}`}>{formatCompactUsd(row.openInterest)}</span></td>
                         <td className="border-r border-[var(--panel-border)] bg-amber-500/[0.04] px-3 py-2">
                           <span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${fundingClass(row.fundingRate)}`}>{formatFunding(row.fundingRate)}</span>
@@ -337,6 +334,7 @@ export default function CryptoBoard() {
                                 <div className="mt-1">Open interest: {formatCompactUsd(row.openInterest)}</div>
                                 <div>OI delta 24h (anchors only): {formatPct(row.oiDelta24hPct, 2)}</div>
                                 <div>Funding: {row.fundingRate === null ? "—" : row.fundingRate.toFixed(6)}</div>
+                                <div>Liquidation tilt: {formatLiquidationTilt(row)} | Above {formatCompactUsd(row.largestAboveNotional)} | Below {formatCompactUsd(row.largestBelowNotional)}</div>
                                 <div>Strength 1h / 4h / 24h: {row.strength1h === null ? "—" : row.strength1h.toFixed(1)} / {row.strength4h === null ? "—" : row.strength4h.toFixed(1)} / {row.strength24h === null ? "—" : row.strength24h.toFixed(1)}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
