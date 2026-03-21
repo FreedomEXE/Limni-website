@@ -24,11 +24,18 @@ import {
 } from "./coinank";
 import { query } from "./db";
 
-type BitgetSnapshotSymbol = "BTC" | "ETH" | "SOL";
-type CoinankSnapshotSymbol = "BTC" | "ETH";
+type BitgetSnapshotSymbol = string;
+type CoinankSnapshotSymbol = string;
 
-export const SNAPSHOT_SYMBOLS: string[] = ["BTC", "ETH"];
-export const HEATMAP_SNAPSHOT_SYMBOLS: string[] = ["BTC", "ETH"];
+const DEFAULT_SNAPSHOT_SYMBOLS = ["BTC", "ETH"];
+export const SNAPSHOT_SYMBOLS: string[] = parseCsv(
+  process.env.MARKET_SNAPSHOT_SYMBOLS,
+  DEFAULT_SNAPSHOT_SYMBOLS,
+).map(normalizeSymbol);
+export const HEATMAP_SNAPSHOT_SYMBOLS: string[] = parseCsv(
+  process.env.LIQ_HEATMAP_SYMBOLS,
+  DEFAULT_SNAPSHOT_SYMBOLS,
+).map(normalizeSymbol);
 
 type HeatmapExchangeGroup = {
   key: string;
@@ -107,17 +114,11 @@ function normalizeSymbol(symbol: string): string {
 }
 
 function asBitgetSnapshotSymbol(symbol: string): BitgetSnapshotSymbol | null {
-  if (symbol === "BTC" || symbol === "ETH" || symbol === "SOL") {
-    return symbol;
-  }
-  return null;
+  return symbol ? normalizeSymbol(symbol) : null;
 }
 
 function asCoinankSnapshotSymbol(symbol: string): CoinankSnapshotSymbol | null {
-  if (symbol === "BTC" || symbol === "ETH") {
-    return symbol;
-  }
-  return null;
+  return symbol ? normalizeSymbol(symbol) : null;
 }
 
 function toIsoUtc(value: Date | string | null | undefined): string | null {
@@ -423,6 +424,21 @@ export async function storeLiquidationSnapshot(
 ): Promise<void> {
   const normalized = normalizeSymbol(symbol);
   await insertLiquidationSnapshot(normalized, summary);
+}
+
+export async function storeLiquidationHeatmapSnapshot(options: {
+  symbol: string;
+  interval: string;
+  exchangeGroup: string;
+  heatmap: LiquidationHeatmap;
+}): Promise<boolean> {
+  const normalized = normalizeSymbol(options.symbol);
+  return await insertLiquidationHeatmapSnapshot(
+    normalized,
+    String(options.interval ?? "").trim() || "1d",
+    String(options.exchangeGroup ?? "").trim() || "binance_bybit",
+    options.heatmap,
+  );
 }
 
 export async function collectAllSnapshots(): Promise<{

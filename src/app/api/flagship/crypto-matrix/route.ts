@@ -26,6 +26,7 @@ import {
   type BitgetMarketTicker,
 } from "@/lib/bitget";
 import { readAllLatestAssetStrengths } from "@/lib/assetStrength";
+import { fetchLiquidationHeatmap } from "@/lib/coinank";
 import { derivePairDirectionsByBaseWithNeutral } from "@/lib/cotCompute";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { query } from "@/lib/db";
@@ -68,6 +69,11 @@ type LiquidationRow = {
   dominant_side: "long" | "short" | "flat" | string;
   largest_above_notional: string | number | null;
   largest_below_notional: string | number | null;
+};
+
+type LiquidationContext = {
+  largestAboveNotional: number | null;
+  largestBelowNotional: number | null;
 };
 
 type StrengthMap = Record<"1h" | "4h" | "24h", number | null>;
@@ -334,7 +340,7 @@ async function mapWithConcurrency<T, R>(
 
 async function readAnchorMarketData() {
   const symbols = ["BTC", "ETH"];
-  const [latestOiRows, oi24Rows, fundingRows, liquidationRows, heatmapSnapshots] = await Promise.all([
+  const [latestOiRows, oi24Rows, fundingRows, liquidationRows] = await Promise.all([
     query<OiRow>(
       `SELECT DISTINCT ON (symbol) symbol, open_interest
          FROM market_oi_snapshots
@@ -368,45 +374,7 @@ async function readAnchorMarketData() {
         ORDER BY symbol, snapshot_time_utc DESC`,
       [symbols],
     ),
-    Promise.all(
-      symbols.map((symbol) =>
-        readNearestLiquidationHeatmapSnapshot({
-          symbol,
-          atUtc: new Date().toISOString(),
-          interval: "1d",
-          exchangeGroup: "binance_bybit",
-          maxAgeMinutes: 720,
-        }).catch(() => null),
-      ),
-    ),
   ]);
-
-  const heatmapBySymbol = new Map(
-    heatmapSnapshots
-      .filter((row): row is NonNullable<typeof row> => Boolean(row))
-      .map((row) => {
-        const bands = row.bands_json as {
-          longs?: Array<{ band_pct?: number; estimated_liquidations_usd?: number }>;
-          shorts?: Array<{ band_pct?: number; estimated_liquidations_usd?: number }>;
-        };
-        const longs = Array.isArray(bands.longs) ? bands.longs : [];
-        const shorts = Array.isArray(bands.shorts) ? bands.shorts : [];
-        const pickBand = (items: typeof longs) =>
-          items.find((item) => Number(item.band_pct) === 5) ??
-          items.find((item) => Number(item.band_pct) === 2) ??
-          items[0] ??
-          null;
-        const aboveBand = pickBand(shorts);
-        const belowBand = pickBand(longs);
-        return [
-          row.symbol.toUpperCase(),
-          {
-            largestAboveNotional: toNumber(aboveBand?.estimated_liquidations_usd) ?? 0,
-            largestBelowNotional: toNumber(belowBand?.estimated_liquidations_usd) ?? 0,
-          },
-        ] as const;
-      }),
-  );
 
   return {
     oiLatestBySymbol: new Map(latestOiRows.map((row) => [row.symbol.toUpperCase(), toNumber(row.open_interest)])),
@@ -422,8 +390,78 @@ async function readAnchorMarketData() {
         },
       ]),
     ),
-    heatmapBySymbol,
   };
+}
+
+function pickHeatmapBand(
+  items: Array<{ band_pct?: number; estimated_liquidations_usd?: number }> | undefined,
+) {
+  const rows = Array.isArray(items) ? items : [];
+  return (
+    rows.find((item) => Number(item.band_pct) === 5) ??
+    rows.find((item) => Number(item.band_pct) === 2) ??
+    rows[0] ??
+    null
+  );
+}
+
+function deriveHeatmapContext(
+  heatmap:
+    | Awaited<ReturnType<typeof readNearestLiquidationHeatmapSnapshot>>
+    | Awaited<ReturnType<typeof fetchLiquidationHeatmap>>
+    | null,
+): LiquidationContext | null {
+  if (!heatmap) return null;
+  const bands = "bands_json" in heatmap
+    ? (heatmap.bands_json as {
+        longs?: Array<{ band_pct?: number; estimated_liquidations_usd?: number }>;
+        shorts?: Array<{ band_pct?: number; estimated_liquidations_usd?: number }>;
+      })
+    : (heatmap.liquidation_bands as {
+        longs?: Array<{ band_pct?: number; estimated_liquidations_usd?: number }>;
+        shorts?: Array<{ band_pct?: number; estimated_liquidations_usd?: number }>;
+      });
+
+  const aboveBand = pickHeatmapBand(bands.shorts);
+  const belowBand = pickHeatmapBand(bands.longs);
+
+  return {
+    largestAboveNotional: toNumber(aboveBand?.estimated_liquidations_usd),
+    largestBelowNotional: toNumber(belowBand?.estimated_liquidations_usd),
+  };
+}
+
+async function readHeatmapContexts(symbols: string[]) {
+  const contexts = await mapWithConcurrency(Array.from(new Set(symbols)), 4, async (symbol) => {
+    try {
+      const stored = await readNearestLiquidationHeatmapSnapshot({
+        symbol,
+        atUtc: new Date().toISOString(),
+        interval: "1d",
+        exchangeGroup: "binance_bybit",
+        maxAgeMinutes: 1440,
+      });
+      if (stored) {
+        return [symbol, deriveHeatmapContext(stored)] as const;
+      }
+    } catch {
+      // fall through to live fetch
+    }
+
+    try {
+      const live = await fetchLiquidationHeatmap(symbol, {
+        interval: "1d",
+        exchanges: ["Binance", "Bybit"],
+      });
+      return [symbol, deriveHeatmapContext(live)] as const;
+    } catch {
+      return [symbol, null] as const;
+    }
+  });
+
+  return new Map(
+    contexts.filter((entry): entry is readonly [string, LiquidationContext] => Boolean(entry[1])),
+  );
 }
 
 async function readCryptoStrengths() {
@@ -709,7 +747,7 @@ export async function GET() {
 
     const altFetchBySymbol = new Map(altRows.map((row) => [row.symbol, row]));
 
-    const anchorRows: CryptoMatrixRow[] = (["BTC", "ETH"] as const).map((symbol) => {
+    const anchorRowsBase: CryptoMatrixRow[] = (["BTC", "ETH"] as const).map((symbol) => {
       const ticker = anchorTickerBySymbol.get(`${symbol}USDT`);
       const altFetch = altFetchBySymbol.get(symbol);
       const strength = strengthBySymbol.get(symbol) ?? { "1h": null, "4h": null, "24h": null };
@@ -719,10 +757,7 @@ export async function GET() {
         oiLatestDb !== null && oi24 !== null && oi24 > 0
           ? ((oiLatestDb - oi24) / oi24) * 100
           : null;
-      const liquidation =
-        anchorMarketData.heatmapBySymbol.get(symbol) ??
-        anchorMarketData.liquidationBySymbol.get(symbol) ??
-        null;
+      const liquidation = anchorMarketData.liquidationBySymbol.get(symbol) ?? null;
 
       return {
         symbol,
@@ -748,9 +783,7 @@ export async function GET() {
         oiDelta24hPct,
         openInterest: ticker?.openInterestUsd ?? oiLatestDb,
         fundingRate: ticker?.fundingRate ?? anchorMarketData.fundingBySymbol.get(symbol) ?? null,
-        liquidationTilt: liquidation
-          ? deriveLiquidationTilt(liquidation)
-          : null,
+        liquidationTilt: liquidation ? deriveLiquidationTilt(liquidation) : null,
         largestAboveNotional: liquidation?.largestAboveNotional ?? null,
         largestBelowNotional: liquidation?.largestBelowNotional ?? null,
         strength1h: strength["1h"],
@@ -797,7 +830,7 @@ export async function GET() {
       } satisfies CryptoMatrixRow;
     });
 
-    const sortedCandidateRows = candidateRows
+    const sortedCandidateRowsBase = candidateRows
       .sort((a, b) => {
         if (b.opportunityScore !== a.opportunityScore) return b.opportunityScore - a.opportunityScore;
         if ((b.volume24hUsd ?? 0) !== (a.volume24hUsd ?? 0)) {
@@ -810,6 +843,35 @@ export async function GET() {
         ...row,
         rank: index + 1,
       }));
+
+    const heatmapContextBySymbol = await readHeatmapContexts([
+      ...anchorRowsBase.map((row) => row.symbol),
+      ...sortedCandidateRowsBase.map((row) => row.symbol),
+    ]);
+
+    const anchorRows = anchorRowsBase.map((row) => {
+      const heatmapContext = heatmapContextBySymbol.get(row.symbol) ?? null;
+      const liquidation = heatmapContext ?? {
+        largestAboveNotional: row.largestAboveNotional,
+        largestBelowNotional: row.largestBelowNotional,
+      };
+      return {
+        ...row,
+        liquidationTilt: deriveLiquidationTilt(liquidation),
+        largestAboveNotional: liquidation.largestAboveNotional ?? null,
+        largestBelowNotional: liquidation.largestBelowNotional ?? null,
+      };
+    });
+
+    const sortedCandidateRows = sortedCandidateRowsBase.map((row) => {
+      const liquidation = heatmapContextBySymbol.get(row.symbol) ?? null;
+      return {
+        ...row,
+        liquidationTilt: liquidation ? deriveLiquidationTilt(liquidation) : null,
+        largestAboveNotional: liquidation?.largestAboveNotional ?? null,
+        largestBelowNotional: liquidation?.largestBelowNotional ?? null,
+      };
+    });
 
     const payload: CryptoMatrixPayload = {
       generatedUtc: new Date().toISOString(),

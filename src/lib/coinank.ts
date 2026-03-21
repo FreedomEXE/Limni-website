@@ -467,10 +467,14 @@ export async function fetchLiquidationHeatmap(
 }
 
 export async function fetchLiquidationSummary(
-  baseCoin: "BTC" | "ETH",
+  baseCoinRaw: string,
   referencePrice?: number | null,
   priceSource?: "Bitget Futures" | "CMC Spot" | null,
 ): Promise<LiquidationSummary> {
+  const baseCoin = normalizeHeatmapBaseCoin(baseCoinRaw);
+  if (!baseCoin) {
+    throw new Error("Liquidation summary symbol is required.");
+  }
   const orders = await coinankGet<LiquidationOrder[]>(
     "/api/liquidation/orders",
     { baseCoin },
