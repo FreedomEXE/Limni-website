@@ -12,7 +12,7 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-export type CryptoUniverseTier = "ANCHOR" | "A" | "B";
+export type CryptoUniverseTier = "ANCHOR" | "A" | "B" | "MARKET";
 
 export type CryptoUniverseEntry = {
   symbol: string;
@@ -40,3 +40,7 @@ export const CRYPTO_UNIVERSE: CryptoUniverseEntry[] = [
   { symbol: "NEAR", bitgetSymbol: "NEARUSDT", tier: "B", compositeScore: 47.35, btcCorrelation7d: 0.714, rank: 12 },
   { symbol: "HBAR", bitgetSymbol: "HBARUSDT", tier: "B", compositeScore: 45.61, btcCorrelation7d: 0.817, rank: 13 },
 ];
+
+export const CURATED_CRYPTO_LOOKUP = new Map(
+  CRYPTO_UNIVERSE.map((entry) => [entry.symbol.toUpperCase(), entry] as const),
+);

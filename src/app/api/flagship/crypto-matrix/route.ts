@@ -5,8 +5,8 @@
  * File: route.ts
  *
  * Description:
- * Phase 1 crypto matrix API. Builds BTC/ETH anchor regimes and the
- * ranked alt board for the manual crypto matrix.
+ * Builds the live crypto matrix from BTC/ETH weekly bias, Bitget
+ * USDT-M anchor direction, and a regime-ranked perp universe.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -15,18 +15,21 @@
 import { DateTime } from "luxon";
 import { NextResponse } from "next/server";
 
-import { query } from "@/lib/db";
 import {
   fetchBitget15mSeries,
   fetchBitget4hSeries,
   fetchBitgetCandleSeries,
+  fetchBitgetMarketContracts,
+  fetchBitgetMarketTickers,
   type BitgetHourlyCandle,
+  type BitgetMarketContract,
+  type BitgetMarketTicker,
 } from "@/lib/bitget";
 import { readAllLatestAssetStrengths } from "@/lib/assetStrength";
 import { derivePairDirectionsByBaseWithNeutral } from "@/lib/cotCompute";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
-import { readSnapshot } from "@/lib/cotStore";
-import { CRYPTO_UNIVERSE, type CryptoUniverseEntry } from "@/lib/flagship/cryptoUniverse";
+import { query } from "@/lib/db";
+import { CURATED_CRYPTO_LOOKUP, type CryptoUniverseEntry } from "@/lib/flagship/cryptoUniverse";
 import {
   type CryptoAnchorRegime,
   type CryptoBiasDirection,
@@ -37,10 +40,17 @@ import {
   type CryptoTimeframeKey,
 } from "@/lib/flagship/cryptoMatrix";
 import type { MatrixTrendState } from "@/lib/flagship/matrixStyles";
+import { readSnapshot } from "@/lib/cotStore";
 import { readLatestDailySentimentLock } from "@/lib/sentiment/daily";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const DISPLAY_LIMIT = 40;
+const PRELIMINARY_FETCH_LIMIT = 60;
+const MIN_VOLUME_USD = 1_000_000;
+const MAX_VOLUME_CANDIDATES = 140;
+const ALT_FETCH_CONCURRENCY = 5;
 
 type OiRow = {
   symbol: string;
@@ -60,9 +70,40 @@ type AltFetchResult = {
   altTrendCandle: CryptoCandleDetail;
 };
 
+type WeeklyBiasSnapshot = Omit<CryptoAnchorRegime, "direction" | "tier" | "votes" | "symbol">;
+
+type MarketCandidate = {
+  symbol: string;
+  bitgetSymbol: string;
+  tier: CryptoMatrixRow["tier"];
+  curatedScore: number;
+  btcCorrelation7d: number;
+  change24hPct: number | null;
+  volume24hUsd: number | null;
+  fundingRate: number | null;
+  openInterestUsd: number | null;
+  maxLeverage: number | null;
+  preliminaryScore: number;
+};
+
 function toNumber(value: string | number | null | undefined) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function round(value: number, digits = 4) {
+  return Number(value.toFixed(digits));
+}
+
+function clamp01(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(1, value));
+}
+
+function minMaxNormalize(value: number, min: number, max: number) {
+  if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max)) return 0;
+  if (Math.abs(max - min) < 1e-12) return 1;
+  return clamp01((value - min) / (max - min));
 }
 
 function toTrendState(direction: CryptoBiasDirection): MatrixTrendState {
@@ -160,7 +201,7 @@ async function readWeeklyCryptoBias() {
       .map((row) => [row.symbol, row.sentimentDirection]),
   );
 
-  const bySymbol = new Map<"BTC" | "ETH", Omit<CryptoAnchorRegime, "direction" | "tier" | "votes" | "symbol">>();
+  const bySymbol = new Map<"BTC" | "ETH", WeeklyBiasSnapshot>();
 
   for (const pairDef of pairDefs) {
     const pair = pairDef.pair.toUpperCase();
@@ -210,16 +251,6 @@ async function buildAnchorRegime(symbol: "BTC" | "ETH"): Promise<CryptoAnchorReg
   };
 }
 
-function deriveAnchorVote(
-  correlation: number,
-  regime: CryptoAnchorRegime,
-): MatrixTrendState {
-  if (regime.direction === "NEUTRAL") return "NEUTRAL";
-  if (correlation >= 0.75) return toTrendState(regime.direction);
-  if (correlation >= 0.5 && regime.tier === "HIGH") return toTrendState(regime.direction);
-  return "NEUTRAL";
-}
-
 function deriveAltTrend(candle: BitgetHourlyCandle | null): AltFetchResult["altTrend"] {
   if (!candle || candle.open <= 0) return "NEUTRAL";
   const bodyPct = ((candle.close - candle.open) / candle.open) * 100;
@@ -240,33 +271,35 @@ function buildCandleDetail(candle: BitgetHourlyCandle | null): CryptoCandleDetai
   };
 }
 
-function deriveAltBias(
-  row: CryptoUniverseEntry,
+function deriveMarketBias(
   btcWeeklyBias: CryptoBiasDirection,
   ethWeeklyBias: CryptoBiasDirection,
-  altTrend: MatrixTrendState,
-): { bias: CryptoBiasDirection; biasSource: CryptoMatrixRow["biasSource"] } {
-  if (row.symbol === "BTC") {
-    return { bias: btcWeeklyBias, biasSource: "BTC" };
-  }
-
-  if (row.symbol === "ETH") {
-    return { bias: ethWeeklyBias, biasSource: "ETH" };
-  }
-
+): { bias: CryptoBiasDirection; source: CryptoMatrixRow["biasSource"] } {
   if (btcWeeklyBias !== "NEUTRAL" && btcWeeklyBias === ethWeeklyBias) {
-    return { bias: btcWeeklyBias, biasSource: "BTC_ETH" };
+    return { bias: btcWeeklyBias, source: "BTC_ETH" };
   }
-
   if (btcWeeklyBias !== "NEUTRAL" && ethWeeklyBias === "NEUTRAL") {
+    return { bias: btcWeeklyBias, source: "BTC" };
+  }
+  if (ethWeeklyBias !== "NEUTRAL" && btcWeeklyBias === "NEUTRAL") {
+    return { bias: ethWeeklyBias, source: "ETH" };
+  }
+  return { bias: "NEUTRAL", source: "MIXED" };
+}
+
+function deriveRowBias(
+  symbol: string,
+  btcWeeklyBias: CryptoBiasDirection,
+  ethWeeklyBias: CryptoBiasDirection,
+): { bias: CryptoBiasDirection; biasSource: CryptoMatrixRow["biasSource"] } {
+  if (symbol === "BTC") {
     return { bias: btcWeeklyBias, biasSource: "BTC" };
   }
-
-  if (ethWeeklyBias !== "NEUTRAL" && btcWeeklyBias === "NEUTRAL") {
+  if (symbol === "ETH") {
     return { bias: ethWeeklyBias, biasSource: "ETH" };
   }
-
-  return { bias: "NEUTRAL", biasSource: "MIXED" };
+  const marketBias = deriveMarketBias(btcWeeklyBias, ethWeeklyBias);
+  return { bias: marketBias.bias, biasSource: marketBias.source };
 }
 
 async function mapWithConcurrency<T, R>(
@@ -318,14 +351,10 @@ async function readAnchorMarketData() {
     ),
   ]);
 
-  const oiLatestBySymbol = new Map(latestOiRows.map((row) => [row.symbol.toUpperCase(), toNumber(row.open_interest)]));
-  const oi24BySymbol = new Map(oi24Rows.map((row) => [row.symbol.toUpperCase(), toNumber(row.open_interest)]));
-  const fundingBySymbol = new Map(fundingRows.map((row) => [row.symbol.toUpperCase(), toNumber(row.funding_rate)]));
-
   return {
-    oiLatestBySymbol,
-    oi24BySymbol,
-    fundingBySymbol,
+    oiLatestBySymbol: new Map(latestOiRows.map((row) => [row.symbol.toUpperCase(), toNumber(row.open_interest)])),
+    oi24BySymbol: new Map(oi24Rows.map((row) => [row.symbol.toUpperCase(), toNumber(row.open_interest)])),
+    fundingBySymbol: new Map(fundingRows.map((row) => [row.symbol.toUpperCase(), toNumber(row.funding_rate)])),
   };
 }
 
@@ -353,14 +382,188 @@ function strengthStateFromScore(score: number | null): MatrixTrendState | null {
   return "NEUTRAL";
 }
 
+function isTradableUsdtPerp(ticker: BitgetMarketTicker, contract: BitgetMarketContract | undefined) {
+  if (!ticker.symbol.endsWith("USDT")) return false;
+  if (!contract) return false;
+  const status = String(contract.symbolStatus ?? "").trim().toLowerCase();
+  if (status && status !== "normal") return false;
+  if (!(ticker.lastPrice !== null && ticker.lastPrice > 0)) return false;
+  if (!(ticker.volume24hUsd !== null && ticker.volume24hUsd >= MIN_VOLUME_USD)) return false;
+  return true;
+}
+
+function deriveCandidateTier(
+  symbol: string,
+  curated: CryptoUniverseEntry | undefined,
+  volume24hUsd: number | null,
+): CryptoMatrixRow["tier"] {
+  if (symbol === "BTC" || symbol === "ETH") return "ANCHOR";
+  if (curated?.tier) return curated.tier;
+  if ((volume24hUsd ?? 0) >= 50_000_000) return "A";
+  if ((volume24hUsd ?? 0) >= 10_000_000) return "B";
+  return "MARKET";
+}
+
+function opportunityDistance(
+  marketBias: CryptoBiasDirection,
+  change24hPct: number | null,
+  anchorAvgChangePct: number,
+) {
+  const change = change24hPct ?? 0;
+  if (marketBias === "SHORT") {
+    return Math.max(change - anchorAvgChangePct, 0);
+  }
+  if (marketBias === "LONG") {
+    return Math.max(anchorAvgChangePct - change, 0);
+  }
+  return Math.abs(change - anchorAvgChangePct) * 0.35;
+}
+
+function fundingOpportunity(marketBias: CryptoBiasDirection, fundingRate: number | null) {
+  const funding = fundingRate ?? 0;
+  if (marketBias === "SHORT") return Math.max(funding, 0);
+  if (marketBias === "LONG") return Math.max(-funding, 0);
+  return Math.abs(funding);
+}
+
+function buildDynamicUniverse(params: {
+  tickers: BitgetMarketTicker[];
+  contracts: BitgetMarketContract[];
+  marketBias: CryptoBiasDirection;
+}) {
+  const { tickers, contracts, marketBias } = params;
+  const contractBySymbol = new Map(contracts.map((contract) => [contract.symbol.toUpperCase(), contract]));
+  const tickerBySymbol = new Map(tickers.map((ticker) => [ticker.symbol.toUpperCase(), ticker]));
+  const btcChange = tickerBySymbol.get("BTCUSDT")?.change24hPct ?? 0;
+  const ethChange = tickerBySymbol.get("ETHUSDT")?.change24hPct ?? 0;
+  const anchorAvgChangePct = (btcChange + ethChange) / 2;
+
+  const tradable = tickers
+    .filter((ticker) => !["BTCUSDT", "ETHUSDT"].includes(ticker.symbol))
+    .filter((ticker) => isTradableUsdtPerp(ticker, contractBySymbol.get(ticker.symbol)))
+    .sort((a, b) => (b.volume24hUsd ?? 0) - (a.volume24hUsd ?? 0))
+    .slice(0, MAX_VOLUME_CANDIDATES);
+
+  const rawCandidates = tradable.map((ticker) => {
+    const curated = CURATED_CRYPTO_LOOKUP.get(ticker.baseCoin);
+    return {
+      symbol: ticker.baseCoin,
+      bitgetSymbol: ticker.symbol,
+      tier: deriveCandidateTier(ticker.baseCoin, curated, ticker.volume24hUsd),
+      curatedScore: curated?.compositeScore ?? 42,
+      btcCorrelation7d: curated?.btcCorrelation7d ?? 0,
+      change24hPct: ticker.change24hPct,
+      volume24hUsd: ticker.volume24hUsd,
+      fundingRate: ticker.fundingRate,
+      openInterestUsd: ticker.openInterestUsd,
+      maxLeverage: contractBySymbol.get(ticker.symbol)?.maxLeverage ?? null,
+      preliminaryScore: 0,
+    } satisfies MarketCandidate;
+  });
+
+  if (!rawCandidates.length) {
+    return {
+      trackedUniverseCount: 0,
+      visibleCandidates: [] as MarketCandidate[],
+      anchorTickerBySymbol: tickerBySymbol,
+    };
+  }
+
+  const stretchValues = rawCandidates.map((row) =>
+    opportunityDistance(marketBias, row.change24hPct, anchorAvgChangePct),
+  );
+  const volumeLogs = rawCandidates.map((row) => Math.log10(Math.max(row.volume24hUsd ?? 1, 1)));
+  const oiLogs = rawCandidates.map((row) => Math.log10(Math.max(row.openInterestUsd ?? 1, 1)));
+  const fundingValues = rawCandidates.map((row) => fundingOpportunity(marketBias, row.fundingRate));
+  const qualityValues = rawCandidates.map((row) => row.curatedScore / 100);
+
+  const stretchMin = Math.min(...stretchValues);
+  const stretchMax = Math.max(...stretchValues);
+  const volumeMin = Math.min(...volumeLogs);
+  const volumeMax = Math.max(...volumeLogs);
+  const oiMin = Math.min(...oiLogs);
+  const oiMax = Math.max(...oiLogs);
+  const fundingMin = Math.min(...fundingValues);
+  const fundingMax = Math.max(...fundingValues);
+  const qualityMin = Math.min(...qualityValues);
+  const qualityMax = Math.max(...qualityValues);
+
+  const scoredCandidates = rawCandidates.map((row, index) => {
+    const stretchScore = minMaxNormalize(stretchValues[index], stretchMin, stretchMax);
+    const volumeScore = minMaxNormalize(volumeLogs[index], volumeMin, volumeMax);
+    const oiScore = minMaxNormalize(oiLogs[index], oiMin, oiMax);
+    const fundingScore = minMaxNormalize(fundingValues[index], fundingMin, fundingMax);
+    const qualityScore = minMaxNormalize(qualityValues[index], qualityMin, qualityMax);
+    const preliminaryScore =
+      100 *
+      (0.5 * stretchScore +
+        0.22 * volumeScore +
+        0.12 * oiScore +
+        0.1 * qualityScore +
+        0.06 * fundingScore);
+
+    return {
+      ...row,
+      preliminaryScore: round(preliminaryScore, 4),
+    };
+  });
+
+  const visibleCandidates = scoredCandidates
+    .sort((a, b) => {
+      if (b.preliminaryScore !== a.preliminaryScore) return b.preliminaryScore - a.preliminaryScore;
+      return a.symbol.localeCompare(b.symbol);
+    })
+    .slice(0, PRELIMINARY_FETCH_LIMIT);
+
+  return {
+    trackedUniverseCount: tradable.length,
+    visibleCandidates,
+    anchorTickerBySymbol: tickerBySymbol,
+  };
+}
+
+function applyTrendOpportunityBonus(
+  baseScore: number,
+  bias: CryptoBiasDirection,
+  altTrend: MatrixTrendState,
+) {
+  const bonus =
+    bias === "SHORT"
+      ? altTrend === "BULLISH"
+        ? 10
+        : altTrend === "NEUTRAL"
+          ? 4
+          : 0
+      : bias === "LONG"
+        ? altTrend === "BEARISH"
+          ? 10
+          : altTrend === "NEUTRAL"
+            ? 4
+            : 0
+        : altTrend === "NEUTRAL"
+          ? 2
+          : 0;
+  return round(baseScore + bonus, 4);
+}
+
 export async function GET() {
   try {
-    const [btcDirectionRegime, ethDirectionRegime, anchorMarketData, strengthBySymbol, weeklyBiasBySymbol] = await Promise.all([
+    const [
+      btcDirectionRegime,
+      ethDirectionRegime,
+      anchorMarketData,
+      strengthBySymbol,
+      weeklyBiasBySymbol,
+      tickers,
+      contracts,
+    ] = await Promise.all([
       buildAnchorRegime("BTC"),
       buildAnchorRegime("ETH"),
       readAnchorMarketData(),
       readCryptoStrengths(),
       readWeeklyCryptoBias(),
+      fetchBitgetMarketTickers(),
+      fetchBitgetMarketContracts(),
     ]);
 
     const btcRegime: CryptoAnchorRegime = {
@@ -386,17 +589,38 @@ export async function GET() {
       }),
     };
 
-    const altRows = await mapWithConcurrency(CRYPTO_UNIVERSE, 4, async (entry) => {
+    const marketBias = deriveMarketBias(btcRegime.weeklyBias, ethRegime.weeklyBias);
+    const {
+      trackedUniverseCount,
+      visibleCandidates,
+      anchorTickerBySymbol,
+    } = buildDynamicUniverse({
+      tickers,
+      contracts,
+      marketBias: marketBias.bias,
+    });
+
+    const anchorSymbols = ["BTC", "ETH"];
+    const symbolsToFetch = [
+      ...anchorSymbols,
+      ...visibleCandidates.map((candidate) => candidate.symbol).filter((symbol) => !anchorSymbols.includes(symbol)),
+    ];
+
+    const altRows = await mapWithConcurrency(symbolsToFetch, ALT_FETCH_CONCURRENCY, async (symbol) => {
       try {
-        const candle = await fetchLastCompletedCandle(entry.symbol, "H4");
+        const candle = symbol === "BTC"
+          ? await fetchLastCompletedCandle("BTC", "H4")
+          : symbol === "ETH"
+            ? await fetchLastCompletedCandle("ETH", "H4")
+            : await fetchLastCompletedCandle(symbol, "H4");
         return {
-          symbol: entry.symbol,
+          symbol,
           altTrend: deriveAltTrend(candle),
           altTrendCandle: buildCandleDetail(candle),
         } satisfies AltFetchResult;
       } catch {
         return {
-          symbol: entry.symbol,
+          symbol,
           altTrend: "NEUTRAL",
           altTrendCandle: null,
         } satisfies AltFetchResult;
@@ -405,46 +629,41 @@ export async function GET() {
 
     const altFetchBySymbol = new Map(altRows.map((row) => [row.symbol, row]));
 
-    const rows: CryptoMatrixRow[] = CRYPTO_UNIVERSE.map((entry) => {
-      const altFetch = altFetchBySymbol.get(entry.symbol);
-      const altTrend = altFetch?.altTrend ?? "NEUTRAL";
-      const altTrendCandle = altFetch?.altTrendCandle ?? null;
-      const { bias, biasSource } = deriveAltBias(entry, btcRegime.weeklyBias, ethRegime.weeklyBias, altTrend);
-      const btcVote = deriveAnchorVote(entry.btcCorrelation7d, btcRegime);
-      const ethVote = deriveAnchorVote(entry.btcCorrelation7d, ethRegime);
-      const strength = strengthBySymbol.get(entry.symbol) ?? { "1h": null, "4h": null, "24h": null };
-      const oiLatest =
-        entry.symbol === "BTC" || entry.symbol === "ETH"
-          ? anchorMarketData.oiLatestBySymbol.get(entry.symbol) ?? null
-          : null;
-      const oi24 =
-        entry.symbol === "BTC" || entry.symbol === "ETH"
-          ? anchorMarketData.oi24BySymbol.get(entry.symbol) ?? null
-          : null;
+    const anchorRows: CryptoMatrixRow[] = (["BTC", "ETH"] as const).map((symbol) => {
+      const ticker = anchorTickerBySymbol.get(`${symbol}USDT`);
+      const altFetch = altFetchBySymbol.get(symbol);
+      const strength = strengthBySymbol.get(symbol) ?? { "1h": null, "4h": null, "24h": null };
+      const oiLatestDb = anchorMarketData.oiLatestBySymbol.get(symbol) ?? null;
+      const oi24 = anchorMarketData.oi24BySymbol.get(symbol) ?? null;
       const oiDelta24hPct =
-        oiLatest !== null && oi24 !== null && oi24 > 0
-          ? ((oiLatest - oi24) / oi24) * 100
+        oiLatestDb !== null && oi24 !== null && oi24 > 0
+          ? ((oiLatestDb - oi24) / oi24) * 100
           : null;
 
       return {
-        symbol: entry.symbol,
-        bitgetSymbol: entry.bitgetSymbol,
-        tier: entry.tier,
-        rank: entry.rank,
-        compositeScore: entry.compositeScore,
-        btcCorrelation7d: entry.btcCorrelation7d,
-        bias,
-        biasSource,
-        btcVote,
-        ethVote,
-        altTrend,
-        altTrendCandle,
+        symbol,
+        bitgetSymbol: `${symbol}USDT`,
+        tier: "ANCHOR",
+        rank: 0,
+        compositeScore: 0,
+        btcCorrelation7d: symbol === "BTC" ? 1 : 0.95,
+        opportunityScore: 0,
+        change24hPct: ticker?.change24hPct ?? null,
+        volume24hUsd: ticker?.volume24hUsd ?? null,
+        bias: symbol === "BTC" ? btcRegime.weeklyBias : ethRegime.weeklyBias,
+        biasSource: symbol,
+        btcVote: toTrendState(btcRegime.direction),
+        ethVote: toTrendState(ethRegime.direction),
+        altTrend:
+          symbol === "BTC"
+            ? toTrendState(btcRegime.direction)
+            : symbol === "ETH"
+              ? toTrendState(ethRegime.direction)
+              : altFetch?.altTrend ?? "NEUTRAL",
+        altTrendCandle: altFetch?.altTrendCandle ?? null,
         oiDelta24hPct,
-        openInterest: oiLatest,
-        fundingRate:
-          entry.symbol === "BTC" || entry.symbol === "ETH"
-            ? anchorMarketData.fundingBySymbol.get(entry.symbol) ?? null
-            : null,
+        openInterest: ticker?.openInterestUsd ?? oiLatestDb,
+        fundingRate: ticker?.fundingRate ?? anchorMarketData.fundingBySymbol.get(symbol) ?? null,
         strength1h: strength["1h"],
         strength4h: strength["4h"],
         strength24h: strength["24h"],
@@ -454,13 +673,61 @@ export async function GET() {
       };
     });
 
+    const candidateRows = visibleCandidates.map((candidate) => {
+      const altFetch = altFetchBySymbol.get(candidate.symbol);
+      const { bias, biasSource } = deriveRowBias(candidate.symbol, btcRegime.weeklyBias, ethRegime.weeklyBias);
+      const strength = strengthBySymbol.get(candidate.symbol) ?? { "1h": null, "4h": null, "24h": null };
+      return {
+        symbol: candidate.symbol,
+        bitgetSymbol: candidate.bitgetSymbol,
+        tier: candidate.tier,
+        rank: 0,
+        compositeScore: candidate.curatedScore,
+        btcCorrelation7d: candidate.btcCorrelation7d,
+        opportunityScore: applyTrendOpportunityBonus(candidate.preliminaryScore, bias, altFetch?.altTrend ?? "NEUTRAL"),
+        change24hPct: candidate.change24hPct,
+        volume24hUsd: candidate.volume24hUsd,
+        bias,
+        biasSource,
+        btcVote: toTrendState(btcRegime.direction),
+        ethVote: toTrendState(ethRegime.direction),
+        altTrend: altFetch?.altTrend ?? "NEUTRAL",
+        altTrendCandle: altFetch?.altTrendCandle ?? null,
+        oiDelta24hPct: null,
+        openInterest: candidate.openInterestUsd,
+        fundingRate: candidate.fundingRate,
+        strength1h: strength["1h"],
+        strength4h: strength["4h"],
+        strength24h: strength["24h"],
+        strengthState: strengthStateFromScore(strength["1h"]),
+        trigger: "TBD",
+        sizing: "TBD",
+      } satisfies CryptoMatrixRow;
+    });
+
+    const sortedCandidateRows = candidateRows
+      .sort((a, b) => {
+        if (b.opportunityScore !== a.opportunityScore) return b.opportunityScore - a.opportunityScore;
+        if ((b.volume24hUsd ?? 0) !== (a.volume24hUsd ?? 0)) {
+          return (b.volume24hUsd ?? 0) - (a.volume24hUsd ?? 0);
+        }
+        return a.symbol.localeCompare(b.symbol);
+      })
+      .slice(0, DISPLAY_LIMIT)
+      .map((row, index) => ({
+        ...row,
+        rank: index + 1,
+      }));
+
     const payload: CryptoMatrixPayload = {
       generatedUtc: new Date().toISOString(),
+      visibleCount: sortedCandidateRows.length,
+      trackedUniverseCount,
       regimes: {
         btc: btcRegime,
         eth: ethRegime,
       },
-      rows,
+      rows: [...anchorRows, ...sortedCandidateRows],
     };
 
     return NextResponse.json(payload);

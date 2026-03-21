@@ -54,13 +54,23 @@ function regimeBannerClass(regime: CryptoAnchorRegime) {
 function tierBadgeClass(tier: CryptoMatrixRow["tier"]) {
   if (tier === "ANCHOR") return "border-sky-500/35 bg-sky-500/12 text-sky-700 dark:text-sky-300";
   if (tier === "A") return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
+  if (tier === "B") return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
+  return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
 function formatFunding(rate: number | null) {
   if (rate === null || !Number.isFinite(rate)) return "—";
   const bps = rate * 10000;
   return `${bps > 0 ? "+" : ""}${bps.toFixed(1)}bp`;
+}
+
+function formatCompactUsd(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "—";
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
+  if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${value.toFixed(0)}`;
 }
 
 function fundingClass(rate: number | null) {
@@ -70,21 +80,31 @@ function fundingClass(rate: number | null) {
   return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
-function formatOi(deltaPct: number | null) {
-  if (deltaPct === null || !Number.isFinite(deltaPct)) return "—";
-  return `${deltaPct > 0 ? "+" : ""}${deltaPct.toFixed(0)}%`;
+function formatMove(change24hPct: number | null) {
+  if (change24hPct === null || !Number.isFinite(change24hPct)) return "—";
+  return `${change24hPct > 0 ? "+" : ""}${change24hPct.toFixed(1)}%`;
 }
 
-function oiClass(deltaPct: number | null) {
-  if (deltaPct === null || !Number.isFinite(deltaPct)) return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
-  if (deltaPct > 0) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  if (deltaPct < 0) return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
+function moveClass(change24hPct: number | null, bias: CryptoBiasDirection) {
+  if (change24hPct === null || !Number.isFinite(change24hPct)) return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
+  if (bias === "SHORT") {
+    if (change24hPct > 0) return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
+    if (change24hPct < 0) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
+  }
+  if (bias === "LONG") {
+    if (change24hPct < 0) return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
+    if (change24hPct > 0) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
+  }
+  if (change24hPct > 0) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
+  if (change24hPct < 0) return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
   return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
-function formatStrengthChip(row: CryptoMatrixRow) {
-  if (row.strengthState === null) return "—";
-  return stateLabel(row.strengthState);
+function oiClass(openInterest: number | null) {
+  if (openInterest === null || !Number.isFinite(openInterest)) return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
+  if (openInterest >= 100_000_000) return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
+  if (openInterest >= 20_000_000) return "border-amber-500/35 bg-amber-500/12 text-amber-700 dark:text-amber-300";
+  return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
 export default function CryptoBoard() {
@@ -130,27 +150,7 @@ export default function CryptoBoard() {
     };
   }, [refreshTick]);
 
-  const rows = useMemo(() => {
-    const raw = data?.rows ?? [];
-    const opportunityRank = (row: CryptoMatrixRow) => {
-      if (row.rank === 0) return -1;
-      const biasState = toTrendState(row.bias);
-      if (biasState === "BEARISH" && row.altTrend === "BULLISH") return 0;
-      if (biasState === "BULLISH" && row.altTrend === "BEARISH") return 0;
-      if (biasState !== "NEUTRAL" && row.altTrend === "NEUTRAL") return 1;
-      if (biasState !== "NEUTRAL" && row.altTrend === biasState) return 2;
-      return 3;
-    };
-
-    return [...raw].sort((a, b) => {
-      if (a.rank === 0 && b.rank === 0) return a.symbol.localeCompare(b.symbol);
-      if (a.rank === 0) return -1;
-      if (b.rank === 0) return 1;
-      const oppDiff = opportunityRank(a) - opportunityRank(b);
-      if (oppDiff !== 0) return oppDiff;
-      return a.rank - b.rank;
-    });
-  }, [data]);
+  const rows = useMemo(() => data?.rows ?? [], [data]);
 
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
@@ -160,6 +160,11 @@ export default function CryptoBoard() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Matrix</p>
             <h1 className="text-xl font-semibold text-[var(--foreground)] md:text-2xl">Crypto Matrix</h1>
             <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Phase 1 - Manual</p>
+            {data ? (
+              <p className="text-[11px] text-[color:var(--muted)]">
+                Showing top {data.visibleCount} of {data.trackedUniverseCount} tradable Bitget USDT-M contracts.
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-right text-xs text-[color:var(--muted)]">
@@ -217,6 +222,9 @@ export default function CryptoBoard() {
                     {regime.direction} {regime.tier}
                   </span>
                 </div>
+                <div className="mt-2 text-[11px] text-[color:var(--muted)]">
+                  Live 24h: {formatMove(data?.rows.find((row) => row.symbol === regime.symbol)?.change24hPct ?? null)} · OI {formatCompactUsd(data?.rows.find((row) => row.symbol === regime.symbol)?.openInterest ?? null)} · Fund {formatFunding(data?.rows.find((row) => row.symbol === regime.symbol)?.fundingRate ?? null)}
+                </div>
               </div>
             ))}
           </div>
@@ -236,9 +244,9 @@ export default function CryptoBoard() {
                 <col className="w-[5rem]" />
                 <col className="w-[5rem]" />
                 <col className="w-[5rem]" />
-                <col className="w-[4.5rem]" />
-                <col className="w-[4.5rem]" />
-                <col className="w-[4.5rem]" />
+                <col className="w-[5.5rem]" />
+                <col className="w-[6rem]" />
+                <col className="w-[5.5rem]" />
                 <col className="w-[6rem]" />
                 <col className="w-[6rem]" />
               </colgroup>
@@ -256,9 +264,9 @@ export default function CryptoBoard() {
                   <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">BTC</th>
                   <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">ETH</th>
                   <th className="border-b border-r border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Alt</th>
-                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">OI 24h</th>
-                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Fund</th>
-                  <th className="border-b border-r border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Str</th>
+                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Move</th>
+                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">OI</th>
+                  <th className="border-b border-r border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Fund</th>
                   <th className="border-b border-r border-[var(--panel-border)] bg-sky-500/[0.05] px-3 py-2">Trigger</th>
                   <th className="border-b border-[var(--panel-border)] bg-emerald-500/[0.05] px-3 py-2">Sizing</th>
                 </tr>
@@ -275,7 +283,7 @@ export default function CryptoBoard() {
                             onClick={() =>
                               setExpandedRows((previous) =>
                                 previous.includes(row.symbol)
-                                  ? previous.filter((item) => item !== row.symbol)
+                              ? previous.filter((item) => item !== row.symbol)
                                   : [...previous, row.symbol],
                               )
                             }
@@ -285,7 +293,7 @@ export default function CryptoBoard() {
                             <div className="flex flex-wrap items-center gap-2">
                               <span>{row.rank > 0 ? `#${row.rank} ${row.symbol}` : row.symbol}</span>
                               <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${tierBadgeClass(row.tier)}`}>{row.tier}</span>
-                              <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-[color:var(--muted)]">Corr {row.btcCorrelation7d.toFixed(2)}</span>
+                              <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-[color:var(--muted)]">{formatMove(row.change24hPct)} · {formatCompactUsd(row.volume24hUsd)}</span>
                             </div>
                           </button>
                         </td>
@@ -297,14 +305,10 @@ export default function CryptoBoard() {
                         <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.btcVote)}`}>{stateLabel(row.btcVote)}</span></td>
                         <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.ethVote)}`}>{stateLabel(row.ethVote)}</span></td>
                         <td className="border-r border-[var(--panel-border)] bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.altTrend)}`}>{stateLabel(row.altTrend)}</span></td>
-                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[3.75rem] justify-center rounded border px-2 py-0.5 font-semibold ${oiClass(row.oiDelta24hPct)}`}>{formatOi(row.oiDelta24hPct)}</span></td>
-                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${fundingClass(row.fundingRate)}`}>{formatFunding(row.fundingRate)}</span></td>
+                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${moveClass(row.change24hPct, row.bias)}`}>{formatMove(row.change24hPct)}</span></td>
+                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[4.75rem] justify-center rounded border px-2 py-0.5 font-semibold ${oiClass(row.openInterest)}`}>{formatCompactUsd(row.openInterest)}</span></td>
                         <td className="border-r border-[var(--panel-border)] bg-amber-500/[0.04] px-3 py-2">
-                          {row.strengthState === null ? (
-                            <span className="inline-flex min-w-[2.75rem] justify-center rounded border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 font-semibold text-slate-600 dark:text-slate-300">—</span>
-                          ) : (
-                            <span className={`inline-flex min-w-[2.75rem] justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.strengthState)}`}>{formatStrengthChip(row)}</span>
-                          )}
+                          <span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${fundingClass(row.fundingRate)}`}>{formatFunding(row.fundingRate)}</span>
                         </td>
                         <td className="border-r border-[var(--panel-border)] bg-sky-500/[0.04] px-3 py-2"><span className="inline-flex min-w-[3.75rem] justify-center rounded border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">{row.trigger}</span></td>
                         <td className="bg-emerald-500/[0.04] px-3 py-2 font-mono text-[var(--foreground)]">{row.sizing}</td>
@@ -317,7 +321,9 @@ export default function CryptoBoard() {
                                 <div className="font-semibold text-[var(--foreground)]">Bias + Direction</div>
                                 <div className="mt-1">Weekly bias: {row.bias} ({row.biasSource})</div>
                                 <div>BTC dir {stateLabel(row.btcVote)} | ETH dir {stateLabel(row.ethVote)} | Alt dir {stateLabel(row.altTrend)}</div>
-                                <div>Corr to BTC: {row.btcCorrelation7d.toFixed(3)} | Score: {row.compositeScore.toFixed(2)}</div>
+                                <div>Opportunity score: {row.opportunityScore.toFixed(2)} | Quality: {row.compositeScore.toFixed(2)}</div>
+                                <div>Move 24h: {formatMove(row.change24hPct)} | Volume: {formatCompactUsd(row.volume24hUsd)}</div>
+                                <div>Corr to BTC: {row.btcCorrelation7d > 0 ? row.btcCorrelation7d.toFixed(3) : "—"}</div>
                                 <div className="mt-1">BTC weekly: D {stateLabel(data?.regimes.btc.dealerBias ?? "NEUTRAL")} / C {stateLabel(data?.regimes.btc.commercialBias ?? "NEUTRAL")} / S {stateLabel(data?.regimes.btc.sentimentBias ?? "NEUTRAL")}</div>
                                 <div>ETH weekly: D {stateLabel(data?.regimes.eth.dealerBias ?? "NEUTRAL")} / C {stateLabel(data?.regimes.eth.commercialBias ?? "NEUTRAL")} / S {stateLabel(data?.regimes.eth.sentimentBias ?? "NEUTRAL")}</div>
                                 {row.altTrendCandle ? (
@@ -328,8 +334,8 @@ export default function CryptoBoard() {
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Context Detail</div>
-                                <div className="mt-1">Open interest: {row.openInterest === null ? "—" : row.openInterest.toLocaleString()}</div>
-                                <div>OI delta 24h: {formatPct(row.oiDelta24hPct, 2)}</div>
+                                <div className="mt-1">Open interest: {formatCompactUsd(row.openInterest)}</div>
+                                <div>OI delta 24h (anchors only): {formatPct(row.oiDelta24hPct, 2)}</div>
                                 <div>Funding: {row.fundingRate === null ? "—" : row.fundingRate.toFixed(6)}</div>
                                 <div>Strength 1h / 4h / 24h: {row.strength1h === null ? "—" : row.strength1h.toFixed(1)} / {row.strength4h === null ? "—" : row.strength4h.toFixed(1)} / {row.strength24h === null ? "—" : row.strength24h.toFixed(1)}</div>
                               </div>

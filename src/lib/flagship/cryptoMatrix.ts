@@ -52,6 +52,9 @@ export type CryptoMatrixRow = {
   rank: number;
   compositeScore: number;
   btcCorrelation7d: number;
+  opportunityScore: number;
+  change24hPct: number | null;
+  volume24hUsd: number | null;
   bias: CryptoBiasDirection;
   biasSource: "BTC" | "ETH" | "BTC_ETH" | "MIXED";
   btcVote: MatrixTrendState;
@@ -71,6 +74,8 @@ export type CryptoMatrixRow = {
 
 export type CryptoMatrixPayload = {
   generatedUtc: string;
+  visibleCount: number;
+  trackedUniverseCount: number;
   regimes: {
     btc: CryptoAnchorRegime;
     eth: CryptoAnchorRegime;

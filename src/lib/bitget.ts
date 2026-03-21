@@ -28,7 +28,29 @@ type BitgetTickerResponse = {
   data?: Array<{
     symbol?: string;
     lastPr?: string;
+    bidPr?: string;
+    askPr?: string;
+    change24h?: string;
+    usdtVolume?: string;
+    quoteVolume?: string;
+    fundingRate?: string;
+    holdingAmount?: string;
     ts?: string;
+  }>;
+};
+
+type BitgetContractsResponse = {
+  code?: string;
+  msg?: string;
+  data?: Array<{
+    symbol?: string;
+    baseCoin?: string;
+    symbolStatus?: string;
+    maxLever?: string;
+    minTradeNum?: string;
+    minTradeUSDT?: string;
+    pricePlace?: string;
+    volumePlace?: string;
   }>;
 };
 
@@ -44,6 +66,31 @@ export type BitgetHourlyCandle = {
   high: number;
   low: number;
   close: number;
+};
+
+export type BitgetMarketTicker = {
+  symbol: string;
+  baseCoin: string;
+  lastPrice: number | null;
+  bidPrice: number | null;
+  askPrice: number | null;
+  change24hPct: number | null;
+  volume24hUsd: number | null;
+  fundingRate: number | null;
+  holdingAmount: number | null;
+  openInterestUsd: number | null;
+  timestamp: string | null;
+};
+
+export type BitgetMarketContract = {
+  symbol: string;
+  baseCoin: string;
+  symbolStatus: string | null;
+  maxLeverage: number | null;
+  minTradeNum: number | null;
+  minTradeUsdt: number | null;
+  pricePlace: number | null;
+  volumePlace: number | null;
 };
 
 type BitgetGranularity = "M1" | "M15" | "H1" | "H4";
@@ -109,6 +156,63 @@ export async function fetchBitgetFuturesSnapshot(
     openInterest: toNumber(oiRow?.size),
     openInterestTime: openInterest.data?.ts ?? null,
   };
+}
+
+export async function fetchBitgetMarketTickers(): Promise<BitgetMarketTicker[]> {
+  const productType = getProductType();
+  const url = `${BASE_URL}/api/v2/mix/market/tickers?productType=${productType}`;
+  const payload = await fetchJson<BitgetTickerResponse>(url);
+  if (payload.code && payload.code !== "00000") {
+    throw new Error(`Bitget tickers request failed: ${payload.code} ${payload.msg ?? ""}`.trim());
+  }
+
+  return (payload.data ?? [])
+    .map((row) => {
+      const symbol = String(row.symbol ?? "").toUpperCase();
+      const baseCoin = symbol.endsWith("USDT") ? symbol.slice(0, -4) : symbol;
+      const lastPrice = toNumber(row.lastPr);
+      const holdingAmount = toNumber(row.holdingAmount);
+      return {
+        symbol,
+        baseCoin,
+        lastPrice,
+        bidPrice: toNumber(row.bidPr),
+        askPrice: toNumber(row.askPr),
+        change24hPct: (() => {
+          const ratio = toNumber(row.change24h);
+          return ratio === null ? null : ratio * 100;
+        })(),
+        volume24hUsd: toNumber(row.usdtVolume ?? row.quoteVolume),
+        fundingRate: toNumber(row.fundingRate),
+        holdingAmount,
+        openInterestUsd:
+          lastPrice !== null && holdingAmount !== null ? lastPrice * holdingAmount : null,
+        timestamp: row.ts ? new Date(Number(row.ts)).toISOString() : null,
+      } satisfies BitgetMarketTicker;
+    })
+    .filter((row) => row.symbol.length > 0 && row.baseCoin.length > 0);
+}
+
+export async function fetchBitgetMarketContracts(): Promise<BitgetMarketContract[]> {
+  const productType = getProductType();
+  const url = `${BASE_URL}/api/v2/mix/market/contracts?productType=${productType}`;
+  const payload = await fetchJson<BitgetContractsResponse>(url);
+  if (payload.code && payload.code !== "00000") {
+    throw new Error(`Bitget contracts request failed: ${payload.code} ${payload.msg ?? ""}`.trim());
+  }
+
+  return (payload.data ?? [])
+    .map((row) => ({
+      symbol: String(row.symbol ?? "").toUpperCase(),
+      baseCoin: String(row.baseCoin ?? "").toUpperCase(),
+      symbolStatus: row.symbolStatus ? String(row.symbolStatus) : null,
+      maxLeverage: toNumber(row.maxLever),
+      minTradeNum: toNumber(row.minTradeNum),
+      minTradeUsdt: toNumber(row.minTradeUSDT),
+      pricePlace: toNumber(row.pricePlace),
+      volumePlace: toNumber(row.volumePlace),
+    }))
+    .filter((row) => row.symbol.length > 0 && row.baseCoin.length > 0);
 }
 
 export async function fetchBitgetCandleRange(
