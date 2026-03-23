@@ -236,10 +236,22 @@ const THEME_VIOLET: PerformanceStrategyTheme = {
   tabInactiveHoverClass: "hover:border-violet-400/50",
 };
 
-const TIERED_DISPLAY_MODELS: readonly PerformanceModel[] = [
-  "antikythera_v3",
+const TIERED_V1_DISPLAY_MODELS: readonly PerformanceModel[] = [
+  "blended",
   "dealer",
   "commercial",
+  "sentiment",
+];
+
+const TIERED_V2_DISPLAY_MODELS: readonly PerformanceModel[] = [
+  "dealer",
+  "sentiment",
+];
+
+const TIERED_V3_DISPLAY_MODELS: readonly PerformanceModel[] = [
+  "dealer",
+  "commercial",
+  "sentiment",
 ];
 
 const KATARAKTI_DISPLAY_MODELS: readonly PerformanceModel[] = ["antikythera_v3"];
@@ -311,7 +323,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     backtestVariant: "v1",
     backtestMarket: "multi_asset",
     summarySourcePolicy: "prefer_db",
-    displayModels: TIERED_DISPLAY_MODELS,
+    displayModels: TIERED_V1_DISPLAY_MODELS,
   },
   {
     entryId: "tiered_v2",
@@ -328,7 +340,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     backtestVariant: "v2",
     backtestMarket: "multi_asset",
     summarySourcePolicy: "prefer_db",
-    displayModels: TIERED_DISPLAY_MODELS,
+    displayModels: TIERED_V2_DISPLAY_MODELS,
   },
   {
     entryId: "tiered_v3",
@@ -345,7 +357,7 @@ const PERFORMANCE_STRATEGY_REGISTRY: readonly PerformanceStrategyEntry[] = [
     backtestVariant: "v3",
     backtestMarket: "multi_asset",
     summarySourcePolicy: "prefer_db",
-    displayModels: TIERED_DISPLAY_MODELS,
+    displayModels: TIERED_V3_DISPLAY_MODELS,
   },
   {
     entryId: "katarakti_core_crypto",

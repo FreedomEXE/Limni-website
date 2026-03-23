@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
-import PerformanceFlagshipSidebar from "@/components/performance/PerformanceFlagshipSidebar";
+import PerformanceSidebar from "@/components/performance/PerformanceSidebar";
 import { resolveAccountView, type AccountPageView } from "@/lib/accounts/navigation";
 
 type NavItem = {
@@ -255,9 +255,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       );
     }
 
-    // Performance section: show V1/V2 comparison panel instead of subnav items
     if (activeSection === "performance") {
-      return <PerformanceFlagshipSidebar />;
+      return <PerformanceSidebar />;
     }
 
     return (
