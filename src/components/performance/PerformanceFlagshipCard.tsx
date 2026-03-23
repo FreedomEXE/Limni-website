@@ -62,7 +62,7 @@ function statusToneClass(tone: PerformanceFlagshipCardData["statusTone"]) {
     return "border-emerald-400/35 bg-emerald-500/10 text-emerald-300";
   }
   if (tone === "warning") {
-    return "border-amber-400/35 bg-amber-500/10 text-amber-300";
+    return "border-amber-400/35 bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300";
   }
   return "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--muted)]";
 }

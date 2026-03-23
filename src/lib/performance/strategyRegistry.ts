@@ -192,7 +192,7 @@ const THEME_CYAN: PerformanceStrategyTheme = {
 };
 
 const THEME_AMBER: PerformanceStrategyTheme = {
-  cardClass: "rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4",
+  cardClass: "rounded-2xl border border-amber-400/40 bg-amber-500/10 dark:bg-amber-900/30 p-4",
   valueClass: "text-amber-900 dark:text-amber-100",
   labelClass: "text-amber-700 dark:text-amber-300",
   badgeClass: "rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-amber-800 dark:text-amber-200",

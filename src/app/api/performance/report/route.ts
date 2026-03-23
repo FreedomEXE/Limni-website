@@ -12,6 +12,14 @@ export async function GET() {
       resolveCanonicalFlagships(),
     ]);
 
+    if (!report) {
+      return NextResponse.json({
+        unavailable: true,
+        reason: "Canonical report not found in deployment",
+        flagships,
+      });
+    }
+
     return NextResponse.json({
       ...report,
       flagships,

@@ -67,14 +67,24 @@ function buildSimpleCurveSeries(
 }
 
 export default async function AutomationResearchIndexPage() {
-  const [baselineSystems, gatedSystems, standaloneSystems, standaloneGatedSystems, flagships] =
-    await Promise.all([
-      getCanonicalCompositeSystems({ isGated: false }),
-      getCanonicalCompositeSystems({ isGated: true }),
-      getCanonicalStandaloneModels({ isGated: false }),
-      getCanonicalStandaloneModels({ isGated: true }),
-      resolveCanonicalFlagships(),
-    ]);
+  let baselineSystems: Awaited<ReturnType<typeof getCanonicalCompositeSystems>> = [];
+  let gatedSystems: Awaited<ReturnType<typeof getCanonicalCompositeSystems>> = [];
+  let standaloneSystems: Awaited<ReturnType<typeof getCanonicalStandaloneModels>> = [];
+  let standaloneGatedSystems: Awaited<ReturnType<typeof getCanonicalStandaloneModels>> = [];
+  let flagships: Awaited<ReturnType<typeof resolveCanonicalFlagships>>;
+
+  try {
+    [baselineSystems, gatedSystems, standaloneSystems, standaloneGatedSystems, flagships] =
+      await Promise.all([
+        getCanonicalCompositeSystems({ isGated: false }),
+        getCanonicalCompositeSystems({ isGated: true }),
+        getCanonicalStandaloneModels({ isGated: false }),
+        getCanonicalStandaloneModels({ isGated: true }),
+        resolveCanonicalFlagships(),
+      ]);
+  } catch {
+    flagships = await resolveCanonicalFlagships();
+  }
 
   const flagshipSystemId = flagships.weekly.systemId ?? null;
   const flagshipBaseId = flagshipSystemId?.replace(/_gated$/, "") ?? null;

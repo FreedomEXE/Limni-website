@@ -572,13 +572,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               reportOptions={availableDates.map((date) => {
                 const report = DateTime.fromISO(date, { zone: "America/New_York" });
                 if (!report.isValid) {
-                  return { value: date, label: formatDateET(date) };
+                  return { value: date, label: date };
                 }
                 const daysUntilMonday = (8 - report.weekday) % 7;
                 const monday = report
                   .plus({ days: daysUntilMonday })
                   .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-                return { value: date, label: formatDateET(monday.toUTC().toISO()) };
+                return { value: date, label: monday.toFormat("MMM dd yyyy") };
               })}
               selectedAsset={isAll ? "all" : assetClass}
               selectedReport={selectedReportDate ?? ""}

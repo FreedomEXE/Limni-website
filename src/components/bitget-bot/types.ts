@@ -74,7 +74,7 @@ export function resolveLifecycleTone(
   if (["WATCHING_SWEEP", "WATCHING_RANGE", "AWAITING_HANDSHAKE", "WEEK_READY"].includes(lifecycle)) {
     return {
       label: lifecycle,
-      toneClass: "border-amber-300/40 bg-amber-500/10 text-amber-200",
+      toneClass: "border-amber-300/40 bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200",
     };
   }
 

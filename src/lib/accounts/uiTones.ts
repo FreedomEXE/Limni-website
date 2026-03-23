@@ -9,7 +9,7 @@ export function statusTone(status: string) {
     return "bg-sky-100 text-sky-700";
   }
   if (status === "WAITING") {
-    return "bg-amber-100 text-amber-700";
+    return "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300";
   }
   return "bg-rose-100 text-rose-700";
 }
@@ -25,7 +25,7 @@ export function basketTone(state: string) {
     return "text-rose-700";
   }
   if (state === "WAITING") {
-    return "text-amber-700";
+    return "text-amber-700 dark:text-amber-300";
   }
   return "text-[color:var(--muted)]";
 }

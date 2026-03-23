@@ -118,8 +118,8 @@ function sweepBadgeTone(signal: BitgetSignalRow | null) {
   if (signal.status === "ENTRY_CONFIRMED") return "border-emerald-300/40 bg-emerald-500/10 text-emerald-200";
   if (signal.status === "HANDSHAKE_MATCHED") return "border-sky-300/40 bg-sky-500/10 text-sky-200";
   if (signal.status === "ENTRY_FAILED") return "border-rose-300/40 bg-rose-500/10 text-rose-200";
-  if (signal.status === "HANDSHAKE_CONFIRMED") return "border-amber-300/40 bg-amber-500/10 text-amber-200";
-  if (signal.status === "CANDIDATE") return "border-amber-300/40 bg-amber-500/10 text-amber-200";
+  if (signal.status === "HANDSHAKE_CONFIRMED") return "border-amber-300/40 bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200";
+  if (signal.status === "CANDIDATE") return "border-amber-300/40 bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200";
   return "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]";
 }
 

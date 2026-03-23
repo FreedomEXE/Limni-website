@@ -50,7 +50,7 @@ function decisionClass(decision: GateDecision) {
 
 function tierClass(tier: GatedSetupSignal["tier"]) {
   if (tier === "HIGH") return "text-emerald-700";
-  if (tier === "MEDIUM") return "text-amber-700";
+  if (tier === "MEDIUM") return "text-amber-700 dark:text-amber-300";
   return "text-[color:var(--muted)]";
 }
 

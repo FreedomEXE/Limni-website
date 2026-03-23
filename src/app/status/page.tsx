@@ -38,7 +38,7 @@ type HealthItem = {
   hint?: string;
 };
 
-type FreshnessStatus = "fresh" | "stale" | "missing";
+type FreshnessStatus = "fresh" | "stale" | "missing" | "provisional" | "research";
 
 type FreshnessCard = {
   name: string;
@@ -73,14 +73,16 @@ const healthToneMap = {
 
 const freshnessToneMap = {
   fresh: "bg-emerald-100 text-emerald-700",
-  stale: "bg-amber-100 text-amber-700",
+  stale: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
   missing: "bg-rose-100 text-rose-700",
+  provisional: "bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300",
+  research: "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300",
 };
 
 const botToneMap = {
   ON: "bg-emerald-100 text-emerald-700",
   READY: "bg-sky-100 text-sky-700",
-  WAITING: "bg-amber-100 text-amber-700",
+  WAITING: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
   OFF: "bg-[var(--panel-border)]/40 text-[var(--foreground)]/70",
 };
 
@@ -277,8 +279,11 @@ export default async function StatusPage() {
        FROM pair_period_returns`,
     );
     const canonicalReport = await readCanonicalPerformanceReport();
-    canonicalReportGeneratedUtc = canonicalReport.generatedUtc;
-    canonicalSummaryCount = canonicalReport.summary.length;
+    canonicalReportGeneratedUtc = canonicalReport?.generatedUtc ?? null;
+    canonicalSummaryCount = canonicalReport?.summary.length ?? 0;
+    if (!canonicalReport) {
+      canonicalError = "Canonical report unavailable in runtime";
+    }
   } catch (error) {
     canonicalError = error instanceof Error ? error.message : String(error);
   }
@@ -374,13 +379,6 @@ export default async function StatusPage() {
     priceError = error instanceof Error ? error.message : String(error);
   }
 
-  const issues = getAppDiagnostics({
-    dbError,
-    priceError: priceError ?? canonicalError,
-    sentimentError,
-    accountsError: accountsError ?? newsError,
-  });
-
   const latestSentimentTimestamp = latestIso(
     sentimentAggregates.map((aggregate) => aggregate.timestamp_utc),
   );
@@ -389,6 +387,8 @@ export default async function StatusPage() {
   const latestPriceSnapshotRefresh = latestIso(priceSnapshots.map((asset) => asset.lastRefreshUtc));
   const latestCanonicalBars = canonicalBarsStats?.latest_updated_at ?? null;
   const latestPairReturns = pairReturnStats?.latest_updated_at ?? null;
+  const canonicalDbHealthy = Boolean(latestCanonicalBars || latestPairReturns);
+  const canonicalRuntimeUnavailable = Boolean(canonicalError && canonicalDbHealthy);
   const latestStatusRefresh = latestIso([
     latestCotRefresh,
     latestPriceSnapshotRefresh,
@@ -399,6 +399,13 @@ export default async function StatusPage() {
     latestPairReturns,
     latestNewsSnapshot?.fetched_at ?? null,
   ]);
+
+  const issues = getAppDiagnostics({
+    dbError,
+    priceError: priceError ?? (canonicalRuntimeUnavailable ? null : canonicalError),
+    sentimentError,
+    accountsError: accountsError ?? newsError,
+  });
 
   const mt5Status =
     accounts.length === 0 ? "OFF" : isFresh(latestAccountSync, 15) ? "ON" : "OFF";
@@ -421,13 +428,19 @@ export default async function StatusPage() {
     },
     {
       name: "Canonical data",
-      status: canonicalError ? "error" : latestPairReturns ? "ok" : "warning",
-      detail: canonicalError
-        ? canonicalError
+      status: canonicalRuntimeUnavailable ? "warning" : canonicalError ? "error" : latestPairReturns ? "ok" : "warning",
+      detail: canonicalRuntimeUnavailable
+        ? "Canonical bars and pair-period returns are available, but the local reconstruction report is unavailable in this runtime."
+        : canonicalError
+          ? canonicalError
         : latestPairReturns
           ? "Canonical bars, returns, and reconstruction report are available."
           : "Canonical price/performance layers are missing.",
-      hint: latestPairReturns ? undefined : "Run canonical price backfill and reconstruction.",
+      hint: canonicalRuntimeUnavailable
+        ? "Bundle or persist the canonical report for this deployment environment."
+        : latestPairReturns
+          ? undefined
+          : "Run canonical price backfill and reconstruction.",
     },
     {
       name: "Sentiment",
@@ -481,12 +494,22 @@ export default async function StatusPage() {
     buildFreshnessCard({
       name: "Weekly Reconstruction",
       iso: canonicalReportGeneratedUtc,
-      detail: `${canonicalSummaryCount} canonical systems in report.`,
+      detail: canonicalRuntimeUnavailable
+        ? "Canonical report unavailable in this runtime."
+        : `${canonicalSummaryCount} canonical systems in report.`,
       freshMinutes: 60 * 24 * 7,
       staleMinutes: 60 * 24 * 21,
-      hint: "Re-run reconstruction when the canonical week extends.",
+      hint: canonicalRuntimeUnavailable
+        ? "Use a deployment-safe canonical report source or graceful fallback."
+        : "Re-run reconstruction when the canonical week extends.",
     }),
   ];
+  if (canonicalRuntimeUnavailable) {
+    canonicalCards[canonicalCards.length - 1] = {
+      ...canonicalCards[canonicalCards.length - 1],
+      status: "provisional",
+    };
+  }
 
   const liveFeedCards: FreshnessCard[] = [
     buildFreshnessCard({
@@ -574,17 +597,17 @@ export default async function StatusPage() {
     }),
     buildWorkspaceHealthCard({
       name: "Swing Board",
-      status: canonicalReportGeneratedUtc ? "fresh" : "missing",
+      status: canonicalReportGeneratedUtc ? "fresh" : "provisional",
       detail: canonicalReportGeneratedUtc
         ? "Weekly flagship metadata is available for forward testing."
-        : "Canonical weekly flagship metadata is missing.",
+        : "Weekly flagship surface is available, but canonical report metadata is provisional in this runtime.",
       lastUpdated: canonicalReportGeneratedUtc,
-      hint: canonicalReportGeneratedUtc ? undefined : "Rebuild the canonical reconstruction report.",
+      hint: canonicalReportGeneratedUtc ? undefined : "Restore deployment-safe canonical report access.",
     }),
     buildWorkspaceHealthCard({
       name: "Intraday Board",
-      status: "stale",
-      detail: "Intraday remains in research and is not yet promoted.",
+      status: "research",
+      detail: "Intraday remains research-only and is not yet promoted.",
       hint: "Lock the intraday flagship before promoting this surface.",
     }),
   ];

@@ -37,10 +37,11 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
   );
   const universalSummary = await getUniversalSummary();
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  const [canonicalWeeks, universalV1Canonical] = await Promise.all([
+  const [canonicalWeeks, universalV1CanonicalResult] = await Promise.all([
     listDataSectionWeeks(),
-    getCanonicalSystemResult("universal_v1"),
+    getCanonicalSystemResult("universal_v1").catch(() => null),
   ]);
+  const universalV1Canonical = universalV1CanonicalResult;
   const weekOptions = buildDataWeekOptions({
     historicalWeeks: [
       ...universalSummary.by_week.map((row) => row.week_open_utc),

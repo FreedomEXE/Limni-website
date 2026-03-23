@@ -63,7 +63,7 @@ function statusTone(status: string) {
     return "border-sky-300/40 bg-sky-500/10 text-sky-200";
   }
   if (status === "UNQUALIFIED") {
-    return "border-amber-300/40 bg-amber-500/10 text-amber-200";
+    return "border-amber-300/40 bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200";
   }
   if (status === "REJECTED") {
     return "border-rose-300/40 bg-rose-500/10 text-rose-200";

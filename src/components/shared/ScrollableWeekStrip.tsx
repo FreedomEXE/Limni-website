@@ -63,7 +63,7 @@ function formatWeekLabel(week: WeekOption, labelMode: "week_open_utc" | "monday_
       : parsed.weekday === 7
         ? parsed.plus({ days: 1 }).startOf("day")
         : parsed;
-  return labelDate.toFormat("MMM dd");
+  return labelDate.toFormat("MMM dd yyyy");
 }
 
 export default function ScrollableWeekStrip({

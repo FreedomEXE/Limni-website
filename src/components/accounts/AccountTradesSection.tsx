@@ -364,7 +364,7 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
               legState === "filled"
                 ? "text-emerald-700"
                 : legState === "partial"
-                  ? "text-amber-600"
+                  ? "text-amber-700 dark:text-amber-300"
                   : legState === "unplanned"
                     ? "text-rose-700"
                     : "text-[color:var(--muted)]";
@@ -382,7 +382,7 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
                         : direction === "SHORT"
                           ? "text-rose-700"
                           : direction === "HEDGED"
-                            ? "text-amber-600"
+                            ? "text-amber-700 dark:text-amber-300"
                           : "text-[color:var(--muted)]"
                     }
                   >

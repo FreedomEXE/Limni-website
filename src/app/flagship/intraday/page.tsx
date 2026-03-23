@@ -18,8 +18,31 @@ import { resolveCanonicalFlagships } from "@/lib/performance/canonicalFlagships"
 export const dynamic = "force-dynamic";
 
 export default async function IntradayForwardTestPage() {
-  const flagships = await resolveCanonicalFlagships();
-  const winner = flagships.intraday;
+  let winner: Awaited<ReturnType<typeof resolveCanonicalFlagships>>["intraday"];
+  try {
+    const flagships = await resolveCanonicalFlagships();
+    winner = flagships.intraday;
+  } catch {
+    winner = {
+      surface: "intraday",
+      status: "research",
+      systemId: null,
+      strategyName: "Awaiting canonical data",
+      family: null,
+      isGated: null,
+      sampleWeeks: null,
+      sourceLabel: "Canonical report unavailable",
+      reason: "Canonical intraday flagship metadata is unavailable in this environment.",
+      metrics: {
+        simpleReturnPct: null,
+        compoundedReturnPct: null,
+        maxDrawdownSimplePct: null,
+        maxDrawdownPct: null,
+        trades: null,
+        winRatePct: null,
+      },
+    };
+  }
 
   return (
     <DashboardLayout>

@@ -18,8 +18,31 @@ import { resolveCanonicalFlagships } from "@/lib/performance/canonicalFlagships"
 export const dynamic = "force-dynamic";
 
 export default async function WeeklyHoldForwardTestPage() {
-  const flagships = await resolveCanonicalFlagships();
-  const winner = flagships.weekly;
+  let winner: Awaited<ReturnType<typeof resolveCanonicalFlagships>>["weekly"];
+  try {
+    const flagships = await resolveCanonicalFlagships();
+    winner = flagships.weekly;
+  } catch {
+    winner = {
+      surface: "weekly",
+      status: "provisional",
+      systemId: null,
+      strategyName: "Awaiting canonical data",
+      family: null,
+      isGated: null,
+      sampleWeeks: null,
+      sourceLabel: "Canonical report unavailable",
+      reason: "Canonical weekly flagship metadata is unavailable in this environment.",
+      metrics: {
+        simpleReturnPct: null,
+        compoundedReturnPct: null,
+        maxDrawdownSimplePct: null,
+        maxDrawdownPct: null,
+        trades: null,
+        winRatePct: null,
+      },
+    };
+  }
 
   return (
     <DashboardLayout>

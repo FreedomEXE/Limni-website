@@ -128,6 +128,36 @@ function buildIntradayFlagship(canonicalWeeks: string[]): CanonicalResolvedFlags
 
 export async function resolveCanonicalFlagships(): Promise<CanonicalFlagships> {
   const report = await readCanonicalPerformanceReport();
+  if (!report) {
+    return {
+      generatedUtc: "",
+      canonicalWeeks: [],
+      weekly: {
+        surface: "weekly",
+        status: "provisional",
+        systemId: null,
+        strategyName: "Awaiting canonical data",
+        family: null,
+        isGated: null,
+        sampleWeeks: null,
+        sourceLabel: "Canonical report unavailable",
+        reason: "Canonical reconstruction report is not available in this environment yet.",
+        metrics: toFlagshipMetrics(null),
+      },
+      intraday: {
+        surface: "intraday",
+        status: "research",
+        systemId: null,
+        strategyName: "Intraday flagship in research",
+        family: null,
+        isGated: null,
+        sampleWeeks: null,
+        sourceLabel: "Canonical report unavailable",
+        reason: "Intraday remains research-only and canonical flagship metadata is unavailable in this environment.",
+        metrics: toFlagshipMetrics(null),
+      },
+    };
+  }
   const weeklySystem = await getCanonicalSystemResult(INITIAL_WEEKLY_FLAGSHIP_ID);
 
   return {

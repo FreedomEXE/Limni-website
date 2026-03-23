@@ -38,7 +38,7 @@ function reportDateLabel(date: string): string {
   const monday = report
     .plus({ days: daysUntilMonday })
     .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-  return monday.toFormat("MMM dd");
+  return monday.toFormat("MMM dd yyyy");
 }
 
 export default function AntikytheraControls({

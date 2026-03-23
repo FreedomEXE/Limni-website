@@ -187,7 +187,7 @@ export default function AccountStats({ accountKey, initialStats }: AccountStatsP
 
       {/* Optional: Error banner (non-intrusive) */}
       {error && (
-        <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-600">
+        <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 dark:bg-amber-900/30 px-4 py-2 text-sm text-amber-700 dark:text-amber-300">
           <strong>Note:</strong> Could not load updated stats. Showing cached data.
         </div>
       )}

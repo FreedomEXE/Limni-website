@@ -51,7 +51,7 @@ function formatWeekLabel(isoValue: string) {
       : parsed.weekday === 1
         ? parsed.startOf("day") // legacy Monday-based key support
         : parsed.startOf("day");
-  return mondayLabelDate.toFormat("MMM dd, yyyy");
+  return mondayLabelDate.toFormat("MMM dd yyyy");
 }
 
 export function getWeekOpenUtc(now = DateTime.utc()): string {

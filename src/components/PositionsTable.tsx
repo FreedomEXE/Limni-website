@@ -152,7 +152,7 @@ function getModelColor(model: string): string {
     case "antikythera": return "text-purple-600";
     case "blended": return "text-blue-600";
     case "commercial": return "text-emerald-600";
-    case "dealer": return "text-amber-600";
+    case "dealer": return "text-amber-700 dark:text-amber-300";
     case "sentiment": return "text-rose-600";
     default: return "text-gray-600";
   }

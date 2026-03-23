@@ -48,7 +48,7 @@ function resolveSection(pathname: string) {
   if (pathname.startsWith("/automation")) return "automation";
   if (pathname.startsWith("/accounts")) return "accounts";
   if (pathname.startsWith("/flagship")) return "flagship";
-  if (pathname.startsWith("/news")) return "news";
+  if (pathname.startsWith("/news") || pathname.startsWith("/status")) return "news";
   return null;
 }
 
@@ -234,12 +234,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   isActive
                     ? "border border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
                     : isNews
-                      ? "border border-amber-400/40 bg-amber-500/10 text-amber-700 hover:border-amber-300/70 hover:bg-amber-500/15 dark:text-amber-200"
+                      ? "border border-amber-400/40 bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 hover:border-amber-300/70 hover:bg-amber-500/15 dark:hover:bg-amber-900/40 dark:text-amber-200"
                       : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
                 }`}
               >
                 {isNews ? (
-                  <span className="rounded-full border border-amber-400/50 bg-amber-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-current">
+                  <span className="rounded-full border border-amber-400/50 bg-amber-500/15 dark:bg-amber-900/40 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-current">
                     News
                   </span>
                 ) : (

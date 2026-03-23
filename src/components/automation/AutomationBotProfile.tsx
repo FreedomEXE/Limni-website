@@ -19,7 +19,7 @@ function statusTone(status: AutomationBotStatus) {
     return "border-emerald-300/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200";
   }
   if (status === "paused") {
-    return "border-amber-300/40 bg-amber-500/10 text-amber-800 dark:text-amber-200";
+    return "border-amber-300/40 bg-amber-500/10 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200";
   }
   return "border-sky-300/40 bg-sky-500/10 text-sky-800 dark:text-sky-200";
 }

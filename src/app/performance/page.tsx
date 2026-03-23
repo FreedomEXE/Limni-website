@@ -20,12 +20,15 @@ import PerformanceAllSystemsTable, {
 import PerformanceFlagshipCard, {
   type PerformanceFlagshipCardData,
 } from "@/components/performance/PerformanceFlagshipCard";
-import type { CanonicalFlagships } from "@/lib/performance/canonicalFlagships";
+import {
+  resolveCanonicalFlagships,
+  type CanonicalFlagships,
+} from "@/lib/performance/canonicalFlagships";
 import type {
   CanonicalPerformanceApiModel,
   CanonicalPerformanceSystem,
 } from "@/lib/performance/canonicalPerformanceReport";
-import { headers } from "next/headers";
+import { getCanonicalPerformanceApiModel } from "@/lib/performance/canonicalPerformanceReport";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -188,22 +191,20 @@ function buildIntradayCardData(flagships: CanonicalFlagships): PerformanceFlagsh
   };
 }
 
-async function readPerformanceReportPayload(): Promise<PerformanceReportPayload> {
-  const headerBag = await headers();
-  const host = headerBag.get("x-forwarded-host") ?? headerBag.get("host");
-  if (!host) {
-    throw new Error("Unable to resolve host for /api/performance/report");
-  }
-  const protocol = headerBag.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
-  const response = await fetch(`${protocol}://${host}/api/performance/report`, {
-    cache: "no-store",
-  });
+async function readPerformanceReportPayload(): Promise<PerformanceReportPayload | null> {
+  const [report, flagships] = await Promise.all([
+    getCanonicalPerformanceApiModel(),
+    resolveCanonicalFlagships(),
+  ]);
 
-  if (!response.ok) {
-    throw new Error(`Performance report request failed with status ${response.status}`);
+  if (!report) {
+    return null;
   }
 
-  return response.json() as Promise<PerformanceReportPayload>;
+  return {
+    ...report,
+    flagships,
+  };
 }
 
 export default async function PerformancePage() {
@@ -219,8 +220,9 @@ export default async function PerformancePage() {
   if (!payload) {
     return (
       <DashboardLayout>
-        <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-200">
-          Failed to load `/api/performance/report`. {loadError ?? "Canonical performance payload is unavailable."}
+        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+          Canonical performance report is not yet available in this environment. Run the reconstruction pipeline to generate it.
+          {loadError ? ` (${loadError})` : ""}
         </div>
       </DashboardLayout>
     );

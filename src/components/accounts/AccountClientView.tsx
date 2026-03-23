@@ -102,7 +102,7 @@ export default function AccountClientView({
       <span
         className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
           isManual
-            ? "border-amber-400/40 bg-amber-500/10 text-amber-200"
+            ? "border-amber-400/40 bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200"
             : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]"
         }`}
       >
@@ -141,7 +141,7 @@ export default function AccountClientView({
       return (
         <span
           title={`Metrics reconstructed after reconnect${note}`}
-          className="rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-200"
+          className="rounded-full border border-amber-400/40 bg-amber-500/10 dark:bg-amber-900/30 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-200"
         >
           Reconstructed {status}
         </span>

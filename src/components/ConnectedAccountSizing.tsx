@@ -112,7 +112,7 @@ export default function ConnectedAccountSizing({ accountKey }: { accountKey: str
                 {row.reason ? (
                   <span
                     className={`col-span-2 md:col-span-6 ${
-                      row.available ? "text-amber-600" : "text-rose-600"
+                      row.available ? "text-amber-700 dark:text-amber-300" : "text-rose-600 dark:text-rose-300"
                     }`}
                   >
                     {row.reason}

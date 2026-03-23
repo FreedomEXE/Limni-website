@@ -467,7 +467,7 @@ export default function ResearchLabClient() {
           ) : null}
         </div>
         {configErrors.length > 0 ? (
-          <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+          <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-500/10 dark:bg-amber-900/30 p-3 text-sm text-amber-700 dark:text-amber-200">
             <p className="text-xs font-semibold uppercase tracking-[0.2em]">Validation</p>
             <ul className="mt-2 list-disc pl-5">
               {configErrors.map((item) => (

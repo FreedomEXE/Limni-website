@@ -50,7 +50,7 @@ export default function ForwardTestPlaceholder({
               {sourceLabel}
             </p>
           </div>
-          <div className="rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-300">
+          <div className="rounded-full border border-amber-400/30 bg-amber-500/10 dark:bg-amber-900/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">
             Forward test only
           </div>
         </div>
@@ -105,4 +105,3 @@ export default function ForwardTestPlaceholder({
     </div>
   );
 }
-

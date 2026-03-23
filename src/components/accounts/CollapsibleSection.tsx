@@ -79,7 +79,7 @@ export default function CollapsibleSection({
   const badgeColors = {
     default: "bg-[var(--accent)]/10 text-[var(--accent)]",
     success: "bg-emerald-500/10 text-emerald-600",
-    warning: "bg-amber-500/10 text-amber-600",
+    warning: "bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
     error: "bg-rose-500/10 text-rose-600",
   };
 

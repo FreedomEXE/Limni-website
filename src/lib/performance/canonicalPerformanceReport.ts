@@ -356,14 +356,22 @@ function normalizeReport(rawValue: unknown): CanonicalPerformanceReport {
   };
 }
 
-export async function readCanonicalPerformanceReport(): Promise<CanonicalPerformanceReport> {
+export async function readCanonicalPerformanceReport(): Promise<CanonicalPerformanceReport | null> {
   const cacheKey = `${CANONICAL_PERFORMANCE_REPORT_CACHE_PREFIX}report`;
   return getOrSetRuntimeCache(
     cacheKey,
     getCanonicalPerformanceReportCacheTtlMs(),
     async () => {
-      const payload = await readFile(getCanonicalPerformanceReportPath(), "utf8");
-      return normalizeReport(JSON.parse(payload));
+      try {
+        const payload = await readFile(getCanonicalPerformanceReportPath(), "utf8");
+        return normalizeReport(JSON.parse(payload));
+      } catch (error) {
+        console.warn(
+          "Canonical performance report unavailable:",
+          error instanceof Error ? error.message : String(error),
+        );
+        return null;
+      }
     },
   );
 }
@@ -374,11 +382,12 @@ export function clearCanonicalPerformanceReportCache() {
 
 export async function getCanonicalSummaryRows() {
   const report = await readCanonicalPerformanceReport();
-  return report.summary;
+  return report?.summary ?? [];
 }
 
 export async function getCanonicalCompositeSystems(options?: { isGated?: boolean }) {
   const report = await readCanonicalPerformanceReport();
+  if (!report) return [];
   if (options?.isGated === true) return report.compositeSystemsGated;
   if (options?.isGated === false) return report.compositeSystems;
   return [...report.compositeSystems, ...report.compositeSystemsGated];
@@ -386,6 +395,7 @@ export async function getCanonicalCompositeSystems(options?: { isGated?: boolean
 
 export async function getCanonicalStandaloneModels(options?: { isGated?: boolean }) {
   const report = await readCanonicalPerformanceReport();
+  if (!report) return [];
   if (options?.isGated === true) return report.standaloneModelsGated;
   if (options?.isGated === false) return report.standaloneModels;
   return [...report.standaloneModels, ...report.standaloneModelsGated];
@@ -393,6 +403,7 @@ export async function getCanonicalStandaloneModels(options?: { isGated?: boolean
 
 export async function getCanonicalSystemResult(systemId: string) {
   const report = await readCanonicalPerformanceReport();
+  if (!report) return null;
   return (
     report.compositeSystems.find((entry) => entry.system === systemId)
     ?? report.compositeSystemsGated.find((entry) => entry.system === systemId)
@@ -404,11 +415,12 @@ export async function getCanonicalSystemResult(systemId: string) {
 
 export async function getCanonicalComponentBreakdown(systemId: string) {
   const report = await readCanonicalPerformanceReport();
-  return report.componentBreakdowns[systemId] ?? [];
+  return report?.componentBreakdowns[systemId] ?? [];
 }
 
-export async function getCanonicalPerformanceApiModel(): Promise<CanonicalPerformanceApiModel> {
+export async function getCanonicalPerformanceApiModel(): Promise<CanonicalPerformanceApiModel | null> {
   const report = await readCanonicalPerformanceReport();
+  if (!report) return null;
   return {
     meta: {
       generatedUtc: report.generatedUtc,

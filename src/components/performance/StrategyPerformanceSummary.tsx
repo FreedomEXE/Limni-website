@@ -36,7 +36,7 @@ function statusTone(status: StrategySummary["status"]) {
     case "LIVE":
       return "border-emerald-300/40 bg-emerald-500/10 text-emerald-200";
     case "BACKTEST":
-      return "border-amber-300/40 bg-amber-500/10 text-amber-200";
+      return "border-amber-300/40 bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200";
     case "OFFLINE":
       return "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[color:var(--muted)]";
   }

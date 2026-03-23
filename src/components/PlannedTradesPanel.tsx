@@ -70,7 +70,7 @@ export default function PlannedTradesPanel({
       </div>
 
       {note ? (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-700">
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-900/30 p-3 text-xs text-amber-700 dark:text-amber-300">
           {note}
         </div>
       ) : null}
@@ -91,7 +91,7 @@ export default function PlannedTradesPanel({
                 const stateLabel = isOpen ? "OPEN" : "PENDING";
                 const stateTone = isOpen
                   ? "bg-emerald-100 text-emerald-700"
-                  : "bg-amber-100 text-amber-700";
+                  : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300";
                 return (
               <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-4">

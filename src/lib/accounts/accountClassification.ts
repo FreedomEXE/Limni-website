@@ -86,7 +86,7 @@ function resolvePhase(haystack: string, status: string, isProp: boolean): Accoun
 
 function resolvePhaseToneClass(phase: AccountPhase) {
   if (phase === "demo") return "bg-slate-100 text-slate-700";
-  if (phase === "challenge") return "bg-amber-100 text-amber-700";
+  if (phase === "challenge") return "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300";
   if (phase === "verification") return "bg-sky-100 text-sky-700";
   if (phase === "funded") return "bg-emerald-100 text-emerald-700";
   return null;

@@ -5,7 +5,8 @@
  * File: NewsContentTabs.tsx
  *
  * Description:
- * Unified News timeline with top announcements, high-impact focus, and current-day-first calendar grouping.
+ * Unified News timeline with a calendar-first layout, current-day-first
+ * grouping, and semantic pending/blank handling for event values.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -61,11 +62,38 @@ function formatEventTime(event: NewsEvent, date: DateTime | null) {
 }
 
 function impactTone(impact: NewsEvent["impact"]) {
-  if (impact === "High") return "bg-rose-100 dark:bg-rose-900/20 text-rose-700";
-  if (impact === "Medium") return "bg-amber-100 text-amber-700";
-  if (impact === "Low") return "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700";
-  if (impact === "Holiday") return "bg-slate-200 text-slate-600";
+  if (impact === "High") return "bg-rose-100 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300";
+  if (impact === "Medium") return "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300";
+  if (impact === "Low") return "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300";
+  if (impact === "Holiday") return "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300";
   return "bg-[var(--panel-border)]/60 text-[color:var(--muted)]";
+}
+
+function hasReleased(event: NewsEvent) {
+  if (!event.datetime_utc) return false;
+  const ts = Date.parse(event.datetime_utc);
+  return Number.isFinite(ts) && ts <= Date.now();
+}
+
+function renderEventMetricValue(value: string | null | undefined, event: NewsEvent) {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+    return "";
+  }
+  if (value !== null && value !== undefined) {
+    return String(value);
+  }
+  if (hasReleased(event)) {
+    return (
+      <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-700 dark:text-amber-300">
+        Pending
+      </span>
+    );
+  }
+  return "";
 }
 
 export default function NewsContentTabs({
@@ -83,7 +111,7 @@ export default function NewsContentTabs({
       if (!groups.has(key)) {
         groups.set(key, {
           key,
-          label: date ? date.toFormat("cccc, MMM dd") : event.date || "Unknown date",
+          label: date ? date.toFormat("cccc, MMM dd yyyy") : event.date || "Unknown date",
           ts: date ? date.toMillis() : Number.MAX_SAFE_INTEGER,
           events: [],
         });
@@ -120,80 +148,6 @@ export default function NewsContentTabs({
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 xl:grid-cols-[1.25fr_0.9fr]">
-        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">Top Announcements</h2>
-          <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Week-leading macro events and scheduled releases in one feed.
-          </p>
-          <div className="mt-4 space-y-3">
-            {topAnnouncements.length === 0 ? (
-              <p className="text-sm text-[color:var(--muted)]">No announcements for this week.</p>
-            ) : (
-              topAnnouncements.map((event, index) => (
-                <article
-                  key={`${event.title}-${event.datetime_utc ?? event.date}-${index}`}
-                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-[var(--panel-border)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                      {event.impact}
-                    </span>
-                    <span className="text-xs uppercase tracking-[0.14em] text-[color:var(--muted)]">
-                      {event.country}
-                    </span>
-                    <span className="text-xs uppercase tracking-[0.14em] text-[color:var(--muted)]">
-                      {formatEventMoment(event)}
-                    </span>
-                  </div>
-                  <h3 className="mt-2 text-base font-semibold text-[var(--foreground)]">
-                    {event.title}
-                  </h3>
-                </article>
-              ))
-            )}
-          </div>
-        </div>
-
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-[var(--foreground)]">High Impact Focus</h2>
-          <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Immediate priority list for the current week.
-          </p>
-          <div className="mt-4 space-y-3">
-            {highImpactEvents.length === 0 ? (
-              <p className="text-sm text-[color:var(--muted)]">No high-impact events for this week.</p>
-            ) : (
-              highImpactEvents.slice(0, 6).map((event, index) => (
-                <div
-                  key={`${event.title}-${event.datetime_utc ?? event.date}-${index}`}
-                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${impactTone(
-                        event.impact,
-                      )}`}
-                    >
-                      {event.impact}
-                    </span>
-                    <span className="text-xs uppercase tracking-[0.14em] text-[color:var(--muted)]">
-                      {event.country}
-                    </span>
-                    <span className="text-xs uppercase tracking-[0.14em] text-[color:var(--muted)]">
-                      {formatEventMoment(event)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
-                    {event.title}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-      </section>
-
       <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-[var(--foreground)]">Economic Calendar</h2>
         <p className="mt-1 text-sm text-[color:var(--muted)]">
@@ -282,19 +236,19 @@ export default function NewsContentTabs({
                                   <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
                                     Actual{" "}
                                   </span>
-                                  {event.actual ?? "—"}
+                                  {renderEventMetricValue(event.actual, event)}
                                 </div>
                                 <div className="text-right text-xs text-[var(--foreground)]">
                                   <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
                                     Forecast{" "}
                                   </span>
-                                  {event.forecast ?? "—"}
+                                  {renderEventMetricValue(event.forecast, event)}
                                 </div>
                                 <div className="text-right text-xs text-[var(--foreground)]">
                                   <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
                                     Previous{" "}
                                   </span>
-                                  {event.previous ?? "—"}
+                                  {renderEventMetricValue(event.previous, event)}
                                 </div>
                               </div>
                             );
@@ -308,6 +262,80 @@ export default function NewsContentTabs({
             </div>
           )}
         </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.25fr_0.9fr]">
+        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">Top Announcements</h2>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
+            Week-leading macro events and scheduled releases in one feed.
+          </p>
+          <div className="mt-4 space-y-3">
+            {topAnnouncements.length === 0 ? (
+              <p className="text-sm text-[color:var(--muted)]">No announcements for this week.</p>
+            ) : (
+              topAnnouncements.map((event, index) => (
+                <article
+                  key={`${event.title}-${event.datetime_utc ?? event.date}-${index}`}
+                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-[var(--panel-border)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                      {event.impact}
+                    </span>
+                    <span className="text-xs uppercase tracking-[0.14em] text-[color:var(--muted)]">
+                      {event.country}
+                    </span>
+                    <span className="text-xs uppercase tracking-[0.14em] text-[color:var(--muted)]">
+                      {formatEventMoment(event)}
+                    </span>
+                  </div>
+                  <h3 className="mt-2 text-base font-semibold text-[var(--foreground)]">
+                    {event.title}
+                  </h3>
+                </article>
+              ))
+            )}
+          </div>
+        </div>
+
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-[var(--foreground)]">High Impact Focus</h2>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
+            Immediate priority list for the current week.
+          </p>
+          <div className="mt-4 space-y-3">
+            {highImpactEvents.length === 0 ? (
+              <p className="text-sm text-[color:var(--muted)]">No high-impact events for this week.</p>
+            ) : (
+              highImpactEvents.slice(0, 6).map((event, index) => (
+                <div
+                  key={`${event.title}-${event.datetime_utc ?? event.date}-${index}`}
+                  className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${impactTone(
+                        event.impact,
+                      )}`}
+                    >
+                      {event.impact}
+                    </span>
+                    <span className="text-xs uppercase tracking-[0.14em] text-[color:var(--muted)]">
+                      {event.country}
+                    </span>
+                    <span className="text-xs uppercase tracking-[0.14em] text-[color:var(--muted)]">
+                      {formatEventMoment(event)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+                    {event.title}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       </section>
     </div>
   );
