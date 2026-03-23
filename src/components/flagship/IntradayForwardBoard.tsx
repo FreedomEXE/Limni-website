@@ -69,17 +69,9 @@ type IntradayLevelsPayload = {
 
 type IntradayBoardRow = GatedSetupSignal & {
   assetClass: AssetClass;
-  currentPrice: number | null;
-  weekOpenPrice: number | null;
-  thresholdPct: number | null;
   adrPct: number | null;
-  adrMultiplier: number;
-  triggerPrice: number | null;
   touched: boolean;
   oneAdrTouched: boolean;
-  gapPct: number | null;
-  currentDriftPct: number | null;
-  sourceLabel: string;
 };
 
 type IntradayForwardBoardProps = {
@@ -89,16 +81,7 @@ type IntradayForwardBoardProps = {
 
 function formatPct(value: number | null, places = 2) {
   if (value === null || !Number.isFinite(value)) return "—";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(places)}%`;
-}
-
-function formatPrice(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return "—";
-  if (value >= 1000) return value.toFixed(2);
-  if (value >= 100) return value.toFixed(3);
-  if (value >= 10) return value.toFixed(4);
-  return value.toFixed(5);
+  return `${value.toFixed(places)}%`;
 }
 
 function directionTone(direction: SignalDirection) {
@@ -120,6 +103,12 @@ function directionToBias(direction: SignalDirection): MatrixTrendState {
 }
 
 function sortRows(left: IntradayBoardRow, right: IntradayBoardRow) {
+  if (left.oneAdrTouched !== right.oneAdrTouched) {
+    return left.oneAdrTouched ? -1 : 1;
+  }
+  if (left.touched !== right.touched) {
+    return left.touched ? -1 : 1;
+  }
   const assetOrder: Record<AssetClass, number> = {
     fx: 0,
     indices: 1,
@@ -211,10 +200,6 @@ export default function IntradayForwardBoard({
       .map((signal) => {
         const level = levelsByPair.get(signal.pair.toUpperCase());
         const assetClass = (level?.assetClass ?? signal.assetClass ?? "fx") as AssetClass;
-        const triggerPrice =
-          signal.direction === "LONG"
-            ? level?.longTriggerPrice ?? null
-            : level?.shortTriggerPrice ?? null;
         const touched =
           signal.direction === "LONG"
             ? (level?.longTouched ?? false)
@@ -223,33 +208,13 @@ export default function IntradayForwardBoard({
           signal.direction === "LONG"
             ? (level?.oneAdrLongTouched ?? false)
             : (level?.oneAdrShortTouched ?? false);
-        const gapPct =
-          triggerPrice !== null && level?.currentPrice !== null
-            ? signal.direction === "LONG"
-              ? ((level!.currentPrice! / triggerPrice) - 1) * 100
-              : ((triggerPrice / level!.currentPrice!) - 1) * 100
-            : null;
-        const currentDriftPct =
-          level?.weekOpenPrice !== null && level?.currentPrice !== null
-            ? signal.direction === "LONG"
-              ? ((level!.currentPrice! / level!.weekOpenPrice!) - 1) * 100
-              : ((level!.weekOpenPrice! / level!.currentPrice!) - 1) * 100
-            : null;
 
         return {
           ...signal,
           assetClass,
-          currentPrice: level?.currentPrice ?? null,
-          weekOpenPrice: level?.weekOpenPrice ?? null,
-          thresholdPct: level?.thresholdPct ?? null,
           adrPct: level?.adrPct ?? null,
-          adrMultiplier: level?.adrMultiplier ?? 0,
-          triggerPrice,
           touched,
           oneAdrTouched,
-          gapPct,
-          currentDriftPct,
-          sourceLabel: level?.sourceLabel ?? "Intraday ADR map",
         } satisfies IntradayBoardRow;
       })
       .sort(sortRows);
@@ -273,8 +238,7 @@ export default function IntradayForwardBoard({
               Weekly bias {strategyName}
             </p>
             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-              {sourceLabel}
-              {lastRefreshUtc ? ` · refreshed ${formatDateTimeET(lastRefreshUtc)}` : ""}
+              {lastRefreshUtc ? `Refreshed ${formatDateTimeET(lastRefreshUtc)}` : sourceLabel}
             </p>
           </div>
           <div className="rounded-full border border-amber-400/30 bg-amber-500/10 dark:bg-amber-900/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">
@@ -310,10 +274,10 @@ export default function IntradayForwardBoard({
         </div>
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Zones Hit
+            ADR Hits
           </div>
           <div className="mt-2 text-2xl font-semibold font-mono text-[var(--foreground)]">
-            {zoneTouchedCount}
+            {rows.filter((row) => row.oneAdrTouched).length}
           </div>
         </div>
       </section>
@@ -331,12 +295,12 @@ export default function IntradayForwardBoard({
       ) : null}
 
       {!loading && !error ? (
-      <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-5">
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-5">
           <div className="overflow-x-auto">
             <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
               <thead className="text-[10px] uppercase tracking-[0.18em] text-[color:var(--muted)]">
                 <tr>
-                  {["Symbol", "Asset", "Direction", "Tier", "Drift", "ADR", "Threshold", "Trigger", "Current", "Gap", "Status"].map((column) => (
+                  {["Symbol", "Asset", "Direction", "Tier", "ADR", "1.0 ADR"].map((column) => (
                     <th key={column} className="border-b border-[var(--panel-border)]/30 px-3 py-2">
                       {column}
                     </th>
@@ -346,12 +310,12 @@ export default function IntradayForwardBoard({
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-3 py-10 text-center">
+                    <td colSpan={6} className="px-3 py-10 text-center">
                       <div className="text-sm font-semibold text-[var(--foreground)]">
                         No current-week intraday candidates
                       </div>
                       <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-[color:var(--muted)]">
-                        This board watches the full current-week trade list and overlays provisional ADR pullback levels. There are no active directional rows right now.
+                        This board watches the full current-week trade list and surfaces pairs once the 1.0 ADR pullback level is reached.
                       </p>
                     </td>
                   </tr>
@@ -367,38 +331,19 @@ export default function IntradayForwardBoard({
                         <td className="px-3 py-3 text-[var(--foreground)]/80">{assetLabel}</td>
                         <td className={`px-3 py-3 font-semibold ${directionTone(row.direction)}`}>{row.direction}</td>
                         <td className={`px-3 py-3 font-semibold ${tierTone(row.tier)}`}>{row.tier}</td>
-                        <td className={`px-3 py-3 font-semibold ${row.currentDriftPct !== null && row.currentDriftPct < 0 ? "text-rose-700 dark:text-rose-300" : "text-emerald-700 dark:text-emerald-300"}`}>
-                          {formatPct(row.currentDriftPct)}
-                        </td>
-                        <td className="px-3 py-3 text-[var(--foreground)]/80">
-                          {row.adrPct === null ? "—" : `${row.adrPct.toFixed(2)}%`}
-                        </td>
-                        <td className="px-3 py-3 text-[var(--foreground)]/80">
-                          {row.thresholdPct === null ? "—" : `${row.adrMultiplier.toFixed(2)} ADR`}
-                        </td>
-                        <td className="px-3 py-3 font-mono text-[var(--foreground)]/88">{formatPrice(row.triggerPrice)}</td>
-                        <td className="px-3 py-3 font-mono text-[var(--foreground)]/88">{formatPrice(row.currentPrice)}</td>
-                        <td className={`px-3 py-3 font-semibold ${row.gapPct !== null && row.gapPct < 0 ? "text-emerald-700 dark:text-emerald-300" : "text-[var(--foreground)]/80"}`}>
-                          {formatPct(row.gapPct)}
-                        </td>
+                        <td className="px-3 py-3 text-[var(--foreground)]/80">{formatPct(row.adrPct)}</td>
                         <td className="px-3 py-3">
-                          <div className="flex flex-col gap-1">
-                            <span className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${
-                              row.touched
-                                ? "border-emerald-400/30 bg-emerald-500/10 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                                : "border-[var(--panel-border)] bg-[var(--panel)]/60 text-[color:var(--muted)]"
-                            }`}>
-                              {row.touched ? "Touched" : "Waiting"}
-                            </span>
-                            {row.oneAdrTouched ? (
-                              <span className="inline-flex w-fit rounded-full border border-amber-400/30 bg-amber-500/12 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
-                                1.0 ADR hit
-                              </span>
-                            ) : null}
-                            <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
-                              {row.sourceLabel}
-                            </span>
-                          </div>
+                          <span
+                            className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                              row.oneAdrTouched
+                                ? "border-amber-400/40 bg-amber-500/15 dark:bg-amber-900/35 text-amber-700 dark:text-amber-300"
+                                : row.touched
+                                  ? "border-emerald-400/30 bg-emerald-500/10 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                                  : "border-[var(--panel-border)] bg-[var(--panel)]/60 text-[color:var(--muted)]"
+                            }`}
+                          >
+                            {row.oneAdrTouched ? "Hit" : row.touched ? "Close" : "Watching"}
+                          </span>
                         </td>
                       </tr>
                     );
