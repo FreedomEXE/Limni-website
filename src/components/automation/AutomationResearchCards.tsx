@@ -1,21 +1,34 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: AutomationResearchCards.tsx
+ *
+ * Description:
+ * Static card definitions for the simplified Automation research hub navigation.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
 import AutomationViewCards, {
 type AutomationViewCard,
 } from "@/components/automation/AutomationViewCards";
 
 type ResearchPageKey = "lab" | "universal" | "baskets" | "symbols" | "bank" | "strategies";
+type ResearchCardPageKey = "overview" | ResearchPageKey;
 
-const RESEARCH_CARDS: ReadonlyArray<AutomationViewCard<ResearchPageKey>> = [
+const RESEARCH_CARDS: ReadonlyArray<AutomationViewCard<ResearchCardPageKey>> = [
+  {
+    id: "overview",
+    label: "Overview",
+    description: "Canonical research hub with flagship curves and drilldown links.",
+    href: "/automation/research",
+  },
   {
     id: "strategies",
     label: "Strategies",
     description: "DB-backed strategy backtest runs, coverage, and metrics.",
     href: "/automation/research/strategies",
-  },
-  {
-    id: "lab",
-    label: "Lab",
-    description: "Build custom runs and compare research configs.",
-    href: "/automation/research/lab",
   },
   {
     id: "universal",
@@ -25,8 +38,8 @@ const RESEARCH_CARDS: ReadonlyArray<AutomationViewCard<ResearchPageKey>> = [
   },
   {
     id: "baskets",
-    label: "Baskets",
-    description: "Per-model basket simulation and weekly tables.",
+    label: "Legacy Baskets",
+    description: "Older per-model basket simulation pages retained for internal comparison.",
     href: "/automation/research/baskets",
   },
   {
@@ -46,7 +59,7 @@ const RESEARCH_CARDS: ReadonlyArray<AutomationViewCard<ResearchPageKey>> = [
 export default function AutomationResearchCards({
   active,
 }: {
-  active: ResearchPageKey;
+  active: ResearchCardPageKey;
 }) {
   return <AutomationViewCards active={active} cards={RESEARCH_CARDS} />;
 }

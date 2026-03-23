@@ -104,40 +104,25 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard
-          label="Open"
+          label="Open Positions"
           value={openLegCount}
           hint="Open legs right now"
           onClick={() => onStatusFilterChange("open")}
           selected={statusFilter === "open"}
         />
         <SummaryCard
-          label="Closed"
+          label="Closed Trades"
           value={closedCount}
           hint="Closed this week"
           onClick={() => onStatusFilterChange("closed")}
           selected={statusFilter === "closed"}
         />
         <SummaryCard
-          label="Net Exposure"
+          label="Net Position"
           value={isOanda ? `${netExposure.toFixed(0)} units` : `${netExposure.toFixed(2)}`}
-          hint="Planned net exposure (reconciliation)"
+          hint="Live net position footprint"
         />
       </div>
-      {hasPlannedRows ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 px-4 py-3 text-xs text-[color:var(--muted)]">
-          <span className="uppercase tracking-[0.2em]">
-            Legs (open {openLegCount} / planned {plannedLegTotal})
-          </span>
-          {plannedModelChips.map(([key, count]) => (
-            <span
-              key={key}
-              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 font-semibold uppercase tracking-[0.18em] text-[var(--foreground)]/80"
-            >
-              {key}: {count}
-            </span>
-          ))}
-        </div>
-      ) : null}
       <FilterBar
         status={statusFilter}
         onStatusChange={onStatusFilterChange}
@@ -170,7 +155,7 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
                   : "border-[var(--panel-border)] bg-[var(--panel)] text-[var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
               }`}
             >
-              Planned vs Filled
+              Plan Reconciliation
             </button>
           ) : null}
           <span className="ml-auto text-xs text-[color:var(--muted)]">
@@ -187,77 +172,104 @@ export default function AccountTradesSection(props: AccountTradesSectionProps) {
             : "Planned metrics unavailable (EA diagnostics not received). Showing live/open exposure only."}
         </div>
       ) : null}
-      {statusFilter === "open" && manualExecution?.enabled ? (
-        <ManualExecutionSheetCard
-          accountLabel={manualExecution.accountLabel}
-          weekLabel={manualExecution.weekLabel}
-          currency={manualExecution.currency}
-          equity={manualExecution.equity}
-          defaultRiskMode={manualExecution.defaultRiskMode}
-          plannedPairs={manualExecution.plannedPairs}
-        />
-      ) : null}
-      {showStopLoss1pct && statusFilter === "open" && stopLossLines.length > 0 ? (
-        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]/80">
-                Recommended Stop Losses (1%)
-              </p>
-              <p className="mt-1 text-xs text-[color:var(--muted)]">
-                Format: SYMBOL [tab] DIRECTION [tab] SL PRICE
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onCopyStopLoss}
-              className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-            >
-              {copied ? "Copied" : "Copy"}
-            </button>
+      {statusFilter === "open" &&
+      (hasPlannedRows || manualExecution?.enabled || stopLossLines.length > 0 || plannedSummary) ? (
+        <details className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80">
+          <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]/80 [&::-webkit-details-marker]:hidden">
+            Planning Tools
+          </summary>
+          <div className="space-y-4 border-t border-[var(--panel-border)] px-4 py-4">
+            {hasPlannedRows ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/60 px-4 py-3 text-xs text-[color:var(--muted)]">
+                <span className="uppercase tracking-[0.2em]">
+                  Legs (open {openLegCount} / planned {plannedLegTotal})
+                </span>
+                {plannedModelChips.map(([key, count]) => (
+                  <span
+                    key={key}
+                    className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1 font-semibold uppercase tracking-[0.18em] text-[var(--foreground)]/80"
+                  >
+                    {key}: {count}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {manualExecution?.enabled ? (
+              <ManualExecutionSheetCard
+                accountLabel={manualExecution.accountLabel}
+                weekLabel={manualExecution.weekLabel}
+                currency={manualExecution.currency}
+                equity={manualExecution.equity}
+                defaultRiskMode={manualExecution.defaultRiskMode}
+                plannedPairs={manualExecution.plannedPairs}
+              />
+            ) : null}
+            {showStopLoss1pct && stopLossLines.length > 0 ? (
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--foreground)]/80">
+                      Recommended Stop Losses (1%)
+                    </p>
+                    <p className="mt-1 text-xs text-[color:var(--muted)]">
+                      Format: SYMBOL [tab] DIRECTION [tab] SL PRICE
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onCopyStopLoss}
+                    className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                  >
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+                <textarea
+                  readOnly
+                  value={stopLossLines.join("\n")}
+                  className="mt-3 h-32 w-full resize-none rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-3 font-mono text-xs text-[var(--foreground)]"
+                />
+              </div>
+            ) : null}
+            {plannedSummary ? (
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-xs text-[color:var(--muted)]">
+                Sizing source:{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  {plannedSummary.sizingSource === "frozen_week_plan"
+                    ? "frozen weekly plan"
+                    : "live lot map"}
+                </span>
+                {plannedSummary.sizingSourceLocked ? " (locked)" : " (auto)"} • Estimated
+                margin used this week:{" "}
+                <span className="font-semibold text-[var(--foreground)]">
+                  {plannedSummary.currency ?? "$"}
+                  {(plannedSummary.marginUsed ?? 0).toFixed(2)}
+                </span>
+                {plannedSummary.marginUsedBestCase !== null &&
+                plannedSummary.marginUsedBestCase !== undefined ? (
+                  <>
+                    {" "}
+                    • Best case (net hedged){" "}
+                    <span className="font-semibold text-[var(--foreground)]">
+                      {plannedSummary.currency ?? "$"}
+                      {plannedSummary.marginUsedBestCase.toFixed(2)}
+                    </span>
+                  </>
+                ) : null}
+                {plannedSummary.marginAvailable ? (
+                  <>
+                    {" "}
+                    • Available{" "}
+                    <span className="font-semibold text-[var(--foreground)]">
+                      {plannedSummary.currency ?? "$"}
+                      {plannedSummary.marginAvailable.toFixed(2)}
+                    </span>
+                  </>
+                ) : null}
+                {plannedSummary.scale ? <> • Scale {plannedSummary.scale.toFixed(2)}x</> : null}
+              </div>
+            ) : null}
           </div>
-          <textarea
-            readOnly
-            value={stopLossLines.join("\n")}
-            className="mt-3 h-32 w-full resize-none rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-3 font-mono text-xs text-[var(--foreground)]"
-          />
-        </div>
-      ) : null}
-      {plannedSummary ? (
-        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-xs text-[color:var(--muted)]">
-          Sizing source:{" "}
-          <span className="font-semibold text-[var(--foreground)]">
-            {plannedSummary.sizingSource === "frozen_week_plan" ? "frozen weekly plan" : "live lot map"}
-          </span>
-          {plannedSummary.sizingSourceLocked ? " (locked)" : " (auto)"} •{" "}
-          Estimated margin used this week:{" "}
-          <span className="font-semibold text-[var(--foreground)]">
-            {plannedSummary.currency ?? "$"}
-            {(plannedSummary.marginUsed ?? 0).toFixed(2)}
-          </span>
-          {plannedSummary.marginUsedBestCase !== null &&
-          plannedSummary.marginUsedBestCase !== undefined ? (
-            <>
-              {" "}
-              • Best case (net hedged){" "}
-              <span className="font-semibold text-[var(--foreground)]">
-                {plannedSummary.currency ?? "$"}
-                {plannedSummary.marginUsedBestCase.toFixed(2)}
-              </span>
-            </>
-          ) : null}
-          {plannedSummary.marginAvailable ? (
-            <>
-              {" "}
-              • Available{" "}
-              <span className="font-semibold text-[var(--foreground)]">
-                {plannedSummary.currency ?? "$"}
-                {plannedSummary.marginAvailable.toFixed(2)}
-              </span>
-            </>
-          ) : null}
-          {plannedSummary.scale ? <> • Scale {plannedSummary.scale.toFixed(2)}x</> : null}
-        </div>
+        </details>
       ) : null}
       {statusFilter === "open" ? (
         <SimpleListTable

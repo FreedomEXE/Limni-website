@@ -5,6 +5,9 @@ import type { Mt5PlanningDiagnostics } from "@/lib/accounts/mt5Planning";
 export type HeaderConfig = {
   title: string;
   providerLabel: string;
+  accountTypeLabel?: string | null;
+  phaseLabel?: string | null;
+  phaseToneClass?: string | null;
   tradeModeLabel?: string;
   riskModeLabel?: string | null;
   statusLabel?: string;
@@ -112,10 +115,10 @@ export type AccountClientViewProps = {
   };
   overview: {
     openPositions: number;
-    plannedCount: number;
-    mappingCount: number;
-    plannedNote?: string | null;
-    journalCount?: number;
+    closedTrades: number;
+    secondaryCount: number;
+    secondaryLabel: string;
+    secondaryHint?: string | null;
   };
   plannedSummary?: {
     marginUsed?: number | null;

@@ -37,39 +37,14 @@ type StrategyExplorerEntry = {
   avgWeekly: number | null;
   trades: number | null;
   tradeWinRate: number | null;
-};
-
-type StrategiesResponse = {
-  ok: boolean;
-  entries?: StrategyExplorerEntry[];
-  error?: string;
-};
-
-type ComparisonMetrics = {
-  totalReturn: number;
-  weeks: number;
-  winRate: number;
-  sharpe: number;
-  avgWeekly: number;
-  maxDrawdown: number | null;
-  trades: number;
-  tradeWinRate: number;
-};
-
-type ComparisonSource = {
-  mode: "strategy_backtest_db" | "performance_snapshots" | "tiered_derived" | "katarakti_snapshot" | "unavailable";
-  sourcePath: string;
-  fallbackLabel?: string | null;
-};
-
-type StrategyComparisonEntry = {
-  entryId: string;
-  metrics: ComparisonMetrics;
-  source: ComparisonSource;
+  metricsSourceMode: "canonical_report" | "strategy_backtest_db" | "unavailable";
+  metricsSourceLabel: string | null;
 };
 
 type ComparisonResponse = {
-  strategies?: Record<string, StrategyComparisonEntry>;
+  ok: boolean;
+  entries?: StrategyExplorerEntry[];
+  error?: string;
 };
 
 const FAMILY_ORDER = ["universal", "tiered", "katarakti"] as const;
@@ -100,20 +75,18 @@ function formatDate(value: string | null | undefined) {
 
 function statusConfig(options: {
   entry: StrategyExplorerEntry;
-  hasSnapshotMetrics: boolean;
-  sourceMode: ComparisonSource["mode"] | null;
 }) {
-  const { entry, hasSnapshotMetrics, sourceMode } = options;
-  if (entry.hasDbRun) {
+  const { entry } = options;
+  if (entry.metricsSourceMode === "canonical_report") {
+    return {
+      dotClass: "bg-emerald-500",
+      label: "Canonical Metrics",
+    };
+  }
+  if (entry.hasDbRun && entry.metricsSourceMode === "strategy_backtest_db") {
     return {
       dotClass: "bg-emerald-500",
       label: "DB Connected",
-    };
-  }
-  if (hasSnapshotMetrics && sourceMode && sourceMode !== "unavailable") {
-    return {
-      dotClass: "bg-cyan-500",
-      label: "Snapshot Source",
     };
   }
   if (entry.pending) {
@@ -132,7 +105,6 @@ export default function StrategiesExplorerClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [entries, setEntries] = useState<StrategyExplorerEntry[]>([]);
-  const [comparisonStrategies, setComparisonStrategies] = useState<Record<string, StrategyComparisonEntry>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -141,24 +113,18 @@ export default function StrategiesExplorerClient() {
       setLoading(true);
       setError(null);
       try {
-        const [coverageResponse, comparisonResponse] = await Promise.all([
-          fetch("/api/research/strategies", { cache: "no-store" }),
-          fetch("/api/performance/comparison?week=all", { cache: "no-store" }),
-        ]);
-        const payload = (await coverageResponse.json()) as StrategiesResponse;
-        const comparisonPayload = (await comparisonResponse.json()) as ComparisonResponse;
-        if (!coverageResponse.ok || !payload.ok) {
+        const response = await fetch("/api/research/strategies", { cache: "no-store" });
+        const payload = (await response.json()) as ComparisonResponse;
+        if (!response.ok || !payload.ok) {
           throw new Error(payload.error ?? "Failed to load strategies.");
         }
         if (!cancelled) {
           setEntries(Array.isArray(payload.entries) ? payload.entries : []);
-          setComparisonStrategies(comparisonPayload.strategies ?? {});
         }
       } catch (loadError) {
         if (!cancelled) {
           setError(loadError instanceof Error ? loadError.message : String(loadError));
           setEntries([]);
-          setComparisonStrategies({});
         }
       } finally {
         if (!cancelled) {
@@ -241,23 +207,15 @@ export default function StrategiesExplorerClient() {
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {familyEntries.map((entry) => {
-                const comparison = comparisonStrategies[entry.entryId];
-                const metrics = comparison?.metrics;
-                const sourceMode = comparison?.source?.mode ?? null;
-                const hasSnapshotMetrics = Boolean(metrics && metrics.weeks > 0);
-                const status = statusConfig({
-                  entry,
-                  hasSnapshotMetrics,
-                  sourceMode,
-                });
-                const weeks = entry.weeklyCount > 0 ? entry.weeklyCount : metrics?.weeks ?? 0;
-                const trades = entry.tradeCount > 0 ? entry.tradeCount : metrics?.trades ?? 0;
-                const totalReturn = metrics ? metrics.totalReturn : entry.totalReturn;
-                const maxDrawdown = metrics ? metrics.maxDrawdown : entry.maxDrawdown;
-                const weeklyWinRate = metrics ? metrics.winRate : entry.weeklyWinRate;
-                const sharpe = metrics ? metrics.sharpe : entry.sharpe;
-                const avgWeekly = metrics ? metrics.avgWeekly : entry.avgWeekly;
-                const tradeWinRate = metrics ? metrics.tradeWinRate : entry.tradeWinRate;
+                const status = statusConfig({ entry });
+                const weeks = entry.weeklyCount;
+                const trades = entry.tradeCount > 0 ? entry.tradeCount : entry.trades ?? 0;
+                const totalReturn = entry.totalReturn;
+                const maxDrawdown = entry.maxDrawdown;
+                const weeklyWinRate = entry.weeklyWinRate;
+                const sharpe = entry.sharpe;
+                const avgWeekly = entry.avgWeekly;
+                const tradeWinRate = entry.tradeWinRate;
                 return (
                   <article
                     key={entry.entryId}
@@ -297,9 +255,9 @@ export default function StrategiesExplorerClient() {
                         ? `Latest data: ${formatDate(entry.latestWeekOpenUtc)}`
                         : "No data"}
                     </p>
-                    {comparison?.source ? (
+                    {entry.metricsSourceMode !== "unavailable" ? (
                       <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
-                        Source: {comparison.source.mode.replaceAll("_", " ")}
+                        Source: {(entry.metricsSourceLabel ?? entry.metricsSourceMode).replaceAll("_", " ")}
                       </p>
                     ) : null}
                   </article>

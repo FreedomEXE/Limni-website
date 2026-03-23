@@ -1,3 +1,15 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: AccountsDirectory.tsx
+ *
+ * Description:
+ * Grouped account directory renderer for prop-fund and personal-account reporting.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
 "use client";
 
 import { useState } from "react";
@@ -59,17 +71,44 @@ export default function AccountsDirectory({ accounts }: AccountsDirectoryProps) 
   }
 
   return (
-    <div className="grid gap-5 md:grid-cols-2">
-      {accounts.map((account) => (
-        <AccountsDirectoryCard
-          key={account.account_id}
-          account={account}
-          deleting={deletingId === account.account_id}
-          weekParam={weekParam}
-          viewParam={viewParam}
-          onDelete={(row) => handleDelete(row.account_id, row.label, row.source)}
-        />
-      ))}
+    <div className="space-y-8">
+      {[
+        {
+          key: "prop" as const,
+          title: "Prop Funds",
+          description: "Challenge, verification, and funded prop accounts.",
+        },
+        {
+          key: "personal" as const,
+          title: "Personal Accounts",
+          description: "Personally funded and connected reporting accounts.",
+        },
+      ].map((group) => {
+        const groupAccounts = accounts.filter((account) => account.portfolio_group === group.key);
+        if (groupAccounts.length === 0) {
+          return null;
+        }
+        return (
+          <section key={group.key} className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">{group.title}</h2>
+              <p className="text-sm text-[color:var(--muted)]">{group.description}</p>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              {groupAccounts.map((account) => (
+                <AccountsDirectoryCard
+                  key={account.account_id}
+                  account={account}
+                  deleting={deletingId === account.account_id}
+                  weekParam={weekParam}
+                  viewParam={viewParam}
+                  onDelete={(row) => handleDelete(row.account_id, row.label, row.source)}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

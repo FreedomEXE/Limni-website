@@ -1,3 +1,15 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: AccountsDirectoryCard.tsx
+ *
+ * Description:
+ * Reporting-first account directory card with portfolio grouping and phase badges.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
 "use client";
 
 import Link from "next/link";
@@ -37,7 +49,7 @@ export default function AccountsDirectoryCard({
           onDelete(account);
         }}
         disabled={deleting}
-        className="absolute right-4 top-4 rounded-lg p-2 text-rose-600 opacity-0 transition hover:bg-rose-50 group-hover:opacity-100 disabled:opacity-50"
+        className="absolute right-4 top-4 rounded-lg p-2 text-rose-600 opacity-0 transition hover:bg-rose-50 dark:hover:bg-rose-900/20 group-hover:opacity-100 disabled:opacity-50"
         title="Delete account"
       >
         {deleting ? (
@@ -91,11 +103,25 @@ function AccountCardContent({ account }: { account: AccountCard }) {
             {account.broker || "Unknown broker"} - {account.server || "Unknown server"}
           </p>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(account.status)}`}
-        >
-          {account.status}
-        </span>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-xs font-semibold text-[color:var(--muted)]">
+            {account.account_type_label}
+          </span>
+          {account.phase_label ? (
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                account.phase_tone_class ?? "bg-[var(--panel-border)]/50 text-[var(--foreground)]/70"
+              }`}
+            >
+              {account.phase_label}
+            </span>
+          ) : null}
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(account.status)}`}
+          >
+            {account.status}
+          </span>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3 text-sm text-[var(--foreground)] sm:grid-cols-2">
@@ -115,11 +141,9 @@ function AccountCardContent({ account }: { account: AccountCard }) {
         </div>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Basket state
+            Account scope
           </p>
-          <p className={`mt-1 font-semibold ${basketTone(account.basket_state)}`}>
-            {account.basket_state}
-          </p>
+          <p className="mt-1 font-semibold">{account.portfolio_label}</p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -130,6 +154,15 @@ function AccountCardContent({ account }: { account: AccountCard }) {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs">
+        <span
+          className={`rounded-full border px-3 py-1 ${
+            account.basket_state === "ACTIVE"
+              ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-700"
+              : `border-[var(--panel-border)] ${basketTone(account.basket_state)}`
+          }`}
+        >
+          {account.basket_state}
+        </span>
         <span className={`rounded-full border px-3 py-1 ${pillTone(account.win_rate_pct ?? 0, true)}`}>
           Win {formatMaybePercent(account.win_rate_pct)}
         </span>

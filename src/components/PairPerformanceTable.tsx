@@ -84,9 +84,9 @@ export default function PairPerformanceTable({
                 const pnlPercent = perf ? perf.percent * directionFactor : 0;
                 const rowTone = perf
                   ? pnlPercent > 0
-                    ? "bg-emerald-50/60"
+                    ? "bg-emerald-50/60 dark:bg-emerald-900/20"
                     : pnlPercent < 0
-                      ? "bg-rose-50/60"
+                      ? "bg-rose-50/60 dark:bg-rose-900/20"
                       : ""
                   : "";
                 return (
@@ -129,9 +129,9 @@ export default function PairPerformanceTable({
                 className={`border-t border-[var(--panel-border)] ${
                   totals.count > 0
                     ? totals.percent > 0
-                      ? "bg-emerald-100/70"
+                      ? "bg-emerald-100/70 dark:bg-emerald-900/20"
                       : totals.percent < 0
-                        ? "bg-rose-100/70"
+                        ? "bg-rose-100/70 dark:bg-rose-900/20"
                         : ""
                     : ""
                 }`}

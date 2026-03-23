@@ -5,7 +5,7 @@ type StatusPanelProps = {
 };
 
 const toneStyles = {
-  error: "border-rose-200 bg-rose-50/80 text-rose-800",
+  error: "border-rose-200 bg-rose-50/80 dark:bg-rose-900/20 text-rose-800",
   warning: "border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent-strong)]",
 };
 
@@ -25,7 +25,7 @@ export default function StatusPanel({ issues }: StatusPanelProps) {
             Action needed
           </p>
         </div>
-        <span className="rounded-full border border-[var(--accent)] bg-emerald-50 px-3 py-1 text-xs font-semibold text-[var(--accent-strong)]">
+        <span className="rounded-full border border-[var(--accent)] bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 text-xs font-semibold text-[var(--accent-strong)]">
           {issues.length} alert{issues.length === 1 ? "" : "s"}
         </span>
       </div>

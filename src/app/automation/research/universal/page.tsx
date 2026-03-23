@@ -8,11 +8,11 @@ import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import KpiGroup from "@/components/metrics/KpiGroup";
 import KpiCard from "@/components/metrics/KpiCard";
 import DebugReadout from "@/components/DebugReadout";
-import { listPerformanceWeeks } from "@/lib/performanceSnapshots";
+import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { computeMaxDrawdown, computeStaticDrawdown, pickParam } from "@/lib/research/common";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
-import { buildPerformanceComparisonPayload } from "@/app/api/performance/comparison/route";
+import { getCanonicalSystemResult } from "@/lib/performance/canonicalPerformanceReport";
 
 export const revalidate = 900;
 
@@ -37,11 +37,14 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
   );
   const universalSummary = await getUniversalSummary();
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  const performanceWeeks = await listPerformanceWeeks(52);
+  const [canonicalWeeks, universalV1Canonical] = await Promise.all([
+    listDataSectionWeeks(),
+    getCanonicalSystemResult("universal_v1"),
+  ]);
   const weekOptions = buildDataWeekOptions({
     historicalWeeks: [
       ...universalSummary.by_week.map((row) => row.week_open_utc),
-      ...performanceWeeks,
+      ...canonicalWeeks,
     ],
     currentWeekOpenUtc,
     includeAll: false,
@@ -63,9 +66,18 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
   const selectedWeekStaticDrawdown = selectedUniversalWeek
     ? computeStaticDrawdown(selectedUniversalWeek.equity_curve)
     : 0;
-  const comparison = await buildPerformanceComparisonPayload("all");
-  const universalV1Comparison = comparison.strategies.universal_v1?.metrics ?? comparison.v1;
-  const universalV1Source = comparison.strategies.universal_v1?.source?.mode ?? "unknown";
+  const universalV1Comparison = {
+    totalReturn: universalV1Canonical?.simpleReturnPct ?? 0,
+    winRate: universalV1Canonical?.winRatePct ?? 0,
+    maxDrawdown: universalV1Canonical?.maxDrawdownSimplePct ?? 0,
+    trades: universalV1Canonical?.totalTrades ?? 0,
+    weeks: universalV1Canonical?.weeks ?? 0,
+    avgWeekly:
+      universalV1Canonical?.weeks
+        ? (universalV1Canonical.simpleReturnPct ?? 0) / universalV1Canonical.weeks
+        : 0,
+  };
+  const universalV1Source = universalV1Canonical ? "canonical reconstruction report" : "unavailable";
 
   return (
     <DashboardLayout>
@@ -134,12 +146,13 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
               />
               <KpiCard label="Weeks" value={`${universalV1Comparison.weeks}`} />
               <KpiCard
-                label="Trail start"
-                value={`${universalSummary.assumptions.trail_start_pct.toFixed(0)}%`}
+                label="Max DD"
+                value={`${universalV1Comparison.maxDrawdown.toFixed(2)}%`}
+                tone={universalV1Comparison.maxDrawdown > 0 ? "negative" : "neutral"}
               />
             </KpiGroup>
             <div className="text-[10px] uppercase tracking-[0.15em] text-[color:var(--muted)]">
-              Source: {universalV1Source.replaceAll("_", " ")}
+              Source: {universalV1Source}
             </div>
 
             {selectedUniversalWeek ? (
@@ -180,9 +193,9 @@ export default async function UniversalResearchPage({ searchParams }: PageProps)
                       key={row.week_open_utc}
                       className={`border-t border-[var(--panel-border)]/60 ${
                         top.has(row.week_open_utc)
-                          ? "bg-emerald-50/60"
+                          ? "bg-emerald-50/60 dark:bg-emerald-900/20"
                           : bottom.has(row.week_open_utc)
-                            ? "bg-rose-50/60"
+                            ? "bg-rose-50/60 dark:bg-rose-900/20"
                             : ""
                       }`}
                     >

@@ -1,5 +1,6 @@
 import { formatDateTimeET } from "@/lib/time";
 import { statusTone } from "@/lib/accounts/uiTones";
+import { classifyAccountPresentation } from "@/lib/accounts/accountClassification";
 import type { PlannedPair } from "@/lib/plannedTrades";
 import {
   type Mt5AccountLike,
@@ -16,6 +17,8 @@ import type { Mt5PlanningDiagnostics } from "@/lib/accounts/mt5Planning";
 
 type Mt5PageHeaderAccount = Partial<Mt5AccountLike> & {
   label?: string | null;
+  broker?: string | null;
+  server?: string | null;
   trade_mode?: string | null;
   risk_mode?: string | null;
   status?: string | null;
@@ -91,6 +94,13 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
 
   const closedGroups = buildMt5ClosedGroups(filteredClosedPositions);
   const journalRows = buildMt5JournalRows(account.recent_logs ?? [], changeLog);
+  const presentation = classifyAccountPresentation({
+    label: account.label,
+    broker: account.broker,
+    server: account.server,
+    provider: "mt5",
+    status: account.status,
+  });
   const kpiAccount: Mt5AccountLike = {
     equity: Number(account.equity ?? 0),
     balance: Number(account.balance ?? 0),
@@ -111,6 +121,9 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
     header: {
       title: String(account?.label ?? "Account"),
       providerLabel: "MT5",
+      accountTypeLabel: presentation.accountTypeLabel,
+      phaseLabel: presentation.phaseLabel,
+      phaseToneClass: presentation.phaseToneClass,
       tradeModeLabel: String(account?.trade_mode ?? "AUTO"),
       riskModeLabel: account?.risk_mode ?? null,
       statusLabel: String(account?.status ?? "UNKNOWN"),
@@ -141,10 +154,10 @@ export function buildMt5AccountClientViewProps(input: Mt5PagePropsInput) {
     },
     overview: {
       openPositions: filteredOpenPositions.length,
-      plannedCount: plannedPairs.length,
-      mappingCount: 0,
-      plannedNote: null,
-      journalCount: journalRows.length,
+      closedTrades: filteredClosedPositions.length,
+      secondaryCount: journalRows.length,
+      secondaryLabel: "Journal Entries",
+      secondaryHint: "Captured account activity and sync notes",
     },
     plannedSummary: plannedSummary ?? undefined,
     equity: {

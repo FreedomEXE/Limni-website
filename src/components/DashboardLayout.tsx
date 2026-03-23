@@ -1,24 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
+import PerformanceFlagshipSidebar from "@/components/performance/PerformanceFlagshipSidebar";
 import { resolveAccountView, type AccountPageView } from "@/lib/accounts/navigation";
-
-const PerformanceComparisonPanel = dynamic(
-  () => import("@/components/performance/PerformanceComparisonPanel"),
-  {
-    loading: () => (
-      <div className="flex-1 p-4 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-        Loading comparison...
-      </div>
-    ),
-  },
-);
 
 type NavItem = {
   key: string;
@@ -121,13 +110,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       ];
     }
     if (activeSection === "performance") {
-      return [
-        { href: "/performance?view=summary", label: "Summary" },
-        { href: "/performance?view=simulation", label: "Simulation" },
-        { href: "/performance?view=basket", label: "Basket" },
-        { href: "/performance?view=research", label: "Research" },
-        { href: "/performance?view=notes", label: "Notes" },
-      ];
+      // Performance uses a dedicated sidebar component instead of query-param subnav.
+      return [];
     }
     if (activeSection === "automation") {
       return [
@@ -155,16 +139,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
     if (activeSection === "news") {
       return [
-        { href: "/news?view=calendar", label: "Calendar" },
-        { href: "/news?view=announcements", label: "Announcements" },
-        { href: "/news?view=impact", label: "Impact" },
+        { href: "/news", label: "News" },
         { href: "/status", label: "Status" },
       ];
     }
     if (activeSection === "flagship") {
       return [
-        { href: "/flagship", label: "CFD Matrix" },
-        { href: "/flagship/crypto", label: "Crypto Matrix" },
+        { href: "/flagship", label: "Matrix" },
+        { href: "/flagship/weekly-hold", label: "Swing" },
+        { href: "/flagship/intraday", label: "Intraday" },
       ];
     }
     return [];
@@ -274,16 +257,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
     // Performance section: show V1/V2 comparison panel instead of subnav items
     if (activeSection === "performance") {
-      return <PerformanceComparisonPanel />;
+      return <PerformanceFlagshipSidebar />;
     }
 
     return (
       <nav className="flex-1 space-y-2 p-4">
         {subNavItems.map((item) => {
           const defaultView =
-            activeSection === "news"
-              ? "calendar"
-              : activeSection === "accounts"
+            activeSection === "accounts"
                 ? "overview"
                 : null;
           const resolvedViewParam =

@@ -78,6 +78,20 @@ function computeWorstWeekDrawdownFromWeeklyReturns(weeklyReturnsPct: number[]) {
   }, 0);
 }
 
+function computeCompoundedReturnFromWeeklyReturns(weeklyReturnsPct: number[]) {
+  if (weeklyReturnsPct.length === 0) return 0;
+  let equity = 1;
+  for (const value of weeklyReturnsPct) {
+    if (!Number.isFinite(value)) continue;
+    const multiplier = 1 + value / 100;
+    if (multiplier <= 0) {
+      return -100;
+    }
+    equity *= multiplier;
+  }
+  return (equity - 1) * 100;
+}
+
 function resolveSelectedWeek(period: KataraktiPeriodValue): string | null {
   if (!period || period === "all") return null;
   return normalizeWeek(period);
@@ -150,10 +164,7 @@ export function buildKataraktiPeriodMetrics(
   const weeks = selectKataraktiWeeks(snapshot, period);
   const selectedWeek = resolveSelectedWeek(period);
   const weeklyReturns = weeks.map((week) => week.returnPct);
-  const totalReturnPct =
-    selectedWeek === null && weeks.length === snapshot.weekly.length
-      ? snapshot.totalReturnPct
-      : weeklyReturns.reduce((sum, value) => sum + value, 0);
+  const totalReturnPct = computeCompoundedReturnFromWeeklyReturns(weeklyReturns);
   const weekWins = weeklyReturns.filter((value) => value > 0).length;
   const weeksCount = weeks.length;
   const trades = weeks.reduce((sum, week) => sum + week.trades, 0);
@@ -191,7 +202,10 @@ export function buildKataraktiPeriodMetrics(
     weeks: weeksCount,
     weeklyWinRatePct: weeksCount > 0 ? (weekWins / weeksCount) * 100 : 0,
     sharpe,
-    avgWeeklyPct: weeksCount > 0 ? totalReturnPct / weeksCount : 0,
+    avgWeeklyPct:
+      weeksCount > 0
+        ? weeklyReturns.reduce((sum, value) => sum + value, 0) / weeksCount
+        : 0,
     maxDrawdownPct: weeksCount > 0
       ? maxDrawdownFromWeeks
       : selectedWeek === null

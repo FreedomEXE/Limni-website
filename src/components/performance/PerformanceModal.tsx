@@ -73,7 +73,7 @@ function getPerformanceTier(percent: number, winRate: number) {
   return {
     label: "Weak",
     accent: "text-rose-700",
-    card: "border-rose-200 bg-rose-50/70",
+    card: "border-rose-200 bg-rose-50/70 dark:bg-rose-900/20",
     emoji: "--",
   };
 }
@@ -706,7 +706,7 @@ export default function PerformanceModal({
                       {stats.best_pair ? formatPercent(stats.best_pair.percent) : "--"}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-rose-200 bg-rose-50/70 p-3">
+                  <div className="rounded-lg border border-rose-200 bg-rose-50/70 dark:bg-rose-900/20 p-3">
                     <p className="text-xs uppercase tracking-[0.2em] text-rose-700">
                       Worst Performer
                     </p>

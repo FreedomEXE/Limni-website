@@ -79,7 +79,7 @@ export default function ConnectedAccountSizing({ accountKey }: { accountKey: str
       ) : null}
 
       {error ? (
-        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50/60 p-3 text-xs uppercase tracking-[0.2em] text-rose-700">
+        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50/60 dark:bg-rose-900/20 p-3 text-xs uppercase tracking-[0.2em] text-rose-700">
           {error}
         </div>
       ) : null}

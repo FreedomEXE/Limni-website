@@ -1,1067 +1,294 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: src/app/performance/page.tsx
+ *
+ * Description:
+ * Canonical Performance page backed by /api/performance/report.
+ * Promotes the weekly flagship, keeps intraday in research, and shows
+ * baseline vs gated comparisons side-by-side.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
 import DashboardLayout from "@/components/DashboardLayout";
-import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
-import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
-import PerformanceHeaderContext from "@/components/performance/PerformanceHeaderContext";
-import type { ComponentProps } from "react";
-import { listAssetClasses } from "@/lib/cotMarkets";
-import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
-import type { PairSnapshot } from "@/lib/cotTypes";
-import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
-import { getPairPerformance } from "@/lib/pricePerformance";
-import { readMarketSnapshot } from "@/lib/priceStore";
-import {
-  buildAllTimePerformance,
-} from "@/lib/performance/allTime";
-import {
-  PERFORMANCE_MODELS,
-  PERFORMANCE_MODEL_LABELS,
-  resolvePerformanceSystem,
-  type PerformanceSystem,
-} from "@/lib/performance/modelConfig";
-import {
-  buildPerformanceWeekFlags,
-  resolvePerformanceView,
-  resolveSelectedPerformanceWeek,
-} from "@/lib/performance/pageState";
-import { combinePerformanceModelTotals } from "@/lib/performance/pageTotals";
-import {
-  isWeekOpenUtc,
-  listPerformanceWeeks,
-  readAllPerformanceSnapshots,
-  readPerformanceSnapshotsByWeek,
-  weekLabelFromOpen,
-} from "@/lib/performanceSnapshots";
-import { computeModelPerformance } from "@/lib/performanceLab";
-import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
-import { formatDateTimeET, latestIso } from "@/lib/time";
-import { simulateTrailingForGroupsFromRows } from "@/lib/universalBasket";
-import { getCanonicalWeekOpenUtc, getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
-import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
-import { buildDataWeekOptions } from "@/lib/weekOptions";
-import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
-import { DateTime } from "luxon";
-import {
-  buildTieredAllTimeViewsFromWeekly,
-  computeTieredForWeeksAllSystems,
-  computeTieredWeekForAllSystems,
-  TIERED_DISPLAY_LABELS,
-} from "@/lib/performance/tiered";
-import {
-  readKataraktiMarketSnapshotsByVariant,
-  type KataraktiHistoryByMarket,
-  type KataraktiVariant,
-} from "@/lib/performance/kataraktiHistory";
-import {
-  buildKataraktiModelPerformance,
-  KATARAKTI_CARD_MODEL,
-} from "@/lib/performance/kataraktiMetrics";
-import {
-  listPerformanceStrategyEntriesByFamily,
-  resolveActiveStrategyEntry,
-  type PerformanceStrategyFamily,
-} from "@/lib/performance/strategyRegistry";
+import PerformanceAllSystemsTable, {
+  type PerformanceSystemComparisonRow,
+} from "@/components/performance/PerformanceAllSystemsTable";
+import PerformanceFlagshipCard, {
+  type PerformanceFlagshipCardData,
+} from "@/components/performance/PerformanceFlagshipCard";
+import type { CanonicalFlagships } from "@/lib/performance/canonicalFlagships";
+import type {
+  CanonicalPerformanceApiModel,
+  CanonicalPerformanceSystem,
+} from "@/lib/performance/canonicalPerformanceReport";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-const PERFORMANCE_PAGE_CACHE_TTL_MS = Number(
-  process.env.PERFORMANCE_PAGE_CACHE_TTL_MS ?? "15000",
-);
 
-function getPerformancePageCacheTtlMs() {
-  if (
-    Number.isFinite(PERFORMANCE_PAGE_CACHE_TTL_MS) &&
-    PERFORMANCE_PAGE_CACHE_TTL_MS >= 0
-  ) {
-    return Math.floor(PERFORMANCE_PAGE_CACHE_TTL_MS);
-  }
-  return 15000;
-}
-
-type PerformancePageProps = {
-  searchParams?:
-    | Record<string, string | string[] | undefined>
-    | Promise<Record<string, string | string[] | undefined>>;
+type PerformanceReportPayload = CanonicalPerformanceApiModel & {
+  flagships: CanonicalFlagships;
 };
 
-const KATARAKTI_MODEL_LABELS = {
-  ...PERFORMANCE_MODEL_LABELS,
-  [KATARAKTI_CARD_MODEL]: "Katarakti",
+type GroupedComparisonRow = {
+  id: string;
+  strategyName: string;
+  familyLabel: string;
+  baseline: CanonicalPerformanceSystem | null;
+  gated: CanonicalPerformanceSystem | null;
 };
 
-type TieredGridPropsBySystem = NonNullable<
-  ComponentProps<typeof PerformanceViewSection>["tieredGridPropsBySystem"]
->;
-type TieredGridProps = NonNullable<TieredGridPropsBySystem[PerformanceSystem]>;
-
-function buildKataraktiDescription(period: string | null | undefined) {
-  if (!period || period === "all") {
-    return "All-time historical snapshots for the selected market.";
-  }
-  return `${weekLabelFromOpen(period)}. Historical snapshot for the selected market.`;
+function getBaseSystemId(systemId: string) {
+  return systemId.endsWith("_gated") ? systemId.slice(0, -"_gated".length) : systemId;
 }
 
-function buildTieredGridProps(options: {
-  combinedModels: TieredGridProps["combined"]["models"];
-  perAssetModels: Record<string, TieredGridProps["perAsset"][number]["models"]>;
-  description: string;
-  assetClasses: ReturnType<typeof listAssetClasses>;
-}): TieredGridProps {
-  return {
-    combined: {
-      id: "combined",
-      label: "Combined Basket",
-      description: options.description,
-      models: options.combinedModels,
-    },
-    perAsset: options.assetClasses.map((asset) => ({
-      id: asset.id,
-      label: asset.label,
-      description: "Filter tiered performance for this asset class.",
-      models: options.perAssetModels[asset.id] ?? [],
-    })),
-    labels: TIERED_DISPLAY_LABELS,
-    calibration: undefined,
-    allTime: { combined: [], perAsset: {} },
-    showAllTime: false,
-  };
+function formatWindow(weeks: string[]) {
+  if (weeks.length === 0) return "No canonical weeks";
+  return `${weeks[0]?.slice(0, 10)} to ${weeks[weeks.length - 1]?.slice(0, 10)}`;
 }
 
-function isReportDateCurrentTradingWeek(
-  reportDate: string,
-  currentWeekOpenUtc: string,
-) {
-  const report = DateTime.fromISO(reportDate, { zone: "America/New_York" });
-  if (!report.isValid) return false;
-  const daysUntilMonday = (8 - report.weekday) % 7;
-  const mondayUtc = report
-    .plus({ days: daysUntilMonday })
-    .set({ hour: 0, minute: 0, second: 0, millisecond: 0 })
-    .toUTC()
-    .toISO();
-  return mondayUtc === currentWeekOpenUtc;
+function familyLabel(system: CanonicalPerformanceSystem | null) {
+  if (!system) return "System";
+  if (system.family === "universal") return "Universal";
+  if (system.family === "tiered") return "Tiered";
+  if (system.family === "model") return "Component Model";
+  return system.family;
 }
 
-function buildKataraktiGridPropsByVariantAndMarket(options: {
-  snapshotsByVariant: Record<KataraktiVariant, KataraktiHistoryByMarket>;
-  period: string | null | undefined;
-}): ComponentProps<typeof PerformanceViewSection>["kataraktiGridPropsByVariantAndMarket"] {
-  const description = buildKataraktiDescription(options.period);
-  const kataraktiEntries = listPerformanceStrategyEntriesByFamily("katarakti");
-  const makeGrid = (
-    variant: KataraktiVariant,
-    market: "crypto_futures" | "mt5_forex",
-  ) => {
-    const registryEntry = kataraktiEntries.find(
-      (entry) => entry.kataraktiVariant === variant && entry.market === market,
-    );
-    const label = registryEntry?.label ?? `${market} ${variant}`;
-    const snapshot = options.snapshotsByVariant[variant]?.[market] ?? null;
-    const model = snapshot
-      ? buildKataraktiModelPerformance(snapshot, options.period ?? "all")
-      : null;
-    const fallbackLabel = snapshot?.fallbackLabel?.trim() ?? "";
-    const fallbackIndicator =
-      fallbackLabel.length === 0
-        ? ""
-        : fallbackLabel.includes("Core baseline")
-          ? " (Core baseline)"
-          : fallbackLabel.toLowerCase().includes("pending")
-            ? " (Pending)"
-            : " (Fallback)";
-    const gridLabel = `${label}${fallbackIndicator}`;
-    const gridDescription = fallbackLabel
-      ? `${description} ${fallbackLabel}`
-      : description;
-    return {
-      combined: {
-        id: "combined",
-        label: gridLabel,
-        description: gridDescription,
-        models: model ? [model] : [],
-      },
-      perAsset: [],
-      labels: KATARAKTI_MODEL_LABELS,
-      calibration: undefined,
-      allTime: {
-        combined: [],
-        perAsset: {},
-      },
-      showAllTime: false,
-    };
-  };
+function buildGroupedRows(
+  baselineSystems: CanonicalPerformanceSystem[],
+  gatedSystems: CanonicalPerformanceSystem[],
+): GroupedComparisonRow[] {
+  const rows = new Map<string, GroupedComparisonRow>();
 
-  const variants: KataraktiVariant[] = ["core", "lite", "v3"];
-  const markets: Array<"crypto_futures" | "mt5_forex"> = ["crypto_futures", "mt5_forex"];
-  const result: Record<string, Record<string, ReturnType<typeof makeGrid>>> = {};
-  for (const variant of variants) {
-    result[variant] = {};
-    for (const market of markets) {
-      result[variant][market] = makeGrid(variant, market);
-    }
+  for (const system of baselineSystems) {
+    const baseId = getBaseSystemId(system.system);
+    rows.set(baseId, {
+      id: baseId,
+      strategyName: system.strategyName.replace(/ Net Hold$/u, ""),
+      familyLabel: familyLabel(system),
+      baseline: system,
+      gated: null,
+    });
   }
-  return result as ComponentProps<typeof PerformanceViewSection>["kataraktiGridPropsByVariantAndMarket"];
+
+  for (const system of gatedSystems) {
+    const baseId = getBaseSystemId(system.system);
+    const existing = rows.get(baseId);
+    rows.set(baseId, {
+      id: baseId,
+      strategyName: existing?.strategyName ?? system.strategyName.replace(/ Net Hold Gated$/u, "").replace(/ Gated$/u, ""),
+      familyLabel: existing?.familyLabel ?? familyLabel(system),
+      baseline: existing?.baseline ?? null,
+      gated: system,
+    });
+  }
+
+  return [...rows.values()];
 }
 
-function listClosedHistoricalWeeksFromPerformanceRows(
-  rows: Array<{ week_open_utc: string }>,
-  currentWeekMillis: number,
-) {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  const sorted = [...rows].sort((a, b) =>
-    DateTime.fromISO(b.week_open_utc, { zone: "utc" }).toMillis() -
-    DateTime.fromISO(a.week_open_utc, { zone: "utc" }).toMillis(),
-  );
-  for (const row of sorted) {
-    const weekMillis = DateTime.fromISO(row.week_open_utc, { zone: "utc" }).toMillis();
-    if (!Number.isFinite(weekMillis) || weekMillis >= currentWeekMillis) {
-      continue;
-    }
-    const canonical = normalizeWeekOpenUtc(row.week_open_utc) ?? row.week_open_utc;
-    if (seen.has(canonical)) {
-      continue;
-    }
-    seen.add(canonical);
-    out.push(canonical);
-  }
-  return out.sort(
-    (a, b) =>
-      DateTime.fromISO(a, { zone: "utc" }).toMillis() -
-      DateTime.fromISO(b, { zone: "utc" }).toMillis(),
-  );
-}
+function toComparisonRows(
+  rows: GroupedComparisonRow[],
+  promotedSystemId: string | null,
+): PerformanceSystemComparisonRow[] {
+  const promotedBaseId = promotedSystemId ? getBaseSystemId(promotedSystemId) : null;
+  return [...rows]
+    .sort((left, right) => {
+      const leftPromoted = left.id === promotedBaseId ? 1 : 0;
+      const rightPromoted = right.id === promotedBaseId ? 1 : 0;
+      if (leftPromoted !== rightPromoted) return rightPromoted - leftPromoted;
 
-async function getPerformanceSentimentForWeek(weekOpenUtc: string) {
-  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
-  const weekClose = weekOpen.isValid
-    ? weekOpen.plus({ days: 7 }).toUTC().toISO()
-    : null;
-  if (!weekClose) {
-    return [];
-  }
-  return getAggregatesForWeekStartWithBackfill(weekOpenUtc, weekClose);
-}
-
-async function getCachedTieredAllSystemsForWeeks(weeks: string[]) {
-  const normalizedWeeks = weeks.filter((week) => typeof week === "string" && week.length > 0);
-  if (normalizedWeeks.length === 0) {
-    return { v1: [], v2: [], v3: [] } as Awaited<
-      ReturnType<typeof computeTieredForWeeksAllSystems>
-    >;
-  }
-  const key = `performancePage:tiered:all_time:${normalizedWeeks.join(",")}`;
-  return getOrSetRuntimeCache(
-    key,
-    getPerformancePageCacheTtlMs(),
-    () => computeTieredForWeeksAllSystems({ weeks: normalizedWeeks }),
-  );
-}
-
-async function getCachedTrailingForGroups(options: {
-  weekOpenUtc: string;
-  groups: Parameters<typeof simulateTrailingForGroupsFromRows>[0]["groups"];
-}) {
-  const key = `performancePage:trailing:${options.weekOpenUtc}:${options.groups
-    .map((group) => `${group.key}:${group.rows.length}`)
-    .join("|")}`;
-  return getOrSetRuntimeCache(
-    key,
-    getPerformancePageCacheTtlMs(),
-    () =>
-      simulateTrailingForGroupsFromRows({
-        weekOpenUtc: options.weekOpenUtc,
-        groups: options.groups,
-        trailStartPct: 10,
-        trailOffsetPct: 5,
-        timeframe: "H1",
-      }),
-  );
-}
-
-function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
-  const pairDefs = PAIRS_BY_ASSET_CLASS[assetId as keyof typeof PAIRS_BY_ASSET_CLASS] ?? [];
-  const pairs: Record<string, PairSnapshot> = {};
-  for (const pair of pairDefs) {
-    pairs[pair.pair] = {
-      direction: "LONG",
-      base_bias: "NEUTRAL",
-      quote_bias: "NEUTRAL",
-    };
-  }
-  return pairs;
-}
-
-const PERF_TRACE_ENABLED =
-  process.env.PERF_TRACE_PERFORMANCE_PAGE === "1" || process.env.NODE_ENV !== "production";
-
-function perfNowMs() {
-  return Number(process.hrtime.bigint()) / 1_000_000;
-}
-
-function traceDuration(
-  label: string,
-  startMs: number,
-  context?: Record<string, unknown>,
-) {
-  if (!PERF_TRACE_ENABLED) {
-    return;
-  }
-  const durationMs = perfNowMs() - startMs;
-  if (context) {
-    console.info(`[performance-page] ${label} ${durationMs.toFixed(1)}ms`, context);
-  } else {
-    console.info(`[performance-page] ${label} ${durationMs.toFixed(1)}ms`);
-  }
-}
-
-async function timed<T>(
-  label: string,
-  context: Record<string, unknown>,
-  task: () => Promise<T>,
-): Promise<T> {
-  const startMs = perfNowMs();
-  try {
-    return await task();
-  } finally {
-    traceDuration(label, startMs, context);
-  }
-}
-
-function timedSync<T>(
-  label: string,
-  context: Record<string, unknown>,
-  task: () => T,
-): T {
-  const startMs = perfNowMs();
-  try {
-    return task();
-  } finally {
-    traceDuration(label, startMs, context);
-  }
-}
-
-export default async function PerformancePage({ searchParams }: PerformancePageProps) {
-  const pageStartMs = perfNowMs();
-  const resolvedSearchParams = await Promise.resolve(searchParams);
-  const weekParam = resolvedSearchParams?.week;
-  const weekParamValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
-  const viewParam = resolvedSearchParams?.view;
-  const viewParamValue = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-  const systemParam = resolvedSearchParams?.system;
-  const systemParamValue = Array.isArray(systemParam) ? systemParam[0] : systemParam;
-  const styleParam = resolvedSearchParams?.style;
-  const styleParamValue = Array.isArray(styleParam) ? styleParam[0] : styleParam;
-  const marketParam = resolvedSearchParams?.market;
-  const marketParamValue = Array.isArray(marketParam) ? marketParam[0] : marketParam;
-  const variantParam = resolvedSearchParams?.variant;
-  const variantParamValue = Array.isArray(variantParam) ? variantParam[0] : variantParam;
-
-  const initialSystem = resolvePerformanceSystem(systemParamValue);
-  const initialStyle: PerformanceStrategyFamily =
-    styleParamValue === "tiered" || styleParamValue === "katarakti"
-      ? styleParamValue
-      : "universal";
-  const rawMarket = marketParamValue === "mt5_forex" ? "mt5_forex" : "crypto_futures";
-  const rawVariant: KataraktiVariant =
-    variantParamValue === "lite" ? "lite" : variantParamValue === "v3" ? "v3" : "core";
-  const initialKataraktiEntry = resolveActiveStrategyEntry({
-    family: "katarakti",
-    kataraktiVariant: rawVariant,
-    kataraktiMarket: rawMarket,
-  });
-  const initialKataraktiMarket = initialKataraktiEntry?.market ?? rawMarket;
-  const initialKataraktiVariant = initialKataraktiEntry?.kataraktiVariant ?? rawVariant;
-  const view = resolvePerformanceView(viewParamValue);
-  const assetClasses = listAssetClasses();
-  const models = PERFORMANCE_MODELS;
-
-  const desiredWeeks = 52;
-  let weekOptions: string[] = [];
-  const displayWeekOpenUtc = getDisplayWeekOpenUtc();
-  const tradingWeekOpenUtc = getCanonicalWeekOpenUtc();
-  const currentWeekStart = DateTime.fromISO(tradingWeekOpenUtc, { zone: "utc" });
-
-  let reportOptions: string[] = [];
-  try {
-    const recentWeeks = await timed(
-      "listPerformanceWeeks",
-      { desiredWeeks },
-      () => listPerformanceWeeks(desiredWeeks),
-    );
-    weekOptions = buildDataWeekOptions({
-      historicalWeeks: recentWeeks,
-      currentWeekOpenUtc: displayWeekOpenUtc,
-      includeAll: false,
-      limit: desiredWeeks,
-    }) as string[];
-  } catch (error) {
-    console.error(
-      "Performance snapshot list failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
-  if (weekOptions.length === 0) {
-    try {
-      reportOptions = await timed(
-        "fallback.listSnapshotDates",
-        { assetClassCount: assetClasses.length },
-        () =>
-          Promise.all(assetClasses.map((asset) => listSnapshotDates(asset.id))).then((lists) => {
-            if (lists.length === 0) {
-              return [];
-            }
-            return lists.reduce((acc, list) => acc.filter((date) => list.includes(date)));
-          }),
-      );
-    } catch (error) {
-      console.error(
-        "COT snapshot list failed:",
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-  }
-
-  const weekSelectorOptions = weekOptions.length > 0 ? ["all", ...weekOptions] : weekOptions;
-  const resolvedSelectedWeek = resolveSelectedPerformanceWeek({
-    weekParamValue,
-    weekOptions: weekSelectorOptions,
-    currentWeekOpenUtc: displayWeekOpenUtc,
-  });
-  const selectedWeek =
-    weekParamValue == null && weekSelectorOptions.includes("all")
-      ? "all"
-      : resolvedSelectedWeek;
-
-  let kataraktiSnapshotsByVariant: Record<KataraktiVariant, KataraktiHistoryByMarket> = {
-    core: {
-      crypto_futures: null,
-      mt5_forex: null,
-    },
-    lite: {
-      crypto_futures: null,
-      mt5_forex: null,
-    },
-    v3: {
-      crypto_futures: null,
-      mt5_forex: null,
-    },
-  };
-  try {
-    const [coreSnapshots, liteSnapshots, v3Snapshots] = await Promise.all([
-      readKataraktiMarketSnapshotsByVariant("core"),
-      readKataraktiMarketSnapshotsByVariant("lite"),
-      readKataraktiMarketSnapshotsByVariant("v3"),
-    ]);
-    kataraktiSnapshotsByVariant = {
-      core: coreSnapshots,
-      lite: liteSnapshots,
-      v3: v3Snapshots,
-    };
-  } catch (error) {
-    console.error(
-      "Katarakti snapshots failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
-  const kataraktiGridPropsByVariantAndMarket = buildKataraktiGridPropsByVariantAndMarket({
-    snapshotsByVariant: kataraktiSnapshotsByVariant,
-    period: selectedWeek ?? "all",
-  });
-
-  if (selectedWeek === "all") {
-    const branchStartMs = perfNowMs();
-    let historyRows: Awaited<ReturnType<typeof readAllPerformanceSnapshots>> = [];
-    try {
-      historyRows = await timed(
-        "all_time.readAllPerformanceSnapshots",
-        { selectedWeek },
-        () => readAllPerformanceSnapshots(),
-      );
-    } catch (error) {
-      console.error(
-        "Performance snapshot history failed:",
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-
-    const nowUtc = DateTime.utc().toMillis();
-    const currentWeekMillis = currentWeekStart.isValid
-      ? currentWeekStart.toMillis()
-      : nowUtc;
-    const allTimePerformanceCombined = timedSync(
-      "all_time.buildAllTimePerformance.combined",
-      { rows: historyRows.length, modelCount: models.length },
-      () => buildAllTimePerformance(
-        historyRows,
-        models,
-        currentWeekMillis,
-        nowUtc,
-      ),
-    );
-    const allTimePerformanceByAsset = new Map<string, ReturnType<typeof buildAllTimePerformance>>();
-    timedSync(
-      "all_time.buildAllTimePerformance.per_asset",
-      { rows: historyRows.length, assetClassCount: assetClasses.length },
-      () => {
-        assetClasses.forEach((asset) => {
-          const rows = historyRows.filter((row) => row.asset_class === asset.id);
-          allTimePerformanceByAsset.set(
-            asset.id,
-            buildAllTimePerformance(rows, models, currentWeekMillis, nowUtc),
-          );
-        });
-      },
-    );
-
-    const perAsset = assetClasses.map((asset) => ({
-      asset,
-      results: allTimePerformanceByAsset.get(asset.id) ?? [],
+      const leftReturn = left.gated?.simpleReturnPct ?? left.baseline?.simpleReturnPct ?? Number.NEGATIVE_INFINITY;
+      const rightReturn = right.gated?.simpleReturnPct ?? right.baseline?.simpleReturnPct ?? Number.NEGATIVE_INFINITY;
+      return rightReturn - leftReturn;
+    })
+    .map((row) => ({
+      id: row.id,
+      strategyName: row.strategyName,
+      familyLabel: row.familyLabel,
+      promoted: row.id === promotedBaseId,
+      baseline: row.baseline
+        ? {
+            returnPct: row.baseline.simpleReturnPct,
+            winRatePct: row.baseline.winRatePct,
+            maxDrawdownPct: row.baseline.maxDrawdownSimplePct,
+            trades: row.baseline.totalTrades,
+            weeks: row.baseline.weeks,
+          }
+        : null,
+      gated: row.gated
+        ? {
+            returnPct: row.gated.simpleReturnPct,
+            winRatePct: row.gated.winRatePct,
+            maxDrawdownPct: row.gated.maxDrawdownSimplePct,
+            trades: row.gated.totalTrades,
+            weeks: row.gated.weeks,
+          }
+        : null,
     }));
-    const anyPriced = allTimePerformanceCombined.some((result) => result.total > 0);
+}
 
-    let tieredGridPropsBySystem: ComponentProps<typeof PerformanceViewSection>["tieredGridPropsBySystem"];
-    try {
-      const closedWeeks = listClosedHistoricalWeeksFromPerformanceRows(historyRows, currentWeekMillis);
-      if (closedWeeks.length > 0) {
-        const tieredWeeklyBySystem = await timed(
-          "all_time.computeTieredForWeeksAllSystems",
-          { weeks: closedWeeks.length },
-          () => getCachedTieredAllSystemsForWeeks(closedWeeks),
-        );
-        const tieredViews = timedSync(
-          "all_time.buildTieredAllTimeViewsFromWeekly",
-          { weeks: closedWeeks.length },
-          () => buildTieredAllTimeViewsFromWeekly(tieredWeeklyBySystem),
-        );
-        const tieredDescription =
-          "All asset classes aggregated. All-time tiered view (scaled to universal margin).";
-        tieredGridPropsBySystem = {
-          v1: buildTieredGridProps({
-            combinedModels: tieredViews.v1.combined,
-            perAssetModels: tieredViews.v1.perAsset,
-            description: tieredDescription,
-            assetClasses,
-          }),
-          v2: buildTieredGridProps({
-            combinedModels: tieredViews.v2.combined,
-            perAssetModels: tieredViews.v2.perAsset,
-            description: tieredDescription,
-            assetClasses,
-          }),
-          v3: buildTieredGridProps({
-            combinedModels: tieredViews.v3.combined,
-            perAssetModels: tieredViews.v3.perAsset,
-            description: tieredDescription,
-            assetClasses,
-          }),
-        };
-      }
-    } catch (error) {
-      console.error(
-        "Tiered all-time performance build failed:",
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-    traceDuration("branch.all_time.total", branchStartMs, {
-      selectedWeek,
-      anyPriced,
-      historyRows: historyRows.length,
-    });
-    traceDuration("page.total", pageStartMs, {
-      selectedWeek,
-      branch: "all_time",
-    });
+function buildWeeklyCardData(
+  weeklySystem: CanonicalPerformanceSystem | null,
+  baselineSystem: CanonicalPerformanceSystem | null,
+  flagships: CanonicalFlagships,
+): PerformanceFlagshipCardData {
+  return {
+    id: "weekly-hold",
+    heading: "Weekly Hold",
+    strategyName: weeklySystem?.strategyName ?? flagships.weekly.strategyName,
+    sourceLabel: flagships.weekly.sourceLabel,
+    reason: flagships.weekly.reason,
+    statusLabel: flagships.weekly.status === "locked" ? "Flagship" : "Provisional",
+    statusTone: flagships.weekly.status === "locked" ? "positive" : "warning",
+    returnPct: weeklySystem?.simpleReturnPct ?? flagships.weekly.metrics.simpleReturnPct,
+    winRatePct: weeklySystem?.winRatePct ?? flagships.weekly.metrics.winRatePct,
+    maxDrawdownPct:
+      weeklySystem?.maxDrawdownSimplePct ?? flagships.weekly.metrics.maxDrawdownSimplePct,
+    trades: weeklySystem?.totalTrades ?? flagships.weekly.metrics.trades,
+    weeksCovered: weeklySystem?.weeks ?? flagships.weekly.sampleWeeks,
+    weeklyRows: (weeklySystem?.weeklyReturns ?? []).map((row) => ({
+      weekOpenUtc: row.weekOpenUtc,
+      returnPercent: row.returnPct,
+      pricedTrades: row.trades,
+      wins: row.wins,
+    })),
+    comparison: baselineSystem
+      ? {
+          label: "Baseline comparison",
+          returnPct: baselineSystem.simpleReturnPct,
+          winRatePct: baselineSystem.winRatePct,
+          maxDrawdownPct: baselineSystem.maxDrawdownSimplePct,
+          trades: baselineSystem.totalTrades,
+        }
+      : null,
+  };
+}
 
+function buildIntradayCardData(flagships: CanonicalFlagships): PerformanceFlagshipCardData {
+  return {
+    id: "intraday",
+    heading: "Intraday",
+    strategyName: flagships.intraday.strategyName,
+    sourceLabel: flagships.intraday.sourceLabel,
+    reason: flagships.intraday.reason,
+    statusLabel: "Research",
+    statusTone: "neutral",
+    returnPct: null,
+    winRatePct: null,
+    maxDrawdownPct: null,
+    trades: null,
+    weeksCovered: null,
+    weeklyRows: [],
+    comparison: null,
+  };
+}
+
+async function readPerformanceReportPayload(): Promise<PerformanceReportPayload> {
+  const headerBag = await headers();
+  const host = headerBag.get("x-forwarded-host") ?? headerBag.get("host");
+  if (!host) {
+    throw new Error("Unable to resolve host for /api/performance/report");
+  }
+  const protocol = headerBag.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  const response = await fetch(`${protocol}://${host}/api/performance/report`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Performance report request failed with status ${response.status}`);
+  }
+
+  return response.json() as Promise<PerformanceReportPayload>;
+}
+
+export default async function PerformancePage() {
+  let payload: PerformanceReportPayload | null = null;
+  let loadError: string | null = null;
+
+  try {
+    payload = await readPerformanceReportPayload();
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : "Unknown error";
+  }
+
+  if (!payload) {
     return (
       <DashboardLayout>
-        <div className="space-y-8">
-          <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-                Performance
-              </h1>
-              <PerformanceHeaderContext
-                initialStyle={initialStyle}
-                initialSystem={initialSystem}
-                initialKataraktiMarket={initialKataraktiMarket}
-                initialKataraktiVariant={initialKataraktiVariant}
-                className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]"
-              />
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                Last refresh Historical snapshots
-              </span>
-              {weekSelectorOptions.length > 0 ? (
-                <ScrollableWeekStrip
-                  options={weekSelectorOptions}
-                  selected={selectedWeek ?? weekOptions[0]}
-                  currentWeek={displayWeekOpenUtc}
-                  label="Week"
-                  preserveParams={["view", "system", "style", "market", "variant", "report"]}
-                  replaceState
-                />
-              ) : (
-                <div className="text-xs text-[color:var(--muted)]">
-                  No weekly snapshots yet.
-                </div>
-              )}
-            </div>
-          </header>
-
-          {!anyPriced ? (
-            <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-3 text-xs text-[var(--accent-strong)]">
-              No historical performance snapshots yet.
-            </div>
-          ) : null}
-
-          <PerformanceViewSection
-            initialView={view}
-            initialSystem={initialSystem}
-            initialKataraktiMarket={initialKataraktiMarket}
-            initialKataraktiVariant={initialKataraktiVariant}
-            initialStyle={initialStyle}
-            universalGridProps={{
-              combined: {
-                id: "combined",
-                label: "Combined Basket",
-                description: "All asset classes aggregated. All-time view.",
-                models: allTimePerformanceCombined,
-              },
-              perAsset: perAsset.map((asset) => ({
-                id: asset.asset.id,
-                label: asset.asset.label,
-                description: "Filter performance for this asset class.",
-                models: asset.results,
-              })),
-              labels: PERFORMANCE_MODEL_LABELS,
-              calibration: undefined,
-              allTime: {
-                combined: [],
-                perAsset: {},
-              },
-              showAllTime: false,
-            }}
-            tieredGridPropsBySystem={tieredGridPropsBySystem}
-            kataraktiGridPropsByVariantAndMarket={kataraktiGridPropsByVariantAndMarket}
-          />
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-200">
+          Failed to load `/api/performance/report`. {loadError ?? "Canonical performance payload is unavailable."}
         </div>
       </DashboardLayout>
     );
   }
 
-  const reportParam = resolvedSearchParams?.report;
-  const selectedReport =
-    typeof reportParam === "string" && reportOptions.includes(reportParam)
-      ? reportParam
-      : reportOptions[0] ?? null;
+  const compositeRows = buildGroupedRows(
+    payload.collections.composites.baseline,
+    payload.collections.composites.gated,
+  );
+  const modelRows = buildGroupedRows(
+    payload.collections.models.baseline,
+    payload.collections.models.gated,
+  );
 
-  const validWeek = selectedWeek && selectedWeek !== "all" ? isWeekOpenUtc(selectedWeek) : true;
-  let weekSnapshots: Awaited<ReturnType<typeof readPerformanceSnapshotsByWeek>> = [];
-  if (selectedWeek && selectedWeek !== "all") {
-    try {
-      weekSnapshots = await timed(
-        "readPerformanceSnapshotsByWeek",
-        { selectedWeek },
-        () => readPerformanceSnapshotsByWeek(selectedWeek),
-      );
-    } catch (error) {
-      console.error(
-        "Performance snapshot load failed:",
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-  }
-  const hasSnapshots = weekSnapshots.length > 0;
-  const {
-    isCurrentWeekSelected,
-    isFutureWeekSelected,
-    isHistoricalWeekSelected,
-  } = buildPerformanceWeekFlags({
-    selectedWeek,
-    currentWeekOpenUtc: displayWeekOpenUtc,
-    tradingWeekOpenUtc,
-    hasSnapshots,
-  });
+  const weeklySystem =
+    payload.collections.composites.gated.find(
+      (entry) => entry.system === payload.flagships.weekly.systemId,
+    ) ?? null;
+  const weeklyBaselineSystem =
+    payload.flagships.weekly.systemId
+      ? payload.collections.composites.baseline.find(
+          (entry) => entry.system === getBaseSystemId(payload.flagships.weekly.systemId ?? ""),
+        ) ?? null
+      : null;
 
-  let latestPriceRefresh: string | null = null;
-  try {
-    const marketSnapshots = await timed(
-      "readMarketSnapshot.all_assets",
-      { selectedWeek: selectedWeek ?? null, assetClassCount: assetClasses.length },
-      () => Promise.all(
-        assetClasses.map((asset) =>
-          readMarketSnapshot(selectedWeek ?? undefined, asset.id),
-        ),
-      ),
-    );
-    latestPriceRefresh = latestIso(
-      marketSnapshots.map((snapshot) => snapshot?.last_refresh_utc),
-    );
-  } catch (error) {
-    console.error(
-      "Market snapshot load failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
-
-  let perAsset: Array<{
-    asset: (typeof assetClasses)[number];
-    results: Awaited<ReturnType<typeof computeModelPerformance>>[];
-  }> = [];
-  let totals: Array<Awaited<ReturnType<typeof computeModelPerformance>>> = [];
-  let anyPriced = false;
-  let branchLabel = "unknown";
-  let tieredGridPropsBySystem: ComponentProps<typeof PerformanceViewSection>["tieredGridPropsBySystem"];
-  const branchStartMs = perfNowMs();
-
-  if (isFutureWeekSelected) {
-    branchLabel = "future_week";
-    const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
-    const sentimentForSelectedWeek = await timed(
-      "future_week.getPerformanceSentimentForWeek",
-      { selectedWeek: selectedWeek ?? displayWeekOpenUtc },
-      () => getPerformanceSentimentForWeek(selectedWeek ?? displayWeekOpenUtc),
-    );
-    const snapshotResults = await timed(
-      "future_week.readSnapshot.all_assets",
-      { assetClassCount: assetClasses.length },
-      () => Promise.all(
-        assetClasses.map((asset) => readSnapshot({ assetClass: asset.id })),
-      ),
-    );
-    snapshotResults.forEach((snapshot, index) => {
-      snapshots.set(assetClasses[index].id, snapshot);
-    });
-
-    perAsset = await timed(
-      "future_week.compute.per_asset",
-      { assetClassCount: assetClasses.length, modelCount: models.length },
-      () => Promise.all(
-        assetClasses.map(async (asset) => {
-          const snapshot = snapshots.get(asset.id);
-          if (!snapshot) {
-            return { asset, results: [] as Awaited<ReturnType<typeof computeModelPerformance>>[] };
-          }
-          const performance = await getPairPerformance(buildAllPairs(asset.id), {
-            assetClass: asset.id,
-            reportDate: snapshot.report_date,
-            isLatestReport: false,
-          });
-          const results = await Promise.all(
-            models.map((model) =>
-              computeModelPerformance({
-                model,
-                assetClass: asset.id,
-                snapshot,
-                sentiment: sentimentForSelectedWeek,
-                performance,
-              }),
-            ),
-          );
-          return { asset, results };
-        }),
-      ),
-    );
-
-    totals = timedSync(
-      "future_week.combinePerformanceModelTotals",
-      { assetClassCount: perAsset.length, modelCount: models.length },
-      () => combinePerformanceModelTotals({
-        models,
-        perAsset: perAsset.map((asset) => ({ assetLabel: asset.asset.label, results: asset.results })),
-      }),
-    );
-    anyPriced = totals.some((result) => result.priced > 0);
-  } else if (hasSnapshots && isHistoricalWeekSelected) {
-    branchLabel = "historical_week";
-    const historicalWeekOpenUtc = selectedWeek as string;
-    const groups = [
-      ...models.map((model) => ({
-        key: `combined:${model}`,
-        rows: weekSnapshots.filter((row) => row.model === model),
-      })),
-      ...assetClasses.flatMap((asset) =>
-        models.map((model) => ({
-          key: `${asset.id}:${model}`,
-          rows: weekSnapshots.filter(
-            (row) => row.asset_class === asset.id && row.model === model,
-          ),
-        })),
-      ),
-    ];
-    const trailingByGroup = await timed(
-      "historical_week.simulateTrailingForGroupsFromRows",
-      { selectedWeek: historicalWeekOpenUtc, groupCount: groups.length },
-      () =>
-        getCachedTrailingForGroups({
-          weekOpenUtc: historicalWeekOpenUtc,
-          groups,
-        }),
-    );
-
-    const byAsset = timedSync(
-      "historical_week.build.by_asset",
-      { snapshotRows: weekSnapshots.length },
-      () => {
-        const grouped = new Map<string, Awaited<ReturnType<typeof computeModelPerformance>>[]>();
-        weekSnapshots.forEach((snapshot) => {
-          const modelLabel = snapshot.model;
-          const entry = grouped.get(snapshot.asset_class) ?? [];
-          entry.push({
-            model: modelLabel,
-            percent: snapshot.percent,
-            priced: snapshot.priced,
-            total: snapshot.total,
-            note: snapshot.note,
-            returns: snapshot.returns,
-            pair_details: snapshot.pair_details,
-            stats: snapshot.stats,
-            trailing: trailingByGroup[`${snapshot.asset_class}:${snapshot.model}`],
-          });
-          grouped.set(snapshot.asset_class, entry);
-        });
-        return grouped;
-      },
-    );
-
-    perAsset = assetClasses.map((asset) => ({
-      asset,
-      results: byAsset.get(asset.id) ?? [],
-    }));
-
-    totals = timedSync(
-      "historical_week.combinePerformanceModelTotals",
-      { assetClassCount: perAsset.length, modelCount: models.length },
-      () => combinePerformanceModelTotals({
-        models,
-        perAsset: perAsset.map((asset) => ({ assetLabel: asset.asset.label, results: asset.results })),
-        labelWithAsset: true,
-        trailingByCombinedModel: trailingByGroup,
-      }),
-    );
-    anyPriced = totals.some((result) => result.priced > 0);
-  } else {
-    branchLabel = isCurrentWeekSelected ? "current_week" : "report_week";
-    const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
-    const sentimentForSelectedWeek = await timed(
-      "live_or_report.getPerformanceSentimentForWeek",
-      { selectedWeek: selectedWeek ?? tradingWeekOpenUtc },
-      () => getPerformanceSentimentForWeek(selectedWeek ?? tradingWeekOpenUtc),
-    );
-    const snapshotResults = await timed(
-      "live_or_report.readSnapshot.all_assets",
-      {
-        assetClassCount: assetClasses.length,
-        isCurrentWeekSelected,
-        selectedReport: selectedReport ?? null,
-      },
-      () => Promise.all(
-        assetClasses.map((asset) =>
-          isCurrentWeekSelected
-            ? readSnapshot({ assetClass: asset.id })
-            : selectedReport
-              ? readSnapshot({ assetClass: asset.id, reportDate: selectedReport })
-              : readSnapshot({ assetClass: asset.id }),
-        ),
-      ),
-    );
-    snapshotResults.forEach((snapshot, index) => {
-      snapshots.set(assetClasses[index].id, snapshot);
-    });
-
-    perAsset = await timed(
-      "live_or_report.compute.per_asset",
-      { assetClassCount: assetClasses.length, modelCount: models.length, isCurrentWeekSelected },
-      () => Promise.all(
-        assetClasses.map(async (asset) => {
-          const snapshot = snapshots.get(asset.id);
-          if (!snapshot) {
-            return { asset, results: [] as Awaited<ReturnType<typeof computeModelPerformance>>[] };
-          }
-          const useLatestReport = isCurrentWeekSelected;
-          const performance = await getPairPerformance(buildAllPairs(asset.id), {
-            assetClass: asset.id,
-            reportDate: snapshot.report_date,
-            isLatestReport: useLatestReport,
-          });
-
-          const results = await Promise.all(
-            models.map((model) =>
-              computeModelPerformance({
-                model,
-                assetClass: asset.id,
-                snapshot,
-                sentiment: sentimentForSelectedWeek,
-                performance,
-              }),
-            ),
-          );
-          return { asset, results };
-        }),
-      ),
-    );
-
-    totals = timedSync(
-      "live_or_report.combinePerformanceModelTotals",
-      { assetClassCount: perAsset.length, modelCount: models.length },
-      () => combinePerformanceModelTotals({
-        models,
-        perAsset: perAsset.map((asset) => ({ assetLabel: asset.asset.label, results: asset.results })),
-      }),
-    );
-    anyPriced = totals.some((result) => result.priced > 0);
-  }
-
-  if (selectedWeek && selectedWeek !== "all" && isWeekOpenUtc(selectedWeek)) {
-    try {
-      const tieredBySystem = await timed(
-        "tiered.computeTieredWeekForAllSystems",
-        { selectedWeek },
-        () => computeTieredWeekForAllSystems({ weekOpenUtc: selectedWeek }),
-      );
-      tieredGridPropsBySystem = (["v1", "v2", "v3"] as const).reduce((acc, system) => {
-        const result = tieredBySystem[system];
-        if (!result) {
-          return acc;
-        }
-        acc[system] = buildTieredGridProps({
-          combinedModels: result.combined,
-          perAssetModels: result.perAsset,
-          description: `${weekLabelFromOpen(selectedWeek)}. Tiered ${system.toUpperCase()} (scaled to universal margin).`,
-          assetClasses,
-        });
-        return acc;
-      }, {} as TieredGridPropsBySystem);
-    } catch (error) {
-      console.error(
-        "Tiered weekly performance build failed:",
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-  }
-
-  traceDuration("branch.total", branchStartMs, {
-    branch: branchLabel,
-    selectedWeek: selectedWeek ?? null,
-    hasSnapshots,
-    anyPriced,
-    assetClassCount: perAsset.length,
-  });
-
-  const lastRefreshText =
-    latestPriceRefresh
-      ? formatDateTimeET(latestPriceRefresh)
-      : isFutureWeekSelected
-        ? "Waiting for week open"
-        : hasSnapshots
-          ? "Snapshot loaded; waiting for first price refresh"
-          : "No refresh yet";
-
-  traceDuration("page.total", pageStartMs, {
-    selectedWeek: selectedWeek ?? null,
-    branch: branchLabel,
-    hasSnapshots,
-    anyPriced,
-  });
+  const weeklyCard = buildWeeklyCardData(weeklySystem, weeklyBaselineSystem, payload.flagships);
+  const intradayCard = buildIntradayCardData(payload.flagships);
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <header className="space-y-3">
           <div>
-              <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-                Performance
-              </h1>
-              <PerformanceHeaderContext
-                initialStyle={initialStyle}
-                initialSystem={initialSystem}
-                initialKataraktiMarket={initialKataraktiMarket}
-                initialKataraktiVariant={initialKataraktiVariant}
-                className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]"
-              />
-            </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Last refresh{" "}
-              {lastRefreshText}
-            </span>
-            {weekSelectorOptions.length > 0 ? (
-              <ScrollableWeekStrip
-                options={weekSelectorOptions}
-                selected={selectedWeek ?? weekOptions[0]}
-                currentWeek={displayWeekOpenUtc}
-                label="Week"
-                preserveParams={["view", "system", "style", "market", "variant", "report"]}
-                replaceState
-              />
-            ) : reportOptions.length > 0 ? (
-              <ScrollableWeekStrip
-                options={reportOptions}
-                selected={selectedReport ?? reportOptions[0]}
-                label="Report"
-                paramName="report"
-                preserveParams={["view", "system", "style", "market", "variant", "week"]}
-                isCurrentOption={(value) =>
-                  isReportDateCurrentTradingWeek(String(value), displayWeekOpenUtc)
-                }
-                replaceState
-              />
-            ) : (
-              <div className="text-xs text-[color:var(--muted)]">
-                No weekly snapshots yet.
-              </div>
-            )}
+            <h1 className="text-3xl font-semibold text-[var(--foreground)]">
+              Strategy Performance
+            </h1>
+            <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Canonical Weekly Window · {formatWindow(payload.meta.canonicalWeeks)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[var(--accent)]/25 bg-[var(--accent)]/8 px-4 py-3 text-sm leading-6 text-[var(--foreground)]/88">
+            Simple return is the headline methodology. Gated and baseline composite systems are shown side-by-side, and the current weekly flagship is promoted with the `9-week sample` caveat intact.
           </div>
         </header>
 
-        {!anyPriced && !isFutureWeekSelected ? (
-          <div className="rounded-2xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-4 py-3 text-xs text-[var(--accent-strong)]">
-            No priced pairs yet. Prices populate when the scheduled refresh runs.
-          </div>
-        ) : null}
-        {!validWeek && weekParam ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs text-rose-700">
-            Invalid week value. Select a valid week from the dropdown.
-          </div>
-        ) : null}
+        <div className="grid gap-6 xl:grid-cols-2">
+          <PerformanceFlagshipCard data={weeklyCard} />
+          <PerformanceFlagshipCard data={intradayCard} />
+        </div>
 
-        <PerformanceViewSection
-          initialView={view}
-          initialSystem={initialSystem}
-          initialKataraktiMarket={initialKataraktiMarket}
-          initialKataraktiVariant={initialKataraktiVariant}
-          initialStyle={initialStyle}
-          universalGridProps={{
-            combined: {
-              id: "combined",
-              label: "Combined Basket",
-              description: selectedWeek
-                ? `All asset classes aggregated. ${weekLabelFromOpen(selectedWeek)}.`
-                : selectedReport
-                  ? `All asset classes aggregated. Report week ${selectedReport}.`
-                  : "All asset classes aggregated.",
-              models: totals,
-            },
-            perAsset: perAsset.map((asset) => ({
-              id: asset.asset.id,
-              label: asset.asset.label,
-              description: "Filter performance for this asset class.",
-              models: asset.results,
-            })),
-            labels: PERFORMANCE_MODEL_LABELS,
-            calibration: undefined,
-            allTime: {
-              combined: [],
-              perAsset: {},
-            },
-            showAllTime: false,
-          }}
-          tieredGridPropsBySystem={tieredGridPropsBySystem}
-          kataraktiGridPropsByVariantAndMarket={kataraktiGridPropsByVariantAndMarket}
+        <PerformanceAllSystemsTable
+          rows={toComparisonRows(compositeRows, payload.flagships.weekly.systemId)}
+          id="all-systems"
+          title="Composite Systems"
+          description="Composite weekly systems with baseline and gated variants visible together. The promoted weekly flagship is pinned to the top."
         />
+
+        <PerformanceAllSystemsTable
+          rows={toComparisonRows(modelRows, null)}
+          id="component-models"
+          title="Component Models"
+          description="Standalone component models remain public, but they sit behind the composite system headlines."
+        />
+
+        <footer className="rounded-2xl border border-[var(--panel-border)]/70 bg-[var(--panel)]/70 px-4 py-3 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
+          Canonical report generated {payload.meta.generatedUtc} · methodology {payload.meta.returnMethodology} · compounded shown only as secondary in downstream views
+        </footer>
       </div>
     </DashboardLayout>
   );
 }
-

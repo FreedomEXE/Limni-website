@@ -7,17 +7,19 @@ type OandaCandlesResponse = {
   candles?: Array<{
     time: string;
     complete: boolean;
-    mid?: { o: string; c: string };
+    mid?: { o: string; h: string; l: string; c: string };
   }>;
 };
 
 export type OandaHourlyCandle = {
   ts: number;
   open: number;
+  high: number;
+  low: number;
   close: number;
 };
 
-type OandaGranularity = "M1" | "H1";
+type OandaGranularity = "M1" | "H1" | "D";
 
 function getOandaBaseUrl() {
   return process.env.OANDA_ENV === "live" ? LIVE_URL : PRACTICE_URL;
@@ -67,7 +69,7 @@ export async function fetchOandaCandle(
   symbol: string,
   fromUtc: DateTime,
   toUtc: DateTime,
-): Promise<{ open: number; close: number; openTime: string; closeTime: string } | null> {
+): Promise<{ open: number; high: number; low: number; close: number; openTime: string; closeTime: string } | null> {
   const accountId = process.env.OANDA_ACCOUNT_ID ?? "";
   if (!accountId) {
     throw new Error("OANDA_ACCOUNT_ID is not configured.");
@@ -106,12 +108,16 @@ export async function fetchOandaCandle(
         return null;
       }
       const open = Number(openCandle.mid.o);
+      const high = complete.reduce((max, candle) => Math.max(max, Number(candle.mid?.h ?? Number.NEGATIVE_INFINITY)), Number.NEGATIVE_INFINITY);
+      const low = complete.reduce((min, candle) => Math.min(min, Number(candle.mid?.l ?? Number.POSITIVE_INFINITY)), Number.POSITIVE_INFINITY);
       const close = Number(closeCandle.mid.c);
-      if (!Number.isFinite(open) || !Number.isFinite(close)) {
+      if (!Number.isFinite(open) || !Number.isFinite(high) || !Number.isFinite(low) || !Number.isFinite(close)) {
         return null;
       }
       return {
         open,
+        high,
+        low,
         close,
         openTime: openCandle.time,
         closeTime: closeCandle.time,
@@ -138,6 +144,14 @@ export async function fetchOandaCandleSeries(
   return fetchOandaSeries(symbol, fromUtc, toUtc, "H1");
 }
 
+export async function fetchOandaDailySeries(
+  symbol: string,
+  fromUtc: DateTime,
+  toUtc: DateTime,
+): Promise<OandaHourlyCandle[]> {
+  return fetchOandaSeries(symbol, fromUtc, toUtc, "D");
+}
+
 export async function fetchOandaMinuteSeries(
   symbol: string,
   fromUtc: DateTime,
@@ -157,7 +171,12 @@ async function fetchOandaSeries(
     throw new Error("OANDA_ACCOUNT_ID is not configured.");
   }
   const instrument = getOandaInstrument(symbol);
-  const stepMs = granularity === "M1" ? 60 * 1000 : 60 * 60 * 1000;
+  const stepMs =
+    granularity === "M1"
+      ? 60 * 1000
+      : granularity === "H1"
+        ? 60 * 60 * 1000
+        : 24 * 60 * 60 * 1000;
   const maxBarsPerRequest = 4000;
   const all = new Map<number, OandaHourlyCandle>();
   let cursor = fromUtc;
@@ -201,12 +220,16 @@ async function fetchOandaSeries(
           .map((candle) => ({
             ts: DateTime.fromISO(candle.time, { zone: "utc" }).toMillis(),
             open: Number(candle.mid?.o ?? NaN),
+            high: Number(candle.mid?.h ?? NaN),
+            low: Number(candle.mid?.l ?? NaN),
             close: Number(candle.mid?.c ?? NaN),
           }))
           .filter(
             (row) =>
               Number.isFinite(row.ts) &&
               Number.isFinite(row.open) &&
+              Number.isFinite(row.high) &&
+              Number.isFinite(row.low) &&
               Number.isFinite(row.close),
           )
           .sort((a, b) => a.ts - b.ts);

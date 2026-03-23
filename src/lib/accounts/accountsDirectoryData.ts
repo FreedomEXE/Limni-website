@@ -1,4 +1,5 @@
 import type { AccountCard } from "@/lib/accounts/accountsDirectoryTypes";
+import { classifyAccountPresentation } from "@/lib/accounts/accountClassification";
 
 type BotState = {
   state?: {
@@ -108,23 +109,39 @@ export function buildMt5AccountCards(
     max_drawdown_pct: number;
   }>,
 ): AccountCard[] {
-  return mt5Accounts.map((account) => ({
-    account_id: account.account_id,
-    label: account.label,
-    broker: account.broker,
-    server: account.server,
-    status: account.status,
-    currency: account.currency,
-    equity: Number.isFinite(account.equity) ? account.equity : null,
-    weekly_pnl_pct: Number.isFinite(account.weekly_pnl_pct) ? account.weekly_pnl_pct : null,
-    basket_state: account.basket_state,
-    open_positions: account.open_positions,
-    open_pairs: account.open_pairs,
-    win_rate_pct: Number.isFinite(account.win_rate_pct) ? account.win_rate_pct : null,
-    max_drawdown_pct: Number.isFinite(account.max_drawdown_pct) ? account.max_drawdown_pct : null,
-    source: "mt5",
-    href: `/accounts/${account.account_id}`,
-  }));
+  return mt5Accounts.map((account) => {
+    const presentation = classifyAccountPresentation({
+      label: account.label,
+      broker: account.broker,
+      server: account.server,
+      provider: "mt5",
+      status: account.status,
+    });
+    return {
+      account_id: account.account_id,
+      label: account.label,
+      broker: account.broker,
+      server: account.server,
+      status: account.status,
+      currency: account.currency,
+      equity: Number.isFinite(account.equity) ? account.equity : null,
+      weekly_pnl_pct: Number.isFinite(account.weekly_pnl_pct) ? account.weekly_pnl_pct : null,
+      basket_state: account.basket_state,
+      open_positions: account.open_positions,
+      open_pairs: account.open_pairs,
+      win_rate_pct: Number.isFinite(account.win_rate_pct) ? account.win_rate_pct : null,
+      max_drawdown_pct: Number.isFinite(account.max_drawdown_pct)
+        ? account.max_drawdown_pct
+        : null,
+      source: "mt5",
+      portfolio_group: presentation.portfolioGroup,
+      portfolio_label: presentation.portfolioLabel,
+      account_type_label: presentation.accountTypeLabel,
+      phase_label: presentation.phaseLabel,
+      phase_tone_class: presentation.phaseToneClass,
+      href: `/accounts/${account.account_id}`,
+    };
+  });
 }
 
 export function buildConnectedAccountCards(
@@ -145,14 +162,22 @@ export function buildConnectedAccountCards(
     const analysis = toConnectedAnalysis(account.analysis);
     const openPositions = resolveConnectedOpenPositions(analysis);
     const weeklyPnlPct = resolveConnectedWeeklyPnlPct(analysis, botState);
+    const presentation = classifyAccountPresentation({
+      label: account.label,
+      provider: account.provider,
+      status: account.status,
+    });
+    const broker =
+      account.provider === "bitget"
+        ? "Bitget"
+        : account.provider === "oanda"
+          ? "Oanda"
+          : "MT5";
 
     return {
       account_id: account.account_key,
       label: account.label ?? `${account.provider.toUpperCase()} account`,
-      broker:
-        account.provider === "bitget"
-          ? "Bitget"
-          : "MT5",
+      broker,
       server: analysis?.productType ?? analysis?.env ?? "Connected",
       status: account.status ?? "LIVE",
       currency: analysis?.currency ?? "USD",
@@ -164,6 +189,11 @@ export function buildConnectedAccountCards(
       win_rate_pct: null,
       max_drawdown_pct: null,
       source: account.provider as AccountCard["source"],
+      portfolio_group: presentation.portfolioGroup,
+      portfolio_label: presentation.portfolioLabel,
+      account_type_label: presentation.accountTypeLabel,
+      phase_label: presentation.phaseLabel,
+      phase_tone_class: presentation.phaseToneClass,
       href: `/accounts/connected/${encodeURIComponent(account.account_key)}`,
     };
   });
@@ -174,6 +204,14 @@ export function computeAccountsOverview(accounts: AccountCard[]) {
     (sum, account) => sum + (Number.isFinite(account.equity ?? NaN) ? (account.equity ?? 0) : 0),
     0,
   );
-  const activeBaskets = accounts.filter((account) => account.basket_state === "ACTIVE").length;
-  return { totalEquity, activeBaskets };
+  const openPositions = accounts.reduce(
+    (sum, account) =>
+      sum + (Number.isFinite(account.open_positions ?? NaN) ? (account.open_positions ?? 0) : 0),
+    0,
+  );
+  const propAccounts = accounts.filter((account) => account.portfolio_group === "prop").length;
+  const personalAccounts = accounts.filter(
+    (account) => account.portfolio_group === "personal",
+  ).length;
+  return { totalEquity, openPositions, propAccounts, personalAccounts };
 }

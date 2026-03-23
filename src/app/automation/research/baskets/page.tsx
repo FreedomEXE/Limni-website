@@ -9,7 +9,8 @@ import DebugReadout from "@/components/DebugReadout";
 import { buildPerModelBasketSummary } from "@/lib/universalBasket";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
-import { listPerformanceWeeks, weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
+import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { computeMaxDrawdown, computeStaticDrawdown, pickParam } from "@/lib/research/common";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
@@ -48,9 +49,9 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
       }
     });
   });
-  const performanceWeeks = await listPerformanceWeeks(52);
+  const canonicalWeeks = await listDataSectionWeeks();
   const normalizedWeekOptions = buildDataWeekOptions({
-    historicalWeeks: [...Array.from(weekLabelMap.keys()), ...performanceWeeks],
+    historicalWeeks: [...Array.from(weekLabelMap.keys()), ...canonicalWeeks],
     currentWeekOpenUtc,
     includeAll: false,
   }).filter((week): week is string => week !== "all");
@@ -293,9 +294,9 @@ export default async function BasketResearchPage({ searchParams }: PageProps) {
                             selectedWeek === row.week_open_utc
                               ? "bg-[var(--accent)]/10"
                               : top.has(row.week_open_utc)
-                                ? "bg-emerald-50/60"
+                                ? "bg-emerald-50/60 dark:bg-emerald-900/20"
                                 : bottom.has(row.week_open_utc)
-                                  ? "bg-rose-50/60"
+                                  ? "bg-rose-50/60 dark:bg-rose-900/20"
                                   : ""
                           }`}
                         >

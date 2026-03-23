@@ -115,7 +115,7 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
   });
 
   const botLabel = useMemo(() => {
-    if (provider === "bitget") return "Katarakti (Bitget)";
+    if (provider === "bitget") return "Bitget Connected Account";
     return "Manual MT5 Setup";
   }, [provider]);
 
@@ -170,8 +170,8 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
 
   return (
     <InfoModal
-      title={provider === "mt5" ? "Connect MT5 Account" : "Connect Account"}
-      subtitle={provider === "mt5" ? "MT5 download package" : botLabel}
+      title={provider === "mt5" ? "Add MT5 Account" : "Add Connected Account"}
+      subtitle={provider === "mt5" ? "MT5 reporting setup package" : botLabel}
       onClose={onClose}
     >
       <div className="space-y-4 text-sm text-[color:var(--muted)]">
@@ -244,13 +244,13 @@ export default function ConnectAccountModal({ onClose }: { onClose: () => void }
             ) : null}
 
             {error ? (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-3 text-xs uppercase tracking-[0.2em] text-rose-700">
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/60 dark:bg-rose-900/20 p-3 text-xs uppercase tracking-[0.2em] text-rose-700">
                 {error}
               </div>
             ) : null}
 
             {result ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 text-xs uppercase tracking-[0.2em] text-emerald-700">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 dark:bg-emerald-900/20 p-4 text-xs uppercase tracking-[0.2em] text-emerald-700">
                 Connected! Account key: {result.accountKey}
               </div>
             ) : null}

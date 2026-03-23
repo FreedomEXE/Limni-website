@@ -1,6 +1,7 @@
 import { formatDateTimeET } from "@/lib/time";
 import type { PlannedPair } from "@/lib/plannedTrades";
 import type { NormalizedOpenPosition } from "@/lib/accounts/connectedViewHelpers";
+import { classifyAccountPresentation } from "@/lib/accounts/accountClassification";
 import {
   buildConnectedDrawerKpiRows,
   buildConnectedDrawerPlannedPairs,
@@ -13,6 +14,7 @@ type ConnectedPropsInput = {
     account_key: string;
     label: string | null;
     provider: "oanda" | "bitget" | "mt5";
+    status?: string | null;
     risk_mode?: string | null;
     config: Record<string, unknown> | null;
     last_sync_utc: string | null;
@@ -78,11 +80,19 @@ export function buildConnectedAccountClientViewProps(input: ConnectedPropsInput)
 
   const accountCurrency = stats.currency;
   const isHistoricalWeekEstimate = selectedWeek !== "all" && selectedWeek !== currentWeekOpenUtc;
+  const presentation = classifyAccountPresentation({
+    label: account.label,
+    provider: account.provider,
+    status: account.status ?? null,
+  });
   return {
     activeView,
     header: {
       title: account.label ?? account.account_key,
       providerLabel: account.provider.toUpperCase(),
+      accountTypeLabel: presentation.accountTypeLabel,
+      phaseLabel: presentation.phaseLabel,
+      phaseToneClass: presentation.phaseToneClass,
       tradeModeLabel: resolveConnectedTradeModeLabel(account.config),
       riskModeLabel: account.risk_mode ?? null,
       dataSourceLabel: isHistoricalWeekEstimate ? "estimated" : "realtime",
@@ -110,9 +120,10 @@ export function buildConnectedAccountClientViewProps(input: ConnectedPropsInput)
     },
     overview: {
       openPositions: stats.openPositions,
-      plannedCount: plannedPairs.length,
-      mappingCount: mappedRows.length,
-      plannedNote: plannedNote ?? null,
+      closedTrades: 0,
+      secondaryCount: mappedRows.length,
+      secondaryLabel: "Instrument Coverage",
+      secondaryHint: plannedNote ?? "Mapped instruments available for the connected account",
     },
     plannedSummary: plannedSummary ?? undefined,
     equity: {

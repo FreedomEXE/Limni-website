@@ -112,6 +112,7 @@ export default async function ConnectedAccountPage({
       account_key: account.account_key,
       label: account.label,
       provider: account.provider,
+      status: account.status,
       risk_mode: account.risk_mode,
       config: account.config ?? null,
       last_sync_utc: account.last_sync_utc,

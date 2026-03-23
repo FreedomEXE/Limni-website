@@ -2,37 +2,50 @@ import AutomationViewCards, {
   type AutomationViewCard,
 } from "@/components/automation/AutomationViewCards";
 
-type BotPageKey = "overview" | "bitget" | "bitget-lite" | "katarakti" | "katarakti-lite" | "solana";
+type UpdatedBotPageKey =
+  | "overview"
+  | "weekly-basket"
+  | "bitget"
+  | "bitget-lite"
+  | "mt5-forex"
+  | "mt5-forex-lite"
+  | "solana";
 
-const BOT_CARDS: ReadonlyArray<AutomationViewCard<BotPageKey>> = [
+const BOT_CARDS: ReadonlyArray<AutomationViewCard<UpdatedBotPageKey>> = [
   {
     id: "overview",
     label: "Bots",
-    description: "All automation bots and status at a glance.",
+    description: "Documentation-first index of what exists, what is paused, and what is still in research.",
     href: "/automation/bots",
+  },
+  {
+    id: "weekly-basket",
+    label: "Weekly Basket EA",
+    description: "Swing execution and ops reference for weekly basket trading.",
+    href: "/automation/bots/weekly-basket",
   },
   {
     id: "bitget",
     label: "Katarakti (Bitget)",
-    description: "Crypto futures sweep-entry automation monitoring.",
+    description: "Paused crypto sweep-entry stack documented as research infrastructure.",
     href: "/automation/bots/bitget",
   },
   {
     id: "bitget-lite",
     label: "Katarakti Crypto Lite",
-    description: "Simplified crypto entry rules for side-by-side validation.",
+    description: "Lite crypto side-branch kept as documentation, not a promoted bot.",
     href: "/automation/bots/bitget-lite",
   },
   {
-    id: "katarakti",
+    id: "mt5-forex",
     label: "Katarakti (CFD)",
-    description: "CFD sweep-entry dashboard and diagnostics.",
+    description: "CFD intraday research branch and current scope notes.",
     href: "/automation/bots/mt5-forex",
   },
   {
-    id: "katarakti-lite",
+    id: "mt5-forex-lite",
     label: "Katarakti CFD Lite",
-    description: "Simplified CFD entry rules for side-by-side validation.",
+    description: "Lite CFD branch documented as comparative research only.",
     href: "/automation/bots/mt5-forex-lite",
   },
   {
@@ -46,7 +59,7 @@ const BOT_CARDS: ReadonlyArray<AutomationViewCard<BotPageKey>> = [
 export default function AutomationBotsCards({
   active,
 }: {
-  active: BotPageKey;
+  active: UpdatedBotPageKey;
 }) {
   return <AutomationViewCards active={active} cards={BOT_CARDS} />;
 }

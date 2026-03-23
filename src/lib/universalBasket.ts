@@ -5,6 +5,7 @@ import {
   fetchOandaMinuteSeries,
   getOandaInstrument,
 } from "@/lib/oandaPrices";
+// TODO: migrate to listDataSectionWeeks when universalBasket is refactored.
 import { getWeekOpenUtc, listPerformanceWeeks, readPerformanceSnapshotsByWeek, weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import type { PerformanceModel } from "@/lib/performanceLab";
 

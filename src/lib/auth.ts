@@ -1,3 +1,17 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: src/lib/auth.ts
+ *
+ * Description:
+ * Central auth helpers for cookie-backed access control. Supports a
+ * local AUTH_BYPASS mode for Playwright/Codex automation in dev.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
 import { cookies } from "next/headers";
 
 const SESSION_COOKIE_NAME = "limni_session";
@@ -8,7 +22,15 @@ const SESSION_SECRET_LEGACY = "authenticated";
 
 export type UserRole = "admin" | "viewer";
 
+function isAuthBypassed() {
+  return process.env.AUTH_BYPASS === "true";
+}
+
 export async function getSessionRole(): Promise<UserRole | null> {
+  if (isAuthBypassed()) {
+    return "admin";
+  }
+
   const cookieStore = await cookies();
   const session = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
@@ -23,6 +45,10 @@ export async function getSessionRole(): Promise<UserRole | null> {
 }
 
 export async function getSessionUsername(): Promise<string | null> {
+  if (isAuthBypassed()) {
+    return "codex";
+  }
+
   const cookieStore = await cookies();
   const username = cookieStore.get(SESSION_USER_COOKIE_NAME)?.value?.trim();
   return username ? username : null;
@@ -34,6 +60,10 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 export async function login(username: string, password: string): Promise<boolean> {
+  if (isAuthBypassed()) {
+    return true;
+  }
+
   const validUsername = process.env.AUTH_USERNAME || "admin";
   const validPassword = process.env.AUTH_PASSWORD || "password";
   const viewerUsername = process.env.AUTH_VIEWER_USERNAME;
@@ -95,6 +125,10 @@ export async function login(username: string, password: string): Promise<boolean
 }
 
 export async function logout(): Promise<void> {
+  if (isAuthBypassed()) {
+    return;
+  }
+
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
   cookieStore.delete(SESSION_USER_COOKIE_NAME);

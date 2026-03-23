@@ -1,3 +1,15 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: page.tsx
+ *
+ * Description:
+ * Unified weekly News page backed by ForexFactory snapshots and a consolidated event timeline.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
 import { DateTime } from "luxon";
 import DashboardLayout from "@/components/DashboardLayout";
 import { formatDateTimeET } from "@/lib/time";
@@ -231,9 +243,6 @@ async function getNormalizedNewsWeeksCached(
 export default async function NewsPage({ searchParams }: PageProps) {
   const params = await Promise.resolve(searchParams);
   const weekParam = pickParam(params?.week);
-  const viewParam = pickParam(params?.view);
-  const view =
-    viewParam === "announcements" || viewParam === "impact" ? viewParam : "calendar";
 
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   let newsWeeks = await listNewsWeeks(MAX_NEWS_WEEKS);
@@ -332,7 +341,6 @@ export default async function NewsPage({ searchParams }: PageProps) {
                 currentWeek={currentWeekOpenUtc}
                 label="Week"
                 paramName="week"
-                preserveParams={["view"]}
               />
             ) : (
               <span className="text-xs text-[color:var(--muted)]">No weeks with news data yet.</span>
@@ -350,8 +358,7 @@ export default async function NewsPage({ searchParams }: PageProps) {
           </div>
         </section>
         <NewsContentTabs
-          key={`${selectedWeek ?? "none"}:${view}:${snapshot?.fetched_at ?? "none"}`}
-          view={view}
+          key={`${selectedWeek ?? "none"}:${snapshot?.fetched_at ?? "none"}`}
           announcements={announcements}
           calendar={calendar}
         />

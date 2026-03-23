@@ -9,7 +9,6 @@ import AccountPageHeader from "@/components/accounts/AccountPageHeader";
 import AccountOverviewSection from "@/components/accounts/AccountOverviewSection";
 import {
   buildStopLossLines,
-  computeNetExposure,
   computePlannedLegCounts,
   computePlannedNetLegTotal,
   computePlannedLegTotal,
@@ -112,6 +111,28 @@ export default function AccountClientView({
     );
   }, [header.tradeModeLabel]);
 
+  const accountTypeBadge = useMemo(() => {
+    if (!header.accountTypeLabel) return null;
+    return (
+      <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+        {header.accountTypeLabel}
+      </span>
+    );
+  }, [header.accountTypeLabel]);
+
+  const phaseBadge = useMemo(() => {
+    if (!header.phaseLabel) return null;
+    return (
+      <span
+        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+          header.phaseToneClass ?? "bg-[var(--panel-border)]/50 text-[var(--foreground)]/70"
+        }`}
+      >
+        {header.phaseLabel}
+      </span>
+    );
+  }, [header.phaseLabel, header.phaseToneClass]);
+
   const sourceBadge = useMemo(() => {
     const source = String(header.dataSourceLabel ?? "").toLowerCase();
     const status = String(header.reconstructionStatus ?? "partial").toUpperCase();
@@ -197,9 +218,13 @@ export default function AccountClientView({
         .sort((a, b) => a[0].localeCompare(b[0])),
     [plannedLegCounts],
   );
-  const netExposure = useMemo(
-    () => computeNetExposure(drawerData.plannedPairs, isOanda),
-    [drawerData.plannedPairs, isOanda],
+  const liveNetExposure = useMemo(
+    () =>
+      liveSymbolRows.reduce(
+        (sum, row) => sum + (Number(row.openLong ?? 0) - Number(row.openShort ?? 0)),
+        0,
+      ),
+    [liveSymbolRows],
   );
   const plannedLegTotal = useMemo(
     () =>
@@ -255,6 +280,8 @@ export default function AccountClientView({
         <AccountPageHeader
           title={header.title}
           providerLabel={header.providerLabel}
+          accountTypeBadge={accountTypeBadge}
+          phaseBadge={phaseBadge}
           tradeModeBadge={tradeModeBadge}
           statusBadge={statusBadge}
           sourceBadge={sourceBadge}
@@ -292,7 +319,7 @@ export default function AccountClientView({
           isOanda={isOanda}
           openLegCount={openLegCount}
           closedCount={closedCount}
-          netExposure={netExposure}
+          netExposure={liveNetExposure}
           plannedPairsCount={drawerData.plannedPairs.length}
           plannedLegTotal={plannedLegTotal}
           plannedModelChips={plannedModelChips}

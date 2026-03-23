@@ -267,7 +267,7 @@ function getPerformanceTier(percent: number, winRate: number): PerformanceTier {
   return {
     label: "Weak",
     accent: "text-rose-700",
-    card: "border-rose-200 bg-rose-50/70",
+    card: "border-rose-200 bg-rose-50/70 dark:bg-rose-900/20",
     emoji: "--",
   };
 }

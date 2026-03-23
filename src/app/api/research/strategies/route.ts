@@ -13,6 +13,7 @@
 -----------------------------------------------*/
 
 import { NextResponse } from "next/server";
+import { readCanonicalPerformanceReport } from "@/lib/performance/canonicalPerformanceReport";
 import {
   listLatestStrategyBacktestRuns,
   readStrategyBacktestWeeklySeries,
@@ -43,6 +44,8 @@ type StrategyExplorerEntry = {
   avgWeekly: number | null;
   trades: number | null;
   tradeWinRate: number | null;
+  metricsSourceMode: "canonical_report" | "strategy_backtest_db" | "unavailable";
+  metricsSourceLabel: string | null;
 };
 
 function isFiniteNumber(value: number | null | undefined): value is number {
@@ -51,10 +54,14 @@ function isFiniteNumber(value: number | null | undefined): value is number {
 
 export async function GET() {
   try {
-    const [registryEntries, dbRuns] = await Promise.all([
+    const [registryEntries, dbRuns, canonicalReport] = await Promise.all([
       Promise.resolve(listPerformanceStrategyEntries()),
       listLatestStrategyBacktestRuns(),
+      readCanonicalPerformanceReport().catch(() => null),
     ]);
+    const canonicalSystemsById = new Map(
+      (canonicalReport?.compositeSystems ?? []).map((entry) => [entry.system, entry]),
+    );
 
     const entries: StrategyExplorerEntry[] = [];
 
@@ -90,8 +97,39 @@ export async function GET() {
         trades: null,
         tradeWinRate: null,
       };
+      let metricsSourceMode: StrategyExplorerEntry["metricsSourceMode"] = "unavailable";
+      let metricsSourceLabel: string | null = null;
 
-      if (dbRun && dbRun.weeklyCount > 0) {
+      const canonicalSystem = canonicalSystemsById.get(entry.entryId);
+
+      if (canonicalSystem) {
+        const weekReturns = canonicalSystem.weeklyReturns.map((row) => row.returnPct);
+        const weeks = canonicalSystem.weeklyReturns.length;
+        const totalReturn = canonicalSystem.simpleReturnPct;
+        const avgWeekly = weeks > 0 ? totalReturn / weeks : 0;
+        let sharpe = 0;
+        if (weeks > 1) {
+          const variance =
+            weekReturns.reduce((sum, value) => sum + (value - avgWeekly) ** 2, 0) / (weeks - 1);
+          const stdDev = Math.sqrt(variance);
+          sharpe = stdDev > 0 ? avgWeekly / stdDev : 0;
+        }
+
+        metrics = {
+          totalReturn,
+          maxDrawdown: canonicalSystem.maxDrawdownSimplePct,
+          weeklyWinRate: canonicalSystem.winRatePct,
+          sharpe,
+          avgWeekly,
+          trades: canonicalSystem.totalTrades,
+          tradeWinRate:
+            canonicalSystem.totalTrades > 0
+              ? (canonicalSystem.totalWins / canonicalSystem.totalTrades) * 100
+              : 0,
+        };
+        metricsSourceMode = "canonical_report";
+        metricsSourceLabel = "Canonical reconstruction report";
+      } else if (dbRun && dbRun.weeklyCount > 0) {
         try {
           const series = await readStrategyBacktestWeeklySeries({
             botId: dbRun.botId,
@@ -142,13 +180,20 @@ export async function GET() {
                 sharpe,
                 avgWeekly,
                 trades: totalTrades,
-              tradeWinRate,
-            };
+                tradeWinRate,
+              };
+              metricsSourceMode = "strategy_backtest_db";
+              metricsSourceLabel = "Strategy backtest DB";
           }
         } catch {
           // Keep null metrics for this entry.
         }
       }
+
+      const canonicalWeekCount = canonicalSystem?.weeks ?? 0;
+      const canonicalTradeCount = canonicalSystem?.totalTrades ?? 0;
+      const canonicalLatestWeek =
+        canonicalSystem?.weeklyReturns[canonicalSystem.weeklyReturns.length - 1]?.weekOpenUtc ?? null;
 
       entries.push({
         entryId: entry.entryId,
@@ -161,9 +206,9 @@ export async function GET() {
         hasDbRun: Boolean(dbRun),
         runId: dbRun?.runId ?? null,
         generatedUtc: dbRun?.generatedUtc ?? null,
-        weeklyCount: dbRun?.weeklyCount ?? 0,
-        tradeCount: dbRun?.tradeCount ?? 0,
-        latestWeekOpenUtc: dbRun?.latestWeekOpenUtc ?? null,
+        weeklyCount: dbRun?.weeklyCount ?? canonicalWeekCount,
+        tradeCount: dbRun?.tradeCount ?? canonicalTradeCount,
+        latestWeekOpenUtc: dbRun?.latestWeekOpenUtc ?? canonicalLatestWeek,
         totalReturn: metrics.totalReturn,
         maxDrawdown: metrics.maxDrawdown,
         weeklyWinRate: metrics.weeklyWinRate,
@@ -171,6 +216,8 @@ export async function GET() {
         avgWeekly: metrics.avgWeekly,
         trades: isFiniteNumber(metrics.trades) ? metrics.trades : null,
         tradeWinRate: metrics.tradeWinRate,
+        metricsSourceMode,
+        metricsSourceLabel,
       });
     }
 

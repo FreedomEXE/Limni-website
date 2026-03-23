@@ -1,3 +1,15 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: page.tsx
+ *
+ * Description:
+ * Reporting-first account overview page grouped into prop-fund and personal-account sections.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
 import DashboardLayout from "@/components/DashboardLayout";
 import AccountsDirectory from "@/components/AccountsDirectory";
 import ConnectAccountButton from "@/components/ConnectAccountButton";
@@ -53,7 +65,8 @@ export default async function AccountsPage() {
   });
 
   const accounts: AccountCard[] = [...mt5Cards, ...connectedCards];
-  const { totalEquity, activeBaskets } = computeAccountsOverview(accounts);
+  const { totalEquity, openPositions, propAccounts, personalAccounts } =
+    computeAccountsOverview(accounts);
   const latestSync = collectAccountsLatestSyncIso({
     mt5Accounts,
     connectedAccounts,
@@ -66,11 +79,11 @@ export default async function AccountsPage() {
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-              Connected Accounts
+              Account Reporting
             </h1>
             <p className="text-sm text-[color:var(--muted)]">
-              Monitor live baskets, exposure, and performance across every
-              linked account and automation bot.
+              Review linked accounts, open trades, history, and sync state
+              across prop funds and personal capital.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -81,10 +94,10 @@ export default async function AccountsPage() {
           </div>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-5">
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Accounts connected
+              Accounts tracked
             </p>
             <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
               {accounts.length}
@@ -100,10 +113,26 @@ export default async function AccountsPage() {
           </div>
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
             <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Active baskets
+              Prop funds
             </p>
             <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {activeBaskets}
+              {propAccounts}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Personal accounts
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+              {personalAccounts}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+              Open positions
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+              {openPositions}
             </p>
           </div>
         </section>

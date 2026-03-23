@@ -12,6 +12,11 @@ export type AccountCard = {
   open_pairs: number | null;
   win_rate_pct: number | null;
   max_drawdown_pct: number | null;
-  source: "mt5" | "bitget";
+  source: "mt5" | "bitget" | "oanda";
+  portfolio_group: "prop" | "personal";
+  portfolio_label: string;
+  account_type_label: string;
+  phase_label: string | null;
+  phase_tone_class: string | null;
   href?: string;
 };

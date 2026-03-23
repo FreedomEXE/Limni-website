@@ -21,12 +21,10 @@ import {
   type SentimentAssetClass,
 } from "@/lib/sentiment/symbols";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
-import {
-  listPerformanceWeeks,
-  readPerformanceSnapshotsByWeek,
-} from "@/lib/performanceSnapshots";
-import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
+import { resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
+import { getWeeklyPairReturns } from "@/lib/pairReturns";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -111,12 +109,7 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
 
   const currentWeekOpen = getDisplayWeekOpenUtc();
 
-  const recentWeeks = await listPerformanceWeeks(52);
-  const weeks = buildDataWeekOptions({
-    historicalWeeks: recentWeeks,
-    currentWeekOpenUtc: currentWeekOpen,
-    includeAll: false,
-  }).filter((item): item is string => item !== "all");
+  const weeks = await listDataSectionWeeks();
 
   const selectedWeek = resolveWeekSelection({
     requestedWeek: weekValue,
@@ -231,14 +224,10 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
 
   if (selectedWeek) {
     try {
-      const weekSnapshots = await readPerformanceSnapshotsByWeek(selectedWeek);
-      weekSnapshots
-        .filter((row) => row.model === "sentiment")
-        .forEach((row) => {
-          row.pair_details.forEach((detail) => {
-            performanceByPair[detail.pair] = detail.percent ?? null;
-          });
-        });
+      const weeklyReturns = await getWeeklyPairReturns(selectedWeek);
+      weeklyReturns.forEach((row) => {
+        performanceByPair[row.symbol] = row.returnPct;
+      });
     } catch (error) {
       console.error("Sentiment performance load failed:", error);
     }

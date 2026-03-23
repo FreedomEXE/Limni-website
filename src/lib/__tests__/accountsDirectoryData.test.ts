@@ -28,7 +28,9 @@ describe("accounts directory data", () => {
     expect(mt5).toHaveLength(1);
     const overview = computeAccountsOverview(mt5);
     expect(overview.totalEquity).toBe(100);
-    expect(overview.activeBaskets).toBe(1);
+    expect(overview.openPositions).toBe(2);
+    expect(overview.propAccounts).toBe(0);
+    expect(overview.personalAccounts).toBe(1);
   });
 
   test("builds connected cards from analysis and bot state fallback", () => {

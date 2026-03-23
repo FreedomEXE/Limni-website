@@ -8,6 +8,8 @@ import type { ReactNode } from "react";
 type AccountPageHeaderProps = {
   title: string;
   providerLabel: string;
+  accountTypeBadge?: ReactNode;
+  phaseBadge?: ReactNode;
   tradeModeBadge: ReactNode;
   statusBadge: ReactNode;
   sourceBadge?: ReactNode;
@@ -23,6 +25,8 @@ export default function AccountPageHeader(props: AccountPageHeaderProps) {
   const {
     title,
     providerLabel,
+    accountTypeBadge,
+    phaseBadge,
     tradeModeBadge,
     statusBadge,
     sourceBadge,
@@ -52,6 +56,8 @@ export default function AccountPageHeader(props: AccountPageHeaderProps) {
         <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
           {providerLabel}
         </span>
+        {accountTypeBadge}
+        {phaseBadge}
         {tradeModeBadge}
         {statusBadge}
         {sourceBadge}

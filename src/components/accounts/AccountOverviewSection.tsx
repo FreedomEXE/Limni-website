@@ -20,9 +20,10 @@ type AccountOverviewSectionProps = {
   };
   overview: {
     openPositions: number;
-    plannedCount: number;
-    mappingCount: number;
-    plannedNote?: string | null;
+    closedTrades: number;
+    secondaryCount: number;
+    secondaryLabel: string;
+    secondaryHint?: string | null;
   };
   pnlBreakdown?: {
     grossProfit: number;
@@ -53,14 +54,14 @@ export default function AccountOverviewSection({
           hint="Live positions right now"
         />
         <SummaryCard
-          label="Planned Trades"
-          value={overview.plannedCount}
-          hint={overview.plannedNote ?? "Upcoming basket trades"}
+          label="Closed Trades"
+          value={overview.closedTrades}
+          hint="Closed trades in the selected period"
         />
         <SummaryCard
-          label="Mappings"
-          value={overview.mappingCount}
-          hint="Instrument availability"
+          label={overview.secondaryLabel}
+          value={overview.secondaryCount}
+          hint={overview.secondaryHint ?? "Additional reporting context"}
         />
       </div>
       {pnlBreakdown ? (

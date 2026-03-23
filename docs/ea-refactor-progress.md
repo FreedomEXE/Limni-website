@@ -44,6 +44,7 @@ Breaking the 8,713-line monolithic `mt5/Experts/LimniBasketEA.mq5` into ~24 modu
 6. **Deploy & verify telemetry loop** — signals pull → trade execution → telemetry push → kill-switch polling → heartbeat
 7. **Run migrations 014 + 015** on production DB
 8. **Deploy updated website** to Vercel (kill-switch + heartbeat endpoints)
+9. **MT5 Price Feed Integration** — Deploy Python price ingestion daemon alongside EA on VPS. Pulls OHLCV bars from Bitget TradFi MT5 for all 36 pairs as second canonical price source. See `docs/MT5_PRICE_FEED_INTEGRATION.md` for full plan.
 
 ## Structural Map Reference
 A complete function-by-function map of the monolith was generated during the Phase 2 session. To regenerate it, read `mt5/Experts/LimniBasketEA.mq5` and map all functions to the target module structure in `docs/plan.md` Section 4.

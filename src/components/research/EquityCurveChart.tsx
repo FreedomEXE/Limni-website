@@ -181,7 +181,7 @@ export default function EquityCurveChart({
         : Number.isFinite(Number(primary[0]?.equity_usd))
           ? Number(primary[0]?.equity_usd)
           : 0;
-  const baselineY = toY(baselineValue);
+  const baselineY = clamp(toY(baselineValue), 0, height);
 
   const last = primary[primary.length - 1];
   const first = primary[0];

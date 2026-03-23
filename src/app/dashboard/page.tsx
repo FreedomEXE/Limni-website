@@ -21,30 +21,16 @@ import {
   type BiasMode,
 } from "@/lib/cotCompute";
 import { PAIRS_BY_ASSET_CLASS, type PairDefinition } from "@/lib/cotPairs";
-import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
+import { readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
-import { getPairPerformance } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import { findDataSectionWeekByReportDate, listDataSectionWeekEntries } from "@/lib/dataSectionWeeks";
+import { getWeeklyPairReturns } from "@/lib/pairReturns";
+import type { PairPerformance } from "@/lib/priceStore";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const DASHBOARD_PAIR_PRICING_TIMEOUT_MS = Number(
-  process.env.DASHBOARD_PAIR_PRICING_TIMEOUT_MS ?? "2500",
-);
-const DASHBOARD_ENABLE_ALL_ASSET_PAIR_PRICING =
-  process.env.DASHBOARD_ENABLE_ALL_ASSET_PAIR_PRICING === "1";
-
-function getDashboardPairPricingTimeoutMs() {
-  if (
-    Number.isFinite(DASHBOARD_PAIR_PRICING_TIMEOUT_MS) &&
-    DASHBOARD_PAIR_PRICING_TIMEOUT_MS > 0
-  ) {
-    return DASHBOARD_PAIR_PRICING_TIMEOUT_MS;
-  }
-  return 2500;
-}
 
 function buildResponse(
   snapshot: Awaited<ReturnType<typeof readSnapshot>>,
@@ -139,18 +125,6 @@ function buildBiasDetails({
   ];
 }
 
-async function safeListSnapshotDates(assetClass: AssetClass): Promise<string[]> {
-  try {
-    return await listSnapshotDates(assetClass);
-  } catch (error) {
-    console.error(
-      `Bias page: listSnapshotDates failed for ${assetClass}:`,
-      error instanceof Error ? error.message : String(error),
-    );
-    return [];
-  }
-}
-
 async function safeReadSnapshot(
   options: Parameters<typeof readSnapshot>[0],
 ): Promise<Awaited<ReturnType<typeof readSnapshot>>> {
@@ -166,49 +140,19 @@ async function safeReadSnapshot(
   }
 }
 
-async function safeGetPairPerformance(
-  pairs: Record<string, PairSnapshot>,
-  options: Parameters<typeof getPairPerformance>[1],
-): Promise<Awaited<ReturnType<typeof getPairPerformance>>> {
-  const fallback = {
-    performance: {},
-    note: "Pricing unavailable.",
-    missingPairs: Object.keys(pairs),
+function buildCanonicalPairPerformance(
+  selectedWeekOpenUtc: string,
+  row: { openPrice: number; closePrice: number; returnPct: number } | null,
+): PairPerformance | null {
+  if (!row) return null;
+  return {
+    open: row.openPrice,
+    current: row.closePrice,
+    percent: row.returnPct,
+    pips: 0,
+    open_time_utc: selectedWeekOpenUtc,
+    current_time_utc: selectedWeekOpenUtc,
   };
-  const timeoutMs = getDashboardPairPricingTimeoutMs();
-  let timeoutHandle: NodeJS.Timeout | null = null;
-  const timeoutPromise = new Promise<Awaited<ReturnType<typeof getPairPerformance>>>((resolve) => {
-    timeoutHandle = setTimeout(() => {
-      resolve({
-        ...fallback,
-        note: `Pricing timeout (${timeoutMs}ms).`,
-      });
-    }, timeoutMs);
-  });
-
-  try {
-    const pricingPromise = getPairPerformance(pairs, options).catch((error) => {
-      console.error(
-        "Bias page: getPairPerformance failed:",
-        error instanceof Error ? error.message : String(error),
-      );
-      return fallback;
-    });
-    const result = await Promise.race([pricingPromise, timeoutPromise]);
-    if (timeoutHandle) {
-      clearTimeout(timeoutHandle);
-    }
-    return result;
-  } catch (error) {
-    console.error(
-      "Bias page: getPairPerformance failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-    if (timeoutHandle) {
-      clearTimeout(timeoutHandle);
-    }
-    return fallback;
-  }
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -230,17 +174,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const reportDate =
     Array.isArray(reportParam) ? reportParam[0] : reportParam;
   const assetClasses = listAssetClasses();
-  const availableDates = isAll
-    ? await Promise.all(
-        assetClasses.map((asset) => safeListSnapshotDates(asset.id)),
-      ).then((lists) => {
-        const union = new Set<string>();
-        lists.forEach((list) => {
-          list.forEach((date) => union.add(date));
-        });
-        return Array.from(union);
-      })
-    : await safeListSnapshotDates(assetClass);
+  const weekEntries = await listDataSectionWeekEntries();
+  const availableDates = weekEntries.map((entry) => entry.cotReportDate);
   const orderedDates = [...availableDates].sort((a, b) => b.localeCompare(a));
   const selectedReportDate =
     reportDate && orderedDates.includes(reportDate)
@@ -250,6 +185,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     selectedReportDate
       ? orderedDates[orderedDates.indexOf(selectedReportDate) + 1] ?? null
       : null;
+  const selectedWeekOpenUtc =
+    (await findDataSectionWeekByReportDate(selectedReportDate))?.weekOpenUtc
+    ?? weekEntries[0]?.weekOpenUtc
+    ?? null;
+  const canonicalReturns = selectedWeekOpenUtc
+    ? await getWeeklyPairReturns(selectedWeekOpenUtc, isAll ? undefined : assetClass)
+    : [];
+  const canonicalReturnMap = new Map(
+    canonicalReturns.map((row) => [
+      `${row.assetClass}|${row.symbol}`,
+      buildCanonicalPairPerformance(selectedWeekOpenUtc ?? row.symbol, row),
+    ]),
+  );
   const snapshot = isAll
     ? null
     : selectedReportDate
@@ -272,7 +220,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const pairRowsWithPerf = [] as Array<{
     pair: string;
     direction: "LONG" | "SHORT" | "NEUTRAL";
-    performance: Awaited<ReturnType<typeof getPairPerformance>>["performance"][string] | null;
+    performance: PairPerformance | null;
     subtitle?: string;
     details: Array<{ label: string; value: string }>;
   }>;
@@ -358,18 +306,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           }
         }
 
-        const perfResult = DASHBOARD_ENABLE_ALL_ASSET_PAIR_PRICING
-          ? await safeGetPairPerformance(allPairs, {
-              assetClass: entry.asset.id,
-              reportDate: entrySnapshot.report_date,
-              isLatestReport: false,
-            })
-          : {
-              performance: {},
-              note: "Pair pricing disabled in all-asset view.",
-              missingPairs: [],
-            };
-
         return {
           assetLabel: entry.asset.label,
           currencyRows: resolvedCurrencyRows,
@@ -378,7 +314,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             return {
               pair: `${pairDef.pair} (${entry.asset.label})`,
               direction: row.direction,
-              performance: perfResult.performance[pairDef.pair] ?? null,
+              performance: canonicalReturnMap.get(`${entry.asset.id}|${pairDef.pair}`) ?? null,
               subtitle: entry.asset.label,
               details: buildBiasDetails({
                 pairDef,
@@ -392,9 +328,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               }),
             };
           }),
-          missingPairs: perfResult.missingPairs.map(
-            (pair) => `${pair} (${entry.asset.label})`,
-          ),
+          missingPairs: pairDefs
+            .filter((pairDef) => !canonicalReturnMap.has(`${entry.asset.id}|${pairDef.pair}`))
+            .map((pairDef) => `${pairDef.pair} (${entry.asset.label})`),
         };
       }),
     );
@@ -470,20 +406,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         row: allPairs[pairDef.pair],
       }))
       .sort((a, b) => a.pairDef.pair.localeCompare(b.pairDef.pair));
-    const perfResult =
-      pairRows.length > 0 && Object.keys(data.currencies).length > 0
-        ? await safeGetPairPerformance(allPairs, {
-            assetClass,
-            reportDate: data.report_date || selectedReportDate,
-            isLatestReport: false,
-          })
-        : { performance: {}, note: "No pairs to price.", missingPairs: [] };
-    missingPairs = perfResult.missingPairs;
+    missingPairs = pairRows
+      .filter(({ pairDef }) => !canonicalReturnMap.has(`${assetClass}|${pairDef.pair}`))
+      .map(({ pairDef }) => pairDef.pair);
     pairRows.forEach(({ pairDef, row }) => {
       pairRowsWithPerf.push({
         pair: pairDef.pair,
         ...row,
-        performance: perfResult.performance[pairDef.pair] ?? null,
+        performance: canonicalReturnMap.get(`${assetClass}|${pairDef.pair}`) ?? null,
         subtitle: assetDefinition.label,
         details: buildBiasDetails({
           pairDef,

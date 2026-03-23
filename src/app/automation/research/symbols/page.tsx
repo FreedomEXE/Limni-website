@@ -12,7 +12,7 @@ import type { PerformanceModel } from "@/lib/performanceLab";
 import { weekLabelFromOpen } from "@/lib/performanceSnapshots";
 import { formatDateTimeET } from "@/lib/time";
 import { unstable_cache } from "next/cache";
-import { listPerformanceWeeks } from "@/lib/performanceSnapshots";
+import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import {
@@ -74,11 +74,11 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
 
   const summary = summaryAll;
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  const performanceWeeks = await listPerformanceWeeks(52);
+  const canonicalWeeks = await listDataSectionWeeks();
   const weekOptions = buildWeekOptionsFromCurve(
     summary.equity_curve,
     currentWeekOpenUtc,
-    performanceWeeks,
+    canonicalWeeks,
   );
   const selectedWeek =
     (resolveWeekSelection({
@@ -260,7 +260,7 @@ export default async function SymbolResearchPage({ searchParams }: PageProps) {
                   <tr
                     key={row.symbol}
                     className={`border-t border-[var(--panel-border)]/60 ${
-                      isTop ? "bg-emerald-50/60" : isBottom ? "bg-rose-50/60" : ""
+                      isTop ? "bg-emerald-50/60 dark:bg-emerald-900/20" : isBottom ? "bg-rose-50/60 dark:bg-rose-900/20" : ""
                     }`}
                   >
                     <td className="py-2">

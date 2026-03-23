@@ -4,15 +4,16 @@ import SummaryCards from "@/components/SummaryCards";
 import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { ANTIKYTHERA_MAX_SIGNALS } from "@/lib/antikythera";
 import { listAssetClasses } from "@/lib/cotMarkets";
-import { listSnapshotDates, readSnapshot } from "@/lib/cotStore";
+import { readSnapshot } from "@/lib/cotStore";
 import { getAggregatesForWeekStartWithBackfill, getLatestAggregatesLocked } from "@/lib/sentiment/store";
 import { formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
-import { listPerformanceWeeks, readPerformanceSnapshotsByWeek } from "@/lib/performanceSnapshots";
 import { DateTime } from "luxon";
-import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
+import { resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import AntikytheraControls from "@/components/antikythera/AntikytheraControls";
+import { listDataSectionWeekEntries, listDataSectionWeeks, findDataSectionWeekByReportDate } from "@/lib/dataSectionWeeks";
+import { getWeeklyPairReturns } from "@/lib/pairReturns";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -35,14 +36,8 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
     viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
   const assetClasses = listAssetClasses();
   const assetIds = assetClasses.map((asset) => asset.id);
-  const availableDates = await Promise.all(
-    assetClasses.map((asset) => listSnapshotDates(asset.id)),
-  ).then((lists) => {
-    if (lists.length === 0) {
-      return [];
-    }
-    return lists.reduce((acc, list) => acc.filter((date) => list.includes(date)));
-  });
+  const weekEntries = await listDataSectionWeekEntries();
+  const availableDates = weekEntries.map((entry) => entry.cotReportDate);
   const orderedDates = [...availableDates].sort((a, b) => b.localeCompare(a));
   const selectedReportDate =
     reportDate && orderedDates.includes(reportDate)
@@ -75,25 +70,8 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
   }
 
   const currentWeekOpen = getDisplayWeekOpenUtc();
-  const recentWeeks = await listPerformanceWeeks(52);
-  const weeks = buildDataWeekOptions({
-    historicalWeeks: recentWeeks,
-    currentWeekOpenUtc: currentWeekOpen,
-    includeAll: false,
-  }).filter((item): item is string => item !== "all");
-
-  let mappedWeekFromReport: string | null = null;
-  if (selectedReportDate) {
-    const report = DateTime.fromISO(selectedReportDate, { zone: "America/New_York" });
-    if (report.isValid) {
-      const daysUntilMonday = (8 - report.weekday) % 7;
-      const monday = report
-        .plus({ days: daysUntilMonday })
-        .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-      const weekIso = monday.toUTC().toISO();
-      if (weekIso) mappedWeekFromReport = weekIso;
-    }
-  }
+  const weeks = await listDataSectionWeeks();
+  const mappedWeekFromReport = (await findDataSectionWeekByReportDate(selectedReportDate))?.weekOpenUtc ?? null;
   const selectedWeek = resolveWeekSelection({
     requestedWeek: mappedWeekFromReport ?? undefined,
     weekOptions: weeks,
@@ -147,19 +125,14 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
   });
   if (selectedWeek) {
     try {
-      const weekSnapshots = await readPerformanceSnapshotsByWeek(selectedWeek);
-      const assetLabelMap = new Map(
-        assetClasses.map((asset) => [asset.id, asset.label]),
+      const weeklyReturns = await getWeeklyPairReturns(selectedWeek);
+      const returnByPair = new Map(
+        weeklyReturns.map((row) => [`${row.assetClass}|${row.symbol}`, row.returnPct]),
       );
-      weekSnapshots
-        .filter((row) => row.model === "antikythera")
-        .forEach((row) => {
-          row.pair_details.forEach((detail) => {
-            const assetLabel = assetLabelMap.get(row.asset_class) ?? row.asset_class;
-            const key = `${detail.pair} (${assetLabel})`;
-            performanceByPair[key] = detail.percent ?? null;
-          });
-        });
+      allSignals.forEach((signal) => {
+        const key = `${signal.pair} (${signal.assetLabel})`;
+        performanceByPair[key] = returnByPair.get(`${signal.assetId}|${signal.pair}`) ?? null;
+      });
     } catch (error) {
       console.error("Antikythera performance load failed:", error);
     }

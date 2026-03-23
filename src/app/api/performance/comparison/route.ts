@@ -5,12 +5,14 @@
  * File: src/app/api/performance/comparison/route.ts
  *
  * Description:
- * Builds comparison metrics payloads for Universal, Tiered, and Katarakti
- * systems across selected historical periods.
+ * Legacy mixed-source comparison API for Universal, Tiered, and Katarakti.
+ * Kept only for older/internal research surfaces while the app migrates to
+ * canonical report-backed endpoints.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
+// LEGACY: This route is preserved for backward compatibility. New consumers should use /api/performance/report or /api/research/strategies.
 import { NextRequest, NextResponse } from "next/server";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -357,6 +359,20 @@ function computeCumulativeMaxDrawdownFromWeeklyReturns(returns: number[]): numbe
   return computeMaxDrawdownFromPercentReturns(returns);
 }
 
+function computeCompoundedTotalReturnFromWeeklyReturns(returns: number[]) {
+  if (returns.length === 0) return 0;
+  let equity = 1;
+  for (const value of returns) {
+    if (!Number.isFinite(value)) continue;
+    const multiplier = 1 + value / 100;
+    if (multiplier <= 0) {
+      return -100;
+    }
+    equity *= multiplier;
+  }
+  return (equity - 1) * 100;
+}
+
 function buildComparisonMetricsFromWeeklySeries(options: {
   weekReturns: number[];
   sharpeFallbackReturns?: number[];
@@ -366,11 +382,14 @@ function buildComparisonMetricsFromWeeklySeries(options: {
   profitFactor: number | null;
   maxDrawdown: number | null;
 }): ComparisonMetrics {
-  const totalReturn = options.weekReturns.reduce((sum, value) => sum + value, 0);
+  const totalReturn = computeCompoundedTotalReturnFromWeeklyReturns(options.weekReturns);
   const weeks = options.weekReturns.length;
   const weeklyWins = options.weekReturns.filter((value) => value > 0).length;
   const weeklyWinRate = weeks > 0 ? (weeklyWins / weeks) * 100 : 0;
-  const avgWeekly = weeks > 0 ? totalReturn / weeks : 0;
+  const avgWeekly =
+    weeks > 0
+      ? options.weekReturns.reduce((sum, value) => sum + value, 0) / weeks
+      : 0;
   const tradeWinRate = options.trades > 0 ? (options.wins / options.trades) * 100 : 0;
   return {
     totalReturn,
@@ -487,7 +506,7 @@ function computeMetricsFromWeeklyRows(
     tradeReturns.length > 0
       ? tradeReturns.filter((value) => value > 0).length
       : sortedRows.reduce((sum, row) => sum + row.wins, 0);
-  const totalReturn = weekReturns.reduce((sum, value) => sum + value, 0);
+  const totalReturn = computeCompoundedTotalReturnFromWeeklyReturns(weekReturns);
   const weeklyCurveDrawdown = computeCumulativeMaxDrawdownFromWeeklyReturns(weekReturns);
   // Week-level curve drawdown is the authoritative portfolio-level DD metric.
   // Static per-week DD from legacy rows can be over-counted when basket legs offset.
@@ -583,8 +602,9 @@ function buildMetricsFromGateReportMode(options: {
   annualizeSharpe: boolean;
 }): ComparisonMetrics {
   const totalReturn =
-    toFiniteNumber(options.modeRecord.totalReturn) ??
-    options.weeklyReturns.reduce((sum, value) => sum + value, 0);
+    options.weeklyReturns.length > 0
+      ? computeCompoundedTotalReturnFromWeeklyReturns(options.weeklyReturns)
+      : (toFiniteNumber(options.modeRecord.totalReturn) ?? 0);
   const weeks =
     toInteger(options.modeRecord.weeks) || options.weeklyReturns.length;
   const winRate =
@@ -990,7 +1010,7 @@ function buildStrategiesMap(options: {
   return strategies;
 }
 
-export async function buildPerformanceComparisonPayload(
+async function buildPerformanceComparisonPayload(
   weekParam: string | null,
 ): Promise<PerformanceComparisonPayload> {
   const requestedWeek =
@@ -1333,60 +1353,15 @@ export async function buildPerformanceComparisonPayload(
     const gateT2 = applyGateBaseline("tiered_v2");
     const gateT3 = applyGateBaseline("tiered_v3");
 
-    if (gateV1) {
-      universal.v1 = gateV1;
-      sources.universal.v1 = {
-        mode: "strategy_comparison_report",
-        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
-        fallbackToAllTime: false,
-        fallbackLabel: "8-week baseline from strategy gate comparison report",
-      };
-    }
-    if (gateV2) {
-      universal.v2 = gateV2;
-      sources.universal.v2 = {
-        mode: "strategy_comparison_report",
-        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
-        fallbackToAllTime: false,
-        fallbackLabel: "8-week baseline from strategy gate comparison report",
-      };
-    }
-    if (gateV3) {
-      universal.v3 = gateV3;
-      sources.universal.v3 = {
-        mode: "strategy_comparison_report",
-        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
-        fallbackToAllTime: false,
-        fallbackLabel: "8-week baseline from strategy gate comparison report",
-      };
-    }
-    if (gateT1) {
-      tiered.v1 = gateT1;
-      sources.tiered.v1 = {
-        mode: "strategy_comparison_report",
-        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
-        fallbackToAllTime: false,
-        fallbackLabel: "8-week baseline from strategy gate comparison report",
-      };
-    }
-    if (gateT2) {
-      tiered.v2 = gateT2;
-      sources.tiered.v2 = {
-        mode: "strategy_comparison_report",
-        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
-        fallbackToAllTime: false,
-        fallbackLabel: "8-week baseline from strategy gate comparison report",
-      };
-    }
-    if (gateT3) {
-      tiered.v3 = gateT3;
-      sources.tiered.v3 = {
-        mode: "strategy_comparison_report",
-        sourcePath: gating.sourcePath ?? "embedded:src/lib/performance/gateOverlayDefault.ts",
-        fallbackToAllTime: false,
-        fallbackLabel: "8-week baseline from strategy gate comparison report",
-      };
-    }
+    // Keep gate-overlay metrics supplemental only. They remain available in the
+    // `gating` payload, but should not replace the canonical strategy metrics
+    // used by Performance surfaces.
+    void gateV1;
+    void gateV2;
+    void gateV3;
+    void gateT1;
+    void gateT2;
+    void gateT3;
 
     const strategies = buildStrategiesMap({
       entries: listPerformanceStrategyEntries(),

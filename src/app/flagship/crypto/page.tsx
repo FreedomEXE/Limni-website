@@ -11,15 +11,10 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import DashboardLayout from "@/components/DashboardLayout";
-import CryptoBoard from "@/components/flagship/CryptoBoard";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default function FlagshipCryptoPage() {
-  return (
-    <DashboardLayout>
-      <CryptoBoard />
-    </DashboardLayout>
-  );
+  redirect("/flagship?tab=crypto");
 }

@@ -1563,6 +1563,16 @@ async function readLiveMt5WeeklyFromDb(botId = "katarakti_v1"): Promise<{
 }
 
 async function readCryptoFuturesSnapshot(): Promise<KataraktiMarketSnapshot | null> {
+  const dbSnapshot = await readBacktestStoreSnapshot({
+    market: "crypto_futures",
+    variant: "core",
+    selectedVariantId: "core",
+    botId: "bitget_perp_v2",
+  });
+  if (dbSnapshot) {
+    return dbSnapshot;
+  }
+
   const weeklySummaryPath = process.env.KATARAKTI_CRYPTO_WEEKLY_PATH?.trim() || CRYPTO_WEEKLY_SUMMARY_PATH;
   const weeklyRows = await readJsonFile<CryptoWeeklySummaryRow[]>(weeklySummaryPath);
   const summaryRows = Array.isArray(weeklyRows) ? weeklyRows : [];
@@ -1767,6 +1777,16 @@ function buildMt5TradeDetailsByWeek(
 }
 
 async function readMt5ForexSnapshot(): Promise<KataraktiMarketSnapshot | null> {
+  const dbSnapshot = await readBacktestStoreSnapshot({
+    market: "mt5_forex",
+    variant: "core",
+    selectedVariantId: "core",
+    botId: "katarakti_v1",
+  });
+  if (dbSnapshot) {
+    return dbSnapshot;
+  }
+
   const loaded = await readMt5Report();
   const preferredVariantId = process.env.KATARAKTI_MT5_VARIANT_ID?.trim() || PINNED_MT5_VARIANT_ID;
 

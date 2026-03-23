@@ -5,6 +5,11 @@ const SESSION_COOKIE_NAME = "limni_session";
 const SESSION_SECRETS = new Set(["admin", "viewer", "authenticated"]);
 
 export function middleware(request: NextRequest) {
+  // Dev/CI auth bypass — allows Playwright and Codex to browse without login
+  if (process.env.AUTH_BYPASS === "true") {
+    return NextResponse.next();
+  }
+
   const { pathname } = request.nextUrl;
 
   // Never serve raw MT5 source files from web routes.

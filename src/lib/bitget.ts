@@ -218,7 +218,7 @@ export async function fetchBitgetMarketContracts(): Promise<BitgetMarketContract
 export async function fetchBitgetCandleRange(
   symbolBase: string,
   window: { openUtc: DateTime; closeUtc: DateTime },
-): Promise<{ open: number; close: number; openTime: string; closeTime: string } | null> {
+): Promise<{ open: number; high: number; low: number; close: number; openTime: string; closeTime: string } | null> {
   const productType = getProductType();
   const symbol = `${symbolBase}USDT`;
   const weekDurationMs = window.closeUtc.toMillis() - window.openUtc.toMillis();
@@ -248,9 +248,18 @@ export async function fetchBitgetCandleRange(
     .map((row) => ({
       ts: Number(row[0]),
       open: Number(row[1]),
+      high: Number(row[2]),
+      low: Number(row[3]),
       close: Number(row[4]),
     }))
-    .filter((row) => Number.isFinite(row.ts) && Number.isFinite(row.open) && Number.isFinite(row.close))
+    .filter(
+      (row) =>
+        Number.isFinite(row.ts)
+        && Number.isFinite(row.open)
+        && Number.isFinite(row.high)
+        && Number.isFinite(row.low)
+        && Number.isFinite(row.close),
+    )
     .filter((row) => row.ts >= openMs && row.ts < closeMs)
     .sort((a, b) => a.ts - b.ts);
   if (parsed.length === 0) {
@@ -260,6 +269,8 @@ export async function fetchBitgetCandleRange(
   const last = parsed[parsed.length - 1];
   return {
     open: first.open,
+    high: parsed.reduce((max, row) => Math.max(max, row.high), Number.NEGATIVE_INFINITY),
+    low: parsed.reduce((min, row) => Math.min(min, row.low), Number.POSITIVE_INFINITY),
     close: last.close,
     openTime: new Date(first.ts).toISOString(),
     closeTime: new Date(last.ts).toISOString(),
@@ -271,6 +282,13 @@ export async function fetchBitgetCandleSeries(
   window: { openUtc: DateTime; closeUtc: DateTime },
 ): Promise<BitgetHourlyCandle[]> {
   return fetchBitgetSeries(symbolBase, window, "H1");
+}
+
+export async function fetchBitgetSpotCandleSeries(
+  symbolBase: string,
+  window: { openUtc: DateTime; closeUtc: DateTime },
+): Promise<BitgetHourlyCandle[]> {
+  return fetchBitgetSpotSeries(symbolBase, window, "H1");
 }
 
 export async function fetchBitgetMinuteSeries(
@@ -320,17 +338,19 @@ async function fetchBitgetSeries(
   const all = new Map<number, BitgetHourlyCandle>();
   let cursor = window.openUtc.toMillis();
   const closeMs = window.closeUtc.toMillis();
+  const maxBarsPerRequest = 1000;
   let pages = 0;
 
   while (cursor < closeMs && pages < 120) {
     pages += 1;
+    const requestEndMs = Math.min(closeMs, cursor + (stepMs * maxBarsPerRequest));
     const url = new URL(`${BASE_URL}/api/v2/mix/market/candles`);
     url.searchParams.set("symbol", symbol);
     url.searchParams.set("productType", productType);
     url.searchParams.set("granularity", granularityParam);
     url.searchParams.set("startTime", String(cursor));
-    url.searchParams.set("endTime", String(closeMs));
-    url.searchParams.set("limit", "1000");
+    url.searchParams.set("endTime", String(requestEndMs));
+    url.searchParams.set("limit", String(maxBarsPerRequest));
 
     const response = await fetchJson<BitgetCandleResponse>(url.toString());
     if (response.code && response.code !== "00000") {
@@ -374,6 +394,79 @@ async function fetchBitgetSeries(
       break;
     }
     cursor = nextTs;
+  }
+
+  return Array.from(all.values()).sort((a, b) => a.ts - b.ts);
+}
+
+async function fetchBitgetSpotSeries(
+  symbolBase: string,
+  window: { openUtc: DateTime; closeUtc: DateTime },
+  granularity: BitgetGranularity,
+): Promise<BitgetHourlyCandle[]> {
+  const symbol = `${symbolBase}USDT`;
+  const granularityParam =
+    granularity === "M1"
+      ? "1min"
+      : granularity === "M15"
+        ? "15min"
+        : granularity === "H4"
+          ? "4h"
+          : "1h";
+  const all = new Map<number, BitgetHourlyCandle>();
+  let cursorEndMs = window.closeUtc.toMillis();
+  let pages = 0;
+
+  while (cursorEndMs > window.openUtc.toMillis() && pages < 240) {
+    pages += 1;
+    const url = new URL(`${BASE_URL}/api/v2/spot/market/history-candles`);
+    url.searchParams.set("symbol", symbol);
+    url.searchParams.set("granularity", granularityParam);
+    url.searchParams.set("endTime", String(cursorEndMs));
+    url.searchParams.set("limit", "200");
+
+    const response = await fetchJson<BitgetCandleResponse>(url.toString());
+    if (response.code && response.code !== "00000") {
+      return [];
+    }
+    const rows = response.data ?? [];
+    if (rows.length === 0) {
+      break;
+    }
+
+    const parsed = rows
+      .map((row) => ({
+        ts: Number(row[0]),
+        open: Number(row[1]),
+        high: Number(row[2]),
+        low: Number(row[3]),
+        close: Number(row[4]),
+      }))
+      .filter(
+        (row) =>
+          Number.isFinite(row.ts) &&
+          Number.isFinite(row.open) &&
+          Number.isFinite(row.high) &&
+          Number.isFinite(row.low) &&
+          Number.isFinite(row.close),
+      )
+      .sort((a, b) => a.ts - b.ts);
+
+    if (parsed.length === 0) {
+      break;
+    }
+
+    for (const row of parsed) {
+      if (row.ts >= window.openUtc.toMillis() && row.ts < window.closeUtc.toMillis()) {
+        all.set(row.ts, row);
+      }
+    }
+
+    const earliestTs = parsed[0]!.ts;
+    if (earliestTs >= cursorEndMs) {
+      break;
+    }
+    cursorEndMs = earliestTs;
   }
 
   return Array.from(all.values()).sort((a, b) => a.ts - b.ts);
