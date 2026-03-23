@@ -11,7 +11,7 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import type { MatrixTrendState } from "@/lib/flagship/matrixStyles";
+import type { MatrixContextView, MatrixTrendState } from "@/lib/flagship/matrixStyles";
 import type { CryptoUniverseTier } from "@/lib/flagship/cryptoUniverse";
 
 export type CryptoBiasDirection = "LONG" | "SHORT" | "NEUTRAL";
@@ -71,7 +71,24 @@ export type CryptoMatrixRow = {
   strength4h: number | null;
   strength24h: number | null;
   strengthState: MatrixTrendState | null;
-  trigger: string;
+  gammaState: MatrixContextView;
+  liquidationAgree: boolean;
+  oiAgree: boolean;
+  fundingAgree: boolean;
+  adrPct: number | null;
+  adrBarsUsed: number;
+  adrMultiplier: number | null;
+  weekOpenUtc: string | null;
+  weekOpenPrice: number | null;
+  weekHighPrice: number | null;
+  weekLowPrice: number | null;
+  currentPrice: number | null;
+  longTriggerPrice: number | null;
+  shortTriggerPrice: number | null;
+  oneAdrLongTriggerPrice: number | null;
+  oneAdrShortTriggerPrice: number | null;
+  oneAdrTouched: boolean;
+  touched: boolean;
   sizing: string;
 };
 

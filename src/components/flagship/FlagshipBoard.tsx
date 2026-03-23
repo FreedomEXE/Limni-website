@@ -30,6 +30,7 @@ type SignalDirection = "LONG" | "SHORT" | "NEUTRAL";
 type SignalTier = "HIGH" | "MEDIUM" | "NEUTRAL";
 type AssetClass = "fx" | "indices" | "crypto" | "commodities";
 type MenthorqOverlayCondition = "POSITIVE" | "NEGATIVE" | "NEUTRAL" | "UNKNOWN";
+type TriggerState = "HIT" | "CLOSE" | "WATCHING" | "NO_DATA" | "INACTIVE";
 
 type GatedSetupSignal = {
   assetClass: string;
@@ -109,22 +110,12 @@ type LiveSizingPairRiskProfile = {
   pair: string;
   trades: number;
   avgReturnPct: number;
-  p95MaePct: number;
   noTargetRatePct: number;
-  recommendedLotsPer100k: Array<{
-    riskBudgetPct: number;
-    atrOnly: number;
-    conservative: number;
-  }>;
 };
 
 type LiveSizingPayload = {
   generatedUtc: string | null;
   positionSizingResearch: {
-    recommendation: {
-      bestModelUnder5PctDrawdown: string | null;
-      bestModelUnder10PctDrawdown: string | null;
-    };
     pairRiskProfiles: LiveSizingPairRiskProfile[];
   } | null;
 };
@@ -132,13 +123,37 @@ type LiveSizingPayload = {
 type PriceMoveRow = {
   pair: string;
   change24hPct: number | null;
-  openPrice: number | null;
-  closePrice: number | null;
 };
 
 type PriceMovesPayload = {
   generatedUtc: string | null;
   rows: PriceMoveRow[];
+};
+
+type IntradayLevelRow = {
+  pair: string;
+  assetClass: AssetClass;
+  adrPct: number | null;
+  adrBarsUsed: number;
+  adrMultiplier: number;
+  weekOpenUtc: string;
+  weekOpenPrice: number | null;
+  weekHighPrice: number | null;
+  weekLowPrice: number | null;
+  currentPrice: number | null;
+  longTriggerPrice: number | null;
+  shortTriggerPrice: number | null;
+  oneAdrLongTriggerPrice: number | null;
+  oneAdrShortTriggerPrice: number | null;
+  longTouched: boolean;
+  shortTouched: boolean;
+  oneAdrLongTouched: boolean;
+  oneAdrShortTouched: boolean;
+};
+
+type IntradayLevelsPayload = {
+  generatedUtc: string | null;
+  rows: IntradayLevelRow[];
 };
 
 type PairUniverseRow = {
@@ -151,26 +166,41 @@ type PairUniverseRow = {
 type MatrixRow = {
   pair: string;
   assetClass: AssetClass;
-  base: string;
-  quote: string;
   dealer: TrendState;
   commercial: TrendState;
   sentimentDaily: TrendState;
   overlay: TrendState;
   strength1h: TrendState;
   strengthDelta1h: number | null;
-  contextView: "CONFIRM" | "MIXED" | "CONFLICT" | "N/A";
-  bias: TrendState;
+  coreBias: SignalDirection;
+  coreBiasState: TrendState;
+  gammaState: MatrixContextView;
   gate: GateDecision;
   tier: SignalTier;
   sessionEligible: SessionName[];
   gateReasons: string[];
-  sizing: number | null;
-  triggerLabel: string;
-  noTargetRatePct: number | null;
-  avgReturnPct: number | null;
+  cotGateAgree: boolean;
+  menthorqAgree: boolean;
+  strengthAgree: boolean;
   tradeCount: number | null;
+  avgReturnPct: number | null;
+  noTargetRatePct: number | null;
   move24hPct: number | null;
+  adrPct: number | null;
+  adrBarsUsed: number;
+  adrMultiplier: number | null;
+  weekOpenUtc: string | null;
+  weekOpenPrice: number | null;
+  weekHighPrice: number | null;
+  weekLowPrice: number | null;
+  currentPrice: number | null;
+  longTriggerPrice: number | null;
+  shortTriggerPrice: number | null;
+  oneAdrLongTriggerPrice: number | null;
+  oneAdrShortTriggerPrice: number | null;
+  touched: boolean;
+  oneAdrTouched: boolean;
+  triggerState: TriggerState;
 };
 
 const UNIVERSE: PairUniverseRow[] = [
@@ -228,6 +258,12 @@ function directionToState(direction: SignalDirection): TrendState {
   return "NEUTRAL";
 }
 
+function directionLabel(direction: SignalDirection) {
+  if (direction === "LONG") return "Long";
+  if (direction === "SHORT") return "Short";
+  return "Neutral";
+}
+
 function conditionToState(condition: MenthorqOverlayCondition | null | undefined): TrendState {
   if (condition === "POSITIVE") return "BULLISH";
   if (condition === "NEGATIVE") return "BEARISH";
@@ -260,16 +296,13 @@ function deriveOverlayState(
   if (pairRow.assetClass === "crypto") {
     if (!signal) return "NEUTRAL";
     const source = String(signal.gateDecisionSource ?? "").toUpperCase();
-    if (source.includes("CRYPTO_LIQUIDATION_LIVE")) {
-      return directionToState(signal.direction);
-    }
+    if (source.includes("CRYPTO_LIQUIDATION_LIVE")) return directionToState(signal.direction);
     return "NEUTRAL";
   }
 
   if (pairRow.assetClass === "indices" && pairRow.base === "NIKKEI") {
     return invertState(conditionToState(menthorqBySymbol.get("6J")));
   }
-
   if (pairRow.assetClass === "indices" || pairRow.assetClass === "commodities") {
     const symbol = ASSET_MENTHORQ_SYMBOL[pairRow.base];
     return conditionToState(symbol ? menthorqBySymbol.get(symbol) : "UNKNOWN");
@@ -291,20 +324,6 @@ function deriveOverlayState(
   return "NEUTRAL";
 }
 
-function deriveBias(dealer: TrendState, commercial: TrendState, sentimentDaily: TrendState): TrendState {
-  const votes = [dealer, commercial, sentimentDaily];
-  const bulls = votes.filter((state) => state === "BULLISH").length;
-  const bears = votes.filter((state) => state === "BEARISH").length;
-  if (bulls >= 2) return "BULLISH";
-  if (bears >= 2) return "BEARISH";
-  return "NEUTRAL";
-}
-
-function formatLot(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return "—";
-  return value.toFixed(2);
-}
-
 function decodeReason(reason: string) {
   return String(reason ?? "")
     .trim()
@@ -313,48 +332,38 @@ function decodeReason(reason: string) {
     .replace(/\b[a-z]/g, (char) => char.toUpperCase());
 }
 
-function tierRank(tier: SignalTier) {
-  if (tier === "HIGH") return 0;
-  if (tier === "MEDIUM") return 1;
-  return 2;
-}
-
-function assetClassRank(assetClass: AssetClass) {
-  if (assetClass === "fx") return 0;
-  if (assetClass === "commodities") return 1;
-  if (assetClass === "indices") return 2;
-  return 3;
-}
-
-function gateRank(gate: GateDecision) {
-  if (gate === "PASS") return 0;
-  if (gate === "SKIP") return 1;
-  return 2;
-}
-
-function deriveContextView(bias: TrendState, overlay: TrendState, strength: TrendState): MatrixContextView {
-  if (bias === "NEUTRAL") return "N/A";
-  const active = [overlay, strength].filter((state) => state !== "NEUTRAL");
-  if (active.length === 0) return "MIXED";
-  const aligned = active.filter((state) => state === bias).length;
-  const opposed = active.filter((state) => state !== bias).length;
-  if (aligned > 0 && opposed === 0) return "CONFIRM";
-  if (opposed > 0 && aligned === 0) return "CONFLICT";
-  return "MIXED";
-}
-
 function formatMove(change24hPct: number | null) {
   if (change24hPct === null || !Number.isFinite(change24hPct)) return "—";
   return `${change24hPct > 0 ? "+" : ""}${change24hPct.toFixed(1)}%`;
 }
 
 function moveClass(change24hPct: number | null) {
-  if (change24hPct === null || !Number.isFinite(change24hPct)) {
-    return "text-[color:var(--muted)]";
-  }
+  if (change24hPct === null || !Number.isFinite(change24hPct)) return "text-[color:var(--muted)]";
   if (change24hPct > 0) return "text-emerald-700 dark:text-emerald-300";
   if (change24hPct < 0) return "text-rose-700 dark:text-rose-300";
   return "text-[color:var(--muted)]";
+}
+
+function formatPrice(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "—";
+  if (Math.abs(value) >= 1000) return value.toFixed(2);
+  if (Math.abs(value) >= 100) return value.toFixed(3);
+  if (Math.abs(value) >= 1) return value.toFixed(4);
+  return value.toFixed(5);
+}
+
+function triggerClass(state: TriggerState, flashing: boolean) {
+  const base = "inline-flex min-w-[5.25rem] justify-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]";
+  if (state === "HIT") return `${base} border-amber-400/40 bg-amber-500/15 text-amber-700 dark:bg-amber-900/35 dark:text-amber-300 ${flashing ? "intraday-adr-pulse" : ""}`;
+  if (state === "CLOSE") return `${base} border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300`;
+  if (state === "WATCHING") return `${base} border-sky-400/30 bg-sky-500/10 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300`;
+  return `${base} border-[var(--panel-border)] bg-[var(--panel)]/60 text-[color:var(--muted)]`;
+}
+
+function sortBucket(row: MatrixRow) {
+  if (row.coreBias === "NEUTRAL") return 2;
+  if (row.oneAdrTouched) return 0;
+  return 1;
 }
 
 export default function FlagshipBoard({ strategy }: { strategy: string }) {
@@ -366,6 +375,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [menthorqOverlay, setMenthorqOverlay] = useState<MenthorqOverlayPayload | null>(null);
   const [liveSizing, setLiveSizing] = useState<LiveSizingPayload | null>(null);
   const [priceMoves, setPriceMoves] = useState<PriceMovesPayload | null>(null);
+  const [intradayLevels, setIntradayLevels] = useState<IntradayLevelsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -389,8 +399,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         setRefreshing(true);
         setError(null);
         const nextWarnings: string[] = [];
-
-        const [gatedRes, cotRes, sentimentRes, currencyRes, assetRes, overlayRes, sizingRes, movesRes] = await Promise.allSettled([
+        const responses = await Promise.allSettled([
           fetch("/api/performance/gated-setups", { cache: "no-store" }),
           fetch("/api/flagship/cot-matrix", { cache: "no-store" }),
           fetch("/api/flagship/sentiment-daily", { cache: "no-store" }),
@@ -399,31 +408,29 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           fetch("/api/flagship/menthorq-overlay", { cache: "no-store" }),
           fetch("/api/flagship/live-sizing", { cache: "no-store" }),
           fetch("/api/flagship/price-moves", { cache: "no-store" }),
+          fetch("/api/flagship/intraday-levels", { cache: "no-store" }),
         ]);
 
         const readJson = async <T,>(response: PromiseSettledResult<Response>, label: string) => {
-          if (response.status === "fulfilled" && response.value.ok) {
-            return (await response.value.json()) as T;
-          }
+          if (response.status === "fulfilled" && response.value.ok) return (await response.value.json()) as T;
           nextWarnings.push(`${label} unavailable`);
           return null;
         };
 
-        const [gatedJson, cotJson, sentimentJson, currencyJson, assetJson, overlayJson, sizingJson, movesJson] = await Promise.all([
-          readJson<GatedSetupsPayload>(gatedRes, "gated-setups"),
-          readJson<CotMatrixPayload>(cotRes, "cot-matrix"),
-          readJson<DailySentimentPayload>(sentimentRes, "sentiment-daily"),
-          readJson<CurrencyStrengthPayload>(currencyRes, "currency-strength"),
-          readJson<AssetStrengthPayload>(assetRes, "asset-strength"),
-          readJson<MenthorqOverlayPayload>(overlayRes, "menthorq-overlay"),
-          readJson<LiveSizingPayload>(sizingRes, "live-sizing"),
-          readJson<PriceMovesPayload>(movesRes, "price-moves"),
+        const [gatedJson, cotJson, sentimentJson, currencyJson, assetJson, overlayJson, sizingJson, movesJson, intradayJson] = await Promise.all([
+          readJson<GatedSetupsPayload>(responses[0], "gated-setups"),
+          readJson<CotMatrixPayload>(responses[1], "cot-matrix"),
+          readJson<DailySentimentPayload>(responses[2], "sentiment-daily"),
+          readJson<CurrencyStrengthPayload>(responses[3], "currency-strength"),
+          readJson<AssetStrengthPayload>(responses[4], "asset-strength"),
+          readJson<MenthorqOverlayPayload>(responses[5], "menthorq-overlay"),
+          readJson<LiveSizingPayload>(responses[6], "live-sizing"),
+          readJson<PriceMovesPayload>(responses[7], "price-moves"),
+          readJson<IntradayLevelsPayload>(responses[8], "intraday-levels"),
         ]);
 
         if (!cancelled) {
-          if (!gatedJson && !cotJson && !sentimentJson) {
-            setError("Failed to load matrix sources.");
-          }
+          if (!gatedJson && !cotJson && !sentimentJson) setError("Failed to load matrix sources.");
           setGatedData(gatedJson);
           setCotMatrix(cotJson);
           setDailySentiment(sentimentJson);
@@ -432,6 +439,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           setMenthorqOverlay(overlayJson);
           setLiveSizing(sizingJson);
           setPriceMoves(movesJson);
+          setIntradayLevels(intradayJson);
           setWarnings(nextWarnings);
           setLastRefreshedUtc(new Date().toISOString());
           setLoading(false);
@@ -483,15 +491,20 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
     const moveByPair = new Map<string, number | null>();
     for (const row of priceMoves?.rows ?? []) moveByPair.set(normalizeKey(row.pair), row.change24hPct);
 
+    const levelsByPair = new Map<string, IntradayLevelRow>();
+    for (const row of intradayLevels?.rows ?? []) levelsByPair.set(normalizeKey(row.pair), row);
+
     return UNIVERSE
       .map((pairRow) => {
         const key = normalizeKey(pairRow.pair);
         const signal = gatedByPair.get(key) ?? null;
+        const level = levelsByPair.get(key) ?? null;
         const cot = cotByPair.get(key) ?? null;
         const dealer = directionToState(cot?.dealerDirection ?? "NEUTRAL");
         const commercial = directionToState(cot?.commercialDirection ?? "NEUTRAL");
         const sentimentDaily = directionToState(sentimentByPair.get(key) ?? "NEUTRAL");
-        const bias = deriveBias(dealer, commercial, sentimentDaily);
+        const coreBias = signal?.direction ?? "NEUTRAL";
+        const coreBiasState = directionToState(coreBias);
         const sizing = sizingByPair.get(key) ?? null;
 
         let strengthDelta1h: number | null = null;
@@ -521,51 +534,91 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         }
 
         const overlay = deriveOverlayState(pairRow, signal, menthorqBySymbol);
-        const contextView = deriveContextView(bias, overlay, strength1h);
+        const cotGateAgree = coreBias !== "NEUTRAL" && normalizeGate(signal?.gateDecision) === "PASS";
+        const menthorqAgree = coreBias !== "NEUTRAL" && overlay === coreBiasState;
+        const strengthAgree = coreBias !== "NEUTRAL" && strength1h === coreBiasState;
+        const agreeCount = [cotGateAgree, menthorqAgree, strengthAgree].filter(Boolean).length;
+        const gammaState: MatrixContextView =
+          coreBias === "NEUTRAL"
+            ? "N/A"
+            : agreeCount >= 2
+              ? "CONFIRM"
+              : agreeCount === 1
+                ? "MIXED"
+                : "CONFLICT";
+
+        const touched = coreBias === "LONG" ? (level?.longTouched ?? false) : coreBias === "SHORT" ? (level?.shortTouched ?? false) : false;
+        const oneAdrTouched = coreBias === "LONG" ? (level?.oneAdrLongTouched ?? false) : coreBias === "SHORT" ? (level?.oneAdrShortTouched ?? false) : false;
+
+        let triggerState: TriggerState = "INACTIVE";
+        if (coreBias !== "NEUTRAL") {
+          if (!level || level.adrPct === null) triggerState = "NO_DATA";
+          else if (oneAdrTouched) triggerState = "HIT";
+          else if (touched) triggerState = "CLOSE";
+          else triggerState = "WATCHING";
+        }
 
         return {
           pair: pairRow.pair,
           assetClass: pairRow.assetClass,
-          base: pairRow.base,
-          quote: pairRow.quote,
           dealer,
           commercial,
           sentimentDaily,
           overlay,
           strength1h,
           strengthDelta1h,
-          contextView,
-          bias,
+          coreBias,
+          coreBiasState,
+          gammaState,
           gate: signal ? normalizeGate(signal.gateDecision) : "NO_DATA",
           tier: normalizeTier(signal?.tier),
           sessionEligible: SESSION_ELIGIBILITY.get(pairRow.pair) ?? ["ASIA", "LONDON", "NY"],
           gateReasons: signal?.gateReasons?.length ? signal.gateReasons : ["NO_WEEKLY_SIGNAL_FOR_PAIR"],
-          sizing: null,
-          triggerLabel: "TBD",
-          noTargetRatePct: sizing?.noTargetRatePct ?? null,
-          avgReturnPct: sizing?.avgReturnPct ?? null,
+          cotGateAgree,
+          menthorqAgree,
+          strengthAgree,
           tradeCount: sizing?.trades ?? null,
+          avgReturnPct: sizing?.avgReturnPct ?? null,
+          noTargetRatePct: sizing?.noTargetRatePct ?? null,
           move24hPct: moveByPair.get(key) ?? null,
+          adrPct: level?.adrPct ?? null,
+          adrBarsUsed: level?.adrBarsUsed ?? 0,
+          adrMultiplier: level?.adrMultiplier ?? null,
+          weekOpenUtc: level?.weekOpenUtc ?? null,
+          weekOpenPrice: level?.weekOpenPrice ?? null,
+          weekHighPrice: level?.weekHighPrice ?? null,
+          weekLowPrice: level?.weekLowPrice ?? null,
+          currentPrice: level?.currentPrice ?? null,
+          longTriggerPrice: level?.longTriggerPrice ?? null,
+          shortTriggerPrice: level?.shortTriggerPrice ?? null,
+          oneAdrLongTriggerPrice: level?.oneAdrLongTriggerPrice ?? null,
+          oneAdrShortTriggerPrice: level?.oneAdrShortTriggerPrice ?? null,
+          touched,
+          oneAdrTouched,
+          triggerState,
         } satisfies MatrixRow;
       })
       .filter((row) => row.sessionEligible.includes(selectedSession))
-      .sort((a, b) => {
-        const neutralDiff = Number(a.bias === "NEUTRAL") - Number(b.bias === "NEUTRAL");
-        if (neutralDiff !== 0) return neutralDiff;
-        const assetDiff = assetClassRank(a.assetClass) - assetClassRank(b.assetClass);
-        if (assetDiff !== 0) return assetDiff;
-        return a.pair.localeCompare(b.pair);
+      .sort((left, right) => {
+        const bucketDiff = sortBucket(left) - sortBucket(right);
+        if (bucketDiff !== 0) return bucketDiff;
+        return left.pair.localeCompare(right.pair);
       });
-  }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, gatedData, liveSizing, menthorqOverlay, priceMoves, selectedSession]);
+  }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, gatedData, intradayLevels, liveSizing, menthorqOverlay, priceMoves, selectedSession]);
 
+  const qualifiedCount = matrixRows.filter((row) => row.coreBias !== "NEUTRAL").length;
+  const adrHitCount = matrixRows.filter((row) => row.triggerState === "HIT").length;
+  const closeCount = matrixRows.filter((row) => row.triggerState === "CLOSE").length;
+  const neutralCount = matrixRows.filter((row) => row.coreBias === "NEUTRAL").length;
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
+
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
       <header className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Matrix</p>
-            <h1 className="text-xl font-semibold text-[var(--foreground)] md:text-2xl">Live Session Matrix</h1>
+            <h1 className="text-xl font-semibold text-[var(--foreground)] md:text-2xl">CFD Matrix</h1>
             <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Strategy {strategy}</p>
           </div>
           <div className="space-y-2">
@@ -605,44 +658,45 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
             </button>
           ))}
         </div>
+
+        {!loading && !error ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/55 px-3 py-2 text-[11px] text-[color:var(--muted)]">
+            <span className="font-semibold uppercase tracking-[0.12em]">{selectedSession}</span>
+            <span>Qualified {qualifiedCount}</span>
+            <span>ADR Hit {adrHitCount}</span>
+            <span>Close {closeCount}</span>
+            <span>Neutral {neutralCount}</span>
+          </div>
+        ) : null}
+
+        {warnings.length > 0 ? (
+          <div className="rounded-lg border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800 dark:text-amber-200">
+            Partial data: {warnings.join(" · ")}
+          </div>
+        ) : null}
       </header>
 
       {loading ? <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 p-3 text-sm text-[color:var(--muted)]">Loading matrix...</div> : null}
       {error ? <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-700">{error}</div> : null}
+
       {!loading && !error ? (
         <div className="space-y-2">
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
             <table className="min-w-full border-separate border-spacing-0 text-xs">
               <colgroup>
-                <col className="w-[18rem]" />
-                <col className="w-[7rem]" />
-                <col className="w-[5rem]" />
-                <col className="w-[5rem]" />
-                <col className="w-[6rem]" />
-                <col className="w-[7rem]" />
-                <col className="w-[5rem]" />
-                <col className="w-[6rem]" />
-                <col className="w-[6rem]" />
+                <col className="w-[25rem]" />
+                <col className="w-[8rem]" />
+                <col className="w-[8rem]" />
+                <col className="w-[9rem]" />
                 <col className="w-[6rem]" />
               </colgroup>
               <thead className="sticky top-0 z-10 bg-[var(--panel)] text-left uppercase tracking-[0.14em] text-[color:var(--muted)]">
                 <tr>
-                  <th className="border-b border-r border-[var(--panel-border)] px-3 py-3" rowSpan={2}>Pair</th>
-                  <th className="border-b border-r border-[var(--panel-border)] bg-slate-500/[0.06] px-3 py-3 text-center" colSpan={4}>Core Bias</th>
-                  <th className="border-b border-r border-[var(--panel-border)] bg-amber-500/[0.07] px-3 py-3 text-center" colSpan={3}>Context</th>
-                  <th className="border-b border-r border-[var(--panel-border)] bg-sky-500/[0.07] px-3 py-3 text-center" colSpan={1}>Trigger</th>
-                  <th className="border-b border-[var(--panel-border)] bg-emerald-500/[0.07] px-3 py-3 text-center" colSpan={1}>Sizing</th>
-                </tr>
-                <tr>
-                  <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Bias</th>
-                  <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Dealer</th>
-                  <th className="border-b border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Commercial</th>
-                  <th className="border-b border-r border-[var(--panel-border)] bg-slate-500/[0.04] px-3 py-2">Sentiment</th>
-                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Context</th>
-                  <th className="border-b border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Overlay</th>
-                  <th className="border-b border-r border-[var(--panel-border)] bg-amber-500/[0.05] px-3 py-2">Strength</th>
-                  <th className="border-b border-r border-[var(--panel-border)] bg-sky-500/[0.05] px-3 py-2">Trigger</th>
-                  <th className="border-b border-[var(--panel-border)] bg-emerald-500/[0.05] px-3 py-2">Sizing</th>
+                  <th className="border-b border-[var(--panel-border)] px-3 py-3">Pair</th>
+                  <th className="border-b border-[var(--panel-border)] px-3 py-3">Core Bias</th>
+                  <th className="border-b border-[var(--panel-border)] px-3 py-3">Gamma</th>
+                  <th className="border-b border-[var(--panel-border)] px-3 py-3">Trigger</th>
+                  <th className="border-b border-[var(--panel-border)] px-3 py-3">Sizing</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
@@ -650,51 +704,105 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                   const isExpanded = expandedPairs.includes(row.pair);
                   return (
                     <Fragment key={row.pair}>
-                      <tr className={`transition-colors ${rowHighlightClass(row.bias)}`}>
+                      <tr className={`transition-colors ${rowHighlightClass(row.coreBiasState)}`}>
                         <td className="border-r border-[var(--panel-border)] px-3 py-2 font-semibold text-[var(--foreground)]">
                           <button
                             type="button"
-                            onClick={() => setExpandedPairs((previous) => previous.includes(row.pair) ? previous.filter((item) => item !== row.pair) : [...previous, row.pair])}
-                            className="group flex items-center gap-2 text-left"
+                            onClick={() =>
+                              setExpandedPairs((previous) =>
+                                previous.includes(row.pair)
+                                  ? previous.filter((item) => item !== row.pair)
+                                  : [...previous, row.pair],
+                              )
+                            }
+                            className="group flex w-full items-start gap-2 text-left"
                           >
-                            <span className="inline-flex w-3 justify-center text-[11px] text-[color:var(--muted)]">{isExpanded ? "▾" : "▸"}</span>
-                            <span>{row.pair}</span>
-                            <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">{row.assetClass}</span>
-                            <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${moveClass(row.move24hPct)}`}>{formatMove(row.move24hPct)}</span>
+                            <span className="mt-0.5 inline-flex w-3 justify-center text-[11px] text-[color:var(--muted)]">{isExpanded ? "▾" : "▸"}</span>
+                            <span className="space-y-1">
+                              <span className="flex flex-wrap items-center gap-2">
+                                <span>{row.pair}</span>
+                                <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">{row.assetClass}</span>
+                                <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${moveClass(row.move24hPct)}`}>{formatMove(row.move24hPct)}</span>
+                              </span>
+                              {row.coreBias !== "NEUTRAL" && row.tier !== "NEUTRAL" ? (
+                                <span className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">{row.tier} tier</span>
+                              ) : null}
+                            </span>
                           </button>
                         </td>
-                        <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${biasChipClass(row.bias)}`}>{row.bias === "BULLISH" ? "LONG" : row.bias === "BEARISH" ? "SHORT" : "NEUTRAL"}</span></td>
-                        <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.dealer)}`}>{stateLabel(row.dealer)}</span></td>
-                        <td className="bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.commercial)}`}>{stateLabel(row.commercial)}</span></td>
-                        <td className="border-r border-[var(--panel-border)] bg-slate-500/[0.03] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.sentimentDaily)}`}>{stateLabel(row.sentimentDaily)}</span></td>
-                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex min-w-[4.5rem] justify-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${contextClass(row.contextView)}`}>{row.contextView}</span></td>
-                        <td className="bg-amber-500/[0.04] px-3 py-2"><span className={`inline-flex w-7 justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.overlay)}`}>{stateLabel(row.overlay)}</span></td>
-                        <td className="border-r border-[var(--panel-border)] bg-amber-500/[0.04] px-3 py-2"><span title={row.strengthDelta1h === null ? "No strength data" : `${row.strengthDelta1h > 0 ? "+" : ""}${row.strengthDelta1h}`} className={`inline-flex min-w-[3.5rem] justify-center rounded border px-2 py-0.5 font-semibold ${stateClass(row.strength1h)}`}>{row.strengthDelta1h === null ? "—" : `${row.strengthDelta1h > 0 ? "+" : ""}${row.strengthDelta1h.toFixed(0)}`}</span></td>
-                        <td className="border-r border-[var(--panel-border)] bg-sky-500/[0.04] px-3 py-2"><span className="inline-flex min-w-[3.75rem] justify-center rounded border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600 dark:text-slate-300">{row.triggerLabel}</span></td>
-                        <td className="bg-emerald-500/[0.04] px-3 py-2 font-mono text-[var(--foreground)]">TBD</td>
+                        <td className="border-r border-[var(--panel-border)] px-3 py-2">
+                          <div className="space-y-1">
+                            <span className={`inline-flex min-w-[5rem] justify-center rounded border px-2 py-0.5 font-semibold ${biasChipClass(row.coreBiasState)}`}>
+                              {directionLabel(row.coreBias)}
+                            </span>
+                            {row.coreBias !== "NEUTRAL" ? (
+                              <div className={`text-[10px] font-medium uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>
+                                {row.gate === "NO_DATA" ? "No Data" : row.gate}
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="border-r border-[var(--panel-border)] px-3 py-2">
+                          <div className="space-y-1">
+                            <span className={`inline-flex min-w-[5.5rem] justify-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${contextClass(row.gammaState)}`}>
+                              {row.gammaState}
+                            </span>
+                            {row.coreBias !== "NEUTRAL" ? (
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                                {[row.cotGateAgree, row.menthorqAgree, row.strengthAgree].filter(Boolean).length}/3 agree
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="border-r border-[var(--panel-border)] px-3 py-2">
+                          <div className="space-y-1">
+                            <span className={triggerClass(row.triggerState, row.oneAdrTouched)}>
+                              {row.triggerState === "INACTIVE" ? "—" : row.triggerState === "NO_DATA" ? "No Data" : row.triggerState}
+                            </span>
+                            {row.adrPct !== null ? (
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                                ADR {row.adrPct.toFixed(2)}%
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-[var(--foreground)]">TBD</td>
                       </tr>
                       {isExpanded ? (
                         <tr className="bg-[var(--panel)]/75">
-                          <td colSpan={10} className="px-4 py-3">
-                            <div className="grid gap-2 md:grid-cols-3">
+                          <td colSpan={5} className="px-4 py-3">
+                            <div className="grid gap-2 lg:grid-cols-4">
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
-                                <div className="font-semibold text-[var(--foreground)]">Bias Stack</div>
-                                <div className="mt-1">Dealer {row.dealer}, Commercial {row.commercial}, Sentiment {row.sentimentDaily}</div>
-                                <div>Overlay {row.overlay}, Strength {row.strength1h}, Context {row.contextView}</div>
-                                <div>Move 24h: {formatMove(row.move24hPct)}</div>
+                                <div className="font-semibold text-[var(--foreground)]">Core Bias Detail</div>
+                                <div className="mt-1">Dealer {row.dealer} · Commercial {row.commercial} · Sentiment {row.sentimentDaily}</div>
+                                <div>Weekly call: {directionLabel(row.coreBias)} {row.tier !== "NEUTRAL" ? `· ${row.tier}` : ""}</div>
+                                <div>Gate: <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>{row.gate}</span></div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
-                                <div className="font-semibold text-[var(--foreground)]">Sizing</div>
-                                <div>Live sizing: TBD</div>
-                                <div>Model: TBD</div>
-                                <div>Trigger scaffold: {row.triggerLabel}</div>
+                                <div className="font-semibold text-[var(--foreground)]">Gamma Detail</div>
+                                <div className="mt-1 flex items-center gap-2">
+                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${row.cotGateAgree ? gateClass("PASS") : gateClass("SKIP")}`}>{row.cotGateAgree ? "COT Agree" : "COT Miss"}</span>
+                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${row.menthorqAgree ? gateClass("PASS") : gateClass("SKIP")}`}>{row.menthorqAgree ? "MenthorQ Agree" : "MenthorQ Miss"}</span>
+                                </div>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${row.strengthAgree ? gateClass("PASS") : gateClass("SKIP")}`}>{row.strengthAgree ? "Strength Agree" : "Strength Miss"}</span>
+                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.overlay)}`}>Overlay {stateLabel(row.overlay)}</span>
+                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.strength1h)}`}>Str {row.strengthDelta1h === null ? "—" : row.strengthDelta1h.toFixed(0)}</span>
+                                </div>
+                              </div>
+                              <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
+                                <div className="font-semibold text-[var(--foreground)]">ADR Trigger</div>
+                                <div className="mt-1">ADR {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || "—"} · Mult {row.adrMultiplier ?? "—"}</div>
+                                <div>Week open {formatDateTimeET(row.weekOpenUtc, "Unknown")} @ {formatPrice(row.weekOpenPrice)}</div>
+                                <div>Long trigger {formatPrice(row.longTriggerPrice)} · 1.0 ADR {formatPrice(row.oneAdrLongTriggerPrice)}</div>
+                                <div>Short trigger {formatPrice(row.shortTriggerPrice)} · 1.0 ADR {formatPrice(row.oneAdrShortTriggerPrice)}</div>
+                                <div>Week range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Trade Profile</div>
-                                <div>Trades in sample: {row.tradeCount ?? "—"}</div>
-                                <div>Avg return: {formatPct(row.avgReturnPct, 2)}</div>
-                                <div>No-target rate: {formatPct(row.noTargetRatePct, 2)}</div>
-                                <div>Gate: <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>{row.gate}</span></div>
+                                <div className="mt-1">Trades {row.tradeCount ?? "—"}</div>
+                                <div>Avg return {formatPct(row.avgReturnPct, 2)}</div>
+                                <div>No-target rate {formatPct(row.noTargetRatePct, 2)}</div>
                               </div>
                             </div>
                             <div className="mt-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs text-[var(--foreground)]">

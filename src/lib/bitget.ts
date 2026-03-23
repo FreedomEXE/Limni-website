@@ -93,7 +93,7 @@ export type BitgetMarketContract = {
   volumePlace: number | null;
 };
 
-type BitgetGranularity = "M1" | "M15" | "H1" | "H4";
+type BitgetGranularity = "M1" | "M15" | "H1" | "H4" | "D1";
 
 const BASE_URL = "https://api.bitget.com";
 
@@ -312,6 +312,13 @@ export async function fetchBitget4hSeries(
   return fetchBitgetSeries(symbolBase, window, "H4");
 }
 
+export async function fetchBitgetDailySeries(
+  symbolBase: string,
+  window: { openUtc: DateTime; closeUtc: DateTime },
+): Promise<BitgetHourlyCandle[]> {
+  return fetchBitgetSeries(symbolBase, window, "D1");
+}
+
 async function fetchBitgetSeries(
   symbolBase: string,
   window: { openUtc: DateTime; closeUtc: DateTime },
@@ -326,7 +333,9 @@ async function fetchBitgetSeries(
         ? 15 * 60 * 1000
         : granularity === "H4"
           ? 4 * 60 * 60 * 1000
-          : 60 * 60 * 1000;
+          : granularity === "D1"
+            ? 24 * 60 * 60 * 1000
+            : 60 * 60 * 1000;
   const granularityParam =
     granularity === "M1"
       ? "1m"
@@ -334,7 +343,9 @@ async function fetchBitgetSeries(
         ? "900"
         : granularity === "H4"
           ? "14400"
-          : "3600";
+          : granularity === "D1"
+            ? "1D"
+            : "3600";
   const all = new Map<number, BitgetHourlyCandle>();
   let cursor = window.openUtc.toMillis();
   const closeMs = window.closeUtc.toMillis();
@@ -412,7 +423,9 @@ async function fetchBitgetSpotSeries(
         ? "15min"
         : granularity === "H4"
           ? "4h"
-          : "1h";
+          : granularity === "D1"
+            ? "1day"
+            : "1h";
   const all = new Map<number, BitgetHourlyCandle>();
   let cursorEndMs = window.closeUtc.toMillis();
   let pages = 0;

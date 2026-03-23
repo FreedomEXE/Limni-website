@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -27,7 +28,7 @@ const TOP_LEVEL: NavItem[] = [
   { key: "performance", href: "/performance", label: "Performance", letter: "I" },
   { key: "automation", href: "/automation", label: "Automation", letter: "M" },
   { key: "accounts", href: "/accounts", label: "Accounts", letter: "N" },
-  { key: "flagship", href: "/flagship", label: "Matrix", letter: "I" },
+  { key: "flagship", href: "/matrix", label: "Matrix", letter: "I" },
   { key: "news", href: "/news", label: "News", letter: "N" },
 ];
 
@@ -47,7 +48,7 @@ function resolveSection(pathname: string) {
   if (pathname.startsWith("/performance")) return "performance";
   if (pathname.startsWith("/automation")) return "automation";
   if (pathname.startsWith("/accounts")) return "accounts";
-  if (pathname.startsWith("/flagship")) return "flagship";
+  if (pathname.startsWith("/matrix") || pathname.startsWith("/flagship")) return "flagship";
   if (pathname.startsWith("/news") || pathname.startsWith("/status")) return "news";
   return null;
 }
@@ -86,8 +87,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const viewParam = activeSection === "accounts" ? accountViewFromUrl : viewParamRaw;
   const [rootLockSection, setRootLockSection] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const supportsSectionNav = activeSection !== "flagship";
   const navMode: "root" | "section" =
-    activeSection && rootLockSection === activeSection ? "root" : activeSection ? "section" : "root";
+    activeSection && rootLockSection === activeSection
+      ? "root"
+      : activeSection && supportsSectionNav
+        ? "section"
+        : "root";
   const effectiveAccountView = accountViewFromUrl;
 
   const accountBasePath = useMemo(() => {
@@ -143,13 +149,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         { href: "/status", label: "Status" },
       ];
     }
-    if (activeSection === "flagship") {
-      return [
-        { href: "/flagship", label: "Matrix" },
-        { href: "/flagship/weekly-hold", label: "Swing" },
-        { href: "/flagship/intraday", label: "Intraday" },
-      ];
-    }
     return [];
   })();
 
@@ -194,7 +193,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           className="flex items-center gap-3"
         >
           <div className="flex size-12 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)] shadow-sm">
-            <img src="/limni-icon.svg" alt="Limni" className="size-10 scale-125 logo-theme-aware" />
+            <Image
+              src="/limni-icon.svg"
+              alt="Limni"
+              width={40}
+              height={40}
+              className="size-10 scale-125 logo-theme-aware"
+            />
           </div>
           <div>
             <div className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--foreground)]">

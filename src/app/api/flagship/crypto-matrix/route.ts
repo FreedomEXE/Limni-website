@@ -19,6 +19,7 @@ import {
   fetchBitget15mSeries,
   fetchBitget4hSeries,
   fetchBitgetCandleSeries,
+  fetchBitgetDailySeries,
   fetchBitgetMarketContracts,
   fetchBitgetMarketTickers,
   type BitgetHourlyCandle,
@@ -30,6 +31,7 @@ import { fetchLiquidationHeatmap } from "@/lib/coinank";
 import { derivePairDirectionsByBaseWithNeutral } from "@/lib/cotCompute";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { query } from "@/lib/db";
+import { getIntradayAdrThreshold } from "@/lib/flagship/intradayThresholds";
 import { CURATED_CRYPTO_LOOKUP, type CryptoUniverseEntry } from "@/lib/flagship/cryptoUniverse";
 import {
   type CryptoAnchorRegime,
@@ -40,10 +42,11 @@ import {
   type CryptoMatrixRow,
   type CryptoTimeframeKey,
 } from "@/lib/flagship/cryptoMatrix";
-import type { MatrixTrendState } from "@/lib/flagship/matrixStyles";
+import type { MatrixContextView, MatrixTrendState } from "@/lib/flagship/matrixStyles";
 import { readNearestLiquidationHeatmapSnapshot } from "@/lib/marketSnapshots";
 import { readSnapshot } from "@/lib/cotStore";
 import { readLatestDailySentimentLock } from "@/lib/sentiment/daily";
+import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +56,8 @@ const PRELIMINARY_FETCH_LIMIT = 60;
 const MIN_VOLUME_USD = 1_000_000;
 const MAX_VOLUME_CANDIDATES = 140;
 const ALT_FETCH_CONCURRENCY = 5;
+const CRYPTO_ADR_LOOKBACK_DAYS = 10;
+const CRYPTO_ADR_MIN_REQUIRED_DAYS = 5;
 
 type OiRow = {
   symbol: string;
@@ -86,6 +91,21 @@ type AltFetchResult = {
 
 type WeeklyBiasSnapshot = Omit<CryptoAnchorRegime, "direction" | "tier" | "votes" | "symbol">;
 
+type CryptoAdrContext = {
+  adrPct: number | null;
+  adrBarsUsed: number;
+  adrMultiplier: number;
+  weekOpenUtc: string;
+  weekOpenPrice: number | null;
+  weekHighPrice: number | null;
+  weekLowPrice: number | null;
+  currentPrice: number | null;
+  longTriggerPrice: number | null;
+  shortTriggerPrice: number | null;
+  oneAdrLongTriggerPrice: number | null;
+  oneAdrShortTriggerPrice: number | null;
+};
+
 type MarketCandidate = {
   symbol: string;
   bitgetSymbol: string;
@@ -107,6 +127,13 @@ function toNumber(value: string | number | null | undefined) {
 
 function round(value: number, digits = 4) {
   return Number(value.toFixed(digits));
+}
+
+function toPct(high: number, low: number, open: number) {
+  if (!Number.isFinite(high) || !Number.isFinite(low) || !Number.isFinite(open) || open <= 0) {
+    return null;
+  }
+  return ((high - low) / open) * 100;
 }
 
 function clamp01(value: number) {
@@ -664,6 +691,142 @@ function deriveLiquidationTilt(params: {
   return "BALANCED" as const;
 }
 
+function deriveCryptoGamma(row: {
+  bias: CryptoBiasDirection;
+  liquidationTilt: CryptoMatrixRow["liquidationTilt"];
+  openInterest: number | null;
+  fundingRate: number | null;
+}) {
+  if (row.bias === "NEUTRAL") {
+    return {
+      gammaState: "N/A" as MatrixContextView,
+      liquidationAgree: false,
+      oiAgree: false,
+      fundingAgree: false,
+    };
+  }
+
+  const liquidationAgree =
+    row.bias === "LONG"
+      ? row.liquidationTilt === "ABOVE"
+      : row.liquidationTilt === "BELOW";
+  const oiAgree = (row.openInterest ?? 0) >= 20_000_000;
+  const fundingAgree =
+    row.bias === "LONG"
+      ? (row.fundingRate ?? 0) <= 0
+      : (row.fundingRate ?? 0) >= 0;
+  const agreeCount = [liquidationAgree, oiAgree, fundingAgree].filter(Boolean).length;
+
+  return {
+    gammaState:
+      agreeCount >= 2
+        ? ("CONFIRM" as MatrixContextView)
+        : agreeCount === 1
+          ? ("MIXED" as MatrixContextView)
+          : ("CONFLICT" as MatrixContextView),
+    liquidationAgree,
+    oiAgree,
+    fundingAgree,
+  };
+}
+
+async function readAdrContexts(symbols: string[]) {
+  const threshold = getIntradayAdrThreshold("crypto");
+  const nowUtc = DateTime.utc();
+  const currentWeekOpenUtc = getCanonicalWeekOpenUtc(nowUtc);
+  const weekOpenUtc = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
+  const lookbackOpenUtc = weekOpenUtc.minus({ days: CRYPTO_ADR_LOOKBACK_DAYS + 2 });
+
+  const entries = await mapWithConcurrency(symbols, 4, async (symbol): Promise<readonly [string, CryptoAdrContext]> => {
+    try {
+      const [adrBars, weekBars] = await Promise.all([
+        fetchBitgetDailySeries(symbol, { openUtc: lookbackOpenUtc, closeUtc: weekOpenUtc }),
+        fetchBitgetCandleSeries(symbol, { openUtc: weekOpenUtc, closeUtc: nowUtc }),
+      ]);
+
+      const adrRanges = adrBars
+        .slice(-CRYPTO_ADR_LOOKBACK_DAYS)
+        .map((bar) => toPct(bar.high, bar.low, bar.open))
+        .filter((value): value is number => value !== null && Number.isFinite(value));
+
+      const adrPct =
+        adrRanges.length >= CRYPTO_ADR_MIN_REQUIRED_DAYS
+          ? adrRanges.reduce((sum, value) => sum + value, 0) / adrRanges.length
+          : null;
+
+      const orderedWeekBars = [...weekBars].sort((left, right) => left.ts - right.ts);
+      const firstWeekBar = orderedWeekBars[0] ?? null;
+      const lastWeekBar = orderedWeekBars[orderedWeekBars.length - 1] ?? null;
+      const weekOpenPrice = firstWeekBar?.open ?? null;
+      const weekHighPrice =
+        orderedWeekBars.length > 0
+          ? orderedWeekBars.reduce((max, bar) => Math.max(max, bar.high), Number.NEGATIVE_INFINITY)
+          : null;
+      const weekLowPrice =
+        orderedWeekBars.length > 0
+          ? orderedWeekBars.reduce((min, bar) => Math.min(min, bar.low), Number.POSITIVE_INFINITY)
+          : null;
+      const currentPrice = lastWeekBar?.close ?? null;
+
+      const thresholdPct = adrPct === null ? null : adrPct * threshold.adrMultiplier;
+      const longTriggerPrice =
+        weekOpenPrice !== null && thresholdPct !== null
+          ? weekOpenPrice * (1 - thresholdPct / 100)
+          : null;
+      const shortTriggerPrice =
+        weekOpenPrice !== null && thresholdPct !== null
+          ? weekOpenPrice * (1 + thresholdPct / 100)
+          : null;
+      const oneAdrLongTriggerPrice =
+        weekOpenPrice !== null && adrPct !== null
+          ? weekOpenPrice * (1 - adrPct / 100)
+          : null;
+      const oneAdrShortTriggerPrice =
+        weekOpenPrice !== null && adrPct !== null
+          ? weekOpenPrice * (1 + adrPct / 100)
+          : null;
+
+      return [
+        symbol,
+        {
+          adrPct,
+          adrBarsUsed: adrRanges.length,
+          adrMultiplier: threshold.adrMultiplier,
+          weekOpenUtc: currentWeekOpenUtc,
+          weekOpenPrice,
+          weekHighPrice,
+          weekLowPrice,
+          currentPrice,
+          longTriggerPrice,
+          shortTriggerPrice,
+          oneAdrLongTriggerPrice,
+          oneAdrShortTriggerPrice,
+        },
+      ] as const;
+    } catch {
+      return [
+        symbol,
+        {
+          adrPct: null,
+          adrBarsUsed: 0,
+          adrMultiplier: threshold.adrMultiplier,
+          weekOpenUtc: currentWeekOpenUtc,
+          weekOpenPrice: null,
+          weekHighPrice: null,
+          weekLowPrice: null,
+          currentPrice: null,
+          longTriggerPrice: null,
+          shortTriggerPrice: null,
+          oneAdrLongTriggerPrice: null,
+          oneAdrShortTriggerPrice: null,
+        },
+      ] as const;
+    }
+  });
+
+  return new Map(entries);
+}
+
 export async function GET() {
   try {
     const [
@@ -790,7 +953,24 @@ export async function GET() {
         strength4h: strength["4h"],
         strength24h: strength["24h"],
         strengthState: strengthStateFromScore(strength["1h"]),
-        trigger: "TBD",
+        gammaState: "N/A",
+        liquidationAgree: false,
+        oiAgree: false,
+        fundingAgree: false,
+        adrPct: null,
+        adrBarsUsed: 0,
+        adrMultiplier: null,
+        weekOpenUtc: null,
+        weekOpenPrice: null,
+        weekHighPrice: null,
+        weekLowPrice: null,
+        currentPrice: null,
+        longTriggerPrice: null,
+        shortTriggerPrice: null,
+        oneAdrLongTriggerPrice: null,
+        oneAdrShortTriggerPrice: null,
+        oneAdrTouched: false,
+        touched: false,
         sizing: "TBD",
       };
     });
@@ -825,7 +1005,24 @@ export async function GET() {
         strength4h: strength["4h"],
         strength24h: strength["24h"],
         strengthState: strengthStateFromScore(strength["1h"]),
-        trigger: "TBD",
+        gammaState: "N/A",
+        liquidationAgree: false,
+        oiAgree: false,
+        fundingAgree: false,
+        adrPct: null,
+        adrBarsUsed: 0,
+        adrMultiplier: null,
+        weekOpenUtc: null,
+        weekOpenPrice: null,
+        weekHighPrice: null,
+        weekLowPrice: null,
+        currentPrice: null,
+        longTriggerPrice: null,
+        shortTriggerPrice: null,
+        oneAdrLongTriggerPrice: null,
+        oneAdrShortTriggerPrice: null,
+        oneAdrTouched: false,
+        touched: false,
         sizing: "TBD",
       } satisfies CryptoMatrixRow;
     });
@@ -844,6 +1041,11 @@ export async function GET() {
         rank: index + 1,
       }));
 
+    const adrContextBySymbol = await readAdrContexts([
+      ...anchorRowsBase.map((row) => row.symbol),
+      ...sortedCandidateRowsBase.map((row) => row.symbol),
+    ]);
+
     const heatmapContextBySymbol = await readHeatmapContexts([
       ...anchorRowsBase.map((row) => row.symbol),
       ...sortedCandidateRowsBase.map((row) => row.symbol),
@@ -851,25 +1053,135 @@ export async function GET() {
 
     const anchorRows = anchorRowsBase.map((row) => {
       const heatmapContext = heatmapContextBySymbol.get(row.symbol) ?? null;
+      const adrContext = adrContextBySymbol.get(row.symbol) ?? null;
       const liquidation = heatmapContext ?? {
         largestAboveNotional: row.largestAboveNotional,
         largestBelowNotional: row.largestBelowNotional,
       };
+      const liquidationTilt = deriveLiquidationTilt(liquidation);
+      const gamma = deriveCryptoGamma({
+        bias: row.bias,
+        liquidationTilt,
+        openInterest: row.openInterest,
+        fundingRate: row.fundingRate,
+      });
+      const touched =
+        row.bias === "LONG"
+          ? Boolean(
+              adrContext &&
+                adrContext.longTriggerPrice !== null &&
+                adrContext.weekLowPrice !== null &&
+                adrContext.weekLowPrice <= adrContext.longTriggerPrice,
+            )
+          : row.bias === "SHORT"
+            ? Boolean(
+                adrContext &&
+                  adrContext.shortTriggerPrice !== null &&
+                  adrContext.weekHighPrice !== null &&
+                  adrContext.weekHighPrice >= adrContext.shortTriggerPrice,
+              )
+            : false;
+      const oneAdrTouched =
+        row.bias === "LONG"
+          ? Boolean(
+              adrContext &&
+                adrContext.oneAdrLongTriggerPrice !== null &&
+                adrContext.weekLowPrice !== null &&
+                adrContext.weekLowPrice <= adrContext.oneAdrLongTriggerPrice,
+            )
+          : row.bias === "SHORT"
+            ? Boolean(
+                adrContext &&
+                  adrContext.oneAdrShortTriggerPrice !== null &&
+                  adrContext.weekHighPrice !== null &&
+                  adrContext.weekHighPrice >= adrContext.oneAdrShortTriggerPrice,
+              )
+            : false;
       return {
         ...row,
-        liquidationTilt: deriveLiquidationTilt(liquidation),
+        liquidationTilt,
         largestAboveNotional: liquidation.largestAboveNotional ?? null,
         largestBelowNotional: liquidation.largestBelowNotional ?? null,
+        ...gamma,
+        adrPct: adrContext?.adrPct ?? null,
+        adrBarsUsed: adrContext?.adrBarsUsed ?? 0,
+        adrMultiplier: adrContext?.adrMultiplier ?? null,
+        weekOpenUtc: adrContext?.weekOpenUtc ?? null,
+        weekOpenPrice: adrContext?.weekOpenPrice ?? null,
+        weekHighPrice: adrContext?.weekHighPrice ?? null,
+        weekLowPrice: adrContext?.weekLowPrice ?? null,
+        currentPrice: adrContext?.currentPrice ?? null,
+        longTriggerPrice: adrContext?.longTriggerPrice ?? null,
+        shortTriggerPrice: adrContext?.shortTriggerPrice ?? null,
+        oneAdrLongTriggerPrice: adrContext?.oneAdrLongTriggerPrice ?? null,
+        oneAdrShortTriggerPrice: adrContext?.oneAdrShortTriggerPrice ?? null,
+        oneAdrTouched,
+        touched,
       };
     });
 
     const sortedCandidateRows = sortedCandidateRowsBase.map((row) => {
       const liquidation = heatmapContextBySymbol.get(row.symbol) ?? null;
+      const adrContext = adrContextBySymbol.get(row.symbol) ?? null;
+      const liquidationTilt = liquidation ? deriveLiquidationTilt(liquidation) : null;
+      const gamma = deriveCryptoGamma({
+        bias: row.bias,
+        liquidationTilt,
+        openInterest: row.openInterest,
+        fundingRate: row.fundingRate,
+      });
+      const touched =
+        row.bias === "LONG"
+          ? Boolean(
+              adrContext &&
+                adrContext.longTriggerPrice !== null &&
+                adrContext.weekLowPrice !== null &&
+                adrContext.weekLowPrice <= adrContext.longTriggerPrice,
+            )
+          : row.bias === "SHORT"
+            ? Boolean(
+                adrContext &&
+                  adrContext.shortTriggerPrice !== null &&
+                  adrContext.weekHighPrice !== null &&
+                  adrContext.weekHighPrice >= adrContext.shortTriggerPrice,
+              )
+            : false;
+      const oneAdrTouched =
+        row.bias === "LONG"
+          ? Boolean(
+              adrContext &&
+                adrContext.oneAdrLongTriggerPrice !== null &&
+                adrContext.weekLowPrice !== null &&
+                adrContext.weekLowPrice <= adrContext.oneAdrLongTriggerPrice,
+            )
+          : row.bias === "SHORT"
+            ? Boolean(
+                adrContext &&
+                  adrContext.oneAdrShortTriggerPrice !== null &&
+                  adrContext.weekHighPrice !== null &&
+                  adrContext.weekHighPrice >= adrContext.oneAdrShortTriggerPrice,
+              )
+            : false;
       return {
         ...row,
-        liquidationTilt: liquidation ? deriveLiquidationTilt(liquidation) : null,
+        liquidationTilt,
         largestAboveNotional: liquidation?.largestAboveNotional ?? null,
         largestBelowNotional: liquidation?.largestBelowNotional ?? null,
+        ...gamma,
+        adrPct: adrContext?.adrPct ?? null,
+        adrBarsUsed: adrContext?.adrBarsUsed ?? 0,
+        adrMultiplier: adrContext?.adrMultiplier ?? null,
+        weekOpenUtc: adrContext?.weekOpenUtc ?? null,
+        weekOpenPrice: adrContext?.weekOpenPrice ?? null,
+        weekHighPrice: adrContext?.weekHighPrice ?? null,
+        weekLowPrice: adrContext?.weekLowPrice ?? null,
+        currentPrice: adrContext?.currentPrice ?? null,
+        longTriggerPrice: adrContext?.longTriggerPrice ?? null,
+        shortTriggerPrice: adrContext?.shortTriggerPrice ?? null,
+        oneAdrLongTriggerPrice: adrContext?.oneAdrLongTriggerPrice ?? null,
+        oneAdrShortTriggerPrice: adrContext?.oneAdrShortTriggerPrice ?? null,
+        oneAdrTouched,
+        touched,
       };
     });
 

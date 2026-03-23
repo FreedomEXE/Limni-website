@@ -2,10 +2,11 @@
   Property of Freedom_EXE  (c) 2026
 -----------------------------------------------*/
 /**
- * File: page.tsx
+ * File: crypto/page.tsx
  *
  * Description:
- * Crypto matrix route for the manual trading board.
+ * Legacy crypto route redirecting to the Crypto pill on the
+ * consolidated /matrix workspace.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -16,5 +17,5 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export default function FlagshipCryptoPage() {
-  redirect("/flagship?tab=crypto");
+  redirect("/matrix?tab=crypto");
 }
