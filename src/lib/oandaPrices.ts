@@ -19,7 +19,7 @@ export type OandaHourlyCandle = {
   close: number;
 };
 
-type OandaGranularity = "M1" | "H1" | "D";
+type OandaGranularity = "M1" | "M5" | "H1" | "D";
 
 function getOandaBaseUrl() {
   return process.env.OANDA_ENV === "live" ? LIVE_URL : PRACTICE_URL;
@@ -160,6 +160,14 @@ export async function fetchOandaMinuteSeries(
   return fetchOandaSeries(symbol, fromUtc, toUtc, "M1");
 }
 
+export async function fetchOanda5MinuteSeries(
+  symbol: string,
+  fromUtc: DateTime,
+  toUtc: DateTime,
+): Promise<OandaHourlyCandle[]> {
+  return fetchOandaSeries(symbol, fromUtc, toUtc, "M5");
+}
+
 async function fetchOandaSeries(
   symbol: string,
   fromUtc: DateTime,
@@ -174,6 +182,8 @@ async function fetchOandaSeries(
   const stepMs =
     granularity === "M1"
       ? 60 * 1000
+      : granularity === "M5"
+        ? 5 * 60 * 1000
       : granularity === "H1"
         ? 60 * 60 * 1000
         : 24 * 60 * 60 * 1000;

@@ -85,6 +85,7 @@ type ScriptOptions = {
   seedInstruments: boolean;
   daily: boolean;
   weekly: boolean;
+  hourly: boolean;
   intraday5m: boolean;
   symbols: Set<string> | null;
   fromUtc: DateTime | null;
@@ -96,8 +97,9 @@ function parseArgs(): ScriptOptions {
   const explicitSeed = args.has("--seed-instruments");
   const explicitDaily = args.has("--daily");
   const explicitWeekly = args.has("--weekly");
+  const explicitHourly = args.has("--hourly");
   const explicitIntraday = args.has("--intraday-5m");
-  const hasExplicitOps = explicitSeed || explicitDaily || explicitWeekly || explicitIntraday;
+  const hasExplicitOps = explicitSeed || explicitDaily || explicitWeekly || explicitHourly || explicitIntraday;
 
   const symbolsArg = process.argv.find((value) => value.startsWith("--symbols="));
   const symbols = symbolsArg
@@ -126,6 +128,7 @@ function parseArgs(): ScriptOptions {
     seedInstruments: hasExplicitOps ? explicitSeed : true,
     daily: hasExplicitOps ? explicitDaily : true,
     weekly: hasExplicitOps ? explicitWeekly : true,
+    hourly: hasExplicitOps ? explicitHourly : true,
     intraday5m: explicitIntraday,
     symbols,
     fromUtc,
@@ -427,6 +430,50 @@ async function loadCanonicalDailyBarsFromDb(
   }));
 }
 
+async function loadCanonicalHourlyBarsFromDb(
+  query: <T = unknown>(text: string, params?: readonly unknown[]) => Promise<T[]>,
+  symbol: string,
+  fromUtc: string,
+  toUtc: string,
+): Promise<CanonicalBarRow[]> {
+  const rows = await query<{
+    symbol: string;
+    asset_class: string;
+    timeframe: Timeframe;
+    bar_open_utc: Date;
+    bar_close_utc: Date;
+    open_price: number | string;
+    high_price: number | string;
+    low_price: number | string;
+    close_price: number | string;
+    source_provider: string;
+    quality_status: string;
+  }>(
+    `SELECT symbol, asset_class, timeframe, bar_open_utc, bar_close_utc,
+            open_price, high_price, low_price, close_price, source_provider, quality_status
+       FROM canonical_price_bars
+      WHERE symbol = $1
+        AND timeframe = '1h'
+        AND bar_open_utc >= $2::timestamptz
+        AND bar_open_utc < $3::timestamptz
+      ORDER BY bar_open_utc ASC`,
+    [symbol, fromUtc, toUtc],
+  );
+  return rows.map((row) => ({
+    symbol: row.symbol,
+    assetClass: row.asset_class,
+    timeframe: row.timeframe,
+    barOpenUtc: row.bar_open_utc.toISOString(),
+    barCloseUtc: row.bar_close_utc.toISOString(),
+    openPrice: Number(row.open_price),
+    highPrice: Number(row.high_price),
+    lowPrice: Number(row.low_price),
+    closePrice: Number(row.close_price),
+    sourceProvider: row.source_provider,
+    qualityStatus: row.quality_status,
+  }));
+}
+
 async function main() {
   const options = parseArgs();
   if (options.intraday5m) {
@@ -440,7 +487,7 @@ async function main() {
     getCanonicalDailyBackfillRange,
     getCanonicalWeekWindow,
   } = await import("../src/lib/canonicalPriceWindows");
-  const { fetchOandaDailySeries } = await import("../src/lib/oandaPrices");
+  const { fetchOandaCandleSeries, fetchOandaDailySeries } = await import("../src/lib/oandaPrices");
   const { fetchBitgetCandleSeries, fetchBitgetSpotCandleSeries } = await import("../src/lib/bitget");
 
   const selectedInstruments = CANONICAL_INSTRUMENTS.filter((instrument) =>
@@ -457,130 +504,188 @@ async function main() {
   }
 
   const dailyBarsBySymbol = new Map<string, CanonicalBarRow[]>();
+  const hourlyBarsBySymbol = new Map<string, CanonicalBarRow[]>();
   let rawBarsInserted = 0;
   let canonicalBarsInserted = 0;
   let dailyReturnsInserted = 0;
 
-  if (options.daily) {
+  if (options.daily || options.hourly) {
     for (const instrument of selectedInstruments) {
       const fallbackRange = getCanonicalDailyBackfillRange(instrument.assetClass, CANONICAL_WEEKS);
       const fromUtc = options.fromUtc ?? fallbackRange.fromUtc;
       const toUtc = options.toUtc ?? fallbackRange.toUtc;
 
       if (instrument.primaryProvider === "oanda") {
-        const providerBars = await fetchOandaDailySeries(instrument.oandaInstrument ?? instrument.symbol, fromUtc, toUtc);
-        const rawBars: RawBarRow[] = providerBars.map((bar) => ({
-          provider: "oanda",
-          providerSymbol: instrument.oandaInstrument ?? instrument.symbol,
-          assetClass: instrument.assetClass,
-          timeframe: "1d",
-          barOpenUtc: DateTime.fromMillis(bar.ts, { zone: "utc" }).toISO()!,
-          barCloseUtc: DateTime.fromMillis(bar.ts, { zone: "utc" }).plus({
-            hours: instrument.assetClass === "indices" || instrument.assetClass === "commodities" ? 23 : 24,
-          }).toISO()!,
-          openPrice: round(bar.open, 6),
-          highPrice: round(bar.high, 6),
-          lowPrice: round(bar.low, 6),
-          closePrice: round(bar.close, 6),
-          volume: null,
-          isFinal: true,
-          sourceBatchKey: buildBatchKey(["oanda", instrument.symbol, "1d", fromUtc.toISO()!, toUtc.toISO()!]),
-        }));
-        const canonicalBars: CanonicalBarRow[] = rawBars.map((bar) => ({
-          symbol: instrument.symbol,
-          assetClass: instrument.assetClass,
-          timeframe: "1d",
-          barOpenUtc: bar.barOpenUtc,
-          barCloseUtc: bar.barCloseUtc,
-          openPrice: bar.openPrice,
-          highPrice: bar.highPrice,
-          lowPrice: bar.lowPrice,
-          closePrice: bar.closePrice,
-          sourceProvider: "oanda",
-          qualityStatus: "provider_daily",
-        }));
+        if (options.hourly) {
+          const hourlyProviderBars = await fetchOandaCandleSeries(
+            instrument.oandaInstrument ?? instrument.symbol,
+            fromUtc,
+            toUtc,
+          );
+          const hourlyRawBars: RawBarRow[] = hourlyProviderBars.map((bar) => ({
+            provider: "oanda",
+            providerSymbol: instrument.oandaInstrument ?? instrument.symbol,
+            assetClass: instrument.assetClass,
+            timeframe: "1h",
+            barOpenUtc: DateTime.fromMillis(bar.ts, { zone: "utc" }).toISO()!,
+            barCloseUtc: DateTime.fromMillis(bar.ts, { zone: "utc" }).plus({ hours: 1 }).toISO()!,
+            openPrice: round(bar.open, 6),
+            highPrice: round(bar.high, 6),
+            lowPrice: round(bar.low, 6),
+            closePrice: round(bar.close, 6),
+            volume: null,
+            isFinal: true,
+            sourceBatchKey: buildBatchKey(["oanda", instrument.symbol, "1h", fromUtc.toISO()!, toUtc.toISO()!]),
+          }));
+          const canonicalHourlyBars: CanonicalBarRow[] = hourlyRawBars.map((bar) => ({
+            symbol: instrument.symbol,
+            assetClass: instrument.assetClass,
+            timeframe: "1h",
+            barOpenUtc: bar.barOpenUtc,
+            barCloseUtc: bar.barCloseUtc,
+            openPrice: bar.openPrice,
+            highPrice: bar.highPrice,
+            lowPrice: bar.lowPrice,
+            closePrice: bar.closePrice,
+            sourceProvider: "oanda",
+            qualityStatus: "provider_hourly",
+          }));
 
-        await upsertRawBars(query, rawBars);
-        await upsertCanonicalBars(query, canonicalBars);
-        rawBarsInserted += rawBars.length;
-        canonicalBarsInserted += canonicalBars.length;
-        dailyBarsBySymbol.set(instrument.symbol, canonicalBars);
+          await upsertRawBars(query, hourlyRawBars);
+          await upsertCanonicalBars(query, canonicalHourlyBars);
+          rawBarsInserted += hourlyRawBars.length;
+          canonicalBarsInserted += canonicalHourlyBars.length;
+          hourlyBarsBySymbol.set(instrument.symbol, canonicalHourlyBars);
+          await sleep(100);
+        }
+
+        if (options.daily) {
+          const providerBars = await fetchOandaDailySeries(instrument.oandaInstrument ?? instrument.symbol, fromUtc, toUtc);
+          const rawBars: RawBarRow[] = providerBars.map((bar) => ({
+            provider: "oanda",
+            providerSymbol: instrument.oandaInstrument ?? instrument.symbol,
+            assetClass: instrument.assetClass,
+            timeframe: "1d",
+            barOpenUtc: DateTime.fromMillis(bar.ts, { zone: "utc" }).toISO()!,
+            barCloseUtc: DateTime.fromMillis(bar.ts, { zone: "utc" }).plus({
+              hours: instrument.assetClass === "indices" || instrument.assetClass === "commodities" ? 23 : 24,
+            }).toISO()!,
+            openPrice: round(bar.open, 6),
+            highPrice: round(bar.high, 6),
+            lowPrice: round(bar.low, 6),
+            closePrice: round(bar.close, 6),
+            volume: null,
+            isFinal: true,
+            sourceBatchKey: buildBatchKey(["oanda", instrument.symbol, "1d", fromUtc.toISO()!, toUtc.toISO()!]),
+          }));
+          const canonicalBars: CanonicalBarRow[] = rawBars.map((bar) => ({
+            symbol: instrument.symbol,
+            assetClass: instrument.assetClass,
+            timeframe: "1d",
+            barOpenUtc: bar.barOpenUtc,
+            barCloseUtc: bar.barCloseUtc,
+            openPrice: bar.openPrice,
+            highPrice: bar.highPrice,
+            lowPrice: bar.lowPrice,
+            closePrice: bar.closePrice,
+            sourceProvider: "oanda",
+            qualityStatus: "provider_daily",
+          }));
+
+          await upsertRawBars(query, rawBars);
+          await upsertCanonicalBars(query, canonicalBars);
+          rawBarsInserted += rawBars.length;
+          canonicalBarsInserted += canonicalBars.length;
+          dailyBarsBySymbol.set(instrument.symbol, canonicalBars);
+        }
         await sleep(100);
       } else {
         const symbolBase = instrument.bitgetBaseCoin ?? instrument.symbol.replace("USD", "");
-        const providerBars = instrument.assetClass === "crypto"
-          ? await fetchBitgetSpotCandleSeries(symbolBase, {
-            openUtc: fromUtc,
-            closeUtc: toUtc,
-          })
-          : await fetchBitgetCandleSeries(symbolBase, {
-            openUtc: fromUtc,
-            closeUtc: toUtc,
-          });
         const providerName = instrument.assetClass === "crypto" ? "bitget_spot" : "bitget";
-        const rawBars: RawBarRow[] = providerBars.map((bar) => ({
-          provider: providerName,
-          providerSymbol: `${symbolBase}USDT`,
-          assetClass: instrument.assetClass,
-          timeframe: "1h",
-          barOpenUtc: DateTime.fromMillis(bar.ts, { zone: "utc" }).toISO()!,
-          barCloseUtc: DateTime.fromMillis(bar.ts, { zone: "utc" }).plus({ hours: 1 }).toISO()!,
-          openPrice: round(bar.open, 6),
-          highPrice: round(bar.high, 6),
-          lowPrice: round(bar.low, 6),
-          closePrice: round(bar.close, 6),
-          volume: null,
-          isFinal: true,
-          sourceBatchKey: buildBatchKey([providerName, instrument.symbol, "1h", fromUtc.toISO()!, toUtc.toISO()!]),
-        }));
-        const canonicalHourlyBars: CanonicalBarRow[] = rawBars.map((bar) => ({
-          symbol: instrument.symbol,
-          assetClass: instrument.assetClass,
-          timeframe: "1h",
-          barOpenUtc: bar.barOpenUtc,
-          barCloseUtc: bar.barCloseUtc,
-          openPrice: bar.openPrice,
-          highPrice: bar.highPrice,
-          lowPrice: bar.lowPrice,
-          closePrice: bar.closePrice,
-          sourceProvider: providerName,
-          qualityStatus: instrument.assetClass === "crypto" ? "provider_hourly_spot" : "provider_hourly",
-        }));
-        const canonicalDailyBars = buildDailyCanonicalBarsFromBitgetHourly(
-          instrument.symbol,
-          instrument.assetClass,
-          canonicalHourlyBars,
-          providerName,
-          instrument.assetClass === "crypto" ? "derived_from_spot_1h" : "derived_from_1h",
-        );
+        let canonicalHourlyBars = hourlyBarsBySymbol.get(instrument.symbol) ?? [];
 
-        await upsertRawBars(query, rawBars);
-        await upsertCanonicalBars(query, canonicalHourlyBars);
-        await upsertCanonicalBars(query, canonicalDailyBars);
-        rawBarsInserted += rawBars.length;
-        canonicalBarsInserted += canonicalHourlyBars.length + canonicalDailyBars.length;
-        dailyBarsBySymbol.set(instrument.symbol, canonicalDailyBars);
+        if (options.hourly || options.daily) {
+          const providerBars = instrument.assetClass === "crypto"
+            ? await fetchBitgetSpotCandleSeries(symbolBase, {
+              openUtc: fromUtc,
+              closeUtc: toUtc,
+            })
+            : await fetchBitgetCandleSeries(symbolBase, {
+              openUtc: fromUtc,
+              closeUtc: toUtc,
+            });
+          const rawBars: RawBarRow[] = providerBars.map((bar) => ({
+            provider: providerName,
+            providerSymbol: `${symbolBase}USDT`,
+            assetClass: instrument.assetClass,
+            timeframe: "1h",
+            barOpenUtc: DateTime.fromMillis(bar.ts, { zone: "utc" }).toISO()!,
+            barCloseUtc: DateTime.fromMillis(bar.ts, { zone: "utc" }).plus({ hours: 1 }).toISO()!,
+            openPrice: round(bar.open, 6),
+            highPrice: round(bar.high, 6),
+            lowPrice: round(bar.low, 6),
+            closePrice: round(bar.close, 6),
+            volume: null,
+            isFinal: true,
+            sourceBatchKey: buildBatchKey([providerName, instrument.symbol, "1h", fromUtc.toISO()!, toUtc.toISO()!]),
+          }));
+          canonicalHourlyBars = rawBars.map((bar) => ({
+            symbol: instrument.symbol,
+            assetClass: instrument.assetClass,
+            timeframe: "1h",
+            barOpenUtc: bar.barOpenUtc,
+            barCloseUtc: bar.barCloseUtc,
+            openPrice: bar.openPrice,
+            highPrice: bar.highPrice,
+            lowPrice: bar.lowPrice,
+            closePrice: bar.closePrice,
+            sourceProvider: providerName,
+            qualityStatus: instrument.assetClass === "crypto" ? "provider_hourly_spot" : "provider_hourly",
+          }));
+
+          await upsertRawBars(query, rawBars);
+          await upsertCanonicalBars(query, canonicalHourlyBars);
+          rawBarsInserted += rawBars.length;
+          canonicalBarsInserted += canonicalHourlyBars.length;
+          hourlyBarsBySymbol.set(instrument.symbol, canonicalHourlyBars);
+        }
+
+        if (options.daily) {
+          const canonicalDailyBars = buildDailyCanonicalBarsFromBitgetHourly(
+            instrument.symbol,
+            instrument.assetClass,
+            canonicalHourlyBars,
+            providerName,
+            instrument.assetClass === "crypto" ? "derived_from_spot_1h" : "derived_from_1h",
+          );
+
+          await upsertCanonicalBars(query, canonicalDailyBars);
+          canonicalBarsInserted += canonicalDailyBars.length;
+          dailyBarsBySymbol.set(instrument.symbol, canonicalDailyBars);
+        }
         await sleep(100);
       }
 
-      const dailyBars = dailyBarsBySymbol.get(instrument.symbol) ?? [];
-      const dailyReturns = dailyBars.map<PairPeriodReturnRow>((bar) => ({
-        symbol: instrument.symbol,
-        assetClass: instrument.assetClass,
-        periodType: "daily",
-        periodOpenUtc: bar.barOpenUtc,
-        periodCloseUtc: bar.barCloseUtc,
-        openPrice: bar.openPrice,
-        closePrice: bar.closePrice,
-        highPrice: bar.highPrice,
-        lowPrice: bar.lowPrice,
-        returnPct: computeReturnPct(bar.openPrice, bar.closePrice),
-        source: "canonical_price_bars",
-        derivedFromTimeframe: "1d",
-        derivationVersion: "v1",
-      }));
-      await upsertPairPeriodReturns(query, dailyReturns);
-      dailyReturnsInserted += dailyReturns.length;
+      if (options.daily) {
+        const dailyBars = dailyBarsBySymbol.get(instrument.symbol) ?? [];
+        const dailyReturns = dailyBars.map<PairPeriodReturnRow>((bar) => ({
+          symbol: instrument.symbol,
+          assetClass: instrument.assetClass,
+          periodType: "daily",
+          periodOpenUtc: bar.barOpenUtc,
+          periodCloseUtc: bar.barCloseUtc,
+          openPrice: bar.openPrice,
+          closePrice: bar.closePrice,
+          highPrice: bar.highPrice,
+          lowPrice: bar.lowPrice,
+          returnPct: computeReturnPct(bar.openPrice, bar.closePrice),
+          source: "canonical_price_bars",
+          derivedFromTimeframe: "1d",
+          derivationVersion: "v1",
+        }));
+        await upsertPairPeriodReturns(query, dailyReturns);
+        dailyReturnsInserted += dailyReturns.length;
+      }
     }
   }
 
@@ -634,6 +739,19 @@ async function main() {
   console.log(`  Canonical bars upserted: ${canonicalBarsInserted}`);
   console.log(`  Daily returns upserted: ${dailyReturnsInserted}`);
   console.log(`  Weekly returns upserted: ${weeklyReturnsInserted}`);
+
+  if (options.hourly) {
+    let hourlyBarCount = 0;
+    for (const instrument of selectedInstruments) {
+      const fallbackRange = getCanonicalDailyBackfillRange(instrument.assetClass, CANONICAL_WEEKS);
+      const fromUtc = options.fromUtc ?? fallbackRange.fromUtc;
+      const toUtc = options.toUtc ?? fallbackRange.toUtc;
+      const hourlyBars = hourlyBarsBySymbol.get(instrument.symbol)
+        ?? await loadCanonicalHourlyBarsFromDb(query, instrument.symbol, fromUtc.toISO()!, toUtc.toISO()!);
+      hourlyBarCount += hourlyBars.length;
+    }
+    console.log(`  Hourly bars available: ${hourlyBarCount}`);
+  }
 }
 
 main().catch((error) => {
