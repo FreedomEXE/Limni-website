@@ -245,76 +245,112 @@ export default async function NewsPage({ searchParams }: PageProps) {
   const weekParam = pickParam(params?.week);
 
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  let newsWeeks = await listNewsWeeks(MAX_NEWS_WEEKS);
-  if (newsWeeks.length === 0 || !newsWeeks.includes(currentWeekOpenUtc)) {
-    await refreshNewsSnapshot();
-    newsWeeks = await listNewsWeeks(MAX_NEWS_WEEKS);
-  }
-  newsWeeks = await getNormalizedNewsWeeksCached(newsWeeks, currentWeekOpenUtc);
+  let weekOptions: string[] = [];
+  let selectedWeek: string | null = null;
+  let snapshot: NewsWeeklySnapshot | null = null;
+  let loadError: string | null = null;
 
-  // Show only weeks that actually have news data.
-  const weekOptions = buildNormalizedWeekOptions({
-    historicalWeeks: newsWeeks,
-    currentWeekOpenUtc,
-    includeAll: false,
-    includeCurrent: false,
-    includeFuture: true,
-    currentPosition: "sorted",
-    limit: MAX_NEWS_WEEKS,
-  }).filter((item): item is string => item !== "all");
-  let selectedWeek = weekOptions.length
-    ? ((resolveWeekSelection({
-        requestedWeek: weekParam,
-        weekOptions,
-        currentWeekOpenUtc,
-      allowAll: false,
-      }) as string | null) ?? null)
-    : null;
-  let snapshot: NewsWeeklySnapshot | null = selectedWeek
-    ? await readNewsWeeklySnapshot(selectedWeek)
-    : null;
-  if (snapshot && selectedWeek && !hasEventsForWeek(snapshot.calendar, selectedWeek)) {
-    const inferredWeek = inferWeekFromEvents(snapshot.calendar);
-    if (inferredWeek) {
-      await writeNewsWeeklySnapshot({
-        week_open_utc: inferredWeek,
-        source: snapshot.source,
-        announcements: snapshot.announcements,
-        calendar: snapshot.calendar,
-      });
-      selectedWeek = inferredWeek;
-      snapshot = await readNewsWeeklySnapshot(selectedWeek);
+  try {
+    let newsWeeks = await listNewsWeeks(MAX_NEWS_WEEKS);
+    if (newsWeeks.length === 0 || !newsWeeks.includes(currentWeekOpenUtc)) {
+      try {
+        await refreshNewsSnapshot();
+        newsWeeks = await listNewsWeeks(MAX_NEWS_WEEKS);
+      } catch (refreshError) {
+        console.warn(
+          "News refresh unavailable during page render:",
+          refreshError instanceof Error ? refreshError.message : String(refreshError),
+        );
+      }
     }
-  }
-  if (!snapshot && selectedWeek && selectedWeek === currentWeekOpenUtc) {
-    await refreshNewsSnapshot();
-    snapshot = await readNewsWeeklySnapshot(selectedWeek);
-  }
-  if (
-    snapshot &&
-    selectedWeek &&
-    selectedWeek === currentWeekOpenUtc &&
-    shouldRefreshForPendingActuals(snapshot)
-  ) {
-    await refreshNewsSnapshot();
-    snapshot = await readNewsWeeklySnapshot(selectedWeek);
-  }
-  if (
-    snapshot &&
-    selectedWeek &&
-    selectedWeek === currentWeekOpenUtc &&
-    countActualValues(snapshot.calendar) === 0
-  ) {
-    const bestSnapshot = await findBestSnapshotForDisplayWeek(currentWeekOpenUtc);
-    if (bestSnapshot && countActualValues(bestSnapshot.calendar) > 0) {
-      await writeNewsWeeklySnapshot({
-        week_open_utc: currentWeekOpenUtc,
-        source: bestSnapshot.source,
-        announcements: bestSnapshot.announcements,
-        calendar: bestSnapshot.calendar,
-      });
-      snapshot = await readNewsWeeklySnapshot(currentWeekOpenUtc);
+    newsWeeks = await getNormalizedNewsWeeksCached(newsWeeks, currentWeekOpenUtc);
+
+    weekOptions = buildNormalizedWeekOptions({
+      historicalWeeks: newsWeeks,
+      currentWeekOpenUtc,
+      includeAll: false,
+      includeCurrent: false,
+      includeFuture: true,
+      currentPosition: "sorted",
+      limit: MAX_NEWS_WEEKS,
+    }).filter((item): item is string => item !== "all");
+
+    selectedWeek = weekOptions.length
+      ? ((resolveWeekSelection({
+          requestedWeek: weekParam,
+          weekOptions,
+          currentWeekOpenUtc,
+          allowAll: false,
+        }) as string | null) ?? null)
+      : null;
+
+    snapshot = selectedWeek
+      ? await readNewsWeeklySnapshot(selectedWeek)
+      : null;
+
+    if (snapshot && selectedWeek && !hasEventsForWeek(snapshot.calendar, selectedWeek)) {
+      const inferredWeek = inferWeekFromEvents(snapshot.calendar);
+      if (inferredWeek) {
+        await writeNewsWeeklySnapshot({
+          week_open_utc: inferredWeek,
+          source: snapshot.source,
+          announcements: snapshot.announcements,
+          calendar: snapshot.calendar,
+        });
+        selectedWeek = inferredWeek;
+        snapshot = await readNewsWeeklySnapshot(selectedWeek);
+      }
     }
+
+    if (!snapshot && selectedWeek && selectedWeek === currentWeekOpenUtc) {
+      try {
+        await refreshNewsSnapshot();
+        snapshot = await readNewsWeeklySnapshot(selectedWeek);
+      } catch (refreshError) {
+        console.warn(
+          "Current-week news refresh unavailable during page render:",
+          refreshError instanceof Error ? refreshError.message : String(refreshError),
+        );
+      }
+    }
+
+    if (
+      snapshot &&
+      selectedWeek &&
+      selectedWeek === currentWeekOpenUtc &&
+      shouldRefreshForPendingActuals(snapshot)
+    ) {
+      try {
+        await refreshNewsSnapshot();
+        snapshot = await readNewsWeeklySnapshot(selectedWeek);
+      } catch (refreshError) {
+        console.warn(
+          "Pending-actual news refresh unavailable during page render:",
+          refreshError instanceof Error ? refreshError.message : String(refreshError),
+        );
+      }
+    }
+
+    if (
+      snapshot &&
+      selectedWeek &&
+      selectedWeek === currentWeekOpenUtc &&
+      countActualValues(snapshot.calendar) === 0
+    ) {
+      const bestSnapshot = await findBestSnapshotForDisplayWeek(currentWeekOpenUtc);
+      if (bestSnapshot && countActualValues(bestSnapshot.calendar) > 0) {
+        await writeNewsWeeklySnapshot({
+          week_open_utc: currentWeekOpenUtc,
+          source: bestSnapshot.source,
+          announcements: bestSnapshot.announcements,
+          calendar: bestSnapshot.calendar,
+        });
+        snapshot = await readNewsWeeklySnapshot(currentWeekOpenUtc);
+      }
+    }
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : String(error);
+    console.warn("News page fallback activated:", loadError);
   }
 
   const announcements = snapshot?.announcements ?? [];
@@ -331,6 +367,12 @@ export default async function NewsPage({ searchParams }: PageProps) {
             ForexFactory macro events with weekly snapshots for historical review.
           </p>
         </header>
+
+        {loadError ? (
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+            News data is temporarily unavailable in this environment. Existing snapshots will appear automatically once the runtime can reach the news store again.
+          </div>
+        ) : null}
 
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

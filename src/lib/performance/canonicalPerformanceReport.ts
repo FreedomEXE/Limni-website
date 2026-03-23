@@ -36,6 +36,19 @@ function getCanonicalPerformanceReportPath() {
   return path.join(process.cwd(), "reports", "comprehensive-reconstruction.json");
 }
 
+async function readBundledCanonicalPerformanceReport(): Promise<CanonicalPerformanceReport | null> {
+  try {
+    const bundled = await import("../../../reports/comprehensive-reconstruction.json");
+    return normalizeReport((bundled as { default?: unknown }).default ?? bundled);
+  } catch (error) {
+    console.warn(
+      "Bundled canonical performance report unavailable:",
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
+  }
+}
+
 function toFinite(value: unknown, fallback = 0) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
@@ -367,10 +380,10 @@ export async function readCanonicalPerformanceReport(): Promise<CanonicalPerform
         return normalizeReport(JSON.parse(payload));
       } catch (error) {
         console.warn(
-          "Canonical performance report unavailable:",
+          "Filesystem canonical performance report unavailable, trying bundled fallback:",
           error instanceof Error ? error.message : String(error),
         );
-        return null;
+        return readBundledCanonicalPerformanceReport();
       }
     },
   );
