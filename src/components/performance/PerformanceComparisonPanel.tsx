@@ -37,6 +37,8 @@ type PerformanceComparisonPanelProps = {
   forcedSystemVersion?: SystemVersion;
   hideSelectors?: boolean;
   title?: string;
+  flagshipOnly?: boolean;
+  sidebarSurface?: boolean;
 };
 
 function parseRequestedSystem(value: string | null): SystemVersion {
@@ -85,6 +87,8 @@ export default function PerformanceComparisonPanel({
   forcedSystemVersion,
   hideSelectors = false,
   title = "Strategy Breakdown",
+  flagshipOnly = false,
+  sidebarSurface = false,
 }: PerformanceComparisonPanelProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -150,6 +154,10 @@ export default function PerformanceComparisonPanel({
   const weeklyFlagshipId = canonicalPayload?.flagships.weekly.systemId ?? null;
   const activeCompositeId = activeGated?.system ?? activeBaseline?.system ?? null;
   const isWeeklyFlagship = weeklyFlagshipId === activeCompositeId;
+
+  const cardClass = sidebarSurface
+    ? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/95 p-4 shadow-sm"
+    : activeTheme?.cardClass ?? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4";
 
   const setFamily = (next: "universal" | "tiered") => {
     if (forcedFamily) return;
@@ -229,7 +237,7 @@ export default function PerformanceComparisonPanel({
         </>
       )}
 
-      <div className={activeTheme?.cardClass ?? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4"}>
+      <div className={cardClass}>
         <div className="mb-3 flex items-center justify-between">
           <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
             {strategyLabel}
@@ -243,20 +251,22 @@ export default function PerformanceComparisonPanel({
         </div>
 
         <div className="mb-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3 text-[9px] uppercase tracking-[0.15em]">
-            <div>
-              <div className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Gated</div>
-              <div className={`mt-1 text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
-                {formatSignedPercent(activeGated?.simpleReturnPct)}
+          {flagshipOnly ? null : (
+            <div className="grid grid-cols-2 gap-3 text-[9px] uppercase tracking-[0.15em]">
+              <div>
+                <div className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Gated</div>
+                <div className={`mt-1 text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
+                  {formatSignedPercent(activeGated?.simpleReturnPct)}
+                </div>
+              </div>
+              <div>
+                <div className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Baseline</div>
+                <div className={`mt-1 text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
+                  {formatSignedPercent(activeBaseline?.simpleReturnPct)}
+                </div>
               </div>
             </div>
-            <div>
-              <div className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Baseline</div>
-              <div className={`mt-1 text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
-                {formatSignedPercent(activeBaseline?.simpleReturnPct)}
-              </div>
-            </div>
-          </div>
+          )}
           <div className={`text-center text-2xl font-bold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
             {formatSignedPercent((activeGated ?? activeBaseline)?.simpleReturnPct)}
           </div>
@@ -304,23 +314,27 @@ export default function PerformanceComparisonPanel({
 
         <div className="space-y-2 text-xs">
           <div className="flex items-center justify-between">
-            <span className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Gated skip count</span>
-            <span className={activeTheme?.valueClass ?? "text-[var(--foreground)]"}>
-              {activeGated?.gateSkippedTrades ?? 0}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
             <span className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Weeks</span>
             <span className={activeTheme?.valueClass ?? "text-[var(--foreground)]"}>
               {(activeGated ?? activeBaseline)?.weeks ?? "—"}
             </span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Gated vs baseline</span>
-            <span className={activeTheme?.valueClass ?? "text-[var(--foreground)]"}>
-              {formatSignedPercent(returnDelta)}
-            </span>
-          </div>
+          {flagshipOnly ? null : (
+            <>
+              <div className="flex items-center justify-between">
+                <span className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Gated skip count</span>
+                <span className={activeTheme?.valueClass ?? "text-[var(--foreground)]"}>
+                  {activeGated?.gateSkippedTrades ?? 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Gated vs baseline</span>
+                <span className={activeTheme?.valueClass ?? "text-[var(--foreground)]"}>
+                  {formatSignedPercent(returnDelta)}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

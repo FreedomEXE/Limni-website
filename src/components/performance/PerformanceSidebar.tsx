@@ -72,18 +72,9 @@ export default function PerformanceSidebar() {
             forcedSystemVersion="v3"
             hideSelectors
             title="Flagship Breakdown"
+            flagshipOnly
+            sidebarSurface
           />
-          <div className="rounded-2xl border border-[var(--accent)]/25 bg-[var(--accent)]/8 p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--accent-strong)]">
-              Weekly Flagship
-            </div>
-            <p className="mt-2 text-sm leading-6 text-[var(--foreground)]/88">
-              Performance defaults to the promoted weekly system only. This surface tracks Tiered V3 Gated as the current weekly flagship, not intraday research.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)]/80 bg-[var(--panel)]/65 p-4 text-xs leading-5 text-[color:var(--muted)]">
-            Current default: Tiered V3 Gated. Legacy mode still exposes Universal V1-V3 and Tiered V1-V3 using the restored comparison shell.
-          </div>
         </div>
       ) : (
         <PerformanceComparisonPanel />

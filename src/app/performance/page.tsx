@@ -12,7 +12,6 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import { DateTime } from "luxon";
 import DashboardLayout from "@/components/DashboardLayout";
 import PerformanceHeaderContext from "@/components/performance/PerformanceHeaderContext";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
@@ -76,7 +75,7 @@ type GridProps = {
     }>>;
   };
   showAllTime: boolean;
-  comparisonOverlay: {
+  comparisonOverlay?: {
     mode: "standard" | "gated";
     standard: {
       totalReturn: number;
@@ -132,14 +131,17 @@ function parseMode(value: string | null | undefined) {
 }
 
 function weekLabel(weekOpenUtc: string) {
-  const value = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
-  if (!value.isValid) return weekOpenUtc;
-  return value.toFormat("MMM dd yyyy");
-}
-
-function formatWindow(weeks: string[]) {
-  if (weeks.length === 0) return "No canonical weeks";
-  return `${weekLabel(weeks[0])} to ${weekLabel(weeks[weeks.length - 1])}`;
+  const [datePart] = weekOpenUtc.split("T");
+  if (!datePart) return weekOpenUtc;
+  const [year, month, day] = datePart.split("-").map((value) => Number.parseInt(value, 10));
+  if (!year || !month || !day) return weekOpenUtc;
+  const value = new Date(Date.UTC(year, month - 1, day));
+  return value.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).replace(",", "");
 }
 
 function toDirection(value: number | null | undefined): "LONG" | "SHORT" | "NEUTRAL" {
@@ -292,6 +294,7 @@ function buildGridPropsForSystem(options: {
   baseline: CanonicalPerformanceSystem | null;
   gated: CanonicalPerformanceSystem | null;
   componentBreakdowns: CanonicalPerformanceApiModel["componentBreakdowns"];
+  includeComparisonOverlay?: boolean;
 }) {
   const baseline = options.baseline;
   const gated = options.gated;
@@ -323,7 +326,7 @@ function buildGridPropsForSystem(options: {
     labels: PERFORMANCE_MODEL_LABELS,
     allTime: { combined: [], perAsset: {} },
     showAllTime: false,
-    comparisonOverlay: buildOverlay(baseline, gated),
+    comparisonOverlay: options.includeComparisonOverlay === false ? undefined : buildOverlay(baseline, gated),
   } satisfies GridProps;
 }
 
@@ -502,6 +505,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     baseline: flagshipBaseline,
     gated: flagshipGated,
     componentBreakdowns: report.componentBreakdowns,
+    includeComparisonOverlay: false,
   });
   const flagshipSimulation = buildSimulationGroupForSystem({
     title: flagshipGated?.strategyName ?? flagshipBaseline?.strategyName ?? "Weekly Flagship",
@@ -513,7 +517,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header className="space-y-3">
+        <header>
           <div>
             <h1 className="text-3xl font-semibold text-[var(--foreground)]">
               Performance
@@ -525,9 +529,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               initialKataraktiVariant="v3"
               className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]"
             />
-          </div>
-          <div className="rounded-2xl border border-[var(--accent)]/25 bg-[var(--accent)]/8 px-4 py-3 text-sm leading-6 text-[var(--foreground)]/88">
-            Canonical weekly window {formatWindow(report.meta.canonicalWeeks)}. Flagship mode now focuses on {flagships.weekly.strategyName} only, while Legacy mode keeps Universal V1-V3 and Tiered V1-V3 in the restored comparison workspace.
           </div>
         </header>
 
