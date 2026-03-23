@@ -15,7 +15,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   PERFORMANCE_FAMILY_META,
   getPerformanceFamilyTabGroups,
@@ -31,6 +31,13 @@ type SystemVersion = "v1" | "v2" | "v3";
 type CanonicalPerformancePayload =
   | ({ unavailable?: false } & CanonicalPerformanceApiModel & { flagships: CanonicalFlagships })
   | { unavailable: true; reason: string; flagships: CanonicalFlagships };
+
+type PerformanceComparisonPanelProps = {
+  forcedFamily?: "universal" | "tiered";
+  forcedSystemVersion?: SystemVersion;
+  hideSelectors?: boolean;
+  title?: string;
+};
 
 function parseRequestedSystem(value: string | null): SystemVersion {
   return value === "v2" || value === "v3" ? value : "v1";
@@ -73,16 +80,31 @@ function toTradeWinRate(system: CanonicalPerformanceSystem | null) {
   return (system.totalWins / system.totalTrades) * 100;
 }
 
-export default function PerformanceComparisonPanel() {
+export default function PerformanceComparisonPanel({
+  forcedFamily,
+  forcedSystemVersion,
+  hideSelectors = false,
+  title = "Strategy Breakdown",
+}: PerformanceComparisonPanelProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [payload, setPayload] = useState<CanonicalPerformancePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const requestedFamily = parseRequestedFamily(searchParams.get("style"));
-  const requestedSystem = parseRequestedSystem(searchParams.get("system"));
+  const requestedFamily = forcedFamily ?? parseRequestedFamily(searchParams.get("style"));
+  const requestedSystem = forcedSystemVersion ?? parseRequestedSystem(searchParams.get("system"));
   const [activeFamily, setActiveFamily] = useState<"universal" | "tiered">(requestedFamily);
   const [activeSystemVersion, setActiveSystemVersion] = useState<SystemVersion>(requestedSystem);
+
+  useEffect(() => {
+    setActiveFamily(requestedFamily);
+  }, [requestedFamily]);
+
+  useEffect(() => {
+    setActiveSystemVersion(requestedSystem);
+  }, [requestedSystem]);
 
   useEffect(() => {
     async function fetchData() {
@@ -130,19 +152,21 @@ export default function PerformanceComparisonPanel() {
   const isWeeklyFlagship = weeklyFlagshipId === activeCompositeId;
 
   const setFamily = (next: "universal" | "tiered") => {
+    if (forcedFamily) return;
     setActiveFamily(next);
     const url = new URL(window.location.href);
     url.searchParams.set("style", next);
-    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+    router.replace(`${pathname}?${url.searchParams.toString()}`, { scroll: false });
     window.dispatchEvent(new CustomEvent("performance-style-change", { detail: next }));
   };
 
   const setSystemVersion = (next: SystemVersion) => {
+    if (forcedSystemVersion) return;
     setActiveSystemVersion(next);
     const url = new URL(window.location.href);
     url.searchParams.set("system", next);
     url.searchParams.set("style", activeFamily);
-    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+    router.replace(`${pathname}?${url.searchParams.toString()}`, { scroll: false });
     window.dispatchEvent(new CustomEvent("performance-system-change", { detail: next }));
   };
 
@@ -150,56 +174,60 @@ export default function PerformanceComparisonPanel() {
     <div className="flex-1 space-y-4 p-4">
       <div className="mb-2">
         <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          Strategy Breakdown
+          {title}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        {(["universal", "tiered"] as const).map((family) => {
-          const meta = PERFORMANCE_FAMILY_META[family];
-          const isActive = activeFamily === family;
-          return (
-            <button
-              key={family}
-              type="button"
-              onClick={() => setFamily(family)}
-              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-                isActive
-                  ? meta.tabActiveClass
-                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
-              }`}
-            >
-              {meta.label}
-            </button>
-          );
-        })}
-      </div>
+      {hideSelectors ? null : (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            {(["universal", "tiered"] as const).map((family) => {
+              const meta = PERFORMANCE_FAMILY_META[family];
+              const isActive = activeFamily === family;
+              return (
+                <button
+                  key={family}
+                  type="button"
+                  onClick={() => setFamily(family)}
+                  className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                    isActive
+                      ? meta.tabActiveClass
+                      : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+                  }`}
+                >
+                  {meta.label}
+                </button>
+              );
+            })}
+          </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        {systemGroups.map((group) => {
-          const version = group.tabId as SystemVersion;
-          const groupEntry = resolveActiveStrategyEntry({
-            family: activeFamily,
-            systemVersion: version,
-          });
-          const groupTheme = groupEntry?.theme ?? activeTheme;
-          const isActive = activeSystemVersion === version;
-          return (
-            <button
-              key={group.tabId}
-              type="button"
-              onClick={() => setSystemVersion(version)}
-              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-                isActive
-                  ? groupTheme?.tabActiveClass ?? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
-              } ${groupTheme?.tabInactiveHoverClass ?? ""}`}
-            >
-              {group.tabLabel}
-            </button>
-          );
-        })}
-      </div>
+          <div className="grid grid-cols-3 gap-2">
+            {systemGroups.map((group) => {
+              const version = group.tabId as SystemVersion;
+              const groupEntry = resolveActiveStrategyEntry({
+                family: activeFamily,
+                systemVersion: version,
+              });
+              const groupTheme = groupEntry?.theme ?? activeTheme;
+              const isActive = activeSystemVersion === version;
+              return (
+                <button
+                  key={group.tabId}
+                  type="button"
+                  onClick={() => setSystemVersion(version)}
+                  className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                    isActive
+                      ? groupTheme?.tabActiveClass ?? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                      : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+                  } ${groupTheme?.tabInactiveHoverClass ?? ""}`}
+                >
+                  {group.tabLabel}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       <div className={activeTheme?.cardClass ?? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4"}>
         <div className="mb-3 flex items-center justify-between">
