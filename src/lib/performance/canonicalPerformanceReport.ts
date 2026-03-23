@@ -38,7 +38,7 @@ function getCanonicalPerformanceReportPath() {
 
 async function readBundledCanonicalPerformanceReport(): Promise<CanonicalPerformanceReport | null> {
   try {
-    const bundled = await import("../../../reports/comprehensive-reconstruction.json");
+    const bundled = await import("./embedded/comprehensive-reconstruction.json");
     return normalizeReport((bundled as { default?: unknown }).default ?? bundled);
   } catch (error) {
     console.warn(
