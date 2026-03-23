@@ -31,6 +31,7 @@ type SignalTier = "HIGH" | "MEDIUM" | "NEUTRAL";
 type AssetClass = "fx" | "indices" | "crypto" | "commodities";
 type MenthorqOverlayCondition = "POSITIVE" | "NEGATIVE" | "NEUTRAL" | "UNKNOWN";
 type TriggerState = "HIT" | "CLOSE" | "WATCHING" | "NO_DATA" | "INACTIVE";
+type AgreementSignal = boolean | null;
 
 type GatedSetupSignal = {
   assetClass: string;
@@ -179,9 +180,11 @@ type MatrixRow = {
   tier: SignalTier;
   sessionEligible: SessionName[];
   gateReasons: string[];
-  cotGateAgree: boolean;
-  menthorqAgree: boolean;
-  strengthAgree: boolean;
+  cotGateAgree: AgreementSignal;
+  menthorqAgree: AgreementSignal;
+  strengthAgree: AgreementSignal;
+  gammaAgreeCount: number;
+  gammaAvailableCount: number;
   tradeCount: number | null;
   avgReturnPct: number | null;
   noTargetRatePct: number | null;
@@ -288,40 +291,57 @@ function normalizeGate(value: string | null | undefined): GateDecision {
   return "NO_DATA";
 }
 
-function deriveOverlayState(
+function deriveOverlaySignal(
   pairRow: PairUniverseRow,
   signal: GatedSetupSignal | null,
   menthorqBySymbol: Map<string, MenthorqOverlayCondition>,
-): TrendState {
+): { state: TrendState; available: boolean } {
   if (pairRow.assetClass === "crypto") {
-    if (!signal) return "NEUTRAL";
+    if (!signal) return { state: "NEUTRAL", available: false };
     const source = String(signal.gateDecisionSource ?? "").toUpperCase();
-    if (source.includes("CRYPTO_LIQUIDATION_LIVE")) return directionToState(signal.direction);
-    return "NEUTRAL";
+    if (source.includes("CRYPTO_LIQUIDATION_LIVE")) {
+      return { state: directionToState(signal.direction), available: true };
+    }
+    return { state: "NEUTRAL", available: false };
   }
 
   if (pairRow.assetClass === "indices" && pairRow.base === "NIKKEI") {
-    return invertState(conditionToState(menthorqBySymbol.get("6J")));
+    const available = menthorqBySymbol.has("6J");
+    return { state: invertState(conditionToState(menthorqBySymbol.get("6J"))), available };
   }
   if (pairRow.assetClass === "indices" || pairRow.assetClass === "commodities") {
     const symbol = ASSET_MENTHORQ_SYMBOL[pairRow.base];
-    return conditionToState(symbol ? menthorqBySymbol.get(symbol) : "UNKNOWN");
+    const available = Boolean(symbol) && menthorqBySymbol.has(symbol);
+    return { state: conditionToState(symbol ? menthorqBySymbol.get(symbol) : "UNKNOWN"), available };
   }
 
   const baseSymbol = CURRENCY_MENTHORQ_SYMBOL[pairRow.base];
   const quoteSymbol = CURRENCY_MENTHORQ_SYMBOL[pairRow.quote];
+  const baseAvailable = Boolean(baseSymbol) && menthorqBySymbol.has(baseSymbol);
+  const quoteAvailable = Boolean(quoteSymbol) && menthorqBySymbol.has(quoteSymbol);
   const baseState = conditionToState(baseSymbol ? menthorqBySymbol.get(baseSymbol) : "UNKNOWN");
   const quoteState = conditionToState(quoteSymbol ? menthorqBySymbol.get(quoteSymbol) : "UNKNOWN");
 
-  if (baseState === "NEUTRAL" && quoteState === "NEUTRAL") return "NEUTRAL";
-  if (baseState !== "NEUTRAL" && quoteState === "NEUTRAL") return baseState;
-  if (baseState === "NEUTRAL" && quoteState !== "NEUTRAL") {
-    return quoteState === "BULLISH" ? "BEARISH" : "BULLISH";
+  if (baseState === "NEUTRAL" && quoteState === "NEUTRAL") {
+    return { state: "NEUTRAL", available: baseAvailable || quoteAvailable };
   }
-  if (baseState === quoteState) return "NEUTRAL";
-  if (baseState === "BULLISH" && quoteState === "BEARISH") return "BULLISH";
-  if (baseState === "BEARISH" && quoteState === "BULLISH") return "BEARISH";
-  return "NEUTRAL";
+  if (baseState !== "NEUTRAL" && quoteState === "NEUTRAL") {
+    return { state: baseState, available: baseAvailable || quoteAvailable };
+  }
+  if (baseState === "NEUTRAL" && quoteState !== "NEUTRAL") {
+    return {
+      state: quoteState === "BULLISH" ? "BEARISH" : "BULLISH",
+      available: baseAvailable || quoteAvailable,
+    };
+  }
+  if (baseState === quoteState) return { state: "NEUTRAL", available: baseAvailable || quoteAvailable };
+  if (baseState === "BULLISH" && quoteState === "BEARISH") {
+    return { state: "BULLISH", available: baseAvailable || quoteAvailable };
+  }
+  if (baseState === "BEARISH" && quoteState === "BULLISH") {
+    return { state: "BEARISH", available: baseAvailable || quoteAvailable };
+  }
+  return { state: "NEUTRAL", available: baseAvailable || quoteAvailable };
 }
 
 function decodeReason(reason: string) {
@@ -358,6 +378,40 @@ function triggerClass(state: TriggerState, flashing: boolean) {
   if (state === "CLOSE") return `${base} border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300`;
   if (state === "WATCHING") return `${base} border-sky-400/30 bg-sky-500/10 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300`;
   return `${base} border-[var(--panel-border)] bg-[var(--panel)]/60 text-[color:var(--muted)]`;
+}
+
+function summarizeAgreement(inputs: AgreementSignal[]) {
+  const availableCount = inputs.filter((value) => value !== null).length;
+  const agreeCount = inputs.filter((value) => value === true).length;
+  const gammaState: MatrixContextView =
+    availableCount === 0
+      ? "N/A"
+      : agreeCount >= 2 && agreeCount / availableCount >= 2 / 3
+        ? "CONFIRM"
+        : agreeCount >= 1
+          ? "MIXED"
+          : "CONFLICT";
+  return { agreeCount, availableCount, gammaState };
+}
+
+function agreementText(agreeCount: number, availableCount: number) {
+  if (availableCount === 0) return "No inputs";
+  return `${agreeCount}/${availableCount} agree`;
+}
+
+function agreementChip(value: AgreementSignal, label: string) {
+  if (value === null) {
+    return (
+      <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass("NO_DATA")}`}>
+        {label} Unavailable
+      </span>
+    );
+  }
+  return (
+    <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${value ? gateClass("PASS") : gateClass("SKIP")}`}>
+      {label} {value ? "Agree" : "Miss"}
+    </span>
+  );
 }
 
 function sortBucket(row: MatrixRow) {
@@ -533,19 +587,20 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           }
         }
 
-        const overlay = deriveOverlayState(pairRow, signal, menthorqBySymbol);
-        const cotGateAgree = coreBias !== "NEUTRAL" && normalizeGate(signal?.gateDecision) === "PASS";
-        const menthorqAgree = coreBias !== "NEUTRAL" && overlay === coreBiasState;
-        const strengthAgree = coreBias !== "NEUTRAL" && strength1h === coreBiasState;
-        const agreeCount = [cotGateAgree, menthorqAgree, strengthAgree].filter(Boolean).length;
-        const gammaState: MatrixContextView =
-          coreBias === "NEUTRAL"
-            ? "N/A"
-            : agreeCount >= 2
-              ? "CONFIRM"
-              : agreeCount === 1
-                ? "MIXED"
-                : "CONFLICT";
+        const overlaySignal = deriveOverlaySignal(pairRow, signal, menthorqBySymbol);
+        const overlay = overlaySignal.state;
+        const signalGate = normalizeGate(signal?.gateDecision);
+        const cotGateAgree: AgreementSignal =
+          coreBias === "NEUTRAL" ? null : signalGate === "NO_DATA" ? null : signalGate === "PASS";
+        const menthorqAgree: AgreementSignal =
+          coreBias === "NEUTRAL" || !overlaySignal.available ? null : overlay === coreBiasState;
+        const strengthAgree: AgreementSignal =
+          coreBias === "NEUTRAL" || strengthDelta1h === null ? null : strength1h === coreBiasState;
+        const { agreeCount, availableCount, gammaState } = summarizeAgreement([
+          cotGateAgree,
+          menthorqAgree,
+          strengthAgree,
+        ]);
 
         const touched = coreBias === "LONG" ? (level?.longTouched ?? false) : coreBias === "SHORT" ? (level?.shortTouched ?? false) : false;
         const oneAdrTouched = coreBias === "LONG" ? (level?.oneAdrLongTouched ?? false) : coreBias === "SHORT" ? (level?.oneAdrShortTouched ?? false) : false;
@@ -577,6 +632,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           cotGateAgree,
           menthorqAgree,
           strengthAgree,
+          gammaAgreeCount: agreeCount,
+          gammaAvailableCount: availableCount,
           tradeCount: sizing?.trades ?? null,
           avgReturnPct: sizing?.avgReturnPct ?? null,
           noTargetRatePct: sizing?.noTargetRatePct ?? null,
@@ -749,7 +806,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                             </span>
                             {row.coreBias !== "NEUTRAL" ? (
                               <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-                                {[row.cotGateAgree, row.menthorqAgree, row.strengthAgree].filter(Boolean).length}/3 agree
+                                {agreementText(row.gammaAgreeCount, row.gammaAvailableCount)}
                               </div>
                             ) : null}
                           </div>
@@ -781,11 +838,11 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Gamma Detail</div>
                                 <div className="mt-1 flex items-center gap-2">
-                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${row.cotGateAgree ? gateClass("PASS") : gateClass("SKIP")}`}>{row.cotGateAgree ? "COT Agree" : "COT Miss"}</span>
-                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${row.menthorqAgree ? gateClass("PASS") : gateClass("SKIP")}`}>{row.menthorqAgree ? "MenthorQ Agree" : "MenthorQ Miss"}</span>
+                                  {agreementChip(row.cotGateAgree, "COT")}
+                                  {agreementChip(row.menthorqAgree, "MenthorQ")}
                                 </div>
                                 <div className="mt-2 flex items-center gap-2">
-                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${row.strengthAgree ? gateClass("PASS") : gateClass("SKIP")}`}>{row.strengthAgree ? "Strength Agree" : "Strength Miss"}</span>
+                                  {agreementChip(row.strengthAgree, "Strength")}
                                   <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.overlay)}`}>Overlay {stateLabel(row.overlay)}</span>
                                   <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.strength1h)}`}>Str {row.strengthDelta1h === null ? "—" : row.strengthDelta1h.toFixed(0)}</span>
                                 </div>
@@ -793,10 +850,10 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">ADR Trigger</div>
                                 <div className="mt-1">ADR {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || "—"} · Mult {row.adrMultiplier ?? "—"}</div>
-                                <div>Week open {formatDateTimeET(row.weekOpenUtc, "Unknown")} @ {formatPrice(row.weekOpenPrice)}</div>
+                                <div>Day open {formatDateTimeET(row.weekOpenUtc, "Unknown")} @ {formatPrice(row.weekOpenPrice)}</div>
                                 <div>Long trigger {formatPrice(row.longTriggerPrice)} · 1.0 ADR {formatPrice(row.oneAdrLongTriggerPrice)}</div>
                                 <div>Short trigger {formatPrice(row.shortTriggerPrice)} · 1.0 ADR {formatPrice(row.oneAdrShortTriggerPrice)}</div>
-                                <div>Week range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
+                                <div>Day range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Trade Profile</div>

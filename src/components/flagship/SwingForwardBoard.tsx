@@ -6,14 +6,16 @@
  *
  * Description:
  * Live current-week swing board for the locked weekly flagship using
- * the gated setups feed plus live market drift.
+ * the gated setups feed plus live week-to-date basket drift.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 "use client";
 
+import { DateTime } from "luxon";
 import { useEffect, useMemo, useState } from "react";
+
 import { formatDateTimeET } from "@/lib/time";
 
 type GateDecision = "PASS" | "SKIP" | "NO_DATA";
@@ -35,14 +37,20 @@ type GatedSetupsPayload = {
   signals: GatedSetupSignal[];
 };
 
-type PriceMoveRow = {
+type WeeklyForwardSummaryRow = {
   pair: string;
-  change24hPct: number | null;
+  direction: SignalDirection;
+  tier: SignalTier;
+  gateReasons: string[];
+  liveDriftPct: number | null;
 };
 
-type PriceMovesPayload = {
+type WeeklyForwardSummaryPayload = {
   generatedUtc: string | null;
-  rows: PriceMoveRow[];
+  currentWeekOpenUtc: string | null;
+  basketPnlPct: number | null;
+  basketMaxDrawdownPct: number | null;
+  rows: WeeklyForwardSummaryRow[];
 };
 
 type SwingForwardBoardProps = {
@@ -68,14 +76,31 @@ function tierTone(tier: SignalTier) {
   return "text-[color:var(--muted)]";
 }
 
+function cardTone(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "text-[var(--foreground)]";
+  if (value > 0) return "text-emerald-700 dark:text-emerald-300";
+  if (value < 0) return "text-rose-700 dark:text-rose-300";
+  return "text-[var(--foreground)]";
+}
+
+function formatTradingWeek(weekOpenUtc: string | null) {
+  if (!weekOpenUtc) return "—";
+  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).setZone("America/New_York");
+  if (!weekOpen.isValid) return "—";
+  const monday = weekOpen.plus({ days: 1 }).startOf("day");
+  const friday = monday.plus({ days: 4 });
+  return `${monday.toFormat("MMM dd")} - ${friday.toFormat("MMM dd, yyyy")}`;
+}
+
 export default function SwingForwardBoard({
   strategyName,
   sourceLabel,
 }: SwingForwardBoardProps) {
-  const [signals, setSignals] = useState<GatedSetupSignal[]>([]);
+  const [rows, setRows] = useState<WeeklyForwardSummaryRow[]>([]);
   const [currentWeekOpenUtc, setCurrentWeekOpenUtc] = useState<string | null>(null);
   const [lastRefreshUtc, setLastRefreshUtc] = useState<string | null>(null);
-  const [driftByPair, setDriftByPair] = useState<Map<string, number | null>>(new Map());
+  const [basketPnlPct, setBasketPnlPct] = useState<number | null>(null);
+  const [basketMaxDrawdownPct, setBasketMaxDrawdownPct] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -86,11 +111,7 @@ export default function SwingForwardBoard({
       setLoading(true);
       setError(null);
       try {
-        const [gatedResponse, priceMovesResponse] = await Promise.all([
-          fetch("/api/performance/gated-setups", { cache: "no-store" }),
-          fetch("/api/flagship/price-moves", { cache: "no-store" }),
-        ]);
-
+        const gatedResponse = await fetch("/api/performance/gated-setups", { cache: "no-store" });
         if (!gatedResponse.ok) {
           throw new Error(`Gated setups request failed (${gatedResponse.status})`);
         }
@@ -102,10 +123,6 @@ export default function SwingForwardBoard({
           throw new Error(gatedJson.error);
         }
 
-        const priceMovesJson = priceMovesResponse.ok
-          ? ((await priceMovesResponse.json()) as PriceMovesPayload & { error?: string })
-          : null;
-
         const actionableSignals = (gatedJson.signals ?? [])
           .filter((signal) => signal.gateDecision === "PASS" && signal.direction !== "NEUTRAL")
           .sort((left, right) => {
@@ -113,16 +130,43 @@ export default function SwingForwardBoard({
             return tierWeight(right.tier) - tierWeight(left.tier) || left.pair.localeCompare(right.pair);
           });
 
-        const nextDriftByPair = new Map<string, number | null>();
-        for (const row of priceMovesJson?.rows ?? []) {
-          nextDriftByPair.set(String(row.pair).toUpperCase(), row.change24hPct);
+        let summaryJson: WeeklyForwardSummaryPayload | null = null;
+        if (gatedJson.currentWeekOpenUtc && actionableSignals.length > 0) {
+          const summaryResponse = await fetch("/api/flagship/weekly-forward-summary", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+            body: JSON.stringify({
+              currentWeekOpenUtc: gatedJson.currentWeekOpenUtc,
+              signals: actionableSignals.map((signal) => ({
+                pair: signal.pair,
+                direction: signal.direction,
+                tier: signal.tier,
+                gateReasons: signal.gateReasons,
+              })),
+            }),
+          });
+
+          if (summaryResponse.ok) {
+            summaryJson = (await summaryResponse.json()) as WeeklyForwardSummaryPayload;
+          }
         }
 
         if (!cancelled) {
-          setSignals(actionableSignals);
-          setCurrentWeekOpenUtc(gatedJson.currentWeekOpenUtc ?? null);
-          setLastRefreshUtc(gatedJson.generatedUtc ?? priceMovesJson?.generatedUtc ?? null);
-          setDriftByPair(nextDriftByPair);
+          setRows(
+            summaryJson?.rows ??
+              actionableSignals.map((signal) => ({
+                pair: signal.pair,
+                direction: signal.direction,
+                tier: signal.tier,
+                gateReasons: signal.gateReasons,
+                liveDriftPct: null,
+              })),
+          );
+          setCurrentWeekOpenUtc(summaryJson?.currentWeekOpenUtc ?? gatedJson.currentWeekOpenUtc ?? null);
+          setLastRefreshUtc(summaryJson?.generatedUtc ?? gatedJson.generatedUtc ?? null);
+          setBasketPnlPct(summaryJson?.basketPnlPct ?? null);
+          setBasketMaxDrawdownPct(summaryJson?.basketMaxDrawdownPct ?? null);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -141,22 +185,10 @@ export default function SwingForwardBoard({
     };
   }, []);
 
-  const rows = useMemo(
-    () =>
-      signals.map((signal) => {
-        const drift = driftByPair.get(signal.pair.toUpperCase()) ?? null;
-        const directionalDrift =
-          drift === null ? null : signal.direction === "SHORT" ? -drift : drift;
-        return {
-          ...signal,
-          liveDriftPct: directionalDrift,
-        };
-      }),
-    [driftByPair, signals],
+  const tradingWeekLabel = useMemo(
+    () => formatTradingWeek(currentWeekOpenUtc),
+    [currentWeekOpenUtc],
   );
-
-  const highTierCount = rows.filter((row) => row.tier === "HIGH").length;
-  const mediumTierCount = rows.filter((row) => row.tier === "MEDIUM").length;
 
   return (
     <div className="space-y-6">
@@ -189,23 +221,23 @@ export default function SwingForwardBoard({
             Trading Week
           </div>
           <div className="mt-2 text-lg font-semibold text-[var(--foreground)]">
-            {currentWeekOpenUtc ? currentWeekOpenUtc.slice(0, 10) : "—"}
+            {tradingWeekLabel}
           </div>
         </div>
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Opened
+            Basket WTD
           </div>
-          <div className="mt-2 text-2xl font-semibold font-mono text-[var(--foreground)]">
-            {rows.length}
+          <div className={`mt-2 text-2xl font-semibold font-mono ${cardTone(basketPnlPct)}`}>
+            {formatSignedPct(basketPnlPct)}
           </div>
         </div>
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            High / Medium
+            Max Drawdown
           </div>
-          <div className="mt-2 text-2xl font-semibold font-mono text-[var(--foreground)]">
-            {highTierCount} / {mediumTierCount}
+          <div className={`mt-2 text-2xl font-semibold font-mono ${cardTone(basketMaxDrawdownPct === null ? null : -basketMaxDrawdownPct)}`}>
+            {basketMaxDrawdownPct === null ? "—" : `-${basketMaxDrawdownPct.toFixed(2)}%`}
           </div>
         </div>
       </section>
@@ -254,7 +286,7 @@ export default function SwingForwardBoard({
                       <td className={`px-3 py-3 font-semibold ${directionTone(row.direction)}`}>{row.direction}</td>
                       <td className={`px-3 py-3 font-semibold ${tierTone(row.tier)}`}>{row.tier}</td>
                       <td className="px-3 py-3 text-[var(--foreground)]/80">Week Open</td>
-                      <td className={`px-3 py-3 font-semibold ${row.liveDriftPct !== null && row.liveDriftPct < 0 ? "text-rose-700 dark:text-rose-300" : "text-emerald-700 dark:text-emerald-300"}`}>
+                      <td className={`px-3 py-3 font-semibold ${cardTone(row.liveDriftPct)}`}>
                         {formatSignedPct(row.liveDriftPct)}
                       </td>
                       <td className="px-3 py-3 text-[var(--foreground)]/80">

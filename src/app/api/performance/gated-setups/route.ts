@@ -13,6 +13,7 @@ import {
   readNearestLiquidationHeatmapSnapshot,
   type LiquidationHeatmapSnapshotRow,
 } from "@/lib/marketSnapshots";
+import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import {
   buildLiquidationAdvisory,
   type LiquidationTradeDirection,
@@ -330,6 +331,7 @@ function buildCotDirectionsForAsset(
 
 async function buildLiveUniverseSeed(): Promise<GatedSetupsPayload> {
   const assetClasses: AssetClass[] = ["fx", "indices", "crypto", "commodities"];
+  const currentWeekOpenUtc = getCanonicalWeekOpenUtc();
   const snapshots = await Promise.all(assetClasses.map((assetClass) => readSnapshot({ assetClass })));
   const latestReportDate = snapshots
     .map((snapshot) => snapshot?.report_date ?? null)
@@ -389,7 +391,7 @@ async function buildLiveUniverseSeed(): Promise<GatedSetupsPayload> {
   return {
     sourcePath: "live:cot_snapshots+sentiment_daily",
     generatedUtc: new Date().toISOString(),
-    currentWeekOpenUtc: null,
+    currentWeekOpenUtc,
     weeksUsedForStability: latestReportDate ? [latestReportDate] : [],
     summary: buildSummary(sortedSignals),
     signals: sortedSignals,

@@ -72,9 +72,9 @@ export type CryptoMatrixRow = {
   strength24h: number | null;
   strengthState: MatrixTrendState | null;
   gammaState: MatrixContextView;
-  liquidationAgree: boolean;
-  oiAgree: boolean;
-  fundingAgree: boolean;
+  liquidationAgree: boolean | null;
+  oiAgree: boolean | null;
+  fundingAgree: boolean | null;
   adrPct: number | null;
   adrBarsUsed: number;
   adrMultiplier: number | null;

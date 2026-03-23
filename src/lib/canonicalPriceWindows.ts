@@ -19,6 +19,10 @@ export type CanonicalPriceWindow = {
   closeUtc: DateTime;
 };
 
+export type CanonicalTradingDayWindow = CanonicalPriceWindow & {
+  cutoffHourEt: number;
+};
+
 export const CANONICAL_WEEKS = [
   "2026-01-19T00:00:00.000Z",
   "2026-01-26T00:00:00.000Z",
@@ -77,6 +81,40 @@ export function getCanonicalWeekWindow(
     periodOpenUtc: canonicalWeekOpenUtc,
     openUtc: cryptoOpenUtc,
     closeUtc: cryptoOpenUtc.plus({ days: 7 }),
+  };
+}
+
+function getTradingDayCutoffHourEt(assetClass: AssetClass) {
+  if (assetClass === "commodities") return 18;
+  if (assetClass === "crypto") return 20;
+  return 17;
+}
+
+export function getCanonicalTradingDayWindow(
+  assetClass: AssetClass,
+  now: DateTime = DateTime.utc(),
+): CanonicalTradingDayWindow {
+  const cutoffHourEt = getTradingDayCutoffHourEt(assetClass);
+  const nyNow = now.setZone("America/New_York");
+  let openEt = nyNow.set({
+    hour: cutoffHourEt,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+
+  if (nyNow.toMillis() < openEt.toMillis()) {
+    openEt = openEt.minus({ days: 1 });
+  }
+
+  const openUtc = openEt.toUTC();
+  const closeUtc = openEt.plus({ days: 1 }).toUTC();
+
+  return {
+    periodOpenUtc: openUtc.toISO() ?? now.toUTC().toISO() ?? "",
+    openUtc,
+    closeUtc,
+    cutoffHourEt,
   };
 }
 

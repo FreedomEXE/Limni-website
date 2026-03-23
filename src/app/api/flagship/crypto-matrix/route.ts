@@ -27,6 +27,7 @@ import {
   type BitgetMarketTicker,
 } from "@/lib/bitget";
 import { readAllLatestAssetStrengths } from "@/lib/assetStrength";
+import { getCanonicalTradingDayWindow } from "@/lib/canonicalPriceWindows";
 import { fetchLiquidationHeatmap } from "@/lib/coinank";
 import { derivePairDirectionsByBaseWithNeutral } from "@/lib/cotCompute";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
@@ -46,7 +47,6 @@ import type { MatrixContextView, MatrixTrendState } from "@/lib/flagship/matrixS
 import { readNearestLiquidationHeatmapSnapshot } from "@/lib/marketSnapshots";
 import { readSnapshot } from "@/lib/cotStore";
 import { readLatestDailySentimentLock } from "@/lib/sentiment/daily";
-import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -700,48 +700,59 @@ function deriveCryptoGamma(row: {
   if (row.bias === "NEUTRAL") {
     return {
       gammaState: "N/A" as MatrixContextView,
-      liquidationAgree: false,
-      oiAgree: false,
-      fundingAgree: false,
+      liquidationAgree: null,
+      oiAgree: null,
+      fundingAgree: null,
+      availableCount: 0,
+      agreeCount: 0,
     };
   }
 
   const liquidationAgree =
-    row.bias === "LONG"
-      ? row.liquidationTilt === "ABOVE"
-      : row.liquidationTilt === "BELOW";
-  const oiAgree = (row.openInterest ?? 0) >= 20_000_000;
+    row.liquidationTilt === null || row.liquidationTilt === "NONE"
+      ? null
+      : row.bias === "LONG"
+        ? row.liquidationTilt === "ABOVE"
+        : row.liquidationTilt === "BELOW";
+  const oiAgree = row.openInterest === null ? null : row.openInterest >= 20_000_000;
   const fundingAgree =
-    row.bias === "LONG"
-      ? (row.fundingRate ?? 0) <= 0
-      : (row.fundingRate ?? 0) >= 0;
-  const agreeCount = [liquidationAgree, oiAgree, fundingAgree].filter(Boolean).length;
+    row.fundingRate === null
+      ? null
+      : row.bias === "LONG"
+        ? row.fundingRate <= 0
+        : row.fundingRate >= 0;
+  const inputs = [liquidationAgree, oiAgree, fundingAgree];
+  const availableCount = inputs.filter((value) => value !== null).length;
+  const agreeCount = inputs.filter((value) => value === true).length;
 
   return {
     gammaState:
-      agreeCount >= 2
+      availableCount === 0
+        ? ("N/A" as MatrixContextView)
+        : agreeCount >= 2 && agreeCount / availableCount >= 2 / 3
         ? ("CONFIRM" as MatrixContextView)
-        : agreeCount === 1
+        : agreeCount >= 1
           ? ("MIXED" as MatrixContextView)
           : ("CONFLICT" as MatrixContextView),
     liquidationAgree,
     oiAgree,
     fundingAgree,
+    availableCount,
+    agreeCount,
   };
 }
 
 async function readAdrContexts(symbols: string[]) {
   const threshold = getIntradayAdrThreshold("crypto");
   const nowUtc = DateTime.utc();
-  const currentWeekOpenUtc = getCanonicalWeekOpenUtc(nowUtc);
-  const weekOpenUtc = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
-  const lookbackOpenUtc = weekOpenUtc.minus({ days: CRYPTO_ADR_LOOKBACK_DAYS + 2 });
+  const tradingDayWindow = getCanonicalTradingDayWindow("crypto", nowUtc);
+  const lookbackOpenUtc = tradingDayWindow.openUtc.minus({ days: CRYPTO_ADR_LOOKBACK_DAYS + 2 });
 
   const entries = await mapWithConcurrency(symbols, 4, async (symbol): Promise<readonly [string, CryptoAdrContext]> => {
     try {
       const [adrBars, weekBars] = await Promise.all([
-        fetchBitgetDailySeries(symbol, { openUtc: lookbackOpenUtc, closeUtc: weekOpenUtc }),
-        fetchBitgetCandleSeries(symbol, { openUtc: weekOpenUtc, closeUtc: nowUtc }),
+        fetchBitgetDailySeries(symbol, { openUtc: lookbackOpenUtc, closeUtc: tradingDayWindow.openUtc }),
+        fetchBitgetCandleSeries(symbol, { openUtc: tradingDayWindow.openUtc, closeUtc: nowUtc }),
       ]);
 
       const adrRanges = adrBars
@@ -792,7 +803,7 @@ async function readAdrContexts(symbols: string[]) {
           adrPct,
           adrBarsUsed: adrRanges.length,
           adrMultiplier: threshold.adrMultiplier,
-          weekOpenUtc: currentWeekOpenUtc,
+          weekOpenUtc: tradingDayWindow.periodOpenUtc,
           weekOpenPrice,
           weekHighPrice,
           weekLowPrice,
@@ -810,7 +821,7 @@ async function readAdrContexts(symbols: string[]) {
           adrPct: null,
           adrBarsUsed: 0,
           adrMultiplier: threshold.adrMultiplier,
-          weekOpenUtc: currentWeekOpenUtc,
+          weekOpenUtc: tradingDayWindow.periodOpenUtc,
           weekOpenPrice: null,
           weekHighPrice: null,
           weekLowPrice: null,

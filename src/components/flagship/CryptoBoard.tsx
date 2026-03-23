@@ -20,6 +20,7 @@ import {
 import { formatDateTimeET } from "@/lib/time";
 
 type TriggerState = "HIT" | "CLOSE" | "WATCHING" | "NO_DATA";
+type AgreementSignal = boolean | null;
 
 function toTrendState(direction: CryptoBiasDirection): MatrixTrendState {
   if (direction === "LONG") return "BULLISH";
@@ -81,6 +82,30 @@ function triggerClass(state: TriggerState, flashing: boolean) {
   if (state === "CLOSE") return `${base} border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300`;
   if (state === "WATCHING") return `${base} border-sky-400/30 bg-sky-500/10 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300`;
   return `${base} border-[var(--panel-border)] bg-[var(--panel)]/60 text-[color:var(--muted)]`;
+}
+
+function summarizeAgreement(inputs: AgreementSignal[]) {
+  const availableCount = inputs.filter((value) => value !== null).length;
+  const agreeCount = inputs.filter((value) => value === true).length;
+  const gammaState =
+    availableCount === 0
+      ? "N/A"
+      : agreeCount >= 2 && agreeCount / availableCount >= 2 / 3
+        ? "CONFIRM"
+        : agreeCount >= 1
+          ? "MIXED"
+          : "CONFLICT";
+  return { agreeCount, availableCount, gammaState };
+}
+
+function agreementText(agreeCount: number, availableCount: number) {
+  if (availableCount === 0) return "No inputs";
+  return `${agreeCount}/${availableCount} agree`;
+}
+
+function agreementLabel(value: AgreementSignal) {
+  if (value === null) return "unavailable";
+  return value ? "agree" : "miss";
 }
 
 export default function CryptoBoard() {
@@ -237,7 +262,11 @@ export default function CryptoBoard() {
                 {rows.map((row) => {
                   const expanded = expandedRows.includes(row.symbol);
                   const state = triggerState(row);
-                  const agreeCount = [row.liquidationAgree, row.oiAgree, row.fundingAgree].filter(Boolean).length;
+                  const { agreeCount, availableCount } = summarizeAgreement([
+                    row.liquidationAgree,
+                    row.oiAgree,
+                    row.fundingAgree,
+                  ]);
                   return (
                     <Fragment key={row.symbol}>
                       <tr className={`transition-colors ${rowHighlightClass(toTrendState(row.bias))}`}>
@@ -281,7 +310,7 @@ export default function CryptoBoard() {
                             <span className={`inline-flex min-w-[5.5rem] justify-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${contextClass(row.gammaState)}`}>
                               {row.gammaState}
                             </span>
-                            <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">{agreeCount}/3 agree</div>
+                            <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">{agreementText(agreeCount, availableCount)}</div>
                           </div>
                         </td>
                         <td className="border-r border-[var(--panel-border)] px-3 py-2">
@@ -310,18 +339,18 @@ export default function CryptoBoard() {
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Gamma Detail</div>
-                                <div className="mt-1">Liquidation {row.liquidationTilt ?? "—"} · {row.liquidationAgree ? "agree" : "miss"}</div>
-                                <div>OI {formatCompactUsd(row.openInterest)} · {row.oiAgree ? "agree" : "miss"}</div>
-                                <div>Funding {formatFunding(row.fundingRate)} · {row.fundingAgree ? "agree" : "miss"}</div>
+                                <div className="mt-1">Liquidation {row.liquidationTilt ?? "—"} · {agreementLabel(row.liquidationAgree)}</div>
+                                <div>OI {formatCompactUsd(row.openInterest)} · {agreementLabel(row.oiAgree)}</div>
+                                <div>Funding {formatFunding(row.fundingRate)} · {agreementLabel(row.fundingAgree)}</div>
                                 <div>Strength 1h / 4h / 24h: {formatPct(row.strength1h, 1)} / {formatPct(row.strength4h, 1)} / {formatPct(row.strength24h, 1)}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">ADR Trigger</div>
                                 <div className="mt-1">ADR {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || "—"} · Mult {row.adrMultiplier ?? "—"}</div>
-                                <div>Week open {formatDateTimeET(row.weekOpenUtc, "Unknown")} @ {formatPrice(row.weekOpenPrice)}</div>
+                                <div>Day open {formatDateTimeET(row.weekOpenUtc, "Unknown")} @ {formatPrice(row.weekOpenPrice)}</div>
                                 <div>Long trigger {formatPrice(row.longTriggerPrice)} · 1.0 ADR {formatPrice(row.oneAdrLongTriggerPrice)}</div>
                                 <div>Short trigger {formatPrice(row.shortTriggerPrice)} · 1.0 ADR {formatPrice(row.oneAdrShortTriggerPrice)}</div>
-                                <div>Week range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
+                                <div>Day range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Market Detail</div>
