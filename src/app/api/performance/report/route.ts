@@ -8,7 +8,7 @@ export const revalidate = 0;
 export async function GET() {
   try {
     const [report, flagships] = await Promise.all([
-      getCanonicalPerformanceApiModel(),
+      getCanonicalPerformanceApiModel({ normalizePositionSizing: true }),
       resolveCanonicalFlagships(),
     ]);
 

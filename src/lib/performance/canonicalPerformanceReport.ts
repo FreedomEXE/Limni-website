@@ -16,6 +16,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { clearRuntimeCacheByPrefix, getOrSetRuntimeCache } from "@/lib/runtimeCache";
+import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown";
 
 const CANONICAL_PERFORMANCE_REPORT_CACHE_PREFIX = "performance:canonicalReport:";
 const CANONICAL_PERFORMANCE_REPORT_CACHE_TTL_MS = Number(
@@ -109,9 +110,38 @@ export type CanonicalPerformanceAssetBreakdown = {
   tradeCount: number;
 };
 
+export type CanonicalPerformanceWeeklyNettedPair = {
+  symbol: string;
+  assetClass: string;
+  direction: "LONG" | "SHORT" | "NEUTRAL";
+  unitsOrWeight: number;
+  netUnits: number;
+  tierWeight: number;
+  returnPct: number;
+  positionContributionPct: number;
+  support: string[];
+  tier: number | null;
+};
+
+export type CanonicalPerformanceWeeklyRawSignal = {
+  model: string;
+  direction: "LONG" | "SHORT" | "NEUTRAL";
+  returnPct: number;
+};
+
+export type CanonicalPerformanceWeeklyGateActivity = {
+  skippedTrades: number;
+  passedOrNoDataTrades: number;
+  decisionBreakdown: Record<string, number>;
+};
+
 export type CanonicalPerformanceWeeklyBreakdown = {
   sourceModels: Record<string, CanonicalPerformanceSourceModelBreakdown>;
   perAsset: Record<string, CanonicalPerformanceAssetBreakdown>;
+  nettedPairs: CanonicalPerformanceWeeklyNettedPair[];
+  skippedDueToNetting: string[];
+  rawSignalsByPair: Record<string, CanonicalPerformanceWeeklyRawSignal[]>;
+  gateActivity: CanonicalPerformanceWeeklyGateActivity | null;
 };
 
 export type CanonicalPerformanceWeeklyRow = {
@@ -215,6 +245,10 @@ export type CanonicalPerformanceApiModel = {
   summary: CanonicalPerformanceSummaryRow[];
 };
 
+export type CanonicalPerformanceReportOptions = {
+  normalizePositionSizing?: boolean;
+};
+
 function normalizeWeeklyBreakdown(value: unknown): CanonicalPerformanceWeeklyBreakdown {
   const raw = toRecord(value);
   const sourceModels: Record<string, CanonicalPerformanceSourceModelBreakdown> = {};
@@ -237,9 +271,75 @@ function normalizeWeeklyBreakdown(value: unknown): CanonicalPerformanceWeeklyBre
     };
   }
 
+  const nettedPairs = Array.isArray(raw.nettedPairs)
+    ? raw.nettedPairs
+        .map((entry) => {
+          const normalized = toRecord(entry);
+          const direction = String(normalized.direction ?? "").trim().toUpperCase();
+          if (direction !== "LONG" && direction !== "SHORT" && direction !== "NEUTRAL") {
+            return null;
+          }
+          return {
+            symbol: String(normalized.symbol ?? "").trim().toUpperCase(),
+            assetClass: String(normalized.assetClass ?? "").trim().toLowerCase(),
+            direction,
+            unitsOrWeight: toFinite(normalized.unitsOrWeight, 0),
+            netUnits: toFinite(normalized.netUnits, 0),
+            tierWeight: toFinite(normalized.tierWeight, 0),
+            returnPct: toFinite(normalized.returnPct, 0),
+            positionContributionPct: toFinite(normalized.positionContributionPct, 0),
+            support: toStringArray(normalized.support),
+            tier: toNullableFinite(normalized.tier),
+          } satisfies CanonicalPerformanceWeeklyNettedPair;
+        })
+        .filter((entry): entry is CanonicalPerformanceWeeklyNettedPair => Boolean(entry))
+    : [];
+
+  const rawSignalsByPair: Record<string, CanonicalPerformanceWeeklyRawSignal[]> = {};
+  const rawSignals = toRecord(raw.rawSignalsByPair);
+  for (const [pairKey, entries] of Object.entries(rawSignals)) {
+    if (!Array.isArray(entries)) {
+      rawSignalsByPair[pairKey] = [];
+      continue;
+    }
+    rawSignalsByPair[pairKey] = entries
+      .map((entry) => {
+        const normalized = toRecord(entry);
+        const direction = String(normalized.direction ?? "").trim().toUpperCase();
+        if (direction !== "LONG" && direction !== "SHORT" && direction !== "NEUTRAL") {
+          return null;
+        }
+        return {
+          model: String(normalized.model ?? "").trim(),
+          direction,
+          returnPct: toFinite(normalized.returnPct, 0),
+        } satisfies CanonicalPerformanceWeeklyRawSignal;
+      })
+      .filter((entry): entry is CanonicalPerformanceWeeklyRawSignal => Boolean(entry));
+  }
+
+  const gateActivityRecord = toRecord(raw.gateActivity);
+  const gateActivity =
+    Object.keys(gateActivityRecord).length > 0
+      ? {
+          skippedTrades: toPositiveInt(gateActivityRecord.skippedTrades, 0),
+          passedOrNoDataTrades: toPositiveInt(gateActivityRecord.passedOrNoDataTrades, 0),
+          decisionBreakdown: Object.fromEntries(
+            Object.entries(toRecord(gateActivityRecord.decisionBreakdown)).map(([key, entry]) => [
+              key,
+              toPositiveInt(entry, 0),
+            ]),
+          ),
+        }
+      : null;
+
   return {
     sourceModels,
     perAsset,
+    nettedPairs,
+    skippedDueToNetting: toStringArray(raw.skippedDueToNetting),
+    rawSignalsByPair,
+    gateActivity,
   };
 }
 
@@ -369,21 +469,197 @@ function normalizeReport(rawValue: unknown): CanonicalPerformanceReport {
   };
 }
 
-export async function readCanonicalPerformanceReport(): Promise<CanonicalPerformanceReport | null> {
-  const cacheKey = `${CANONICAL_PERFORMANCE_REPORT_CACHE_PREFIX}report`;
+function summarizeSystem(system: CanonicalPerformanceSystem): CanonicalPerformanceSummaryRow {
+  return {
+    system: system.system,
+    family: system.family,
+    simpleReturnPct: system.simpleReturnPct,
+    compoundedReturnPct: system.compoundedReturnPct,
+    maxDrawdownSimplePct: system.maxDrawdownSimplePct,
+    maxDrawdownPct: system.maxDrawdownPct,
+    trades: system.totalTrades,
+    winRatePct: system.winRatePct,
+    weeks: system.weeks,
+    isGated: system.isGated,
+    gateSkippedTrades: system.gateSkippedTrades,
+  };
+}
+
+function computeCompoundedReturnPct(returns: number[]) {
+  if (returns.length === 0) return 0;
+  let equity = 1;
+  for (const value of returns) {
+    if (!Number.isFinite(value)) continue;
+    const multiplier = 1 + value / 100;
+    if (multiplier <= 0) return -100;
+    equity *= multiplier;
+  }
+  return (equity - 1) * 100;
+}
+
+function normalizeBreakdownToOneX(
+  breakdown: CanonicalPerformanceWeeklyBreakdown,
+): CanonicalPerformanceWeeklyBreakdown {
+  const sourceModels: Record<string, CanonicalPerformanceSourceModelBreakdown> = {};
+  for (const entries of Object.values(breakdown.rawSignalsByPair)) {
+    for (const entry of entries) {
+      const current = sourceModels[entry.model] ?? { returnPct: 0, activePairs: 0 };
+      sourceModels[entry.model] = {
+        returnPct: current.returnPct + entry.returnPct,
+        activePairs: current.activePairs + 1,
+      };
+    }
+  }
+
+  const perAsset: Record<string, CanonicalPerformanceAssetBreakdown> = {};
+  const nettedPairs = breakdown.nettedPairs.map((pair) => {
+    const current = perAsset[pair.assetClass] ?? { returnPct: 0, tradeCount: 0 };
+    perAsset[pair.assetClass] = {
+      returnPct: current.returnPct + pair.returnPct,
+      tradeCount: current.tradeCount + 1,
+    };
+    return {
+      ...pair,
+      positionContributionPct: pair.returnPct,
+    };
+  });
+
+  return {
+    ...breakdown,
+    sourceModels,
+    perAsset,
+    nettedPairs,
+  };
+}
+
+function normalizeWeeklyRowToOneX(
+  row: CanonicalPerformanceWeeklyRow,
+): CanonicalPerformanceWeeklyRow {
+  const breakdown = normalizeBreakdownToOneX(row.breakdown);
+  const returns = breakdown.nettedPairs.map((pair) => pair.positionContributionPct);
+  const wins = returns.filter((value) => value > 0).length;
+  const losses = returns.filter((value) => value < 0).length;
+  const grossProfitPct = returns
+    .filter((value) => value > 0)
+    .reduce((sum, value) => sum + value, 0);
+  const grossLossPct = Math.abs(
+    returns.filter((value) => value < 0).reduce((sum, value) => sum + value, 0),
+  );
+  return {
+    ...row,
+    returnPct: returns.reduce((sum, value) => sum + value, 0),
+    trades: breakdown.nettedPairs.length,
+    wins,
+    losses,
+    drawdownPct: computeMaxDrawdownFromPercentReturns(returns),
+    grossProfitPct,
+    grossLossPct,
+    breakdown,
+  };
+}
+
+function normalizeSystemToOneX(
+  system: CanonicalPerformanceSystem,
+): CanonicalPerformanceSystem {
+  const weeklyReturns = system.weeklyReturns.map((row) => normalizeWeeklyRowToOneX(row));
+  const weeklySeries = weeklyReturns.map((row) => row.returnPct);
+  const totalTrades = weeklyReturns.reduce((sum, row) => sum + row.trades, 0);
+  const totalWins = weeklyReturns.reduce((sum, row) => sum + row.wins, 0);
+  const totalLosses = weeklyReturns.reduce((sum, row) => sum + row.losses, 0);
+  return {
+    ...system,
+    weeklyReturns,
+    simpleReturnPct: weeklySeries.reduce((sum, value) => sum + value, 0),
+    compoundedReturnPct: computeCompoundedReturnPct(weeklySeries),
+    maxDrawdownSimplePct: computeMaxDrawdownFromPercentReturns(weeklySeries),
+    maxDrawdownPct: computeMaxDrawdownFromPercentReturns(weeklySeries),
+    totalTrades,
+    totalWins,
+    totalLosses,
+    winRatePct: totalTrades > 0 ? (totalWins / totalTrades) * 100 : 0,
+  };
+}
+
+function rebuildNormalizedComponentBreakdowns(options: {
+  componentBreakdowns: Record<string, CanonicalPerformanceComponentBreakdownRow[]>;
+  normalizedStandaloneBaseline: CanonicalPerformanceSystem[];
+  normalizedStandaloneGated: CanonicalPerformanceSystem[];
+}) {
+  const baselineBySystem = new Map(
+    options.normalizedStandaloneBaseline.map((system) => [system.system, summarizeSystem(system)]),
+  );
+  const gatedBySystem = new Map(
+    options.normalizedStandaloneGated.map((system) => [system.system, summarizeSystem(system)]),
+  );
+
+  return Object.fromEntries(
+    Object.entries(options.componentBreakdowns).map(([systemId, rows]) => [
+      systemId,
+      rows.map((row) => {
+        const baselineId = `model_${row.model}`;
+        const gatedId = `model_${row.model}_gated`;
+        return {
+          model: row.model,
+          baseline: baselineBySystem.get(baselineId) ?? row.baseline,
+          gated: gatedBySystem.get(gatedId) ?? row.gated,
+        } satisfies CanonicalPerformanceComponentBreakdownRow;
+      }),
+    ]),
+  );
+}
+
+function normalizeReportToOneX(
+  report: CanonicalPerformanceReport,
+): CanonicalPerformanceReport {
+  const compositeSystems = report.compositeSystems.map((system) => normalizeSystemToOneX(system));
+  const compositeSystemsGated = report.compositeSystemsGated.map((system) =>
+    normalizeSystemToOneX(system)
+  );
+  const standaloneModels = report.standaloneModels.map((system) => normalizeSystemToOneX(system));
+  const standaloneModelsGated = report.standaloneModelsGated.map((system) =>
+    normalizeSystemToOneX(system)
+  );
+  return {
+    ...report,
+    returnMethodology: "normalized_1x_from_pair_returns",
+    compositeSystems,
+    compositeSystemsGated,
+    standaloneModels,
+    standaloneModelsGated,
+    componentBreakdowns: rebuildNormalizedComponentBreakdowns({
+      componentBreakdowns: report.componentBreakdowns,
+      normalizedStandaloneBaseline: standaloneModels,
+      normalizedStandaloneGated: standaloneModelsGated,
+    }),
+    summary: [
+      ...compositeSystems,
+      ...compositeSystemsGated,
+      ...standaloneModels,
+      ...standaloneModelsGated,
+    ].map((system) => summarizeSystem(system)),
+  };
+}
+
+export async function readCanonicalPerformanceReport(
+  options?: CanonicalPerformanceReportOptions,
+): Promise<CanonicalPerformanceReport | null> {
+  const normalizePositionSizing = options?.normalizePositionSizing === true;
+  const cacheKey = `${CANONICAL_PERFORMANCE_REPORT_CACHE_PREFIX}report:${normalizePositionSizing ? "normalized_1x" : "raw"}`;
   return getOrSetRuntimeCache(
     cacheKey,
     getCanonicalPerformanceReportCacheTtlMs(),
     async () => {
       try {
         const payload = await readFile(getCanonicalPerformanceReportPath(), "utf8");
-        return normalizeReport(JSON.parse(payload));
+        const report = normalizeReport(JSON.parse(payload));
+        return normalizePositionSizing ? normalizeReportToOneX(report) : report;
       } catch (error) {
         console.warn(
           "Filesystem canonical performance report unavailable, trying bundled fallback:",
           error instanceof Error ? error.message : String(error),
         );
-        return readBundledCanonicalPerformanceReport();
+        const report = await readBundledCanonicalPerformanceReport();
+        return report && normalizePositionSizing ? normalizeReportToOneX(report) : report;
       }
     },
   );
@@ -393,29 +669,36 @@ export function clearCanonicalPerformanceReportCache() {
   clearRuntimeCacheByPrefix(CANONICAL_PERFORMANCE_REPORT_CACHE_PREFIX);
 }
 
-export async function getCanonicalSummaryRows() {
-  const report = await readCanonicalPerformanceReport();
+export async function getCanonicalSummaryRows(options?: CanonicalPerformanceReportOptions) {
+  const report = await readCanonicalPerformanceReport(options);
   return report?.summary ?? [];
 }
 
-export async function getCanonicalCompositeSystems(options?: { isGated?: boolean }) {
-  const report = await readCanonicalPerformanceReport();
+export async function getCanonicalCompositeSystems(
+  options?: { isGated?: boolean } & CanonicalPerformanceReportOptions,
+) {
+  const report = await readCanonicalPerformanceReport(options);
   if (!report) return [];
   if (options?.isGated === true) return report.compositeSystemsGated;
   if (options?.isGated === false) return report.compositeSystems;
   return [...report.compositeSystems, ...report.compositeSystemsGated];
 }
 
-export async function getCanonicalStandaloneModels(options?: { isGated?: boolean }) {
-  const report = await readCanonicalPerformanceReport();
+export async function getCanonicalStandaloneModels(
+  options?: { isGated?: boolean } & CanonicalPerformanceReportOptions,
+) {
+  const report = await readCanonicalPerformanceReport(options);
   if (!report) return [];
   if (options?.isGated === true) return report.standaloneModelsGated;
   if (options?.isGated === false) return report.standaloneModels;
   return [...report.standaloneModels, ...report.standaloneModelsGated];
 }
 
-export async function getCanonicalSystemResult(systemId: string) {
-  const report = await readCanonicalPerformanceReport();
+export async function getCanonicalSystemResult(
+  systemId: string,
+  options?: CanonicalPerformanceReportOptions,
+) {
+  const report = await readCanonicalPerformanceReport(options);
   if (!report) return null;
   return (
     report.compositeSystems.find((entry) => entry.system === systemId)
@@ -426,13 +709,18 @@ export async function getCanonicalSystemResult(systemId: string) {
   );
 }
 
-export async function getCanonicalComponentBreakdown(systemId: string) {
-  const report = await readCanonicalPerformanceReport();
+export async function getCanonicalComponentBreakdown(
+  systemId: string,
+  options?: CanonicalPerformanceReportOptions,
+) {
+  const report = await readCanonicalPerformanceReport(options);
   return report?.componentBreakdowns[systemId] ?? [];
 }
 
-export async function getCanonicalPerformanceApiModel(): Promise<CanonicalPerformanceApiModel | null> {
-  const report = await readCanonicalPerformanceReport();
+export async function getCanonicalPerformanceApiModel(
+  options?: CanonicalPerformanceReportOptions,
+): Promise<CanonicalPerformanceApiModel | null> {
+  const report = await readCanonicalPerformanceReport(options);
   if (!report) return null;
   return {
     meta: {

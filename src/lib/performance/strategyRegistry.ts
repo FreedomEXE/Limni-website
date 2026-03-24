@@ -237,7 +237,6 @@ const THEME_VIOLET: PerformanceStrategyTheme = {
 };
 
 const TIERED_V1_DISPLAY_MODELS: readonly PerformanceModel[] = [
-  "blended",
   "dealer",
   "commercial",
   "sentiment",
@@ -245,6 +244,7 @@ const TIERED_V1_DISPLAY_MODELS: readonly PerformanceModel[] = [
 
 const TIERED_V2_DISPLAY_MODELS: readonly PerformanceModel[] = [
   "dealer",
+  "commercial",
   "sentiment",
 ];
 

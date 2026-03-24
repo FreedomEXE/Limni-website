@@ -50,10 +50,6 @@ type PerformanceViewSectionProps = {
   flagshipSimulation: PerformanceSimulationGroup | null;
 };
 
-function parseMode(value: string | null | undefined) {
-  return value === "legacy" ? "legacy" : "flagship";
-}
-
 export default function PerformanceViewSection({
   initialMode,
   initialView,
@@ -70,6 +66,22 @@ export default function PerformanceViewSection({
   const [view, setView] = useState<PerformanceView>(initialView);
   const [system, setSystem] = useState<PerformanceSystem>(initialSystem);
   const [style, setStyle] = useState<WeeklyPerformanceFamily>(initialStyle);
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
+  useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
+
+  useEffect(() => {
+    setSystem(initialSystem);
+  }, [initialSystem]);
+
+  useEffect(() => {
+    setStyle(initialStyle);
+  }, [initialStyle]);
 
   useEffect(() => {
     const onSystemChange = (event: Event) => {

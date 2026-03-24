@@ -14,14 +14,17 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import PerformanceHeaderContext from "@/components/performance/PerformanceHeaderContext";
+import PerformancePeriodSelector from "@/components/performance/PerformancePeriodSelector";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
 import type { PerformanceSimulationGroup } from "@/components/performance/PerformanceSimulationSection";
+import { getCanonicalWeeklyBasket, type CanonicalWeeklySignal, type CanonicalWeeklyTier } from "@/lib/flagship/canonicalWeeklyBasket";
+import { buildWeeklyForwardSummary } from "@/lib/flagship/weeklyForwardSummary";
 import { resolveCanonicalFlagships } from "@/lib/performance/canonicalFlagships";
 import {
   getCanonicalPerformanceApiModel,
   type CanonicalPerformanceApiModel,
-  type CanonicalPerformanceComponentBreakdownRow,
   type CanonicalPerformanceSystem,
+  type CanonicalPerformanceWeeklyNettedPair,
   type CanonicalPerformanceWeeklyRow,
 } from "@/lib/performance/canonicalPerformanceReport";
 import {
@@ -29,9 +32,12 @@ import {
   resolvePerformanceSystem,
   type PerformanceSystem,
 } from "@/lib/performance/modelConfig";
-import { resolvePerformanceView } from "@/lib/performance/pageState";
+import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
+import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
+import { resolvePerformanceView, resolveSelectedPerformanceWeek } from "@/lib/performance/pageState";
 import { computeReturnStats, type ModelPerformance, type PerformanceModel } from "@/lib/performanceLab";
 import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegistry";
+import { DateTime } from "luxon";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -43,6 +49,9 @@ type PerformancePageProps = {
 };
 
 type WeeklyPerformanceFamily = Exclude<PerformanceStrategyFamily, "katarakti">;
+type TierPerformanceModel = Extract<PerformanceModel, "dealer" | "commercial" | "sentiment">;
+type SelectedPerformanceWeek = string | "all";
+type CanonicalOrLiveSignalTier = CanonicalWeeklyTier | "NEUTRAL";
 
 type GridProps = {
   combined: {
@@ -121,6 +130,39 @@ const ASSET_LABELS: Record<string, string> = {
 };
 
 const SERIES_COLORS = ["#10b981", "#38bdf8", "#f59e0b", "#a78bfa", "#f43f5e", "#ef4444"];
+const TIER_MODELS: TierPerformanceModel[] = ["dealer", "commercial", "sentiment"];
+const TIER_NUMBER_BY_MODEL: Record<TierPerformanceModel, 1 | 2 | 3> = {
+  dealer: 1,
+  commercial: 2,
+  sentiment: 3,
+};
+const TIER_LABELS: Record<TierPerformanceModel, string> = {
+  dealer: "Tier 1",
+  commercial: "Tier 2",
+  sentiment: "Tier 3",
+};
+const ASSET_SECTION_IDS = ["fx", "indices", "commodities", "crypto"] as const;
+const UNIVERSAL_MODELS_BY_VERSION: Record<PerformanceSystem, readonly PerformanceModel[]> = {
+  v1: ["antikythera", "blended", "dealer", "commercial", "sentiment"],
+  v2: ["dealer", "sentiment", "antikythera_v2"],
+  v3: ["antikythera_v3", "dealer", "commercial", "sentiment"],
+};
+const STANDALONE_MODEL_SYSTEM_ID: Record<PerformanceModel, string> = {
+  antikythera: "model_antikythera",
+  antikythera_v2: "model_antikythera_v2",
+  antikythera_v3: "model_antikythera_v3",
+  blended: "model_blended",
+  dealer: "model_dealer",
+  commercial: "model_commercial",
+  sentiment: "model_sentiment",
+};
+
+const TIERED_GRID_LABELS: Record<PerformanceModel, string> = {
+  ...PERFORMANCE_MODEL_LABELS,
+  dealer: "Tier 1",
+  commercial: "Tier 2",
+  sentiment: "Tier 3",
+};
 
 function parseFamily(value: string | null | undefined): PerformanceStrategyFamily {
   return value === "universal" ? "universal" : value === "katarakti" ? "katarakti" : "tiered";
@@ -150,6 +192,474 @@ function toDirection(value: number | null | undefined): "LONG" | "SHORT" | "NEUT
   return "NEUTRAL";
 }
 
+function weekDisplayLabel(weekOpenUtc: string) {
+  const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).setZone("America/New_York");
+  if (!parsed.isValid) return weekOpenUtc;
+  const start = parsed.plus({ days: 1 }).startOf("day");
+  const end = start.plus({ days: 4 });
+  return `${start.toFormat("MMM dd")} - ${end.toFormat("MMM dd, yyyy")}`;
+}
+
+function formatWeekOptionLabel(value: SelectedPerformanceWeek, currentWeekOpenUtc: string) {
+  if (value === "all") return "All Weeks";
+  if (value === currentWeekOpenUtc) return `Current Week · ${weekDisplayLabel(value)}`;
+  return weekDisplayLabel(value);
+}
+
+function assetLabelForClass(assetClass: string) {
+  return ASSET_LABELS[assetClass] ?? assetClass.toUpperCase();
+}
+
+function buildReasonsForHistoricalTrade(trade: CanonicalPerformanceWeeklyNettedPair) {
+  const reasons = [
+    `${assetLabelForClass(trade.assetClass)} basket`,
+    `Raw move ${trade.returnPct.toFixed(2)}%`,
+    `Normalized 1x contribution ${trade.positionContributionPct.toFixed(2)}%`,
+  ];
+  if (trade.support.length > 0) {
+    reasons.push(`Support: ${trade.support.join(" / ")}`);
+  }
+  return reasons;
+}
+
+function buildHistoricalTierChildren(
+  row: CanonicalPerformanceWeeklyRow,
+  model: TierPerformanceModel,
+  assetFilter?: string,
+) {
+  const tierNumber = TIER_NUMBER_BY_MODEL[model];
+  return row.breakdown.nettedPairs
+    .filter((trade) => trade.tier === tierNumber && (!assetFilter || trade.assetClass === assetFilter))
+    .map((trade) => ({
+      pair: trade.symbol,
+      direction: trade.direction,
+      reason: buildReasonsForHistoricalTrade(trade),
+      percent: trade.positionContributionPct,
+    }));
+}
+
+function buildTierModelPerformanceFromHistorical(options: {
+  model: TierPerformanceModel;
+  system: CanonicalPerformanceSystem;
+  selectedWeek: SelectedPerformanceWeek;
+  assetFilter?: string;
+}) {
+  const { model, system, selectedWeek, assetFilter } = options;
+  if (selectedWeek !== "all") {
+    const row = system.weeklyReturns.find((entry) => entry.weekOpenUtc === selectedWeek);
+    const children = row ? buildHistoricalTierChildren(row, model, assetFilter) : [];
+    const returns = children.map((child) => ({ pair: child.pair, percent: child.percent }));
+    const totalPercent = returns.reduce((sum, item) => sum + item.percent, 0);
+    return {
+      model,
+      percent: totalPercent,
+      priced: returns.length,
+      total: Math.max(returns.length, children.length),
+      note: row
+        ? `Tier contribution for the week of ${weekDisplayLabel(row.weekOpenUtc)}.`
+        : `No ${TIER_LABELS[model]} trades for the selected week.`,
+      returns,
+      pair_details: children,
+      stats: computeReturnStats(returns),
+      diagnostics: {
+        max_drawdown: null,
+        profit_factor: null,
+      },
+    } satisfies ModelPerformance;
+  }
+
+  const weeklyReturns = system.weeklyReturns.map((row) => {
+    const children = buildHistoricalTierChildren(row, model, assetFilter);
+    const weekPercent = children.reduce((sum, child) => sum + (child.percent ?? 0), 0);
+    return {
+      row,
+      weekPercent,
+      children,
+    };
+  });
+  const returns = weeklyReturns.map(({ row, weekPercent }) => ({
+    pair: `Week of ${weekLabel(row.weekOpenUtc)}`,
+    percent: weekPercent,
+  }));
+  const pairDetails = weeklyReturns.map(({ row, weekPercent, children }) => ({
+    pair: `Week of ${weekLabel(row.weekOpenUtc)}`,
+    direction: toDirection(weekPercent),
+    reason: [
+      `${children.length} trades`,
+      `Weekly drawdown ${row.drawdownPct.toFixed(2)}%`,
+    ],
+    percent: weekPercent,
+    children,
+  }));
+  const totalPercent = returns.reduce((sum, item) => sum + item.percent, 0);
+
+  return {
+    model,
+    percent: totalPercent,
+    priced: returns.length,
+    total: returns.length,
+    note: `${TIER_LABELS[model]} contribution across the canonical weekly reconstruction.`,
+    returns,
+    pair_details: pairDetails,
+    stats: computeReturnStats(returns),
+    diagnostics: {
+      max_drawdown: null,
+      profit_factor: null,
+    },
+  } satisfies ModelPerformance;
+}
+
+function buildTierGridPropsFromHistorical(options: {
+  system: CanonicalPerformanceSystem;
+  selectedWeek: SelectedPerformanceWeek;
+}) {
+  const models = TIER_MODELS.map((model) =>
+    buildTierModelPerformanceFromHistorical({
+      model,
+      system: options.system,
+      selectedWeek: options.selectedWeek,
+    }),
+  );
+  const perAsset = ASSET_SECTION_IDS.map((assetId) => ({
+    id: assetId,
+    label: assetLabelForClass(assetId),
+    description: `${assetLabelForClass(assetId)} contribution`,
+    models: TIER_MODELS.map((model) =>
+      buildTierModelPerformanceFromHistorical({
+        model,
+        system: options.system,
+        selectedWeek: options.selectedWeek,
+        assetFilter: assetId,
+      })
+    ),
+  }));
+  const selectedLabel =
+    options.selectedWeek === "all"
+      ? "All Weeks"
+      : `Week of ${weekDisplayLabel(options.selectedWeek)}`;
+  const allTimeCombined = TIER_MODELS.map((model) =>
+    buildTierModelPerformanceFromHistorical({
+      model,
+      system: options.system,
+      selectedWeek: "all",
+    })
+  ).map((performance) => ({
+    model: performance.model,
+    totalPercent: performance.percent,
+    weeks: performance.returns.length,
+    winRate: performance.stats.win_rate,
+    avgWeekly: performance.stats.avg_return,
+  }));
+  const allTimePerAsset = Object.fromEntries(
+    ASSET_SECTION_IDS.map((assetId) => [
+      assetId,
+      TIER_MODELS.map((model) =>
+        buildTierModelPerformanceFromHistorical({
+          model,
+          system: options.system,
+          selectedWeek: "all",
+          assetFilter: assetId,
+        })
+      ).map((performance) => ({
+        model: performance.model,
+        totalPercent: performance.percent,
+        weeks: performance.returns.length,
+        winRate: performance.stats.win_rate,
+        avgWeekly: performance.stats.avg_return,
+      })),
+    ]),
+  );
+  return {
+    combined: {
+      id: "combined",
+      label: "All",
+      description: `${options.system.strategyName} · ${selectedLabel}`,
+      models,
+    },
+    perAsset,
+    labels: TIERED_GRID_LABELS,
+    allTime: { combined: allTimeCombined, perAsset: allTimePerAsset },
+    showAllTime: true,
+  } satisfies GridProps;
+}
+
+function buildTierSimulationGroupFromHistorical(options: {
+  system: CanonicalPerformanceSystem;
+  selectedWeek: SelectedPerformanceWeek;
+  title?: string;
+}) {
+  const rows =
+    options.selectedWeek === "all"
+      ? options.system.weeklyReturns
+      : options.system.weeklyReturns.filter((row) => row.weekOpenUtc === options.selectedWeek);
+  if (rows.length === 0) return null;
+
+  const series = TIER_MODELS.map((model, index) => {
+    let running = 0;
+    const points = rows.flatMap((row) => {
+      const value = buildHistoricalTierChildren(row, model).reduce((sum, child) => sum + (child.percent ?? 0), 0);
+      if (options.selectedWeek === "all") {
+        running += value;
+        return [{
+          ts_utc: row.weekOpenUtc,
+          equity_pct: running,
+          lock_pct: null,
+        }];
+      }
+      const weekStart = DateTime.fromISO(row.weekOpenUtc, { zone: "utc" });
+      const weekEnd = weekStart.plus({ days: 5 });
+      return [
+        {
+          ts_utc: weekStart.toISO() ?? row.weekOpenUtc,
+          equity_pct: 0,
+          lock_pct: null,
+        },
+        {
+          ts_utc: weekEnd.toISO() ?? row.weekOpenUtc,
+          equity_pct: value,
+          lock_pct: null,
+        },
+      ];
+    });
+    return {
+      id: model,
+      label: TIER_LABELS[model],
+      color: SERIES_COLORS[index],
+      points,
+    };
+  });
+
+  const activeMetricsRows = rows;
+  const totalReturn = TIER_MODELS.reduce(
+    (sum, model) =>
+      sum
+      + activeMetricsRows.reduce(
+        (tierSum, row) =>
+          tierSum + buildHistoricalTierChildren(row, model).reduce((childSum, child) => childSum + (child.percent ?? 0), 0),
+        0,
+      ),
+    0,
+  );
+
+  return {
+    title: options.title ?? options.system.strategyName,
+    description:
+      options.selectedWeek === "all"
+        ? "Tier contribution curves across the canonical weekly reconstruction."
+        : `Tier contribution curves for the week of ${weekDisplayLabel(options.selectedWeek)}.`,
+    metrics: {
+      returnPct: totalReturn,
+      maxDrawdownPct:
+        options.selectedWeek === "all"
+          ? options.system.maxDrawdownSimplePct
+          : rows[0]?.drawdownPct ?? null,
+      trades: rows.reduce((sum, row) => sum + row.trades, 0),
+    },
+    series,
+  } satisfies PerformanceSimulationGroup;
+}
+
+function tierFromWeeklySignalTier(value: CanonicalOrLiveSignalTier): TierPerformanceModel | null {
+  if (value === "HIGH") return "dealer";
+  if (value === "MEDIUM") return "commercial";
+  if (value === "LOW") return "sentiment";
+  return null;
+}
+
+function buildTierChildrenFromCurrentWeek(options: {
+  signals: CanonicalWeeklySignal[];
+  liveRowsByPair: Map<string, { liveDriftPct: number | null }>;
+  model: TierPerformanceModel;
+  assetFilter?: string;
+}) {
+  return options.signals
+    .filter((signal) =>
+      tierFromWeeklySignalTier(signal.tier) === options.model
+      && (!options.assetFilter || signal.assetClass === options.assetFilter)
+    )
+    .map((signal) => {
+      const liveDriftPct = options.liveRowsByPair.get(signal.pair)?.liveDriftPct ?? null;
+      return {
+        pair: signal.pair,
+        direction: signal.direction,
+        reason: [
+          `${assetLabelForClass(signal.assetClass)} basket`,
+          `Current drift ${liveDriftPct === null ? "—" : `${liveDriftPct.toFixed(2)}%`}`,
+          "Normalized 1.0x sizing",
+          ...signal.gateReasons,
+        ],
+        percent: liveDriftPct,
+      };
+    });
+}
+
+function buildTierGridPropsFromCurrentWeek(options: {
+  strategyName: string;
+  currentWeekOpenUtc: string;
+  signals: CanonicalWeeklySignal[];
+  liveRowsByPair: Map<string, { liveDriftPct: number | null }>;
+}) {
+  const models = TIER_MODELS.map((model) => {
+    const children = buildTierChildrenFromCurrentWeek({
+      signals: options.signals,
+      liveRowsByPair: options.liveRowsByPair,
+      model,
+    });
+    const returns = children.flatMap((child) =>
+      child.percent === null ? [] : [{ pair: child.pair, percent: child.percent }],
+    );
+    const totalPercent = returns.reduce((sum, item) => sum + item.percent, 0);
+    return {
+      model,
+      percent: totalPercent,
+      priced: returns.length,
+      total: children.length,
+      note: `${TIER_LABELS[model]} contribution for the live current week forward test.`,
+      returns,
+      pair_details: children,
+      stats: computeReturnStats(returns),
+      diagnostics: {
+        max_drawdown: null,
+        profit_factor: null,
+      },
+    } satisfies ModelPerformance;
+  });
+  const perAsset = ASSET_SECTION_IDS.map((assetId) => ({
+    id: assetId,
+    label: assetLabelForClass(assetId),
+    description: `${assetLabelForClass(assetId)} contribution`,
+    models: TIER_MODELS.map((model) => {
+      const children = buildTierChildrenFromCurrentWeek({
+        signals: options.signals,
+        liveRowsByPair: options.liveRowsByPair,
+        model,
+        assetFilter: assetId,
+      });
+      const returns = children.flatMap((child) =>
+        child.percent === null ? [] : [{ pair: child.pair, percent: child.percent }],
+      );
+      return {
+        model,
+        percent: returns.reduce((sum, item) => sum + item.percent, 0),
+        priced: returns.length,
+        total: children.length,
+        note: `${TIER_LABELS[model]} contribution for the live current week forward test.`,
+        returns,
+        pair_details: children,
+        stats: computeReturnStats(returns),
+        diagnostics: {
+          max_drawdown: null,
+          profit_factor: null,
+        },
+      } satisfies ModelPerformance;
+    }),
+  }));
+
+  return {
+    combined: {
+      id: "combined",
+      label: "All",
+      description: `${options.strategyName} · Current week ${weekDisplayLabel(options.currentWeekOpenUtc)}`,
+      models,
+    },
+    perAsset,
+    labels: TIERED_GRID_LABELS,
+    allTime: { combined: [], perAsset: {} },
+    showAllTime: false,
+  } satisfies GridProps;
+}
+
+function buildTierSimulationGroupFromCurrentWeek(options: {
+  title: string;
+  currentWeekOpenUtc: string;
+  signals: CanonicalWeeklySignal[];
+  pairSeries: Record<string, Array<{ ts: number; driftPct: number }>>;
+  liveRowsByPair: Map<string, { liveDriftPct: number | null }>;
+}) {
+  const buildTierSeries = (model: TierPerformanceModel, color: string) => {
+    const signals = options.signals.filter((signal) => tierFromWeeklySignalTier(signal.tier) === model);
+    const pairIds = signals.map((signal) => signal.pair);
+    const timestamps = Array.from(
+      new Set(
+        pairIds.flatMap((pair) => (options.pairSeries[pair] ?? []).map((point) => point.ts)),
+      ),
+    ).sort((left, right) => left - right);
+
+    if (timestamps.length === 0) {
+      const totalReturn = signals.reduce((sum, signal) => {
+        const drift = options.liveRowsByPair.get(signal.pair)?.liveDriftPct ?? 0;
+        return sum + drift;
+      }, 0);
+      const weekStart = DateTime.fromISO(options.currentWeekOpenUtc, { zone: "utc" });
+      return {
+        id: model,
+        label: TIER_LABELS[model],
+        color,
+        points: [
+          {
+            ts_utc: weekStart.toISO() ?? options.currentWeekOpenUtc,
+            equity_pct: 0,
+            lock_pct: null,
+          },
+          {
+            ts_utc: DateTime.utc().toISO() ?? options.currentWeekOpenUtc,
+            equity_pct: totalReturn,
+            lock_pct: null,
+          },
+        ],
+      };
+    }
+
+    const latestByPair = new Map<string, number>();
+    const cursorByPair = new Map<string, number>();
+    const points = timestamps.map((timestamp) => {
+      for (const pair of pairIds) {
+        const series = options.pairSeries[pair] ?? [];
+        let index = cursorByPair.get(pair) ?? 0;
+        while (index < series.length && series[index]!.ts <= timestamp) {
+          latestByPair.set(pair, series[index]!.driftPct);
+          index += 1;
+        }
+        cursorByPair.set(pair, index);
+      }
+      const equityPct = Array.from(latestByPair.values()).reduce((sum, driftPct) => sum + driftPct, 0);
+      return {
+        ts_utc: DateTime.fromMillis(timestamp, { zone: "utc" }).toISO() ?? options.currentWeekOpenUtc,
+        equity_pct: equityPct,
+        lock_pct: null,
+      };
+    });
+
+    return {
+      id: model,
+      label: TIER_LABELS[model],
+      color,
+      points,
+    };
+  };
+
+  const series = TIER_MODELS.map((model, index) => buildTierSeries(model, SERIES_COLORS[index]));
+  const totalReturn = TIER_MODELS.reduce((sum, model) => {
+    const children = buildTierChildrenFromCurrentWeek({
+      signals: options.signals,
+      liveRowsByPair: options.liveRowsByPair,
+      model,
+    });
+    return sum + children.reduce((childSum, child) => childSum + (child.percent ?? 0), 0);
+  }, 0);
+
+  return {
+    title: options.title,
+    description: `Live current-week tier contribution curves for ${weekDisplayLabel(options.currentWeekOpenUtc)}.`,
+    metrics: {
+      returnPct: totalReturn,
+      maxDrawdownPct: null,
+      trades: options.signals.length,
+    },
+    series,
+  } satisfies PerformanceSimulationGroup;
+}
+
 function toSharpeProxy(weeklyRows: CanonicalPerformanceWeeklyRow[]) {
   if (weeklyRows.length <= 1) return 0;
   const values = weeklyRows.map((row) => row.returnPct);
@@ -171,73 +681,119 @@ function toTradeWinRate(system: CanonicalPerformanceSystem) {
   return system.totalTrades > 0 ? (system.totalWins / system.totalTrades) * 100 : 0;
 }
 
-function buildWeeklyReturns(
-  rows: CanonicalPerformanceWeeklyRow[],
-  metric: (row: CanonicalPerformanceWeeklyRow) => number,
-) {
-  return rows.map((row) => ({
-    pair: `Week of ${weekLabel(row.weekOpenUtc)}`,
-    percent: metric(row),
-  }));
-}
-
-function buildWeeklyBreakdowns(
-  rows: CanonicalPerformanceWeeklyRow[],
-  metric: (row: CanonicalPerformanceWeeklyRow) => number,
-  breakdownFactory: (row: CanonicalPerformanceWeeklyRow) => Array<{
-    pair: string;
-    direction: "LONG" | "SHORT" | "NEUTRAL";
-    reason: string[];
-    percent: number | null;
-  }>,
-): ModelPerformance["pair_details"] {
-  return rows.map((row) => ({
-    pair: `Week of ${weekLabel(row.weekOpenUtc)}`,
-    direction: toDirection(metric(row)),
-    reason: [
-      `${row.trades} trades`,
-      `${row.wins} wins / ${row.losses} losses`,
-      `Weekly drawdown ${row.drawdownPct.toFixed(2)}%`,
-    ],
-    percent: metric(row),
-    children: breakdownFactory(row),
-  }));
-}
-
-function buildModelPerformanceFromSystemBreakdown(options: {
-  model: PerformanceModel;
-  systemRows: CanonicalPerformanceWeeklyRow[];
+function buildStandaloneTradeChildren(options: {
+  row: CanonicalPerformanceWeeklyRow;
+  assetFilter?: string;
 }) {
-  const returns = buildWeeklyReturns(
-    options.systemRows,
-    (row) => row.breakdown.sourceModels[options.model]?.returnPct ?? 0,
-  );
-  const pairDetails = buildWeeklyBreakdowns(
-    options.systemRows,
-    (row) => row.breakdown.sourceModels[options.model]?.returnPct ?? 0,
-    (row) =>
-      Object.entries(row.breakdown.perAsset).map(([assetKey, assetValue]) => ({
-        pair: ASSET_LABELS[assetKey] ?? assetKey,
-        direction: toDirection(assetValue.returnPct),
-        reason: [`${assetValue.tradeCount} trades`],
-        percent: assetValue.returnPct,
-      })),
-  );
-  const totalPercent = returns.reduce((sum, item) => sum + item.percent, 0);
+  return options.row.breakdown.nettedPairs
+    .filter((trade) => !options.assetFilter || trade.assetClass === options.assetFilter)
+    .map((trade) => ({
+      pair: trade.symbol,
+      direction: trade.direction,
+      reason: buildReasonsForHistoricalTrade(trade),
+      percent: trade.positionContributionPct,
+    }));
+}
+
+function buildStandaloneModelPerformance(options: {
+  model: PerformanceModel;
+  system: CanonicalPerformanceSystem | null;
+  selectedWeek: SelectedPerformanceWeek;
+  assetFilter?: string;
+}) {
+  if (!options.system) {
+    return {
+      model: options.model,
+      percent: 0,
+      priced: 0,
+      total: 0,
+      note: "Canonical model data unavailable.",
+      returns: [],
+      pair_details: [],
+      stats: computeReturnStats([]),
+      diagnostics: {
+        max_drawdown: null,
+        profit_factor: null,
+      },
+    } satisfies ModelPerformance;
+  }
+
+  if (options.selectedWeek !== "all") {
+    const row = options.system.weeklyReturns.find((entry) => entry.weekOpenUtc === options.selectedWeek);
+    const children = row ? buildStandaloneTradeChildren({ row, assetFilter: options.assetFilter }) : [];
+    const returns = children.flatMap((child) =>
+      child.percent === null ? [] : [{ pair: child.pair, percent: child.percent }],
+    );
+    return {
+      model: options.model,
+      percent: returns.reduce((sum, item) => sum + item.percent, 0),
+      priced: returns.length,
+      total: children.length,
+      note: row
+        ? `${PERFORMANCE_MODEL_LABELS[options.model]} normalized 1x return for the selected week.`
+        : `No ${PERFORMANCE_MODEL_LABELS[options.model]} trades for the selected week.`,
+      returns,
+      pair_details: children,
+      stats: computeReturnStats(returns),
+      diagnostics: {
+        max_drawdown: null,
+        profit_factor: null,
+      },
+    } satisfies ModelPerformance;
+  }
+
+  const weeklyRows = options.system.weeklyReturns.map((row) => {
+    const children = buildStandaloneTradeChildren({ row, assetFilter: options.assetFilter });
+    const weekPercent = children.reduce((sum, child) => sum + (child.percent ?? 0), 0);
+    return { row, weekPercent, children };
+  });
+  const returns = weeklyRows.map(({ row, weekPercent }) => ({
+    pair: `Week of ${weekLabel(row.weekOpenUtc)}`,
+    percent: weekPercent,
+  }));
   return {
     model: options.model,
-    percent: totalPercent,
+    percent: returns.reduce((sum, item) => sum + item.percent, 0),
     priced: returns.length,
     total: returns.length,
-    note: "Component contribution inside the selected canonical system.",
+    note: `${PERFORMANCE_MODEL_LABELS[options.model]} normalized 1x return across the canonical weekly reconstruction.`,
     returns,
-    pair_details: pairDetails,
+    pair_details: weeklyRows.map(({ row, weekPercent, children }) => ({
+      pair: `Week of ${weekLabel(row.weekOpenUtc)}`,
+      direction: toDirection(weekPercent),
+      reason: [
+        `${children.length} trades`,
+        `Weekly drawdown ${row.drawdownPct.toFixed(2)}%`,
+      ],
+      percent: weekPercent,
+      children,
+    })),
     stats: computeReturnStats(returns),
     diagnostics: {
       max_drawdown: null,
       profit_factor: null,
     },
   } satisfies ModelPerformance;
+}
+
+function summarizePerformance(performance: ModelPerformance) {
+  return {
+    model: performance.model,
+    totalPercent: performance.percent,
+    weeks: performance.returns.length,
+    winRate: performance.stats.win_rate,
+    avgWeekly: performance.stats.avg_return,
+  };
+}
+
+function resolveStandaloneSystem(
+  report: CanonicalPerformanceApiModel,
+  model: PerformanceModel,
+  gated: boolean,
+) {
+  const systemId = `${STANDALONE_MODEL_SYSTEM_ID[model]}${gated ? "_gated" : ""}`;
+  const source = gated ? report.collections.models.gated : report.collections.models.baseline;
+  return source.find((entry) => entry.system === systemId) ?? null;
 }
 
 function buildOverlay(system: CanonicalPerformanceSystem, gated: CanonicalPerformanceSystem | null) {
@@ -291,9 +847,10 @@ function buildOverlay(system: CanonicalPerformanceSystem, gated: CanonicalPerfor
 }
 
 function buildGridPropsForSystem(options: {
+  report: CanonicalPerformanceApiModel;
+  version: PerformanceSystem;
   baseline: CanonicalPerformanceSystem | null;
   gated: CanonicalPerformanceSystem | null;
-  componentBreakdowns: CanonicalPerformanceApiModel["componentBreakdowns"];
   includeComparisonOverlay?: boolean;
 }) {
   const baseline = options.baseline;
@@ -303,29 +860,47 @@ function buildGridPropsForSystem(options: {
     return null;
   }
 
-  const breakdownRows = options.componentBreakdowns[baseline.system] ?? [];
-  const models = breakdownRows
-    .filter((row): row is CanonicalPerformanceComponentBreakdownRow & { model: PerformanceModel } =>
-      row.model in PERFORMANCE_MODEL_LABELS,
-    )
-    .map((row) =>
-      buildModelPerformanceFromSystemBreakdown({
-        model: row.model as PerformanceModel,
-        systemRows: activeSystem.weeklyReturns,
+  const displayModels = UNIVERSAL_MODELS_BY_VERSION[options.version];
+  const models = displayModels.map((model) =>
+    buildStandaloneModelPerformance({
+      model,
+      system: resolveStandaloneSystem(options.report, model, Boolean(gated)),
+      selectedWeek: "all",
+    }),
+  );
+  const perAsset = ASSET_SECTION_IDS.map((assetId) => ({
+    id: assetId,
+    label: assetLabelForClass(assetId),
+    description: `${assetLabelForClass(assetId)} contribution`,
+    models: displayModels.map((model) =>
+      buildStandaloneModelPerformance({
+        model,
+        system: resolveStandaloneSystem(options.report, model, Boolean(gated)),
+        selectedWeek: "all",
+        assetFilter: assetId,
       }),
-    );
+    ),
+  }));
 
   return {
     combined: {
       id: "combined",
       label: "Combined Basket",
-      description: `${activeSystem.strategyName} · canonical component breakdown.`,
+      description: `${activeSystem.strategyName} · normalized 1x weekly reconstruction.`,
       models,
     },
-    perAsset: [],
+    perAsset,
     labels: PERFORMANCE_MODEL_LABELS,
-    allTime: { combined: [], perAsset: {} },
-    showAllTime: false,
+    allTime: {
+      combined: models.map((performance) => summarizePerformance(performance)),
+      perAsset: Object.fromEntries(
+        perAsset.map((section) => [
+          section.id,
+          section.models.map((performance) => summarizePerformance(performance)),
+        ]),
+      ),
+    },
+    showAllTime: true,
     comparisonOverlay: options.includeComparisonOverlay === false ? undefined : buildOverlay(baseline, gated),
   } satisfies GridProps;
 }
@@ -354,10 +929,11 @@ function buildSeriesFromWeeklyReturns(options: {
 }
 
 function buildSimulationGroupForSystem(options: {
+  report: CanonicalPerformanceApiModel;
+  version: PerformanceSystem;
   title: string;
   baseline: CanonicalPerformanceSystem | null;
   gated: CanonicalPerformanceSystem | null;
-  componentBreakdowns: CanonicalPerformanceApiModel["componentBreakdowns"];
 }) {
   const active = options.gated ?? options.baseline;
   const baseline = options.baseline;
@@ -387,27 +963,24 @@ function buildSimulationGroupForSystem(options: {
     }),
   );
 
-  const breakdownRows = options.componentBreakdowns[baseline.system] ?? [];
-  breakdownRows
-    .filter((row): row is CanonicalPerformanceComponentBreakdownRow & { model: PerformanceModel } =>
-      row.model in PERFORMANCE_MODEL_LABELS,
-    )
-    .forEach((row, index) => {
-      series.push(
-        buildSeriesFromWeeklyReturns({
-          id: row.model,
-          label: PERFORMANCE_MODEL_LABELS[row.model as PerformanceModel],
-          rows: active.weeklyReturns,
-          color: SERIES_COLORS[(index + 2) % SERIES_COLORS.length],
-          metric: (weekRow) => weekRow.breakdown.sourceModels[row.model as PerformanceModel]?.returnPct ?? 0,
-        }),
-      );
-    });
+  UNIVERSAL_MODELS_BY_VERSION[options.version].forEach((model, index) => {
+    const modelSystem = resolveStandaloneSystem(options.report, model, Boolean(options.gated));
+    if (!modelSystem) return;
+    series.push(
+      buildSeriesFromWeeklyReturns({
+        id: model,
+        label: PERFORMANCE_MODEL_LABELS[model],
+        rows: modelSystem.weeklyReturns,
+        color: SERIES_COLORS[(index + 2) % SERIES_COLORS.length],
+        metric: (weekRow) => weekRow.returnPct,
+      }),
+    );
+  });
 
   return {
     title: options.title,
     description:
-      "Simulation uses the shared equity curve chart. The composite system is shown alongside its internal model contribution lines.",
+      "Simulation compares the normalized 1x composite basket against the same model set shown in the performance cards.",
     metrics: {
       returnPct: active.simpleReturnPct,
       maxDrawdownPct: active.maxDrawdownSimplePct,
@@ -420,6 +993,7 @@ function buildSimulationGroupForSystem(options: {
 function buildSystemMaps(options: {
   family: "universal" | "tiered";
   report: CanonicalPerformanceApiModel;
+  selectedWeek: SelectedPerformanceWeek;
 }) {
   const gridMap: Partial<Record<PerformanceSystem, GridProps>> = {};
   const simulationMap: Partial<Record<PerformanceSystem, PerformanceSimulationGroup>> = {};
@@ -429,21 +1003,40 @@ function buildSystemMaps(options: {
     const baseline = options.report.collections.composites.baseline.find((entry) => entry.system === systemId) ?? null;
     const gated = options.report.collections.composites.gated.find((entry) => entry.system === `${systemId}_gated`) ?? null;
 
-    const grid = buildGridPropsForSystem({
-      baseline,
-      gated,
-      componentBreakdowns: options.report.componentBreakdowns,
-    });
+    const grid =
+      options.family === "tiered"
+        ? (gated ?? baseline)
+          ? buildTierGridPropsFromHistorical({
+              system: (gated ?? baseline)!,
+              selectedWeek: options.selectedWeek,
+            })
+          : null
+        : buildGridPropsForSystem({
+            report: options.report,
+            version,
+            baseline,
+            gated,
+          });
     if (grid) {
       gridMap[version] = grid;
     }
 
-    const simulation = buildSimulationGroupForSystem({
-      title: (gated ?? baseline)?.strategyName ?? systemId,
-      baseline,
-      gated,
-      componentBreakdowns: options.report.componentBreakdowns,
-    });
+    const simulation =
+      options.family === "tiered"
+        ? (gated ?? baseline)
+          ? buildTierSimulationGroupFromHistorical({
+              system: (gated ?? baseline)!,
+              selectedWeek: options.selectedWeek,
+              title: (gated ?? baseline)?.strategyName ?? systemId,
+            })
+          : null
+        : buildSimulationGroupForSystem({
+            report: options.report,
+            version,
+            title: (gated ?? baseline)?.strategyName ?? systemId,
+            baseline,
+            gated,
+          });
     if (simulation) {
       simulationMap[version] = simulation;
     }
@@ -462,16 +1055,21 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const viewParamValue = Array.isArray(viewParam) ? viewParam[0] : viewParam;
   const modeParam = resolvedSearchParams?.mode;
   const modeParamValue = Array.isArray(modeParam) ? modeParam[0] : modeParam;
+  const weekParam = resolvedSearchParams?.week;
+  const weekParamValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
 
   const resolvedFamily = parseFamily(styleParamValue);
   const initialStyle: WeeklyPerformanceFamily = resolvedFamily === "universal" ? "universal" : "tiered";
   const initialSystem = resolvePerformanceSystem(systemParamValue);
   const initialView = resolvePerformanceView(viewParamValue);
   const initialMode = parseMode(modeParamValue);
+  const currentWeekOpenUtc = getCanonicalWeekOpenUtc();
+  const showWeekSelector = initialMode === "flagship" || initialStyle === "tiered";
 
-  const [report, flagships] = await Promise.all([
-    getCanonicalPerformanceApiModel(),
+  const [report, flagships, currentWeekBasket] = await Promise.all([
+    getCanonicalPerformanceApiModel({ normalizePositionSizing: true }),
     resolveCanonicalFlagships(),
+    getCanonicalWeeklyBasket({ weekOpenUtc: currentWeekOpenUtc }),
   ]);
 
   if (!report) {
@@ -484,13 +1082,33 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     );
   }
 
+  const weekOptions = buildNormalizedWeekOptions({
+    historicalWeeks: report.meta.canonicalWeeks,
+    currentWeekOpenUtc,
+    includeAll: true,
+    includeCurrent: initialMode === "flagship",
+    currentPosition: "first",
+  });
+  const selectedWeek =
+    resolveSelectedPerformanceWeek({
+      weekParamValue,
+      weekOptions,
+      currentWeekOpenUtc,
+    }) ?? "all";
+  const weekSelectorOptions = weekOptions.map((option) => ({
+    value: option,
+    label: formatWeekOptionLabel(option, currentWeekOpenUtc),
+  }));
+
   const universal = buildSystemMaps({
     family: "universal",
     report,
+    selectedWeek,
   });
   const tiered = buildSystemMaps({
     family: "tiered",
     report,
+    selectedWeek,
   });
 
   const weeklyFlagshipId = flagships.weekly.systemId ?? "tiered_v3_gated";
@@ -501,18 +1119,55 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     report.collections.composites.baseline.find((entry) => entry.system === flagshipBaselineId) ?? null;
   const flagshipGated =
     report.collections.composites.gated.find((entry) => entry.system === weeklyFlagshipId) ?? null;
-  const flagshipGridProps = buildGridPropsForSystem({
-    baseline: flagshipBaseline,
-    gated: flagshipGated,
-    componentBreakdowns: report.componentBreakdowns,
-    includeComparisonOverlay: false,
-  });
-  const flagshipSimulation = buildSimulationGroupForSystem({
-    title: flagshipGated?.strategyName ?? flagshipBaseline?.strategyName ?? "Weekly Flagship",
-    baseline: flagshipBaseline,
-    gated: flagshipGated,
-    componentBreakdowns: report.componentBreakdowns,
-  });
+  const flagshipTitle = flagshipGated?.strategyName ?? flagshipBaseline?.strategyName ?? "Weekly Flagship";
+
+  const currentWeekForwardSummary =
+    selectedWeek === currentWeekBasket.currentWeekOpenUtc
+      ? await buildWeeklyForwardSummary({
+          currentWeekOpenUtc: currentWeekBasket.currentWeekOpenUtc,
+          signals: currentWeekBasket.signals.map((signal) => ({
+            pair: signal.pair,
+            direction: signal.direction,
+            tier: signal.tier,
+            gateReasons: signal.gateReasons,
+          })),
+        })
+      : null;
+  const liveRowsByPair = new Map(
+    (currentWeekForwardSummary?.rows ?? []).map((row) => [row.pair, row]),
+  );
+
+  const flagshipGridProps =
+    selectedWeek === currentWeekBasket.currentWeekOpenUtc
+      ? buildTierGridPropsFromCurrentWeek({
+          strategyName: currentWeekBasket.strategyName,
+          currentWeekOpenUtc: currentWeekBasket.currentWeekOpenUtc,
+          signals: currentWeekBasket.signals,
+          liveRowsByPair,
+        })
+      : flagshipGated
+        ? buildTierGridPropsFromHistorical({
+            system: flagshipGated,
+            selectedWeek,
+          })
+        : null;
+
+  const flagshipSimulation =
+    selectedWeek === currentWeekBasket.currentWeekOpenUtc && currentWeekForwardSummary
+      ? buildTierSimulationGroupFromCurrentWeek({
+          title: currentWeekBasket.strategyName,
+          currentWeekOpenUtc: currentWeekBasket.currentWeekOpenUtc,
+          signals: currentWeekBasket.signals,
+          pairSeries: currentWeekForwardSummary.pairSeries,
+          liveRowsByPair,
+        })
+      : flagshipGated
+        ? buildTierSimulationGroupFromHistorical({
+            system: flagshipGated,
+            selectedWeek,
+            title: flagshipTitle,
+          })
+        : null;
 
   return (
     <DashboardLayout>
@@ -531,6 +1186,16 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             />
           </div>
         </header>
+
+        {showWeekSelector ? (
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+            <PerformancePeriodSelector
+              mode="week"
+              options={weekSelectorOptions}
+              selectedValue={selectedWeek}
+            />
+          </div>
+        ) : null}
 
         <PerformanceViewSection
           initialMode={initialMode}

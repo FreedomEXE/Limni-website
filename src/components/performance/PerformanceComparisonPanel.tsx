@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { DateTime } from "luxon";
 import {
   PERFORMANCE_FAMILY_META,
   getPerformanceFamilyTabGroups,
@@ -26,6 +27,7 @@ import type {
   CanonicalPerformanceApiModel,
   CanonicalPerformanceSystem,
 } from "@/lib/performance/canonicalPerformanceReport";
+import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 
 type SystemVersion = "v1" | "v2" | "v3";
 type CanonicalPerformancePayload =
@@ -82,6 +84,67 @@ function toTradeWinRate(system: CanonicalPerformanceSystem | null) {
   return (system.totalWins / system.totalTrades) * 100;
 }
 
+type SidebarWeekMetrics = {
+  strategyLabel: string;
+  sourceLabel: string;
+  returnPct: number | null;
+  maxDrawdownPct: number | null;
+  trades: number | null;
+  winRatePct: number | null;
+  weeks: number | null;
+  badgeLabel: string;
+};
+
+function weekDisplayLabel(weekOpenUtc: string) {
+  const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).setZone("America/New_York");
+  if (!parsed.isValid) return weekOpenUtc.slice(0, 10);
+  const start = parsed.plus({ days: 1 }).startOf("day");
+  const end = start.plus({ days: 4 });
+  return `${start.toFormat("MMM dd")} - ${end.toFormat("MMM dd, yyyy")}`;
+}
+
+function computeNormalizedDrawdown(options: {
+  pairSeries: Record<string, Array<{ ts: number; driftPct: number }>>;
+  weightsByPair: Map<string, number>;
+}) {
+  const timestamps = Array.from(
+    new Set(
+      Object.entries(options.pairSeries).flatMap(([, series]) => series.map((point) => point.ts)),
+    ),
+  ).sort((left, right) => left - right);
+  if (timestamps.length === 0) return null;
+
+  const latestByPair = new Map<string, number>();
+  const cursorByPair = new Map<string, number>();
+  let peak = 0;
+  let maxDrawdown = 0;
+
+  for (const timestamp of timestamps) {
+    for (const [pair, series] of Object.entries(options.pairSeries)) {
+      let index = cursorByPair.get(pair) ?? 0;
+      while (index < series.length && series[index]!.ts <= timestamp) {
+        latestByPair.set(pair, series[index]!.driftPct);
+        index += 1;
+      }
+      cursorByPair.set(pair, index);
+    }
+
+    const equity = Array.from(latestByPair.entries()).reduce((sum, [pair, driftPct]) => {
+      return sum + driftPct * (options.weightsByPair.get(pair) ?? 1);
+    }, 0);
+    if (equity > peak) {
+      peak = equity;
+      continue;
+    }
+    const drawdown = peak - equity;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  }
+
+  return maxDrawdown;
+}
+
 export default function PerformanceComparisonPanel({
   forcedFamily,
   forcedSystemVersion,
@@ -96,9 +159,11 @@ export default function PerformanceComparisonPanel({
   const [payload, setPayload] = useState<CanonicalPerformancePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedWeekMetrics, setSelectedWeekMetrics] = useState<SidebarWeekMetrics | null>(null);
 
   const requestedFamily = forcedFamily ?? parseRequestedFamily(searchParams.get("style"));
   const requestedSystem = forcedSystemVersion ?? parseRequestedSystem(searchParams.get("system"));
+  const requestedWeek = searchParams.get("week");
   const [activeFamily, setActiveFamily] = useState<"universal" | "tiered">(requestedFamily);
   const [activeSystemVersion, setActiveSystemVersion] = useState<SystemVersion>(requestedSystem);
 
@@ -158,6 +223,117 @@ export default function PerformanceComparisonPanel({
   const cardClass = sidebarSurface
     ? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/95 p-4 shadow-sm"
     : activeTheme?.cardClass ?? "rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4";
+  const displayStrategyLabel = selectedWeekMetrics?.strategyLabel ?? strategyLabel;
+  const displaySourceLabel = selectedWeekMetrics?.sourceLabel ?? sourceLabel;
+  const displayBadgeLabel = selectedWeekMetrics?.badgeLabel ?? (isWeeklyFlagship ? "Flagship" : badgeLabel);
+  const displayReturnPct = selectedWeekMetrics?.returnPct ?? (activeGated ?? activeBaseline)?.simpleReturnPct ?? null;
+  const displayWinRatePct = selectedWeekMetrics?.winRatePct ?? (activeGated ?? activeBaseline)?.winRatePct ?? null;
+  const displayMaxDrawdownPct = selectedWeekMetrics?.maxDrawdownPct ?? (activeGated ?? activeBaseline)?.maxDrawdownSimplePct ?? null;
+  const displayTrades = selectedWeekMetrics?.trades ?? (activeGated ?? activeBaseline)?.totalTrades ?? null;
+  const displayWeeks = selectedWeekMetrics?.weeks ?? (activeGated ?? activeBaseline)?.weeks ?? null;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveSelectedWeekMetrics() {
+      if (!flagshipOnly || !requestedWeek || requestedWeek === "all") {
+        setSelectedWeekMetrics(null);
+        return;
+      }
+
+      const historicalWeek = activeGated?.weeklyReturns.find((row) => row.weekOpenUtc === requestedWeek) ?? null;
+      if (historicalWeek) {
+        setSelectedWeekMetrics({
+          strategyLabel: activeGated?.strategyName ?? strategyLabel,
+          sourceLabel: `Canonical gated reconstruction · week of ${weekDisplayLabel(historicalWeek.weekOpenUtc)}`,
+          returnPct: historicalWeek.returnPct,
+          maxDrawdownPct: historicalWeek.drawdownPct,
+          trades: historicalWeek.trades,
+          winRatePct:
+            historicalWeek.trades > 0 ? (historicalWeek.wins / historicalWeek.trades) * 100 : null,
+          weeks: 1,
+          badgeLabel: "Week",
+        });
+        return;
+      }
+
+      const currentWeekOpenUtc = getCanonicalWeekOpenUtc();
+      if (requestedWeek !== currentWeekOpenUtc) {
+        setSelectedWeekMetrics(null);
+        return;
+      }
+
+      try {
+        const basketResponse = await fetch("/api/flagship/canonical-weekly-basket");
+        if (!basketResponse.ok) {
+          throw new Error(`Weekly basket HTTP ${basketResponse.status}`);
+        }
+        const basketPayload = await basketResponse.json() as {
+          currentWeekOpenUtc: string;
+          strategyName: string;
+          signals: Array<{ pair: string; tier: string; direction: string; gateReasons: string[] }>;
+        };
+        if (basketPayload.currentWeekOpenUtc !== requestedWeek) {
+          setSelectedWeekMetrics(null);
+          return;
+        }
+
+        const summaryResponse = await fetch("/api/flagship/weekly-forward-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentWeekOpenUtc: basketPayload.currentWeekOpenUtc,
+            signals: basketPayload.signals,
+          }),
+        });
+        if (!summaryResponse.ok) {
+          throw new Error(`Weekly summary HTTP ${summaryResponse.status}`);
+        }
+        const summaryPayload = await summaryResponse.json() as {
+          rows: Array<{ pair: string; tier: string; liveDriftPct: number | null }>;
+          pairSeries?: Record<string, Array<{ ts: number; driftPct: number }>>;
+        };
+
+        const weightsByPair = new Map(
+          basketPayload.signals.map((signal) => [signal.pair, 1]),
+        );
+        const normalizedReturn = summaryPayload.rows.reduce((sum, row) => {
+          if (row.liveDriftPct === null) return sum;
+          return sum + row.liveDriftPct * (weightsByPair.get(row.pair) ?? 1);
+        }, 0);
+        const pricedRows = summaryPayload.rows.filter((row) => row.liveDriftPct !== null);
+        const normalizedWins = pricedRows.filter((row) => {
+          const normalized = (row.liveDriftPct ?? 0) * (weightsByPair.get(row.pair) ?? 1);
+          return normalized > 0;
+        }).length;
+
+        if (cancelled) return;
+        setSelectedWeekMetrics({
+          strategyLabel: basketPayload.strategyName,
+          sourceLabel: `Frozen live weekly basket · normalized 1x · ${weekDisplayLabel(requestedWeek)}`,
+          returnPct: normalizedReturn,
+          maxDrawdownPct: computeNormalizedDrawdown({
+            pairSeries: summaryPayload.pairSeries ?? {},
+            weightsByPair,
+          }),
+          trades: basketPayload.signals.length,
+          winRatePct: pricedRows.length > 0 ? (normalizedWins / pricedRows.length) * 100 : null,
+          weeks: 1,
+          badgeLabel: "Live Week",
+        });
+      } catch {
+        if (!cancelled) {
+          setSelectedWeekMetrics(null);
+        }
+      }
+    }
+
+    resolveSelectedWeekMetrics();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeGated, flagshipOnly, requestedWeek, strategyLabel]);
 
   const setFamily = (next: "universal" | "tiered") => {
     if (forcedFamily) return;
@@ -240,14 +416,14 @@ export default function PerformanceComparisonPanel({
       <div className={cardClass}>
         <div className="mb-3 flex items-center justify-between">
           <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
-            {strategyLabel}
+            {displayStrategyLabel}
           </div>
           <div className={activeTheme?.badgeClass ?? "rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-[var(--accent-strong)]"}>
-            {isWeeklyFlagship ? "Flagship" : badgeLabel}
+            {displayBadgeLabel}
           </div>
         </div>
         <div className={`mb-2 text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
-          {sourceLabel}
+          {displaySourceLabel}
         </div>
 
         <div className="mb-4 space-y-3">
@@ -268,7 +444,7 @@ export default function PerformanceComparisonPanel({
             </div>
           )}
           <div className={`text-center text-2xl font-bold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
-            {formatSignedPercent((activeGated ?? activeBaseline)?.simpleReturnPct)}
+            {formatSignedPercent(displayReturnPct)}
           </div>
           <div className={`text-center text-[10px] uppercase tracking-[0.2em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
             Headline simple return
@@ -278,7 +454,7 @@ export default function PerformanceComparisonPanel({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
-              {formatPercentOrDash((activeGated ?? activeBaseline)?.winRatePct)}
+              {formatPercentOrDash(displayWinRatePct)}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Weekly Win
@@ -286,7 +462,7 @@ export default function PerformanceComparisonPanel({
           </div>
           <div>
             <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
-              {formatPercentOrDash((activeGated ?? activeBaseline)?.maxDrawdownSimplePct)}
+              {formatPercentOrDash(displayMaxDrawdownPct)}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Max DD
@@ -294,7 +470,7 @@ export default function PerformanceComparisonPanel({
           </div>
           <div>
             <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
-              {(activeGated ?? activeBaseline)?.totalTrades ?? "—"}
+              {displayTrades ?? "—"}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Trades
@@ -302,7 +478,9 @@ export default function PerformanceComparisonPanel({
           </div>
           <div>
             <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
-              {formatPercentOrDash(toTradeWinRate(activeGated ?? activeBaseline))}
+              {formatPercentOrDash(
+                selectedWeekMetrics?.winRatePct ?? toTradeWinRate(activeGated ?? activeBaseline),
+              )}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
               Trade Win
@@ -316,7 +494,7 @@ export default function PerformanceComparisonPanel({
           <div className="flex items-center justify-between">
             <span className={activeTheme?.labelClass ?? "text-[color:var(--muted)]"}>Weeks</span>
             <span className={activeTheme?.valueClass ?? "text-[var(--foreground)]"}>
-              {(activeGated ?? activeBaseline)?.weeks ?? "—"}
+              {displayWeeks ?? "—"}
             </span>
           </div>
           {flagshipOnly ? null : (
