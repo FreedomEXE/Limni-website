@@ -199,10 +199,7 @@ export default function CryptoBoard() {
       ),
     [data],
   );
-  const rows = useMemo(
-    () => (data?.rows ?? []).filter((row) => row.symbol !== "BTC" && row.symbol !== "ETH"),
-    [data],
-  );
+  const rows = useMemo(() => data?.rows ?? [], [data]);
 
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">

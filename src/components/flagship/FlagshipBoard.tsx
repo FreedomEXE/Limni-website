@@ -233,12 +233,6 @@ const UNIVERSE: PairUniverseRow[] = [
     base: pairDef.base.toUpperCase(),
     quote: pairDef.quote.toUpperCase(),
   })),
-  ...PAIRS_BY_ASSET_CLASS.crypto.map((pairDef) => ({
-    pair: pairDef.pair.toUpperCase(),
-    assetClass: "crypto" as const,
-    base: pairDef.base.toUpperCase(),
-    quote: pairDef.quote.toUpperCase(),
-  })),
   ...PAIRS_BY_ASSET_CLASS.commodities.map((pairDef) => ({
     pair: pairDef.pair.toUpperCase(),
     assetClass: "commodities" as const,
@@ -933,40 +927,21 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                             <div className="grid gap-2 lg:grid-cols-4">
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Core Bias Detail</div>
-                                {row.assetClass === "crypto" ? (
-                                  <>
-                                    <div className="mt-1">Bias source: Crypto Matrix (liquidation + OI + funding)</div>
-                                    <div>Weekly call: {directionLabel(row.coreBias)} {row.tier !== "NEUTRAL" ? `· ${row.tier}` : ""}</div>
-                                    <div>Gate: <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>{row.gate}</span></div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="mt-1">Dealer {row.dealer} · Commercial {row.commercial} · Sentiment {row.sentimentDaily}</div>
-                                    <div>Weekly call: {directionLabel(row.coreBias)} {row.tier !== "NEUTRAL" ? `· ${row.tier}` : ""}</div>
-                                    <div>Gate: <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>{row.gate}</span></div>
-                                  </>
-                                )}
+                                <div className="mt-1">Dealer {row.dealer} · Commercial {row.commercial} · Sentiment {row.sentimentDaily}</div>
+                                <div>Weekly call: {directionLabel(row.coreBias)} {row.tier !== "NEUTRAL" ? `· ${row.tier}` : ""}</div>
+                                <div>Gate: <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>{row.gate}</span></div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Gamma Detail</div>
-                                {row.assetClass === "crypto" ? (
-                                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                                    {agreementChip(row.strengthAgree, "Strength")}
-                                    <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.strength1h)}`}>Str {row.strengthDelta1h === null ? "—" : row.strengthDelta1h.toFixed(0)}</span>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div className="mt-1 flex items-center gap-2">
-                                      {agreementChip(row.cotGateAgree, "COT")}
-                                      {agreementChip(row.menthorqAgree, "MenthorQ")}
-                                    </div>
-                                    <div className="mt-2 flex items-center gap-2">
-                                      {agreementChip(row.strengthAgree, "Strength")}
-                                      <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.overlay)}`}>Overlay {stateLabel(row.overlay)}</span>
-                                      <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.strength1h)}`}>Str {row.strengthDelta1h === null ? "—" : row.strengthDelta1h.toFixed(0)}</span>
-                                    </div>
-                                  </>
-                                )}
+                                <div className="mt-1 flex items-center gap-2">
+                                  {agreementChip(row.cotGateAgree, "COT")}
+                                  {agreementChip(row.menthorqAgree, "MenthorQ")}
+                                </div>
+                                <div className="mt-2 flex items-center gap-2">
+                                  {agreementChip(row.strengthAgree, "Strength")}
+                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.overlay)}`}>Overlay {stateLabel(row.overlay)}</span>
+                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.strength1h)}`}>Str {row.strengthDelta1h === null ? "—" : row.strengthDelta1h.toFixed(0)}</span>
+                                </div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">ADR Trigger</div>
