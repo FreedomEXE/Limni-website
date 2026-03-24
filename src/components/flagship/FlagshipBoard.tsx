@@ -2,6 +2,8 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 
+import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
+import SizingAccountBar from "@/components/flagship/SizingAccountBar";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import {
   SESSION_ELIGIBILITY,
@@ -22,7 +24,10 @@ import {
   type MatrixGateDecision,
   type MatrixTrendState,
 } from "@/lib/flagship/matrixStyles";
+import { getInstrumentSpec } from "@/lib/flagship/instrumentDefaults";
+import { calculateLotSize } from "@/lib/flagship/positionSizer";
 import { formatDateTimeET } from "@/lib/time";
+import { useSizingAccounts } from "@/hooks/useSizingAccounts";
 
 type TrendState = MatrixTrendState;
 type GateDecision = MatrixGateDecision;
@@ -426,6 +431,30 @@ function sortBucket(row: MatrixRow) {
   return 3; // ADR_DIP watching
 }
 
+function formatUsd(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function lotPrecision(step: number) {
+  const [, decimal = ""] = `${step}`.split(".");
+  return decimal.length;
+}
+
+function formatLotSize(value: number, step: number) {
+  return value.toFixed(lotPrecision(step));
+}
+
+function sizingToneClass(warning: string | null) {
+  if (warning?.includes("MARGIN_EXCEEDED")) return "text-rose-700 dark:text-rose-300";
+  if (warning?.includes("MIN_LOT") || warning?.includes("MAX_LOT")) return "text-amber-700 dark:text-amber-300";
+  return "text-emerald-700 dark:text-emerald-300";
+}
+
 export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [weeklyBasket, setWeeklyBasket] = useState<CanonicalWeeklyBasketPayload | null>(null);
   const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
@@ -445,6 +474,17 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [nowUtc, setNowUtc] = useState<Date>(() => new Date());
   const [selectedSession, setSelectedSession] = useState<SessionName>(() => defaultSessionFromUtcDate(new Date()));
   const [expandedPairs, setExpandedPairs] = useState<string[]>([]);
+  const {
+    accounts,
+    activeAccount,
+    activeAccountId,
+    setActiveAccountId,
+    addAccount,
+    updateAccount,
+    deleteAccount,
+    updateInstrumentOverride,
+  } = useSizingAccounts();
+  const [sizingModalPair, setSizingModalPair] = useState<{ pair: string; assetClass: string } | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowUtc(new Date()), 60_000);
@@ -742,6 +782,15 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           </div>
         ) : null}
 
+        <SizingAccountBar
+          accounts={accounts}
+          activeAccount={activeAccount}
+          onSelectAccount={setActiveAccountId}
+          onAddAccount={addAccount}
+          onUpdateAccount={updateAccount}
+          onDeleteAccount={deleteAccount}
+        />
+
         {warnings.length > 0 ? (
           <div className="rounded-lg border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800 dark:text-amber-200">
             Partial data: {warnings.join(" · ")}
@@ -775,6 +824,15 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
               <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
                 {matrixRows.map((row) => {
                   const isExpanded = expandedPairs.includes(row.pair);
+                  const pairKey = row.pair.toUpperCase();
+                  const pairSpec = activeAccount
+                    ? getInstrumentSpec(pairKey, activeAccount.instrumentOverrides[pairKey])
+                    : null;
+                  const sizingResult =
+                    activeAccount && pairSpec && row.adrPct !== null && row.currentPrice !== null
+                      ? calculateLotSize(activeAccount, pairSpec, row.adrPct, row.currentPrice)
+                      : null;
+                  const sizingTone = sizingToneClass(sizingResult?.warning ?? null);
                   return (
                     <Fragment key={row.pair}>
                       <tr className={`transition-colors ${rowHighlightClass(row.coreBiasState)}`}>
@@ -844,7 +902,30 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-3 py-2 font-mono text-[var(--foreground)]">TBD</td>
+                        <td className="px-1 py-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              activeAccount
+                                ? setSizingModalPair({ pair: pairKey, assetClass: row.assetClass })
+                                : undefined
+                            }
+                            disabled={!activeAccount}
+                            className={`flex w-full flex-col items-start rounded-md px-2 py-1.5 text-left font-mono transition ${
+                              activeAccount ? "hover:bg-[var(--panel)]/70" : "cursor-default"
+                            } ${sizingResult ? sizingTone : "text-[var(--foreground)]"}`}
+                            title={sizingResult?.warning ?? (activeAccount ? "Configure instrument" : "No active account")}
+                          >
+                            <span className="text-sm font-semibold">
+                              {sizingResult && pairSpec ? formatLotSize(sizingResult.lotSize, pairSpec.lotStep) : "—"}
+                            </span>
+                            {sizingResult ? (
+                              <span className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                                {formatUsd(sizingResult.riskAmountUsd)}
+                              </span>
+                            ) : null}
+                          </button>
+                        </td>
                       </tr>
                       {isExpanded ? (
                         <tr className="bg-[var(--panel)]/75">
@@ -910,6 +991,23 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
             <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-slate-600 dark:text-slate-300">N = Neutral</span>
           </div>
         </div>
+      ) : null}
+
+      {sizingModalPair && activeAccount ? (
+        <InstrumentConfigModal
+          pair={sizingModalPair.pair}
+          assetClass={sizingModalPair.assetClass}
+          spec={getInstrumentSpec(
+            sizingModalPair.pair,
+            activeAccount.instrumentOverrides[sizingModalPair.pair],
+          )}
+          accountOverrides={activeAccount.instrumentOverrides[sizingModalPair.pair]}
+          onSave={(overrides) => {
+            updateInstrumentOverride(activeAccount.id, sizingModalPair.pair, overrides);
+            setSizingModalPair(null);
+          }}
+          onClose={() => setSizingModalPair(null)}
+        />
       ) : null}
     </section>
   );

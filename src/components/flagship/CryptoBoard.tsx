@@ -2,6 +2,8 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 
+import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
+import SizingAccountBar from "@/components/flagship/SizingAccountBar";
 import type {
   CryptoAnchorRegime,
   CryptoBiasDirection,
@@ -17,7 +19,10 @@ import {
   stateLabel,
   type MatrixTrendState,
 } from "@/lib/flagship/matrixStyles";
+import { getInstrumentSpec } from "@/lib/flagship/instrumentDefaults";
+import { calculateLotSize } from "@/lib/flagship/positionSizer";
 import { formatDateTimeET } from "@/lib/time";
+import { useSizingAccounts } from "@/hooks/useSizingAccounts";
 
 type TriggerState = "HIT" | "CLOSE" | "WATCHING" | "NO_DATA";
 type AgreementSignal = boolean | null;
@@ -108,6 +113,30 @@ function agreementLabel(value: AgreementSignal) {
   return value ? "agree" : "miss";
 }
 
+function formatUsd(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function lotPrecision(step: number) {
+  const [, decimal = ""] = `${step}`.split(".");
+  return decimal.length;
+}
+
+function formatLotSize(value: number, step: number) {
+  return value.toFixed(lotPrecision(step));
+}
+
+function sizingToneClass(warning: string | null) {
+  if (warning?.includes("MARGIN_EXCEEDED")) return "text-rose-700 dark:text-rose-300";
+  if (warning?.includes("MIN_LOT") || warning?.includes("MAX_LOT")) return "text-amber-700 dark:text-amber-300";
+  return "text-emerald-700 dark:text-emerald-300";
+}
+
 export default function CryptoBoard() {
   const [data, setData] = useState<CryptoMatrixPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,6 +145,16 @@ export default function CryptoBoard() {
   const [refreshTick, setRefreshTick] = useState(0);
   const [lastRefreshedUtc, setLastRefreshedUtc] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  const {
+    accounts,
+    activeAccount,
+    setActiveAccountId,
+    addAccount,
+    updateAccount,
+    deleteAccount,
+    updateInstrumentOverride,
+  } = useSizingAccounts();
+  const [sizingModalPair, setSizingModalPair] = useState<{ pair: string; assetClass: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -233,6 +272,15 @@ export default function CryptoBoard() {
             })}
           </div>
         ) : null}
+
+        <SizingAccountBar
+          accounts={accounts}
+          activeAccount={activeAccount}
+          onSelectAccount={setActiveAccountId}
+          onAddAccount={addAccount}
+          onUpdateAccount={updateAccount}
+          onDeleteAccount={deleteAccount}
+        />
       </header>
 
       {loading ? <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 p-3 text-sm text-[color:var(--muted)]">Loading crypto matrix...</div> : null}
@@ -262,6 +310,15 @@ export default function CryptoBoard() {
                 {rows.map((row) => {
                   const expanded = expandedRows.includes(row.symbol);
                   const state = triggerState(row);
+                  const pairKey = `${row.symbol.toUpperCase()}USD`;
+                  const pairSpec = activeAccount
+                    ? getInstrumentSpec(pairKey, activeAccount.instrumentOverrides[pairKey])
+                    : null;
+                  const sizingResult =
+                    activeAccount && pairSpec && row.adrPct !== null && row.currentPrice !== null
+                      ? calculateLotSize(activeAccount, pairSpec, row.adrPct, row.currentPrice)
+                      : null;
+                  const sizingTone = sizingToneClass(sizingResult?.warning ?? null);
                   const { agreeCount, availableCount } = summarizeAgreement([
                     row.liquidationAgree,
                     row.oiAgree,
@@ -325,7 +382,30 @@ export default function CryptoBoard() {
                             ) : null}
                           </div>
                         </td>
-                        <td className="px-3 py-2 font-mono text-[var(--foreground)]">TBD</td>
+                        <td className="px-1 py-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              activeAccount
+                                ? setSizingModalPair({ pair: pairKey, assetClass: "crypto" })
+                                : undefined
+                            }
+                            disabled={!activeAccount}
+                            className={`flex w-full flex-col items-start rounded-md px-2 py-1.5 text-left font-mono transition ${
+                              activeAccount ? "hover:bg-[var(--panel)]/70" : "cursor-default"
+                            } ${sizingResult ? sizingTone : "text-[var(--foreground)]"}`}
+                            title={sizingResult?.warning ?? (activeAccount ? "Configure instrument" : "No active account")}
+                          >
+                            <span className="text-sm font-semibold">
+                              {sizingResult && pairSpec ? formatLotSize(sizingResult.lotSize, pairSpec.lotStep) : "—"}
+                            </span>
+                            {sizingResult ? (
+                              <span className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                                {formatUsd(sizingResult.riskAmountUsd)}
+                              </span>
+                            ) : null}
+                          </button>
+                        </td>
                       </tr>
                       {expanded ? (
                         <tr className="bg-[var(--panel)]/75">
@@ -378,6 +458,23 @@ export default function CryptoBoard() {
             <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-slate-600 dark:text-slate-300">N = Neutral</span>
           </div>
         </div>
+      ) : null}
+
+      {sizingModalPair && activeAccount ? (
+        <InstrumentConfigModal
+          pair={sizingModalPair.pair}
+          assetClass={sizingModalPair.assetClass}
+          spec={getInstrumentSpec(
+            sizingModalPair.pair,
+            activeAccount.instrumentOverrides[sizingModalPair.pair],
+          )}
+          accountOverrides={activeAccount.instrumentOverrides[sizingModalPair.pair]}
+          onSave={(overrides) => {
+            updateInstrumentOverride(activeAccount.id, sizingModalPair.pair, overrides);
+            setSizingModalPair(null);
+          }}
+          onClose={() => setSizingModalPair(null)}
+        />
       ) : null}
     </section>
   );
