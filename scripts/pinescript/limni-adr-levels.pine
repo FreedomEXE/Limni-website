@@ -1,113 +1,86 @@
 // This Pine Script™ source code is subject to the terms of the Mozilla Public License 2.0
 // https://mozilla.org/MPL/2.0/
 // Property of Freedom_EXE (c) 2026
-//
-// Limni ADR Levels — Weekly Open + ADR Dip Entry Zones
-//
-// Matches the exact ADR methodology used in the Limni Matrix:
-//   - ADR = average of (dailyHigh - dailyLow) / dailyOpen over last N days
-//   - Anchor = weekly open price (Sunday 17:00 ET / Monday 00:00 UTC)
-//   - Entry levels plotted at 1.0x ADR from weekly open
-//   - TP levels plotted at 0.25x ADR from entry
-//   - Optional outer zone at configurable multiplier (1.5x default for FX)
 
 //@version=6
-indicator("Limni ADR Levels", overlay=true, max_lines_count=500, max_labels_count=500)
+indicator("Limni ADR Levels", shorttitle="Limni ADR", overlay=true, format=format.price)
 
-// ─── INPUTS ─────────────────────────────────────────────────────────────────
-adrLookback     = input.int(10,    "ADR Lookback (days)",        minval=1, maxval=50)
-adrMinDays      = input.int(5,     "ADR Minimum Required Days",  minval=1, maxval=50)
-entryMultiplier = input.float(1.0, "Entry ADR Multiplier",       minval=0.1, step=0.05)
-outerMultiplier = input.float(1.5, "Outer Zone ADR Multiplier",  minval=0.1, step=0.05)
-tpMultiplier    = input.float(0.25,"TP ADR Multiplier",          minval=0.05, step=0.05)
-showOuter       = input.bool(true, "Show Outer Zone Lines")
-showTP          = input.bool(true, "Show TP Lines")
-showTable       = input.bool(true, "Show Info Table")
+adrLookback = input.int(10, "ADR Lookback (days)", minval=1, maxval=50)
+adrMinDays = input.int(5, "ADR Minimum Required Days", minval=1, maxval=50)
+entryMultiple = input.float(1.0, "ADR Entry Multiple", minval=0.1, step=0.05)
+tpMultiple = input.float(0.25, "TP ADR Multiple", minval=0.05, step=0.05)
+shortPairs = input.text_area("", "SHORT Pairs (comma-sep)", tooltip="Paste bearish pairs comma-separated, e.g. USDJPY,USDCHF,EURCAD. All others default LONG.")
+showTable = input.bool(true, "Show Info Table")
 
-// Colors
-weekOpenColor   = input.color(color.new(color.white, 20),  "Week Open")
-longEntryColor  = input.color(color.new(color.green, 20),  "Long Entry (1x ADR)")
-shortEntryColor = input.color(color.new(color.red, 20),    "Short Entry (1x ADR)")
-outerLongColor  = input.color(color.new(color.green, 60),  "Outer Long Zone")
-outerShortColor = input.color(color.new(color.red, 60),    "Outer Short Zone")
-longTpColor     = input.color(color.new(color.lime, 40),   "Long TP")
-shortTpColor    = input.color(color.new(color.fuchsia, 40),"Short TP")
+entryColor = input.color(color.new(color.red, 0), "ADR Level")
+tpColor = input.color(color.new(color.aqua, 0), "TP Level")
+tableBgColor = input.color(color.new(color.black, 15), "Table Background")
+tableTextColor = input.color(color.white, "Table Text")
+tableBorderColor = input.color(color.new(color.white, 45), "Table Border")
 
-// ─── ADR CALCULATION (percentage-based, matching Limni) ─────────────────────
-// Pull daily OHLC regardless of chart timeframe
-[dOpen, dHigh, dLow] = request.security(syminfo.tickerid, "D", [open, high, low], lookahead=barmerge.lookahead_off)
+calcAdrStats() =>
+    float rangeSum = 0.0
+    float validCount = 0.0
+    for i = 1 to adrLookback
+        bool validBar = open[i] > 0 and not na(high[i]) and not na(low[i])
+        if validBar
+            rangeSum += ((high[i] - low[i]) / open[i]) * 100
+            validCount += 1
+    [rangeSum, validCount]
 
-// Calculate daily range as percentage of open: (H - L) / O * 100
-dailyRangePct = dOpen > 0 ? (dHigh - dLow) / dOpen * 100 : 0.0
+[dailyAdrSum, dailyAdrCount] = request.security(syminfo.tickerid, "D", calcAdrStats(), lookahead=barmerge.lookahead_off)
+currentAdrPct = dailyAdrCount >= adrMinDays ? dailyAdrSum / dailyAdrCount : na
 
-// Average over lookback period using daily bars
-adrPct = request.security(syminfo.tickerid, "D", ta.sma(dailyRangePct, adrLookback), lookahead=barmerge.lookahead_off)
-
-// ─── WEEKLY OPEN DETECTION ──────────────────────────────────────────────────
-// TradingView weekly bars align with broker week open (Sunday 17:00 ET for forex)
-weeklyOpen = request.security(syminfo.tickerid, "W", open, lookahead=barmerge.lookahead_on)
-
-// Detect new week on the chart timeframe
+weeklyOpenSeries = request.security(syminfo.tickerid, "W", open, lookahead=barmerge.lookahead_on)
 isNewWeek = ta.change(time("W")) != 0
 
-// ─── LEVEL CALCULATION ──────────────────────────────────────────────────────
-// Entry levels: weekOpen * (1 +/- adrPct * multiplier / 100)
-longEntryPrice  = weeklyOpen * (1 - adrPct * entryMultiplier / 100)
-shortEntryPrice = weeklyOpen * (1 + adrPct * entryMultiplier / 100)
+var float weekOpenPrice = na
+var float weekAdrPct = na
 
-// Outer zone levels
-outerLongPrice  = weeklyOpen * (1 - adrPct * outerMultiplier / 100)
-outerShortPrice = weeklyOpen * (1 + adrPct * outerMultiplier / 100)
+if barstate.isfirst or isNewWeek
+    weekOpenPrice := weeklyOpenSeries
+    weekAdrPct := currentAdrPct
 
-// TP levels (0.25x ADR from entry price)
-longTpPrice  = longEntryPrice  * (1 + adrPct * tpMultiplier / 100)
-shortTpPrice = shortEntryPrice * (1 - adrPct * tpMultiplier / 100)
+adrReady = not na(weekOpenPrice) and not na(weekAdrPct)
 
-// ─── PLOTTING ───────────────────────────────────────────────────────────────
-// Week open
-plot(weeklyOpen,     "Week Open",        color=weekOpenColor,   style=plot.style_linebr, linewidth=2)
+// Auto-detect bias from SHORT pairs list: check if current ticker appears in the comma-separated list
+tickerUpper = str.upper(syminfo.ticker)
+shortList = str.upper(str.replace_all(shortPairs, " ", ""))
+isShort = str.contains(shortList, tickerUpper) and str.length(tickerUpper) > 0
+isBullish = not isShort
+biasLabel = isBullish ? "LONG" : "SHORT"
+entryDirection = isBullish ? -1.0 : 1.0
+tpDirection = isBullish ? 1.0 : -1.0
 
-// 1.0x ADR entry levels
-plot(longEntryPrice, "Long Entry (1x)",  color=longEntryColor,  style=plot.style_linebr, linewidth=2)
-plot(shortEntryPrice,"Short Entry (1x)", color=shortEntryColor, style=plot.style_linebr, linewidth=2)
+entryPrice = adrReady ? weekOpenPrice * (1 + entryDirection * weekAdrPct * entryMultiple / 100) : na
+tpPrice = adrReady ? entryPrice * (1 + tpDirection * weekAdrPct * tpMultiple / 100) : na
 
-// Outer zone
-plot(showOuter ? outerLongPrice  : na, "Outer Long",  color=outerLongColor,  style=plot.style_linebr, linewidth=1)
-plot(showOuter ? outerShortPrice : na, "Outer Short", color=outerShortColor, style=plot.style_linebr, linewidth=1)
+adrDistance = adrReady ? weekOpenPrice * weekAdrPct / 100 : na
+pipSize = syminfo.type == "forex" ? (syminfo.currency == "JPY" ? 0.01 : 0.0001) : syminfo.mintick
+adrPips = adrReady and pipSize > 0 ? adrDistance / pipSize : na
 
-// TP levels
-plot(showTP ? longTpPrice  : na, "Long TP",  color=longTpColor,  style=plot.style_circles, linewidth=1)
-plot(showTP ? shortTpPrice : na, "Short TP", color=shortTpColor, style=plot.style_circles, linewidth=1)
+// Show current week only: plot na for all bars before the most recent week boundary
+var int currentWeekStart = na
+if isNewWeek
+    currentWeekStart := time
+showCurrentWeek = not na(currentWeekStart) and time >= currentWeekStart
 
-// ─── FILL ZONES ─────────────────────────────────────────────────────────────
-p_wo  = plot(weeklyOpen,      "WO Fill",    color=color.new(color.white, 100), display=display.none)
-p_le  = plot(longEntryPrice,  "LE Fill",    color=color.new(color.white, 100), display=display.none)
-p_se  = plot(shortEntryPrice, "SE Fill",    color=color.new(color.white, 100), display=display.none)
+plot(showCurrentWeek and adrReady ? entryPrice : na, "ADR Level", color=entryColor, style=plot.style_linebr, linewidth=2)
+plot(showCurrentWeek and adrReady ? tpPrice : na, "TP Level", color=tpColor, style=plot.style_linebr, linewidth=2)
 
-fill(p_wo, p_le, color=color.new(color.green, 92), title="Long Zone Fill")
-fill(p_wo, p_se, color=color.new(color.red,   92), title="Short Zone Fill")
+var table infoTable = table.new(position.top_right, 2, 5, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
 
-// ─── HIT DETECTION (visual markers) ────────────────────────────────────────
-longHit  = low  <= longEntryPrice  and low[1] > longEntryPrice
-shortHit = high >= shortEntryPrice and high[1] < shortEntryPrice
-
-plotshape(longHit,  "Long ADR Hit",  style=shape.triangleup,   location=location.belowbar, color=longEntryColor,  size=size.small)
-plotshape(shortHit, "Short ADR Hit", style=shape.triangledown, location=location.abovebar, color=shortEntryColor, size=size.small)
-
-// ─── INFO TABLE ─────────────────────────────────────────────────────────────
 if showTable and barstate.islast
-    var table infoTable = table.new(position.top_right, 2, 7, border_width=1, border_color=color.gray, bgcolor=color.new(color.black, 80))
-    table.cell(infoTable, 0, 0, "Limni ADR",        text_color=color.white, text_size=size.small)
-    table.cell(infoTable, 1, 0, "",                  text_color=color.white, text_size=size.small)
-    table.cell(infoTable, 0, 1, "ADR %",             text_color=color.gray,  text_size=size.small)
-    table.cell(infoTable, 1, 1, str.tostring(adrPct, "#.###") + "%", text_color=color.white, text_size=size.small)
-    table.cell(infoTable, 0, 2, "Week Open",         text_color=color.gray,  text_size=size.small)
-    table.cell(infoTable, 1, 2, str.tostring(weeklyOpen, format.mintick), text_color=weekOpenColor, text_size=size.small)
-    table.cell(infoTable, 0, 3, "Long " + str.tostring(entryMultiplier, "#.##") + "x", text_color=color.gray, text_size=size.small)
-    table.cell(infoTable, 1, 3, str.tostring(longEntryPrice, format.mintick), text_color=longEntryColor, text_size=size.small)
-    table.cell(infoTable, 0, 4, "Short " + str.tostring(entryMultiplier, "#.##") + "x", text_color=color.gray, text_size=size.small)
-    table.cell(infoTable, 1, 4, str.tostring(shortEntryPrice, format.mintick), text_color=shortEntryColor, text_size=size.small)
-    table.cell(infoTable, 0, 5, "Long TP",           text_color=color.gray,  text_size=size.small)
-    table.cell(infoTable, 1, 5, str.tostring(longTpPrice, format.mintick), text_color=longTpColor, text_size=size.small)
-    table.cell(infoTable, 0, 6, "Short TP",          text_color=color.gray,  text_size=size.small)
-    table.cell(infoTable, 1, 6, str.tostring(shortTpPrice, format.mintick), text_color=shortTpColor, text_size=size.small)
+    table.cell(infoTable, 0, 0, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
+    table.cell(infoTable, 1, 0, syminfo.ticker, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
+    table.cell(infoTable, 0, 1, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 1, biasLabel, text_color=isBullish ? color.green : color.red, bgcolor=tableBgColor)
+    table.cell(infoTable, 0, 2, "ADR Pips", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 2, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 0, 3, "ADR Level", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 3, adrReady ? str.tostring(entryPrice, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 0, 4, "TP", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 4, adrReady ? str.tostring(tpPrice, format.mintick) : "-", text_color=tpColor, bgcolor=tableBgColor)
+
+if not showTable and barstate.islast
+    table.clear(infoTable, 0, 0, 1, 4)
