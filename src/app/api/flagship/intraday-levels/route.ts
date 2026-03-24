@@ -15,7 +15,7 @@ import { DateTime } from "luxon";
 import { NextResponse } from "next/server";
 
 import { getCanonicalBars } from "@/lib/canonicalPriceBars";
-import { getCanonicalTradingDayWindow } from "@/lib/canonicalPriceWindows";
+import { getCanonicalTradingDayWindow, getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import type { AssetClass } from "@/lib/cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
@@ -95,6 +95,7 @@ export async function GET() {
     const rows = await mapWithConcurrency(UNIVERSE, 6, async ({ pair, assetClass }) => {
       const threshold = getIntradayAdrThreshold(assetClass);
       const tradingDayWindow = getCanonicalTradingDayWindow(assetClass, nowUtc);
+      const weekWindow = getCanonicalWeekWindow(currentWeekOpenUtc, assetClass);
       const lookbackFromUtc =
         tradingDayWindow.openUtc.minus({ days: ADR_LOOKBACK_DAYS + 2 }).toISO() ??
         tradingDayWindow.openUtc.toISO() ??
@@ -124,7 +125,7 @@ export async function GET() {
       }
 
       try {
-        const candle = await fetchOandaCandle(pair, tradingDayWindow.openUtc, nowUtc);
+        const candle = await fetchOandaCandle(pair, weekWindow.openUtc, nowUtc);
         if (candle) {
           weekOpenPrice = candle.open;
           weekHighPrice = candle.high;
@@ -165,7 +166,7 @@ export async function GET() {
         adrMultiplier: threshold.adrMultiplier,
         thresholdPct,
         oneAdrThresholdPct,
-        weekOpenUtc: tradingDayWindow.periodOpenUtc,
+        weekOpenUtc: weekWindow.periodOpenUtc,
         weekOpenPrice,
         weekHighPrice,
         weekLowPrice,
@@ -194,7 +195,7 @@ export async function GET() {
           weekHighPrice !== null &&
           Number.isFinite(weekHighPrice) &&
           weekHighPrice >= oneAdrShortTriggerPrice,
-        sourceLabel: `${threshold.sourceLabel} daily reset`,
+        sourceLabel: `${threshold.sourceLabel} weekly`,
       } satisfies IntradayLevelRow;
     });
 

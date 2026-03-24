@@ -871,10 +871,10 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">ADR Trigger</div>
                                 <div className="mt-1">ADR {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || "—"} · Mult {row.adrMultiplier ?? "—"}</div>
-                                <div>Day open {formatDateTimeET(row.weekOpenUtc, "Unknown")} @ {formatPrice(row.weekOpenPrice)}</div>
+                                <div>Week open {formatDateTimeET(row.weekOpenUtc, "Unknown")} @ {formatPrice(row.weekOpenPrice)}</div>
                                 <div>Long trigger {formatPrice(row.longTriggerPrice)} · 1.0 ADR {formatPrice(row.oneAdrLongTriggerPrice)}</div>
                                 <div>Short trigger {formatPrice(row.shortTriggerPrice)} · 1.0 ADR {formatPrice(row.oneAdrShortTriggerPrice)}</div>
-                                <div>Day range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
+                                <div>Week range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Trade Profile</div>

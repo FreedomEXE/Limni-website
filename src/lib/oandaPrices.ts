@@ -98,18 +98,18 @@ export async function fetchOandaCandle(
       }
       const data = (await response.json()) as OandaCandlesResponse;
       const candles = data.candles ?? [];
-      const complete = candles.filter((candle) => candle.complete && candle.mid);
-      if (complete.length === 0) {
+      const withMid = candles.filter((candle) => candle.mid);
+      if (withMid.length === 0) {
         return null;
       }
-      const openCandle = complete[0];
-      const closeCandle = complete[complete.length - 1];
+      const openCandle = withMid[0];
+      const closeCandle = withMid[withMid.length - 1];
       if (!openCandle.mid || !closeCandle.mid) {
         return null;
       }
       const open = Number(openCandle.mid.o);
-      const high = complete.reduce((max, candle) => Math.max(max, Number(candle.mid?.h ?? Number.NEGATIVE_INFINITY)), Number.NEGATIVE_INFINITY);
-      const low = complete.reduce((min, candle) => Math.min(min, Number(candle.mid?.l ?? Number.POSITIVE_INFINITY)), Number.POSITIVE_INFINITY);
+      const high = withMid.reduce((max, candle) => Math.max(max, Number(candle.mid?.h ?? Number.NEGATIVE_INFINITY)), Number.NEGATIVE_INFINITY);
+      const low = withMid.reduce((min, candle) => Math.min(min, Number(candle.mid?.l ?? Number.POSITIVE_INFINITY)), Number.POSITIVE_INFINITY);
       const close = Number(closeCandle.mid.c);
       if (!Number.isFinite(open) || !Number.isFinite(high) || !Number.isFinite(low) || !Number.isFinite(close)) {
         return null;
