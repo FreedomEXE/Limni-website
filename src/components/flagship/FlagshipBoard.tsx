@@ -27,25 +27,30 @@ import { formatDateTimeET } from "@/lib/time";
 type TrendState = MatrixTrendState;
 type GateDecision = MatrixGateDecision;
 type SignalDirection = "LONG" | "SHORT" | "NEUTRAL";
-type SignalTier = "HIGH" | "MEDIUM" | "NEUTRAL";
+type SignalTier = "HIGH" | "MEDIUM" | "LOW" | "NEUTRAL";
 type AssetClass = "fx" | "indices" | "crypto" | "commodities";
 type MenthorqOverlayCondition = "POSITIVE" | "NEGATIVE" | "NEUTRAL" | "UNKNOWN";
 type TriggerState = "HIT" | "CLOSE" | "WATCHING" | "NO_DATA" | "INACTIVE";
 type AgreementSignal = boolean | null;
 
-type GatedSetupSignal = {
+type CanonicalWeeklySignal = {
   assetClass: string;
   pair: string;
   direction: SignalDirection;
-  tier: SignalTier;
+  tier: "HIGH" | "MEDIUM" | "LOW";
+  model: string;
   gateDecision: GateDecision;
   gateReasons: string[];
-  gateDecisionSource?: string;
 };
 
-type GatedSetupsPayload = {
-  generatedUtc: string | null;
-  signals: GatedSetupSignal[];
+type CanonicalWeeklyBasketPayload = {
+  generatedUtc: string;
+  currentWeekOpenUtc: string;
+  strategyId: string;
+  strategyName: string;
+  sourceLabel: string;
+  sourceType: "frozen_weekly_snapshot";
+  signals: CanonicalWeeklySignal[];
 };
 
 type DailySentimentRow = {
@@ -281,7 +286,7 @@ function invertState(state: TrendState): TrendState {
 
 function normalizeTier(value: string | null | undefined): SignalTier {
   const normalized = String(value ?? "").trim().toUpperCase();
-  if (normalized === "HIGH" || normalized === "MEDIUM") return normalized;
+  if (normalized === "HIGH" || normalized === "MEDIUM" || normalized === "LOW") return normalized;
   return "NEUTRAL";
 }
 
@@ -293,15 +298,10 @@ function normalizeGate(value: string | null | undefined): GateDecision {
 
 function deriveOverlaySignal(
   pairRow: PairUniverseRow,
-  signal: GatedSetupSignal | null,
+  signal: CanonicalWeeklySignal | null,
   menthorqBySymbol: Map<string, MenthorqOverlayCondition>,
 ): { state: TrendState; available: boolean } {
   if (pairRow.assetClass === "crypto") {
-    if (!signal) return { state: "NEUTRAL", available: false };
-    const source = String(signal.gateDecisionSource ?? "").toUpperCase();
-    if (source.includes("CRYPTO_LIQUIDATION_LIVE")) {
-      return { state: directionToState(signal.direction), available: true };
-    }
     return { state: "NEUTRAL", available: false };
   }
 
@@ -421,7 +421,7 @@ function sortBucket(row: MatrixRow) {
 }
 
 export default function FlagshipBoard({ strategy }: { strategy: string }) {
-  const [gatedData, setGatedData] = useState<GatedSetupsPayload | null>(null);
+  const [weeklyBasket, setWeeklyBasket] = useState<CanonicalWeeklyBasketPayload | null>(null);
   const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
   const [dailySentiment, setDailySentiment] = useState<DailySentimentPayload | null>(null);
   const [currencyStrength, setCurrencyStrength] = useState<CurrencyStrengthPayload | null>(null);
@@ -454,7 +454,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         setError(null);
         const nextWarnings: string[] = [];
         const responses = await Promise.allSettled([
-          fetch("/api/performance/gated-setups", { cache: "no-store" }),
+          fetch("/api/flagship/canonical-weekly-basket", { cache: "no-store" }),
           fetch("/api/flagship/cot-matrix", { cache: "no-store" }),
           fetch("/api/flagship/sentiment-daily", { cache: "no-store" }),
           fetch("/api/flagship/currency-strength", { cache: "no-store" }),
@@ -471,8 +471,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           return null;
         };
 
-        const [gatedJson, cotJson, sentimentJson, currencyJson, assetJson, overlayJson, sizingJson, movesJson, intradayJson] = await Promise.all([
-          readJson<GatedSetupsPayload>(responses[0], "gated-setups"),
+        const [basketJson, cotJson, sentimentJson, currencyJson, assetJson, overlayJson, sizingJson, movesJson, intradayJson] = await Promise.all([
+          readJson<CanonicalWeeklyBasketPayload>(responses[0], "canonical-weekly-basket"),
           readJson<CotMatrixPayload>(responses[1], "cot-matrix"),
           readJson<DailySentimentPayload>(responses[2], "sentiment-daily"),
           readJson<CurrencyStrengthPayload>(responses[3], "currency-strength"),
@@ -484,8 +484,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         ]);
 
         if (!cancelled) {
-          if (!gatedJson && !cotJson && !sentimentJson) setError("Failed to load matrix sources.");
-          setGatedData(gatedJson);
+          if (!basketJson && !cotJson && !sentimentJson) setError("Failed to load matrix sources.");
+          setWeeklyBasket(basketJson);
           setCotMatrix(cotJson);
           setDailySentiment(sentimentJson);
           setCurrencyStrength(currencyJson);
@@ -515,8 +515,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   }, [refreshTick]);
 
   const matrixRows = useMemo(() => {
-    const gatedByPair = new Map<string, GatedSetupSignal>();
-    for (const signal of gatedData?.signals ?? []) gatedByPair.set(normalizeKey(signal.pair), signal);
+    const gatedByPair = new Map<string, CanonicalWeeklySignal>();
+    for (const signal of weeklyBasket?.signals ?? []) gatedByPair.set(normalizeKey(signal.pair), signal);
 
     const cotByPair = new Map<string, CotMatrixRow>();
     for (const row of cotMatrix?.rows ?? []) cotByPair.set(normalizeKey(row.pair), row);
@@ -661,7 +661,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         if (bucketDiff !== 0) return bucketDiff;
         return left.pair.localeCompare(right.pair);
       });
-  }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, gatedData, intradayLevels, liveSizing, menthorqOverlay, priceMoves, selectedSession]);
+  }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves, selectedSession, weeklyBasket]);
 
   const qualifiedCount = matrixRows.filter((row) => row.coreBias !== "NEUTRAL").length;
   const adrHitCount = matrixRows.filter((row) => row.triggerState === "HIT").length;
@@ -680,7 +680,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           </div>
           <div className="space-y-2">
             <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-right text-xs text-[color:var(--muted)]">
-              <div>Data {formatDateTimeET(lastRefreshedUtc ?? gatedData?.generatedUtc ?? null, "Unknown")}</div>
+              <div>Data {formatDateTimeET(lastRefreshedUtc ?? weeklyBasket?.generatedUtc ?? null, "Unknown")}</div>
               <div className="font-semibold">{activeSession ? `Active ${activeSession}` : "Off-hours 17:00-20:00 ET"}</div>
             </div>
             <button

@@ -22,8 +22,6 @@ import { resolveCanonicalFlagships } from "@/lib/performance/canonicalFlagships"
 
 export const dynamic = "force-dynamic";
 
-const DEFAULT_FLAGSHIP_STRATEGY = "universal_v1_gated";
-
 type MatrixPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
@@ -56,9 +54,7 @@ async function resolveWeeklyFlagshipView() {
 export default async function MatrixPage({ searchParams }: MatrixPageProps) {
   const resolvedSearchParams = (await Promise.resolve(searchParams)) ?? {};
   const selectedTab = resolveTab(resolvedSearchParams.tab);
-  const strategy = process.env.FLAGSHIP_STRATEGY?.trim() || DEFAULT_FLAGSHIP_STRATEGY;
-  const weeklyFlagshipView =
-    selectedTab === "flagship" ? await resolveWeeklyFlagshipView() : null;
+  const weeklyFlagshipView = await resolveWeeklyFlagshipView();
 
   return (
     <DashboardLayout>
@@ -84,7 +80,7 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
         </div>
 
         {selectedTab === "crypto" ? <CryptoBoard /> : null}
-        {selectedTab === "cfd" ? <FlagshipBoard strategy={strategy} /> : null}
+        {selectedTab === "cfd" ? <FlagshipBoard strategy={weeklyFlagshipView.strategyName} /> : null}
         {selectedTab === "flagship" && weeklyFlagshipView ? (
           <SwingForwardBoard
             strategyName={weeklyFlagshipView.strategyName}

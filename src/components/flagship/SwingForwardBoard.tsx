@@ -20,9 +20,9 @@ import { formatDateTimeET } from "@/lib/time";
 
 type GateDecision = "PASS" | "SKIP" | "NO_DATA";
 type SignalDirection = "LONG" | "SHORT" | "NEUTRAL";
-type SignalTier = "HIGH" | "MEDIUM" | "NEUTRAL";
+type SignalTier = "HIGH" | "MEDIUM" | "LOW" | "NEUTRAL";
 
-type GatedSetupSignal = {
+type CanonicalWeeklySignal = {
   assetClass: string;
   pair: string;
   direction: SignalDirection;
@@ -31,10 +31,14 @@ type GatedSetupSignal = {
   gateReasons: string[];
 };
 
-type GatedSetupsPayload = {
-  generatedUtc: string | null;
-  currentWeekOpenUtc: string | null;
-  signals: GatedSetupSignal[];
+type CanonicalWeeklyBasketPayload = {
+  generatedUtc: string;
+  currentWeekOpenUtc: string;
+  strategyId: string;
+  strategyName: string;
+  sourceLabel: string;
+  sourceType: "frozen_weekly_snapshot";
+  signals: CanonicalWeeklySignal[];
 };
 
 type WeeklyForwardSummaryRow = {
@@ -111,33 +115,34 @@ export default function SwingForwardBoard({
       setLoading(true);
       setError(null);
       try {
-        const gatedResponse = await fetch("/api/performance/gated-setups?mode=locked", { cache: "no-store" });
-        if (!gatedResponse.ok) {
-          throw new Error(`Gated setups request failed (${gatedResponse.status})`);
+        const basketResponse = await fetch("/api/flagship/canonical-weekly-basket", { cache: "no-store" });
+        if (!basketResponse.ok) {
+          throw new Error(`Canonical weekly basket request failed (${basketResponse.status})`);
         }
 
-        const gatedJson = (await gatedResponse.json()) as GatedSetupsPayload & {
+        const basketJson = (await basketResponse.json()) as CanonicalWeeklyBasketPayload & {
           error?: string;
         };
-        if (gatedJson.error) {
-          throw new Error(gatedJson.error);
+        if (basketJson.error) {
+          throw new Error(basketJson.error);
         }
 
-        const actionableSignals = (gatedJson.signals ?? [])
+        const actionableSignals = (basketJson.signals ?? [])
           .filter((signal) => signal.gateDecision === "PASS" && signal.direction !== "NEUTRAL")
           .sort((left, right) => {
-            const tierWeight = (tier: SignalTier) => (tier === "HIGH" ? 2 : tier === "MEDIUM" ? 1 : 0);
+            const tierWeight = (tier: SignalTier) =>
+              tier === "HIGH" ? 3 : tier === "MEDIUM" ? 2 : tier === "LOW" ? 1 : 0;
             return tierWeight(right.tier) - tierWeight(left.tier) || left.pair.localeCompare(right.pair);
           });
 
         let summaryJson: WeeklyForwardSummaryPayload | null = null;
-        if (gatedJson.currentWeekOpenUtc && actionableSignals.length > 0) {
+        if (basketJson.currentWeekOpenUtc && actionableSignals.length > 0) {
           const summaryResponse = await fetch("/api/flagship/weekly-forward-summary", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             cache: "no-store",
             body: JSON.stringify({
-              currentWeekOpenUtc: gatedJson.currentWeekOpenUtc,
+              currentWeekOpenUtc: basketJson.currentWeekOpenUtc,
               signals: actionableSignals.map((signal) => ({
                 pair: signal.pair,
                 direction: signal.direction,
@@ -163,8 +168,8 @@ export default function SwingForwardBoard({
                 liveDriftPct: null,
               })),
           );
-          setCurrentWeekOpenUtc(summaryJson?.currentWeekOpenUtc ?? gatedJson.currentWeekOpenUtc ?? null);
-          setLastRefreshUtc(summaryJson?.generatedUtc ?? gatedJson.generatedUtc ?? null);
+          setCurrentWeekOpenUtc(summaryJson?.currentWeekOpenUtc ?? basketJson.currentWeekOpenUtc ?? null);
+          setLastRefreshUtc(summaryJson?.generatedUtc ?? basketJson.generatedUtc ?? null);
           setBasketPnlPct(summaryJson?.basketPnlPct ?? null);
           setBasketMaxDrawdownPct(summaryJson?.basketMaxDrawdownPct ?? null);
         }
