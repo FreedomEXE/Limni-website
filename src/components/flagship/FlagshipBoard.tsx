@@ -611,7 +611,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         const signalMode: SignalMode = signal?.signalMode === "FLAGSHIP" || signal?.signalMode === "ADR_DIP"
           ? signal.signalMode
           : coreBias !== "NEUTRAL"
-            ? (signalGate === "PASS" || signalGate === "NO_DATA" ? "FLAGSHIP" : "ADR_DIP")
+            ? (signalGate === "PASS" ? "FLAGSHIP" : "ADR_DIP")
             : "NEUTRAL";
 
         const touched = coreBias === "LONG" ? (level?.longTouched ?? false) : coreBias === "SHORT" ? (level?.shortTouched ?? false) : false;
