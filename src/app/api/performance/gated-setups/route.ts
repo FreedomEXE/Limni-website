@@ -1239,8 +1239,14 @@ async function applyDynamicOverlays(payload: GatedSetupsPayload): Promise<GatedS
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const mode = String(url.searchParams.get("mode") ?? "").trim().toLowerCase();
+    if (mode === "locked") {
+      return NextResponse.json(readStaticGatedSetups());
+    }
+
     const livePayload = await buildLiveUniverseSeed().catch(() => readStaticGatedSetups());
     const payload = await applyDynamicOverlays(livePayload);
     return NextResponse.json(payload);

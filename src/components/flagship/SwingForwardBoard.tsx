@@ -111,7 +111,7 @@ export default function SwingForwardBoard({
       setLoading(true);
       setError(null);
       try {
-        const gatedResponse = await fetch("/api/performance/gated-setups", { cache: "no-store" });
+        const gatedResponse = await fetch("/api/performance/gated-setups?mode=locked", { cache: "no-store" });
         if (!gatedResponse.ok) {
           throw new Error(`Gated setups request failed (${gatedResponse.status})`);
         }
