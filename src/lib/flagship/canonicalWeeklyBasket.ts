@@ -23,8 +23,9 @@ export type CanonicalWeeklySignal = {
   direction: CanonicalWeeklyDirection;
   tier: CanonicalWeeklyTier;
   model: PerformanceModel;
-  gateDecision: Extract<GateDecision, "PASS" | "NO_DATA">;
+  gateDecision: GateDecision;
   gateReasons: string[];
+  signalMode: "FLAGSHIP" | "ADR_DIP";
 };
 
 export type CanonicalWeeklyBasketPayload = {
@@ -131,9 +132,14 @@ function normalizePayload(value: unknown): CanonicalWeeklyBasketPayload | null {
             tier,
             model,
             gateDecision:
-              signal.gateDecision === "PASS" || signal.gateDecision === "NO_DATA"
+              signal.gateDecision === "PASS" || signal.gateDecision === "NO_DATA" ||
+              signal.gateDecision === "SKIP" || signal.gateDecision === "REDUCE"
                 ? signal.gateDecision
                 : "NO_DATA",
+            signalMode:
+              signal.gateDecision === "PASS" || signal.gateDecision === "NO_DATA"
+                ? "FLAGSHIP"
+                : "ADR_DIP",
             gateReasons: Array.isArray(signal.gateReasons)
               ? signal.gateReasons.map((reason) => String(reason)).filter(Boolean)
               : [],
@@ -197,16 +203,18 @@ async function computePayload(weekOpenUtc: string): Promise<CanonicalWeeklyBaske
           cotContext,
           reduceAsSkip: true,
         });
-        if (gate.decision === "SKIP" || gate.decision === "REDUCE") {
-          return null;
-        }
+        const signalMode: "FLAGSHIP" | "ADR_DIP" =
+          gate.decision === "PASS" || gate.decision === "NO_DATA"
+            ? "FLAGSHIP"
+            : "ADR_DIP";
         return {
           pair,
           assetClass,
           direction,
           tier,
           model: row.model,
-          gateDecision: gate.decision === "NO_DATA" ? "NO_DATA" : "PASS",
+          gateDecision: gate.decision,
+          signalMode,
           gateReasons: [
             ...gate.reasons,
             `PASS_${String(TIERED_DISPLAY_LABELS[row.model] ?? row.model).toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`,
@@ -220,7 +228,7 @@ async function computePayload(weekOpenUtc: string): Promise<CanonicalWeeklyBaske
   });
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedUtc: new Date().toISOString(),
     currentWeekOpenUtc: weekOpenUtc,
     baseSystemId: "tiered_v3",

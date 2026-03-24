@@ -1,44 +1,18 @@
 {
   "schemaVersion": 2,
-  "generatedUtc": "2026-03-24T02:01:58.842Z",
-  "currentWeekOpenUtc": "2026-03-22T23:00:00.000Z",
+  "generatedUtc": "2026-03-24T04:03:17.646Z",
+  "currentWeekOpenUtc": "2026-03-15T23:00:00.000Z",
   "baseSystemId": "tiered_v3",
   "strategyId": "tiered_v3_gated",
   "strategyName": "Tiered V3 Net Hold Gated",
-  "sourceLabel": "Frozen Tiered V3 gated weekly snapshot · week of Mar 23, 2026",
+  "sourceLabel": "Frozen Tiered V3 gated weekly snapshot · week of Mar 16, 2026",
   "sourceType": "frozen_weekly_snapshot",
   "gateMode": "reduce_as_skip",
   "signals": [
     {
-      "pair": "BTCUSD",
-      "assetClass": "crypto",
-      "direction": "SHORT",
-      "tier": "MEDIUM",
-      "model": "dealer",
-      "gateDecision": "NO_DATA",
-      "gateReasons": [
-        "CRYPTO_GATE_NO_DATA",
-        "PASS_TIER_2",
-        "Tier 2 agreement vote"
-      ]
-    },
-    {
-      "pair": "ETHUSD",
-      "assetClass": "crypto",
-      "direction": "SHORT",
-      "tier": "HIGH",
-      "model": "antikythera_v3",
-      "gateDecision": "NO_DATA",
-      "gateReasons": [
-        "CRYPTO_GATE_NO_DATA",
-        "PASS_TIER_1",
-        "Tier 1 agreement vote"
-      ]
-    },
-    {
-      "pair": "EURNZD",
+      "pair": "CADCHF",
       "assetClass": "fx",
-      "direction": "LONG",
+      "direction": "SHORT",
       "tier": "MEDIUM",
       "model": "dealer",
       "gateDecision": "PASS",
@@ -46,6 +20,84 @@
         "COT_PASS",
         "PASS_TIER_2",
         "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "EURCHF",
+      "assetClass": "fx",
+      "direction": "SHORT",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "PASS",
+      "gateReasons": [
+        "COT_PASS",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "EURGBP",
+      "assetClass": "fx",
+      "direction": "SHORT",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "PASS",
+      "gateReasons": [
+        "COT_PASS",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "EURUSD",
+      "assetClass": "fx",
+      "direction": "SHORT",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "PASS",
+      "gateReasons": [
+        "COT_PASS",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "NIKKEIUSD",
+      "assetClass": "indices",
+      "direction": "SHORT",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "PASS",
+      "gateReasons": [
+        "COT_PASS",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "NZDCHF",
+      "assetClass": "fx",
+      "direction": "SHORT",
+      "tier": "LOW",
+      "model": "commercial",
+      "gateDecision": "PASS",
+      "gateReasons": [
+        "COT_PASS",
+        "PASS_TIER_3",
+        "Tier 3 agreement vote"
+      ]
+    },
+    {
+      "pair": "NZDUSD",
+      "assetClass": "fx",
+      "direction": "SHORT",
+      "tier": "LOW",
+      "model": "commercial",
+      "gateDecision": "PASS",
+      "gateReasons": [
+        "COT_PASS",
+        "PASS_TIER_3",
+        "Tier 3 agreement vote"
       ]
     },
     {
@@ -59,6 +111,19 @@
         "COT_PASS",
         "PASS_TIER_1",
         "Tier 1 agreement vote"
+      ]
+    },
+    {
+      "pair": "USDCHF",
+      "assetClass": "fx",
+      "direction": "SHORT",
+      "tier": "LOW",
+      "model": "commercial",
+      "gateDecision": "PASS",
+      "gateReasons": [
+        "COT_PASS",
+        "PASS_TIER_3",
+        "Tier 3 agreement vote"
       ]
     },
     {

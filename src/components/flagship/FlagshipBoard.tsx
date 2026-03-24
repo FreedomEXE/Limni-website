@@ -33,6 +33,8 @@ type MenthorqOverlayCondition = "POSITIVE" | "NEGATIVE" | "NEUTRAL" | "UNKNOWN";
 type TriggerState = "HIT" | "CLOSE" | "WATCHING" | "NO_DATA" | "INACTIVE";
 type AgreementSignal = boolean | null;
 
+type SignalMode = "FLAGSHIP" | "ADR_DIP" | "NEUTRAL";
+
 type CanonicalWeeklySignal = {
   assetClass: string;
   pair: string;
@@ -41,6 +43,7 @@ type CanonicalWeeklySignal = {
   model: string;
   gateDecision: GateDecision;
   gateReasons: string[];
+  signalMode?: "FLAGSHIP" | "ADR_DIP";
 };
 
 type CanonicalWeeklyBasketPayload = {
@@ -209,6 +212,7 @@ type MatrixRow = {
   touched: boolean;
   oneAdrTouched: boolean;
   triggerState: TriggerState;
+  signalMode: SignalMode;
 };
 
 const UNIVERSE: PairUniverseRow[] = [
@@ -292,7 +296,7 @@ function normalizeTier(value: string | null | undefined): SignalTier {
 
 function normalizeGate(value: string | null | undefined): GateDecision {
   const normalized = String(value ?? "").trim().toUpperCase();
-  if (normalized === "PASS" || normalized === "SKIP" || normalized === "NO_DATA") return normalized;
+  if (normalized === "PASS" || normalized === "SKIP" || normalized === "REDUCE" || normalized === "NO_DATA") return normalized;
   return "NO_DATA";
 }
 
@@ -415,9 +419,11 @@ function agreementChip(value: AgreementSignal, label: string) {
 }
 
 function sortBucket(row: MatrixRow) {
-  if (row.coreBias === "NEUTRAL") return 2;
-  if (row.oneAdrTouched) return 0;
-  return 1;
+  if (row.signalMode === "NEUTRAL") return 4;
+  if (row.signalMode === "FLAGSHIP" && row.oneAdrTouched) return 0;
+  if (row.signalMode === "FLAGSHIP") return 1;
+  if (row.signalMode === "ADR_DIP" && row.oneAdrTouched) return 2;
+  return 3; // ADR_DIP watching
 }
 
 export default function FlagshipBoard({ strategy }: { strategy: string }) {
@@ -602,6 +608,12 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           strengthAgree,
         ]);
 
+        const signalMode: SignalMode = signal?.signalMode === "FLAGSHIP" || signal?.signalMode === "ADR_DIP"
+          ? signal.signalMode
+          : coreBias !== "NEUTRAL"
+            ? (signalGate === "PASS" || signalGate === "NO_DATA" ? "FLAGSHIP" : "ADR_DIP")
+            : "NEUTRAL";
+
         const touched = coreBias === "LONG" ? (level?.longTouched ?? false) : coreBias === "SHORT" ? (level?.shortTouched ?? false) : false;
         const oneAdrTouched = coreBias === "LONG" ? (level?.oneAdrLongTouched ?? false) : coreBias === "SHORT" ? (level?.oneAdrShortTouched ?? false) : false;
 
@@ -653,6 +665,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           touched,
           oneAdrTouched,
           triggerState,
+          signalMode,
         } satisfies MatrixRow;
       })
       .filter((row) => row.sessionEligible.includes(selectedSession))
@@ -663,10 +676,12 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
       });
   }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves, selectedSession, weeklyBasket]);
 
-  const qualifiedCount = matrixRows.filter((row) => row.coreBias !== "NEUTRAL").length;
+  const flagshipCount = matrixRows.filter((row) => row.signalMode === "FLAGSHIP").length;
+  const adrDipCount = matrixRows.filter((row) => row.signalMode === "ADR_DIP").length;
+  const qualifiedCount = flagshipCount + adrDipCount;
   const adrHitCount = matrixRows.filter((row) => row.triggerState === "HIT").length;
   const closeCount = matrixRows.filter((row) => row.triggerState === "CLOSE").length;
-  const neutralCount = matrixRows.filter((row) => row.coreBias === "NEUTRAL").length;
+  const neutralCount = matrixRows.filter((row) => row.signalMode === "NEUTRAL").length;
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
 
   return (
@@ -719,7 +734,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         {!loading && !error ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/55 px-3 py-2 text-[11px] text-[color:var(--muted)]">
             <span className="font-semibold uppercase tracking-[0.12em]">{selectedSession}</span>
-            <span>Qualified {qualifiedCount}</span>
+            <span>Flagship {flagshipCount}</span>
+            <span>ADR Dip {adrDipCount}</span>
             <span>ADR Hit {adrHitCount}</span>
             <span>Close {closeCount}</span>
             <span>Neutral {neutralCount}</span>
@@ -779,6 +795,11 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                               <span className="flex flex-wrap items-center gap-2">
                                 <span>{row.pair}</span>
                                 <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">{row.assetClass}</span>
+                                {row.signalMode === "FLAGSHIP" ? (
+                                  <span className="rounded-full border border-emerald-500/40 bg-emerald-500/14 px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.1em] text-emerald-700 dark:text-emerald-300">Flagship</span>
+                                ) : row.signalMode === "ADR_DIP" ? (
+                                  <span className="rounded-full border border-amber-500/40 bg-amber-500/14 px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.1em] text-amber-700 dark:text-amber-300">ADR Dip</span>
+                                ) : null}
                                 <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${moveClass(row.move24hPct)}`}>{formatMove(row.move24hPct)}</span>
                               </span>
                               {row.coreBias !== "NEUTRAL" && row.tier !== "NEUTRAL" ? (

@@ -13,7 +13,7 @@
 -----------------------------------------------*/
 
 export type MatrixTrendState = "BULLISH" | "BEARISH" | "NEUTRAL";
-export type MatrixGateDecision = "PASS" | "SKIP" | "NO_DATA";
+export type MatrixGateDecision = "PASS" | "SKIP" | "REDUCE" | "NO_DATA";
 export type MatrixContextView = "CONFIRM" | "MIXED" | "CONFLICT" | "N/A";
 
 export function stateClass(state: MatrixTrendState) {
@@ -30,7 +30,7 @@ export function stateLabel(state: MatrixTrendState) {
 
 export function gateClass(gate: MatrixGateDecision) {
   if (gate === "PASS") return "border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  if (gate === "SKIP") return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
+  if (gate === "SKIP" || gate === "REDUCE") return "border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-300";
   return "border-slate-500/25 bg-slate-500/10 text-slate-600 dark:text-slate-300";
 }
 
