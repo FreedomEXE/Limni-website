@@ -63,6 +63,8 @@ export type CryptoMatrixRow = {
   altTrendCandle: CryptoCandleDetail;
   oiDelta24hPct: number | null;
   openInterest: number | null;
+  oiThresholdUsd: number | null;
+  oiThresholdPass: boolean | null;
   fundingRate: number | null;
   liquidationTilt: "ABOVE" | "BELOW" | "BALANCED" | "NONE" | null;
   largestAboveNotional: number | null;

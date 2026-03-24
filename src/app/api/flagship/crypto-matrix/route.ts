@@ -58,6 +58,7 @@ const MAX_VOLUME_CANDIDATES = 140;
 const ALT_FETCH_CONCURRENCY = 5;
 const CRYPTO_ADR_LOOKBACK_DAYS = 10;
 const CRYPTO_ADR_MIN_REQUIRED_DAYS = 5;
+const CRYPTO_GAMMA_MIN_OI_USD = 20_000_000;
 
 type OiRow = {
   symbol: string;
@@ -365,8 +366,7 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
-async function readAnchorMarketData() {
-  const symbols = ["BTC", "ETH"];
+async function readMarketData(symbols: string[]) {
   const [latestOiRows, oi24Rows, fundingRows, liquidationRows] = await Promise.all([
     query<OiRow>(
       `SELECT DISTINCT ON (symbol) symbol, open_interest
@@ -714,7 +714,7 @@ function deriveCryptoGamma(row: {
       : row.bias === "LONG"
         ? row.liquidationTilt === "ABOVE"
         : row.liquidationTilt === "BELOW";
-  const oiAgree = row.openInterest === null ? null : row.openInterest >= 20_000_000;
+  const oiAgree = row.openInterest === null ? null : row.openInterest >= CRYPTO_GAMMA_MIN_OI_USD;
   const fundingAgree =
     row.fundingRate === null
       ? null
@@ -843,7 +843,6 @@ export async function GET() {
     const [
       btcDirectionRegime,
       ethDirectionRegime,
-      anchorMarketData,
       strengthBySymbol,
       weeklyBiasBySymbol,
       tickers,
@@ -851,7 +850,6 @@ export async function GET() {
     ] = await Promise.all([
       buildAnchorRegime("BTC"),
       buildAnchorRegime("ETH"),
-      readAnchorMarketData(),
       readCryptoStrengths(),
       readWeeklyCryptoBias(),
       fetchBitgetMarketTickers(),
@@ -897,6 +895,7 @@ export async function GET() {
       ...anchorSymbols,
       ...visibleCandidates.map((candidate) => candidate.symbol).filter((symbol) => !anchorSymbols.includes(symbol)),
     ];
+    const marketData = await readMarketData(symbolsToFetch);
 
     const altRows = await mapWithConcurrency(symbolsToFetch, ALT_FETCH_CONCURRENCY, async (symbol) => {
       try {
@@ -925,13 +924,14 @@ export async function GET() {
       const ticker = anchorTickerBySymbol.get(`${symbol}USDT`);
       const altFetch = altFetchBySymbol.get(symbol);
       const strength = strengthBySymbol.get(symbol) ?? { "1h": null, "4h": null, "24h": null };
-      const oiLatestDb = anchorMarketData.oiLatestBySymbol.get(symbol) ?? null;
-      const oi24 = anchorMarketData.oi24BySymbol.get(symbol) ?? null;
+      const oiLatestDb = marketData.oiLatestBySymbol.get(symbol) ?? null;
+      const oi24 = marketData.oi24BySymbol.get(symbol) ?? null;
       const oiDelta24hPct =
         oiLatestDb !== null && oi24 !== null && oi24 > 0
           ? ((oiLatestDb - oi24) / oi24) * 100
           : null;
-      const liquidation = anchorMarketData.liquidationBySymbol.get(symbol) ?? null;
+      const liquidation = marketData.liquidationBySymbol.get(symbol) ?? null;
+      const openInterest = ticker?.openInterestUsd ?? oiLatestDb;
 
       return {
         symbol,
@@ -955,8 +955,10 @@ export async function GET() {
               : altFetch?.altTrend ?? "NEUTRAL",
         altTrendCandle: altFetch?.altTrendCandle ?? null,
         oiDelta24hPct,
-        openInterest: ticker?.openInterestUsd ?? oiLatestDb,
-        fundingRate: ticker?.fundingRate ?? anchorMarketData.fundingBySymbol.get(symbol) ?? null,
+        openInterest,
+        oiThresholdUsd: CRYPTO_GAMMA_MIN_OI_USD,
+        oiThresholdPass: openInterest === null ? null : openInterest >= CRYPTO_GAMMA_MIN_OI_USD,
+        fundingRate: ticker?.fundingRate ?? marketData.fundingBySymbol.get(symbol) ?? null,
         liquidationTilt: liquidation ? deriveLiquidationTilt(liquidation) : null,
         largestAboveNotional: liquidation?.largestAboveNotional ?? null,
         largestBelowNotional: liquidation?.largestBelowNotional ?? null,
@@ -990,6 +992,7 @@ export async function GET() {
       const altFetch = altFetchBySymbol.get(candidate.symbol);
       const { bias, biasSource } = deriveRowBias(candidate.symbol, btcRegime.weeklyBias, ethRegime.weeklyBias);
       const strength = strengthBySymbol.get(candidate.symbol) ?? { "1h": null, "4h": null, "24h": null };
+      const openInterest = candidate.openInterestUsd ?? marketData.oiLatestBySymbol.get(candidate.symbol) ?? null;
       return {
         symbol: candidate.symbol,
         bitgetSymbol: candidate.bitgetSymbol,
@@ -1007,7 +1010,9 @@ export async function GET() {
         altTrend: altFetch?.altTrend ?? "NEUTRAL",
         altTrendCandle: altFetch?.altTrendCandle ?? null,
         oiDelta24hPct: null,
-        openInterest: candidate.openInterestUsd,
+        openInterest,
+        oiThresholdUsd: CRYPTO_GAMMA_MIN_OI_USD,
+        oiThresholdPass: openInterest === null ? null : openInterest >= CRYPTO_GAMMA_MIN_OI_USD,
         fundingRate: candidate.fundingRate,
         liquidationTilt: null,
         largestAboveNotional: null,

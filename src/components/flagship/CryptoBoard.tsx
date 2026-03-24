@@ -341,6 +341,7 @@ export default function CryptoBoard() {
                                 <div className="font-semibold text-[var(--foreground)]">Gamma Detail</div>
                                 <div className="mt-1">Liquidation {row.liquidationTilt ?? "—"} · {agreementLabel(row.liquidationAgree)}</div>
                                 <div>OI {formatCompactUsd(row.openInterest)} · {agreementLabel(row.oiAgree)}</div>
+                                <div>OI threshold {formatCompactUsd(row.oiThresholdUsd)} · {row.oiThresholdPass === null ? "unavailable" : row.oiThresholdPass ? "pass" : "miss"}</div>
                                 <div>Funding {formatFunding(row.fundingRate)} · {agreementLabel(row.fundingAgree)}</div>
                                 <div>Strength 1h / 4h / 24h: {formatPct(row.strength1h, 1)} / {formatPct(row.strength4h, 1)} / {formatPct(row.strength24h, 1)}</div>
                               </div>
