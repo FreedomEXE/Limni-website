@@ -5,18 +5,45 @@
 //@version=6
 indicator("Limni ADR Levels", shorttitle="Limni ADR", overlay=true, format=format.price)
 
+anchorMode = input.string("Weekly", "ADR Anchor Mode", options=["Weekly", "Daily"], tooltip="Weekly anchors levels to the weekly open. Daily anchors to each daily open (17:00 ET rollover).")
 adrLookback = input.int(10, "ADR Lookback (days)", minval=1, maxval=50)
 adrMinDays = input.int(5, "ADR Minimum Required Days", minval=1, maxval=50)
 entryMultiple = input.float(1.0, "ADR Entry Multiple", minval=0.1, step=0.05)
 tpMultiple = input.float(0.25, "TP ADR Multiple", minval=0.05, step=0.05)
-shortPairs = input.text_area("", "SHORT Pairs (comma-sep)", tooltip="Paste bearish pairs comma-separated, e.g. USDJPY,USDCHF,EURCAD. All others default LONG.")
+longPairs = input.text_area("", "LONG Pairs (comma/newline)", tooltip="Paste bullish pairs for the week. Anything not listed in LONG or SHORT defaults to NEUTRAL.")
+shortPairs = input.text_area("", "SHORT Pairs (comma/newline)", tooltip="Paste bearish pairs for the week. For crypto, BTCUSD and ETHUSD set the regime for all other crypto pairs.")
 showTable = input.bool(true, "Show Info Table")
 
-entryColor = input.color(color.new(color.red, 0), "ADR Level")
-tpColor = input.color(color.new(color.aqua, 0), "TP Level")
+longAdrColor = input.color(color.new(color.lime, 0), "Long ADR Level")
+longTpColor = input.color(color.new(color.aqua, 0), "Long TP Level")
+shortAdrColor = input.color(color.new(color.red, 0), "Short ADR Level")
+shortTpColor = input.color(color.new(color.fuchsia, 0), "Short TP Level")
 tableBgColor = input.color(color.new(color.black, 15), "Table Background")
 tableTextColor = input.color(color.white, "Table Text")
 tableBorderColor = input.color(color.new(color.white, 45), "Table Border")
+
+normalizePairList(_raw) =>
+    string cleaned = str.upper(_raw)
+    cleaned := str.replace_all(cleaned, " ", "")
+    cleaned := str.replace_all(cleaned, "\r", ",")
+    cleaned := str.replace_all(cleaned, "\n", ",")
+    cleaned := str.replace_all(cleaned, ";", ",")
+    cleaned
+
+listContainsPair(_list, _pair) =>
+    string wrappedList = "," + normalizePairList(_list) + ","
+    string wrappedPair = "," + str.upper(_pair) + ","
+    str.length(_pair) > 0 and str.contains(wrappedList, wrappedPair)
+
+getManualBias(_pair) =>
+    bool inLong = listContainsPair(longPairs, _pair)
+    bool inShort = listContainsPair(shortPairs, _pair)
+    string result = "NEUTRAL"
+    if inLong and not inShort
+        result := "LONG"
+    else if inShort and not inLong
+        result := "SHORT"
+    result
 
 calcAdrStats() =>
     float rangeSum = 0.0
@@ -31,6 +58,7 @@ calcAdrStats() =>
 [dailyAdrSum, dailyAdrCount] = request.security(syminfo.tickerid, "D", calcAdrStats(), lookahead=barmerge.lookahead_off)
 currentAdrPct = dailyAdrCount >= adrMinDays ? dailyAdrSum / dailyAdrCount : na
 
+// Weekly anchor data
 weeklyOpenSeries = request.security(syminfo.tickerid, "W", open, lookahead=barmerge.lookahead_on)
 isNewWeek = ta.change(time("W")) != 0
 
@@ -41,46 +69,91 @@ if barstate.isfirst or isNewWeek
     weekOpenPrice := weeklyOpenSeries
     weekAdrPct := currentAdrPct
 
-adrReady = not na(weekOpenPrice) and not na(weekAdrPct)
+// Daily anchor data
+dailyOpenSeries = request.security(syminfo.tickerid, "D", open, lookahead=barmerge.lookahead_on)
+isNewDay = ta.change(time("D")) != 0
 
-// Auto-detect bias from SHORT pairs list: check if current ticker appears in the comma-separated list
+var float dayOpenPrice = na
+var float dayAdrPct = na
+
+if barstate.isfirst or isNewDay
+    dayOpenPrice := dailyOpenSeries
+    dayAdrPct := currentAdrPct
+
+// Select anchor based on mode
+bool useDaily = anchorMode == "Daily"
+anchorOpenPrice = useDaily ? dayOpenPrice : weekOpenPrice
+anchorAdrPct = useDaily ? dayAdrPct : weekAdrPct
+adrReady = not na(anchorOpenPrice) and not na(anchorAdrPct)
+
 tickerUpper = str.upper(syminfo.ticker)
-shortList = str.upper(str.replace_all(shortPairs, " ", ""))
-isShort = str.contains(shortList, tickerUpper) and str.length(tickerUpper) > 0
-isBullish = not isShort
-biasLabel = isBullish ? "LONG" : "SHORT"
-entryDirection = isBullish ? -1.0 : 1.0
-tpDirection = isBullish ? 1.0 : -1.0
+manualBias = getManualBias(tickerUpper)
+btcBias = getManualBias("BTCUSD")
+ethBias = getManualBias("ETHUSD")
 
-entryPrice = adrReady ? weekOpenPrice * (1 + entryDirection * weekAdrPct * entryMultiple / 100) : na
-tpPrice = adrReady ? entryPrice * (1 + tpDirection * weekAdrPct * tpMultiple / 100) : na
+cryptoRegime = "NEUTRAL"
+if btcBias == "LONG" and ethBias == "LONG"
+    cryptoRegime := "LONG"
+else if btcBias == "SHORT" and ethBias == "SHORT"
+    cryptoRegime := "SHORT"
 
-adrDistance = adrReady ? weekOpenPrice * weekAdrPct / 100 : na
+isCrypto = syminfo.type == "crypto"
+isMajorCrypto = tickerUpper == "BTCUSD" or tickerUpper == "ETHUSD"
+
+resolvedBias = manualBias
+if isCrypto and not isMajorCrypto
+    resolvedBias := cryptoRegime
+
+showLong = resolvedBias != "SHORT"
+showShort = resolvedBias != "LONG"
+
+longEntryPrice = adrReady ? anchorOpenPrice * (1 - anchorAdrPct * entryMultiple / 100) : na
+longTpPrice = adrReady ? longEntryPrice * (1 + anchorAdrPct * tpMultiple / 100) : na
+shortEntryPrice = adrReady ? anchorOpenPrice * (1 + anchorAdrPct * entryMultiple / 100) : na
+shortTpPrice = adrReady ? shortEntryPrice * (1 - anchorAdrPct * tpMultiple / 100) : na
+
+adrDistance = adrReady ? anchorOpenPrice * anchorAdrPct / 100 : na
 pipSize = syminfo.type == "forex" ? (syminfo.currency == "JPY" ? 0.01 : 0.0001) : syminfo.mintick
 adrPips = adrReady and pipSize > 0 ? adrDistance / pipSize : na
+longTpPips = adrReady and pipSize > 0 and showLong ? math.abs(longTpPrice - longEntryPrice) / pipSize : na
+shortTpPips = adrReady and pipSize > 0 and showShort ? math.abs(shortEntryPrice - shortTpPrice) / pipSize : na
 
-// Show current week only: plot na for all bars before the most recent week boundary
-var int currentWeekStart = na
-if isNewWeek
-    currentWeekStart := time
-showCurrentWeek = not na(currentWeekStart) and time >= currentWeekStart
+// Period visibility — show only current period (week or day)
+var int currentPeriodStart = na
+isNewPeriod = useDaily ? isNewDay : isNewWeek
+if isNewPeriod
+    currentPeriodStart := time
+showCurrentPeriod = not na(currentPeriodStart) and time >= currentPeriodStart
+periodBreak = isNewPeriod and not barstate.isfirst
 
-plot(showCurrentWeek and adrReady ? entryPrice : na, "ADR Level", color=entryColor, style=plot.style_linebr, linewidth=2)
-plot(showCurrentWeek and adrReady ? tpPrice : na, "TP Level", color=tpColor, style=plot.style_linebr, linewidth=2)
+plot(showCurrentPeriod and showLong and adrReady and not periodBreak ? longEntryPrice : na, "Long ADR Level", color=longAdrColor, style=plot.style_linebr, linewidth=2)
+plot(showCurrentPeriod and showLong and adrReady and not periodBreak ? longTpPrice : na, "Long TP Level", color=longTpColor, style=plot.style_linebr, linewidth=2)
+plot(showCurrentPeriod and showShort and adrReady and not periodBreak ? shortEntryPrice : na, "Short ADR Level", color=shortAdrColor, style=plot.style_linebr, linewidth=2)
+plot(showCurrentPeriod and showShort and adrReady and not periodBreak ? shortTpPrice : na, "Short TP Level", color=shortTpColor, style=plot.style_linebr, linewidth=2)
 
-var table infoTable = table.new(position.top_right, 2, 5, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
+var table infoTable = table.new(position.top_right, 2, 7, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
 
 if showTable and barstate.islast
+    biasColor = resolvedBias == "LONG" ? longAdrColor : resolvedBias == "SHORT" ? shortAdrColor : tableTextColor
+    anchorLabel = useDaily ? "Daily" : "Weekly"
     table.cell(infoTable, 0, 0, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
     table.cell(infoTable, 1, 0, syminfo.ticker, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
-    table.cell(infoTable, 0, 1, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 1, biasLabel, text_color=isBullish ? color.green : color.red, bgcolor=tableBgColor)
-    table.cell(infoTable, 0, 2, "ADR Pips", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 2, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 0, 3, "ADR Level", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 3, adrReady ? str.tostring(entryPrice, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 0, 4, "TP", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 4, adrReady ? str.tostring(tpPrice, format.mintick) : "-", text_color=tpColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 0, 1, "Anchor", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 1, anchorLabel, text_color=useDaily ? color.new(color.orange, 0) : tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 0, 2, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 2, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 0, 3, "ADR Pips", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 3, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 0, 4, "Long ADR / TP", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 4, adrReady and showLong ? str.tostring(longEntryPrice, format.mintick) + " / " + str.tostring(longTpPrice, format.mintick) + "\nTP: " + str.tostring(longTpPips, "#.#") + " pips" : "-", text_color=longAdrColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 0, 5, "Short ADR / TP", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 5, adrReady and showShort ? str.tostring(shortEntryPrice, format.mintick) + " / " + str.tostring(shortTpPrice, format.mintick) + "\nTP: " + str.tostring(shortTpPips, "#.#") + " pips" : "-", text_color=shortAdrColor, bgcolor=tableBgColor)
+    if isCrypto
+        table.cell(infoTable, 0, 6, "Crypto Regime", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, 6, cryptoRegime, text_color=cryptoRegime == "LONG" ? longAdrColor : cryptoRegime == "SHORT" ? shortAdrColor : tableTextColor, bgcolor=tableBgColor)
+    else
+        table.cell(infoTable, 0, 6, "", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, 6, "", text_color=tableTextColor, bgcolor=tableBgColor)
 
 if not showTable and barstate.islast
-    table.clear(infoTable, 0, 0, 1, 4)
+    table.clear(infoTable, 0, 0, 1, 6)

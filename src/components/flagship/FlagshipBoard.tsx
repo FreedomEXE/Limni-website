@@ -163,6 +163,14 @@ type IntradayLevelRow = {
   shortTouched: boolean;
   oneAdrLongTouched: boolean;
   oneAdrShortTouched: boolean;
+  dailyOpenUtc: string;
+  dailyOpenPrice: number | null;
+  dailyHighPrice: number | null;
+  dailyLowPrice: number | null;
+  dailyOneAdrLongTriggerPrice: number | null;
+  dailyOneAdrShortTriggerPrice: number | null;
+  dailyOneAdrLongTouched: boolean;
+  dailyOneAdrShortTouched: boolean;
 };
 
 type IntradayLevelsPayload = {
@@ -217,6 +225,13 @@ type MatrixRow = {
   touched: boolean;
   oneAdrTouched: boolean;
   triggerState: TriggerState;
+  dailyOneAdrTouched: boolean;
+  dailyTriggerState: TriggerState;
+  dailyOpenPrice: number | null;
+  dailyHighPrice: number | null;
+  dailyLowPrice: number | null;
+  dailyOneAdrLongTriggerPrice: number | null;
+  dailyOneAdrShortTriggerPrice: number | null;
   signalMode: SignalMode;
 };
 
@@ -651,6 +666,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
 
         const touched = coreBias === "LONG" ? (level?.longTouched ?? false) : coreBias === "SHORT" ? (level?.shortTouched ?? false) : false;
         const oneAdrTouched = coreBias === "LONG" ? (level?.oneAdrLongTouched ?? false) : coreBias === "SHORT" ? (level?.oneAdrShortTouched ?? false) : false;
+        const dailyOneAdrTouched = coreBias === "LONG" ? (level?.dailyOneAdrLongTouched ?? false) : coreBias === "SHORT" ? (level?.dailyOneAdrShortTouched ?? false) : false;
 
         let triggerState: TriggerState = "INACTIVE";
         if (coreBias !== "NEUTRAL") {
@@ -658,6 +674,13 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           else if (oneAdrTouched) triggerState = "HIT";
           else if (touched) triggerState = "CLOSE";
           else triggerState = "WATCHING";
+        }
+
+        let dailyTriggerState: TriggerState = "INACTIVE";
+        if (coreBias !== "NEUTRAL") {
+          if (!level || level.adrPct === null) dailyTriggerState = "NO_DATA";
+          else if (dailyOneAdrTouched) dailyTriggerState = "HIT";
+          else dailyTriggerState = "WATCHING";
         }
 
         return {
@@ -700,6 +723,13 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           touched,
           oneAdrTouched,
           triggerState,
+          dailyOneAdrTouched,
+          dailyTriggerState,
+          dailyOpenPrice: level?.dailyOpenPrice ?? null,
+          dailyHighPrice: level?.dailyHighPrice ?? null,
+          dailyLowPrice: level?.dailyLowPrice ?? null,
+          dailyOneAdrLongTriggerPrice: level?.dailyOneAdrLongTriggerPrice ?? null,
+          dailyOneAdrShortTriggerPrice: level?.dailyOneAdrShortTriggerPrice ?? null,
           signalMode,
         } satisfies MatrixRow;
       })
@@ -866,9 +896,14 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                         </td>
                         <td className="border-r border-[var(--panel-border)] px-3 py-2">
                           <div className="space-y-1">
-                            <span className={triggerClass(row.triggerState, row.oneAdrTouched)}>
-                              {row.triggerState === "INACTIVE" ? "—" : row.triggerState === "NO_DATA" ? "No Data" : row.triggerState}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className={triggerClass(row.triggerState, row.oneAdrTouched)} title="Weekly anchor">
+                                W:{row.triggerState === "INACTIVE" ? "—" : row.triggerState === "NO_DATA" ? "?" : row.triggerState}
+                              </span>
+                              <span className={triggerClass(row.dailyTriggerState, row.dailyOneAdrTouched)} title="Daily anchor">
+                                D:{row.dailyTriggerState === "INACTIVE" ? "—" : row.dailyTriggerState === "NO_DATA" ? "?" : row.dailyTriggerState}
+                              </span>
+                            </div>
                             {row.adrPct !== null ? (
                               <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
                                 ADR {row.adrPct.toFixed(2)}%
@@ -926,10 +961,12 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">ADR Trigger</div>
                                 <div className="mt-1">ADR {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || "—"} · Mult {row.adrMultiplier ?? "—"}</div>
-                                <div>Week open {formatDateTimeET(row.weekOpenUtc, "Unknown")} @ {formatPrice(row.weekOpenPrice)}</div>
-                                <div>Long trigger {formatPrice(row.longTriggerPrice)} · 1.0 ADR {formatPrice(row.oneAdrLongTriggerPrice)}</div>
-                                <div>Short trigger {formatPrice(row.shortTriggerPrice)} · 1.0 ADR {formatPrice(row.oneAdrShortTriggerPrice)}</div>
-                                <div>Week range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
+                                <div className="mt-1 font-medium text-[var(--foreground)]">Weekly</div>
+                                <div>Open @ {formatPrice(row.weekOpenPrice)} · Long {formatPrice(row.oneAdrLongTriggerPrice)} · Short {formatPrice(row.oneAdrShortTriggerPrice)}</div>
+                                <div>Range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)}</div>
+                                <div className="mt-1 font-medium text-[var(--foreground)]">Daily</div>
+                                <div>Open @ {formatPrice(row.dailyOpenPrice)} · Long {formatPrice(row.dailyOneAdrLongTriggerPrice)} · Short {formatPrice(row.dailyOneAdrShortTriggerPrice)}</div>
+                                <div>Range {formatPrice(row.dailyLowPrice)} - {formatPrice(row.dailyHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Trade Profile</div>
