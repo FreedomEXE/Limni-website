@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type SignalDirection = "LONG" | "SHORT" | "NEUTRAL";
-type SignalTier = "HIGH" | "MEDIUM" | "NEUTRAL";
+type SignalTier = "HIGH" | "MEDIUM" | "LOW" | "NEUTRAL";
 
 type WeeklyForwardSignalInput = {
   pair: string;
@@ -33,7 +33,7 @@ function normalizeDirection(value: unknown): SignalDirection {
 
 function normalizeTier(value: unknown): SignalTier {
   const normalized = String(value ?? "").trim().toUpperCase();
-  if (normalized === "HIGH" || normalized === "MEDIUM") return normalized;
+  if (normalized === "HIGH" || normalized === "MEDIUM" || normalized === "LOW") return normalized;
   return "NEUTRAL";
 }
 

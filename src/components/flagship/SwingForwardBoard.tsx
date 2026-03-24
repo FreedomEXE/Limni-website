@@ -77,6 +77,7 @@ function directionTone(direction: SignalDirection) {
 function tierTone(tier: SignalTier) {
   if (tier === "HIGH") return "text-emerald-700 dark:text-emerald-300";
   if (tier === "MEDIUM") return "text-amber-700 dark:text-amber-300";
+  if (tier === "LOW") return "text-sky-700 dark:text-sky-300";
   return "text-[color:var(--muted)]";
 }
 

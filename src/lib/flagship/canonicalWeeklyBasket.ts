@@ -6,6 +6,13 @@ import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import { computeTieredWeekForSystem, TIERED_DISPLAY_LABELS } from "@/lib/performance/tiered";
 import type { PerformanceModel } from "@/lib/performanceLab";
+import {
+  buildCotGateContext,
+  buildGateMap,
+  evaluatePairWithGate,
+  type GateDecision,
+  type TradeDirection,
+} from "@/lib/performance/gateEvaluation";
 
 export type CanonicalWeeklyTier = "HIGH" | "MEDIUM" | "LOW";
 export type CanonicalWeeklyDirection = "LONG" | "SHORT";
@@ -16,17 +23,20 @@ export type CanonicalWeeklySignal = {
   direction: CanonicalWeeklyDirection;
   tier: CanonicalWeeklyTier;
   model: PerformanceModel;
-  gateDecision: "PASS";
+  gateDecision: Extract<GateDecision, "PASS" | "NO_DATA">;
   gateReasons: string[];
 };
 
 export type CanonicalWeeklyBasketPayload = {
+  schemaVersion: number;
   generatedUtc: string;
   currentWeekOpenUtc: string;
+  baseSystemId: string;
   strategyId: string;
   strategyName: string;
   sourceLabel: string;
   sourceType: "frozen_weekly_snapshot";
+  gateMode: "reduce_as_skip";
   signals: CanonicalWeeklySignal[];
 };
 
@@ -61,10 +71,10 @@ function weekFilePath(weekOpenUtc: string) {
 function buildSourceLabel(weekOpenUtc: string) {
   const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).setZone("America/New_York");
   if (!parsed.isValid) {
-    return "Frozen weekly Tiered V3 snapshot";
+    return "Frozen Tiered V3 gated weekly snapshot";
   }
   const monday = parsed.plus({ days: 1 }).startOf("day");
-  return `Frozen Tiered V3 weekly snapshot · week of ${monday.toFormat("MMM dd, yyyy")}`;
+  return `Frozen Tiered V3 gated weekly snapshot · week of ${monday.toFormat("MMM dd, yyyy")}`;
 }
 
 function normalizeSignalDirection(value: unknown): CanonicalWeeklyDirection | null {
@@ -80,13 +90,26 @@ function normalizeTier(value: unknown): CanonicalWeeklyTier | null {
 function normalizePayload(value: unknown): CanonicalWeeklyBasketPayload | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
+  const schemaVersion = Number(record.schemaVersion ?? 0);
   const currentWeekOpenUtc = String(record.currentWeekOpenUtc ?? "").trim();
   const generatedUtc = String(record.generatedUtc ?? "").trim();
+  const baseSystemId = String(record.baseSystemId ?? "").trim();
   const strategyId = String(record.strategyId ?? "").trim();
   const strategyName = String(record.strategyName ?? "").trim();
   const sourceLabel = String(record.sourceLabel ?? "").trim();
   const sourceType = record.sourceType === "frozen_weekly_snapshot" ? "frozen_weekly_snapshot" : null;
-  if (!currentWeekOpenUtc || !generatedUtc || !strategyId || !strategyName || !sourceLabel || !sourceType) {
+  const gateMode = record.gateMode === "reduce_as_skip" ? "reduce_as_skip" : null;
+  if (
+    schemaVersion < 2 ||
+    !currentWeekOpenUtc ||
+    !generatedUtc ||
+    !baseSystemId ||
+    !strategyId ||
+    !strategyName ||
+    !sourceLabel ||
+    !sourceType ||
+    !gateMode
+  ) {
     return null;
   }
 
@@ -107,7 +130,10 @@ function normalizePayload(value: unknown): CanonicalWeeklyBasketPayload | null {
             direction,
             tier,
             model,
-            gateDecision: "PASS" as const,
+            gateDecision:
+              signal.gateDecision === "PASS" || signal.gateDecision === "NO_DATA"
+                ? signal.gateDecision
+                : "NO_DATA",
             gateReasons: Array.isArray(signal.gateReasons)
               ? signal.gateReasons.map((reason) => String(reason)).filter(Boolean)
               : [],
@@ -117,12 +143,15 @@ function normalizePayload(value: unknown): CanonicalWeeklyBasketPayload | null {
     : [];
 
   return {
+    schemaVersion,
     generatedUtc,
     currentWeekOpenUtc,
+    baseSystemId,
     strategyId,
     strategyName,
     sourceLabel,
     sourceType,
+    gateMode,
     signals,
   };
 }
@@ -147,6 +176,9 @@ async function computePayload(weekOpenUtc: string): Promise<CanonicalWeeklyBaske
     throw new Error(`Unable to compute Tiered V3 weekly basket for ${weekOpenUtc}`);
   }
 
+  const gateMap = buildGateMap();
+  const cotContext = await buildCotGateContext();
+
   const signals: CanonicalWeeklySignal[] = computed.combined.flatMap((row) => {
     const tier = MODEL_TO_TIER[row.model];
     if (!tier) return [];
@@ -154,16 +186,33 @@ async function computePayload(weekOpenUtc: string): Promise<CanonicalWeeklyBaske
       .map((detail) => {
         const direction = normalizeSignalDirection(detail.direction);
         if (!direction) return null;
+        const pair = detail.pair.toUpperCase();
+        const assetClass = ASSET_CLASS_BY_PAIR.get(pair) ?? "fx";
+        const gate = evaluatePairWithGate({
+          pair,
+          weekOpenUtc,
+          direction: direction as TradeDirection,
+          assetClass: assetClass as "fx" | "indices" | "crypto" | "commodities",
+          gateMap,
+          cotContext,
+          reduceAsSkip: true,
+        });
+        if (gate.decision === "SKIP" || gate.decision === "REDUCE") {
+          return null;
+        }
         return {
-          pair: detail.pair,
-          assetClass: ASSET_CLASS_BY_PAIR.get(detail.pair.toUpperCase()) ?? "fx",
+          pair,
+          assetClass,
           direction,
           tier,
           model: row.model,
-          gateDecision: "PASS" as const,
+          gateDecision: gate.decision === "NO_DATA" ? "NO_DATA" : "PASS",
           gateReasons: [
+            ...gate.reasons,
             `PASS_${String(TIERED_DISPLAY_LABELS[row.model] ?? row.model).toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`,
-            ...(Array.isArray(detail.reason) ? detail.reason.map((reason) => String(reason).trim()).filter(Boolean) : []),
+            ...(Array.isArray(detail.reason)
+              ? detail.reason.map((reason) => String(reason).trim()).filter(Boolean)
+              : []),
           ],
         } satisfies CanonicalWeeklySignal;
       })
@@ -171,12 +220,15 @@ async function computePayload(weekOpenUtc: string): Promise<CanonicalWeeklyBaske
   });
 
   return {
+    schemaVersion: 2,
     generatedUtc: new Date().toISOString(),
     currentWeekOpenUtc: weekOpenUtc,
+    baseSystemId: "tiered_v3",
     strategyId: "tiered_v3_gated",
     strategyName: "Tiered V3 Net Hold Gated",
     sourceLabel: buildSourceLabel(weekOpenUtc),
     sourceType: "frozen_weekly_snapshot",
+    gateMode: "reduce_as_skip",
     signals: signals.sort((left, right) => left.pair.localeCompare(right.pair)),
   };
 }

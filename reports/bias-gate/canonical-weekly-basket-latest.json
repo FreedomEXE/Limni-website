@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 2,
+  "generatedUtc": "2026-03-24T02:01:58.842Z",
+  "currentWeekOpenUtc": "2026-03-22T23:00:00.000Z",
+  "baseSystemId": "tiered_v3",
+  "strategyId": "tiered_v3_gated",
+  "strategyName": "Tiered V3 Net Hold Gated",
+  "sourceLabel": "Frozen Tiered V3 gated weekly snapshot · week of Mar 23, 2026",
+  "sourceType": "frozen_weekly_snapshot",
+  "gateMode": "reduce_as_skip",
+  "signals": [
+    {
+      "pair": "BTCUSD",
+      "assetClass": "crypto",
+      "direction": "SHORT",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "NO_DATA",
+      "gateReasons": [
+        "CRYPTO_GATE_NO_DATA",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "ETHUSD",
+      "assetClass": "crypto",
+      "direction": "SHORT",
+      "tier": "HIGH",
+      "model": "antikythera_v3",
+      "gateDecision": "NO_DATA",
+      "gateReasons": [
+        "CRYPTO_GATE_NO_DATA",
+        "PASS_TIER_1",
+        "Tier 1 agreement vote"
+      ]
+    },
+    {
+      "pair": "EURNZD",
+      "assetClass": "fx",
+      "direction": "LONG",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "PASS",
+      "gateReasons": [
+        "COT_PASS",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "SPXUSD",
+      "assetClass": "indices",
+      "direction": "LONG",
+      "tier": "HIGH",
+      "model": "antikythera_v3",
+      "gateDecision": "PASS",
+      "gateReasons": [
+        "COT_PASS",
+        "PASS_TIER_1",
+        "Tier 1 agreement vote"
+      ]
+    },
+    {
+      "pair": "XAUUSD",
+      "assetClass": "commodities",
+      "direction": "SHORT",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "PASS",
+      "gateReasons": [
+        "COT_PASS",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    }
+  ]
+}
