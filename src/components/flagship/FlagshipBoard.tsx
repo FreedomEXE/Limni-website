@@ -418,11 +418,12 @@ function agreementChip(value: AgreementSignal, label: string) {
 }
 
 function sortBucket(row: MatrixRow) {
-  if (row.signalMode === "NEUTRAL") return 4;
-  if (row.signalMode === "FLAGSHIP" && row.oneAdrTouched) return 0;
-  if (row.signalMode === "FLAGSHIP") return 1;
-  if (row.signalMode === "ADR_DIP" && row.oneAdrTouched) return 2;
-  return 3; // ADR_DIP watching
+  // Group 1: ADR Hits — directional pairs that have touched their trigger
+  if (row.signalMode !== "NEUTRAL" && row.oneAdrTouched) return 0;
+  // Group 2: Watching — directional pairs not yet hit
+  if (row.signalMode !== "NEUTRAL") return 1;
+  // Group 3: Neutral
+  return 2;
 }
 
 function formatUsd(value: number) {
@@ -702,13 +703,12 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           signalMode,
         } satisfies MatrixRow;
       })
-      .filter((row) => row.sessionEligible.includes(selectedSession))
       .sort((left, right) => {
         const bucketDiff = sortBucket(left) - sortBucket(right);
         if (bucketDiff !== 0) return bucketDiff;
         return left.pair.localeCompare(right.pair);
       });
-  }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves, selectedSession, weeklyBasket]);
+  }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves, weeklyBasket]);
 
   const flagshipCount = matrixRows.filter((row) => row.signalMode === "FLAGSHIP").length;
   const adrDipCount = matrixRows.filter((row) => row.signalMode === "ADR_DIP").length;
@@ -747,32 +747,12 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
-          {(["ASIA", "LONDON", "NY"] as SessionName[]).map((session) => (
-            <button
-              key={session}
-              type="button"
-              onClick={() => setSelectedSession(session)}
-              className={`rounded-lg border px-3 py-2 text-left transition-colors ${
-                selectedSession === session
-                  ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                  : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)] hover:bg-[var(--panel)]/80 hover:text-[var(--foreground)]"
-              }`}
-            >
-              <div className="text-xs font-semibold uppercase tracking-[0.14em]">{session}</div>
-              <div className="text-[11px]">{sessionWindowLabelEt(session, nowUtc)}</div>
-            </button>
-          ))}
-        </div>
-
         {!loading && !error ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/55 px-3 py-2 text-[11px] text-[color:var(--muted)]">
-            <span className="font-semibold uppercase tracking-[0.12em]">{selectedSession}</span>
-            <span>Flagship {flagshipCount}</span>
-            <span>ADR Dip {adrDipCount}</span>
             <span>ADR Hit {adrHitCount}</span>
-            <span>Close {closeCount}</span>
+            <span>Watching {qualifiedCount - adrHitCount}</span>
             <span>Neutral {neutralCount}</span>
+            <span className="ml-auto">Total {matrixRows.length}</span>
           </div>
         ) : null}
 
