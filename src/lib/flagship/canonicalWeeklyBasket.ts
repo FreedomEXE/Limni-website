@@ -137,7 +137,7 @@ function normalizePayload(value: unknown): CanonicalWeeklyBasketPayload | null {
                 ? signal.gateDecision
                 : "NO_DATA",
             signalMode:
-              signal.gateDecision === "PASS" || signal.gateDecision === "NO_DATA"
+              signal.gateDecision === "PASS"
                 ? "FLAGSHIP"
                 : "ADR_DIP",
             gateReasons: Array.isArray(signal.gateReasons)
@@ -204,7 +204,7 @@ async function computePayload(weekOpenUtc: string): Promise<CanonicalWeeklyBaske
           reduceAsSkip: true,
         });
         const signalMode: "FLAGSHIP" | "ADR_DIP" =
-          gate.decision === "PASS" || gate.decision === "NO_DATA"
+          gate.decision === "PASS"
             ? "FLAGSHIP"
             : "ADR_DIP";
         return {
