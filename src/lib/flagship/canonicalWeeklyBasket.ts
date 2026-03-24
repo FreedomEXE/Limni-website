@@ -195,6 +195,11 @@ export async function getCanonicalWeeklyBasket(options?: { weekOpenUtc?: string 
   }
 
   const computed = await computePayload(weekOpenUtc);
-  writePayload(computed);
+  try {
+    writePayload(computed);
+  } catch {
+    // Serverless deployments may use a read-only filesystem. The basket can still
+    // be returned safely without persisting a local snapshot artifact.
+  }
   return computed;
 }
