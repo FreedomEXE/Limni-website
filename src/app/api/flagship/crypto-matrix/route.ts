@@ -26,7 +26,6 @@ import {
   type BitgetMarketContract,
   type BitgetMarketTicker,
 } from "@/lib/bitget";
-import { readAllLatestAssetStrengths } from "@/lib/assetStrength";
 import { getCanonicalTradingDayWindow } from "@/lib/canonicalPriceWindows";
 import { fetchLiquidationHeatmap } from "@/lib/coinank";
 import { derivePairDirectionsByBaseWithNeutral } from "@/lib/cotCompute";
@@ -88,6 +87,8 @@ type AltFetchResult = {
   symbol: string;
   altTrend: MatrixTrendState;
   altTrendCandle: CryptoCandleDetail;
+  strengthRaw1h: number | null;
+  strengthRaw4h: number | null;
 };
 
 type WeeklyBiasSnapshot = Omit<CryptoAnchorRegime, "direction" | "tier" | "votes" | "symbol">;
@@ -491,18 +492,63 @@ async function readHeatmapContexts(symbols: string[]) {
   );
 }
 
-async function readCryptoStrengths() {
-  const strengthResults = await readAllLatestAssetStrengths("crypto");
+function normalizeStrengthMap(rawBySymbol: Map<string, number | null>) {
+  const finiteValues = Array.from(rawBySymbol.values()).filter(
+    (value): value is number => value !== null && Number.isFinite(value),
+  );
+  const out = new Map<string, number | null>();
+
+  if (finiteValues.length === 0) {
+    for (const symbol of rawBySymbol.keys()) {
+      out.set(symbol, null);
+    }
+    return out;
+  }
+
+  const min = Math.min(...finiteValues);
+  const max = Math.max(...finiteValues);
+  const span = max - min;
+
+  for (const [symbol, value] of rawBySymbol.entries()) {
+    if (value === null || !Number.isFinite(value)) {
+      out.set(symbol, null);
+      continue;
+    }
+    out.set(symbol, span > 1e-12 ? ((value - min) / span) * 100 : 50);
+  }
+
+  return out;
+}
+
+function buildCryptoStrengthMap(
+  symbols: string[],
+  altFetchBySymbol: Map<string, AltFetchResult>,
+  tickersByBitgetSymbol: Map<string, BitgetMarketTicker>,
+) {
+  const uniqueSymbols = Array.from(new Set(symbols));
+  const raw1hBySymbol = new Map<string, number | null>();
+  const raw4hBySymbol = new Map<string, number | null>();
+  const raw24hBySymbol = new Map<string, number | null>();
+
+  for (const symbol of uniqueSymbols) {
+    const altFetch = altFetchBySymbol.get(symbol);
+    const ticker = tickersByBitgetSymbol.get(`${symbol}USDT`);
+    raw1hBySymbol.set(symbol, altFetch?.strengthRaw1h ?? null);
+    raw4hBySymbol.set(symbol, altFetch?.strengthRaw4h ?? null);
+    raw24hBySymbol.set(symbol, ticker?.change24hPct ?? null);
+  }
+
+  const normalized1h = normalizeStrengthMap(raw1hBySymbol);
+  const normalized4h = normalizeStrengthMap(raw4hBySymbol);
+  const normalized24h = normalizeStrengthMap(raw24hBySymbol);
   const out = new Map<string, StrengthMap>();
 
-  for (const bucket of strengthResults) {
-    for (const strength of bucket.strengths) {
-      const symbol = strength.asset.toUpperCase();
-      if (!out.has(symbol)) {
-        out.set(symbol, { "1h": null, "4h": null, "24h": null });
-      }
-      out.get(symbol)![bucket.window] = Number(strength.normalized);
-    }
+  for (const symbol of uniqueSymbols) {
+    out.set(symbol, {
+      "1h": normalized1h.get(symbol) ?? null,
+      "4h": normalized4h.get(symbol) ?? null,
+      "24h": normalized24h.get(symbol) ?? null,
+    });
   }
 
   return out;
@@ -843,14 +889,12 @@ export async function GET() {
     const [
       btcDirectionRegime,
       ethDirectionRegime,
-      strengthBySymbol,
       weeklyBiasBySymbol,
       tickers,
       contracts,
     ] = await Promise.all([
       buildAnchorRegime("BTC"),
       buildAnchorRegime("ETH"),
-      readCryptoStrengths(),
       readWeeklyCryptoBias(),
       fetchBitgetMarketTickers(),
       fetchBitgetMarketContracts(),
@@ -896,29 +940,40 @@ export async function GET() {
       ...visibleCandidates.map((candidate) => candidate.symbol).filter((symbol) => !anchorSymbols.includes(symbol)),
     ];
     const marketData = await readMarketData(symbolsToFetch);
+    const tickerByBitgetSymbol = new Map(tickers.map((ticker) => [ticker.symbol.toUpperCase(), ticker]));
 
     const altRows = await mapWithConcurrency(symbolsToFetch, ALT_FETCH_CONCURRENCY, async (symbol) => {
       try {
-        const candle = symbol === "BTC"
-          ? await fetchLastCompletedCandle("BTC", "H4")
-          : symbol === "ETH"
-            ? await fetchLastCompletedCandle("ETH", "H4")
-            : await fetchLastCompletedCandle(symbol, "H4");
+        const [h4Candle, h1Candle] = await Promise.all([
+          fetchLastCompletedCandle(symbol, "H4"),
+          fetchLastCompletedCandle(symbol, "H1"),
+        ]);
+        const h4Detail = buildCandleDetail(h4Candle);
+        const h1Detail = buildCandleDetail(h1Candle);
         return {
           symbol,
-          altTrend: deriveAltTrend(candle),
-          altTrendCandle: buildCandleDetail(candle),
+          altTrend: deriveAltTrend(h4Candle),
+          altTrendCandle: h4Detail,
+          strengthRaw1h: h1Detail?.bodyPct ?? null,
+          strengthRaw4h: h4Detail?.bodyPct ?? null,
         } satisfies AltFetchResult;
       } catch {
         return {
           symbol,
           altTrend: "NEUTRAL",
           altTrendCandle: null,
+          strengthRaw1h: null,
+          strengthRaw4h: null,
         } satisfies AltFetchResult;
       }
     });
 
     const altFetchBySymbol = new Map(altRows.map((row) => [row.symbol, row]));
+    const strengthBySymbol = buildCryptoStrengthMap(
+      symbolsToFetch,
+      altFetchBySymbol,
+      tickerByBitgetSymbol,
+    );
 
     const anchorRowsBase: CryptoMatrixRow[] = (["BTC", "ETH"] as const).map((symbol) => {
       const ticker = anchorTickerBySymbol.get(`${symbol}USDT`);
