@@ -303,6 +303,16 @@ function writeUrlMap(filePath: string, map: Record<string, string>) {
   writeFileSync(resolved, JSON.stringify(map, null, 2), "utf8");
 }
 
+function withCaptureDate(rawUrl: string, date: string): string {
+  try {
+    const url = new URL(rawUrl);
+    url.searchParams.set("date", date);
+    return url.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 function tickerFromUrl(rawUrl: string): string {
   try {
     const url = new URL(rawUrl);
@@ -398,7 +408,7 @@ async function main() {
   let hadAuthFailure = false;
 
   for (const symbol of config.symbols) {
-    const mappedUrl = symbolUrlMap[symbol];
+    const mappedUrl = symbolUrlMap[symbol] ? withCaptureDate(symbolUrlMap[symbol], config.date) : "";
     const navigateAndSettle = async (url: string, label: string) => {
       console.log(`Navigating ${label} for ${symbol}: ${url}`);
       await page.goto(url, { waitUntil: "domcontentloaded" });
@@ -436,8 +446,8 @@ async function main() {
       }
     }
 
-    const bodyText = await page.evaluate(() => document.body?.innerText ?? "");
-    const authPageReason = detectAuthOrLandingPage(bodyText);
+    const landingText = await page.evaluate(() => document.body?.innerText ?? "");
+    const authPageReason = detectAuthOrLandingPage(landingText);
     if (authPageReason) {
       const safeSymbol = sanitizeFilePart(symbol);
       const shotPath = path.join(captureDir, `${safeSymbol}.png`);
@@ -445,7 +455,7 @@ async function main() {
       const textPath = path.join(captureDir, `${safeSymbol}.txt`);
       await page.screenshot({ path: shotPath, fullPage: true });
       writeFileSync(htmlPath, await page.content(), "utf8");
-      writeFileSync(textPath, bodyText, "utf8");
+      writeFileSync(textPath, landingText, "utf8");
       console.error(
         `[${symbol}] capture aborted: detected ${authPageReason}. ` +
           `Login to MenthorQ in the persistent browser profile and rerun.`,
@@ -482,12 +492,12 @@ async function main() {
       // Continue with retries below even if gamma readiness wait times out.
     }
 
-    const initialParseText = await page.evaluate(() => document.body?.innerText ?? "");
-    let parsed = parseMetricsFromText(initialParseText);
+    let renderedText = await page.evaluate(() => document.body?.innerText ?? "");
+    let parsed = parseMetricsFromText(renderedText);
     for (let attempt = 0; attempt < config.parseRetries && parsed.gammaCondition === ""; attempt += 1) {
       await page.waitForTimeout(config.parseRetryDelayMs);
-      const retryText = await page.evaluate(() => document.body?.innerText ?? "");
-      parsed = parseMetricsFromText(retryText);
+      renderedText = await page.evaluate(() => document.body?.innerText ?? "");
+      parsed = parseMetricsFromText(renderedText);
       if (parsed.gammaCondition !== "") {
         break;
       }
@@ -500,7 +510,7 @@ async function main() {
 
     await page.screenshot({ path: shotPath, fullPage: true });
     writeFileSync(htmlPath, await page.content(), "utf8");
-    writeFileSync(textPath, bodyText, "utf8");
+    writeFileSync(textPath, renderedText, "utf8");
 
     const noteParts: string[] = [];
     if (parsed.confidence === "LOW") {
