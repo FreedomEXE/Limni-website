@@ -150,23 +150,20 @@ showLong  = resolvedBias != "SHORT"
 showShort = resolvedBias != "LONG"
 
 // ── Level Calculation ───────────────────────────────────────────────────────
-// Resolve long/short anchors based on mode + logic
-// Extreme: LONG anchors to running LOW (bounce 1 ADR up = entry), SHORT anchors to running HIGH (drop 1 ADR down = entry)
-// Static: always uses period open price
-// Freedom: always extreme, anchors to weekly running low/high
+// Extreme and Static use OPPOSITE math — mode-branched formulas required.
+// Extreme: LONG = runningLow * (1 + ADR%) → bounce up from low.  SHORT = runningHigh * (1 - ADR%) → drop from high.
+// Static:  LONG = open * (1 - ADR%) → dip below open.           SHORT = open * (1 + ADR%) → bounce above open.
+// Freedom: always extreme with weekly anchors.
 extremeLongAnchor  = useDaily ? dayRunningLow  : weekRunningLow
 extremeShortAnchor = useDaily ? dayRunningHigh : weekRunningHigh
 
-freedomLongAnchor  = useExtreme ? extremeLongAnchor  : anchorOpenPrice
-freedomShortAnchor = useExtreme ? extremeShortAnchor : anchorOpenPrice
-
-longEntryPrice  = adrReady ? freedomLongAnchor  * (1 + anchorAdrPct * entryMultiple / 100) : na
-longTpPrice     = adrReady ? longEntryPrice * (1 + anchorAdrPct * tpMultiple / 100)        : na
-shortEntryPrice = adrReady ? freedomShortAnchor * (1 - anchorAdrPct * entryMultiple / 100) : na
-shortTpPrice    = adrReady ? shortEntryPrice * (1 - anchorAdrPct * tpMultiple / 100)       : na
+longEntryPrice  = adrReady ? (useExtreme ? extremeLongAnchor  * (1 + anchorAdrPct * entryMultiple / 100) : anchorOpenPrice * (1 - anchorAdrPct * entryMultiple / 100)) : na
+longTpPrice     = adrReady ? longEntryPrice * (1 + anchorAdrPct * tpMultiple / 100) : na
+shortEntryPrice = adrReady ? (useExtreme ? extremeShortAnchor * (1 - anchorAdrPct * entryMultiple / 100) : anchorOpenPrice * (1 + anchorAdrPct * entryMultiple / 100)) : na
+shortTpPrice    = adrReady ? shortEntryPrice * (1 - anchorAdrPct * tpMultiple / 100) : na
 
 // ADR distance for display
-adrDistance = adrReady ? freedomLongAnchor * anchorAdrPct / 100 : na
+adrDistance = adrReady ? (useExtreme ? extremeShortAnchor : anchorOpenPrice) * anchorAdrPct / 100 : na
 pipSize     = syminfo.type == "forex" ? (syminfo.currency == "JPY" ? 0.01 : 0.0001) : syminfo.mintick
 adrPips     = adrReady and pipSize > 0 ? adrDistance / pipSize : na
 longTpPips  = adrReady and pipSize > 0 and showLong  ? math.abs(longTpPrice  - longEntryPrice)  / pipSize : na
@@ -283,7 +280,7 @@ if longState == 1
 
 else if longState == 0 and adrReady and showLong and showCurrentPeriod
     // WAITING — check if price triggers entry
-    if not na(longEntryPrice) and high >= longEntryPrice
+    if not na(longEntryPrice) and (useExtreme ? high >= longEntryPrice : low <= longEntryPrice)
         longState    := 1
         longEntryBar := bar_index
         longEntry    := longEntryPrice
@@ -315,7 +312,7 @@ if shortState == 1
 
 else if shortState == 0 and adrReady and showShort and showCurrentPeriod
     // WAITING — check if price triggers entry
-    if not na(shortEntryPrice) and low <= shortEntryPrice
+    if not na(shortEntryPrice) and (useExtreme ? low <= shortEntryPrice : high >= shortEntryPrice)
         shortState    := 1
         shortEntryBar := bar_index
         shortEntry    := shortEntryPrice
