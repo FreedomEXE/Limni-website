@@ -36,12 +36,15 @@ normalizePairList(_raw) =>
     cleaned := str.replace_all(cleaned, "\r", ",")
     cleaned := str.replace_all(cleaned, "\n", ",")
     cleaned := str.replace_all(cleaned, ";", ",")
+    cleaned := str.replace_all(cleaned, "/", "")
+    cleaned := str.replace_all(cleaned, ".", "")
     cleaned
 
 listContainsPair(_list, _pair) =>
     string wrappedList = "," + normalizePairList(_list) + ","
-    string wrappedPair = "," + str.upper(_pair) + ","
-    str.length(_pair) > 0 and str.contains(wrappedList, wrappedPair)
+    string cleanPair   = str.replace_all(str.replace_all(str.upper(_pair), "/", ""), ".", "")
+    string wrappedPair = "," + cleanPair + ","
+    str.length(cleanPair) > 0 and str.contains(wrappedList, wrappedPair)
 
 getManualBias(_pair) =>
     bool inLong  = listContainsPair(longPairs, _pair)
@@ -131,7 +134,7 @@ anchorAdrPct    = useFreedom ? weekFreedomAdrPct : useDaily ? dayAdrPct : weekAd
 adrReady        = useExtreme ? (useDaily ? (not na(dayHighPrice) and not na(dayLowPrice) and not na(anchorAdrPct)) : (not na(weekHighPrice) and not na(weekLowPrice) and not na(anchorAdrPct))) : (not na(anchorOpenPrice) and not na(anchorAdrPct))
 
 // ── Bias Resolution ─────────────────────────────────────────────────────────
-tickerUpper  = str.upper(syminfo.ticker)
+tickerUpper  = str.replace_all(str.replace_all(str.upper(syminfo.ticker), "/", ""), ".", "")
 manualBias   = getManualBias(tickerUpper)
 btcBias      = getManualBias("BTCUSD")
 ethBias      = getManualBias("ETHUSD")
@@ -191,7 +194,7 @@ var float periodHigh  = na
 var float periodLow   = na
 var int   periodBarStart = na
 
-if isNewPeriod and not useExtreme and showBoxes
+if isNewPeriod and showBoxes
     // Freeze previous period box (stop updating it)
     periodBox := na
     // Start new period box
@@ -200,7 +203,7 @@ if isNewPeriod and not useExtreme and showBoxes
     periodBarStart := bar_index
     periodBox := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=1, border_style=line.style_dotted)
 
-if not na(periodBox) and not useExtreme and showBoxes
+if not na(periodBox) and showBoxes
     // Expand high/low as price moves
     if high > periodHigh
         periodHigh := high
