@@ -5,7 +5,8 @@
  * File: route.ts
  *
  * Description:
- * Returns current-week ADR trigger levels for the intraday forward-test board.
+ * Returns current-week ADR trigger levels for all tracked pairs.
+ * Single mode: Dynamic ADR — entry = 1x ADR pullback from running weekly high/low.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -20,51 +21,35 @@ import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import type { AssetClass } from "@/lib/cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { fetchOandaCandle } from "@/lib/oandaPrices";
-import { getIntradayAdrThreshold } from "@/lib/flagship/intradayThresholds";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type IntradayLevelRow = {
+export type IntradayLevelRow = {
   pair: string;
   assetClass: AssetClass;
   adrPct: number | null;
   adrBarsUsed: number;
-  adrMultiplier: number;
-  thresholdPct: number | null;
-  oneAdrThresholdPct: number | null;
   weekOpenUtc: string;
   weekOpenPrice: number | null;
   weekHighPrice: number | null;
   weekLowPrice: number | null;
   currentPrice: number | null;
+  /* Dynamic ADR trigger: 1x ADR from running weekly extreme */
   longTriggerPrice: number | null;
   shortTriggerPrice: number | null;
-  oneAdrLongTriggerPrice: number | null;
-  oneAdrShortTriggerPrice: number | null;
   longTouched: boolean;
   shortTouched: boolean;
-  oneAdrLongTouched: boolean;
-  oneAdrShortTouched: boolean;
-  /* Daily anchor fields */
-  dailyOpenUtc: string;
-  dailyOpenPrice: number | null;
-  dailyHighPrice: number | null;
-  dailyLowPrice: number | null;
-  dailyOneAdrLongTriggerPrice: number | null;
-  dailyOneAdrShortTriggerPrice: number | null;
-  dailyOneAdrLongTouched: boolean;
-  dailyOneAdrShortTouched: boolean;
-  /* Freedom anchor fields — running weekly extreme */
-  freedomLongTriggerPrice: number | null;
-  freedomShortTriggerPrice: number | null;
-  freedomLongTouched: boolean;
-  freedomShortTouched: boolean;
-  sourceLabel: string;
+  /* TP levels: 0.25x ADR from trigger */
+  longTpPrice: number | null;
+  shortTpPrice: number | null;
 };
 
 const ADR_LOOKBACK_DAYS = 10;
 const ADR_MIN_REQUIRED_DAYS = 5;
+const ENTRY_MULTIPLE = 1.0;
+const TP_MULTIPLE = 0.25;
+
 const UNIVERSE = (Object.entries(PAIRS_BY_ASSET_CLASS) as Array<[AssetClass, Array<{ pair: string }>]>).flatMap(
   ([assetClass, pairs]) =>
     pairs.map((pairDef) => ({
@@ -107,7 +92,6 @@ export async function GET() {
     const currentWeekOpenUtc = getCanonicalWeekOpenUtc(nowUtc);
 
     const rows = await mapWithConcurrency(UNIVERSE, 6, async ({ pair, assetClass }) => {
-      const threshold = getIntradayAdrThreshold(assetClass);
       const tradingDayWindow = getCanonicalTradingDayWindow(assetClass, nowUtc);
       const weekWindow = getCanonicalWeekWindow(currentWeekOpenUtc, assetClass);
       const lookbackFromUtc =
@@ -122,9 +106,6 @@ export async function GET() {
       let weekHighPrice: number | null = null;
       let weekLowPrice: number | null = null;
       let currentPrice: number | null = null;
-      let dailyOpenPrice: number | null = null;
-      let dailyHighPrice: number | null = null;
-      let dailyLowPrice: number | null = null;
 
       try {
         const adrBars = await getCanonicalBars(pair, "1d", lookbackFromUtc, lookbackToUtc);
@@ -141,11 +122,7 @@ export async function GET() {
         adrPct = null;
       }
 
-      /* Fetch weekly + daily candles in parallel */
-      const [weekCandle, dayCandle] = await Promise.all([
-        fetchOandaCandle(pair, weekWindow.openUtc, nowUtc).catch(() => null),
-        fetchOandaCandle(pair, tradingDayWindow.openUtc, nowUtc).catch(() => null),
-      ]);
+      const weekCandle = await fetchOandaCandle(pair, weekWindow.openUtc, nowUtc).catch(() => null);
 
       if (weekCandle) {
         weekOpenPrice = weekCandle.open;
@@ -153,51 +130,25 @@ export async function GET() {
         weekLowPrice = weekCandle.low;
         currentPrice = weekCandle.close;
       }
-      if (dayCandle) {
-        dailyOpenPrice = dayCandle.open;
-        dailyHighPrice = dayCandle.high;
-        dailyLowPrice = dayCandle.low;
-        if (!currentPrice) currentPrice = dayCandle.close;
-      }
 
-      /* Weekly trigger prices */
-      const thresholdPct = adrPct === null ? null : adrPct * threshold.adrMultiplier;
-      const oneAdrThresholdPct = adrPct;
+      /* Dynamic trigger: 1x ADR from running weekly high/low */
       const longTriggerPrice =
-        weekOpenPrice !== null && thresholdPct !== null
-          ? weekOpenPrice * (1 - thresholdPct / 100)
+        weekHighPrice !== null && adrPct !== null
+          ? weekHighPrice * (1 - (adrPct * ENTRY_MULTIPLE) / 100)
           : null;
       const shortTriggerPrice =
-        weekOpenPrice !== null && thresholdPct !== null
-          ? weekOpenPrice * (1 + thresholdPct / 100)
-          : null;
-      const oneAdrLongTriggerPrice =
-        weekOpenPrice !== null && oneAdrThresholdPct !== null
-          ? weekOpenPrice * (1 - oneAdrThresholdPct / 100)
-          : null;
-      const oneAdrShortTriggerPrice =
-        weekOpenPrice !== null && oneAdrThresholdPct !== null
-          ? weekOpenPrice * (1 + oneAdrThresholdPct / 100)
-          : null;
-
-      /* Freedom trigger prices — 1x ADR from running weekly extreme */
-      const freedomLongTriggerPrice =
-        weekHighPrice !== null && adrPct !== null
-          ? weekHighPrice * (1 - adrPct / 100)
-          : null;
-      const freedomShortTriggerPrice =
         weekLowPrice !== null && adrPct !== null
-          ? weekLowPrice * (1 + adrPct / 100)
+          ? weekLowPrice * (1 + (adrPct * ENTRY_MULTIPLE) / 100)
           : null;
 
-      /* Daily trigger prices (always 1x ADR from daily open) */
-      const dailyOneAdrLongTriggerPrice =
-        dailyOpenPrice !== null && adrPct !== null
-          ? dailyOpenPrice * (1 - adrPct / 100)
+      /* TP: 0.25x ADR from trigger */
+      const longTpPrice =
+        longTriggerPrice !== null && adrPct !== null
+          ? longTriggerPrice * (1 + (adrPct * TP_MULTIPLE) / 100)
           : null;
-      const dailyOneAdrShortTriggerPrice =
-        dailyOpenPrice !== null && adrPct !== null
-          ? dailyOpenPrice * (1 + adrPct / 100)
+      const shortTpPrice =
+        shortTriggerPrice !== null && adrPct !== null
+          ? shortTriggerPrice * (1 - (adrPct * TP_MULTIPLE) / 100)
           : null;
 
       return {
@@ -205,9 +156,6 @@ export async function GET() {
         assetClass,
         adrPct,
         adrBarsUsed,
-        adrMultiplier: threshold.adrMultiplier,
-        thresholdPct,
-        oneAdrThresholdPct,
         weekOpenUtc: weekWindow.periodOpenUtc,
         weekOpenPrice,
         weekHighPrice,
@@ -215,8 +163,6 @@ export async function GET() {
         currentPrice,
         longTriggerPrice,
         shortTriggerPrice,
-        oneAdrLongTriggerPrice,
-        oneAdrShortTriggerPrice,
         longTouched:
           longTriggerPrice !== null &&
           weekLowPrice !== null &&
@@ -227,47 +173,8 @@ export async function GET() {
           weekHighPrice !== null &&
           Number.isFinite(weekHighPrice) &&
           weekHighPrice >= shortTriggerPrice,
-        oneAdrLongTouched:
-          oneAdrLongTriggerPrice !== null &&
-          weekLowPrice !== null &&
-          Number.isFinite(weekLowPrice) &&
-          weekLowPrice <= oneAdrLongTriggerPrice,
-        oneAdrShortTouched:
-          oneAdrShortTriggerPrice !== null &&
-          weekHighPrice !== null &&
-          Number.isFinite(weekHighPrice) &&
-          weekHighPrice >= oneAdrShortTriggerPrice,
-        /* Daily anchor fields */
-        dailyOpenUtc: tradingDayWindow.openUtc.toISO() ?? "",
-        dailyOpenPrice,
-        dailyHighPrice,
-        dailyLowPrice,
-        dailyOneAdrLongTriggerPrice,
-        dailyOneAdrShortTriggerPrice,
-        dailyOneAdrLongTouched:
-          dailyOneAdrLongTriggerPrice !== null &&
-          dailyLowPrice !== null &&
-          Number.isFinite(dailyLowPrice) &&
-          dailyLowPrice <= dailyOneAdrLongTriggerPrice,
-        dailyOneAdrShortTouched:
-          dailyOneAdrShortTriggerPrice !== null &&
-          dailyHighPrice !== null &&
-          Number.isFinite(dailyHighPrice) &&
-          dailyHighPrice >= dailyOneAdrShortTriggerPrice,
-        /* Freedom anchor fields */
-        freedomLongTriggerPrice,
-        freedomShortTriggerPrice,
-        freedomLongTouched:
-          freedomLongTriggerPrice !== null &&
-          weekLowPrice !== null &&
-          Number.isFinite(weekLowPrice) &&
-          weekLowPrice <= freedomLongTriggerPrice,
-        freedomShortTouched:
-          freedomShortTriggerPrice !== null &&
-          weekHighPrice !== null &&
-          Number.isFinite(weekHighPrice) &&
-          weekHighPrice >= freedomShortTriggerPrice,
-        sourceLabel: `${threshold.sourceLabel} weekly`,
+        longTpPrice,
+        shortTpPrice,
       } satisfies IntradayLevelRow;
     });
 

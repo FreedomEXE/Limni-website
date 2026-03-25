@@ -42,9 +42,6 @@ type IntradayLevelRow = {
   assetClass: AssetClass;
   adrPct: number | null;
   adrBarsUsed: number;
-  adrMultiplier: number;
-  thresholdPct: number | null;
-  oneAdrThresholdPct: number | null;
   weekOpenUtc: string;
   weekOpenPrice: number | null;
   weekHighPrice: number | null;
@@ -52,13 +49,10 @@ type IntradayLevelRow = {
   currentPrice: number | null;
   longTriggerPrice: number | null;
   shortTriggerPrice: number | null;
-  oneAdrLongTriggerPrice: number | null;
-  oneAdrShortTriggerPrice: number | null;
   longTouched: boolean;
   shortTouched: boolean;
-  oneAdrLongTouched: boolean;
-  oneAdrShortTouched: boolean;
-  sourceLabel: string;
+  longTpPrice: number | null;
+  shortTpPrice: number | null;
 };
 
 type IntradayLevelsPayload = {
@@ -204,17 +198,12 @@ export default function IntradayForwardBoard({
           signal.direction === "LONG"
             ? (level?.longTouched ?? false)
             : (level?.shortTouched ?? false);
-        const oneAdrTouched =
-          signal.direction === "LONG"
-            ? (level?.oneAdrLongTouched ?? false)
-            : (level?.oneAdrShortTouched ?? false);
-
         return {
           ...signal,
           assetClass,
           adrPct: level?.adrPct ?? null,
           touched,
-          oneAdrTouched,
+          oneAdrTouched: touched,
         } satisfies IntradayBoardRow;
       })
       .sort(sortRows);

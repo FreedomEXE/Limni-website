@@ -79,7 +79,6 @@ export type CryptoMatrixRow = {
   fundingAgree: boolean | null;
   adrPct: number | null;
   adrBarsUsed: number;
-  adrMultiplier: number | null;
   weekOpenUtc: string | null;
   weekOpenPrice: number | null;
   weekHighPrice: number | null;
@@ -87,9 +86,6 @@ export type CryptoMatrixRow = {
   currentPrice: number | null;
   longTriggerPrice: number | null;
   shortTriggerPrice: number | null;
-  oneAdrLongTriggerPrice: number | null;
-  oneAdrShortTriggerPrice: number | null;
-  oneAdrTouched: boolean;
   touched: boolean;
   sizing: string;
 };
