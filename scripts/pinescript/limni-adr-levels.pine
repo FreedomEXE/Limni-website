@@ -151,18 +151,18 @@ showShort = resolvedBias != "LONG"
 
 // ── Level Calculation ───────────────────────────────────────────────────────
 // Resolve long/short anchors based on mode + logic
-// Extreme: Weekly uses weekHigh/weekLow, Daily uses dayHigh/dayLow
+// Extreme: LONG anchors to running LOW (bounce 1 ADR up = entry), SHORT anchors to running HIGH (drop 1 ADR down = entry)
 // Static: always uses period open price
-// Freedom: always uses weekHigh/weekLow (extreme by definition)
-extremeLongAnchor  = useDaily ? dayRunningHigh : weekRunningHigh
-extremeShortAnchor = useDaily ? dayRunningLow  : weekRunningLow
+// Freedom: always extreme, anchors to weekly running low/high
+extremeLongAnchor  = useDaily ? dayRunningLow  : weekRunningLow
+extremeShortAnchor = useDaily ? dayRunningHigh : weekRunningHigh
 
 freedomLongAnchor  = useExtreme ? extremeLongAnchor  : anchorOpenPrice
 freedomShortAnchor = useExtreme ? extremeShortAnchor : anchorOpenPrice
 
-longEntryPrice  = adrReady ? freedomLongAnchor  * (1 - anchorAdrPct * entryMultiple / 100) : na
+longEntryPrice  = adrReady ? freedomLongAnchor  * (1 + anchorAdrPct * entryMultiple / 100) : na
 longTpPrice     = adrReady ? longEntryPrice * (1 + anchorAdrPct * tpMultiple / 100)        : na
-shortEntryPrice = adrReady ? freedomShortAnchor * (1 + anchorAdrPct * entryMultiple / 100) : na
+shortEntryPrice = adrReady ? freedomShortAnchor * (1 - anchorAdrPct * entryMultiple / 100) : na
 shortTpPrice    = adrReady ? shortEntryPrice * (1 - anchorAdrPct * tpMultiple / 100)       : na
 
 // ADR distance for display
@@ -283,7 +283,7 @@ if longState == 1
 
 else if longState == 0 and adrReady and showLong and showCurrentPeriod
     // WAITING — check if price triggers entry
-    if not na(longEntryPrice) and low <= longEntryPrice
+    if not na(longEntryPrice) and high >= longEntryPrice
         longState    := 1
         longEntryBar := bar_index
         longEntry    := longEntryPrice
@@ -315,7 +315,7 @@ if shortState == 1
 
 else if shortState == 0 and adrReady and showShort and showCurrentPeriod
     // WAITING — check if price triggers entry
-    if not na(shortEntryPrice) and high >= shortEntryPrice
+    if not na(shortEntryPrice) and low <= shortEntryPrice
         shortState    := 1
         shortEntryBar := bar_index
         shortEntry    := shortEntryPrice
