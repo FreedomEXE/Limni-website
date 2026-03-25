@@ -7,6 +7,7 @@ indicator("Limni ADR Levels", shorttitle="Limni ADR", overlay=true, format=forma
 
 // ── Inputs ──────────────────────────────────────────────────────────────────
 anchorMode    = input.string("Weekly", "ADR Anchor Mode", options=["Weekly", "Daily", "Freedom"], tooltip="Weekly = week open anchor (1 trade/week). Daily = day open anchor (1 trade/day). Freedom = running weekly extreme, resets after each TP hit (multiple trades/week).")
+anchorLogic   = input.string("Extreme", "ADR Anchor Logic", options=["Extreme", "Static"], tooltip="Extreme = anchor to running period high/low (dynamic, more fills). Static = anchor to period open price (fixed). Freedom mode always uses Extreme regardless.")
 adrLookback   = input.int(10, "ADR Lookback (days)", minval=1, maxval=50)
 adrMinDays    = input.int(5, "ADR Min Required Days", minval=1, maxval=50)
 entryMultiple = input.float(1.0, "ADR Entry Multiple", minval=0.1, step=0.05)
@@ -80,14 +81,26 @@ if barstate.isfirst or isNewWeek
 
 // Daily
 dailyOpenSeries = request.security(syminfo.tickerid, "D", open, lookahead=barmerge.lookahead_on)
+dailyHighSeries = request.security(syminfo.tickerid, "D", high, lookahead=barmerge.lookahead_on)
+dailyLowSeries  = request.security(syminfo.tickerid, "D", low,  lookahead=barmerge.lookahead_on)
 isNewDay = ta.change(time("D")) != 0
 
 var float dayOpenPrice = na
 var float dayAdrPct    = na
+var float dayHighPrice = na
+var float dayLowPrice  = na
 
 if barstate.isfirst or isNewDay
     dayOpenPrice := dailyOpenSeries
     dayAdrPct    := currentAdrPct
+    dayHighPrice := dailyHighSeries
+    dayLowPrice  := dailyLowSeries
+
+if not isNewDay
+    if not na(dailyHighSeries)
+        dayHighPrice := dailyHighSeries
+    if not na(dailyLowSeries)
+        dayLowPrice := dailyLowSeries
 
 // Freedom — running weekly extremes
 weeklyHighSeries = request.security(syminfo.tickerid, "W", high, lookahead=barmerge.lookahead_on)
@@ -109,12 +122,13 @@ if not isNewWeek
         weekLowPrice := weeklyLowSeries
 
 // ── Anchor Selection ────────────────────────────────────────────────────────
-bool useDaily   = anchorMode == "Daily"
-bool useFreedom = anchorMode == "Freedom"
+bool useDaily    = anchorMode == "Daily"
+bool useFreedom  = anchorMode == "Freedom"
+bool useExtreme  = anchorLogic == "Extreme" or useFreedom  // Freedom always uses extreme
 
 anchorOpenPrice = useFreedom ? na : useDaily ? dayOpenPrice : weekOpenPrice
 anchorAdrPct    = useFreedom ? weekFreedomAdrPct : useDaily ? dayAdrPct : weekAdrPct
-adrReady        = useFreedom ? (not na(weekHighPrice) and not na(weekLowPrice) and not na(anchorAdrPct)) : (not na(anchorOpenPrice) and not na(anchorAdrPct))
+adrReady        = useExtreme ? (useDaily ? (not na(dayHighPrice) and not na(dayLowPrice) and not na(anchorAdrPct)) : (not na(weekHighPrice) and not na(weekLowPrice) and not na(anchorAdrPct))) : (not na(anchorOpenPrice) and not na(anchorAdrPct))
 
 // ── Bias Resolution ─────────────────────────────────────────────────────────
 tickerUpper  = str.upper(syminfo.ticker)
@@ -138,8 +152,15 @@ showLong  = resolvedBias != "SHORT"
 showShort = resolvedBias != "LONG"
 
 // ── Level Calculation ───────────────────────────────────────────────────────
-freedomLongAnchor  = useFreedom ? weekHighPrice : anchorOpenPrice
-freedomShortAnchor = useFreedom ? weekLowPrice  : anchorOpenPrice
+// Resolve long/short anchors based on mode + logic
+// Extreme: Weekly uses weekHigh/weekLow, Daily uses dayHigh/dayLow
+// Static: always uses period open price
+// Freedom: always uses weekHigh/weekLow (extreme by definition)
+extremeLongAnchor  = useDaily ? dayHighPrice : weekHighPrice
+extremeShortAnchor = useDaily ? dayLowPrice  : weekLowPrice
+
+freedomLongAnchor  = useExtreme ? extremeLongAnchor  : anchorOpenPrice
+freedomShortAnchor = useExtreme ? extremeShortAnchor : anchorOpenPrice
 
 longEntryPrice  = adrReady ? freedomLongAnchor  * (1 - anchorAdrPct * entryMultiple / 100) : na
 longTpPrice     = adrReady ? longEntryPrice * (1 + anchorAdrPct * tpMultiple / 100)        : na
@@ -147,7 +168,7 @@ shortEntryPrice = adrReady ? freedomShortAnchor * (1 + anchorAdrPct * entryMulti
 shortTpPrice    = adrReady ? shortEntryPrice * (1 - anchorAdrPct * tpMultiple / 100)       : na
 
 // ADR distance for display
-adrDistance = adrReady ? (useFreedom ? weekHighPrice : anchorOpenPrice) * anchorAdrPct / 100 : na
+adrDistance = adrReady ? freedomLongAnchor * anchorAdrPct / 100 : na
 pipSize     = syminfo.type == "forex" ? (syminfo.currency == "JPY" ? 0.01 : 0.0001) : syminfo.mintick
 adrPips     = adrReady and pipSize > 0 ? adrDistance / pipSize : na
 longTpPips  = adrReady and pipSize > 0 and showLong  ? math.abs(longTpPrice  - longEntryPrice)  / pipSize : na
@@ -170,7 +191,7 @@ var float periodHigh  = na
 var float periodLow   = na
 var int   periodBarStart = na
 
-if isNewPeriod and not useFreedom and showBoxes
+if isNewPeriod and not useExtreme and showBoxes
     // Freeze previous period box (stop updating it)
     periodBox := na
     // Start new period box
@@ -179,7 +200,7 @@ if isNewPeriod and not useFreedom and showBoxes
     periodBarStart := bar_index
     periodBox := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=1, border_style=line.style_dotted)
 
-if not na(periodBox) and not useFreedom and showBoxes
+if not na(periodBox) and not useExtreme and showBoxes
     // Expand high/low as price moves
     if high > periodHigh
         periodHigh := high
@@ -195,7 +216,7 @@ if not na(periodBox) and not useFreedom and showBoxes
 var box longEntryZone  = na
 var box shortEntryZone = na
 
-if isNewPeriod and not useFreedom and showBoxes
+if isNewPeriod and not useExtreme and showBoxes
     // Freeze old entry zones
     longEntryZone  := na
     shortEntryZone := na
@@ -310,14 +331,16 @@ var table infoTable = table.new(position.top_right, 2, 8, border_width=1, border
 
 if showTable and barstate.islast
     biasColor   = resolvedBias == "LONG" ? color.lime : resolvedBias == "SHORT" ? color.red : tableTextColor
-    anchorLabel = useFreedom ? "Freedom" : useDaily ? "Daily" : "Weekly"
+    string logicSuffix = useFreedom ? "" : useExtreme ? " (Ext)" : " (Static)"
+    anchorLabel = useFreedom ? "Freedom" : useDaily ? "Daily" + logicSuffix : "Weekly" + logicSuffix
     longStateLabel  = longState  == 0 ? "Waiting" : longState  == 1 ? "TRIGGERED" : "TP Hit"
     shortStateLabel = shortState == 0 ? "Waiting" : shortState == 1 ? "TRIGGERED" : "TP Hit"
 
     table.cell(infoTable, 0, 0, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
     table.cell(infoTable, 1, 0, syminfo.ticker, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
     table.cell(infoTable, 0, 1, "Anchor", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 1, anchorLabel, text_color=useFreedom ? color.new(color.yellow, 0) : useDaily ? color.new(color.orange, 0) : tableTextColor, bgcolor=tableBgColor)
+    color anchorColor = useFreedom ? color.new(color.yellow, 0) : useExtreme ? color.new(color.yellow, 0) : useDaily ? color.new(color.orange, 0) : tableTextColor
+    table.cell(infoTable, 1, 1, anchorLabel, text_color=anchorColor, bgcolor=tableBgColor)
     table.cell(infoTable, 0, 2, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 1, 2, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
     table.cell(infoTable, 0, 3, "ADR Pips", text_color=tableTextColor, bgcolor=tableBgColor)
