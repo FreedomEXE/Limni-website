@@ -139,6 +139,10 @@
     {
       "path": "/api/cron/bitget-bot",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/adr-trade-scan",
+      "schedule": "25 * * * *"
     }
   ]
 }
