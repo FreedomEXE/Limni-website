@@ -163,16 +163,9 @@ export async function GET() {
         currentPrice,
         longTriggerPrice,
         shortTriggerPrice,
-        longTouched:
-          longTriggerPrice !== null &&
-          weekLowPrice !== null &&
-          Number.isFinite(weekLowPrice) &&
-          weekLowPrice <= longTriggerPrice,
-        shortTouched:
-          shortTriggerPrice !== null &&
-          weekHighPrice !== null &&
-          Number.isFinite(weekHighPrice) &&
-          weekHighPrice >= shortTriggerPrice,
+        /* touched requires H1 bar scanning (trade tracking cron) — single weekly candle can't determine dynamic trigger state */
+        longTouched: false,
+        shortTouched: false,
         longTpPrice,
         shortTpPrice,
       } satisfies IntradayLevelRow;

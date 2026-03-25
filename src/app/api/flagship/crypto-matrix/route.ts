@@ -1109,22 +1109,8 @@ export async function GET() {
         openInterest: row.openInterest,
         fundingRate: row.fundingRate,
       });
-      const touched =
-        row.bias === "LONG"
-          ? Boolean(
-              adrContext &&
-                adrContext.longTriggerPrice !== null &&
-                adrContext.weekLowPrice !== null &&
-                adrContext.weekLowPrice <= adrContext.longTriggerPrice,
-            )
-          : row.bias === "SHORT"
-            ? Boolean(
-                adrContext &&
-                  adrContext.shortTriggerPrice !== null &&
-                  adrContext.weekHighPrice !== null &&
-                  adrContext.weekHighPrice >= adrContext.shortTriggerPrice,
-              )
-            : false;
+      /* touched requires H1 bar scanning — single weekly candle can't determine dynamic trigger state */
+      const touched = false;
       return {
         ...row,
         liquidationTilt,
@@ -1154,22 +1140,8 @@ export async function GET() {
         openInterest: row.openInterest,
         fundingRate: row.fundingRate,
       });
-      const touched =
-        row.bias === "LONG"
-          ? Boolean(
-              adrContext &&
-                adrContext.longTriggerPrice !== null &&
-                adrContext.weekLowPrice !== null &&
-                adrContext.weekLowPrice <= adrContext.longTriggerPrice,
-            )
-          : row.bias === "SHORT"
-            ? Boolean(
-                adrContext &&
-                  adrContext.shortTriggerPrice !== null &&
-                  adrContext.weekHighPrice !== null &&
-                  adrContext.weekHighPrice >= adrContext.shortTriggerPrice,
-              )
-            : false;
+      /* touched requires H1 bar scanning — single weekly candle can't determine dynamic trigger state */
+      const touched = false;
       return {
         ...row,
         liquidationTilt,
