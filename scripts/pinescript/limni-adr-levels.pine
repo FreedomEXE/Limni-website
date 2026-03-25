@@ -14,17 +14,16 @@ tpMultiple    = input.float(0.25, "TP ADR Multiple", minval=0.05, step=0.05)
 longPairs     = input.text_area("", "LONG Pairs (comma/newline)", tooltip="Bullish pairs for the week. Crypto: BTCUSD+ETHUSD set regime for alts.")
 shortPairs    = input.text_area("", "SHORT Pairs (comma/newline)", tooltip="Bearish pairs for the week.")
 showTable     = input.bool(true, "Show Info Table")
-showBoxes     = input.bool(true, "Show Trade Boxes", tooltip="Draw profit/drawdown boxes when ADR entry is triggered.")
-showSeps      = input.bool(true, "Show Period Separators", tooltip="Vertical lines at week and day boundaries.")
+showBoxes     = input.bool(true, "Show Trade Boxes", tooltip="Draw period boxes, entry zones, and trade boxes.")
 
 // Color inputs
-longAdrColor     = input.color(color.new(color.lime, 0), "Long ADR Level")
-longTpColor      = input.color(color.new(color.aqua, 0), "Long TP Level")
-shortAdrColor    = input.color(color.new(color.red, 0), "Short ADR Level")
-shortTpColor     = input.color(color.new(color.fuchsia, 0), "Short TP Level")
-profitBoxBg      = input.color(color.new(color.green, 82), "Profit Box Fill")
-ddBoxBg          = input.color(color.new(color.red, 82), "Drawdown Box Fill")
-sepColor         = input.color(color.new(color.gray, 60), "Separator Color")
+periodBoxBg      = input.color(color.new(#2a2e39, 70), "Period Box Fill", tooltip="Faint background box for the period playground.")
+periodBoxBorder  = input.color(color.new(color.gray, 60), "Period Box Border")
+entryZoneBg      = input.color(color.new(color.green, 80), "Entry Zone Fill (pre-drawn target)")
+longEntryBorder  = input.color(color.new(color.lime, 30), "Long Entry Zone Border")
+shortEntryBorder = input.color(color.new(color.red, 30), "Short Entry Zone Border")
+profitBoxBg      = input.color(color.new(color.green, 75), "Profit Box Fill")
+ddBoxBg          = input.color(color.new(color.red, 75), "Drawdown Box Fill")
 tableBgColor     = input.color(color.new(color.black, 15), "Table Background")
 tableTextColor   = input.color(color.white, "Table Text")
 tableBorderColor = input.color(color.new(color.white, 45), "Table Border")
@@ -163,14 +162,54 @@ if isNewPeriod
 showCurrentPeriod = not na(currentPeriodStart) and time >= currentPeriodStart
 periodBreak       = isNewPeriod and not barstate.isfirst
 
-// ── Period Separators ───────────────────────────────────────────────────────
-// Weekly separators (always shown — dashed)
-if showSeps and isNewWeek and not barstate.isfirst
-    line.new(bar_index, high, bar_index, low, xloc=xloc.bar_index, extend=extend.both, color=sepColor, style=line.style_dashed, width=1)
+// ── Period Background Box ───────────────────────────────────────────────────
+// Faint box spanning the full period — shows the "playground" boundary
+// Updates high/low each bar to track the period range
+var box periodBox     = na
+var float periodHigh  = na
+var float periodLow   = na
+var int   periodBarStart = na
 
-// Daily separators (dotted, more subtle — shown in all modes for context)
-if showSeps and isNewDay and not isNewWeek and not barstate.isfirst
-    line.new(bar_index, high, bar_index, low, xloc=xloc.bar_index, extend=extend.both, color=color.new(sepColor, 30), style=line.style_dotted, width=1)
+if isNewPeriod and not useFreedom and showBoxes
+    // Freeze previous period box (stop updating it)
+    periodBox := na
+    // Start new period box
+    periodHigh     := high
+    periodLow      := low
+    periodBarStart := bar_index
+    periodBox := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=1, border_style=line.style_dotted)
+
+if not na(periodBox) and not useFreedom and showBoxes
+    // Expand high/low as price moves
+    if high > periodHigh
+        periodHigh := high
+    if low < periodLow
+        periodLow := low
+    box.set_top(periodBox, periodHigh)
+    box.set_bottom(periodBox, periodLow)
+    box.set_right(periodBox, bar_index)
+
+// ── Entry Zone Boxes (pre-drawn target zones) ───────────────────────────────
+// These appear at the start of each period showing where the ADR entry + TP zone is
+// Green boxes that sit as "targets" waiting for price
+var box longEntryZone  = na
+var box shortEntryZone = na
+
+if isNewPeriod and not useFreedom and showBoxes
+    // Freeze old entry zones
+    longEntryZone  := na
+    shortEntryZone := na
+    // Pre-draw entry zones if ADR is ready
+    if adrReady and showLong and not na(longEntryPrice) and not na(longTpPrice)
+        longEntryZone := box.new(bar_index, longTpPrice, bar_index, longEntryPrice, bgcolor=entryZoneBg, border_color=longEntryBorder, border_width=1)
+    if adrReady and showShort and not na(shortEntryPrice) and not na(shortTpPrice)
+        shortEntryZone := box.new(bar_index, shortEntryPrice, bar_index, shortTpPrice, bgcolor=entryZoneBg, border_color=shortEntryBorder, border_width=1)
+
+// Extend entry zone boxes rightward each bar (they span the full period)
+if not na(longEntryZone) and showBoxes
+    box.set_right(longEntryZone, bar_index)
+if not na(shortEntryZone) and showBoxes
+    box.set_right(shortEntryZone, bar_index)
 
 // ── Trade State Machine ─────────────────────────────────────────────────────
 // States: 0 = WAITING, 1 = TRIGGERED (in trade), 2 = TP_HIT (done for period)
@@ -232,7 +271,7 @@ else if longState == 0 and adrReady and showLong and showCurrentPeriod
         longTp       := longTpPrice
         longDDLow    := low
         if showBoxes
-            longProfBox := box.new(bar_index, longTp, bar_index, longEntry, bgcolor=profitBoxBg, border_color=longTpColor, border_width=1)
+            longProfBox := box.new(bar_index, longTp, bar_index, longEntry, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
 
 // ── SHORT State Machine ────────────────────────────────────────────────────
 if shortState == 1
@@ -264,29 +303,16 @@ else if shortState == 0 and adrReady and showShort and showCurrentPeriod
         shortTp       := shortTpPrice
         shortDDHigh   := high
         if showBoxes
-            shortProfBox := box.new(bar_index, shortEntry, bar_index, shortTp, bgcolor=profitBoxBg, border_color=shortTpColor, border_width=1)
-
-// ── Plot Waiting-State Lines ────────────────────────────────────────────────
-// Lines show while WAITING, disappear once TRIGGERED (boxes take over)
-// For Freedom mode, lines naturally show moving levels as running extreme updates
-bool showLongWait  = longState  == 0 and showCurrentPeriod and adrReady and showLong  and not periodBreak
-bool showShortWait = shortState == 0 and showCurrentPeriod and adrReady and showShort and not periodBreak
-
-plot(showLongWait  ? longEntryPrice  : na, "Long Entry",  longAdrColor,  2, plot.style_linebr)
-plot(showLongWait  ? longTpPrice     : na, "Long TP",     longTpColor,   2, plot.style_linebr)
-plot(showShortWait ? shortEntryPrice : na, "Short Entry", shortAdrColor, 2, plot.style_linebr)
-plot(showShortWait ? shortTpPrice    : na, "Short TP",    shortTpColor,  2, plot.style_linebr)
+            shortProfBox := box.new(bar_index, shortEntry, bar_index, shortTp, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
 
 // ── Info Table ──────────────────────────────────────────────────────────────
 var table infoTable = table.new(position.top_right, 2, 8, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
 
 if showTable and barstate.islast
-    biasColor   = resolvedBias == "LONG" ? longAdrColor : resolvedBias == "SHORT" ? shortAdrColor : tableTextColor
+    biasColor   = resolvedBias == "LONG" ? color.lime : resolvedBias == "SHORT" ? color.red : tableTextColor
     anchorLabel = useFreedom ? "Freedom" : useDaily ? "Daily" : "Weekly"
     longStateLabel  = longState  == 0 ? "Waiting" : longState  == 1 ? "TRIGGERED" : "TP Hit"
     shortStateLabel = shortState == 0 ? "Waiting" : shortState == 1 ? "TRIGGERED" : "TP Hit"
-    longStateColor  = longState  == 1 ? color.yellow : longState  == 2 ? longTpColor  : tableTextColor
-    shortStateColor = shortState == 1 ? color.yellow : shortState == 2 ? shortTpColor : tableTextColor
 
     table.cell(infoTable, 0, 0, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
     table.cell(infoTable, 1, 0, syminfo.ticker, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
@@ -297,9 +323,9 @@ if showTable and barstate.islast
     table.cell(infoTable, 0, 3, "ADR Pips", text_color=tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 1, 3, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 0, 4, "Long ADR / TP", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 4, adrReady and showLong ? str.tostring(longEntryPrice, format.mintick) + " / " + str.tostring(longTpPrice, format.mintick) + "\nTP: " + str.tostring(longTpPips, "#.#") + " pips" : "-", text_color=longAdrColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 4, adrReady and showLong ? str.tostring(longEntryPrice, format.mintick) + " / " + str.tostring(longTpPrice, format.mintick) + "\nTP: " + str.tostring(longTpPips, "#.#") + " pips" : "-", text_color=color.lime, bgcolor=tableBgColor)
     table.cell(infoTable, 0, 5, "Short ADR / TP", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 5, adrReady and showShort ? str.tostring(shortEntryPrice, format.mintick) + " / " + str.tostring(shortTpPrice, format.mintick) + "\nTP: " + str.tostring(shortTpPips, "#.#") + " pips" : "-", text_color=shortAdrColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 5, adrReady and showShort ? str.tostring(shortEntryPrice, format.mintick) + " / " + str.tostring(shortTpPrice, format.mintick) + "\nTP: " + str.tostring(shortTpPips, "#.#") + " pips" : "-", text_color=color.red, bgcolor=tableBgColor)
     table.cell(infoTable, 0, 6, "Trade Status", text_color=tableTextColor, bgcolor=tableBgColor)
     string statusText = ""
     if showLong
@@ -313,7 +339,7 @@ if showTable and barstate.islast
 
     if isCrypto
         table.cell(infoTable, 0, 7, "Crypto Regime", text_color=tableTextColor, bgcolor=tableBgColor)
-        table.cell(infoTable, 1, 7, cryptoRegime, text_color=cryptoRegime == "LONG" ? longAdrColor : cryptoRegime == "SHORT" ? shortAdrColor : tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, 7, cryptoRegime, text_color=cryptoRegime == "LONG" ? color.lime : cryptoRegime == "SHORT" ? color.red : tableTextColor, bgcolor=tableBgColor)
     else
         table.cell(infoTable, 0, 7, "", text_color=tableTextColor, bgcolor=tableBgColor)
         table.cell(infoTable, 1, 7, "", text_color=tableTextColor, bgcolor=tableBgColor)
