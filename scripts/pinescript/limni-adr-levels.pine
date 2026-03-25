@@ -84,45 +84,40 @@ if barstate.isfirst or isNewWeek
 
 // Daily
 dailyOpenSeries = request.security(syminfo.tickerid, "D", open, lookahead=barmerge.lookahead_on)
-dailyHighSeries = request.security(syminfo.tickerid, "D", high, lookahead=barmerge.lookahead_on)
-dailyLowSeries  = request.security(syminfo.tickerid, "D", low,  lookahead=barmerge.lookahead_on)
 isNewDay = ta.change(time("D")) != 0
 
-var float dayOpenPrice = na
-var float dayAdrPct    = na
-var float dayHighPrice = na
-var float dayLowPrice  = na
+var float dayOpenPrice   = na
+var float dayAdrPct      = na
+var float dayRunningHigh = na
+var float dayRunningLow  = na
 
 if barstate.isfirst or isNewDay
-    dayOpenPrice := dailyOpenSeries
-    dayAdrPct    := currentAdrPct
-    dayHighPrice := dailyHighSeries
-    dayLowPrice  := dailyLowSeries
+    dayOpenPrice   := dailyOpenSeries
+    dayAdrPct      := currentAdrPct
+    dayRunningHigh := high
+    dayRunningLow  := low
 
 if not isNewDay
-    if not na(dailyHighSeries)
-        dayHighPrice := dailyHighSeries
-    if not na(dailyLowSeries)
-        dayLowPrice := dailyLowSeries
+    if high > dayRunningHigh or na(dayRunningHigh)
+        dayRunningHigh := high
+    if low < dayRunningLow or na(dayRunningLow)
+        dayRunningLow := low
 
-// Freedom — running weekly extremes
-weeklyHighSeries = request.security(syminfo.tickerid, "W", high, lookahead=barmerge.lookahead_on)
-weeklyLowSeries  = request.security(syminfo.tickerid, "W", low,  lookahead=barmerge.lookahead_on)
-
-var float weekHighPrice     = na
-var float weekLowPrice      = na
+// Freedom — running weekly extremes (manually tracked, no lookahead future leak)
+var float weekRunningHigh   = na
+var float weekRunningLow    = na
 var float weekFreedomAdrPct = na
 
 if barstate.isfirst or isNewWeek
-    weekHighPrice     := weeklyHighSeries
-    weekLowPrice      := weeklyLowSeries
+    weekRunningHigh   := high
+    weekRunningLow    := low
     weekFreedomAdrPct := currentAdrPct
 
 if not isNewWeek
-    if not na(weeklyHighSeries)
-        weekHighPrice := weeklyHighSeries
-    if not na(weeklyLowSeries)
-        weekLowPrice := weeklyLowSeries
+    if high > weekRunningHigh or na(weekRunningHigh)
+        weekRunningHigh := high
+    if low < weekRunningLow or na(weekRunningLow)
+        weekRunningLow := low
 
 // ── Anchor Selection ────────────────────────────────────────────────────────
 bool useDaily    = anchorMode == "Daily"
@@ -131,7 +126,7 @@ bool useExtreme  = anchorLogic == "Extreme" or useFreedom  // Freedom always use
 
 anchorOpenPrice = useFreedom ? na : useDaily ? dayOpenPrice : weekOpenPrice
 anchorAdrPct    = useFreedom ? weekFreedomAdrPct : useDaily ? dayAdrPct : weekAdrPct
-adrReady        = useExtreme ? (useDaily ? (not na(dayHighPrice) and not na(dayLowPrice) and not na(anchorAdrPct)) : (not na(weekHighPrice) and not na(weekLowPrice) and not na(anchorAdrPct))) : (not na(anchorOpenPrice) and not na(anchorAdrPct))
+adrReady        = useExtreme ? (useDaily ? (not na(dayRunningHigh) and not na(dayRunningLow) and not na(anchorAdrPct)) : (not na(weekRunningHigh) and not na(weekRunningLow) and not na(anchorAdrPct))) : (not na(anchorOpenPrice) and not na(anchorAdrPct))
 
 // ── Bias Resolution ─────────────────────────────────────────────────────────
 tickerUpper  = str.replace_all(str.replace_all(str.upper(syminfo.ticker), "/", ""), ".", "")
@@ -159,8 +154,8 @@ showShort = resolvedBias != "LONG"
 // Extreme: Weekly uses weekHigh/weekLow, Daily uses dayHigh/dayLow
 // Static: always uses period open price
 // Freedom: always uses weekHigh/weekLow (extreme by definition)
-extremeLongAnchor  = useDaily ? dayHighPrice : weekHighPrice
-extremeShortAnchor = useDaily ? dayLowPrice  : weekLowPrice
+extremeLongAnchor  = useDaily ? dayRunningHigh : weekRunningHigh
+extremeShortAnchor = useDaily ? dayRunningLow  : weekRunningLow
 
 freedomLongAnchor  = useExtreme ? extremeLongAnchor  : anchorOpenPrice
 freedomShortAnchor = useExtreme ? extremeShortAnchor : anchorOpenPrice
