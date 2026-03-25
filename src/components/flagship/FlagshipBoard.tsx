@@ -171,6 +171,10 @@ type IntradayLevelRow = {
   dailyOneAdrShortTriggerPrice: number | null;
   dailyOneAdrLongTouched: boolean;
   dailyOneAdrShortTouched: boolean;
+  freedomLongTriggerPrice: number | null;
+  freedomShortTriggerPrice: number | null;
+  freedomLongTouched: boolean;
+  freedomShortTouched: boolean;
 };
 
 type IntradayLevelsPayload = {
@@ -227,6 +231,8 @@ type MatrixRow = {
   triggerState: TriggerState;
   dailyOneAdrTouched: boolean;
   dailyTriggerState: TriggerState;
+  freedomTriggerState: TriggerState;
+  freedomTouched: boolean;
   dailyOpenPrice: number | null;
   dailyHighPrice: number | null;
   dailyLowPrice: number | null;
@@ -391,7 +397,7 @@ function formatPrice(value: number | null) {
 }
 
 function triggerClass(state: TriggerState, flashing: boolean) {
-  const base = "inline-flex min-w-[5.25rem] justify-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]";
+  const base = "inline-flex min-w-[3.75rem] justify-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]";
   if (state === "HIT") return `${base} border-amber-400/40 bg-amber-500/15 text-amber-700 dark:bg-amber-900/35 dark:text-amber-300 ${flashing ? "intraday-adr-pulse" : ""}`;
   if (state === "CLOSE") return `${base} border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300`;
   if (state === "WATCHING") return `${base} border-sky-400/30 bg-sky-500/10 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300`;
@@ -683,6 +689,14 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           else dailyTriggerState = "WATCHING";
         }
 
+        const freedomTouched = coreBias === "LONG" ? (level?.freedomLongTouched ?? false) : coreBias === "SHORT" ? (level?.freedomShortTouched ?? false) : false;
+        let freedomTriggerState: TriggerState = "INACTIVE";
+        if (coreBias !== "NEUTRAL") {
+          if (!level || level.adrPct === null) freedomTriggerState = "NO_DATA";
+          else if (freedomTouched) freedomTriggerState = "HIT";
+          else freedomTriggerState = "WATCHING";
+        }
+
         return {
           pair: pairRow.pair,
           assetClass: pairRow.assetClass,
@@ -725,6 +739,8 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           triggerState,
           dailyOneAdrTouched,
           dailyTriggerState,
+          freedomTriggerState,
+          freedomTouched,
           dailyOpenPrice: level?.dailyOpenPrice ?? null,
           dailyHighPrice: level?.dailyHighPrice ?? null,
           dailyLowPrice: level?.dailyLowPrice ?? null,
@@ -810,10 +826,10 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
             <table className="min-w-full border-separate border-spacing-0 text-xs">
               <colgroup>
-                <col className="w-[25rem]" />
+                <col className="w-[14rem]" />
                 <col className="w-[8rem]" />
                 <col className="w-[8rem]" />
-                <col className="w-[9rem]" />
+                <col className="w-[13rem]" />
                 <col className="w-[6rem]" />
               </colgroup>
               <thead className="sticky top-0 z-10 bg-[var(--panel)] text-left uppercase tracking-[0.14em] text-[color:var(--muted)]">
@@ -902,6 +918,9 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                               </span>
                               <span className={triggerClass(row.dailyTriggerState, row.dailyOneAdrTouched)} title="Daily anchor">
                                 D:{row.dailyTriggerState === "INACTIVE" ? "—" : row.dailyTriggerState === "NO_DATA" ? "?" : row.dailyTriggerState}
+                              </span>
+                              <span className={triggerClass(row.freedomTriggerState, row.freedomTouched)} title="Freedom anchor (running extreme)">
+                                F:{row.freedomTriggerState === "INACTIVE" ? "—" : row.freedomTriggerState === "NO_DATA" ? "?" : row.freedomTriggerState}
                               </span>
                             </div>
                             {row.adrPct !== null ? (

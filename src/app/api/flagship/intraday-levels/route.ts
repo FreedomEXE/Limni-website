@@ -55,6 +55,11 @@ type IntradayLevelRow = {
   dailyOneAdrShortTriggerPrice: number | null;
   dailyOneAdrLongTouched: boolean;
   dailyOneAdrShortTouched: boolean;
+  /* Freedom anchor fields — running weekly extreme */
+  freedomLongTriggerPrice: number | null;
+  freedomShortTriggerPrice: number | null;
+  freedomLongTouched: boolean;
+  freedomShortTouched: boolean;
   sourceLabel: string;
 };
 
@@ -175,6 +180,16 @@ export async function GET() {
           ? weekOpenPrice * (1 + oneAdrThresholdPct / 100)
           : null;
 
+      /* Freedom trigger prices — 1x ADR from running weekly extreme */
+      const freedomLongTriggerPrice =
+        weekHighPrice !== null && adrPct !== null
+          ? weekHighPrice * (1 - adrPct / 100)
+          : null;
+      const freedomShortTriggerPrice =
+        weekLowPrice !== null && adrPct !== null
+          ? weekLowPrice * (1 + adrPct / 100)
+          : null;
+
       /* Daily trigger prices (always 1x ADR from daily open) */
       const dailyOneAdrLongTriggerPrice =
         dailyOpenPrice !== null && adrPct !== null
@@ -239,6 +254,19 @@ export async function GET() {
           dailyHighPrice !== null &&
           Number.isFinite(dailyHighPrice) &&
           dailyHighPrice >= dailyOneAdrShortTriggerPrice,
+        /* Freedom anchor fields */
+        freedomLongTriggerPrice,
+        freedomShortTriggerPrice,
+        freedomLongTouched:
+          freedomLongTriggerPrice !== null &&
+          weekLowPrice !== null &&
+          Number.isFinite(weekLowPrice) &&
+          weekLowPrice <= freedomLongTriggerPrice,
+        freedomShortTouched:
+          freedomShortTriggerPrice !== null &&
+          weekHighPrice !== null &&
+          Number.isFinite(weekHighPrice) &&
+          weekHighPrice >= freedomShortTriggerPrice,
         sourceLabel: `${threshold.sourceLabel} weekly`,
       } satisfies IntradayLevelRow;
     });

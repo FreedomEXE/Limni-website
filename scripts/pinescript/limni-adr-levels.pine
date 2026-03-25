@@ -5,7 +5,7 @@
 //@version=6
 indicator("Limni ADR Levels", shorttitle="Limni ADR", overlay=true, format=format.price)
 
-anchorMode = input.string("Weekly", "ADR Anchor Mode", options=["Weekly", "Daily"], tooltip="Weekly anchors levels to the weekly open. Daily anchors to each daily open (17:00 ET rollover).")
+anchorMode = input.string("Weekly", "ADR Anchor Mode", options=["Weekly", "Daily", "Freedom"], tooltip="Weekly anchors to weekly open. Daily anchors to daily open. Freedom anchors to running week extreme (high for longs, low for shorts).")
 adrLookback = input.int(10, "ADR Lookback (days)", minval=1, maxval=50)
 adrMinDays = input.int(5, "ADR Minimum Required Days", minval=1, maxval=50)
 entryMultiple = input.float(1.0, "ADR Entry Multiple", minval=0.1, step=0.05)
@@ -80,11 +80,31 @@ if barstate.isfirst or isNewDay
     dayOpenPrice := dailyOpenSeries
     dayAdrPct := currentAdrPct
 
+// Freedom anchor data — running weekly extreme (high for longs, low for shorts)
+weeklyHighSeries = request.security(syminfo.tickerid, "W", high, lookahead=barmerge.lookahead_on)
+weeklyLowSeries = request.security(syminfo.tickerid, "W", low, lookahead=barmerge.lookahead_on)
+
+var float weekHighPrice = na
+var float weekLowPrice = na
+var float weekFreedomAdrPct = na
+
+if barstate.isfirst or isNewWeek
+    weekHighPrice := weeklyHighSeries
+    weekLowPrice := weeklyLowSeries
+    weekFreedomAdrPct := currentAdrPct
+
+if not isNewWeek
+    if not na(weeklyHighSeries)
+        weekHighPrice := weeklyHighSeries
+    if not na(weeklyLowSeries)
+        weekLowPrice := weeklyLowSeries
+
 // Select anchor based on mode
 bool useDaily = anchorMode == "Daily"
-anchorOpenPrice = useDaily ? dayOpenPrice : weekOpenPrice
-anchorAdrPct = useDaily ? dayAdrPct : weekAdrPct
-adrReady = not na(anchorOpenPrice) and not na(anchorAdrPct)
+bool useFreedom = anchorMode == "Freedom"
+anchorOpenPrice = useFreedom ? na : useDaily ? dayOpenPrice : weekOpenPrice
+anchorAdrPct = useFreedom ? weekFreedomAdrPct : useDaily ? dayAdrPct : weekAdrPct
+adrReady = useFreedom ? (not na(weekHighPrice) and not na(weekLowPrice) and not na(anchorAdrPct)) : (not na(anchorOpenPrice) and not na(anchorAdrPct))
 
 tickerUpper = str.upper(syminfo.ticker)
 manualBias = getManualBias(tickerUpper)
@@ -107,12 +127,17 @@ if isCrypto and not isMajorCrypto
 showLong = resolvedBias != "SHORT"
 showShort = resolvedBias != "LONG"
 
-longEntryPrice = adrReady ? anchorOpenPrice * (1 - anchorAdrPct * entryMultiple / 100) : na
+// Freedom mode: long anchor = week high, short anchor = week low
+// Weekly/Daily: both sides anchor from the single open price
+freedomLongAnchor = useFreedom ? weekHighPrice : anchorOpenPrice
+freedomShortAnchor = useFreedom ? weekLowPrice : anchorOpenPrice
+
+longEntryPrice = adrReady ? freedomLongAnchor * (1 - anchorAdrPct * entryMultiple / 100) : na
 longTpPrice = adrReady ? longEntryPrice * (1 + anchorAdrPct * tpMultiple / 100) : na
-shortEntryPrice = adrReady ? anchorOpenPrice * (1 + anchorAdrPct * entryMultiple / 100) : na
+shortEntryPrice = adrReady ? freedomShortAnchor * (1 + anchorAdrPct * entryMultiple / 100) : na
 shortTpPrice = adrReady ? shortEntryPrice * (1 - anchorAdrPct * tpMultiple / 100) : na
 
-adrDistance = adrReady ? anchorOpenPrice * anchorAdrPct / 100 : na
+adrDistance = adrReady ? (useFreedom ? weekHighPrice : anchorOpenPrice) * anchorAdrPct / 100 : na
 pipSize = syminfo.type == "forex" ? (syminfo.currency == "JPY" ? 0.01 : 0.0001) : syminfo.mintick
 adrPips = adrReady and pipSize > 0 ? adrDistance / pipSize : na
 longTpPips = adrReady and pipSize > 0 and showLong ? math.abs(longTpPrice - longEntryPrice) / pipSize : na
@@ -120,7 +145,7 @@ shortTpPips = adrReady and pipSize > 0 and showShort ? math.abs(shortEntryPrice 
 
 // Period visibility — show only current period (week or day)
 var int currentPeriodStart = na
-isNewPeriod = useDaily ? isNewDay : isNewWeek
+isNewPeriod = useDaily and not useFreedom ? isNewDay : isNewWeek
 if isNewPeriod
     currentPeriodStart := time
 showCurrentPeriod = not na(currentPeriodStart) and time >= currentPeriodStart
@@ -135,11 +160,11 @@ var table infoTable = table.new(position.top_right, 2, 7, border_width=1, border
 
 if showTable and barstate.islast
     biasColor = resolvedBias == "LONG" ? longAdrColor : resolvedBias == "SHORT" ? shortAdrColor : tableTextColor
-    anchorLabel = useDaily ? "Daily" : "Weekly"
+    anchorLabel = useFreedom ? "Freedom" : useDaily ? "Daily" : "Weekly"
     table.cell(infoTable, 0, 0, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
     table.cell(infoTable, 1, 0, syminfo.ticker, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
     table.cell(infoTable, 0, 1, "Anchor", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 1, anchorLabel, text_color=useDaily ? color.new(color.orange, 0) : tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 1, anchorLabel, text_color=useFreedom ? color.new(color.yellow, 0) : useDaily ? color.new(color.orange, 0) : tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 0, 2, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 1, 2, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
     table.cell(infoTable, 0, 3, "ADR Pips", text_color=tableTextColor, bgcolor=tableBgColor)
