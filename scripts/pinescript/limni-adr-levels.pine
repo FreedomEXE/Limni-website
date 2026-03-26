@@ -312,14 +312,16 @@ shortTpHit := shortTpHit or shortTpHit2
 
 // ── Weekly stats (1 ADR = 1% risk model) ────────────────────────────────────
 // P/L: each TP hit = +tpMultiple% (0.25%). DD: measured in ADR units * 1%.
-var string[] tradeEntries   = array.new_string(0)
+var string[] tradeIds       = array.new_string(0)
+var string[] tradeDetails   = array.new_string(0)
 var int   loggedTrades      = 0
 var int   loggedTpHits      = 0
 var float currentTradeDDAdr = 0.0  // current trade DD in ADR units
 var float weekMaxDDAdr      = 0.0  // worst DD across all trades (ADR units)
 
 if barstate.isfirst or isNewWeek
-    array.clear(tradeEntries)
+    array.clear(tradeIds)
+    array.clear(tradeDetails)
     loggedTrades      := 0
     loggedTpHits      := 0
     currentTradeDDAdr := 0.0
@@ -345,14 +347,16 @@ if longTpHit2 or shortTpHit2
 float tpReturnPct = tpMultiple  // 0.25 ADR = 0.25%
 if weekTrades > loggedTrades
     string tid = makeTradeId(weekTrades)
+    string dir = longState == 1 ? "L" : shortState == 1 ? "S" : "?"
     string ep  = longState == 1 ? str.tostring(frozenLongEntry, format.mintick) : str.tostring(frozenShortEntry, format.mintick)
     string tp  = longState == 1 ? str.tostring(frozenLongTp, format.mintick) : str.tostring(frozenShortTp, format.mintick)
-    array.push(tradeEntries, tid + " " + ep + " → " + tp + " ACTIVE")
+    array.push(tradeIds, tid)
+    array.push(tradeDetails, dir + " " + ep + " → " + tp + " ACTIVE")
     loggedTrades := weekTrades
 
-if weekTpHits > loggedTpHits and array.size(tradeEntries) > 0
-    int lastIdx = array.size(tradeEntries) - 1
-    array.set(tradeEntries, lastIdx, str.replace_all(array.get(tradeEntries, lastIdx), "ACTIVE", "+" + str.tostring(tpReturnPct, "#.##") + "%"))
+if weekTpHits > loggedTpHits and array.size(tradeDetails) > 0
+    int lastIdx = array.size(tradeDetails) - 1
+    array.set(tradeDetails, lastIdx, str.replace_all(array.get(tradeDetails, lastIdx), "ACTIVE", "+" + str.tostring(tpReturnPct, "#.##") + "%"))
     loggedTpHits := weekTpHits
 
 // Computed stats (1 ADR = 1%, so ADR units = percentage directly)
@@ -527,12 +531,12 @@ if showTable and barstate.islast
         table.cell(infoTable, 0, r, "Crypto", text_color=tableTextColor, bgcolor=tableBgColor)
         table.cell(infoTable, 1, r, cryptoRegime, text_color=cryptoColor, bgcolor=tableBgColor)
         r += 1
-    // Trade breakdown (directly after stats — no gap)
+    // Trade breakdown — ID in left column, details in right
     if showTradeLog
-        int numTrades = math.min(array.size(tradeEntries), 10)
+        int numTrades = math.min(array.size(tradeIds), 10)
         for i = 0 to numTrades - 1
-            table.cell(infoTable, 0, r + i, "", bgcolor=tableBgColor)
-            table.cell(infoTable, 1, r + i, array.get(tradeEntries, i), text_color=tableTextColor, bgcolor=tableBgColor)
+            table.cell(infoTable, 0, r + i, array.get(tradeIds, i), text_color=color.new(tableTextColor, 30), text_size=size.tiny, bgcolor=tableBgColor)
+            table.cell(infoTable, 1, r + i, array.get(tradeDetails, i), text_color=tableTextColor, bgcolor=tableBgColor)
 
 if not showTable and barstate.islast
     table.clear(infoTable, 0, 0, 1, 19)
@@ -544,5 +548,5 @@ if barstate.islast and barstate.isconfirmed
     lr += " | P/L: +" + str.tostring(weekPLPct, "#.##") + "% | DD: -" + str.tostring(weekMaxDDPct, "#.##") + "%"
     lr += " | E:" + str.tostring(displayEntry, format.mintick) + " T:" + str.tostring(displayTp, format.mintick)
     log.info(lr)
-    for i = 0 to array.size(tradeEntries) - 1
-        log.info(array.get(tradeEntries, i))
+    for i = 0 to array.size(tradeIds) - 1
+        log.info(array.get(tradeIds, i) + " " + array.get(tradeDetails, i))

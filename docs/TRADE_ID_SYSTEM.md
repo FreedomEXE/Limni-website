@@ -4,6 +4,9 @@
 
 # Limni Trade ID System — Design Specification
 
+> **STATUS: PENDING CODEX REVIEW AND IMPLEMENTATION**
+> Codex needs to review this design, validate the schema, and implement Phases 2-4 (scanner trade_id column, strategy integration, advanced analytics). The indicator (Phase 1) is already implemented in PineScript.
+
 ## Purpose
 
 A universal, human-readable trade identification system that:
