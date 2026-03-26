@@ -13,19 +13,25 @@
 - [x] Build hourly cron (adr-trade-scan — idempotent, re-scans from week open)
 - [x] Build read API (adr-trades — returns current week's trades from DB)
 - [x] Trigger first backfill scan (46 trades, 45 TP hits, +16.83% return this week)
+- [ ] Extend cron to scan all crypto pairs using BTC/ETH regime bias (Bitget H1 candles)
+- [ ] Re-run backfill to include crypto trades
 - [ ] Add gamma context tagging to each trade metadata (COT/menthorq/strength for CFD, liquidation/OI/funding for crypto)
 
 ## Matrix UI
-- [ ] Wire CFD + Crypto boards to fetch from /api/flagship/adr-trades and show real trade states (HIT/WATCHING/ACTIVE)
-- [ ] Update intraday-levels API to read trigger states from adr-trades DB (replace hardcoded `false`)
-- [ ] Add overview stats cards at top of matrix (trades count, TP hits, win rate, active trades, week return — like Flagship section cards)
-- [ ] Add copy-paste button for LONG/SHORT pair lists (click → copies comma-separated pairs for indicator input)
+- [x] Wire CFD board to fetch from /api/flagship/adr-trades and show real trade states
+- [x] Update intraday-levels API to read trigger states from adr-trades DB
+- [x] Add overview stats cards at top of matrix (AdrStatsBar shared component)
+- [x] Add copy-paste button for LONG/SHORT pair lists with toast confirmation
+- [x] Extract shared AdrStatsBar component (used by both CFD and Crypto boards)
+- [x] CryptoBoard: add AdrStatsBar + copy buttons (stats zeros until crypto cron built)
+- [x] Crypto matrix: surface all pairs (DISPLAY_LIMIT 40 → 140)
+- [x] Fix trigger state: HIT only for active trades, WATCHING for completed
 - [ ] Add week selector to view historical weeks (sidebar card like performance lab)
 - [ ] Add all-time stats card (total trades, win rate, cumulative return, weeks tracked)
 - [ ] Ensure canonical week storage so historical results persist
 
 ## PineScript Indicator
-- [ ] Add current-week trade counter to info table (trade count, wins, active)
+- [x] Add current-week trade counter to info table (trade count, TP hits)
 - [ ] Visual fixes — verify trade boxes render correctly across multiple Fresh Start re-entries
 - [ ] Verify indicator and matrix show identical trades for the same week (parity check)
 
