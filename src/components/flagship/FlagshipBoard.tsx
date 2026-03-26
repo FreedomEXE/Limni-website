@@ -167,6 +167,34 @@ type IntradayLevelsPayload = {
   rows: IntradayLevelRow[];
 };
 
+type AdrTradeRow = {
+  symbol: string;
+  direction: string;
+  entryTimeUtc: string | null;
+  exitTimeUtc: string | null;
+  entryPrice: number | null;
+  exitPrice: number | null;
+  pnlPct: number | null;
+  exitReason: string | null;
+  tradeNumber: number | null;
+  anchorPrice: number | null;
+  adrPct: number | null;
+  tpPrice: number | null;
+  maePct: number | null;
+  tier: string | null;
+  gateDecision: string | null;
+};
+
+type AdrTradesPayload = {
+  weekOpenUtc: string;
+  generatedUtc: string;
+  totalTrades: number;
+  totalTpHits: number;
+  totalActive: number;
+  weekReturnPct: number;
+  trades: AdrTradeRow[];
+};
+
 type PairUniverseRow = {
   pair: string;
   assetClass: AssetClass;
@@ -213,6 +241,7 @@ type MatrixRow = {
   touched: boolean;
   triggerState: TriggerState;
   signalMode: SignalMode;
+  adrTradeCount: number;
 };
 
 const UNIVERSE: PairUniverseRow[] = [
@@ -455,6 +484,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [liveSizing, setLiveSizing] = useState<LiveSizingPayload | null>(null);
   const [priceMoves, setPriceMoves] = useState<PriceMovesPayload | null>(null);
   const [intradayLevels, setIntradayLevels] = useState<IntradayLevelsPayload | null>(null);
+  const [adrTrades, setAdrTrades] = useState<AdrTradesPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -545,6 +575,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
     }
 
     fetchBoardData();
+    fetch("/api/flagship/adr-trades").then(r => r.json()).then(setAdrTrades).catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -583,6 +614,14 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
 
     const levelsByPair = new Map<string, IntradayLevelRow>();
     for (const row of intradayLevels?.rows ?? []) levelsByPair.set(normalizeKey(row.pair), row);
+
+    const adrTradesByPair = new Map<string, AdrTradeRow[]>();
+    for (const trade of adrTrades?.trades ?? []) {
+      const key = normalizeKey(trade.symbol);
+      const existing = adrTradesByPair.get(key) ?? [];
+      existing.push(trade);
+      adrTradesByPair.set(key, existing);
+    }
 
     return UNIVERSE
       .map((pairRow) => {
@@ -644,10 +683,14 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
             ? (signalGate === "PASS" ? "FLAGSHIP" : "ADR_DIP")
             : "NEUTRAL";
 
-        const touched = coreBias === "LONG" ? (level?.longTouched ?? false) : coreBias === "SHORT" ? (level?.shortTouched ?? false) : false;
+        const pairTrades = adrTradesByPair.get(key) ?? [];
+        const hasActiveTrade = pairTrades.some(t => t.exitReason === "active");
+        const hasTpHit = pairTrades.some(t => t.exitReason === "tp");
         let triggerState: TriggerState = "INACTIVE";
+        let touched = false;
         if (coreBias !== "NEUTRAL") {
-          if (touched) triggerState = "HIT";
+          if (hasActiveTrade) { triggerState = "HIT"; touched = true; }
+          else if (hasTpHit) { triggerState = "HIT"; touched = true; }
           else if (level?.adrPct) triggerState = "WATCHING";
           else triggerState = "NO_DATA";
         }
@@ -691,6 +734,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           touched,
           triggerState,
           signalMode,
+          adrTradeCount: pairTrades.length,
         } satisfies MatrixRow;
       })
       .sort((left, right) => {
@@ -698,7 +742,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         if (bucketDiff !== 0) return bucketDiff;
         return left.pair.localeCompare(right.pair);
       });
-  }, [assetStrength, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves, weeklyBasket]);
+  }, [adrTrades, assetStrength, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves, weeklyBasket]);
 
   const flagshipCount = matrixRows.filter((row) => row.signalMode === "FLAGSHIP").length;
   const adrDipCount = matrixRows.filter((row) => row.signalMode === "ADR_DIP").length;
@@ -753,6 +797,56 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           onUpdateAccount={updateAccount}
           onDeleteAccount={deleteAccount}
         />
+
+        {adrTrades && (
+          <div className="mb-4 grid grid-cols-4 gap-3">
+            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">ADR Trades</div>
+              <div className="mt-1 text-xl font-bold text-[var(--foreground)]">{adrTrades.totalTrades}</div>
+            </div>
+            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">TP Hits</div>
+              <div className="mt-1 text-xl font-bold text-lime-400">{adrTrades.totalTpHits} <span className="text-sm text-[color:var(--muted)]">({adrTrades.totalTrades > 0 ? ((adrTrades.totalTpHits / adrTrades.totalTrades) * 100).toFixed(0) : 0}%)</span></div>
+            </div>
+            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Active</div>
+              <div className="mt-1 text-xl font-bold text-yellow-400">{adrTrades.totalActive}</div>
+            </div>
+            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Week Return</div>
+              <div className={`mt-1 text-xl font-bold ${adrTrades.weekReturnPct >= 0 ? "text-lime-400" : "text-red-400"}`}>+{adrTrades.weekReturnPct.toFixed(2)}%</div>
+            </div>
+          </div>
+        )}
+
+        {weeklyBasket && (
+          <div className="mb-4 flex gap-3">
+            {(() => {
+              const longPairs = (weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "LONG").map((s: CanonicalWeeklySignal) => s.pair).join(",");
+              const shortPairs = (weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "SHORT").map((s: CanonicalWeeklySignal) => s.pair).join(",");
+              return (
+                <>
+                  <button
+                    type="button"
+                    className="rounded border border-lime-500/30 bg-lime-500/10 px-3 py-1.5 text-xs font-semibold text-lime-400 hover:bg-lime-500/20 transition-colors"
+                    onClick={() => { navigator.clipboard.writeText(longPairs); }}
+                    title={longPairs}
+                  >
+                    Copy LONG pairs ({(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "LONG").length})
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors"
+                    onClick={() => { navigator.clipboard.writeText(shortPairs); }}
+                    title={shortPairs}
+                  >
+                    Copy SHORT pairs ({(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "SHORT").length})
+                  </button>
+                </>
+              );
+            })()}
+          </div>
+        )}
 
         {warnings.length > 0 ? (
           <div className="rounded-lg border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800 dark:text-amber-200">
@@ -858,6 +952,11 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                             <span className={triggerClass(row.triggerState, row.touched)} title="ADR trigger">
                               {row.triggerState === "INACTIVE" ? "—" : row.triggerState === "NO_DATA" ? "?" : row.triggerState}
                             </span>
+                            {row.adrTradeCount > 0 && (
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-lime-400">
+                                {row.adrTradeCount} trade{row.adrTradeCount !== 1 ? "s" : ""}
+                              </div>
+                            )}
                             {row.adrPct !== null ? (
                               <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
                                 ADR {row.adrPct.toFixed(2)}%

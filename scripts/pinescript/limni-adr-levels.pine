@@ -188,7 +188,6 @@ float shortTpPips = adrReady and pipSize > 0 ? math.abs(shortEntry - shortTp) / 
 
 // ── Trade state machine ─────────────────────────────────────────────────────
 // States: 0 = waiting, 1 = triggered (in trade)
-// Dynamic: re-entry requires new weekHigh/weekLow beyond last TP
 // Fresh: anchor resets after TP, starts tracking from next bar
 var int longState  = 0
 var int shortState = 0
@@ -197,6 +196,10 @@ var float frozenLongTp     = na
 var float frozenShortEntry = na
 var float frozenShortTp    = na
 
+// Weekly trade counters
+var int weekTrades = 0
+var int weekTpHits = 0
+
 if barstate.isfirst or isNewWeek
     longState  := 0
     shortState := 0
@@ -204,6 +207,8 @@ if barstate.isfirst or isNewWeek
     frozenLongTp     := na
     frozenShortEntry := na
     frozenShortTp    := na
+    weekTrades := 0
+    weekTpHits := 0
 
 bool longTpHit = false
 bool shortTpHit = false
@@ -216,10 +221,12 @@ if longState == 1
         frozenLongTp    := na
         anchorHigh   := na
         barsInAnchor := -1
+        weekTpHits += 1
 else if longState == 0 and adrReady and showLong and not na(longEntry) and low <= longEntry
     longState := 1
     frozenLongEntry := longEntry
     frozenLongTp    := longTp
+    weekTrades += 1
 
 if shortState == 1
     if not na(frozenShortTp) and low <= frozenShortTp
@@ -229,10 +236,12 @@ if shortState == 1
         frozenShortTp    := na
         anchorLow    := na
         barsInAnchor := -1
+        weekTpHits += 1
 else if shortState == 0 and adrReady and showShort and not na(shortEntry) and high >= shortEntry
     shortState := 1
     frozenShortEntry := shortEntry
     frozenShortTp    := shortTp
+    weekTrades += 1
 
 // Seed anchor from current bar after reset
 if na(anchorHigh)
@@ -324,7 +333,7 @@ if shortState == 1
             box.set_top(shortDDBox, shortDDHigh)
 
 // ── Info table ──────────────────────────────────────────────────────────────
-var table infoTable = table.new(position.top_right, 2, 8, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
+var table infoTable = table.new(position.top_right, 2, 9, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
 
 if showTable and barstate.islast
     color biasColor = resolvedBias == "LONG" ? color.lime : resolvedBias == "SHORT" ? color.red : tableTextColor
@@ -364,12 +373,16 @@ if showTable and barstate.islast
     table.cell(infoTable, 1, 5, shortCellText, text_color=color.red, bgcolor=tableBgColor)
     table.cell(infoTable, 0, 6, "Trade Status", text_color=tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 1, 6, statusText, text_color=activeStatusColor, bgcolor=tableBgColor)
+    string tradesText = str.tostring(weekTrades) + " trades / " + str.tostring(weekTpHits) + " TP"
+    color tradesColor = weekTpHits > 0 ? color.lime : tableTextColor
+    table.cell(infoTable, 0, 7, "This Week", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 7, tradesText, text_color=tradesColor, bgcolor=tableBgColor)
     if isCrypto
-        table.cell(infoTable, 0, 7, "Crypto Regime", text_color=tableTextColor, bgcolor=tableBgColor)
-        table.cell(infoTable, 1, 7, cryptoRegime, text_color=cryptoColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 0, 8, "Crypto Regime", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, 8, cryptoRegime, text_color=cryptoColor, bgcolor=tableBgColor)
     else
-        table.cell(infoTable, 0, 7, "", text_color=tableTextColor, bgcolor=tableBgColor)
-        table.cell(infoTable, 1, 7, "", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 0, 8, "", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, 8, "", text_color=tableTextColor, bgcolor=tableBgColor)
 
 if not showTable and barstate.islast
-    table.clear(infoTable, 0, 0, 1, 7)
+    table.clear(infoTable, 0, 0, 1, 8)

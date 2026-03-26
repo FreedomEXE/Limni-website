@@ -21,6 +21,7 @@ import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import type { AssetClass } from "@/lib/cotMarkets";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { fetchOandaCandle } from "@/lib/oandaPrices";
+import { query } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -163,13 +164,40 @@ export async function GET() {
         currentPrice,
         longTriggerPrice,
         shortTriggerPrice,
-        /* touched requires H1 bar scanning (trade tracking cron) — single weekly candle can't determine dynamic trigger state */
-        longTouched: false,
-        shortTouched: false,
+        /* Real state enriched from DB after all rows built */
+        longTouched: false as boolean,
+        shortTouched: false as boolean,
         longTpPrice,
         shortTpPrice,
       } satisfies IntradayLevelRow;
     });
+
+    /* Enrich with real trade states from DB */
+    try {
+      const tradeRows = await query<{ symbol: string; direction: string; exit_reason: string }>(
+        `SELECT t.symbol, t.direction, t.exit_reason
+         FROM strategy_backtest_trades t
+         JOIN strategy_backtest_runs r ON r.id = t.run_id
+         WHERE r.bot_id = 'adr-forward' AND r.variant = 'fresh-start'
+           AND t.week_open_utc = $1::timestamptz`,
+        [currentWeekOpenUtc],
+      );
+      const touchedPairs = new Map<string, { long: boolean; short: boolean }>();
+      for (const t of tradeRows) {
+        const key = t.symbol.toUpperCase();
+        const existing = touchedPairs.get(key) ?? { long: false, short: false };
+        if (t.direction === "LONG") existing.long = true;
+        if (t.direction === "SHORT") existing.short = true;
+        touchedPairs.set(key, existing);
+      }
+      for (const row of rows) {
+        const state = touchedPairs.get(row.pair.toUpperCase());
+        if (state) {
+          row.longTouched = state.long;
+          row.shortTouched = state.short;
+        }
+      }
+    } catch { /* DB unavailable — keep hardcoded false */ }
 
     return NextResponse.json({
       generatedUtc: nowUtc.toISO(),
