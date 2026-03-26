@@ -193,8 +193,11 @@ float shortTp    = adrReady ? shortEntry - (weekAdr * tpMultiple)        : na
 
 // ── Pip calculations ────────────────────────────────────────────────────────
 bool isJpyPair = str.contains(tickerUpper, "JPY")
-float pipSize = syminfo.type == "forex" ? (isJpyPair ? 0.01 : 0.0001) : syminfo.mintick
-float adrPips = adrReady and pipSize > 0 ? weekAdr / pipSize : na
+bool isGold    = str.contains(tickerUpper, "XAU")
+bool isSilver  = str.contains(tickerUpper, "XAG")
+bool isOil     = tickerUpper == "WTIUSD" or str.contains(tickerUpper, "USOIL") or str.contains(tickerUpper, "BCOUSD")
+float pipSize  = syminfo.type == "forex" ? (isJpyPair ? 0.01 : 0.0001) : isGold ? 0.01 : isSilver ? 0.001 : isOil ? 0.01 : syminfo.mintick
+float adrPips  = adrReady and pipSize > 0 ? weekAdr / pipSize : na
 
 // ── Trade state machine ─────────────────────────────────────────────────────
 // States: 0 = waiting, 1 = triggered (in trade)
@@ -390,7 +393,7 @@ if shortTpHit
 
 if longTriggeredNow and showBoxes and showVisuals and not na(frozenLongEntry) and not na(frozenLongTp)
     longProfBox := box.new(bar_index, frozenLongTp, bar_index, frozenLongEntry, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
-    string ttip = "Trade #" + str.tostring(weekTrades) + " LONG\nEntry: " + str.tostring(frozenLongEntry, format.mintick) + "\nTP: " + str.tostring(frozenLongTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%"
+    string ttip = "Trade #" + str.tostring(weekTrades) + " LONG" + "\nEntry: " + str.tostring(frozenLongEntry, format.mintick) + "\nTP: " + str.tostring(frozenLongTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%" + "\nRisk: " + str.tostring(entryMultiple, "#.##") + "% (1 ADR)"
     label.new(bar_index, frozenLongTp, "L#" + str.tostring(weekTrades), tooltip=ttip, style=label.style_label_down, color=color.new(color.lime, 60), textcolor=color.white, size=size.tiny)
     longDDBox   := na
     longDDLow   := low
@@ -409,7 +412,7 @@ if longState == 1
 
 if shortTriggeredNow and showBoxes and showVisuals and not na(frozenShortEntry) and not na(frozenShortTp)
     shortProfBox := box.new(bar_index, frozenShortEntry, bar_index, frozenShortTp, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
-    string ttip = "Trade #" + str.tostring(weekTrades) + " SHORT\nEntry: " + str.tostring(frozenShortEntry, format.mintick) + "\nTP: " + str.tostring(frozenShortTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%"
+    string ttip = "Trade #" + str.tostring(weekTrades) + " SHORT" + "\nEntry: " + str.tostring(frozenShortEntry, format.mintick) + "\nTP: " + str.tostring(frozenShortTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%" + "\nRisk: " + str.tostring(entryMultiple, "#.##") + "% (1 ADR)"
     label.new(bar_index, frozenShortTp, "S#" + str.tostring(weekTrades), tooltip=ttip, style=label.style_label_up, color=color.new(color.red, 60), textcolor=color.white, size=size.tiny)
     shortDDBox   := na
     shortDDHigh  := high
@@ -454,11 +457,16 @@ if showBoxes and showVisuals
 // ── Data Window (hover any bar to see current values) ───────────────────────
 float displayEntry = showLong ? longEntry : showShort ? shortEntry : na
 float displayTp    = showLong ? longTp : showShort ? shortTp : na
-plot(displayEntry, "Entry Price", display=display.data_window)
-plot(displayTp, "TP Price", display=display.data_window)
-plot(weekPLPct, "Week P/L %", display=display.data_window)
+float displayState = longState == 1 or shortState == 1 ? 1.0 : 0.0
+plot(displayEntry, "Entry", display=display.data_window)
+plot(displayTp, "TP", display=display.data_window)
+plot(adrReady ? adrPips : na, "ADR (pips)", display=display.data_window)
+plot(displayState, "In Trade", display=display.data_window)
+plot(weekTrades * 1.0, "Trades", display=display.data_window)
+plot(weekTpHits * 1.0, "TP Hits", display=display.data_window)
+plot(weekPLPct, "P/L %", display=display.data_window)
 plot(weekMaxDDPct, "Max DD %", display=display.data_window)
-plot(adrReady ? adrPips : na, "ADR Pips", display=display.data_window)
+plot(currentTradeDDAdr, "Current DD (ADR)", display=display.data_window)
 
 // ── Info table (single panel, dynamic rows — no gaps) ───────────────────────
 var table infoTable = table.new(position.top_right, 2, 20, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
