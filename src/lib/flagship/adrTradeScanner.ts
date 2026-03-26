@@ -144,9 +144,7 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
           metadata,
         });
         inTrade = false;
-        // Fresh Start: seed anchor from TP bar (matches Pine — anchorHigh := high after na reset)
-        // Next bar can trigger using this bar's high/low as the anchor base
-        anchor = direction === "LONG" ? bar.high : bar.low;
+        anchor = null; // Fresh Start
         continue;
       }
       continue;
