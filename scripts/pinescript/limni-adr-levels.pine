@@ -347,11 +347,10 @@ if longTpHit2 or shortTpHit2
 float tpReturnPct = tpMultiple  // 0.25 ADR = 0.25%
 if weekTrades > loggedTrades
     string tid = makeTradeId(weekTrades)
-    string dir = longState == 1 ? "L" : shortState == 1 ? "S" : "?"
     string ep  = longState == 1 ? str.tostring(frozenLongEntry, format.mintick) : str.tostring(frozenShortEntry, format.mintick)
     string tp  = longState == 1 ? str.tostring(frozenLongTp, format.mintick) : str.tostring(frozenShortTp, format.mintick)
     array.push(tradeIds, tid)
-    array.push(tradeDetails, dir + " " + ep + " → " + tp + " ACTIVE")
+    array.push(tradeDetails, ep + " → " + tp + " ACTIVE")
     loggedTrades := weekTrades
 
 if weekTpHits > loggedTpHits and array.size(tradeDetails) > 0
@@ -535,8 +534,8 @@ if showTable and barstate.islast
     if showTradeLog
         int numTrades = math.min(array.size(tradeIds), 10)
         for i = 0 to numTrades - 1
-            table.cell(infoTable, 0, r + i, array.get(tradeIds, i), text_color=color.new(tableTextColor, 30), text_size=size.tiny, bgcolor=tableBgColor)
-            table.cell(infoTable, 1, r + i, array.get(tradeDetails, i), text_color=tableTextColor, bgcolor=tableBgColor)
+            table.cell(infoTable, 0, r + i, array.get(tradeIds, i), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+            table.cell(infoTable, 1, r + i, array.get(tradeDetails, i), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
 
 if not showTable and barstate.islast
     table.clear(infoTable, 0, 0, 1, 19)
