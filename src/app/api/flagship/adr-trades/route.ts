@@ -40,6 +40,7 @@ export type AdrTradeRow = {
   adrPct: number | null;
   tpPrice: number | null;
   maePct: number | null;
+  assetClass: string | null;
   tier: string | null;
   gateDecision: string | null;
 };
@@ -113,6 +114,7 @@ export async function GET(request: Request) {
       adrPct: (r.metadata as Record<string, unknown>)?.adrPct as number ?? null,
       tpPrice: (r.metadata as Record<string, unknown>)?.tpPrice as number ?? null,
       maePct: (r.metadata as Record<string, unknown>)?.maePct as number ?? null,
+      assetClass: (r.metadata as Record<string, unknown>)?.assetClass as string ?? null,
       tier: (r.metadata as Record<string, unknown>)?.tier as string ?? null,
       gateDecision: (r.metadata as Record<string, unknown>)?.gateDecision as string ?? null,
     }));

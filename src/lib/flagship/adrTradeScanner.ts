@@ -254,6 +254,7 @@ export function toBacktestTradeRows(
           : "active",
     metadata: {
       ...trade.metadata,
+      assetClass: trade.assetClass,
       tradeNumber: trade.tradeNumber,
       anchorPrice: trade.anchorPrice,
       adrPct: trade.adrPct,

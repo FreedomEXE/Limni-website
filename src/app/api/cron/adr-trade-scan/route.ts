@@ -138,6 +138,7 @@ export async function GET(request: Request) {
           adrPct,
           bars: h1Bars as H1Bar[],
           metadata: {
+            assetClass: signal.assetClass,
             tier: signal.tier,
             gateDecision: signal.gateDecision,
             model: signal.model,
