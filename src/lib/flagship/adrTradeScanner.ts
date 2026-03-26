@@ -5,7 +5,7 @@
  * File: adrTradeScanner.ts
  *
  * Description:
- * Scans H1 candles for a single pair within a week and detects ADR trades
+ * Scans candles (M5 or H1) for a single pair within a week and detects ADR trades
  * using the Fresh Start state machine. Used by both the backfill script
  * and the ongoing hourly cron to persist trades to the DB.
  */
@@ -144,7 +144,10 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
           metadata,
         });
         inTrade = false;
-        anchor = null; // Fresh Start
+        // Fresh Start: seed anchor from TP bar (matches Pine behavior —
+        // Pine resets anchorHigh to na then immediately re-seeds from the
+        // same bar's high/low in the same execution pass)
+        anchor = direction === "LONG" ? bar.high : bar.low;
         continue;
       }
       continue;
