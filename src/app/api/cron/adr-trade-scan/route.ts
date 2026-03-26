@@ -74,16 +74,10 @@ async function ensureRunId(): Promise<number> {
   return Number(inserted[0]!.id);
 }
 
-/** Compute ADR from canonical daily bars.
- *  Pine's calcAdrStats() loops `for i = 1 to adrLookback` inside request.security("D", lookahead_off).
- *  With lookahead_off, bar[0] = last completed daily bar. i=1 skips it.
- *  So we drop the most recent completed daily bar, then take the final 10. */
+/** Returns [adrPct, adrAbsoluteDistance] — pct for metadata, absolute for entry calc */
 async function computeAdr(pair: string, beforeUtc: string): Promise<{ adrPct: number; adrDistance: number } | null> {
-  const rows = await getCanonicalBars(pair, "1d", DateTime.fromISO(beforeUtc).minus({ days: ADR_LOOKBACK_DAYS + 5 }).toISO()!, beforeUtc);
-
-  // Drop most recent daily bar (Pine's i=1 offset), then take last N
-  const withoutMostRecent = rows.slice(0, -1);
-  const recent = withoutMostRecent.slice(-ADR_LOOKBACK_DAYS);
+  const rows = await getCanonicalBars(pair, "1d", DateTime.fromISO(beforeUtc).minus({ days: ADR_LOOKBACK_DAYS + 2 }).toISO()!, beforeUtc);
+  const recent = rows.slice(-ADR_LOOKBACK_DAYS);
 
   const pctRanges = recent
     .map((bar) => toPct(bar.highPrice, bar.lowPrice, bar.openPrice))
