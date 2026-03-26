@@ -508,6 +508,10 @@ if showTable and barstate.islast
     table.cell(infoTable, 0, r, "ADR", text_color=tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 1, r, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
     r += 1
+    float adrTpPips = adrReady and pipSize > 0 ? (weekAdr * tpMultiple) / pipSize : na
+    table.cell(infoTable, 0, r, "ADR TP", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, not na(adrTpPips) ? str.tostring(adrTpPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
     table.cell(infoTable, 0, r, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 1, r, not na(displayEntry) ? str.tostring(displayEntry, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
     r += 1
