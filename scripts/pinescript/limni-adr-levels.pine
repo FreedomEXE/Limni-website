@@ -327,8 +327,8 @@ if longTpHit2 or shortTpHit2
     weekMaxDDAdr      := math.max(weekMaxDDAdr, currentTradeDDAdr)
     currentTradeDDAdr := 0.0
 
-// Log new trades with P/L
-float tpReturnPct = tpMultiple * 100  // 0.25 ADR * 1%/ADR = 0.25%
+// Log new trades with P/L (1 ADR = 1%, so tpMultiple in ADR units = tpMultiple%)
+float tpReturnPct = tpMultiple  // 0.25 ADR = 0.25%
 if weekTrades > loggedTrades
     string dir = longState == 1 ? "LONG" : shortState == 1 ? "SHORT" : "?"
     string ep  = longState == 1 ? str.tostring(frozenLongEntry, format.mintick) : str.tostring(frozenShortEntry, format.mintick)
@@ -341,9 +341,9 @@ if weekTpHits > loggedTpHits and array.size(tradeEntries) > 0
     array.set(tradeEntries, lastIdx, str.replace_all(array.get(tradeEntries, lastIdx), "ACTIVE", "+" + str.tostring(tpReturnPct, "#.##") + "%"))
     loggedTpHits := weekTpHits
 
-// Computed stats
-float weekPLPct  = weekTpHits * tpReturnPct
-float weekMaxDDPct = math.max(weekMaxDDAdr, currentTradeDDAdr) * 100  // ADR units → %
+// Computed stats (1 ADR = 1%, so ADR units = percentage directly)
+float weekPLPct    = weekTpHits * tpReturnPct
+float weekMaxDDPct = math.max(weekMaxDDAdr, currentTradeDDAdr)
 
 // ── Period box (always uses true weekHigh/weekLow) ──────────────────────────
 var box periodBox = na
