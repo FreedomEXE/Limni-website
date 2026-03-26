@@ -462,56 +462,60 @@ if shortState == 1
             box.set_top(shortDDBox, shortDDHigh)
 
 // ── Info table ──────────────────────────────────────────────────────────────
-var table infoTable = table.new(position.top_right, 2, 9, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
+// Clean layout: header, bias, ADR, entry (copyable), TP (copyable), status, week summary
+// Only shows entry/TP for the active bias direction
+var table infoTable = table.new(position.top_right, 2, 8, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
 
 if showTable and barstate.islast
     color biasColor = resolvedBias == "LONG" ? color.lime : resolvedBias == "SHORT" ? color.red : tableTextColor
-    string longStateLabel  = longState == 0 ? (longTpHit ? "TP Hit" : "Waiting") : "TRIGGERED"
-    string shortStateLabel = shortState == 0 ? (shortTpHit ? "TP Hit" : "Waiting") : "TRIGGERED"
+    color activeStatusColor = longState == 1 or shortState == 1 ? color.yellow : tableTextColor
 
-    string longCellText = "-"
-    if adrReady and not na(longEntry) and not na(longTp)
-        longCellText := str.tostring(longEntry, format.mintick) + " / " + str.tostring(longTp, format.mintick) + "\nTP: " + str.tostring(longTpPips, "#.#") + " pips"
+    // Direction-specific entry/TP (only show the relevant side)
+    float displayEntry = showLong ? longEntry : showShort ? shortEntry : na
+    float displayTp    = showLong ? longTp : showShort ? shortTp : na
+    float displayTpPips = showLong ? longTpPips : showShort ? shortTpPips : na
+    color entryColor   = showLong ? color.lime : color.red
 
-    string shortCellText = "-"
-    if adrReady and not na(shortEntry) and not na(shortTp)
-        shortCellText := str.tostring(shortEntry, format.mintick) + " / " + str.tostring(shortTp, format.mintick) + "\nTP: " + str.tostring(shortTpPips, "#.#") + " pips"
-
+    // Status text
     string statusText = ""
     if showLong
-        statusText += "L: " + longStateLabel
-    if showLong and showShort
-        statusText += " | "
-    if showShort
-        statusText += "S: " + shortStateLabel
+        statusText := longState == 1 ? "TRIGGERED" : longTpHit ? "TP Hit" : "Waiting"
+    else if showShort
+        statusText := shortState == 1 ? "TRIGGERED" : shortTpHit ? "TP Hit" : "Waiting"
+    else
+        statusText := "NEUTRAL"
 
-    color activeStatusColor = longState == 1 or shortState == 1 ? color.yellow : tableTextColor
-    color cryptoColor = cryptoRegime == "LONG" ? color.lime : cryptoRegime == "SHORT" ? color.red : tableTextColor
-
+    // Row 0: Header
     table.cell(infoTable, 0, 0, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
     table.cell(infoTable, 1, 0, syminfo.ticker, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
-    table.cell(infoTable, 0, 1, "Anchor", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 1, "5M Anchored", text_color=color.new(color.yellow, 0), bgcolor=tableBgColor)
-    table.cell(infoTable, 0, 2, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 2, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 0, 3, "ADR Pips", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 3, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 0, 4, "Long Entry / TP", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 4, longCellText, text_color=color.lime, bgcolor=tableBgColor)
-    table.cell(infoTable, 0, 5, "Short Entry / TP", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 5, shortCellText, text_color=color.red, bgcolor=tableBgColor)
-    table.cell(infoTable, 0, 6, "Trade Status", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 6, statusText, text_color=activeStatusColor, bgcolor=tableBgColor)
+    // Row 1: Bias
+    table.cell(infoTable, 0, 1, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 1, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
+    // Row 2: ADR
+    table.cell(infoTable, 0, 2, "ADR", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 2, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    // Row 3: Entry (copyable — just the price)
+    table.cell(infoTable, 0, 3, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 3, not na(displayEntry) ? str.tostring(displayEntry, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+    // Row 4: Take Profit (copyable — just the price)
+    table.cell(infoTable, 0, 4, "Take Profit", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 4, not na(displayTp) ? str.tostring(displayTp, format.mintick) + " (" + str.tostring(displayTpPips, "#.#") + " pips)" : "-", text_color=entryColor, bgcolor=tableBgColor)
+    // Row 5: Trade Status
+    table.cell(infoTable, 0, 5, "Status", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 5, statusText, text_color=activeStatusColor, bgcolor=tableBgColor)
+    // Row 6: This Week
     string tradesText = str.tostring(weekTrades) + " trades / " + str.tostring(weekTpHits) + " TP"
     color tradesColor = weekTpHits > 0 ? color.lime : tableTextColor
-    table.cell(infoTable, 0, 7, "This Week", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 7, tradesText, text_color=tradesColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 0, 6, "This Week", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 6, tradesText, text_color=tradesColor, bgcolor=tableBgColor)
+    // Row 7: Crypto regime (if applicable) or empty
     if isCrypto
-        table.cell(infoTable, 0, 8, "Crypto Regime", text_color=tableTextColor, bgcolor=tableBgColor)
-        table.cell(infoTable, 1, 8, cryptoRegime, text_color=cryptoColor, bgcolor=tableBgColor)
+        color cryptoColor = cryptoRegime == "LONG" ? color.lime : cryptoRegime == "SHORT" ? color.red : tableTextColor
+        table.cell(infoTable, 0, 7, "Crypto Regime", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, 7, cryptoRegime, text_color=cryptoColor, bgcolor=tableBgColor)
     else
-        table.cell(infoTable, 0, 8, "", text_color=tableTextColor, bgcolor=tableBgColor)
-        table.cell(infoTable, 1, 8, "", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 0, 7, "", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, 7, "", text_color=tableTextColor, bgcolor=tableBgColor)
 
 if not showTable and barstate.islast
-    table.clear(infoTable, 0, 0, 1, 8)
+    table.clear(infoTable, 0, 0, 1, 7)
