@@ -149,7 +149,7 @@ bool showVisuals = not currentOnly or (timenow - time("W") < 7 * 24 * 60 * 60 * 
 // On 5M charts: arrays have 1 element (native behavior).
 // On higher TFs: arrays have N elements (e.g. 48 for 4H).
 // Requires chart TF >= 5M.
-[m5Highs, m5Lows, m5WeekTimes] = request.security_lower_tf(syminfo.tickerid, "5", [high, low, time("W")])
+[m5Highs, m5Lows, m5WeekTimes] = request.security_lower_tf(syminfo.tickerid, "5", [high, low, time("W") * 1.0])
 
 // Persistent state (survives across chart bars, updated inside 5M loop)
 var float weekAdr     = na
@@ -166,7 +166,7 @@ var float frozenShortEntry = na
 var float frozenShortTp    = na
 var int   weekTrades  = 0
 var int   weekTpHits  = 0
-var int   lastWeekTime = 0
+var float lastWeekTime = 0.0
 
 // Per-chart-bar event flags (reset each bar, set inside loop)
 bool longTpHit         = false
@@ -185,7 +185,7 @@ bool  adrReady   = false
 for i = 0 to array.size(m5Highs) - 1
     float h5 = array.get(m5Highs, i)
     float l5 = array.get(m5Lows, i)
-    int   wt = array.get(m5WeekTimes, i)
+    float wt = array.get(m5WeekTimes, i)
 
     // Detect week boundary
     bool isNew = wt != lastWeekTime
