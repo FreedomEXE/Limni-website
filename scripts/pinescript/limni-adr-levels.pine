@@ -181,6 +181,17 @@ if isCrypto and not isMajorCrypto
 bool showLong  = resolvedBias == "LONG"
 bool showShort = resolvedBias == "SHORT"
 
+// ── Trade ID components ─────────────────────────────────────────────────────
+bool isGoldId   = str.contains(tickerUpper, "XAU")
+bool isSilverId = str.contains(tickerUpper, "XAG")
+bool isOilId    = tickerUpper == "WTIUSD" or str.contains(tickerUpper, "USOIL") or str.contains(tickerUpper, "BCOUSD")
+string assetCode = isCrypto ? (isMajorCrypto ? "CR" : "CA") : syminfo.type == "forex" ? "FX" : (isGoldId or isSilverId or isOilId) ? "CM" : "IX"
+string dirCode   = showLong ? "L" : showShort ? "S" : "N"
+string dateCode  = str.tostring(year) + str.tostring(month, "00") + str.tostring(dayofmonth, "00")
+
+makeTradeId(int tradeNum) =>
+    "IADR-" + assetCode + "-" + dirCode + "-" + tickerUpper + "-" + str.substring(dateCode, 2) + "-" + str.tostring(tradeNum, "000")
+
 // ── Dynamic entry / TP levels (from PREVIOUS bar's anchor) ──────────────────
 // Using prevAnchor ensures entry level isn't influenced by current bar's own high/low
 // This makes the indicator timeframe-independent
@@ -333,10 +344,10 @@ if longTpHit2 or shortTpHit2
 // Log new trades with P/L (1 ADR = 1%, so tpMultiple in ADR units = tpMultiple%)
 float tpReturnPct = tpMultiple  // 0.25 ADR = 0.25%
 if weekTrades > loggedTrades
-    string dir = longState == 1 ? "LONG" : shortState == 1 ? "SHORT" : "?"
+    string tid = makeTradeId(weekTrades)
     string ep  = longState == 1 ? str.tostring(frozenLongEntry, format.mintick) : str.tostring(frozenShortEntry, format.mintick)
     string tp  = longState == 1 ? str.tostring(frozenLongTp, format.mintick) : str.tostring(frozenShortTp, format.mintick)
-    array.push(tradeEntries, "#" + str.tostring(weekTrades) + " " + dir + " " + ep + " → " + tp + " ACTIVE")
+    array.push(tradeEntries, tid + " " + ep + " → " + tp + " ACTIVE")
     loggedTrades := weekTrades
 
 if weekTpHits > loggedTpHits and array.size(tradeEntries) > 0
@@ -393,8 +404,9 @@ if shortTpHit
 
 if longTriggeredNow and showBoxes and showVisuals and not na(frozenLongEntry) and not na(frozenLongTp)
     longProfBox := box.new(bar_index, frozenLongTp, bar_index, frozenLongEntry, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
-    string ttip = "Trade #" + str.tostring(weekTrades) + " LONG" + "\nEntry: " + str.tostring(frozenLongEntry, format.mintick) + "\nTP: " + str.tostring(frozenLongTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%" + "\nRisk: " + str.tostring(entryMultiple, "#.##") + "% (1 ADR)"
-    label.new(bar_index, frozenLongTp, "L#" + str.tostring(weekTrades), tooltip=ttip, style=label.style_label_down, color=color.new(color.lime, 60), textcolor=color.white, size=size.tiny)
+    string tid = makeTradeId(weekTrades)
+    string ttip = tid + "\nLONG Entry: " + str.tostring(frozenLongEntry, format.mintick) + "\nTP: " + str.tostring(frozenLongTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%" + "\nRisk: " + str.tostring(entryMultiple, "#.##") + "% (1 ADR)"
+    label.new(bar_index, frozenLongTp, "L" + str.tostring(weekTrades), tooltip=ttip, style=label.style_label_down, color=color.new(color.lime, 60), textcolor=color.white, size=size.tiny)
     longDDBox   := na
     longDDLow   := low
 
@@ -412,8 +424,9 @@ if longState == 1
 
 if shortTriggeredNow and showBoxes and showVisuals and not na(frozenShortEntry) and not na(frozenShortTp)
     shortProfBox := box.new(bar_index, frozenShortEntry, bar_index, frozenShortTp, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
-    string ttip = "Trade #" + str.tostring(weekTrades) + " SHORT" + "\nEntry: " + str.tostring(frozenShortEntry, format.mintick) + "\nTP: " + str.tostring(frozenShortTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%" + "\nRisk: " + str.tostring(entryMultiple, "#.##") + "% (1 ADR)"
-    label.new(bar_index, frozenShortTp, "S#" + str.tostring(weekTrades), tooltip=ttip, style=label.style_label_up, color=color.new(color.red, 60), textcolor=color.white, size=size.tiny)
+    string tid = makeTradeId(weekTrades)
+    string ttip = tid + "\nSHORT Entry: " + str.tostring(frozenShortEntry, format.mintick) + "\nTP: " + str.tostring(frozenShortTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%" + "\nRisk: " + str.tostring(entryMultiple, "#.##") + "% (1 ADR)"
+    label.new(bar_index, frozenShortTp, "S" + str.tostring(weekTrades), tooltip=ttip, style=label.style_label_up, color=color.new(color.red, 60), textcolor=color.white, size=size.tiny)
     shortDDBox   := na
     shortDDHigh  := high
 
