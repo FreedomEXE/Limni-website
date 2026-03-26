@@ -76,8 +76,12 @@ async function ensureRunId(): Promise<number> {
 
 /** Returns [adrPct, adrAbsoluteDistance] — pct for metadata, absolute for entry calc (matches PineScript indicator) */
 async function computeAdr(pair: string, beforeUtc: string): Promise<{ adrPct: number; adrDistance: number } | null> {
-  const rows = await getCanonicalBars(pair, "1d", DateTime.fromISO(beforeUtc).minus({ days: ADR_LOOKBACK_DAYS + 2 }).toISO()!, beforeUtc);
-  const recent = rows.slice(-ADR_LOOKBACK_DAYS);
+  const rows = await getCanonicalBars(pair, "1d", DateTime.fromISO(beforeUtc).minus({ days: ADR_LOOKBACK_DAYS + 5 }).toISO()!, beforeUtc);
+  // Pine's calcAdrStats() loops `for i = 1 to adrLookback` — starts at 1, skipping
+  // bar[0] (the most recent completed daily bar in the security context).
+  // To match: drop the last daily bar, then take the final 10.
+  const withoutMostRecent = rows.slice(0, -1);
+  const recent = withoutMostRecent.slice(-ADR_LOOKBACK_DAYS);
 
   const pctRanges = recent
     .map((bar) => toPct(bar.highPrice, bar.lowPrice, bar.openPrice))
