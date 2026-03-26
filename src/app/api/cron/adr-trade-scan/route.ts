@@ -22,7 +22,7 @@ import { isCronAuthorized } from "@/lib/cronAuth";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
 import { getCanonicalBars } from "@/lib/canonicalPriceBars";
-import { fetchOandaCandleSeries, type OandaHourlyCandle } from "@/lib/oandaPrices";
+import { fetchOanda5MinuteSeries, type OandaHourlyCandle } from "@/lib/oandaPrices";
 import { getCanonicalWeeklyBasket } from "@/lib/flagship/canonicalWeeklyBasket";
 import { scanAdrTrades, toBacktestTradeRows, type H1Bar } from "@/lib/flagship/adrTradeScanner";
 import { query } from "@/lib/db";
@@ -133,14 +133,14 @@ export async function GET(request: Request) {
         if (adr === null) return;
         const { adrPct, adrDistance } = adr;
 
-        /* Fetch H1 candles for the week */
-        const h1Bars: OandaHourlyCandle[] = await fetchOandaCandleSeries(
+        /* Fetch M5 candles for the week (finer granularity = more accurate fill detection) */
+        const m5Bars: OandaHourlyCandle[] = await fetchOanda5MinuteSeries(
           signal.pair,
           weekWindow.openUtc,
           nowUtc,
         ).catch(() => []);
 
-        if (h1Bars.length === 0) return;
+        if (m5Bars.length === 0) return;
 
         /* Run Fresh Start scanner */
         const trades = scanAdrTrades({
@@ -150,7 +150,7 @@ export async function GET(request: Request) {
           weekOpenUtc,
           adrPct,
           adrAbsoluteDistance: adrDistance,
-          bars: h1Bars as H1Bar[],
+          bars: m5Bars as H1Bar[],
           metadata: {
             assetClass: signal.assetClass,
             tier: signal.tier,
