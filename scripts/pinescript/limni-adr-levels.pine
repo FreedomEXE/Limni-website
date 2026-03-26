@@ -14,7 +14,7 @@ longPairs     = input.text_area("", "LONG Pairs (comma/newline)")
 shortPairs    = input.text_area("", "SHORT Pairs (comma/newline)")
 showTable     = input.bool(true, "Show Info Table")
 showBoxes     = input.bool(true, "Show Trade Boxes")
-showTradeLog  = input.bool(true, "Show Trade Log")
+showTradeLog  = input.bool(true, "Show Trade Breakdown")
 currentOnly   = input.bool(true, "Current Week Only")
 
 periodBoxBg      = input.color(color.new(#2a2e39, 70), "Period Box Fill")
@@ -129,7 +129,6 @@ bool isNewWeek = ta.change(time("W")) != 0
 bool showVisuals = not currentOnly or (timenow - time("W") < 7 * 24 * 60 * 60 * 1000)
 
 var float weekAdr = na
-var int barsInWeek = 0
 
 // weekHigh/weekLow: true week range (for period box, always cumulative)
 var float weekHigh = na
@@ -146,10 +145,8 @@ if barstate.isfirst or isNewWeek
     weekLow    := low
     anchorHigh := high
     anchorLow  := low
-    barsInWeek   := 0
     barsInAnchor := 0
 else
-    barsInWeek += 1
     barsInAnchor += 1
     weekHigh   := math.max(weekHigh, high)
     weekLow    := math.min(weekLow, low)
@@ -303,84 +300,51 @@ bool shortTpHit2 = shortState == 0 and nz(shortState[1]) == 1
 longTpHit  := longTpHit or longTpHit2
 shortTpHit := shortTpHit or shortTpHit2
 
-// ── Trade log + max drawdown tracking ────────────────────────────────────────
+// ── Weekly stats tracking (% based — universal across all assets) ────────────
 var string[] tradeEntries = array.new_string(0)
-var int loggedTrades = 0
-var int loggedTpHits = 0
-var float currentTradeDDPips = 0.0
-var float weekMaxDDPips = 0.0
+var int   loggedTrades      = 0
+var int   loggedTpHits      = 0
+var float currentTradeDDPct = 0.0
+var float weekMaxDDPct      = 0.0
+var float weekTotalReturnPct = 0.0
 
 if barstate.isfirst or isNewWeek
     array.clear(tradeEntries)
-    loggedTrades     := 0
-    loggedTpHits     := 0
-    currentTradeDDPips := 0.0
-    weekMaxDDPips    := 0.0
+    loggedTrades      := 0
+    loggedTpHits      := 0
+    currentTradeDDPct := 0.0
+    weekMaxDDPct      := 0.0
+    weekTotalReturnPct := 0.0
 
-// Track drawdown while in trade (chart-bar low/high captures full range)
-if longState == 1 and not na(frozenLongEntry) and pipSize > 0
-    float dd = (frozenLongEntry - low) / pipSize
-    if dd > 0
-        currentTradeDDPips := math.max(currentTradeDDPips, dd)
+// Track drawdown as % of entry while in trade
+if longState == 1 and not na(frozenLongEntry) and frozenLongEntry > 0
+    float ddPct = (frozenLongEntry - low) / frozenLongEntry * 100
+    if ddPct > 0
+        currentTradeDDPct := math.max(currentTradeDDPct, ddPct)
 
-if shortState == 1 and not na(frozenShortEntry) and pipSize > 0
-    float dd = (high - frozenShortEntry) / pipSize
-    if dd > 0
-        currentTradeDDPips := math.max(currentTradeDDPips, dd)
+if shortState == 1 and not na(frozenShortEntry) and frozenShortEntry > 0
+    float ddPct = (high - frozenShortEntry) / frozenShortEntry * 100
+    if ddPct > 0
+        currentTradeDDPct := math.max(currentTradeDDPct, ddPct)
 
-// When TP hits: record max DD then reset for next trade
+// On TP hit: record return % and max DD, then reset for next trade
 if longTpHit2 or shortTpHit2
-    weekMaxDDPips      := math.max(weekMaxDDPips, currentTradeDDPips)
-    currentTradeDDPips := 0.0
+    weekMaxDDPct       := math.max(weekMaxDDPct, currentTradeDDPct)
+    weekTotalReturnPct += tpMultiple * (not na(weekAdr) and not na(frozenLongEntry) ? weekAdr / frozenLongEntry * 100 : not na(weekAdr) and not na(frozenShortEntry) ? weekAdr / frozenShortEntry * 100 : 0.0)
+    currentTradeDDPct  := 0.0
 
-// Log new trades from 5M state
+// Log new trades
 if weekTrades > loggedTrades
-    string dir  = longState == 1 ? "LONG" : shortState == 1 ? "SHORT" : "?"
-    string ep   = longState == 1 ? str.tostring(frozenLongEntry, format.mintick) : str.tostring(frozenShortEntry, format.mintick)
-    string tp   = longState == 1 ? str.tostring(frozenLongTp, format.mintick) : str.tostring(frozenShortTp, format.mintick)
+    string dir = longState == 1 ? "LONG" : shortState == 1 ? "SHORT" : "?"
+    string ep  = longState == 1 ? str.tostring(frozenLongEntry, format.mintick) : str.tostring(frozenShortEntry, format.mintick)
+    string tp  = longState == 1 ? str.tostring(frozenLongTp, format.mintick) : str.tostring(frozenShortTp, format.mintick)
     array.push(tradeEntries, "#" + str.tostring(weekTrades) + " " + dir + " | " + ep + " → " + tp + " | ACTIVE")
     loggedTrades := weekTrades
 
-// Mark TP hits in the log
 if weekTpHits > loggedTpHits and array.size(tradeEntries) > 0
     int lastIdx = array.size(tradeEntries) - 1
-    string lastEntry = array.get(tradeEntries, lastIdx)
-    array.set(tradeEntries, lastIdx, str.replace_all(lastEntry, "| ACTIVE", "| TP HIT"))
+    array.set(tradeEntries, lastIdx, str.replace_all(array.get(tradeEntries, lastIdx), "| ACTIVE", "| TP HIT"))
     loggedTpHits := weekTpHits
-
-// ── Trade log table (bottom-left, toggleable) ───────────────────────────────
-var table logTable = table.new(position.bottom_left, 2, 14, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
-
-if showTradeLog and barstate.islast
-    // Header
-    table.cell(logTable, 0, 0, "TRADE LOG", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
-    table.cell(logTable, 1, 0, syminfo.ticker + " | " + resolvedBias, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
-
-    // Summary
-    table.cell(logTable, 0, 1, "ADR", text_color=tableTextColor)
-    table.cell(logTable, 1, 1, str.tostring(weekAdr, format.mintick) + " (" + str.tostring(adrPips, "#.#") + " pips)", text_color=tableTextColor)
-
-    table.cell(logTable, 0, 2, "Trades / TP", text_color=tableTextColor)
-    table.cell(logTable, 1, 2, str.tostring(weekTrades) + " trades / " + str.tostring(weekTpHits) + " TP", text_color=weekTpHits > 0 ? color.lime : tableTextColor)
-
-    // Max DD (worst of all closed trades, or current if still active)
-    float displayDD = math.max(weekMaxDDPips, currentTradeDDPips)
-    table.cell(logTable, 0, 3, "Max DD", text_color=tableTextColor)
-    table.cell(logTable, 1, 3, displayDD > 0 ? str.tostring(displayDD, "#.#") + " pips" : "-", text_color=displayDD > 0 ? color.red : tableTextColor)
-
-    // Individual trades
-    int numTrades = math.min(array.size(tradeEntries), 10)
-    for i = 0 to numTrades - 1
-        table.cell(logTable, 0, 4 + i, "", text_color=tableTextColor)
-        table.cell(logTable, 1, 4 + i, array.get(tradeEntries, i), text_color=tableTextColor)
-
-    // Clear remaining rows
-    for i = numTrades to 9
-        table.cell(logTable, 0, 4 + i, "", text_color=tableTextColor)
-        table.cell(logTable, 1, 4 + i, "", text_color=tableTextColor)
-
-if not showTradeLog and barstate.islast
-    table.clear(logTable, 0, 0, 1, 13)
 
 // ── Period box (always uses true weekHigh/weekLow) ──────────────────────────
 var box periodBox = na
@@ -486,61 +450,94 @@ if showBoxes and showVisuals
         pendingZoneBox   := box.new(bar_index - 1, shortEntry, bar_index + 10, shortTp, bgcolor=color.new(color.red, 85), border_color=color.new(color.red, 50), border_width=1, border_style=line.style_dashed)
         pendingZoneLabel := label.new(bar_index + 5, shortEntry, "PENDING SHORT", style=label.style_label_down, color=color.new(color.red, 80), textcolor=color.white, size=size.tiny)
 
-// ── Info table ──────────────────────────────────────────────────────────────
-// Clean layout: header, bias, status, ADR, entry (copyable), TP (copyable), week summary
-// Only shows entry/TP for the active bias direction
-var table infoTable = table.new(position.top_right, 2, 8, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
+// ── Data Window plots (invisible on chart — select values from Data Window) ──
+float displayEntry = showLong ? longEntry : showShort ? shortEntry : na
+float displayTp    = showLong ? longTp : showShort ? shortTp : na
+plot(displayEntry, "Entry", display=display.data_window)
+plot(displayTp, "Take Profit", display=display.data_window)
+plot(adrReady ? weekAdr : na, "ADR Distance", display=display.data_window)
+
+// ── Info table (single unified panel) ───────────────────────────────────────
+int tableRows = 10 + (showTradeLog ? math.min(array.size(tradeEntries), 10) : 0)
+var table infoTable = table.new(position.top_right, 2, 20, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
 
 if showTable and barstate.islast
     color biasColor = resolvedBias == "LONG" ? color.lime : resolvedBias == "SHORT" ? color.red : tableTextColor
     color activeStatusColor = longState == 1 or shortState == 1 ? color.yellow : tableTextColor
-
-    // Direction-specific entry/TP (only show the relevant side)
-    float displayEntry = showLong ? longEntry : showShort ? shortEntry : na
-    float displayTp    = showLong ? longTp : showShort ? shortTp : na
+    color entryColor = showLong ? color.lime : color.red
     float displayTpPips = showLong ? longTpPips : showShort ? shortTpPips : na
-    color entryColor   = showLong ? color.lime : color.red
+    float displayMaxDD = math.max(weekMaxDDPct, currentTradeDDPct)
 
-    // Status text
-    string statusText = ""
-    if showLong
-        statusText := longState == 1 ? "TRIGGERED" : longTpHit ? "TP Hit" : "Waiting"
-    else if showShort
-        statusText := shortState == 1 ? "TRIGGERED" : shortTpHit ? "TP Hit" : "Waiting"
-    else
-        statusText := "NEUTRAL"
+    string statusText = showLong ? (longState == 1 ? "TRIGGERED" : longTpHit ? "TP Hit" : "Waiting") : showShort ? (shortState == 1 ? "TRIGGERED" : shortTpHit ? "TP Hit" : "Waiting") : "NEUTRAL"
 
-    // Row 0: Header
-    table.cell(infoTable, 0, 0, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
-    table.cell(infoTable, 1, 0, syminfo.ticker, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
-    // Row 1: Bias
-    table.cell(infoTable, 0, 1, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 1, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
-    // Row 2: Status (moved below bias for quick glance)
-    table.cell(infoTable, 0, 2, "Status", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 2, statusText, text_color=activeStatusColor, bgcolor=tableBgColor)
-    // Row 3: ADR
-    table.cell(infoTable, 0, 3, "ADR", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 3, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
-    // Row 4: Entry (copyable — just the price)
-    table.cell(infoTable, 0, 4, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 4, not na(displayEntry) ? str.tostring(displayEntry, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
-    // Row 5: Take Profit (copyable — just the price + pips)
-    table.cell(infoTable, 0, 5, "Take Profit", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 5, not na(displayTp) ? str.tostring(displayTp, format.mintick) + " (" + str.tostring(displayTpPips, "#.#") + " pips)" : "-", text_color=entryColor, bgcolor=tableBgColor)
-    // Row 6: This Week
-    string tradesText = str.tostring(weekTrades) + " trades / " + str.tostring(weekTpHits) + " TP"
-    color tradesColor = weekTpHits > 0 ? color.lime : tableTextColor
-    table.cell(infoTable, 0, 6, "This Week", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 6, tradesText, text_color=tradesColor, bgcolor=tableBgColor)
-    // Row 7: Crypto regime (if applicable) or empty
+    int r = 0
+    // Header
+    table.cell(infoTable, 0, r, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
+    table.cell(infoTable, 1, r, syminfo.ticker, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
+    r += 1
+    // Bias
+    table.cell(infoTable, 0, r, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
+    r += 1
+    // Status
+    table.cell(infoTable, 0, r, "Status", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, statusText, text_color=activeStatusColor, bgcolor=tableBgColor)
+    r += 1
+    // ADR
+    table.cell(infoTable, 0, r, "ADR", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    // Entry
+    table.cell(infoTable, 0, r, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, not na(displayEntry) ? str.tostring(displayEntry, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+    r += 1
+    // Take Profit
+    table.cell(infoTable, 0, r, "TP", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, not na(displayTp) ? str.tostring(displayTp, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+    r += 1
+    // This Week
+    table.cell(infoTable, 0, r, "This Week", text_color=tableTextColor, bgcolor=color.new(color.white, 90))
+    table.cell(infoTable, 1, r, str.tostring(weekTrades) + " trades / " + str.tostring(weekTpHits) + " TP", text_color=weekTpHits > 0 ? color.lime : tableTextColor, bgcolor=color.new(color.white, 90))
+    r += 1
+    // P/L %
+    table.cell(infoTable, 0, r, "P/L", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, weekTotalReturnPct != 0 ? (weekTotalReturnPct > 0 ? "+" : "") + str.tostring(weekTotalReturnPct, "#.##") + "%" : "-", text_color=weekTotalReturnPct > 0 ? color.lime : weekTotalReturnPct < 0 ? color.red : tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    // Max DD %
+    table.cell(infoTable, 0, r, "Max DD", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, displayMaxDD > 0 ? "-" + str.tostring(displayMaxDD, "#.##") + "%" : "-", text_color=displayMaxDD > 0 ? color.red : tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    // Crypto regime
     if isCrypto
         color cryptoColor = cryptoRegime == "LONG" ? color.lime : cryptoRegime == "SHORT" ? color.red : tableTextColor
-        table.cell(infoTable, 0, 7, "Crypto Regime", text_color=tableTextColor, bgcolor=tableBgColor)
-        table.cell(infoTable, 1, 7, cryptoRegime, text_color=cryptoColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 0, r, "Crypto", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, cryptoRegime, text_color=cryptoColor, bgcolor=tableBgColor)
     else
-        table.cell(infoTable, 0, 7, "", text_color=tableTextColor, bgcolor=tableBgColor)
-        table.cell(infoTable, 1, 7, "", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 0, r, "", bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, "", bgcolor=tableBgColor)
+    r += 1
+
+    // Per-trade breakdown (when showTradeLog enabled)
+    if showTradeLog
+        int numTrades = math.min(array.size(tradeEntries), 10)
+        for i = 0 to numTrades - 1
+            table.cell(infoTable, 0, r + i, "", bgcolor=tableBgColor)
+            table.cell(infoTable, 1, r + i, array.get(tradeEntries, i), text_color=tableTextColor, bgcolor=tableBgColor)
+        for i = numTrades to 9
+            table.cell(infoTable, 0, r + i, "", bgcolor=tableBgColor)
+            table.cell(infoTable, 1, r + i, "", bgcolor=tableBgColor)
 
 if not showTable and barstate.islast
-    table.clear(infoTable, 0, 0, 1, 7)
+    table.clear(infoTable, 0, 0, 1, 19)
+
+// ── Log output (copyable from View > Pine Logs) ────────────────────────────
+if barstate.islast and barstate.isconfirmed
+    string logReport = syminfo.ticker + " | " + resolvedBias + " | " + (showLong ? (longState == 1 ? "TRIGGERED" : "Waiting") : showShort ? (shortState == 1 ? "TRIGGERED" : "Waiting") : "NEUTRAL")
+    logReport += " | ADR: " + str.tostring(adrPips, "#.#") + " pips"
+    logReport += " | " + str.tostring(weekTrades) + " trades / " + str.tostring(weekTpHits) + " TP"
+    logReport += " | P/L: " + str.tostring(weekTotalReturnPct, "#.##") + "%"
+    logReport += " | Max DD: " + str.tostring(math.max(weekMaxDDPct, currentTradeDDPct), "#.##") + "%"
+    logReport += " | Entry: " + str.tostring(displayEntry, format.mintick) + " | TP: " + str.tostring(displayTp, format.mintick)
+    log.info(logReport)
+    for i = 0 to array.size(tradeEntries) - 1
+        log.info(array.get(tradeEntries, i))
