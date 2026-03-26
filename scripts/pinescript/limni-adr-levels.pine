@@ -461,8 +461,33 @@ if shortState == 1
             box.set_right(shortDDBox, bar_index)
             box.set_top(shortDDBox, shortDDHigh)
 
+// ── Pending entry zone (shows where the next trade will trigger) ─────────────
+// Green box between Entry and TP, visible when waiting (not yet triggered).
+// Moves with the recalculating 5M levels so you can see where to place pending orders.
+var box pendingZoneBox = na
+var label pendingZoneLabel = na
+
+// Delete and redraw each bar to track moving levels
+if not na(pendingZoneBox)
+    box.delete(pendingZoneBox)
+    pendingZoneBox := na
+if not na(pendingZoneLabel)
+    label.delete(pendingZoneLabel)
+    pendingZoneLabel := na
+
+bool pendingLong  = showLong and longState == 0 and adrReady and not na(longEntry) and not na(longTp)
+bool pendingShort = showShort and shortState == 0 and adrReady and not na(shortEntry) and not na(shortTp)
+
+if showBoxes and showVisuals
+    if pendingLong
+        pendingZoneBox   := box.new(bar_index - 1, longTp, bar_index + 10, longEntry, bgcolor=color.new(color.lime, 85), border_color=color.new(color.lime, 50), border_width=1, border_style=line.style_dashed)
+        pendingZoneLabel := label.new(bar_index + 5, longTp, "PENDING LONG", style=label.style_label_down, color=color.new(color.lime, 80), textcolor=color.white, size=size.tiny)
+    else if pendingShort
+        pendingZoneBox   := box.new(bar_index - 1, shortEntry, bar_index + 10, shortTp, bgcolor=color.new(color.red, 85), border_color=color.new(color.red, 50), border_width=1, border_style=line.style_dashed)
+        pendingZoneLabel := label.new(bar_index + 5, shortEntry, "PENDING SHORT", style=label.style_label_down, color=color.new(color.red, 80), textcolor=color.white, size=size.tiny)
+
 // ── Info table ──────────────────────────────────────────────────────────────
-// Clean layout: header, bias, ADR, entry (copyable), TP (copyable), status, week summary
+// Clean layout: header, bias, status, ADR, entry (copyable), TP (copyable), week summary
 // Only shows entry/TP for the active bias direction
 var table infoTable = table.new(position.top_right, 2, 8, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
 
@@ -491,18 +516,18 @@ if showTable and barstate.islast
     // Row 1: Bias
     table.cell(infoTable, 0, 1, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 1, 1, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
-    // Row 2: ADR
-    table.cell(infoTable, 0, 2, "ADR", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 2, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
-    // Row 3: Entry (copyable — just the price)
-    table.cell(infoTable, 0, 3, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 3, not na(displayEntry) ? str.tostring(displayEntry, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
-    // Row 4: Take Profit (copyable — just the price)
-    table.cell(infoTable, 0, 4, "Take Profit", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 4, not na(displayTp) ? str.tostring(displayTp, format.mintick) + " (" + str.tostring(displayTpPips, "#.#") + " pips)" : "-", text_color=entryColor, bgcolor=tableBgColor)
-    // Row 5: Trade Status
-    table.cell(infoTable, 0, 5, "Status", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 5, statusText, text_color=activeStatusColor, bgcolor=tableBgColor)
+    // Row 2: Status (moved below bias for quick glance)
+    table.cell(infoTable, 0, 2, "Status", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 2, statusText, text_color=activeStatusColor, bgcolor=tableBgColor)
+    // Row 3: ADR
+    table.cell(infoTable, 0, 3, "ADR", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 3, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    // Row 4: Entry (copyable — just the price)
+    table.cell(infoTable, 0, 4, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 4, not na(displayEntry) ? str.tostring(displayEntry, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+    // Row 5: Take Profit (copyable — just the price + pips)
+    table.cell(infoTable, 0, 5, "Take Profit", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 5, not na(displayTp) ? str.tostring(displayTp, format.mintick) + " (" + str.tostring(displayTpPips, "#.#") + " pips)" : "-", text_color=entryColor, bgcolor=tableBgColor)
     // Row 6: This Week
     string tradesText = str.tostring(weekTrades) + " trades / " + str.tostring(weekTpHits) + " TP"
     color tradesColor = weekTpHits > 0 ? color.lime : tableTextColor
