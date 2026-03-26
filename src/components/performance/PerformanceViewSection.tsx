@@ -14,7 +14,7 @@
 -----------------------------------------------*/
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useState, type ComponentProps, useCallback } from "react";
 import type { PerformanceSystem } from "@/lib/performance/modelConfig";
 import type { PerformanceView } from "@/lib/performance/pageState";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
@@ -50,6 +50,96 @@ type PerformanceViewSectionProps = {
   flagshipSimulation: PerformanceSimulationGroup | null;
 };
 
+type AdrTradeRow = {
+  symbol: string;
+  direction: string;
+  entryTimeUtc: string | null;
+  exitTimeUtc: string | null;
+  entryPrice: number | null;
+  exitPrice: number | null;
+  pnlPct: number | null;
+  exitReason: string | null;
+  tradeNumber: number | null;
+};
+
+function MatrixPerformanceView() {
+  const [trades, setTrades] = useState<AdrTradeRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/flagship/adr-trades")
+      .then((r) => r.json())
+      .then((d) => { setTrades(d.trades ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)]">Loading ADR trades...</div>;
+
+  const byPair = new Map<string, AdrTradeRow[]>();
+  for (const t of trades) {
+    const list = byPair.get(t.symbol) ?? [];
+    list.push(t);
+    byPair.set(t.symbol, list);
+  }
+  const pairs = [...byPair.entries()].sort((a, b) => b[1].length - a[1].length);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 shadow-sm">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
+          ADR Forward Test — This Week
+        </h2>
+        <p className="mt-1 text-xs text-[color:var(--muted)]">
+          Fresh Start · 1x ADR Entry · 0.25x ADR TP · {trades.length} trades across {byPair.size} pairs
+        </p>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
+        <table className="min-w-full border-separate border-spacing-0 text-xs">
+          <thead>
+            <tr className="bg-[var(--panel)]/80 text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
+              <th className="border-b border-r border-[var(--panel-border)] px-3 py-2 text-left">Pair</th>
+              <th className="border-b border-r border-[var(--panel-border)] px-3 py-2 text-left">Dir</th>
+              <th className="border-b border-r border-[var(--panel-border)] px-3 py-2 text-left">#</th>
+              <th className="border-b border-r border-[var(--panel-border)] px-3 py-2 text-right">Entry</th>
+              <th className="border-b border-r border-[var(--panel-border)] px-3 py-2 text-right">Exit</th>
+              <th className="border-b border-r border-[var(--panel-border)] px-3 py-2 text-right">P&L</th>
+              <th className="border-b border-[var(--panel-border)] px-3 py-2 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pairs.map(([pair, pairTrades]) =>
+              pairTrades.map((t, i) => (
+                <tr key={`${pair}-${i}`} className="border-b border-[var(--panel-border)] hover:bg-[var(--panel)]/50">
+                  <td className="border-b border-r border-[var(--panel-border)] px-3 py-2 font-semibold">{t.symbol}</td>
+                  <td className={`border-b border-r border-[var(--panel-border)] px-3 py-2 font-semibold ${t.direction === "LONG" ? "text-lime-400" : "text-red-400"}`}>
+                    {t.direction}
+                  </td>
+                  <td className="border-b border-r border-[var(--panel-border)] px-3 py-2">{t.tradeNumber ?? "—"}</td>
+                  <td className="border-b border-r border-[var(--panel-border)] px-3 py-2 text-right font-mono">{t.entryPrice?.toFixed(5) ?? "—"}</td>
+                  <td className="border-b border-r border-[var(--panel-border)] px-3 py-2 text-right font-mono">{t.exitPrice?.toFixed(5) ?? "—"}</td>
+                  <td className={`border-b border-r border-[var(--panel-border)] px-3 py-2 text-right font-semibold ${(t.pnlPct ?? 0) >= 0 ? "text-lime-400" : "text-red-400"}`}>
+                    {t.pnlPct !== null ? `${t.pnlPct >= 0 ? "+" : ""}${t.pnlPct.toFixed(2)}%` : "—"}
+                  </td>
+                  <td className="border-b border-[var(--panel-border)] px-3 py-2">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                      t.exitReason === "tp" ? "bg-lime-500/15 text-lime-400" :
+                      t.exitReason === "active" ? "bg-yellow-500/15 text-yellow-400" :
+                      "bg-gray-500/15 text-gray-400"
+                    }`}>
+                      {t.exitReason === "tp" ? "TP Hit" : t.exitReason === "active" ? "Active" : t.exitReason ?? "—"}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function PerformanceViewSection({
   initialMode,
   initialView,
@@ -62,7 +152,7 @@ export default function PerformanceViewSection({
   flagshipGridProps,
   flagshipSimulation,
 }: PerformanceViewSectionProps) {
-  const [mode, setMode] = useState<"flagship" | "legacy">(initialMode);
+  const [mode, setMode] = useState<"flagship" | "legacy" | "matrix">(initialMode);
   const [view, setView] = useState<PerformanceView>(initialView);
   const [system, setSystem] = useState<PerformanceSystem>(initialSystem);
   const [style, setStyle] = useState<WeeklyPerformanceFamily>(initialStyle);
@@ -97,8 +187,8 @@ export default function PerformanceViewSection({
       }
     };
     const onModeChange = (event: Event) => {
-      const custom = event as CustomEvent<"flagship" | "legacy">;
-      const nextMode = custom.detail === "legacy" ? "legacy" : "flagship";
+      const custom = event as CustomEvent<string>;
+      const nextMode = custom.detail === "legacy" ? "legacy" : custom.detail === "matrix" ? "matrix" : "flagship";
       setMode(nextMode);
       if (nextMode === "flagship") {
         setStyle("tiered");
@@ -157,6 +247,10 @@ export default function PerformanceViewSection({
       ? tieredSimulationBySystem?.[system] ?? null
       : universalSimulationBySystem?.[system] ?? null;
   }, [mode, flagshipSimulation, style, system, tieredSimulationBySystem, universalSimulationBySystem]);
+
+  if (mode === "matrix") {
+    return <MatrixPerformanceView />;
+  }
 
   if (!baseGridProps) {
     return (
