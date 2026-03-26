@@ -22,7 +22,7 @@ import { isCronAuthorized } from "@/lib/cronAuth";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
 import { getCanonicalBars } from "@/lib/canonicalPriceBars";
-import { fetchOanda5MinuteSeries, type OandaHourlyCandle } from "@/lib/oandaPrices";
+import { fetchOandaCandleSeries, type OandaHourlyCandle } from "@/lib/oandaPrices";
 import { getCanonicalWeeklyBasket } from "@/lib/flagship/canonicalWeeklyBasket";
 import { scanAdrTrades, toBacktestTradeRows, type H1Bar } from "@/lib/flagship/adrTradeScanner";
 import { query } from "@/lib/db";
@@ -133,8 +133,8 @@ export async function GET(request: Request) {
         if (adr === null) return;
         const { adrPct, adrDistance } = adr;
 
-        /* Fetch M5 candles for the week (finer granularity = more accurate fill detection) */
-        const m5Bars: OandaHourlyCandle[] = await fetchOanda5MinuteSeries(
+        /* Fetch H1 candles for the week */
+        const m5Bars: OandaHourlyCandle[] = await fetchOandaCandleSeries(
           signal.pair,
           weekWindow.openUtc,
           nowUtc,
