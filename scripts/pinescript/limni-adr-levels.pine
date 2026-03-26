@@ -121,49 +121,7 @@ calcAdrStats() =>
 [dailyAdrSum, dailyAdrCount] = request.security(syminfo.tickerid, "D", calcAdrStats(), lookahead=barmerge.lookahead_off)
 float currentAdrDistance = dailyAdrCount >= adrMinDays ? dailyAdrSum / dailyAdrCount : na
 
-// ── Weekly state ────────────────────────────────────────────────────────────
-bool isNewWeek = ta.change(time("W")) != 0
-// When currentOnly: only show visuals for bars in the current calendar week
-// timenow - time("W") < 7 days means the bar is in the week containing "now"
-bool showVisuals = not currentOnly or (timenow - time("W") < 7 * 24 * 60 * 60 * 1000)
-
-var float weekAdr = na
-var int barsInWeek = 0
-
-// weekHigh/weekLow: true week range (for period box, always cumulative)
-var float weekHigh = na
-var float weekLow  = na
-
-// anchorHigh/anchorLow: entry anchor (resets in Fresh mode after TP)
-var float anchorHigh = na
-var float anchorLow  = na
-var int barsInAnchor = 0
-
-if barstate.isfirst or isNewWeek
-    weekAdr    := currentAdrDistance
-    weekHigh   := high
-    weekLow    := low
-    anchorHigh := high
-    anchorLow  := low
-    barsInWeek   := 0
-    barsInAnchor := 0
-else
-    barsInWeek += 1
-    barsInAnchor += 1
-    weekHigh   := math.max(weekHigh, high)
-    weekLow    := math.min(weekLow, low)
-
-// Snapshot anchor BEFORE updating with current bar — prevents circular dependency
-// where current bar's low/high influences anchor AND triggers on the same bar
-float prevAnchorHigh = anchorHigh
-float prevAnchorLow  = anchorLow
-
-// Now update anchor with current bar
-if not (barstate.isfirst or isNewWeek)
-    anchorHigh := math.max(anchorHigh, high)
-    anchorLow  := math.min(anchorLow, low)
-
-// ── Bias ────────────────────────────────────────────────────────────────────
+// ── Bias (computed before trade engine) ──────────────────────────────────────
 string tickerUpper = canonicalizePair(syminfo.ticker)
 string resolvedBias = getManualBias(tickerUpper)
 
@@ -183,91 +141,141 @@ if isCrypto and not isMajorCrypto
 bool showLong  = resolvedBias == "LONG"
 bool showShort = resolvedBias == "SHORT"
 
-// ── Dynamic entry / TP levels (from PREVIOUS bar's anchor) ──────────────────
-// Using prevAnchor ensures entry level isn't influenced by current bar's own high/low
-// This makes the indicator timeframe-independent
-bool adrReady = not na(weekAdr) and not na(prevAnchorHigh) and not na(prevAnchorLow) and barsInAnchor >= 1
+// When currentOnly: only show visuals for bars in the current calendar week
+bool showVisuals = not currentOnly or (timenow - time("W") < 7 * 24 * 60 * 60 * 1000)
 
-float longEntry  = adrReady ? prevAnchorHigh - (weekAdr * entryMultiple) : na
-float longTp     = adrReady ? longEntry + (weekAdr * tpMultiple)         : na
-float shortEntry = adrReady ? prevAnchorLow  + (weekAdr * entryMultiple) : na
-float shortTp    = adrReady ? shortEntry - (weekAdr * tpMultiple)        : na
+// ── 5M-anchored trade engine ────────────────────────────────────────────────
+// Trade decisions run on 5M bars regardless of chart timeframe.
+// On 5M charts: arrays have 1 element (native behavior).
+// On higher TFs: arrays have N elements (e.g. 48 for 4H).
+// Requires chart TF >= 5M.
+[m5Highs, m5Lows, m5WeekTimes] = request.security_lower_tf(syminfo.tickerid, "5", [high, low, time("W")])
 
-// ── Pip calculations ────────────────────────────────────────────────────────
+// Persistent state (survives across chart bars, updated inside 5M loop)
+var float weekAdr     = na
+var float weekHigh    = na
+var float weekLow     = na
+var float anchorHigh  = na
+var float anchorLow   = na
+var int   barsInAnchor = 0
+var int   longState    = 0
+var int   shortState   = 0
+var float frozenLongEntry  = na
+var float frozenLongTp     = na
+var float frozenShortEntry = na
+var float frozenShortTp    = na
+var int   weekTrades  = 0
+var int   weekTpHits  = 0
+var int   lastWeekTime = 0
+
+// Per-chart-bar event flags (reset each bar, set inside loop)
+bool longTpHit         = false
+bool shortTpHit        = false
+bool longTriggeredNow  = false
+bool shortTriggeredNow = false
+
+// Current entry/TP (from last 5M bar processed — used for table display)
+float longEntry  = na
+float longTp     = na
+float shortEntry = na
+float shortTp    = na
+bool  adrReady   = false
+
+// Process each 5M bar within the current chart bar
+for i = 0 to array.size(m5Highs) - 1
+    float h5 = array.get(m5Highs, i)
+    float l5 = array.get(m5Lows, i)
+    int   wt = array.get(m5WeekTimes, i)
+
+    // Detect week boundary
+    bool isNew = wt != lastWeekTime
+    lastWeekTime := wt
+
+    if isNew
+        weekAdr      := currentAdrDistance
+        weekHigh     := h5
+        weekLow      := l5
+        anchorHigh   := h5
+        anchorLow    := l5
+        barsInAnchor := 0
+        longState    := 0
+        shortState   := 0
+        frozenLongEntry  := na
+        frozenLongTp     := na
+        frozenShortEntry := na
+        frozenShortTp    := na
+        weekTrades := 0
+        weekTpHits := 0
+    else
+        barsInAnchor += 1
+        weekHigh := math.max(weekHigh, h5)
+        weekLow  := math.min(weekLow, l5)
+
+    // Snapshot anchor BEFORE updating (prevents circular dependency)
+    float prevAH = anchorHigh
+    float prevAL = anchorLow
+    if not isNew
+        anchorHigh := math.max(anchorHigh, h5)
+        anchorLow  := math.min(anchorLow, l5)
+
+    // Entry/TP from previous 5M bar's anchor
+    adrReady   := not na(weekAdr) and not na(prevAH) and not na(prevAL) and barsInAnchor >= 1
+    longEntry  := adrReady ? prevAH - (weekAdr * entryMultiple) : na
+    longTp     := adrReady ? longEntry + (weekAdr * tpMultiple) : na
+    shortEntry := adrReady ? prevAL + (weekAdr * entryMultiple) : na
+    shortTp    := adrReady ? shortEntry - (weekAdr * tpMultiple) : na
+
+    // ── Trade state machine ──
+    if longState == 1
+        if not na(frozenLongTp) and h5 >= frozenLongTp
+            longTpHit    := true
+            longState    := 0
+            frozenLongEntry := na
+            frozenLongTp    := na
+            anchorHigh   := na
+            barsInAnchor := -1
+            weekTpHits   += 1
+    else if longState == 0 and adrReady and showLong and not na(longEntry) and l5 <= longEntry
+        longState       := 1
+        frozenLongEntry := longEntry
+        frozenLongTp    := longTp
+        weekTrades      += 1
+        longTriggeredNow := true
+
+    if shortState == 1
+        if not na(frozenShortTp) and l5 <= frozenShortTp
+            shortTpHit   := true
+            shortState   := 0
+            frozenShortEntry := na
+            frozenShortTp    := na
+            anchorLow    := na
+            barsInAnchor := -1
+            weekTpHits   += 1
+    else if shortState == 0 and adrReady and showShort and not na(shortEntry) and h5 >= shortEntry
+        shortState        := 1
+        frozenShortEntry  := shortEntry
+        frozenShortTp     := shortTp
+        weekTrades        += 1
+        shortTriggeredNow := true
+
+    // Seed anchor after Fresh Start reset
+    if na(anchorHigh)
+        anchorHigh   := h5
+        anchorLow    := l5
+        barsInAnchor := 0
+    if na(anchorLow)
+        anchorLow    := l5
+        barsInAnchor := 0
+
+// ── Pip calculations (from loop output) ─────────────────────────────────────
 bool isJpyPair = str.contains(tickerUpper, "JPY")
 float pipSize = syminfo.type == "forex" ? (isJpyPair ? 0.01 : 0.0001) : syminfo.mintick
 float adrPips     = adrReady and pipSize > 0 ? weekAdr / pipSize : na
 float longTpPips  = adrReady and pipSize > 0 ? math.abs(longTp - longEntry) / pipSize : na
 float shortTpPips = adrReady and pipSize > 0 ? math.abs(shortEntry - shortTp) / pipSize : na
 
-// ── Trade state machine ─────────────────────────────────────────────────────
-// States: 0 = waiting, 1 = triggered (in trade)
-// Fresh: anchor resets after TP, starts tracking from next bar
-var int longState  = 0
-var int shortState = 0
-var float frozenLongEntry  = na
-var float frozenLongTp     = na
-var float frozenShortEntry = na
-var float frozenShortTp    = na
-
-// Weekly trade counters
-var int weekTrades = 0
-var int weekTpHits = 0
-
-if barstate.isfirst or isNewWeek
-    longState  := 0
-    shortState := 0
-    frozenLongEntry  := na
-    frozenLongTp     := na
-    frozenShortEntry := na
-    frozenShortTp    := na
-    weekTrades := 0
-    weekTpHits := 0
-
-bool longTpHit = false
-bool shortTpHit = false
-
-if longState == 1
-    if not na(frozenLongTp) and high >= frozenLongTp
-        longTpHit := true
-        longState := 0
-        frozenLongEntry := na
-        frozenLongTp    := na
-        anchorHigh   := na
-        barsInAnchor := -1
-        weekTpHits += 1
-else if longState == 0 and adrReady and showLong and not na(longEntry) and low <= longEntry
-    longState := 1
-    frozenLongEntry := longEntry
-    frozenLongTp    := longTp
-    weekTrades += 1
-
-if shortState == 1
-    if not na(frozenShortTp) and low <= frozenShortTp
-        shortTpHit := true
-        shortState := 0
-        frozenShortEntry := na
-        frozenShortTp    := na
-        anchorLow    := na
-        barsInAnchor := -1
-        weekTpHits += 1
-else if shortState == 0 and adrReady and showShort and not na(shortEntry) and high >= shortEntry
-    shortState := 1
-    frozenShortEntry := shortEntry
-    frozenShortTp    := shortTp
-    weekTrades += 1
-
-// Seed anchor from current bar after reset
-if na(anchorHigh)
-    anchorHigh   := high
-    anchorLow    := low
-    barsInAnchor := 0
-if na(anchorLow)
-    anchorLow    := low
-    barsInAnchor := 0
-
-bool longTriggeredNow  = longState == 1 and nz(longState[1]) != 1
-bool shortTriggeredNow = shortState == 1 and nz(shortState[1]) != 1
+// Chart-level week detection (for visual elements only — trade engine uses 5M loop)
+bool isNewWeek = ta.change(time("W")) != 0
 
 // ── Period box (always uses true weekHigh/weekLow) ──────────────────────────
 var box periodBox = na
@@ -378,7 +386,7 @@ if showTable and barstate.islast
     table.cell(infoTable, 0, 0, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
     table.cell(infoTable, 1, 0, syminfo.ticker, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
     table.cell(infoTable, 0, 1, "Anchor", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, 1, "Weekly ADR", text_color=color.new(color.yellow, 0), bgcolor=tableBgColor)
+    table.cell(infoTable, 1, 1, "5M Anchored", text_color=color.new(color.yellow, 0), bgcolor=tableBgColor)
     table.cell(infoTable, 0, 2, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 1, 2, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
     table.cell(infoTable, 0, 3, "ADR Pips", text_color=tableTextColor, bgcolor=tableBgColor)
