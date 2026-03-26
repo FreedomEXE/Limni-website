@@ -485,6 +485,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [priceMoves, setPriceMoves] = useState<PriceMovesPayload | null>(null);
   const [intradayLevels, setIntradayLevels] = useState<IntradayLevelsPayload | null>(null);
   const [adrTrades, setAdrTrades] = useState<AdrTradesPayload | null>(null);
+  const [copyToast, setCopyToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -685,12 +686,10 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
 
         const pairTrades = adrTradesByPair.get(key) ?? [];
         const hasActiveTrade = pairTrades.some(t => t.exitReason === "active");
-        const hasTpHit = pairTrades.some(t => t.exitReason === "tp");
         let triggerState: TriggerState = "INACTIVE";
         let touched = false;
         if (coreBias !== "NEUTRAL") {
           if (hasActiveTrade) { triggerState = "HIT"; touched = true; }
-          else if (hasTpHit) { triggerState = "HIT"; touched = true; }
           else if (level?.adrPct) triggerState = "WATCHING";
           else triggerState = "NO_DATA";
         }
@@ -829,7 +828,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                   <button
                     type="button"
                     className="rounded border border-lime-500/30 bg-lime-500/10 px-3 py-1.5 text-xs font-semibold text-lime-400 hover:bg-lime-500/20 transition-colors"
-                    onClick={() => { navigator.clipboard.writeText(longPairs); }}
+                    onClick={() => { navigator.clipboard.writeText(longPairs).then(() => { setCopyToast("LONG pairs copied!"); setTimeout(() => setCopyToast(null), 2000); }); }}
                     title={longPairs}
                   >
                     Copy LONG pairs ({(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "LONG").length})
@@ -837,7 +836,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                   <button
                     type="button"
                     className="rounded border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors"
-                    onClick={() => { navigator.clipboard.writeText(shortPairs); }}
+                    onClick={() => { navigator.clipboard.writeText(shortPairs).then(() => { setCopyToast("SHORT pairs copied!"); setTimeout(() => setCopyToast(null), 2000); }); }}
                     title={shortPairs}
                   >
                     Copy SHORT pairs ({(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "SHORT").length})
@@ -845,6 +844,11 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                 </>
               );
             })()}
+            {copyToast && (
+              <span className="ml-2 rounded bg-lime-500/20 px-2 py-1 text-xs font-semibold text-lime-400 animate-pulse">
+                {copyToast}
+              </span>
+            )}
           </div>
         )}
 
