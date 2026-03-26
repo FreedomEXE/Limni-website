@@ -196,6 +196,14 @@ type AdrTradesPayload = {
   trades: AdrTradeRow[];
 };
 
+function makeTradeId(trade: AdrTradeRow, assetClass: string): string {
+  const assetCode = assetClass === "crypto" ? "CR" : assetClass === "fx" ? "FX" : assetClass === "commodities" ? "CM" : "IX";
+  const dir = trade.direction === "LONG" ? "L" : "S";
+  const date = trade.entryTimeUtc ? trade.entryTimeUtc.slice(2, 10).replace(/-/g, "") : "000000";
+  const seq = String(trade.tradeNumber ?? 1).padStart(3, "0");
+  return `SADR-${assetCode}-${dir}-${trade.symbol}-${date}-${seq}`;
+}
+
 type PairUniverseRow = {
   pair: string;
   assetClass: AssetClass;
@@ -243,6 +251,7 @@ type MatrixRow = {
   triggerState: TriggerState;
   signalMode: SignalMode;
   adrTradeCount: number;
+  adrTrades: AdrTradeRow[];
 };
 
 const UNIVERSE: PairUniverseRow[] = [
@@ -734,6 +743,7 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           triggerState,
           signalMode,
           adrTradeCount: pairTrades.length,
+          adrTrades: pairTrades,
         } satisfies MatrixRow;
       })
       .sort((left, right) => {
@@ -980,10 +990,29 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Trade Profile</div>
-                                <div className="mt-1">Trades {row.tradeCount ?? "—"}</div>
-                                <div>Avg return {formatPct(row.avgReturnPct, 2)}</div>
-                                <div>No-target rate {formatPct(row.noTargetRatePct, 2)}</div>
+                                <div className="mt-1">Trades {row.adrTradeCount || "—"} · TP {row.adrTrades.filter(t => t.exitReason === "tp").length} · Active {row.adrTrades.filter(t => t.exitReason === "active").length}</div>
+                                <div>P/L +{(row.adrTrades.filter(t => t.exitReason === "tp").length * 0.25).toFixed(2)}% · Max DD —</div>
                               </div>
+                              {row.adrTrades.length > 0 && (
+                                <details className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 text-xs">
+                                  <summary className="cursor-pointer px-3 py-2 font-semibold text-[var(--foreground)] select-none">Trade Breakdown ({row.adrTrades.length})</summary>
+                                  <div className="space-y-1 px-3 pb-2">
+                                    {row.adrTrades.map((trade) => {
+                                      const tid = makeTradeId(trade, row.assetClass);
+                                      const status = trade.exitReason === "tp" ? "+0.25%" : trade.exitReason === "active" ? "ACTIVE" : trade.exitReason ?? "—";
+                                      return (
+                                        <div key={tid} className="flex items-start gap-2 rounded border border-[var(--panel-border)] bg-[var(--panel)]/50 px-2 py-1">
+                                          <span className="shrink-0 font-mono text-[10px] text-[color:var(--muted)]">{tid}</span>
+                                          <span className="text-[11px] text-[var(--foreground)]">
+                                            {formatPrice(trade.entryPrice)} → {formatPrice(trade.tpPrice)}{" "}
+                                            <span className={trade.exitReason === "tp" ? "text-emerald-400" : trade.exitReason === "active" ? "text-yellow-400" : ""}>{status}</span>
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </details>
+                              )}
                             </div>
                             <div className="mt-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs text-[var(--foreground)]">
                               <div className="font-semibold">Gate Reasons</div>
