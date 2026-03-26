@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 
+import AdrStatsBar from "@/components/flagship/AdrStatsBar";
 import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
 import SizingAccountBar from "@/components/flagship/SizingAccountBar";
 import type {
@@ -282,8 +283,16 @@ export default function CryptoBoard() {
       {loading ? <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 p-3 text-sm text-[color:var(--muted)]">Loading crypto matrix...</div> : null}
       {error ? <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-700">{error}</div> : null}
 
-      {!loading && !error ? (
+      {!loading && !error && data ? (
         <div className="space-y-2">
+          <AdrStatsBar
+            totalTrades={0}
+            totalTpHits={0}
+            totalActive={0}
+            weekReturnPct={0}
+            longPairs={rows.filter(r => r.bias === "LONG").map(r => r.symbol + "USD")}
+            shortPairs={rows.filter(r => r.bias === "SHORT").map(r => r.symbol + "USD")}
+          />
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
             <table className="min-w-full border-separate border-spacing-0 text-xs">
               <colgroup>

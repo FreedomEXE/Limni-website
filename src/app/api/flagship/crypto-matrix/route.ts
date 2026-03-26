@@ -49,7 +49,7 @@ import { readLatestDailySentimentLock } from "@/lib/sentiment/daily";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DISPLAY_LIMIT = 40;
+const DISPLAY_LIMIT = 140;
 const PRELIMINARY_FETCH_LIMIT = 60;
 const MIN_VOLUME_USD = 1_000_000;
 const MAX_VOLUME_CANDIDATES = 140;

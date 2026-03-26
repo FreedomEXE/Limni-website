@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 
+import AdrStatsBar from "@/components/flagship/AdrStatsBar";
 import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
 import SizingAccountBar from "@/components/flagship/SizingAccountBar";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
@@ -485,7 +486,6 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
   const [priceMoves, setPriceMoves] = useState<PriceMovesPayload | null>(null);
   const [intradayLevels, setIntradayLevels] = useState<IntradayLevelsPayload | null>(null);
   const [adrTrades, setAdrTrades] = useState<AdrTradesPayload | null>(null);
-  const [copyToast, setCopyToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -797,59 +797,15 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
           onDeleteAccount={deleteAccount}
         />
 
-        {adrTrades && (
-          <div className="mb-4 grid grid-cols-4 gap-3">
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">ADR Trades</div>
-              <div className="mt-1 text-xl font-bold text-[var(--foreground)]">{adrTrades.totalTrades}</div>
-            </div>
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">TP Hits</div>
-              <div className="mt-1 text-xl font-bold text-lime-400">{adrTrades.totalTpHits} <span className="text-sm text-[color:var(--muted)]">({adrTrades.totalTrades > 0 ? ((adrTrades.totalTpHits / adrTrades.totalTrades) * 100).toFixed(0) : 0}%)</span></div>
-            </div>
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Active</div>
-              <div className="mt-1 text-xl font-bold text-yellow-400">{adrTrades.totalActive}</div>
-            </div>
-            <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Week Return</div>
-              <div className={`mt-1 text-xl font-bold ${adrTrades.weekReturnPct >= 0 ? "text-lime-400" : "text-red-400"}`}>+{adrTrades.weekReturnPct.toFixed(2)}%</div>
-            </div>
-          </div>
-        )}
-
-        {weeklyBasket && (
-          <div className="mb-4 flex gap-3">
-            {(() => {
-              const longPairs = (weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "LONG").map((s: CanonicalWeeklySignal) => s.pair).join(",");
-              const shortPairs = (weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "SHORT").map((s: CanonicalWeeklySignal) => s.pair).join(",");
-              return (
-                <>
-                  <button
-                    type="button"
-                    className="rounded border border-lime-500/30 bg-lime-500/10 px-3 py-1.5 text-xs font-semibold text-lime-400 hover:bg-lime-500/20 transition-colors"
-                    onClick={() => { navigator.clipboard.writeText(longPairs).then(() => { setCopyToast("LONG pairs copied!"); setTimeout(() => setCopyToast(null), 2000); }); }}
-                    title={longPairs}
-                  >
-                    Copy LONG pairs ({(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "LONG").length})
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-colors"
-                    onClick={() => { navigator.clipboard.writeText(shortPairs).then(() => { setCopyToast("SHORT pairs copied!"); setTimeout(() => setCopyToast(null), 2000); }); }}
-                    title={shortPairs}
-                  >
-                    Copy SHORT pairs ({(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "SHORT").length})
-                  </button>
-                </>
-              );
-            })()}
-            {copyToast && (
-              <span className="ml-2 rounded bg-lime-500/20 px-2 py-1 text-xs font-semibold text-lime-400 animate-pulse">
-                {copyToast}
-              </span>
-            )}
-          </div>
+        {adrTrades && weeklyBasket && (
+          <AdrStatsBar
+            totalTrades={adrTrades.totalTrades}
+            totalTpHits={adrTrades.totalTpHits}
+            totalActive={adrTrades.totalActive}
+            weekReturnPct={adrTrades.weekReturnPct}
+            longPairs={(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "LONG").map((s: CanonicalWeeklySignal) => s.pair)}
+            shortPairs={(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "SHORT").map((s: CanonicalWeeklySignal) => s.pair)}
+          />
         )}
 
         {warnings.length > 0 ? (
