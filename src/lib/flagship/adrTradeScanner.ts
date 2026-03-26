@@ -193,34 +193,11 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
           ? Math.min(ep, bar.low)
           : Math.max(ep, bar.high);
 
-      // Check same-bar TP
-      const sameBarTp =
-        direction === "LONG" ? bar.high >= tpPrice : bar.low <= tpPrice;
-
-      if (sameBarTp) {
-        results.push({
-          pair,
-          assetClass,
-          direction,
-          weekOpenUtc,
-          tradeNumber,
-          entryPrice,
-          tpPrice,
-          entryUtc: tsToIso(entryTs),
-          exitUtc: tsToIso(bar.ts),
-          exitPrice: tpPrice,
-          exitType: "TP_HIT",
-          anchorPrice: currentAnchor,
-          adrPct,
-          adrDistance: rawAdr,
-          returnPct: tpMultiple * adrPct,
-          maePct: Math.abs(maePrice - entryPrice) / entryPrice * 100,
-          metadata,
-        });
-        inTrade = false;
-        // Fresh Start: seed anchor from TP bar (matches Pine)
-        anchor = direction === "LONG" ? bar.high : bar.low;
-      }
+      // No same-bar TP check. Pine's state machine checks TP (longState==1)
+      // BEFORE trigger (longState==0), so TP never fires on the entry bar.
+      // On H1 bars we also can't know if high or low occurred first within
+      // the bar, so same-bar TP would produce false positives on volatile
+      // instruments like Gold — cascading into phantom re-entries.
     }
   }
 
