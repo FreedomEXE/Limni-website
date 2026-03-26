@@ -21,8 +21,7 @@ import { NextResponse } from "next/server";
 import { isCronAuthorized } from "@/lib/cronAuth";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
-import { getCanonicalBars } from "@/lib/canonicalPriceBars";
-import { fetchOandaCandleSeries, type OandaHourlyCandle } from "@/lib/oandaPrices";
+import { fetchOandaCandleSeries, fetchOandaDailySeries, type OandaHourlyCandle } from "@/lib/oandaPrices";
 import { getCanonicalWeeklyBasket } from "@/lib/flagship/canonicalWeeklyBasket";
 import { scanAdrTrades, toBacktestTradeRows, type H1Bar } from "@/lib/flagship/adrTradeScanner";
 import { query } from "@/lib/db";
@@ -74,22 +73,28 @@ async function ensureRunId(): Promise<number> {
   return Number(inserted[0]!.id);
 }
 
-/** Returns [adrPct, adrAbsoluteDistance] — pct for metadata, absolute for entry calc (matches PineScript indicator) */
+/** Compute ADR from Oanda daily bars (same source as TradingView's Oanda feed).
+ *  Pine's calcAdrStats() loops `for i = 1 to adrLookback` inside request.security("D", lookahead_off).
+ *  With lookahead_off, bar[0] = last completed daily bar. i=1 skips it.
+ *  So we drop the most recent completed daily bar, then take the final 10. */
 async function computeAdr(pair: string, beforeUtc: string): Promise<{ adrPct: number; adrDistance: number } | null> {
-  const rows = await getCanonicalBars(pair, "1d", DateTime.fromISO(beforeUtc).minus({ days: ADR_LOOKBACK_DAYS + 5 }).toISO()!, beforeUtc);
-  // Pine's calcAdrStats() loops `for i = 1 to adrLookback` — starts at 1, skipping
-  // bar[0] (the most recent completed daily bar in the security context).
-  // To match: drop the last daily bar, then take the final 10.
-  const withoutMostRecent = rows.slice(0, -1);
+  const toUtc = DateTime.fromISO(beforeUtc);
+  const fromUtc = toUtc.minus({ days: ADR_LOOKBACK_DAYS + 5 });
+  const dailyBars = await fetchOandaDailySeries(pair, fromUtc, toUtc).catch(() => []);
+
+  if (dailyBars.length === 0) return null;
+
+  // Drop most recent daily bar (Pine's i=1 offset), then take last N
+  const withoutMostRecent = dailyBars.slice(0, -1);
   const recent = withoutMostRecent.slice(-ADR_LOOKBACK_DAYS);
 
   const pctRanges = recent
-    .map((bar) => toPct(bar.highPrice, bar.lowPrice, bar.openPrice))
+    .map((bar) => toPct(bar.high, bar.low, bar.open))
     .filter((v): v is number => v !== null && Number.isFinite(v));
 
   const absRanges = recent
-    .filter((bar) => Number.isFinite(bar.highPrice) && Number.isFinite(bar.lowPrice) && bar.highPrice > 0 && bar.lowPrice > 0)
-    .map((bar) => bar.highPrice - bar.lowPrice);
+    .filter((bar) => Number.isFinite(bar.high) && Number.isFinite(bar.low) && bar.high > 0 && bar.low > 0)
+    .map((bar) => bar.high - bar.low);
 
   if (pctRanges.length < ADR_MIN_REQUIRED_DAYS || absRanges.length < ADR_MIN_REQUIRED_DAYS) return null;
 
