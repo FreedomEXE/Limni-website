@@ -32,8 +32,19 @@
 
 ## PineScript Indicator
 - [x] Add current-week trade counter to info table (trade count, TP hits)
-- [ ] Visual fixes — verify trade boxes render correctly across multiple Fresh Start re-entries
-- [ ] Verify indicator and matrix show identical trades for the same week (parity check)
+- [x] Add trade number labels (L#1, S#2) on each trade box
+- [x] Add "Current Week Only" toggle (hides previous weeks)
+- [x] Fix timeframe dependency — prevAnchor snapshot prevents circular trigger dependency
+- [ ] Verify indicator and scanner use identical logic (line-by-line audit)
+- [ ] Add manual trade confirmation/removal on site to align scanner with indicator
+
+## Critical Bug Fixed (2026-03-26)
+- **Timeframe dependency:** Indicator showed different trades on 5M vs 1H vs 4H
+- **Root cause:** Current bar's low/high updated anchor AND triggered on the same bar
+- **Fix:** Use previous bar's anchor for entry calculation (prevAnchorHigh/prevAnchorLow)
+- **Applied to:** Both PineScript indicator AND TypeScript scanner
+- **Result:** Indicator now consistent across all timeframes (Gold = 1 trade everywhere)
+- **Remaining:** Scanner shows 4 Gold trades due to week boundary + candle data differences
 
 ## Future Ideas (parked)
 - Staggered TP (0.25/0.5/1.0) — backtest showed single 0.25 + re-entry beats stagger
