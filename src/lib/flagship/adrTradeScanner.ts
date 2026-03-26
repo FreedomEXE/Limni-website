@@ -35,6 +35,7 @@ export type AdrTradeResult = {
   exitType: "TP_HIT" | "WEEK_CLOSE" | null; // null = still active
   anchorPrice: number; // weekHigh (LONG) or weekLow (SHORT) at entry time
   adrPct: number;
+  adrDistance: number; // absolute ADR distance used for entry/TP calc
   returnPct: number | null; // null if active
   maePct: number | null; // max adverse excursion as % of entry price
   metadata?: Record<string, unknown>; // gamma context etc
@@ -89,10 +90,12 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
 
   if (bars.length === 0) return [];
 
-  // Use absolute distance if provided (matches PineScript indicator), otherwise fallback to pct-based
-  const adrDistance = adrAbsoluteDistance !== undefined
-    ? adrAbsoluteDistance * entryMultiple
-    : bars[0]!.open * (adrPct * entryMultiple) / 100;
+  // Raw ADR distance (before entry multiple). Pine uses raw for TP calc.
+  const rawAdr = adrAbsoluteDistance !== undefined
+    ? adrAbsoluteDistance
+    : bars[0]!.open * adrPct / 100;
+  // Entry distance = raw ADR * entryMultiple (how far from anchor to trigger)
+  const entryDistance = rawAdr * entryMultiple;
   const results: AdrTradeResult[] = [];
 
   let anchor: number | null = null;
@@ -135,12 +138,15 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
           exitType: "TP_HIT",
           anchorPrice: currentAnchor,
           adrPct,
+          adrDistance: rawAdr,
           returnPct: tpMultiple * adrPct,
           maePct: Math.abs(maePrice - entryPrice) / entryPrice * 100,
           metadata,
         });
         inTrade = false;
-        anchor = null; // Fresh Start
+        // Fresh Start: seed anchor from TP bar (matches Pine — anchorHigh := high after na reset)
+        // Next bar can trigger using this bar's high/low as the anchor base
+        anchor = direction === "LONG" ? bar.high : bar.low;
         continue;
       }
       continue;
@@ -162,12 +168,14 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
         : Math.min(anchor, bar.low);
 
     // Compute entry and TP from PREVIOUS bar's anchor
+    // Entry uses entryDistance (raw ADR * entryMultiple)
+    // TP uses raw ADR * tpMultiple (matches Pine: weekAdr * tpMultiple)
     const ep =
-      direction === "LONG" ? prevAnchor - adrDistance : prevAnchor + adrDistance;
+      direction === "LONG" ? prevAnchor - entryDistance : prevAnchor + entryDistance;
     const tp =
       direction === "LONG"
-        ? ep + adrDistance * tpMultiple
-        : ep - adrDistance * tpMultiple;
+        ? ep + rawAdr * tpMultiple
+        : ep - rawAdr * tpMultiple;
 
     // Check trigger
     const triggerHit =
@@ -204,12 +212,14 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
           exitType: "TP_HIT",
           anchorPrice: currentAnchor,
           adrPct,
+          adrDistance: rawAdr,
           returnPct: tpMultiple * adrPct,
           maePct: Math.abs(maePrice - entryPrice) / entryPrice * 100,
           metadata,
         });
         inTrade = false;
-        anchor = null; // Fresh Start
+        // Fresh Start: seed anchor from TP bar (matches Pine)
+        anchor = direction === "LONG" ? bar.high : bar.low;
       }
     }
   }
@@ -230,6 +240,7 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
       exitType: null,
       anchorPrice: currentAnchor,
       adrPct,
+      adrDistance: rawAdr,
       returnPct: null,
       maePct: null,
       metadata,
@@ -267,6 +278,7 @@ export function toBacktestTradeRows(
       tradeNumber: trade.tradeNumber,
       anchorPrice: trade.anchorPrice,
       adrPct: trade.adrPct,
+      adrDistance: trade.adrDistance,
       tpPrice: trade.tpPrice,
       maePct: trade.maePct,
     },
