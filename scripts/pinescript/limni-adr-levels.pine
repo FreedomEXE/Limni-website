@@ -14,6 +14,7 @@ longPairs     = input.text_area("", "LONG Pairs (comma/newline)")
 shortPairs    = input.text_area("", "SHORT Pairs (comma/newline)")
 showTable     = input.bool(true, "Show Info Table")
 showBoxes     = input.bool(true, "Show Trade Boxes")
+currentOnly   = input.bool(true, "Current Week Only")
 
 periodBoxBg      = input.color(color.new(#2a2e39, 70), "Period Box Fill")
 periodBoxBorder  = input.color(color.new(color.gray, 60), "Period Box Border")
@@ -122,6 +123,9 @@ float currentAdrDistance = dailyAdrCount >= adrMinDays ? dailyAdrSum / dailyAdrC
 
 // ── Weekly state ────────────────────────────────────────────────────────────
 bool isNewWeek = ta.change(time("W")) != 0
+// When currentOnly: only show visuals for bars in the current calendar week
+// timenow - time("W") < 7 days means the bar is in the week containing "now"
+bool showVisuals = not currentOnly or (timenow - time("W") < 7 * 24 * 60 * 60 * 1000)
 
 var float weekAdr = na
 var int barsInWeek = 0
@@ -148,6 +152,14 @@ else
     barsInAnchor += 1
     weekHigh   := math.max(weekHigh, high)
     weekLow    := math.min(weekLow, low)
+
+// Snapshot anchor BEFORE updating with current bar — prevents circular dependency
+// where current bar's low/high influences anchor AND triggers on the same bar
+float prevAnchorHigh = anchorHigh
+float prevAnchorLow  = anchorLow
+
+// Now update anchor with current bar
+if not (barstate.isfirst or isNewWeek)
     anchorHigh := math.max(anchorHigh, high)
     anchorLow  := math.min(anchorLow, low)
 
@@ -171,13 +183,15 @@ if isCrypto and not isMajorCrypto
 bool showLong  = resolvedBias == "LONG"
 bool showShort = resolvedBias == "SHORT"
 
-// ── Dynamic entry / TP levels (from anchor, not weekHigh) ───────────────────
-bool adrReady = not na(weekAdr) and not na(anchorHigh) and not na(anchorLow) and barsInAnchor >= 1
+// ── Dynamic entry / TP levels (from PREVIOUS bar's anchor) ──────────────────
+// Using prevAnchor ensures entry level isn't influenced by current bar's own high/low
+// This makes the indicator timeframe-independent
+bool adrReady = not na(weekAdr) and not na(prevAnchorHigh) and not na(prevAnchorLow) and barsInAnchor >= 1
 
-float longEntry  = adrReady ? anchorHigh - (weekAdr * entryMultiple) : na
-float longTp     = adrReady ? longEntry + (weekAdr * tpMultiple)     : na
-float shortEntry = adrReady ? anchorLow  + (weekAdr * entryMultiple) : na
-float shortTp    = adrReady ? shortEntry - (weekAdr * tpMultiple)    : na
+float longEntry  = adrReady ? prevAnchorHigh - (weekAdr * entryMultiple) : na
+float longTp     = adrReady ? longEntry + (weekAdr * tpMultiple)         : na
+float shortEntry = adrReady ? prevAnchorLow  + (weekAdr * entryMultiple) : na
+float shortTp    = adrReady ? shortEntry - (weekAdr * tpMultiple)        : na
 
 // ── Pip calculations ────────────────────────────────────────────────────────
 bool isJpyPair = str.contains(tickerUpper, "JPY")
@@ -260,12 +274,12 @@ var box periodBox = na
 var float periodHigh = na
 var float periodLow = na
 
-if (barstate.isfirst or isNewWeek) and showBoxes
+if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     periodHigh := high
     periodLow  := low
     periodBox  := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=1, border_style=line.style_dotted)
 
-if not na(periodBox) and showBoxes
+if not na(periodBox) and showBoxes and showVisuals
     periodHigh := math.max(periodHigh, high)
     periodLow  := math.min(periodLow, low)
     box.set_top(periodBox, periodHigh)
@@ -298,8 +312,9 @@ if shortTpHit
     shortDDBox   := na
     shortDDHigh  := na
 
-if longTriggeredNow and showBoxes and not na(frozenLongEntry) and not na(frozenLongTp)
+if longTriggeredNow and showBoxes and showVisuals and not na(frozenLongEntry) and not na(frozenLongTp)
     longProfBox := box.new(bar_index, frozenLongTp, bar_index, frozenLongEntry, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
+    label.new(bar_index, frozenLongTp, "L#" + str.tostring(weekTrades), style=label.style_label_down, color=color.new(color.lime, 60), textcolor=color.white, size=size.tiny)
     longDDBox   := na
     longDDLow   := low
 
@@ -309,14 +324,15 @@ if longState == 1 and not na(longProfBox)
 if longState == 1
     longDDLow := na(longDDLow) ? low : math.min(longDDLow, low)
     if not na(frozenLongEntry) and not na(longDDLow) and longDDLow < frozenLongEntry
-        if na(longDDBox) and showBoxes
+        if na(longDDBox) and showBoxes and showVisuals
             longDDBox := box.new(bar_index, frozenLongEntry, bar_index, longDDLow, bgcolor=ddBoxBg, border_color=color.red, border_width=1)
         else if not na(longDDBox)
             box.set_right(longDDBox, bar_index)
             box.set_bottom(longDDBox, longDDLow)
 
-if shortTriggeredNow and showBoxes and not na(frozenShortEntry) and not na(frozenShortTp)
+if shortTriggeredNow and showBoxes and showVisuals and not na(frozenShortEntry) and not na(frozenShortTp)
     shortProfBox := box.new(bar_index, frozenShortEntry, bar_index, frozenShortTp, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
+    label.new(bar_index, frozenShortTp, "S#" + str.tostring(weekTrades), style=label.style_label_up, color=color.new(color.red, 60), textcolor=color.white, size=size.tiny)
     shortDDBox   := na
     shortDDHigh  := high
 
@@ -326,7 +342,7 @@ if shortState == 1 and not na(shortProfBox)
 if shortState == 1
     shortDDHigh := na(shortDDHigh) ? high : math.max(shortDDHigh, high)
     if not na(frozenShortEntry) and not na(shortDDHigh) and shortDDHigh > frozenShortEntry
-        if na(shortDDBox) and showBoxes
+        if na(shortDDBox) and showBoxes and showVisuals
             shortDDBox := box.new(bar_index, shortDDHigh, bar_index, frozenShortEntry, bgcolor=ddBoxBg, border_color=color.red, border_width=1)
         else if not na(shortDDBox)
             box.set_right(shortDDBox, bar_index)

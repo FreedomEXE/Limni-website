@@ -53,7 +53,8 @@ export type ScanAdrTradesInput = {
   assetClass: string;
   direction: AdrTradeDirection;
   weekOpenUtc: string;
-  adrPct: number; // e.g. 0.63 meaning 0.63%
+  adrPct: number; // e.g. 0.63 meaning 0.63% — stored in metadata
+  adrAbsoluteDistance?: number; // absolute price distance (matches PineScript indicator). If omitted, computed from adrPct + first bar open
   bars: H1Bar[]; // H1 candles for the week, sorted chronologically
   entryMultiple?: number; // default 1.0
   tpMultiple?: number; // default 0.25
@@ -79,6 +80,7 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
     direction,
     weekOpenUtc,
     adrPct,
+    adrAbsoluteDistance,
     bars,
     entryMultiple = 1.0,
     tpMultiple = 0.25,
@@ -87,7 +89,10 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
 
   if (bars.length === 0) return [];
 
-  const adrDistance = bars[0]!.open * (adrPct * entryMultiple) / 100;
+  // Use absolute distance if provided (matches PineScript indicator), otherwise fallback to pct-based
+  const adrDistance = adrAbsoluteDistance !== undefined
+    ? adrAbsoluteDistance * entryMultiple
+    : bars[0]!.open * (adrPct * entryMultiple) / 100;
   const results: AdrTradeResult[] = [];
 
   let anchor: number | null = null;
@@ -143,22 +148,26 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
 
     /* ---- TRACKING PHASE ---- */
     if (anchor === null) {
-      // Seed from current bar
+      // Seed from current bar — no trigger allowed on seed bar
       anchor = direction === "LONG" ? bar.high : bar.low;
-    } else {
-      anchor =
-        direction === "LONG"
-          ? Math.max(anchor, bar.high)
-          : Math.min(anchor, bar.low);
+      continue;
     }
 
-    // Compute entry and TP levels
+    // Snapshot anchor BEFORE updating — prevents circular dependency
+    // where current bar's high/low influences anchor AND triggers on same bar
+    const prevAnchor = anchor;
+    anchor =
+      direction === "LONG"
+        ? Math.max(anchor, bar.high)
+        : Math.min(anchor, bar.low);
+
+    // Compute entry and TP from PREVIOUS bar's anchor
     const ep =
-      direction === "LONG" ? anchor - adrDistance : anchor + adrDistance;
+      direction === "LONG" ? prevAnchor - adrDistance : prevAnchor + adrDistance;
     const tp =
       direction === "LONG"
-        ? ep * (1 + (tpMultiple * adrPct) / 100)
-        : ep * (1 - (tpMultiple * adrPct) / 100);
+        ? ep + adrDistance * tpMultiple
+        : ep - adrDistance * tpMultiple;
 
     // Check trigger
     const triggerHit =

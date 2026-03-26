@@ -74,13 +74,25 @@ async function ensureRunId(): Promise<number> {
   return Number(inserted[0]!.id);
 }
 
-async function computeAdrPct(pair: string, beforeUtc: string): Promise<number | null> {
+/** Returns [adrPct, adrAbsoluteDistance] — pct for metadata, absolute for entry calc (matches PineScript indicator) */
+async function computeAdr(pair: string, beforeUtc: string): Promise<{ adrPct: number; adrDistance: number } | null> {
   const rows = await getCanonicalBars(pair, "1d", DateTime.fromISO(beforeUtc).minus({ days: ADR_LOOKBACK_DAYS + 2 }).toISO()!, beforeUtc);
-  const ranges = rows
-    .slice(-ADR_LOOKBACK_DAYS)
+  const recent = rows.slice(-ADR_LOOKBACK_DAYS);
+
+  const pctRanges = recent
     .map((bar) => toPct(bar.highPrice, bar.lowPrice, bar.openPrice))
     .filter((v): v is number => v !== null && Number.isFinite(v));
-  return ranges.length >= ADR_MIN_REQUIRED_DAYS ? ranges.reduce((s, v) => s + v, 0) / ranges.length : null;
+
+  const absRanges = recent
+    .filter((bar) => Number.isFinite(bar.highPrice) && Number.isFinite(bar.lowPrice) && bar.highPrice > 0 && bar.lowPrice > 0)
+    .map((bar) => bar.highPrice - bar.lowPrice);
+
+  if (pctRanges.length < ADR_MIN_REQUIRED_DAYS || absRanges.length < ADR_MIN_REQUIRED_DAYS) return null;
+
+  return {
+    adrPct: pctRanges.reduce((s, v) => s + v, 0) / pctRanges.length,
+    adrDistance: absRanges.reduce((s, v) => s + v, 0) / absRanges.length,
+  };
 }
 
 export async function GET(request: Request) {
@@ -117,8 +129,9 @@ export async function GET(request: Request) {
     await mapWithConcurrency(signals, CONCURRENCY, async (signal) => {
       try {
         const weekWindow = getCanonicalWeekWindow(weekOpenUtc, signal.assetClass as "fx" | "indices" | "crypto" | "commodities");
-        const adrPct = await computeAdrPct(signal.pair, weekWindow.openUtc.toISO()!);
-        if (adrPct === null) return;
+        const adr = await computeAdr(signal.pair, weekWindow.openUtc.toISO()!);
+        if (adr === null) return;
+        const { adrPct, adrDistance } = adr;
 
         /* Fetch H1 candles for the week */
         const h1Bars: OandaHourlyCandle[] = await fetchOandaCandleSeries(
@@ -136,6 +149,7 @@ export async function GET(request: Request) {
           direction: signal.direction as "LONG" | "SHORT",
           weekOpenUtc,
           adrPct,
+          adrAbsoluteDistance: adrDistance,
           bars: h1Bars as H1Bar[],
           metadata: {
             assetClass: signal.assetClass,
