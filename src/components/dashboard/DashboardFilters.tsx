@@ -14,7 +14,7 @@ type DashboardFiltersProps = {
   reportOptions: Array<{ value: string; label: string }>;
   selectedAsset: string;
   selectedReport: string;
-  selectedBias: "dealer" | "commercial";
+  selectedBias: "dealer" | "commercial" | "sentiment";
   selectedView: "heatmap" | "list";
   currentWeekOpenUtc?: string;
 };
@@ -49,7 +49,7 @@ export default function DashboardFilters({
 
   const navigate = (next: {
     asset?: string;
-    bias?: "dealer" | "commercial";
+    bias?: "dealer" | "commercial" | "sentiment";
     view?: "heatmap" | "list";
     report?: string;
   }) => {

@@ -63,8 +63,10 @@ type DashboardPageProps = {
     | Promise<Record<string, string | string[] | undefined>>;
 };
 
-function getBiasMode(value?: string): BiasMode {
-  if (value === "dealer" || value === "commercial") {
+type DashboardBias = "dealer" | "commercial" | "sentiment";
+
+function getDashboardBias(value?: string): DashboardBias {
+  if (value === "dealer" || value === "commercial" || value === "sentiment") {
     return value;
   }
   return "dealer";
@@ -165,10 +167,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const isAll = rawAsset === "all" || !rawAsset;
   const assetClass = getAssetClass(rawAsset);
   const currentWeekOpen = getDisplayWeekOpenUtc();
-  const biasMode = getBiasMode(
+  const biasMode = getDashboardBias(
     Array.isArray(biasParam) ? biasParam[0] : biasParam,
   );
-  const selectedBiasForFilter = biasMode === "commercial" ? "commercial" : "dealer";
+  const selectedBiasForFilter: "dealer" | "commercial" | "sentiment" = biasMode;
   const view =
     viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
   const reportDate =
@@ -197,6 +199,62 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     ?? (await findDataSectionWeekByReportDate(selectedReportDate))?.weekOpenUtc
     ?? allEntries[0]?.weekOpenUtc
     ?? null;
+  // ── Sentiment mode: early return, skip COT data fetching ──
+  if (biasMode === "sentiment") {
+    const SentimentPanel = (await import("@/components/dashboard/SentimentPanel")).default;
+    const sentViewParams = new URLSearchParams();
+    sentViewParams.set("asset", isAll ? "all" : assetClass);
+    if (selectedReportDate) sentViewParams.set("report", selectedReportDate);
+    sentViewParams.set("bias", "sentiment");
+    const sentViewItems = (["heatmap", "list"] as const).map((option) => {
+      const p = new URLSearchParams(sentViewParams);
+      p.set("view", option);
+      return { value: option, label: option, href: `/dashboard?${p.toString()}` };
+    });
+    return (
+      <DashboardLayout>
+        <div className="space-y-8">
+          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <DashboardFilters
+                assetOptions={[
+                  { id: "all", label: "ALL" },
+                  { id: "fx", label: "FX" },
+                  { id: "indices", label: "Indices" },
+                  { id: "crypto", label: "Crypto" },
+                  { id: "commodities", label: "Commodities" },
+                ]}
+                reportOptions={availableDates.map((date) => {
+                  const report = DateTime.fromISO(date, { zone: "America/New_York" });
+                  if (!report.isValid) return { value: date, label: date };
+                  const daysUntilMonday = (8 - report.weekday) % 7;
+                  const monday = report.plus({ days: daysUntilMonday }).set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+                  return { value: date, label: monday.toFormat("MMM dd yyyy") };
+                })}
+                selectedAsset={isAll ? "all" : assetClass}
+                selectedReport={selectedReportDate ?? ""}
+                selectedBias="sentiment"
+                selectedView={view}
+                currentWeekOpenUtc={currentWeekOpen}
+              />
+              <ViewToggle value={view} items={sentViewItems} />
+            </div>
+            <div className="mt-6">
+              <SentimentPanel
+                weekOpenUtc={selectedWeekOpenUtc}
+                assetClass={isAll ? "all" : assetClass}
+                view={view}
+              />
+            </div>
+          </section>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // ── COT mode (Dealer / Commercial) ──
+  // Sentiment returned early above — biasMode is now dealer or commercial
+  const cotBias = biasMode as "dealer" | "commercial";
   const canonicalReturns = selectedWeekOpenUtc
     ? await getWeeklyPairReturns(selectedWeekOpenUtc, isAll ? undefined : assetClass)
     : [];
@@ -327,7 +385,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               details: buildBiasDetails({
                 pairDef,
                 direction: row.direction,
-                dataType: selectedBiasForFilter,
+                dataType: cotBias,
                 assetLabel: entry.asset.label,
                 baseBias: row.base_bias,
                 quoteBias: row.quote_bias,
@@ -426,7 +484,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         details: buildBiasDetails({
           pairDef,
           direction: row.direction,
-          dataType: selectedBiasForFilter,
+          dataType: cotBias,
           assetLabel: assetDefinition.label,
           baseBias: row.base_bias,
           quoteBias: row.quote_bias,
@@ -517,6 +575,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     })
     .filter((detail): detail is { label: string; value: string } => Boolean(detail));
 
+  // ── COT mode (Dealer / Commercial) ──
   return (
     <DashboardLayout>
       <div className="space-y-8">

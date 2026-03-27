@@ -1,0 +1,174 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: SentimentPanel.tsx
+ *
+ * Description:
+ * Server component that renders the sentiment heatmap content panel.
+ * Used by the unified dashboard page when bias=sentiment.
+ * Shares the same shell/week strip as Dealer and Commercial panels.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
+import SentimentHeatmap, {
+  type MyfxbookPositioning,
+} from "@/components/SentimentHeatmap";
+import ViewToggle from "@/components/ViewToggle";
+import SummaryCards from "@/components/SummaryCards";
+import {
+  getAggregatesForWeekStartWithBackfill,
+  getLatestAggregatesLocked,
+  getLatestSnapshotsByProvider,
+} from "@/lib/sentiment/store";
+import { formatDateTimeET, latestIso } from "@/lib/time";
+import { DateTime } from "luxon";
+import {
+  SENTIMENT_ASSET_CLASSES,
+  ALL_SENTIMENT_SYMBOLS,
+  type SentimentAssetClass,
+} from "@/lib/sentiment/symbols";
+import type { SentimentAggregate } from "@/lib/sentiment/types";
+import { getWeeklyPairReturns } from "@/lib/pairReturns";
+
+type MyfxbookRawPayload = {
+  longVolume?: number | string;
+  shortVolume?: number | string;
+  longPositions?: number | string;
+  shortPositions?: number | string;
+  totalPositions?: number | string;
+  avgLongPrice?: number | string;
+  avgShortPrice?: number | string;
+};
+
+function toNullableNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") { const p = Number(value); return Number.isFinite(p) ? p : null; }
+  return null;
+}
+
+function parseMyfxbookPositioning(payload: unknown, timestampUtc: string): MyfxbookPositioning | null {
+  if (!payload || typeof payload !== "object") return null;
+  const row = payload as MyfxbookRawPayload;
+  const longLots = toNullableNumber(row.longVolume);
+  const shortLots = toNullableNumber(row.shortVolume);
+  return {
+    longLots, shortLots,
+    totalLots: longLots !== null && shortLots !== null ? longLots + shortLots : null,
+    longPositions: toNullableNumber(row.longPositions),
+    shortPositions: toNullableNumber(row.shortPositions),
+    totalPositions: toNullableNumber(row.totalPositions),
+    avgLongPrice: toNullableNumber(row.avgLongPrice),
+    avgShortPrice: toNullableNumber(row.avgShortPrice),
+    updatedAtUtc: timestampUtc || null,
+  };
+}
+
+type SentimentPanelProps = {
+  weekOpenUtc: string | null;
+  assetClass: string;
+  view: "heatmap" | "list";
+};
+
+export default async function SentimentPanel({ weekOpenUtc, assetClass, view }: SentimentPanelProps) {
+  const sentimentAsset: SentimentAssetClass | "all" =
+    assetClass === "all" || !(assetClass in SENTIMENT_ASSET_CLASSES)
+      ? "all"
+      : (assetClass as SentimentAssetClass);
+
+  let aggregates: SentimentAggregate[] = [];
+  let previousAggregates: SentimentAggregate[] = [];
+  try {
+    if (weekOpenUtc) {
+      const open = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+      const close = open.isValid ? open.plus({ days: 7 }) : open;
+      aggregates = open.isValid
+        ? await getAggregatesForWeekStartWithBackfill(open.toUTC().toISO() ?? weekOpenUtc, close.toUTC().toISO() ?? weekOpenUtc)
+        : await getLatestAggregatesLocked();
+      const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
+      if (prevOpen?.isValid) {
+        const prevClose = prevOpen.plus({ days: 7 });
+        previousAggregates = await getAggregatesForWeekStartWithBackfill(prevOpen.toUTC().toISO()!, prevClose.toUTC().toISO()!);
+      }
+    } else {
+      aggregates = await getLatestAggregatesLocked();
+    }
+  } catch (error) {
+    console.error("Sentiment load failed:", error instanceof Error ? error.message : String(error));
+  }
+
+  const symbols = sentimentAsset === "all" ? ALL_SENTIMENT_SYMBOLS : SENTIMENT_ASSET_CLASSES[sentimentAsset].symbols;
+  const filteredAggregates = aggregates.filter((agg) => symbols.includes(agg.symbol));
+  const sortedAggregates = filteredAggregates.sort((a, b) => a.symbol.localeCompare(b.symbol));
+  const latestAggregateTimestamp = latestIso(filteredAggregates.map((agg) => agg.timestamp_utc));
+
+  const crowdedLong = filteredAggregates.filter((a) => a.crowding_state === "CROWDED_LONG").length;
+  const crowdedShort = filteredAggregates.filter((a) => a.crowding_state === "CROWDED_SHORT").length;
+  const neutral = filteredAggregates.filter((a) => a.crowding_state === "NEUTRAL").length;
+  const previousBySymbol = new Map(
+    previousAggregates.filter((agg) => symbols.includes(agg.symbol)).map((agg) => [agg.symbol, agg.crowding_state]),
+  );
+  const flipDetails = filteredAggregates
+    .map((agg) => {
+      const prior = previousBySymbol.get(agg.symbol);
+      if (!prior || prior === agg.crowding_state) return null;
+      return { label: agg.symbol, value: `${prior.replace("CROWDED_", "")} → ${agg.crowding_state.replace("CROWDED_", "")}` };
+    })
+    .filter((d): d is { label: string; value: string } => Boolean(d));
+  const flips = flipDetails.length;
+
+  const longDetails = sortedAggregates.filter((agg) => agg.crowding_state === "CROWDED_LONG").map((agg) => ({ label: agg.symbol, value: "LONG" }));
+  const shortDetails = sortedAggregates.filter((agg) => agg.crowding_state === "CROWDED_SHORT").map((agg) => ({ label: agg.symbol, value: "SHORT" }));
+  const neutralDetails = sortedAggregates.filter((agg) => agg.crowding_state === "NEUTRAL").map((agg) => ({ label: agg.symbol, value: "NEUTRAL" }));
+
+  const performanceByPair: Record<string, number | null> = {};
+  if (weekOpenUtc) {
+    try {
+      const weeklyReturns = await getWeeklyPairReturns(weekOpenUtc);
+      weeklyReturns.forEach((row) => { performanceByPair[row.symbol] = row.returnPct; });
+    } catch {}
+  }
+
+  let myfxbookPositioningBySymbol: Record<string, MyfxbookPositioning | undefined> = {};
+  try {
+    const myfxbookSnapshots = await getLatestSnapshotsByProvider("MYFXBOOK", Array.from(symbols));
+    myfxbookPositioningBySymbol = myfxbookSnapshots.reduce<Record<string, MyfxbookPositioning | undefined>>((acc, snapshot) => {
+      acc[snapshot.symbol] = parseMyfxbookPositioning(snapshot.raw_payload, snapshot.timestamp_utc) ?? undefined;
+      return acc;
+    }, {});
+  } catch {}
+
+  return (
+    <>
+      <header className="space-y-2">
+        <h1 className="text-3xl font-semibold text-[var(--foreground)]">Sentiment</h1>
+        <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          {latestAggregateTimestamp ? `Last refresh ${formatDateTimeET(latestAggregateTimestamp)}` : "No refresh yet"}
+        </div>
+      </header>
+
+      <SummaryCards
+        title="Sentiment"
+        cards={[
+          { id: "pairs", label: "Pairs tracked", value: String(filteredAggregates.length),
+            details: sortedAggregates.map((agg) => ({ label: agg.symbol, value: agg.crowding_state.replace("CROWDED_", "") })) },
+          { id: "long", label: "Crowded long", value: String(crowdedLong), tone: "negative", details: longDetails },
+          { id: "short", label: "Crowded short", value: String(crowdedShort), tone: "positive", details: shortDetails },
+          { id: "neutral", label: "Neutral", value: String(neutral), details: neutralDetails },
+          { id: "flips", label: "Flips", value: String(flips), details: flipDetails },
+        ]}
+      />
+
+      <div className="mt-6">
+        <SentimentHeatmap
+          aggregates={sortedAggregates}
+          view={view}
+          performanceByPair={performanceByPair}
+          myfxbookPositioningBySymbol={myfxbookPositioningBySymbol}
+        />
+      </div>
+    </>
+  );
+}

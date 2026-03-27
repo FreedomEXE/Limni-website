@@ -42,7 +42,7 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 function resolveSection(pathname: string) {
-  if (pathname.startsWith("/dashboard") || pathname.startsWith("/sentiment")) {
+  if (pathname.startsWith("/dashboard")) {
     return "data";
   }
   if (pathname.startsWith("/performance")) return "performance";
@@ -118,7 +118,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       return [
         { href: "/dashboard?bias=dealer", label: "Dealer" },
         { href: "/dashboard?bias=commercial", label: "Commercial" },
-        { href: "/sentiment", label: "Sentiment" },
+        { href: "/dashboard?bias=sentiment", label: "Sentiment" },
       ];
     }
     if (activeSection === "performance") {
