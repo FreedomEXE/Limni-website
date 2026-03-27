@@ -137,7 +137,7 @@ function sizingToneClass(warning: string | null) {
   return "text-emerald-700 dark:text-emerald-300";
 }
 
-export default function CryptoBoard() {
+export default function CryptoBoard({ weekOpenUtc }: { weekOpenUtc?: string | null } = {}) {
   const [data, setData] = useState<CryptoMatrixPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -163,7 +163,8 @@ export default function CryptoBoard() {
       try {
         setRefreshing(true);
         setError(null);
-        const response = await fetch("/api/flagship/crypto-matrix", { cache: "no-store" });
+        const weekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
+        const response = await fetch(`/api/flagship/crypto-matrix${weekQs}`, { cache: "no-store" });
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
           throw new Error(payload?.error ?? "Failed to load crypto matrix");
@@ -188,7 +189,7 @@ export default function CryptoBoard() {
     return () => {
       cancelled = true;
     };
-  }, [refreshTick]);
+  }, [refreshTick, weekOpenUtc]);
 
   const anchorRows = useMemo(
     () =>

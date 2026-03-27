@@ -19,7 +19,8 @@ import {
   type LiquidationTradeDirection,
 } from "@/lib/bitgetLiquidationFeatures";
 import { readLatestMenthorqSnapshots } from "@/lib/menthorqOverlay";
-import { readLatestDailySentimentLock } from "@/lib/sentiment/daily";
+import { buildDailySentimentLock } from "@/lib/sentiment/daily";
+import { DateTime } from "luxon";
 
 const SKIP_ONLY_MODE = process.env.PERFORMANCE_GATE_SKIP_ONLY !== "0";
 const FORCE_PASS_SKIP_OUTPUT = process.env.PERFORMANCE_GATE_ALLOW_NO_DATA === "1" ? false : true;
@@ -348,9 +349,11 @@ async function buildLiveUniverseSeed(): Promise<GatedSetupsPayload> {
     }
   }
 
-  const dailySentiment = await readLatestDailySentimentLock().catch(() => null);
+  // Use weekly sentiment locked at week open (matches backtested approach)
+  const weekOpenUtc = getCanonicalWeekOpenUtc(DateTime.utc());
+  const weeklySentiment = await buildDailySentimentLock(weekOpenUtc).catch(() => null);
   const sentimentByPair = new Map<string, SignalDirection>(
-    (dailySentiment?.rows ?? []).map((row) => [normalizePair(row.symbol), normalizeDirection(row.sentimentDirection)]),
+    (weeklySentiment?.rows ?? []).map((row) => [normalizePair(row.symbol), normalizeDirection(row.sentimentDirection)]),
   );
 
   const signals: GatedSetupSignal[] = [];

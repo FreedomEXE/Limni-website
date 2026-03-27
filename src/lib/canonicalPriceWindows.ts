@@ -23,17 +23,36 @@ export type CanonicalTradingDayWindow = CanonicalPriceWindow & {
   cutoffHourEt: number;
 };
 
-export const CANONICAL_WEEKS = [
-  "2026-01-19T00:00:00.000Z",
-  "2026-01-26T00:00:00.000Z",
-  "2026-02-02T00:00:00.000Z",
-  "2026-02-09T00:00:00.000Z",
-  "2026-02-16T00:00:00.000Z",
-  "2026-02-23T00:00:00.000Z",
-  "2026-03-02T00:00:00.000Z",
-  "2026-03-08T23:00:00.000Z",
-  "2026-03-15T23:00:00.000Z",
-] as const;
+// Dynamic week list — generates all canonical week opens from the start date
+// through the current week. No more hardcoded arrays to update manually.
+const CANONICAL_WEEKS_START = "2026-01-19T00:00:00.000Z";
+
+function buildCanonicalWeeks(): string[] {
+  const weeks: string[] = [];
+  const startDt = DateTime.fromISO(CANONICAL_WEEKS_START, { zone: "utc" });
+  const nowUtc = DateTime.utc();
+  let cursor = startDt;
+
+  while (cursor <= nowUtc) {
+    const shifted = cursor.plus({ hours: 24 });
+    if (!shifted.isValid) { cursor = cursor.plus({ weeks: 1 }); continue; }
+    const weekOpen = getCanonicalWeekOpenUtc(shifted as DateTime<true>);
+    if (!weeks.includes(weekOpen)) {
+      weeks.push(weekOpen);
+    }
+    cursor = cursor.plus({ weeks: 1 });
+  }
+
+  // Always include the current week
+  const currentWeek = getCanonicalWeekOpenUtc(nowUtc);
+  if (!weeks.includes(currentWeek)) {
+    weeks.push(currentWeek);
+  }
+
+  return weeks.sort();
+}
+
+export const CANONICAL_WEEKS: readonly string[] = buildCanonicalWeeks();
 
 function parseWeekOpenUtc(weekOpenUtc: string) {
   const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" });

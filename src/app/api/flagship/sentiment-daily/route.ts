@@ -5,21 +5,19 @@
  * File: route.ts
  *
  * Description:
- * Read API for Flagship daily sentiment locks.
- * Supports latest snapshot, by-date snapshot, and per-symbol history.
+ * Read API for Flagship sentiment — returns WEEKLY sentiment locked at week open.
+ * Uses the latest sentiment_aggregates snapshot at or before the current week open.
+ * This ensures all sections use the same weekly sentiment that was backtested.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
 import { NextResponse } from "next/server";
+import { DateTime } from "luxon";
 
-import {
-  buildDailySentimentLock,
-  readDailySentimentHistory,
-  readDailySentimentLockByDate,
-  readLatestDailySentimentLock,
-} from "@/lib/sentiment/daily";
+import { buildDailySentimentLock } from "@/lib/sentiment/daily";
+import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -27,45 +25,27 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const date = url.searchParams.get("date");
-    const symbol = url.searchParams.get("symbol")?.trim().toUpperCase() ?? "";
-    const daysBack = Number(url.searchParams.get("daysBack") ?? "14");
+    // Allow override for debugging, but default to week open
+    const asOf = url.searchParams.get("asOf");
 
-    if (symbol) {
-      const history = await readDailySentimentHistory(symbol, daysBack);
-      return NextResponse.json({ symbol, daysBack, rows: history });
-    }
+    // Lock sentiment at the current week open (Sunday 19:00 ET → UTC)
+    const weekOpenUtc = asOf ?? getCanonicalWeekOpenUtc(DateTime.utc());
 
-    if (date) {
-      const rows = await readDailySentimentLockByDate(date);
-      return NextResponse.json({ snapshotDateUtc: date, rows });
-    }
+    // buildDailySentimentLock with asOf = week open gives us the latest
+    // sentiment per symbol at or before the week started — exactly what
+    // the backtests used.
+    const result = await buildDailySentimentLock(weekOpenUtc);
 
-    try {
-      const latest = await readLatestDailySentimentLock();
-      if (!latest) {
-        return NextResponse.json({ snapshotDateUtc: null, rows: [] });
-      }
-
-      return NextResponse.json(latest);
-    } catch {
-      // Fallback path for transient read/table issues.
-      try {
-        const fallback = await buildDailySentimentLock();
-        return NextResponse.json(fallback);
-      } catch {
-        return NextResponse.json({
-          snapshotDateUtc: null,
-          rows: [],
-          warning: "SENTIMENT_DAILY_UNAVAILABLE",
-        });
-      }
-    }
+    return NextResponse.json({
+      ...result,
+      sourceMode: "WEEKLY_LOCK_AT_OPEN",
+      weekOpenUtc,
+    });
   } catch (error) {
     return NextResponse.json({
       snapshotDateUtc: null,
       rows: [],
-      warning: error instanceof Error ? error.message : "Failed to read daily sentiment lock",
+      warning: error instanceof Error ? error.message : "Failed to read weekly sentiment",
     });
   }
 }

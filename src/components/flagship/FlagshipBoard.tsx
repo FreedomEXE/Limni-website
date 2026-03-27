@@ -484,7 +484,7 @@ function sizingToneClass(warning: string | null) {
   return "text-emerald-700 dark:text-emerald-300";
 }
 
-export default function FlagshipBoard({ strategy }: { strategy: string }) {
+export default function FlagshipBoard({ strategy, weekOpenUtc }: { strategy: string; weekOpenUtc?: string | null }) {
   const [weeklyBasket, setWeeklyBasket] = useState<CanonicalWeeklyBasketPayload | null>(null);
   const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
   const [dailySentiment, setDailySentiment] = useState<DailySentimentPayload | null>(null);
@@ -529,16 +529,17 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
         setRefreshing(true);
         setError(null);
         const nextWarnings: string[] = [];
+        const weekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
         const responses = await Promise.allSettled([
-          fetch("/api/flagship/canonical-weekly-basket", { cache: "no-store" }),
-          fetch("/api/flagship/cot-matrix", { cache: "no-store" }),
-          fetch("/api/flagship/sentiment-daily", { cache: "no-store" }),
+          fetch(`/api/flagship/canonical-weekly-basket${weekQs}`, { cache: "no-store" }),
+          fetch(`/api/flagship/cot-matrix${weekQs}`, { cache: "no-store" }),
+          fetch(`/api/flagship/sentiment-daily${weekQs ? `?asOf=${encodeURIComponent(weekOpenUtc!)}` : ""}`, { cache: "no-store" }),
           fetch("/api/flagship/currency-strength", { cache: "no-store" }),
           fetch("/api/flagship/asset-strength", { cache: "no-store" }),
           fetch("/api/flagship/menthorq-overlay", { cache: "no-store" }),
           fetch("/api/flagship/live-sizing", { cache: "no-store" }),
           fetch("/api/flagship/price-moves", { cache: "no-store" }),
-          fetch("/api/flagship/intraday-levels", { cache: "no-store" }),
+          fetch(`/api/flagship/intraday-levels${weekQs}`, { cache: "no-store" }),
         ]);
 
         const readJson = async <T,>(response: PromiseSettledResult<Response>, label: string) => {
@@ -585,11 +586,12 @@ export default function FlagshipBoard({ strategy }: { strategy: string }) {
     }
 
     fetchBoardData();
-    fetch("/api/flagship/adr-trades").then(r => r.json()).then(setAdrTrades).catch(() => {});
+    const adrWeekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
+    fetch(`/api/flagship/adr-trades${adrWeekQs}`).then(r => r.json()).then(setAdrTrades).catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [refreshTick]);
+  }, [refreshTick, weekOpenUtc]);
 
   const matrixRows = useMemo(() => {
     const gatedByPair = new Map<string, CanonicalWeeklySignal>();
