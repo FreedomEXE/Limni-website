@@ -5,7 +5,7 @@
  * File: route.ts
  *
  * Description:
- * Hourly cron that scans H1 candles for all directional signals and
+ * Hourly cron that scans M5 candles for all directional signals and
  * detects ADR trades using the Fresh Start state machine. Writes
  * results to strategy_backtest_trades for the matrix to display.
  *
@@ -21,8 +21,7 @@ import { NextResponse } from "next/server";
 import { isCronAuthorized } from "@/lib/cronAuth";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
-import { getCanonicalBars } from "@/lib/canonicalPriceBars";
-import { fetchOandaCandleSeries, type OandaHourlyCandle } from "@/lib/oandaPrices";
+import { fetchOanda5MinuteSeries, fetchOandaDailySeries, type OandaHourlyCandle } from "@/lib/oandaPrices";
 import { getCanonicalWeeklyBasket } from "@/lib/flagship/canonicalWeeklyBasket";
 import { scanAdrTrades, toBacktestTradeRows, type H1Bar } from "@/lib/flagship/adrTradeScanner";
 import { query } from "@/lib/db";
@@ -74,20 +73,22 @@ async function ensureRunId(): Promise<number> {
   return Number(inserted[0]!.id);
 }
 
-/** Returns [adrPct, adrAbsoluteDistance] — pct for metadata, absolute for entry calc */
+/** Compute ADR from Oanda API daily bars (same source as TradingView's Oanda feed) */
 async function computeAdr(pair: string, beforeUtc: string): Promise<{ adrPct: number; adrDistance: number } | null> {
-  const rows = await getCanonicalBars(pair, "1d", DateTime.fromISO(beforeUtc).minus({ days: ADR_LOOKBACK_DAYS + 2 }).toISO()!, beforeUtc);
-  const recent = rows.slice(-ADR_LOOKBACK_DAYS);
-
-  const pctRanges = recent
-    .map((bar) => toPct(bar.highPrice, bar.lowPrice, bar.openPrice))
-    .filter((v): v is number => v !== null && Number.isFinite(v));
+  const before = DateTime.fromISO(beforeUtc, { zone: "utc" });
+  const from = before.minus({ days: ADR_LOOKBACK_DAYS + 4 }); // extra padding for weekends
+  const dailyBars = await fetchOandaDailySeries(pair, from, before).catch(() => []);
+  const recent = dailyBars.slice(-ADR_LOOKBACK_DAYS);
 
   const absRanges = recent
-    .filter((bar) => Number.isFinite(bar.highPrice) && Number.isFinite(bar.lowPrice) && bar.highPrice > 0 && bar.lowPrice > 0)
-    .map((bar) => bar.highPrice - bar.lowPrice);
+    .filter((bar) => Number.isFinite(bar.high) && Number.isFinite(bar.low) && bar.high > 0 && bar.low > 0)
+    .map((bar) => bar.high - bar.low);
 
-  if (pctRanges.length < ADR_MIN_REQUIRED_DAYS || absRanges.length < ADR_MIN_REQUIRED_DAYS) return null;
+  const pctRanges = recent
+    .filter((bar) => Number.isFinite(bar.high) && Number.isFinite(bar.low) && Number.isFinite(bar.open) && bar.open > 0)
+    .map((bar) => ((bar.high - bar.low) / bar.open) * 100);
+
+  if (absRanges.length < ADR_MIN_REQUIRED_DAYS || pctRanges.length < ADR_MIN_REQUIRED_DAYS) return null;
 
   return {
     adrPct: pctRanges.reduce((s, v) => s + v, 0) / pctRanges.length,
@@ -133,8 +134,8 @@ export async function GET(request: Request) {
         if (adr === null) return;
         const { adrPct, adrDistance } = adr;
 
-        /* Fetch H1 candles for the week */
-        const m5Bars: OandaHourlyCandle[] = await fetchOandaCandleSeries(
+        /* Fetch M5 candles for the week (matches indicator's 5M resolution) */
+        const m5Bars: OandaHourlyCandle[] = await fetchOanda5MinuteSeries(
           signal.pair,
           weekWindow.openUtc,
           nowUtc,

@@ -69,9 +69,10 @@ export function getCanonicalWeekWindow(
   }
 
   if (assetClass === "indices" || assetClass === "commodities") {
+    // Indices/commodities market opens 1 hour after FX (6PM ET vs 5PM ET)
     return {
       periodOpenUtc: canonicalWeekOpenUtc,
-      openUtc: weekKey.minus({ hours: 2 }),
+      openUtc: weekKey.minus({ hours: 1 }),
       closeUtc: weekKey.plus({ hours: 117 }),
     };
   }

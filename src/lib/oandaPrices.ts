@@ -193,18 +193,13 @@ async function fetchOandaSeries(
   let page = 0;
   while (cursor.toMillis() < toUtc.toMillis() && page < 100) {
     page += 1;
-    const requestTo = DateTime.fromMillis(
-      Math.min(
-        toUtc.toMillis(),
-        cursor.toMillis() + stepMs * maxBarsPerRequest,
-      ),
-      { zone: "utc" },
-    );
     const url = new URL(`${getOandaBaseUrl()}/v3/instruments/${instrument}/candles`);
     url.searchParams.set("price", "M");
     url.searchParams.set("granularity", granularity);
     url.searchParams.set("from", cursor.toISO() ?? "");
-    url.searchParams.set("to", requestTo.toISO() ?? "");
+    // Use count instead of "to" — the "to" parameter silently returns 0 bars
+    // when the end time is near the current time (Oanda API quirk)
+    url.searchParams.set("count", String(maxBarsPerRequest));
 
     const maxAttempts = 3;
     let lastError: Error | null = null;
