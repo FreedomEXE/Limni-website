@@ -560,7 +560,8 @@ async function main() {
         }
 
         if (options.daily) {
-          const providerBars = await fetchOandaDailySeries(instrument.oandaInstrument ?? instrument.symbol, fromUtc, toUtc);
+          const dailyAlignmentEt = instrument.assetClass === "indices" || instrument.assetClass === "commodities" ? 18 : 17;
+          const providerBars = await fetchOandaDailySeries(instrument.oandaInstrument ?? instrument.symbol, fromUtc, toUtc, dailyAlignmentEt);
           const rawBars: RawBarRow[] = providerBars.map((bar) => ({
             provider: "oanda",
             providerSymbol: instrument.oandaInstrument ?? instrument.symbol,
