@@ -214,39 +214,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     return (
       <DashboardLayout>
         <div className="space-y-8">
-          <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <DashboardFilters
-                assetOptions={[
-                  { id: "all", label: "ALL" },
-                  { id: "fx", label: "FX" },
-                  { id: "indices", label: "Indices" },
-                  { id: "crypto", label: "Crypto" },
-                  { id: "commodities", label: "Commodities" },
-                ]}
-                reportOptions={availableDates.map((date) => {
-                  const report = DateTime.fromISO(date, { zone: "America/New_York" });
-                  if (!report.isValid) return { value: date, label: date };
-                  const daysUntilMonday = (8 - report.weekday) % 7;
-                  const monday = report.plus({ days: daysUntilMonday }).set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-                  return { value: date, label: monday.toFormat("MMM dd yyyy") };
-                })}
-                selectedAsset={isAll ? "all" : assetClass}
-                selectedReport={selectedReportDate ?? ""}
-                selectedBias="sentiment"
-                selectedView={view}
-                currentWeekOpenUtc={currentWeekOpen}
-              />
-              <ViewToggle value={view} items={sentViewItems} />
-            </div>
-            <div className="mt-6">
-              <SentimentPanel
-                weekOpenUtc={selectedWeekOpenUtc}
-                assetClass={isAll ? "all" : assetClass}
-                view={view}
-              />
-            </div>
-          </section>
+          <SentimentPanel
+            weekOpenUtc={selectedWeekOpenUtc}
+            assetClass={isAll ? "all" : assetClass}
+            view={view}
+            reportOptions={availableDates.map((date) => {
+              const report = DateTime.fromISO(date, { zone: "America/New_York" });
+              if (!report.isValid) return { value: date, label: date };
+              const daysUntilMonday = (8 - report.weekday) % 7;
+              const monday = report.plus({ days: daysUntilMonday }).set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+              return { value: date, label: monday.toFormat("MMM dd yyyy") };
+            })}
+            selectedReport={selectedReportDate ?? ""}
+            currentWeekOpenUtc={currentWeekOpen}
+            viewItems={sentViewItems}
+          />
         </div>
       </DashboardLayout>
     );

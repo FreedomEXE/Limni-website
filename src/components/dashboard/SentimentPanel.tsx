@@ -5,9 +5,8 @@
  * File: SentimentPanel.tsx
  *
  * Description:
- * Server component that renders the sentiment heatmap content panel.
- * Used by the unified dashboard page when bias=sentiment.
- * Shares the same shell/week strip as Dealer and Commercial panels.
+ * Server component that renders the sentiment content panel.
+ * Layout matches Dealer/Commercial: header → cards → filters+heatmap.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -18,6 +17,7 @@ import SentimentHeatmap, {
 } from "@/components/SentimentHeatmap";
 import ViewToggle from "@/components/ViewToggle";
 import SummaryCards from "@/components/SummaryCards";
+import DashboardFilters from "@/components/dashboard/DashboardFilters";
 import {
   getAggregatesForWeekStartWithBackfill,
   getLatestAggregatesLocked,
@@ -70,9 +70,16 @@ type SentimentPanelProps = {
   weekOpenUtc: string | null;
   assetClass: string;
   view: "heatmap" | "list";
+  reportOptions: Array<{ value: string; label: string }>;
+  selectedReport: string;
+  currentWeekOpenUtc: string;
+  viewItems: Array<{ value: "heatmap" | "list"; label: string; href: string }>;
 };
 
-export default async function SentimentPanel({ weekOpenUtc, assetClass, view }: SentimentPanelProps) {
+export default async function SentimentPanel({
+  weekOpenUtc, assetClass, view,
+  reportOptions, selectedReport, currentWeekOpenUtc, viewItems,
+}: SentimentPanelProps) {
   const sentimentAsset: SentimentAssetClass | "all" =
     assetClass === "all" || !(assetClass in SENTIMENT_ASSET_CLASSES)
       ? "all"
@@ -117,7 +124,6 @@ export default async function SentimentPanel({ weekOpenUtc, assetClass, view }: 
       return { label: agg.symbol, value: `${prior.replace("CROWDED_", "")} → ${agg.crowding_state.replace("CROWDED_", "")}` };
     })
     .filter((d): d is { label: string; value: string } => Boolean(d));
-  const flips = flipDetails.length;
 
   const longDetails = sortedAggregates.filter((agg) => agg.crowding_state === "CROWDED_LONG").map((agg) => ({ label: agg.symbol, value: "LONG" }));
   const shortDetails = sortedAggregates.filter((agg) => agg.crowding_state === "CROWDED_SHORT").map((agg) => ({ label: agg.symbol, value: "SHORT" }));
@@ -157,18 +163,38 @@ export default async function SentimentPanel({ weekOpenUtc, assetClass, view }: 
           { id: "long", label: "Crowded long", value: String(crowdedLong), tone: "negative", details: longDetails },
           { id: "short", label: "Crowded short", value: String(crowdedShort), tone: "positive", details: shortDetails },
           { id: "neutral", label: "Neutral", value: String(neutral), details: neutralDetails },
-          { id: "flips", label: "Flips", value: String(flips), details: flipDetails },
+          { id: "flips", label: "Flips", value: String(flipDetails.length), details: flipDetails },
         ]}
       />
 
-      <div className="mt-6">
-        <SentimentHeatmap
-          aggregates={sortedAggregates}
-          view={view}
-          performanceByPair={performanceByPair}
-          myfxbookPositioningBySymbol={myfxbookPositioningBySymbol}
-        />
-      </div>
+      <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <DashboardFilters
+            assetOptions={[
+              { id: "all", label: "ALL" },
+              { id: "fx", label: "FX" },
+              { id: "indices", label: "Indices" },
+              { id: "crypto", label: "Crypto" },
+              { id: "commodities", label: "Commodities" },
+            ]}
+            reportOptions={reportOptions}
+            selectedAsset={assetClass}
+            selectedReport={selectedReport}
+            selectedBias="sentiment"
+            selectedView={view}
+            currentWeekOpenUtc={currentWeekOpenUtc}
+          />
+          <ViewToggle value={view} items={viewItems} />
+        </div>
+        <div className="mt-6">
+          <SentimentHeatmap
+            aggregates={sortedAggregates}
+            view={view}
+            performanceByPair={performanceByPair}
+            myfxbookPositioningBySymbol={myfxbookPositioningBySymbol}
+          />
+        </div>
+      </section>
     </>
   );
 }
