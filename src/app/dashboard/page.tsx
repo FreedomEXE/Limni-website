@@ -513,7 +513,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     <DashboardLayout>
       <div className="space-y-8">
         <header className="space-y-2">
-          <h1 className="text-3xl font-semibold text-[var(--foreground)]">Bias</h1>
+          <h1 className="text-3xl font-semibold text-[var(--foreground)]">{biasMode === "commercial" ? "Commercial" : "Dealer"}</h1>
           <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
             {combinedRefresh ? `Last refresh ${formatDateTimeET(combinedRefresh)}` : "No refresh yet"}
           </div>

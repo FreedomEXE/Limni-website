@@ -24,7 +24,7 @@ type SubNavItem = {
 };
 
 const TOP_LEVEL: NavItem[] = [
-  { key: "data", href: "/antikythera", label: "Data", letter: "L" },
+  { key: "data", href: "/dashboard?bias=dealer", label: "Data", letter: "L" },
   { key: "performance", href: "/performance", label: "Performance", letter: "I" },
   { key: "automation", href: "/automation", label: "Automation", letter: "M" },
   { key: "accounts", href: "/accounts", label: "Accounts", letter: "N" },
@@ -42,7 +42,7 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 function resolveSection(pathname: string) {
-  if (pathname.startsWith("/antikythera") || pathname.startsWith("/dashboard") || pathname.startsWith("/sentiment")) {
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/sentiment")) {
     return "data";
   }
   if (pathname.startsWith("/performance")) return "performance";
@@ -70,11 +70,17 @@ function isActiveHref(
     return false;
   }
   const expectedView = params.get("view");
-  if (!expectedView) {
-    return true;
+  if (expectedView) {
+    const resolvedView = viewParam ?? defaultView ?? null;
+    if (resolvedView !== expectedView) return false;
   }
-  const resolvedView = viewParam ?? defaultView ?? null;
-  return resolvedView === expectedView;
+  // Check any other query params in the href (e.g. bias=dealer)
+  const currentUrl = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  for (const [key, value] of params.entries()) {
+    if (key === "view") continue; // already handled above
+    if (currentUrl && currentUrl.get(key) !== value) return false;
+  }
+  return true;
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -110,8 +116,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (!activeSection) return [];
     if (activeSection === "data") {
       return [
-        { href: "/antikythera", label: "Antikythera" },
-        { href: "/dashboard", label: "Bias" },
+        { href: "/dashboard?bias=dealer", label: "Dealer" },
+        { href: "/dashboard?bias=commercial", label: "Commercial" },
         { href: "/sentiment", label: "Sentiment" },
       ];
     }
