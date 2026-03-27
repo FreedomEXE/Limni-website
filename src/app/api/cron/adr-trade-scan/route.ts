@@ -76,7 +76,7 @@ async function ensureRunId(): Promise<number> {
 /** Compute ADR from Oanda API daily bars (same source as TradingView's Oanda feed) */
 async function computeAdr(pair: string, beforeUtc: string, assetClass: string): Promise<{ adrPct: number; adrDistance: number } | null> {
   const before = DateTime.fromISO(beforeUtc, { zone: "utc" });
-  const from = before.minus({ days: ADR_LOOKBACK_DAYS + 4 }); // extra padding for weekends
+  const from = before.minus({ days: ADR_LOOKBACK_DAYS + 10 }); // padding for weekends + holidays (need 11 trading days)
   // FX daily bars align to 5PM ET (17), commodities/indices to 6PM ET (18)
   const dailyAlignment = assetClass === "fx" ? 17 : 18;
   const dailyBars = await fetchOandaDailySeries(pair, from, before, dailyAlignment).catch(() => []);
