@@ -59,6 +59,7 @@ export type ScanAdrTradesInput = {
   bars: H1Bar[]; // H1 candles for the week, sorted chronologically
   entryMultiple?: number; // default 1.0
   tpMultiple?: number; // default 0.25
+  closeAtWeekEnd?: boolean; // if true, close active trades at last bar's close price
   metadata?: Record<string, unknown>; // attached to every trade
 };
 
@@ -85,6 +86,7 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
     bars,
     entryMultiple = 1.0,
     tpMultiple = 0.25,
+    closeAtWeekEnd = false,
     metadata,
   } = input;
 
@@ -202,8 +204,11 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
     }
   }
 
-  /* ---- Active trade at end of bars — leave open ---- */
+  /* ---- Active trade at end of bars ---- */
   if (inTrade) {
+    const lastBar = bars[bars.length - 1]!;
+    const weekClosePrice = lastBar.close;
+    const closedAtWeekEnd = closeAtWeekEnd && bars.length > 0;
     results.push({
       pair,
       assetClass,
@@ -213,14 +218,20 @@ export function scanAdrTrades(input: ScanAdrTradesInput): AdrTradeResult[] {
       entryPrice,
       tpPrice,
       entryUtc: tsToIso(entryTs),
-      exitUtc: null,
-      exitPrice: null,
-      exitType: null,
+      exitUtc: closedAtWeekEnd ? tsToIso(lastBar.ts) : null,
+      exitPrice: closedAtWeekEnd ? weekClosePrice : null,
+      exitType: closedAtWeekEnd ? "WEEK_CLOSE" : null,
       anchorPrice: currentAnchor,
       adrPct,
       adrDistance: rawAdr,
-      returnPct: null,
-      maePct: null,
+      returnPct: closedAtWeekEnd
+        ? ((direction === "LONG"
+            ? (weekClosePrice - entryPrice) / entryPrice
+            : (entryPrice - weekClosePrice) / entryPrice) * 100)
+        : null,
+      maePct: closedAtWeekEnd
+        ? Math.abs(maePrice - entryPrice) / entryPrice * 100
+        : null,
       metadata,
     });
   }

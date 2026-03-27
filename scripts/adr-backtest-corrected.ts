@@ -237,6 +237,7 @@ async function main() {
           adrPct: adr.adrPct,
           adrAbsoluteDistance: adr.adrDistance,
           bars: m5Bars as H1Bar[],
+          closeAtWeekEnd: true,
           metadata: {
             assetClass: signal.assetClass,
             tier: signal.tier,
