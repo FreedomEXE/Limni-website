@@ -148,8 +148,10 @@ export async function fetchOandaDailySeries(
   symbol: string,
   fromUtc: DateTime,
   toUtc: DateTime,
+  /** Daily bar alignment hour in ET (17 = 5PM for FX, 18 = 6PM for commodities/indices) */
+  dailyAlignmentEt: number = 17,
 ): Promise<OandaHourlyCandle[]> {
-  return fetchOandaSeries(symbol, fromUtc, toUtc, "D");
+  return fetchOandaSeries(symbol, fromUtc, toUtc, "D", dailyAlignmentEt);
 }
 
 export async function fetchOandaMinuteSeries(
@@ -173,6 +175,7 @@ async function fetchOandaSeries(
   fromUtc: DateTime,
   toUtc: DateTime,
   granularity: OandaGranularity,
+  dailyAlignmentEt?: number,
 ): Promise<OandaHourlyCandle[]> {
   const accountId = process.env.OANDA_ACCOUNT_ID ?? "";
   if (!accountId) {
@@ -200,6 +203,10 @@ async function fetchOandaSeries(
     // Use count instead of "to" — the "to" parameter silently returns 0 bars
     // when the end time is near the current time (Oanda API quirk)
     url.searchParams.set("count", String(maxBarsPerRequest));
+    if (granularity === "D" && dailyAlignmentEt !== undefined) {
+      url.searchParams.set("dailyAlignment", String(dailyAlignmentEt));
+      url.searchParams.set("alignmentTimezone", "America/New_York");
+    }
 
     const maxAttempts = 3;
     let lastError: Error | null = null;

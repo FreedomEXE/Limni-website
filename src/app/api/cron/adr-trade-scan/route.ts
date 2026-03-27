@@ -74,11 +74,16 @@ async function ensureRunId(): Promise<number> {
 }
 
 /** Compute ADR from Oanda API daily bars (same source as TradingView's Oanda feed) */
-async function computeAdr(pair: string, beforeUtc: string): Promise<{ adrPct: number; adrDistance: number } | null> {
+async function computeAdr(pair: string, beforeUtc: string, assetClass: string): Promise<{ adrPct: number; adrDistance: number } | null> {
   const before = DateTime.fromISO(beforeUtc, { zone: "utc" });
   const from = before.minus({ days: ADR_LOOKBACK_DAYS + 4 }); // extra padding for weekends
-  const dailyBars = await fetchOandaDailySeries(pair, from, before).catch(() => []);
-  const recent = dailyBars.slice(-ADR_LOOKBACK_DAYS);
+  // FX daily bars align to 5PM ET (17), commodities/indices to 6PM ET (18)
+  const dailyAlignment = assetClass === "fx" ? 17 : 18;
+  const dailyBars = await fetchOandaDailySeries(pair, from, before, dailyAlignment).catch(() => []);
+  // Skip the most recent daily bar — Pine Script uses high[1..10] not high[0..9].
+  // Bar [0] is the current/just-closed bar; the indicator skips it.
+  const withoutMostRecent = dailyBars.slice(0, -1);
+  const recent = withoutMostRecent.slice(-ADR_LOOKBACK_DAYS);
 
   const absRanges = recent
     .filter((bar) => Number.isFinite(bar.high) && Number.isFinite(bar.low) && bar.high > 0 && bar.low > 0)
@@ -130,7 +135,7 @@ export async function GET(request: Request) {
     await mapWithConcurrency(signals, CONCURRENCY, async (signal) => {
       try {
         const weekWindow = getCanonicalWeekWindow(weekOpenUtc, signal.assetClass as "fx" | "indices" | "crypto" | "commodities");
-        const adr = await computeAdr(signal.pair, weekWindow.openUtc.toISO()!);
+        const adr = await computeAdr(signal.pair, weekWindow.openUtc.toISO()!, signal.assetClass);
         if (adr === null) return;
         const { adrPct, adrDistance } = adr;
 
