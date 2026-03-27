@@ -19,7 +19,7 @@ import FlagshipBoard from "@/components/flagship/FlagshipBoard";
 import SwingForwardBoard from "@/components/flagship/SwingForwardBoard";
 import MatrixControls from "@/components/matrix/MatrixControls";
 import { resolveCanonicalFlagships } from "@/lib/performance/canonicalFlagships";
-import { resolveWeekSelection } from "@/lib/weekOptions";
+import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 
@@ -62,7 +62,11 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
 
   // Shared week switching — same logic as Sentiment/Antikythera
   const currentWeekOpen = getDisplayWeekOpenUtc();
-  const weeks = await listDataSectionWeeks();
+  const historicalWeeks = await listDataSectionWeeks();
+  const weeks = buildDataWeekOptions({
+    historicalWeeks,
+    currentWeekOpenUtc: currentWeekOpen,
+  }) as string[];
   const selectedWeek = resolveWeekSelection({
     requestedWeek: weekValue,
     weekOptions: weeks,

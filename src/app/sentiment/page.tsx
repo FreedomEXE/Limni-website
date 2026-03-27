@@ -21,7 +21,7 @@ import {
   type SentimentAssetClass,
 } from "@/lib/sentiment/symbols";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
-import { resolveWeekSelection } from "@/lib/weekOptions";
+import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
@@ -109,7 +109,11 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
 
   const currentWeekOpen = getDisplayWeekOpenUtc();
 
-  const weeks = await listDataSectionWeeks();
+  const historicalWeeks = await listDataSectionWeeks();
+  const weeks = buildDataWeekOptions({
+    historicalWeeks,
+    currentWeekOpenUtc: currentWeekOpen,
+  }) as string[];
 
   const selectedWeek = resolveWeekSelection({
     requestedWeek: weekValue,

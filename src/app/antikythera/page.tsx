@@ -9,7 +9,7 @@ import { getAggregatesForWeekStartWithBackfill, getLatestAggregatesLocked } from
 import { formatDateTimeET, latestIso } from "@/lib/time";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { DateTime } from "luxon";
-import { resolveWeekSelection } from "@/lib/weekOptions";
+import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import AntikytheraControls from "@/components/antikythera/AntikytheraControls";
 import { listDataSectionWeekEntries, listDataSectionWeeks, findDataSectionWeekByReportDate } from "@/lib/dataSectionWeeks";
@@ -70,7 +70,11 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
   }
 
   const currentWeekOpen = getDisplayWeekOpenUtc();
-  const weeks = await listDataSectionWeeks();
+  const historicalWeeks = await listDataSectionWeeks();
+  const weeks = buildDataWeekOptions({
+    historicalWeeks,
+    currentWeekOpenUtc: currentWeekOpen,
+  }) as string[];
   const mappedWeekFromReport = (await findDataSectionWeekByReportDate(selectedReportDate))?.weekOpenUtc ?? null;
   const selectedWeek = resolveWeekSelection({
     requestedWeek: mappedWeekFromReport ?? undefined,
