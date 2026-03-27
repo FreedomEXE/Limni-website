@@ -98,19 +98,6 @@ export default function DashboardFilters({
           ))}
         </select>
 
-        <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          Data type
-        </label>
-        <select
-          value={selectedBias}
-          onChange={(event) =>
-            navigate({ bias: event.target.value === "commercial" ? "commercial" : "dealer" })
-          }
-          className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-        >
-          <option value="dealer">DEALER</option>
-          <option value="commercial">COMMERCIAL</option>
-        </select>
       </div>
     </div>
   );

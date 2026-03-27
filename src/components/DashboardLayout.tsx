@@ -64,6 +64,7 @@ function isActiveHref(
   pathname: string,
   viewParam: string | null,
   defaultView?: string | null,
+  currentSearchParams?: URLSearchParams | null,
 ) {
   const { path, params } = parseHref(href);
   if (path !== pathname) {
@@ -75,10 +76,9 @@ function isActiveHref(
     if (resolvedView !== expectedView) return false;
   }
   // Check any other query params in the href (e.g. bias=dealer)
-  const currentUrl = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
   for (const [key, value] of params.entries()) {
     if (key === "view") continue; // already handled above
-    if (currentUrl && currentUrl.get(key) !== value) return false;
+    if (currentSearchParams && currentSearchParams.get(key) !== value) return false;
   }
   return true;
 }
@@ -282,7 +282,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           const isActive =
             item.matchPrefixes && item.matchPrefixes.length > 0
               ? item.matchPrefixes.some((prefix) => pathname.startsWith(prefix))
-              : isActiveHref(item.href, pathname, resolvedViewParam, defaultView);
+              : isActiveHref(item.href, pathname, resolvedViewParam, defaultView, searchParams);
           const { path: itemPath, params: itemParams } = parseHref(item.href);
           const accountItemView = itemParams.get("view");
           const isLocalAccountToggle =

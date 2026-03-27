@@ -25,7 +25,7 @@ import { readSnapshot } from "@/lib/cotStore";
 import type { CotSnapshotResponse } from "@/lib/cotTypes";
 import type { PairSnapshot } from "@/lib/cotTypes";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
-import { findDataSectionWeekByReportDate, listDataSectionWeekEntries } from "@/lib/dataSectionWeeks";
+import { deriveCotReportDate, findDataSectionWeekByReportDate, listDataSectionWeekEntries } from "@/lib/dataSectionWeeks";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import type { PairPerformance } from "@/lib/priceStore";
 
@@ -175,7 +175,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     Array.isArray(reportParam) ? reportParam[0] : reportParam;
   const assetClasses = listAssetClasses();
   const weekEntries = await listDataSectionWeekEntries();
-  const availableDates = weekEntries.map((entry) => entry.cotReportDate);
+  // Include the current/upcoming week even if no price data exists yet
+  const currentWeekEntry = {
+    weekOpenUtc: currentWeekOpen,
+    cotReportDate: deriveCotReportDate(currentWeekOpen),
+  };
+  const allEntries = [currentWeekEntry, ...weekEntries]
+    .filter((entry, index, all) => all.findIndex((e) => e.cotReportDate === entry.cotReportDate) === index);
+  const availableDates = allEntries.map((entry) => entry.cotReportDate);
   const orderedDates = [...availableDates].sort((a, b) => b.localeCompare(a));
   const selectedReportDate =
     reportDate && orderedDates.includes(reportDate)
@@ -186,8 +193,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       ? orderedDates[orderedDates.indexOf(selectedReportDate) + 1] ?? null
       : null;
   const selectedWeekOpenUtc =
-    (await findDataSectionWeekByReportDate(selectedReportDate))?.weekOpenUtc
-    ?? weekEntries[0]?.weekOpenUtc
+    allEntries.find((e) => e.cotReportDate === selectedReportDate)?.weekOpenUtc
+    ?? (await findDataSectionWeekByReportDate(selectedReportDate))?.weekOpenUtc
+    ?? allEntries[0]?.weekOpenUtc
     ?? null;
   const canonicalReturns = selectedWeekOpenUtc
     ? await getWeeklyPairReturns(selectedWeekOpenUtc, isAll ? undefined : assetClass)

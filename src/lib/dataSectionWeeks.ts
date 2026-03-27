@@ -33,7 +33,7 @@ export type DataSectionWeekEntry = {
   cotReportDate: string;
 };
 
-function deriveCotReportDate(weekOpenUtc: string) {
+export function deriveCotReportDate(weekOpenUtc: string) {
   const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
   if (!weekOpen.isValid) {
     return weekOpenUtc.slice(0, 10);
