@@ -370,31 +370,30 @@ var float periodHigh = na
 var float periodLow  = na
 
 // Daily separators inside the period box
-daySepColor = input.color(color.new(color.gray, 40), "Day Separator Color")
+daySepColor = input.color(color.new(color.gray, 25), "Day Separator Color")
 showDaySeps = input.bool(true, "Show Daily Separators")
 var line[] daySepLines  = array.new<line>()
 var label[] dayLabels   = array.new<label>()
 var label weekLabel     = na
+var label sunmonLabel   = na
 
 bool isNewDay = ta.change(dayofweek) != 0
 
 // Bar height for header/footer = 12% of the weekly price range
 float barHeightPct = 0.12
 
-// Determine if we should skip separator for merged half-day periods
-// SUN+MON merged for all instruments; FRISAT for crypto; THUFRI for CFD
-bool isMergedDay = false
+// Half-day merging logic:
+// Crypto: only SUN is half-day → SUNMON merged. MON-SAT all individual.
+// CFD/Forex: SUN and FRI are half-days → SUNMON merged, THUFRI merged. TUE/WED/THU individual.
+bool skipSeparator = false
 if isNewDay
     int dow = dayofweek
-    // Monday (2) = don't draw sep, it's merged with Sunday
+    // Monday: always skip sep (merged with Sunday as SUNMON)
     if dow == dayofweek.monday
-        isMergedDay := true
-    // Saturday (7) for crypto = don't draw sep, merged with Friday
-    if dow == dayofweek.saturday and isCrypto
-        isMergedDay := true
-    // Friday (6) for CFD = don't draw sep, merged with Thursday
+        skipSeparator := true
+    // Friday for CFD: skip sep (merged with Thursday as THUFRI)
     if dow == dayofweek.friday and not isCrypto
-        isMergedDay := true
+        skipSeparator := true
 
 if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     periodHigh := high
@@ -407,18 +406,16 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     topBar := box.new(bar_index, high + barH, bar_index, high, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
     // Bottom bar (day labels area)
     bottomBar := box.new(bar_index, low, bar_index, low - barH, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
-    // Clear old separators for THIS week (old week's stay if not currentOnly)
-    for ln in daySepLines
-        line.delete(ln)
+    // Don't delete old week's separators/labels — they persist for past weeks
+    // Just clear tracking arrays so new week's items are tracked for updates
     array.clear(daySepLines)
-    for lb in dayLabels
-        label.delete(lb)
     array.clear(dayLabels)
-    if not na(weekLabel)
-        label.delete(weekLabel)
+    // Week label and SUNMON are replaced each week (old ones stay as-is)
     // Week label centered in top bar — large black text
     string weekStr = str.format("WEEK OF {0,date,MMM dd yyyy}", time)
     weekLabel := label.new(bar_index, high + barH / 2, weekStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.black, size=size.huge, textalign=text.align_center)
+    // SUNMON label at the start of the week in bottom bar
+    sunmonLabel := label.new(bar_index, low - barH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
 
 if not na(periodBox) and showBoxes and showVisuals
     periodHigh := math.max(periodHigh, high)
@@ -447,17 +444,21 @@ if not na(periodBox) and showBoxes and showVisuals
         label.set_x(weekLabel, math.round(math.avg(box.get_left(periodBox), bar_index)))
 
 // Draw daily separator line and label on day change (skip merged half-days)
-if isNewDay and not isNewWeek and not isMergedDay and showDaySeps and showBoxes and showVisuals and not na(periodBox)
+if isNewDay and not isNewWeek and not skipSeparator and showDaySeps and showBoxes and showVisuals and not na(periodBox)
     float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
     float barH  = priceSpan * barHeightPct
-    // Separator spans full height through all 3 sections
-    line newSep = line.new(bar_index, periodLow - barH, bar_index, periodHigh + barH, color=daySepColor, style=line.style_dotted, width=2)
+    // Separator contained inside middle box only (periodLow to periodHigh)
+    line newSep = line.new(bar_index, periodLow, bar_index, periodHigh, color=daySepColor, style=line.style_dotted, width=2)
     array.push(daySepLines, newSep)
-    // Day label in bottom bar — use merged names for half-day boundaries
+    // Day label in bottom bar — label the period STARTING at this separator
     int dow = dayofweek
-    string dayStr = dow == dayofweek.tuesday ? "TUE" : dow == dayofweek.wednesday ? "WED" : dow == dayofweek.thursday ? (isCrypto ? "THU" : "THUFRI") : dow == dayofweek.friday ? (isCrypto ? "FRISAT" : "") : dow == dayofweek.saturday ? "" : ""
-    // The label goes on the LEFT side of the separator (labels the period that just ended)
-    // Actually label the period that's STARTING at this separator
+    string dayStr = ""
+    if isCrypto
+        // Crypto: TUE, WED, THU, FRI, SAT all individual
+        dayStr := dow == dayofweek.tuesday ? "TUE" : dow == dayofweek.wednesday ? "WED" : dow == dayofweek.thursday ? "THU" : dow == dayofweek.friday ? "FRI" : dow == dayofweek.saturday ? "SAT" : ""
+    else
+        // CFD: TUE, WED, THUFRI (merged). No FRI separator.
+        dayStr := dow == dayofweek.tuesday ? "TUE" : dow == dayofweek.wednesday ? "WED" : dow == dayofweek.thursday ? "THUFRI" : ""
     if str.length(dayStr) > 0
         label newDayLbl = label.new(bar_index, periodLow - barH / 2, dayStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
         array.push(dayLabels, newDayLbl)
@@ -466,11 +467,16 @@ if isNewDay and not isNewWeek and not isMergedDay and showDaySeps and showBoxes 
 if showDaySeps and showBoxes and showVisuals and not na(periodBox)
     float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
     float barH  = priceSpan * barHeightPct
+    // Separators stay inside middle box
     for ln in daySepLines
-        line.set_y1(ln, periodLow - barH)
-        line.set_y2(ln, periodHigh + barH)
+        line.set_y1(ln, periodLow)
+        line.set_y2(ln, periodHigh)
+    // Day labels stay in bottom bar
     for lb in dayLabels
         label.set_y(lb, periodLow - barH / 2)
+    // SUNMON label tracks bottom bar
+    if not na(sunmonLabel)
+        label.set_y(sunmonLabel, periodLow - barH / 2)
 
 // ── Trade boxes (profit + drawdown — detach on TP for re-entry) ─────────────
 var box longProfBox = na
