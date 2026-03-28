@@ -1109,24 +1109,24 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const weekSelectorOptions = weekOptions; // for ScrollableWeekStrip (no "all")
 
   // ─── Engine-driven computation (new bias source selector) ─────
+  // Compute ALL weeks once upfront — client switches instantly
   const biasSourceId = resolveBiasSourceId(biasParamValue);
   const biasSource = getBiasSource(biasSourceId)!;
-  let engineGridProps: EngineGridProps | null = null;
+  let engineWeekMap: Record<string, EngineGridProps> | null = null;
   let engineSimulation: EngineSimulationGroup | null = null;
   try {
-    if (selectedWeek === "all") {
-      // Multi-week: compute across all available weeks
-      const multiWeekResult = await computeMultiWeekHold(biasSource, weekSelectorOptions);
-      engineGridProps = multiWeekToGridProps(multiWeekResult, biasSource);
-      engineSimulation = multiWeekToSimulation(multiWeekResult, biasSource);
-    } else {
-      // Single week
-      const engineResult = await computeWeeklyHold(biasSource, selectedWeek);
-      engineGridProps = weeklyHoldToGridProps(engineResult, biasSource, weekDisplayLabel(selectedWeek));
-      // Also compute multi-week for simulation chart
-      const multiWeekResult = await computeMultiWeekHold(biasSource, weekSelectorOptions);
-      engineSimulation = multiWeekToSimulation(multiWeekResult, biasSource);
+    const multiWeekResult = await computeMultiWeekHold(biasSource, weekSelectorOptions);
+    // Build GridProps for each individual week
+    const weekMap: Record<string, EngineGridProps> = {};
+    for (const weekResult of multiWeekResult.weeks) {
+      weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(
+        weekResult, biasSource, weekDisplayLabel(weekResult.weekOpenUtc),
+      );
     }
+    // Build aggregated "all time" GridProps
+    weekMap["all"] = multiWeekToGridProps(multiWeekResult, biasSource);
+    engineWeekMap = weekMap;
+    engineSimulation = multiWeekToSimulation(multiWeekResult, biasSource);
   } catch {
     // Engine computation failed — fall back to legacy view
   }
@@ -1214,16 +1214,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           </div>
         </header>
 
-        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-          <ScrollableWeekStrip
-            options={["all", ...weekSelectorOptions]}
-            selected={selectedWeek}
-            currentWeek={currentWeekOpenUtc}
-            label="Week"
-            preserveParams={["bias", "filter", "style", "system", "view", "mode"]}
-          />
-        </div>
-
         <PerformanceViewSection
           initialMode={initialMode}
           initialView={initialView}
@@ -1235,8 +1225,11 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           tieredSimulationBySystem={tiered.simulationMap}
           flagshipGridProps={flagshipGridProps}
           flagshipSimulation={flagshipSimulation}
-          engineGridProps={engineGridProps}
+          engineWeekMap={engineWeekMap}
           engineSimulation={engineSimulation}
+          weekOptions={["all", ...weekSelectorOptions]}
+          currentWeek={currentWeekOpenUtc}
+          initialWeek={selectedWeek}
         />
       </div>
     </DashboardLayout>

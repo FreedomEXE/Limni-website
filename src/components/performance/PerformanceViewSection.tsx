@@ -5,9 +5,9 @@
  * File: PerformanceViewSection.tsx
  *
  * Description:
- * Performance body shell. When engine-driven gridProps are provided (from
- * the weeklyHoldEngine), renders directly. Otherwise falls back to legacy
- * flagship/tiered/universal mode support.
+ * Performance body shell. When engine week map is provided, renders
+ * with client-side week switching (instant, no server round-trip).
+ * Falls back to legacy flagship/tiered mode when no engine data.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -25,6 +25,7 @@ import PerformanceViewCards, {
 import PerformanceSimulationSection, {
   type PerformanceSimulationGroup,
 } from "@/components/performance/PerformanceSimulationSection";
+import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import {
   resolveActiveStrategyEntry,
   resolveDisplayModelsForEntry,
@@ -49,10 +50,16 @@ type PerformanceViewSectionProps = {
   tieredSimulationBySystem?: Partial<Record<PerformanceSystem, PerformanceSimulationGroup>>;
   flagshipGridProps: GridProps | null;
   flagshipSimulation: PerformanceSimulationGroup | null;
-  /** Engine-driven gridProps from weeklyHoldEngine — takes priority over legacy data */
-  engineGridProps?: EngineGridProps | null;
-  /** Engine-driven simulation (equity curves) */
+  /** Pre-computed GridProps per week + "all". Client switches instantly. */
+  engineWeekMap?: Record<string, EngineGridProps> | null;
+  /** Engine-driven simulation (equity curves across all weeks) */
   engineSimulation?: EngineSimulationGroup | null;
+  /** Week options for the strip */
+  weekOptions?: string[];
+  /** Current live week */
+  currentWeek?: string;
+  /** Initial selected week (from URL) */
+  initialWeek?: string;
 };
 
 export default function PerformanceViewSection({
@@ -66,13 +73,16 @@ export default function PerformanceViewSection({
   tieredSimulationBySystem,
   flagshipGridProps,
   flagshipSimulation,
-  engineGridProps,
+  engineWeekMap,
   engineSimulation,
+  weekOptions,
+  currentWeek,
+  initialWeek,
 }: PerformanceViewSectionProps) {
-  const useEngine = Boolean(engineGridProps);
   const [view, setView] = useState<PerformanceView>(initialView);
+  const [selectedWeek, setSelectedWeek] = useState(initialWeek ?? "all");
 
-  // Legacy mode state — only active when engine data is absent
+  // Legacy mode state
   const [mode, setMode] = useState<"flagship" | "legacy" | "matrix">(initialMode);
   const [system, setSystem] = useState<PerformanceSystem>(initialSystem);
   const [style, setStyle] = useState<WeeklyPerformanceFamily>(initialStyle);
@@ -82,29 +92,61 @@ export default function PerformanceViewSection({
   useEffect(() => { setSystem(initialSystem); }, [initialSystem]);
   useEffect(() => { setStyle(initialStyle); }, [initialStyle]);
 
-  // Legacy event listeners for sidebar mode/system/style communication
+  // ─── Engine-driven path (instant week switching) ──────────────
+  if (engineWeekMap && weekOptions) {
+    const gridProps = engineWeekMap[selectedWeek] ?? engineWeekMap["all"];
+
+    return (
+      <>
+        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+          <ScrollableWeekStrip
+            options={weekOptions}
+            selected={selectedWeek}
+            currentWeek={currentWeek}
+            label="Week"
+            onChange={setSelectedWeek}
+          />
+        </div>
+
+        <PerformanceViewCards
+          activeView={view}
+          onViewChange={setView}
+          views={PERFORMANCE_VIEW_CARDS}
+        />
+        {view === "simulation" ? (
+          <PerformanceSimulationSection group={engineSimulation ?? null} />
+        ) : gridProps ? (
+          <PerformanceGrid
+            {...gridProps}
+            combined={gridProps.combined}
+            perAsset={gridProps.perAsset}
+            view={view}
+          />
+        ) : (
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+            No data for the selected week.
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // ─── Legacy path (fallback) ───────────────────────────────────
   useEffect(() => {
-    if (useEngine) return; // skip legacy listeners when engine-driven
+    if (engineWeekMap) return;
     const onSystemChange = (event: Event) => {
       const custom = event as CustomEvent<PerformanceSystem>;
-      if (custom.detail === "v1" || custom.detail === "v2" || custom.detail === "v3") {
-        setSystem(custom.detail);
-      }
+      if (custom.detail === "v1" || custom.detail === "v2" || custom.detail === "v3") setSystem(custom.detail);
     };
     const onStyleChange = (event: Event) => {
       const custom = event as CustomEvent<PerformanceStrategyFamily>;
-      if (custom.detail === "universal" || custom.detail === "tiered") {
-        setStyle(custom.detail);
-      }
+      if (custom.detail === "universal" || custom.detail === "tiered") setStyle(custom.detail);
     };
     const onModeChange = (event: Event) => {
       const custom = event as CustomEvent<string>;
       const nextMode = custom.detail === "legacy" ? "legacy" : custom.detail === "matrix" ? "matrix" : "flagship";
       setMode(nextMode);
-      if (nextMode === "flagship") {
-        setStyle("tiered");
-        setSystem("v3");
-      }
+      if (nextMode === "flagship") { setStyle("tiered"); setSystem("v3"); }
     };
     window.addEventListener("performance-system-change", onSystemChange);
     window.addEventListener("performance-style-change", onStyleChange);
@@ -114,11 +156,10 @@ export default function PerformanceViewSection({
       window.removeEventListener("performance-style-change", onStyleChange);
       window.removeEventListener("performance-mode-change", onModeChange);
     };
-  }, [useEngine]);
+  }, [engineWeekMap]);
 
-  // Legacy URL sync
   useEffect(() => {
-    if (useEngine) return;
+    if (engineWeekMap) return;
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     url.searchParams.set("mode", mode);
@@ -131,57 +172,29 @@ export default function PerformanceViewSection({
       url.searchParams.set("system", system);
     }
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-  }, [useEngine, mode, view, system, style]);
+  }, [engineWeekMap, mode, view, system, style]);
 
   const activeEntry = useMemo(() => {
-    if (useEngine) return null;
     return mode === "flagship"
       ? resolveActiveStrategyEntry({ family: "tiered", systemVersion: "v3" })
       : resolveActiveStrategyEntry({ family: style, systemVersion: system });
-  }, [useEngine, mode, style, system]);
+  }, [mode, style, system]);
 
   const baseGridProps = useMemo(() => {
-    if (useEngine) return null;
     if (mode === "flagship") return flagshipGridProps;
-    const preferred =
-      style === "tiered"
-        ? tieredGridPropsBySystem?.[system] ?? universalGridPropsBySystem[system]
-        : universalGridPropsBySystem[system];
+    const preferred = style === "tiered"
+      ? tieredGridPropsBySystem?.[system] ?? universalGridPropsBySystem[system]
+      : universalGridPropsBySystem[system];
     return preferred ?? universalGridPropsBySystem.v3 ?? universalGridPropsBySystem.v1 ?? null;
-  }, [useEngine, mode, flagshipGridProps, style, system, tieredGridPropsBySystem, universalGridPropsBySystem]);
+  }, [mode, flagshipGridProps, style, system, tieredGridPropsBySystem, universalGridPropsBySystem]);
 
   const simulationGroup = useMemo(() => {
-    if (useEngine) return null;
     if (mode === "flagship") return flagshipSimulation;
     return style === "tiered"
       ? tieredSimulationBySystem?.[system] ?? null
       : universalSimulationBySystem?.[system] ?? null;
-  }, [useEngine, mode, flagshipSimulation, style, system, tieredSimulationBySystem, universalSimulationBySystem]);
+  }, [mode, flagshipSimulation, style, system, tieredSimulationBySystem, universalSimulationBySystem]);
 
-  // ─── Engine-driven render ─────────────────────────────────────
-  if (engineGridProps) {
-    return (
-      <>
-        <PerformanceViewCards
-          activeView={view}
-          onViewChange={setView}
-          views={PERFORMANCE_VIEW_CARDS}
-        />
-        {view === "simulation" ? (
-          <PerformanceSimulationSection group={engineSimulation ?? null} />
-        ) : (
-          <PerformanceGrid
-            {...engineGridProps}
-            combined={engineGridProps.combined}
-            perAsset={engineGridProps.perAsset}
-            view={view}
-          />
-        )}
-      </>
-    );
-  }
-
-  // ─── Legacy render (fallback) ─────────────────────────────────
   if (!baseGridProps) {
     return (
       <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">

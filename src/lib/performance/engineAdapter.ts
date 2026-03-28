@@ -361,7 +361,7 @@ export function multiWeekToGridProps(
     perAsset,
     labels,
     allTime: { combined: allTimeCombined, perAsset: allTimePerAsset },
-    showAllTime: true,
+    showAllTime: false,
   };
 }
 
