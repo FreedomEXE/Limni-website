@@ -5,9 +5,9 @@
  * File: PerformanceSidebar.tsx
  *
  * Description:
- * Performance sidebar shell with Flagship, Matrix, and Legacy tabs.
- * Matrix shows ADR forward test stats. Legacy is tucked behind
- * a toggle inside the Flagship view.
+ * Performance sidebar with bias source selector and engine-driven
+ * stats. Reads ?bias= and ?week= from URL, fetches stats from the
+ * engine-stats API route.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -15,63 +15,71 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import PerformanceComparisonPanel from "@/components/performance/PerformanceComparisonPanel";
+import { useSearchParams } from "next/navigation";
 import PerformanceStrategySelector from "@/components/performance/PerformanceStrategySelector";
+import { resolveBiasSourceId } from "@/lib/performance/strategyConfig";
+import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 
-type PerformanceMode = "flagship" | "matrix" | "legacy";
-
-function parseMode(value: string | null): PerformanceMode {
-  if (value === "legacy") return "legacy";
-  if (value === "matrix") return "matrix";
-  return "flagship";
-}
-
-type AdrTradesPayload = {
-  weekOpenUtc: string;
-  generatedUtc: string;
-  totalTrades: number;
-  totalTpHits: number;
-  totalActive: number;
-  weekReturnPct: number;
-  trades: Array<{
-    symbol: string;
-    direction: string;
-    pnlPct: number | null;
-    exitReason: string | null;
-    tradeNumber: number | null;
-  }>;
-};
-
-function MatrixSidebarContent() {
-  const [data, setData] = useState<AdrTradesPayload | null>(null);
+function EngineSidebarStats() {
+  const searchParams = useSearchParams();
+  const bias = resolveBiasSourceId(searchParams.get("bias"));
+  const week = searchParams.get("week") ?? "";
+  const [stats, setStats] = useState<EngineSidebarStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/flagship/adr-trades")
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.set("bias", bias);
+    if (week) params.set("week", week);
+
+    fetch(`/api/performance/engine-stats?${params.toString()}`)
       .then((r) => r.json())
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
+      .then((d) => {
+        if (d.error) {
+          setStats(null);
+        } else {
+          setStats(d);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setStats(null);
+        setLoading(false);
+      });
+  }, [bias, week]);
 
-  if (loading) return <div className="text-xs text-[color:var(--muted)]">Loading ADR trades...</div>;
-  if (!data) return <div className="text-xs text-[color:var(--muted)]">No trade data available.</div>;
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+        <div className="text-xs text-[color:var(--muted)]">Computing stats...</div>
+      </div>
+    );
+  }
 
-  const winRate = data.totalTrades > 0 ? ((data.totalTpHits / data.totalTrades) * 100).toFixed(1) : "0";
-  const pairsWithTrades = new Set(data.trades.map((t) => t.symbol)).size;
+  if (!stats) {
+    return (
+      <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+        <div className="text-xs text-[color:var(--muted)]">No data available for this selection.</div>
+      </div>
+    );
+  }
+
+  const returnColor = stats.weekReturnPct >= 0 ? "text-lime-400" : "text-red-400";
+  const fxTrades = stats.trades.filter((t) => t.assetClass === "fx");
+  const otherTrades = stats.trades.filter((t) => t.assetClass !== "fx");
+  const fxReturn = fxTrades.reduce((s, t) => s + t.returnPct, 0);
+  const otherReturn = otherTrades.reduce((s, t) => s + t.returnPct, 0);
 
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
         <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--accent-strong)]">
-          ADR Forward Test
-        </div>
-        <div className="mt-1 text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-          Fresh Start · 1x ADR Entry · 0.25x TP
+          {stats.biasSourceLabel} · Weekly Hold
         </div>
 
-        <div className="mt-4 text-3xl font-bold text-lime-400">
-          +{data.weekReturnPct.toFixed(2)}%
+        <div className={`mt-4 text-3xl font-bold ${returnColor}`}>
+          {stats.weekReturnPct >= 0 ? "+" : ""}{stats.weekReturnPct.toFixed(2)}%
         </div>
         <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
           Week Return
@@ -79,58 +87,43 @@ function MatrixSidebarContent() {
 
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div>
-            <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Weekly Win</div>
-            <div className="font-bold">{winRate}%</div>
-          </div>
-          <div>
-            <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Active</div>
-            <div className="font-bold">{data.totalActive}</div>
+            <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Win Rate</div>
+            <div className="font-bold">{stats.winRate.toFixed(1)}%</div>
           </div>
           <div>
             <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Trades</div>
-            <div className="font-bold">{data.totalTrades}</div>
+            <div className="font-bold">{stats.tradeCount}</div>
           </div>
           <div>
-            <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">TP Hits</div>
-            <div className="font-bold text-lime-400">{data.totalTpHits}</div>
+            <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Wins</div>
+            <div className="font-bold text-lime-400">{stats.winCount}</div>
+          </div>
+          <div>
+            <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Losses</div>
+            <div className="font-bold text-red-400">{stats.lossCount}</div>
           </div>
         </div>
 
-        <div className="mt-3 border-t border-[var(--panel-border)] pt-3">
-          <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Pairs Active</div>
-          <div className="font-bold">{pairsWithTrades}</div>
+        <div className="mt-3 border-t border-[var(--panel-border)] pt-3 space-y-1 text-xs">
+          <div className="flex justify-between">
+            <span className="text-[color:var(--muted)]">FX ({fxTrades.length})</span>
+            <span className={fxReturn >= 0 ? "text-lime-400" : "text-red-400"}>
+              {fxReturn >= 0 ? "+" : ""}{fxReturn.toFixed(2)}%
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-[color:var(--muted)]">Other ({otherTrades.length})</span>
+            <span className={otherReturn >= 0 ? "text-lime-400" : "text-red-400"}>
+              {otherReturn >= 0 ? "+" : ""}{otherReturn.toFixed(2)}%
+            </span>
+          </div>
         </div>
-      </div>
-
-      <div className="text-[10px] text-[color:var(--muted)]">
-        Weeks <span className="text-[var(--foreground)]">1</span>
       </div>
     </div>
   );
 }
 
 export default function PerformanceSidebar() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [mode, setModeState] = useState<PerformanceMode>(parseMode(searchParams.get("mode")));
-
-  useEffect(() => {
-    setModeState(parseMode(searchParams.get("mode")));
-  }, [searchParams]);
-
-  const updateMode = (next: PerformanceMode) => {
-    setModeState(next);
-    const url = new URL(window.location.href);
-    url.searchParams.set("mode", next);
-    if (next === "flagship") {
-      url.searchParams.set("style", "tiered");
-      url.searchParams.set("system", "v3");
-    }
-    router.replace(`${pathname}?${url.searchParams.toString()}`, { scroll: false });
-    window.dispatchEvent(new CustomEvent("performance-mode-change", { detail: next }));
-  };
-
   return (
     <div className="flex-1 space-y-4 p-4">
       <PerformanceStrategySelector
@@ -139,43 +132,8 @@ export default function PerformanceSidebar() {
       />
 
       <div className="border-t border-[var(--panel-border)] pt-4">
-        <div className="grid grid-cols-3 gap-2">
-          {(["flagship", "matrix", "legacy"] as const).map((entry) => {
-            const active = mode === entry;
-            return (
-              <button
-                key={entry}
-                type="button"
-                onClick={() => updateMode(entry)}
-                className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.16em] transition ${
-                  active
-                    ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                    : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
-                }`}
-              >
-                {entry}
-              </button>
-            );
-          })}
-        </div>
+        <EngineSidebarStats />
       </div>
-
-      {mode === "flagship" ? (
-        <div className="space-y-4">
-          <PerformanceComparisonPanel
-            forcedFamily="tiered"
-            forcedSystemVersion="v3"
-            hideSelectors
-            title="Flagship Breakdown"
-            flagshipOnly
-            sidebarSurface
-          />
-        </div>
-      ) : mode === "matrix" ? (
-        <MatrixSidebarContent />
-      ) : (
-        <PerformanceComparisonPanel />
-      )}
     </div>
   );
 }

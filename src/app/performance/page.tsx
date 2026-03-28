@@ -39,6 +39,9 @@ import { resolvePerformanceView, resolveSelectedPerformanceWeek } from "@/lib/pe
 import { computeReturnStats, type ModelPerformance, type PerformanceModel } from "@/lib/performanceLab";
 import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegistry";
 import { DateTime } from "luxon";
+import { resolveBiasSourceId, getBiasSource } from "@/lib/performance/strategyConfig";
+import { computeWeeklyHold } from "@/lib/performance/weeklyHoldEngine";
+import { weeklyHoldToGridProps, type EngineGridProps } from "@/lib/performance/engineAdapter";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -1058,6 +1061,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const modeParamValue = Array.isArray(modeParam) ? modeParam[0] : modeParam;
   const weekParam = resolvedSearchParams?.week;
   const weekParamValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
+  const biasParam = resolvedSearchParams?.bias;
+  const biasParamValue = Array.isArray(biasParam) ? biasParam[0] : biasParam;
 
   const resolvedFamily = parseFamily(styleParamValue);
   const initialStyle: WeeklyPerformanceFamily = resolvedFamily === "universal" ? "universal" : "tiered";
@@ -1102,6 +1107,20 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
       currentWeekOpenUtc,
     }) ?? "all";
   const weekSelectorOptions = weekOptions; // for ScrollableWeekStrip (no "all")
+
+  // ─── Engine-driven computation (new bias source selector) ─────
+  const biasSourceId = resolveBiasSourceId(biasParamValue);
+  const biasSource = getBiasSource(biasSourceId)!;
+  const engineWeek = selectedWeek === "all"
+    ? weekSelectorOptions[0] ?? currentWeekOpenUtc
+    : selectedWeek;
+  let engineGridProps: EngineGridProps | null = null;
+  try {
+    const engineResult = await computeWeeklyHold(biasSource, engineWeek);
+    engineGridProps = weeklyHoldToGridProps(engineResult, biasSource, weekDisplayLabel(engineWeek));
+  } catch {
+    // Engine computation failed — fall back to legacy view
+  }
 
   const universal = buildSystemMaps({
     family: "universal",
@@ -1180,13 +1199,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             <h1 className="text-3xl font-semibold text-[var(--foreground)]">
               Performance
             </h1>
-            <PerformanceHeaderContext
-              initialStyle={initialMode === "flagship" ? "tiered" : initialStyle}
-              initialSystem={initialMode === "flagship" ? "v3" : initialSystem}
-              initialKataraktiMarket="crypto_futures"
-              initialKataraktiVariant="v3"
-              className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]"
-            />
+            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
+              {biasSource.label} · Weekly Hold
+            </p>
           </div>
         </header>
 
@@ -1196,7 +1211,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
             selected={selectedWeek === "all" ? weekSelectorOptions[0] ?? "" : selectedWeek}
             currentWeek={currentWeekOpenUtc}
             label="Week"
-            preserveParams={["style", "system", "view", "mode"]}
+            preserveParams={["bias", "filter", "style", "system", "view", "mode"]}
           />
         </div>
 
@@ -1211,6 +1226,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           tieredSimulationBySystem={tiered.simulationMap}
           flagshipGridProps={flagshipGridProps}
           flagshipSimulation={flagshipSimulation}
+          engineGridProps={engineGridProps}
         />
       </div>
     </DashboardLayout>
