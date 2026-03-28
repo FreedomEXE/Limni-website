@@ -384,8 +384,8 @@ float barHeightPct = 0.03
 if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     periodHigh := high
     periodLow  := low
-    float range = math.max(high - low, high * 0.01)
-    float barH  = range * barHeightPct
+    float priceSpan = math.max(high - low, high * 0.01)
+    float barH  = priceSpan * barHeightPct
     // Middle box (price action area) — original style
     periodBox := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=1, border_style=line.style_dotted)
     // Top bar (week label area)
@@ -408,8 +408,8 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
 if not na(periodBox) and showBoxes and showVisuals
     periodHigh := math.max(periodHigh, high)
     periodLow  := math.min(periodLow, low)
-    float range = math.max(periodHigh - periodLow, periodHigh * 0.01)
-    float barH  = range * barHeightPct
+    float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = priceSpan * barHeightPct
     // Update middle box
     box.set_top(periodBox, periodHigh)
     box.set_bottom(periodBox, periodLow)
@@ -433,8 +433,8 @@ if not na(periodBox) and showBoxes and showVisuals
 
 // Draw daily separator line and label on day change (within a week, not on week start)
 if isNewDay and not isNewWeek and showDaySeps and showBoxes and showVisuals and not na(periodBox)
-    float range = math.max(periodHigh - periodLow, periodHigh * 0.01)
-    float barH  = range * barHeightPct
+    float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = priceSpan * barHeightPct
     // Separator spans from bottom bar top to top bar bottom (i.e., through the middle box)
     line newSep = line.new(bar_index, periodLow - barH, bar_index, periodHigh + barH, color=daySepColor, style=line.style_dotted, width=1)
     array.push(daySepLines, newSep)
@@ -446,8 +446,8 @@ if isNewDay and not isNewWeek and showDaySeps and showBoxes and showVisuals and 
 
 // Update daily separator lines to span full height including bars
 if showDaySeps and showBoxes and showVisuals and not na(periodBox)
-    float range = math.max(periodHigh - periodLow, periodHigh * 0.01)
-    float barH  = range * barHeightPct
+    float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = priceSpan * barHeightPct
     for ln in daySepLines
         line.set_y1(ln, periodLow - barH)
         line.set_y2(ln, periodHigh + barH)
