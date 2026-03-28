@@ -421,12 +421,15 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     if not barstate.isfirst and showDaySeps and showBoxes
         float prevSpan = math.max(nz(periodHigh) - nz(periodLow), nz(periodHigh) * 0.01)
         float prevBarH = prevSpan * barHeightPct
-        // Center the last period's label between its separator and week end
+        // Draw a SUNMON separator line at week boundary in old week's box
+        line.new(bar_index, nz(periodLow), bar_index, nz(periodHigh), color=daySepColor, style=line.style_dotted, width=2)
+        // Center the last period's label (SAT for crypto, THUFRI for CFD)
+        // between its separator and the SUNMON separator at week boundary
         if not na(currentDayLabel)
-            label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index - 1)))
-        // SUNMON label at end of OLD week (between lastSep and week boundary)
-        // This is the old week's Sunday portion
-        label.new(math.round(math.avg(bar_index - 1, bar_index)), nz(periodLow) - prevBarH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
+            label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index)))
+        // SUNMON label at end of OLD week — centered between week boundary and a few bars back
+        // Place it close to the boundary on the old week's side
+        label.new(bar_index - 1, nz(periodLow) - prevBarH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
     // Clear tracking arrays for new week
     array.clear(daySepLines)
     array.clear(dayLabels)
