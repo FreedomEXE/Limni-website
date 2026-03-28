@@ -634,22 +634,24 @@ export default function PerformanceGrid({
           <h2 className="text-lg font-semibold text-[var(--foreground)]">
             Basket performance
           </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => setSelectedSectionId(section.id)}
-                className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
-                  resolvedSectionId === section.id
-                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                    : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)]"
-                }`}
-              >
-                {section.id === "combined" ? "All" : section.label}
-              </button>
-            ))}
-          </div>
+          {sections.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {sections.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => setSelectedSectionId(section.id)}
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+                    resolvedSectionId === section.id
+                      ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                      : "border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)]"
+                  }`}
+                >
+                  {section.id === "combined" ? "All" : section.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {comparisonOverlay && resolvedSectionId === "combined" ? (
           <div className="mb-4 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-3">

@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import type { PerformanceSystem } from "@/lib/performance/modelConfig";
 import type { PerformanceView } from "@/lib/performance/pageState";
-import type { EngineGridProps } from "@/lib/performance/engineAdapter";
+import type { EngineGridProps, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
 import PerformanceViewCards, {
   PERFORMANCE_VIEW_CARDS,
@@ -51,6 +51,8 @@ type PerformanceViewSectionProps = {
   flagshipSimulation: PerformanceSimulationGroup | null;
   /** Engine-driven gridProps from weeklyHoldEngine — takes priority over legacy data */
   engineGridProps?: EngineGridProps | null;
+  /** Engine-driven simulation (equity curves) */
+  engineSimulation?: EngineSimulationGroup | null;
 };
 
 export default function PerformanceViewSection({
@@ -65,6 +67,7 @@ export default function PerformanceViewSection({
   flagshipGridProps,
   flagshipSimulation,
   engineGridProps,
+  engineSimulation,
 }: PerformanceViewSectionProps) {
   const useEngine = Boolean(engineGridProps);
   const [view, setView] = useState<PerformanceView>(initialView);
@@ -165,9 +168,7 @@ export default function PerformanceViewSection({
           views={PERFORMANCE_VIEW_CARDS}
         />
         {view === "simulation" ? (
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
-            Simulation charts for engine-driven strategies coming soon.
-          </div>
+          <PerformanceSimulationSection group={engineSimulation ?? null} />
         ) : (
           <PerformanceGrid
             {...engineGridProps}

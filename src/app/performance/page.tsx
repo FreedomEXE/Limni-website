@@ -40,8 +40,8 @@ import { computeReturnStats, type ModelPerformance, type PerformanceModel } from
 import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegistry";
 import { DateTime } from "luxon";
 import { resolveBiasSourceId, getBiasSource } from "@/lib/performance/strategyConfig";
-import { computeWeeklyHold } from "@/lib/performance/weeklyHoldEngine";
-import { weeklyHoldToGridProps, type EngineGridProps } from "@/lib/performance/engineAdapter";
+import { computeWeeklyHold, computeMultiWeekHold } from "@/lib/performance/weeklyHoldEngine";
+import { weeklyHoldToGridProps, multiWeekToGridProps, multiWeekToSimulation, type EngineGridProps, type EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -1111,13 +1111,22 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   // ─── Engine-driven computation (new bias source selector) ─────
   const biasSourceId = resolveBiasSourceId(biasParamValue);
   const biasSource = getBiasSource(biasSourceId)!;
-  const engineWeek = selectedWeek === "all"
-    ? weekSelectorOptions[0] ?? currentWeekOpenUtc
-    : selectedWeek;
   let engineGridProps: EngineGridProps | null = null;
+  let engineSimulation: EngineSimulationGroup | null = null;
   try {
-    const engineResult = await computeWeeklyHold(biasSource, engineWeek);
-    engineGridProps = weeklyHoldToGridProps(engineResult, biasSource, weekDisplayLabel(engineWeek));
+    if (selectedWeek === "all") {
+      // Multi-week: compute across all available weeks
+      const multiWeekResult = await computeMultiWeekHold(biasSource, weekSelectorOptions);
+      engineGridProps = multiWeekToGridProps(multiWeekResult, biasSource);
+      engineSimulation = multiWeekToSimulation(multiWeekResult, biasSource);
+    } else {
+      // Single week
+      const engineResult = await computeWeeklyHold(biasSource, selectedWeek);
+      engineGridProps = weeklyHoldToGridProps(engineResult, biasSource, weekDisplayLabel(selectedWeek));
+      // Also compute multi-week for simulation chart
+      const multiWeekResult = await computeMultiWeekHold(biasSource, weekSelectorOptions);
+      engineSimulation = multiWeekToSimulation(multiWeekResult, biasSource);
+    }
   } catch {
     // Engine computation failed — fall back to legacy view
   }
@@ -1207,8 +1216,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
 
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
           <ScrollableWeekStrip
-            options={weekSelectorOptions}
-            selected={selectedWeek === "all" ? weekSelectorOptions[0] ?? "" : selectedWeek}
+            options={["all", ...weekSelectorOptions]}
+            selected={selectedWeek}
             currentWeek={currentWeekOpenUtc}
             label="Week"
             preserveParams={["bias", "filter", "style", "system", "view", "mode"]}
@@ -1227,6 +1236,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           flagshipGridProps={flagshipGridProps}
           flagshipSimulation={flagshipSimulation}
           engineGridProps={engineGridProps}
+          engineSimulation={engineSimulation}
         />
       </div>
     </DashboardLayout>

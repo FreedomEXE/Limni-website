@@ -365,6 +365,86 @@ export function multiWeekToGridProps(
   };
 }
 
+// ─── Simulation equity curve from multi-week ────────────────────
+
+const SERIES_COLORS = ["#10b981", "#38bdf8", "#f59e0b"];
+
+export type EngineSimulationGroup = {
+  title: string;
+  description: string;
+  metrics: {
+    returnPct: number | null;
+    maxDrawdownPct: number | null;
+    trades: number | null;
+  };
+  series: Array<{
+    id: string;
+    label: string;
+    color?: string;
+    points: Array<{
+      ts_utc: string;
+      equity_pct: number;
+      lock_pct: number | null;
+    }>;
+  }>;
+};
+
+export function multiWeekToSimulation(
+  result: MultiWeekResult,
+  biasSource: BiasSourceConfig,
+): EngineSimulationGroup {
+  const labels = getLabels(biasSource.cardBreakdown);
+  const slotLabels = [labels[CARD_SLOTS[0]], labels[CARD_SLOTS[1]], labels[CARD_SLOTS[2]]];
+
+  // Build one cumulative equity curve per card slot
+  const series = CARD_SLOTS.map((slot, i) => {
+    let cumulative = 0;
+    const points = result.weeks.map((week) => {
+      const slotted = slotTrades(week.trades, biasSource.cardBreakdown);
+      const weekReturn = slotted[i].reduce((s, t) => s + t.returnPct, 0);
+      cumulative += weekReturn;
+      return {
+        ts_utc: week.weekOpenUtc,
+        equity_pct: cumulative,
+        lock_pct: null,
+      };
+    });
+    return {
+      id: slot,
+      label: slotLabels[i],
+      color: SERIES_COLORS[i],
+      points,
+    };
+  });
+
+  // Also build a "Total" series (sum of all slots)
+  let totalCum = 0;
+  const totalSeries = {
+    id: "total",
+    label: "Total",
+    color: "#ffffff",
+    points: result.weeks.map((week) => {
+      totalCum += week.totalReturnPct;
+      return {
+        ts_utc: week.weekOpenUtc,
+        equity_pct: totalCum,
+        lock_pct: null,
+      };
+    }),
+  };
+
+  return {
+    title: `${biasSource.label} · Weekly Hold`,
+    description: `Cumulative equity curves across ${result.weeks.length} weeks.`,
+    metrics: {
+      returnPct: result.totalReturnPct,
+      maxDrawdownPct: result.maxDrawdownPct,
+      trades: result.totalTrades,
+    },
+    series: [totalSeries, ...series],
+  };
+}
+
 // ─── Sidebar stats (lightweight summary) ────────────────────────
 
 export type EngineSidebarStats = {
@@ -376,6 +456,17 @@ export type EngineSidebarStats = {
   winCount: number;
   lossCount: number;
   winRate: number;
+  /** Multi-week aggregate (null when viewing single week) */
+  allTime: {
+    totalReturnPct: number;
+    totalTrades: number;
+    weeklyWinRate: number;
+    maxDrawdownPct: number;
+    weeks: number;
+    avgWeeklyReturn: number;
+    sharpe: number;
+    profitFactor: number | null;
+  } | null;
   trades: Array<{
     symbol: string;
     direction: "LONG" | "SHORT";
@@ -384,10 +475,43 @@ export type EngineSidebarStats = {
   }>;
 };
 
+function computeSharpe(weeklyReturns: number[]): number {
+  if (weeklyReturns.length <= 1) return 0;
+  const avg = weeklyReturns.reduce((s, r) => s + r, 0) / weeklyReturns.length;
+  const variance = weeklyReturns.reduce((s, r) => s + (r - avg) ** 2, 0) / (weeklyReturns.length - 1);
+  const std = Math.sqrt(variance);
+  return std > 0 ? avg / std : 0;
+}
+
+function computeProfitFactor(weeklyReturns: number[]): number | null {
+  const grossProfit = weeklyReturns.filter((r) => r > 0).reduce((s, r) => s + r, 0);
+  const grossLoss = Math.abs(weeklyReturns.filter((r) => r < 0).reduce((s, r) => s + r, 0));
+  if (grossLoss > 0) return grossProfit / grossLoss;
+  if (grossProfit > 0) return Infinity;
+  return null;
+}
+
 export function weeklyHoldToSidebarStats(
   result: WeeklyHoldResult,
   biasSource: BiasSourceConfig,
+  multiWeek?: MultiWeekResult,
 ): EngineSidebarStats {
+  let allTime: EngineSidebarStats["allTime"] = null;
+  if (multiWeek && multiWeek.weeks.length > 0) {
+    const weeklyReturns = multiWeek.weeks.map((w) => w.totalReturnPct);
+    const weeklyWins = multiWeek.weeks.filter((w) => w.totalReturnPct > 0).length;
+    allTime = {
+      totalReturnPct: multiWeek.totalReturnPct,
+      totalTrades: multiWeek.totalTrades,
+      weeklyWinRate: (weeklyWins / multiWeek.weeks.length) * 100,
+      maxDrawdownPct: multiWeek.maxDrawdownPct,
+      weeks: multiWeek.weeks.length,
+      avgWeeklyReturn: multiWeek.totalReturnPct / multiWeek.weeks.length,
+      sharpe: computeSharpe(weeklyReturns),
+      profitFactor: computeProfitFactor(weeklyReturns),
+    };
+  }
+
   return {
     biasSourceId: result.biasSourceId,
     biasSourceLabel: biasSource.label,
@@ -397,6 +521,7 @@ export function weeklyHoldToSidebarStats(
     winCount: result.winCount,
     lossCount: result.lossCount,
     winRate: result.winRate,
+    allTime,
     trades: result.trades.map((t) => ({
       symbol: t.symbol,
       direction: t.direction,

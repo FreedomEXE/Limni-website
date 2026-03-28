@@ -64,9 +64,24 @@ export type MultiWeekResult = {
   byAssetClass: Record<string, { returnPct: number; trades: number; wins: number }>;
 };
 
+// ─── Asset class inference from symbol ──────────────────────────
+
+const CRYPTO_SYMBOLS = new Set(["BTCUSD", "ETHUSD", "BTCUSDT", "ETHUSDT", "SOLUSD", "SOLUSDT", "XRPUSD", "XRPUSDT", "DOGUSD", "DOGUSDT", "ADAUSD", "ADAUSDT", "AVAUSD", "AVAUSDT", "LINKUSD", "DOTUSDT"]);
+const INDEX_SYMBOLS = new Set(["SPXUSD", "SPX500", "SPX500USD", "NDXUSD", "NDX100", "NAS100USD", "NIKKEIUSD", "JPN225", "JPN225USD", "UKXUSD", "UK100", "DEUUSD", "DE30", "DE40"]);
+const COMMODITY_SYMBOLS = new Set(["XAUUSD", "XAGUSD", "WTIUSD", "BCOUSD", "NGUSD"]);
+
+function inferAssetClass(symbol: string): string {
+  const upper = symbol.toUpperCase().replace(/[/.]/g, "");
+  if (CRYPTO_SYMBOLS.has(upper)) return "crypto";
+  if (INDEX_SYMBOLS.has(upper)) return "indices";
+  if (COMMODITY_SYMBOLS.has(upper)) return "commodities";
+  return "fx";
+}
+
 // ─── Direction resolvers per bias source ────────────────────────
 
-type DirectionMap = Map<string, { direction: "LONG" | "SHORT"; source: string; tier: number | null }>;
+type DirectionEntry = { direction: "LONG" | "SHORT"; source: string; tier: number | null; assetClass: string };
+type DirectionMap = Map<string, DirectionEntry>;
 
 async function resolveDirections(
   biasSource: BiasSourceConfig,
@@ -91,8 +106,8 @@ async function resolveDirections(
             const marketKey = Object.keys(currencyData)[0];
             if (marketKey) {
               const marketBias = currencyData[marketKey]?.[`${model}_bias`];
-              if (marketBias === "BULLISH") map.set(pair, { direction: "LONG", source: model, tier: null });
-              else if (marketBias === "BEARISH") map.set(pair, { direction: "SHORT", source: model, tier: null });
+              if (marketBias === "BULLISH") map.set(pair, { direction: "LONG", source: model, tier: null, assetClass: ac });
+              else if (marketBias === "BEARISH") map.set(pair, { direction: "SHORT", source: model, tier: null, assetClass: ac });
             }
             continue;
           }
@@ -102,9 +117,9 @@ async function resolveDirections(
           const baseBias = currencyData[base]?.[`${model}_bias`];
           const quoteBias = currencyData[quote]?.[`${model}_bias`];
           if (baseBias === "BULLISH" && quoteBias === "BEARISH") {
-            map.set(pair, { direction: "LONG", source: model, tier: null });
+            map.set(pair, { direction: "LONG", source: model, tier: null, assetClass: "fx" });
           } else if (baseBias === "BEARISH" && quoteBias === "BULLISH") {
-            map.set(pair, { direction: "SHORT", source: model, tier: null });
+            map.set(pair, { direction: "SHORT", source: model, tier: null, assetClass: "fx" });
           }
         }
       } catch {}
@@ -123,7 +138,7 @@ async function resolveDirections(
       for (const agg of aggs) {
         const dir = sentimentDirectionFromAggregate(agg);
         if (dir === "LONG" || dir === "SHORT") {
-          map.set(agg.symbol, { direction: dir, source: "sentiment", tier: null });
+          map.set(agg.symbol, { direction: dir, source: "sentiment", tier: null, assetClass: inferAssetClass(agg.symbol) });
         }
       }
     } catch {}
@@ -138,19 +153,20 @@ async function resolveDirections(
 
     const allPairs = new Set([...dealerMap.keys(), ...commMap.keys(), ...sentMap.keys()]);
     for (const pair of allPairs) {
-      const d = dealerMap.get(pair)?.direction;
-      const c = commMap.get(pair)?.direction;
-      const s = sentMap.get(pair)?.direction;
-      const votes = [d, c, s].filter(Boolean) as ("LONG" | "SHORT")[];
+      const de = dealerMap.get(pair);
+      const ce = commMap.get(pair);
+      const se = sentMap.get(pair);
+      const ac = de?.assetClass ?? ce?.assetClass ?? se?.assetClass ?? inferAssetClass(pair);
+      const votes = [de?.direction, ce?.direction, se?.direction].filter(Boolean) as ("LONG" | "SHORT")[];
       const longs = votes.filter((v) => v === "LONG").length;
       const shorts = votes.filter((v) => v === "SHORT").length;
 
-      if (longs === 3) map.set(pair, { direction: "LONG", source: "tiered_v3", tier: 1 });
-      else if (shorts === 3) map.set(pair, { direction: "SHORT", source: "tiered_v3", tier: 1 });
-      else if (longs === 2) map.set(pair, { direction: "LONG", source: "tiered_v3", tier: 2 });
-      else if (shorts === 2) map.set(pair, { direction: "SHORT", source: "tiered_v3", tier: 2 });
-      else if (longs === 1 && shorts === 0) map.set(pair, { direction: "LONG", source: "tiered_v3", tier: 3 });
-      else if (shorts === 1 && longs === 0) map.set(pair, { direction: "SHORT", source: "tiered_v3", tier: 3 });
+      if (longs === 3) map.set(pair, { direction: "LONG", source: "tiered_v3", tier: 1, assetClass: ac });
+      else if (shorts === 3) map.set(pair, { direction: "SHORT", source: "tiered_v3", tier: 1, assetClass: ac });
+      else if (longs === 2) map.set(pair, { direction: "LONG", source: "tiered_v3", tier: 2, assetClass: ac });
+      else if (shorts === 2) map.set(pair, { direction: "SHORT", source: "tiered_v3", tier: 2, assetClass: ac });
+      else if (longs === 1 && shorts === 0) map.set(pair, { direction: "LONG", source: "tiered_v3", tier: 3, assetClass: ac });
+      else if (shorts === 1 && longs === 0) map.set(pair, { direction: "SHORT", source: "tiered_v3", tier: 3, assetClass: ac });
     }
     return map;
   }
@@ -162,14 +178,15 @@ async function resolveDirections(
 
     const allPairs = new Set([...dealerMap.keys(), ...commMap.keys(), ...sentMap.keys()]);
     for (const pair of allPairs) {
-      const d = dealerMap.get(pair)?.direction;
-      const c = commMap.get(pair)?.direction;
-      const s = sentMap.get(pair)?.direction;
-      const votes = [d, c, s].filter(Boolean) as ("LONG" | "SHORT")[];
+      const de = dealerMap.get(pair);
+      const ce = commMap.get(pair);
+      const se = sentMap.get(pair);
+      const ac = de?.assetClass ?? ce?.assetClass ?? se?.assetClass ?? inferAssetClass(pair);
+      const votes = [de?.direction, ce?.direction, se?.direction].filter(Boolean) as ("LONG" | "SHORT")[];
       const longs = votes.filter((v) => v === "LONG").length;
       const shorts = votes.filter((v) => v === "SHORT").length;
-      if (longs >= 2) map.set(pair, { direction: "LONG", source: "agree_2of3", tier: null });
-      else if (shorts >= 2) map.set(pair, { direction: "SHORT", source: "agree_2of3", tier: null });
+      if (longs >= 2) map.set(pair, { direction: "LONG", source: "agree_2of3", tier: null, assetClass: ac });
+      else if (shorts >= 2) map.set(pair, { direction: "SHORT", source: "agree_2of3", tier: null, assetClass: ac });
     }
     return map;
   }
@@ -208,18 +225,19 @@ export async function computeWeeklyHold(
     // For tandem, key is "PAIR:model" — extract the pair name
     const pair = key.includes(":") ? key.split(":")[0]! : key;
     const priceData = returnMap.get(pair);
-    if (!priceData || !priceData.openPrice || !priceData.closePrice) continue;
 
-    const actualReturn = priceData.returnPct;
+    const openPrice = priceData?.openPrice ?? 0;
+    const closePrice = priceData?.closePrice ?? openPrice;
+    const actualReturn = priceData?.returnPct ?? 0;
     // If direction is SHORT, negate the return (price going down = profit)
     const directedReturn = signal.direction === "SHORT" ? -actualReturn : actualReturn;
 
     trades.push({
       symbol: pair,
-      assetClass: priceData.assetClass,
+      assetClass: priceData?.assetClass ?? signal.assetClass,
       direction: signal.direction,
-      openPrice: priceData.openPrice,
-      closePrice: priceData.closePrice,
+      openPrice,
+      closePrice,
       returnPct: directedReturn,
       source: signal.source,
       tier: signal.tier,

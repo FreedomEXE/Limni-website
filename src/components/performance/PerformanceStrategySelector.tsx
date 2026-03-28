@@ -6,8 +6,8 @@
  *
  * Description:
  * Config-driven bias source and strategy filter selectors for the
- * Performance sidebar. Adding new bias sources or filters requires
- * only updating the config arrays in strategyConfig.ts.
+ * Performance sidebar. Dropdowns for both bias source and filter.
+ * Adding new entries requires only updating strategyConfig.ts.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -21,7 +21,6 @@ import {
   STRATEGY_FILTERS,
   resolveBiasSourceId,
   resolveStrategyFilterId,
-  type BiasSourceConfig,
 } from "@/lib/performance/strategyConfig";
 
 type PerformanceStrategySelectorProps = {
@@ -43,85 +42,64 @@ export default function PerformanceStrategySelector({
     const params = new URLSearchParams(searchParams.toString());
     params.set("bias", bias);
     params.set("filter", filter);
-    // Clear legacy params that conflict
     params.delete("style");
     params.delete("system");
     params.delete("mode");
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
+  const activeBiasConfig = BIAS_SOURCES.find((s) => s.id === activeBias);
+
   return (
-    <div className="space-y-4">
-      {/* Bias Source */}
+    <div className="space-y-3">
+      {/* Bias Source Dropdown */}
       <div>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]">
+        <label
+          htmlFor="bias-source"
+          className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]"
+        >
           Bias Source
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
+        </label>
+        <select
+          id="bias-source"
+          value={activeBias}
+          onChange={(e) => navigate(e.target.value, activeFilter)}
+          className="w-full cursor-pointer rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] outline-none transition hover:border-[var(--accent)]/40 focus:border-[var(--accent)]/60"
+        >
           {BIAS_SOURCES.map((source) => (
-            <BiasSourceButton
-              key={source.id}
-              source={source}
-              active={activeBias === source.id}
-              onClick={() => navigate(source.id, activeFilter)}
-            />
+            <option key={source.id} value={source.id}>
+              {source.label}
+            </option>
           ))}
-        </div>
+        </select>
+        {activeBiasConfig && (
+          <p className="mt-1 text-[10px] text-[color:var(--muted)]">
+            {activeBiasConfig.description}
+          </p>
+        )}
       </div>
 
-      {/* Strategy Filter */}
-      {STRATEGY_FILTERS.length > 1 ? (
-        <div>
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]">
-            Filter
-          </div>
-          <div className="grid grid-cols-1 gap-1.5">
-            {STRATEGY_FILTERS.map((filter) => (
-              <button
-                key={filter.id}
-                type="button"
-                onClick={() => navigate(activeBias, filter.id)}
-                className={`rounded-lg border px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] transition ${
-                  activeFilter === filter.id
-                    ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                    : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/70 hover:border-[var(--accent)]/30"
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="text-[10px] uppercase tracking-[0.1em] text-[color:var(--muted)]">
-          {STRATEGY_FILTERS[0]?.label ?? "Weekly Hold"}
-        </div>
-      )}
+      {/* Strategy Filter Dropdown */}
+      <div>
+        <label
+          htmlFor="strategy-filter"
+          className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]"
+        >
+          Filter
+        </label>
+        <select
+          id="strategy-filter"
+          value={activeFilter}
+          onChange={(e) => navigate(activeBias, e.target.value)}
+          className="w-full cursor-pointer rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] outline-none transition hover:border-[var(--accent)]/40 focus:border-[var(--accent)]/60"
+        >
+          {STRATEGY_FILTERS.map((filter) => (
+            <option key={filter.id} value={filter.id}>
+              {filter.label}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
-  );
-}
-
-function BiasSourceButton({
-  source,
-  active,
-  onClick,
-}: {
-  source: BiasSourceConfig;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={source.description}
-      className={`rounded-lg border px-2.5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] transition ${
-        active
-          ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-          : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/70 hover:border-[var(--accent)]/30"
-      }`}
-    >
-      {source.label}
-    </button>
   );
 }
