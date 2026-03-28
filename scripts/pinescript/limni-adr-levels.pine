@@ -403,7 +403,7 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
         label.delete(weekLabel)
     // Week label centered in top bar
     string weekStr = str.format("WEEK OF {0,date,MMM dd yyyy}", time)
-    weekLabel := label.new(bar_index, high + barH / 2, weekStr, style=label.style_label_center, color=color.new(#00000000), textcolor=color.black, size=size.large, textalign=text.align_center)
+    weekLabel := label.new(bar_index, high + barH / 2, weekStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.black, size=size.large, textalign=text.align_center)
 
 if not na(periodBox) and showBoxes and showVisuals
     periodHigh := math.max(periodHigh, high)
@@ -441,7 +441,7 @@ if isNewDay and not isNewWeek and showDaySeps and showBoxes and showVisuals and 
     // Day label centered in bottom bar
     string[] dayNames = array.from("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
     string dayStr = array.get(dayNames, dayofweek - 1)
-    label newDayLbl = label.new(bar_index, periodLow - barH / 2, dayStr, style=label.style_label_center, color=color.new(#00000000), textcolor=color.new(color.black, 40), size=size.small)
+    label newDayLbl = label.new(bar_index, periodLow - barH / 2, dayStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 40), size=size.small)
     array.push(dayLabels, newDayLbl)
 
 // Update daily separator lines to span full height including bars
