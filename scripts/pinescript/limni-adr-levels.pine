@@ -3,7 +3,7 @@
 // Property of Freedom_EXE (c) 2026
 
 //@version=6
-indicator("Limni ADR Levels", shorttitle="Limni ADR", overlay=true, format=format.price, max_boxes_count=500, max_lines_count=500, max_labels_count=200)
+indicator("Limni ADR Levels", shorttitle="Limni ADR", overlay=true, format=format.price, max_boxes_count=500, max_lines_count=500, max_labels_count=500)
 
 // ── Inputs ──────────────────────────────────────────────────────────────────
 adrLookback   = input.int(10, "ADR Lookback (days)", minval=1, maxval=50)
@@ -367,10 +367,31 @@ var box periodBox = na
 var float periodHigh = na
 var float periodLow = na
 
+// Daily separators inside the period box
+daySepColor = input.color(color.new(color.gray, 75), "Day Separator Color")
+showDaySeps = input.bool(true, "Show Daily Separators")
+var line[] daySepLines  = array.new<line>()
+var label[] dayLabels   = array.new<label>()
+var label weekLabel     = na
+
+bool isNewDay = ta.change(dayofweek) != 0
+
 if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     periodHigh := high
     periodLow  := low
     periodBox  := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=1, border_style=line.style_dotted)
+    // Clear old day separators
+    for ln in daySepLines
+        line.delete(ln)
+    array.clear(daySepLines)
+    for lb in dayLabels
+        label.delete(lb)
+    array.clear(dayLabels)
+    if not na(weekLabel)
+        label.delete(weekLabel)
+    // Week label at top
+    string weekStr = str.format("WEEK OF {0,date,MMM dd yyyy}", time)
+    weekLabel := label.new(bar_index, high, weekStr, style=label.style_label_down, color=color.new(color.black, 60), textcolor=color.white, size=size.small, textalign=text.align_center)
 
 if not na(periodBox) and showBoxes and showVisuals
     periodHigh := math.max(periodHigh, high)
@@ -378,6 +399,25 @@ if not na(periodBox) and showBoxes and showVisuals
     box.set_top(periodBox, periodHigh)
     box.set_bottom(periodBox, periodLow)
     box.set_right(periodBox, bar_index)
+    // Keep week label at the top
+    if not na(weekLabel)
+        label.set_y(weekLabel, periodHigh)
+        label.set_x(weekLabel, math.round(math.avg(box.get_left(periodBox), bar_index)))
+
+// Draw daily separator line and label on day change (within a week, not on week start)
+if isNewDay and not isNewWeek and showDaySeps and showBoxes and showVisuals and not na(periodBox)
+    line newSep = line.new(bar_index, periodLow, bar_index, periodHigh, color=daySepColor, style=line.style_dotted, width=1)
+    array.push(daySepLines, newSep)
+    string[] dayNames = array.from("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
+    string dayStr = array.get(dayNames, dayofweek - 1)
+    label newDayLbl = label.new(bar_index, periodLow, dayStr, style=label.style_label_up, color=color.new(#00000000), textcolor=color.new(color.gray, 30), size=size.tiny)
+    array.push(dayLabels, newDayLbl)
+
+// Update daily separator lines to span full period height
+if showDaySeps and showBoxes and showVisuals and not na(periodBox)
+    for ln in daySepLines
+        line.set_y1(ln, periodLow)
+        line.set_y2(ln, periodHigh)
 
 // ── Trade boxes (profit + drawdown — detach on TP for re-entry) ─────────────
 var box longProfBox = na
