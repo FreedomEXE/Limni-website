@@ -17,8 +17,8 @@ showBoxes     = input.bool(true, "Show Trade Boxes")
 showTradeLog  = input.bool(true, "Show Trade Breakdown")
 currentOnly   = input.bool(true, "Current Week Only")
 
-periodBoxBg      = input.color(color.new(color.white, 80), "Period Box Fill")
-periodBoxBorder  = input.color(color.new(color.black, 60), "Period Box Border")
+periodBoxBg      = input.color(color.new(#2a2e39, 70), "Period Box Fill")
+periodBoxBorder  = input.color(color.new(color.gray, 60), "Period Box Border")
 profitBoxBg      = input.color(color.new(color.green, 75), "Profit Box Fill")
 ddBoxBg          = input.color(color.new(color.red, 75), "Drawdown Box Fill")
 tableBgColor     = input.color(color.new(color.black, 15), "Table Background")
@@ -362,10 +362,12 @@ if weekTpHits > loggedTpHits and array.size(tradeDetails) > 0
 float weekPLPct    = weekTpHits * tpReturnPct
 float weekMaxDDPct = math.max(weekMaxDDAdr, currentTradeDDAdr)
 
-// ── Period box (always uses true weekHigh/weekLow) ──────────────────────────
-var box periodBox = na
+// ── Period box with header/footer bars ───────────────────────────────────────
+var box periodBox   = na
+var box topBar      = na
+var box bottomBar   = na
 var float periodHigh = na
-var float periodLow = na
+var float periodLow  = na
 
 // Daily separators inside the period box
 daySepColor = input.color(color.new(color.gray, 65), "Day Separator Color")
@@ -376,11 +378,21 @@ var label weekLabel     = na
 
 bool isNewDay = ta.change(dayofweek) != 0
 
+// Bar height for header/footer = 3% of the weekly price range (min: use ATR as fallback)
+float barHeightPct = 0.03
+
 if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     periodHigh := high
     periodLow  := low
-    periodBox  := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=2, border_style=line.style_solid)
-    // Clear old day separators
+    float range = math.max(high - low, high * 0.01)
+    float barH  = range * barHeightPct
+    // Middle box (price action area) — original style
+    periodBox := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=1, border_style=line.style_dotted)
+    // Top bar (week label area)
+    topBar := box.new(bar_index, high + barH, bar_index, high, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
+    // Bottom bar (day labels area)
+    bottomBar := box.new(bar_index, low, bar_index, low - barH, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
+    // Clear old separators
     for ln in daySepLines
         line.delete(ln)
     array.clear(daySepLines)
@@ -389,35 +401,59 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     array.clear(dayLabels)
     if not na(weekLabel)
         label.delete(weekLabel)
-    // Week label at top
+    // Week label centered in top bar
     string weekStr = str.format("WEEK OF {0,date,MMM dd yyyy}", time)
-    weekLabel := label.new(bar_index, high, weekStr, style=label.style_label_down, color=color.new(color.white, 20), textcolor=color.black, size=size.large, textalign=text.align_center)
+    weekLabel := label.new(bar_index, high + barH / 2, weekStr, style=label.style_label_center, color=color.new(#00000000), textcolor=color.black, size=size.large, textalign=text.align_center)
 
 if not na(periodBox) and showBoxes and showVisuals
     periodHigh := math.max(periodHigh, high)
     periodLow  := math.min(periodLow, low)
+    float range = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = range * barHeightPct
+    // Update middle box
     box.set_top(periodBox, periodHigh)
     box.set_bottom(periodBox, periodLow)
     box.set_right(periodBox, bar_index)
-    // Keep week label at the top
+    // Update top bar
+    if not na(topBar)
+        box.set_left(topBar, box.get_left(periodBox))
+        box.set_right(topBar, bar_index)
+        box.set_bottom(topBar, periodHigh)
+        box.set_top(topBar, periodHigh + barH)
+    // Update bottom bar
+    if not na(bottomBar)
+        box.set_left(bottomBar, box.get_left(periodBox))
+        box.set_right(bottomBar, bar_index)
+        box.set_top(bottomBar, periodLow)
+        box.set_bottom(bottomBar, periodLow - barH)
+    // Keep week label centered in top bar
     if not na(weekLabel)
-        label.set_y(weekLabel, periodHigh)
+        label.set_y(weekLabel, periodHigh + barH / 2)
         label.set_x(weekLabel, math.round(math.avg(box.get_left(periodBox), bar_index)))
 
 // Draw daily separator line and label on day change (within a week, not on week start)
 if isNewDay and not isNewWeek and showDaySeps and showBoxes and showVisuals and not na(periodBox)
-    line newSep = line.new(bar_index, periodLow, bar_index, periodHigh, color=daySepColor, style=line.style_dotted, width=1)
+    float range = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = range * barHeightPct
+    // Separator spans from bottom bar top to top bar bottom (i.e., through the middle box)
+    line newSep = line.new(bar_index, periodLow - barH, bar_index, periodHigh + barH, color=daySepColor, style=line.style_dotted, width=1)
     array.push(daySepLines, newSep)
+    // Day label centered in bottom bar
     string[] dayNames = array.from("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
     string dayStr = array.get(dayNames, dayofweek - 1)
-    label newDayLbl = label.new(bar_index, periodLow, dayStr, style=label.style_label_up, color=color.new(#00000000), textcolor=color.new(color.gray, 30), size=size.tiny)
+    label newDayLbl = label.new(bar_index, periodLow - barH / 2, dayStr, style=label.style_label_center, color=color.new(#00000000), textcolor=color.new(color.black, 40), size=size.small)
     array.push(dayLabels, newDayLbl)
 
-// Update daily separator lines to span full period height
+// Update daily separator lines to span full height including bars
 if showDaySeps and showBoxes and showVisuals and not na(periodBox)
+    float range = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = range * barHeightPct
     for ln in daySepLines
-        line.set_y1(ln, periodLow)
-        line.set_y2(ln, periodHigh)
+        line.set_y1(ln, periodLow - barH)
+        line.set_y2(ln, periodHigh + barH)
+    // Update day label Y positions as periodLow changes
+    for lb in dayLabels
+        label.set_y(lb, periodLow - barH / 2)
 
 // ── Trade boxes (profit + drawdown — detach on TP for re-entry) ─────────────
 var box longProfBox = na
