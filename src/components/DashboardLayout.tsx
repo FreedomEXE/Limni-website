@@ -26,9 +26,9 @@ type SubNavItem = {
 const TOP_LEVEL: NavItem[] = [
   { key: "data", href: "/dashboard?bias=dealer", label: "Data", letter: "L" },
   { key: "performance", href: "/performance", label: "Performance", letter: "I" },
-  { key: "automation", href: "/automation", label: "Automation", letter: "M" },
-  { key: "accounts", href: "/accounts", label: "Accounts", letter: "N" },
-  { key: "flagship", href: "/matrix", label: "Matrix", letter: "I" },
+  { key: "flagship", href: "/matrix", label: "Matrix", letter: "M" },
+  { key: "accounts", href: "/accounts", label: "Accounts", letter: "A" },
+  { key: "automation", href: "/automation", label: "Automation", letter: "U" },
   { key: "news", href: "/news", label: "News", letter: "N" },
 ];
 
