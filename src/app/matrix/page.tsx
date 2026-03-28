@@ -66,7 +66,7 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
 
         {selectedTab === "crypto" ? <CryptoBoard weekOpenUtc={selectedWeek} /> : null}
         {selectedTab === "cfd" ? (
-          <FlagshipBoard strategy="Tiered V3 Net Hold Gated" weekOpenUtc={selectedWeek} currentWeekOpenUtc={currentWeekOpen} />
+          <FlagshipBoard weekOpenUtc={selectedWeek} currentWeekOpenUtc={currentWeekOpen} />
         ) : null}
       </div>
     </DashboardLayout>
