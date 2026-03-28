@@ -1,13 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { getCanonicalWeeklyBasket } from "@/lib/flagship/canonicalWeeklyBasket";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const payload = await getCanonicalWeeklyBasket();
+    const weekOpenUtc = request.nextUrl.searchParams.get("week") ?? undefined;
+    const payload = await getCanonicalWeeklyBasket(weekOpenUtc ? { weekOpenUtc } : undefined);
     return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json(

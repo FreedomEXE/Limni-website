@@ -884,7 +884,7 @@ export default function FlagshipBoard({ strategy, weekOpenUtc, currentWeekOpenUt
                                 <span>{row.pair}</span>
                                 <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">{row.assetClass}</span>
                                 {row.signalMode === "FLAGSHIP" ? (
-                                  <span className="rounded-full border border-emerald-500/40 bg-emerald-500/14 px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.1em] text-emerald-700 dark:text-emerald-300">Flagship</span>
+                                  <span className="rounded-full border border-emerald-500/40 bg-emerald-500/14 px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.1em] text-emerald-700 dark:text-emerald-300">Gated</span>
                                 ) : row.signalMode === "ADR_DIP" ? (
                                   <span className="rounded-full border border-amber-500/40 bg-amber-500/14 px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.1em] text-amber-700 dark:text-amber-300">ADR Dip</span>
                                 ) : null}
@@ -912,19 +912,32 @@ export default function FlagshipBoard({ strategy, weekOpenUtc, currentWeekOpenUt
                           {isPastWeek ? (
                             <div className="space-y-1">
                               {row.adrTradeCount > 0 ? (
-                                <>
-                                  <div className="text-[10px] uppercase tracking-[0.08em] text-lime-400">
-                                    {row.adrTrades.filter(t => t.exitReason === "tp").length} TP
-                                  </div>
-                                  {row.adrTrades.filter(t => t.exitReason !== "tp").length > 0 && (
-                                    <div className="text-[10px] uppercase tracking-[0.08em] text-red-400">
-                                      {row.adrTrades.filter(t => t.exitReason !== "tp").length} Loss
-                                    </div>
-                                  )}
-                                  <div className={`text-xs font-semibold ${(row.adrTrades.reduce((s, t) => s + (t.pnlPct ?? 0), 0)) >= 0 ? "text-lime-400" : "text-red-400"}`}>
-                                    {(() => { const pnl = row.adrTrades.reduce((s, t) => s + (t.pnlPct ?? 0), 0); return `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%`; })()}
-                                  </div>
-                                </>
+                                (() => {
+                                  const tpCount = row.adrTrades.filter(t => t.exitReason === "tp").length;
+                                  const lossCount = row.adrTrades.filter(t => t.exitReason === "week_close").length;
+                                  const activeCount = row.adrTrades.filter(t => t.exitReason === "active" || !t.exitReason).length;
+                                  const pnl = row.adrTrades.reduce((s, t) => s + (t.pnlPct ?? 0), 0);
+                                  return (
+                                    <>
+                                      <div className="text-[10px] uppercase tracking-[0.08em] text-lime-400">
+                                        {tpCount} TP
+                                      </div>
+                                      {lossCount > 0 && (
+                                        <div className="text-[10px] uppercase tracking-[0.08em] text-red-400">
+                                          {lossCount} Loss
+                                        </div>
+                                      )}
+                                      {activeCount > 0 && (
+                                        <div className="text-[10px] uppercase tracking-[0.08em] text-yellow-400">
+                                          {activeCount} Open
+                                        </div>
+                                      )}
+                                      <div className={`text-xs font-semibold ${pnl >= 0 ? "text-lime-400" : "text-red-400"}`}>
+                                        {`${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%`}
+                                      </div>
+                                    </>
+                                  );
+                                })()
                               ) : (
                                 <span className="text-[10px] text-[color:var(--muted)]">—</span>
                               )}
