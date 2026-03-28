@@ -423,8 +423,14 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     // Week label centered in top bar — large black text
     string weekStr = str.format("WEEK OF {0,date,MMM dd yyyy}", time)
     weekLabel := label.new(bar_index, high + barH / 2, weekStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.black, size=size.huge, textalign=text.align_center)
-    // SUNMON label at the start of the week in bottom bar
+    // SUNMON label at the start of THIS week's bottom bar
     sunmonLabel := label.new(bar_index, low - barH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
+    // Also place a SUNMON label at the END of the PREVIOUS week's bottom bar
+    // (the previous week's period ends where this week begins)
+    if not barstate.isfirst
+        float prevPriceSpan = math.max(periodHigh[1] - periodLow[1], nz(periodHigh[1]) * 0.01)
+        float prevBarH = prevPriceSpan * barHeightPct
+        label.new(bar_index, nz(periodLow[1]) - prevBarH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
 
 if not na(periodBox) and showBoxes and showVisuals
     periodHigh := math.max(periodHigh, high)
