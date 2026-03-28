@@ -417,9 +417,23 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     topBar := box.new(bar_index, high + barH, bar_index, high, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
     // Bottom bar (day labels area)
     bottomBar := box.new(bar_index, low, bar_index, low - barH, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
-    // Finalize previous week's last day label position (center between lastSepBarIdx and week end)
-    if not barstate.isfirst and not na(currentDayLabel)
-        label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index - 1)))
+    // Finalize previous week's last period label and draw end-of-week labels
+    if not barstate.isfirst and showDaySeps and showBoxes
+        float prevSpan = math.max(nz(periodHigh) - nz(periodLow), nz(periodHigh) * 0.01)
+        float prevBarH = prevSpan * barHeightPct
+        // For crypto: SAT→SUN is the week boundary, so SAT separator coincides with week start
+        // Draw the SAT separator line in the OLD week's box
+        if isCrypto
+            line.new(bar_index, nz(periodLow), bar_index, nz(periodHigh), color=daySepColor, style=line.style_dotted, width=2)
+            // Center the previous period's label (FRI) between its separator and the SAT separator
+            if not na(currentDayLabel)
+                label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index)))
+            // Add SAT label centered in the SAT period (but SAT is zero-width at week boundary)
+            // Instead add SUNMON label for the old week's trailing period
+        else
+            // For CFD: finalize the last period label
+            if not na(currentDayLabel)
+                label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index - 1)))
     // Clear tracking arrays for new week
     array.clear(daySepLines)
     array.clear(dayLabels)
