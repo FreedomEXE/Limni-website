@@ -8,7 +8,7 @@
  * One-shot backfill endpoint that re-scans ALL historical weeks using the
  * corrected ADR trade scanner. Triggered manually from Vercel Cron Jobs
  * dashboard. Skips the current week (handled by the regular hourly cron).
- * Calls the main adr-trade-scan endpoint for each past week sequentially.
+ * Calls scanWeekTrades directly — no HTTP sub-requests.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -20,10 +20,11 @@ import { NextResponse } from "next/server";
 import { isCronAuthorized } from "@/lib/cronAuth";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import { CANONICAL_WEEKS } from "@/lib/canonicalPriceWindows";
+import { scanWeekTrades } from "@/lib/flagship/adrWeekScanner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // 5 min — backfill can take a while
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   if (!isCronAuthorized(request)) {
@@ -32,36 +33,25 @@ export async function GET(request: Request) {
 
   const startedAt = Date.now();
   const currentWeek = getCanonicalWeekOpenUtc(DateTime.utc());
-
-  // All past weeks (exclude current — that's handled by the hourly cron)
   const pastWeeks = CANONICAL_WEEKS.filter((w) => w !== currentWeek);
 
-  const results: { week: string; status: string; durationMs: number }[] = [];
-
-  // Forward auth from the incoming request (Vercel injects Authorization header for crons)
-  const authHeader = request.headers.get("authorization") ?? "";
-  const cronSecretHeader = request.headers.get("x-cron-secret") ?? "";
-  const baseUrl = new URL(request.url);
-  const origin = baseUrl.origin;
+  const results: { week: string; status: string; trades: number; durationMs: number }[] = [];
 
   for (const week of pastWeeks) {
     const weekStart = Date.now();
     try {
-      const scanUrl = `${origin}/api/cron/adr-trade-scan?week=${encodeURIComponent(week)}`;
-      const headers: Record<string, string> = {};
-      if (authHeader) headers["authorization"] = authHeader;
-      if (cronSecretHeader) headers["x-cron-secret"] = cronSecretHeader;
-      const resp = await fetch(scanUrl, { method: "GET", headers });
-      const body = await resp.json().catch(() => ({}));
+      const result = await scanWeekTrades(week);
       results.push({
         week,
-        status: resp.ok ? `ok (${(body as Record<string, unknown>).totalTrades ?? "?"} trades)` : `error ${resp.status}`,
+        status: `ok`,
+        trades: result.totalTrades,
         durationMs: Date.now() - weekStart,
       });
     } catch (err) {
       results.push({
         week,
-        status: `failed: ${err instanceof Error ? err.message : "unknown"}`,
+        status: `error: ${err instanceof Error ? err.message : "unknown"}`,
+        trades: 0,
         durationMs: Date.now() - weekStart,
       });
     }
@@ -71,6 +61,7 @@ export async function GET(request: Request) {
     status: "backfill complete",
     durationMs: Date.now() - startedAt,
     weeksProcessed: results.length,
+    totalTrades: results.reduce((s, r) => s + r.trades, 0),
     currentWeekSkipped: currentWeek,
     results,
   });
