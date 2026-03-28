@@ -370,29 +370,38 @@ var float periodHigh = na
 var float periodLow  = na
 
 // Daily separators inside the period box
-daySepColor = input.color(color.new(color.gray, 25), "Day Separator Color")
+daySepColor = input.color(color.new(color.black, 50), "Day Separator Color")
 showDaySeps = input.bool(true, "Show Daily Separators")
 var line[] daySepLines  = array.new<line>()
 var label[] dayLabels   = array.new<label>()
 var label weekLabel     = na
 var label sunmonLabel   = na
 
-bool isNewDay = ta.change(dayofweek) != 0
+// Detect day change at midnight ET (not UTC midnight)
+// ET = UTC-4 (EDT) or UTC-5 (EST). Use -4 as standard (EDT covers most of trading year)
+int etOffsetMs  = -4 * 60 * 60 * 1000
+int etTimeMs    = time + etOffsetMs
+int etDayNum    = math.floor(etTimeMs / (24 * 60 * 60 * 1000))
+int prevEtDay   = math.floor((time[1] + etOffsetMs) / (24 * 60 * 60 * 1000))
+bool isNewDay   = na(time[1]) ? false : etDayNum != prevEtDay
+// ET day of week (0=Thu, 1=Fri, ... need to compute properly)
+// Use timestamps: Jan 1 1970 was Thursday. etDayNum % 7: 0=Thu,1=Fri,2=Sat,3=Sun,4=Mon,5=Tue,6=Wed
+int etDow = (etDayNum % 7 + 7) % 7  // 0=Thu,1=Fri,2=Sat,3=Sun,4=Mon,5=Tue,6=Wed
 
 // Bar height for header/footer = 12% of the weekly price range
 float barHeightPct = 0.12
 
-// Half-day merging logic:
+// Half-day merging logic using ET day of week:
+// etDow: 0=Thu, 1=Fri, 2=Sat, 3=Sun, 4=Mon, 5=Tue, 6=Wed
 // Crypto: only SUN is half-day → SUNMON merged. MON-SAT all individual.
-// CFD/Forex: SUN and FRI are half-days → SUNMON merged, THUFRI merged. TUE/WED/THU individual.
+// CFD/Forex: SUN and FRI are half-days → SUNMON merged, THUFRI merged.
 bool skipSeparator = false
 if isNewDay
-    int dow = dayofweek
-    // Monday: always skip sep (merged with Sunday as SUNMON)
-    if dow == dayofweek.monday
+    // Monday (etDow=4): always skip sep (merged with Sunday as SUNMON)
+    if etDow == 4
         skipSeparator := true
-    // Friday for CFD: skip sep (merged with Thursday as THUFRI)
-    if dow == dayofweek.friday and not isCrypto
+    // Friday (etDow=1) for CFD: skip sep (merged with Thursday as THUFRI)
+    if etDow == 1 and not isCrypto
         skipSeparator := true
 
 if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
@@ -451,14 +460,14 @@ if isNewDay and not isNewWeek and not skipSeparator and showDaySeps and showBoxe
     line newSep = line.new(bar_index, periodLow, bar_index, periodHigh, color=daySepColor, style=line.style_dotted, width=2)
     array.push(daySepLines, newSep)
     // Day label in bottom bar — label the period STARTING at this separator
-    int dow = dayofweek
+    // etDow: 0=Thu, 1=Fri, 2=Sat, 3=Sun, 4=Mon, 5=Tue, 6=Wed
     string dayStr = ""
     if isCrypto
         // Crypto: TUE, WED, THU, FRI, SAT all individual
-        dayStr := dow == dayofweek.tuesday ? "TUE" : dow == dayofweek.wednesday ? "WED" : dow == dayofweek.thursday ? "THU" : dow == dayofweek.friday ? "FRI" : dow == dayofweek.saturday ? "SAT" : ""
+        dayStr := etDow == 5 ? "TUE" : etDow == 6 ? "WED" : etDow == 0 ? "THU" : etDow == 1 ? "FRI" : etDow == 2 ? "SAT" : ""
     else
         // CFD: TUE, WED, THUFRI (merged). No FRI separator.
-        dayStr := dow == dayofweek.tuesday ? "TUE" : dow == dayofweek.wednesday ? "WED" : dow == dayofweek.thursday ? "THUFRI" : ""
+        dayStr := etDow == 5 ? "TUE" : etDow == 6 ? "WED" : etDow == 0 ? "THUFRI" : ""
     if str.length(dayStr) > 0
         label newDayLbl = label.new(bar_index, periodLow - barH / 2, dayStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
         array.push(dayLabels, newDayLbl)
