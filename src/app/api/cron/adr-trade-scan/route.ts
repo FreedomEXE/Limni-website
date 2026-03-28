@@ -108,7 +108,12 @@ export async function GET(request: Request) {
 
   const startedAt = Date.now();
   const nowUtc = DateTime.utc();
-  const weekOpenUtc = getCanonicalWeekOpenUtc(nowUtc);
+  const url = new URL(request.url);
+  const weekOverride = url.searchParams.get("week");
+  const weekOpenUtc = weekOverride ?? getCanonicalWeekOpenUtc(nowUtc);
+  const isPastWeek = weekOpenUtc !== getCanonicalWeekOpenUtc(nowUtc);
+  // For past weeks, use week close (7 days after open) as end bound instead of nowUtc
+  const scanEndUtc = isPastWeek ? DateTime.fromISO(weekOpenUtc, { zone: "utc" }).plus({ days: 7 }) : nowUtc;
 
   try {
     const [basket, runId] = await Promise.all([
@@ -143,7 +148,7 @@ export async function GET(request: Request) {
         const m5Bars: OandaHourlyCandle[] = await fetchOanda5MinuteSeries(
           signal.pair,
           weekWindow.openUtc,
-          nowUtc,
+          scanEndUtc,
         ).catch(() => []);
 
         if (m5Bars.length === 0) return;

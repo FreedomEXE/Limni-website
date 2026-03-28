@@ -15,7 +15,7 @@ shortPairs    = input.text_area("", "SHORT Pairs (comma/newline)")
 showTable     = input.bool(true, "Show Info Table")
 showBoxes     = input.bool(true, "Show Trade Boxes")
 showTradeLog  = input.bool(true, "Show Trade Breakdown")
-currentOnly   = input.bool(true, "Current Week Only")
+targetWeeksBack = input.int(0, "Weeks Back (0=current)", minval=0, maxval=52)
 
 periodBoxBg      = input.color(color.new(#2a2e39, 70), "Period Box Fill")
 periodBoxBorder  = input.color(color.new(color.gray, 60), "Period Box Border")
@@ -124,9 +124,21 @@ float currentAdrDistance = dailyAdrCount >= adrMinDays ? dailyAdrSum / dailyAdrC
 
 // ── Weekly state ────────────────────────────────────────────────────────────
 bool isNewWeek = ta.change(time("W")) != 0
-// When currentOnly: only show visuals for bars in the current calendar week
-// timenow - time("W") < 7 days means the bar is in the week containing "now"
-bool showVisuals = not currentOnly or (timenow - time("W") < 7 * 24 * 60 * 60 * 1000)
+
+// Target week selection: 0=current, 1=last week, 2=two weeks ago, etc.
+int msPerWeek = 7 * 24 * 60 * 60 * 1000
+int targetTs = timenow - targetWeeksBack * msPerWeek
+bool inTargetWeek = targetWeeksBack == 0 ? (timenow - time("W") < msPerWeek) : (time("W") <= targetTs and time("W") + msPerWeek > targetTs)
+bool showVisuals = inTargetWeek
+
+// Snapshot vars for past week display (continuously updated while in target week)
+var int snapTrades = 0
+var int snapTpHits = 0
+var float snapMaxDDAdr = 0.0
+var float snapCurrentDDAdr = 0.0
+var float snapWeekAdr = na
+var string[] snapTradeIds = array.new_string(0)
+var string[] snapTradeDetails = array.new_string(0)
 
 var float weekAdr = na
 
@@ -362,6 +374,20 @@ if weekTpHits > loggedTpHits and array.size(tradeDetails) > 0
 float weekPLPct    = weekTpHits * tpReturnPct
 float weekMaxDDPct = math.max(weekMaxDDAdr, currentTradeDDAdr)
 
+// Capture target week snapshot (updated every bar while in target week)
+if targetWeeksBack > 0 and inTargetWeek
+    snapTrades := weekTrades
+    snapTpHits := weekTpHits
+    snapMaxDDAdr := weekMaxDDAdr
+    snapCurrentDDAdr := currentTradeDDAdr
+    snapWeekAdr := weekAdr
+    array.clear(snapTradeIds)
+    array.clear(snapTradeDetails)
+    if array.size(tradeIds) > 0
+        for i = 0 to array.size(tradeIds) - 1
+            array.push(snapTradeIds, array.get(tradeIds, i))
+            array.push(snapTradeDetails, array.get(tradeDetails, i))
+
 // ── Period box with header/footer bars ───────────────────────────────────────
 var box periodBox   = na
 var box topBar      = na
@@ -395,15 +421,13 @@ float barHeightPct = 0.12
 
 // Half-day merging logic using ET day of week:
 // etDow: 0=Thu, 1=Fri, 2=Sat, 3=Sun, 4=Mon, 5=Tue, 6=Wed
-// Crypto: only SUN is half-day → SUNMON merged. MON-SAT all individual.
-// CFD/Forex: SUN and FRI are half-days → SUNMON merged, THUFRI merged.
+// Only SUNMON is merged (partial sessions bookending the week boundary)
+// Crypto periods: SUNMON | TUE | WED | THU | FRI | SAT | SUN
+// CFD periods:    SUNMON | TUE | WED | THU | FRI
 bool skipSeparator = false
 if isNewDay
     // Monday (etDow=4): always skip sep (merged with Sunday as SUNMON)
     if etDow == 4
-        skipSeparator := true
-    // Friday (etDow=1) for CFD: skip sep (merged with Thursday as THUFRI)
-    if etDow == 1 and not isCrypto
         skipSeparator := true
 
 if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
@@ -417,19 +441,10 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     topBar := box.new(bar_index, high + barH, bar_index, high, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
     // Bottom bar (day labels area)
     bottomBar := box.new(bar_index, low, bar_index, low - barH, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
-    // Finalize previous week's last day label and add end-of-week SUNMON
+    // Finalize previous week's last day label (SAT for crypto, THUFRI for CFD)
     if not barstate.isfirst and showDaySeps and showBoxes
-        float prevSpan = math.max(nz(periodHigh) - nz(periodLow), nz(periodHigh) * 0.01)
-        float prevBarH = prevSpan * barHeightPct
-        // Draw a SUNMON separator line at week boundary in old week's box
-        line.new(bar_index, nz(periodLow), bar_index, nz(periodHigh), color=daySepColor, style=line.style_dotted, width=2)
-        // Center the last period's label (SAT for crypto, THUFRI for CFD)
-        // between its separator and the SUNMON separator at week boundary
         if not na(currentDayLabel)
             label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index)))
-        // SUNMON label at end of OLD week — centered between week boundary and a few bars back
-        // Place it close to the boundary on the old week's side
-        label.new(bar_index - 1, nz(periodLow) - prevBarH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
     // Clear tracking arrays for new week
     array.clear(daySepLines)
     array.clear(dayLabels)
@@ -483,9 +498,9 @@ if isNewDay and not isNewWeek and not skipSeparator and showDaySeps and showBoxe
     // etDow: 0=Thu, 1=Fri, 2=Sat, 3=Sun, 4=Mon, 5=Tue, 6=Wed
     string dayStr = ""
     if isCrypto
-        dayStr := etDow == 5 ? "TUE" : etDow == 6 ? "WED" : etDow == 0 ? "THU" : etDow == 1 ? "FRI" : etDow == 2 ? "SAT" : ""
+        dayStr := etDow == 5 ? "TUE" : etDow == 6 ? "WED" : etDow == 0 ? "THU" : etDow == 1 ? "FRI" : etDow == 2 ? "SAT" : etDow == 3 ? "SUN" : ""
     else
-        dayStr := etDow == 5 ? "TUE" : etDow == 6 ? "WED" : etDow == 0 ? "THUFRI" : ""
+        dayStr := etDow == 5 ? "TUE" : etDow == 6 ? "WED" : etDow == 0 ? "THU" : etDow == 1 ? "FRI" : ""
     if str.length(dayStr) > 0
         currentDayLabel := label.new(bar_index, periodLow - barH / 2, dayStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
         array.push(dayLabels, currentDayLabel)
@@ -614,43 +629,56 @@ var table infoTable = table.new(position.top_right, 2, 20, border_width=1, borde
 if showTable and barstate.islast
     table.clear(infoTable, 0, 0, 1, 19)
 
+    // Select live or snapshot values based on week selector
+    bool isPast = targetWeeksBack > 0
+    int dTrades = isPast ? snapTrades : weekTrades
+    int dTpHits = isPast ? snapTpHits : weekTpHits
+    float dPL = dTpHits * tpReturnPct
+    float dDD = isPast ? math.max(snapMaxDDAdr, snapCurrentDDAdr) : weekMaxDDPct
+    float dWeekAdr = isPast ? snapWeekAdr : weekAdr
+    float dAdrPips = not na(dWeekAdr) and pipSize > 0 ? dWeekAdr / pipSize : na
+    float dAdrTpPips = not na(dWeekAdr) and pipSize > 0 ? (dWeekAdr * tpMultiple) / pipSize : na
+    string[] dTradeIds = isPast ? snapTradeIds : tradeIds
+    string[] dTradeDetails = isPast ? snapTradeDetails : tradeDetails
+
     color biasColor = resolvedBias == "LONG" ? color.lime : resolvedBias == "SHORT" ? color.red : tableTextColor
-    color activeStatusColor = longState == 1 or shortState == 1 ? color.yellow : tableTextColor
     color entryColor = showLong ? color.lime : color.red
-    string statusText = showLong ? (longState == 1 ? "TRIGGERED" : longTpHit ? "TP Hit" : "Waiting") : showShort ? (shortState == 1 ? "TRIGGERED" : shortTpHit ? "TP Hit" : "Waiting") : "NEUTRAL"
+    string statusText = isPast ? "Completed" : showLong ? (longState == 1 ? "TRIGGERED" : longTpHit ? "TP Hit" : "Waiting") : showShort ? (shortState == 1 ? "TRIGGERED" : shortTpHit ? "TP Hit" : "Waiting") : "NEUTRAL"
+    color statusColor = isPast ? tableTextColor : (longState == 1 or shortState == 1 ? color.yellow : tableTextColor)
+    string weekLabel2 = isPast ? "Week -" + str.tostring(targetWeeksBack) : "This Week"
 
     int r = 0
     table.cell(infoTable, 0, r, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
-    table.cell(infoTable, 1, r, syminfo.ticker, text_color=tableTextColor, bgcolor=color.new(color.white, 85))
+    table.cell(infoTable, 1, r, syminfo.ticker + (isPast ? "  (-" + str.tostring(targetWeeksBack) + "w)" : ""), text_color=tableTextColor, bgcolor=color.new(color.white, 85))
     r += 1
     table.cell(infoTable, 0, r, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
     table.cell(infoTable, 1, r, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
     r += 1
     table.cell(infoTable, 0, r, "Status", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, r, statusText, text_color=activeStatusColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, statusText, text_color=statusColor, bgcolor=tableBgColor)
     r += 1
     table.cell(infoTable, 0, r, "ADR", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, r, adrReady ? str.tostring(adrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, not na(dAdrPips) ? str.tostring(dAdrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
     r += 1
-    float adrTpPips = adrReady and pipSize > 0 ? (weekAdr * tpMultiple) / pipSize : na
     table.cell(infoTable, 0, r, "ADR TP", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, r, not na(adrTpPips) ? str.tostring(adrTpPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, not na(dAdrTpPips) ? str.tostring(dAdrTpPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
     r += 1
-    table.cell(infoTable, 0, r, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, r, not na(displayEntry) ? str.tostring(displayEntry, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
-    r += 1
-    table.cell(infoTable, 0, r, "TP", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, r, not na(displayTp) ? str.tostring(displayTp, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
-    r += 1
+    if not isPast
+        table.cell(infoTable, 0, r, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, not na(displayEntry) ? str.tostring(displayEntry, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+        r += 1
+        table.cell(infoTable, 0, r, "TP", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, not na(displayTp) ? str.tostring(displayTp, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+        r += 1
     // Week summary section
-    table.cell(infoTable, 0, r, "This Week", text_color=tableTextColor, bgcolor=color.new(color.white, 90))
-    table.cell(infoTable, 1, r, str.tostring(weekTrades) + " trades / " + str.tostring(weekTpHits) + " TP", text_color=weekTpHits > 0 ? color.lime : tableTextColor, bgcolor=color.new(color.white, 90))
+    table.cell(infoTable, 0, r, weekLabel2, text_color=tableTextColor, bgcolor=color.new(color.white, 90))
+    table.cell(infoTable, 1, r, str.tostring(dTrades) + " trades / " + str.tostring(dTpHits) + " TP", text_color=dTpHits > 0 ? color.lime : tableTextColor, bgcolor=color.new(color.white, 90))
     r += 1
     table.cell(infoTable, 0, r, "P/L", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, r, "+" + str.tostring(weekPLPct, "#.##") + "%", text_color=weekPLPct > 0 ? color.lime : tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, "+" + str.tostring(dPL, "#.##") + "%", text_color=dPL > 0 ? color.lime : tableTextColor, bgcolor=tableBgColor)
     r += 1
     table.cell(infoTable, 0, r, "Max DD", text_color=tableTextColor, bgcolor=tableBgColor)
-    table.cell(infoTable, 1, r, weekMaxDDPct > 0 ? "-" + str.tostring(weekMaxDDPct, "#.##") + "%" : "-", text_color=weekMaxDDPct > 0 ? color.red : tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, dDD > 0 ? "-" + str.tostring(dDD, "#.##") + "%" : "-", text_color=dDD > 0 ? color.red : tableTextColor, bgcolor=tableBgColor)
     r += 1
     // Crypto regime (only for crypto pairs)
     if isCrypto
@@ -660,20 +688,30 @@ if showTable and barstate.islast
         r += 1
     // Trade breakdown — ID in left column, details in right
     if showTradeLog
-        int numTrades = math.min(array.size(tradeIds), 10)
+        int numTrades = math.min(array.size(dTradeIds), 10)
         for i = 0 to numTrades - 1
-            table.cell(infoTable, 0, r + i, array.get(tradeIds, i), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
-            table.cell(infoTable, 1, r + i, array.get(tradeDetails, i), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+            table.cell(infoTable, 0, r + i, array.get(dTradeIds, i), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+            table.cell(infoTable, 1, r + i, array.get(dTradeDetails, i), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
 
 if not showTable and barstate.islast
     table.clear(infoTable, 0, 0, 1, 19)
 
 // ── Log output (copyable from View > Pine Logs) ────────────────────────────
 if barstate.islast and barstate.isconfirmed
-    string lr = syminfo.ticker + " | " + resolvedBias + " | " + (showLong ? (longState == 1 ? "TRIGGERED" : "Waiting") : showShort ? (shortState == 1 ? "TRIGGERED" : "Waiting") : "NEUTRAL")
-    lr += " | ADR: " + str.tostring(adrPips, "#.#") + "p | " + str.tostring(weekTrades) + "/" + str.tostring(weekTpHits) + " TP"
-    lr += " | P/L: +" + str.tostring(weekPLPct, "#.##") + "% | DD: -" + str.tostring(weekMaxDDPct, "#.##") + "%"
-    lr += " | E:" + str.tostring(displayEntry, format.mintick) + " T:" + str.tostring(displayTp, format.mintick)
+    bool lp = targetWeeksBack > 0
+    int lTrades = lp ? snapTrades : weekTrades
+    int lTpHits = lp ? snapTpHits : weekTpHits
+    float lPL = lTpHits * tpReturnPct
+    float lDD = lp ? math.max(snapMaxDDAdr, snapCurrentDDAdr) : weekMaxDDPct
+    string[] lIds = lp ? snapTradeIds : tradeIds
+    string[] lDetails = lp ? snapTradeDetails : tradeDetails
+    string weekTag = lp ? " (-" + str.tostring(targetWeeksBack) + "w)" : ""
+    string lr = syminfo.ticker + weekTag + " | " + resolvedBias + " | " + (lp ? "Completed" : showLong ? (longState == 1 ? "TRIGGERED" : "Waiting") : showShort ? (shortState == 1 ? "TRIGGERED" : "Waiting") : "NEUTRAL")
+    lr += " | ADR: " + str.tostring(lp ? (not na(snapWeekAdr) and pipSize > 0 ? snapWeekAdr / pipSize : na) : adrPips, "#.#") + "p | " + str.tostring(lTrades) + "/" + str.tostring(lTpHits) + " TP"
+    lr += " | P/L: +" + str.tostring(lPL, "#.##") + "% | DD: -" + str.tostring(lDD, "#.##") + "%"
+    if not lp
+        lr += " | E:" + str.tostring(displayEntry, format.mintick) + " T:" + str.tostring(displayTp, format.mintick)
     log.info(lr)
-    for i = 0 to array.size(tradeIds) - 1
-        log.info(array.get(tradeIds, i) + " " + array.get(tradeDetails, i))
+    if array.size(lIds) > 0
+        for i = 0 to array.size(lIds) - 1
+            log.info(array.get(lIds, i) + " " + array.get(lDetails, i))
