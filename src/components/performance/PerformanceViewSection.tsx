@@ -39,6 +39,87 @@ type GridProps = Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined
 
 type WeeklyPerformanceFamily = Exclude<PerformanceStrategyFamily, "katarakti">;
 
+function formatPct(value: number | null): string {
+  if (value === null) return "—";
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
+function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
+  // Flatten all trades from all models into a single list
+  const allTrades = gridProps.combined.models.flatMap((model) =>
+    model.pair_details.map((detail) => ({
+      ...detail,
+      slotLabel: gridProps.labels[model.model] ?? model.model,
+    })),
+  );
+
+  // Sort: winners first (by return descending), then losers
+  const sorted = [...allTrades].sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0));
+  const totalReturn = sorted.reduce((s, t) => s + (t.percent ?? 0), 0);
+  const wins = sorted.filter((t) => (t.percent ?? 0) > 0).length;
+
+  return (
+    <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">
+            {gridProps.combined.description}
+          </p>
+        </div>
+        <div className="flex items-center gap-4 text-xs">
+          <span className="text-[color:var(--muted)]">{sorted.length} trades</span>
+          <span className="text-lime-400">{wins}W</span>
+          <span className="text-red-400">{sorted.length - wins}L</span>
+          <span className={totalReturn >= 0 ? "font-bold text-lime-400" : "font-bold text-red-400"}>
+            {formatPct(totalReturn)}
+          </span>
+        </div>
+      </div>
+
+      <div className="max-h-[65vh] space-y-1.5 overflow-y-auto">
+        {sorted.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[var(--panel-border)] px-3 py-3 text-xs text-[color:var(--muted)]">
+            No trades for this period.
+          </div>
+        ) : (
+          sorted.map((trade, i) => {
+            const isWin = (trade.percent ?? 0) > 0;
+            return (
+              <div
+                key={`${trade.pair}-${trade.direction}-${i}`}
+                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2.5"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-24 text-sm font-semibold text-[var(--foreground)]">
+                    {trade.pair}
+                  </span>
+                  <span
+                    className={`text-[11px] font-bold uppercase ${
+                      trade.direction === "LONG" ? "text-emerald-500" : "text-rose-500"
+                    }`}
+                  >
+                    {trade.direction}
+                  </span>
+                  <span className="text-[10px] text-[color:var(--muted)]">
+                    {trade.slotLabel}
+                  </span>
+                </div>
+                <span
+                  className={`text-sm font-semibold ${
+                    isWin ? "text-lime-400" : (trade.percent ?? 0) < 0 ? "text-red-400" : "text-[color:var(--muted)]"
+                  }`}
+                >
+                  {formatPct(trade.percent)}
+                </span>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </section>
+  );
+}
+
 type PerformanceViewSectionProps = {
   initialMode: "flagship" | "legacy";
   initialView: PerformanceView;
@@ -139,6 +220,8 @@ export default function PerformanceViewSection({
         />
         {view === "simulation" ? (
           <PerformanceSimulationSection group={simulation} />
+        ) : view === "basket" && gridProps ? (
+          <EngineBasketView gridProps={gridProps} />
         ) : gridProps ? (
           <PerformanceGrid
             {...gridProps}
