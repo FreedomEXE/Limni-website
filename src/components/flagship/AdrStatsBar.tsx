@@ -6,7 +6,7 @@
  *
  * Description:
  * Shared ADR forward test stats bar used by both CFD and Crypto matrix boards.
- * Shows weekly trade stats cards and copy-paste pair list buttons.
+ * Shows: ADR Trades, TP Hits, Losses, Active (current week only), Week Return.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -20,18 +20,22 @@ export type AdrStatsBarProps = {
   totalTrades: number;
   totalTpHits: number;
   totalActive: number;
+  totalLosses: number;
   weekReturnPct: number;
   longPairs: string[];
   shortPairs: string[];
+  isPastWeek?: boolean;
 };
 
 export default function AdrStatsBar({
   totalTrades,
   totalTpHits,
   totalActive,
+  totalLosses,
   weekReturnPct,
   longPairs,
   shortPairs,
+  isPastWeek = false,
 }: AdrStatsBarProps) {
   const [copyToast, setCopyToast] = useState<string | null>(null);
 
@@ -48,7 +52,7 @@ export default function AdrStatsBar({
 
   return (
     <>
-      <div className="mb-4 grid grid-cols-4 gap-3">
+      <div className={`mb-4 grid gap-3 ${isPastWeek ? "grid-cols-4" : "grid-cols-5"}`}>
         <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">ADR Trades</div>
           <div className="mt-1 text-xl font-bold text-[var(--foreground)]">{totalTrades}</div>
@@ -60,9 +64,15 @@ export default function AdrStatsBar({
           </div>
         </div>
         <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Active</div>
-          <div className="mt-1 text-xl font-bold text-yellow-400">{totalActive}</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Losses</div>
+          <div className="mt-1 text-xl font-bold text-red-400">{totalLosses}</div>
         </div>
+        {!isPastWeek && (
+          <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Active</div>
+            <div className="mt-1 text-xl font-bold text-yellow-400">{totalActive}</div>
+          </div>
+        )}
         <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Week Return</div>
           <div className={`mt-1 text-xl font-bold ${weekReturnPct >= 0 ? "text-lime-400" : "text-red-400"}`}>

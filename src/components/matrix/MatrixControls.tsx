@@ -28,7 +28,6 @@ type MatrixControlsProps = {
 const TABS = [
   { key: "cfd", label: "CFD" },
   { key: "crypto", label: "Crypto" },
-  { key: "flagship", label: "Flagship" },
 ] as const;
 
 function buildTabHref(tabKey: string, searchParams: URLSearchParams) {

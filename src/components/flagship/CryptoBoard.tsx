@@ -290,6 +290,7 @@ export default function CryptoBoard({ weekOpenUtc }: { weekOpenUtc?: string | nu
             totalTrades={0}
             totalTpHits={0}
             totalActive={0}
+            totalLosses={0}
             weekReturnPct={0}
             longPairs={rows.filter(r => r.bias === "LONG").map(r => r.symbol + "USD")}
             shortPairs={rows.filter(r => r.bias === "SHORT").map(r => r.symbol + "USD")}

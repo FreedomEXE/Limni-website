@@ -484,7 +484,8 @@ function sizingToneClass(warning: string | null) {
   return "text-emerald-700 dark:text-emerald-300";
 }
 
-export default function FlagshipBoard({ strategy, weekOpenUtc }: { strategy: string; weekOpenUtc?: string | null }) {
+export default function FlagshipBoard({ strategy, weekOpenUtc, currentWeekOpenUtc }: { strategy: string; weekOpenUtc?: string | null; currentWeekOpenUtc?: string }) {
+  const isPastWeek = Boolean(weekOpenUtc && currentWeekOpenUtc && weekOpenUtc !== currentWeekOpenUtc);
   const [weeklyBasket, setWeeklyBasket] = useState<CanonicalWeeklyBasketPayload | null>(null);
   const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
   const [dailySentiment, setDailySentiment] = useState<DailySentimentPayload | null>(null);
@@ -814,9 +815,11 @@ export default function FlagshipBoard({ strategy, weekOpenUtc }: { strategy: str
             totalTrades={adrTrades.totalTrades}
             totalTpHits={adrTrades.totalTpHits}
             totalActive={adrTrades.totalActive}
+            totalLosses={adrTrades.totalTrades - adrTrades.totalTpHits - adrTrades.totalActive}
             weekReturnPct={adrTrades.weekReturnPct}
             longPairs={(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "LONG").map((s: CanonicalWeeklySignal) => s.pair)}
             shortPairs={(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "SHORT").map((s: CanonicalWeeklySignal) => s.pair)}
+            isPastWeek={isPastWeek}
           />
         )}
 
@@ -837,7 +840,6 @@ export default function FlagshipBoard({ strategy, weekOpenUtc }: { strategy: str
               <colgroup>
                 <col className="w-[14rem]" />
                 <col className="w-[8rem]" />
-                <col className="w-[8rem]" />
                 <col className="w-[13rem]" />
                 <col className="w-[6rem]" />
               </colgroup>
@@ -845,8 +847,7 @@ export default function FlagshipBoard({ strategy, weekOpenUtc }: { strategy: str
                 <tr>
                   <th className="border-b border-[var(--panel-border)] px-3 py-3">Pair</th>
                   <th className="border-b border-[var(--panel-border)] px-3 py-3">Core Bias</th>
-                  <th className="border-b border-[var(--panel-border)] px-3 py-3">Gamma</th>
-                  <th className="border-b border-[var(--panel-border)] px-3 py-3">Trigger</th>
+                  <th className="border-b border-[var(--panel-border)] px-3 py-3">{isPastWeek ? "Trades" : "Trigger"}</th>
                   <th className="border-b border-[var(--panel-border)] px-3 py-3">Sizing</th>
                 </tr>
               </thead>
@@ -908,33 +909,43 @@ export default function FlagshipBoard({ strategy, weekOpenUtc }: { strategy: str
                           </div>
                         </td>
                         <td className="border-r border-[var(--panel-border)] px-3 py-2">
-                          <div className="space-y-1">
-                            <span className={`inline-flex min-w-[5.5rem] justify-center rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${contextClass(row.gammaState)}`}>
-                              {row.gammaState}
-                            </span>
-                            {row.coreBias !== "NEUTRAL" ? (
-                              <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-                                {agreementText(row.gammaAgreeCount, row.gammaAvailableCount)}
-                              </div>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="border-r border-[var(--panel-border)] px-3 py-2">
-                          <div className="space-y-1">
-                            <span className={triggerClass(row.triggerState, row.touched)} title="ADR trigger">
-                              {row.triggerState === "INACTIVE" ? "—" : row.triggerState === "NO_DATA" ? "?" : row.triggerState}
-                            </span>
-                            {row.adrTradeCount > 0 && (
-                              <div className="text-[10px] uppercase tracking-[0.08em] text-lime-400">
-                                {row.adrTradeCount} trade{row.adrTradeCount !== 1 ? "s" : ""}
-                              </div>
-                            )}
-                            {row.adrPct !== null ? (
-                              <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-                                ADR {row.adrPct.toFixed(2)}%
-                              </div>
-                            ) : null}
-                          </div>
+                          {isPastWeek ? (
+                            <div className="space-y-1">
+                              {row.adrTradeCount > 0 ? (
+                                <>
+                                  <div className="text-[10px] uppercase tracking-[0.08em] text-lime-400">
+                                    {row.adrTrades.filter(t => t.exitReason === "tp").length} TP
+                                  </div>
+                                  {row.adrTrades.filter(t => t.exitReason !== "tp").length > 0 && (
+                                    <div className="text-[10px] uppercase tracking-[0.08em] text-red-400">
+                                      {row.adrTrades.filter(t => t.exitReason !== "tp").length} Loss
+                                    </div>
+                                  )}
+                                  <div className={`text-xs font-semibold ${(row.adrTrades.reduce((s, t) => s + (t.pnlPct ?? 0), 0)) >= 0 ? "text-lime-400" : "text-red-400"}`}>
+                                    {(() => { const pnl = row.adrTrades.reduce((s, t) => s + (t.pnlPct ?? 0), 0); return `${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%`; })()}
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-[10px] text-[color:var(--muted)]">—</span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <span className={triggerClass(row.triggerState, row.touched)} title="ADR trigger">
+                                {row.triggerState === "INACTIVE" ? "—" : row.triggerState === "NO_DATA" ? "?" : row.triggerState}
+                              </span>
+                              {row.adrTradeCount > 0 && (
+                                <div className="text-[10px] uppercase tracking-[0.08em] text-lime-400">
+                                  {row.adrTradeCount} trade{row.adrTradeCount !== 1 ? "s" : ""}
+                                </div>
+                              )}
+                              {row.adrPct !== null ? (
+                                <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                                  ADR {row.adrPct.toFixed(2)}%
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
                         </td>
                         <td className="px-1 py-1">
                           <button
@@ -963,25 +974,13 @@ export default function FlagshipBoard({ strategy, weekOpenUtc }: { strategy: str
                       </tr>
                       {isExpanded ? (
                         <tr className="bg-[var(--panel)]/75">
-                          <td colSpan={5} className="px-4 py-3">
-                            <div className="grid gap-2 lg:grid-cols-4">
+                          <td colSpan={4} className="px-4 py-3">
+                            <div className="grid gap-2 lg:grid-cols-3">
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Core Bias Detail</div>
                                 <div className="mt-1">Dealer {row.dealer} · Commercial {row.commercial} · Sentiment {row.sentimentDaily}</div>
                                 <div>Weekly call: {directionLabel(row.coreBias)} {row.tier !== "NEUTRAL" ? `· ${row.tier}` : ""}</div>
                                 <div>Gate: <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>{row.gate}</span></div>
-                              </div>
-                              <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
-                                <div className="font-semibold text-[var(--foreground)]">Gamma Detail</div>
-                                <div className="mt-1 flex items-center gap-2">
-                                  {agreementChip(row.cotGateAgree, "COT")}
-                                  {agreementChip(row.menthorqAgree, "MenthorQ")}
-                                </div>
-                                <div className="mt-2 flex items-center gap-2">
-                                  {agreementChip(row.strengthAgree, "Strength")}
-                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.overlay)}`}>Overlay {stateLabel(row.overlay)}</span>
-                                  <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${stateClass(row.strength1h)}`}>Str {row.strengthDelta1h === null ? "—" : row.strengthDelta1h.toFixed(0)}</span>
-                                </div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">ADR Trigger</div>
