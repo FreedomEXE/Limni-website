@@ -17,8 +17,8 @@ showBoxes     = input.bool(true, "Show Trade Boxes")
 showTradeLog  = input.bool(true, "Show Trade Breakdown")
 currentOnly   = input.bool(true, "Current Week Only")
 
-periodBoxBg      = input.color(color.new(#2a2e39, 70), "Period Box Fill")
-periodBoxBorder  = input.color(color.new(color.gray, 60), "Period Box Border")
+periodBoxBg      = input.color(color.new(color.white, 80), "Period Box Fill")
+periodBoxBorder  = input.color(color.new(color.black, 60), "Period Box Border")
 profitBoxBg      = input.color(color.new(color.green, 75), "Profit Box Fill")
 ddBoxBg          = input.color(color.new(color.red, 75), "Drawdown Box Fill")
 tableBgColor     = input.color(color.new(color.black, 15), "Table Background")
@@ -368,7 +368,7 @@ var float periodHigh = na
 var float periodLow = na
 
 // Daily separators inside the period box
-daySepColor = input.color(color.new(color.gray, 75), "Day Separator Color")
+daySepColor = input.color(color.new(color.gray, 65), "Day Separator Color")
 showDaySeps = input.bool(true, "Show Daily Separators")
 var line[] daySepLines  = array.new<line>()
 var label[] dayLabels   = array.new<label>()
@@ -379,7 +379,7 @@ bool isNewDay = ta.change(dayofweek) != 0
 if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     periodHigh := high
     periodLow  := low
-    periodBox  := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=1, border_style=line.style_dotted)
+    periodBox  := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=2, border_style=line.style_solid)
     // Clear old day separators
     for ln in daySepLines
         line.delete(ln)
@@ -391,7 +391,7 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
         label.delete(weekLabel)
     // Week label at top
     string weekStr = str.format("WEEK OF {0,date,MMM dd yyyy}", time)
-    weekLabel := label.new(bar_index, high, weekStr, style=label.style_label_down, color=color.new(color.black, 60), textcolor=color.white, size=size.small, textalign=text.align_center)
+    weekLabel := label.new(bar_index, high, weekStr, style=label.style_label_down, color=color.new(color.white, 20), textcolor=color.black, size=size.large, textalign=text.align_center)
 
 if not na(periodBox) and showBoxes and showVisuals
     periodHigh := math.max(periodHigh, high)
