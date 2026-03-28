@@ -417,30 +417,16 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     topBar := box.new(bar_index, high + barH, bar_index, high, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
     // Bottom bar (day labels area)
     bottomBar := box.new(bar_index, low, bar_index, low - barH, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
-    // Finalize previous week's last period label and draw end-of-week labels
+    // Finalize previous week's last day label and add end-of-week SUNMON
     if not barstate.isfirst and showDaySeps and showBoxes
         float prevSpan = math.max(nz(periodHigh) - nz(periodLow), nz(periodHigh) * 0.01)
         float prevBarH = prevSpan * barHeightPct
-        if isCrypto
-            // Crypto: FRI was the last drawn label. Center it properly (don't touch it, it's already good).
-            // The week boundary is SAT→SUN. We need:
-            // 1. SAT label in the old week (between FRI sep and ~2/3 to week end)
-            // 2. SUNMON label in the old week (last ~1/3 before week end)
-            if not na(currentDayLabel)
-                label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index - 1)))
-            // SAT separator in old week's box (between FRI and SAT periods)
-            int satSepIdx = lastSepBarIdx + math.round((bar_index - lastSepBarIdx) * 0.6)
-            line.new(satSepIdx, nz(periodLow), satSepIdx, nz(periodHigh), color=daySepColor, style=line.style_dotted, width=2)
-            // SAT label centered between SAT sep and ~80% to week end
-            int satMid = math.round(math.avg(satSepIdx, satSepIdx + math.round((bar_index - satSepIdx) * 0.5)))
-            label.new(satMid, nz(periodLow) - prevBarH / 2, "SAT", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
-            // SUNMON label at the end of old week
-            int sunmonMid = math.round(math.avg(satSepIdx + math.round((bar_index - satSepIdx) * 0.5), bar_index))
-            label.new(sunmonMid, nz(periodLow) - prevBarH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
-        else
-            // CFD: finalize the last period label (THUFRI)
-            if not na(currentDayLabel)
-                label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index - 1)))
+        // Center the last period's label between its separator and week end
+        if not na(currentDayLabel)
+            label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index - 1)))
+        // SUNMON label at end of OLD week (between lastSep and week boundary)
+        // This is the old week's Sunday portion
+        label.new(math.round(math.avg(bar_index - 1, bar_index)), nz(periodLow) - prevBarH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
     // Clear tracking arrays for new week
     array.clear(daySepLines)
     array.clear(dayLabels)
