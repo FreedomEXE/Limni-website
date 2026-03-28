@@ -38,16 +38,20 @@ export async function GET(request: Request) {
 
   const results: { week: string; status: string; durationMs: number }[] = [];
 
-  // Get the cron secret to forward to the scan endpoint
-  const secret = process.env.CRON_SECRET ?? "";
+  // Forward auth from the incoming request (Vercel injects Authorization header for crons)
+  const authHeader = request.headers.get("authorization") ?? "";
+  const cronSecretHeader = request.headers.get("x-cron-secret") ?? "";
   const baseUrl = new URL(request.url);
   const origin = baseUrl.origin;
 
   for (const week of pastWeeks) {
     const weekStart = Date.now();
     try {
-      const scanUrl = `${origin}/api/cron/adr-trade-scan?week=${encodeURIComponent(week)}&secret=${encodeURIComponent(secret)}`;
-      const resp = await fetch(scanUrl, { method: "GET" });
+      const scanUrl = `${origin}/api/cron/adr-trade-scan?week=${encodeURIComponent(week)}`;
+      const headers: Record<string, string> = {};
+      if (authHeader) headers["authorization"] = authHeader;
+      if (cronSecretHeader) headers["x-cron-secret"] = cronSecretHeader;
+      const resp = await fetch(scanUrl, { method: "GET", headers });
       const body = await resp.json().catch(() => ({}));
       results.push({
         week,
