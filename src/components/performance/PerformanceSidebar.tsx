@@ -17,6 +17,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import PerformanceComparisonPanel from "@/components/performance/PerformanceComparisonPanel";
+import PerformanceStrategySelector from "@/components/performance/PerformanceStrategySelector";
 
 type PerformanceMode = "flagship" | "matrix" | "legacy";
 
@@ -132,24 +133,31 @@ export default function PerformanceSidebar() {
 
   return (
     <div className="flex-1 space-y-4 p-4">
-      <div className="grid grid-cols-3 gap-2">
-        {(["flagship", "matrix", "legacy"] as const).map((entry) => {
-          const active = mode === entry;
-          return (
-            <button
-              key={entry}
-              type="button"
-              onClick={() => updateMode(entry)}
-              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.16em] transition ${
-                active
-                  ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                  : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
-              }`}
-            >
-              {entry}
-            </button>
-          );
-        })}
+      <PerformanceStrategySelector
+        initialBiasSource="dealer"
+        initialFilter="weekly_hold"
+      />
+
+      <div className="border-t border-[var(--panel-border)] pt-4">
+        <div className="grid grid-cols-3 gap-2">
+          {(["flagship", "matrix", "legacy"] as const).map((entry) => {
+            const active = mode === entry;
+            return (
+              <button
+                key={entry}
+                type="button"
+                onClick={() => updateMode(entry)}
+                className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.16em] transition ${
+                  active
+                    ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-[var(--panel-border)] bg-[var(--panel)]/70 text-[var(--foreground)]/80"
+                }`}
+              >
+                {entry}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {mode === "flagship" ? (
