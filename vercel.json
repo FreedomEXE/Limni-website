@@ -53,6 +53,10 @@
       "schedule": "25 * * * *"
     },
     {
+      "path": "/api/cron/adr-trade-backfill",
+      "schedule": "0 0 1 1 *"
+    },
+    {
       "path": "/api/cron/canonical-refresh",
       "schedule": "30 * * * *"
     }
