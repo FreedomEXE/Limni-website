@@ -389,6 +389,55 @@ export type EngineSimulationGroup = {
   }>;
 };
 
+export function singleWeekToSimulation(
+  result: WeeklyHoldResult,
+  biasSource: BiasSourceConfig,
+  weekLabel: string,
+): EngineSimulationGroup {
+  const labels = getLabels(biasSource.cardBreakdown);
+  const slotLabels = [labels[CARD_SLOTS[0]], labels[CARD_SLOTS[1]], labels[CARD_SLOTS[2]]];
+  const slotted = slotTrades(result.trades, biasSource.cardBreakdown);
+
+  const weekStart = result.weekOpenUtc;
+  // Approximate week end (5 days later)
+  const endDate = new Date(new Date(weekStart).getTime() + 5 * 24 * 60 * 60 * 1000);
+  const weekEnd = endDate.toISOString();
+
+  const series = CARD_SLOTS.map((slot, i) => {
+    const slotReturn = slotted[i].reduce((s, t) => s + t.returnPct, 0);
+    return {
+      id: slot,
+      label: slotLabels[i],
+      color: SERIES_COLORS[i],
+      points: [
+        { ts_utc: weekStart, equity_pct: 0, lock_pct: null },
+        { ts_utc: weekEnd, equity_pct: slotReturn, lock_pct: null },
+      ],
+    };
+  });
+
+  const totalSeries = {
+    id: "total",
+    label: "Total",
+    color: "#ffffff",
+    points: [
+      { ts_utc: weekStart, equity_pct: 0, lock_pct: null },
+      { ts_utc: weekEnd, equity_pct: result.totalReturnPct, lock_pct: null },
+    ],
+  };
+
+  return {
+    title: `${biasSource.label} · Weekly Hold`,
+    description: `Equity curve for ${weekLabel}.`,
+    metrics: {
+      returnPct: result.totalReturnPct,
+      maxDrawdownPct: null,
+      trades: result.tradeCount,
+    },
+    series: [totalSeries, ...series],
+  };
+}
+
 export function multiWeekToSimulation(
   result: MultiWeekResult,
   biasSource: BiasSourceConfig,

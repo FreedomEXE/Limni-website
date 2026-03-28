@@ -6,8 +6,7 @@
  *
  * Description:
  * Performance sidebar with bias source / filter dropdowns and
- * all-time aggregate stats. Fetches once per bias source change.
- * Week switching is client-side (no re-fetch needed).
+ * stats that react to week changes via custom events.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -26,23 +25,44 @@ function formatPF(pf: number | null | undefined): string {
   return pf.toFixed(2);
 }
 
+type WeekStats = {
+  weekKey: string;
+  returnPct: number;
+  tradeCount: number;
+  winCount: number;
+  lossCount: number;
+  winRate: number;
+};
+
 function EngineSidebarStatsCard() {
   const searchParams = useSearchParams();
   const bias = resolveBiasSourceId(searchParams.get("bias"));
-  const [stats, setStats] = useState<EngineSidebarStats | null>(null);
+  const [allTimeStats, setAllTimeStats] = useState<EngineSidebarStats | null>(null);
+  const [weekStats, setWeekStats] = useState<WeekStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Fetch all-time stats on bias change
   useEffect(() => {
     setLoading(true);
     fetch(`/api/performance/engine-stats?bias=${bias}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.error) setStats(null);
-        else setStats(d);
+        if (d.error) setAllTimeStats(null);
+        else setAllTimeStats(d);
         setLoading(false);
       })
-      .catch(() => { setStats(null); setLoading(false); });
+      .catch(() => { setAllTimeStats(null); setLoading(false); });
   }, [bias]);
+
+  // Listen for week change events from ViewSection
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<WeekStats>;
+      setWeekStats(custom.detail);
+    };
+    window.addEventListener("performance-week-stats", handler);
+    return () => window.removeEventListener("performance-week-stats", handler);
+  }, []);
 
   if (loading) {
     return (
@@ -52,59 +72,89 @@ function EngineSidebarStatsCard() {
     );
   }
 
-  if (!stats?.allTime) {
-    return (
-      <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
-        <div className="text-xs text-[color:var(--muted)]">No data available.</div>
-      </div>
-    );
-  }
-
-  const at = stats.allTime;
-  const returnColor = at.totalReturnPct >= 0 ? "text-lime-400" : "text-red-400";
+  const at = allTimeStats?.allTime;
+  const isAllTime = weekStats?.weekKey === "all" || !weekStats;
+  const returnColor = (v: number) => v >= 0 ? "text-lime-400" : "text-red-400";
 
   return (
-    <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
-      <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--accent-strong)]">
-        {stats.biasSourceLabel} · Weekly Hold
-      </div>
-      <div className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-        {at.weeks} Weeks Tracked
-      </div>
+    <div className="space-y-3">
+      {/* Selected week stats */}
+      {weekStats && !isAllTime && (
+        <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
+            Selected Week
+          </div>
 
-      <div className={`mt-3 text-3xl font-bold ${returnColor}`}>
-        {at.totalReturnPct >= 0 ? "+" : ""}{at.totalReturnPct.toFixed(2)}%
-      </div>
-      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
-        Total Return
-      </div>
+          <div className={`mt-2 text-2xl font-bold ${returnColor(weekStats.returnPct)}`}>
+            {weekStats.returnPct >= 0 ? "+" : ""}{weekStats.returnPct.toFixed(2)}%
+          </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2.5 text-sm">
-        <div>
-          <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Weekly WR</div>
-          <div className="font-bold">{at.weeklyWinRate.toFixed(1)}%</div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Win Rate</div>
+              <div className="font-bold">{weekStats.winRate.toFixed(1)}%</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Trades</div>
+              <div className="font-bold">{weekStats.tradeCount}</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Wins</div>
+              <div className="font-bold text-lime-400">{weekStats.winCount}</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Losses</div>
+              <div className="font-bold text-red-400">{weekStats.lossCount}</div>
+            </div>
+          </div>
         </div>
-        <div>
-          <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Max DD</div>
-          <div className="font-bold text-red-400">{at.maxDrawdownPct.toFixed(2)}%</div>
+      )}
+
+      {/* All-time aggregate stats */}
+      {at && (
+        <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--accent-strong)]">
+            {allTimeStats?.biasSourceLabel} · Weekly Hold
+          </div>
+          <div className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+            {at.weeks} Weeks Tracked
+          </div>
+
+          <div className={`mt-3 text-3xl font-bold ${returnColor(at.totalReturnPct)}`}>
+            {at.totalReturnPct >= 0 ? "+" : ""}{at.totalReturnPct.toFixed(2)}%
+          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
+            Total Return
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2.5 text-sm">
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Weekly WR</div>
+              <div className="font-bold">{at.weeklyWinRate.toFixed(1)}%</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Max DD</div>
+              <div className="font-bold text-red-400">{at.maxDrawdownPct.toFixed(2)}%</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Sharpe</div>
+              <div className="font-bold">{at.sharpe.toFixed(2)}</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Profit Factor</div>
+              <div className="font-bold">{formatPF(at.profitFactor)}</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Avg Weekly</div>
+              <div className="font-bold">{at.avgWeeklyReturn >= 0 ? "+" : ""}{at.avgWeeklyReturn.toFixed(2)}%</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Total Trades</div>
+              <div className="font-bold">{at.totalTrades}</div>
+            </div>
+          </div>
         </div>
-        <div>
-          <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Sharpe</div>
-          <div className="font-bold">{at.sharpe.toFixed(2)}</div>
-        </div>
-        <div>
-          <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Profit Factor</div>
-          <div className="font-bold">{formatPF(at.profitFactor)}</div>
-        </div>
-        <div>
-          <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Avg Weekly</div>
-          <div className="font-bold">{at.avgWeeklyReturn >= 0 ? "+" : ""}{at.avgWeeklyReturn.toFixed(2)}%</div>
-        </div>
-        <div>
-          <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Total Trades</div>
-          <div className="font-bold">{at.totalTrades}</div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

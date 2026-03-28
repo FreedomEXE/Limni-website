@@ -41,7 +41,7 @@ import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegist
 import { DateTime } from "luxon";
 import { resolveBiasSourceId, getBiasSource } from "@/lib/performance/strategyConfig";
 import { computeWeeklyHold, computeMultiWeekHold } from "@/lib/performance/weeklyHoldEngine";
-import { weeklyHoldToGridProps, multiWeekToGridProps, multiWeekToSimulation, type EngineGridProps, type EngineSimulationGroup } from "@/lib/performance/engineAdapter";
+import { weeklyHoldToGridProps, multiWeekToGridProps, multiWeekToSimulation, singleWeekToSimulation, type EngineGridProps, type EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -1113,20 +1113,22 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const biasSourceId = resolveBiasSourceId(biasParamValue);
   const biasSource = getBiasSource(biasSourceId)!;
   let engineWeekMap: Record<string, EngineGridProps> | null = null;
-  let engineSimulation: EngineSimulationGroup | null = null;
+  let engineSimMap: Record<string, EngineSimulationGroup> | null = null;
   try {
     const multiWeekResult = await computeMultiWeekHold(biasSource, weekSelectorOptions);
-    // Build GridProps for each individual week
     const weekMap: Record<string, EngineGridProps> = {};
+    const simMap: Record<string, EngineSimulationGroup> = {};
+    // Build per-week GridProps + simulation
     for (const weekResult of multiWeekResult.weeks) {
-      weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(
-        weekResult, biasSource, weekDisplayLabel(weekResult.weekOpenUtc),
-      );
+      const label = weekDisplayLabel(weekResult.weekOpenUtc);
+      weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(weekResult, biasSource, label);
+      simMap[weekResult.weekOpenUtc] = singleWeekToSimulation(weekResult, biasSource, label);
     }
-    // Build aggregated "all time" GridProps
+    // Build "all time" aggregates
     weekMap["all"] = multiWeekToGridProps(multiWeekResult, biasSource);
+    simMap["all"] = multiWeekToSimulation(multiWeekResult, biasSource);
     engineWeekMap = weekMap;
-    engineSimulation = multiWeekToSimulation(multiWeekResult, biasSource);
+    engineSimMap = simMap;
   } catch {
     // Engine computation failed — fall back to legacy view
   }
@@ -1226,7 +1228,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           flagshipGridProps={flagshipGridProps}
           flagshipSimulation={flagshipSimulation}
           engineWeekMap={engineWeekMap}
-          engineSimulation={engineSimulation}
+          engineSimMap={engineSimMap}
           weekOptions={["all", ...weekSelectorOptions]}
           currentWeek={currentWeekOpenUtc}
           initialWeek={selectedWeek}

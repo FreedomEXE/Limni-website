@@ -5,9 +5,9 @@
  * File: PerformanceViewSection.tsx
  *
  * Description:
- * Performance body shell. When engine week map is provided, renders
- * with client-side week switching (instant, no server round-trip).
- * Falls back to legacy flagship/tiered mode when no engine data.
+ * Performance body shell. Engine-driven path renders with client-side
+ * week switching (instant). Dispatches custom events so sidebar can
+ * react to week changes. Falls back to legacy when no engine data.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -52,8 +52,8 @@ type PerformanceViewSectionProps = {
   flagshipSimulation: PerformanceSimulationGroup | null;
   /** Pre-computed GridProps per week + "all". Client switches instantly. */
   engineWeekMap?: Record<string, EngineGridProps> | null;
-  /** Engine-driven simulation (equity curves across all weeks) */
-  engineSimulation?: EngineSimulationGroup | null;
+  /** Pre-computed simulations per week + "all". */
+  engineSimMap?: Record<string, EngineSimulationGroup> | null;
   /** Week options for the strip */
   weekOptions?: string[];
   /** Current live week */
@@ -74,7 +74,7 @@ export default function PerformanceViewSection({
   flagshipGridProps,
   flagshipSimulation,
   engineWeekMap,
-  engineSimulation,
+  engineSimMap,
   weekOptions,
   currentWeek,
   initialWeek,
@@ -92,9 +92,33 @@ export default function PerformanceViewSection({
   useEffect(() => { setSystem(initialSystem); }, [initialSystem]);
   useEffect(() => { setStyle(initialStyle); }, [initialStyle]);
 
+  // Dispatch week change events so sidebar can react
+  useEffect(() => {
+    if (!engineWeekMap) return;
+    const gridProps = engineWeekMap[selectedWeek] ?? engineWeekMap["all"];
+    if (!gridProps) return;
+    // Compute stats from the gridProps models
+    const totalReturn = gridProps.combined.models.reduce((s, m) => s + m.percent, 0);
+    const totalTrades = gridProps.combined.models.reduce((s, m) => s + m.total, 0);
+    const totalWins = gridProps.combined.models.reduce((s, m) => {
+      return s + m.returns.filter((r) => r.percent > 0).length;
+    }, 0);
+    window.dispatchEvent(new CustomEvent("performance-week-stats", {
+      detail: {
+        weekKey: selectedWeek,
+        returnPct: totalReturn,
+        tradeCount: totalTrades,
+        winCount: totalWins,
+        lossCount: totalTrades - totalWins,
+        winRate: totalTrades > 0 ? (totalWins / totalTrades) * 100 : 0,
+      },
+    }));
+  }, [selectedWeek, engineWeekMap]);
+
   // ─── Engine-driven path (instant week switching) ──────────────
   if (engineWeekMap && weekOptions) {
     const gridProps = engineWeekMap[selectedWeek] ?? engineWeekMap["all"];
+    const simulation = engineSimMap?.[selectedWeek] ?? engineSimMap?.["all"] ?? null;
 
     return (
       <>
@@ -114,7 +138,7 @@ export default function PerformanceViewSection({
           views={PERFORMANCE_VIEW_CARDS}
         />
         {view === "simulation" ? (
-          <PerformanceSimulationSection group={engineSimulation ?? null} />
+          <PerformanceSimulationSection group={simulation} />
         ) : gridProps ? (
           <PerformanceGrid
             {...gridProps}
