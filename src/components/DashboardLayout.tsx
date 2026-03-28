@@ -97,7 +97,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const viewParam = activeSection === "accounts" ? accountViewFromUrl : viewParamRaw;
   const [rootLockSection, setRootLockSection] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const supportsSectionNav = activeSection !== "flagship";
+  const supportsSectionNav = true;
   const navMode: "root" | "section" =
     activeSection && rootLockSection === activeSection
       ? "root"
