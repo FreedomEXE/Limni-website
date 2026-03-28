@@ -375,7 +375,9 @@ showDaySeps = input.bool(true, "Show Daily Separators")
 var line[] daySepLines  = array.new<line>()
 var label[] dayLabels   = array.new<label>()
 var label weekLabel     = na
-var label sunmonLabel   = na
+var label currentDayLabel = na  // the active day period's label (centered continuously)
+var int lastSepBarIdx   = 0    // bar_index of last separator or week start
+var int weekStartBarIdx = 0    // bar_index of current week start
 
 // Detect day change at midnight ET (not UTC midnight)
 // ET = UTC-4 (EDT) or UTC-5 (EST). Use -4 as standard (EDT covers most of trading year)
@@ -415,22 +417,20 @@ if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
     topBar := box.new(bar_index, high + barH, bar_index, high, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
     // Bottom bar (day labels area)
     bottomBar := box.new(bar_index, low, bar_index, low - barH, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
-    // Don't delete old week's separators/labels — they persist for past weeks
-    // Just clear tracking arrays so new week's items are tracked for updates
+    // Finalize previous week's last day label position (center between lastSepBarIdx and week end)
+    if not barstate.isfirst and not na(currentDayLabel)
+        label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index - 1)))
+    // Clear tracking arrays for new week
     array.clear(daySepLines)
     array.clear(dayLabels)
-    // Week label and SUNMON are replaced each week (old ones stay as-is)
-    // Week label centered in top bar — large black text
+    weekStartBarIdx := bar_index
+    lastSepBarIdx   := bar_index
+    // Week label centered in top bar
     string weekStr = str.format("WEEK OF {0,date,MMM dd yyyy}", time)
     weekLabel := label.new(bar_index, high + barH / 2, weekStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.black, size=size.huge, textalign=text.align_center)
-    // SUNMON label at the start of THIS week's bottom bar
-    sunmonLabel := label.new(bar_index, low - barH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
-    // Also place a SUNMON label at the END of the PREVIOUS week's bottom bar
-    // (the previous week's period ends where this week begins)
-    if not barstate.isfirst
-        float prevPriceSpan = math.max(periodHigh[1] - periodLow[1], nz(periodHigh[1]) * 0.01)
-        float prevBarH = prevPriceSpan * barHeightPct
-        label.new(bar_index, nz(periodLow[1]) - prevBarH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
+    // SUNMON label for this week — will be centered between week start and first separator
+    currentDayLabel := label.new(bar_index, low - barH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
+    array.push(dayLabels, currentDayLabel)
 
 if not na(periodBox) and showBoxes and showVisuals
     periodHigh := math.max(periodHigh, high)
@@ -458,40 +458,40 @@ if not na(periodBox) and showBoxes and showVisuals
         label.set_y(weekLabel, periodHigh + barH / 2)
         label.set_x(weekLabel, math.round(math.avg(box.get_left(periodBox), bar_index)))
 
-// Draw daily separator line and label on day change (skip merged half-days)
+// Draw daily separator line on day change (skip merged half-days)
 if isNewDay and not isNewWeek and not skipSeparator and showDaySeps and showBoxes and showVisuals and not na(periodBox)
     float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
     float barH  = priceSpan * barHeightPct
-    // Separator contained inside middle box only (periodLow to periodHigh)
+    // Finalize previous period's label — center between lastSepBarIdx and this separator
+    if not na(currentDayLabel)
+        label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index)))
+    // Separator contained inside middle box only
     line newSep = line.new(bar_index, periodLow, bar_index, periodHigh, color=daySepColor, style=line.style_dotted, width=2)
     array.push(daySepLines, newSep)
-    // Day label in bottom bar — label the period STARTING at this separator
+    lastSepBarIdx := bar_index
+    // Create new label for the period STARTING at this separator
     // etDow: 0=Thu, 1=Fri, 2=Sat, 3=Sun, 4=Mon, 5=Tue, 6=Wed
     string dayStr = ""
     if isCrypto
-        // Crypto: TUE, WED, THU, FRI, SAT all individual
         dayStr := etDow == 5 ? "TUE" : etDow == 6 ? "WED" : etDow == 0 ? "THU" : etDow == 1 ? "FRI" : etDow == 2 ? "SAT" : ""
     else
-        // CFD: TUE, WED, THUFRI (merged). No FRI separator.
         dayStr := etDow == 5 ? "TUE" : etDow == 6 ? "WED" : etDow == 0 ? "THUFRI" : ""
     if str.length(dayStr) > 0
-        label newDayLbl = label.new(bar_index, periodLow - barH / 2, dayStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
-        array.push(dayLabels, newDayLbl)
+        currentDayLabel := label.new(bar_index, periodLow - barH / 2, dayStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
+        array.push(dayLabels, currentDayLabel)
 
-// Update daily separator lines and labels to track expanding price range
+// Update: separator lines track price range, current day label centers continuously
 if showDaySeps and showBoxes and showVisuals and not na(periodBox)
     float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
     float barH  = priceSpan * barHeightPct
-    // Separators stay inside middle box
     for ln in daySepLines
         line.set_y1(ln, periodLow)
         line.set_y2(ln, periodHigh)
-    // Day labels stay in bottom bar
     for lb in dayLabels
         label.set_y(lb, periodLow - barH / 2)
-    // SUNMON label tracks bottom bar
-    if not na(sunmonLabel)
-        label.set_y(sunmonLabel, periodLow - barH / 2)
+    // Keep current (last) day label centered between its separator and current bar
+    if not na(currentDayLabel)
+        label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index)))
 
 // ── Trade boxes (profit + drawdown — detach on TP for re-entry) ─────────────
 var box longProfBox = na
