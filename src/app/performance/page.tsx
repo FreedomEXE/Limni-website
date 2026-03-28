@@ -14,7 +14,7 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import PerformanceHeaderContext from "@/components/performance/PerformanceHeaderContext";
-import PerformancePeriodSelector from "@/components/performance/PerformancePeriodSelector";
+import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
 import type { PerformanceSimulationGroup } from "@/components/performance/PerformanceSimulationSection";
 import { getCanonicalWeeklyBasket, type CanonicalWeeklySignal, type CanonicalWeeklyTier } from "@/lib/flagship/canonicalWeeklyBasket";
@@ -32,8 +32,9 @@ import {
   resolvePerformanceSystem,
   type PerformanceSystem,
 } from "@/lib/performance/modelConfig";
-import { buildNormalizedWeekOptions } from "@/lib/weekOptions";
-import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
+import { buildDataWeekOptions, buildNormalizedWeekOptions } from "@/lib/weekOptions";
+import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { resolvePerformanceView, resolveSelectedPerformanceWeek } from "@/lib/performance/pageState";
 import { computeReturnStats, type ModelPerformance, type PerformanceModel } from "@/lib/performanceLab";
 import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegistry";
@@ -1063,7 +1064,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const initialSystem = resolvePerformanceSystem(systemParamValue);
   const initialView = resolvePerformanceView(viewParamValue);
   const initialMode = parseMode(modeParamValue);
-  const currentWeekOpenUtc = getCanonicalWeekOpenUtc();
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const showWeekSelector = initialMode === "flagship" || initialStyle === "tiered";
 
   const [report, flagships, currentWeekBasket] = await Promise.all([
@@ -1082,23 +1083,25 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     );
   }
 
-  const weekOptions = buildNormalizedWeekOptions({
-    historicalWeeks: report.meta.canonicalWeeks,
+  // Use same week logic as Data section — includes current/upcoming week
+  const dataSectionWeeks = await listDataSectionWeeks();
+  const historicalWeeks = [
+    ...report.meta.canonicalWeeks,
+    ...dataSectionWeeks.filter((w) => !report.meta.canonicalWeeks.includes(w)),
+  ];
+  const weekOptions = buildDataWeekOptions({
+    historicalWeeks,
     currentWeekOpenUtc,
-    includeAll: true,
-    includeCurrent: initialMode === "flagship",
-    currentPosition: "first",
-  });
+  }) as string[];
+  // Add "all" option for Performance (not in Data section)
+  const weekOptionsWithAll = ["all", ...weekOptions];
   const selectedWeek =
     resolveSelectedPerformanceWeek({
       weekParamValue,
-      weekOptions,
+      weekOptions: weekOptionsWithAll,
       currentWeekOpenUtc,
     }) ?? "all";
-  const weekSelectorOptions = weekOptions.map((option) => ({
-    value: option,
-    label: formatWeekOptionLabel(option, currentWeekOpenUtc),
-  }));
+  const weekSelectorOptions = weekOptions; // for ScrollableWeekStrip (no "all")
 
   const universal = buildSystemMaps({
     family: "universal",
@@ -1187,15 +1190,15 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           </div>
         </header>
 
-        {showWeekSelector ? (
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-            <PerformancePeriodSelector
-              mode="week"
-              options={weekSelectorOptions}
-              selectedValue={selectedWeek}
-            />
-          </div>
-        ) : null}
+        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+          <ScrollableWeekStrip
+            options={weekSelectorOptions}
+            selected={selectedWeek === "all" ? weekSelectorOptions[0] ?? "" : selectedWeek}
+            currentWeek={currentWeekOpenUtc}
+            label="Week"
+            preserveParams={["style", "system", "view", "mode"]}
+          />
+        </div>
 
         <PerformanceViewSection
           initialMode={initialMode}
