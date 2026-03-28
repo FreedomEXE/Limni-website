@@ -192,6 +192,7 @@ type AdrTradesPayload = {
   totalTrades: number;
   totalTpHits: number;
   totalActive: number;
+  totalLosses: number;
   weekReturnPct: number;
   trades: AdrTradeRow[];
 };
@@ -815,7 +816,7 @@ export default function FlagshipBoard({ strategy, weekOpenUtc, currentWeekOpenUt
             totalTrades={adrTrades.totalTrades}
             totalTpHits={adrTrades.totalTpHits}
             totalActive={adrTrades.totalActive}
-            totalLosses={adrTrades.totalTrades - adrTrades.totalTpHits - adrTrades.totalActive}
+            totalLosses={adrTrades.totalLosses ?? (adrTrades.totalTrades - adrTrades.totalTpHits - adrTrades.totalActive)}
             weekReturnPct={adrTrades.weekReturnPct}
             longPairs={(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "LONG").map((s: CanonicalWeeklySignal) => s.pair)}
             shortPairs={(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "SHORT").map((s: CanonicalWeeklySignal) => s.pair)}

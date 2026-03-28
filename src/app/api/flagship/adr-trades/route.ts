@@ -6,7 +6,8 @@
  *
  * Description:
  * Returns ADR Forward Test trades for the current week (or a specified week).
- * Reads from strategy_backtest_trades written by the adr-trade-scan cron.
+ * For past weeks, force-closes any "active" trades using the week's close
+ * price from pair_period_returns and computes their P&L.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -17,6 +18,7 @@ import { DateTime } from "luxon";
 
 import { query } from "@/lib/db";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +53,7 @@ export type AdrTradesPayload = {
   totalTrades: number;
   totalTpHits: number;
   totalActive: number;
+  totalLosses: number;
   weekReturnPct: number;
   trades: AdrTradeRow[];
 };
@@ -60,6 +63,8 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const weekParam = url.searchParams.get("week");
     const weekOpenUtc = weekParam ?? getCanonicalWeekOpenUtc(DateTime.utc());
+    const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+    const isPastWeek = weekOpenUtc !== currentWeekOpenUtc;
 
     /* Find the run ID */
     const runRows = await query<{ id: string }>(
@@ -74,6 +79,7 @@ export async function GET(request: Request) {
         totalTrades: 0,
         totalTpHits: 0,
         totalActive: 0,
+        totalLosses: 0,
         weekReturnPct: 0,
         trades: [],
       } satisfies AdrTradesPayload);
@@ -100,28 +106,60 @@ export async function GET(request: Request) {
       [runId, weekOpenUtc],
     );
 
-    const trades: AdrTradeRow[] = tradeRows.map((r) => ({
-      symbol: r.symbol,
-      direction: r.direction,
-      entryTimeUtc: r.entry_time_utc,
-      exitTimeUtc: r.exit_time_utc,
-      entryPrice: r.entry_price ? Number(r.entry_price) : null,
-      exitPrice: r.exit_price ? Number(r.exit_price) : null,
-      pnlPct: r.pnl_pct ? Number(r.pnl_pct) : null,
-      exitReason: r.exit_reason,
-      tradeNumber: (r.metadata as Record<string, unknown>)?.tradeNumber as number ?? null,
-      anchorPrice: (r.metadata as Record<string, unknown>)?.anchorPrice as number ?? null,
-      adrPct: (r.metadata as Record<string, unknown>)?.adrPct as number ?? null,
-      tpPrice: (r.metadata as Record<string, unknown>)?.tpPrice as number ?? null,
-      maePct: (r.metadata as Record<string, unknown>)?.maePct as number ?? null,
-      assetClass: (r.metadata as Record<string, unknown>)?.assetClass as string ?? null,
-      tier: (r.metadata as Record<string, unknown>)?.tier as string ?? null,
-      gateDecision: (r.metadata as Record<string, unknown>)?.gateDecision as string ?? null,
-    }));
+    // For past weeks: force-close active trades using week close prices
+    let closePrices = new Map<string, number>();
+    if (isPastWeek) {
+      const priceRows = await query<{ symbol: string; close_price: string }>(
+        `SELECT symbol, close_price FROM pair_period_returns
+         WHERE period_type = 'weekly' AND period_open_utc = $1::timestamptz`,
+        [weekOpenUtc],
+      );
+      for (const r of priceRows) {
+        closePrices.set(r.symbol.toUpperCase(), Number(r.close_price));
+      }
+    }
+
+    const trades: AdrTradeRow[] = tradeRows.map((r) => {
+      const entryPrice = r.entry_price ? Number(r.entry_price) : null;
+      let exitPrice = r.exit_price ? Number(r.exit_price) : null;
+      let pnlPct = r.pnl_pct ? Number(r.pnl_pct) : null;
+      let exitReason = r.exit_reason;
+
+      // Force-close active trades for past weeks
+      if (isPastWeek && exitReason === "active" && entryPrice) {
+        const weekClosePrice = closePrices.get(r.symbol.toUpperCase());
+        if (weekClosePrice) {
+          exitPrice = weekClosePrice;
+          const rawReturn = ((weekClosePrice - entryPrice) / entryPrice) * 100;
+          pnlPct = r.direction === "SHORT" ? -rawReturn : rawReturn;
+          exitReason = "week_close";
+        }
+      }
+
+      return {
+        symbol: r.symbol,
+        direction: r.direction,
+        entryTimeUtc: r.entry_time_utc,
+        exitTimeUtc: r.exit_time_utc,
+        entryPrice,
+        exitPrice,
+        pnlPct,
+        exitReason,
+        tradeNumber: (r.metadata as Record<string, unknown>)?.tradeNumber as number ?? null,
+        anchorPrice: (r.metadata as Record<string, unknown>)?.anchorPrice as number ?? null,
+        adrPct: (r.metadata as Record<string, unknown>)?.adrPct as number ?? null,
+        tpPrice: (r.metadata as Record<string, unknown>)?.tpPrice as number ?? null,
+        maePct: (r.metadata as Record<string, unknown>)?.maePct as number ?? null,
+        assetClass: (r.metadata as Record<string, unknown>)?.assetClass as string ?? null,
+        tier: (r.metadata as Record<string, unknown>)?.tier as string ?? null,
+        gateDecision: (r.metadata as Record<string, unknown>)?.gateDecision as string ?? null,
+      };
+    });
 
     const totalTrades = trades.length;
     const totalTpHits = trades.filter((t) => t.exitReason === "tp").length;
     const totalActive = trades.filter((t) => t.exitReason === "active").length;
+    const totalLosses = trades.filter((t) => t.exitReason === "week_close").length;
     const weekReturnPct = trades.reduce((sum, t) => sum + (t.pnlPct ?? 0), 0);
 
     return NextResponse.json({
@@ -130,6 +168,7 @@ export async function GET(request: Request) {
       totalTrades,
       totalTpHits,
       totalActive,
+      totalLosses,
       weekReturnPct,
       trades,
     } satisfies AdrTradesPayload);
