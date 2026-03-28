@@ -1061,8 +1061,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const modeParamValue = Array.isArray(modeParam) ? modeParam[0] : modeParam;
   const weekParam = resolvedSearchParams?.week;
   const weekParamValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
-  const biasParam = resolvedSearchParams?.bias;
-  const biasParamValue = Array.isArray(biasParam) ? biasParam[0] : biasParam;
+  const strategyParam = resolvedSearchParams?.strategy ?? resolvedSearchParams?.bias;
+  const biasParamValue = Array.isArray(strategyParam) ? strategyParam[0] : strategyParam;
 
   const resolvedFamily = parseFamily(styleParamValue);
   const initialStyle: WeeklyPerformanceFamily = resolvedFamily === "universal" ? "universal" : "tiered";
@@ -1211,7 +1211,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               Performance
             </h1>
             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-              {biasSource.label} · Weekly Hold
+              {biasSource.label} · Weekly Hold{resolvedSearchParams?.f2 && resolvedSearchParams.f2 !== "none" ? ` · ${String(resolvedSearchParams.f2).replace(/_/g, " ")}` : ""}
             </p>
           </div>
         </header>

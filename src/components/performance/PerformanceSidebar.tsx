@@ -16,7 +16,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PerformanceStrategySelector from "@/components/performance/PerformanceStrategySelector";
-import { resolveBiasSourceId } from "@/lib/performance/strategyConfig";
+import { resolveStrategyId } from "@/lib/performance/strategyConfig";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 
 function formatPF(pf: number | null | undefined): string {
@@ -36,7 +36,7 @@ type WeekStats = {
 
 function EngineSidebarStatsCard() {
   const searchParams = useSearchParams();
-  const bias = resolveBiasSourceId(searchParams.get("bias"));
+  const bias = resolveStrategyId(searchParams.get("strategy") ?? searchParams.get("bias"));
   const [allTimeStats, setAllTimeStats] = useState<EngineSidebarStats | null>(null);
   const [weekStats, setWeekStats] = useState<WeekStats | null>(null);
   const [loading, setLoading] = useState(true);

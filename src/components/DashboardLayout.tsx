@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
+import MatrixSidebar from "@/components/matrix/MatrixSidebar";
 import PerformanceSidebar from "@/components/performance/PerformanceSidebar";
 import { resolveAccountView, type AccountPageView } from "@/lib/accounts/navigation";
 
@@ -276,6 +277,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
     if (activeSection === "performance") {
       return <PerformanceSidebar />;
+    }
+
+    if (activeSection === "flagship") {
+      return <MatrixSidebar />;
     }
 
     return (

@@ -22,5 +22,5 @@ type PerformanceStrategySelectorProps = {
 };
 
 export default function PerformanceStrategySelector(_props: PerformanceStrategySelectorProps) {
-  return <StrategySelector layout="sidebar" />;
+  return <StrategySelector />;
 }

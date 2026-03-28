@@ -6,7 +6,8 @@
  *
  * Description:
  * Shared 3-level strategy selector used in both Performance sidebar and
- * Matrix header. Reads/writes URL params: ?strategy=...&f1=...&f2=...
+ * Matrix sidebar. Reads/writes URL params: ?strategy=...&f1=...&f2=...
+ * Uses a "Run" button to apply changes (no auto-reload on dropdown change).
  * Config-driven — adding options requires only updating strategyConfig.ts.
  */
 /*-----------------------------------------------
@@ -15,6 +16,7 @@
 
 "use client";
 
+import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   STRATEGIES,
@@ -23,27 +25,58 @@ import {
   resolveStrategyId,
   resolveBasketFilterId,
   resolveIntradayFilterId,
+  getStrategy,
+  getBasketFilter,
+  getIntradayFilter,
 } from "@/lib/performance/strategyConfig";
 
-type StrategySelectorProps = {
-  /** Compact mode for inline use (Matrix header). Full mode for sidebar (Performance). */
-  layout?: "sidebar" | "inline";
+export type StrategySelection = {
+  strategy: string;
+  f1: string;
+  f2: string;
 };
 
-export default function StrategySelector({ layout = "sidebar" }: StrategySelectorProps) {
+/** Read current selection from URL params (handles both old and new param names) */
+export function readSelectionFromParams(searchParams: URLSearchParams): StrategySelection {
+  return {
+    strategy: resolveStrategyId(searchParams.get("strategy") ?? searchParams.get("bias")),
+    f1: resolveBasketFilterId(searchParams.get("f1") ?? searchParams.get("filter")),
+    f2: resolveIntradayFilterId(searchParams.get("f2")),
+  };
+}
+
+/** Build a display label from a selection, e.g. "Tiered V3 · Weekly Hold · ADR Pullback" */
+export function selectionLabel(sel: StrategySelection): string {
+  const s = getStrategy(sel.strategy);
+  const f1 = getBasketFilter(sel.f1);
+  const f2 = getIntradayFilter(sel.f2);
+  const parts = [s?.label ?? sel.strategy, f1?.label ?? sel.f1];
+  if (f2 && f2.id !== "none") parts.push(f2.label);
+  return parts.join(" · ");
+}
+
+export default function StrategySelector() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const activeStrategy = resolveStrategyId(searchParams.get("strategy") ?? searchParams.get("bias"));
-  const activeF1 = resolveBasketFilterId(searchParams.get("f1") ?? searchParams.get("filter"));
-  const activeF2 = resolveIntradayFilterId(searchParams.get("f2"));
+  // Read committed selection from URL
+  const committed = readSelectionFromParams(searchParams);
 
-  const navigate = (strategy: string, f1: string, f2: string) => {
+  // Local draft state (not applied until "Run" is clicked)
+  const [draft, setDraft] = useState<StrategySelection>(committed);
+
+  // Check if draft differs from committed
+  const isDirty =
+    draft.strategy !== committed.strategy ||
+    draft.f1 !== committed.f1 ||
+    draft.f2 !== committed.f2;
+
+  const apply = () => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("strategy", strategy);
-    params.set("f1", f1);
-    params.set("f2", f2);
+    params.set("strategy", draft.strategy);
+    params.set("f1", draft.f1);
+    params.set("f2", draft.f2);
     // Clean up old param names
     params.delete("bias");
     params.delete("filter");
@@ -53,52 +86,14 @@ export default function StrategySelector({ layout = "sidebar" }: StrategySelecto
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const strategyConfig = STRATEGIES.find((s) => s.id === activeStrategy);
-
   const selectClasses =
     "w-full cursor-pointer rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] outline-none transition hover:border-[var(--accent)]/40 focus:border-[var(--accent)]/60";
 
   const labelClasses =
     "mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]";
 
-  if (layout === "inline") {
-    return (
-      <div className="flex items-center gap-3">
-        <select
-          value={activeStrategy}
-          onChange={(e) => navigate(e.target.value, activeF1, activeF2)}
-          className={selectClasses}
-          style={{ width: "auto" }}
-        >
-          {STRATEGIES.map((s) => (
-            <option key={s.id} value={s.id}>{s.label}</option>
-          ))}
-        </select>
-        <select
-          value={activeF1}
-          onChange={(e) => navigate(activeStrategy, e.target.value, activeF2)}
-          className={selectClasses}
-          style={{ width: "auto" }}
-        >
-          {BASKET_FILTERS.map((f) => (
-            <option key={f.id} value={f.id}>{f.label}</option>
-          ))}
-        </select>
-        <select
-          value={activeF2}
-          onChange={(e) => navigate(activeStrategy, activeF1, e.target.value)}
-          className={selectClasses}
-          style={{ width: "auto" }}
-        >
-          {INTRADAY_FILTERS.map((f) => (
-            <option key={f.id} value={f.id}>{f.label}</option>
-          ))}
-        </select>
-      </div>
-    );
-  }
+  const strategyConfig = STRATEGIES.find((s) => s.id === draft.strategy);
 
-  // Sidebar layout (stacked dropdowns with labels)
   return (
     <div className="space-y-3">
       {/* Strategy */}
@@ -108,8 +103,8 @@ export default function StrategySelector({ layout = "sidebar" }: StrategySelecto
         </label>
         <select
           id="strategy-select"
-          value={activeStrategy}
-          onChange={(e) => navigate(e.target.value, activeF1, activeF2)}
+          value={draft.strategy}
+          onChange={(e) => setDraft((prev) => ({ ...prev, strategy: e.target.value }))}
           className={selectClasses}
         >
           {STRATEGIES.map((s) => (
@@ -130,8 +125,8 @@ export default function StrategySelector({ layout = "sidebar" }: StrategySelecto
         </label>
         <select
           id="basket-filter"
-          value={activeF1}
-          onChange={(e) => navigate(activeStrategy, e.target.value, activeF2)}
+          value={draft.f1}
+          onChange={(e) => setDraft((prev) => ({ ...prev, f1: e.target.value }))}
           className={selectClasses}
         >
           {BASKET_FILTERS.map((f) => (
@@ -147,8 +142,8 @@ export default function StrategySelector({ layout = "sidebar" }: StrategySelecto
         </label>
         <select
           id="intraday-filter"
-          value={activeF2}
-          onChange={(e) => navigate(activeStrategy, activeF1, e.target.value)}
+          value={draft.f2}
+          onChange={(e) => setDraft((prev) => ({ ...prev, f2: e.target.value }))}
           className={selectClasses}
         >
           {INTRADAY_FILTERS.map((f) => (
@@ -156,6 +151,20 @@ export default function StrategySelector({ layout = "sidebar" }: StrategySelecto
           ))}
         </select>
       </div>
+
+      {/* Run button */}
+      <button
+        type="button"
+        onClick={apply}
+        disabled={!isDirty}
+        className={`w-full rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${
+          isDirty
+            ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)] hover:bg-[var(--accent)]/20"
+            : "cursor-not-allowed border-[var(--panel-border)] bg-[var(--panel)]/50 text-[color:var(--muted)]"
+        }`}
+      >
+        {isDirty ? "Run" : "Applied"}
+      </button>
     </div>
   );
 }

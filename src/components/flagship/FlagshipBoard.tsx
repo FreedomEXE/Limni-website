@@ -1,11 +1,12 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import AdrStatsBar from "@/components/flagship/AdrStatsBar";
 import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
 import SizingAccountBar from "@/components/flagship/SizingAccountBar";
-import StrategySelector from "@/components/shared/StrategySelector";
+import { readSelectionFromParams, selectionLabel } from "@/components/shared/StrategySelector";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import {
   SESSION_ELIGIBILITY,
@@ -487,6 +488,9 @@ function sizingToneClass(warning: string | null) {
 }
 
 export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc }: { weekOpenUtc?: string | null; currentWeekOpenUtc?: string }) {
+  const matrixSearchParams = useSearchParams();
+  const activeSelection = readSelectionFromParams(matrixSearchParams);
+  const activeLabel = selectionLabel(activeSelection);
   const isPastWeek = Boolean(weekOpenUtc && currentWeekOpenUtc && weekOpenUtc !== currentWeekOpenUtc);
   const [weeklyBasket, setWeeklyBasket] = useState<CanonicalWeeklyBasketPayload | null>(null);
   const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
@@ -769,12 +773,10 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc }: { wee
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
       <header className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="space-y-2">
-            <div className="space-y-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Matrix</p>
-              <h1 className="text-xl font-semibold text-[var(--foreground)] md:text-2xl">CFD Matrix</h1>
-            </div>
-            <StrategySelector layout="inline" />
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">Matrix</p>
+            <h1 className="text-xl font-semibold text-[var(--foreground)] md:text-2xl">CFD Matrix</h1>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]">{activeLabel}</p>
           </div>
           <div className="space-y-2">
             <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-right text-xs text-[color:var(--muted)]">

@@ -5,9 +5,9 @@
  * File: matrix/page.tsx
  *
  * Description:
- * Consolidated matrix workspace hosting the CFD, Crypto, and
- * Flagship pills on a single route. Uses the same shared week
- * switching logic as Sentiment/Antikythera/Performance sections.
+ * Consolidated matrix workspace hosting the CFD and Crypto boards.
+ * Uses the shared StrategySelector in the sidebar (same pattern as
+ * Performance section). Strategy selection drives both boards.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
