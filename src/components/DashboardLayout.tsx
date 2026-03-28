@@ -30,6 +30,7 @@ const TOP_LEVEL: NavItem[] = [
   { key: "accounts", href: "/accounts", label: "Accounts", letter: "A" },
   { key: "automation", href: "/automation", label: "Automation", letter: "U" },
   { key: "news", href: "/news", label: "News", letter: "N" },
+  { key: "status", href: "/status", label: "Status", letter: "S" },
 ];
 
 const SECTION_LABELS: Record<string, string> = {
@@ -39,6 +40,7 @@ const SECTION_LABELS: Record<string, string> = {
   accounts: "Accounts",
   flagship: "Matrix",
   news: "News",
+  status: "Status",
 };
 
 function resolveSection(pathname: string) {
@@ -49,7 +51,8 @@ function resolveSection(pathname: string) {
   if (pathname.startsWith("/automation")) return "automation";
   if (pathname.startsWith("/accounts")) return "accounts";
   if (pathname.startsWith("/matrix") || pathname.startsWith("/flagship")) return "flagship";
-  if (pathname.startsWith("/news") || pathname.startsWith("/status")) return "news";
+  if (pathname.startsWith("/status")) return "status";
+  if (pathname.startsWith("/news")) return "news";
   return null;
 }
 
@@ -150,10 +153,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       ];
     }
     if (activeSection === "news") {
-      return [
-        { href: "/news", label: "News" },
-        { href: "/status", label: "Status" },
-      ];
+      return [{ href: "/news", label: "News" }];
     }
     return [];
   })();
@@ -236,6 +236,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {TOP_LEVEL.map((item) => {
             const isActive = activeSection === item.key;
             const isNews = item.key === "news";
+            const isStatus = item.key === "status";
+            const isSpecial = isNews || isStatus;
             return (
               <button
                 key={item.key}
@@ -246,19 +248,25 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     ? "border border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
                     : isNews
                       ? "border border-amber-400/40 bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 hover:border-amber-300/70 hover:bg-amber-500/15 dark:hover:bg-amber-900/40 dark:text-amber-200"
-                      : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
+                      : isStatus
+                        ? "border border-emerald-400/40 bg-emerald-500/10 dark:bg-emerald-900/30 text-emerald-700 hover:border-emerald-300/70 hover:bg-emerald-500/15 dark:hover:bg-emerald-900/40 dark:text-emerald-200"
+                        : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
                 }`}
               >
                 {isNews ? (
                   <span className="rounded-full border border-amber-400/50 bg-amber-500/15 dark:bg-amber-900/40 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-current">
                     News
                   </span>
+                ) : isStatus ? (
+                  <span className="rounded-full border border-emerald-400/50 bg-emerald-500/15 dark:bg-emerald-900/40 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-current">
+                    Status
+                  </span>
                 ) : (
                   <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-base font-bold text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
                     {item.letter}
                   </span>
                 )}
-                {!isNews ? <span className="tracking-tight">{item.label}</span> : null}
+                {!isSpecial ? <span className="tracking-tight">{item.label}</span> : null}
               </button>
             );
           })}
