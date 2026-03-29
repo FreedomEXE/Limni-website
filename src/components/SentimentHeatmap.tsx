@@ -39,10 +39,10 @@ function crowdingTone(
 function tradeBiasLabel(
   state: SentimentAggregate["crowding_state"],
 ): string {
-  if (state === "CROWDED_LONG" || state === "EXTREME_LONG") {
+  if (state === "CROWDED_LONG") {
     return "SHORT";
   }
-  if (state === "CROWDED_SHORT" || state === "EXTREME_SHORT") {
+  if (state === "CROWDED_SHORT") {
     return "LONG";
   }
   return "NEUTRAL";
