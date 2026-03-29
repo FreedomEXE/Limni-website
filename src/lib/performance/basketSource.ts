@@ -66,29 +66,47 @@ async function resolveCotBasket(
   const signals: CanonicalBasketSignal[] = [];
 
   for (const ac of ASSET_CLASSES) {
+    const pairDefs = PAIRS_BY_ASSET_CLASS[ac] ?? [];
+
     try {
       const snapshot = await readSnapshot({ assetClass: ac, reportDate });
-      if (!snapshot) continue;
+      if (!snapshot) {
+        // Missing snapshot — emit explicit NEUTRAL for every known pair (Rule 3+4)
+        for (const pd of pairDefs) {
+          signals.push({
+            weekOpenUtc, model, symbol: pd.pair, assetClass: ac,
+            direction: "NEUTRAL", sourceReportDate: reportDate,
+            metadata: { reason: "missing_snapshot" },
+          });
+        }
+        continue;
+      }
 
-      const pairDefs = PAIRS_BY_ASSET_CLASS[ac] ?? [];
       // Use the same derivation functions as the Data section:
       // FX uses cross-currency (base vs quote), non-FX uses base-only
       const derivedPairs = ac === "fx"
         ? derivePairDirectionsWithNeutral(snapshot.currencies, pairDefs, model)
         : derivePairDirectionsByBaseWithNeutral(snapshot.currencies, pairDefs, model);
 
-      for (const [symbol, pairSnapshot] of Object.entries(derivedPairs)) {
+      // Emit signals for all known pairs — if derivation skipped a pair, emit NEUTRAL
+      for (const pd of pairDefs) {
+        const derived = derivedPairs[pd.pair];
         signals.push({
-          weekOpenUtc,
-          model,
-          symbol,
-          assetClass: ac,
-          direction: pairSnapshot.direction as BasketDirection,
+          weekOpenUtc, model, symbol: pd.pair, assetClass: ac,
+          direction: (derived?.direction as BasketDirection) ?? "NEUTRAL",
           sourceReportDate: reportDate,
+          metadata: derived ? undefined : { reason: "no_derivation" },
         });
       }
     } catch {
-      // Missing snapshot for this asset class/week — skip gracefully
+      // Error reading snapshot — emit explicit NEUTRAL for every known pair (Rule 4)
+      for (const pd of pairDefs) {
+        signals.push({
+          weekOpenUtc, model, symbol: pd.pair, assetClass: ac,
+          direction: "NEUTRAL", sourceReportDate: reportDate,
+          metadata: { reason: "snapshot_error" },
+        });
+      }
     }
   }
 
@@ -110,7 +128,24 @@ async function resolveSentimentBasket(
       close.toUTC().toISO()!,
     );
 
+    if (aggregates.length === 0) {
+      // No sentiment data — emit explicit NEUTRAL for all known pairs (Rule 3+4)
+      for (const ac of ASSET_CLASSES) {
+        for (const pd of (PAIRS_BY_ASSET_CLASS[ac] ?? [])) {
+          signals.push({
+            weekOpenUtc, model: "sentiment", symbol: pd.pair,
+            assetClass: ac, direction: "NEUTRAL", sourceReportDate: null,
+            metadata: { reason: "no_sentiment_data" },
+          });
+        }
+      }
+      return signals;
+    }
+
+    // Build set of symbols with sentiment data for gap detection
+    const coveredSymbols = new Set<string>();
     for (const agg of aggregates) {
+      coveredSymbols.add(agg.symbol);
       const dir = sentimentDirectionFromAggregate(agg);
       const direction: BasketDirection =
         dir === "LONG" ? "LONG" : dir === "SHORT" ? "SHORT" : "NEUTRAL";
@@ -129,8 +164,30 @@ async function resolveSentimentBasket(
         },
       });
     }
+
+    // Emit explicit NEUTRAL for known pairs not covered by sentiment (Rule 3)
+    for (const ac of ASSET_CLASSES) {
+      for (const pd of (PAIRS_BY_ASSET_CLASS[ac] ?? [])) {
+        if (!coveredSymbols.has(pd.pair)) {
+          signals.push({
+            weekOpenUtc, model: "sentiment", symbol: pd.pair,
+            assetClass: ac, direction: "NEUTRAL", sourceReportDate: null,
+            metadata: { reason: "no_sentiment_coverage" },
+          });
+        }
+      }
+    }
   } catch {
-    // Missing sentiment data for this week — return empty
+    // Error fetching sentiment — emit explicit NEUTRAL for all known pairs (Rule 4)
+    for (const ac of ASSET_CLASSES) {
+      for (const pd of (PAIRS_BY_ASSET_CLASS[ac] ?? [])) {
+        signals.push({
+          weekOpenUtc, model: "sentiment", symbol: pd.pair,
+          assetClass: ac, direction: "NEUTRAL", sourceReportDate: null,
+          metadata: { reason: "sentiment_error" },
+        });
+      }
+    }
   }
 
   return signals;
