@@ -2,11 +2,12 @@
   Property of Freedom_EXE  (c) 2026
 -----------------------------------------------*/
 /**
- * File: PerformanceSidebar.tsx
+ * File: StrategySidebar.tsx
  *
  * Description:
- * Performance sidebar with bias source / filter dropdowns and
- * stats that react to week changes via custom events.
+ * Shared strategy sidebar used by Performance, Matrix, and any future
+ * section that needs strategy/filter selection + aggregate stats.
+ * Contains the StrategySelector dropdowns and engine-driven stats card.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -15,8 +16,8 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import PerformanceStrategySelector from "@/components/performance/PerformanceStrategySelector";
-import { resolveStrategyId } from "@/lib/performance/strategyConfig";
+import StrategySelector from "@/components/shared/StrategySelector";
+import { resolveStrategyId, resolveIntradayFilterId, getIntradayFilter } from "@/lib/performance/strategyConfig";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 
 function formatPF(pf: number | null | undefined): string {
@@ -37,14 +38,15 @@ type WeekStats = {
 function EngineSidebarStatsCard() {
   const searchParams = useSearchParams();
   const bias = resolveStrategyId(searchParams.get("strategy") ?? searchParams.get("bias"));
+  const f2 = resolveIntradayFilterId(searchParams.get("f2"));
   const [allTimeStats, setAllTimeStats] = useState<EngineSidebarStats | null>(null);
   const [weekStats, setWeekStats] = useState<WeekStats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all-time stats on bias change
+  // Fetch all-time stats on bias or filter change
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/performance/engine-stats?bias=${bias}`)
+    fetch(`/api/performance/engine-stats?bias=${bias}&f2=${f2}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) setAllTimeStats(null);
@@ -52,7 +54,7 @@ function EngineSidebarStatsCard() {
         setLoading(false);
       })
       .catch(() => { setAllTimeStats(null); setLoading(false); });
-  }, [bias]);
+  }, [bias, f2]);
 
   // Listen for week change events from ViewSection
   useEffect(() => {
@@ -75,6 +77,7 @@ function EngineSidebarStatsCard() {
   const at = allTimeStats?.allTime;
   const isAllTime = weekStats?.weekKey === "all" || !weekStats;
   const returnColor = (v: number) => v >= 0 ? "text-lime-400" : "text-red-400";
+  const filterLabel = f2 !== "none" ? ` · ${getIntradayFilter(f2)?.label ?? f2}` : "";
 
   return (
     <div className="space-y-3">
@@ -114,7 +117,7 @@ function EngineSidebarStatsCard() {
       {at && (
         <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--accent-strong)]">
-            {allTimeStats?.biasSourceLabel} · Weekly Hold
+            {allTimeStats?.biasSourceLabel} · Weekly Hold{filterLabel}
           </div>
           <div className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
             {at.weeks} Weeks Tracked
@@ -159,13 +162,10 @@ function EngineSidebarStatsCard() {
   );
 }
 
-export default function PerformanceSidebar() {
+export default function StrategySidebar() {
   return (
     <div className="flex-1 space-y-4 p-4">
-      <PerformanceStrategySelector
-        initialBiasSource="dealer"
-        initialFilter="weekly_hold"
-      />
+      <StrategySelector />
 
       <div className="border-t border-[var(--panel-border)] pt-4">
         <EngineSidebarStatsCard />

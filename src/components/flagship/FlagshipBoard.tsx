@@ -593,12 +593,17 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc }: { wee
     }
 
     fetchBoardData();
-    const adrWeekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
-    fetch(`/api/flagship/adr-trades${adrWeekQs}`).then(r => r.json()).then(setAdrTrades).catch(() => {});
+    // Only fetch ADR trades when the intraday filter is active
+    if (activeSelection.f2 !== "none") {
+      const adrWeekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
+      fetch(`/api/flagship/adr-trades${adrWeekQs}`).then(r => r.json()).then(setAdrTrades).catch(() => {});
+    } else {
+      setAdrTrades(null);
+    }
     return () => {
       cancelled = true;
     };
-  }, [refreshTick, weekOpenUtc]);
+  }, [refreshTick, weekOpenUtc, activeSelection.f2]);
 
   const matrixRows = useMemo(() => {
     const gatedByPair = new Map<string, CanonicalWeeklySignal>();

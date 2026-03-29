@@ -7,8 +7,7 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
-import MatrixSidebar from "@/components/matrix/MatrixSidebar";
-import PerformanceSidebar from "@/components/performance/PerformanceSidebar";
+import StrategySidebar from "@/components/shared/StrategySidebar";
 import { resolveAccountView, type AccountPageView } from "@/lib/accounts/navigation";
 
 type NavItem = {
@@ -276,11 +275,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
 
     if (activeSection === "performance") {
-      return <PerformanceSidebar />;
+      return <StrategySidebar />;
     }
 
     if (activeSection === "flagship") {
-      return <MatrixSidebar />;
+      return <StrategySidebar />;
     }
 
     return (

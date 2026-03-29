@@ -44,7 +44,22 @@ function formatPct(value: number | null): string {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
+function TradeDetailRow({ detail }: { detail: { entryPrice: number; exitPrice: number | null; tpPrice: number | null; adrPct: number | null; maePct: number | null; exitReason: string | null; entryTimeUtc: string | null; tradeNumber: number } }) {
+  return (
+    <div className="mt-1.5 grid grid-cols-4 gap-x-4 gap-y-1 text-[10px] text-[color:var(--muted)]">
+      <span>Entry: <strong className="text-[var(--foreground)]">{detail.entryPrice.toFixed(5)}</strong></span>
+      <span>Exit: <strong className="text-[var(--foreground)]">{detail.exitPrice?.toFixed(5) ?? "—"}</strong></span>
+      <span>TP: <strong className="text-[var(--foreground)]">{detail.tpPrice?.toFixed(5) ?? "—"}</strong></span>
+      <span>Result: <strong className={detail.exitReason === "tp" ? "text-lime-400" : "text-red-400"}>{detail.exitReason?.toUpperCase() ?? "—"}</strong></span>
+      {detail.adrPct != null && <span>ADR: <strong className="text-[var(--foreground)]">{detail.adrPct.toFixed(2)}%</strong></span>}
+      {detail.maePct != null && <span>MAE: <strong className="text-red-400">{detail.maePct.toFixed(2)}%</strong></span>}
+    </div>
+  );
+}
+
 function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
+  const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
+
   // Flatten all trades from all models into a single list
   const allTrades = gridProps.combined.models.flatMap((model) =>
     model.pair_details.map((detail) => ({
@@ -55,8 +70,20 @@ function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
 
   // Sort: winners first (by return descending), then losers
   const sorted = [...allTrades].sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0));
+
+  // Count total individual trades (children count as separate trades)
+  const totalTradeCount = sorted.reduce((s, t) => s + (t.children?.length ?? 1), 0);
   const totalReturn = sorted.reduce((s, t) => s + (t.percent ?? 0), 0);
   const wins = sorted.filter((t) => (t.percent ?? 0) > 0).length;
+
+  const toggleExpand = (key: string) => {
+    setExpandedPairs((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   return (
     <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
@@ -67,7 +94,7 @@ function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
           </p>
         </div>
         <div className="flex items-center gap-4 text-xs">
-          <span className="text-[color:var(--muted)]">{sorted.length} trades</span>
+          <span className="text-[color:var(--muted)]">{totalTradeCount} trades</span>
           <span className="text-lime-400">{wins}W</span>
           <span className="text-red-400">{sorted.length - wins}L</span>
           <span className={totalReturn >= 0 ? "font-bold text-lime-400" : "font-bold text-red-400"}>
@@ -84,33 +111,97 @@ function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
         ) : (
           sorted.map((trade, i) => {
             const isWin = (trade.percent ?? 0) > 0;
+            const hasChildren = trade.children && trade.children.length > 0;
+            const rowKey = `${trade.pair}-${trade.direction}-${i}`;
+            const isExpanded = expandedPairs.has(rowKey);
+
             return (
-              <div
-                key={`${trade.pair}-${trade.direction}-${i}`}
-                className="flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2.5"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-24 text-sm font-semibold text-[var(--foreground)]">
-                    {trade.pair}
-                  </span>
+              <div key={rowKey}>
+                {/* Parent row */}
+                <div
+                  className={`flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2.5 ${hasChildren ? "cursor-pointer hover:border-[var(--accent)]/30" : ""}`}
+                  onClick={hasChildren ? () => toggleExpand(rowKey) : undefined}
+                >
+                  <div className="flex items-center gap-3">
+                    {hasChildren && (
+                      <span className="w-4 text-[10px] text-[color:var(--muted)]">{isExpanded ? "▾" : "▸"}</span>
+                    )}
+                    <span className="w-24 text-sm font-semibold text-[var(--foreground)]">
+                      {trade.pair}
+                    </span>
+                    <span
+                      className={`text-[11px] font-bold uppercase ${
+                        trade.direction === "LONG" ? "text-emerald-500" : "text-rose-500"
+                      }`}
+                    >
+                      {trade.direction}
+                    </span>
+                    <span className="text-[10px] text-[color:var(--muted)]">
+                      {trade.slotLabel}
+                    </span>
+                    {hasChildren && (
+                      <span className="text-[10px] text-[color:var(--muted)]">
+                        {trade.children!.length} trades
+                      </span>
+                    )}
+                  </div>
                   <span
-                    className={`text-[11px] font-bold uppercase ${
-                      trade.direction === "LONG" ? "text-emerald-500" : "text-rose-500"
+                    className={`text-sm font-semibold ${
+                      isWin ? "text-lime-400" : (trade.percent ?? 0) < 0 ? "text-red-400" : "text-[color:var(--muted)]"
                     }`}
                   >
-                    {trade.direction}
-                  </span>
-                  <span className="text-[10px] text-[color:var(--muted)]">
-                    {trade.slotLabel}
+                    {formatPct(trade.percent)}
                   </span>
                 </div>
-                <span
-                  className={`text-sm font-semibold ${
-                    isWin ? "text-lime-400" : (trade.percent ?? 0) < 0 ? "text-red-400" : "text-[color:var(--muted)]"
-                  }`}
-                >
-                  {formatPct(trade.percent)}
-                </span>
+
+                {/* Trade detail for single trades */}
+                {!hasChildren && trade.tradeDetail && isExpanded && (
+                  <div className="ml-7 mt-1 rounded-lg border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-4 py-2">
+                    <TradeDetailRow detail={trade.tradeDetail} />
+                  </div>
+                )}
+
+                {/* Single trade — make it expandable too for detail */}
+                {!hasChildren && trade.tradeDetail && !isExpanded && (
+                  <div
+                    className="ml-7 mt-0.5 cursor-pointer text-[10px] text-[color:var(--muted)] hover:text-[var(--accent)]"
+                    onClick={() => toggleExpand(rowKey)}
+                  >
+                    show detail
+                  </div>
+                )}
+
+                {/* Children trades (expanded) */}
+                {hasChildren && isExpanded && (
+                  <div className="ml-7 mt-1 space-y-1">
+                    {trade.children!.map((child, ci) => {
+                      const childWin = (child.percent ?? 0) > 0;
+                      return (
+                        <div key={ci} className="rounded-lg border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-4 py-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] text-[color:var(--muted)]">#{child.tradeDetail?.tradeNumber ?? ci + 1}</span>
+                              <span
+                                className={`text-[10px] font-bold uppercase ${
+                                  child.direction === "LONG" ? "text-emerald-500" : "text-rose-500"
+                                }`}
+                              >
+                                {child.direction}
+                              </span>
+                              <span className="text-[10px] text-[color:var(--muted)]">
+                                {child.tradeDetail?.exitReason?.toUpperCase() ?? ""}
+                              </span>
+                            </div>
+                            <span className={`text-xs font-semibold ${childWin ? "text-lime-400" : (child.percent ?? 0) < 0 ? "text-red-400" : "text-[color:var(--muted)]"}`}>
+                              {formatPct(child.percent)}
+                            </span>
+                          </div>
+                          {child.tradeDetail && <TradeDetailRow detail={child.tradeDetail} />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })

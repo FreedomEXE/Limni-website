@@ -39,7 +39,7 @@ import { resolvePerformanceView, resolveSelectedPerformanceWeek } from "@/lib/pe
 import { computeReturnStats, type ModelPerformance, type PerformanceModel } from "@/lib/performanceLab";
 import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegistry";
 import { DateTime } from "luxon";
-import { resolveBiasSourceId, getBiasSource } from "@/lib/performance/strategyConfig";
+import { resolveBiasSourceId, getBiasSource, resolveIntradayFilterId, getIntradayFilter } from "@/lib/performance/strategyConfig";
 import { computeWeeklyHold, computeMultiWeekHold } from "@/lib/performance/weeklyHoldEngine";
 import { weeklyHoldToGridProps, multiWeekToGridProps, multiWeekToSimulation, singleWeekToSimulation, type EngineGridProps, type EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 
@@ -1063,6 +1063,10 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const weekParamValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
   const strategyParam = resolvedSearchParams?.strategy ?? resolvedSearchParams?.bias;
   const biasParamValue = Array.isArray(strategyParam) ? strategyParam[0] : strategyParam;
+  const f2Param = resolvedSearchParams?.f2;
+  const f2Value = Array.isArray(f2Param) ? f2Param[0] : f2Param;
+  const intradayFilterId = resolveIntradayFilterId(f2Value);
+  const intradayFilter = getIntradayFilter(intradayFilterId);
 
   const resolvedFamily = parseFamily(styleParamValue);
   const initialStyle: WeeklyPerformanceFamily = resolvedFamily === "universal" ? "universal" : "tiered";
@@ -1114,8 +1118,10 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const biasSource = getBiasSource(biasSourceId)!;
   let engineWeekMap: Record<string, EngineGridProps> | null = null;
   let engineSimMap: Record<string, EngineSimulationGroup> | null = null;
+  console.log(`[perf-page] Engine: bias=${biasSourceId}, f2=${intradayFilterId}, plModel=${intradayFilter?.plModel ?? "weekly_hold"}, weeks=${weekSelectorOptions.length}`);
   try {
-    const multiWeekResult = await computeMultiWeekHold(biasSource, weekSelectorOptions);
+    const multiWeekResult = await computeMultiWeekHold(biasSource, weekSelectorOptions, intradayFilter);
+    console.log(`[perf-page] Engine returned: ${multiWeekResult.totalTrades} trades, ${multiWeekResult.totalReturnPct.toFixed(2)}% return across ${multiWeekResult.weeks.length} weeks`);
     const weekMap: Record<string, EngineGridProps> = {};
     const simMap: Record<string, EngineSimulationGroup> = {};
     // Build per-week GridProps + simulation
@@ -1129,8 +1135,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     simMap["all"] = multiWeekToSimulation(multiWeekResult, biasSource);
     engineWeekMap = weekMap;
     engineSimMap = simMap;
-  } catch {
-    // Engine computation failed — fall back to legacy view
+  } catch (err) {
+    console.error(`[perf-page] Engine FAILED:`, err instanceof Error ? err.message : err);
   }
 
   const universal = buildSystemMaps({
@@ -1211,7 +1217,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               Performance
             </h1>
             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-              {biasSource.label} · Weekly Hold{resolvedSearchParams?.f2 && resolvedSearchParams.f2 !== "none" ? ` · ${String(resolvedSearchParams.f2).replace(/_/g, " ")}` : ""}
+              {biasSource.label} · Weekly Hold{intradayFilter && intradayFilter.id !== "none" ? ` · ${intradayFilter.label}` : ""}
             </p>
           </div>
         </header>

@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { computeWeeklyHold, computeMultiWeekHold } from "@/lib/performance/weeklyHoldEngine";
-import { getBiasSource, resolveBiasSourceId } from "@/lib/performance/strategyConfig";
+import { getBiasSource, resolveBiasSourceId, resolveIntradayFilterId, getIntradayFilter } from "@/lib/performance/strategyConfig";
 import { weeklyHoldToSidebarStats } from "@/lib/performance/engineAdapter";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
@@ -31,12 +31,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unknown bias source" }, { status: 400 });
   }
 
+  const f2Value = searchParams.get("f2");
+  const intradayFilterId = resolveIntradayFilterId(f2Value);
+  const intradayFilter = getIntradayFilter(intradayFilterId);
+
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const weekOpenUtc = searchParams.get("week") ?? currentWeekOpenUtc;
 
   try {
     // Single-week computation
-    const result = await computeWeeklyHold(biasSource, weekOpenUtc);
+    const result = await computeWeeklyHold(biasSource, weekOpenUtc, intradayFilter);
 
     // Multi-week computation for all-time stats
     const dataSectionWeeks = await listDataSectionWeeks();
@@ -44,7 +48,7 @@ export async function GET(request: NextRequest) {
       historicalWeeks: dataSectionWeeks,
       currentWeekOpenUtc,
     }) as string[];
-    const multiWeek = await computeMultiWeekHold(biasSource, weekOptions);
+    const multiWeek = await computeMultiWeekHold(biasSource, weekOptions, intradayFilter);
 
     const stats = weeklyHoldToSidebarStats(result, biasSource, multiWeek);
     return NextResponse.json(stats);

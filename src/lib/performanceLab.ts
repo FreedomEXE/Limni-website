@@ -15,6 +15,18 @@ import {
 } from "./antikythera";
 import { ANTIKYTHERA_MAX_SIGNALS } from "./antikythera";
 
+/** Structured trade metadata for intraday strategies (ADR, stoch, etc.) */
+export type TradeDetailMeta = {
+  tradeNumber: number;
+  entryPrice: number;
+  exitPrice: number | null;
+  tpPrice: number | null;
+  adrPct: number | null;
+  maePct: number | null;
+  exitReason: string | null;
+  entryTimeUtc: string | null;
+};
+
 export type PerformanceModel =
   | "blended"
   | "dealer"
@@ -36,12 +48,16 @@ export type ModelPerformance = {
     direction: Direction;
     reason: string[];
     percent: number | null;
+    /** Nested sub-trades (e.g., multiple ADR entries on the same pair) */
     children?: Array<{
       pair: string;
       direction: Direction;
       reason: string[];
       percent: number | null;
+      tradeDetail?: TradeDetailMeta;
     }>;
+    /** Structured trade metadata for intraday strategies */
+    tradeDetail?: TradeDetailMeta;
   }>;
   stats: {
     avg_return: number;

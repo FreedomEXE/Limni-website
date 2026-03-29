@@ -5,14 +5,17 @@
  * File: weeklyHoldEngine.ts
  *
  * Description:
- * Computes weekly hold performance for ANY bias source using canonical data.
- * Reads from the same DB tables as the Data section:
+ * Unified strategy engine for Performance and Matrix sections.
+ * Routes to the correct executor based on the intraday filter's plModel:
+ *   - "weekly_hold" → reads pair_period_returns (open→close P&L)
+ *   - "adr"         → reads strategy_backtest_trades (0.25% TP, week-close loss)
+ *   - future models → add executor function + register in EXECUTORS map
+ *
+ * Data sources:
  *   - pair_period_returns: weekly open/close/return per pair
+ *   - strategy_backtest_trades: intraday trade-level P&L (ADR, stoch, etc.)
  *   - cot_snapshots: dealer/commercial direction per pair per week
  *   - sentiment_aggregates: retail sentiment direction per pair per week
- *
- * NO new crons, NO new tables, NO separate data pipeline.
- * This is a READ-ONLY computation layer.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -26,7 +29,22 @@ import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
 import { sentimentDirectionFromAggregate } from "@/lib/sentiment/daily";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { deriveCotReportDate, findDataSectionWeekByReportDate, listDataSectionWeekEntries } from "@/lib/dataSectionWeeks";
-import type { BiasSourceConfig } from "@/lib/performance/strategyConfig";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import type { BiasSourceConfig, IntradayFilterConfig } from "@/lib/performance/strategyConfig";
+
+// ─── Trade types (strategy-generic) ─────────────────────────────
+// "WeeklyHoldTrade" name kept for backward compat; represents any strategy trade.
+
+export type TradeDetail = {
+  tradeNumber: number;
+  entryTimeUtc: string | null;
+  exitTimeUtc: string | null;
+  exitReason: string | null;
+  anchorPrice: number | null;
+  tpPrice: number | null;
+  adrPct: number | null;
+  maePct: number | null;
+};
 
 export type WeeklyHoldTrade = {
   symbol: string;
@@ -35,11 +53,15 @@ export type WeeklyHoldTrade = {
   openPrice: number;
   closePrice: number;
   returnPct: number;
-  /** The model(s) that generated this signal */
+  /** The model that generated this signal (dealer/commercial/sentiment/etc.) */
   source: string;
-  /** Tier (for tiered sources) or null */
+  /** Tier (1=high, 2=medium, 3=low) or null */
   tier: number | null;
+  /** Intraday trade detail (present for ADR/stoch trades, absent for weekly hold) */
+  detail?: TradeDetail;
 };
+/** @alias WeeklyHoldTrade — use this name in new code */
+export type StrategyTrade = WeeklyHoldTrade;
 
 export type WeeklyHoldResult = {
   weekOpenUtc: string;
@@ -51,6 +73,8 @@ export type WeeklyHoldResult = {
   winRate: number;
   tradeCount: number;
 };
+/** @alias WeeklyHoldResult — use this name in new code */
+export type StrategyWeekResult = WeeklyHoldResult;
 
 export type MultiWeekResult = {
   biasSourceId: string;
@@ -209,12 +233,199 @@ async function resolveDirections(
   return map;
 }
 
+// ─── Tier string → number mapping ───────────────────────────────
+
+const TIER_MAP: Record<string, number> = { HIGH: 1, MEDIUM: 2, LOW: 3 };
+
+function parseTier(raw: unknown): number | null {
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string") return TIER_MAP[raw.toUpperCase()] ?? null;
+  return null;
+}
+
+// ─── ADR trade executor (reads from strategy_backtest_trades) ───
+
+async function executeAdr(
+  biasSource: BiasSourceConfig,
+  weekOpenUtc: string,
+): Promise<WeeklyHoldResult> {
+  // Step 1: Get the bias source's direction signals for this week.
+  // This determines WHICH trades to include — only trades where the
+  // bias source agrees with the scanner's direction pass through.
+  const directions = await resolveDirections(biasSource, weekOpenUtc);
+
+  // Build a quick lookup: symbol → Set of approved directions
+  // For tandem, key is "PAIR:model" — extract the pair name
+  const approvedDirections = new Map<string, Set<string>>();
+  for (const [key, entry] of directions) {
+    const pair = key.includes(":") ? key.split(":")[0]! : key;
+    if (!approvedDirections.has(pair)) approvedDirections.set(pair, new Set());
+    approvedDirections.get(pair)!.add(entry.direction);
+  }
+
+  // Step 2: Query ADR trades from the scanner
+  const runRows = await query<{ id: string }>(
+    `SELECT id FROM strategy_backtest_runs
+     WHERE bot_id = 'adr-forward' AND variant = 'fresh-start'
+       AND market = 'multi-asset' AND config_key = 'default' LIMIT 1`,
+    [],
+  );
+  if (runRows.length === 0) {
+    console.log("[engine] No ADR run found in strategy_backtest_runs");
+    return { weekOpenUtc, biasSourceId: biasSource.id, trades: [], totalReturnPct: 0, winCount: 0, lossCount: 0, winRate: 0, tradeCount: 0 };
+  }
+  const runId = Number(runRows[0]!.id);
+
+  const tradeRows = await query<{
+    symbol: string;
+    direction: string;
+    entry_price: string | null;
+    exit_price: string | null;
+    pnl_pct: string | null;
+    exit_reason: string | null;
+    entry_time_utc: string | null;
+    exit_time_utc: string | null;
+    metadata: Record<string, unknown> | null;
+  }>(
+    `SELECT symbol, direction, entry_price, exit_price, pnl_pct, exit_reason,
+            entry_time_utc::text, exit_time_utc::text, metadata
+     FROM strategy_backtest_trades
+     WHERE run_id = $1 AND week_open_utc = $2::timestamptz
+     ORDER BY entry_time_utc ASC NULLS LAST`,
+    [runId, weekOpenUtc],
+  );
+
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  const isPastWeek = weekOpenUtc !== currentWeekOpenUtc;
+
+  let closePrices = new Map<string, number>();
+  if (isPastWeek) {
+    const priceRows = await query<{ symbol: string; close_price: string }>(
+      `SELECT symbol, close_price FROM pair_period_returns
+       WHERE period_type = 'weekly' AND period_open_utc = $1::timestamptz`,
+      [weekOpenUtc],
+    );
+    for (const r of priceRows) {
+      closePrices.set(r.symbol.toUpperCase(), Number(r.close_price));
+    }
+  }
+
+  // Step 3: Map trades, filtering by bias source direction
+  const VALID_MODELS = new Set(["dealer", "commercial", "sentiment"]);
+  const trades: WeeklyHoldTrade[] = [];
+  let skippedByDirection = 0;
+
+  for (const r of tradeRows) {
+    // Skip active trades on current week (no realized P&L yet)
+    if (!isPastWeek && r.exit_reason === "active") continue;
+
+    // Direction filter: only include if bias source agrees
+    const pairUpper = r.symbol.toUpperCase();
+    const approved = approvedDirections.get(pairUpper) ?? approvedDirections.get(r.symbol);
+    if (!approved || !approved.has(r.direction)) {
+      skippedByDirection++;
+      continue;
+    }
+
+    const entryPrice = r.entry_price ? Number(r.entry_price) : 0;
+    let exitPrice = r.exit_price ? Number(r.exit_price) : entryPrice;
+    let pnlPct = r.pnl_pct ? Number(r.pnl_pct) : 0;
+
+    if (isPastWeek && r.exit_reason === "active" && entryPrice) {
+      const weekClosePrice = closePrices.get(pairUpper);
+      if (weekClosePrice) {
+        exitPrice = weekClosePrice;
+        const rawReturn = ((weekClosePrice - entryPrice) / entryPrice) * 100;
+        pnlPct = r.direction === "SHORT" ? -rawReturn : rawReturn;
+      }
+    }
+
+    const meta = r.metadata ?? {};
+    const rawModel = (meta.model as string) ?? "";
+    const source = VALID_MODELS.has(rawModel) ? rawModel : "dealer";
+
+    // For tandem source field: use the entry's source from direction map if available
+    let tradeSource = source;
+    if (biasSource.id === "tandem") {
+      // Find which model approved this trade
+      for (const [key, entry] of directions) {
+        const pair = key.includes(":") ? key.split(":")[0]! : key;
+        if ((pair === pairUpper || pair === r.symbol) && entry.direction === r.direction) {
+          tradeSource = entry.source;
+          break;
+        }
+      }
+    }
+
+    trades.push({
+      symbol: r.symbol,
+      assetClass: (meta.assetClass as string) ?? inferAssetClass(r.symbol),
+      direction: r.direction as "LONG" | "SHORT",
+      openPrice: entryPrice,
+      closePrice: exitPrice,
+      returnPct: pnlPct,
+      source: tradeSource,
+      tier: parseTier(meta.tier),
+      detail: {
+        tradeNumber: (meta.tradeNumber as number) ?? 1,
+        entryTimeUtc: r.entry_time_utc,
+        exitTimeUtc: r.exit_time_utc,
+        exitReason: r.exit_reason,
+        anchorPrice: (meta.anchorPrice as number) ?? null,
+        tpPrice: (meta.tpPrice as number) ?? null,
+        adrPct: (meta.adrPct as number) ?? null,
+        maePct: (meta.maePct as number) ?? null,
+      },
+    });
+  }
+
+  const totalReturn = trades.reduce((s, t) => s + t.returnPct, 0);
+  const wins = trades.filter((t) => t.returnPct > 0).length;
+  const losses = trades.filter((t) => t.returnPct <= 0).length;
+
+  console.log(`[engine] ADR executor (${biasSource.id}): ${weekOpenUtc} → ${trades.length} trades (${skippedByDirection} filtered out), ${totalReturn.toFixed(2)}% return`);
+
+  return {
+    weekOpenUtc,
+    biasSourceId: biasSource.id,
+    trades,
+    totalReturnPct: totalReturn,
+    winCount: wins,
+    lossCount: losses,
+    winRate: trades.length > 0 ? (wins / trades.length) * 100 : 0,
+    tradeCount: trades.length,
+  };
+}
+
+// ─── Executor registry ──────────────────────────────────────────
+// Adding a new strategy = write an executor function + add one line here.
+
+type StrategyExecutor = (
+  biasSource: BiasSourceConfig,
+  weekOpenUtc: string,
+) => Promise<WeeklyHoldResult>;
+
+const EXECUTORS: Record<string, StrategyExecutor> = {
+  adr: executeAdr,
+  // Future: stoch, adr_stoch, etc.
+};
+
 // ─── Core computation ───────────────────────────────────────────
 
 export async function computeWeeklyHold(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
+  intradayFilter?: IntradayFilterConfig,
 ): Promise<WeeklyHoldResult> {
+  // Route to the correct executor based on plModel
+  const plModel = intradayFilter?.plModel ?? "weekly_hold";
+  const executor = EXECUTORS[plModel];
+  if (executor) {
+    console.log(`[engine] Routing to ${plModel} executor for ${weekOpenUtc}`);
+    return executor(biasSource, weekOpenUtc);
+  }
+
+  // Default: weekly hold (open→close from pair_period_returns)
   const directions = await resolveDirections(biasSource, weekOpenUtc);
   const pairReturns = await getWeeklyPairReturns(weekOpenUtc);
   const returnMap = new Map(pairReturns.map((r) => [r.symbol, r]));
@@ -263,14 +474,15 @@ export async function computeWeeklyHold(
 export async function computeMultiWeekHold(
   biasSource: BiasSourceConfig,
   weekOpenUtcs: string[],
+  intradayFilter?: IntradayFilterConfig,
 ): Promise<MultiWeekResult> {
   const weeks: WeeklyHoldResult[] = [];
   for (const weekOpenUtc of weekOpenUtcs) {
     try {
-      const result = await computeWeeklyHold(biasSource, weekOpenUtc);
+      const result = await computeWeeklyHold(biasSource, weekOpenUtc, intradayFilter);
       weeks.push(result);
-    } catch {
-      // Skip weeks with errors (e.g., no data)
+    } catch (err) {
+      console.warn(`[engine] Skipping week ${weekOpenUtc}:`, err instanceof Error ? err.message : err);
     }
   }
 

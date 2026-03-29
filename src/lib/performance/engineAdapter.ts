@@ -18,9 +18,9 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import type { WeeklyHoldResult, WeeklyHoldTrade, MultiWeekResult } from "@/lib/performance/weeklyHoldEngine";
+import type { WeeklyHoldResult, WeeklyHoldTrade, MultiWeekResult, TradeDetail } from "@/lib/performance/weeklyHoldEngine";
 import type { BiasSourceConfig } from "@/lib/performance/strategyConfig";
-import type { ModelPerformance, PerformanceModel } from "@/lib/performanceLab";
+import type { ModelPerformance, PerformanceModel, TradeDetailMeta } from "@/lib/performanceLab";
 import { computeReturnStats } from "@/lib/performanceLab";
 import { PERFORMANCE_MODEL_LABELS } from "@/lib/performance/modelConfig";
 
@@ -115,23 +115,92 @@ function getLabels(breakdown: BiasSourceConfig["cardBreakdown"]): Record<Perform
 
 // ─── Trade → ModelPerformance conversion ────────────────────────
 
+function toDetailMeta(t: WeeklyHoldTrade): TradeDetailMeta | undefined {
+  if (!t.detail) return undefined;
+  return {
+    tradeNumber: t.detail.tradeNumber,
+    entryPrice: t.openPrice,
+    exitPrice: t.closePrice || null,
+    tpPrice: t.detail.tpPrice,
+    adrPct: t.detail.adrPct,
+    maePct: t.detail.maePct,
+    exitReason: t.detail.exitReason,
+    entryTimeUtc: t.detail.entryTimeUtc,
+  };
+}
+
+function buildReasonLines(t: WeeklyHoldTrade): string[] {
+  if (t.detail) {
+    const lines = [
+      `#${t.detail.tradeNumber}`,
+      `Entry ${t.openPrice.toFixed(5)}`,
+    ];
+    if (t.detail.tpPrice) lines.push(`TP ${t.detail.tpPrice.toFixed(5)}`);
+    lines.push(`Exit ${t.closePrice.toFixed(5)}`);
+    if (t.detail.exitReason) lines.push(t.detail.exitReason.toUpperCase());
+    if (t.detail.maePct != null) lines.push(`MAE ${t.detail.maePct.toFixed(2)}%`);
+    lines.push(`${t.returnPct >= 0 ? "+" : ""}${t.returnPct.toFixed(2)}%`);
+    return lines;
+  }
+  return [
+    `${t.assetClass.charAt(0).toUpperCase()}${t.assetClass.slice(1)} basket`,
+    `Open ${t.openPrice.toFixed(5)}`,
+    `Close ${t.closePrice.toFixed(5)}`,
+    `Return ${t.returnPct >= 0 ? "+" : ""}${t.returnPct.toFixed(2)}%`,
+  ];
+}
+
 function tradesToModelPerformance(
   slot: PerformanceModel,
   trades: WeeklyHoldTrade[],
   note: string,
 ): ModelPerformance {
   const returns = trades.map((t) => ({ pair: t.symbol, percent: t.returnPct }));
-  const pairDetails = trades.map((t) => ({
-    pair: t.symbol,
-    direction: t.direction,
-    reason: [
-      `${t.assetClass.charAt(0).toUpperCase()}${t.assetClass.slice(1)} basket`,
-      `Open ${t.openPrice.toFixed(5)}`,
-      `Close ${t.closePrice.toFixed(5)}`,
-      `Return ${t.returnPct >= 0 ? "+" : ""}${t.returnPct.toFixed(2)}%`,
-    ],
-    percent: t.returnPct,
-  }));
+
+  // Group trades by symbol for expandable view
+  const bySymbol = new Map<string, WeeklyHoldTrade[]>();
+  for (const t of trades) {
+    const key = t.symbol;
+    if (!bySymbol.has(key)) bySymbol.set(key, []);
+    bySymbol.get(key)!.push(t);
+  }
+
+  const pairDetails: ModelPerformance["pair_details"] = [];
+  for (const [symbol, group] of bySymbol) {
+    if (group.length === 1) {
+      // Single trade — flat row with detail
+      const t = group[0]!;
+      pairDetails.push({
+        pair: t.symbol,
+        direction: t.direction,
+        reason: buildReasonLines(t),
+        percent: t.returnPct,
+        tradeDetail: toDetailMeta(t),
+      });
+    } else {
+      // Multiple trades — parent with children
+      const totalReturn = group.reduce((s, t) => s + t.returnPct, 0);
+      const wins = group.filter((t) => t.returnPct > 0).length;
+      const parent = group[0]!;
+      pairDetails.push({
+        pair: symbol,
+        direction: parent.direction,
+        reason: [
+          `${group.length} trades`,
+          `${wins}W ${group.length - wins}L`,
+          `${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(2)}%`,
+        ],
+        percent: totalReturn,
+        children: group.map((t) => ({
+          pair: t.symbol,
+          direction: t.direction,
+          reason: buildReasonLines(t),
+          percent: t.returnPct,
+          tradeDetail: toDetailMeta(t),
+        })),
+      });
+    }
+  }
 
   return {
     model: slot,
