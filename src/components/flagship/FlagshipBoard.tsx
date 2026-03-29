@@ -487,7 +487,15 @@ function sizingToneClass(warning: string | null) {
   return "text-emerald-700 dark:text-emerald-300";
 }
 
-export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc }: { weekOpenUtc?: string | null; currentWeekOpenUtc?: string }) {
+type FlagshipBoardProps = {
+  weekOpenUtc?: string | null;
+  currentWeekOpenUtc?: string;
+  /** Pre-computed engine results per week — canonical source. When provided,
+   *  the board uses this instead of client-side fetching for trade data. */
+  engineWeekResults?: Record<string, import("@/lib/performance/weeklyHoldEngine").WeeklyHoldResult> | null;
+};
+
+export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineWeekResults }: FlagshipBoardProps) {
   const matrixSearchParams = useSearchParams();
   const activeSelection = readSelectionFromParams(matrixSearchParams);
   const activeLabel = selectionLabel(activeSelection);
@@ -593,17 +601,54 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc }: { wee
     }
 
     fetchBoardData();
-    // Only fetch ADR trades when the intraday filter is active
+    // ADR trades: use engine data if available (canonical), otherwise fetch client-side
     if (activeSelection.f2 !== "none") {
-      const adrWeekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
-      fetch(`/api/flagship/adr-trades${adrWeekQs}`).then(r => r.json()).then(setAdrTrades).catch(() => {});
+      const weekKey = weekOpenUtc ?? "";
+      const engineResult = engineWeekResults?.[weekKey];
+      if (engineResult && engineResult.trades.length > 0) {
+        // Build AdrTradesPayload from canonical engine data
+        const trades: AdrTradeRow[] = engineResult.trades.map((t) => ({
+          symbol: t.symbol,
+          direction: t.direction,
+          entryTimeUtc: t.detail?.entryTimeUtc ?? null,
+          exitTimeUtc: t.detail?.exitTimeUtc ?? null,
+          entryPrice: t.openPrice,
+          exitPrice: t.closePrice || null,
+          pnlPct: t.returnPct,
+          exitReason: t.detail?.exitReason ?? null,
+          tradeNumber: t.detail?.tradeNumber ?? null,
+          anchorPrice: t.detail?.anchorPrice ?? null,
+          adrPct: t.detail?.adrPct ?? null,
+          tpPrice: t.detail?.tpPrice ?? null,
+          maePct: t.detail?.maePct ?? null,
+          assetClass: t.assetClass,
+          tier: String(t.tier ?? ""),
+          gateDecision: null,
+        }));
+        const totalTpHits = trades.filter((t) => t.exitReason === "tp").length;
+        const totalActive = trades.filter((t) => t.exitReason === "active").length;
+        setAdrTrades({
+          weekOpenUtc: engineResult.weekOpenUtc,
+          generatedUtc: new Date().toISOString(),
+          totalTrades: trades.length,
+          totalTpHits,
+          totalActive,
+          totalLosses: trades.length - totalTpHits - totalActive,
+          weekReturnPct: engineResult.totalReturnPct,
+          trades,
+        });
+      } else {
+        // Fallback: client-side fetch (for current week live data or if engine data missing)
+        const adrWeekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
+        fetch(`/api/flagship/adr-trades${adrWeekQs}`).then(r => r.json()).then(setAdrTrades).catch(() => {});
+      }
     } else {
       setAdrTrades(null);
     }
     return () => {
       cancelled = true;
     };
-  }, [refreshTick, weekOpenUtc, activeSelection.f2]);
+  }, [refreshTick, weekOpenUtc, activeSelection.f2, engineWeekResults]);
 
   const matrixRows = useMemo(() => {
     const gatedByPair = new Map<string, CanonicalWeeklySignal>();

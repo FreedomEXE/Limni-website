@@ -40,8 +40,8 @@ import { computeReturnStats, type ModelPerformance, type PerformanceModel } from
 import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegistry";
 import { DateTime } from "luxon";
 import { resolveBiasSourceId, getBiasSource, resolveIntradayFilterId, getIntradayFilter } from "@/lib/performance/strategyConfig";
-import { computeWeeklyHold, computeMultiWeekHold } from "@/lib/performance/weeklyHoldEngine";
-import { weeklyHoldToGridProps, multiWeekToGridProps, multiWeekToSimulation, singleWeekToSimulation, type EngineGridProps, type EngineSimulationGroup } from "@/lib/performance/engineAdapter";
+import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
+import type { EngineGridProps, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -1112,32 +1112,17 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     }) ?? "all";
   const weekSelectorOptions = weekOptions; // for ScrollableWeekStrip (no "all")
 
-  // ─── Engine-driven computation (new bias source selector) ─────
-  // Compute ALL weeks once upfront — client switches instantly
+  // ─── Engine-driven computation (shared canonical loader) ────────
+  // Uses the same loader as Matrix — compute once, show everywhere.
   const biasSourceId = resolveBiasSourceId(biasParamValue);
   const biasSource = getBiasSource(biasSourceId)!;
-  let engineWeekMap: Record<string, EngineGridProps> | null = null;
-  let engineSimMap: Record<string, EngineSimulationGroup> | null = null;
-  console.log(`[perf-page] Engine: bias=${biasSourceId}, f2=${intradayFilterId}, plModel=${intradayFilter?.plModel ?? "weekly_hold"}, weeks=${weekSelectorOptions.length}`);
-  try {
-    const multiWeekResult = await computeMultiWeekHold(biasSource, weekSelectorOptions, intradayFilter);
-    console.log(`[perf-page] Engine returned: ${multiWeekResult.totalTrades} trades, ${multiWeekResult.totalReturnPct.toFixed(2)}% return across ${multiWeekResult.weeks.length} weeks`);
-    const weekMap: Record<string, EngineGridProps> = {};
-    const simMap: Record<string, EngineSimulationGroup> = {};
-    // Build per-week GridProps + simulation
-    for (const weekResult of multiWeekResult.weeks) {
-      const label = weekDisplayLabel(weekResult.weekOpenUtc);
-      weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(weekResult, biasSource, label);
-      simMap[weekResult.weekOpenUtc] = singleWeekToSimulation(weekResult, biasSource, label);
-    }
-    // Build "all time" aggregates
-    weekMap["all"] = multiWeekToGridProps(multiWeekResult, biasSource);
-    simMap["all"] = multiWeekToSimulation(multiWeekResult, biasSource);
-    engineWeekMap = weekMap;
-    engineSimMap = simMap;
-  } catch (err) {
-    console.error(`[perf-page] Engine FAILED:`, err instanceof Error ? err.message : err);
-  }
+  const strategyData = await loadStrategyPageData({
+    strategyId: biasSourceId,
+    f1: "weekly_hold",
+    f2: intradayFilterId,
+  });
+  const engineWeekMap = strategyData?.weekMap ?? null;
+  const engineSimMap = strategyData?.simMap ?? null;
 
   const universal = buildSystemMaps({
     family: "universal",

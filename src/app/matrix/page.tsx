@@ -20,6 +20,8 @@ import MatrixControls from "@/components/matrix/MatrixControls";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
+import { resolveStrategyId, resolveIntradayFilterId } from "@/lib/performance/strategyConfig";
+import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,12 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
   const weekParam = resolvedSearchParams.week;
   const weekValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
 
+  // Read strategy selection from URL params
+  const strategyParam = resolvedSearchParams.strategy ?? resolvedSearchParams.bias;
+  const strategyId = resolveStrategyId(Array.isArray(strategyParam) ? strategyParam[0] : strategyParam);
+  const f2Param = resolvedSearchParams.f2;
+  const f2 = resolveIntradayFilterId(Array.isArray(f2Param) ? f2Param[0] : f2Param);
+
   // Shared week switching — same logic as Sentiment/Antikythera
   const currentWeekOpen = getDisplayWeekOpenUtc();
   const historicalWeeks = await listDataSectionWeeks();
@@ -54,6 +62,13 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
     allowAll: false,
   }) as string | null;
 
+  // Canonical strategy data — computed once server-side, shared with Performance
+  const strategyData = await loadStrategyPageData({
+    strategyId,
+    f1: "weekly_hold",
+    f2,
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -66,7 +81,11 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
 
         {selectedTab === "crypto" ? <CryptoBoard weekOpenUtc={selectedWeek} /> : null}
         {selectedTab === "cfd" ? (
-          <FlagshipBoard weekOpenUtc={selectedWeek} currentWeekOpenUtc={currentWeekOpen} />
+          <FlagshipBoard
+            weekOpenUtc={selectedWeek}
+            currentWeekOpenUtc={currentWeekOpen}
+            engineWeekResults={strategyData?.weekResults ?? null}
+          />
         ) : null}
       </div>
     </DashboardLayout>

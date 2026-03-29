@@ -125,14 +125,12 @@ async function resolveDirections(
           // Re-derive from currencies using the specific model
           const currencies = snapshot.currencies;
           const currencyData = snapshot.currencies as unknown as Record<string, Record<string, string>>;
-          // For non-FX, check the market's own bias
+          // For non-FX, pair is {BASE}USD — look up the base currency's own bias
           if (ac !== "fx") {
-            const marketKey = Object.keys(currencyData)[0];
-            if (marketKey) {
-              const marketBias = currencyData[marketKey]?.[`${model}_bias`];
-              if (marketBias === "BULLISH") map.set(pair, { direction: "LONG", source: model, tier: null, assetClass: ac });
-              else if (marketBias === "BEARISH") map.set(pair, { direction: "SHORT", source: model, tier: null, assetClass: ac });
-            }
+            const base = pair.replace(/USD$/i, "");
+            const baseBias = currencyData[base]?.[`${model}_bias`];
+            if (baseBias === "BULLISH") map.set(pair, { direction: "LONG", source: model, tier: null, assetClass: ac });
+            else if (baseBias === "BEARISH") map.set(pair, { direction: "SHORT", source: model, tier: null, assetClass: ac });
             continue;
           }
           // For FX pairs, re-derive from currency-level biases
@@ -254,13 +252,21 @@ async function executeAdr(
   // bias source agrees with the scanner's direction pass through.
   const directions = await resolveDirections(biasSource, weekOpenUtc);
 
-  // Build a quick lookup: symbol → Set of approved directions
-  // For tandem, key is "PAIR:model" — extract the pair name
+  // Build approval lookup.
+  // For non-tandem: symbol → Set of approved directions (simple filter).
+  // For tandem: symbol → array of { direction, source } entries (one trade per approving model).
+  const isTandem = biasSource.id === "tandem";
   const approvedDirections = new Map<string, Set<string>>();
+  const tandemApprovals = new Map<string, Array<{ direction: string; source: string }>>();
+
   for (const [key, entry] of directions) {
     const pair = key.includes(":") ? key.split(":")[0]! : key;
     if (!approvedDirections.has(pair)) approvedDirections.set(pair, new Set());
     approvedDirections.get(pair)!.add(entry.direction);
+    if (isTandem) {
+      if (!tandemApprovals.has(pair)) tandemApprovals.set(pair, []);
+      tandemApprovals.get(pair)!.push({ direction: entry.direction, source: entry.source });
+    }
   }
 
   // Step 2: Query ADR trades from the scanner
@@ -342,41 +348,38 @@ async function executeAdr(
 
     const meta = r.metadata ?? {};
     const rawModel = (meta.model as string) ?? "";
-    const source = VALID_MODELS.has(rawModel) ? rawModel : "dealer";
+    const fallbackSource = VALID_MODELS.has(rawModel) ? rawModel : "dealer";
+    const assetClass = (meta.assetClass as string) ?? inferAssetClass(r.symbol);
+    const tier = parseTier(meta.tier);
+    const detail: TradeDetail = {
+      tradeNumber: (meta.tradeNumber as number) ?? 1,
+      entryTimeUtc: r.entry_time_utc,
+      exitTimeUtc: r.exit_time_utc,
+      exitReason: r.exit_reason,
+      anchorPrice: (meta.anchorPrice as number) ?? null,
+      tpPrice: (meta.tpPrice as number) ?? null,
+      adrPct: (meta.adrPct as number) ?? null,
+      maePct: (meta.maePct as number) ?? null,
+    };
 
-    // For tandem source field: use the entry's source from direction map if available
-    let tradeSource = source;
-    if (biasSource.id === "tandem") {
-      // Find which model approved this trade
-      for (const [key, entry] of directions) {
-        const pair = key.includes(":") ? key.split(":")[0]! : key;
-        if ((pair === pairUpper || pair === r.symbol) && entry.direction === r.direction) {
-          tradeSource = entry.source;
-          break;
-        }
+    if (isTandem) {
+      // Tandem: emit one trade per approving model (same as weekly hold tandem)
+      const approvals = (tandemApprovals.get(pairUpper) ?? tandemApprovals.get(r.symbol) ?? [])
+        .filter((a) => a.direction === r.direction);
+      for (const approval of approvals) {
+        trades.push({
+          symbol: r.symbol, assetClass, direction: r.direction as "LONG" | "SHORT",
+          openPrice: entryPrice, closePrice: exitPrice, returnPct: pnlPct,
+          source: approval.source, tier, detail,
+        });
       }
+    } else {
+      trades.push({
+        symbol: r.symbol, assetClass, direction: r.direction as "LONG" | "SHORT",
+        openPrice: entryPrice, closePrice: exitPrice, returnPct: pnlPct,
+        source: fallbackSource, tier, detail,
+      });
     }
-
-    trades.push({
-      symbol: r.symbol,
-      assetClass: (meta.assetClass as string) ?? inferAssetClass(r.symbol),
-      direction: r.direction as "LONG" | "SHORT",
-      openPrice: entryPrice,
-      closePrice: exitPrice,
-      returnPct: pnlPct,
-      source: tradeSource,
-      tier: parseTier(meta.tier),
-      detail: {
-        tradeNumber: (meta.tradeNumber as number) ?? 1,
-        entryTimeUtc: r.entry_time_utc,
-        exitTimeUtc: r.exit_time_utc,
-        exitReason: r.exit_reason,
-        anchorPrice: (meta.anchorPrice as number) ?? null,
-        tpPrice: (meta.tpPrice as number) ?? null,
-        adrPct: (meta.adrPct as number) ?? null,
-        maePct: (meta.maePct as number) ?? null,
-      },
-    });
   }
 
   const totalReturn = trades.reduce((s, t) => s + t.returnPct, 0);
