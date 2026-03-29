@@ -9,6 +9,7 @@ import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
 import SizingAccountBar from "@/components/flagship/SizingAccountBar";
 import { readSelectionFromParams, selectionLabel } from "@/components/shared/StrategySelector";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
+import { getIntradayFilter, resolveIntradayFilterId } from "@/lib/performance/strategyConfig";
 import {
   SESSION_ELIGIBILITY,
   defaultSessionFromUtcDate,
@@ -229,6 +230,9 @@ type MatrixRow = {
   tradeCount: number | null;
   avgReturnPct: number | null;
   noTargetRatePct: number | null;
+  weeklyMovePct: number | null;
+  weeklyOpenPrice: number | null;
+  weeklyClosePrice: number | null;
   move24hPct: number | null;
   adrPct: number | null;
   adrBarsUsed: number;
@@ -398,6 +402,13 @@ function moveClass(change24hPct: number | null) {
   return "text-[color:var(--muted)]";
 }
 
+function weeklyMoveClass(changePct: number | null) {
+  if (changePct === null || !Number.isFinite(changePct)) return "text-[color:var(--muted)]";
+  if (changePct > 0) return "text-emerald-700 dark:text-emerald-300";
+  if (changePct < 0) return "text-rose-700 dark:text-rose-300";
+  return "text-[color:var(--muted)]";
+}
+
 function formatPrice(value: number | null) {
   if (value === null || !Number.isFinite(value)) return "—";
   if (Math.abs(value) >= 1000) return value.toFixed(2);
@@ -491,12 +502,34 @@ type FlagshipBoardProps = {
    *  Replaces the client-side canonical-weekly-basket fetch for coreBias,
    *  tier display, and LONG/SHORT copy buttons. */
   canonicalSignals?: CanonicalSignal[];
+  weeklyReturns?: Array<{
+    symbol: string;
+    assetClass: AssetClass;
+    returnPct: number;
+    openPrice: number;
+    closePrice: number;
+  }>;
 };
 
-export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineWeekResults, canonicalSignals }: FlagshipBoardProps) {
+export default function FlagshipBoard({
+  weekOpenUtc,
+  currentWeekOpenUtc,
+  engineWeekResults,
+  canonicalSignals,
+  weeklyReturns,
+}: FlagshipBoardProps) {
   const matrixSearchParams = useSearchParams();
   const activeSelection = readSelectionFromParams(matrixSearchParams);
   const activeLabel = selectionLabel(activeSelection);
+  const activeFilter = getIntradayFilter(resolveIntradayFilterId(activeSelection.f2));
+  const matrixUi = activeFilter?.matrixUi ?? {
+    showStatsBar: false,
+    showTriggerState: false,
+    showIntradayDetail: false,
+    currentColumnLabel: "Trades",
+    historicalColumnLabel: "Trades",
+    detailTitle: null,
+  };
   const isPastWeek = Boolean(weekOpenUtc && currentWeekOpenUtc && weekOpenUtc !== currentWeekOpenUtc);
   const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
   const [dailySentiment, setDailySentiment] = useState<DailySentimentPayload | null>(null);
@@ -599,7 +632,7 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
     fetchBoardData();
     // ADR trades: use canonical engine data when available, client-fetch only
     // when engine data isn't provided at all (no engineWeekResults prop).
-    if (activeSelection.f2 !== "none") {
+    if (activeFilter?.hasTradeLog) {
       const weekKey = weekOpenUtc ?? "";
       const engineResult = engineWeekResults?.[weekKey];
       if (engineResult) {
@@ -652,7 +685,7 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
     return () => {
       cancelled = true;
     };
-  }, [refreshTick, weekOpenUtc, activeSelection.f2, engineWeekResults]);
+  }, [activeFilter?.hasTradeLog, engineWeekResults, refreshTick, weekOpenUtc]);
 
   const matrixRows = useMemo(() => {
     // Build per-pair signal arrays from canonical engine signals (prop).
@@ -700,6 +733,18 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
     const sizingByPair = new Map<string, LiveSizingPairRiskProfile>();
     for (const row of liveSizing?.positionSizingResearch?.pairRiskProfiles ?? []) sizingByPair.set(normalizeKey(row.pair), row);
 
+    const weeklyReturnsByPair = new Map<
+      string,
+      { returnPct: number; openPrice: number; closePrice: number }
+    >();
+    for (const row of weeklyReturns ?? []) {
+      weeklyReturnsByPair.set(normalizeKey(row.symbol), {
+        returnPct: row.returnPct,
+        openPrice: row.openPrice,
+        closePrice: row.closePrice,
+      });
+    }
+
     const moveByPair = new Map<string, number | null>();
     for (const row of priceMoves?.rows ?? []) moveByPair.set(normalizeKey(row.pair), row.change24hPct);
 
@@ -735,6 +780,7 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
         const sentimentDaily = directionToState(sentimentByPair.get(key) ?? "NEUTRAL");
         const coreBiasState = directionToState(coreBias);
         const sizing = sizingByPair.get(key) ?? null;
+        const weeklyMove = weeklyReturnsByPair.get(key) ?? null;
 
         let strengthDelta1h: number | null = null;
         let strength1h: TrendState = "NEUTRAL";
@@ -820,6 +866,9 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
           tradeCount: sizing?.trades ?? null,
           avgReturnPct: sizing?.avgReturnPct ?? null,
           noTargetRatePct: sizing?.noTargetRatePct ?? null,
+          weeklyMovePct: weeklyMove?.returnPct ?? null,
+          weeklyOpenPrice: weeklyMove?.openPrice ?? null,
+          weeklyClosePrice: weeklyMove?.closePrice ?? null,
           move24hPct: moveByPair.get(key) ?? null,
           adrPct: level?.adrPct ?? null,
           adrBarsUsed: level?.adrBarsUsed ?? 0,
@@ -845,12 +894,14 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
         if (bucketDiff !== 0) return bucketDiff;
         return left.pair.localeCompare(right.pair);
       });
-  }, [adrTrades, assetStrength, canonicalSignals, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves]);
+  }, [adrTrades, assetStrength, canonicalSignals, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves, weeklyReturns]);
 
   const flagshipCount = matrixRows.filter((row) => row.signalMode === "FLAGSHIP").length;
   const adrDipCount = matrixRows.filter((row) => row.signalMode === "ADR_DIP").length;
   const qualifiedCount = flagshipCount + adrDipCount;
   const adrHitCount = matrixRows.filter((row) => row.triggerState === "HIT").length;
+  const directionalCount = matrixRows.filter((row) => row.coreBias === "LONG" || row.coreBias === "SHORT").length;
+  const mixedCount = matrixRows.filter((row) => row.coreBias === "MIXED").length;
   const neutralCount = matrixRows.filter((row) => row.signalMode === "NEUTRAL").length;
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
 
@@ -885,8 +936,17 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
 
         {!loading && !error ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/55 px-3 py-2 text-[11px] text-[color:var(--muted)]">
-            <span>ADR Hit {adrHitCount}</span>
-            <span>Watching {qualifiedCount - adrHitCount}</span>
+            {matrixUi.showTriggerState ? (
+              <>
+                <span>Hit {adrHitCount}</span>
+                <span>Watching {qualifiedCount - adrHitCount}</span>
+              </>
+            ) : (
+              <>
+                <span>Directional {directionalCount}</span>
+                <span>Mixed {mixedCount}</span>
+              </>
+            )}
             <span>Neutral {neutralCount}</span>
             <span className="ml-auto">Total {matrixRows.length}</span>
           </div>
@@ -901,7 +961,7 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
           onDeleteAccount={deleteAccount}
         />
 
-        {adrTrades && canonicalSignals && (
+        {matrixUi.showStatsBar && adrTrades && canonicalSignals && (
           <AdrStatsBar
             totalTrades={adrTrades.totalTrades}
             totalTpHits={adrTrades.totalTpHits}
@@ -931,6 +991,7 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
               <colgroup>
                 <col className="w-[14rem]" />
                 <col className="w-[8rem]" />
+                <col className="w-[7rem]" />
                 <col className="w-[13rem]" />
                 <col className="w-[6rem]" />
               </colgroup>
@@ -938,7 +999,10 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
                 <tr>
                   <th className="border-b border-[var(--panel-border)] px-3 py-3">Pair</th>
                   <th className="border-b border-[var(--panel-border)] px-3 py-3">Core Bias</th>
-                  <th className="border-b border-[var(--panel-border)] px-3 py-3">{isPastWeek ? "Trades" : "Trigger"}</th>
+                  <th className="border-b border-[var(--panel-border)] px-3 py-3">Weekly %</th>
+                  <th className="border-b border-[var(--panel-border)] px-3 py-3">
+                    {isPastWeek ? matrixUi.historicalColumnLabel : matrixUi.currentColumnLabel}
+                  </th>
                   <th className="border-b border-[var(--panel-border)] px-3 py-3">Sizing</th>
                 </tr>
               </thead>
@@ -974,11 +1038,6 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
                               <span className="flex flex-wrap items-center gap-2">
                                 <span>{row.pair}</span>
                                 <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">{row.assetClass}</span>
-                                {row.signalMode === "FLAGSHIP" ? (
-                                  <span className="rounded-full border border-emerald-500/40 bg-emerald-500/14 px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.1em] text-emerald-700 dark:text-emerald-300">Gated</span>
-                                ) : row.signalMode === "ADR_DIP" ? (
-                                  <span className="rounded-full border border-amber-500/40 bg-amber-500/14 px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.1em] text-amber-700 dark:text-amber-300">ADR Dip</span>
-                                ) : null}
                                 <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${moveClass(row.move24hPct)}`}>{formatMove(row.move24hPct)}</span>
                               </span>
                               {row.coreBias !== "NEUTRAL" && row.tier !== "NEUTRAL" ? (
@@ -996,15 +1055,29 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
                             }`}>
                               {directionLabel(row.coreBias)}
                             </span>
-                            {row.coreBias !== "NEUTRAL" ? (
-                              <div className={`text-[10px] font-medium uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>
-                                {row.gate === "NO_DATA" ? "No Data" : row.gate}
+                            {row.coreBias !== "NEUTRAL" && row.tier !== "NEUTRAL" ? (
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                                {row.tier} tier
                               </div>
                             ) : null}
                           </div>
                         </td>
                         <td className="border-r border-[var(--panel-border)] px-3 py-2">
-                          {isPastWeek ? (
+                          <div className="space-y-1">
+                            <div className={`text-sm font-semibold ${weeklyMoveClass(row.weeklyMovePct)}`}>
+                              {row.weeklyMovePct === null ? "—" : `${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}
+                            </div>
+                            {row.weeklyOpenPrice !== null && row.weeklyClosePrice !== null ? (
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                                {formatPrice(row.weeklyOpenPrice)} → {formatPrice(row.weeklyClosePrice)}
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td className="border-r border-[var(--panel-border)] px-3 py-2">
+                          {!matrixUi.showIntradayDetail ? (
+                            <span className="text-[10px] text-[color:var(--muted)]">—</span>
+                          ) : isPastWeek ? (
                             <div className="space-y-1">
                               {row.adrTradeCount > 0 ? (
                                 (() => {
@@ -1047,9 +1120,9 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
                                   {row.adrTradeCount} trade{row.adrTradeCount !== 1 ? "s" : ""}
                                 </div>
                               )}
-                              {row.adrPct !== null ? (
+                              {matrixUi.showTriggerState && row.adrPct !== null ? (
                                 <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-                                  ADR {row.adrPct.toFixed(2)}%
+                                  Range {row.adrPct.toFixed(2)}%
                                 </div>
                               ) : null}
                             </div>
@@ -1082,8 +1155,8 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
                       </tr>
                       {isExpanded ? (
                         <tr className="bg-[var(--panel)]/75">
-                          <td colSpan={4} className="px-4 py-3">
-                            <div className="grid gap-2 lg:grid-cols-3">
+                          <td colSpan={5} className="px-4 py-3">
+                            <div className={`grid gap-2 ${matrixUi.showIntradayDetail ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Core Bias Detail</div>
                                 <div className="mt-1">Dealer {row.dealer} · Commercial {row.commercial} · Sentiment {row.sentimentDaily}</div>
@@ -1094,19 +1167,34 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
                                 <div>Gate: <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>{row.gate}</span></div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
-                                <div className="font-semibold text-[var(--foreground)]">ADR Trigger</div>
-                                <div className="mt-1">ADR {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || "—"}</div>
-                                <div className="mt-1">Long trigger {formatPrice(row.longTriggerPrice)} · Short trigger {formatPrice(row.shortTriggerPrice)}</div>
-                                <div>Long TP {formatPrice(row.longTpPrice)} · Short TP {formatPrice(row.shortTpPrice)}</div>
-                                <div className="mt-1">Week range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
+                                <div className="font-semibold text-[var(--foreground)]">Weekly Move</div>
+                                <div className="mt-1">
+                                  Move{" "}
+                                  <span className={weeklyMoveClass(row.weeklyMovePct)}>
+                                    {row.weeklyMovePct === null ? "—" : `${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}
+                                  </span>
+                                </div>
+                                <div>Open {formatPrice(row.weeklyOpenPrice)} · Close {formatPrice(row.weeklyClosePrice)}</div>
+                                <div className="mt-1">24h move {formatMove(row.move24hPct)}</div>
                               </div>
-                              <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
-                                <div className="font-semibold text-[var(--foreground)]">Trade Profile</div>
-                                <div className="mt-1">Trades {row.adrTradeCount || "—"} · TP {row.adrTrades.filter(t => t.exitReason === "tp").length} · Active {row.adrTrades.filter(t => t.exitReason === "active").length}</div>
-                                <div>P/L +{(row.adrTrades.filter(t => t.exitReason === "tp").length * 0.25).toFixed(2)}% · Max DD —</div>
-                              </div>
-                              {row.adrTrades.length > 0 && (
-                                <details className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 text-xs">
+                              {matrixUi.showIntradayDetail ? (
+                                <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
+                                  <div className="font-semibold text-[var(--foreground)]">{matrixUi.detailTitle ?? "Entry Detail"}</div>
+                                  <div className="mt-1">Range {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || "—"}</div>
+                                  <div className="mt-1">Long trigger {formatPrice(row.longTriggerPrice)} · Short trigger {formatPrice(row.shortTriggerPrice)}</div>
+                                  <div>Long TP {formatPrice(row.longTpPrice)} · Short TP {formatPrice(row.shortTpPrice)}</div>
+                                  <div className="mt-1">Week range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
+                                </div>
+                              ) : null}
+                              {matrixUi.showIntradayDetail ? (
+                                <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
+                                  <div className="font-semibold text-[var(--foreground)]">Trade Profile</div>
+                                  <div className="mt-1">Trades {row.adrTradeCount || "—"} · TP {row.adrTrades.filter(t => t.exitReason === "tp").length} · Active {row.adrTrades.filter(t => t.exitReason === "active").length}</div>
+                                  <div>P/L {row.adrTrades.length > 0 ? `${row.adrTrades.reduce((sum, trade) => sum + (trade.pnlPct ?? 0), 0) >= 0 ? "+" : ""}${row.adrTrades.reduce((sum, trade) => sum + (trade.pnlPct ?? 0), 0).toFixed(2)}%` : "—"}</div>
+                                </div>
+                              ) : null}
+                              {matrixUi.showIntradayDetail && row.adrTrades.length > 0 ? (
+                                <details className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 text-xs lg:col-span-3">
                                   <summary className="cursor-pointer px-3 py-2 font-semibold text-[var(--foreground)] select-none">Trade Breakdown ({row.adrTrades.length})</summary>
                                   <div className="space-y-1 px-3 pb-2">
                                     {row.adrTrades.map((trade) => {
@@ -1124,7 +1212,7 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
                                     })}
                                   </div>
                                 </details>
-                              )}
+                              ) : null}
                             </div>
                             <div className="mt-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs text-[var(--foreground)]">
                               <div className="font-semibold">Gate Reasons</div>

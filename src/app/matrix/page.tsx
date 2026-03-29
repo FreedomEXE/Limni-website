@@ -20,6 +20,7 @@ import MatrixControls from "@/components/matrix/MatrixControls";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
+import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { resolveStrategyId, resolveIntradayFilterId } from "@/lib/performance/strategyConfig";
 import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 
@@ -72,6 +73,9 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
   // Extract canonical signals for the selected week — board uses these for
   // coreBias, tier display, and copy buttons instead of client-side basket fetch.
   const selectedWeekSignals = strategyData?.weekResults?.[selectedWeek ?? ""]?.signals ?? [];
+  const selectedWeekReturns = selectedWeek
+    ? await getWeeklyPairReturns(selectedWeek)
+    : [];
 
   return (
     <DashboardLayout>
@@ -90,6 +94,7 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
             currentWeekOpenUtc={currentWeekOpen}
             engineWeekResults={strategyData?.weekResults ?? null}
             canonicalSignals={selectedWeekSignals}
+            weeklyReturns={selectedWeekReturns}
           />
         ) : null}
       </div>

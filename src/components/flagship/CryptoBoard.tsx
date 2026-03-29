@@ -2,7 +2,6 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 
-import AdrStatsBar from "@/components/flagship/AdrStatsBar";
 import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
 import SizingAccountBar from "@/components/flagship/SizingAccountBar";
 import type {
@@ -286,15 +285,6 @@ export default function CryptoBoard({ weekOpenUtc }: { weekOpenUtc?: string | nu
 
       {!loading && !error && data ? (
         <div className="space-y-2">
-          <AdrStatsBar
-            totalTrades={0}
-            totalTpHits={0}
-            totalActive={0}
-            totalLosses={0}
-            weekReturnPct={0}
-            longPairs={rows.filter(r => r.bias === "LONG").map(r => r.symbol + "USD")}
-            shortPairs={rows.filter(r => r.bias === "SHORT").map(r => r.symbol + "USD")}
-          />
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
             <table className="min-w-full border-separate border-spacing-0 text-xs">
               <colgroup>
@@ -384,7 +374,7 @@ export default function CryptoBoard({ weekOpenUtc }: { weekOpenUtc?: string | nu
                             </span>
                             {row.adrPct !== null ? (
                               <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-                                ADR {row.adrPct.toFixed(2)}%
+                                Range {row.adrPct.toFixed(2)}%
                               </div>
                             ) : null}
                           </div>
@@ -433,8 +423,8 @@ export default function CryptoBoard({ weekOpenUtc }: { weekOpenUtc?: string | nu
                                 <div>Strength 1h / 4h / 24h: {formatPct(row.strength1h, 1)} / {formatPct(row.strength4h, 1)} / {formatPct(row.strength24h, 1)}</div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
-                                <div className="font-semibold text-[var(--foreground)]">ADR Trigger</div>
-                                <div className="mt-1">ADR {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || "—"}</div>
+                                <div className="font-semibold text-[var(--foreground)]">Trigger Detail</div>
+                                <div className="mt-1">Range {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || "—"}</div>
                                 <div>Week High {formatPrice(row.weekHighPrice)} · Low {formatPrice(row.weekLowPrice)}</div>
                                 <div>Long entry {formatPrice(row.longTriggerPrice)} · Short entry {formatPrice(row.shortTriggerPrice)}</div>
                                 <div>Current {formatPrice(row.currentPrice)}</div>

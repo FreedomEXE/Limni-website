@@ -5,8 +5,8 @@
  * File: AdrStatsBar.tsx
  *
  * Description:
- * Shared ADR forward test stats bar used by both CFD and Crypto matrix boards.
- * Shows: ADR Trades, TP Hits, Losses, Active (current week only), Week Return.
+ * Shared intraday stats bar for matrix boards.
+ * Shows: trade counts, TP hits, losses, active positions, week return, copy buttons.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -54,7 +54,7 @@ export default function AdrStatsBar({
     <>
       <div className={`mb-4 grid gap-3 ${isPastWeek ? "grid-cols-4" : "grid-cols-5"}`}>
         <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">ADR Trades</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Trades</div>
           <div className="mt-1 text-xl font-bold text-[var(--foreground)]">{totalTrades}</div>
         </div>
         <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">

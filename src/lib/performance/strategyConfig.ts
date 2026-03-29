@@ -105,6 +105,15 @@ export type IntradayFilterConfig = {
   hasTradeLog: boolean;
   /** P/L model: "weekly_hold" = open→close, "adr" = 0.25% per TP, losses at week close */
   plModel: "weekly_hold" | "adr";
+  /** Matrix display behavior for this filter. */
+  matrixUi: {
+    showStatsBar: boolean;
+    showTriggerState: boolean;
+    showIntradayDetail: boolean;
+    currentColumnLabel: string;
+    historicalColumnLabel: string;
+    detailTitle: string | null;
+  };
 };
 
 export const INTRADAY_FILTERS: IntradayFilterConfig[] = [
@@ -114,6 +123,14 @@ export const INTRADAY_FILTERS: IntradayFilterConfig[] = [
     description: "No intraday filter — pure weekly hold",
     hasTradeLog: false,
     plModel: "weekly_hold",
+    matrixUi: {
+      showStatsBar: false,
+      showTriggerState: false,
+      showIntradayDetail: false,
+      currentColumnLabel: "Trades",
+      historicalColumnLabel: "Trades",
+      detailTitle: null,
+    },
   },
   {
     id: "adr_pullback",
@@ -121,6 +138,14 @@ export const INTRADAY_FILTERS: IntradayFilterConfig[] = [
     description: "Enter on 1 ADR pullback from weekly anchor",
     hasTradeLog: true,
     plModel: "adr",
+    matrixUi: {
+      showStatsBar: true,
+      showTriggerState: true,
+      showIntradayDetail: true,
+      currentColumnLabel: "Trigger / Trades",
+      historicalColumnLabel: "Trades",
+      detailTitle: "Pullback Detail",
+    },
   },
   // Future:
   // { id: "stoch_rsi", label: "Stoch RSI", description: "Stochastic RSI confirmation entry", hasTradeLog: true, plModel: "adr" },
