@@ -31,6 +31,17 @@ export type StrategyConfig = {
   cardBreakdown: "asset_class" | "tiers" | "per_model";
 };
 
+export const SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID = "selector_sentiment_override";
+export const SELECTOR_SENTIMENT_OVERRIDE_RESEARCH_ID = "selector_sentiment_context_override";
+
+function normalizeStrategyLookupId(value: string | undefined | null): string | null {
+  if (!value) return null;
+  if (value === SELECTOR_SENTIMENT_OVERRIDE_RESEARCH_ID) {
+    return SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID;
+  }
+  return value;
+}
+
 export const STRATEGIES: StrategyConfig[] = [
   {
     id: "dealer",
@@ -73,6 +84,13 @@ export const STRATEGIES: StrategyConfig[] = [
     type: "tandem",
     description: "All 3 models running independently",
     cardBreakdown: "per_model",
+  },
+  {
+    id: SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID,
+    label: "Selector",
+    type: "single",
+    description: "Selector Sentiment Override: follow sentiment unless stretched+weakening → COT override",
+    cardBreakdown: "asset_class",
   },
 ];
 
@@ -155,7 +173,9 @@ export const INTRADAY_FILTERS: IntradayFilterConfig[] = [
 /* ─── Lookup helpers ──────────────────────────────────────────── */
 
 export function getStrategy(id: string): StrategyConfig | undefined {
-  return STRATEGIES.find((s) => s.id === id);
+  const normalized = normalizeStrategyLookupId(id);
+  if (!normalized) return undefined;
+  return STRATEGIES.find((s) => s.id === normalized);
 }
 
 export function getBasketFilter(id: string): BasketFilterConfig | undefined {
@@ -167,7 +187,8 @@ export function getIntradayFilter(id: string): IntradayFilterConfig | undefined 
 }
 
 export function resolveStrategyId(value: string | undefined | null): string {
-  if (value && STRATEGIES.some((s) => s.id === value)) return value;
+  const normalized = normalizeStrategyLookupId(value);
+  if (normalized && STRATEGIES.some((s) => s.id === normalized)) return normalized;
   return "dealer";
 }
 

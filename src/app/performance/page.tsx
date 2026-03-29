@@ -1126,6 +1126,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     f1: "weekly_hold",
     f2: intradayFilterId,
   };
+  // Guardrail: Performance stays fast only if the full strategy/filter grid is
+  // loaded here once and switched locally in the client view.
   const strategySelectionEntries = await Promise.all(
     listStrategyBootstrapSelections().map(async (selection) => [
       buildStrategySelectionKey(selection),

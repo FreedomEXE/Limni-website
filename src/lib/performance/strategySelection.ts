@@ -58,6 +58,9 @@ export function toRuntimeStrategySelection(selection: StrategyBootstrapSelection
 }
 
 export function listStrategyBootstrapSelections(): StrategyBootstrapSelection[] {
+  // Guardrail: this registry defines the client-side fast path. New strategies
+  // or filters must appear here or they will silently fall back to slower
+  // route-driven behavior in sections that expect the full bootstrapped map.
   return STRATEGIES.flatMap((strategy) =>
     BASKET_FILTERS.flatMap((basketFilter) =>
       INTRADAY_FILTERS.map((intradayFilter) => ({

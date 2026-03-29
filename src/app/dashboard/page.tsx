@@ -684,6 +684,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <DashboardLayout>
+      {/* Guardrail: Data week/bias/view changes should switch this preloaded
+          payload locally in DashboardViewSection, not rerun the dashboard page. */}
       <DashboardViewSection
         assetOptions={assetClasses.map((asset) => ({
           id: asset.id,

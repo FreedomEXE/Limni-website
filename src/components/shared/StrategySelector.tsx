@@ -98,6 +98,8 @@ export default function StrategySelector() {
     const nextUrl = `${pathname}?${params.toString()}`;
 
     if (pathname.startsWith("/performance") || pathname.startsWith("/matrix")) {
+      // Performance and Matrix are bootstrapped pages: strategy changes should
+      // switch preloaded client state, not rerun the server page tree.
       window.history.replaceState(window.history.state, "", nextUrl);
       setCommitted(nextSelection);
       setDraft(nextSelection);

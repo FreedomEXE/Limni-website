@@ -27,6 +27,7 @@ import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
 import type { BiasSourceConfig, IntradayFilterConfig } from "@/lib/performance/strategyConfig";
+import { resolveSelectorDirections } from "@/lib/performance/selectorEngine";
 
 // ─── Trade types (strategy-generic) ─────────────────────────────
 // "WeeklyHoldTrade" name kept for backward compat; represents any strategy trade.
@@ -153,6 +154,10 @@ async function resolveDirections(
 
   if (biasSource.id === "sentiment") {
     return signalsToDirectionMap(sentimentSignals, "sentiment");
+  }
+
+  if (biasSource.id === "selector_sentiment_override") {
+    return resolveSelectorDirections(weekOpenUtc);
   }
 
   // Build per-pair maps for composite strategies

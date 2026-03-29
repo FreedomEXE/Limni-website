@@ -72,6 +72,8 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
   }) as string | null;
 
   const [strategySelectionEntries, weeklyReturnEntries] = await Promise.all([
+    // Guardrail: Matrix week/strategy switching must read from this bootstrapped
+    // selection map on the client instead of re-running historical loaders.
     Promise.all(
       listStrategyBootstrapSelections().map(async (selection) => [
         buildStrategySelectionKey(selection),
