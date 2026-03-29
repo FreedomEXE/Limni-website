@@ -57,7 +57,7 @@ export default function MatrixControls({
           selected={selectedWeek ?? weeks[0]}
           currentWeek={currentWeekOpen}
           label="Week"
-          preserveParams={["tab"]}
+          preserveParams={["tab", "strategy", "f1", "f2"]}
         />
       )}
 
