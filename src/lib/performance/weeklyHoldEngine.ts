@@ -82,6 +82,8 @@ export type WeeklyHoldResult = {
   /** Canonical pair-level signals for this week's strategy selection.
    *  Used by Matrix for coreBias, tier display, and copy buttons. */
   signals: CanonicalSignal[];
+  /** Whether this week should count toward realized aggregate stats. */
+  isRealized: boolean;
 };
 /** @alias WeeklyHoldResult — use this name in new code */
 export type StrategyWeekResult = WeeklyHoldResult;
@@ -231,6 +233,18 @@ function buildCanonicalSignals(directions: DirectionMap): CanonicalSignal[] {
   }));
 }
 
+function isWeekRealizedForAggregate(
+  weekOpenUtc: string,
+  currentDisplayWeekOpenUtc: string,
+): boolean {
+  const weekMs = DateTime.fromISO(weekOpenUtc, { zone: "utc" }).toMillis();
+  const currentDisplayMs = DateTime.fromISO(currentDisplayWeekOpenUtc, { zone: "utc" }).toMillis();
+  if (!Number.isFinite(weekMs) || !Number.isFinite(currentDisplayMs)) {
+    return weekOpenUtc !== currentDisplayWeekOpenUtc;
+  }
+  return weekMs < currentDisplayMs;
+}
+
 // ─── Tier string → number mapping ───────────────────────────────
 
 const TIER_MAP: Record<string, number> = { HIGH: 1, MEDIUM: 2, LOW: 3 };
@@ -277,9 +291,24 @@ async function executeAdr(
        AND market = 'multi-asset' AND config_key = 'default' LIMIT 1`,
     [],
   );
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  const isPastWeek = weekOpenUtc !== currentWeekOpenUtc;
+  const isRealized = isWeekRealizedForAggregate(weekOpenUtc, currentWeekOpenUtc);
+
   if (runRows.length === 0) {
     console.log("[engine] No ADR run found in strategy_backtest_runs");
-    return { weekOpenUtc, biasSourceId: biasSource.id, trades: [], totalReturnPct: 0, winCount: 0, lossCount: 0, winRate: 0, tradeCount: 0, signals };
+    return {
+      weekOpenUtc,
+      biasSourceId: biasSource.id,
+      trades: [],
+      totalReturnPct: 0,
+      winCount: 0,
+      lossCount: 0,
+      winRate: 0,
+      tradeCount: 0,
+      signals,
+      isRealized,
+    };
   }
   const runId = Number(runRows[0]!.id);
 
@@ -302,10 +331,7 @@ async function executeAdr(
     [runId, weekOpenUtc],
   );
 
-  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  const isPastWeek = weekOpenUtc !== currentWeekOpenUtc;
-
-  let closePrices = new Map<string, number>();
+  const closePrices = new Map<string, number>();
   if (isPastWeek) {
     const priceRows = await query<{ symbol: string; close_price: string }>(
       `SELECT symbol, close_price FROM pair_period_returns
@@ -401,6 +427,7 @@ async function executeAdr(
     winRate: trades.length > 0 ? (wins / trades.length) * 100 : 0,
     tradeCount: trades.length,
     signals,
+    isRealized,
   };
 }
 
@@ -437,23 +464,41 @@ export async function computeWeeklyHold(
   const signals = buildCanonicalSignals(directions);
   const pairReturns = await getWeeklyPairReturns(weekOpenUtc);
   const returnMap = new Map(pairReturns.map((r) => [r.symbol, r]));
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  const isRealized = isWeekRealizedForAggregate(weekOpenUtc, currentWeekOpenUtc);
 
   const trades: WeeklyHoldTrade[] = [];
+
+  if (pairReturns.length === 0) {
+    return {
+      weekOpenUtc,
+      biasSourceId: biasSource.id,
+      trades,
+      totalReturnPct: 0,
+      winCount: 0,
+      lossCount: 0,
+      winRate: 0,
+      tradeCount: 0,
+      signals,
+      isRealized,
+    };
+  }
 
   for (const [key, signal] of directions) {
     // For tandem, key is "PAIR:model" — extract the pair name
     const pair = key.includes(":") ? key.split(":")[0]! : key;
     const priceData = returnMap.get(pair);
+    if (!priceData) continue;
 
-    const openPrice = priceData?.openPrice ?? 0;
-    const closePrice = priceData?.closePrice ?? openPrice;
-    const actualReturn = priceData?.returnPct ?? 0;
+    const openPrice = priceData.openPrice;
+    const closePrice = priceData.closePrice;
+    const actualReturn = priceData.returnPct;
     // If direction is SHORT, negate the return (price going down = profit)
     const directedReturn = signal.direction === "SHORT" ? -actualReturn : actualReturn;
 
     trades.push({
       symbol: pair,
-      assetClass: priceData?.assetClass ?? signal.assetClass,
+      assetClass: priceData.assetClass ?? signal.assetClass,
       direction: signal.direction,
       openPrice,
       closePrice,
@@ -477,6 +522,7 @@ export async function computeWeeklyHold(
     winRate: trades.length > 0 ? (wins / trades.length) * 100 : 0,
     tradeCount: trades.length,
     signals,
+    isRealized,
   };
 }
 
@@ -485,15 +531,17 @@ export async function computeMultiWeekHold(
   weekOpenUtcs: string[],
   intradayFilter?: IntradayFilterConfig,
 ): Promise<MultiWeekResult> {
-  const weeks: WeeklyHoldResult[] = [];
+  const computedWeeks: WeeklyHoldResult[] = [];
   for (const weekOpenUtc of weekOpenUtcs) {
     try {
       const result = await computeWeeklyHold(biasSource, weekOpenUtc, intradayFilter);
-      weeks.push(result);
+      computedWeeks.push(result);
     } catch (err) {
       console.warn(`[engine] Skipping week ${weekOpenUtc}:`, err instanceof Error ? err.message : err);
     }
   }
+
+  const weeks = computedWeeks.filter((week) => week.isRealized);
 
   const totalReturn = weeks.reduce((s, w) => s + w.totalReturnPct, 0);
   const totalTrades = weeks.reduce((s, w) => s + w.tradeCount, 0);

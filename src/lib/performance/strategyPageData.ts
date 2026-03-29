@@ -47,7 +47,7 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v2";
+  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v3";
 
 type WeekWatermarkRow = {
   week_open_utc: string;
@@ -395,6 +395,7 @@ function buildStrategyPageDataFromWeekResults(options: {
       winRate: 0,
       tradeCount: 0,
       signals: [],
+      isRealized: false,
     };
 
   return {
@@ -414,21 +415,22 @@ function buildMultiWeekResultFromWeeks(
   biasSource: BiasSourceConfig,
   weeks: WeeklyHoldResult[],
 ): MultiWeekResult {
-  const totalReturn = weeks.reduce((sum, week) => sum + week.totalReturnPct, 0);
-  const totalTrades = weeks.reduce((sum, week) => sum + week.tradeCount, 0);
-  const totalWins = weeks.reduce((sum, week) => sum + week.winCount, 0);
+  const realizedWeeks = weeks.filter((week) => week.isRealized);
+  const totalReturn = realizedWeeks.reduce((sum, week) => sum + week.totalReturnPct, 0);
+  const totalTrades = realizedWeeks.reduce((sum, week) => sum + week.tradeCount, 0);
+  const totalWins = realizedWeeks.reduce((sum, week) => sum + week.winCount, 0);
 
   let peak = 0;
   let cumulative = 0;
   let maxDrawdown = 0;
-  for (const week of weeks) {
+  for (const week of realizedWeeks) {
     cumulative += week.totalReturnPct;
     peak = Math.max(peak, cumulative);
     maxDrawdown = Math.min(maxDrawdown, cumulative - peak);
   }
 
   const byAssetClass: Record<string, { returnPct: number; trades: number; wins: number }> = {};
-  for (const week of weeks) {
+  for (const week of realizedWeeks) {
     for (const trade of week.trades) {
       if (!byAssetClass[trade.assetClass]) {
         byAssetClass[trade.assetClass] = { returnPct: 0, trades: 0, wins: 0 };
@@ -443,7 +445,7 @@ function buildMultiWeekResultFromWeeks(
 
   return {
     biasSourceId: biasSource.id,
-    weeks,
+    weeks: realizedWeeks,
     totalReturnPct: totalReturn,
     totalTrades,
     totalWins,
