@@ -48,6 +48,27 @@
 - Next extension hypothesis:
   - add COT-informed regime/direction gating on top of hedged weekly logic.
 
+## Weekly Bias Selector Candidate
+- Production-candidate handoff saved:
+  - `docs/bots/WEEKLY_BIAS_SELECTOR_SENTIMENT_OVERRIDE_HANDOFF_2026-03-29.md`
+- Canonical backtest protocol:
+  - `docs/BACKTEST_CANONICAL_PROTOCOL.md`
+- Repo agent note:
+  - `AGENTS.md`
+- Research scripts:
+  - `scripts/backtest-weekly-bias-context-selector.ts`
+  - `scripts/compare-weekly-bias-selector-vs-app-baselines.ts`
+- Latest reports:
+  - `reports/weekly-bias-context/weekly-bias-context-selector-latest.json`
+  - `reports/weekly-bias-context/weekly-bias-vs-app-baselines-latest.json`
+- Current candidate:
+  - `selector_sentiment_context_override`
+- Current canonical comparison snapshot:
+  - `selector_sentiment_context_override`: `+134.29%`, max DD `-4.71%`
+  - `tiered_v3`: `+137.21%`, max DD `-22.89%`
+- Next step:
+  - integrate as a site-visible weekly strategy for visual backtest verification before any flagship promotion.
+
 ## Universal Breakout Overlay (Phase 1)
 - Backtest script:
   - `scripts/universal-breakout-overlay-phase1.ts`

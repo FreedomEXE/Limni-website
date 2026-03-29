@@ -14,15 +14,17 @@
 
 "use client";
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
+
+export type MatrixTab = "cfd" | "crypto";
 
 type MatrixControlsProps = {
   weeks: string[];
   selectedWeek: string | null;
   currentWeekOpen: string;
-  selectedTab: "cfd" | "crypto" | "flagship";
+  selectedTab: MatrixTab;
+  onWeekChange: (week: string) => void;
+  onTabChange: (tab: MatrixTab) => void;
 };
 
 const TABS = [
@@ -30,25 +32,14 @@ const TABS = [
   { key: "crypto", label: "Crypto" },
 ] as const;
 
-function buildTabHref(tabKey: string, searchParams: URLSearchParams) {
-  const params = new URLSearchParams(searchParams.toString());
-  if (tabKey === "cfd") {
-    params.delete("tab");
-  } else {
-    params.set("tab", tabKey);
-  }
-  const qs = params.toString();
-  return qs ? `/matrix?${qs}` : "/matrix";
-}
-
 export default function MatrixControls({
   weeks,
   selectedWeek,
   currentWeekOpen,
   selectedTab,
+  onWeekChange,
+  onTabChange,
 }: MatrixControlsProps) {
-  const searchParams = useSearchParams();
-
   return (
     <div className="space-y-3">
       {weeks.length > 0 && (
@@ -57,15 +48,18 @@ export default function MatrixControls({
           selected={selectedWeek ?? weeks[0]}
           currentWeek={currentWeekOpen}
           label="Week"
-          preserveParams={["tab", "strategy", "f1", "f2"]}
+          onChange={(week) => {
+            if (week !== "all") onWeekChange(week);
+          }}
         />
       )}
 
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-2">
         {TABS.map((tab) => (
-          <Link
+          <button
             key={tab.key}
-            href={buildTabHref(tab.key, searchParams)}
+            type="button"
+            onClick={() => onTabChange(tab.key)}
             className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
               selectedTab === tab.key
                 ? "border-[var(--accent)]/50 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
@@ -73,7 +67,7 @@ export default function MatrixControls({
             }`}
           >
             {tab.label}
-          </Link>
+          </button>
         ))}
       </div>
     </div>

@@ -2,17 +2,14 @@
   Property of Freedom_EXE  (c) 2026
 -----------------------------------------------*/
 /**
- * File: adr-backtest-neutral.js
+ * File: adr-backtest-sentiment.js
  *
  * Description:
- * ADR Backtest — Neutral (no directional bias)
- * Runs LONG-only and SHORT-only SEPARATELY across all 32 pairs for 9 weeks.
- * Both directions run independently — a pair can have concurrent long & short trades.
- * Combines results to answer: does directional bias even matter?
+ * ADR Backtest — Sentiment Only (contrarian crowd positioning)
+ * Tests whether ADR mean-reversion gated by sentiment ALONE beats Tiered V3.
+ * Uses the same backfill logic as production (closest sentiment to week open).
  *
- * Compares: LONG-only | SHORT-only | Combined (neutral) | Sentiment-only | V3
- *
- * Usage: node scripts/adr-backtest-neutral.js
+ * Usage: node scripts/adr-backtest-sentiment.js
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -39,7 +36,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejec
 const KEY = process.env.OANDA_API_KEY;
 const BASE = "https://api-fxtrade.oanda.com";
 
-/* ─── Oanda helpers ──────────────────────────────────────────── */
+/* ─── Oanda helpers (same as corrected baseline) ──────────────── */
 
 async function fetchAllM5(inst, fromUtc) {
   const bars = [];
@@ -62,7 +59,7 @@ async function fetchDailyAdr(inst, beforeUtc, alignment) {
   const r = await fetch(`${BASE}/v3/instruments/${inst}/candles?price=M&granularity=D&from=${from}&count=500&dailyAlignment=${alignment}&alignmentTimezone=America%2FNew_York`, { headers: { Authorization: "Bearer " + KEY } });
   const d = await r.json();
   const bars = (d.candles || []).filter(c => c.complete && c.mid && new Date(c.time) < new Date(beforeUtc));
-  const skip1 = bars.slice(0, -1);
+  const skip1 = bars.slice(0, -1); // skip most recent daily bar (Pine does high[1..10])
   const last10 = skip1.slice(-10);
   if (last10.length < 5) return null;
   return last10.reduce((s, c) => (+c.mid.h) - (+c.mid.l) + s, 0) / last10.length;
@@ -96,6 +93,20 @@ function scanDir(bars, dir, rawAdr) {
     trades.push({ dir, ep, tp, exit: lc, exitType: "WEEK_CLOSE", pnl: dir === "LONG" ? (lc - ep) / ep * 100 : (ep - lc) / ep * 100 });
   }
   return trades;
+}
+
+/* ─── Sentiment direction (matches production basketSignals.ts) ── */
+
+function sentimentDirection(agg) {
+  if (!agg) return null;
+  // Flip state takes priority
+  if (agg.flip_state === "FLIPPED_UP") return "LONG";
+  if (agg.flip_state === "FLIPPED_DOWN") return "SHORT";
+  if (agg.flip_state === "FLIPPED_NEUTRAL") return null;
+  // Contrarian: crowded long = go short
+  if (agg.crowding_state === "CROWDED_LONG") return "SHORT";
+  if (agg.crowding_state === "CROWDED_SHORT") return "LONG";
+  return null; // NEUTRAL = no signal
 }
 
 /* ─── Pair universe ──────────────────────────────────────────── */
@@ -142,13 +153,36 @@ const ALL_PAIRS = [
 /* ─── Main ───────────────────────────────────────────────────── */
 
 async function main() {
-  // Get completed weeks
+  console.log("Loading sentiment data...");
+
+  // Step 1: Load ALL sentiment aggregates (same as production backfill)
+  const allAggs = await pool.query(`
+    SELECT symbol, crowding_state, flip_state, timestamp_utc
+    FROM sentiment_aggregates
+    ORDER BY timestamp_utc ASC
+  `);
+  const aggs = allAggs.rows.map(r => ({
+    symbol: r.symbol,
+    crowding_state: r.crowding_state,
+    flip_state: r.flip_state,
+    ts: new Date(r.timestamp_utc).getTime()
+  }));
+  console.log(`  Loaded ${aggs.length} sentiment rows (${new Date(aggs[0].ts).toISOString().slice(0,10)} → ${new Date(aggs[aggs.length-1].ts).toISOString().slice(0,10)})`);
+
+  // Group by symbol for fast lookup
+  const bySymbol = {};
+  for (const a of aggs) {
+    if (!bySymbol[a.symbol]) bySymbol[a.symbol] = [];
+    bySymbol[a.symbol].push(a);
+  }
+
+  // Step 2: Get completed weeks from DB
   const weeks = await pool.query(
     `SELECT DISTINCT week_open_utc FROM strategy_backtest_trades WHERE run_id = 54 AND week_open_utc < '2026-03-22T23:00:00Z' ORDER BY week_open_utc`
   );
-  console.log(`Found ${weeks.rows.length} completed weeks. Running LONG-only and SHORT-only separately on all ${ALL_PAIRS.length} pairs.\n`);
+  console.log(`  Found ${weeks.rows.length} completed weeks\n`);
 
-  // Get V3 comparison from DB
+  // Step 3: Get V3 comparison data from DB
   const v3Data = await pool.query(`
     SELECT week_open_utc,
            count(*)::int trades,
@@ -163,21 +197,44 @@ async function main() {
   const v3ByWeek = {};
   for (const r of v3Data.rows) v3ByWeek[new Date(r.week_open_utc).toISOString()] = r;
 
+  // Resolve sentiment for a week open: closest-to-open per symbol
+  // (latest before open, else first after open — matches production backfill)
+  function resolveSentiment(weekOpenMs) {
+    const result = {};
+    for (const [sym, rows] of Object.entries(bySymbol)) {
+      let latestBefore = null;
+      let firstAfter = null;
+      for (const r of rows) {
+        if (r.ts <= weekOpenMs) latestBefore = r;
+        if (r.ts > weekOpenMs && !firstAfter) firstAfter = r;
+        if (firstAfter) break; // rows are sorted ASC, no need to continue
+      }
+      const pick = latestBefore || firstAfter;
+      if (pick) result[sym] = pick;
+    }
+    return result;
+  }
+
   // Accumulators
-  const acc = {
-    long:  { trades: 0, tp: 0, wc: 0, tpPnl: 0, wcPnl: 0 },
-    short: { trades: 0, tp: 0, wc: 0, tpPnl: 0, wcPnl: 0 },
-  };
+  let sent = { trades: 0, tp: 0, wc: 0, tpPnl: 0, wcPnl: 0 };
   let v3Tot = { trades: 0, tp: 0, wc: 0, tpPnl: 0, wcPnl: 0 };
   const weekResults = [];
-  const pairDetail = {}; // pair → { longPnl, longTrades, shortPnl, shortTrades }
+  const pairDetail = {}; // pair → { sentPnl, sentTrades, v3Pnl, v3Trades }
 
   for (const weekRow of weeks.rows) {
     const weekOpenUtc = weekRow.week_open_utc.toISOString();
     const weekOpenMs = new Date(weekOpenUtc).getTime();
-    let weekLong = 0, weekShort = 0, weekLongTrades = 0, weekShortTrades = 0;
+    let weekSent = 0, weekSentTrades = 0;
+
+    // Resolve sentiment for this week
+    const sentMap = resolveSentiment(weekOpenMs);
+    let signalCount = 0, skipCount = 0;
 
     for (const { pair, inst, ac } of ALL_PAIRS) {
+      const dir = sentimentDirection(sentMap[pair]);
+      if (!dir) { skipCount++; continue; }
+      signalCount++;
+
       const isFx = ac === "fx";
       const weekStart = new Date(weekOpenMs - (isFx ? 2 : 1) * 3600000).toISOString();
       const weekCloseMs = new Date(weekStart).getTime() + 5 * 24 * 3600000;
@@ -188,36 +245,23 @@ async function main() {
       const bars = allBars.filter(b => b.ts < weekCloseMs);
       if (bars.length === 0) continue;
 
-      if (!pairDetail[pair]) pairDetail[pair] = { longPnl: 0, longTrades: 0, shortPnl: 0, shortTrades: 0 };
+      const trades = scanDir(bars, dir, adr);
+      for (const t of trades) {
+        sent.trades++;
+        weekSentTrades++;
+        if (t.exitType === "TP_HIT") { sent.tp++; sent.tpPnl += t.pnl; }
+        else { sent.wc++; sent.wcPnl += t.pnl; }
+        weekSent += t.pnl;
 
-      // Run LONG scanner
-      const longTrades = scanDir(bars, "LONG", adr);
-      for (const t of longTrades) {
-        acc.long.trades++;
-        weekLongTrades++;
-        if (t.exitType === "TP_HIT") { acc.long.tp++; acc.long.tpPnl += t.pnl; }
-        else { acc.long.wc++; acc.long.wcPnl += t.pnl; }
-        weekLong += t.pnl;
-        pairDetail[pair].longPnl += t.pnl;
-        pairDetail[pair].longTrades++;
-      }
-
-      // Run SHORT scanner (independent — same bars, different direction)
-      const shortTrades = scanDir(bars, "SHORT", adr);
-      for (const t of shortTrades) {
-        acc.short.trades++;
-        weekShortTrades++;
-        if (t.exitType === "TP_HIT") { acc.short.tp++; acc.short.tpPnl += t.pnl; }
-        else { acc.short.wc++; acc.short.wcPnl += t.pnl; }
-        weekShort += t.pnl;
-        pairDetail[pair].shortPnl += t.pnl;
-        pairDetail[pair].shortTrades++;
+        if (!pairDetail[pair]) pairDetail[pair] = { sentPnl: 0, sentTrades: 0 };
+        pairDetail[pair].sentPnl += t.pnl;
+        pairDetail[pair].sentTrades++;
       }
 
       await new Promise(r => setTimeout(r, 100));
     }
 
-    // V3 from DB
+    // V3 comparison from DB
     const v3w = v3ByWeek[weekOpenUtc];
     const v3Net = v3w ? v3w.tp_pnl + v3w.wc_pnl : 0;
     if (v3w) {
@@ -229,80 +273,51 @@ async function main() {
     }
 
     const label = new Date(weekOpenMs + 86400000).toISOString().slice(5, 10);
-    weekResults.push({ label, weekLong, weekShort, weekLongTrades, weekShortTrades, v3Net, v3Trades: v3w ? v3w.trades : 0 });
-    const combined = weekLong + weekShort;
-    console.log(`  Week ${label}: LONG ${weekLong >= 0 ? "+" : ""}${weekLong.toFixed(2)}% (${weekLongTrades}) | SHORT ${weekShort >= 0 ? "+" : ""}${weekShort.toFixed(2)}% (${weekShortTrades}) | COMBINED ${combined >= 0 ? "+" : ""}${combined.toFixed(2)}% | v3 ${v3Net >= 0 ? "+" : ""}${v3Net.toFixed(2)}%`);
+    const sentNet = weekSent;
+    weekResults.push({ label, sentNet, sentTrades: weekSentTrades, signalCount, skipCount, v3Net, v3Trades: v3w ? v3w.trades : 0 });
+    console.log(`  Week ${label}: sentiment ${sentNet >= 0 ? "+" : ""}${sentNet.toFixed(2)}% (${weekSentTrades} trades, ${signalCount} signals) | v3 ${v3Net >= 0 ? "+" : ""}${v3Net.toFixed(2)}% (${v3w ? v3w.trades : 0} trades)`);
   }
 
   // ─── Results ─────────────────────────────────────────────────
-  const longNet = acc.long.tpPnl + acc.long.wcPnl;
-  const shortNet = acc.short.tpPnl + acc.short.wcPnl;
-  const combinedNet = longNet + shortNet;
-  const combinedTrades = acc.long.trades + acc.short.trades;
-  const combinedTp = acc.long.tp + acc.short.tp;
-  const combinedWc = acc.long.wc + acc.short.wc;
-  const v3Net = v3Tot.tpPnl + v3Tot.wcPnl;
+  console.log("\n" + "=".repeat(70));
+  console.log("  SENTIMENT-ONLY vs TIERED V3 — ADR BACKTEST (9 weeks)");
+  console.log("=".repeat(70) + "\n");
 
-  console.log("\n" + "=".repeat(80));
-  console.log("  NEUTRAL TEST — LONG-ONLY vs SHORT-ONLY vs COMBINED (9 weeks, 32 pairs)");
-  console.log("=".repeat(80) + "\n");
-
-  console.log("Week".padEnd(8), "LONG".padEnd(14), "SHORT".padEnd(14), "COMBINED".padEnd(14), "V3".padEnd(14));
-  console.log("-".repeat(68));
+  console.log("Week".padEnd(8), "Sentiment".padEnd(14), "Trades".padEnd(8), "Signals".padEnd(9), "V3".padEnd(14), "Trades".padEnd(8), "Delta");
+  console.log("-".repeat(72));
   for (const w of weekResults) {
-    const lStr = (w.weekLong >= 0 ? "+" : "") + w.weekLong.toFixed(2) + "%";
-    const sStr = (w.weekShort >= 0 ? "+" : "") + w.weekShort.toFixed(2) + "%";
-    const cStr = ((w.weekLong + w.weekShort) >= 0 ? "+" : "") + (w.weekLong + w.weekShort).toFixed(2) + "%";
+    const sStr = (w.sentNet >= 0 ? "+" : "") + w.sentNet.toFixed(2) + "%";
     const vStr = (w.v3Net >= 0 ? "+" : "") + w.v3Net.toFixed(2) + "%";
-    console.log(w.label.padEnd(8), lStr.padEnd(14), sStr.padEnd(14), cStr.padEnd(14), vStr.padEnd(14));
+    const delta = w.sentNet - w.v3Net;
+    const dStr = (delta >= 0 ? "+" : "") + delta.toFixed(2) + "%";
+    console.log(w.label.padEnd(8), sStr.padEnd(14), String(w.sentTrades).padEnd(8), String(w.signalCount).padEnd(9), vStr.padEnd(14), String(w.v3Trades).padEnd(8), dStr);
   }
 
-  console.log("\n" + "=".repeat(80));
+  const sentNet = sent.tpPnl + sent.wcPnl;
+  const v3Net = v3Tot.tpPnl + v3Tot.wcPnl;
+
+  console.log("\n" + "=".repeat(70));
   console.log("  SUMMARY");
-  console.log("=".repeat(80) + "\n");
-  console.log("".padEnd(18), "LONG Only".padEnd(16), "SHORT Only".padEnd(16), "Combined".padEnd(16), "V3 (DB)");
-  console.log("-".repeat(75));
-  console.log("Trades".padEnd(18), String(acc.long.trades).padEnd(16), String(acc.short.trades).padEnd(16), String(combinedTrades).padEnd(16), v3Tot.trades);
-  console.log("TP Hits".padEnd(18), String(acc.long.tp).padEnd(16), String(acc.short.tp).padEnd(16), String(combinedTp).padEnd(16), v3Tot.tp);
-  console.log("Week Close".padEnd(18), String(acc.long.wc).padEnd(16), String(acc.short.wc).padEnd(16), String(combinedWc).padEnd(16), v3Tot.wc);
-  console.log("TP Profit".padEnd(18),
-    ("+" + acc.long.tpPnl.toFixed(2) + "%").padEnd(16),
-    ("+" + acc.short.tpPnl.toFixed(2) + "%").padEnd(16),
-    ("+" + (acc.long.tpPnl + acc.short.tpPnl).toFixed(2) + "%").padEnd(16),
-    "+" + v3Tot.tpPnl.toFixed(2) + "%");
-  console.log("WC Loss".padEnd(18),
-    (acc.long.wcPnl.toFixed(2) + "%").padEnd(16),
-    (acc.short.wcPnl.toFixed(2) + "%").padEnd(16),
-    ((acc.long.wcPnl + acc.short.wcPnl).toFixed(2) + "%").padEnd(16),
-    v3Tot.wcPnl.toFixed(2) + "%");
-  console.log("Net Return".padEnd(18),
-    ((longNet >= 0 ? "+" : "") + longNet.toFixed(2) + "%").padEnd(16),
-    ((shortNet >= 0 ? "+" : "") + shortNet.toFixed(2) + "%").padEnd(16),
-    ((combinedNet >= 0 ? "+" : "") + combinedNet.toFixed(2) + "%").padEnd(16),
-    (v3Net >= 0 ? "+" : "") + v3Net.toFixed(2) + "%");
-  console.log("Win Rate".padEnd(18),
-    ((acc.long.tp / acc.long.trades * 100).toFixed(1) + "%").padEnd(16),
-    ((acc.short.tp / acc.short.trades * 100).toFixed(1) + "%").padEnd(16),
-    ((combinedTp / combinedTrades * 100).toFixed(1) + "%").padEnd(16),
-    (v3Tot.tp / v3Tot.trades * 100).toFixed(1) + "%");
+  console.log("=".repeat(70) + "\n");
+  console.log("".padEnd(18), "Sentiment Only".padEnd(22), "Tiered V3 (from DB)");
+  console.log("-".repeat(60));
+  console.log("Total Trades".padEnd(18), String(sent.trades).padEnd(22), v3Tot.trades);
+  console.log("TP Hits".padEnd(18), String(sent.tp).padEnd(22), v3Tot.tp);
+  console.log("Week Close".padEnd(18), String(sent.wc).padEnd(22), v3Tot.wc);
+  console.log("TP Profit".padEnd(18), ("+" + sent.tpPnl.toFixed(2) + "%").padEnd(22), "+" + v3Tot.tpPnl.toFixed(2) + "%");
+  console.log("WC Loss".padEnd(18), (sent.wcPnl.toFixed(2) + "%").padEnd(22), v3Tot.wcPnl.toFixed(2) + "%");
+  console.log("Net Return".padEnd(18), ((sentNet >= 0 ? "+" : "") + sentNet.toFixed(2) + "%").padEnd(22), (v3Net >= 0 ? "+" : "") + v3Net.toFixed(2) + "%");
+  console.log("Win Rate".padEnd(18), ((sent.tp / sent.trades * 100).toFixed(1) + "%").padEnd(22), (v3Tot.tp / v3Tot.trades * 100).toFixed(1) + "%");
 
-  // Quick reference line
-  console.log("\n  Sentiment-only reference: +17.41% net, 396 trades, 83.1% WR");
-  console.log("  Stoch confirmation reference: +27.97% net, 89.7% WR");
-
-  // Per-pair detail
-  console.log("\n" + "=".repeat(80));
-  console.log("  PER-PAIR BREAKDOWN (sorted by combined net)");
-  console.log("=".repeat(80) + "\n");
-  const sorted = Object.entries(pairDetail).sort((a, b) => (b[1].longPnl + b[1].shortPnl) - (a[1].longPnl + a[1].shortPnl));
-  console.log("Pair".padEnd(12), "LONG".padEnd(16), "SHORT".padEnd(16), "Combined");
-  console.log("-".repeat(55));
+  // Per-pair breakdown
+  console.log("\n" + "=".repeat(70));
+  console.log("  PER-PAIR SENTIMENT DETAIL");
+  console.log("=".repeat(70) + "\n");
+  const sorted = Object.entries(pairDetail).sort((a, b) => b[1].sentPnl - a[1].sentPnl);
+  console.log("Pair".padEnd(12), "Trades".padEnd(8), "Net PnL");
+  console.log("-".repeat(35));
   for (const [p, d] of sorted) {
-    const combined = d.longPnl + d.shortPnl;
-    const lStr = (d.longPnl >= 0 ? "+" : "") + d.longPnl.toFixed(2) + "% (" + d.longTrades + ")";
-    const sStr = (d.shortPnl >= 0 ? "+" : "") + d.shortPnl.toFixed(2) + "% (" + d.shortTrades + ")";
-    const cStr = (combined >= 0 ? "+" : "") + combined.toFixed(2) + "%";
-    console.log(p.padEnd(12), lStr.padEnd(16), sStr.padEnd(16), cStr);
+    console.log(p.padEnd(12), String(d.sentTrades).padEnd(8), (d.sentPnl >= 0 ? "+" : "") + d.sentPnl.toFixed(2) + "%");
   }
 
   await pool.end();

@@ -1,14 +1,42 @@
 {
-  "schemaVersion": 2,
-  "generatedUtc": "2026-03-24T04:03:17.646Z",
-  "currentWeekOpenUtc": "2026-03-15T23:00:00.000Z",
+  "schemaVersion": 3,
+  "generatedUtc": "2026-03-28T23:25:36.287Z",
+  "currentWeekOpenUtc": "2026-03-29T23:00:00.000Z",
   "baseSystemId": "tiered_v3",
   "strategyId": "tiered_v3_gated",
   "strategyName": "Tiered V3 Net Hold Gated",
-  "sourceLabel": "Frozen Tiered V3 gated weekly snapshot · week of Mar 16, 2026",
+  "sourceLabel": "Frozen Tiered V3 gated weekly snapshot · week of Mar 30, 2026",
   "sourceType": "frozen_weekly_snapshot",
   "gateMode": "reduce_as_skip",
   "signals": [
+    {
+      "pair": "AUDNZD",
+      "assetClass": "fx",
+      "direction": "LONG",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "SKIP",
+      "signalMode": "ADR_DIP",
+      "gateReasons": [
+        "COT_SKIP_BASE_EXTREME",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "BTCUSD",
+      "assetClass": "crypto",
+      "direction": "SHORT",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "NO_DATA",
+      "signalMode": "ADR_DIP",
+      "gateReasons": [
+        "CRYPTO_GATE_NO_DATA",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
     {
       "pair": "CADCHF",
       "assetClass": "fx",
@@ -16,6 +44,7 @@
       "tier": "MEDIUM",
       "model": "dealer",
       "gateDecision": "PASS",
+      "signalMode": "FLAGSHIP",
       "gateReasons": [
         "COT_PASS",
         "PASS_TIER_2",
@@ -23,12 +52,55 @@
       ]
     },
     {
-      "pair": "EURCHF",
+      "pair": "CHFJPY",
       "assetClass": "fx",
+      "direction": "LONG",
+      "tier": "LOW",
+      "model": "commercial",
+      "gateDecision": "SKIP",
+      "signalMode": "ADR_DIP",
+      "gateReasons": [
+        "COT_SKIP_QUOTE_EXTREME",
+        "PASS_TIER_3",
+        "Tier 3 agreement vote"
+      ]
+    },
+    {
+      "pair": "ETHUSD",
+      "assetClass": "crypto",
       "direction": "SHORT",
       "tier": "MEDIUM",
       "model": "dealer",
+      "gateDecision": "NO_DATA",
+      "signalMode": "ADR_DIP",
+      "gateReasons": [
+        "CRYPTO_GATE_NO_DATA",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "EURJPY",
+      "assetClass": "fx",
+      "direction": "LONG",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "SKIP",
+      "signalMode": "ADR_DIP",
+      "gateReasons": [
+        "COT_SKIP_QUOTE_EXTREME",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "EURNZD",
+      "assetClass": "fx",
+      "direction": "LONG",
+      "tier": "MEDIUM",
+      "model": "dealer",
       "gateDecision": "PASS",
+      "signalMode": "FLAGSHIP",
       "gateReasons": [
         "COT_PASS",
         "PASS_TIER_2",
@@ -36,27 +108,32 @@
       ]
     },
     {
-      "pair": "EURGBP",
+      "pair": "GBPCHF",
       "assetClass": "fx",
       "direction": "SHORT",
-      "tier": "MEDIUM",
-      "model": "dealer",
-      "gateDecision": "PASS",
+      "tier": "LOW",
+      "model": "commercial",
+      "gateDecision": "SKIP",
+      "signalMode": "ADR_DIP",
       "gateReasons": [
-        "COT_PASS",
-        "PASS_TIER_2",
-        "Tier 2 agreement vote"
+        "COT_REDUCE_BASE_CROWDED",
+        "REDUCE_ESCALATED_TO_SKIP",
+        "PASS_TIER_3",
+        "Tier 3 agreement vote"
       ]
     },
     {
-      "pair": "EURUSD",
-      "assetClass": "fx",
+      "pair": "NDXUSD",
+      "assetClass": "indices",
       "direction": "SHORT",
       "tier": "MEDIUM",
       "model": "dealer",
-      "gateDecision": "PASS",
+      "gateDecision": "SKIP",
+      "signalMode": "ADR_DIP",
       "gateReasons": [
-        "COT_PASS",
+        "COT_SINGLE_MARKET_MODE_BASE_ONLY",
+        "COT_REDUCE_BASE_CROWDED",
+        "REDUCE_ESCALATED_TO_SKIP",
         "PASS_TIER_2",
         "Tier 2 agreement vote"
       ]
@@ -68,8 +145,24 @@
       "tier": "MEDIUM",
       "model": "dealer",
       "gateDecision": "PASS",
+      "signalMode": "FLAGSHIP",
       "gateReasons": [
         "COT_PASS",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
+      ]
+    },
+    {
+      "pair": "NZDCAD",
+      "assetClass": "fx",
+      "direction": "SHORT",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "SKIP",
+      "signalMode": "ADR_DIP",
+      "gateReasons": [
+        "COT_REDUCE_QUOTE_CROWDED",
+        "REDUCE_ESCALATED_TO_SKIP",
         "PASS_TIER_2",
         "Tier 2 agreement vote"
       ]
@@ -81,6 +174,7 @@
       "tier": "LOW",
       "model": "commercial",
       "gateDecision": "PASS",
+      "signalMode": "FLAGSHIP",
       "gateReasons": [
         "COT_PASS",
         "PASS_TIER_3",
@@ -91,50 +185,55 @@
       "pair": "NZDUSD",
       "assetClass": "fx",
       "direction": "SHORT",
-      "tier": "LOW",
-      "model": "commercial",
-      "gateDecision": "PASS",
+      "tier": "MEDIUM",
+      "model": "dealer",
+      "gateDecision": "SKIP",
+      "signalMode": "ADR_DIP",
       "gateReasons": [
-        "COT_PASS",
-        "PASS_TIER_3",
-        "Tier 3 agreement vote"
+        "COT_SKIP_QUOTE_EXTREME",
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
       ]
     },
     {
       "pair": "SPXUSD",
       "assetClass": "indices",
       "direction": "LONG",
-      "tier": "HIGH",
-      "model": "antikythera_v3",
+      "tier": "MEDIUM",
+      "model": "dealer",
       "gateDecision": "PASS",
+      "signalMode": "FLAGSHIP",
       "gateReasons": [
         "COT_PASS",
-        "PASS_TIER_1",
-        "Tier 1 agreement vote"
+        "PASS_TIER_2",
+        "Tier 2 agreement vote"
       ]
     },
     {
-      "pair": "USDCHF",
+      "pair": "USDCAD",
       "assetClass": "fx",
-      "direction": "SHORT",
+      "direction": "LONG",
       "tier": "LOW",
       "model": "commercial",
-      "gateDecision": "PASS",
+      "gateDecision": "SKIP",
+      "signalMode": "ADR_DIP",
       "gateReasons": [
-        "COT_PASS",
+        "COT_SKIP_BASE_EXTREME",
         "PASS_TIER_3",
         "Tier 3 agreement vote"
       ]
     },
     {
-      "pair": "XAUUSD",
-      "assetClass": "commodities",
-      "direction": "SHORT",
+      "pair": "USDJPY",
+      "assetClass": "fx",
+      "direction": "LONG",
       "tier": "MEDIUM",
       "model": "dealer",
-      "gateDecision": "PASS",
+      "gateDecision": "SKIP",
+      "signalMode": "ADR_DIP",
       "gateReasons": [
-        "COT_PASS",
+        "COT_SKIP_BASE_EXTREME",
+        "COT_SKIP_QUOTE_EXTREME",
         "PASS_TIER_2",
         "Tier 2 agreement vote"
       ]

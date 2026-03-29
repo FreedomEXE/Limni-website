@@ -1,0 +1,14 @@
+sentiment_daily_snapshots columns:
+  id
+  snapshot_date_utc
+  snapshot_time_utc
+  symbol
+  agg_long_pct
+  agg_short_pct
+  agg_net
+  confidence_score
+  crowding_state
+  flip_state
+  sentiment_direction
+  source_mode
+  created_at

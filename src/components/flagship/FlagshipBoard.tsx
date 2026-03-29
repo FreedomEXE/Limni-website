@@ -514,6 +514,11 @@ function sizingToneClass(warning: string | null) {
 type FlagshipBoardProps = {
   weekOpenUtc?: string | null;
   currentWeekOpenUtc?: string;
+  selection?: {
+    strategy: string;
+    f1: string;
+    f2: string;
+  };
   /** Pre-computed engine results per week — canonical source. When provided,
    *  the board uses this instead of client-side fetching for trade data. */
   engineWeekResults?: Record<string, WeeklyHoldResult> | null;
@@ -533,12 +538,13 @@ type FlagshipBoardProps = {
 export default function FlagshipBoard({
   weekOpenUtc,
   currentWeekOpenUtc,
+  selection,
   engineWeekResults,
   canonicalSignals,
   weeklyReturns,
 }: FlagshipBoardProps) {
   const matrixSearchParams = useSearchParams();
-  const activeSelection = readSelectionFromParams(matrixSearchParams);
+  const activeSelection = selection ?? readSelectionFromParams(matrixSearchParams);
   const activeLabel = selectionLabel(activeSelection);
   const activeFilter = getIntradayFilter(resolveIntradayFilterId(activeSelection.f2));
   const matrixUi = activeFilter?.matrixUi ?? {
@@ -558,11 +564,14 @@ export default function FlagshipBoard({
   const [liveSizing, setLiveSizing] = useState<LiveSizingPayload | null>(null);
   const [priceMoves, setPriceMoves] = useState<PriceMovesPayload | null>(null);
   const [intradayLevels, setIntradayLevels] = useState<IntradayLevelsPayload | null>(null);
-  const [adrTrades, setAdrTrades] = useState<AdrTradesPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [fetchedAdrTrades, setFetchedAdrTrades] = useState<AdrTradesPayload | null>(null);
+  const [staticLoading, setStaticLoading] = useState(true);
+  const [weekLoading, setWeekLoading] = useState(true);
+  const [staticRefreshing, setStaticRefreshing] = useState(false);
+  const [weekRefreshing, setWeekRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [warnings, setWarnings] = useState<string[]>([]);
+  const [staticWarnings, setStaticWarnings] = useState<string[]>([]);
+  const [weekWarnings, setWeekWarnings] = useState<string[]>([]);
   const [lastRefreshedUtc, setLastRefreshedUtc] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [nowUtc, setNowUtc] = useState<Date>(() => new Date());
@@ -588,22 +597,73 @@ export default function FlagshipBoard({
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchBoardData() {
+    async function fetchStaticOverlayData() {
       try {
-        setRefreshing(true);
-        setError(null);
+        setStaticRefreshing(true);
         const nextWarnings: string[] = [];
-        const weekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
-        // Live overlays only — historical basket signals now come from
-        // canonicalSignals prop (server-side engine, not client fetch).
         const responses = await Promise.allSettled([
-          fetch(`/api/flagship/cot-matrix${weekQs}`, { cache: "no-store" }),
-          fetch(`/api/flagship/sentiment-daily${weekQs ? `?asOf=${encodeURIComponent(weekOpenUtc!)}` : ""}`, { cache: "no-store" }),
           fetch("/api/flagship/currency-strength", { cache: "no-store" }),
           fetch("/api/flagship/asset-strength", { cache: "no-store" }),
           fetch("/api/flagship/menthorq-overlay", { cache: "no-store" }),
           fetch("/api/flagship/live-sizing", { cache: "no-store" }),
           fetch("/api/flagship/price-moves", { cache: "no-store" }),
+        ]);
+
+        const readJson = async <T,>(response: PromiseSettledResult<Response>, label: string) => {
+          if (response.status === "fulfilled" && response.value.ok) return (await response.value.json()) as T;
+          nextWarnings.push(`${label} unavailable`);
+          return null;
+        };
+
+        const [currencyJson, assetJson, overlayJson, sizingJson, movesJson] = await Promise.all([
+          readJson<CurrencyStrengthPayload>(responses[0], "currency-strength"),
+          readJson<AssetStrengthPayload>(responses[1], "asset-strength"),
+          readJson<MenthorqOverlayPayload>(responses[2], "menthorq-overlay"),
+          readJson<LiveSizingPayload>(responses[3], "live-sizing"),
+          readJson<PriceMovesPayload>(responses[4], "price-moves"),
+        ]);
+
+        if (!cancelled) {
+          setCurrencyStrength(currencyJson);
+          setAssetStrength(assetJson);
+          setMenthorqOverlay(overlayJson);
+          setLiveSizing(sizingJson);
+          setPriceMoves(movesJson);
+          setStaticWarnings(nextWarnings);
+          setLastRefreshedUtc(new Date().toISOString());
+          setStaticLoading(false);
+          setStaticRefreshing(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setStaticWarnings(["live overlays unavailable"]);
+          setStaticLoading(false);
+          setStaticRefreshing(false);
+        }
+      }
+    }
+
+    fetchStaticOverlayData();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshTick]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchWeekOverlayData() {
+      try {
+        setWeekRefreshing(true);
+        setError(null);
+        const nextWarnings: string[] = [];
+        const weekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
+        const sentimentUrl = weekOpenUtc
+          ? `/api/flagship/sentiment-daily?asOf=${encodeURIComponent(weekOpenUtc)}`
+          : "/api/flagship/sentiment-daily";
+        const responses = await Promise.allSettled([
+          fetch(`/api/flagship/cot-matrix${weekQs}`, { cache: "no-store" }),
+          fetch(sentimentUrl, { cache: "no-store" }),
           fetch(`/api/flagship/intraday-levels${weekQs}`, { cache: "no-store" }),
         ]);
 
@@ -613,98 +673,101 @@ export default function FlagshipBoard({
           return null;
         };
 
-        const [cotJson, sentimentJson, currencyJson, assetJson, overlayJson, sizingJson, movesJson, intradayJson] = await Promise.all([
+        const [cotJson, sentimentJson, intradayJson] = await Promise.all([
           readJson<CotMatrixPayload>(responses[0], "cot-matrix"),
           readJson<DailySentimentPayload>(responses[1], "sentiment-daily"),
-          readJson<CurrencyStrengthPayload>(responses[2], "currency-strength"),
-          readJson<AssetStrengthPayload>(responses[3], "asset-strength"),
-          readJson<MenthorqOverlayPayload>(responses[4], "menthorq-overlay"),
-          readJson<LiveSizingPayload>(responses[5], "live-sizing"),
-          readJson<PriceMovesPayload>(responses[6], "price-moves"),
-          readJson<IntradayLevelsPayload>(responses[7], "intraday-levels"),
+          readJson<IntradayLevelsPayload>(responses[2], "intraday-levels"),
         ]);
 
         if (!cancelled) {
           if (!cotJson && !sentimentJson) setError("Failed to load overlay sources.");
           setCotMatrix(cotJson);
           setDailySentiment(sentimentJson);
-          setCurrencyStrength(currencyJson);
-          setAssetStrength(assetJson);
-          setMenthorqOverlay(overlayJson);
-          setLiveSizing(sizingJson);
-          setPriceMoves(movesJson);
           setIntradayLevels(intradayJson);
-          setWarnings(nextWarnings);
+          setWeekWarnings(nextWarnings);
           setLastRefreshedUtc(new Date().toISOString());
-          setLoading(false);
-          setRefreshing(false);
+          setWeekLoading(false);
+          setWeekRefreshing(false);
         }
       } catch (fetchError) {
         if (!cancelled) {
           setError(fetchError instanceof Error ? fetchError.message : String(fetchError));
-          setLoading(false);
-          setRefreshing(false);
+          setWeekLoading(false);
+          setWeekRefreshing(false);
         }
       }
     }
 
-    fetchBoardData();
-    // ADR trades: use canonical engine data when available, client-fetch only
-    // when engine data isn't provided at all (no engineWeekResults prop).
-    if (activeFilter?.hasTradeLog) {
-      const weekKey = weekOpenUtc ?? "";
-      const engineResult = engineWeekResults?.[weekKey];
-      if (engineResult) {
-        // Canonical path: build AdrTradesPayload from engine (even if 0 trades)
-        const trades: AdrTradeRow[] = engineResult.trades.map((t) => ({
-          symbol: t.symbol,
-          direction: t.direction,
-          entryTimeUtc: t.detail?.entryTimeUtc ?? null,
-          exitTimeUtc: t.detail?.exitTimeUtc ?? null,
-          entryPrice: t.openPrice,
-          exitPrice: t.closePrice || null,
-          pnlPct: t.returnPct,
-          exitReason: t.detail?.exitReason ?? null,
-          tradeNumber: t.detail?.tradeNumber ?? null,
-          anchorPrice: t.detail?.anchorPrice ?? null,
-          adrPct: t.detail?.adrPct ?? null,
-          tpPrice: t.detail?.tpPrice ?? null,
-          maePct: t.detail?.maePct ?? null,
-          assetClass: t.assetClass,
-          tier: String(t.tier ?? ""),
-          gateDecision: null,
-        }));
-        const totalTpHits = trades.filter((t) => t.exitReason === "tp").length;
-        const totalActive = trades.filter((t) => t.exitReason === "active").length;
-        setAdrTrades({
-          weekOpenUtc: engineResult.weekOpenUtc,
-          generatedUtc: new Date().toISOString(),
-          totalTrades: trades.length,
-          totalTpHits,
-          totalActive,
-          totalLosses: trades.length - totalTpHits - totalActive,
-          weekReturnPct: engineResult.totalReturnPct,
-          trades,
-        });
-      } else if (!engineWeekResults) {
-        // No engine prop at all (e.g., standalone usage) — client-side fetch
-        const adrWeekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
-        fetch(`/api/flagship/adr-trades${adrWeekQs}`).then(r => r.json()).then(setAdrTrades).catch(() => {});
-      } else if (weekKey in engineWeekResults) {
-        // Engine provided, week exists but has 0 trades — valid zero-trade week
-        setAdrTrades({ weekOpenUtc: weekKey, generatedUtc: new Date().toISOString(), totalTrades: 0, totalTpHits: 0, totalActive: 0, totalLosses: 0, weekReturnPct: 0, trades: [] });
-      } else {
-        // Engine provided but week key missing — computation gap, log and show empty
-        console.warn(`[FlagshipBoard] Week ${weekKey} missing from engineWeekResults`);
-        setAdrTrades(null);
-      }
-    } else {
-      setAdrTrades(null);
+    fetchWeekOverlayData();
+    if (activeFilter?.hasTradeLog && !engineWeekResults) {
+      const adrWeekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
+      fetch(`/api/flagship/adr-trades${adrWeekQs}`)
+        .then((response) => response.json())
+        .then(setFetchedAdrTrades)
+        .catch(() => {});
     }
     return () => {
       cancelled = true;
     };
   }, [activeFilter?.hasTradeLog, engineWeekResults, refreshTick, weekOpenUtc]);
+
+  const loading = staticLoading || weekLoading;
+  const refreshing = staticRefreshing || weekRefreshing;
+  const warnings = useMemo(
+    () => Array.from(new Set([...staticWarnings, ...weekWarnings])),
+    [staticWarnings, weekWarnings],
+  );
+  const adrTrades = useMemo(() => {
+    if (!activeFilter?.hasTradeLog) return null;
+    const weekKey = weekOpenUtc ?? "";
+    const engineResult = engineWeekResults?.[weekKey];
+    if (engineResult) {
+      const trades: AdrTradeRow[] = engineResult.trades.map((trade) => ({
+        symbol: trade.symbol,
+        direction: trade.direction,
+        entryTimeUtc: trade.detail?.entryTimeUtc ?? null,
+        exitTimeUtc: trade.detail?.exitTimeUtc ?? null,
+        entryPrice: trade.openPrice,
+        exitPrice: trade.closePrice || null,
+        pnlPct: trade.returnPct,
+        exitReason: trade.detail?.exitReason ?? null,
+        tradeNumber: trade.detail?.tradeNumber ?? null,
+        anchorPrice: trade.detail?.anchorPrice ?? null,
+        adrPct: trade.detail?.adrPct ?? null,
+        tpPrice: trade.detail?.tpPrice ?? null,
+        maePct: trade.detail?.maePct ?? null,
+        assetClass: trade.assetClass,
+        tier: String(trade.tier ?? ""),
+        gateDecision: null,
+      }));
+      const totalTpHits = trades.filter((trade) => trade.exitReason === "tp").length;
+      const totalActive = trades.filter((trade) => trade.exitReason === "active").length;
+      return {
+        weekOpenUtc: engineResult.weekOpenUtc,
+        generatedUtc: new Date().toISOString(),
+        totalTrades: trades.length,
+        totalTpHits,
+        totalActive,
+        totalLosses: trades.length - totalTpHits - totalActive,
+        weekReturnPct: engineResult.totalReturnPct,
+        trades,
+      } satisfies AdrTradesPayload;
+    }
+    if (!engineWeekResults) return fetchedAdrTrades;
+    if (weekKey in engineWeekResults) {
+      return {
+        weekOpenUtc: weekKey,
+        generatedUtc: new Date().toISOString(),
+        totalTrades: 0,
+        totalTpHits: 0,
+        totalActive: 0,
+        totalLosses: 0,
+        weekReturnPct: 0,
+        trades: [],
+      } satisfies AdrTradesPayload;
+    }
+    return null;
+  }, [activeFilter?.hasTradeLog, engineWeekResults, fetchedAdrTrades, weekOpenUtc]);
 
   const matrixRows = useMemo(() => {
     // Build per-pair signal arrays from canonical engine signals (prop).

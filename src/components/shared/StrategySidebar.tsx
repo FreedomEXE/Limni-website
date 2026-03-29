@@ -15,10 +15,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import StrategySelector from "@/components/shared/StrategySelector";
-import { resolveStrategyId, resolveIntradayFilterId, getIntradayFilter } from "@/lib/performance/strategyConfig";
+import { getIntradayFilter } from "@/lib/performance/strategyConfig";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
+import {
+  STRATEGY_SELECTION_COMMIT_EVENT,
+  STRATEGY_SIDEBAR_STATS_EVENT,
+  type RuntimeStrategySelection,
+  type StrategySelectionCommitDetail,
+  type StrategySidebarStatsDetail,
+} from "@/lib/performance/strategySelection";
+import { readSelectionFromParams } from "@/components/shared/StrategySelector";
 
 function formatPF(pf: number | null | undefined): string {
   if (pf == null) return "—";
@@ -36,17 +44,39 @@ type WeekStats = {
 };
 
 function EngineSidebarStatsCard() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const bias = resolveStrategyId(searchParams.get("strategy") ?? searchParams.get("bias"));
-  const f2 = resolveIntradayFilterId(searchParams.get("f2"));
+  const initialSelection = readSelectionFromParams(searchParams);
+  const [activeSelection, setActiveSelection] = useState<RuntimeStrategySelection>(initialSelection);
   const [allTimeStats, setAllTimeStats] = useState<EngineSidebarStats | null>(null);
   const [weekStats, setWeekStats] = useState<WeekStats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all-time stats on bias or filter change
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/performance/engine-stats?bias=${bias}&f2=${f2}`)
+    const onSelectionCommit = (event: Event) => {
+      const custom = event as CustomEvent<StrategySelectionCommitDetail>;
+      setActiveSelection(custom.detail.selection);
+      setWeekStats(null);
+    };
+    const onSidebarStats = (event: Event) => {
+      const custom = event as CustomEvent<StrategySidebarStatsDetail>;
+      setActiveSelection(custom.detail.selection);
+      setAllTimeStats(custom.detail.stats);
+      setLoading(false);
+    };
+    window.addEventListener(STRATEGY_SELECTION_COMMIT_EVENT, onSelectionCommit);
+    window.addEventListener(STRATEGY_SIDEBAR_STATS_EVENT, onSidebarStats);
+    return () => {
+      window.removeEventListener(STRATEGY_SELECTION_COMMIT_EVENT, onSelectionCommit);
+      window.removeEventListener(STRATEGY_SIDEBAR_STATS_EVENT, onSidebarStats);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (pathname.startsWith("/performance") || pathname.startsWith("/matrix")) {
+      return;
+    }
+    fetch(`/api/performance/engine-stats?bias=${activeSelection.strategy}&f2=${activeSelection.f2}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) setAllTimeStats(null);
@@ -54,7 +84,7 @@ function EngineSidebarStatsCard() {
         setLoading(false);
       })
       .catch(() => { setAllTimeStats(null); setLoading(false); });
-  }, [bias, f2]);
+  }, [activeSelection, pathname]);
 
   // Listen for week change events from ViewSection
   useEffect(() => {
@@ -77,7 +107,9 @@ function EngineSidebarStatsCard() {
   const at = allTimeStats?.allTime;
   const isAllTime = weekStats?.weekKey === "all" || !weekStats;
   const returnColor = (v: number) => v >= 0 ? "text-lime-400" : "text-red-400";
-  const filterLabel = f2 !== "none" ? ` · ${getIntradayFilter(f2)?.label ?? f2}` : "";
+  const filterLabel = activeSelection.f2 !== "none"
+    ? ` · ${getIntradayFilter(activeSelection.f2)?.label ?? activeSelection.f2}`
+    : "";
 
   return (
     <div className="space-y-3">
@@ -163,12 +195,15 @@ function EngineSidebarStatsCard() {
 }
 
 export default function StrategySidebar() {
+  const searchParams = useSearchParams();
+  const sidebarKey = searchParams.toString();
+
   return (
     <div className="flex-1 space-y-4 p-4">
-      <StrategySelector />
+      <StrategySelector key={`selector:${sidebarKey}`} />
 
       <div className="border-t border-[var(--panel-border)] pt-4">
-        <EngineSidebarStatsCard />
+        <EngineSidebarStatsCard key={`stats:${sidebarKey}`} />
       </div>
     </div>
   );

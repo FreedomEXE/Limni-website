@@ -673,3 +673,15 @@ CREATE INDEX IF NOT EXISTS idx_pair_period_returns_lookup
 
 CREATE INDEX IF NOT EXISTS idx_pair_period_returns_asset_period
   ON pair_period_returns (asset_class, period_type, period_open_utc DESC);
+
+CREATE TABLE IF NOT EXISTS strategy_artifacts (
+  selection_key TEXT PRIMARY KEY,
+  cached_at_utc TIMESTAMPTZ NOT NULL,
+  fingerprint_json JSONB NOT NULL,
+  payload_json JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_strategy_artifacts_updated_at
+  ON strategy_artifacts (updated_at DESC);

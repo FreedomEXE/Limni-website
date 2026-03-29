@@ -14,15 +14,18 @@
 -----------------------------------------------*/
 
 import DashboardLayout from "@/components/DashboardLayout";
-import CryptoBoard from "@/components/flagship/CryptoBoard";
-import FlagshipBoard from "@/components/flagship/FlagshipBoard";
-import MatrixControls from "@/components/matrix/MatrixControls";
+import MatrixViewSection from "@/components/matrix/MatrixViewSection";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { resolveStrategyId, resolveIntradayFilterId } from "@/lib/performance/strategyConfig";
 import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
+import {
+  buildStrategySelectionKey,
+  listStrategyBootstrapSelections,
+  toRuntimeStrategySelection,
+} from "@/lib/performance/strategySelection";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +51,11 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
   const strategyId = resolveStrategyId(Array.isArray(strategyParam) ? strategyParam[0] : strategyParam);
   const f2Param = resolvedSearchParams.f2;
   const f2 = resolveIntradayFilterId(Array.isArray(f2Param) ? f2Param[0] : f2Param);
+  const initialStrategySelection = {
+    strategyId,
+    f1: "weekly_hold",
+    f2,
+  };
 
   // Shared week switching — same logic as Sentiment/Antikythera
   const currentWeekOpen = getDisplayWeekOpenUtc();
@@ -63,41 +71,42 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
     allowAll: false,
   }) as string | null;
 
-  // Canonical strategy data — computed once server-side, shared with Performance
-  const strategyData = await loadStrategyPageData({
-    strategyId,
-    f1: "weekly_hold",
-    f2,
-  });
+  const [strategySelectionEntries, weeklyReturnEntries] = await Promise.all([
+    Promise.all(
+      listStrategyBootstrapSelections().map(async (selection) => [
+        buildStrategySelectionKey(selection),
+        await loadStrategyPageData(selection),
+      ] as const),
+    ),
+    Promise.all(
+      weeks.map(async (week) => [week, await getWeeklyPairReturns(week)] as const),
+    ),
+  ]);
 
-  // Extract canonical signals for the selected week — board uses these for
-  // coreBias, tier display, and copy buttons instead of client-side basket fetch.
-  const selectedWeekSignals = strategyData?.weekResults?.[selectedWeek ?? ""]?.signals ?? [];
-  const selectedWeekReturns = selectedWeek
-    ? await getWeeklyPairReturns(selectedWeek)
-    : [];
+  const strategyDataMap = Object.fromEntries(
+    strategySelectionEntries.map(([selectionKey, strategyData]) => [
+      selectionKey,
+      strategyData
+        ? {
+            engineWeekResults: strategyData.weekResults ?? null,
+            sidebarStats: strategyData.sidebarStats ?? null,
+          }
+        : null,
+    ]),
+  );
+  const allWeeklyReturns = Object.fromEntries(weeklyReturnEntries);
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
-        <MatrixControls
-          weeks={weeks}
-          selectedWeek={selectedWeek}
-          currentWeekOpen={currentWeekOpen}
-          selectedTab={selectedTab}
-        />
-
-        {selectedTab === "crypto" ? <CryptoBoard weekOpenUtc={selectedWeek} /> : null}
-        {selectedTab === "cfd" ? (
-          <FlagshipBoard
-            weekOpenUtc={selectedWeek}
-            currentWeekOpenUtc={currentWeekOpen}
-            engineWeekResults={strategyData?.weekResults ?? null}
-            canonicalSignals={selectedWeekSignals}
-            weeklyReturns={selectedWeekReturns}
-          />
-        ) : null}
-      </div>
+      <MatrixViewSection
+        weeks={weeks}
+        initialWeek={selectedWeek}
+        currentWeekOpenUtc={currentWeekOpen}
+        initialTab={selectedTab}
+        initialSelection={toRuntimeStrategySelection(initialStrategySelection)}
+        strategyDataMap={strategyDataMap}
+        allWeeklyReturns={allWeeklyReturns}
+      />
     </DashboardLayout>
   );
 }

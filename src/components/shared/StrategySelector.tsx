@@ -16,7 +16,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   STRATEGIES,
@@ -29,6 +29,10 @@ import {
   getBasketFilter,
   getIntradayFilter,
 } from "@/lib/performance/strategyConfig";
+import {
+  STRATEGY_SELECTION_COMMIT_EVENT,
+  type StrategySelectionCommitDetail,
+} from "@/lib/performance/strategySelection";
 
 export type StrategySelection = {
   strategy: string;
@@ -59,12 +63,19 @@ export default function StrategySelector() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const initialCommitted = readSelectionFromParams(searchParams);
+  const [committed, setCommitted] = useState<StrategySelection>(initialCommitted);
+  const [draft, setDraft] = useState<StrategySelection>(initialCommitted);
 
-  // Read committed selection from URL
-  const committed = readSelectionFromParams(searchParams);
-
-  // Local draft state (not applied until "Run" is clicked)
-  const [draft, setDraft] = useState<StrategySelection>(committed);
+  useEffect(() => {
+    const onSelectionCommit = (event: Event) => {
+      const custom = event as CustomEvent<StrategySelectionCommitDetail>;
+      setCommitted(custom.detail.selection);
+      setDraft(custom.detail.selection);
+    };
+    window.addEventListener(STRATEGY_SELECTION_COMMIT_EVENT, onSelectionCommit);
+    return () => window.removeEventListener(STRATEGY_SELECTION_COMMIT_EVENT, onSelectionCommit);
+  }, []);
 
   // Check if draft differs from committed
   const isDirty =
@@ -83,7 +94,20 @@ export default function StrategySelector() {
     params.delete("style");
     params.delete("system");
     params.delete("mode");
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    const nextSelection = { ...draft };
+    const nextUrl = `${pathname}?${params.toString()}`;
+
+    if (pathname.startsWith("/performance") || pathname.startsWith("/matrix")) {
+      window.history.replaceState(window.history.state, "", nextUrl);
+      setCommitted(nextSelection);
+      setDraft(nextSelection);
+      window.dispatchEvent(new CustomEvent(STRATEGY_SELECTION_COMMIT_EVENT, {
+        detail: { selection: nextSelection },
+      }));
+      return;
+    }
+
+    router.replace(nextUrl, { scroll: false });
   };
 
   const selectClasses =

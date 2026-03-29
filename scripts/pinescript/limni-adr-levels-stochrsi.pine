@@ -1,0 +1,804 @@
+// This Pine Script™ source code is subject to the terms of the Mozilla Public License 2.0
+// https://mozilla.org/MPL/2.0/
+// Property of Freedom_EXE (c) 2026
+
+//@version=6
+indicator("Limni ADR + Stoch RSI", shorttitle="Limni ADR+Stoch", overlay=true, format=format.price, max_boxes_count=500, max_lines_count=500, max_labels_count=500)
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+adrLookback   = input.int(10, "ADR Lookback (days)", minval=1, maxval=50)
+adrMinDays    = input.int(5, "ADR Min Required Days", minval=1, maxval=50)
+entryMultiple = input.float(1.0, "ADR Entry Multiple", minval=0.1, step=0.05)
+tpMultiple    = input.float(0.25, "TP ADR Multiple", minval=0.05, step=0.05)
+longPairs     = input.text_area("", "LONG Pairs (comma/newline)")
+shortPairs    = input.text_area("", "SHORT Pairs (comma/newline)")
+showTable     = input.bool(true, "Show Info Table")
+showBoxes     = input.bool(true, "Show Trade Boxes")
+showTradeLog  = input.bool(true, "Show Trade Breakdown")
+targetWeeksBack = input.int(0, "Weeks Back (0=current)", minval=0, maxval=52)
+entryMode     = input.string("ADR Pullback", "Entry Mode", options=["ADR Pullback", "Stoch RSI", "ADR + Stoch"])
+stochPeriod   = input.int(100, "Stoch Period (K)", minval=1)
+stochDPeriod  = input.int(21, "Stoch D Period", minval=1)
+stochSmooth   = input.int(3, "Stoch Smoothing", minval=1)
+stochOB       = input.float(80.0, "Stoch Overbought", minval=50.0, maxval=100.0)
+stochOS       = input.float(20.0, "Stoch Oversold", minval=0.0, maxval=50.0)
+
+periodBoxBg      = input.color(color.new(#2a2e39, 70), "Period Box Fill")
+periodBoxBorder  = input.color(color.new(color.gray, 60), "Period Box Border")
+profitBoxBg      = input.color(color.new(color.green, 75), "Profit Box Fill")
+ddBoxBg          = input.color(color.new(color.red, 75), "Drawdown Box Fill")
+tableBgColor     = input.color(color.new(color.black, 15), "Table Background")
+tableTextColor   = input.color(color.white, "Table Text")
+tableBorderColor = input.color(color.new(color.white, 45), "Table Border")
+
+// Fresh Start re-entry: after TP, anchor resets and starts tracking from next bar
+
+// ── Pair helpers ────────────────────────────────────────────────────────────
+canonicalizePair(_s) =>
+    string x = str.upper(_s)
+    x := str.replace_all(x, "OANDA:", "")
+    x := str.replace_all(x, "FX:", "")
+    x := str.replace_all(x, "FOREXCOM:", "")
+    x := str.replace_all(x, "PEPPERSTONE:", "")
+    x := str.replace_all(x, "EIGHTCAP:", "")
+    x := str.replace_all(x, "CAPITALCOM:", "")
+    x := str.replace_all(x, "BLACKBULL:", "")
+    x := str.replace_all(x, "ICMARKETS:", "")
+    x := str.replace_all(x, "INDEX:", "")
+    x := str.replace_all(x, "/", "")
+    x := str.replace_all(x, ".", "")
+    x := str.replace_all(x, "_", "")
+    x := str.replace_all(x, "-", "")
+    if x == "NIKKEI" or x == "NIK225" or x == "JP225" or x == "NIKKEI225" or x == "JAPAN225" or x == "JP225USD" or x == "JPN225USD" or x == "NIKKEIUSD"
+        x := "JPN225"
+    if x == "SP500" or x == "US500" or x == "SPXUSD" or x == "SPX500USD" or x == "US500USD"
+        x := "SPX500"
+    if x == "NAS100" or x == "US100" or x == "NDXUSD" or x == "NDX100USD" or x == "NAS100USD" or x == "US100USD"
+        x := "NDX100"
+    if x == "USOIL" or x == "USOUSD" or x == "XTIUSD"
+        x := "WTIUSD"
+    if x == "BTCUSDT" or x == "BTCUSDP" or x == "BTCUSDTP"
+        x := "BTCUSD"
+    if x == "ETHUSDT" or x == "ETHUSDP" or x == "ETHUSDTP"
+        x := "ETHUSD"
+    x
+
+normalizePairList(_raw) =>
+    string cleaned = str.upper(_raw)
+    cleaned := str.replace_all(cleaned, " ", "")
+    cleaned := str.replace_all(cleaned, "\r", ",")
+    cleaned := str.replace_all(cleaned, "\n", ",")
+    cleaned := str.replace_all(cleaned, ";", ",")
+    cleaned := str.replace_all(cleaned, "/", "")
+    cleaned := str.replace_all(cleaned, ".", "")
+    cleaned := str.replace_all(cleaned, "_", "")
+    cleaned := str.replace_all(cleaned, "-", "")
+    cleaned := str.replace_all(cleaned, "NIKKEIUSD", "JPN225")
+    cleaned := str.replace_all(cleaned, "NIKKEI225", "JPN225")
+    cleaned := str.replace_all(cleaned, "NIK225", "JPN225")
+    cleaned := str.replace_all(cleaned, "JP225USD", "JPN225")
+    cleaned := str.replace_all(cleaned, "JPN225USD", "JPN225")
+    cleaned := str.replace_all(cleaned, "JP225", "JPN225")
+    cleaned := str.replace_all(cleaned, "JAPAN225", "JPN225")
+    cleaned := str.replace_all(cleaned, "SPX500USD", "SPX500")
+    cleaned := str.replace_all(cleaned, "US500USD", "SPX500")
+    cleaned := str.replace_all(cleaned, "SP500", "SPX500")
+    cleaned := str.replace_all(cleaned, "US500", "SPX500")
+    cleaned := str.replace_all(cleaned, "SPXUSD", "SPX500")
+    cleaned := str.replace_all(cleaned, "NAS100USD", "NDX100")
+    cleaned := str.replace_all(cleaned, "NDX100USD", "NDX100")
+    cleaned := str.replace_all(cleaned, "US100USD", "NDX100")
+    cleaned := str.replace_all(cleaned, "NAS100", "NDX100")
+    cleaned := str.replace_all(cleaned, "US100", "NDX100")
+    cleaned := str.replace_all(cleaned, "NDXUSD", "NDX100")
+    cleaned := str.replace_all(cleaned, "USOIL", "WTIUSD")
+    cleaned := str.replace_all(cleaned, "USOUSD", "WTIUSD")
+    cleaned := str.replace_all(cleaned, "XTIUSD", "WTIUSD")
+    cleaned := str.replace_all(cleaned, "BTCUSDTP", "BTCUSD")
+    cleaned := str.replace_all(cleaned, "BTCUSDP", "BTCUSD")
+    cleaned := str.replace_all(cleaned, "BTCUSDT", "BTCUSD")
+    cleaned := str.replace_all(cleaned, "ETHUSDTP", "ETHUSD")
+    cleaned := str.replace_all(cleaned, "ETHUSDP", "ETHUSD")
+    cleaned := str.replace_all(cleaned, "ETHUSDT", "ETHUSD")
+    cleaned
+
+listContainsPair(_list, _pair) =>
+    string wrappedList = "," + normalizePairList(_list) + ","
+    string cleanPair = canonicalizePair(_pair)
+    string wrappedPair = "," + cleanPair + ","
+    str.length(cleanPair) > 0 and str.contains(wrappedList, wrappedPair)
+
+getManualBias(_pair) =>
+    bool inLong = listContainsPair(longPairs, _pair)
+    bool inShort = listContainsPair(shortPairs, _pair)
+    string result = "NEUTRAL"
+    if inLong and not inShort
+        result := "LONG"
+    else if inShort and not inLong
+        result := "SHORT"
+    result
+
+// ── ADR calculation ─────────────────────────────────────────────────────────
+calcAdrStats() =>
+    float rangeSum = 0.0
+    float validCnt = 0.0
+    for i = 1 to adrLookback
+        bool ok = not na(high[i]) and not na(low[i]) and high[i] > 0 and low[i] > 0
+        if ok
+            rangeSum += (high[i] - low[i])
+            validCnt += 1
+    [rangeSum, validCnt]
+
+[dailyAdrSum, dailyAdrCount] = request.security(syminfo.tickerid, "D", calcAdrStats(), lookahead=barmerge.lookahead_off)
+float currentAdrDistance = dailyAdrCount >= adrMinDays ? dailyAdrSum / dailyAdrCount : na
+
+// ── Stochastic calculation (matches RRanjanFX %D line) ─────────────────────
+calcStochD() =>
+    float k = ta.sma(ta.stoch(close, high, low, stochPeriod), stochSmooth)
+    ta.sma(k, stochDPeriod)
+
+float smoothK = calcStochD()
+bool stochLongSignal  = smoothK < stochOS
+bool stochShortSignal = smoothK > stochOB
+
+// ── Weekly state ────────────────────────────────────────────────────────────
+bool isNewWeek = ta.change(time("W")) != 0
+
+// Target week selection: 0=current, 1=last week, 2=two weeks ago, etc.
+int msPerWeek = 7 * 24 * 60 * 60 * 1000
+int targetTs = timenow - targetWeeksBack * msPerWeek
+bool inTargetWeek = targetWeeksBack == 0 ? (timenow - time("W") < msPerWeek) : (time("W") <= targetTs and time("W") + msPerWeek > targetTs)
+bool showVisuals = inTargetWeek
+
+// Snapshot vars for past week display (continuously updated while in target week)
+var int snapTrades = 0
+var int snapTpHits = 0
+var float snapMaxDDAdr = 0.0
+var float snapCurrentDDAdr = 0.0
+var float snapWeekAdr = na
+var string[] snapTradeIds = array.new_string(0)
+var string[] snapTradeDetails = array.new_string(0)
+
+var float weekAdr = na
+
+// weekHigh/weekLow: true week range (for period box, always cumulative)
+var float weekHigh = na
+var float weekLow  = na
+
+// anchorHigh/anchorLow: entry anchor (resets in Fresh mode after TP)
+var float anchorHigh = na
+var float anchorLow  = na
+var int barsInAnchor = 0
+
+if barstate.isfirst or isNewWeek
+    weekAdr    := currentAdrDistance
+    weekHigh   := high
+    weekLow    := low
+    anchorHigh := high
+    anchorLow  := low
+    barsInAnchor := 0
+else
+    barsInAnchor += 1
+    weekHigh   := math.max(weekHigh, high)
+    weekLow    := math.min(weekLow, low)
+
+// Snapshot anchor BEFORE updating with current bar — prevents circular dependency
+// where current bar's low/high influences anchor AND triggers on the same bar
+float prevAnchorHigh = anchorHigh
+float prevAnchorLow  = anchorLow
+
+// Now update anchor with current bar
+if not (barstate.isfirst or isNewWeek)
+    anchorHigh := math.max(anchorHigh, high)
+    anchorLow  := math.min(anchorLow, low)
+
+// ── Bias ────────────────────────────────────────────────────────────────────
+string tickerUpper = canonicalizePair(syminfo.ticker)
+string resolvedBias = getManualBias(tickerUpper)
+
+string btcBias = getManualBias("BTCUSD")
+string ethBias = getManualBias("ETHUSD")
+string cryptoRegime = "NEUTRAL"
+if btcBias == "LONG" and ethBias == "LONG"
+    cryptoRegime := "LONG"
+else if btcBias == "SHORT" and ethBias == "SHORT"
+    cryptoRegime := "SHORT"
+
+bool isCrypto = syminfo.type == "crypto"
+bool isMajorCrypto = tickerUpper == "BTCUSD" or tickerUpper == "ETHUSD"
+if isCrypto and not isMajorCrypto
+    resolvedBias := cryptoRegime
+
+bool showLong  = resolvedBias == "LONG"
+bool showShort = resolvedBias == "SHORT"
+
+// ── Trade ID components ─────────────────────────────────────────────────────
+bool isGoldId   = str.contains(tickerUpper, "XAU")
+bool isSilverId = str.contains(tickerUpper, "XAG")
+bool isOilId    = tickerUpper == "WTIUSD" or str.contains(tickerUpper, "USOIL") or str.contains(tickerUpper, "BCOUSD")
+string assetCode = isCrypto ? (isMajorCrypto ? "CR" : "CA") : syminfo.type == "forex" ? "FX" : (isGoldId or isSilverId or isOilId) ? "CM" : "IX"
+string dirCode   = showLong ? "L" : showShort ? "S" : "N"
+string dateCode  = str.tostring(year) + str.tostring(month, "00") + str.tostring(dayofmonth, "00")
+
+makeTradeId(int tradeNum) =>
+    "IADR-" + assetCode + "-" + dirCode + "-" + tickerUpper + "-" + str.substring(dateCode, 2) + "-" + str.tostring(tradeNum, "000")
+
+// ── Dynamic entry / TP levels (from PREVIOUS bar's anchor) ──────────────────
+// Using prevAnchor ensures entry level isn't influenced by current bar's own high/low
+// This makes the indicator timeframe-independent
+bool adrReady = not na(weekAdr) and not na(prevAnchorHigh) and not na(prevAnchorLow) and barsInAnchor >= 1
+
+float longEntry  = adrReady ? prevAnchorHigh - (weekAdr * entryMultiple) : na
+float longTp     = adrReady ? longEntry + (weekAdr * tpMultiple)         : na
+float shortEntry = adrReady ? prevAnchorLow  + (weekAdr * entryMultiple) : na
+float shortTp    = adrReady ? shortEntry - (weekAdr * tpMultiple)        : na
+
+// ── Pip calculations ────────────────────────────────────────────────────────
+bool isJpyPair = str.contains(tickerUpper, "JPY")
+bool isGold    = str.contains(tickerUpper, "XAU")
+bool isSilver  = str.contains(tickerUpper, "XAG")
+bool isOil     = tickerUpper == "WTIUSD" or str.contains(tickerUpper, "USOIL") or str.contains(tickerUpper, "BCOUSD")
+float pipSize  = syminfo.type == "forex" ? (isJpyPair ? 0.01 : 0.0001) : isGold ? 0.01 : isSilver ? 0.001 : isOil ? 0.01 : syminfo.mintick
+float adrPips  = adrReady and pipSize > 0 ? weekAdr / pipSize : na
+
+// ── Trade state machine ─────────────────────────────────────────────────────
+// States: 0 = waiting, 1 = triggered (in trade)
+// Fresh: anchor resets after TP, starts tracking from next bar
+var int longState  = 0
+var int shortState = 0
+var float frozenLongEntry  = na
+var float frozenLongTp     = na
+var float frozenShortEntry = na
+var float frozenShortTp    = na
+
+// Weekly trade counters
+var int weekTrades = 0
+var int weekTpHits = 0
+
+// ADR + Stoch armed flags (latch until both met, then enter)
+var bool adrArmedLong    = false
+var bool stochArmedLong  = false
+var bool adrArmedShort   = false
+var bool stochArmedShort = false
+
+if barstate.isfirst or isNewWeek
+    longState  := 0
+    shortState := 0
+    frozenLongEntry  := na
+    frozenLongTp     := na
+    frozenShortEntry := na
+    frozenShortTp    := na
+    weekTrades := 0
+    weekTpHits := 0
+    adrArmedLong    := false
+    stochArmedLong  := false
+    adrArmedShort   := false
+    stochArmedShort := false
+
+bool longTpHit = false
+bool shortTpHit = false
+
+if longState == 1
+    if not na(frozenLongTp) and high >= frozenLongTp
+        longTpHit := true
+        longState := 0
+        frozenLongEntry := na
+        frozenLongTp    := na
+        anchorHigh   := na
+        barsInAnchor := -1
+        weekTpHits += 1
+        adrArmedLong   := false
+        stochArmedLong := false
+else if longState == 0 and showLong
+    bool adrHit   = adrReady and not na(longEntry) and low <= longEntry
+    bool stochHit = stochLongSignal and not na(weekAdr) and not longTpHit
+    bool doEnter = false
+    bool enterAtAdr = false
+    if entryMode == "ADR Pullback"
+        doEnter := adrHit
+        enterAtAdr := true
+    else if entryMode == "Stoch RSI"
+        doEnter := stochHit
+    else
+        bool wasAdrArmed = adrArmedLong
+        if adrHit
+            adrArmedLong := true
+        if stochHit
+            stochArmedLong := true
+        if adrArmedLong and stochArmedLong
+            doEnter := true
+            enterAtAdr := not wasAdrArmed
+    if doEnter
+        longState := 1
+        frozenLongEntry := enterAtAdr ? longEntry : close
+        frozenLongTp    := enterAtAdr ? longTp : close + weekAdr * tpMultiple
+        weekTrades += 1
+        adrArmedLong   := false
+        stochArmedLong := false
+
+if shortState == 1
+    if not na(frozenShortTp) and low <= frozenShortTp
+        shortTpHit := true
+        shortState := 0
+        frozenShortEntry := na
+        frozenShortTp    := na
+        anchorLow    := na
+        barsInAnchor := -1
+        weekTpHits += 1
+        adrArmedShort   := false
+        stochArmedShort := false
+else if shortState == 0 and showShort
+    bool adrHit2   = adrReady and not na(shortEntry) and high >= shortEntry
+    bool stochHit2 = stochShortSignal and not na(weekAdr) and not shortTpHit
+    bool doEnter2 = false
+    bool enterAtAdr2 = false
+    if entryMode == "ADR Pullback"
+        doEnter2 := adrHit2
+        enterAtAdr2 := true
+    else if entryMode == "Stoch RSI"
+        doEnter2 := stochHit2
+    else
+        bool wasAdrArmed2 = adrArmedShort
+        if adrHit2
+            adrArmedShort := true
+        if stochHit2
+            stochArmedShort := true
+        if adrArmedShort and stochArmedShort
+            doEnter2 := true
+            enterAtAdr2 := not wasAdrArmed2
+    if doEnter2
+        shortState := 1
+        frozenShortEntry := enterAtAdr2 ? shortEntry : close
+        frozenShortTp    := enterAtAdr2 ? shortTp : close - weekAdr * tpMultiple
+        weekTrades += 1
+        adrArmedShort   := false
+        stochArmedShort := false
+
+// Seed anchor from current bar after reset
+if na(anchorHigh)
+    anchorHigh   := high
+    anchorLow    := low
+    barsInAnchor := 0
+if na(anchorLow)
+    anchorLow    := low
+    barsInAnchor := 0
+
+// ── 5M state override (timeframe-independent accuracy) ──────────────────────
+// request.security("5") re-evaluates the entire script at 5M and returns the
+// final state from the last completed 5M bar. This gives 5M-accurate trade
+// counts and levels regardless of chart TF. Boxes use chart-bar positions.
+[ls5, ss5, wt5, wth5, fle5, flt5, fse5, fst5] = request.security(syminfo.tickerid, "5", [longState, shortState, weekTrades, weekTpHits, frozenLongEntry, frozenLongTp, frozenShortEntry, frozenShortTp], lookahead=barmerge.lookahead_off)
+[le5, lt5, se5, st5, wa5, ar5, sk5] = request.security(syminfo.tickerid, "5", [longEntry, longTp, shortEntry, shortTp, weekAdr, adrReady ? 1.0 : 0.0, smoothK], lookahead=barmerge.lookahead_off)
+
+// Override chart-level state with 5M values
+longState       := int(nz(ls5))
+shortState      := int(nz(ss5))
+weekTrades      := int(nz(wt5))
+weekTpHits      := int(nz(wth5))
+frozenLongEntry := fle5
+frozenLongTp    := flt5
+frozenShortEntry := fse5
+frozenShortTp   := fst5
+longEntry       := le5
+longTp          := lt5
+shortEntry      := se5
+shortTp         := st5
+weekAdr         := wa5
+adrReady        := nz(ar5) > 0.5
+smoothK         := nz(sk5)
+
+// Recompute ADR pips from 5M-overridden values
+adrPips := adrReady and pipSize > 0 ? weekAdr / pipSize : na
+
+// Detect state transitions from 5M state (for box drawing at chart-bar positions)
+bool longTriggeredNow  = longState == 1 and nz(longState[1]) != 1
+bool shortTriggeredNow = shortState == 1 and nz(shortState[1]) != 1
+bool longTpHit2  = longState == 0 and nz(longState[1]) == 1
+bool shortTpHit2 = shortState == 0 and nz(shortState[1]) == 1
+longTpHit  := longTpHit or longTpHit2
+shortTpHit := shortTpHit or shortTpHit2
+
+// ── Weekly stats (1 ADR = 1% risk model) ────────────────────────────────────
+// P/L: each TP hit = +tpMultiple% (0.25%). DD: measured in ADR units * 1%.
+var string[] tradeIds       = array.new_string(0)
+var string[] tradeDetails   = array.new_string(0)
+var int   loggedTrades      = 0
+var int   loggedTpHits      = 0
+var float currentTradeDDAdr = 0.0  // current trade DD in ADR units
+var float weekMaxDDAdr      = 0.0  // worst DD across all trades (ADR units)
+
+if barstate.isfirst or isNewWeek
+    array.clear(tradeIds)
+    array.clear(tradeDetails)
+    loggedTrades      := 0
+    loggedTpHits      := 0
+    currentTradeDDAdr := 0.0
+    weekMaxDDAdr      := 0.0
+
+// Track drawdown in ADR units while in trade
+if longState == 1 and not na(frozenLongEntry) and not na(weekAdr) and weekAdr > 0
+    float dd = (frozenLongEntry - low) / weekAdr
+    if dd > 0
+        currentTradeDDAdr := math.max(currentTradeDDAdr, dd)
+
+if shortState == 1 and not na(frozenShortEntry) and not na(weekAdr) and weekAdr > 0
+    float dd = (high - frozenShortEntry) / weekAdr
+    if dd > 0
+        currentTradeDDAdr := math.max(currentTradeDDAdr, dd)
+
+// On TP hit: record max DD then reset for next trade
+if longTpHit2 or shortTpHit2
+    weekMaxDDAdr      := math.max(weekMaxDDAdr, currentTradeDDAdr)
+    currentTradeDDAdr := 0.0
+
+// Log new trades with P/L (1 ADR = 1%, so tpMultiple in ADR units = tpMultiple%)
+float tpReturnPct = tpMultiple  // 0.25 ADR = 0.25%
+if weekTrades > loggedTrades
+    string tid = makeTradeId(weekTrades)
+    string ep  = longState == 1 ? str.tostring(frozenLongEntry, format.mintick) : str.tostring(frozenShortEntry, format.mintick)
+    string tp  = longState == 1 ? str.tostring(frozenLongTp, format.mintick) : str.tostring(frozenShortTp, format.mintick)
+    array.push(tradeIds, tid)
+    array.push(tradeDetails, ep + " → " + tp + " ACTIVE")
+    loggedTrades := weekTrades
+
+if weekTpHits > loggedTpHits and array.size(tradeDetails) > 0
+    int lastIdx = array.size(tradeDetails) - 1
+    array.set(tradeDetails, lastIdx, str.replace_all(array.get(tradeDetails, lastIdx), "ACTIVE", "+" + str.tostring(tpReturnPct, "#.##") + "%"))
+    loggedTpHits := weekTpHits
+
+// Computed stats (1 ADR = 1%, so ADR units = percentage directly)
+float weekPLPct    = weekTpHits * tpReturnPct
+float weekMaxDDPct = math.max(weekMaxDDAdr, currentTradeDDAdr)
+
+// Capture target week snapshot (updated every bar while in target week)
+if targetWeeksBack > 0 and inTargetWeek
+    snapTrades := weekTrades
+    snapTpHits := weekTpHits
+    snapMaxDDAdr := weekMaxDDAdr
+    snapCurrentDDAdr := currentTradeDDAdr
+    snapWeekAdr := weekAdr
+    array.clear(snapTradeIds)
+    array.clear(snapTradeDetails)
+    if array.size(tradeIds) > 0
+        for i = 0 to array.size(tradeIds) - 1
+            array.push(snapTradeIds, array.get(tradeIds, i))
+            array.push(snapTradeDetails, array.get(tradeDetails, i))
+
+// ── Period box with header/footer bars ───────────────────────────────────────
+var box periodBox   = na
+var box topBar      = na
+var box bottomBar   = na
+var float periodHigh = na
+var float periodLow  = na
+
+// Daily separators inside the period box
+daySepColor = input.color(color.new(color.black, 50), "Day Separator Color")
+showDaySeps = input.bool(true, "Show Daily Separators")
+var line[] daySepLines  = array.new<line>()
+var label[] dayLabels   = array.new<label>()
+var label weekLabel     = na
+var label currentDayLabel = na  // the active day period's label (centered continuously)
+var int lastSepBarIdx   = 0    // bar_index of last separator or week start
+var int weekStartBarIdx = 0    // bar_index of current week start
+
+// Detect day change at midnight ET (not UTC midnight)
+// ET = UTC-4 (EDT) or UTC-5 (EST). Use -4 as standard (EDT covers most of trading year)
+int etOffsetMs  = -4 * 60 * 60 * 1000
+int etTimeMs    = time + etOffsetMs
+int etDayNum    = math.floor(etTimeMs / (24 * 60 * 60 * 1000))
+int prevEtDay   = math.floor((time[1] + etOffsetMs) / (24 * 60 * 60 * 1000))
+bool isNewDay   = na(time[1]) ? false : etDayNum != prevEtDay
+// ET day of week (0=Thu, 1=Fri, ... need to compute properly)
+// Use timestamps: Jan 1 1970 was Thursday. etDayNum % 7: 0=Thu,1=Fri,2=Sat,3=Sun,4=Mon,5=Tue,6=Wed
+int etDow = (etDayNum % 7 + 7) % 7  // 0=Thu,1=Fri,2=Sat,3=Sun,4=Mon,5=Tue,6=Wed
+
+// Bar height for header/footer = 12% of the weekly price range
+float barHeightPct = 0.12
+
+// Half-day merging logic using ET day of week:
+// etDow: 0=Thu, 1=Fri, 2=Sat, 3=Sun, 4=Mon, 5=Tue, 6=Wed
+// Only SUNMON is merged (partial sessions bookending the week boundary)
+// Crypto periods: SUNMON | TUE | WED | THU | FRI | SAT | SUN
+// CFD periods:    SUNMON | TUE | WED | THU | FRI
+bool skipSeparator = false
+if isNewDay
+    // Monday (etDow=4): always skip sep (merged with Sunday as SUNMON)
+    if etDow == 4
+        skipSeparator := true
+
+if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
+    periodHigh := high
+    periodLow  := low
+    float priceSpan = math.max(high - low, high * 0.01)
+    float barH  = priceSpan * barHeightPct
+    // Middle box (price action area) — original style
+    periodBox := box.new(bar_index, high, bar_index, low, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=1, border_style=line.style_dotted)
+    // Top bar (week label area)
+    topBar := box.new(bar_index, high + barH, bar_index, high, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
+    // Bottom bar (day labels area)
+    bottomBar := box.new(bar_index, low, bar_index, low - barH, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
+    // Finalize previous week's last day label (SAT for crypto, THUFRI for CFD)
+    if not barstate.isfirst and showDaySeps and showBoxes
+        if not na(currentDayLabel)
+            label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index)))
+    // Clear tracking arrays for new week
+    array.clear(daySepLines)
+    array.clear(dayLabels)
+    weekStartBarIdx := bar_index
+    lastSepBarIdx   := bar_index
+    // Week label centered in top bar
+    string weekStr = str.format("WEEK OF {0,date,MMM dd yyyy}", time)
+    weekLabel := label.new(bar_index, high + barH / 2, weekStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.black, size=size.huge, textalign=text.align_center)
+    // SUNMON label for this week — will be centered between week start and first separator
+    currentDayLabel := label.new(bar_index, low - barH / 2, "SUNMON", style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
+    array.push(dayLabels, currentDayLabel)
+
+if not na(periodBox) and showBoxes and showVisuals
+    periodHigh := math.max(periodHigh, high)
+    periodLow  := math.min(periodLow, low)
+    float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = priceSpan * barHeightPct
+    // Update middle box
+    box.set_top(periodBox, periodHigh)
+    box.set_bottom(periodBox, periodLow)
+    box.set_right(periodBox, bar_index)
+    // Update top bar
+    if not na(topBar)
+        box.set_left(topBar, box.get_left(periodBox))
+        box.set_right(topBar, bar_index)
+        box.set_bottom(topBar, periodHigh)
+        box.set_top(topBar, periodHigh + barH)
+    // Update bottom bar
+    if not na(bottomBar)
+        box.set_left(bottomBar, box.get_left(periodBox))
+        box.set_right(bottomBar, bar_index)
+        box.set_top(bottomBar, periodLow)
+        box.set_bottom(bottomBar, periodLow - barH)
+    // Keep week label centered in top bar
+    if not na(weekLabel)
+        label.set_y(weekLabel, periodHigh + barH / 2)
+        label.set_x(weekLabel, math.round(math.avg(box.get_left(periodBox), bar_index)))
+
+// Draw daily separator line on day change (skip merged half-days)
+if isNewDay and not isNewWeek and not skipSeparator and showDaySeps and showBoxes and showVisuals and not na(periodBox)
+    float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = priceSpan * barHeightPct
+    // Finalize previous period's label — center between lastSepBarIdx and this separator
+    if not na(currentDayLabel)
+        label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index)))
+    // Separator contained inside middle box only
+    line newSep = line.new(bar_index, periodLow, bar_index, periodHigh, color=daySepColor, style=line.style_dotted, width=2)
+    array.push(daySepLines, newSep)
+    lastSepBarIdx := bar_index
+    // Create new label for the period STARTING at this separator
+    // etDow: 0=Thu, 1=Fri, 2=Sat, 3=Sun, 4=Mon, 5=Tue, 6=Wed
+    string dayStr = ""
+    if isCrypto
+        dayStr := etDow == 5 ? "TUE" : etDow == 6 ? "WED" : etDow == 0 ? "THU" : etDow == 1 ? "FRI" : etDow == 2 ? "SAT" : etDow == 3 ? "SUN" : ""
+    else
+        dayStr := etDow == 5 ? "TUE" : etDow == 6 ? "WED" : etDow == 0 ? "THU" : etDow == 1 ? "FRI" : ""
+    if str.length(dayStr) > 0
+        currentDayLabel := label.new(bar_index, periodLow - barH / 2, dayStr, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
+        array.push(dayLabels, currentDayLabel)
+
+// Update: separator lines track price range, current day label centers continuously
+if showDaySeps and showBoxes and showVisuals and not na(periodBox)
+    float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = priceSpan * barHeightPct
+    for ln in daySepLines
+        line.set_y1(ln, periodLow)
+        line.set_y2(ln, periodHigh)
+    for lb in dayLabels
+        label.set_y(lb, periodLow - barH / 2)
+    // Keep current (last) day label centered between its separator and current bar
+    if not na(currentDayLabel)
+        label.set_x(currentDayLabel, math.round(math.avg(lastSepBarIdx, bar_index)))
+
+// ── Trade boxes (profit + drawdown — detach on TP for re-entry) ─────────────
+var box longProfBox = na
+var box longDDBox = na
+var float longDDLow = na
+var box shortProfBox = na
+var box shortDDBox = na
+var float shortDDHigh = na
+
+if barstate.isfirst or isNewWeek
+    longProfBox  := na
+    longDDBox    := na
+    longDDLow    := na
+    shortProfBox := na
+    shortDDBox   := na
+    shortDDHigh  := na
+
+if longTpHit
+    longProfBox := na
+    longDDBox   := na
+    longDDLow   := na
+
+if shortTpHit
+    shortProfBox := na
+    shortDDBox   := na
+    shortDDHigh  := na
+
+if longTriggeredNow and showBoxes and showVisuals and not na(frozenLongEntry) and not na(frozenLongTp)
+    longProfBox := box.new(bar_index, frozenLongTp, bar_index, frozenLongEntry, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
+    string tid = makeTradeId(weekTrades)
+    string ttip = tid + "\nLONG Entry: " + str.tostring(frozenLongEntry, format.mintick) + "\nTP: " + str.tostring(frozenLongTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%" + "\nRisk: " + str.tostring(entryMultiple, "#.##") + "% (1 ADR)"
+    label.new(bar_index, frozenLongTp, "L" + str.tostring(weekTrades), tooltip=ttip, style=label.style_label_down, color=color.new(color.lime, 60), textcolor=color.white, size=size.tiny)
+    longDDBox   := na
+    longDDLow   := low
+
+if longState == 1 and not na(longProfBox)
+    box.set_right(longProfBox, bar_index)
+
+if longState == 1
+    longDDLow := na(longDDLow) ? low : math.min(longDDLow, low)
+    if not na(frozenLongEntry) and not na(longDDLow) and longDDLow < frozenLongEntry
+        if na(longDDBox) and showBoxes and showVisuals
+            longDDBox := box.new(bar_index, frozenLongEntry, bar_index, longDDLow, bgcolor=ddBoxBg, border_color=color.red, border_width=1)
+        else if not na(longDDBox)
+            box.set_right(longDDBox, bar_index)
+            box.set_bottom(longDDBox, longDDLow)
+
+if shortTriggeredNow and showBoxes and showVisuals and not na(frozenShortEntry) and not na(frozenShortTp)
+    shortProfBox := box.new(bar_index, frozenShortEntry, bar_index, frozenShortTp, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
+    string tid = makeTradeId(weekTrades)
+    string ttip = tid + "\nSHORT Entry: " + str.tostring(frozenShortEntry, format.mintick) + "\nTP: " + str.tostring(frozenShortTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%" + "\nRisk: " + str.tostring(entryMultiple, "#.##") + "% (1 ADR)"
+    label.new(bar_index, frozenShortTp, "S" + str.tostring(weekTrades), tooltip=ttip, style=label.style_label_up, color=color.new(color.red, 60), textcolor=color.white, size=size.tiny)
+    shortDDBox   := na
+    shortDDHigh  := high
+
+if shortState == 1 and not na(shortProfBox)
+    box.set_right(shortProfBox, bar_index)
+
+if shortState == 1
+    shortDDHigh := na(shortDDHigh) ? high : math.max(shortDDHigh, high)
+    if not na(frozenShortEntry) and not na(shortDDHigh) and shortDDHigh > frozenShortEntry
+        if na(shortDDBox) and showBoxes and showVisuals
+            shortDDBox := box.new(bar_index, shortDDHigh, bar_index, frozenShortEntry, bgcolor=ddBoxBg, border_color=color.red, border_width=1)
+        else if not na(shortDDBox)
+            box.set_right(shortDDBox, bar_index)
+            box.set_top(shortDDBox, shortDDHigh)
+
+// ── Pending entry zone (shows where the next trade will trigger) ─────────────
+// Green box between Entry and TP, visible when waiting (not yet triggered).
+// Moves with the recalculating 5M levels so you can see where to place pending orders.
+var box pendingZoneBox = na
+var label pendingZoneLabel = na
+
+// Delete and redraw each bar to track moving levels
+if not na(pendingZoneBox)
+    box.delete(pendingZoneBox)
+    pendingZoneBox := na
+if not na(pendingZoneLabel)
+    label.delete(pendingZoneLabel)
+    pendingZoneLabel := na
+
+bool pendingLong  = showLong and longState == 0 and adrReady and not na(longEntry) and not na(longTp) and entryMode != "Stoch RSI"
+bool pendingShort = showShort and shortState == 0 and adrReady and not na(shortEntry) and not na(shortTp) and entryMode != "Stoch RSI"
+
+if showBoxes and showVisuals
+    if pendingLong
+        pendingZoneBox   := box.new(bar_index - 1, longTp, bar_index + 10, longEntry, bgcolor=color.new(color.lime, 85), border_color=color.new(color.lime, 50), border_width=1, border_style=line.style_dashed)
+        pendingZoneLabel := label.new(bar_index + 5, longTp, "PENDING LONG", style=label.style_label_down, color=color.new(color.lime, 80), textcolor=color.white, size=size.tiny)
+    else if pendingShort
+        pendingZoneBox   := box.new(bar_index - 1, shortEntry, bar_index + 10, shortTp, bgcolor=color.new(color.red, 85), border_color=color.new(color.red, 50), border_width=1, border_style=line.style_dashed)
+        pendingZoneLabel := label.new(bar_index + 5, shortEntry, "PENDING SHORT", style=label.style_label_down, color=color.new(color.red, 80), textcolor=color.white, size=size.tiny)
+
+// ── Data Window (hover any bar to see current values) ───────────────────────
+float displayEntry = showLong ? longEntry : showShort ? shortEntry : na
+float displayTp    = showLong ? longTp : showShort ? shortTp : na
+float displayState = longState == 1 or shortState == 1 ? 1.0 : 0.0
+plot(displayEntry, "Entry", display=display.data_window)
+plot(displayTp, "TP", display=display.data_window)
+plot(adrReady ? adrPips : na, "ADR (pips)", display=display.data_window)
+plot(displayState, "In Trade", display=display.data_window)
+plot(weekTrades * 1.0, "Trades", display=display.data_window)
+plot(weekTpHits * 1.0, "TP Hits", display=display.data_window)
+plot(weekPLPct, "P/L %", display=display.data_window)
+plot(weekMaxDDPct, "Max DD %", display=display.data_window)
+plot(currentTradeDDAdr, "Current DD (ADR)", display=display.data_window)
+plot(smoothK, "Stoch K", display=display.data_window)
+
+// ── Info table (single panel, dynamic rows — no gaps) ───────────────────────
+var table infoTable = table.new(position.top_right, 2, 20, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
+
+if showTable and barstate.islast
+    table.clear(infoTable, 0, 0, 1, 19)
+
+    // Select live or snapshot values based on week selector
+    bool isPast = targetWeeksBack > 0
+    int dTrades = isPast ? snapTrades : weekTrades
+    int dTpHits = isPast ? snapTpHits : weekTpHits
+    float dPL = dTpHits * tpReturnPct
+    float dDD = isPast ? math.max(snapMaxDDAdr, snapCurrentDDAdr) : weekMaxDDPct
+    float dWeekAdr = isPast ? snapWeekAdr : weekAdr
+    float dAdrPips = not na(dWeekAdr) and pipSize > 0 ? dWeekAdr / pipSize : na
+    float dAdrTpPips = not na(dWeekAdr) and pipSize > 0 ? (dWeekAdr * tpMultiple) / pipSize : na
+    string[] dTradeIds = isPast ? snapTradeIds : tradeIds
+    string[] dTradeDetails = isPast ? snapTradeDetails : tradeDetails
+
+    color biasColor = resolvedBias == "LONG" ? color.lime : resolvedBias == "SHORT" ? color.red : tableTextColor
+    color entryColor = showLong ? color.lime : color.red
+    string statusText = isPast ? "Completed" : showLong ? (longState == 1 ? "TRIGGERED" : longTpHit ? "TP Hit" : "Waiting") : showShort ? (shortState == 1 ? "TRIGGERED" : shortTpHit ? "TP Hit" : "Waiting") : "NEUTRAL"
+    color statusColor = isPast ? tableTextColor : (longState == 1 or shortState == 1 ? color.yellow : tableTextColor)
+    string weekLabel2 = isPast ? "Week -" + str.tostring(targetWeeksBack) : "This Week"
+
+    int r = 0
+    table.cell(infoTable, 0, r, "Limni ADR", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
+    table.cell(infoTable, 1, r, syminfo.ticker + (isPast ? "  (-" + str.tostring(targetWeeksBack) + "w)" : ""), text_color=tableTextColor, bgcolor=color.new(color.white, 85))
+    r += 1
+    table.cell(infoTable, 0, r, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "Mode", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, entryMode, text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "Status", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, statusText, text_color=statusColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "ADR", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, not na(dAdrPips) ? str.tostring(dAdrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "ADR TP", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, not na(dAdrTpPips) ? str.tostring(dAdrTpPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    if entryMode != "ADR Pullback"
+        color kColor = not na(smoothK) ? (smoothK > stochOB ? color.red : smoothK < stochOS ? color.lime : tableTextColor) : tableTextColor
+        table.cell(infoTable, 0, r, "Stoch K", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, not na(smoothK) ? str.tostring(smoothK, "#.#") : "-", text_color=kColor, bgcolor=tableBgColor)
+        r += 1
+    if not isPast
+        table.cell(infoTable, 0, r, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, not na(displayEntry) ? str.tostring(displayEntry, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+        r += 1
+        table.cell(infoTable, 0, r, "TP", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, not na(displayTp) ? str.tostring(displayTp, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+        r += 1
+    // Week summary section
+    table.cell(infoTable, 0, r, weekLabel2, text_color=tableTextColor, bgcolor=color.new(color.white, 90))
+    table.cell(infoTable, 1, r, str.tostring(dTrades) + " trades / " + str.tostring(dTpHits) + " TP", text_color=dTpHits > 0 ? color.lime : tableTextColor, bgcolor=color.new(color.white, 90))
+    r += 1
+    table.cell(infoTable, 0, r, "P/L", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, "+" + str.tostring(dPL, "#.##") + "%", text_color=dPL > 0 ? color.lime : tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "Max DD", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, dDD > 0 ? "-" + str.tostring(dDD, "#.##") + "%" : "-", text_color=dDD > 0 ? color.red : tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    // Crypto regime (only for crypto pairs)
+    if isCrypto
+        color cryptoColor = cryptoRegime == "LONG" ? color.lime : cryptoRegime == "SHORT" ? color.red : tableTextColor
+        table.cell(infoTable, 0, r, "Crypto", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, cryptoRegime, text_color=cryptoColor, bgcolor=tableBgColor)
+        r += 1
+    // Trade breakdown — ID in left column, details in right
+    if showTradeLog
+        int numTrades = math.min(array.size(dTradeIds), 10)
+        for i = 0 to numTrades - 1
+            table.cell(infoTable, 0, r + i, array.get(dTradeIds, i), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+            table.cell(infoTable, 1, r + i, array.get(dTradeDetails, i), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+
+if not showTable and barstate.islast
+    table.clear(infoTable, 0, 0, 1, 19)
+
+// ── Log output (copyable from View > Pine Logs) ────────────────────────────
+if barstate.islast and barstate.isconfirmed
+    bool lp = targetWeeksBack > 0
+    int lTrades = lp ? snapTrades : weekTrades
+    int lTpHits = lp ? snapTpHits : weekTpHits
+    float lPL = lTpHits * tpReturnPct
+    float lDD = lp ? math.max(snapMaxDDAdr, snapCurrentDDAdr) : weekMaxDDPct
+    string[] lIds = lp ? snapTradeIds : tradeIds
+    string[] lDetails = lp ? snapTradeDetails : tradeDetails
+    string weekTag = lp ? " (-" + str.tostring(targetWeeksBack) + "w)" : ""
+    string lr = syminfo.ticker + weekTag + " | " + resolvedBias + " | " + (lp ? "Completed" : showLong ? (longState == 1 ? "TRIGGERED" : "Waiting") : showShort ? (shortState == 1 ? "TRIGGERED" : "Waiting") : "NEUTRAL")
+    lr += " | ADR: " + str.tostring(lp ? (not na(snapWeekAdr) and pipSize > 0 ? snapWeekAdr / pipSize : na) : adrPips, "#.#") + "p | " + str.tostring(lTrades) + "/" + str.tostring(lTpHits) + " TP"
+    lr += " | P/L: +" + str.tostring(lPL, "#.##") + "% | DD: -" + str.tostring(lDD, "#.##") + "%"
+    if not lp
+        lr += " | E:" + str.tostring(displayEntry, format.mintick) + " T:" + str.tostring(displayTp, format.mintick)
+    if entryMode != "ADR Pullback"
+        lr += " | K:" + str.tostring(smoothK, "#.#")
+    log.info(lr)
+    if array.size(lIds) > 0
+        for i = 0 to array.size(lIds) - 1
+            log.info(array.get(lIds, i) + " " + array.get(lDetails, i))

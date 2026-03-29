@@ -15,7 +15,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import PerformanceHeaderContext from "@/components/performance/PerformanceHeaderContext";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
-import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
+import PerformanceStrategyViewSection from "@/components/performance/PerformanceStrategyViewSection";
 import type { PerformanceSimulationGroup } from "@/components/performance/PerformanceSimulationSection";
 import { getCanonicalWeeklyBasket, type CanonicalWeeklySignal, type CanonicalWeeklyTier } from "@/lib/flagship/canonicalWeeklyBasket";
 import { buildWeeklyForwardSummary } from "@/lib/flagship/weeklyForwardSummary";
@@ -39,9 +39,14 @@ import { resolvePerformanceView, resolveSelectedPerformanceWeek } from "@/lib/pe
 import { computeReturnStats, type ModelPerformance, type PerformanceModel } from "@/lib/performanceLab";
 import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegistry";
 import { DateTime } from "luxon";
-import { resolveBiasSourceId, getBiasSource, resolveIntradayFilterId, getIntradayFilter } from "@/lib/performance/strategyConfig";
+import { resolveBiasSourceId, resolveIntradayFilterId, getIntradayFilter, getStrategy } from "@/lib/performance/strategyConfig";
 import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 import type { EngineGridProps, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
+import {
+  buildStrategySelectionKey,
+  listStrategyBootstrapSelections,
+  toRuntimeStrategySelection,
+} from "@/lib/performance/strategySelection";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -1115,14 +1120,30 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   // ─── Engine-driven computation (shared canonical loader) ────────
   // Uses the same loader as Matrix — compute once, show everywhere.
   const biasSourceId = resolveBiasSourceId(biasParamValue);
-  const biasSource = getBiasSource(biasSourceId)!;
-  const strategyData = await loadStrategyPageData({
+  const selectedStrategyConfig = getStrategy(biasSourceId);
+  const initialStrategySelection = {
     strategyId: biasSourceId,
     f1: "weekly_hold",
     f2: intradayFilterId,
-  });
-  const engineWeekMap = strategyData?.weekMap ?? null;
-  const engineSimMap = strategyData?.simMap ?? null;
+  };
+  const strategySelectionEntries = await Promise.all(
+    listStrategyBootstrapSelections().map(async (selection) => [
+      buildStrategySelectionKey(selection),
+      await loadStrategyPageData(selection),
+    ] as const),
+  );
+  const strategyDataMap = Object.fromEntries(
+    strategySelectionEntries.map(([selectionKey, strategyData]) => [
+      selectionKey,
+      strategyData
+        ? {
+            engineWeekMap: strategyData.weekMap ?? null,
+            engineSimMap: strategyData.simMap ?? null,
+            sidebarStats: strategyData.sidebarStats ?? null,
+          }
+        : null,
+    ]),
+  );
 
   const universal = buildSystemMaps({
     family: "universal",
@@ -1202,12 +1223,12 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               Performance
             </h1>
             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-              {biasSource.label} · Weekly Hold{intradayFilter && intradayFilter.id !== "none" ? ` · ${intradayFilter.label}` : ""}
+              {selectedStrategyConfig?.label ?? biasSourceId} · Weekly Hold{intradayFilter && intradayFilter.id !== "none" ? ` · ${intradayFilter.label}` : ""}
             </p>
           </div>
         </header>
 
-        <PerformanceViewSection
+        <PerformanceStrategyViewSection
           initialMode={initialMode}
           initialView={initialView}
           initialSystem={initialMode === "flagship" ? "v3" : initialSystem}
@@ -1218,8 +1239,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           tieredSimulationBySystem={tiered.simulationMap}
           flagshipGridProps={flagshipGridProps}
           flagshipSimulation={flagshipSimulation}
-          engineWeekMap={engineWeekMap}
-          engineSimMap={engineSimMap}
+          initialSelection={toRuntimeStrategySelection(initialStrategySelection)}
+          strategyDataMap={strategyDataMap}
           weekOptions={["all", ...weekSelectorOptions]}
           currentWeek={currentWeekOpenUtc}
           initialWeek={selectedWeek}
