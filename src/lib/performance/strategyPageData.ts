@@ -71,6 +71,11 @@ export async function loadStrategyPageData(
 
   try {
     const multiWeekResult = await computeMultiWeekHold(biasSource, weekOptions, intradayFilter);
+    const hasCurrentWeek = multiWeekResult.weeks.some((week) => week.weekOpenUtc === currentWeekOpenUtc);
+    if (!hasCurrentWeek) {
+      const currentWeekResult = await computeWeeklyHold(biasSource, currentWeekOpenUtc, intradayFilter);
+      multiWeekResult.weeks = [currentWeekResult, ...multiWeekResult.weeks];
+    }
 
     // Build per-week GridProps + simulation
     const weekMap: Record<string, EngineGridProps> = {};

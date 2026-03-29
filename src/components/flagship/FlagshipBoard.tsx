@@ -267,6 +267,12 @@ const UNIVERSE: PairUniverseRow[] = [
     base: pairDef.base.toUpperCase(),
     quote: pairDef.quote.toUpperCase(),
   })),
+  ...PAIRS_BY_ASSET_CLASS.crypto.map((pairDef) => ({
+    pair: pairDef.pair.toUpperCase(),
+    assetClass: "crypto" as const,
+    base: pairDef.base.toUpperCase(),
+    quote: pairDef.quote.toUpperCase(),
+  })),
   ...PAIRS_BY_ASSET_CLASS.commodities.map((pairDef) => ({
     pair: pairDef.pair.toUpperCase(),
     assetClass: "commodities" as const,

@@ -36,6 +36,18 @@ function crowdingTone(
   return "neutral";
 }
 
+function tradeBiasLabel(
+  state: SentimentAggregate["crowding_state"],
+): string {
+  if (state === "CROWDED_LONG" || state === "EXTREME_LONG") {
+    return "SHORT";
+  }
+  if (state === "CROWDED_SHORT" || state === "EXTREME_SHORT") {
+    return "LONG";
+  }
+  return "NEUTRAL";
+}
+
 export default function SentimentHeatmap({
   aggregates,
   view = "heatmap",
@@ -56,9 +68,11 @@ export default function SentimentHeatmap({
       id: agg.symbol,
       label: agg.symbol,
       tone: crowdingTone(agg.crowding_state),
-      statusLabel: agg.crowding_state.replace("_", " "),
+      statusLabel: tradeBiasLabel(agg.crowding_state),
+      secondaryLabel: agg.crowding_state.replace("_", " "),
       modalTitle: agg.symbol,
       modalDetails: [
+        { label: "Trade Bias", value: tradeBiasLabel(agg.crowding_state) },
         { label: "Long", value: `${agg.agg_long_pct.toFixed(1)}%` },
         { label: "Short", value: `${agg.agg_short_pct.toFixed(1)}%` },
         { label: "Net", value: agg.agg_net.toFixed(1) },
@@ -101,7 +115,7 @@ export default function SentimentHeatmap({
   return (
     <PairSignalSurface
       title="Retail Sentiment Heatmap"
-      description="Crowding indicators across FX pairs"
+      description="Contrarian trade direction derived from retail crowding"
       items={items}
       view={view}
       emptyTitle="No sentiment data yet"

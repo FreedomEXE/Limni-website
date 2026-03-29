@@ -125,8 +125,12 @@ export default async function SentimentPanel({
     })
     .filter((d): d is { label: string; value: string } => Boolean(d));
 
-  const longDetails = sortedAggregates.filter((agg) => agg.crowding_state === "CROWDED_LONG").map((agg) => ({ label: agg.symbol, value: "LONG" }));
-  const shortDetails = sortedAggregates.filter((agg) => agg.crowding_state === "CROWDED_SHORT").map((agg) => ({ label: agg.symbol, value: "SHORT" }));
+  const shortTradeDetails = sortedAggregates
+    .filter((agg) => agg.crowding_state === "CROWDED_LONG")
+    .map((agg) => ({ label: agg.symbol, value: "Crowded Long" }));
+  const longTradeDetails = sortedAggregates
+    .filter((agg) => agg.crowding_state === "CROWDED_SHORT")
+    .map((agg) => ({ label: agg.symbol, value: "Crowded Short" }));
   const neutralDetails = sortedAggregates.filter((agg) => agg.crowding_state === "NEUTRAL").map((agg) => ({ label: agg.symbol, value: "NEUTRAL" }));
 
   const performanceByPair: Record<string, number | null> = {};
@@ -160,8 +164,8 @@ export default async function SentimentPanel({
         cards={[
           { id: "pairs", label: "Pairs tracked", value: String(filteredAggregates.length),
             details: sortedAggregates.map((agg) => ({ label: agg.symbol, value: agg.crowding_state.replace("CROWDED_", "") })) },
-          { id: "long", label: "Crowded long", value: String(crowdedLong), tone: "negative", details: longDetails },
-          { id: "short", label: "Crowded short", value: String(crowdedShort), tone: "positive", details: shortDetails },
+          { id: "short", label: "Short", value: String(crowdedLong), tone: "negative", details: shortTradeDetails },
+          { id: "long", label: "Long", value: String(crowdedShort), tone: "positive", details: longTradeDetails },
           { id: "neutral", label: "Neutral", value: String(neutral), details: neutralDetails },
           { id: "flips", label: "Flips", value: String(flipDetails.length), details: flipDetails },
         ]}

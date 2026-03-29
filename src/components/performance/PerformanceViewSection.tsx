@@ -44,6 +44,12 @@ function formatPct(value: number | null): string {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
+function directionSortValue(direction: "LONG" | "SHORT" | "NEUTRAL"): number {
+  if (direction === "SHORT") return 0;
+  if (direction === "LONG") return 1;
+  return 2;
+}
+
 function TradeDetailRow({ detail }: { detail: { entryPrice: number; exitPrice: number | null; tpPrice: number | null; adrPct: number | null; maePct: number | null; exitReason: string | null; entryTimeUtc: string | null; tradeNumber: number } }) {
   return (
     <div className="mt-1.5 grid grid-cols-4 gap-x-4 gap-y-1 text-[10px] text-[color:var(--muted)]">
@@ -68,8 +74,15 @@ function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
     })),
   );
 
-  // Sort: winners first (by return descending), then losers
-  const sorted = [...allTrades].sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0));
+  // Direction-first ordering makes planned/current baskets much easier to compare
+  // against the Data section and copied pair lists.
+  const sorted = [...allTrades].sort((a, b) => {
+    const directionDiff = directionSortValue(a.direction) - directionSortValue(b.direction);
+    if (directionDiff !== 0) return directionDiff;
+    const percentDiff = (b.percent ?? 0) - (a.percent ?? 0);
+    if (percentDiff !== 0) return percentDiff;
+    return a.pair.localeCompare(b.pair);
+  });
 
   // Count total individual trades (children count as separate trades)
   const totalTradeCount = sorted.reduce((s, t) => s + (t.children?.length ?? 1), 0);
