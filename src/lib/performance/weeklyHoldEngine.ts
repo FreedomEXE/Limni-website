@@ -23,13 +23,9 @@
 
 import { query } from "@/lib/db";
 import { DateTime } from "luxon";
-import { readSnapshot } from "@/lib/cotStore";
-import { derivePairDirections, resolveMarketBias } from "@/lib/cotCompute";
-import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
-import { sentimentDirectionFromAggregate } from "@/lib/sentiment/daily";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
-import { deriveCotReportDate, findDataSectionWeekByReportDate, listDataSectionWeekEntries } from "@/lib/dataSectionWeeks";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
 import type { BiasSourceConfig, IntradayFilterConfig } from "@/lib/performance/strategyConfig";
 
 // ─── Trade types (strategy-generic) ─────────────────────────────
@@ -102,78 +98,58 @@ function inferAssetClass(symbol: string): string {
   return "fx";
 }
 
-// ─── Direction resolvers per bias source ────────────────────────
+// ─── Direction resolvers — compose from canonical basketSource ──
+//
+// Layer A: basketSource provides canonical dealer/commercial/sentiment signals
+// Layer B: this function composes derived strategies (tiered_v3, agree_2of3, tandem)
+//
+// The engine NEVER independently rebuilds base-model directions from raw snapshots.
 
 type DirectionEntry = { direction: "LONG" | "SHORT"; source: string; tier: number | null; assetClass: string };
 type DirectionMap = Map<string, DirectionEntry>;
+
+function signalsToDirectionMap(signals: CanonicalBasketSignal[], source: string): DirectionMap {
+  const map: DirectionMap = new Map();
+  for (const s of signals) {
+    if (s.direction === "NEUTRAL") continue;
+    map.set(s.symbol, { direction: s.direction, source, tier: null, assetClass: s.assetClass });
+  }
+  return map;
+}
 
 async function resolveDirections(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
 ): Promise<DirectionMap> {
-  const map: DirectionMap = new Map();
-  const reportDate = deriveCotReportDate(weekOpenUtc);
+  // Layer A: read canonical basket truth (same source as Data section)
+  const basketWeek = await getCanonicalBasketWeek(weekOpenUtc);
 
-  if (biasSource.id === "dealer" || biasSource.id === "commercial") {
-    const model = biasSource.id as "dealer" | "commercial";
-    for (const ac of ["fx", "indices", "commodities", "crypto"] as const) {
-      try {
-        const snapshot = await readSnapshot({ assetClass: ac, reportDate });
-        if (!snapshot) continue;
-        // Derive pair directions using the specific model
-        for (const [pair, pairData] of Object.entries(snapshot.pairs)) {
-          // Re-derive from currencies using the specific model
-          const currencies = snapshot.currencies;
-          const currencyData = snapshot.currencies as unknown as Record<string, Record<string, string>>;
-          // For non-FX, pair is {BASE}USD — look up the base currency's own bias
-          if (ac !== "fx") {
-            const base = pair.replace(/USD$/i, "");
-            const baseBias = currencyData[base]?.[`${model}_bias`];
-            if (baseBias === "BULLISH") map.set(pair, { direction: "LONG", source: model, tier: null, assetClass: ac });
-            else if (baseBias === "BEARISH") map.set(pair, { direction: "SHORT", source: model, tier: null, assetClass: ac });
-            continue;
-          }
-          // For FX pairs, re-derive from currency-level biases
-          const base = pair.slice(0, 3);
-          const quote = pair.slice(3);
-          const baseBias = currencyData[base]?.[`${model}_bias`];
-          const quoteBias = currencyData[quote]?.[`${model}_bias`];
-          if (baseBias === "BULLISH" && quoteBias === "BEARISH") {
-            map.set(pair, { direction: "LONG", source: model, tier: null, assetClass: "fx" });
-          } else if (baseBias === "BEARISH" && quoteBias === "BULLISH") {
-            map.set(pair, { direction: "SHORT", source: model, tier: null, assetClass: "fx" });
-          }
-        }
-      } catch {}
-    }
-    return map;
+  // Base model maps (non-neutral signals only)
+  const dealerSignals = nonNeutralSignals(filterByModel(basketWeek, "dealer"));
+  const commercialSignals = nonNeutralSignals(filterByModel(basketWeek, "commercial"));
+  const sentimentSignals = nonNeutralSignals(filterByModel(basketWeek, "sentiment"));
+
+  // Layer B: compose strategy-specific direction map
+  if (biasSource.id === "dealer") {
+    return signalsToDirectionMap(dealerSignals, "dealer");
+  }
+
+  if (biasSource.id === "commercial") {
+    return signalsToDirectionMap(commercialSignals, "commercial");
   }
 
   if (biasSource.id === "sentiment") {
-    try {
-      const open = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
-      const close = open.plus({ days: 7 });
-      const aggs = await getAggregatesForWeekStartWithBackfill(
-        open.toUTC().toISO()!,
-        close.toUTC().toISO()!,
-      );
-      for (const agg of aggs) {
-        const dir = sentimentDirectionFromAggregate(agg);
-        if (dir === "LONG" || dir === "SHORT") {
-          map.set(agg.symbol, { direction: dir, source: "sentiment", tier: null, assetClass: inferAssetClass(agg.symbol) });
-        }
-      }
-    } catch {}
-    return map;
+    return signalsToDirectionMap(sentimentSignals, "sentiment");
   }
 
-  if (biasSource.id === "tiered_v3") {
-    // Combine dealer + commercial + sentiment with tiered voting
-    const dealerMap = await resolveDirections({ ...biasSource, id: "dealer" } as BiasSourceConfig, weekOpenUtc);
-    const commMap = await resolveDirections({ ...biasSource, id: "commercial" } as BiasSourceConfig, weekOpenUtc);
-    const sentMap = await resolveDirections({ ...biasSource, id: "sentiment" } as BiasSourceConfig, weekOpenUtc);
+  // Build per-pair maps for composite strategies
+  const dealerMap = signalsToDirectionMap(dealerSignals, "dealer");
+  const commMap = signalsToDirectionMap(commercialSignals, "commercial");
+  const sentMap = signalsToDirectionMap(sentimentSignals, "sentiment");
+  const allPairs = new Set([...dealerMap.keys(), ...commMap.keys(), ...sentMap.keys()]);
 
-    const allPairs = new Set([...dealerMap.keys(), ...commMap.keys(), ...sentMap.keys()]);
+  if (biasSource.id === "tiered_v3") {
+    const map: DirectionMap = new Map();
     for (const pair of allPairs) {
       const de = dealerMap.get(pair);
       const ce = commMap.get(pair);
@@ -194,11 +170,7 @@ async function resolveDirections(
   }
 
   if (biasSource.id === "agree_2of3") {
-    const dealerMap = await resolveDirections({ ...biasSource, id: "dealer" } as BiasSourceConfig, weekOpenUtc);
-    const commMap = await resolveDirections({ ...biasSource, id: "commercial" } as BiasSourceConfig, weekOpenUtc);
-    const sentMap = await resolveDirections({ ...biasSource, id: "sentiment" } as BiasSourceConfig, weekOpenUtc);
-
-    const allPairs = new Set([...dealerMap.keys(), ...commMap.keys(), ...sentMap.keys()]);
+    const map: DirectionMap = new Map();
     for (const pair of allPairs) {
       const de = dealerMap.get(pair);
       const ce = commMap.get(pair);
@@ -214,21 +186,14 @@ async function resolveDirections(
   }
 
   if (biasSource.id === "tandem") {
-    // Tandem: return ALL directions from all 3 models (can have 3 entries per pair)
-    // For tandem, we use a different approach — tag each entry with its model
-    const dealerMap = await resolveDirections({ ...biasSource, id: "dealer" } as BiasSourceConfig, weekOpenUtc);
-    const commMap = await resolveDirections({ ...biasSource, id: "commercial" } as BiasSourceConfig, weekOpenUtc);
-    const sentMap = await resolveDirections({ ...biasSource, id: "sentiment" } as BiasSourceConfig, weekOpenUtc);
-
-    // For tandem, we need to return multiple entries per pair
-    // Use composite keys: PAIR:dealer, PAIR:commercial, PAIR:sentiment
+    const map: DirectionMap = new Map();
     for (const [pair, entry] of dealerMap) map.set(`${pair}:dealer`, { ...entry, source: "dealer" });
     for (const [pair, entry] of commMap) map.set(`${pair}:commercial`, { ...entry, source: "commercial" });
     for (const [pair, entry] of sentMap) map.set(`${pair}:sentiment`, { ...entry, source: "sentiment" });
     return map;
   }
 
-  return map;
+  return new Map();
 }
 
 // ─── Tier string → number mapping ───────────────────────────────
