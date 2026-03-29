@@ -69,6 +69,10 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
     f2,
   });
 
+  // Extract canonical signals for the selected week — board uses these for
+  // coreBias, tier display, and copy buttons instead of client-side basket fetch.
+  const selectedWeekSignals = strategyData?.weekResults?.[selectedWeek ?? ""]?.signals ?? [];
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -85,6 +89,7 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
             weekOpenUtc={selectedWeek}
             currentWeekOpenUtc={currentWeekOpen}
             engineWeekResults={strategyData?.weekResults ?? null}
+            canonicalSignals={selectedWeekSignals}
           />
         ) : null}
       </div>

@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import type { WeeklyHoldResult, CanonicalSignal } from "@/lib/performance/weeklyHoldEngine";
 
 import AdrStatsBar from "@/components/flagship/AdrStatsBar";
 import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
@@ -34,7 +35,7 @@ import { useSizingAccounts } from "@/hooks/useSizingAccounts";
 
 type TrendState = MatrixTrendState;
 type GateDecision = MatrixGateDecision;
-type SignalDirection = "LONG" | "SHORT" | "NEUTRAL";
+type SignalDirection = "LONG" | "SHORT" | "NEUTRAL" | "MIXED";
 type SignalTier = "HIGH" | "MEDIUM" | "LOW" | "NEUTRAL";
 type AssetClass = "fx" | "indices" | "crypto" | "commodities";
 type MenthorqOverlayCondition = "POSITIVE" | "NEGATIVE" | "NEUTRAL" | "UNKNOWN";
@@ -47,21 +48,11 @@ type CanonicalWeeklySignal = {
   assetClass: string;
   pair: string;
   direction: SignalDirection;
-  tier: "HIGH" | "MEDIUM" | "LOW";
+  tier: "HIGH" | "MEDIUM" | "LOW" | null;
   model: string;
   gateDecision: GateDecision;
   gateReasons: string[];
   signalMode?: "FLAGSHIP" | "ADR_DIP";
-};
-
-type CanonicalWeeklyBasketPayload = {
-  generatedUtc: string;
-  currentWeekOpenUtc: string;
-  strategyId: string;
-  strategyName: string;
-  sourceLabel: string;
-  sourceType: "frozen_weekly_snapshot";
-  signals: CanonicalWeeklySignal[];
 };
 
 type DailySentimentRow = {
@@ -255,6 +246,8 @@ type MatrixRow = {
   signalMode: SignalMode;
   adrTradeCount: number;
   adrTrades: AdrTradeRow[];
+  /** Per-model canonical signals for this pair (tandem: 2-3, others: 0-1) */
+  modelSignals: CanonicalWeeklySignal[];
 };
 
 const UNIVERSE: PairUniverseRow[] = [
@@ -309,6 +302,7 @@ function directionToState(direction: SignalDirection): TrendState {
 function directionLabel(direction: SignalDirection) {
   if (direction === "LONG") return "Long";
   if (direction === "SHORT") return "Short";
+  if (direction === "MIXED") return "Mixed";
   return "Neutral";
 }
 
@@ -492,15 +486,18 @@ type FlagshipBoardProps = {
   currentWeekOpenUtc?: string;
   /** Pre-computed engine results per week — canonical source. When provided,
    *  the board uses this instead of client-side fetching for trade data. */
-  engineWeekResults?: Record<string, import("@/lib/performance/weeklyHoldEngine").WeeklyHoldResult> | null;
+  engineWeekResults?: Record<string, WeeklyHoldResult> | null;
+  /** Canonical pair-level signals from the engine for the selected week.
+   *  Replaces the client-side canonical-weekly-basket fetch for coreBias,
+   *  tier display, and LONG/SHORT copy buttons. */
+  canonicalSignals?: CanonicalSignal[];
 };
 
-export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineWeekResults }: FlagshipBoardProps) {
+export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineWeekResults, canonicalSignals }: FlagshipBoardProps) {
   const matrixSearchParams = useSearchParams();
   const activeSelection = readSelectionFromParams(matrixSearchParams);
   const activeLabel = selectionLabel(activeSelection);
   const isPastWeek = Boolean(weekOpenUtc && currentWeekOpenUtc && weekOpenUtc !== currentWeekOpenUtc);
-  const [weeklyBasket, setWeeklyBasket] = useState<CanonicalWeeklyBasketPayload | null>(null);
   const [cotMatrix, setCotMatrix] = useState<CotMatrixPayload | null>(null);
   const [dailySentiment, setDailySentiment] = useState<DailySentimentPayload | null>(null);
   const [currencyStrength, setCurrencyStrength] = useState<CurrencyStrengthPayload | null>(null);
@@ -545,8 +542,9 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
         setError(null);
         const nextWarnings: string[] = [];
         const weekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
+        // Live overlays only — historical basket signals now come from
+        // canonicalSignals prop (server-side engine, not client fetch).
         const responses = await Promise.allSettled([
-          fetch(`/api/flagship/canonical-weekly-basket${weekQs}`, { cache: "no-store" }),
           fetch(`/api/flagship/cot-matrix${weekQs}`, { cache: "no-store" }),
           fetch(`/api/flagship/sentiment-daily${weekQs ? `?asOf=${encodeURIComponent(weekOpenUtc!)}` : ""}`, { cache: "no-store" }),
           fetch("/api/flagship/currency-strength", { cache: "no-store" }),
@@ -563,21 +561,19 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
           return null;
         };
 
-        const [basketJson, cotJson, sentimentJson, currencyJson, assetJson, overlayJson, sizingJson, movesJson, intradayJson] = await Promise.all([
-          readJson<CanonicalWeeklyBasketPayload>(responses[0], "canonical-weekly-basket"),
-          readJson<CotMatrixPayload>(responses[1], "cot-matrix"),
-          readJson<DailySentimentPayload>(responses[2], "sentiment-daily"),
-          readJson<CurrencyStrengthPayload>(responses[3], "currency-strength"),
-          readJson<AssetStrengthPayload>(responses[4], "asset-strength"),
-          readJson<MenthorqOverlayPayload>(responses[5], "menthorq-overlay"),
-          readJson<LiveSizingPayload>(responses[6], "live-sizing"),
-          readJson<PriceMovesPayload>(responses[7], "price-moves"),
-          readJson<IntradayLevelsPayload>(responses[8], "intraday-levels"),
+        const [cotJson, sentimentJson, currencyJson, assetJson, overlayJson, sizingJson, movesJson, intradayJson] = await Promise.all([
+          readJson<CotMatrixPayload>(responses[0], "cot-matrix"),
+          readJson<DailySentimentPayload>(responses[1], "sentiment-daily"),
+          readJson<CurrencyStrengthPayload>(responses[2], "currency-strength"),
+          readJson<AssetStrengthPayload>(responses[3], "asset-strength"),
+          readJson<MenthorqOverlayPayload>(responses[4], "menthorq-overlay"),
+          readJson<LiveSizingPayload>(responses[5], "live-sizing"),
+          readJson<PriceMovesPayload>(responses[6], "price-moves"),
+          readJson<IntradayLevelsPayload>(responses[7], "intraday-levels"),
         ]);
 
         if (!cancelled) {
-          if (!basketJson && !cotJson && !sentimentJson) setError("Failed to load matrix sources.");
-          setWeeklyBasket(basketJson);
+          if (!cotJson && !sentimentJson) setError("Failed to load overlay sources.");
           setCotMatrix(cotJson);
           setDailySentiment(sentimentJson);
           setCurrencyStrength(currencyJson);
@@ -659,8 +655,26 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
   }, [refreshTick, weekOpenUtc, activeSelection.f2, engineWeekResults]);
 
   const matrixRows = useMemo(() => {
-    const gatedByPair = new Map<string, CanonicalWeeklySignal>();
-    for (const signal of weeklyBasket?.signals ?? []) gatedByPair.set(normalizeKey(signal.pair), signal);
+    // Build per-pair signal arrays from canonical engine signals (prop).
+    // For single-model strategies: one signal per pair.
+    // For tandem: multiple signals per pair (one per approving model).
+    // The board derives coreBias from the signal array, not a pre-collapsed value.
+    const signalsByPair = new Map<string, CanonicalWeeklySignal[]>();
+    for (const s of canonicalSignals ?? []) {
+      const key = normalizeKey(s.symbol);
+      const sig: CanonicalWeeklySignal = {
+        assetClass: s.assetClass,
+        pair: s.symbol,
+        direction: s.direction,
+        tier: s.tier === 1 ? "HIGH" : s.tier === 2 ? "MEDIUM" : s.tier === 3 ? "LOW" : null,
+        model: s.source,
+        gateDecision: "PASS",
+        gateReasons: [],
+      };
+      const existing = signalsByPair.get(key);
+      if (existing) existing.push(sig);
+      else signalsByPair.set(key, [sig]);
+    }
 
     const cotByPair = new Map<string, CotMatrixRow>();
     for (const row of cotMatrix?.rows ?? []) cotByPair.set(normalizeKey(row.pair), row);
@@ -703,13 +717,22 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
     return UNIVERSE
       .map((pairRow) => {
         const key = normalizeKey(pairRow.pair);
-        const signal = gatedByPair.get(key) ?? null;
+        const pairSignals = signalsByPair.get(key) ?? [];
+        // Primary signal for gate/tier compat (first signal, deterministic)
+        const signal = pairSignals.length > 0 ? pairSignals[0]! : null;
+        // Derive coreBias from all signals for this pair:
+        //   all agree → that direction | conflicting → MIXED | none → NEUTRAL
+        let coreBias: SignalDirection = "NEUTRAL";
+        if (pairSignals.length > 0) {
+          const dirs = new Set(pairSignals.map((s) => s.direction));
+          if (dirs.size === 1) coreBias = pairSignals[0]!.direction;
+          else coreBias = "MIXED";
+        }
         const level = levelsByPair.get(key) ?? null;
         const cot = cotByPair.get(key) ?? null;
         const dealer = directionToState(cot?.dealerDirection ?? "NEUTRAL");
         const commercial = directionToState(cot?.commercialDirection ?? "NEUTRAL");
         const sentimentDaily = directionToState(sentimentByPair.get(key) ?? "NEUTRAL");
-        const coreBias = signal?.direction ?? "NEUTRAL";
         const coreBiasState = directionToState(coreBias);
         const sizing = sizingByPair.get(key) ?? null;
 
@@ -742,12 +765,15 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
         const overlaySignal = deriveOverlaySignal(pairRow, signal, menthorqBySymbol);
         const overlay = overlaySignal.state;
         const signalGate = normalizeGate(signal?.gateDecision);
+        // MIXED = conflicting model signals — no single directional comparator,
+        // so agreement fields are null (same as NEUTRAL: nothing to compare against).
+        const hasDirectionalBias = coreBias === "LONG" || coreBias === "SHORT";
         const cotGateAgree: AgreementSignal =
-          coreBias === "NEUTRAL" ? null : signalGate === "NO_DATA" ? null : signalGate === "PASS";
+          !hasDirectionalBias ? null : signalGate === "NO_DATA" ? null : signalGate === "PASS";
         const menthorqAgree: AgreementSignal =
-          coreBias === "NEUTRAL" || !overlaySignal.available ? null : overlay === coreBiasState;
+          !hasDirectionalBias || !overlaySignal.available ? null : overlay === coreBiasState;
         const strengthAgree: AgreementSignal =
-          coreBias === "NEUTRAL" || strengthDelta1h === null ? null : strength1h === coreBiasState;
+          !hasDirectionalBias || strengthDelta1h === null ? null : strength1h === coreBiasState;
         const { agreeCount, availableCount, gammaState } = summarizeAgreement([
           cotGateAgree,
           menthorqAgree,
@@ -811,6 +837,7 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
           signalMode,
           adrTradeCount: pairTrades.length,
           adrTrades: pairTrades,
+          modelSignals: pairSignals,
         } satisfies MatrixRow;
       })
       .sort((left, right) => {
@@ -818,7 +845,7 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
         if (bucketDiff !== 0) return bucketDiff;
         return left.pair.localeCompare(right.pair);
       });
-  }, [adrTrades, assetStrength, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves, weeklyBasket]);
+  }, [adrTrades, assetStrength, canonicalSignals, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves]);
 
   const flagshipCount = matrixRows.filter((row) => row.signalMode === "FLAGSHIP").length;
   const adrDipCount = matrixRows.filter((row) => row.signalMode === "ADR_DIP").length;
@@ -838,7 +865,7 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
           </div>
           <div className="space-y-2">
             <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-right text-xs text-[color:var(--muted)]">
-              <div>Data {formatDateTimeET(lastRefreshedUtc ?? weeklyBasket?.generatedUtc ?? null, "Unknown")}</div>
+              <div>Data {formatDateTimeET(lastRefreshedUtc ?? null, "Unknown")}</div>
               <div className="font-semibold">{activeSession ? `Active ${activeSession}` : "Off-hours 17:00-20:00 ET"}</div>
             </div>
             <button
@@ -874,15 +901,15 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
           onDeleteAccount={deleteAccount}
         />
 
-        {adrTrades && weeklyBasket && (
+        {adrTrades && canonicalSignals && (
           <AdrStatsBar
             totalTrades={adrTrades.totalTrades}
             totalTpHits={adrTrades.totalTpHits}
             totalActive={adrTrades.totalActive}
             totalLosses={adrTrades.totalLosses ?? (adrTrades.totalTrades - adrTrades.totalTpHits - adrTrades.totalActive)}
             weekReturnPct={adrTrades.weekReturnPct}
-            longPairs={(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "LONG").map((s: CanonicalWeeklySignal) => s.pair)}
-            shortPairs={(weeklyBasket.signals ?? []).filter((s: CanonicalWeeklySignal) => s.direction === "SHORT").map((s: CanonicalWeeklySignal) => s.pair)}
+            longPairs={matrixRows.filter((r) => r.coreBias === "LONG").map((r) => r.pair)}
+            shortPairs={matrixRows.filter((r) => r.coreBias === "SHORT").map((r) => r.pair)}
             isPastWeek={isPastWeek}
           />
         )}
@@ -962,7 +989,11 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
                         </td>
                         <td className="border-r border-[var(--panel-border)] px-3 py-2">
                           <div className="space-y-1">
-                            <span className={`inline-flex min-w-[5rem] justify-center rounded border px-2 py-0.5 font-semibold ${biasChipClass(row.coreBiasState)}`}>
+                            <span className={`inline-flex min-w-[5rem] justify-center rounded border px-2 py-0.5 font-semibold ${
+                              row.coreBias === "MIXED"
+                                ? "border-amber-500/40 bg-amber-500/14 text-amber-700 dark:text-amber-300"
+                                : biasChipClass(row.coreBiasState)
+                            }`}>
                               {directionLabel(row.coreBias)}
                             </span>
                             {row.coreBias !== "NEUTRAL" ? (
@@ -1057,6 +1088,9 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
                                 <div className="font-semibold text-[var(--foreground)]">Core Bias Detail</div>
                                 <div className="mt-1">Dealer {row.dealer} · Commercial {row.commercial} · Sentiment {row.sentimentDaily}</div>
                                 <div>Weekly call: {directionLabel(row.coreBias)} {row.tier !== "NEUTRAL" ? `· ${row.tier}` : ""}</div>
+                                {row.modelSignals.length > 1 ? (
+                                  <div className="mt-1">{row.modelSignals.map((ms) => `${ms.model} ${directionLabel(ms.direction)}`).join(" · ")}</div>
+                                ) : null}
                                 <div>Gate: <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>{row.gate}</span></div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">

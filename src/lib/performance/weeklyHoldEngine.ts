@@ -59,6 +59,16 @@ export type WeeklyHoldTrade = {
 /** @alias WeeklyHoldTrade — use this name in new code */
 export type StrategyTrade = WeeklyHoldTrade;
 
+/** Canonical per-pair signal emitted by the engine for board display.
+ *  For tandem strategies, signals are collapsed to one per pair via majority rule. */
+export type CanonicalSignal = {
+  symbol: string;
+  assetClass: string;
+  direction: "LONG" | "SHORT";
+  source: string;
+  tier: number | null;
+};
+
 export type WeeklyHoldResult = {
   weekOpenUtc: string;
   biasSourceId: string;
@@ -68,6 +78,9 @@ export type WeeklyHoldResult = {
   lossCount: number;
   winRate: number;
   tradeCount: number;
+  /** Canonical pair-level signals for this week's strategy selection.
+   *  Used by Matrix for coreBias, tier display, and copy buttons. */
+  signals: CanonicalSignal[];
 };
 /** @alias WeeklyHoldResult — use this name in new code */
 export type StrategyWeekResult = WeeklyHoldResult;
@@ -196,6 +209,23 @@ async function resolveDirections(
   return new Map();
 }
 
+// ─── Canonical signals from direction map ────────────────────────
+// Faithful to strategy truth: one signal per direction entry.
+// For tandem, this means multiple rows per pair (one per model).
+// For single-model strategies, naturally one row per pair.
+// No collapsing — the board layer decides how to display.
+
+function buildCanonicalSignals(directions: DirectionMap): CanonicalSignal[] {
+  return Array.from(directions.entries()).map(([key, entry]) => ({
+    // Tandem keys are "PAIR:model" — extract the pair name
+    symbol: key.includes(":") ? key.split(":")[0]! : key,
+    assetClass: entry.assetClass,
+    direction: entry.direction,
+    source: entry.source,
+    tier: entry.tier,
+  }));
+}
+
 // ─── Tier string → number mapping ───────────────────────────────
 
 const TIER_MAP: Record<string, number> = { HIGH: 1, MEDIUM: 2, LOW: 3 };
@@ -216,6 +246,7 @@ async function executeAdr(
   // This determines WHICH trades to include — only trades where the
   // bias source agrees with the scanner's direction pass through.
   const directions = await resolveDirections(biasSource, weekOpenUtc);
+  const signals = buildCanonicalSignals(directions);
 
   // Build approval lookup.
   // For non-tandem: symbol → Set of approved directions (simple filter).
@@ -243,7 +274,7 @@ async function executeAdr(
   );
   if (runRows.length === 0) {
     console.log("[engine] No ADR run found in strategy_backtest_runs");
-    return { weekOpenUtc, biasSourceId: biasSource.id, trades: [], totalReturnPct: 0, winCount: 0, lossCount: 0, winRate: 0, tradeCount: 0 };
+    return { weekOpenUtc, biasSourceId: biasSource.id, trades: [], totalReturnPct: 0, winCount: 0, lossCount: 0, winRate: 0, tradeCount: 0, signals };
   }
   const runId = Number(runRows[0]!.id);
 
@@ -364,6 +395,7 @@ async function executeAdr(
     lossCount: losses,
     winRate: trades.length > 0 ? (wins / trades.length) * 100 : 0,
     tradeCount: trades.length,
+    signals,
   };
 }
 
@@ -397,6 +429,7 @@ export async function computeWeeklyHold(
 
   // Default: weekly hold (open→close from pair_period_returns)
   const directions = await resolveDirections(biasSource, weekOpenUtc);
+  const signals = buildCanonicalSignals(directions);
   const pairReturns = await getWeeklyPairReturns(weekOpenUtc);
   const returnMap = new Map(pairReturns.map((r) => [r.symbol, r]));
 
@@ -438,6 +471,7 @@ export async function computeWeeklyHold(
     lossCount: losses,
     winRate: trades.length > 0 ? (wins / trades.length) * 100 : 0,
     tradeCount: trades.length,
+    signals,
   };
 }
 
