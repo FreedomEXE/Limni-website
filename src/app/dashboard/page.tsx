@@ -1,12 +1,16 @@
-import DashboardLayout from "@/components/DashboardLayout";
-import SummaryCards from "@/components/SummaryCards";
-import MiniBiasStrip from "@/components/MiniBiasStrip";
-import PairHeatmap from "@/components/PairHeatmap";
-import ViewToggle from "@/components/ViewToggle";
-import DashboardFilters from "@/components/dashboard/DashboardFilters";
-import { evaluateFreshness } from "@/lib/cotFreshness";
-import { formatDateET, formatDateTimeET } from "@/lib/time";
 import { DateTime } from "luxon";
+import DashboardLayout from "@/components/DashboardLayout";
+import DashboardViewSection, {
+  type DashboardCotPayload,
+  type DashboardSentimentPayload,
+} from "@/components/dashboard/DashboardViewSection";
+import type { MyfxbookPositioning } from "@/components/SentimentHeatmap";
+import {
+  derivePairDirectionsByBaseWithNeutral,
+  derivePairDirectionsWithNeutral,
+  resolveMarketBias,
+} from "@/lib/cotCompute";
+import { evaluateFreshness } from "@/lib/cotFreshness";
 import {
   COT_VARIANT,
   getAssetClass,
@@ -14,26 +18,53 @@ import {
   listAssetClasses,
   type AssetClass,
 } from "@/lib/cotMarkets";
-import {
-  derivePairDirectionsWithNeutral,
-  derivePairDirectionsByBaseWithNeutral,
-  resolveMarketBias,
-  type BiasMode,
-} from "@/lib/cotCompute";
 import { PAIRS_BY_ASSET_CLASS, type PairDefinition } from "@/lib/cotPairs";
-import { readSnapshot } from "@/lib/cotStore";
-import type { CotSnapshotResponse } from "@/lib/cotTypes";
-import type { PairSnapshot } from "@/lib/cotTypes";
-import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
-import { deriveCotReportDate, findDataSectionWeekByReportDate, listDataSectionWeekEntries } from "@/lib/dataSectionWeeks";
+import { readSnapshotHistory } from "@/lib/cotStore";
+import type { CotSnapshot, CotSnapshotResponse, PairSnapshot } from "@/lib/cotTypes";
+import {
+  deriveCotReportDate,
+  findDataSectionWeekByReportDate,
+  listDataSectionWeekEntries,
+} from "@/lib/dataSectionWeeks";
+import {
+  resolveDashboardBias,
+} from "@/lib/dashboard/dashboardSelection";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import type { PairPerformance } from "@/lib/priceStore";
+import {
+  ALL_SENTIMENT_SYMBOLS,
+  SENTIMENT_ASSET_CLASSES,
+  type SentimentAssetClass,
+} from "@/lib/sentiment/symbols";
+import {
+  getAggregatesForWeekStartWithBackfill,
+  getLatestAggregatesLocked,
+  getLatestSnapshotsByProvider,
+} from "@/lib/sentiment/store";
+import type { SentimentAggregate } from "@/lib/sentiment/types";
+import { latestIso } from "@/lib/time";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+type DashboardPageProps = {
+  searchParams?:
+    | Record<string, string | string[] | undefined>
+    | Promise<Record<string, string | string[] | undefined>>;
+};
+
+type ResolvedBias = {
+  long: number;
+  short: number;
+  net: number;
+  bias: string;
+};
+
+type DashboardPairRow = DashboardCotPayload["pairRowsWithPerf"][number];
+
 function buildResponse(
-  snapshot: Awaited<ReturnType<typeof readSnapshot>>,
+  snapshot: CotSnapshot | null,
   assetClass: ReturnType<typeof getAssetClass>,
 ): CotSnapshotResponse {
   if (!snapshot) {
@@ -56,28 +87,6 @@ function buildResponse(
 
   return { ...snapshot, ...freshness };
 }
-
-type DashboardPageProps = {
-  searchParams?:
-    | Record<string, string | string[] | undefined>
-    | Promise<Record<string, string | string[] | undefined>>;
-};
-
-type DashboardBias = "dealer" | "commercial" | "sentiment";
-
-function getDashboardBias(value?: string): DashboardBias {
-  if (value === "dealer" || value === "commercial" || value === "sentiment") {
-    return value;
-  }
-  return "dealer";
-}
-
-type ResolvedBias = {
-  long: number;
-  short: number;
-  net: number;
-  bias: string;
-};
 
 function formatCftcNumber(value: number | null | undefined) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
@@ -127,21 +136,6 @@ function buildBiasDetails({
   ];
 }
 
-async function safeReadSnapshot(
-  options: Parameters<typeof readSnapshot>[0],
-): Promise<Awaited<ReturnType<typeof readSnapshot>>> {
-  try {
-    return await readSnapshot(options);
-  } catch (error) {
-    const assetClass = options?.assetClass ?? "fx";
-    console.error(
-      `Bias page: readSnapshot failed for ${assetClass}:`,
-      error instanceof Error ? error.message : String(error),
-    );
-    return null;
-  }
-}
-
 function buildCanonicalPairPerformance(
   selectedWeekOpenUtc: string,
   row: { openPrice: number; closePrice: number; returnPct: number } | null,
@@ -157,105 +151,80 @@ function buildCanonicalPairPerformance(
   };
 }
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const resolvedSearchParams = await Promise.resolve(searchParams);
-  const assetParam = resolvedSearchParams?.asset;
-  const reportParam = resolvedSearchParams?.report;
-  const biasParam = resolvedSearchParams?.bias;
-  const viewParam = resolvedSearchParams?.view;
-  const rawAsset = Array.isArray(assetParam) ? assetParam[0] : assetParam;
-  const isAll = rawAsset === "all" || !rawAsset;
-  const assetClass = getAssetClass(rawAsset);
-  const currentWeekOpen = getDisplayWeekOpenUtc();
-  const biasMode = getDashboardBias(
-    Array.isArray(biasParam) ? biasParam[0] : biasParam,
-  );
-  const selectedBiasForFilter: "dealer" | "commercial" | "sentiment" = biasMode;
-  const view =
-    viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
-  const reportDate =
-    Array.isArray(reportParam) ? reportParam[0] : reportParam;
-  const assetClasses = listAssetClasses();
-  const weekEntries = await listDataSectionWeekEntries();
-  // Include the current/upcoming week even if no price data exists yet
-  const currentWeekEntry = {
-    weekOpenUtc: currentWeekOpen,
-    cotReportDate: deriveCotReportDate(currentWeekOpen),
-  };
-  const allEntries = [currentWeekEntry, ...weekEntries]
-    .filter((entry, index, all) => all.findIndex((e) => e.cotReportDate === entry.cotReportDate) === index);
-  const availableDates = allEntries.map((entry) => entry.cotReportDate);
-  const orderedDates = [...availableDates].sort((a, b) => b.localeCompare(a));
-  const selectedReportDate =
-    reportDate && orderedDates.includes(reportDate)
-      ? reportDate
-      : orderedDates[0];
-  const previousReportDate =
-    selectedReportDate
-      ? orderedDates[orderedDates.indexOf(selectedReportDate) + 1] ?? null
-      : null;
-  const selectedWeekOpenUtc =
-    allEntries.find((e) => e.cotReportDate === selectedReportDate)?.weekOpenUtc
-    ?? (await findDataSectionWeekByReportDate(selectedReportDate))?.weekOpenUtc
-    ?? allEntries[0]?.weekOpenUtc
-    ?? null;
-  // ── Sentiment mode: early return, skip COT data fetching ──
-  if (biasMode === "sentiment") {
-    const SentimentPanel = (await import("@/components/dashboard/SentimentPanel")).default;
-    const sentViewParams = new URLSearchParams();
-    sentViewParams.set("asset", isAll ? "all" : assetClass);
-    if (selectedReportDate) sentViewParams.set("report", selectedReportDate);
-    sentViewParams.set("bias", "sentiment");
-    const sentViewItems = (["heatmap", "list"] as const).map((option) => {
-      const p = new URLSearchParams(sentViewParams);
-      p.set("view", option);
-      return { value: option, label: option, href: `/dashboard?${p.toString()}` };
-    });
-    return (
-      <DashboardLayout>
-        <div className="space-y-8">
-          <SentimentPanel
-            weekOpenUtc={selectedWeekOpenUtc}
-            assetClass={isAll ? "all" : assetClass}
-            view={view}
-            reportOptions={availableDates.map((date) => {
-              const report = DateTime.fromISO(date, { zone: "America/New_York" });
-              if (!report.isValid) return { value: date, label: date };
-              const daysUntilMonday = (8 - report.weekday) % 7;
-              const monday = report.plus({ days: daysUntilMonday }).set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-              return { value: date, label: monday.toFormat("MMM dd yyyy") };
-            })}
-            selectedReport={selectedReportDate ?? ""}
-            currentWeekOpenUtc={currentWeekOpen}
-            viewItems={sentViewItems}
-          />
-        </div>
-      </DashboardLayout>
-    );
+function toNullableNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
   }
+  return null;
+}
 
-  // ── COT mode (Dealer / Commercial) ──
-  // Sentiment returned early above — biasMode is now dealer or commercial
-  const cotBias = biasMode as "dealer" | "commercial";
-  const canonicalReturns = selectedWeekOpenUtc
-    ? await getWeeklyPairReturns(selectedWeekOpenUtc, isAll ? undefined : assetClass)
-    : [];
-  const canonicalReturnMap = new Map(
-    canonicalReturns.map((row) => [
-      `${row.assetClass}|${row.symbol}`,
-      buildCanonicalPairPerformance(selectedWeekOpenUtc ?? row.symbol, row),
-    ]),
-  );
-  const snapshot = isAll
-    ? null
-    : selectedReportDate
-      ? await safeReadSnapshot({
-          assetClass,
-          reportDate: selectedReportDate,
-        })
-      : await safeReadSnapshot({ assetClass });
-  const data = buildResponse(snapshot, assetClass);
-  const assetDefinition = getAssetClassDefinition(assetClass);
+function parseMyfxbookPositioning(payload: unknown, timestampUtc: string): MyfxbookPositioning | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const row = payload as Record<string, unknown>;
+  const longLots = toNullableNumber(row.longVolume);
+  const shortLots = toNullableNumber(row.shortVolume);
+  return {
+    longLots,
+    shortLots,
+    totalLots: longLots !== null && shortLots !== null ? longLots + shortLots : null,
+    longPositions: toNullableNumber(row.longPositions),
+    shortPositions: toNullableNumber(row.shortPositions),
+    totalPositions: toNullableNumber(row.totalPositions),
+    avgLongPrice: toNullableNumber(row.avgLongPrice),
+    avgShortPrice: toNullableNumber(row.avgShortPrice),
+    updatedAtUtc: timestampUtc || null,
+  };
+}
+
+function getSentimentSymbolsForAsset(assetClass: AssetClass | "all") {
+  if (assetClass === "all") {
+    return ALL_SENTIMENT_SYMBOLS;
+  }
+  if (assetClass in SENTIMENT_ASSET_CLASSES) {
+    return SENTIMENT_ASSET_CLASSES[assetClass as SentimentAssetClass].symbols;
+  }
+  return ALL_SENTIMENT_SYMBOLS;
+}
+
+function buildReportOptions(reportDates: string[]) {
+  return reportDates.map((date) => {
+    const report = DateTime.fromISO(date, { zone: "America/New_York" });
+    if (!report.isValid) {
+      return { value: date, label: date };
+    }
+    const daysUntilMonday = (8 - report.weekday) % 7;
+    const monday = report
+      .plus({ days: daysUntilMonday })
+      .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+    return { value: date, label: monday.toFormat("MMM dd yyyy") };
+  });
+}
+
+function buildCotPayloadForReport({
+  isAll,
+  assetClass,
+  assetClasses,
+  biasMode,
+  reportDate,
+  previousReportDate,
+  snapshotMapsByAsset,
+  canonicalReturnMap,
+  totalPairsCount,
+}: {
+  isAll: boolean;
+  assetClass: AssetClass;
+  assetClasses: Array<ReturnType<typeof listAssetClasses>[number]>;
+  biasMode: "dealer" | "commercial";
+  reportDate: string;
+  previousReportDate: string | null;
+  snapshotMapsByAsset: Map<AssetClass, Map<string, CotSnapshot>>;
+  canonicalReturnMap: Map<string, PairPerformance | null>;
+  totalPairsCount: number;
+}): DashboardCotPayload {
   const currencyRows = [] as Array<{
     assetLabel: string;
     currency: string;
@@ -265,138 +234,97 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     net: number;
     bias: string;
   }>;
-  const pairRowsWithPerf = [] as Array<{
-    pair: string;
-    direction: "LONG" | "SHORT" | "NEUTRAL";
-    performance: PairPerformance | null;
-    subtitle?: string;
-    details: Array<{ label: string; value: string }>;
-  }>;
+  const pairRowsWithPerf = [] as DashboardPairRow[];
   let missingPairs: string[] = [];
-  let combinedRefresh = data.last_refresh_utc;
-
-  // Calculate total pairs for counting purposes
-  const totalPairsCount = isAll
-    ? assetClasses.reduce((sum, asset) => sum + (PAIRS_BY_ASSET_CLASS[asset.id]?.length ?? 0), 0)
-    : PAIRS_BY_ASSET_CLASS[assetClass]?.length ?? 0;
+  let combinedRefresh = "";
 
   if (isAll) {
-    const snapshots = await Promise.all(
-      assetClasses.map((asset) =>
-        selectedReportDate
-          ? safeReadSnapshot({ assetClass: asset.id, reportDate: selectedReportDate })
-          : safeReadSnapshot({ assetClass: asset.id }),
-      ),
-    );
     const snapshotEntries = assetClasses
-      .map((asset, index) => ({
+      .map((asset) => ({
         asset,
-        snapshot: snapshots[index],
+        snapshot: snapshotMapsByAsset.get(asset.id)?.get(reportDate) ?? null,
       }))
       .filter((entry) => Boolean(entry.snapshot));
 
-    const aggregateResults = await Promise.all(
-      snapshotEntries.map(async (entry) => {
-        const entrySnapshot = entry.snapshot!;
-        const marketLabels = entry.asset.markets;
-        const pairDefs = PAIRS_BY_ASSET_CLASS[entry.asset.id];
-        const resolvedByCurrency = new Map<string, ResolvedBias>();
+    snapshotEntries.forEach((entry) => {
+      const entrySnapshot = entry.snapshot!;
+      const marketLabels = entry.asset.markets;
+      const pairDefs = PAIRS_BY_ASSET_CLASS[entry.asset.id];
+      const resolvedByCurrency = new Map<string, ResolvedBias>();
 
-        Object.entries(entrySnapshot.currencies).forEach(([currency, snapshotValue]) => {
-          const resolved = resolveMarketBias(snapshotValue, biasMode);
-          if (resolved) {
-            resolvedByCurrency.set(currency, {
-              long: resolved.long,
-              short: resolved.short,
-              net: resolved.net,
-              bias: resolved.bias,
-            });
-          }
-        });
-
-        const resolvedCurrencyRows = Object.entries(entrySnapshot.currencies)
-          .map(([currency, snapshotValue]) => {
-            const resolved = resolveMarketBias(snapshotValue, biasMode);
-            if (!resolved) {
-              return null;
-            }
-            if (entry.asset.id !== "fx" && currency === "USD") {
-              return null;
-            }
-            return {
-              assetLabel: entry.asset.label,
-              currency,
-              long: resolved.long,
-              short: resolved.short,
-              net: resolved.net,
-              bias: resolved.bias,
-              label: marketLabels[currency]?.label ?? currency,
-            };
-          })
-          .filter((row): row is NonNullable<typeof row> => Boolean(row));
-
-        const derivedPairs: Record<string, PairSnapshot> =
-          entry.asset.id === "fx"
-            ? derivePairDirectionsWithNeutral(entrySnapshot.currencies, pairDefs, biasMode)
-            : derivePairDirectionsByBaseWithNeutral(entrySnapshot.currencies, pairDefs, biasMode);
-
-        // Ensure all pairs are included (add missing ones as NEUTRAL)
-        const allPairs: Record<string, PairSnapshot> = {};
-        for (const pairDef of pairDefs) {
-          if (derivedPairs[pairDef.pair]) {
-            allPairs[pairDef.pair] = derivedPairs[pairDef.pair];
-          } else {
-            allPairs[pairDef.pair] = {
-              direction: "NEUTRAL",
-              base_bias: "NEUTRAL",
-              quote_bias: "NEUTRAL",
-            };
-          }
+      Object.entries(entrySnapshot.currencies).forEach(([currency, snapshotValue]) => {
+        const resolved = resolveMarketBias(snapshotValue, biasMode);
+        if (resolved) {
+          resolvedByCurrency.set(currency, {
+            long: resolved.long,
+            short: resolved.short,
+            net: resolved.net,
+            bias: resolved.bias,
+          });
         }
+      });
 
-        return {
-          assetLabel: entry.asset.label,
-          currencyRows: resolvedCurrencyRows,
-          pairRows: pairDefs.map((pairDef) => {
-            const row = allPairs[pairDef.pair];
-            return {
-              pair: `${pairDef.pair} (${entry.asset.label})`,
-              direction: row.direction,
-              performance: canonicalReturnMap.get(`${entry.asset.id}|${pairDef.pair}`) ?? null,
-              subtitle: entry.asset.label,
-              details: buildBiasDetails({
-                pairDef,
-                direction: row.direction,
-                dataType: cotBias,
-                assetLabel: entry.asset.label,
-                baseBias: row.base_bias,
-                quoteBias: row.quote_bias,
-                baseResolved: resolvedByCurrency.get(pairDef.base),
-                quoteResolved: resolvedByCurrency.get(pairDef.quote),
-              }),
-            };
-          }),
-          missingPairs: pairDefs
-            .filter((pairDef) => !canonicalReturnMap.has(`${entry.asset.id}|${pairDef.pair}`))
-            .map((pairDef) => `${pairDef.pair} (${entry.asset.label})`),
+      Object.entries(entrySnapshot.currencies)
+        .map(([currency, snapshotValue]) => {
+          const resolved = resolveMarketBias(snapshotValue, biasMode);
+          if (!resolved) {
+            return null;
+          }
+          if (entry.asset.id !== "fx" && currency === "USD") {
+            return null;
+          }
+          return {
+            assetLabel: entry.asset.label,
+            currency,
+            long: resolved.long,
+            short: resolved.short,
+            net: resolved.net,
+            bias: resolved.bias,
+            label: marketLabels[currency]?.label ?? currency,
+          };
+        })
+        .filter((row): row is NonNullable<typeof row> => Boolean(row))
+        .forEach((row) => currencyRows.push(row));
+
+      const derivedPairs =
+        entry.asset.id === "fx"
+          ? derivePairDirectionsWithNeutral(entrySnapshot.currencies, pairDefs, biasMode)
+          : derivePairDirectionsByBaseWithNeutral(entrySnapshot.currencies, pairDefs, biasMode);
+
+      const allPairs: Record<string, PairSnapshot> = {};
+      for (const pairDef of pairDefs) {
+        allPairs[pairDef.pair] = derivedPairs[pairDef.pair] ?? {
+          direction: "NEUTRAL",
+          base_bias: "NEUTRAL",
+          quote_bias: "NEUTRAL",
         };
-      }),
-    );
+      }
 
-    aggregateResults.forEach((result) => {
-      result.currencyRows.forEach((row) => {
-        currencyRows.push({
-          assetLabel: result.assetLabel,
-          currency: row.currency,
-          label: row.label,
-          long: row.long,
-          short: row.short,
-          net: row.net,
-          bias: row.bias,
+      pairDefs.forEach((pairDef) => {
+        const row = allPairs[pairDef.pair];
+        pairRowsWithPerf.push({
+          pair: `${pairDef.pair} (${entry.asset.label})`,
+          direction: row.direction,
+          performance: canonicalReturnMap.get(`${entry.asset.id}|${pairDef.pair}`) ?? null,
+          subtitle: entry.asset.label,
+          details: buildBiasDetails({
+            pairDef,
+            direction: row.direction,
+            dataType: biasMode,
+            assetLabel: entry.asset.label,
+            baseBias: row.base_bias,
+            quoteBias: row.quote_bias,
+            baseResolved: resolvedByCurrency.get(pairDef.base),
+            quoteResolved: resolvedByCurrency.get(pairDef.quote),
+          }),
         });
       });
-      result.pairRows.forEach((row) => pairRowsWithPerf.push(row));
-      missingPairs = missingPairs.concat(result.missingPairs);
+
+      missingPairs = missingPairs.concat(
+        pairDefs
+          .filter((pairDef) => !canonicalReturnMap.has(`${entry.asset.id}|${pairDef.pair}`))
+          .map((pairDef) => `${pairDef.pair} (${entry.asset.label})`),
+      );
     });
 
     currencyRows.sort((a, b) =>
@@ -408,8 +336,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .filter((value): value is string => Boolean(value));
     combinedRefresh = refreshDates.length > 0 ? refreshDates.sort().at(-1) ?? "" : "";
   } else {
-    const marketLabels = assetDefinition.markets;
+    const assetDefinition = getAssetClassDefinition(assetClass);
     const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
+    const snapshot = snapshotMapsByAsset.get(assetClass)?.get(reportDate) ?? null;
+    const data = buildResponse(snapshot, assetClass);
+
     Object.entries(data.currencies)
       .map(([currency, snapshotValue]) => {
         const resolved = resolveMarketBias(snapshotValue, biasMode);
@@ -417,7 +348,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           ? {
               assetLabel: assetDefinition.label,
               currency,
-              label: marketLabels[currency]?.label ?? currency,
+              label: assetDefinition.markets[currency]?.label ?? currency,
               long: resolved.long,
               short: resolved.short,
               net: resolved.net,
@@ -430,22 +361,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       .sort((a, b) => a.currency.localeCompare(b.currency))
       .forEach((row) => currencyRows.push(row));
 
-    const derivedPairs: Record<string, PairSnapshot> = assetClass === "fx"
+    const derivedPairs =
+      assetClass === "fx"
         ? derivePairDirectionsWithNeutral(data.currencies, pairDefs, biasMode)
         : derivePairDirectionsByBaseWithNeutral(data.currencies, pairDefs, biasMode);
 
-    // Ensure all pairs are included (add missing ones as NEUTRAL)
     const allPairs: Record<string, PairSnapshot> = {};
     for (const pairDef of pairDefs) {
-      if (derivedPairs[pairDef.pair]) {
-        allPairs[pairDef.pair] = derivedPairs[pairDef.pair];
-      } else {
-        allPairs[pairDef.pair] = {
-          direction: "NEUTRAL",
-          base_bias: "NEUTRAL",
-          quote_bias: "NEUTRAL",
-        };
-      }
+      allPairs[pairDef.pair] = derivedPairs[pairDef.pair] ?? {
+        direction: "NEUTRAL",
+        base_bias: "NEUTRAL",
+        quote_bias: "NEUTRAL",
+      };
     }
 
     const pairRows = pairDefs
@@ -454,19 +381,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         row: allPairs[pairDef.pair],
       }))
       .sort((a, b) => a.pairDef.pair.localeCompare(b.pairDef.pair));
+
     missingPairs = pairRows
       .filter(({ pairDef }) => !canonicalReturnMap.has(`${assetClass}|${pairDef.pair}`))
       .map(({ pairDef }) => pairDef.pair);
+
     pairRows.forEach(({ pairDef, row }) => {
       pairRowsWithPerf.push({
         pair: pairDef.pair,
-        ...row,
+        direction: row.direction,
         performance: canonicalReturnMap.get(`${assetClass}|${pairDef.pair}`) ?? null,
         subtitle: assetDefinition.label,
         details: buildBiasDetails({
           pairDef,
           direction: row.direction,
-          dataType: cotBias,
+          dataType: biasMode,
           assetLabel: assetDefinition.label,
           baseBias: row.base_bias,
           quoteBias: row.quote_bias,
@@ -479,61 +408,30 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         }),
       });
     });
+
+    combinedRefresh = data.last_refresh_utc;
   }
 
-  const biasLabel = isAll ? "Asset" : assetDefinition.biasLabel;
-  const viewParams = new URLSearchParams();
-  viewParams.set("asset", isAll ? "all" : assetClass);
-  if (selectedReportDate) {
-    viewParams.set("report", selectedReportDate);
-  }
-  viewParams.set("bias", selectedBiasForFilter);
-  const viewItems = (["heatmap", "list"] as const).map((option) => {
-    const params = new URLSearchParams(viewParams);
-    params.set("view", option);
-    return {
-      value: option,
-      label: option,
-      href: `/dashboard?${params.toString()}`,
-    };
-  });
-  const longDetails = pairRowsWithPerf
-    .filter((row) => row.direction === "LONG")
-    .map((row) => ({ label: row.pair, value: "LONG" }));
-  const shortDetails = pairRowsWithPerf
-    .filter((row) => row.direction === "SHORT")
-    .map((row) => ({ label: row.pair, value: "SHORT" }));
-  const neutralDetails = pairRowsWithPerf
-    .filter((row) => row.direction === "NEUTRAL")
-    .map((row) => ({ label: row.pair, value: "NEUTRAL" }));
   const previousDirectionMap = new Map<string, "LONG" | "SHORT" | "NEUTRAL">();
   if (previousReportDate) {
     if (isAll) {
-      const previousSnapshots = await Promise.all(
-        assetClasses.map((asset) =>
-          safeReadSnapshot({ assetClass: asset.id, reportDate: previousReportDate }),
-        ),
-      );
-      previousSnapshots.forEach((prevSnapshot, index) => {
-        if (!prevSnapshot) {
+      assetClasses.forEach((asset) => {
+        const previousSnapshot = snapshotMapsByAsset.get(asset.id)?.get(previousReportDate) ?? null;
+        if (!previousSnapshot) {
           return;
         }
-        const asset = assetClasses[index];
         const pairDefs = PAIRS_BY_ASSET_CLASS[asset.id];
         const derivedPairs =
           asset.id === "fx"
-            ? derivePairDirectionsWithNeutral(prevSnapshot.currencies, pairDefs, biasMode)
-            : derivePairDirectionsByBaseWithNeutral(prevSnapshot.currencies, pairDefs, biasMode);
+            ? derivePairDirectionsWithNeutral(previousSnapshot.currencies, pairDefs, biasMode)
+            : derivePairDirectionsByBaseWithNeutral(previousSnapshot.currencies, pairDefs, biasMode);
         pairDefs.forEach((pairDef) => {
           const direction = derivedPairs[pairDef.pair]?.direction ?? "NEUTRAL";
           previousDirectionMap.set(`${pairDef.pair} (${asset.label})`, direction);
         });
       });
     } else {
-      const previousSnapshot = await safeReadSnapshot({
-        assetClass,
-        reportDate: previousReportDate,
-      });
+      const previousSnapshot = snapshotMapsByAsset.get(assetClass)?.get(previousReportDate) ?? null;
       if (previousSnapshot) {
         const pairDefs = PAIRS_BY_ASSET_CLASS[assetClass];
         const derivedPairs =
@@ -547,6 +445,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       }
     }
   }
+
   const flipDetails = pairRowsWithPerf
     .map((row) => {
       const prior = previousDirectionMap.get(row.pair);
@@ -557,109 +456,249 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     })
     .filter((detail): detail is { label: string; value: string } => Boolean(detail));
 
-  // ── COT mode (Dealer / Commercial) ──
+  return {
+    combinedRefresh,
+    totalPairsCount,
+    pairRowsWithPerf,
+    missingPairs,
+    currencyRows,
+    biasLabel: isAll ? "Asset" : getAssetClassDefinition(assetClass).biasLabel,
+    flipDetails,
+  };
+}
+
+async function buildSentimentPayloadForWeek(
+  weekOpenUtc: string | null,
+  sentimentSymbols: readonly string[],
+  weeklyReturns: Array<{ symbol: string; returnPct: number }>,
+): Promise<DashboardSentimentPayload> {
+  let aggregates: SentimentAggregate[] = [];
+  let previousAggregates: SentimentAggregate[] = [];
+
+  try {
+    if (weekOpenUtc) {
+      const open = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+      const close = open.isValid ? open.plus({ days: 7 }) : open;
+      aggregates = open.isValid
+        ? await getAggregatesForWeekStartWithBackfill(
+            open.toUTC().toISO() ?? weekOpenUtc,
+            close.toUTC().toISO() ?? weekOpenUtc,
+          )
+        : await getLatestAggregatesLocked();
+      const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
+      if (prevOpen?.isValid) {
+        const prevClose = prevOpen.plus({ days: 7 });
+        previousAggregates = await getAggregatesForWeekStartWithBackfill(
+          prevOpen.toUTC().toISO() ?? weekOpenUtc,
+          prevClose.toUTC().toISO() ?? weekOpenUtc,
+        );
+      }
+    } else {
+      aggregates = await getLatestAggregatesLocked();
+    }
+  } catch (error) {
+    console.error("Sentiment load failed:", error instanceof Error ? error.message : String(error));
+  }
+
+  const filteredAggregates = aggregates.filter((agg) => sentimentSymbols.includes(agg.symbol));
+  const latestAggregateTimestamp = latestIso(filteredAggregates.map((agg) => agg.timestamp_utc));
+  const previousBySymbol = new Map(
+    previousAggregates
+      .filter((agg) => sentimentSymbols.includes(agg.symbol))
+      .map((agg) => [agg.symbol, agg.crowding_state]),
+  );
+  const flipDetails = filteredAggregates
+    .map((agg) => {
+      const prior = previousBySymbol.get(agg.symbol);
+      if (!prior || prior === agg.crowding_state) {
+        return null;
+      }
+      return {
+        label: agg.symbol,
+        value: `${prior.replace("CROWDED_", "")} → ${agg.crowding_state.replace("CROWDED_", "")}`,
+      };
+    })
+    .filter((detail): detail is { label: string; value: string } => Boolean(detail));
+
+  const performanceByPair = weeklyReturns.reduce<Record<string, number | null>>((acc, row) => {
+    acc[row.symbol] = row.returnPct;
+    return acc;
+  }, {});
+
+  return {
+    latestAggregateTimestamp,
+    aggregates: filteredAggregates.sort((a, b) => a.symbol.localeCompare(b.symbol)),
+    performanceByPair,
+    flipDetails,
+  };
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const assetParam = resolvedSearchParams?.asset;
+  const reportParam = resolvedSearchParams?.report;
+  const biasParam = resolvedSearchParams?.bias;
+  const viewParam = resolvedSearchParams?.view;
+  const rawAsset = Array.isArray(assetParam) ? assetParam[0] : assetParam;
+  const isAll = rawAsset === "all" || !rawAsset;
+  const assetClass = getAssetClass(rawAsset);
+  const selectedAsset = isAll ? "all" : assetClass;
+  const currentWeekOpen = getDisplayWeekOpenUtc();
+  const biasMode = resolveDashboardBias(Array.isArray(biasParam) ? biasParam[0] : biasParam);
+  const view =
+    viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
+  const reportDate = Array.isArray(reportParam) ? reportParam[0] : reportParam;
+
+  const assetClasses = listAssetClasses();
+  const weekEntries = await listDataSectionWeekEntries();
+  const currentWeekEntry = {
+    weekOpenUtc: currentWeekOpen,
+    cotReportDate: deriveCotReportDate(currentWeekOpen),
+  };
+  const allEntries = [currentWeekEntry, ...weekEntries].filter(
+    (entry, index, all) =>
+      all.findIndex((candidate) => candidate.cotReportDate === entry.cotReportDate) === index,
+  );
+  const availableDates = allEntries.map((entry) => entry.cotReportDate);
+  const orderedDates = [...availableDates].sort((a, b) => b.localeCompare(a));
+  const selectedReportDate =
+    reportDate && orderedDates.includes(reportDate)
+      ? reportDate
+      : orderedDates[0] ?? "";
+  const reportOptions = buildReportOptions(orderedDates);
+  const totalPairsCount = isAll
+    ? assetClasses.reduce((sum, asset) => sum + (PAIRS_BY_ASSET_CLASS[asset.id]?.length ?? 0), 0)
+    : PAIRS_BY_ASSET_CLASS[assetClass]?.length ?? 0;
+
+  const reportToWeekMap = new Map(allEntries.map((entry) => [entry.cotReportDate, entry.weekOpenUtc]));
+  if (!reportToWeekMap.has(selectedReportDate) && selectedReportDate) {
+    const foundWeek = await findDataSectionWeekByReportDate(selectedReportDate);
+    if (foundWeek?.weekOpenUtc) {
+      reportToWeekMap.set(selectedReportDate, foundWeek.weekOpenUtc);
+    }
+  }
+
+  const selectedWeeks = orderedDates
+    .map((date) => ({
+      reportDate: date,
+      weekOpenUtc: reportToWeekMap.get(date) ?? null,
+    }))
+    .filter((entry) => Boolean(entry.reportDate));
+
+  const weeklyReturnsEntries = await Promise.all(
+    selectedWeeks.map(async ({ reportDate, weekOpenUtc }) => [
+      reportDate,
+      weekOpenUtc
+        ? await getWeeklyPairReturns(weekOpenUtc, isAll ? undefined : assetClass)
+        : [],
+    ] as const),
+  );
+  const weeklyReturnsByReport = new Map(weeklyReturnsEntries);
+
+  const snapshotMapsByAsset = new Map<AssetClass, Map<string, CotSnapshot>>();
+  const assetsToLoad = isAll ? assetClasses.map((asset) => asset.id) : [assetClass];
+  const snapshotHistories = await Promise.all(
+    assetsToLoad.map(async (assetId) => [
+      assetId,
+      await readSnapshotHistory(assetId, orderedDates.length + 1),
+    ] as const),
+  );
+  snapshotHistories.forEach(([assetId, snapshots]) => {
+    snapshotMapsByAsset.set(
+      assetId,
+      new Map(snapshots.map((snapshot) => [snapshot.report_date, snapshot])),
+    );
+  });
+
+  const cotDataByReport = orderedDates.reduce<Record<string, { dealer: DashboardCotPayload; commercial: DashboardCotPayload }>>(
+    (acc, currentReportDate, index) => {
+      const currentWeekOpenUtc = reportToWeekMap.get(currentReportDate) ?? null;
+      const canonicalReturns = weeklyReturnsByReport.get(currentReportDate) ?? [];
+      const canonicalReturnMap = new Map(
+        canonicalReturns.map((row) => [
+          `${row.assetClass}|${row.symbol}`,
+          buildCanonicalPairPerformance(currentWeekOpenUtc ?? row.symbol, row),
+        ]),
+      );
+      const previousReportDate = orderedDates[index + 1] ?? null;
+      acc[currentReportDate] = {
+        dealer: buildCotPayloadForReport({
+          isAll,
+          assetClass,
+          assetClasses,
+          biasMode: "dealer",
+          reportDate: currentReportDate,
+          previousReportDate,
+          snapshotMapsByAsset,
+          canonicalReturnMap,
+          totalPairsCount,
+        }),
+        commercial: buildCotPayloadForReport({
+          isAll,
+          assetClass,
+          assetClasses,
+          biasMode: "commercial",
+          reportDate: currentReportDate,
+          previousReportDate,
+          snapshotMapsByAsset,
+          canonicalReturnMap,
+          totalPairsCount,
+        }),
+      };
+      return acc;
+    },
+    {},
+  );
+
+  const sentimentSymbols = getSentimentSymbolsForAsset(selectedAsset);
+  let myfxbookPositioningBySymbol: Record<string, MyfxbookPositioning | undefined> = {};
+  try {
+    const myfxbookSnapshots = await getLatestSnapshotsByProvider("MYFXBOOK", Array.from(sentimentSymbols));
+    myfxbookPositioningBySymbol = myfxbookSnapshots.reduce<Record<string, MyfxbookPositioning | undefined>>(
+      (acc, snapshot) => {
+        acc[snapshot.symbol] =
+          parseMyfxbookPositioning(snapshot.raw_payload, snapshot.timestamp_utc) ?? undefined;
+        return acc;
+      },
+      {},
+    );
+  } catch {}
+
+  const sentimentPayloadEntries = await Promise.all(
+    selectedWeeks.map(async ({ reportDate: currentReportDate, weekOpenUtc }) => [
+      currentReportDate,
+      await buildSentimentPayloadForWeek(
+        weekOpenUtc,
+        sentimentSymbols,
+        (weeklyReturnsByReport.get(currentReportDate) ?? []).map((row) => ({
+          symbol: row.symbol,
+          returnPct: row.returnPct,
+        })),
+      ),
+    ] as const),
+  );
+  const sentimentDataByReport = Object.fromEntries(sentimentPayloadEntries) as Record<
+    string,
+    DashboardSentimentPayload
+  >;
+
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        <header className="space-y-2">
-          <h1 className="text-3xl font-semibold text-[var(--foreground)]">{biasMode === "commercial" ? "Commercial" : "Dealer"}</h1>
-          <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            {combinedRefresh ? `Last refresh ${formatDateTimeET(combinedRefresh)}` : "No refresh yet"}
-          </div>
-        </header>
-
-        <div data-cot-surface="true">
-          <SummaryCards
-            title="Bias"
-            centered={true}
-            cards={[
-              {
-                id: "pairs",
-                label: "Pairs tracked",
-                value: String(totalPairsCount),
-              },
-              {
-                id: "long",
-                label: "Long signals",
-                value: String(pairRowsWithPerf.filter((row) => row.direction === "LONG").length),
-                tone: "positive",
-                details: longDetails,
-              },
-              {
-                id: "short",
-                label: "Short signals",
-                value: String(pairRowsWithPerf.filter((row) => row.direction === "SHORT").length),
-                tone: "negative",
-                details: shortDetails,
-              },
-              {
-                id: "neutral",
-                label: "Neutral/ignored",
-                value: String(pairRowsWithPerf.filter((row) => row.direction === "NEUTRAL").length),
-                details: neutralDetails,
-              },
-              {
-                id: "flips",
-                label: "Flips",
-                value: String(flipDetails.length),
-                details: flipDetails,
-              },
-            ]}
-          />
-        </div>
-
-        <section
-          data-cot-surface="true"
-          className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
-        >
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <DashboardFilters
-              assetOptions={assetClasses.map((asset) => ({
-                id: asset.id,
-                label: asset.label,
-              }))}
-              reportOptions={availableDates.map((date) => {
-                const report = DateTime.fromISO(date, { zone: "America/New_York" });
-                if (!report.isValid) {
-                  return { value: date, label: date };
-                }
-                const daysUntilMonday = (8 - report.weekday) % 7;
-                const monday = report
-                  .plus({ days: daysUntilMonday })
-                  .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-                return { value: date, label: monday.toFormat("MMM dd yyyy") };
-              })}
-              selectedAsset={isAll ? "all" : assetClass}
-              selectedReport={selectedReportDate ?? ""}
-              selectedBias={selectedBiasForFilter}
-              selectedView={view}
-              currentWeekOpenUtc={currentWeekOpen}
-            />
-            <ViewToggle value={view} items={viewItems} />
-          </div>
-          <div className="mt-6">
-            <PairHeatmap
-              rows={pairRowsWithPerf}
-              view={view}
-              missingPairs={missingPairs}
-            />
-          </div>
-          <div className="mt-6">
-            <h2 className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {biasLabel} bias strip
-            </h2>
-            <div className="mt-3">
-              <MiniBiasStrip
-                items={currencyRows.map((row) => ({
-                  id: `${row.assetLabel}-${row.currency}`,
-                  label: row.label,
-                  bias: row.bias,
-                }))}
-              />
-            </div>
-          </div>
-        </section>
-      </div>
+      <DashboardViewSection
+        assetOptions={assetClasses.map((asset) => ({
+          id: asset.id,
+          label: asset.label,
+        }))}
+        selectedAsset={selectedAsset}
+        reportOptions={reportOptions}
+        initialReport={selectedReportDate}
+        initialBias={biasMode}
+        initialView={view}
+        currentWeekOpenUtc={currentWeekOpen}
+        cotDataByReport={cotDataByReport}
+        sentimentDataByReport={sentimentDataByReport}
+        myfxbookPositioningBySymbol={myfxbookPositioningBySymbol}
+      />
     </DashboardLayout>
   );
 }

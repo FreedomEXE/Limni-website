@@ -3,12 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
 import StrategySidebar from "@/components/shared/StrategySidebar";
 import { resolveAccountView, type AccountPageView } from "@/lib/accounts/navigation";
+import {
+  DATA_DASHBOARD_BIAS_COMMIT_EVENT,
+  resolveDashboardBias,
+  type DashboardBias,
+} from "@/lib/dashboard/dashboardSelection";
 
 type NavItem = {
   key: string;
@@ -94,8 +99,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const viewParamRaw = searchParams.get("view");
   const accountViewFromUrl = resolveAccountView(viewParamRaw);
   const viewParam = activeSection === "accounts" ? accountViewFromUrl : viewParamRaw;
+  const dashboardBiasFromUrl = resolveDashboardBias(searchParams.get("bias"));
   const [rootLockSection, setRootLockSection] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [localDashboardBias, setLocalDashboardBias] = useState<DashboardBias>(dashboardBiasFromUrl);
   const supportsSectionNav = true;
   const navMode: "root" | "section" =
     activeSection && rootLockSection === activeSection
@@ -104,6 +111,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         ? "section"
         : "root";
   const effectiveAccountView = accountViewFromUrl;
+
+  useEffect(() => {
+    setLocalDashboardBias(dashboardBiasFromUrl);
+  }, [dashboardBiasFromUrl]);
+
+  useEffect(() => {
+    const handleDashboardBiasCommit = (event: Event) => {
+      const detail = (event as CustomEvent<{ bias?: string }>).detail;
+      setLocalDashboardBias(resolveDashboardBias(detail?.bias));
+    };
+    window.addEventListener(DATA_DASHBOARD_BIAS_COMMIT_EVENT, handleDashboardBiasCommit);
+    return () => {
+      window.removeEventListener(DATA_DASHBOARD_BIAS_COMMIT_EVENT, handleDashboardBiasCommit);
+    };
+  }, []);
 
   const accountBasePath = useMemo(() => {
     if (pathname.startsWith("/accounts/connected/")) {
@@ -186,6 +208,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     params.set("view", nextView);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     window.dispatchEvent(new CustomEvent("accounts-view-change", { detail: nextView }));
+  };
+
+  const handleDashboardBiasChange = (nextBias: DashboardBias) => {
+    setMobileOpen(false);
+    setLocalDashboardBias(nextBias);
+    const url = new URL(window.location.href);
+    url.searchParams.set("bias", nextBias);
+    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+    window.dispatchEvent(
+      new CustomEvent(DATA_DASHBOARD_BIAS_COMMIT_EVENT, {
+        detail: { bias: nextBias },
+      }),
+    );
   };
 
   const sectionLabel = activeSection ? SECTION_LABELS[activeSection] : "Navigation";
@@ -291,16 +326,45 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 : null;
           const resolvedViewParam =
             activeSection === "accounts" ? effectiveAccountView : viewParam;
-          const isActive =
-            item.matchPrefixes && item.matchPrefixes.length > 0
-              ? item.matchPrefixes.some((prefix) => pathname.startsWith(prefix))
-              : isActiveHref(item.href, pathname, resolvedViewParam, defaultView, searchParams);
           const { path: itemPath, params: itemParams } = parseHref(item.href);
+          const dashboardItemBias = itemParams.get("bias");
+          const isLocalDataToggle =
+            activeSection === "data" &&
+            itemPath === pathname &&
+            dashboardItemBias !== null;
+          const isActive =
+            isLocalDataToggle
+              ? localDashboardBias === resolveDashboardBias(dashboardItemBias)
+              : item.matchPrefixes && item.matchPrefixes.length > 0
+                ? item.matchPrefixes.some((prefix) => pathname.startsWith(prefix))
+                : isActiveHref(item.href, pathname, resolvedViewParam, defaultView, searchParams);
           const accountItemView = itemParams.get("view");
           const isLocalAccountToggle =
             activeSection === "accounts" &&
             itemPath === pathname &&
             accountItemView !== null;
+          if (isLocalDataToggle) {
+            const nextDashboardBias = resolveDashboardBias(dashboardItemBias);
+            return (
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => handleDashboardBiasChange(nextDashboardBias)}
+                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                  isActive
+                    ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                    : "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)]/80 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+                }`}
+              >
+                <span className="tracking-tight">{item.label}</span>
+                {isActive ? (
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-strong)]">
+                    Active
+                  </span>
+                ) : null}
+              </button>
+            );
+          }
           if (isLocalAccountToggle) {
             const nextAccountView = resolveAccountView(accountItemView);
             return (
