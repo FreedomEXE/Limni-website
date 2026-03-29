@@ -337,12 +337,14 @@ async function executeAdr(
     let exitPrice = r.exit_price ? Number(r.exit_price) : entryPrice;
     let pnlPct = r.pnl_pct ? Number(r.pnl_pct) : 0;
 
+    let resolvedExitReason = r.exit_reason;
     if (isPastWeek && r.exit_reason === "active" && entryPrice) {
       const weekClosePrice = closePrices.get(pairUpper);
       if (weekClosePrice) {
         exitPrice = weekClosePrice;
         const rawReturn = ((weekClosePrice - entryPrice) / entryPrice) * 100;
         pnlPct = r.direction === "SHORT" ? -rawReturn : rawReturn;
+        resolvedExitReason = "week_close";
       }
     }
 
@@ -355,7 +357,7 @@ async function executeAdr(
       tradeNumber: (meta.tradeNumber as number) ?? 1,
       entryTimeUtc: r.entry_time_utc,
       exitTimeUtc: r.exit_time_utc,
-      exitReason: r.exit_reason,
+      exitReason: resolvedExitReason,
       anchorPrice: (meta.anchorPrice as number) ?? null,
       tpPrice: (meta.tpPrice as number) ?? null,
       adrPct: (meta.adrPct as number) ?? null,

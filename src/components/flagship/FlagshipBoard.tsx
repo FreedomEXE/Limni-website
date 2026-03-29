@@ -601,12 +601,13 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
     }
 
     fetchBoardData();
-    // ADR trades: use engine data if available (canonical), otherwise fetch client-side
+    // ADR trades: use canonical engine data when available, client-fetch only
+    // when engine data isn't provided at all (no engineWeekResults prop).
     if (activeSelection.f2 !== "none") {
       const weekKey = weekOpenUtc ?? "";
       const engineResult = engineWeekResults?.[weekKey];
-      if (engineResult && engineResult.trades.length > 0) {
-        // Build AdrTradesPayload from canonical engine data
+      if (engineResult) {
+        // Canonical path: build AdrTradesPayload from engine (even if 0 trades)
         const trades: AdrTradeRow[] = engineResult.trades.map((t) => ({
           symbol: t.symbol,
           direction: t.direction,
@@ -637,10 +638,17 @@ export default function FlagshipBoard({ weekOpenUtc, currentWeekOpenUtc, engineW
           weekReturnPct: engineResult.totalReturnPct,
           trades,
         });
-      } else {
-        // Fallback: client-side fetch (for current week live data or if engine data missing)
+      } else if (!engineWeekResults) {
+        // No engine prop at all (e.g., standalone usage) — client-side fetch
         const adrWeekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
         fetch(`/api/flagship/adr-trades${adrWeekQs}`).then(r => r.json()).then(setAdrTrades).catch(() => {});
+      } else if (weekKey in engineWeekResults) {
+        // Engine provided, week exists but has 0 trades — valid zero-trade week
+        setAdrTrades({ weekOpenUtc: weekKey, generatedUtc: new Date().toISOString(), totalTrades: 0, totalTpHits: 0, totalActive: 0, totalLosses: 0, weekReturnPct: 0, trades: [] });
+      } else {
+        // Engine provided but week key missing — computation gap, log and show empty
+        console.warn(`[FlagshipBoard] Week ${weekKey} missing from engineWeekResults`);
+        setAdrTrades(null);
       }
     } else {
       setAdrTrades(null);
