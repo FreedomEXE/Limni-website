@@ -391,7 +391,7 @@ function decodeReason(reason: string) {
 }
 
 function formatMove(change24hPct: number | null) {
-  if (change24hPct === null || !Number.isFinite(change24hPct)) return "—";
+  if (change24hPct === null || !Number.isFinite(change24hPct)) return "No data";
   return `${change24hPct > 0 ? "+" : ""}${change24hPct.toFixed(1)}%`;
 }
 
@@ -409,12 +409,25 @@ function weeklyMoveClass(changePct: number | null) {
   return "text-[color:var(--muted)]";
 }
 
+function formatWeeklyMoveCompact(changePct: number | null) {
+  if (changePct === null || !Number.isFinite(changePct)) return null;
+  return `${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%`;
+}
+
 function formatPrice(value: number | null) {
-  if (value === null || !Number.isFinite(value)) return "—";
+  if (value === null || !Number.isFinite(value)) return "n/a";
   if (Math.abs(value) >= 1000) return value.toFixed(2);
   if (Math.abs(value) >= 100) return value.toFixed(3);
   if (Math.abs(value) >= 1) return value.toFixed(4);
   return value.toFixed(5);
+}
+
+function formatExitStatus(exitReason: string | null) {
+  if (exitReason === "tp") return "+0.25%";
+  if (exitReason === "active") return "ACTIVE";
+  if (exitReason === "week_close") return "Week close";
+  if (!exitReason) return "Open";
+  return decodeReason(exitReason);
 }
 
 function triggerClass(state: TriggerState, flashing: boolean) {
@@ -904,6 +917,20 @@ export default function FlagshipBoard({
   const mixedCount = matrixRows.filter((row) => row.coreBias === "MIXED").length;
   const neutralCount = matrixRows.filter((row) => row.signalMode === "NEUTRAL").length;
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
+  const selectedEngineResult = weekOpenUtc ? (engineWeekResults?.[weekOpenUtc] ?? null) : null;
+  const statsTrades = matrixUi.showIntradayDetail
+    ? (adrTrades?.totalTrades ?? selectedEngineResult?.tradeCount ?? 0)
+    : (selectedEngineResult?.tradeCount ?? 0);
+  const statsWins = matrixUi.showIntradayDetail
+    ? (adrTrades?.totalTpHits ?? selectedEngineResult?.winCount ?? 0)
+    : (selectedEngineResult?.winCount ?? 0);
+  const statsLosses = matrixUi.showIntradayDetail
+    ? (adrTrades?.totalLosses ?? selectedEngineResult?.lossCount ?? 0)
+    : (selectedEngineResult?.lossCount ?? 0);
+  const statsActive = matrixUi.showIntradayDetail ? (adrTrades?.totalActive ?? 0) : 0;
+  const statsReturn = matrixUi.showIntradayDetail
+    ? (adrTrades?.weekReturnPct ?? selectedEngineResult?.totalReturnPct ?? 0)
+    : (selectedEngineResult?.totalReturnPct ?? 0);
 
   return (
     <section className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm md:p-5">
@@ -961,16 +988,18 @@ export default function FlagshipBoard({
           onDeleteAccount={deleteAccount}
         />
 
-        {matrixUi.showStatsBar && adrTrades && canonicalSignals && (
+        {canonicalSignals && (
           <AdrStatsBar
-            totalTrades={adrTrades.totalTrades}
-            totalTpHits={adrTrades.totalTpHits}
-            totalActive={adrTrades.totalActive}
-            totalLosses={adrTrades.totalLosses ?? (adrTrades.totalTrades - adrTrades.totalTpHits - adrTrades.totalActive)}
-            weekReturnPct={adrTrades.weekReturnPct}
+            totalTrades={statsTrades}
+            totalTpHits={statsWins}
+            totalActive={statsActive}
+            totalLosses={statsLosses}
+            weekReturnPct={statsReturn}
             longPairs={matrixRows.filter((r) => r.coreBias === "LONG").map((r) => r.pair)}
             shortPairs={matrixRows.filter((r) => r.coreBias === "SHORT").map((r) => r.pair)}
             isPastWeek={isPastWeek}
+            winsLabel={matrixUi.showIntradayDetail ? "TP Hits" : "Wins"}
+            showActive={matrixUi.showIntradayDetail && !isPastWeek}
           />
         )}
 
@@ -1038,7 +1067,11 @@ export default function FlagshipBoard({
                               <span className="flex flex-wrap items-center gap-2">
                                 <span>{row.pair}</span>
                                 <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">{row.assetClass}</span>
-                                <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${moveClass(row.move24hPct)}`}>{formatMove(row.move24hPct)}</span>
+                                {formatWeeklyMoveCompact(row.weeklyMovePct) ? (
+                                  <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${weeklyMoveClass(row.weeklyMovePct)}`}>
+                                    {formatWeeklyMoveCompact(row.weeklyMovePct)}
+                                  </span>
+                                ) : null}
                               </span>
                               {row.coreBias !== "NEUTRAL" && row.tier !== "NEUTRAL" ? (
                                 <span className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">{row.tier} tier</span>
@@ -1065,7 +1098,7 @@ export default function FlagshipBoard({
                         <td className="border-r border-[var(--panel-border)] px-3 py-2">
                           <div className="space-y-1">
                             <div className={`text-sm font-semibold ${weeklyMoveClass(row.weeklyMovePct)}`}>
-                              {row.weeklyMovePct === null ? "—" : `${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}
+                              {row.weeklyMovePct === null ? "0.00%" : `${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}
                             </div>
                             {row.weeklyOpenPrice !== null && row.weeklyClosePrice !== null ? (
                               <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
@@ -1076,7 +1109,14 @@ export default function FlagshipBoard({
                         </td>
                         <td className="border-r border-[var(--panel-border)] px-3 py-2">
                           {!matrixUi.showIntradayDetail ? (
-                            <span className="text-[10px] text-[color:var(--muted)]">—</span>
+                            <div className="space-y-1">
+                              <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--foreground)]">
+                                {row.modelSignals.length} trade{row.modelSignals.length !== 1 ? "s" : ""} qualified
+                              </div>
+                              <div className={`text-xs font-semibold ${row.weeklyMovePct !== null && row.weeklyMovePct >= 0 ? "text-lime-400" : row.weeklyMovePct !== null ? "text-red-400" : "text-[color:var(--muted)]"}`}>
+                                {row.weeklyMovePct === null ? "P/L 0.00%" : `P/L ${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}
+                              </div>
+                            </div>
                           ) : isPastWeek ? (
                             <div className="space-y-1">
                               {row.adrTradeCount > 0 ? (
@@ -1107,19 +1147,24 @@ export default function FlagshipBoard({
                                   );
                                 })()
                               ) : (
-                                <span className="text-[10px] text-[color:var(--muted)]">—</span>
+                                <>
+                                  <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                                    0 trades taken
+                                  </div>
+                                  <div className="text-xs font-semibold text-[color:var(--muted)]">
+                                    P/L 0.00%
+                                  </div>
+                                </>
                               )}
                             </div>
                           ) : (
                             <div className="space-y-1">
                               <span className={triggerClass(row.triggerState, row.touched)} title="ADR trigger">
-                                {row.triggerState === "INACTIVE" ? "—" : row.triggerState === "NO_DATA" ? "?" : row.triggerState}
+                                {row.triggerState === "INACTIVE" ? "No setup" : row.triggerState === "NO_DATA" ? "No data" : row.triggerState}
                               </span>
-                              {row.adrTradeCount > 0 && (
-                                <div className="text-[10px] uppercase tracking-[0.08em] text-lime-400">
-                                  {row.adrTradeCount} trade{row.adrTradeCount !== 1 ? "s" : ""}
-                                </div>
-                              )}
+                              <div className={`text-[10px] uppercase tracking-[0.08em] ${row.adrTradeCount > 0 ? "text-lime-400" : "text-[color:var(--muted)]"}`}>
+                                {row.adrTradeCount} trade{row.adrTradeCount !== 1 ? "s" : ""}
+                              </div>
                               {matrixUi.showTriggerState && row.adrPct !== null ? (
                                 <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
                                   Range {row.adrPct.toFixed(2)}%
@@ -1143,7 +1188,7 @@ export default function FlagshipBoard({
                             title={sizingResult?.warning ?? (activeAccount ? "Configure instrument" : "No active account")}
                           >
                             <span className="text-sm font-semibold">
-                              {sizingResult && pairSpec ? formatLotSize(sizingResult.lotSize, pairSpec.lotStep) : "—"}
+                              {sizingResult && pairSpec ? formatLotSize(sizingResult.lotSize, pairSpec.lotStep) : "n/a"}
                             </span>
                             {sizingResult ? (
                               <span className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
@@ -1164,14 +1209,13 @@ export default function FlagshipBoard({
                                 {row.modelSignals.length > 1 ? (
                                   <div className="mt-1">{row.modelSignals.map((ms) => `${ms.model} ${directionLabel(ms.direction)}`).join(" · ")}</div>
                                 ) : null}
-                                <div>Gate: <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass(row.gate)}`}>{row.gate}</span></div>
                               </div>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Weekly Move</div>
                                 <div className="mt-1">
                                   Move{" "}
                                   <span className={weeklyMoveClass(row.weeklyMovePct)}>
-                                    {row.weeklyMovePct === null ? "—" : `${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}
+                                    {row.weeklyMovePct === null ? "0.00%" : `${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}
                                   </span>
                                 </div>
                                 <div>Open {formatPrice(row.weeklyOpenPrice)} · Close {formatPrice(row.weeklyClosePrice)}</div>
@@ -1180,7 +1224,7 @@ export default function FlagshipBoard({
                               {matrixUi.showIntradayDetail ? (
                                 <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                   <div className="font-semibold text-[var(--foreground)]">{matrixUi.detailTitle ?? "Entry Detail"}</div>
-                                  <div className="mt-1">Range {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || "—"}</div>
+                                  <div className="mt-1">Range {formatPct(row.adrPct, 2)} · Bars {row.adrBarsUsed || 0}</div>
                                   <div className="mt-1">Long trigger {formatPrice(row.longTriggerPrice)} · Short trigger {formatPrice(row.shortTriggerPrice)}</div>
                                   <div>Long TP {formatPrice(row.longTpPrice)} · Short TP {formatPrice(row.shortTpPrice)}</div>
                                   <div className="mt-1">Week range {formatPrice(row.weekLowPrice)} - {formatPrice(row.weekHighPrice)} · Current {formatPrice(row.currentPrice)}</div>
@@ -1189,8 +1233,8 @@ export default function FlagshipBoard({
                               {matrixUi.showIntradayDetail ? (
                                 <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                   <div className="font-semibold text-[var(--foreground)]">Trade Profile</div>
-                                  <div className="mt-1">Trades {row.adrTradeCount || "—"} · TP {row.adrTrades.filter(t => t.exitReason === "tp").length} · Active {row.adrTrades.filter(t => t.exitReason === "active").length}</div>
-                                  <div>P/L {row.adrTrades.length > 0 ? `${row.adrTrades.reduce((sum, trade) => sum + (trade.pnlPct ?? 0), 0) >= 0 ? "+" : ""}${row.adrTrades.reduce((sum, trade) => sum + (trade.pnlPct ?? 0), 0).toFixed(2)}%` : "—"}</div>
+                                  <div className="mt-1">Trades {row.adrTradeCount} · TP {row.adrTrades.filter(t => t.exitReason === "tp").length} · Active {row.adrTrades.filter(t => t.exitReason === "active").length}</div>
+                                  <div>P/L {`${row.adrTrades.reduce((sum, trade) => sum + (trade.pnlPct ?? 0), 0) >= 0 ? "+" : ""}${row.adrTrades.reduce((sum, trade) => sum + (trade.pnlPct ?? 0), 0).toFixed(2)}%`}</div>
                                 </div>
                               ) : null}
                               {matrixUi.showIntradayDetail && row.adrTrades.length > 0 ? (
@@ -1199,7 +1243,7 @@ export default function FlagshipBoard({
                                   <div className="space-y-1 px-3 pb-2">
                                     {row.adrTrades.map((trade) => {
                                       const tid = makeTradeId(trade, row.assetClass);
-                                      const status = trade.exitReason === "tp" ? "+0.25%" : trade.exitReason === "active" ? "ACTIVE" : trade.exitReason ?? "—";
+                                      const status = formatExitStatus(trade.exitReason);
                                       return (
                                         <div key={tid} className="flex items-start gap-2 rounded border border-[var(--panel-border)] bg-[var(--panel)]/50 px-2 py-1">
                                           <span className="shrink-0 font-mono text-[10px] text-[color:var(--muted)]">{tid}</span>
@@ -1213,16 +1257,6 @@ export default function FlagshipBoard({
                                   </div>
                                 </details>
                               ) : null}
-                            </div>
-                            <div className="mt-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs text-[var(--foreground)]">
-                              <div className="font-semibold">Gate Reasons</div>
-                              <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-[color:var(--muted)]">
-                                {row.gateReasons.map((reason) => (
-                                  <span key={`${row.pair}-${reason}`} className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-2 py-0.5">
-                                    {decodeReason(reason)}
-                                  </span>
-                                ))}
-                              </div>
                             </div>
                           </td>
                         </tr>

@@ -25,6 +25,8 @@ export type AdrStatsBarProps = {
   longPairs: string[];
   shortPairs: string[];
   isPastWeek?: boolean;
+  winsLabel?: string;
+  showActive?: boolean;
 };
 
 export default function AdrStatsBar({
@@ -36,6 +38,8 @@ export default function AdrStatsBar({
   longPairs,
   shortPairs,
   isPastWeek = false,
+  winsLabel = "TP Hits",
+  showActive = !isPastWeek,
 }: AdrStatsBarProps) {
   const [copyToast, setCopyToast] = useState<string | null>(null);
 
@@ -52,13 +56,13 @@ export default function AdrStatsBar({
 
   return (
     <>
-      <div className={`mb-4 grid gap-3 ${isPastWeek ? "grid-cols-4" : "grid-cols-5"}`}>
+      <div className={`mb-4 grid gap-3 ${showActive ? "grid-cols-5" : "grid-cols-4"}`}>
         <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
           <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Trades</div>
           <div className="mt-1 text-xl font-bold text-[var(--foreground)]">{totalTrades}</div>
         </div>
         <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">TP Hits</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">{winsLabel}</div>
           <div className="mt-1 text-xl font-bold text-lime-400">
             {totalTpHits} <span className="text-sm text-[color:var(--muted)]">({winPct}%)</span>
           </div>
@@ -67,7 +71,7 @@ export default function AdrStatsBar({
           <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Losses</div>
           <div className="mt-1 text-xl font-bold text-red-400">{totalLosses}</div>
         </div>
-        {!isPastWeek && (
+        {showActive && (
           <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3">
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">Active</div>
             <div className="mt-1 text-xl font-bold text-yellow-400">{totalActive}</div>
