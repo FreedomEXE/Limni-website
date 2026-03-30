@@ -548,12 +548,6 @@ function strengthBias(direction: Direction) {
   return "NEUTRAL";
 }
 
-function invertDirection(direction: Direction): Direction {
-  if (direction === "LONG") return "SHORT";
-  if (direction === "SHORT") return "LONG";
-  return "NEUTRAL";
-}
-
 function formatSignedNumber(value: number | null, digits = 2) {
   if (value === null || !Number.isFinite(value)) {
     return "—";
@@ -569,11 +563,9 @@ function formatStrengthLabel(assetClass: AssetClass, symbol: string) {
 function buildStrengthDetailItems(row: WeeklyPairStrength) {
   const longGate = evaluateStrengthGate(row, "LONG");
   const shortGate = evaluateStrengthGate(row, "SHORT");
-  const tradableDirection = invertDirection(row.compositeDirection);
   const details = [
     { label: "Asset Class", value: getAssetClassDefinition(row.assetClass).label },
-    { label: "Tradable Fade Direction", value: tradableDirection },
-    { label: "Raw Composite Strength", value: row.compositeDirection },
+    { label: "Composite Direction", value: row.compositeDirection },
     { label: "Composite Score", value: String(row.compositeScore) },
     { label: "Available Windows", value: `${row.availableWindows}/3` },
     {
@@ -655,20 +647,18 @@ async function buildStrengthPayloadForWeek({
     ]),
   );
   const previousDirections = new Map(
-    previousRows.map((row) => [row.pair, invertDirection(row.compositeDirection)]),
+    previousRows.map((row) => [row.pair, row.compositeDirection]),
   );
 
   const pairRowsWithPerf = [...strengthRows]
     .sort((a, b) => a.pair.localeCompare(b.pair))
-    .map((row) => {
-      const tradableDirection = invertDirection(row.compositeDirection);
-      return {
+    .map((row) => ({
       pair: row.pair,
-      direction: tradableDirection,
+      direction: row.compositeDirection,
       performance: performanceByKey.get(`${row.assetClass}|${row.pair}`) ?? null,
       subtitle: row.windows.map((windowRow) => `${windowRow.window} raw ${windowRow.direction}`).join(" · "),
       details: buildStrengthDetailItems(row),
-    };});
+    }));
 
   const flipDetails = pairRowsWithPerf
     .map((row) => {
@@ -705,7 +695,7 @@ async function buildStrengthPayloadForWeek({
     missingPairs,
     stripItems,
     flipDetails,
-    note: "Tiles show the tradable fade direction. Modal details include the raw 1h, 4h, and 24h strength readings plus long/short gate outcomes.",
+    note: "Tiles show the raw composite strength direction. Modal details include the 1h, 4h, and 24h readings plus long/short gate outcomes.",
   };
 }
 
