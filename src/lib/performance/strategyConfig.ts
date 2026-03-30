@@ -8,8 +8,8 @@
  * Config-driven strategy definitions for Performance and Matrix sections.
  * Three selection levels:
  *   Strategy   — directional bias source (Dealer, Tiered V3, etc.)
- *   Filter 1   — basket-level filter (Weekly Hold, COT Gate, etc.)
- *   Filter 2   — intraday entry filter (None, ADR Pullback, Stoch RSI, etc.)
+ *   Filter 1   — entry style (Weekly Hold, ADR Pullback, etc.)
+ *   Filter 2   — reusable gating overlay (None, Strength Gate, etc.)
  *
  * Adding a new option is just adding an entry to the array.
  * URL params: ?strategy=dealer&f1=weekly_hold&f2=none
@@ -94,28 +94,9 @@ export const STRATEGIES: StrategyConfig[] = [
   },
 ];
 
-/* ─── Filter 1 (basket-level) ─────────────────────────────────── */
+/* ─── Filter 1 (entry style) ──────────────────────────────────── */
 
-export type BasketFilterConfig = {
-  id: string;
-  label: string;
-  description: string;
-};
-
-export const BASKET_FILTERS: BasketFilterConfig[] = [
-  {
-    id: "weekly_hold",
-    label: "Weekly Hold",
-    description: "Enter at week open, exit at week close",
-  },
-  // Future:
-  // { id: "cot_gate", label: "COT Gate", description: "COT positioning gate filters weak setups" },
-  // { id: "net_hold_gated", label: "Net Hold Gated", description: "Net weekly hold with gate filtering" },
-];
-
-/* ─── Filter 2 (intraday entry) ───────────────────────────────── */
-
-export type IntradayFilterConfig = {
+export type EntryStyleConfig = {
   id: string;
   label: string;
   description: string;
@@ -134,11 +115,11 @@ export type IntradayFilterConfig = {
   };
 };
 
-export const INTRADAY_FILTERS: IntradayFilterConfig[] = [
+export const ENTRY_STYLE_FILTERS: EntryStyleConfig[] = [
   {
-    id: "none",
-    label: "None",
-    description: "No intraday filter — pure weekly hold",
+    id: "weekly_hold",
+    label: "Weekly Hold",
+    description: "Enter at week open, exit at week close",
     hasTradeLog: false,
     plModel: "weekly_hold",
     matrixUi: {
@@ -165,10 +146,48 @@ export const INTRADAY_FILTERS: IntradayFilterConfig[] = [
       detailTitle: "Pullback Detail",
     },
   },
-  // Future:
-  // { id: "stoch_rsi", label: "Stoch RSI", description: "Stochastic RSI confirmation entry", hasTradeLog: true, plModel: "adr" },
-  // { id: "adr_stoch", label: "ADR + Stoch", description: "ADR qualifies zone, stoch confirms entry", hasTradeLog: true, plModel: "adr" },
 ];
+
+/* ─── Filter 2 (overlay gate) ─────────────────────────────────── */
+
+export type StrengthGateConfig = {
+  id: string;
+  label: string;
+  description: string;
+};
+
+export const STRENGTH_GATES: StrengthGateConfig[] = [
+  {
+    id: "none",
+    label: "None",
+    description: "No strength overlay gate",
+  },
+  {
+    id: "strength_gate",
+    label: "Strength Gate",
+    description: "Keep FX setups only when multi-timeframe counter-pressure outweighs pro-trend pressure",
+  },
+];
+
+function isKnownId<T extends { id: string }>(items: readonly T[], value: string | undefined | null): value is string {
+  return Boolean(value) && items.some((item) => item.id === value);
+}
+
+export function normalizeFilterSelection(value: {
+  f1?: string | null;
+  f2?: string | null;
+}) {
+  const rawF1 = value.f1 ?? null;
+  const rawF2 = value.f2 ?? null;
+  const legacyEntryStyleId = isKnownId(ENTRY_STYLE_FILTERS, rawF2) ? rawF2 : null;
+  const entryStyleId = legacyEntryStyleId
+    ?? (isKnownId(ENTRY_STYLE_FILTERS, rawF1) ? rawF1 : "weekly_hold");
+  const strengthGateId = isKnownId(STRENGTH_GATES, rawF2) ? rawF2 : "none";
+  return {
+    f1: entryStyleId,
+    f2: strengthGateId,
+  };
+}
 
 /* ─── Lookup helpers ──────────────────────────────────────────── */
 
@@ -178,12 +197,12 @@ export function getStrategy(id: string): StrategyConfig | undefined {
   return STRATEGIES.find((s) => s.id === normalized);
 }
 
-export function getBasketFilter(id: string): BasketFilterConfig | undefined {
-  return BASKET_FILTERS.find((f) => f.id === id);
+export function getEntryStyle(id: string): EntryStyleConfig | undefined {
+  return ENTRY_STYLE_FILTERS.find((f) => f.id === id);
 }
 
-export function getIntradayFilter(id: string): IntradayFilterConfig | undefined {
-  return INTRADAY_FILTERS.find((f) => f.id === id);
+export function getStrengthGate(id: string): StrengthGateConfig | undefined {
+  return STRENGTH_GATES.find((f) => f.id === id);
 }
 
 export function resolveStrategyId(value: string | undefined | null): string {
@@ -192,13 +211,13 @@ export function resolveStrategyId(value: string | undefined | null): string {
   return "dealer";
 }
 
-export function resolveBasketFilterId(value: string | undefined | null): string {
-  if (value && BASKET_FILTERS.some((f) => f.id === value)) return value;
+export function resolveEntryStyleId(value: string | undefined | null): string {
+  if (value && ENTRY_STYLE_FILTERS.some((f) => f.id === value)) return value;
   return "weekly_hold";
 }
 
-export function resolveIntradayFilterId(value: string | undefined | null): string {
-  if (value && INTRADAY_FILTERS.some((f) => f.id === value)) return value;
+export function resolveStrengthGateId(value: string | undefined | null): string {
+  if (value && STRENGTH_GATES.some((f) => f.id === value)) return value;
   return "none";
 }
 
@@ -210,18 +229,33 @@ export const BIAS_SOURCES = STRATEGIES;
 export type BiasSourceConfig = StrategyConfig;
 /** @deprecated Use StrategyType */
 export type BiasSourceType = StrategyType;
-/** @deprecated Use BASKET_FILTERS */
-export const STRATEGY_FILTERS = BASKET_FILTERS.map((f) => ({
+/** @deprecated Use ENTRY_STYLE_FILTERS */
+export const STRATEGY_FILTERS = ENTRY_STYLE_FILTERS.map((f) => ({
   ...f,
-  hasTradeLog: false,
 }));
-/** @deprecated Use BasketFilterConfig */
-export type StrategyFilterConfig = BasketFilterConfig & { hasTradeLog: boolean };
+/** @deprecated Use EntryStyleConfig */
+export type StrategyFilterConfig = EntryStyleConfig;
 /** @deprecated Use resolveStrategyId */
 export const resolveBiasSourceId = resolveStrategyId;
-/** @deprecated Use resolveBasketFilterId */
-export const resolveStrategyFilterId = resolveBasketFilterId;
+/** @deprecated Use resolveEntryStyleId */
+export const resolveStrategyFilterId = resolveEntryStyleId;
 /** @deprecated Use getStrategy */
 export const getBiasSource = getStrategy;
-/** @deprecated Use getBasketFilter */
-export const getStrategyFilter = getBasketFilter;
+/** @deprecated Use getEntryStyle */
+export const getStrategyFilter = getEntryStyle;
+/** @deprecated Use ENTRY_STYLE_FILTERS */
+export const BASKET_FILTERS = ENTRY_STYLE_FILTERS;
+/** @deprecated Use EntryStyleConfig */
+export type BasketFilterConfig = EntryStyleConfig;
+/** @deprecated Use getEntryStyle */
+export const getBasketFilter = getEntryStyle;
+/** @deprecated Use resolveEntryStyleId */
+export const resolveBasketFilterId = resolveEntryStyleId;
+/** @deprecated Use ENTRY_STYLE_FILTERS */
+export const INTRADAY_FILTERS = ENTRY_STYLE_FILTERS;
+/** @deprecated Use EntryStyleConfig */
+export type IntradayFilterConfig = EntryStyleConfig;
+/** @deprecated Use getEntryStyle */
+export const getIntradayFilter = getEntryStyle;
+/** @deprecated Use resolveEntryStyleId */
+export const resolveIntradayFilterId = resolveEntryStyleId;

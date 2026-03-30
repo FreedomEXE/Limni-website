@@ -19,7 +19,7 @@ import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
-import { resolveStrategyId, resolveIntradayFilterId } from "@/lib/performance/strategyConfig";
+import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 import {
   buildStrategySelectionKey,
@@ -49,12 +49,18 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
   // Read strategy selection from URL params
   const strategyParam = resolvedSearchParams.strategy ?? resolvedSearchParams.bias;
   const strategyId = resolveStrategyId(Array.isArray(strategyParam) ? strategyParam[0] : strategyParam);
+  const f1Param = resolvedSearchParams.f1 ?? resolvedSearchParams.filter;
+  const f1Value = Array.isArray(f1Param) ? f1Param[0] : f1Param;
   const f2Param = resolvedSearchParams.f2;
-  const f2 = resolveIntradayFilterId(Array.isArray(f2Param) ? f2Param[0] : f2Param);
+  const f2Value = Array.isArray(f2Param) ? f2Param[0] : f2Param;
+  const normalizedFilters = normalizeFilterSelection({
+    f1: f1Value,
+    f2: f2Value,
+  });
   const initialStrategySelection = {
     strategyId,
-    f1: "weekly_hold",
-    f2,
+    f1: normalizedFilters.f1,
+    f2: normalizedFilters.f2,
   };
 
   // Shared week switching — same logic as Sentiment/Antikythera

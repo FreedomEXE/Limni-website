@@ -26,8 +26,9 @@ import { DateTime } from "luxon";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
-import type { BiasSourceConfig, IntradayFilterConfig } from "@/lib/performance/strategyConfig";
+import type { BiasSourceConfig, EntryStyleConfig, StrengthGateConfig } from "@/lib/performance/strategyConfig";
 import { resolveSelectorDirections } from "@/lib/performance/selectorEngine";
+import { evaluateStrengthGate, readWeeklyPairStrengths } from "@/lib/strength/weeklyStrength";
 
 // ─── Trade types (strategy-generic) ─────────────────────────────
 // "WeeklyHoldTrade" name kept for backward compat; represents any strategy trade.
@@ -112,6 +113,42 @@ function inferAssetClass(symbol: string): string {
   if (INDEX_SYMBOLS.has(upper)) return "indices";
   if (COMMODITY_SYMBOLS.has(upper)) return "commodities";
   return "fx";
+}
+
+async function applyStrengthGate(
+  result: WeeklyHoldResult,
+  strengthGate: StrengthGateConfig | undefined,
+): Promise<WeeklyHoldResult> {
+  if (strengthGate?.id !== "strength_gate") return result;
+
+  const strengthRows = await readWeeklyPairStrengths(result.weekOpenUtc);
+  const strengthByPair = new Map(
+    strengthRows.map((row) => [row.pair.toUpperCase(), row]),
+  );
+  const passesStrengthGateForPosition = (
+    position: Pick<WeeklyHoldTrade, "symbol" | "direction">,
+  ) => {
+    const strengthRow = strengthByPair.get(position.symbol.toUpperCase());
+    if (!strengthRow) return true;
+    return evaluateStrengthGate(strengthRow, position.direction).passes;
+  };
+
+  const filteredTrades = result.trades.filter((trade) => passesStrengthGateForPosition(trade));
+  const filteredSignals = result.signals.filter((signal) => passesStrengthGateForPosition(signal));
+  const wins = filteredTrades.filter((trade) => trade.returnPct > 0).length;
+  const losses = filteredTrades.filter((trade) => trade.returnPct <= 0).length;
+  const totalReturn = filteredTrades.reduce((sum, trade) => sum + trade.returnPct, 0);
+
+  return {
+    ...result,
+    trades: filteredTrades,
+    signals: filteredSignals,
+    totalReturnPct: totalReturn,
+    winCount: wins,
+    lossCount: losses,
+    winRate: filteredTrades.length > 0 ? (wins / filteredTrades.length) * 100 : 0,
+    tradeCount: filteredTrades.length,
+  };
 }
 
 // ─── Direction resolvers — compose from canonical basketSource ──
@@ -449,14 +486,16 @@ const EXECUTORS: Record<string, StrategyExecutor> = {
 export async function computeWeeklyHold(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
-  intradayFilter?: IntradayFilterConfig,
+  entryStyle?: EntryStyleConfig,
+  strengthGate?: StrengthGateConfig,
 ): Promise<WeeklyHoldResult> {
   // Route to the correct executor based on plModel
-  const plModel = intradayFilter?.plModel ?? "weekly_hold";
+  const plModel = entryStyle?.plModel ?? "weekly_hold";
   const executor = EXECUTORS[plModel];
   if (executor) {
     console.log(`[engine] Routing to ${plModel} executor for ${weekOpenUtc}`);
-    return executor(biasSource, weekOpenUtc);
+    const result = await executor(biasSource, weekOpenUtc);
+    return applyStrengthGate(result, strengthGate);
   }
 
   // Default: weekly hold (open→close from pair_period_returns)
@@ -512,7 +551,7 @@ export async function computeWeeklyHold(
   const wins = trades.filter((t) => t.returnPct > 0).length;
   const losses = trades.filter((t) => t.returnPct <= 0).length;
 
-  return {
+  const result: WeeklyHoldResult = {
     weekOpenUtc,
     biasSourceId: biasSource.id,
     trades,
@@ -524,17 +563,19 @@ export async function computeWeeklyHold(
     signals,
     isRealized,
   };
+  return applyStrengthGate(result, strengthGate);
 }
 
 export async function computeMultiWeekHold(
   biasSource: BiasSourceConfig,
   weekOpenUtcs: string[],
-  intradayFilter?: IntradayFilterConfig,
+  entryStyle?: EntryStyleConfig,
+  strengthGate?: StrengthGateConfig,
 ): Promise<MultiWeekResult> {
   const computedWeeks: WeeklyHoldResult[] = [];
   for (const weekOpenUtc of weekOpenUtcs) {
     try {
-      const result = await computeWeeklyHold(biasSource, weekOpenUtc, intradayFilter);
+      const result = await computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, strengthGate);
       computedWeeks.push(result);
     } catch (err) {
       console.warn(`[engine] Skipping week ${weekOpenUtc}:`, err instanceof Error ? err.message : err);

@@ -9,7 +9,7 @@ import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
 import SizingAccountBar from "@/components/flagship/SizingAccountBar";
 import { readSelectionFromParams, selectionLabel } from "@/components/shared/StrategySelector";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
-import { getIntradayFilter, resolveIntradayFilterId } from "@/lib/performance/strategyConfig";
+import { getEntryStyle, resolveEntryStyleId } from "@/lib/performance/strategyConfig";
 import {
   SESSION_ELIGIBILITY,
   defaultSessionFromUtcDate,
@@ -546,7 +546,7 @@ export default function FlagshipBoard({
   const matrixSearchParams = useSearchParams();
   const activeSelection = selection ?? readSelectionFromParams(matrixSearchParams);
   const activeLabel = selectionLabel(activeSelection);
-  const activeFilter = getIntradayFilter(resolveIntradayFilterId(activeSelection.f2));
+  const activeFilter = getEntryStyle(resolveEntryStyleId(activeSelection.f1));
   const matrixUi = activeFilter?.matrixUi ?? {
     showStatsBar: false,
     showTriggerState: false,

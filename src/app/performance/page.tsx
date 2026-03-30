@@ -39,7 +39,13 @@ import { resolvePerformanceView, resolveSelectedPerformanceWeek } from "@/lib/pe
 import { computeReturnStats, type ModelPerformance, type PerformanceModel } from "@/lib/performanceLab";
 import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegistry";
 import { DateTime } from "luxon";
-import { resolveBiasSourceId, resolveIntradayFilterId, getIntradayFilter, getStrategy } from "@/lib/performance/strategyConfig";
+import {
+  getEntryStyle,
+  getStrengthGate,
+  getStrategy,
+  normalizeFilterSelection,
+  resolveBiasSourceId,
+} from "@/lib/performance/strategyConfig";
 import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 import type { EngineGridProps, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import {
@@ -1068,10 +1074,16 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const weekParamValue = Array.isArray(weekParam) ? weekParam[0] : weekParam;
   const strategyParam = resolvedSearchParams?.strategy ?? resolvedSearchParams?.bias;
   const biasParamValue = Array.isArray(strategyParam) ? strategyParam[0] : strategyParam;
+  const f1Param = resolvedSearchParams?.f1 ?? resolvedSearchParams?.filter;
+  const f1Value = Array.isArray(f1Param) ? f1Param[0] : f1Param;
   const f2Param = resolvedSearchParams?.f2;
   const f2Value = Array.isArray(f2Param) ? f2Param[0] : f2Param;
-  const intradayFilterId = resolveIntradayFilterId(f2Value);
-  const intradayFilter = getIntradayFilter(intradayFilterId);
+  const normalizedFilters = normalizeFilterSelection({
+    f1: f1Value,
+    f2: f2Value,
+  });
+  const entryStyle = getEntryStyle(normalizedFilters.f1);
+  const strengthGate = getStrengthGate(normalizedFilters.f2);
 
   const resolvedFamily = parseFamily(styleParamValue);
   const initialStyle: WeeklyPerformanceFamily = resolvedFamily === "universal" ? "universal" : "tiered";
@@ -1123,8 +1135,8 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const selectedStrategyConfig = getStrategy(biasSourceId);
   const initialStrategySelection = {
     strategyId: biasSourceId,
-    f1: "weekly_hold",
-    f2: intradayFilterId,
+    f1: normalizedFilters.f1,
+    f2: normalizedFilters.f2,
   };
   // Guardrail: Performance stays fast only if the full strategy/filter grid is
   // loaded here once and switched locally in the client view.
@@ -1225,7 +1237,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               Performance
             </h1>
             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-              {selectedStrategyConfig?.label ?? biasSourceId} · Weekly Hold{intradayFilter && intradayFilter.id !== "none" ? ` · ${intradayFilter.label}` : ""}
+              {selectedStrategyConfig?.label ?? biasSourceId} · {entryStyle?.label ?? normalizedFilters.f1}{strengthGate && strengthGate.id !== "none" ? ` · ${strengthGate.label}` : ""}
             </p>
           </div>
         </header>

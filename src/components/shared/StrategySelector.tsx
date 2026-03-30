@@ -20,14 +20,13 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   STRATEGIES,
-  BASKET_FILTERS,
-  INTRADAY_FILTERS,
+  ENTRY_STYLE_FILTERS,
+  STRENGTH_GATES,
+  getEntryStyle,
+  getStrengthGate,
+  normalizeFilterSelection,
   resolveStrategyId,
-  resolveBasketFilterId,
-  resolveIntradayFilterId,
   getStrategy,
-  getBasketFilter,
-  getIntradayFilter,
 } from "@/lib/performance/strategyConfig";
 import {
   STRATEGY_SELECTION_COMMIT_EVENT,
@@ -42,18 +41,22 @@ export type StrategySelection = {
 
 /** Read current selection from URL params (handles both old and new param names) */
 export function readSelectionFromParams(searchParams: URLSearchParams): StrategySelection {
+  const normalizedFilters = normalizeFilterSelection({
+    f1: searchParams.get("f1") ?? searchParams.get("filter"),
+    f2: searchParams.get("f2"),
+  });
   return {
     strategy: resolveStrategyId(searchParams.get("strategy") ?? searchParams.get("bias")),
-    f1: resolveBasketFilterId(searchParams.get("f1") ?? searchParams.get("filter")),
-    f2: resolveIntradayFilterId(searchParams.get("f2")),
+    f1: normalizedFilters.f1,
+    f2: normalizedFilters.f2,
   };
 }
 
-/** Build a display label from a selection, e.g. "Tiered V3 · Weekly Hold · ADR Pullback" */
+/** Build a display label from a selection, e.g. "Tiered V3 · ADR Pullback · Strength Gate" */
 export function selectionLabel(sel: StrategySelection): string {
   const s = getStrategy(sel.strategy);
-  const f1 = getBasketFilter(sel.f1);
-  const f2 = getIntradayFilter(sel.f2);
+  const f1 = getEntryStyle(sel.f1);
+  const f2 = getStrengthGate(sel.f2);
   const parts = [s?.label ?? sel.strategy, f1?.label ?? sel.f1];
   if (f2 && f2.id !== "none") parts.push(f2.label);
   return parts.join(" · ");
@@ -144,7 +147,7 @@ export default function StrategySelector() {
         )}
       </div>
 
-      {/* Filter 1 (basket) */}
+      {/* Filter 1 (entry style) */}
       <div>
         <label htmlFor="basket-filter" className={labelClasses}>
           Filter 1
@@ -155,13 +158,13 @@ export default function StrategySelector() {
           onChange={(e) => setDraft((prev) => ({ ...prev, f1: e.target.value }))}
           className={selectClasses}
         >
-          {BASKET_FILTERS.map((f) => (
+          {ENTRY_STYLE_FILTERS.map((f) => (
             <option key={f.id} value={f.id}>{f.label}</option>
           ))}
         </select>
       </div>
 
-      {/* Filter 2 (intraday) */}
+      {/* Filter 2 (strength gate) */}
       <div>
         <label htmlFor="intraday-filter" className={labelClasses}>
           Filter 2
@@ -172,7 +175,7 @@ export default function StrategySelector() {
           onChange={(e) => setDraft((prev) => ({ ...prev, f2: e.target.value }))}
           className={selectClasses}
         >
-          {INTRADAY_FILTERS.map((f) => (
+          {STRENGTH_GATES.map((f) => (
             <option key={f.id} value={f.id}>{f.label}</option>
           ))}
         </select>

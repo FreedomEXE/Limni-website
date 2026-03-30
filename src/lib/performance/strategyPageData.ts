@@ -26,11 +26,12 @@ import {
   type EngineSimulationGroup,
 } from "@/lib/performance/engineAdapter";
 import {
-  getIntradayFilter,
+  getEntryStyle,
   getStrategy,
-  resolveIntradayFilterId,
+  getStrengthGate,
+  type EntryStyleConfig,
   type BiasSourceConfig,
-  type IntradayFilterConfig,
+  type StrengthGateConfig,
 } from "@/lib/performance/strategyConfig";
 import {
   computeMultiWeekHold,
@@ -43,11 +44,12 @@ import {
   readStrategyArtifactEntry,
   type StrategyArtifactFingerprint,
 } from "@/lib/performance/strategyArtifactCache";
+import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v3";
+  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v5";
 
 type WeekWatermarkRow = {
   week_open_utc: string;
@@ -73,6 +75,11 @@ type AdrTradeWatermarkRow = {
   trade_count: number;
 };
 
+type StrengthWatermarkRow = {
+  week_open_utc: string;
+  max_snapshot_time_utc: string | null;
+};
+
 export type StrategySelection = {
   strategyId: string;
   f1: string;
@@ -86,7 +93,8 @@ export type StrategyPageData = {
   weekResults: Record<string, WeeklyHoldResult>;
   sidebarStats: EngineSidebarStats;
   biasSource: BiasSourceConfig;
-  intradayFilter: IntradayFilterConfig | undefined;
+  entryStyle: EntryStyleConfig | undefined;
+  strengthGate: StrengthGateConfig | undefined;
   weekOptions: string[];
   currentWeekOpenUtc: string;
 };
@@ -97,8 +105,8 @@ export async function loadStrategyPageData(
   const biasSource = getStrategy(selection.strategyId);
   if (!biasSource) return null;
 
-  const intradayFilterId = resolveIntradayFilterId(selection.f2);
-  const intradayFilter = getIntradayFilter(intradayFilterId);
+  const entryStyle = getEntryStyle(selection.f1);
+  const strengthGate = getStrengthGate(selection.f2);
 
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const dataSectionWeeks = await listDataSectionWeeks();
@@ -110,7 +118,8 @@ export async function loadStrategyPageData(
   try {
     const fingerprint = await buildStrategyFingerprint({
       currentWeekOpenUtc,
-      intradayFilter,
+      entryStyle,
+      strengthGate,
       weekOptions,
     });
 
@@ -142,7 +151,8 @@ export async function loadStrategyPageData(
       if (weeksToRefresh.length > 0) {
         await patchWeekResults({
           biasSource,
-          intradayFilter,
+          entryStyle,
+          strengthGate,
           targetWeeks: weeksToRefresh,
           weekResultsByWeek: nextWeekResults,
         });
@@ -151,7 +161,8 @@ export async function loadStrategyPageData(
       const nextPayload = buildStrategyPageDataFromWeekResults({
         biasSource,
         currentWeekOpenUtc,
-        intradayFilter,
+        entryStyle,
+        strengthGate,
         weekOptions,
         weekResultsByWeek: nextWeekResults,
       });
@@ -164,7 +175,7 @@ export async function loadStrategyPageData(
       return nextPayload;
     }
 
-    const multiWeekResult = await computeMultiWeekHold(biasSource, weekOptions, intradayFilter);
+    const multiWeekResult = await computeMultiWeekHold(biasSource, weekOptions, entryStyle, strengthGate);
     const weekResultsByWeek = Object.fromEntries(
       multiWeekResult.weeks.map((weekResult) => [weekResult.weekOpenUtc, weekResult] as const),
     );
@@ -173,7 +184,8 @@ export async function loadStrategyPageData(
     if (missingWeeks.length > 0) {
       await patchWeekResults({
         biasSource,
-        intradayFilter,
+        entryStyle,
+        strengthGate,
         targetWeeks: missingWeeks,
         weekResultsByWeek,
       });
@@ -182,7 +194,8 @@ export async function loadStrategyPageData(
     const payload = buildStrategyPageDataFromWeekResults({
       biasSource,
       currentWeekOpenUtc,
-      intradayFilter,
+      entryStyle,
+      strengthGate,
       weekOptions,
       weekResultsByWeek,
     });
@@ -203,26 +216,28 @@ export async function loadStrategyPageData(
 async function buildStrategyFingerprint(options: {
   weekOptions: string[];
   currentWeekOpenUtc: string;
-  intradayFilter: IntradayFilterConfig | undefined;
+  entryStyle: EntryStyleConfig | undefined;
+  strengthGate: StrengthGateConfig | undefined;
 }): Promise<StrategyArtifactFingerprint> {
-  const { weekOptions, currentWeekOpenUtc, intradayFilter } = options;
+  const { weekOptions, currentWeekOpenUtc, entryStyle, strengthGate } = options;
   return {
     engineVersion: STRATEGY_ARTIFACT_ENGINE_VERSION,
     currentWeekOpenUtc,
     weekOptionsSignature: buildWeekOptionsSignature(weekOptions),
-    weekFingerprints: await readWeekFingerprints(weekOptions, intradayFilter),
+    weekFingerprints: await readWeekFingerprints(weekOptions, entryStyle, strengthGate),
   };
 }
 
 async function readWeekFingerprints(
   weekOptions: string[],
-  intradayFilter: IntradayFilterConfig | undefined,
+  entryStyle: EntryStyleConfig | undefined,
+  strengthGate: StrengthGateConfig | undefined,
 ): Promise<Record<string, string>> {
   if (weekOptions.length === 0) return {};
 
   const uniqueReportDates = Array.from(new Set(weekOptions.map((week) => deriveCotReportDate(week))));
 
-  const [pairRows, cotRows, sentimentRows, adrRunRow] = await Promise.all([
+  const [pairRows, cotRows, sentimentRows, adrRunRow, strengthRows] = await Promise.all([
     query<WeekWatermarkRow>(
       `SELECT period_open_utc::text AS week_open_utc,
               MAX(updated_at)::text AS max_updated_at,
@@ -255,7 +270,7 @@ async function readWeekFingerprints(
         GROUP BY requested.week_open_utc`,
       [weekOptions],
     ),
-    intradayFilter?.plModel === "adr"
+    entryStyle?.plModel === "adr"
       ? queryOne<{ id: string; updated_at: string | null }>(
           `SELECT id::text AS id, updated_at::text AS updated_at
              FROM strategy_backtest_runs
@@ -267,9 +282,45 @@ async function readWeekFingerprints(
           [],
         )
       : Promise.resolve(null),
+    strengthGate?.id === "strength_gate"
+      ? query<StrengthWatermarkRow>(
+          `WITH requested AS (
+             SELECT unnest($1::timestamptz[]) AS week_open_utc
+           ),
+           currency_marks AS (
+             SELECT requested.week_open_utc,
+                    MAX(css.snapshot_time_utc) AS max_snapshot_time_utc
+               FROM requested
+               LEFT JOIN currency_strength_snapshots css
+                 ON css.snapshot_time_utc <= requested.week_open_utc
+                AND css."window" IN ('1h', '4h', '24h')
+              GROUP BY requested.week_open_utc
+           ),
+           asset_marks AS (
+             SELECT requested.week_open_utc,
+                    MAX(ass.snapshot_time_utc) AS max_snapshot_time_utc
+               FROM requested
+               LEFT JOIN asset_strength_snapshots ass
+                 ON ass.snapshot_time_utc <= requested.week_open_utc
+                AND ass."window" IN ('1h', '4h', '24h')
+              GROUP BY requested.week_open_utc
+           )
+           SELECT requested.week_open_utc::text AS week_open_utc,
+                  GREATEST(
+                    currency_marks.max_snapshot_time_utc,
+                    asset_marks.max_snapshot_time_utc
+                  )::text AS max_snapshot_time_utc
+             FROM requested
+             LEFT JOIN currency_marks
+               ON currency_marks.week_open_utc = requested.week_open_utc
+             LEFT JOIN asset_marks
+               ON asset_marks.week_open_utc = requested.week_open_utc`,
+          [weekOptions],
+        )
+      : Promise.resolve([]),
   ]);
 
-  const adrTradeRows = intradayFilter?.plModel === "adr" && adrRunRow?.id
+  const adrTradeRows = entryStyle?.plModel === "adr" && adrRunRow?.id
     ? await query<AdrTradeWatermarkRow>(
         `WITH requested AS (
            SELECT unnest($1::timestamptz[]) AS week_open_utc
@@ -299,6 +350,9 @@ async function readWeekFingerprints(
   const adrByWeek = new Map(
     adrTradeRows.map((row) => [row.week_open_utc, row]),
   );
+  const strengthByWeek = new Map(
+    strengthRows.map((row) => [row.week_open_utc, row]),
+  );
 
   const fingerprints: Record<string, string> = {};
   for (const weekOpenUtc of weekOptions) {
@@ -307,6 +361,7 @@ async function readWeekFingerprints(
     const cotRow = cotByReportDate.get(reportDate);
     const sentimentRow = sentimentByWeek.get(weekOpenUtc);
     const adrRow = adrByWeek.get(weekOpenUtc);
+    const strengthRow = strengthByWeek.get(weekOpenUtc);
 
     fingerprints[weekOpenUtc] = [
       `pair:${normalizeStamp(pairRow?.max_updated_at)}`,
@@ -316,6 +371,7 @@ async function readWeekFingerprints(
       `sentt:${normalizeStamp(sentimentRow?.max_timestamp_utc)}`,
       `adr-run:${normalizeStamp(adrRunRow?.updated_at)}`,
       `adr:${normalizeStamp(adrRow?.max_created_at)}:${normalizeStamp(adrRow?.max_entry_time_utc)}:${adrRow?.trade_count ?? 0}`,
+      `strength:${normalizeStamp(strengthRow?.max_snapshot_time_utc)}`,
     ].join("|");
   }
 
@@ -332,13 +388,14 @@ function diffChangedWeeks(
 
 async function patchWeekResults(options: {
   biasSource: BiasSourceConfig;
-  intradayFilter: IntradayFilterConfig | undefined;
+  entryStyle: EntryStyleConfig | undefined;
+  strengthGate: StrengthGateConfig | undefined;
   targetWeeks: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
 }) {
-  const { biasSource, intradayFilter, targetWeeks, weekResultsByWeek } = options;
+  const { biasSource, entryStyle, strengthGate, targetWeeks, weekResultsByWeek } = options;
   const recomputed = await Promise.allSettled(
-    targetWeeks.map((weekOpenUtc) => computeWeeklyHold(biasSource, weekOpenUtc, intradayFilter)),
+    targetWeeks.map((weekOpenUtc) => computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, strengthGate)),
   );
 
   recomputed.forEach((result, index) => {
@@ -358,11 +415,16 @@ async function patchWeekResults(options: {
 function buildStrategyPageDataFromWeekResults(options: {
   biasSource: BiasSourceConfig;
   currentWeekOpenUtc: string;
-  intradayFilter: IntradayFilterConfig | undefined;
+  entryStyle: EntryStyleConfig | undefined;
+  strengthGate: StrengthGateConfig | undefined;
   weekOptions: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
 }): StrategyPageData {
-  const { biasSource, currentWeekOpenUtc, intradayFilter, weekOptions, weekResultsByWeek } = options;
+  const { biasSource, currentWeekOpenUtc, entryStyle, strengthGate, weekOptions, weekResultsByWeek } = options;
+  const selectionLabel = [
+    entryStyle?.label ?? "Weekly Hold",
+    strengthGate?.id && strengthGate.id !== "none" ? strengthGate.label : null,
+  ].filter(Boolean).join(" · ");
   const orderedWeeks = weekOptions
     .map((weekOpenUtc) => weekResultsByWeek[weekOpenUtc])
     .filter((weekResult): weekResult is WeeklyHoldResult => Boolean(weekResult));
@@ -374,13 +436,13 @@ function buildStrategyPageDataFromWeekResults(options: {
 
   for (const weekResult of orderedWeeks) {
     const label = weekDisplayLabel(weekResult.weekOpenUtc);
-    weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(weekResult, biasSource, label);
-    simMap[weekResult.weekOpenUtc] = singleWeekToSimulation(weekResult, biasSource, label);
+    weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(weekResult, biasSource, label, selectionLabel);
+    simMap[weekResult.weekOpenUtc] = singleWeekToSimulation(weekResult, biasSource, label, selectionLabel);
     nextWeekResults[weekResult.weekOpenUtc] = weekResult;
   }
 
-  weekMap.all = multiWeekToGridProps(multiWeekResult, biasSource);
-  simMap.all = multiWeekToSimulation(multiWeekResult, biasSource);
+  weekMap.all = multiWeekToGridProps(multiWeekResult, biasSource, selectionLabel);
+  simMap.all = multiWeekToSimulation(multiWeekResult, biasSource, selectionLabel);
 
   const currentWeekResult =
     nextWeekResults[currentWeekOpenUtc] ??
@@ -405,7 +467,8 @@ function buildStrategyPageDataFromWeekResults(options: {
     weekResults: nextWeekResults,
     sidebarStats: weeklyHoldToSidebarStats(currentWeekResult, biasSource, multiWeekResult),
     biasSource,
-    intradayFilter,
+    entryStyle,
+    strengthGate,
     weekOptions,
     currentWeekOpenUtc,
   };
@@ -453,10 +516,6 @@ function buildMultiWeekResultFromWeeks(
     maxDrawdownPct: maxDrawdown,
     byAssetClass,
   };
-}
-
-function buildStrategySelectionKey(selection: StrategySelection) {
-  return `${selection.strategyId}:${selection.f1}:${selection.f2}`;
 }
 
 function buildWeekOptionsSignature(weekOptions: string[]) {

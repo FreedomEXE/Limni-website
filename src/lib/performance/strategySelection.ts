@@ -13,7 +13,7 @@
 -----------------------------------------------*/
 
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
-import { BASKET_FILTERS, INTRADAY_FILTERS, STRATEGIES } from "@/lib/performance/strategyConfig";
+import { ENTRY_STYLE_FILTERS, STRATEGIES, STRENGTH_GATES } from "@/lib/performance/strategyConfig";
 
 export const STRATEGY_SELECTION_COMMIT_EVENT = "limni:strategy-selection-commit";
 export const STRATEGY_SIDEBAR_STATS_EVENT = "limni:strategy-sidebar-stats";
@@ -62,11 +62,11 @@ export function listStrategyBootstrapSelections(): StrategyBootstrapSelection[] 
   // or filters must appear here or they will silently fall back to slower
   // route-driven behavior in sections that expect the full bootstrapped map.
   return STRATEGIES.flatMap((strategy) =>
-    BASKET_FILTERS.flatMap((basketFilter) =>
-      INTRADAY_FILTERS.map((intradayFilter) => ({
+    ENTRY_STYLE_FILTERS.flatMap((entryStyle) =>
+      STRENGTH_GATES.map((strengthGate) => ({
         strategyId: strategy.id,
-        f1: basketFilter.id,
-        f2: intradayFilter.id,
+        f1: entryStyle.id,
+        f2: strengthGate.id,
       })),
     ),
   );

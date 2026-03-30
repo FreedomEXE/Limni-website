@@ -253,12 +253,17 @@ export type EngineGridProps = {
   showAllTime: boolean;
 };
 
+function buildExecutionLabel(biasSource: BiasSourceConfig, selectionLabel: string) {
+  return `${biasSource.label} · ${selectionLabel}`;
+}
+
 // ─── Single-week adapter ────────────────────────────────────────
 
 export function weeklyHoldToGridProps(
   result: WeeklyHoldResult,
   biasSource: BiasSourceConfig,
   weekLabel: string,
+  selectionLabel = "Weekly Hold",
 ): EngineGridProps {
   const { trades } = result;
   const labels = getLabels(biasSource.cardBreakdown);
@@ -292,7 +297,7 @@ export function weeklyHoldToGridProps(
     combined: {
       id: "combined",
       label: "All",
-      description: `${biasSource.label} · Weekly Hold · ${weekLabel}`,
+      description: `${buildExecutionLabel(biasSource, selectionLabel)} · ${weekLabel}`,
       models,
     },
     perAsset,
@@ -307,6 +312,7 @@ export function weeklyHoldToGridProps(
 export function multiWeekToGridProps(
   result: MultiWeekResult,
   biasSource: BiasSourceConfig,
+  selectionLabel = "Weekly Hold",
 ): EngineGridProps {
   const labels = getLabels(biasSource.cardBreakdown);
   const slotLabels = [labels[CARD_SLOTS[0]], labels[CARD_SLOTS[1]], labels[CARD_SLOTS[2]]];
@@ -424,7 +430,7 @@ export function multiWeekToGridProps(
     combined: {
       id: "combined",
       label: "All",
-      description: `${biasSource.label} · Weekly Hold · ${result.weeks.length} weeks`,
+      description: `${buildExecutionLabel(biasSource, selectionLabel)} · ${result.weeks.length} weeks`,
       models,
     },
     perAsset,
@@ -462,6 +468,7 @@ export function singleWeekToSimulation(
   result: WeeklyHoldResult,
   biasSource: BiasSourceConfig,
   weekLabel: string,
+  selectionLabel = "Weekly Hold",
 ): EngineSimulationGroup {
   const labels = getLabels(biasSource.cardBreakdown);
   const slotLabels = [labels[CARD_SLOTS[0]], labels[CARD_SLOTS[1]], labels[CARD_SLOTS[2]]];
@@ -496,7 +503,7 @@ export function singleWeekToSimulation(
   };
 
   return {
-    title: `${biasSource.label} · Weekly Hold`,
+    title: buildExecutionLabel(biasSource, selectionLabel),
     description: `Equity curve for ${weekLabel}.`,
     metrics: {
       returnPct: result.totalReturnPct,
@@ -510,6 +517,7 @@ export function singleWeekToSimulation(
 export function multiWeekToSimulation(
   result: MultiWeekResult,
   biasSource: BiasSourceConfig,
+  selectionLabel = "Weekly Hold",
 ): EngineSimulationGroup {
   const labels = getLabels(biasSource.cardBreakdown);
   const slotLabels = [labels[CARD_SLOTS[0]], labels[CARD_SLOTS[1]], labels[CARD_SLOTS[2]]];
@@ -552,7 +560,7 @@ export function multiWeekToSimulation(
   };
 
   return {
-    title: `${biasSource.label} · Weekly Hold`,
+    title: buildExecutionLabel(biasSource, selectionLabel),
     description: `Cumulative equity curves across ${result.weeks.length} weeks.`,
     metrics: {
       returnPct: result.totalReturnPct,

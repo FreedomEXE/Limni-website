@@ -5,8 +5,8 @@
  * File: route.ts
  *
  * Description:
- * API route returning weekly hold engine stats for the Performance sidebar.
- * Accepts ?bias= and ?week= params. Returns single-week stats plus
+ * API route returning engine stats for the Performance sidebar.
+ * Accepts ?bias=, ?f1=, ?f2=, and ?week= params. Returns single-week stats plus
  * multi-week aggregate (drawdown, Sharpe, profit factor, etc.).
  */
 /*-----------------------------------------------
@@ -15,7 +15,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { computeWeeklyHold, computeMultiWeekHold } from "@/lib/performance/weeklyHoldEngine";
-import { getBiasSource, resolveBiasSourceId, resolveIntradayFilterId, getIntradayFilter } from "@/lib/performance/strategyConfig";
+import {
+  getBiasSource,
+  getEntryStyle,
+  getStrengthGate,
+  normalizeFilterSelection,
+  resolveBiasSourceId,
+} from "@/lib/performance/strategyConfig";
 import { weeklyHoldToSidebarStats } from "@/lib/performance/engineAdapter";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
@@ -31,16 +37,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unknown bias source" }, { status: 400 });
   }
 
-  const f2Value = searchParams.get("f2");
-  const intradayFilterId = resolveIntradayFilterId(f2Value);
-  const intradayFilter = getIntradayFilter(intradayFilterId);
+  const normalizedFilters = normalizeFilterSelection({
+    f1: searchParams.get("f1"),
+    f2: searchParams.get("f2"),
+  });
+  const entryStyle = getEntryStyle(normalizedFilters.f1);
+  const strengthGate = getStrengthGate(normalizedFilters.f2);
 
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const weekOpenUtc = searchParams.get("week") ?? currentWeekOpenUtc;
 
   try {
     // Single-week computation
-    const result = await computeWeeklyHold(biasSource, weekOpenUtc, intradayFilter);
+    const result = await computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, strengthGate);
 
     // Multi-week computation for all-time stats
     const dataSectionWeeks = await listDataSectionWeeks();
@@ -48,7 +57,7 @@ export async function GET(request: NextRequest) {
       historicalWeeks: dataSectionWeeks,
       currentWeekOpenUtc,
     }) as string[];
-    const multiWeek = await computeMultiWeekHold(biasSource, weekOptions, intradayFilter);
+    const multiWeek = await computeMultiWeekHold(biasSource, weekOptions, entryStyle, strengthGate);
 
     const stats = weeklyHoldToSidebarStats(result, biasSource, multiWeek);
     return NextResponse.json(stats);
