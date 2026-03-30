@@ -97,21 +97,7 @@ export default function StrategySelector() {
     params.delete("style");
     params.delete("system");
     params.delete("mode");
-    const nextSelection = { ...draft };
     const nextUrl = `${pathname}?${params.toString()}`;
-
-    if (pathname.startsWith("/performance") || pathname.startsWith("/matrix")) {
-      // Performance and Matrix are bootstrapped pages: strategy changes should
-      // switch preloaded client state, not rerun the server page tree.
-      window.history.replaceState(window.history.state, "", nextUrl);
-      setCommitted(nextSelection);
-      setDraft(nextSelection);
-      window.dispatchEvent(new CustomEvent(STRATEGY_SELECTION_COMMIT_EVENT, {
-        detail: { selection: nextSelection },
-      }));
-      return;
-    }
-
     router.replace(nextUrl, { scroll: false });
   };
 
