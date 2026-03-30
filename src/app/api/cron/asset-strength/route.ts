@@ -5,7 +5,7 @@
  * File: route.ts
  *
  * Description:
- * Hourly cron endpoint that computes and stores crypto/commodity strength
+ * Hourly cron endpoint that computes and stores crypto/commodity/index strength
  * snapshots for 1h/4h/24h windows.
  */
 /*-----------------------------------------------

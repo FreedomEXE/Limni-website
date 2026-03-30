@@ -97,7 +97,7 @@ async function main() {
       const cWritten = await writeCurrencyStrengthSnapshots(currencyResults);
       currencyRows += cWritten;
 
-      // Compute asset strength (crypto + commodities, 3 windows each)
+      // Compute asset strength (crypto + commodities + indices, 3 windows each)
       const assetResults = await computeAllAssetStrengths(hour);
       const aWritten = await writeAssetStrengthSnapshots(assetResults);
       assetRows += aWritten;

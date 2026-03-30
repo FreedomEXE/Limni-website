@@ -5,7 +5,7 @@
  * File: route.ts
  *
  * Description:
- * Read API for crypto/commodity strength snapshots and history.
+ * Read API for crypto/commodity/index strength snapshots and history.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE

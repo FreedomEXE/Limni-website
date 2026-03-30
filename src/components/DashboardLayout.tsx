@@ -144,6 +144,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         { href: "/dashboard?bias=dealer", label: "Dealer" },
         { href: "/dashboard?bias=commercial", label: "Commercial" },
         { href: "/dashboard?bias=sentiment", label: "Sentiment" },
+        { href: "/dashboard?bias=strength", label: "Strength" },
       ];
     }
     if (activeSection === "performance") {

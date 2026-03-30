@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import DashboardLayout from "@/components/DashboardLayout";
 import DashboardViewSection, {
   type DashboardCotPayload,
+  type DashboardStrengthPayload,
   type DashboardSentimentPayload,
 } from "@/components/dashboard/DashboardViewSection";
 import type { MyfxbookPositioning } from "@/components/SentimentHeatmap";
@@ -21,6 +22,7 @@ import {
 import { PAIRS_BY_ASSET_CLASS, type PairDefinition } from "@/lib/cotPairs";
 import { readSnapshotHistory } from "@/lib/cotStore";
 import type { CotSnapshot, CotSnapshotResponse, PairSnapshot } from "@/lib/cotTypes";
+import type { Direction } from "@/lib/cotTypes";
 import {
   deriveCotReportDate,
   findDataSectionWeekByReportDate,
@@ -31,6 +33,13 @@ import {
 } from "@/lib/dashboard/dashboardSelection";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import type { PairPerformance } from "@/lib/priceStore";
+import {
+  evaluateStrengthGate,
+  readWeeklyPairStrengthsForAsset,
+  readWeeklyUnderlyingStrengths,
+  type WeeklyPairStrength,
+  type WeeklyUnderlyingStrength,
+} from "@/lib/strength/weeklyStrength";
 import {
   ALL_SENTIMENT_SYMBOLS,
   SENTIMENT_ASSET_CLASSES,
@@ -533,6 +542,161 @@ async function buildSentimentPayloadForWeek(
   };
 }
 
+function strengthBias(direction: Direction) {
+  if (direction === "LONG") return "BULLISH";
+  if (direction === "SHORT") return "BEARISH";
+  return "NEUTRAL";
+}
+
+function formatSignedNumber(value: number | null, digits = 2) {
+  if (value === null || !Number.isFinite(value)) {
+    return "—";
+  }
+  return `${value > 0 ? "+" : ""}${value.toFixed(digits)}`;
+}
+
+function formatStrengthLabel(assetClass: AssetClass, symbol: string) {
+  const definition = getAssetClassDefinition(assetClass);
+  return definition.markets[symbol]?.label ?? symbol;
+}
+
+function buildStrengthDetailItems(row: WeeklyPairStrength) {
+  const longGate = evaluateStrengthGate(row, "LONG");
+  const shortGate = evaluateStrengthGate(row, "SHORT");
+  const details = [
+    { label: "Asset Class", value: getAssetClassDefinition(row.assetClass).label },
+    { label: "Composite Direction", value: row.compositeDirection },
+    { label: "Composite Score", value: String(row.compositeScore) },
+    { label: "Available Windows", value: `${row.availableWindows}/3` },
+    {
+      label: "Gate vs LONG Bias",
+      value: `${longGate.passes ? "PASS" : "BLOCK"} (${longGate.score})`,
+    },
+    {
+      label: "Gate vs SHORT Bias",
+      value: `${shortGate.passes ? "PASS" : "BLOCK"} (${shortGate.score})`,
+    },
+  ] as Array<{ label: string; value: string }>;
+
+  row.windows.forEach((windowRow) => {
+    const longWindow = longGate.windows.find((gateRow) => gateRow.window === windowRow.window);
+    const shortWindow = shortGate.windows.find((gateRow) => gateRow.window === windowRow.window);
+    details.push(
+      { label: `${windowRow.window} Snapshot`, value: windowRow.snapshotTimeUtc ?? "Missing" },
+      { label: `${windowRow.window} Direction`, value: windowRow.direction },
+      { label: `${windowRow.window} Signed Spread`, value: formatSignedNumber(windowRow.signedSpread) },
+      {
+        label: `${windowRow.window} Normalized ${windowRow.baseSymbol}`,
+        value: formatSignedNumber(windowRow.normalizedBase),
+      },
+      {
+        label: `${windowRow.window} Normalized ${windowRow.quoteSymbol}`,
+        value: formatSignedNumber(windowRow.normalizedQuote),
+      },
+      {
+        label: `${windowRow.window} vs LONG Bias`,
+        value: longWindow?.relation ?? "NEUTRAL",
+      },
+      {
+        label: `${windowRow.window} vs SHORT Bias`,
+        value: shortWindow?.relation ?? "NEUTRAL",
+      },
+    );
+  });
+
+  return details;
+}
+
+async function buildStrengthPayloadForWeek({
+  weekOpenUtc,
+  selectedAsset,
+  weeklyReturns,
+  previousWeekOpenUtc,
+  totalPairsCount,
+}: {
+  weekOpenUtc: string | null;
+  selectedAsset: AssetClass | "all";
+  weeklyReturns: Array<{ symbol: string; assetClass: AssetClass; returnPct: number; openPrice: number; closePrice: number }>;
+  previousWeekOpenUtc: string | null;
+  totalPairsCount: number;
+}): Promise<DashboardStrengthPayload> {
+  if (!weekOpenUtc) {
+    return {
+      latestSnapshotUtc: null,
+      totalPairsCount,
+      pairRowsWithPerf: [],
+      missingPairs: [],
+      stripItems: [],
+      flipDetails: [],
+      note: "No canonical week-open strength snapshot available.",
+    };
+  }
+
+  const [strengthRows, previousRows, underlyingRows] = await Promise.all([
+    readWeeklyPairStrengthsForAsset(weekOpenUtc, selectedAsset),
+    previousWeekOpenUtc
+      ? readWeeklyPairStrengthsForAsset(previousWeekOpenUtc, selectedAsset)
+      : Promise.resolve([]),
+    readWeeklyUnderlyingStrengths(weekOpenUtc, selectedAsset),
+  ]);
+
+  const performanceByKey = new Map(
+    weeklyReturns.map((row) => [
+      `${row.assetClass}|${row.symbol}`,
+      buildCanonicalPairPerformance(weekOpenUtc, row),
+    ]),
+  );
+  const previousDirections = new Map(previousRows.map((row) => [row.pair, row.compositeDirection]));
+
+  const pairRowsWithPerf = [...strengthRows]
+    .sort((a, b) => a.pair.localeCompare(b.pair))
+    .map((row) => ({
+      pair: row.pair,
+      direction: row.compositeDirection,
+      performance: performanceByKey.get(`${row.assetClass}|${row.pair}`) ?? null,
+      subtitle: row.windows.map((windowRow) => `${windowRow.window} ${windowRow.direction}`).join(" · "),
+      details: buildStrengthDetailItems(row),
+    }));
+
+  const flipDetails = pairRowsWithPerf
+    .map((row) => {
+      const prior = previousDirections.get(row.pair);
+      if (!prior || prior === row.direction) {
+        return null;
+      }
+      return { label: row.pair, value: `${prior} → ${row.direction}` };
+    })
+    .filter((detail): detail is { label: string; value: string } => Boolean(detail));
+
+  const stripItems = underlyingRows
+    .filter((row) => row.window === "24h")
+    .sort((a, b) => a.symbol.localeCompare(b.symbol))
+    .map((row: WeeklyUnderlyingStrength) => ({
+      id: row.id,
+      label: formatStrengthLabel(row.assetClass, row.symbol),
+      bias: strengthBias(row.direction),
+    }));
+
+  const missingPairs = strengthRows
+    .filter((row) => row.availableWindows < 3)
+    .map((row) => row.pair);
+
+  const latestSnapshotUtc = latestIso([
+    ...strengthRows.map((row) => row.latestSnapshotUtc),
+    ...underlyingRows.map((row) => row.snapshotTimeUtc),
+  ]);
+
+  return {
+    latestSnapshotUtc,
+    totalPairsCount,
+    pairRowsWithPerf,
+    missingPairs,
+    stripItems,
+    flipDetails,
+    note: "Composite pair direction is derived from 1h, 4h, and 24h normalized strength. Modal details include the raw gate inputs and long/short gate outcomes.",
+  };
+}
+
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const assetParam = resolvedSearchParams?.asset;
@@ -682,6 +846,23 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     DashboardSentimentPayload
   >;
 
+  const strengthPayloadEntries = await Promise.all(
+    selectedWeeks.map(async ({ reportDate: currentReportDate, weekOpenUtc }, index) => [
+      currentReportDate,
+      await buildStrengthPayloadForWeek({
+        weekOpenUtc,
+        selectedAsset: isAll ? "all" : assetClass,
+        weeklyReturns: weeklyReturnsByReport.get(currentReportDate) ?? [],
+        previousWeekOpenUtc: selectedWeeks[index + 1]?.weekOpenUtc ?? null,
+        totalPairsCount,
+      }),
+    ] as const),
+  );
+  const strengthDataByReport = Object.fromEntries(strengthPayloadEntries) as Record<
+    string,
+    DashboardStrengthPayload
+  >;
+
   return (
     <DashboardLayout>
       {/* Guardrail: Data week/bias/view changes should switch this preloaded
@@ -699,6 +880,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         currentWeekOpenUtc={currentWeekOpen}
         cotDataByReport={cotDataByReport}
         sentimentDataByReport={sentimentDataByReport}
+        strengthDataByReport={strengthDataByReport}
         myfxbookPositioningBySymbol={myfxbookPositioningBySymbol}
       />
     </DashboardLayout>

@@ -5,7 +5,7 @@
  * File: assetStrength.ts
  *
  * Description:
- * Computes and stores crypto/commodity strength snapshots from OANDA H1 candles.
+ * Computes and stores crypto/commodity/index strength snapshots from OANDA H1 candles.
  * Strength is raw % change vs USD, normalized to 0-100 within each asset class.
  */
 /*-----------------------------------------------
@@ -18,7 +18,7 @@ import { getPool } from "./db";
 import { PAIRS_BY_ASSET_CLASS } from "./cotPairs";
 import { fetchOandaCandleSeries, type OandaHourlyCandle } from "./oandaPrices";
 
-export type AssetClass = "crypto" | "commodities";
+export type AssetClass = "crypto" | "commodities" | "indices";
 export type AssetStrengthWindow = "1h" | "4h" | "24h";
 
 export type AssetStrengthSnapshot = {
@@ -66,6 +66,10 @@ const ASSET_CLASS_MAP: Record<AssetClass, AssetPairMapping[]> = {
     asset: pairDef.base.trim().toUpperCase(),
   })),
   commodities: PAIRS_BY_ASSET_CLASS.commodities.map((pairDef) => ({
+    pair: pairDef.pair.trim().toUpperCase(),
+    asset: pairDef.base.trim().toUpperCase(),
+  })),
+  indices: PAIRS_BY_ASSET_CLASS.indices.map((pairDef) => ({
     pair: pairDef.pair.trim().toUpperCase(),
     asset: pairDef.base.trim().toUpperCase(),
   })),
@@ -147,7 +151,9 @@ async function fetch24hH1Candles(asOfHourUtc: DateTime): Promise<Map<string, Oan
   const out = new Map<string, OandaHourlyCandle[]>();
   const pairs = Array.from(
     new Set(
-      [...ASSET_CLASS_MAP.crypto, ...ASSET_CLASS_MAP.commodities].map((row) => row.pair),
+      [...ASSET_CLASS_MAP.crypto, ...ASSET_CLASS_MAP.commodities, ...ASSET_CLASS_MAP.indices].map(
+        (row) => row.pair,
+      ),
     ),
   );
 
@@ -165,7 +171,7 @@ async function fetch24hH1Candles(asOfHourUtc: DateTime): Promise<Map<string, Oan
 }
 
 export function isAssetClass(value: string | null | undefined): value is AssetClass {
-  return value === "crypto" || value === "commodities";
+  return value === "crypto" || value === "commodities" || value === "indices";
 }
 
 export async function computeAssetClassStrength(
@@ -206,7 +212,7 @@ export async function computeAllAssetStrengths(asOfUtc?: DateTime): Promise<Asse
 
   const candlesByPair = await fetch24hH1Candles(asOfHourUtc);
   const results: AssetStrengthResult[] = [];
-  for (const assetClass of ["crypto", "commodities"] as const) {
+  for (const assetClass of ["crypto", "commodities", "indices"] as const) {
     results.push(
       computeClassWindowStrength(assetClass, 1, asOfHourUtc, candlesByPair),
       computeClassWindowStrength(assetClass, 4, asOfHourUtc, candlesByPair),
@@ -356,9 +362,10 @@ export async function readAllLatestAssetStrengths(assetClass: AssetClass): Promi
 }
 
 export async function readAllLatestAssetStrengthsAll(): Promise<AssetStrengthResult[]> {
-  const [crypto, commodities] = await Promise.all([
+  const [crypto, commodities, indices] = await Promise.all([
     readAllLatestAssetStrengths("crypto"),
     readAllLatestAssetStrengths("commodities"),
+    readAllLatestAssetStrengths("indices"),
   ]);
-  return [...crypto, ...commodities].map(cloneResult);
+  return [...crypto, ...commodities, ...indices].map(cloneResult);
 }

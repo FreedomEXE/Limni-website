@@ -11,12 +11,12 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-export type DashboardBias = "dealer" | "commercial" | "sentiment";
+export type DashboardBias = "dealer" | "commercial" | "sentiment" | "strength";
 
 export const DATA_DASHBOARD_BIAS_COMMIT_EVENT = "limni:data-dashboard-bias-commit";
 
 export function resolveDashboardBias(value?: string | null): DashboardBias {
-  if (value === "dealer" || value === "commercial" || value === "sentiment") {
+  if (value === "dealer" || value === "commercial" || value === "sentiment" || value === "strength") {
     return value;
   }
   return "dealer";

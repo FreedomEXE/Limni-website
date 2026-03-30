@@ -77,6 +77,16 @@ export type DashboardSentimentPayload = {
   flipDetails: DetailItem[];
 };
 
+export type DashboardStrengthPayload = {
+  latestSnapshotUtc: string | null;
+  totalPairsCount: number;
+  pairRowsWithPerf: DashboardPairRow[];
+  missingPairs: string[];
+  stripItems: Array<{ id: string; label: string; bias: string }>;
+  flipDetails: DetailItem[];
+  note?: string;
+};
+
 type DashboardViewSectionProps = {
   assetOptions: AssetOption[];
   selectedAsset: string;
@@ -93,6 +103,7 @@ type DashboardViewSectionProps = {
     }
   >;
   sentimentDataByReport: Record<string, DashboardSentimentPayload>;
+  strengthDataByReport: Record<string, DashboardStrengthPayload>;
   myfxbookPositioningBySymbol: Record<string, MyfxbookPositioning | undefined>;
 };
 
@@ -106,6 +117,7 @@ export default function DashboardViewSection({
   currentWeekOpenUtc,
   cotDataByReport,
   sentimentDataByReport,
+  strengthDataByReport,
   myfxbookPositioningBySymbol,
 }: DashboardViewSectionProps) {
   const defaultReport = initialReport || reportOptions[0]?.value || "";
@@ -160,7 +172,7 @@ export default function DashboardViewSection({
   }, [selectedBias]);
 
   const cotPayload = useMemo(() => {
-    if (selectedBias === "sentiment") {
+    if (selectedBias === "sentiment" || selectedBias === "strength") {
       return null;
     }
     return cotDataByReport[selectedReport]?.[selectedBias] ?? null;
@@ -171,17 +183,29 @@ export default function DashboardViewSection({
     [selectedReport, sentimentDataByReport],
   );
 
+  const strengthPayload = useMemo(
+    () => strengthDataByReport[selectedReport] ?? null,
+    [selectedReport, strengthDataByReport],
+  );
+
   const headerTitle = selectedBias === "commercial"
     ? "Commercial"
     : selectedBias === "sentiment"
       ? "Sentiment"
+      : selectedBias === "strength"
+        ? "Strength"
       : "Dealer";
 
   const headerRefresh = selectedBias === "sentiment"
     ? sentimentPayload?.latestAggregateTimestamp ?? null
+    : selectedBias === "strength"
+      ? strengthPayload?.latestSnapshotUtc ?? null
     : cotPayload?.combinedRefresh ?? null;
 
-  const pairRows = cotPayload?.pairRowsWithPerf ?? [];
+  const pairRows =
+    selectedBias === "strength"
+      ? strengthPayload?.pairRowsWithPerf ?? []
+      : cotPayload?.pairRowsWithPerf ?? [];
   const longDetails = pairRows
     .filter((row) => row.direction === "LONG")
     .map((row) => ({ label: row.pair, value: "LONG" }));
@@ -254,6 +278,44 @@ export default function DashboardViewSection({
               label: "Flips",
               value: String(sentimentPayload?.flipDetails.length ?? 0),
               details: sentimentPayload?.flipDetails ?? [],
+            },
+          ]}
+          />
+      ) : selectedBias === "strength" ? (
+        <SummaryCards
+          title="Strength"
+          centered={true}
+          cards={[
+            {
+              id: "pairs",
+              label: "Pairs tracked",
+              value: String(strengthPayload?.totalPairsCount ?? 0),
+            },
+            {
+              id: "long",
+              label: "Bullish",
+              value: String(longDetails.length),
+              tone: "positive",
+              details: longDetails,
+            },
+            {
+              id: "short",
+              label: "Bearish",
+              value: String(shortDetails.length),
+              tone: "negative",
+              details: shortDetails,
+            },
+            {
+              id: "neutral",
+              label: "Neutral",
+              value: String(neutralDetails.length),
+              details: neutralDetails,
+            },
+            {
+              id: "flips",
+              label: "Flips",
+              value: String(strengthPayload?.flipDetails.length ?? 0),
+              details: strengthPayload?.flipDetails ?? [],
             },
           ]}
         />
@@ -337,7 +399,18 @@ export default function DashboardViewSection({
             <PairHeatmap
               rows={pairRows}
               view={selectedView}
-              missingPairs={cotPayload?.missingPairs ?? []}
+              title={selectedBias === "strength" ? "Strength Heatmap" : undefined}
+              description={
+                selectedBias === "strength"
+                  ? "Composite 1h, 4h, and 24h normalized strength across the tracked universe"
+                  : undefined
+              }
+              note={selectedBias === "strength" ? strengthPayload?.note : undefined}
+              missingPairs={
+                selectedBias === "strength"
+                  ? strengthPayload?.missingPairs ?? []
+                  : cotPayload?.missingPairs ?? []
+              }
             />
           )}
         </div>
@@ -345,15 +418,19 @@ export default function DashboardViewSection({
         {selectedBias !== "sentiment" ? (
           <div className="mt-6">
             <h2 className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {cotPayload?.biasLabel ?? "Asset"} bias strip
+              {selectedBias === "strength" ? "Strength strip" : `${cotPayload?.biasLabel ?? "Asset"} bias strip`}
             </h2>
             <div className="mt-3">
               <MiniBiasStrip
-                items={(cotPayload?.currencyRows ?? []).map((row) => ({
-                  id: `${row.assetLabel}-${row.currency}`,
-                  label: row.label,
-                  bias: row.bias,
-                }))}
+                items={
+                  selectedBias === "strength"
+                    ? strengthPayload?.stripItems ?? []
+                    : (cotPayload?.currencyRows ?? []).map((row) => ({
+                        id: `${row.assetLabel}-${row.currency}`,
+                        label: row.label,
+                        bias: row.bias,
+                      }))
+                }
               />
             </div>
           </div>

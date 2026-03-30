@@ -14,11 +14,11 @@ type DashboardFiltersProps = {
   reportOptions: Array<{ value: string; label: string }>;
   selectedAsset: string;
   selectedReport: string;
-  selectedBias: "dealer" | "commercial" | "sentiment";
+  selectedBias: "dealer" | "commercial" | "sentiment" | "strength";
   selectedView: "heatmap" | "list";
   currentWeekOpenUtc?: string;
   onReportChange?: (report: string) => void;
-  onBiasChange?: (bias: "dealer" | "commercial" | "sentiment") => void;
+  onBiasChange?: (bias: "dealer" | "commercial" | "sentiment" | "strength") => void;
 };
 
 export default function DashboardFilters({
@@ -53,7 +53,7 @@ export default function DashboardFilters({
 
   const navigate = (next: {
     asset?: string;
-    bias?: "dealer" | "commercial" | "sentiment";
+    bias?: "dealer" | "commercial" | "sentiment" | "strength";
     view?: "heatmap" | "list";
     report?: string;
   }) => {
@@ -80,6 +80,7 @@ export default function DashboardFilters({
           { value: "dealer", label: "Dealer" },
           { value: "commercial", label: "Commercial" },
           { value: "sentiment", label: "Sentiment" },
+          { value: "strength", label: "Strength" },
         ] as const).map((option) => (
           <button
             key={option.value}
