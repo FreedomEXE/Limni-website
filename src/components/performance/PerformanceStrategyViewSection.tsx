@@ -46,10 +46,6 @@ export default function PerformanceStrategyViewSection({
   ...performanceProps
 }: PerformanceStrategyViewSectionProps) {
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
-  const initialSelectionKey = useMemo(
-    () => buildStrategySelectionKey(initialSelection),
-    [initialSelection],
-  );
 
   useEffect(() => {
     setSelectedSelection(initialSelection);
@@ -66,8 +62,8 @@ export default function PerformanceStrategyViewSection({
 
   const selectedEntry = useMemo(() => {
     const selectionKey = buildStrategySelectionKey(selectedSelection);
-    return strategyDataMap[selectionKey] ?? strategyDataMap[initialSelectionKey] ?? null;
-  }, [initialSelectionKey, selectedSelection, strategyDataMap]);
+    return strategyDataMap[selectionKey] ?? null;
+  }, [selectedSelection, strategyDataMap]);
 
   useEffect(() => {
     const detail: StrategySidebarStatsDetail = {

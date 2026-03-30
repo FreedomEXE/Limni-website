@@ -70,11 +70,6 @@ export default function MatrixViewSection({
   const [selectedTab, setSelectedTab] = useState<MatrixTab>(initialTab);
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
 
-  const initialSelectionKey = useMemo(
-    () => buildStrategySelectionKey(initialSelection),
-    [initialSelection],
-  );
-
   useEffect(() => {
     setSelectedWeek(resolveSelectedWeek(initialWeek, weeks));
   }, [initialWeek, weeks]);
@@ -98,8 +93,8 @@ export default function MatrixViewSection({
 
   const selectedStrategyData = useMemo(() => {
     const selectionKey = buildStrategySelectionKey(selectedSelection);
-    return strategyDataMap[selectionKey] ?? strategyDataMap[initialSelectionKey] ?? null;
-  }, [initialSelectionKey, selectedSelection, strategyDataMap]);
+    return strategyDataMap[selectionKey] ?? null;
+  }, [selectedSelection, strategyDataMap]);
 
   const engineWeekResults = selectedStrategyData?.engineWeekResults ?? null;
 
