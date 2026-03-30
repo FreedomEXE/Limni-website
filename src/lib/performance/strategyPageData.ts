@@ -49,7 +49,7 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v6";
+  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v7";
 
 type WeekWatermarkRow = {
   week_open_utc: string;
@@ -114,51 +114,74 @@ export async function loadStrategyPageData(
     historicalWeeks: dataSectionWeeks,
     currentWeekOpenUtc,
   }) as string[];
+  const cachedWeeks = weekOptions.filter((weekOpenUtc) => weekOpenUtc !== currentWeekOpenUtc);
+  const hasCurrentWeek = weekOptions.includes(currentWeekOpenUtc);
 
   try {
+    const currentWeekResultPromise = hasCurrentWeek
+      ? computeWeeklyHold(biasSource, currentWeekOpenUtc, entryStyle, strengthGate)
+      : Promise.resolve(null);
     const fingerprint = await buildStrategyFingerprint({
       currentWeekOpenUtc,
       entryStyle,
       strengthGate,
-      weekOptions,
+      weekOptions: cachedWeeks,
     });
 
     const cacheKey = buildStrategySelectionKey(selection);
     const cached = await readStrategyArtifactEntry<StrategyPageData>(cacheKey);
 
     if (cached && cached.fingerprint.engineVersion === fingerprint.engineVersion) {
-      const changedWeeks = diffChangedWeeks(cached.fingerprint, fingerprint, weekOptions);
+      const changedWeeks = diffChangedWeeks(cached.fingerprint, fingerprint, cachedWeeks);
       const removedWeeks = Object.keys(cached.fingerprint.weekFingerprints)
-        .filter((week) => !weekOptions.includes(week));
-      const missingWeeks = weekOptions.filter((week) => !(week in cached.payload.weekResults));
-
-      if (
-        changedWeeks.length === 0 &&
-        removedWeeks.length === 0 &&
-        missingWeeks.length === 0 &&
-        cached.fingerprint.currentWeekOpenUtc === currentWeekOpenUtc &&
-        cached.fingerprint.weekOptionsSignature === fingerprint.weekOptionsSignature
-      ) {
-        return cached.payload;
-      }
+        .filter((week) => !cachedWeeks.includes(week));
+      const missingWeeks = cachedWeeks.filter((week) => !(week in cached.payload.weekResults));
 
       const nextWeekResults: Record<string, WeeklyHoldResult> = { ...cached.payload.weekResults };
-      for (const removedWeek of removedWeeks) {
-        delete nextWeekResults[removedWeek];
-      }
+      if (
+        changedWeeks.length > 0 ||
+        removedWeeks.length > 0 ||
+        missingWeeks.length > 0 ||
+        cached.fingerprint.currentWeekOpenUtc !== currentWeekOpenUtc ||
+        cached.fingerprint.weekOptionsSignature !== fingerprint.weekOptionsSignature
+      ) {
+        for (const removedWeek of removedWeeks) {
+          delete nextWeekResults[removedWeek];
+        }
 
-      const weeksToRefresh = Array.from(new Set([...changedWeeks, ...missingWeeks]));
-      if (weeksToRefresh.length > 0) {
-        await patchWeekResults({
+        const weeksToRefresh = Array.from(new Set([...changedWeeks, ...missingWeeks]));
+        if (weeksToRefresh.length > 0) {
+          await patchWeekResults({
+            biasSource,
+            entryStyle,
+            strengthGate,
+            targetWeeks: weeksToRefresh,
+            weekResultsByWeek: nextWeekResults,
+          });
+        }
+
+        const artifactPayload = buildStrategyPageDataFromWeekResults({
           biasSource,
+          currentWeekOpenUtc,
           entryStyle,
           strengthGate,
-          targetWeeks: weeksToRefresh,
+          weekOptions: cachedWeeks,
           weekResultsByWeek: nextWeekResults,
+        });
+
+        await persistStrategyArtifactEntry(cacheKey, {
+          cachedAtUtc: new Date().toISOString(),
+          fingerprint,
+          payload: artifactPayload,
         });
       }
 
-      const nextPayload = buildStrategyPageDataFromWeekResults({
+      const currentWeekResult = await currentWeekResultPromise;
+      if (currentWeekResult) {
+        nextWeekResults[currentWeekOpenUtc] = currentWeekResult;
+      }
+
+      return buildStrategyPageDataFromWeekResults({
         biasSource,
         currentWeekOpenUtc,
         entryStyle,
@@ -166,21 +189,14 @@ export async function loadStrategyPageData(
         weekOptions,
         weekResultsByWeek: nextWeekResults,
       });
-
-      await persistStrategyArtifactEntry(cacheKey, {
-        cachedAtUtc: new Date().toISOString(),
-        fingerprint,
-        payload: nextPayload,
-      });
-      return nextPayload;
     }
 
-    const multiWeekResult = await computeMultiWeekHold(biasSource, weekOptions, entryStyle, strengthGate);
+    const multiWeekResult = await computeMultiWeekHold(biasSource, cachedWeeks, entryStyle, strengthGate);
     const weekResultsByWeek = Object.fromEntries(
       multiWeekResult.weeks.map((weekResult) => [weekResult.weekOpenUtc, weekResult] as const),
     );
 
-    const missingWeeks = weekOptions.filter((week) => !(week in weekResultsByWeek));
+    const missingWeeks = cachedWeeks.filter((week) => !(week in weekResultsByWeek));
     if (missingWeeks.length > 0) {
       await patchWeekResults({
         biasSource,
@@ -191,7 +207,27 @@ export async function loadStrategyPageData(
       });
     }
 
-    const payload = buildStrategyPageDataFromWeekResults({
+    const artifactPayload = buildStrategyPageDataFromWeekResults({
+      biasSource,
+      currentWeekOpenUtc,
+      entryStyle,
+      strengthGate,
+      weekOptions: cachedWeeks,
+      weekResultsByWeek,
+    });
+
+    await persistStrategyArtifactEntry(cacheKey, {
+      cachedAtUtc: new Date().toISOString(),
+      fingerprint,
+      payload: artifactPayload,
+    });
+
+    const currentWeekResult = await currentWeekResultPromise;
+    if (currentWeekResult) {
+      weekResultsByWeek[currentWeekOpenUtc] = currentWeekResult;
+    }
+
+    return buildStrategyPageDataFromWeekResults({
       biasSource,
       currentWeekOpenUtc,
       entryStyle,
@@ -199,14 +235,6 @@ export async function loadStrategyPageData(
       weekOptions,
       weekResultsByWeek,
     });
-
-    await persistStrategyArtifactEntry(cacheKey, {
-      cachedAtUtc: new Date().toISOString(),
-      fingerprint,
-      payload,
-    });
-
-    return payload;
   } catch (err) {
     console.error("[strategyPageData] Failed to load:", err instanceof Error ? err.message : err);
     return null;

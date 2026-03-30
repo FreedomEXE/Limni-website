@@ -386,9 +386,6 @@ async function executeAdr(
   let skippedByDirection = 0;
 
   for (const r of tradeRows) {
-    // Skip active trades on current week (no realized P&L yet)
-    if (!isPastWeek && r.exit_reason === "active") continue;
-
     // Direction filter: only include if bias source agrees
     const pairUpper = r.symbol.toUpperCase();
     const approved = approvedDirections.get(pairUpper) ?? approvedDirections.get(r.symbol);
@@ -410,6 +407,12 @@ async function executeAdr(
         pnlPct = r.direction === "SHORT" ? -rawReturn : rawReturn;
         resolvedExitReason = "week_close";
       }
+    }
+    // Current-week active trades should be visible in Matrix/Performance as open
+    // positions, but they should not count unrealized P&L yet.
+    if (!isPastWeek && r.exit_reason === "active") {
+      pnlPct = 0;
+      resolvedExitReason = "active";
     }
 
     const meta = r.metadata ?? {};
