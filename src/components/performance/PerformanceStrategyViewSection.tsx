@@ -46,6 +46,10 @@ export default function PerformanceStrategyViewSection({
   ...performanceProps
 }: PerformanceStrategyViewSectionProps) {
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
+  const [stableEntry, setStableEntry] = useState<StrategyBootstrapEntry | null>(() => {
+    const initialKey = buildStrategySelectionKey(initialSelection);
+    return strategyDataMap[initialKey] ?? null;
+  });
 
   useEffect(() => {
     setSelectedSelection(initialSelection);
@@ -66,18 +70,24 @@ export default function PerformanceStrategyViewSection({
   }, [selectedSelection, strategyDataMap]);
 
   useEffect(() => {
+    if (selectedEntry) {
+      setStableEntry(selectedEntry);
+    }
+  }, [selectedEntry]);
+
+  useEffect(() => {
     const detail: StrategySidebarStatsDetail = {
       selection: selectedSelection,
-      stats: selectedEntry?.sidebarStats ?? null,
+      stats: stableEntry?.sidebarStats ?? null,
     };
     window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
-  }, [selectedEntry, selectedSelection]);
+  }, [selectedSelection, stableEntry]);
 
   return (
     <PerformanceViewSection
       {...performanceProps}
-      engineWeekMap={selectedEntry?.engineWeekMap ?? null}
-      engineSimMap={selectedEntry?.engineSimMap ?? null}
+      engineWeekMap={stableEntry?.engineWeekMap ?? null}
+      engineSimMap={stableEntry?.engineSimMap ?? null}
     />
   );
 }

@@ -69,6 +69,10 @@ export default function MatrixViewSection({
   const [selectedWeek, setSelectedWeek] = useState<string | null>(() => resolveSelectedWeek(initialWeek, weeks));
   const [selectedTab, setSelectedTab] = useState<MatrixTab>(initialTab);
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
+  const [stableStrategyData, setStableStrategyData] = useState<MatrixViewSectionProps["strategyDataMap"][string]>(() => {
+    const initialKey = buildStrategySelectionKey(initialSelection);
+    return strategyDataMap[initialKey] ?? null;
+  });
 
   useEffect(() => {
     setSelectedWeek(resolveSelectedWeek(initialWeek, weeks));
@@ -96,7 +100,13 @@ export default function MatrixViewSection({
     return strategyDataMap[selectionKey] ?? null;
   }, [selectedSelection, strategyDataMap]);
 
-  const engineWeekResults = selectedStrategyData?.engineWeekResults ?? null;
+  useEffect(() => {
+    if (selectedStrategyData) {
+      setStableStrategyData(selectedStrategyData);
+    }
+  }, [selectedStrategyData]);
+
+  const engineWeekResults = stableStrategyData?.engineWeekResults ?? null;
 
   const canonicalSignals = useMemo(
     () => (selectedWeek ? engineWeekResults?.[selectedWeek]?.signals ?? [] : []),
@@ -111,10 +121,10 @@ export default function MatrixViewSection({
   useEffect(() => {
     const detail: StrategySidebarStatsDetail = {
       selection: selectedSelection,
-      stats: selectedStrategyData?.sidebarStats ?? null,
+      stats: stableStrategyData?.sidebarStats ?? null,
     };
     window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
-  }, [selectedSelection, selectedStrategyData]);
+  }, [selectedSelection, stableStrategyData]);
 
   useEffect(() => {
     const selectedWeekResult = selectedWeek ? engineWeekResults?.[selectedWeek] ?? null : null;
