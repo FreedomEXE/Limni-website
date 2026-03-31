@@ -17,7 +17,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   STRATEGIES,
   ENTRY_STYLE_FILTERS,
@@ -63,7 +63,6 @@ export function selectionLabel(sel: StrategySelection): string {
 }
 
 export default function StrategySelector() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const initialCommitted = readSelectionFromParams(searchParams);
@@ -87,18 +86,23 @@ export default function StrategySelector() {
     draft.f2 !== committed.f2;
 
   const apply = () => {
+    // Update URL for bookmarking without triggering a server re-render
     const params = new URLSearchParams(searchParams.toString());
     params.set("strategy", draft.strategy);
     params.set("f1", draft.f1);
     params.set("f2", draft.f2);
-    // Clean up old param names
     params.delete("bias");
     params.delete("filter");
     params.delete("style");
     params.delete("system");
     params.delete("mode");
     const nextUrl = `${pathname}?${params.toString()}`;
-    router.replace(nextUrl, { scroll: false });
+    window.history.replaceState(window.history.state, "", nextUrl);
+
+    // Commit locally and notify view sections via the shared event
+    setCommitted(draft);
+    const detail: StrategySelectionCommitDetail = { selection: draft };
+    window.dispatchEvent(new CustomEvent(STRATEGY_SELECTION_COMMIT_EVENT, { detail }));
   };
 
   const selectClasses =
