@@ -70,9 +70,7 @@ export default function PerformanceStrategyViewSection({
   }, [selectedSelection, strategyDataMap]);
 
   useEffect(() => {
-    if (selectedEntry) {
-      setStableEntry(selectedEntry);
-    }
+    setStableEntry(selectedEntry ?? null);
   }, [selectedEntry]);
 
   useEffect(() => {

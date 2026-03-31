@@ -101,9 +101,7 @@ export default function MatrixViewSection({
   }, [selectedSelection, strategyDataMap]);
 
   useEffect(() => {
-    if (selectedStrategyData) {
-      setStableStrategyData(selectedStrategyData);
-    }
+    setStableStrategyData(selectedStrategyData ?? null);
   }, [selectedStrategyData]);
 
   const engineWeekResults = stableStrategyData?.engineWeekResults ?? null;

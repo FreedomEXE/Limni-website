@@ -23,13 +23,11 @@
 
 import { query } from "@/lib/db";
 import { DateTime } from "luxon";
-import { getCanonicalInstrument } from "@/lib/canonicalInstruments";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
 import type { BiasSourceConfig, EntryStyleConfig, StrengthGateConfig } from "@/lib/performance/strategyConfig";
 import { resolveSelectorDirections } from "@/lib/performance/selectorEngine";
-import { fetchOandaCandleSeries } from "@/lib/oandaPrices";
 import { evaluateStrengthGate, readWeeklyPairStrengths } from "@/lib/strength/weeklyStrength";
 
 // ─── Trade types (strategy-generic) ─────────────────────────────
@@ -162,8 +160,6 @@ async function applyStrengthGate(
 
 type DirectionEntry = { direction: "LONG" | "SHORT"; source: string; tier: number | null; assetClass: string };
 type DirectionMap = Map<string, DirectionEntry>;
-type WeeklyPairReturn = Awaited<ReturnType<typeof getWeeklyPairReturns>>[number];
-
 function signalsToDirectionMap(signals: CanonicalBasketSignal[], source: string): DirectionMap {
   const map: DirectionMap = new Map();
   for (const s of signals) {
@@ -487,100 +483,6 @@ const EXECUTORS: Record<string, StrategyExecutor> = {
   // Future: stoch, adr_stoch, etc.
 };
 
-async function fetchLiveWeeklyReturns(
-  weekOpenUtc: string,
-  directions: DirectionMap,
-): Promise<WeeklyPairReturn[]> {
-  const pairSet = new Set<string>();
-  for (const key of directions.keys()) {
-    pairSet.add((key.includes(":") ? key.split(":")[0] : key)!.toUpperCase());
-  }
-
-  const results: WeeklyPairReturn[] = [];
-  const weekOpenDt = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
-  if (!weekOpenDt.isValid) {
-    return results;
-  }
-
-  const nowUtc = DateTime.utc();
-  const pairs = Array.from(pairSet);
-  const BATCH_SIZE = 6;
-
-  for (let i = 0; i < pairs.length; i += BATCH_SIZE) {
-    const batch = pairs.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.all(
-      batch.map(async (pair) => {
-        const instrument = getCanonicalInstrument(pair);
-        if (!instrument) return null;
-
-        try {
-          if (instrument.primaryProvider === "oanda" && instrument.oandaInstrument) {
-            const candles = await fetchOandaCandleSeries(
-              instrument.oandaInstrument,
-              weekOpenDt,
-              nowUtc,
-            );
-            if (candles.length === 0) return null;
-
-            const openPrice = candles[0]!.open;
-            const closePrice = candles[candles.length - 1]!.close;
-            if (!Number.isFinite(openPrice) || !Number.isFinite(closePrice) || openPrice <= 0) {
-              return null;
-            }
-
-            return {
-              symbol: pair,
-              assetClass: instrument.assetClass,
-              returnPct: ((closePrice - openPrice) / openPrice) * 100,
-              openPrice,
-              closePrice,
-            } satisfies WeeklyPairReturn;
-          }
-
-          if (instrument.primaryProvider === "bitget" && instrument.bitgetBaseCoin) {
-            const { fetchBitgetSpotCandleSeries } = await import("@/lib/bitget");
-            const candles = await fetchBitgetSpotCandleSeries(instrument.bitgetBaseCoin, {
-              openUtc: weekOpenDt,
-              closeUtc: nowUtc,
-            });
-            if (candles.length === 0) return null;
-
-            const openPrice = candles[0]!.open;
-            const closePrice = candles[candles.length - 1]!.close;
-            if (!Number.isFinite(openPrice) || !Number.isFinite(closePrice) || openPrice <= 0) {
-              return null;
-            }
-
-            return {
-              symbol: pair,
-              assetClass: instrument.assetClass,
-              returnPct: ((closePrice - openPrice) / openPrice) * 100,
-              openPrice,
-              closePrice,
-            } satisfies WeeklyPairReturn;
-          }
-
-          return null;
-        } catch (error) {
-          console.warn(
-            `[engine] Failed to fetch live weekly return for ${pair}:`,
-            error instanceof Error ? error.message : error,
-          );
-          return null;
-        }
-      }),
-    );
-
-    for (const result of batchResults) {
-      if (result) {
-        results.push(result);
-      }
-    }
-  }
-
-  return results;
-}
-
 // ─── Core computation ───────────────────────────────────────────
 
 export async function computeWeeklyHold(
@@ -603,10 +505,7 @@ export async function computeWeeklyHold(
   const signals = buildCanonicalSignals(directions);
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const isRealized = isWeekRealizedForAggregate(weekOpenUtc, currentWeekOpenUtc);
-  let pairReturns = await getWeeklyPairReturns(weekOpenUtc);
-  if (pairReturns.length === 0 && weekOpenUtc === currentWeekOpenUtc) {
-    pairReturns = await fetchLiveWeeklyReturns(weekOpenUtc, directions);
-  }
+  const pairReturns = await getWeeklyPairReturns(weekOpenUtc);
   const returnMap = new Map(pairReturns.map((r) => [r.symbol.toUpperCase(), r]));
 
   const trades: WeeklyHoldTrade[] = [];

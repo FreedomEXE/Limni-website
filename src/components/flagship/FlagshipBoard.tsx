@@ -230,6 +230,7 @@ type MatrixRow = {
   tradeCount: number | null;
   avgReturnPct: number | null;
   noTargetRatePct: number | null;
+  pairReturnPct: number | null;
   weeklyMovePct: number | null;
   weeklyOpenPrice: number | null;
   weeklyClosePrice: number | null;
@@ -841,6 +842,15 @@ export default function FlagshipBoard({
       adrTradesByPair.set(key, existing);
     }
 
+    const selectedWeekTrades = weekOpenUtc ? (engineWeekResults?.[weekOpenUtc]?.trades ?? []) : [];
+    const engineTradesByPair = new Map<string, WeeklyHoldResult["trades"]>();
+    for (const trade of selectedWeekTrades) {
+      const key = normalizeKey(trade.symbol);
+      const existing = engineTradesByPair.get(key) ?? [];
+      existing.push(trade);
+      engineTradesByPair.set(key, existing);
+    }
+
     return UNIVERSE
       .map((pairRow) => {
         const key = normalizeKey(pairRow.pair);
@@ -915,6 +925,10 @@ export default function FlagshipBoard({
             : "NEUTRAL";
 
         const pairTrades = adrTradesByPair.get(key) ?? [];
+        const pairEngineTrades = engineTradesByPair.get(key) ?? [];
+        const pairReturnPct = pairEngineTrades.length > 0
+          ? pairEngineTrades.reduce((sum, trade) => sum + trade.returnPct, 0)
+          : null;
         const hasActiveTrade = pairTrades.some(t => t.exitReason === "active");
         let triggerState: TriggerState = "INACTIVE";
         let touched = false;
@@ -948,6 +962,7 @@ export default function FlagshipBoard({
           tradeCount: sizing?.trades ?? null,
           avgReturnPct: sizing?.avgReturnPct ?? null,
           noTargetRatePct: sizing?.noTargetRatePct ?? null,
+          pairReturnPct,
           weeklyMovePct: weeklyMove?.returnPct ?? null,
           weeklyOpenPrice: weeklyMove?.openPrice ?? null,
           weeklyClosePrice: weeklyMove?.closePrice ?? null,
@@ -976,7 +991,7 @@ export default function FlagshipBoard({
         if (bucketDiff !== 0) return bucketDiff;
         return left.pair.localeCompare(right.pair);
       });
-  }, [adrTrades, assetStrength, canonicalSignals, cotMatrix, currencyStrength, dailySentiment, intradayLevels, liveSizing, menthorqOverlay, priceMoves, weeklyReturns]);
+  }, [adrTrades, assetStrength, canonicalSignals, cotMatrix, currencyStrength, dailySentiment, engineWeekResults, intradayLevels, liveSizing, menthorqOverlay, priceMoves, weekOpenUtc, weeklyReturns]);
 
   const flagshipCount = matrixRows.filter((row) => row.signalMode === "FLAGSHIP").length;
   const adrDipCount = matrixRows.filter((row) => row.signalMode === "ADR_DIP").length;
@@ -1136,9 +1151,9 @@ export default function FlagshipBoard({
                               <span className="flex flex-wrap items-center gap-2">
                                 <span>{row.pair}</span>
                                 <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">{row.assetClass}</span>
-                                {formatWeeklyMoveCompact(row.weeklyMovePct) ? (
-                                  <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${weeklyMoveClass(row.weeklyMovePct)}`}>
-                                    {formatWeeklyMoveCompact(row.weeklyMovePct)}
+                                {formatWeeklyMoveCompact(row.pairReturnPct) ? (
+                                  <span className={`text-[10px] font-medium uppercase tracking-[0.08em] ${weeklyMoveClass(row.pairReturnPct)}`}>
+                                    {formatWeeklyMoveCompact(row.pairReturnPct)}
                                   </span>
                                 ) : null}
                               </span>
@@ -1166,8 +1181,8 @@ export default function FlagshipBoard({
                         </td>
                         <td className="border-r border-[var(--panel-border)] px-3 py-2">
                           <div className="space-y-1">
-                            <div className={`text-sm font-semibold ${weeklyMoveClass(row.weeklyMovePct)}`}>
-                              {row.weeklyMovePct === null ? "0.00%" : `${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}
+                            <div className={`text-sm font-semibold ${weeklyMoveClass(row.pairReturnPct)}`}>
+                              {row.pairReturnPct === null ? "0.00%" : `${row.pairReturnPct >= 0 ? "+" : ""}${row.pairReturnPct.toFixed(2)}%`}
                             </div>
                             {row.weeklyOpenPrice !== null && row.weeklyClosePrice !== null ? (
                               <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
@@ -1182,8 +1197,8 @@ export default function FlagshipBoard({
                               <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--foreground)]">
                                 {row.modelSignals.length} trade{row.modelSignals.length !== 1 ? "s" : ""} qualified
                               </div>
-                              <div className={`text-xs font-semibold ${row.weeklyMovePct !== null && row.weeklyMovePct >= 0 ? "text-lime-400" : row.weeklyMovePct !== null ? "text-red-400" : "text-[color:var(--muted)]"}`}>
-                                {row.weeklyMovePct === null ? "P/L 0.00%" : `P/L ${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}
+                              <div className={`text-xs font-semibold ${row.pairReturnPct !== null && row.pairReturnPct >= 0 ? "text-lime-400" : row.pairReturnPct !== null ? "text-red-400" : "text-[color:var(--muted)]"}`}>
+                                {row.pairReturnPct === null ? "P/L 0.00%" : `P/L ${row.pairReturnPct >= 0 ? "+" : ""}${row.pairReturnPct.toFixed(2)}%`}
                               </div>
                             </div>
                           ) : isPastWeek ? (
@@ -1282,11 +1297,12 @@ export default function FlagshipBoard({
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Weekly Move</div>
                                 <div className="mt-1">
-                                  Move{" "}
-                                  <span className={weeklyMoveClass(row.weeklyMovePct)}>
-                                    {row.weeklyMovePct === null ? "0.00%" : `${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}
+                                  Result{" "}
+                                  <span className={weeklyMoveClass(row.pairReturnPct)}>
+                                    {row.pairReturnPct === null ? "0.00%" : `${row.pairReturnPct >= 0 ? "+" : ""}${row.pairReturnPct.toFixed(2)}%`}
                                   </span>
                                 </div>
+                                <div>Move {row.weeklyMovePct === null ? "0.00%" : `${row.weeklyMovePct >= 0 ? "+" : ""}${row.weeklyMovePct.toFixed(2)}%`}</div>
                                 <div>Open {formatPrice(row.weeklyOpenPrice)} · Close {formatPrice(row.weeklyClosePrice)}</div>
                                 <div className="mt-1">24h move {formatMove(row.move24hPct)}</div>
                               </div>
