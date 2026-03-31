@@ -49,7 +49,7 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v7";
+  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v8";
 
 type WeekWatermarkRow = {
   week_open_utc: string;
@@ -102,6 +102,7 @@ export type StrategyPageData = {
 export async function loadStrategyPageData(
   selection: StrategySelection,
 ): Promise<StrategyPageData | null> {
+  const selectionKey = buildStrategySelectionKey(selection);
   const biasSource = getStrategy(selection.strategyId);
   if (!biasSource) return null;
 
@@ -128,8 +129,7 @@ export async function loadStrategyPageData(
       weekOptions: cachedWeeks,
     });
 
-    const cacheKey = buildStrategySelectionKey(selection);
-    const cached = await readStrategyArtifactEntry<StrategyPageData>(cacheKey);
+    const cached = await readStrategyArtifactEntry<StrategyPageData>(selectionKey);
 
     if (cached && cached.fingerprint.engineVersion === fingerprint.engineVersion) {
       const changedWeeks = diffChangedWeeks(cached.fingerprint, fingerprint, cachedWeeks);
@@ -155,6 +155,7 @@ export async function loadStrategyPageData(
             biasSource,
             entryStyle,
             strengthGate,
+            selectionKey,
             targetWeeks: weeksToRefresh,
             weekResultsByWeek: nextWeekResults,
           });
@@ -169,7 +170,7 @@ export async function loadStrategyPageData(
           weekResultsByWeek: nextWeekResults,
         });
 
-        await persistStrategyArtifactEntry(cacheKey, {
+        await persistStrategyArtifactEntry(selectionKey, {
           cachedAtUtc: new Date().toISOString(),
           fingerprint,
           payload: artifactPayload,
@@ -202,6 +203,7 @@ export async function loadStrategyPageData(
         biasSource,
         entryStyle,
         strengthGate,
+        selectionKey,
         targetWeeks: missingWeeks,
         weekResultsByWeek,
       });
@@ -216,7 +218,7 @@ export async function loadStrategyPageData(
       weekResultsByWeek,
     });
 
-    await persistStrategyArtifactEntry(cacheKey, {
+    await persistStrategyArtifactEntry(selectionKey, {
       cachedAtUtc: new Date().toISOString(),
       fingerprint,
       payload: artifactPayload,
@@ -236,7 +238,10 @@ export async function loadStrategyPageData(
       weekResultsByWeek,
     });
   } catch (err) {
-    console.error("[strategyPageData] Failed to load:", err instanceof Error ? err.message : err);
+    console.error(
+      `[strategyPageData] Failed to load ${selectionKey}:`,
+      err instanceof Error ? err.stack ?? err.message : err,
+    );
     return null;
   }
 }
@@ -418,10 +423,11 @@ async function patchWeekResults(options: {
   biasSource: BiasSourceConfig;
   entryStyle: EntryStyleConfig | undefined;
   strengthGate: StrengthGateConfig | undefined;
+  selectionKey: string;
   targetWeeks: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
 }) {
-  const { biasSource, entryStyle, strengthGate, targetWeeks, weekResultsByWeek } = options;
+  const { biasSource, entryStyle, strengthGate, selectionKey, targetWeeks, weekResultsByWeek } = options;
   const recomputed = await Promise.allSettled(
     targetWeeks.map((weekOpenUtc) => computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, strengthGate)),
   );
@@ -434,8 +440,8 @@ async function patchWeekResults(options: {
       return;
     }
     console.warn(
-      `[strategyPageData] Failed to refresh ${targetWeek}:`,
-      result.reason instanceof Error ? result.reason.message : result.reason,
+      `[strategyPageData] Failed to refresh ${selectionKey} for ${targetWeek}:`,
+      result.reason instanceof Error ? result.reason.stack ?? result.reason.message : result.reason,
     );
   });
 }

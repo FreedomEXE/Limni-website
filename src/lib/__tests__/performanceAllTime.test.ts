@@ -63,8 +63,8 @@ describe("performance/allTime", () => {
     expect(blended).toBeDefined();
     expect(blended?.returns).toHaveLength(2);
     expect(blended?.returns.map((item) => item.pair)).toEqual([
-      "Week of Feb 09, 2026",
-      "Week of Jan 26, 2026",
+      "Week of Feb 09 2026",
+      "Week of Jan 26 2026",
     ]);
     expect(blended?.percent).toBe(2.5);
   });

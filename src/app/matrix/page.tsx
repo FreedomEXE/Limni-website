@@ -22,9 +22,9 @@ import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import {
   buildStrategySelectionKey,
-  loadStrategyBootstrapMap,
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
+import { loadStrategyBootstrapMap } from "@/lib/performance/strategyBootstrap.server";
 
 export const dynamic = "force-dynamic";
 

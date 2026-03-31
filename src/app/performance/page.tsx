@@ -49,9 +49,9 @@ import {
 import type { EngineGridProps, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import {
   buildStrategySelectionKey,
-  loadStrategyBootstrapMap,
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
+import { loadStrategyBootstrapMap } from "@/lib/performance/strategyBootstrap.server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
