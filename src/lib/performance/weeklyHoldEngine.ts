@@ -28,7 +28,8 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
 import type { BiasSourceConfig, EntryStyleConfig, StrengthGateConfig } from "@/lib/performance/strategyConfig";
 import { resolveSelectorDirections } from "@/lib/performance/selectorEngine";
-import { evaluateStrengthGate, readWeeklyPairStrengths } from "@/lib/strength/weeklyStrength";
+import { readWeeklyPairStrengths } from "@/lib/strength/weeklyStrength";
+import { loadWeeklyAdrMap, getAdrPct, getTargetAdrPct } from "@/lib/performance/adrLookup";
 
 // ─── Trade types (strategy-generic) ─────────────────────────────
 // "WeeklyHoldTrade" name kept for backward compat; represents any strategy trade.
@@ -115,39 +116,34 @@ function inferAssetClass(symbol: string): string {
   return "fx";
 }
 
-async function applyStrengthGate(
+async function applyOverlay(
   result: WeeklyHoldResult,
   strengthGate: StrengthGateConfig | undefined,
 ): Promise<WeeklyHoldResult> {
-  if (strengthGate?.id !== "strength_gate") return result;
+  if (strengthGate?.id !== "adr_normalized") return result;
 
-  const strengthRows = await readWeeklyPairStrengths(result.weekOpenUtc);
-  const strengthByPair = new Map(
-    strengthRows.map((row) => [row.pair.toUpperCase(), row]),
-  );
-  const passesStrengthGateForPosition = (
-    position: Pick<WeeklyHoldTrade, "symbol" | "direction">,
-  ) => {
-    const strengthRow = strengthByPair.get(position.symbol.toUpperCase());
-    if (!strengthRow) return true;
-    return evaluateStrengthGate(strengthRow, position.direction).passes;
-  };
+  const adrMap = await loadWeeklyAdrMap(result.weekOpenUtc);
+  const targetAdr = getTargetAdrPct();
 
-  const filteredTrades = result.trades.filter((trade) => passesStrengthGateForPosition(trade));
-  const filteredSignals = result.signals.filter((signal) => passesStrengthGateForPosition(signal));
-  const wins = filteredTrades.filter((trade) => trade.returnPct > 0).length;
-  const losses = filteredTrades.filter((trade) => trade.returnPct <= 0).length;
-  const totalReturn = filteredTrades.reduce((sum, trade) => sum + trade.returnPct, 0);
+  const normalizedTrades = result.trades.map((trade) => {
+    const pairAdr = trade.detail?.adrPct && trade.detail.adrPct > 0
+      ? trade.detail.adrPct
+      : getAdrPct(adrMap, trade.symbol, trade.assetClass);
+    const multiplier = targetAdr / pairAdr;
+    return { ...trade, returnPct: trade.returnPct * multiplier };
+  });
+
+  const totalReturn = normalizedTrades.reduce((s, t) => s + t.returnPct, 0);
+  const wins = normalizedTrades.filter((t) => t.returnPct > 0).length;
+  const losses = normalizedTrades.filter((t) => t.returnPct <= 0).length;
 
   return {
     ...result,
-    trades: filteredTrades,
-    signals: filteredSignals,
+    trades: normalizedTrades,
     totalReturnPct: totalReturn,
     winCount: wins,
     lossCount: losses,
-    winRate: filteredTrades.length > 0 ? (wins / filteredTrades.length) * 100 : 0,
-    tradeCount: filteredTrades.length,
+    winRate: normalizedTrades.length > 0 ? (wins / normalizedTrades.length) * 100 : 0,
   };
 }
 
@@ -196,6 +192,21 @@ async function resolveDirections(
 
   if (biasSource.id === "selector_sentiment_override") {
     return resolveSelectorDirections(weekOpenUtc);
+  }
+
+  if (biasSource.id === "strength") {
+    const strengthRows = await readWeeklyPairStrengths(weekOpenUtc);
+    const map: DirectionMap = new Map();
+    for (const row of strengthRows) {
+      if (row.compositeDirection === "NEUTRAL") continue;
+      map.set(row.pair.toUpperCase(), {
+        direction: row.compositeDirection,
+        source: "strength",
+        tier: null,
+        assetClass: row.assetClass,
+      });
+    }
+    return map;
   }
 
   // Build per-pair maps for composite strategies
@@ -497,7 +508,7 @@ export async function computeWeeklyHold(
   if (executor) {
     console.log(`[engine] Routing to ${plModel} executor for ${weekOpenUtc}`);
     const result = await executor(biasSource, weekOpenUtc);
-    return applyStrengthGate(result, strengthGate);
+    return applyOverlay(result, strengthGate);
   }
 
   // Default: weekly hold (open→close from pair_period_returns)
@@ -565,7 +576,7 @@ export async function computeWeeklyHold(
     signals,
     isRealized,
   };
-  return applyStrengthGate(result, strengthGate);
+  return applyOverlay(result, strengthGate);
 }
 
 export async function computeMultiWeekHold(

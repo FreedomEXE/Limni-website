@@ -92,6 +92,13 @@ export const STRATEGIES: StrategyConfig[] = [
     description: "Selector Sentiment Override: follow sentiment unless stretched+weakening → COT override",
     cardBreakdown: "asset_class",
   },
+  {
+    id: "strength",
+    label: "Strength",
+    type: "single",
+    description: "Multi-timeframe currency strength composite (1h+4h+24h)",
+    cardBreakdown: "asset_class",
+  },
 ];
 
 /* ─── Filter 1 (entry style) ──────────────────────────────────── */
@@ -160,12 +167,12 @@ export const STRENGTH_GATES: StrengthGateConfig[] = [
   {
     id: "none",
     label: "None",
-    description: "No strength overlay gate",
+    description: "No overlay — raw 1:1 price mapping",
   },
   {
-    id: "strength_gate",
-    label: "Strength Gate",
-    description: "Keep FX setups only when multi-timeframe counter-pressure outweighs pro-trend pressure",
+    id: "adr_normalized",
+    label: "ADR Normalized",
+    description: "Equalize position risk across asset classes via ADR-based normalization",
   },
 ];
 

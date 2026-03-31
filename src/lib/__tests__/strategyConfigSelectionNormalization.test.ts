@@ -2,15 +2,15 @@ import { describe, expect, it } from "vitest";
 import { normalizeFilterSelection } from "@/lib/performance/strategyConfig";
 
 describe("performance/strategyConfig filter normalization", () => {
-  it("preserves new-style entry-style and strength-gate params", () => {
+  it("preserves new-style entry-style and overlay params", () => {
     expect(
       normalizeFilterSelection({
         f1: "adr_pullback",
-        f2: "strength_gate",
+        f2: "adr_normalized",
       }),
     ).toEqual({
       f1: "adr_pullback",
-      f2: "strength_gate",
+      f2: "adr_normalized",
     });
   });
 

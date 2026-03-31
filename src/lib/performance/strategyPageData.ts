@@ -75,10 +75,6 @@ type AdrTradeWatermarkRow = {
   trade_count: number;
 };
 
-type StrengthWatermarkRow = {
-  week_open_utc: string;
-  max_snapshot_time_utc: string | null;
-};
 
 export type StrategySelection = {
   strategyId: string;
@@ -270,7 +266,7 @@ async function readWeekFingerprints(
 
   const uniqueReportDates = Array.from(new Set(weekOptions.map((week) => deriveCotReportDate(week))));
 
-  const [pairRows, cotRows, sentimentRows, adrRunRow, strengthRows] = await Promise.all([
+  const [pairRows, cotRows, sentimentRows, adrRunRow] = await Promise.all([
     query<WeekWatermarkRow>(
       `SELECT period_open_utc::text AS week_open_utc,
               MAX(updated_at)::text AS max_updated_at,
@@ -315,42 +311,6 @@ async function readWeekFingerprints(
           [],
         )
       : Promise.resolve(null),
-    strengthGate?.id === "strength_gate"
-      ? query<StrengthWatermarkRow>(
-          `WITH requested AS (
-             SELECT unnest($1::timestamptz[]) AS week_open_utc
-           ),
-           currency_marks AS (
-             SELECT requested.week_open_utc,
-                    MAX(css.snapshot_time_utc) AS max_snapshot_time_utc
-               FROM requested
-               LEFT JOIN currency_strength_snapshots css
-                 ON css.snapshot_time_utc <= requested.week_open_utc
-                AND css."window" IN ('1h', '4h', '24h')
-              GROUP BY requested.week_open_utc
-           ),
-           asset_marks AS (
-             SELECT requested.week_open_utc,
-                    MAX(ass.snapshot_time_utc) AS max_snapshot_time_utc
-               FROM requested
-               LEFT JOIN asset_strength_snapshots ass
-                 ON ass.snapshot_time_utc <= requested.week_open_utc
-                AND ass."window" IN ('1h', '4h', '24h')
-              GROUP BY requested.week_open_utc
-           )
-           SELECT requested.week_open_utc::text AS week_open_utc,
-                  GREATEST(
-                    currency_marks.max_snapshot_time_utc,
-                    asset_marks.max_snapshot_time_utc
-                  )::text AS max_snapshot_time_utc
-             FROM requested
-             LEFT JOIN currency_marks
-               ON currency_marks.week_open_utc = requested.week_open_utc
-             LEFT JOIN asset_marks
-               ON asset_marks.week_open_utc = requested.week_open_utc`,
-          [weekOptions],
-        )
-      : Promise.resolve([]),
   ]);
 
   const adrTradeRows = entryStyle?.plModel === "adr" && adrRunRow?.id
@@ -383,10 +343,6 @@ async function readWeekFingerprints(
   const adrByWeek = new Map(
     adrTradeRows.map((row) => [row.week_open_utc, row]),
   );
-  const strengthByWeek = new Map(
-    strengthRows.map((row) => [row.week_open_utc, row]),
-  );
-
   const fingerprints: Record<string, string> = {};
   for (const weekOpenUtc of weekOptions) {
     const pairRow = pairByWeek.get(weekOpenUtc);
@@ -394,7 +350,6 @@ async function readWeekFingerprints(
     const cotRow = cotByReportDate.get(reportDate);
     const sentimentRow = sentimentByWeek.get(weekOpenUtc);
     const adrRow = adrByWeek.get(weekOpenUtc);
-    const strengthRow = strengthByWeek.get(weekOpenUtc);
 
     fingerprints[weekOpenUtc] = [
       `pair:${normalizeStamp(pairRow?.max_updated_at)}`,
@@ -404,7 +359,7 @@ async function readWeekFingerprints(
       `sentt:${normalizeStamp(sentimentRow?.max_timestamp_utc)}`,
       `adr-run:${normalizeStamp(adrRunRow?.updated_at)}`,
       `adr:${normalizeStamp(adrRow?.max_created_at)}:${normalizeStamp(adrRow?.max_entry_time_utc)}:${adrRow?.trade_count ?? 0}`,
-      `strength:${normalizeStamp(strengthRow?.max_snapshot_time_utc)}`,
+      `overlay:${strengthGate?.id ?? "none"}`,
     ].join("|");
   }
 
