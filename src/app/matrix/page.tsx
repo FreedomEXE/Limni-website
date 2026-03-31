@@ -20,10 +20,9 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
-import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 import {
   buildStrategySelectionKey,
-  listStrategyBootstrapSelections,
+  loadStrategyBootstrapMap,
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
 
@@ -80,12 +79,7 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
   const [strategySelectionEntries, weeklyReturnEntries] = await Promise.all([
     // Guardrail: Matrix week/strategy switching must read from this bootstrapped
     // selection map on the client instead of re-running historical loaders.
-    Promise.all(
-      listStrategyBootstrapSelections().map(async (selection) => [
-        buildStrategySelectionKey(selection),
-        await loadStrategyPageData(selection),
-      ] as const),
-    ),
+    loadStrategyBootstrapMap(),
     Promise.all(
       weeks.map(async (week) => [week, await getWeeklyPairReturns(week)] as const),
     ),

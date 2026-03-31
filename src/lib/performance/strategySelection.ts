@@ -14,6 +14,7 @@
 
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import { ENTRY_STYLE_FILTERS, STRATEGIES, STRENGTH_GATES } from "@/lib/performance/strategyConfig";
+import { loadStrategyPageData, type StrategyPageData } from "@/lib/performance/strategyPageData";
 
 export const STRATEGY_SELECTION_COMMIT_EVENT = "limni:strategy-selection-commit";
 export const STRATEGY_SIDEBAR_STATS_EVENT = "limni:strategy-sidebar-stats";
@@ -70,4 +71,26 @@ export function listStrategyBootstrapSelections(): StrategyBootstrapSelection[] 
       })),
     ),
   );
+}
+
+const BOOTSTRAP_CONCURRENCY = 4;
+
+export async function loadStrategyBootstrapMap(): Promise<
+  [string, StrategyPageData | null][]
+> {
+  const selections = listStrategyBootstrapSelections();
+  const results: [string, StrategyPageData | null][] = [];
+
+  for (let i = 0; i < selections.length; i += BOOTSTRAP_CONCURRENCY) {
+    const batch = selections.slice(i, i + BOOTSTRAP_CONCURRENCY);
+    const batchResults = await Promise.all(
+      batch.map(async (selection): Promise<[string, StrategyPageData | null]> => [
+        buildStrategySelectionKey(selection),
+        await loadStrategyPageData(selection),
+      ]),
+    );
+    results.push(...batchResults);
+  }
+
+  return results;
 }

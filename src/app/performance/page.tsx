@@ -46,11 +46,10 @@ import {
   normalizeFilterSelection,
   resolveBiasSourceId,
 } from "@/lib/performance/strategyConfig";
-import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 import type { EngineGridProps, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import {
   buildStrategySelectionKey,
-  listStrategyBootstrapSelections,
+  loadStrategyBootstrapMap,
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
 
@@ -1140,12 +1139,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   };
   // Guardrail: Performance stays fast only if the full strategy/filter grid is
   // loaded here once and switched locally in the client view.
-  const strategySelectionEntries = await Promise.all(
-    listStrategyBootstrapSelections().map(async (selection) => [
-      buildStrategySelectionKey(selection),
-      await loadStrategyPageData(selection),
-    ] as const),
-  );
+  const strategySelectionEntries = await loadStrategyBootstrapMap();
   const strategyDataMap = Object.fromEntries(
     strategySelectionEntries.map(([selectionKey, strategyData]) => [
       selectionKey,
