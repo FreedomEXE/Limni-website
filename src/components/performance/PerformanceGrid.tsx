@@ -105,6 +105,7 @@ const MODEL_ORDER: PerformanceModel[] = [
   "dealer",
   "commercial",
   "sentiment",
+  "strength",
 ];
 
 function sortModels(models: ModelPerformance[]) {

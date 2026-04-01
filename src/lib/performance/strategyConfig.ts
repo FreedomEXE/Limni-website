@@ -29,10 +29,10 @@ export type StrategyConfig = {
   label: string;
   type: StrategyType;
   description: string;
-  /** What the 3 performance cards represent for this source */
+  /** What the performance cards represent for this source */
   cardBreakdown: "asset_class" | "tiers" | "per_model";
-  /** For tandem-type strategies: which 3 models fill the card slots. */
-  models?: [PerformanceModel, PerformanceModel, PerformanceModel];
+  /** For per-model strategies: which models fill the rendered slots. */
+  models?: readonly PerformanceModel[];
 };
 
 export const SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID = "selector_sentiment_override";
@@ -86,17 +86,9 @@ export const STRATEGIES: StrategyConfig[] = [
     id: "tandem",
     label: "Tandem",
     type: "tandem",
-    description: "Dealer + Commercial + Sentiment running independently",
+    description: "Dealer + Commercial + Sentiment + Strength running independently",
     cardBreakdown: "per_model",
-    models: ["dealer", "commercial", "sentiment"],
-  },
-  {
-    id: "tandem_3",
-    label: "Tandem 3",
-    type: "tandem",
-    description: "Dealer + Sentiment + Strength running independently",
-    cardBreakdown: "per_model",
-    models: ["dealer", "sentiment", "strength"],
+    models: ["dealer", "commercial", "sentiment", "strength"],
   },
   {
     id: SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID,
