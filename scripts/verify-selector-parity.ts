@@ -33,7 +33,7 @@ const SELECTOR_REPORT_PATH = path.resolve(
   "weekly-bias-context-selector-latest.json",
 );
 
-const CANONICAL = { returnPct: 126.47, maxDdPct: -16.60 };
+const CANONICAL = { returnPct: 134.30, maxDdPct: -4.71 };
 
 async function main() {
   const selectorReport = JSON.parse(readFileSync(SELECTOR_REPORT_PATH, "utf8"));
