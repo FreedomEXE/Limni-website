@@ -46,7 +46,7 @@ const EXTREME_THRESHOLD = 0.8;
 const SELECTOR_ENGINE_CACHE_TTL_MS = Number(
   process.env.SELECTOR_ENGINE_CACHE_TTL_MS ?? "300000",
 );
-const SELECTOR_ENGINE_VERSION = "selector-engine-v4";
+export const SELECTOR_ENGINE_VERSION = "selector-engine-v4";
 
 // ── Types ──────────────────────────────────────────────────────────
 

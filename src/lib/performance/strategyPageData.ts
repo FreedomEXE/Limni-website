@@ -44,6 +44,7 @@ import {
   readStrategyArtifactEntry,
   type StrategyArtifactFingerprint,
 } from "@/lib/performance/strategyArtifactCache";
+import { SELECTOR_ENGINE_VERSION } from "@/lib/performance/selectorEngine";
 import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
@@ -250,7 +251,7 @@ async function buildStrategyFingerprint(options: {
 }): Promise<StrategyArtifactFingerprint> {
   const { weekOptions, currentWeekOpenUtc, entryStyle, strengthGate } = options;
   return {
-    engineVersion: STRATEGY_ARTIFACT_ENGINE_VERSION,
+    engineVersion: `${STRATEGY_ARTIFACT_ENGINE_VERSION}:${SELECTOR_ENGINE_VERSION}`,
     currentWeekOpenUtc,
     weekOptionsSignature: buildWeekOptionsSignature(weekOptions),
     weekFingerprints: await readWeekFingerprints(weekOptions, entryStyle, strengthGate),
