@@ -43,10 +43,11 @@ import { weekOpenFromCotReportDate } from "@/lib/performance/gateEvaluation";
 const COT_LOOKBACK_WEEKS = 156;
 const SENTIMENT_LOOKBACK_WEEKS = 52;
 const EXTREME_THRESHOLD = 0.8;
+const MAX_COT_STALENESS_WEEKS = 26;
 const SELECTOR_ENGINE_CACHE_TTL_MS = Number(
   process.env.SELECTOR_ENGINE_CACHE_TTL_MS ?? "300000",
 );
-const SELECTOR_ENGINE_VERSION = "selector-engine-v2";
+const SELECTOR_ENGINE_VERSION = "selector-engine-v3";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -215,6 +216,15 @@ function computeCotMetrics(
   }
   if (snapshotIndex < 0) return { score: 0, extremity: 0 };
 
+  // COT freshness gate: if the latest snapshot is too old, the min-max
+  // normalization produces misleading relative scores (e.g. "least short
+  // in frozen history" reads as LONG even though absolute positioning is SHORT).
+  const latestSnapshotMs = history[snapshotIndex]!.weekOpenMs;
+  const stalenessWeeks = (targetMs - latestSnapshotMs) / (7 * 24 * 60 * 60 * 1000);
+  if (stalenessWeeks > MAX_COT_STALENESS_WEEKS) {
+    return { score: 0, extremity: 0 };
+  }
+
   const slice = history.slice(Math.max(0, snapshotIndex + 1 - COT_LOOKBACK_WEEKS), snapshotIndex + 1);
   const baseSeries = slice
     .map((row) => resolveMarketBias(row.snapshot.currencies[pairDef.base]!, mode)?.net ?? null)
@@ -271,8 +281,19 @@ function computeSentimentMetrics(
 
   const lookbackSeries = selectedWeeklyValues.slice(-SENTIMENT_LOOKBACK_WEEKS);
   const currentAggNet = history[currentIndex]!.aggNet;
+
   const index = minMaxIndex(lookbackSeries, currentAggNet);
   const centered = clamp((index - 50) / 50, -1, 1);
+
+  // Zero-variance guard: when all lookback values are identical, minMaxIndex
+  // returns 50 → centered 0 → score 0, losing the signal entirely. This only
+  // happens with very thin or flat data (e.g. crypto early weeks). Fall back to
+  // the raw agg_net sign as a contrarian signal at moderate strength so the
+  // policy follows it directly without triggering the COT override path.
+  if (Math.abs(centered) < 0.000001 && Math.abs(currentAggNet) >= 0.5) {
+    const rawScore = currentAggNet > 0 ? -0.5 : 0.5; // contrarian
+    return { score: rawScore, extremity: 0.5 };
+  }
 
   return {
     score: -centered, // contrarian: crowded long → SHORT
