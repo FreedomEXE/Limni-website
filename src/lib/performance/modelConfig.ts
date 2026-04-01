@@ -10,6 +10,7 @@ export const PERFORMANCE_MODELS: PerformanceModel[] = [
   "dealer",
   "commercial",
   "sentiment",
+  "strength",
 ];
 
 export const PERFORMANCE_V1_MODELS: PerformanceModel[] = [
@@ -48,6 +49,7 @@ export const PERFORMANCE_MODEL_LABELS: Record<PerformanceModel, string> = {
   dealer: "Dealer",
   commercial: "Commercial",
   sentiment: "Sentiment",
+  strength: "Strength",
   antikythera: "Antikythera",
   antikythera_v2: "Antikythera",
   antikythera_v3: "Antikythera",

@@ -252,11 +252,36 @@ async function resolveDirections(
     return map;
   }
 
-  if (biasSource.id === "tandem") {
+  if (biasSource.type === "tandem" && biasSource.models) {
     const map: DirectionMap = new Map();
-    for (const [pair, entry] of dealerMap) map.set(`${pair}:dealer`, { ...entry, source: "dealer" });
-    for (const [pair, entry] of commMap) map.set(`${pair}:commercial`, { ...entry, source: "commercial" });
-    for (const [pair, entry] of sentMap) map.set(`${pair}:sentiment`, { ...entry, source: "sentiment" });
+    const modelSignalMap: Partial<Record<string, DirectionMap>> = {
+      dealer: dealerMap,
+      commercial: commMap,
+      sentiment: sentMap,
+    };
+
+    if (biasSource.models.includes("strength")) {
+      const strengthRows = await readWeeklyPairStrengths(weekOpenUtc);
+      const strengthMap: DirectionMap = new Map();
+      for (const row of strengthRows) {
+        if (row.compositeDirection === "NEUTRAL") continue;
+        strengthMap.set(row.pair.toUpperCase(), {
+          direction: row.compositeDirection,
+          source: "strength",
+          tier: null,
+          assetClass: row.assetClass,
+        });
+      }
+      modelSignalMap.strength = strengthMap;
+    }
+
+    for (const modelId of biasSource.models) {
+      const sourceMap = modelSignalMap[modelId];
+      if (!sourceMap) continue;
+      for (const [pair, entry] of sourceMap) {
+        map.set(`${pair}:${modelId}`, { ...entry, source: modelId });
+      }
+    }
     return map;
   }
 
@@ -317,7 +342,7 @@ async function executeAdr(
   // Build approval lookup.
   // For non-tandem: symbol → Set of approved directions (simple filter).
   // For tandem: symbol → array of { direction, source } entries (one trade per approving model).
-  const isTandem = biasSource.id === "tandem";
+  const isTandem = biasSource.type === "tandem";
   const approvedDirections = new Map<string, Set<string>>();
   const tandemApprovals = new Map<string, Array<{ direction: string; source: string }>>();
 

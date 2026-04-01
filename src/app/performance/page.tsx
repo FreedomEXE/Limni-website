@@ -169,6 +169,7 @@ const STANDALONE_MODEL_SYSTEM_ID: Record<PerformanceModel, string> = {
   dealer: "model_dealer",
   commercial: "model_commercial",
   sentiment: "model_sentiment",
+  strength: "model_strength",
 };
 
 const TIERED_GRID_LABELS: Record<PerformanceModel, string> = {

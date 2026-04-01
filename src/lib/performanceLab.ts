@@ -32,6 +32,7 @@ export type PerformanceModel =
   | "dealer"
   | "commercial"
   | "sentiment"
+  | "strength"
   | "antikythera"
   | "antikythera_v2"
   | "antikythera_v3";
@@ -335,6 +336,10 @@ function buildModelPairs(options: {
     return buildAntikytheraPairs(assetClass, snapshot, sentiment, effectiveSystem);
   }
 
+  if (model === "strength") {
+    return {};
+  }
+
   const biasMode: BiasMode = model;
   return buildBiasPairs(assetClass, snapshot, biasMode);
 }
@@ -368,7 +373,9 @@ function biasReason(
       ? "Blended"
       : model === "dealer"
         ? "Dealer"
-        : "Commercial";
+        : model === "commercial"
+          ? "Commercial"
+          : "Strength";
   if (assetClass === "fx") {
     return [
       `${label} bias: base ${info.base_bias.toLowerCase()} vs quote ${info.quote_bias.toLowerCase()}`,

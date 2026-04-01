@@ -15,6 +15,7 @@ describe("performance model config", () => {
       "dealer",
       "commercial",
       "sentiment",
+      "strength",
     ]);
   });
 

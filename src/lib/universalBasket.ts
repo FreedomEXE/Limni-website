@@ -586,6 +586,7 @@ const MODEL_LABELS: Record<PerformanceModel, string> = {
   dealer: "Dealer",
   commercial: "Commercial",
   sentiment: "Sentiment",
+  strength: "Strength",
 };
 
 export async function simulateTrailingForGroupsFromRows(options: {

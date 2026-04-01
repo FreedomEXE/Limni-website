@@ -52,6 +52,7 @@ const MODEL_TO_TIER: Record<PerformanceModel, CanonicalWeeklyTier | null> = {
   dealer: "MEDIUM",
   commercial: "LOW",
   sentiment: null,
+  strength: null,
 };
 
 const ASSET_CLASS_BY_PAIR = new Map<string, string>(

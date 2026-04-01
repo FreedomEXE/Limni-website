@@ -18,7 +18,7 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import type { WeeklyHoldResult, WeeklyHoldTrade, MultiWeekResult, TradeDetail } from "@/lib/performance/weeklyHoldEngine";
+import type { WeeklyHoldResult, WeeklyHoldTrade, MultiWeekResult } from "@/lib/performance/weeklyHoldEngine";
 import type { BiasSourceConfig } from "@/lib/performance/strategyConfig";
 import type { ModelPerformance, PerformanceModel, TradeDetailMeta } from "@/lib/performanceLab";
 import { computeReturnStats } from "@/lib/performanceLab";
@@ -26,17 +26,24 @@ import { PERFORMANCE_MODEL_LABELS } from "@/lib/performance/modelConfig";
 
 // ─── Card slot mapping ──────────────────────────────────────────
 
-const CARD_SLOTS: [PerformanceModel, PerformanceModel, PerformanceModel] = [
+const DEFAULT_CARD_SLOTS: [PerformanceModel, PerformanceModel, PerformanceModel] = [
   "dealer",
   "commercial",
   "sentiment",
 ];
+
+function resolveCardSlots(
+  biasSource: BiasSourceConfig,
+): [PerformanceModel, PerformanceModel, PerformanceModel] {
+  return biasSource.models ?? DEFAULT_CARD_SLOTS;
+}
 
 const ASSET_CLASS_LABELS: Record<PerformanceModel, string> = {
   ...PERFORMANCE_MODEL_LABELS,
   dealer: "FX",
   commercial: "Commodities & Indices",
   sentiment: "Crypto",
+  strength: "Strength",
 };
 
 const TIER_LABELS: Record<PerformanceModel, string> = {
@@ -44,6 +51,7 @@ const TIER_LABELS: Record<PerformanceModel, string> = {
   dealer: "Tier 1 — High Confidence",
   commercial: "Tier 2 — Medium Confidence",
   sentiment: "Tier 3 — Low Confidence",
+  strength: "Strength",
 };
 
 const PER_MODEL_LABELS: Record<PerformanceModel, string> = {
@@ -51,6 +59,7 @@ const PER_MODEL_LABELS: Record<PerformanceModel, string> = {
   dealer: "Dealer Portfolio",
   commercial: "Commercial Portfolio",
   sentiment: "Sentiment Portfolio",
+  strength: "Strength Portfolio",
 };
 
 const ASSET_SECTIONS = [
@@ -80,17 +89,21 @@ function groupByTier(trades: WeeklyHoldTrade[]): SlottedTrades {
   ];
 }
 
-function groupByModel(trades: WeeklyHoldTrade[]): SlottedTrades {
+function groupByModel(
+  trades: WeeklyHoldTrade[],
+  models: [PerformanceModel, PerformanceModel, PerformanceModel],
+): SlottedTrades {
   return [
-    trades.filter((t) => t.source === "dealer"),
-    trades.filter((t) => t.source === "commercial"),
-    trades.filter((t) => t.source === "sentiment"),
+    trades.filter((t) => t.source === models[0]),
+    trades.filter((t) => t.source === models[1]),
+    trades.filter((t) => t.source === models[2]),
   ];
 }
 
 function slotTrades(
   trades: WeeklyHoldTrade[],
   breakdown: BiasSourceConfig["cardBreakdown"],
+  models: [PerformanceModel, PerformanceModel, PerformanceModel],
 ): SlottedTrades {
   switch (breakdown) {
     case "asset_class":
@@ -98,7 +111,7 @@ function slotTrades(
     case "tiers":
       return groupByTier(trades);
     case "per_model":
-      return groupByModel(trades);
+      return groupByModel(trades, models);
   }
 }
 
@@ -266,12 +279,13 @@ export function weeklyHoldToGridProps(
   selectionLabel = "Weekly Hold",
 ): EngineGridProps {
   const { trades } = result;
+  const cardSlots = resolveCardSlots(biasSource);
   const labels = getLabels(biasSource.cardBreakdown);
-  const slotted = slotTrades(trades, biasSource.cardBreakdown);
+  const slotted = slotTrades(trades, biasSource.cardBreakdown, cardSlots);
 
-  const slotLabels = [labels[CARD_SLOTS[0]], labels[CARD_SLOTS[1]], labels[CARD_SLOTS[2]]];
+  const slotLabels = [labels[cardSlots[0]], labels[cardSlots[1]], labels[cardSlots[2]]];
 
-  const models: ModelPerformance[] = CARD_SLOTS.map((slot, i) =>
+  const models: ModelPerformance[] = cardSlots.map((slot, i) =>
     tradesToModelPerformance(slot, slotted[i], `${slotLabels[i]} contribution for ${weekLabel}.`),
   );
 
@@ -281,12 +295,12 @@ export function weeklyHoldToGridProps(
   if (biasSource.cardBreakdown !== "asset_class") {
     for (const ac of ASSET_SECTIONS) {
       const acTrades = trades.filter((t) => t.assetClass === ac.id);
-      const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown);
+      const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
       perAsset.push({
         id: ac.id,
         label: ac.label,
         description: `${ac.label} contribution`,
-        models: CARD_SLOTS.map((slot, i) =>
+        models: cardSlots.map((slot, i) =>
           tradesToModelPerformance(slot, acSlotted[i], `${slotLabels[i]} — ${ac.label}.`),
         ),
       });
@@ -314,8 +328,9 @@ export function multiWeekToGridProps(
   biasSource: BiasSourceConfig,
   selectionLabel = "Weekly Hold",
 ): EngineGridProps {
+  const cardSlots = resolveCardSlots(biasSource);
   const labels = getLabels(biasSource.cardBreakdown);
-  const slotLabels = [labels[CARD_SLOTS[0]], labels[CARD_SLOTS[1]], labels[CARD_SLOTS[2]]];
+  const slotLabels = [labels[cardSlots[0]], labels[cardSlots[1]], labels[cardSlots[2]]];
 
   // Aggregate trades across all weeks, grouped per-week for returns array
   const weeklySlotReturns: [
@@ -325,7 +340,7 @@ export function multiWeekToGridProps(
   ] = [[], [], []];
 
   for (const week of result.weeks) {
-    const slotted = slotTrades(week.trades, biasSource.cardBreakdown);
+    const slotted = slotTrades(week.trades, biasSource.cardBreakdown, cardSlots);
     for (let i = 0; i < 3; i++) {
       const weekReturn = slotted[i].reduce((s, t) => s + t.returnPct, 0);
       weeklySlotReturns[i].push({
@@ -335,7 +350,7 @@ export function multiWeekToGridProps(
     }
   }
 
-  const models: ModelPerformance[] = CARD_SLOTS.map((slot, i) => ({
+  const models: ModelPerformance[] = cardSlots.map((slot, i) => ({
     model: slot,
     percent: weeklySlotReturns[i].reduce((s, r) => s + r.percent, 0),
     priced: weeklySlotReturns[i].length,
@@ -352,7 +367,7 @@ export function multiWeekToGridProps(
     diagnostics: { max_drawdown: null, profit_factor: null },
   }));
 
-  const allTimeCombined = CARD_SLOTS.map((slot, i) => ({
+  const allTimeCombined = cardSlots.map((slot, i) => ({
     model: slot,
     totalPercent: weeklySlotReturns[i].reduce((s, r) => s + r.percent, 0),
     weeks: weeklySlotReturns[i].length,
@@ -367,7 +382,7 @@ export function multiWeekToGridProps(
       const weeklyAcSlotReturns: typeof weeklySlotReturns = [[], [], []];
       for (const week of result.weeks) {
         const acTrades = week.trades.filter((t) => t.assetClass === ac.id);
-        const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown);
+        const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
         for (let i = 0; i < 3; i++) {
           const weekReturn = acSlotted[i].reduce((s, t) => s + t.returnPct, 0);
           weeklyAcSlotReturns[i].push({
@@ -376,7 +391,7 @@ export function multiWeekToGridProps(
           });
         }
       }
-      allTimePerAsset[ac.id] = CARD_SLOTS.map((slot, i) => ({
+      allTimePerAsset[ac.id] = cardSlots.map((slot, i) => ({
         model: slot,
         totalPercent: weeklyAcSlotReturns[i].reduce((s, r) => s + r.percent, 0),
         weeks: weeklyAcSlotReturns[i].length,
@@ -393,7 +408,7 @@ export function multiWeekToGridProps(
       const weeklyAcSlotReturns: typeof weeklySlotReturns = [[], [], []];
       for (const week of result.weeks) {
         const acTrades = week.trades.filter((t) => t.assetClass === ac.id);
-        const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown);
+        const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
         for (let i = 0; i < 3; i++) {
           const weekReturn = acSlotted[i].reduce((s, t) => s + t.returnPct, 0);
           weeklyAcSlotReturns[i].push({
@@ -406,7 +421,7 @@ export function multiWeekToGridProps(
         id: ac.id,
         label: ac.label,
         description: `${ac.label} contribution across ${result.weeks.length} weeks`,
-        models: CARD_SLOTS.map((slot, i) => ({
+        models: cardSlots.map((slot, i) => ({
           model: slot,
           percent: weeklyAcSlotReturns[i].reduce((s, r) => s + r.percent, 0),
           priced: weeklyAcSlotReturns[i].length,
@@ -470,16 +485,17 @@ export function singleWeekToSimulation(
   weekLabel: string,
   selectionLabel = "Weekly Hold",
 ): EngineSimulationGroup {
+  const cardSlots = resolveCardSlots(biasSource);
   const labels = getLabels(biasSource.cardBreakdown);
-  const slotLabels = [labels[CARD_SLOTS[0]], labels[CARD_SLOTS[1]], labels[CARD_SLOTS[2]]];
-  const slotted = slotTrades(result.trades, biasSource.cardBreakdown);
+  const slotLabels = [labels[cardSlots[0]], labels[cardSlots[1]], labels[cardSlots[2]]];
+  const slotted = slotTrades(result.trades, biasSource.cardBreakdown, cardSlots);
 
   const weekStart = result.weekOpenUtc;
   // Approximate week end (5 days later)
   const endDate = new Date(new Date(weekStart).getTime() + 5 * 24 * 60 * 60 * 1000);
   const weekEnd = endDate.toISOString();
 
-  const series = CARD_SLOTS.map((slot, i) => {
+  const series = cardSlots.map((slot, i) => {
     const slotReturn = slotted[i].reduce((s, t) => s + t.returnPct, 0);
     return {
       id: slot,
@@ -519,14 +535,15 @@ export function multiWeekToSimulation(
   biasSource: BiasSourceConfig,
   selectionLabel = "Weekly Hold",
 ): EngineSimulationGroup {
+  const cardSlots = resolveCardSlots(biasSource);
   const labels = getLabels(biasSource.cardBreakdown);
-  const slotLabels = [labels[CARD_SLOTS[0]], labels[CARD_SLOTS[1]], labels[CARD_SLOTS[2]]];
+  const slotLabels = [labels[cardSlots[0]], labels[cardSlots[1]], labels[cardSlots[2]]];
 
   // Build one cumulative equity curve per card slot
-  const series = CARD_SLOTS.map((slot, i) => {
+  const series = cardSlots.map((slot, i) => {
     let cumulative = 0;
     const points = result.weeks.map((week) => {
-      const slotted = slotTrades(week.trades, biasSource.cardBreakdown);
+      const slotted = slotTrades(week.trades, biasSource.cardBreakdown, cardSlots);
       const weekReturn = slotted[i].reduce((s, t) => s + t.returnPct, 0);
       cumulative += weekReturn;
       return {

@@ -10,18 +10,12 @@ import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { getAdaptiveTrailProfile, type AdaptiveTrailProfile } from "@/lib/adaptiveTrailProfile";
+import type { PerformanceModel } from "@/lib/performanceLab";
 
 export type BasketSignal = {
   symbol: string;
   direction: "LONG" | "SHORT" | "NEUTRAL";
-  model:
-    | "antikythera"
-    | "antikythera_v2"
-    | "antikythera_v3"
-    | "blended"
-    | "dealer"
-    | "commercial"
-    | "sentiment";
+  model: PerformanceModel;
   asset_class: AssetClass;
 };
 

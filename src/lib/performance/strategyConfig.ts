@@ -20,6 +20,8 @@
 
 /* ─── Strategy (directional bias source) ──────────────────────── */
 
+import type { PerformanceModel } from "@/lib/performanceLab";
+
 export type StrategyType = "single" | "tiered" | "agreement" | "tandem";
 
 export type StrategyConfig = {
@@ -29,6 +31,8 @@ export type StrategyConfig = {
   description: string;
   /** What the 3 performance cards represent for this source */
   cardBreakdown: "asset_class" | "tiers" | "per_model";
+  /** For tandem-type strategies: which 3 models fill the card slots. */
+  models?: [PerformanceModel, PerformanceModel, PerformanceModel];
 };
 
 export const SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID = "selector_sentiment_override";
@@ -82,8 +86,17 @@ export const STRATEGIES: StrategyConfig[] = [
     id: "tandem",
     label: "Tandem",
     type: "tandem",
-    description: "All 3 models running independently",
+    description: "Dealer + Commercial + Sentiment running independently",
     cardBreakdown: "per_model",
+    models: ["dealer", "commercial", "sentiment"],
+  },
+  {
+    id: "tandem_3",
+    label: "Tandem 3",
+    type: "tandem",
+    description: "Dealer + Sentiment + Strength running independently",
+    cardBreakdown: "per_model",
+    models: ["dealer", "sentiment", "strength"],
   },
   {
     id: SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID,

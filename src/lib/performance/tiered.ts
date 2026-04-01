@@ -175,6 +175,7 @@ export const TIERED_DISPLAY_LABELS: Record<PerformanceModel, string> = {
   dealer: "Tier 2",
   commercial: "Tier 3",
   sentiment: "Sentiment",
+  strength: "Strength",
   antikythera: "Antikythera",
   antikythera_v2: "Antikythera",
   antikythera_v3: "Tier 1",
