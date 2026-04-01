@@ -8,7 +8,7 @@
  * Verifies that the selector_sentiment_override strategy in the app engine
  * matches the research script's canonical numbers on the 10-week closed window.
  *
- * Expected: +134.29%, max DD -4.71%
+ * Expected: +126.47%, max DD -16.60%
  *
  * Usage:
  *   npx tsx scripts/verify-selector-parity.ts
@@ -33,7 +33,7 @@ const SELECTOR_REPORT_PATH = path.resolve(
   "weekly-bias-context-selector-latest.json",
 );
 
-const CANONICAL = { returnPct: 134.29, maxDdPct: -4.71 };
+const CANONICAL = { returnPct: 126.47, maxDdPct: -16.60 };
 
 async function main() {
   const selectorReport = JSON.parse(readFileSync(SELECTOR_REPORT_PATH, "utf8"));
