@@ -176,7 +176,7 @@ async function loadSentimentHistory(): Promise<Map<string, SentimentRow[]>> {
       const bySymbol = new Map<string, SentimentRow[]>();
       for (const row of rows) {
         const timestampMs = parseUtcSqlTimestampToMillis(row.timestamp_utc);
-        if (!Number.isFinite(timestampMs)) {
+        if (timestampMs === null) {
           continue;
         }
         const symbol = row.symbol.toUpperCase();
