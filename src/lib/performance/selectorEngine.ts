@@ -155,22 +155,33 @@ async function loadCotHistory(): Promise<Map<AssetClass, CotHistoryPoint[]>> {
 
 type SentimentRow = { ts: number; aggNet: number };
 
+const SENTIMENT_TIMESTAMP_ZONE = "America/New_York";
+
+function parseUtcSqlTimestampToMillis(value: string): number | null {
+  const parsed = DateTime.fromSQL(value, { zone: SENTIMENT_TIMESTAMP_ZONE });
+  return parsed.isValid ? parsed.toMillis() : null;
+}
+
 async function loadSentimentHistory(): Promise<Map<string, SentimentRow[]>> {
   return getOrSetRuntimeCache(
     `selectorEngine:sentimentHistory:${SELECTOR_ENGINE_VERSION}`,
     getSelectorEngineCacheTtlMs(),
     async () => {
-      const rows = await query<{ symbol: string; timestamp_utc: Date; agg_net: string | number }>(
-        `SELECT symbol, timestamp_utc, agg_net
+      const rows = await query<{ symbol: string; timestamp_utc: string; agg_net: string | number }>(
+        `SELECT symbol, timestamp_utc::text AS timestamp_utc, agg_net
            FROM sentiment_aggregates
           ORDER BY symbol ASC, timestamp_utc ASC`,
         [],
       );
       const bySymbol = new Map<string, SentimentRow[]>();
       for (const row of rows) {
+        const timestampMs = parseUtcSqlTimestampToMillis(row.timestamp_utc);
+        if (!Number.isFinite(timestampMs)) {
+          continue;
+        }
         const symbol = row.symbol.toUpperCase();
         const list = bySymbol.get(symbol) ?? [];
-        list.push({ ts: row.timestamp_utc.getTime(), aggNet: Number(row.agg_net) });
+        list.push({ ts: timestampMs, aggNet: Number(row.agg_net) });
         bySymbol.set(symbol, list);
       }
       return bySymbol;
