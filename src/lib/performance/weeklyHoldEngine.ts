@@ -213,7 +213,27 @@ async function resolveDirections(
   const dealerMap = signalsToDirectionMap(dealerSignals, "dealer");
   const commMap = signalsToDirectionMap(commercialSignals, "commercial");
   const sentMap = signalsToDirectionMap(sentimentSignals, "sentiment");
-  const allPairs = new Set([...dealerMap.keys(), ...commMap.keys(), ...sentMap.keys()]);
+  let strengthMap: DirectionMap = new Map();
+  const needsStrengthVotes =
+    biasSource.id === "tiered_3_nocomm"
+    || biasSource.id === "agree_2of3_nocomm"
+    || (biasSource.type === "tandem" && biasSource.models?.includes("strength"));
+
+  if (needsStrengthVotes) {
+    const strengthRows = await readWeeklyPairStrengths(weekOpenUtc);
+    strengthMap = new Map();
+    for (const row of strengthRows) {
+      if (row.compositeDirection === "NEUTRAL") continue;
+      strengthMap.set(row.pair.toUpperCase(), {
+        direction: row.compositeDirection,
+        source: "strength",
+        tier: null,
+        assetClass: row.assetClass,
+      });
+    }
+  }
+
+  const allPairs = new Set([...dealerMap.keys(), ...commMap.keys(), ...sentMap.keys(), ...strengthMap.keys()]);
 
   if (biasSource.id === "tiered_v3") {
     const map: DirectionMap = new Map();
@@ -252,6 +272,43 @@ async function resolveDirections(
     return map;
   }
 
+  if (biasSource.id === "tiered_3_nocomm") {
+    const map: DirectionMap = new Map();
+    for (const pair of allPairs) {
+      const de = dealerMap.get(pair);
+      const se = sentMap.get(pair);
+      const st = strengthMap.get(pair);
+      const ac = de?.assetClass ?? se?.assetClass ?? st?.assetClass ?? inferAssetClass(pair);
+      const votes = [de?.direction, se?.direction, st?.direction].filter(Boolean) as ("LONG" | "SHORT")[];
+      const longs = votes.filter((v) => v === "LONG").length;
+      const shorts = votes.filter((v) => v === "SHORT").length;
+
+      if (longs === 3) map.set(pair, { direction: "LONG", source: "tiered_3_nocomm", tier: 1, assetClass: ac });
+      else if (shorts === 3) map.set(pair, { direction: "SHORT", source: "tiered_3_nocomm", tier: 1, assetClass: ac });
+      else if (longs === 2) map.set(pair, { direction: "LONG", source: "tiered_3_nocomm", tier: 2, assetClass: ac });
+      else if (shorts === 2) map.set(pair, { direction: "SHORT", source: "tiered_3_nocomm", tier: 2, assetClass: ac });
+      else if (longs === 1 && shorts === 0) map.set(pair, { direction: "LONG", source: "tiered_3_nocomm", tier: 3, assetClass: ac });
+      else if (shorts === 1 && longs === 0) map.set(pair, { direction: "SHORT", source: "tiered_3_nocomm", tier: 3, assetClass: ac });
+    }
+    return map;
+  }
+
+  if (biasSource.id === "agree_2of3_nocomm") {
+    const map: DirectionMap = new Map();
+    for (const pair of allPairs) {
+      const de = dealerMap.get(pair);
+      const se = sentMap.get(pair);
+      const st = strengthMap.get(pair);
+      const ac = de?.assetClass ?? se?.assetClass ?? st?.assetClass ?? inferAssetClass(pair);
+      const votes = [de?.direction, se?.direction, st?.direction].filter(Boolean) as ("LONG" | "SHORT")[];
+      const longs = votes.filter((v) => v === "LONG").length;
+      const shorts = votes.filter((v) => v === "SHORT").length;
+      if (longs >= 2) map.set(pair, { direction: "LONG", source: "agree_2of3_nocomm", tier: null, assetClass: ac });
+      else if (shorts >= 2) map.set(pair, { direction: "SHORT", source: "agree_2of3_nocomm", tier: null, assetClass: ac });
+    }
+    return map;
+  }
+
   if (biasSource.type === "tandem" && biasSource.models) {
     const map: DirectionMap = new Map();
     const modelSignalMap: Partial<Record<string, DirectionMap>> = {
@@ -259,21 +316,7 @@ async function resolveDirections(
       commercial: commMap,
       sentiment: sentMap,
     };
-
-    if (biasSource.models.includes("strength")) {
-      const strengthRows = await readWeeklyPairStrengths(weekOpenUtc);
-      const strengthMap: DirectionMap = new Map();
-      for (const row of strengthRows) {
-        if (row.compositeDirection === "NEUTRAL") continue;
-        strengthMap.set(row.pair.toUpperCase(), {
-          direction: row.compositeDirection,
-          source: "strength",
-          tier: null,
-          assetClass: row.assetClass,
-        });
-      }
-      modelSignalMap.strength = strengthMap;
-    }
+    if (biasSource.models.includes("strength")) modelSignalMap.strength = strengthMap;
 
     for (const modelId of biasSource.models) {
       const sourceMap = modelSignalMap[modelId];

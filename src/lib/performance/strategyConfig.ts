@@ -91,10 +91,24 @@ export const STRATEGIES: StrategyConfig[] = [
     cardBreakdown: "tiers",
   },
   {
+    id: "tiered_3_nocomm",
+    label: "Tiered 3 NoComm",
+    type: "tiered",
+    description: "Three-source tiered stack using Dealer, Sentiment, and Strength only. All three vote independently: 3-of-3 becomes Tier 1, 2-of-3 becomes Tier 2, and single-source directional pressure becomes Tier 3. Commercial is excluded from the weekly vote.",
+    cardBreakdown: "tiers",
+  },
+  {
     id: "agree_2of3",
     label: "2-of-3 Agree",
     type: "agreement",
     description: "Agreement filter requiring at least two of three sources, Dealer, Commercial, and Sentiment, to align before taking a position. When fewer than two agree, the pair is excluded from the basket. Trades fewer pairs but aims for higher-conviction exposure.",
+    cardBreakdown: "asset_class",
+  },
+  {
+    id: "agree_2of3_nocomm",
+    label: "2-of-3 NoComm",
+    type: "agreement",
+    description: "Agreement filter requiring at least two of Dealer, Sentiment, and Strength to align before taking a position. Commercial is removed from the voting set so the basket reflects faster directional sources only.",
     cardBreakdown: "asset_class",
   },
   {
