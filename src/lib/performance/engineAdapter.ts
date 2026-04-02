@@ -345,7 +345,10 @@ export function multiWeekToGridProps(
     percent: weeklySlotReturns[i].reduce((s, r) => s + r.percent, 0),
     priced: weeklySlotReturns[i].length,
     total: weeklySlotReturns[i].length,
-    note: `${slotLabels[i]} contribution across ${result.weeks.length} weeks.`,
+    note:
+      biasSource.cardBreakdown === "tiers"
+        ? `${slotLabels[i]} contribution across ${result.weeks.length} weeks.`
+        : biasSource.description,
     returns: weeklySlotReturns[i],
     pair_details: weeklySlotReturns[i].map((r) => ({
       pair: r.pair,
@@ -416,7 +419,10 @@ export function multiWeekToGridProps(
           percent: weeklyAcSlotReturns[i].reduce((s, r) => s + r.percent, 0),
           priced: weeklyAcSlotReturns[i].length,
           total: weeklyAcSlotReturns[i].length,
-          note: `${slotLabels[i]} — ${ac.label} across ${result.weeks.length} weeks.`,
+          note:
+            biasSource.cardBreakdown === "tiers"
+              ? `${slotLabels[i]} — ${ac.label} across ${result.weeks.length} weeks.`
+              : biasSource.description,
           returns: weeklyAcSlotReturns[i],
           pair_details: weeklyAcSlotReturns[i].map((r) => ({
             pair: r.pair,

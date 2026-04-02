@@ -766,12 +766,14 @@ function buildStandaloneModelPerformance(options: {
     pair: `Week of ${weekLabel(row.weekOpenUtc)}`,
     percent: weekPercent,
   }));
+  const strategyDescription = getStrategy(options.model)?.description;
   return {
     model: options.model,
     percent: returns.reduce((sum, item) => sum + item.percent, 0),
     priced: returns.length,
     total: returns.length,
-    note: `${PERFORMANCE_MODEL_LABELS[options.model]} normalized 1x return across the canonical weekly reconstruction.`,
+    note: strategyDescription
+      ?? `${PERFORMANCE_MODEL_LABELS[options.model]} normalized 1x return across the canonical weekly reconstruction.`,
     returns,
     pair_details: weeklyRows.map(({ row, weekPercent, children }) => ({
       pair: `Week of ${weekLabel(row.weekOpenUtc)}`,
