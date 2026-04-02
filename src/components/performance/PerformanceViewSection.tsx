@@ -25,6 +25,7 @@ import PerformanceViewCards, {
 import PerformanceSimulationSection, {
   type PerformanceSimulationGroup,
 } from "@/components/performance/PerformanceSimulationSection";
+import PerformanceNotesPad from "@/components/performance/PerformanceNotesPad";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import {
   resolveActiveStrategyEntry,
@@ -245,6 +246,8 @@ type PerformanceViewSectionProps = {
   currentWeek?: string;
   /** Initial selected week (from URL) */
   initialWeek?: string;
+  strategyDescription?: string | null;
+  notesStorageKey?: string;
 };
 
 export default function PerformanceViewSection({
@@ -263,6 +266,8 @@ export default function PerformanceViewSection({
   weekOptions,
   currentWeek,
   initialWeek,
+  strategyDescription,
+  notesStorageKey,
 }: PerformanceViewSectionProps) {
   const [view, setView] = useState<PerformanceView>(initialView);
   const [selectedWeek, setSelectedWeek] = useState(initialWeek ?? "all");
@@ -322,7 +327,13 @@ export default function PerformanceViewSection({
           onViewChange={setView}
           views={PERFORMANCE_VIEW_CARDS}
         />
-        {view === "simulation" ? (
+        {view === "notes" ? (
+          <PerformanceNotesPad
+            selectedWeek={selectedWeek}
+            strategyDescription={strategyDescription ?? null}
+            notesStorageKey={notesStorageKey ?? "performance"}
+          />
+        ) : view === "simulation" ? (
           <PerformanceSimulationSection group={simulation} />
         ) : view === "basket" && gridProps ? (
           <EngineBasketView gridProps={gridProps} />
@@ -431,7 +442,13 @@ export default function PerformanceViewSection({
         onViewChange={setView}
         views={PERFORMANCE_VIEW_CARDS}
       />
-      {view === "simulation" ? (
+      {view === "notes" ? (
+        <PerformanceNotesPad
+          selectedWeek={selectedWeek}
+          strategyDescription={strategyDescription ?? null}
+          notesStorageKey={notesStorageKey ?? "performance"}
+        />
+      ) : view === "simulation" ? (
         <PerformanceSimulationSection group={simulationGroup} />
       ) : (
         <PerformanceGrid

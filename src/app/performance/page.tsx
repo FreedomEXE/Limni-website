@@ -48,10 +48,9 @@ import {
 } from "@/lib/performance/strategyConfig";
 import type { EngineGridProps, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import {
-  buildStrategySelectionKey,
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
-import { loadStrategyBootstrapMap } from "@/lib/performance/strategyBootstrap.server";
+import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -1142,19 +1141,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   };
   // Guardrail: Performance stays fast only if the full strategy/filter grid is
   // loaded here once and switched locally in the client view.
-  const strategySelectionEntries = await loadStrategyBootstrapMap();
-  const strategyDataMap = Object.fromEntries(
-    strategySelectionEntries.map(([selectionKey, strategyData]) => [
-      selectionKey,
-      strategyData
-        ? {
-            engineWeekMap: strategyData.weekMap ?? null,
-            engineSimMap: strategyData.simMap ?? null,
-            sidebarStats: strategyData.sidebarStats ?? null,
-          }
-        : null,
-    ]),
-  );
+  const initialStrategyData = await loadStrategyPageData(initialStrategySelection);
 
   const universal = buildSystemMaps({
     family: "universal",
@@ -1251,7 +1238,15 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           flagshipGridProps={flagshipGridProps}
           flagshipSimulation={flagshipSimulation}
           initialSelection={toRuntimeStrategySelection(initialStrategySelection)}
-          strategyDataMap={strategyDataMap}
+          initialEntry={
+            initialStrategyData
+              ? {
+                  engineWeekMap: initialStrategyData.weekMap ?? null,
+                  engineSimMap: initialStrategyData.simMap ?? null,
+                  sidebarStats: initialStrategyData.sidebarStats ?? null,
+                }
+              : null
+          }
           weekOptions={["all", ...weekSelectorOptions]}
           currentWeek={currentWeekOpenUtc}
           initialWeek={selectedWeek}

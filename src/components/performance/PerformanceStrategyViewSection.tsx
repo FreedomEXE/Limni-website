@@ -25,6 +25,12 @@ import {
   type StrategySelectionCommitDetail,
   type StrategySidebarStatsDetail,
 } from "@/lib/performance/strategySelection";
+import {
+  fetchStrategyClientPayload,
+  getStrategyClientPayload,
+  setStrategyClientPayload,
+} from "@/lib/performance/strategyClientCache";
+import { getStrategy } from "@/lib/performance/strategyConfig";
 
 type StrategyBootstrapEntry = {
   engineWeekMap: NonNullable<ComponentProps<typeof PerformanceViewSection>["engineWeekMap"]> | null;
@@ -37,23 +43,42 @@ type PerformanceStrategyViewSectionProps = Omit<
   "engineWeekMap" | "engineSimMap"
 > & {
   initialSelection: RuntimeStrategySelection;
-  strategyDataMap: Record<string, StrategyBootstrapEntry | null>;
+  initialEntry: StrategyBootstrapEntry | null;
 };
 
 export default function PerformanceStrategyViewSection({
   initialSelection,
-  strategyDataMap,
+  initialEntry,
   ...performanceProps
 }: PerformanceStrategyViewSectionProps) {
+  const initialKey = buildStrategySelectionKey(initialSelection);
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
-  const [stableEntry, setStableEntry] = useState<StrategyBootstrapEntry | null>(() => {
-    const initialKey = buildStrategySelectionKey(initialSelection);
-    return strategyDataMap[initialKey] ?? null;
-  });
+  const [entryCache, setEntryCache] = useState<Record<string, StrategyBootstrapEntry | null>>(() => (
+    initialEntry ? { [initialKey]: initialEntry } : {}
+  ));
+  const [stableEntry, setStableEntry] = useState<StrategyBootstrapEntry | null>(initialEntry);
+  const [loadedSelectionKey, setLoadedSelectionKey] = useState(initialKey);
+  const [loadingSelection, setLoadingSelection] = useState(false);
 
   useEffect(() => {
     setSelectedSelection(initialSelection);
   }, [initialSelection]);
+
+  useEffect(() => {
+    if (!initialEntry) return;
+    setEntryCache((previous) => ({
+      ...previous,
+      [initialKey]: previous[initialKey] ?? initialEntry,
+    }));
+    setStableEntry((previous) => previous ?? initialEntry);
+    setLoadedSelectionKey(initialKey);
+    setStrategyClientPayload(initialSelection, {
+      engineWeekMap: initialEntry.engineWeekMap,
+      engineSimMap: initialEntry.engineSimMap,
+      engineWeekResults: null,
+      sidebarStats: initialEntry.sidebarStats,
+    });
+  }, [initialEntry, initialKey, initialSelection]);
 
   useEffect(() => {
     const onSelectionCommit = (event: Event) => {
@@ -64,28 +89,90 @@ export default function PerformanceStrategyViewSection({
     return () => window.removeEventListener(STRATEGY_SELECTION_COMMIT_EVENT, onSelectionCommit);
   }, []);
 
-  const selectedEntry = useMemo(() => {
-    const selectionKey = buildStrategySelectionKey(selectedSelection);
-    return strategyDataMap[selectionKey] ?? null;
-  }, [selectedSelection, strategyDataMap]);
+  const selectedSelectionKey = useMemo(
+    () => buildStrategySelectionKey(selectedSelection),
+    [selectedSelection],
+  );
 
   useEffect(() => {
-    setStableEntry(selectedEntry ?? null);
-  }, [selectedEntry]);
+    let active = true;
+
+    const ensureSelectionEntry = async () => {
+      const cachedEntry = entryCache[selectedSelectionKey];
+      if (cachedEntry !== undefined) {
+        setStableEntry(cachedEntry ?? null);
+        setLoadedSelectionKey(selectedSelectionKey);
+        setLoadingSelection(false);
+        return;
+      }
+
+      const payload = getStrategyClientPayload(selectedSelection);
+      if (payload !== undefined) {
+        const nextEntry = payload
+          ? {
+              engineWeekMap: payload.engineWeekMap,
+              engineSimMap: payload.engineSimMap,
+              sidebarStats: payload.sidebarStats,
+            }
+          : null;
+        if (!active) return;
+        setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
+        setStableEntry(nextEntry);
+        setLoadedSelectionKey(selectedSelectionKey);
+        setLoadingSelection(false);
+        return;
+      }
+
+      setLoadingSelection(true);
+      const fetched = await fetchStrategyClientPayload(selectedSelection);
+      if (!active) return;
+      const nextEntry = fetched
+        ? {
+            engineWeekMap: fetched.engineWeekMap,
+            engineSimMap: fetched.engineSimMap,
+            sidebarStats: fetched.sidebarStats,
+          }
+        : null;
+      setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
+      setStableEntry(nextEntry);
+      setLoadedSelectionKey(selectedSelectionKey);
+      setLoadingSelection(false);
+    };
+
+    void ensureSelectionEntry();
+
+    return () => {
+      active = false;
+    };
+  }, [entryCache, selectedSelection, selectedSelectionKey]);
 
   useEffect(() => {
     const detail: StrategySidebarStatsDetail = {
       selection: selectedSelection,
-      stats: stableEntry?.sidebarStats ?? null,
+      stats:
+        loadedSelectionKey === selectedSelectionKey
+          ? stableEntry?.sidebarStats ?? null
+          : null,
     };
     window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
-  }, [selectedSelection, stableEntry]);
+  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
+
+  const strategyDescription = getStrategy(selectedSelection.strategy)?.description ?? null;
 
   return (
-    <PerformanceViewSection
-      {...performanceProps}
-      engineWeekMap={stableEntry?.engineWeekMap ?? null}
-      engineSimMap={stableEntry?.engineSimMap ?? null}
-    />
+    <div className="space-y-4">
+      {loadingSelection && loadedSelectionKey !== selectedSelectionKey ? (
+        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[color:var(--muted)]">
+          Loading strategy data...
+        </div>
+      ) : null}
+      <PerformanceViewSection
+        {...performanceProps}
+        engineWeekMap={stableEntry?.engineWeekMap ?? null}
+        engineSimMap={stableEntry?.engineSimMap ?? null}
+        strategyDescription={strategyDescription}
+        notesStorageKey={selectedSelectionKey}
+      />
+    </div>
   );
 }

@@ -24,9 +24,9 @@ import {
   STRENGTH_GATES,
   getEntryStyle,
   getStrengthGate,
+  getStrategy,
   normalizeFilterSelection,
   resolveStrategyId,
-  getStrategy,
 } from "@/lib/performance/strategyConfig";
 import {
   STRATEGY_SELECTION_COMMIT_EVENT,
@@ -111,8 +111,6 @@ export default function StrategySelector() {
   const labelClasses =
     "mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]";
 
-  const strategyConfig = STRATEGIES.find((s) => s.id === draft.strategy);
-
   return (
     <div className="space-y-3">
       {/* Strategy */}
@@ -130,11 +128,6 @@ export default function StrategySelector() {
             <option key={s.id} value={s.id}>{s.label}</option>
           ))}
         </select>
-        {strategyConfig && (
-          <p className="mt-1 text-[10px] text-[color:var(--muted)]">
-            {strategyConfig.description}
-          </p>
-        )}
       </div>
 
       {/* Filter 1 (entry style) */}

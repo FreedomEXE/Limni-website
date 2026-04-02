@@ -21,10 +21,9 @@ import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import {
-  buildStrategySelectionKey,
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
-import { loadStrategyBootstrapMap } from "@/lib/performance/strategyBootstrap.server";
+import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 
 export const dynamic = "force-dynamic";
 
@@ -76,26 +75,12 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
     allowAll: false,
   }) as string | null;
 
-  const [strategySelectionEntries, weeklyReturnEntries] = await Promise.all([
-    // Guardrail: Matrix week/strategy switching must read from this bootstrapped
-    // selection map on the client instead of re-running historical loaders.
-    loadStrategyBootstrapMap(),
+  const [initialStrategyData, weeklyReturnEntries] = await Promise.all([
+    loadStrategyPageData(initialStrategySelection),
     Promise.all(
       weeks.map(async (week) => [week, await getWeeklyPairReturns(week)] as const),
     ),
   ]);
-
-  const strategyDataMap = Object.fromEntries(
-    strategySelectionEntries.map(([selectionKey, strategyData]) => [
-      selectionKey,
-      strategyData
-        ? {
-            engineWeekResults: strategyData.weekResults ?? null,
-            sidebarStats: strategyData.sidebarStats ?? null,
-          }
-        : null,
-    ]),
-  );
   const allWeeklyReturns = Object.fromEntries(weeklyReturnEntries);
 
   return (
@@ -106,7 +91,14 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
         currentWeekOpenUtc={currentWeekOpen}
         initialTab={selectedTab}
         initialSelection={toRuntimeStrategySelection(initialStrategySelection)}
-        strategyDataMap={strategyDataMap}
+        initialStrategyData={
+          initialStrategyData
+            ? {
+                engineWeekResults: initialStrategyData.weekResults ?? null,
+                sidebarStats: initialStrategyData.sidebarStats ?? null,
+              }
+            : null
+        }
         allWeeklyReturns={allWeeklyReturns}
       />
     </DashboardLayout>

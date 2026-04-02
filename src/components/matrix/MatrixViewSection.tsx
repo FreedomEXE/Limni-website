@@ -30,6 +30,11 @@ import {
   type StrategySidebarStatsDetail,
 } from "@/lib/performance/strategySelection";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
+import {
+  fetchStrategyClientPayload,
+  getStrategyClientPayload,
+  setStrategyClientPayload,
+} from "@/lib/performance/strategyClientCache";
 
 type WeeklyReturnRow = {
   symbol: string;
@@ -45,10 +50,10 @@ type MatrixViewSectionProps = {
   currentWeekOpenUtc: string;
   initialTab: MatrixTab;
   initialSelection: RuntimeStrategySelection;
-  strategyDataMap: Record<string, {
+  initialStrategyData: {
     engineWeekResults: Record<string, WeeklyHoldResult> | null;
     sidebarStats: EngineSidebarStats | null;
-  } | null>;
+  } | null;
   allWeeklyReturns: Record<string, WeeklyReturnRow[]>;
 };
 
@@ -63,16 +68,19 @@ export default function MatrixViewSection({
   currentWeekOpenUtc,
   initialTab,
   initialSelection,
-  strategyDataMap,
+  initialStrategyData,
   allWeeklyReturns,
 }: MatrixViewSectionProps) {
+  const initialSelectionKey = buildStrategySelectionKey(initialSelection);
   const [selectedWeek, setSelectedWeek] = useState<string | null>(() => resolveSelectedWeek(initialWeek, weeks));
   const [selectedTab, setSelectedTab] = useState<MatrixTab>(initialTab);
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
-  const [stableStrategyData, setStableStrategyData] = useState<MatrixViewSectionProps["strategyDataMap"][string]>(() => {
-    const initialKey = buildStrategySelectionKey(initialSelection);
-    return strategyDataMap[initialKey] ?? null;
-  });
+  const [strategyDataCache, setStrategyDataCache] = useState<Record<string, MatrixViewSectionProps["initialStrategyData"]>>(() => (
+    initialStrategyData ? { [initialSelectionKey]: initialStrategyData } : {}
+  ));
+  const [stableStrategyData, setStableStrategyData] = useState<MatrixViewSectionProps["initialStrategyData"]>(initialStrategyData);
+  const [loadedSelectionKey, setLoadedSelectionKey] = useState(initialSelectionKey);
+  const [loadingSelection, setLoadingSelection] = useState(false);
 
   useEffect(() => {
     setSelectedWeek(resolveSelectedWeek(initialWeek, weeks));
@@ -87,6 +95,22 @@ export default function MatrixViewSection({
   }, [initialSelection]);
 
   useEffect(() => {
+    if (!initialStrategyData) return;
+    setStrategyDataCache((previous) => ({
+      ...previous,
+      [initialSelectionKey]: previous[initialSelectionKey] ?? initialStrategyData,
+    }));
+    setStableStrategyData((previous) => previous ?? initialStrategyData);
+    setLoadedSelectionKey(initialSelectionKey);
+    setStrategyClientPayload(initialSelection, {
+      engineWeekMap: null,
+      engineSimMap: null,
+      engineWeekResults: initialStrategyData.engineWeekResults,
+      sidebarStats: initialStrategyData.sidebarStats,
+    });
+  }, [initialSelection, initialSelectionKey, initialStrategyData]);
+
+  useEffect(() => {
     const onSelectionCommit = (event: Event) => {
       const custom = event as CustomEvent<StrategySelectionCommitDetail>;
       setSelectedSelection(custom.detail.selection);
@@ -95,14 +119,60 @@ export default function MatrixViewSection({
     return () => window.removeEventListener(STRATEGY_SELECTION_COMMIT_EVENT, onSelectionCommit);
   }, []);
 
-  const selectedStrategyData = useMemo(() => {
-    const selectionKey = buildStrategySelectionKey(selectedSelection);
-    return strategyDataMap[selectionKey] ?? null;
-  }, [selectedSelection, strategyDataMap]);
+  const selectedSelectionKey = useMemo(
+    () => buildStrategySelectionKey(selectedSelection),
+    [selectedSelection],
+  );
 
   useEffect(() => {
-    setStableStrategyData(selectedStrategyData ?? null);
-  }, [selectedStrategyData]);
+    let active = true;
+
+    const ensureStrategyData = async () => {
+      const cachedData = strategyDataCache[selectedSelectionKey];
+      if (cachedData !== undefined) {
+        setStableStrategyData(cachedData ?? null);
+        setLoadedSelectionKey(selectedSelectionKey);
+        setLoadingSelection(false);
+        return;
+      }
+
+      const payload = getStrategyClientPayload(selectedSelection);
+      if (payload !== undefined) {
+        const nextData = payload
+          ? {
+              engineWeekResults: payload.engineWeekResults,
+              sidebarStats: payload.sidebarStats,
+            }
+          : null;
+        if (!active) return;
+        setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
+        setStableStrategyData(nextData);
+        setLoadedSelectionKey(selectedSelectionKey);
+        setLoadingSelection(false);
+        return;
+      }
+
+      setLoadingSelection(true);
+      const fetched = await fetchStrategyClientPayload(selectedSelection);
+      if (!active) return;
+      const nextData = fetched
+        ? {
+            engineWeekResults: fetched.engineWeekResults,
+            sidebarStats: fetched.sidebarStats,
+          }
+        : null;
+      setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
+      setStableStrategyData(nextData);
+      setLoadedSelectionKey(selectedSelectionKey);
+      setLoadingSelection(false);
+    };
+
+    void ensureStrategyData();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedSelection, selectedSelectionKey, strategyDataCache]);
 
   const engineWeekResults = stableStrategyData?.engineWeekResults ?? null;
 
@@ -119,10 +189,13 @@ export default function MatrixViewSection({
   useEffect(() => {
     const detail: StrategySidebarStatsDetail = {
       selection: selectedSelection,
-      stats: stableStrategyData?.sidebarStats ?? null,
+      stats:
+        loadedSelectionKey === selectedSelectionKey
+          ? stableStrategyData?.sidebarStats ?? null
+          : null,
     };
     window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
-  }, [selectedSelection, stableStrategyData]);
+  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableStrategyData]);
 
   useEffect(() => {
     const selectedWeekResult = selectedWeek ? engineWeekResults?.[selectedWeek] ?? null : null;
@@ -141,6 +214,11 @@ export default function MatrixViewSection({
 
   return (
     <div className="space-y-4">
+      {loadingSelection && loadedSelectionKey !== selectedSelectionKey ? (
+        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[color:var(--muted)]">
+          Loading strategy data...
+        </div>
+      ) : null}
       <MatrixControls
         weeks={weeks}
         selectedWeek={selectedWeek}
