@@ -31,4 +31,22 @@ describe("weekOptions", () => {
 
     expect(selected).toBe("2026-02-09T00:00:00.000Z");
   });
+
+  test("hides upcoming weeks by default while keeping current week visible", () => {
+    const options = buildDataWeekOptions({
+      historicalWeeks: [
+        "2026-03-29T23:00:00.000Z",
+        "2026-04-05T23:00:00.000Z",
+        "2026-03-22T23:00:00.000Z",
+      ],
+      currentWeekOpenUtc: "2026-03-29T23:00:00.000Z",
+      includeAll: false,
+      limit: 4,
+    });
+
+    expect(options).toEqual([
+      "2026-03-29T23:00:00.000Z",
+      "2026-03-22T23:00:00.000Z",
+    ]);
+  });
 });

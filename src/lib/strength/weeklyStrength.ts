@@ -1,8 +1,9 @@
 import type { Direction } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
-import { query } from "@/lib/db";
+import { getClient, query } from "@/lib/db";
 import type { AssetClass } from "@/lib/cotMarkets";
-import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
+import { clearRuntimeCacheKey, getOrSetRuntimeCache } from "@/lib/runtimeCache";
+import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 
 export type StrengthWindow = "1h" | "4h" | "24h";
 export type StrengthRelation = "AGAINST" | "NEUTRAL" | "WITH";
@@ -96,6 +97,20 @@ type WeeklyStrengthSource = {
   assetRows: AssetStrengthRow[];
 };
 
+type StrengthWeeklySnapshotRow = {
+  week_open_utc: Date | string;
+  source_type: "currency" | "asset";
+  window: StrengthWindow;
+  key: string;
+  asset_class: AssetClass | null;
+  raw_strength: number | string | null;
+  normalized_strength: number | string | null;
+  source_snapshot_utc: Date | string | null;
+  locked_at_utc: Date | string;
+};
+
+let ensuredStrengthWeeklySchema = false;
+
 function toIsoUtc(value: Date | string): string {
   if (value instanceof Date) return value.toISOString();
   const date = new Date(String(value));
@@ -113,6 +128,31 @@ function buildCacheKey(weekOpenUtc: string) {
 
 function buildSourceCacheKey(weekOpenUtc: string) {
   return `weeklyStrengthSource:${weekOpenUtc}`;
+}
+
+export async function ensureStrengthWeeklySchema(): Promise<void> {
+  if (ensuredStrengthWeeklySchema) {
+    return;
+  }
+  await query(`
+    CREATE TABLE IF NOT EXISTS strength_weekly_snapshots (
+      week_open_utc TIMESTAMP NOT NULL,
+      source_type VARCHAR(20) NOT NULL,
+      "window" VARCHAR(10) NOT NULL,
+      "key" VARCHAR(30) NOT NULL,
+      asset_class VARCHAR(20),
+      raw_strength DECIMAL(12, 6),
+      normalized_strength DECIMAL(12, 6),
+      source_snapshot_utc TIMESTAMP,
+      locked_at_utc TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (week_open_utc, source_type, "window", "key")
+    )
+  `);
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_strength_weekly_snapshots_week
+      ON strength_weekly_snapshots(week_open_utc DESC)
+  `);
+  ensuredStrengthWeeklySchema = true;
 }
 
 function classifySpread(spread: number | null, threshold = SPREAD_THRESHOLD): Direction {
@@ -176,11 +216,177 @@ async function readAssetStrengthRows(weekOpenUtc: string) {
   );
 }
 
+function clearStrengthCaches(weekOpenUtc: string) {
+  clearRuntimeCacheKey(buildSourceCacheKey(weekOpenUtc));
+  clearRuntimeCacheKey(buildCacheKey(weekOpenUtc));
+}
+
+function normalizeStrengthWeekOpenUtc(weekOpenUtc: string) {
+  return normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
+}
+
+export async function lockStrengthForWeek(weekOpenUtc: string): Promise<void> {
+  const normalizedWeekOpenUtc = normalizeStrengthWeekOpenUtc(weekOpenUtc);
+  await ensureStrengthWeeklySchema();
+
+  const [currencyRows, assetRows] = await Promise.all([
+    readCurrencyStrengthRows(normalizedWeekOpenUtc),
+    readAssetStrengthRows(normalizedWeekOpenUtc),
+  ]);
+
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+
+    for (const row of currencyRows) {
+      await client.query(
+        `
+          INSERT INTO strength_weekly_snapshots (
+            week_open_utc,
+            source_type,
+            "window",
+            "key",
+            asset_class,
+            raw_strength,
+            normalized_strength,
+            source_snapshot_utc,
+            locked_at_utc
+          )
+          VALUES ($1::timestamp, 'currency', $2, $3, NULL, $4, $5, $6::timestamp, NOW())
+          ON CONFLICT (week_open_utc, source_type, "window", "key")
+          DO UPDATE SET
+            asset_class = EXCLUDED.asset_class,
+            raw_strength = EXCLUDED.raw_strength,
+            normalized_strength = EXCLUDED.normalized_strength,
+            source_snapshot_utc = EXCLUDED.source_snapshot_utc,
+            locked_at_utc = NOW()
+        `,
+        [
+          normalizedWeekOpenUtc,
+          row.window,
+          row.currency.toUpperCase(),
+          row.raw_strength,
+          row.normalized_strength,
+          row.snapshot_time_utc,
+        ],
+      );
+    }
+
+    for (const row of assetRows) {
+      await client.query(
+        `
+          INSERT INTO strength_weekly_snapshots (
+            week_open_utc,
+            source_type,
+            "window",
+            "key",
+            asset_class,
+            raw_strength,
+            normalized_strength,
+            source_snapshot_utc,
+            locked_at_utc
+          )
+          VALUES ($1::timestamp, 'asset', $2, $3, $4, $5, $6, $7::timestamp, NOW())
+          ON CONFLICT (week_open_utc, source_type, "window", "key")
+          DO UPDATE SET
+            asset_class = EXCLUDED.asset_class,
+            raw_strength = EXCLUDED.raw_strength,
+            normalized_strength = EXCLUDED.normalized_strength,
+            source_snapshot_utc = EXCLUDED.source_snapshot_utc,
+            locked_at_utc = NOW()
+        `,
+        [
+          normalizedWeekOpenUtc,
+          row.window,
+          row.asset.toUpperCase(),
+          row.asset_class,
+          row.raw_strength,
+          row.normalized_strength,
+          row.snapshot_time_utc,
+        ],
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  clearStrengthCaches(normalizedWeekOpenUtc);
+}
+
+export async function readLockedStrengthForWeek(weekOpenUtc: string): Promise<WeeklyStrengthSource | null> {
+  const normalizedWeekOpenUtc = normalizeStrengthWeekOpenUtc(weekOpenUtc);
+  await ensureStrengthWeeklySchema();
+  const rows = await query<StrengthWeeklySnapshotRow>(
+    `
+      SELECT
+        week_open_utc,
+        source_type,
+        "window",
+        "key",
+        asset_class,
+        raw_strength,
+        normalized_strength,
+        source_snapshot_utc,
+        locked_at_utc
+      FROM strength_weekly_snapshots
+      WHERE week_open_utc = $1::timestamp
+      ORDER BY source_type ASC, asset_class ASC NULLS FIRST, "window" ASC, "key" ASC
+    `,
+    [normalizedWeekOpenUtc],
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const currencyRows: CurrencyStrengthRow[] = [];
+  const assetRows: AssetStrengthRow[] = [];
+
+  for (const row of rows) {
+    const snapshotTimeUtc = row.source_snapshot_utc ?? row.locked_at_utc ?? row.week_open_utc;
+    if (row.source_type === "currency") {
+      currencyRows.push({
+        window: row.window,
+        currency: row.key.toUpperCase(),
+        snapshot_time_utc: snapshotTimeUtc,
+        raw_strength: row.raw_strength ?? 0,
+        normalized_strength: row.normalized_strength ?? 50,
+      });
+      continue;
+    }
+
+    if (!row.asset_class) {
+      continue;
+    }
+
+    assetRows.push({
+      asset_class: row.asset_class,
+      window: row.window,
+      asset: row.key.toUpperCase(),
+      snapshot_time_utc: snapshotTimeUtc,
+      raw_strength: row.raw_strength ?? 0,
+      normalized_strength: row.normalized_strength ?? 50,
+    });
+  }
+
+  return { currencyRows, assetRows };
+}
+
 async function loadWeeklyStrengthSource(weekOpenUtc: string): Promise<WeeklyStrengthSource> {
-  return getOrSetRuntimeCache(buildSourceCacheKey(weekOpenUtc), STRENGTH_CACHE_TTL_MS, async () => {
+  const normalizedWeekOpenUtc = normalizeStrengthWeekOpenUtc(weekOpenUtc);
+  return getOrSetRuntimeCache(buildSourceCacheKey(normalizedWeekOpenUtc), STRENGTH_CACHE_TTL_MS, async () => {
+    const locked = await readLockedStrengthForWeek(normalizedWeekOpenUtc);
+    if (locked) {
+      return locked;
+    }
     const [currencyRows, assetRows] = await Promise.all([
-      readCurrencyStrengthRows(weekOpenUtc),
-      readAssetStrengthRows(weekOpenUtc),
+      readCurrencyStrengthRows(normalizedWeekOpenUtc),
+      readAssetStrengthRows(normalizedWeekOpenUtc),
     ]);
     return { currencyRows, assetRows };
   });
@@ -288,8 +494,9 @@ function buildPairStrength(
 }
 
 export async function readWeeklyPairStrengths(weekOpenUtc: string): Promise<WeeklyPairStrength[]> {
-  return getOrSetRuntimeCache(buildCacheKey(weekOpenUtc), STRENGTH_CACHE_TTL_MS, async () => {
-    const { currencyRows, assetRows } = await loadWeeklyStrengthSource(weekOpenUtc);
+  const normalizedWeekOpenUtc = normalizeStrengthWeekOpenUtc(weekOpenUtc);
+  return getOrSetRuntimeCache(buildCacheKey(normalizedWeekOpenUtc), STRENGTH_CACHE_TTL_MS, async () => {
+    const { currencyRows, assetRows } = await loadWeeklyStrengthSource(normalizedWeekOpenUtc);
 
     const byCurrency = new Map<string, CurrencyStrengthRow>(
       currencyRows.map((row) => [`${row.window}:${row.currency.toUpperCase()}`, row]),
@@ -318,7 +525,9 @@ export async function readWeeklyUnderlyingStrengths(
   weekOpenUtc: string,
   assetClass: AssetClass | "all" = "all",
 ): Promise<WeeklyUnderlyingStrength[]> {
-  const { currencyRows, assetRows } = await loadWeeklyStrengthSource(weekOpenUtc);
+  const { currencyRows, assetRows } = await loadWeeklyStrengthSource(
+    normalizeStrengthWeekOpenUtc(weekOpenUtc),
+  );
   const currencyItems: WeeklyUnderlyingStrength[] = currencyRows.map((row) => {
     const normalized = toNumber(row.normalized_strength);
     const signedSpread = normalized - 50;

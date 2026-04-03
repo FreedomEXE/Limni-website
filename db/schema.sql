@@ -396,6 +396,22 @@ CREATE TABLE IF NOT EXISTS news_weekly_snapshots (
 CREATE INDEX IF NOT EXISTS idx_news_weekly_snapshots_week
   ON news_weekly_snapshots(week_open_utc DESC);
 
+CREATE TABLE IF NOT EXISTS strength_weekly_snapshots (
+  week_open_utc TIMESTAMP NOT NULL,
+  source_type VARCHAR(20) NOT NULL,
+  "window" VARCHAR(10) NOT NULL,
+  "key" VARCHAR(30) NOT NULL,
+  asset_class VARCHAR(20),
+  raw_strength DECIMAL(12, 6),
+  normalized_strength DECIMAL(12, 6),
+  source_snapshot_utc TIMESTAMP,
+  locked_at_utc TIMESTAMP NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (week_open_utc, source_type, "window", "key")
+);
+
+CREATE INDEX IF NOT EXISTS idx_strength_weekly_snapshots_week
+  ON strength_weekly_snapshots(week_open_utc DESC);
+
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

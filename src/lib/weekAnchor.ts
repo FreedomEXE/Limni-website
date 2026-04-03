@@ -34,28 +34,6 @@ export function normalizeWeekOpenUtc(isoValue: string): string | null {
   return getCanonicalWeekOpenUtc(parsed);
 }
 
-// UI display anchor:
-// after Friday 15:30 ET release, default to the upcoming trading week.
 export function getDisplayWeekOpenUtc(now = DateTime.utc()): string {
-  const canonical = getCanonicalWeekOpenUtc(now);
-  const currentWeek = DateTime.fromISO(canonical, { zone: "utc" });
-  if (!currentWeek.isValid) {
-    return canonical;
-  }
-
-  // Anchor release check to the canonical trading week (Sunday 19:00 ET),
-  // so Sunday pre-open still points to the upcoming week after Friday release.
-  const canonicalEt = currentWeek.setZone("America/New_York");
-  const fridayReleaseEt = canonicalEt.plus({ days: 5 }).set({
-    hour: 15,
-    minute: 30,
-    second: 0,
-    millisecond: 0,
-  });
-  const releasePassed = now.toUTC().toMillis() >= fridayReleaseEt.toUTC().toMillis();
-
-  if (!releasePassed) {
-    return canonical;
-  }
-  return currentWeek.plus({ days: 7 }).toUTC().toISO() ?? canonical;
+  return getCanonicalWeekOpenUtc(now);
 }

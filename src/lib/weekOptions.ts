@@ -103,7 +103,7 @@ export function buildDataWeekOptions(input: BuildDataWeekOptionsInput): WeekOpti
     currentWeekOpenUtc,
     includeAll = false,
     limit,
-    maxFutureWeeks = 1,
+    maxFutureWeeks = 0,
   } = input;
   const currentMs = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" }).toMillis();
   const futureCapMs =

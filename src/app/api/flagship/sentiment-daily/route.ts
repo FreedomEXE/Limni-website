@@ -17,6 +17,7 @@ import { NextResponse } from "next/server";
 import { DateTime } from "luxon";
 
 import { buildDailySentimentLock } from "@/lib/sentiment/daily";
+import { lockStrengthForWeek } from "@/lib/strength/weeklyStrength";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,14 @@ export async function GET(request: Request) {
     // sentiment per symbol at or before the week started — exactly what
     // the backtests used.
     const result = await buildDailySentimentLock(weekOpenUtc);
+    try {
+      await lockStrengthForWeek(weekOpenUtc);
+    } catch (lockError) {
+      console.error(
+        "[sentiment-daily] Failed to lock weekly strength snapshot:",
+        lockError instanceof Error ? lockError.stack ?? lockError.message : lockError,
+      );
+    }
 
     return NextResponse.json({
       ...result,
