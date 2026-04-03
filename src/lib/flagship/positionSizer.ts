@@ -22,6 +22,7 @@ export type SizingAccount = {
   leverage: number;
   maxPortfolioHeatPct: number;
   scaleFactor: number;
+  brokerProfileId: string | null;
   instrumentOverrides: Record<string, Partial<InstrumentSpec>>;
 };
 
@@ -129,6 +130,7 @@ export function createDefaultAccount(name: string): SizingAccount {
     leverage: 100,
     maxPortfolioHeatPct: 25,
     scaleFactor: 0.2,
+    brokerProfileId: null,
     instrumentOverrides: {},
   };
 }

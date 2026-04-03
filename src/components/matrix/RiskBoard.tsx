@@ -20,6 +20,13 @@ import { DateTime } from "luxon";
 import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
 import SizingAccountBar from "@/components/flagship/SizingAccountBar";
 import { useSizingAccounts } from "@/hooks/useSizingAccounts";
+import {
+  applyBrokerSymbolSpec,
+  computePerTradeSlRequirement,
+  fetchBrokerProfile,
+  findBrokerSymbolSpec,
+  type BrokerProfile,
+} from "@/lib/brokerProfiles";
 import { getInstrumentSpec, type InstrumentSpec } from "@/lib/flagship/instrumentDefaults";
 import { calculateLotSize, type SizingResult } from "@/lib/flagship/positionSizer";
 import type { CryptoMatrixPayload } from "@/lib/flagship/cryptoMatrix";
@@ -56,6 +63,7 @@ type IntradayLevelsPayload = {
 
 type RiskRow = {
   pair: string;
+  brokerSymbol: string;
   assetClass: string;
   direction: "LONG" | "SHORT";
   adrPct: number | null;
@@ -68,6 +76,9 @@ type RiskRow = {
   baseMarginUsd: number | null;
   maxMarginUsd: number | null;
   currentReturnPct: number | null;
+  slDistancePips: number | null;
+  slDistancePrice: number | null;
+  usesBrokerSpec: boolean;
 };
 
 function normalizeSymbol(value: string) {
@@ -184,6 +195,7 @@ export default function RiskBoard(props: RiskBoardProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [copiedPlan, setCopiedPlan] = useState(false);
   const [sizingModalPair, setSizingModalPair] = useState<{ pair: string; assetClass: string } | null>(null);
+  const [brokerProfile, setBrokerProfile] = useState<BrokerProfile | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -220,6 +232,28 @@ export default function RiskBoard(props: RiskBoardProps) {
       cancelled = true;
     };
   }, [weekOpenUtc]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBrokerProfile() {
+      if (!activeAccount?.brokerProfileId) {
+        setBrokerProfile(null);
+        return;
+      }
+      try {
+        const data = await fetchBrokerProfile(activeAccount.brokerProfileId);
+        if (!cancelled) setBrokerProfile(data);
+      } catch {
+        if (!cancelled) setBrokerProfile(null);
+      }
+    }
+
+    void loadBrokerProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAccount?.brokerProfileId]);
 
   useEffect(() => {
     if (!copiedKey) return;
@@ -275,9 +309,10 @@ export default function RiskBoard(props: RiskBoardProps) {
           ?? currentWeekRow?.closePrice
           ?? trade.closePrice
           ?? null;
-        const spec = currentPrice && adrPct !== null
-          ? getInstrumentSpec(pairKey, activeAccount.instrumentOverrides[pairKey])
-          : getInstrumentSpec(pairKey, activeAccount.instrumentOverrides[pairKey]);
+        const brokerSpec = brokerProfile ? findBrokerSymbolSpec(brokerProfile.symbol_specs, pairKey) : null;
+        const brokerSymbol = brokerSpec?.broker_symbol?.trim() || pairKey;
+        const genericSpec = getInstrumentSpec(pairKey);
+        const spec = applyBrokerSymbolSpec(genericSpec, brokerSpec, activeAccount.instrumentOverrides[pairKey]);
         const sizing =
           adrPct !== null && currentPrice !== null
             ? calculateLotSize(activeAccount, spec, adrPct, currentPrice)
@@ -288,9 +323,18 @@ export default function RiskBoard(props: RiskBoardProps) {
           baseLots !== null && addLots !== null
             ? Number((baseLots + addLots + addLots).toFixed(lotPrecision(spec.lotStep)))
             : null;
+        const slRequirement = brokerProfile?.sl_compliance_mode === "prop_pct_of_nominal"
+          ? computePerTradeSlRequirement({
+              accountBalance: activeAccount.balance,
+              capPctOfNominal: brokerProfile.sl_cap_pct_of_nominal,
+              lotSize: baseLots,
+              spec,
+            })
+          : null;
 
         return {
           pair: pairKey,
+          brokerSymbol,
           assetClass: normalizedClass,
           direction: trade.direction,
           adrPct,
@@ -303,10 +347,13 @@ export default function RiskBoard(props: RiskBoardProps) {
           baseMarginUsd: sizing && baseLots !== null && sizing.lotSize > 0 ? (sizing.marginRequired * baseLots) / sizing.lotSize : null,
           maxMarginUsd: sizing && maxLots !== null && sizing.lotSize > 0 ? (sizing.marginRequired * maxLots) / sizing.lotSize : null,
           currentReturnPct: currentWeekRow?.returnPct ?? trade.returnPct ?? null,
+          slDistancePips: slRequirement?.distancePips ?? null,
+          slDistancePrice: slRequirement?.distancePrice ?? null,
+          usesBrokerSpec: brokerSpec != null,
         } satisfies RiskRow;
       })
       .sort(compareRows);
-  }, [activeAccount, cryptoByPair, intradayByPair, selectedWeekResult, weeklyReturnsByPair]);
+  }, [activeAccount, brokerProfile, cryptoByPair, intradayByPair, selectedWeekResult, weeklyReturnsByPair]);
 
   const groupedRows = useMemo(() => {
     const groups = new Map<string, RiskRow[]>();
@@ -350,24 +397,28 @@ export default function RiskBoard(props: RiskBoardProps) {
     const text = [
       `=== WEEK OF ${weekLabel(weekOpenUtc).toUpperCase()} — ${strategyLabel} ===`,
       `Account: ${activeAccount.name} (${formatUsd(activeAccount.balance)}) | Scale: ${formatScaleFactor(activeAccount.scaleFactor)}`,
+      `Broker Profile: ${brokerProfile?.label ?? "None"}`,
       "",
       "BASE ENTRY (1/5):",
       groupedRows
         .map(([, rows]) => rows
-          .map((row) => `  ${row.pair.padEnd(8)} ${row.direction.padEnd(5)} ${formatLot(row.baseLots, row.spec)} lots`)
+          .map((row) => `  ${row.brokerSymbol.padEnd(12)} ${row.direction.padEnd(5)} ${formatLot(row.baseLots, row.spec)} lots`)
           .join("\n"))
         .join("\n"),
       "",
       "ADD ENTRY (1/10) — same size for Tuesday / Wednesday:",
       groupedRows
         .map(([, rows]) => rows
-          .map((row) => `  ${row.pair.padEnd(8)} ${row.direction.padEnd(5)} ${formatLot(row.addLots, row.spec)} lots`)
+          .map((row) => `  ${row.brokerSymbol.padEnd(12)} ${row.direction.padEnd(5)} ${formatLot(row.addLots, row.spec)} lots`)
           .join("\n"))
         .join("\n"),
       "",
       "TRAIL: activate at +1.25% basket P&L, trail 0.5%",
       "SAFETY: S1 — skip adds if basket P&L < -1%",
-    ].join("\n");
+      brokerProfile?.sl_compliance_mode === "prop_pct_of_nominal"
+        ? `SL COMPLIANCE: ${brokerProfile.sl_cap_pct_of_nominal}% of nominal per trade`
+        : null,
+    ].filter(Boolean).join("\n");
 
     try {
       await navigator.clipboard.writeText(text);
@@ -400,6 +451,9 @@ export default function RiskBoard(props: RiskBoardProps) {
             <div>Base layer {activeAccount ? formatScaleFactor(activeAccount.scaleFactor) : "1/5"}</div>
             <div>Add layer {activeAccount ? formatScaleFactor(activeAccount.scaleFactor * 0.5) : "1/10"}</div>
             <div>Trail 1.25 / 0.5 · Safety S1</div>
+            {brokerProfile?.sl_compliance_mode === "prop_pct_of_nominal" ? (
+              <div>SL {brokerProfile.sl_cap_pct_of_nominal}% per trade</div>
+            ) : null}
           </div>
         </div>
 
@@ -412,7 +466,7 @@ export default function RiskBoard(props: RiskBoardProps) {
           onDeleteAccount={deleteAccount}
         />
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-3">
             <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Pairs</div>
             <div className="mt-1 text-xl font-semibold text-[var(--foreground)]">{riskRows.length}</div>
@@ -424,6 +478,17 @@ export default function RiskBoard(props: RiskBoardProps) {
           <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-3">
             <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Max Margin</div>
             <div className="mt-1 text-xl font-semibold text-[var(--foreground)]">{formatUsd(summary.maxMarginUsd)}</div>
+          </div>
+          <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-3">
+            <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Broker Sizing</div>
+            <div className="mt-1 text-sm font-semibold text-[var(--foreground)]">
+              {brokerProfile ? brokerProfile.label : "Site defaults"}
+            </div>
+            <div className="mt-1 text-[11px] text-[color:var(--muted)]">
+              {brokerProfile
+                ? `${riskRows.filter((row) => row.usesBrokerSpec).length}/${riskRows.length} pairs matched`
+                : "Manual overrides remain available"}
+            </div>
           </div>
         </div>
       </header>
@@ -453,13 +518,16 @@ export default function RiskBoard(props: RiskBoardProps) {
                   <th className="border-b border-[var(--panel-border)] px-3 py-3">Max Lots</th>
                   <th className="border-b border-[var(--panel-border)] px-3 py-3">ADR %</th>
                   <th className="border-b border-[var(--panel-border)] px-3 py-3">Price</th>
+                  {brokerProfile?.sl_compliance_mode === "prop_pct_of_nominal" ? (
+                    <th className="border-b border-[var(--panel-border)] px-3 py-3">Req SL</th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
                 {groupedRows.map(([assetLabel, rows]) => (
                   <Fragment key={assetLabel}>
                     <tr className="bg-[var(--panel)]/70">
-                      <td colSpan={7} className="border-b border-[var(--panel-border)] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
+                      <td colSpan={brokerProfile?.sl_compliance_mode === "prop_pct_of_nominal" ? 8 : 7} className="border-b border-[var(--panel-border)] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
                         {assetLabel}
                       </td>
                     </tr>
@@ -476,6 +544,11 @@ export default function RiskBoard(props: RiskBoardProps) {
                               Spec
                             </button>
                           </div>
+                          {row.brokerSymbol !== row.pair ? (
+                            <div className="mt-1 text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                              Broker: {row.brokerSymbol}
+                            </div>
+                          ) : null}
                           <div className="mt-1 text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
                             {row.currentReturnPct === null ? "No weekly P/L" : `Weekly ${formatPct(row.currentReturnPct)}`}
                           </div>
@@ -516,6 +589,13 @@ export default function RiskBoard(props: RiskBoardProps) {
                           {row.adrPct === null ? "—" : row.adrPct.toFixed(2)}
                         </td>
                         <td className="px-3 py-2 text-[var(--foreground)]">{formatPrice(row.currentPrice)}</td>
+                        {brokerProfile?.sl_compliance_mode === "prop_pct_of_nominal" ? (
+                          <td className="border-l border-[var(--panel-border)] px-3 py-2 text-[var(--foreground)]">
+                            {row.slDistancePips === null || row.slDistancePrice === null
+                              ? "—"
+                              : `${row.slDistancePips.toFixed(1)}p / ${formatPrice(row.slDistancePrice)}`}
+                          </td>
+                        ) : null}
                       </tr>
                     ))}
                   </Fragment>
@@ -546,8 +626,9 @@ export default function RiskBoard(props: RiskBoardProps) {
         <InstrumentConfigModal
           pair={sizingModalPair.pair}
           assetClass={sizingModalPair.assetClass}
-          spec={getInstrumentSpec(
-            sizingModalPair.pair,
+          spec={applyBrokerSymbolSpec(
+            getInstrumentSpec(sizingModalPair.pair),
+            brokerProfile ? findBrokerSymbolSpec(brokerProfile.symbol_specs, sizingModalPair.pair) : null,
             activeAccount.instrumentOverrides[sizingModalPair.pair],
           )}
           accountOverrides={activeAccount.instrumentOverrides[sizingModalPair.pair]}

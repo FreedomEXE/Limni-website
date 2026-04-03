@@ -39,6 +39,25 @@ CREATE TABLE IF NOT EXISTS mt5_accounts (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Broker Profiles (reusable symbol specs + compliance rules)
+CREATE TABLE IF NOT EXISTS broker_profiles (
+  profile_id VARCHAR(64) PRIMARY KEY,
+  label VARCHAR(100) NOT NULL,
+  broker VARCHAR(100),
+  server VARCHAR(100),
+  account_currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+  symbol_specs JSONB NOT NULL DEFAULT '[]'::jsonb,
+  sl_compliance_mode VARCHAR(30) NOT NULL DEFAULT 'none',
+  sl_cap_pct_of_nominal DECIMAL(6, 2) NOT NULL DEFAULT 0,
+  notes TEXT,
+  exported_utc TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_broker_profiles_label ON broker_profiles(label);
+CREATE INDEX IF NOT EXISTS idx_broker_profiles_broker_server ON broker_profiles(broker, server);
+
 -- MT5 Positions (current open positions)
 CREATE TABLE IF NOT EXISTS mt5_positions (
   id SERIAL PRIMARY KEY,

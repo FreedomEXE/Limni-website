@@ -13,8 +13,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { fetchBrokerProfileSummaries, type BrokerProfileSummary } from "@/lib/brokerProfiles";
 import type { SizingAccount } from "@/lib/flagship/positionSizer";
 
 type SizingAccountBarProps = {
@@ -59,6 +60,25 @@ export default function SizingAccountBar({
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [newAccountName, setNewAccountName] = useState("");
+  const [brokerProfiles, setBrokerProfiles] = useState<BrokerProfileSummary[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBrokerProfiles() {
+      try {
+        const data = await fetchBrokerProfileSummaries();
+        if (!cancelled) setBrokerProfiles(data);
+      } catch {
+        /* fall back to none */
+      }
+    }
+
+    void loadBrokerProfiles();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/60">
@@ -115,6 +135,9 @@ export default function SizingAccountBar({
             </span>
             <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
               Scale {formatScaleFactor(activeAccount.scaleFactor)}
+            </span>
+            <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1 text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+              Broker {brokerProfiles.find((profile) => profile.profile_id === activeAccount.brokerProfileId)?.label ?? "None"}
             </span>
           </>
         ) : (
@@ -181,7 +204,7 @@ export default function SizingAccountBar({
       ) : null}
 
       {showEditPanel && activeAccount ? (
-        <div className="grid gap-3 border-t border-[var(--panel-border)]/70 px-3 py-3 text-xs md:grid-cols-6">
+        <div className="grid gap-3 border-t border-[var(--panel-border)]/70 px-3 py-3 text-xs md:grid-cols-7">
           <label className="space-y-1">
             <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Account name</span>
             <input
@@ -254,6 +277,30 @@ export default function SizingAccountBar({
             <div className="text-[10px] text-[color:var(--muted)]">{formatScaleFactor(activeAccount.scaleFactor)}</div>
           </label>
           <label className="space-y-1">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Broker Profile</span>
+            <select
+              value={activeAccount.brokerProfileId ?? ""}
+              onChange={(event) =>
+                onUpdateAccount(activeAccount.id, {
+                  brokerProfileId: event.target.value || null,
+                })
+              }
+              className="w-full rounded-md border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1.5 text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]"
+            >
+              <option value="">None</option>
+              {brokerProfiles.map((profile) => (
+                <option key={profile.profile_id} value={profile.profile_id}>
+                  {profile.label}
+                </option>
+              ))}
+            </select>
+            <div className="text-[10px] text-[color:var(--muted)]">
+              {activeAccount.brokerProfileId
+                ? brokerProfiles.find((profile) => profile.profile_id === activeAccount.brokerProfileId)?.broker ?? "Linked"
+                : "Use site defaults + manual overrides"}
+            </div>
+          </label>
+          <label className="space-y-1">
             <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Max heat %</span>
             <input
               type="number"
@@ -268,7 +315,7 @@ export default function SizingAccountBar({
               className="w-full rounded-md border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1.5 font-mono text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]"
             />
           </label>
-          <div className="flex justify-end md:col-span-5">
+          <div className="flex justify-end md:col-span-6">
             <button
               type="button"
               onClick={() => {

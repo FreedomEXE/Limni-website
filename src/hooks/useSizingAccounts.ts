@@ -62,6 +62,7 @@ function parseAccounts(raw: string | null): SizingAccount[] {
           typeof candidate.scaleFactor === "number" && Number.isFinite(candidate.scaleFactor)
             ? candidate.scaleFactor
             : 0.2,
+        brokerProfileId: typeof candidate.brokerProfileId === "string" ? candidate.brokerProfileId : null,
         instrumentOverrides: candidate.instrumentOverrides,
       } satisfies SizingAccount];
     });

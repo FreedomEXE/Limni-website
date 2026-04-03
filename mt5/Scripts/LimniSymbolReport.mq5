@@ -12,6 +12,8 @@ input string SymbolAliases = "SPXUSD=SPX500,NDXUSD=NDX100,NIKKEIUSD=JPN225,WTIUS
 input bool WriteCsv = true;
 input string OutputFile = "LimniSymbolReport.csv";
 input bool IncludeHeader = true;
+input bool WriteJson = true;
+input string JsonOutputFile = "LimniSymbolReport.json";
 
 void AddUniqueSymbol(string &list[], const string value)
 {
@@ -188,12 +190,30 @@ string Dbl(const double value, const int digits)
   return DoubleToString(value, digits);
 }
 
-void DumpSymbol(const string apiSymbol, const string brokerSymbol, const double equity, const int handle)
+string JsonEscape(const string value)
+{
+  string out = value;
+  StringReplace(out, "\\", "\\\\");
+  StringReplace(out, "\"", "\\\"");
+  StringReplace(out, "\r", "");
+  StringReplace(out, "\n", "\\n");
+  return out;
+}
+
+string IsoUtc(const datetime value)
+{
+  string raw = TimeToString(value, TIME_DATE | TIME_SECONDS);
+  StringReplace(raw, ".", "-");
+  StringReplace(raw, " ", "T");
+  return raw + "Z";
+}
+
+bool DumpSymbol(const string apiSymbol, const string brokerSymbol, const double equity, const int csvHandle, const int jsonHandle, bool &firstJson)
 {
   if(!SymbolSelect(brokerSymbol, true))
   {
     Print("Symbol not found: ", apiSymbol, " -> ", brokerSymbol);
-    return;
+    return false;
   }
 
   double price = SymbolInfoDouble(brokerSymbol, SYMBOL_BID);
@@ -249,8 +269,34 @@ void DumpSymbol(const string apiSymbol, const string brokerSymbol, const double 
     IntegerToString(tradeMode);
 
   Print(line);
-  if(handle != INVALID_HANDLE)
-    FileWriteString(handle, line + "\r\n");
+  if(csvHandle != INVALID_HANDLE)
+    FileWriteString(csvHandle, line + "\r\n");
+
+  if(jsonHandle != INVALID_HANDLE)
+  {
+    string json =
+      "    {\r\n" +
+      "      \"api_symbol\": \"" + JsonEscape(apiSymbol) + "\",\r\n" +
+      "      \"broker_symbol\": \"" + JsonEscape(brokerSymbol) + "\",\r\n" +
+      "      \"price\": " + Dbl(price, digits) + ",\r\n" +
+      "      \"tick_size\": " + Dbl(tickSize, 10) + ",\r\n" +
+      "      \"tick_value\": " + Dbl(tickValue, 8) + ",\r\n" +
+      "      \"contract_size\": " + Dbl(contractSize, 2) + ",\r\n" +
+      "      \"profit_currency\": \"" + JsonEscape(SafeStr(profitCurrency)) + "\",\r\n" +
+      "      \"digits\": " + IntegerToString(digits) + ",\r\n" +
+      "      \"volume_min\": " + Dbl(minVol, 4) + ",\r\n" +
+      "      \"volume_max\": " + Dbl(maxVol, 2) + ",\r\n" +
+      "      \"volume_step\": " + Dbl(step, 6) + ",\r\n" +
+      "      \"margin_initial\": " + Dbl(marginInitial, 2) + ",\r\n" +
+      "      \"trade_mode\": " + IntegerToString(tradeMode) + "\r\n" +
+      "    }";
+    if(!firstJson)
+      FileWriteString(jsonHandle, ",\r\n");
+    FileWriteString(jsonHandle, json);
+    firstJson = false;
+  }
+
+  return true;
 }
 
 void OnStart()
@@ -286,6 +332,7 @@ void OnStart()
   }
 
   int outHandle = INVALID_HANDLE;
+  int jsonHandle = INVALID_HANDLE;
   if(WriteCsv)
   {
     outHandle = FileOpen(OutputFile, FILE_WRITE | FILE_TXT | FILE_COMMON);
@@ -300,8 +347,35 @@ void OnStart()
     }
   }
 
+  if(WriteJson)
+  {
+    jsonHandle = FileOpen(JsonOutputFile, FILE_WRITE | FILE_TXT | FILE_COMMON);
+    if(jsonHandle == INVALID_HANDLE)
+    {
+      Print("Failed to open JSON output file: ", JsonOutputFile);
+    }
+    else
+    {
+      string company = AccountInfoString(ACCOUNT_COMPANY);
+      string server = AccountInfoString(ACCOUNT_SERVER);
+      string accountCurrency = AccountInfoString(ACCOUNT_CURRENCY);
+      FileWriteString(
+        jsonHandle,
+        "{\r\n" +
+        "  \"broker\": \"" + JsonEscape(company) + "\",\r\n" +
+        "  \"server\": \"" + JsonEscape(server) + "\",\r\n" +
+        "  \"account_currency\": \"" + JsonEscape(accountCurrency) + "\",\r\n" +
+        "  \"equity_at_export\": " + Dbl(AccountInfoDouble(ACCOUNT_EQUITY), 2) + ",\r\n" +
+        "  \"exported_utc\": \"" + IsoUtc(TimeGMT()) + "\",\r\n" +
+        "  \"symbols\": [\r\n"
+      );
+    }
+  }
+
   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
   Print("Equity used for sizing: ", DoubleToString(equity, 2));
+  bool firstJson = true;
+  int processed = 0;
 
   for(int i = 0; i < ArraySize(symbols); i++)
   {
@@ -312,11 +386,17 @@ void OnStart()
       Print("Symbol resolve failed: ", apiSymbol);
       continue;
     }
-    DumpSymbol(apiSymbol, resolved, equity, outHandle);
+    if(DumpSymbol(apiSymbol, resolved, equity, outHandle, jsonHandle, firstJson))
+      processed++;
   }
 
   if(outHandle != INVALID_HANDLE)
     FileClose(outHandle);
+  if(jsonHandle != INVALID_HANDLE)
+  {
+    FileWriteString(jsonHandle, "\r\n  ]\r\n}\r\n");
+    FileClose(jsonHandle);
+  }
 
-  Print("Done. Symbols processed: ", ArraySize(symbols));
+  Print("Done. Symbols processed: ", processed);
 }
