@@ -181,8 +181,6 @@ export default function RiskBoard(props: RiskBoardProps) {
   } = useSizingAccounts();
   const [intradayLevels, setIntradayLevels] = useState<IntradayLevelsPayload | null>(null);
   const [cryptoMatrix, setCryptoMatrix] = useState<CryptoMatrixPayload | null>(null);
-  const [loadingOverlays, setLoadingOverlays] = useState(false);
-  const [overlayWarning, setOverlayWarning] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [copiedPlan, setCopiedPlan] = useState(false);
   const [sizingModalPair, setSizingModalPair] = useState<{ pair: string; assetClass: string } | null>(null);
@@ -192,37 +190,28 @@ export default function RiskBoard(props: RiskBoardProps) {
 
     async function loadSizingContext() {
       try {
-        setLoadingOverlays(true);
-        setOverlayWarning(null);
         const weekQs = weekOpenUtc ? `?week=${encodeURIComponent(weekOpenUtc)}` : "";
         const [intradayResponse, cryptoResponse] = await Promise.allSettled([
           fetch(`/api/flagship/intraday-levels${weekQs}`, { cache: "no-store" }),
           fetch(`/api/flagship/crypto-matrix${weekQs}`, { cache: "no-store" }),
         ]);
 
-        const nextWarnings: string[] = [];
-        const readJson = async <T,>(response: PromiseSettledResult<Response>, label: string) => {
+        const readJson = async <T,>(response: PromiseSettledResult<Response>) => {
           if (response.status === "fulfilled" && response.value.ok) return (await response.value.json()) as T;
-          nextWarnings.push(`${label} unavailable`);
           return null;
         };
 
         const [intradayJson, cryptoJson] = await Promise.all([
-          readJson<IntradayLevelsPayload>(intradayResponse, "intraday-levels"),
-          readJson<CryptoMatrixPayload>(cryptoResponse, "crypto-matrix"),
+          readJson<IntradayLevelsPayload>(intradayResponse),
+          readJson<CryptoMatrixPayload>(cryptoResponse),
         ]);
 
         if (!cancelled) {
           setIntradayLevels(intradayJson);
           setCryptoMatrix(cryptoJson);
-          setOverlayWarning(nextWarnings.length > 0 ? nextWarnings.join(" · ") : null);
-          setLoadingOverlays(false);
         }
       } catch {
-        if (!cancelled) {
-          setOverlayWarning("Sizing context unavailable");
-          setLoadingOverlays(false);
-        }
+        /* silently fall back to engine data */
       }
     }
 
@@ -423,7 +412,7 @@ export default function RiskBoard(props: RiskBoardProps) {
           onDeleteAccount={deleteAccount}
         />
 
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-3">
           <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-3">
             <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Pairs</div>
             <div className="mt-1 text-xl font-semibold text-[var(--foreground)]">{riskRows.length}</div>
@@ -435,17 +424,6 @@ export default function RiskBoard(props: RiskBoardProps) {
           <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-3">
             <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Max Margin</div>
             <div className="mt-1 text-xl font-semibold text-[var(--foreground)]">{formatUsd(summary.maxMarginUsd)}</div>
-          </div>
-          <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-3">
-            <div className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Sizing Context</div>
-            <div className="mt-1 text-sm font-semibold text-[var(--foreground)]">
-              {loadingOverlays ? "Loading..." : overlayWarning ? "Fallback / partial" : "Ready"}
-            </div>
-            {overlayWarning ? (
-              <div className="mt-1 text-[11px] text-[color:var(--muted)]">{overlayWarning}</div>
-            ) : (
-              <div className="mt-1 text-[11px] text-[color:var(--muted)]">ADR + price context loaded</div>
-            )}
           </div>
         </div>
       </header>
