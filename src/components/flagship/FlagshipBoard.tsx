@@ -5,8 +5,6 @@ import { useSearchParams } from "next/navigation";
 import type { WeeklyHoldResult, CanonicalSignal } from "@/lib/performance/weeklyHoldEngine";
 
 import AdrStatsBar from "@/components/flagship/AdrStatsBar";
-import InstrumentConfigModal from "@/components/flagship/InstrumentConfigModal";
-import SizingAccountBar from "@/components/flagship/SizingAccountBar";
 import { readSelectionFromParams, selectionLabel } from "@/components/shared/StrategySelector";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { getEntryStyle, resolveEntryStyleId } from "@/lib/performance/strategyConfig";
@@ -29,10 +27,7 @@ import {
   type MatrixGateDecision,
   type MatrixTrendState,
 } from "@/lib/flagship/matrixStyles";
-import { getInstrumentSpec } from "@/lib/flagship/instrumentDefaults";
-import { calculateLotSize } from "@/lib/flagship/positionSizer";
 import { formatDateTimeET } from "@/lib/time";
-import { useSizingAccounts } from "@/hooks/useSizingAccounts";
 
 type TrendState = MatrixTrendState;
 type GateDecision = MatrixGateDecision;
@@ -488,30 +483,6 @@ function sortBucket(row: MatrixRow) {
   return 2;
 }
 
-function formatUsd(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function lotPrecision(step: number) {
-  const [, decimal = ""] = `${step}`.split(".");
-  return decimal.length;
-}
-
-function formatLotSize(value: number, step: number) {
-  return value.toFixed(lotPrecision(step));
-}
-
-function sizingToneClass(warning: string | null) {
-  if (warning?.includes("MARGIN_EXCEEDED")) return "text-rose-700 dark:text-rose-300";
-  if (warning?.includes("MIN_LOT") || warning?.includes("MAX_LOT")) return "text-amber-700 dark:text-amber-300";
-  return "text-emerald-700 dark:text-emerald-300";
-}
-
 type FlagshipBoardProps = {
   weekOpenUtc?: string | null;
   currentWeekOpenUtc?: string;
@@ -578,17 +549,6 @@ export default function FlagshipBoard({
   const [nowUtc, setNowUtc] = useState<Date>(() => new Date());
   const [selectedSession, setSelectedSession] = useState<SessionName>(() => defaultSessionFromUtcDate(new Date()));
   const [expandedPairs, setExpandedPairs] = useState<string[]>([]);
-  const {
-    accounts,
-    activeAccount,
-    activeAccountId,
-    setActiveAccountId,
-    addAccount,
-    updateAccount,
-    deleteAccount,
-    updateInstrumentOverride,
-  } = useSizingAccounts();
-  const [sizingModalPair, setSizingModalPair] = useState<{ pair: string; assetClass: string } | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowUtc(new Date()), 60_000);
@@ -1063,15 +1023,6 @@ export default function FlagshipBoard({
           </div>
         ) : null}
 
-        <SizingAccountBar
-          accounts={accounts}
-          activeAccount={activeAccount}
-          onSelectAccount={setActiveAccountId}
-          onAddAccount={addAccount}
-          onUpdateAccount={updateAccount}
-          onDeleteAccount={deleteAccount}
-        />
-
         {canonicalSignals && (
           <AdrStatsBar
             totalTrades={statsTrades}
@@ -1106,7 +1057,6 @@ export default function FlagshipBoard({
                 <col className="w-[8rem]" />
                 <col className="w-[7rem]" />
                 <col className="w-[13rem]" />
-                <col className="w-[6rem]" />
               </colgroup>
               <thead className="sticky top-0 z-10 bg-[var(--panel)] text-left uppercase tracking-[0.14em] text-[color:var(--muted)]">
                 <tr>
@@ -1116,21 +1066,11 @@ export default function FlagshipBoard({
                   <th className="border-b border-[var(--panel-border)] px-3 py-3">
                     {isPastWeek ? matrixUi.historicalColumnLabel : matrixUi.currentColumnLabel}
                   </th>
-                  <th className="border-b border-[var(--panel-border)] px-3 py-3">Sizing</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--panel-border)] bg-[var(--panel)]/25">
                 {matrixRows.map((row) => {
                   const isExpanded = expandedPairs.includes(row.pair);
-                  const pairKey = row.pair.toUpperCase();
-                  const pairSpec = activeAccount
-                    ? getInstrumentSpec(pairKey, activeAccount.instrumentOverrides[pairKey])
-                    : null;
-                  const sizingResult =
-                    activeAccount && pairSpec && row.adrPct !== null && row.currentPrice !== null
-                      ? calculateLotSize(activeAccount, pairSpec, row.adrPct, row.currentPrice)
-                      : null;
-                  const sizingTone = sizingToneClass(sizingResult?.warning ?? null);
                   return (
                     <Fragment key={row.pair}>
                       <tr className={`transition-colors ${rowHighlightClass(row.coreBiasState)}`}>
@@ -1257,34 +1197,10 @@ export default function FlagshipBoard({
                             </div>
                           )}
                         </td>
-                        <td className="px-1 py-1">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              activeAccount
-                                ? setSizingModalPair({ pair: pairKey, assetClass: row.assetClass })
-                                : undefined
-                            }
-                            disabled={!activeAccount}
-                            className={`flex w-full flex-col items-start rounded-md px-2 py-1.5 text-left font-mono transition ${
-                              activeAccount ? "hover:bg-[var(--panel)]/70" : "cursor-default"
-                            } ${sizingResult ? sizingTone : "text-[var(--foreground)]"}`}
-                            title={sizingResult?.warning ?? (activeAccount ? "Configure instrument" : "No active account")}
-                          >
-                            <span className="text-sm font-semibold">
-                              {sizingResult && pairSpec ? formatLotSize(sizingResult.lotSize, pairSpec.lotStep) : "n/a"}
-                            </span>
-                            {sizingResult ? (
-                              <span className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-                                {formatUsd(sizingResult.riskAmountUsd)}
-                              </span>
-                            ) : null}
-                          </button>
-                        </td>
                       </tr>
                       {isExpanded ? (
                         <tr className="bg-[var(--panel)]/75">
-                          <td colSpan={5} className="px-4 py-3">
+                          <td colSpan={4} className="px-4 py-3">
                             <div className={`grid gap-2 ${matrixUi.showIntradayDetail ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
                               <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[color:var(--muted)]">
                                 <div className="font-semibold text-[var(--foreground)]">Core Bias Detail</div>
@@ -1360,23 +1276,6 @@ export default function FlagshipBoard({
             <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-slate-600 dark:text-slate-300">N = Neutral</span>
           </div>
         </div>
-      ) : null}
-
-      {sizingModalPair && activeAccount ? (
-        <InstrumentConfigModal
-          pair={sizingModalPair.pair}
-          assetClass={sizingModalPair.assetClass}
-          spec={getInstrumentSpec(
-            sizingModalPair.pair,
-            activeAccount.instrumentOverrides[sizingModalPair.pair],
-          )}
-          accountOverrides={activeAccount.instrumentOverrides[sizingModalPair.pair]}
-          onSave={(overrides) => {
-            updateInstrumentOverride(activeAccount.id, sizingModalPair.pair, overrides);
-            setSizingModalPair(null);
-          }}
-          onClose={() => setSizingModalPair(null)}
-        />
       ) : null}
     </section>
   );

@@ -13,7 +13,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { SizingAccount } from "@/lib/flagship/positionSizer";
 
@@ -40,6 +40,14 @@ function parseNumberInput(value: string, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function formatScaleFactor(value: number) {
+  if (!(value > 0)) return "0";
+  const inverse = 1 / value;
+  const rounded = Math.round(inverse);
+  if (Math.abs(inverse - rounded) < 1e-6) return `1/${rounded}`;
+  return value.toFixed(2);
+}
+
 export default function SizingAccountBar({
   accounts,
   activeAccount,
@@ -51,12 +59,6 @@ export default function SizingAccountBar({
   const [showEditPanel, setShowEditPanel] = useState(false);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [newAccountName, setNewAccountName] = useState("");
-
-  useEffect(() => {
-    if (!activeAccount) {
-      setShowEditPanel(false);
-    }
-  }, [activeAccount]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/60">
@@ -110,6 +112,9 @@ export default function SizingAccountBar({
             </span>
             <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
               1:{activeAccount.leverage}
+            </span>
+            <span className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+              Scale {formatScaleFactor(activeAccount.scaleFactor)}
             </span>
           </>
         ) : (
@@ -176,7 +181,7 @@ export default function SizingAccountBar({
       ) : null}
 
       {showEditPanel && activeAccount ? (
-        <div className="grid gap-3 border-t border-[var(--panel-border)]/70 px-3 py-3 text-xs md:grid-cols-5">
+        <div className="grid gap-3 border-t border-[var(--panel-border)]/70 px-3 py-3 text-xs md:grid-cols-6">
           <label className="space-y-1">
             <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Account name</span>
             <input
@@ -230,6 +235,23 @@ export default function SizingAccountBar({
               }
               className="w-full rounded-md border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1.5 font-mono text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]"
             />
+          </label>
+          <label className="space-y-1">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Scale</span>
+            <input
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              value={activeAccount.scaleFactor}
+              onChange={(event) =>
+                onUpdateAccount(activeAccount.id, {
+                  scaleFactor: Math.min(1, Math.max(0, parseNumberInput(event.target.value, activeAccount.scaleFactor))),
+                })
+              }
+              className="w-full rounded-md border border-[var(--panel-border)] bg-[var(--panel)] px-2 py-1.5 font-mono text-[var(--foreground)] outline-none transition focus:border-[var(--accent)]"
+            />
+            <div className="text-[10px] text-[color:var(--muted)]">{formatScaleFactor(activeAccount.scaleFactor)}</div>
           </label>
           <label className="space-y-1">
             <span className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">Max heat %</span>

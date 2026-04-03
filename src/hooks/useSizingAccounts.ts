@@ -33,20 +33,37 @@ function parseAccounts(raw: string | null): SizingAccount[] {
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((entry): entry is SizingAccount => {
-      if (!entry || typeof entry !== "object") return false;
+    return parsed.flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
       const candidate = entry as Partial<SizingAccount>;
-      return (
-        typeof candidate.id === "string" &&
-        typeof candidate.name === "string" &&
-        typeof candidate.balance === "number" &&
-        typeof candidate.currency === "string" &&
-        typeof candidate.riskPctPerTrade === "number" &&
-        typeof candidate.leverage === "number" &&
-        typeof candidate.maxPortfolioHeatPct === "number" &&
-        candidate.instrumentOverrides !== null &&
-        typeof candidate.instrumentOverrides === "object"
-      );
+      if (
+        typeof candidate.id !== "string" ||
+        typeof candidate.name !== "string" ||
+        typeof candidate.balance !== "number" ||
+        typeof candidate.currency !== "string" ||
+        typeof candidate.riskPctPerTrade !== "number" ||
+        typeof candidate.leverage !== "number" ||
+        typeof candidate.maxPortfolioHeatPct !== "number" ||
+        candidate.instrumentOverrides === null ||
+        typeof candidate.instrumentOverrides !== "object"
+      ) {
+        return [];
+      }
+
+      return [{
+        id: candidate.id,
+        name: candidate.name,
+        balance: candidate.balance,
+        currency: candidate.currency,
+        riskPctPerTrade: candidate.riskPctPerTrade,
+        leverage: candidate.leverage,
+        maxPortfolioHeatPct: candidate.maxPortfolioHeatPct,
+        scaleFactor:
+          typeof candidate.scaleFactor === "number" && Number.isFinite(candidate.scaleFactor)
+            ? candidate.scaleFactor
+            : 0.2,
+        instrumentOverrides: candidate.instrumentOverrides,
+      } satisfies SizingAccount];
     });
   } catch {
     return [];
@@ -69,25 +86,29 @@ export function useSizingAccounts(): {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const storedAccounts = parseAccounts(window.localStorage.getItem(ACCOUNTS_KEY));
-    const storedActiveId = window.localStorage.getItem(ACTIVE_ACCOUNT_KEY);
+    const timeout = window.setTimeout(() => {
+      const storedAccounts = parseAccounts(window.localStorage.getItem(ACCOUNTS_KEY));
+      const storedActiveId = window.localStorage.getItem(ACTIVE_ACCOUNT_KEY);
 
-    if (storedAccounts.length === 0) {
-      const defaultAccount = createDefaultAccount("Default");
-      setAccounts([defaultAccount]);
-      setActiveAccountIdState(defaultAccount.id);
+      if (storedAccounts.length === 0) {
+        const defaultAccount = createDefaultAccount("Default");
+        setAccounts([defaultAccount]);
+        setActiveAccountIdState(defaultAccount.id);
+        setHydrated(true);
+        return;
+      }
+
+      const nextActiveId =
+        storedActiveId && storedAccounts.some((account) => account.id === storedActiveId)
+          ? storedActiveId
+          : storedAccounts[0]?.id ?? null;
+
+      setAccounts(storedAccounts);
+      setActiveAccountIdState(nextActiveId);
       setHydrated(true);
-      return;
-    }
+    }, 0);
 
-    const nextActiveId =
-      storedActiveId && storedAccounts.some((account) => account.id === storedActiveId)
-        ? storedActiveId
-        : storedAccounts[0]?.id ?? null;
-
-    setAccounts(storedAccounts);
-    setActiveAccountIdState(nextActiveId);
-    setHydrated(true);
+    return () => window.clearTimeout(timeout);
   }, []);
 
   useEffect(() => {

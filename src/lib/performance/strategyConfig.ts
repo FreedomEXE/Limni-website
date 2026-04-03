@@ -234,7 +234,7 @@ export function getStrengthGate(id: string): StrengthGateConfig | undefined {
 export function resolveStrategyId(value: string | undefined | null): string {
   const normalized = normalizeStrategyLookupId(value);
   if (normalized && STRATEGIES.some((s) => s.id === normalized)) return normalized;
-  return "dealer";
+  return "agree_2of3_nocomm";
 }
 
 export function resolveEntryStyleId(value: string | undefined | null): string {

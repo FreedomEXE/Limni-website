@@ -16,7 +16,7 @@
 
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 
-export type MatrixTab = "cfd" | "crypto";
+export type MatrixTab = "cfd" | "crypto" | "risk";
 
 type MatrixControlsProps = {
   weeks: string[];
@@ -30,6 +30,7 @@ type MatrixControlsProps = {
 const TABS = [
   { key: "cfd", label: "CFD" },
   { key: "crypto", label: "Crypto" },
+  { key: "risk", label: "Risk" },
 ] as const;
 
 export default function MatrixControls({

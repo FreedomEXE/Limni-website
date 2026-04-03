@@ -34,6 +34,7 @@ type MatrixPageProps = {
 function resolveTab(value: string | string[] | undefined) {
   if (typeof value !== "string") return "cfd" as const;
   const normalized = value.toLowerCase();
+  if (normalized === "risk") return normalized;
   if (normalized === "crypto") return normalized;
   return "cfd" as const;
 }

@@ -21,6 +21,7 @@ export type SizingAccount = {
   riskPctPerTrade: number;
   leverage: number;
   maxPortfolioHeatPct: number;
+  scaleFactor: number;
   instrumentOverrides: Record<string, Partial<InstrumentSpec>>;
 };
 
@@ -127,6 +128,7 @@ export function createDefaultAccount(name: string): SizingAccount {
     riskPctPerTrade: 3,
     leverage: 100,
     maxPortfolioHeatPct: 25,
+    scaleFactor: 0.2,
     instrumentOverrides: {},
   };
 }

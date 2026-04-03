@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import CryptoBoard from "@/components/flagship/CryptoBoard";
 import FlagshipBoard from "@/components/flagship/FlagshipBoard";
 import MatrixControls, { type MatrixTab } from "@/components/matrix/MatrixControls";
+import RiskBoard from "@/components/matrix/RiskBoard";
 import type { AssetClass } from "@/lib/cotMarkets";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import {
@@ -229,6 +230,16 @@ export default function MatrixViewSection({
       />
 
       {selectedTab === "crypto" ? <CryptoBoard weekOpenUtc={selectedWeek} /> : null}
+      {selectedTab === "risk" ? (
+        <RiskBoard
+          weekOpenUtc={selectedWeek}
+          currentWeekOpenUtc={currentWeekOpenUtc}
+          selection={selectedSelection}
+          engineWeekResults={engineWeekResults}
+          canonicalSignals={canonicalSignals}
+          weeklyReturns={weeklyReturns}
+        />
+      ) : null}
       {selectedTab === "cfd" ? (
         <FlagshipBoard
           weekOpenUtc={selectedWeek}
