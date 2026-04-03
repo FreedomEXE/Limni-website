@@ -125,7 +125,7 @@ export function createDefaultAccount(name: string): SizingAccount {
     name,
     balance: 100,
     currency: "USD",
-    riskPctPerTrade: 3,
+    riskPctPerTrade: 1,
     leverage: 100,
     maxPortfolioHeatPct: 25,
     scaleFactor: 0.2,
