@@ -17,7 +17,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import StrategySelector from "@/components/shared/StrategySelector";
-import { getEntryStyle, getStrengthGate } from "@/lib/performance/strategyConfig";
+import { getEntryStyle } from "@/lib/performance/strategyConfig";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import {
   STRATEGY_SELECTION_COMMIT_EVENT,
@@ -108,9 +108,6 @@ function EngineSidebarStatsCard() {
   const isAllTime = weekStats?.weekKey === "all" || !weekStats;
   const returnColor = (v: number) => v >= 0 ? "text-lime-400" : "text-red-400";
   const entryStyleLabel = getEntryStyle(activeSelection.f1)?.label ?? activeSelection.f1;
-  const strengthGateLabel = activeSelection.f2 !== "none"
-    ? ` · ${getStrengthGate(activeSelection.f2)?.label ?? activeSelection.f2}`
-    : "";
 
   return (
     <div className="space-y-3">
@@ -150,7 +147,7 @@ function EngineSidebarStatsCard() {
       {at && (
         <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--accent-strong)]">
-            {allTimeStats?.biasSourceLabel} · {entryStyleLabel}{strengthGateLabel}
+            {allTimeStats?.biasSourceLabel} · {entryStyleLabel}
           </div>
           <div className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
             {at.weeks} Weeks Tracked

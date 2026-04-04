@@ -13,8 +13,6 @@
 -----------------------------------------------*/
 
 import DashboardLayout from "@/components/DashboardLayout";
-import PerformanceHeaderContext from "@/components/performance/PerformanceHeaderContext";
-import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import PerformanceStrategyViewSection from "@/components/performance/PerformanceStrategyViewSection";
 import type { PerformanceSimulationGroup } from "@/components/performance/PerformanceSimulationSection";
 import { getCanonicalWeeklyBasket, type CanonicalWeeklySignal, type CanonicalWeeklyTier } from "@/lib/flagship/canonicalWeeklyBasket";
@@ -32,7 +30,7 @@ import {
   resolvePerformanceSystem,
   type PerformanceSystem,
 } from "@/lib/performance/modelConfig";
-import { buildDataWeekOptions, buildNormalizedWeekOptions } from "@/lib/weekOptions";
+import { buildDataWeekOptions } from "@/lib/weekOptions";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { resolvePerformanceView, resolveSelectedPerformanceWeek } from "@/lib/performance/pageState";
@@ -41,12 +39,10 @@ import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegist
 import { DateTime } from "luxon";
 import {
   getEntryStyle,
-  getStrengthGate,
   getStrategy,
   normalizeFilterSelection,
   resolveBiasSourceId,
 } from "@/lib/performance/strategyConfig";
-import type { EngineGridProps, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import {
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
@@ -212,12 +208,6 @@ function weekDisplayLabel(weekOpenUtc: string) {
   const start = parsed.plus({ days: 1 }).startOf("day");
   const end = start.plus({ days: 4 });
   return `${start.toFormat("MMM dd")} - ${end.toFormat("MMM dd, yyyy")}`;
-}
-
-function formatWeekOptionLabel(value: SelectedPerformanceWeek, currentWeekOpenUtc: string) {
-  if (value === "all") return "All Weeks";
-  if (value === currentWeekOpenUtc) return `Current Week · ${weekDisplayLabel(value)}`;
-  return weekDisplayLabel(value);
 }
 
 function assetLabelForClass(assetClass: string) {
@@ -1084,7 +1074,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     f2: f2Value,
   });
   const entryStyle = getEntryStyle(normalizedFilters.f1);
-  const strengthGate = getStrengthGate(normalizedFilters.f2);
 
   const resolvedFamily = parseFamily(styleParamValue);
   const initialStyle: WeeklyPerformanceFamily = resolvedFamily === "universal" ? "universal" : "tiered";
@@ -1092,8 +1081,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const initialView = resolvePerformanceView(viewParamValue);
   const initialMode = parseMode(modeParamValue);
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  const showWeekSelector = initialMode === "flagship" || initialStyle === "tiered";
-
   const [report, flagships, currentWeekBasket] = await Promise.all([
     getCanonicalPerformanceApiModel({ normalizePositionSizing: true }),
     resolveCanonicalFlagships(),
@@ -1221,7 +1208,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               Performance
             </h1>
             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-              {selectedStrategyConfig?.label ?? biasSourceId} · {entryStyle?.label ?? normalizedFilters.f1}{strengthGate && strengthGate.id !== "none" ? ` · ${strengthGate.label}` : ""}
+              {selectedStrategyConfig?.label ?? biasSourceId} · {entryStyle?.label ?? normalizedFilters.f1}
             </p>
           </div>
         </header>

@@ -41,6 +41,19 @@ describe("derivePairDirections", () => {
     expect(pairs.USDJPY?.direction).toBe("SHORT");
     expect(pairs.AUDJPY).toBeUndefined();
   });
+
+  it("forces commercial FX direction from raw base-minus-quote net", () => {
+    const markets: Record<string, MarketSnapshot> = {
+      AUD: buildMarketSnapshot(10, 10, 80, 120),
+      CAD: buildMarketSnapshot(10, 10, 95, 105),
+    };
+
+    const pairs = derivePairDirections(markets, [
+      { pair: "AUDCAD", base: "AUD", quote: "CAD" },
+    ], "commercial");
+
+    expect(pairs.AUDCAD?.direction).toBe("SHORT");
+  });
 });
 
 describe("derivePairDirectionsByBase", () => {

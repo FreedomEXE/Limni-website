@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { normalizeFilterSelection } from "@/lib/performance/strategyConfig";
 
 describe("performance/strategyConfig filter normalization", () => {
-  it("preserves new-style entry-style and overlay params", () => {
+  it("silently absorbs old adr overlay params into canonical none", () => {
     expect(
       normalizeFilterSelection({
         f1: "adr_pullback",
@@ -10,7 +10,7 @@ describe("performance/strategyConfig filter normalization", () => {
       }),
     ).toEqual({
       f1: "adr_pullback",
-      f2: "adr_normalized",
+      f2: "none",
     });
   });
 

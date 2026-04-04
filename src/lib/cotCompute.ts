@@ -146,6 +146,24 @@ export function derivePairDirections(
       continue;
     }
 
+    if (mode === "commercial") {
+      const rawNet = baseBias.net - quoteBias.net;
+      if (rawNet > 0) {
+        pairs[pairDef.pair] = {
+          direction: "LONG",
+          base_bias: baseBias.bias,
+          quote_bias: quoteBias.bias,
+        };
+      } else if (rawNet < 0) {
+        pairs[pairDef.pair] = {
+          direction: "SHORT",
+          base_bias: baseBias.bias,
+          quote_bias: quoteBias.bias,
+        };
+      }
+      continue;
+    }
+
     if (baseBias.bias === "NEUTRAL" || quoteBias.bias === "NEUTRAL") {
       continue;
     }
@@ -216,6 +234,30 @@ export function derivePairDirectionsWithNeutral(
     const quoteBias = quote ? resolveMarketBias(quote, mode) : null;
 
     if (!baseBias || !quoteBias) {
+      continue;
+    }
+
+    if (mode === "commercial") {
+      const rawNet = baseBias.net - quoteBias.net;
+      if (rawNet > 0) {
+        pairs[pairDef.pair] = {
+          direction: "LONG",
+          base_bias: baseBias.bias,
+          quote_bias: quoteBias.bias,
+        };
+      } else if (rawNet < 0) {
+        pairs[pairDef.pair] = {
+          direction: "SHORT",
+          base_bias: baseBias.bias,
+          quote_bias: quoteBias.bias,
+        };
+      } else {
+        pairs[pairDef.pair] = {
+          direction: "NEUTRAL",
+          base_bias: baseBias.bias,
+          quote_bias: quoteBias.bias,
+        };
+      }
       continue;
     }
 

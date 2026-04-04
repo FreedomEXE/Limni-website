@@ -90,7 +90,8 @@ export default function StrategySelector() {
     const params = new URLSearchParams(searchParams.toString());
     params.set("strategy", draft.strategy);
     params.set("f1", draft.f1);
-    params.set("f2", draft.f2);
+    if (draft.f2 !== "none") params.set("f2", draft.f2);
+    else params.delete("f2");
     params.delete("bias");
     params.delete("filter");
     params.delete("style");
@@ -147,22 +148,23 @@ export default function StrategySelector() {
         </select>
       </div>
 
-      {/* Filter 2 (strength gate) */}
-      <div>
-        <label htmlFor="intraday-filter" className={labelClasses}>
-          Filter 2
-        </label>
-        <select
-          id="intraday-filter"
-          value={draft.f2}
-          onChange={(e) => setDraft((prev) => ({ ...prev, f2: e.target.value }))}
-          className={selectClasses}
-        >
-          {STRENGTH_GATES.map((f) => (
-            <option key={f.id} value={f.id}>{f.label}</option>
-          ))}
-        </select>
-      </div>
+      {STRENGTH_GATES.length > 0 && (
+        <div>
+          <label htmlFor="intraday-filter" className={labelClasses}>
+            Filter 2
+          </label>
+          <select
+            id="intraday-filter"
+            value={draft.f2}
+            onChange={(e) => setDraft((prev) => ({ ...prev, f2: e.target.value }))}
+            className={selectClasses}
+          >
+            {STRENGTH_GATES.map((f) => (
+              <option key={f.id} value={f.id}>{f.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Run button */}
       <button

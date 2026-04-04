@@ -28,10 +28,8 @@ import {
 import {
   getEntryStyle,
   getStrategy,
-  getStrengthGate,
   type EntryStyleConfig,
   type BiasSourceConfig,
-  type StrengthGateConfig,
 } from "@/lib/performance/strategyConfig";
 import {
   computeMultiWeekHold,
@@ -50,7 +48,7 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v12";
+  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v13";
 
 type WeekWatermarkRow = {
   week_open_utc: string;
@@ -91,7 +89,6 @@ export type StrategyPageData = {
   sidebarStats: EngineSidebarStats;
   biasSource: BiasSourceConfig;
   entryStyle: EntryStyleConfig | undefined;
-  strengthGate: StrengthGateConfig | undefined;
   weekOptions: string[];
   currentWeekOpenUtc: string;
 };
@@ -104,7 +101,6 @@ export async function loadStrategyPageData(
   if (!biasSource) return null;
 
   const entryStyle = getEntryStyle(selection.f1);
-  const strengthGate = getStrengthGate(selection.f2);
 
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const dataSectionWeeks = await listDataSectionWeeks();
@@ -117,12 +113,11 @@ export async function loadStrategyPageData(
 
   try {
     const currentWeekResultPromise = hasCurrentWeek
-      ? computeWeeklyHold(biasSource, currentWeekOpenUtc, entryStyle, strengthGate)
+      ? computeWeeklyHold(biasSource, currentWeekOpenUtc, entryStyle)
       : Promise.resolve(null);
     const fingerprint = await buildStrategyFingerprint({
       currentWeekOpenUtc,
       entryStyle,
-      strengthGate,
       weekOptions: cachedWeeks,
     });
 
@@ -151,7 +146,6 @@ export async function loadStrategyPageData(
           await patchWeekResults({
             biasSource,
             entryStyle,
-            strengthGate,
             selectionKey,
             targetWeeks: weeksToRefresh,
             weekResultsByWeek: nextWeekResults,
@@ -162,7 +156,6 @@ export async function loadStrategyPageData(
           biasSource,
           currentWeekOpenUtc,
           entryStyle,
-          strengthGate,
           weekOptions: cachedWeeks,
           weekResultsByWeek: nextWeekResults,
         });
@@ -183,13 +176,12 @@ export async function loadStrategyPageData(
         biasSource,
         currentWeekOpenUtc,
         entryStyle,
-        strengthGate,
         weekOptions,
         weekResultsByWeek: nextWeekResults,
       });
     }
 
-    const multiWeekResult = await computeMultiWeekHold(biasSource, cachedWeeks, entryStyle, strengthGate);
+    const multiWeekResult = await computeMultiWeekHold(biasSource, cachedWeeks, entryStyle);
     const weekResultsByWeek = Object.fromEntries(
       multiWeekResult.weeks.map((weekResult) => [weekResult.weekOpenUtc, weekResult] as const),
     );
@@ -199,7 +191,6 @@ export async function loadStrategyPageData(
       await patchWeekResults({
         biasSource,
         entryStyle,
-        strengthGate,
         selectionKey,
         targetWeeks: missingWeeks,
         weekResultsByWeek,
@@ -210,7 +201,6 @@ export async function loadStrategyPageData(
       biasSource,
       currentWeekOpenUtc,
       entryStyle,
-      strengthGate,
       weekOptions: cachedWeeks,
       weekResultsByWeek,
     });
@@ -230,7 +220,6 @@ export async function loadStrategyPageData(
       biasSource,
       currentWeekOpenUtc,
       entryStyle,
-      strengthGate,
       weekOptions,
       weekResultsByWeek,
     });
@@ -247,21 +236,19 @@ async function buildStrategyFingerprint(options: {
   weekOptions: string[];
   currentWeekOpenUtc: string;
   entryStyle: EntryStyleConfig | undefined;
-  strengthGate: StrengthGateConfig | undefined;
 }): Promise<StrategyArtifactFingerprint> {
-  const { weekOptions, currentWeekOpenUtc, entryStyle, strengthGate } = options;
+  const { weekOptions, currentWeekOpenUtc, entryStyle } = options;
   return {
     engineVersion: `${STRATEGY_ARTIFACT_ENGINE_VERSION}:${SELECTOR_ENGINE_VERSION}`,
     currentWeekOpenUtc,
     weekOptionsSignature: buildWeekOptionsSignature(weekOptions),
-    weekFingerprints: await readWeekFingerprints(weekOptions, entryStyle, strengthGate),
+    weekFingerprints: await readWeekFingerprints(weekOptions, entryStyle),
   };
 }
 
 async function readWeekFingerprints(
   weekOptions: string[],
   entryStyle: EntryStyleConfig | undefined,
-  strengthGate: StrengthGateConfig | undefined,
 ): Promise<Record<string, string>> {
   if (weekOptions.length === 0) return {};
 
@@ -360,7 +347,6 @@ async function readWeekFingerprints(
       `sentt:${normalizeStamp(sentimentRow?.max_timestamp_utc)}`,
       `adr-run:${normalizeStamp(adrRunRow?.updated_at)}`,
       `adr:${normalizeStamp(adrRow?.max_created_at)}:${normalizeStamp(adrRow?.max_entry_time_utc)}:${adrRow?.trade_count ?? 0}`,
-      `overlay:${strengthGate?.id ?? "none"}`,
     ].join("|");
   }
 
@@ -378,14 +364,13 @@ function diffChangedWeeks(
 async function patchWeekResults(options: {
   biasSource: BiasSourceConfig;
   entryStyle: EntryStyleConfig | undefined;
-  strengthGate: StrengthGateConfig | undefined;
   selectionKey: string;
   targetWeeks: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
 }) {
-  const { biasSource, entryStyle, strengthGate, selectionKey, targetWeeks, weekResultsByWeek } = options;
+  const { biasSource, entryStyle, selectionKey, targetWeeks, weekResultsByWeek } = options;
   const recomputed = await Promise.allSettled(
-    targetWeeks.map((weekOpenUtc) => computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, strengthGate)),
+    targetWeeks.map((weekOpenUtc) => computeWeeklyHold(biasSource, weekOpenUtc, entryStyle)),
   );
 
   recomputed.forEach((result, index) => {
@@ -406,15 +391,11 @@ function buildStrategyPageDataFromWeekResults(options: {
   biasSource: BiasSourceConfig;
   currentWeekOpenUtc: string;
   entryStyle: EntryStyleConfig | undefined;
-  strengthGate: StrengthGateConfig | undefined;
   weekOptions: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
 }): StrategyPageData {
-  const { biasSource, currentWeekOpenUtc, entryStyle, strengthGate, weekOptions, weekResultsByWeek } = options;
-  const selectionLabel = [
-    entryStyle?.label ?? "Weekly Hold",
-    strengthGate?.id && strengthGate.id !== "none" ? strengthGate.label : null,
-  ].filter(Boolean).join(" · ");
+  const { biasSource, currentWeekOpenUtc, entryStyle, weekOptions, weekResultsByWeek } = options;
+  const selectionLabel = entryStyle?.label ?? "Weekly Hold";
   const orderedWeeks = weekOptions
     .map((weekOpenUtc) => weekResultsByWeek[weekOpenUtc])
     .filter((weekResult): weekResult is WeeklyHoldResult => Boolean(weekResult));
@@ -458,7 +439,6 @@ function buildStrategyPageDataFromWeekResults(options: {
     sidebarStats: weeklyHoldToSidebarStats(currentWeekResult, biasSource, multiWeekResult),
     biasSource,
     entryStyle,
-    strengthGate,
     weekOptions,
     currentWeekOpenUtc,
   };

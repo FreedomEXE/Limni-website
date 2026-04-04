@@ -61,9 +61,12 @@ export function listStrategyBootstrapSelections(): StrategyBootstrapSelection[] 
   // Guardrail: this registry defines the client-side fast path. New strategies
   // or filters must appear here or they will silently fall back to slower
   // route-driven behavior in sections that expect the full bootstrapped map.
+  const filter2Options = STRENGTH_GATES.length > 0
+    ? STRENGTH_GATES
+    : [{ id: "none" }];
   return STRATEGIES.flatMap((strategy) =>
     ENTRY_STYLE_FILTERS.flatMap((entryStyle) =>
-      STRENGTH_GATES.map((strengthGate) => ({
+      filter2Options.map((strengthGate) => ({
         strategyId: strategy.id,
         f1: entryStyle.id,
         f2: strengthGate.id,

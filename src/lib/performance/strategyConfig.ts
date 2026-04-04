@@ -9,7 +9,7 @@
  * Three selection levels:
  *   Strategy   — directional bias source (Dealer, Tiered V3, etc.)
  *   Filter 1   — entry style (Weekly Hold, ADR Pullback, etc.)
- *   Filter 2   — reusable gating overlay (None, Strength Gate, etc.)
+ *   Filter 2   — reserved for future reusable overlays (currently empty)
  *
  * Adding a new option is just adding an entry to the array.
  * URL params: ?strategy=dealer&f1=weekly_hold&f2=none
@@ -183,15 +183,20 @@ export type StrengthGateConfig = {
 };
 
 export const STRENGTH_GATES: StrengthGateConfig[] = [
+  // ADR normalization is now canonical in the engine.
+  // Keep Filter 2 reserved for future layers (DCA, daily adds, etc.).
+];
+
+const LEGACY_STRENGTH_GATES: StrengthGateConfig[] = [
   {
     id: "none",
     label: "None",
-    description: "No overlay — raw 1:1 price mapping",
+    description: "No overlay — retained only for backward compatibility",
   },
   {
     id: "adr_normalized",
     label: "ADR Normalized",
-    description: "Equalize position risk across asset classes via ADR-based normalization",
+    description: "Canonical risk layer retained only for backward compatibility",
   },
 ];
 
@@ -208,10 +213,10 @@ export function normalizeFilterSelection(value: {
   const legacyEntryStyleId = isKnownId(ENTRY_STYLE_FILTERS, rawF2) ? rawF2 : null;
   const entryStyleId = legacyEntryStyleId
     ?? (isKnownId(ENTRY_STYLE_FILTERS, rawF1) ? rawF1 : "weekly_hold");
-  const strengthGateId = isKnownId(STRENGTH_GATES, rawF2) ? rawF2 : "adr_normalized";
   return {
     f1: entryStyleId,
-    f2: strengthGateId,
+    // Backward compatibility: silently absorb old ?f2=adr_normalized URLs.
+    f2: "none",
   };
 }
 
@@ -228,7 +233,8 @@ export function getEntryStyle(id: string): EntryStyleConfig | undefined {
 }
 
 export function getStrengthGate(id: string): StrengthGateConfig | undefined {
-  return STRENGTH_GATES.find((f) => f.id === id);
+  return STRENGTH_GATES.find((f) => f.id === id)
+    ?? LEGACY_STRENGTH_GATES.find((f) => f.id === id);
 }
 
 export function resolveStrategyId(value: string | undefined | null): string {
@@ -244,7 +250,7 @@ export function resolveEntryStyleId(value: string | undefined | null): string {
 
 export function resolveStrengthGateId(value: string | undefined | null): string {
   if (value && STRENGTH_GATES.some((f) => f.id === value)) return value;
-  return "adr_normalized";
+  return "none";
 }
 
 /* ─── Backward compatibility (old names → new) ────────────────── */

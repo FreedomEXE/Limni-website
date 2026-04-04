@@ -26,7 +26,7 @@ import { DateTime } from "luxon";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
-import type { BiasSourceConfig, EntryStyleConfig, StrengthGateConfig } from "@/lib/performance/strategyConfig";
+import type { BiasSourceConfig, EntryStyleConfig } from "@/lib/performance/strategyConfig";
 import { resolveSelectorDirections } from "@/lib/performance/selectorEngine";
 import { readWeeklyPairStrengths } from "@/lib/strength/weeklyStrength";
 import { loadWeeklyAdrMap, getAdrPct, getTargetAdrPct } from "@/lib/performance/adrLookup";
@@ -116,12 +116,9 @@ function inferAssetClass(symbol: string): string {
   return "fx";
 }
 
-async function applyOverlay(
+async function applyAdrNormalization(
   result: WeeklyHoldResult,
-  strengthGate: StrengthGateConfig | undefined,
 ): Promise<WeeklyHoldResult> {
-  if (strengthGate?.id !== "adr_normalized") return result;
-
   const adrMap = await loadWeeklyAdrMap(result.weekOpenUtc);
   const targetAdr = getTargetAdrPct();
 
@@ -568,15 +565,16 @@ export async function computeWeeklyHold(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
   entryStyle?: EntryStyleConfig,
-  strengthGate?: StrengthGateConfig,
+  _legacyStrengthGate?: unknown,
 ): Promise<WeeklyHoldResult> {
+  void _legacyStrengthGate;
   // Route to the correct executor based on plModel
   const plModel = entryStyle?.plModel ?? "weekly_hold";
   const executor = EXECUTORS[plModel];
   if (executor) {
     console.log(`[engine] Routing to ${plModel} executor for ${weekOpenUtc}`);
     const result = await executor(biasSource, weekOpenUtc);
-    return applyOverlay(result, strengthGate);
+    return applyAdrNormalization(result);
   }
 
   // Default: weekly hold (open→close from pair_period_returns)
@@ -590,7 +588,7 @@ export async function computeWeeklyHold(
   const trades: WeeklyHoldTrade[] = [];
 
   if (pairReturns.length === 0) {
-    return {
+    return applyAdrNormalization({
       weekOpenUtc,
       biasSourceId: biasSource.id,
       trades,
@@ -601,7 +599,7 @@ export async function computeWeeklyHold(
       tradeCount: 0,
       signals,
       isRealized,
-    };
+    });
   }
 
   for (const [key, signal] of directions) {
@@ -644,19 +642,20 @@ export async function computeWeeklyHold(
     signals,
     isRealized,
   };
-  return applyOverlay(result, strengthGate);
+  return applyAdrNormalization(result);
 }
 
 export async function computeMultiWeekHold(
   biasSource: BiasSourceConfig,
   weekOpenUtcs: string[],
   entryStyle?: EntryStyleConfig,
-  strengthGate?: StrengthGateConfig,
+  _legacyStrengthGate?: unknown,
 ): Promise<MultiWeekResult> {
+  void _legacyStrengthGate;
   const computedWeeks: WeeklyHoldResult[] = [];
   for (const weekOpenUtc of weekOpenUtcs) {
     try {
-      const result = await computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, strengthGate);
+      const result = await computeWeeklyHold(biasSource, weekOpenUtc, entryStyle);
       computedWeeks.push(result);
     } catch (err) {
       console.warn(`[engine] Skipping week ${weekOpenUtc}:`, err instanceof Error ? err.message : err);
