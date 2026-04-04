@@ -19,6 +19,7 @@ import { formatDateTimeET } from "@/lib/time";
 import type { Direction } from "@/lib/cotTypes";
 import type { PairPerformance } from "@/lib/priceStore";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
+import type { WeekSnapshotProvenance } from "@/lib/performance/snapshotProvenance";
 import type { MyfxbookPositioning } from "@/components/SentimentHeatmap";
 import SummaryCards from "@/components/SummaryCards";
 import MiniBiasStrip from "@/components/MiniBiasStrip";
@@ -105,6 +106,7 @@ type DashboardViewSectionProps = {
   sentimentDataByReport: Record<string, DashboardSentimentPayload>;
   strengthDataByReport: Record<string, DashboardStrengthPayload>;
   myfxbookPositioningBySymbol: Record<string, MyfxbookPositioning | undefined>;
+  provenanceByReport?: Record<string, WeekSnapshotProvenance>;
 };
 
 export default function DashboardViewSection({
@@ -119,6 +121,7 @@ export default function DashboardViewSection({
   sentimentDataByReport,
   strengthDataByReport,
   myfxbookPositioningBySymbol,
+  provenanceByReport,
 }: DashboardViewSectionProps) {
   const defaultReport = initialReport || reportOptions[0]?.value || "";
   const [selectedReport, setSelectedReport] = useState(defaultReport);
@@ -196,11 +199,25 @@ export default function DashboardViewSection({
         ? "Strength"
       : "Dealer";
 
-  const headerRefresh = selectedBias === "sentiment"
-    ? sentimentPayload?.latestAggregateTimestamp ?? null
-    : selectedBias === "strength"
-      ? strengthPayload?.latestSnapshotUtc ?? null
-    : cotPayload?.combinedRefresh ?? null;
+  const provenance = provenanceByReport?.[selectedReport] ?? null;
+  const headerRefreshLabel = useMemo(() => {
+    if (provenance) {
+      const snapshotUtc =
+        selectedBias === "sentiment"
+          ? provenance.sentiment.snapshotUtc
+          : selectedBias === "strength"
+            ? provenance.strength.snapshotUtc
+            : provenance.cot.snapshotUtc;
+      return snapshotUtc ? `Snapshot ${formatDateTimeET(snapshotUtc)}` : "No snapshot yet";
+    }
+
+    const fallback = selectedBias === "sentiment"
+      ? sentimentPayload?.latestAggregateTimestamp ?? null
+      : selectedBias === "strength"
+        ? strengthPayload?.latestSnapshotUtc ?? null
+      : cotPayload?.combinedRefresh ?? null;
+    return fallback ? `Last refresh ${formatDateTimeET(fallback)}` : "No refresh yet";
+  }, [cotPayload?.combinedRefresh, provenance, selectedBias, sentimentPayload?.latestAggregateTimestamp, strengthPayload?.latestSnapshotUtc]);
 
   const pairRows =
     selectedBias === "strength"
@@ -236,7 +253,7 @@ export default function DashboardViewSection({
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold text-[var(--foreground)]">{headerTitle}</h1>
         <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          {headerRefresh ? `Last refresh ${formatDateTimeET(headerRefresh)}` : "No refresh yet"}
+          {headerRefreshLabel}
         </div>
       </header>
 

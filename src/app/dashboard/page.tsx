@@ -28,6 +28,7 @@ import {
   findDataSectionWeekByReportDate,
   listDataSectionWeekEntries,
 } from "@/lib/dataSectionWeeks";
+import { getWeekSnapshotProvenance, type WeekSnapshotProvenance } from "@/lib/performance/snapshotProvenance";
 import {
   resolveDashboardBias,
 } from "@/lib/dashboard/dashboardSelection";
@@ -751,6 +752,23 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     }))
     .filter((entry) => Boolean(entry.reportDate));
 
+  const provenanceEntries = await Promise.all(
+    selectedWeeks.map(async ({ reportDate: currentReportDate, weekOpenUtc }) => {
+      if (!weekOpenUtc) {
+        return [currentReportDate, null] as const;
+      }
+      try {
+        return [currentReportDate, await getWeekSnapshotProvenance(weekOpenUtc)] as const;
+      } catch (error) {
+        console.error("Dashboard provenance load failed:", error);
+        return [currentReportDate, null] as const;
+      }
+    }),
+  );
+  const provenanceByReport = Object.fromEntries(
+    provenanceEntries.filter((entry): entry is readonly [string, WeekSnapshotProvenance] => Boolean(entry[1])),
+  ) as Record<string, WeekSnapshotProvenance>;
+
   const weeklyReturnsEntries = await Promise.all(
     selectedWeeks.map(async ({ reportDate, weekOpenUtc }) => [
       reportDate,
@@ -884,6 +902,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         sentimentDataByReport={sentimentDataByReport}
         strengthDataByReport={strengthDataByReport}
         myfxbookPositioningBySymbol={myfxbookPositioningBySymbol}
+        provenanceByReport={provenanceByReport}
       />
     </DashboardLayout>
   );

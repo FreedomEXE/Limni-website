@@ -14,6 +14,7 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import AntikytheraControls from "@/components/antikythera/AntikytheraControls";
 import { listDataSectionWeekEntries, listDataSectionWeeks, findDataSectionWeekByReportDate } from "@/lib/dataSectionWeeks";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
+import { getWeekSnapshotProvenance } from "@/lib/performance/snapshotProvenance";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -82,6 +83,14 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
     currentWeekOpenUtc: currentWeekOpen,
     allowAll: false,
   }) as string | null;
+  let selectedWeekProvenance: Awaited<ReturnType<typeof getWeekSnapshotProvenance>> | null = null;
+  if (selectedWeek) {
+    try {
+      selectedWeekProvenance = await getWeekSnapshotProvenance(selectedWeek);
+    } catch (error) {
+      console.error("Antikythera provenance load failed:", error);
+    }
+  }
   try {
     if (selectedWeek) {
       const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
@@ -249,7 +258,14 @@ export default async function AntikytheraPage({ searchParams }: AntikytheraPageP
             Antikythera
           </h1>
           <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            {latestAntikytheraRefresh
+            {selectedWeekProvenance
+              ? `Snapshot ${formatDateTimeET(
+                  latestIso([
+                    selectedWeekProvenance.cot.snapshotUtc,
+                    selectedWeekProvenance.sentiment.snapshotUtc,
+                  ]),
+                )}`
+              : latestAntikytheraRefresh
               ? `Last refresh ${formatDateTimeET(latestAntikytheraRefresh)}`
               : "No refresh yet"}
           </div>
