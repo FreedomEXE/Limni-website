@@ -208,7 +208,7 @@ export function normalizeFilterSelection(value: {
   const legacyEntryStyleId = isKnownId(ENTRY_STYLE_FILTERS, rawF2) ? rawF2 : null;
   const entryStyleId = legacyEntryStyleId
     ?? (isKnownId(ENTRY_STYLE_FILTERS, rawF1) ? rawF1 : "weekly_hold");
-  const strengthGateId = isKnownId(STRENGTH_GATES, rawF2) ? rawF2 : "none";
+  const strengthGateId = isKnownId(STRENGTH_GATES, rawF2) ? rawF2 : "adr_normalized";
   return {
     f1: entryStyleId,
     f2: strengthGateId,
@@ -244,7 +244,7 @@ export function resolveEntryStyleId(value: string | undefined | null): string {
 
 export function resolveStrengthGateId(value: string | undefined | null): string {
   if (value && STRENGTH_GATES.some((f) => f.id === value)) return value;
-  return "none";
+  return "adr_normalized";
 }
 
 /* ─── Backward compatibility (old names → new) ────────────────── */
