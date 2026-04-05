@@ -6,7 +6,7 @@
  *
  * Description:
  * Canonical historical basket source — the single source of truth for
- * dealer, commercial, and sentiment pair directions per week.
+ * dealer, commercial, sentiment, and strength pair directions per week.
  *
  * This module sits BELOW the strategy engine and ABOVE raw data stores.
  * It wraps the same reads the Data section uses (readSnapshot, sentiment
@@ -17,7 +17,7 @@
  * (tiered_v3, agree_2of3, tandem). It must NOT independently rebuild
  * base-model directions from raw snapshot reads.
  *
- * If COT or sentiment interpretation changes, fix it HERE. Every
+ * If COT, sentiment, or strength interpretation changes, fix it HERE. Every
  * downstream section inherits the update automatically.
  */
 /*-----------------------------------------------
@@ -29,13 +29,14 @@ import { derivePairDirectionsWithNeutral, derivePairDirectionsByBaseWithNeutral 
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
 import { sentimentDirectionFromAggregate } from "@/lib/sentiment/daily";
+import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 import { deriveCotReportDate } from "@/lib/dataSectionWeeks";
 import { DateTime } from "luxon";
 import type { AssetClass } from "@/lib/cotMarkets";
 
 // ─── Public types ───────────────────────────────────────────────
 
-export type BaseBasketModel = "dealer" | "commercial" | "sentiment";
+export type BaseBasketModel = "dealer" | "commercial" | "sentiment" | "strength";
 
 export type BasketDirection = "LONG" | "SHORT" | "NEUTRAL";
 
@@ -193,6 +194,47 @@ async function resolveSentimentBasket(
   return signals;
 }
 
+// ─── Internal: Strength-based resolution ────────────────────────
+
+async function resolveStrengthBasket(
+  weekOpenUtc: string,
+): Promise<CanonicalBasketSignal[]> {
+  try {
+    const rows = await readCanonicalStrengthDirections(weekOpenUtc);
+    return rows.map((row) => ({
+      weekOpenUtc,
+      model: "strength",
+      symbol: row.pair,
+      assetClass: row.assetClass,
+      direction: row.direction,
+      sourceReportDate: null,
+      metadata: {
+        availableWindows: row.availableWindows,
+        compositeScore: row.compositeScore,
+        latestSnapshotUtc: row.latestSnapshotUtc,
+        raw1w: row.raw1w,
+        raw1m: row.raw1m,
+      },
+    }));
+  } catch {
+    const signals: CanonicalBasketSignal[] = [];
+    for (const ac of ASSET_CLASSES) {
+      for (const pd of (PAIRS_BY_ASSET_CLASS[ac] ?? [])) {
+        signals.push({
+          weekOpenUtc,
+          model: "strength",
+          symbol: pd.pair,
+          assetClass: ac,
+          direction: "NEUTRAL",
+          sourceReportDate: null,
+          metadata: { reason: "strength_error" },
+        });
+      }
+    }
+    return signals;
+  }
+}
+
 // ─── Asset class inference (shared with engine) ─────────────────
 
 const CRYPTO_SYMBOLS = new Set(["BTCUSD", "ETHUSD", "BTCUSDT", "ETHUSDT", "SOLUSD", "SOLUSDT", "XRPUSD", "XRPUSDT", "DOGUSD", "DOGUSDT", "ADAUSD", "ADAUSDT", "AVAUSD", "AVAUSDT", "LINKUSD", "DOTUSDT"]);
@@ -210,21 +252,22 @@ function inferAssetClass(symbol: string): string {
 // ─── Public API ─────────────────────────────────────────────────
 
 /**
- * Get canonical basket signals for all three base models for a single week.
+ * Get canonical basket signals for all base models for a single week.
  * This is the ONLY function that should be called for historical basket truth.
  */
 export async function getCanonicalBasketWeek(
   weekOpenUtc: string,
 ): Promise<CanonicalBasketWeek> {
-  const [dealer, commercial, sentiment] = await Promise.all([
+  const [dealer, commercial, sentiment, strength] = await Promise.all([
     resolveCotBasket("dealer", weekOpenUtc),
     resolveCotBasket("commercial", weekOpenUtc),
     resolveSentimentBasket(weekOpenUtc),
+    resolveStrengthBasket(weekOpenUtc),
   ]);
 
   return {
     weekOpenUtc,
-    signals: [...dealer, ...commercial, ...sentiment],
+    signals: [...dealer, ...commercial, ...sentiment, ...strength],
   };
 }
 

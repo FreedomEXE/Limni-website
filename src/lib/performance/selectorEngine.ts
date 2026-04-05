@@ -38,6 +38,7 @@ import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
 import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import { weekOpenFromCotReportDate } from "@/lib/performance/gateEvaluation";
 import { readWeeklyPairStrengths, type WeeklyPairStrength } from "@/lib/strength/weeklyStrength";
+import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 
 // ── Config ─────────────────────────────────────────────────────────
 
@@ -238,6 +239,7 @@ function fallbackDirection(
 
 function toStrengthContext(
   row: WeeklyPairStrength | undefined,
+  canonicalDirection: SelectorDirectionalState | undefined,
   pair: string,
   weekOpenUtc: string,
   options?: { requireStrength?: boolean },
@@ -255,7 +257,7 @@ function toStrengthContext(
   }
   return {
     compositeScore: row.compositeScore,
-    compositeDirection: row.compositeDirection,
+    compositeDirection: canonicalDirection ?? row.compositeDirection,
     availableWindows: row.availableWindows,
     latestSnapshotUtc: row.latestSnapshotUtc,
   };
@@ -592,9 +594,15 @@ export async function buildContextForWeek(
   options?: { requireStrength?: boolean },
 ): Promise<Map<string, PairContext>> {
   const contexts = new Map<string, PairContext>();
-  const strengthRows = await readWeeklyPairStrengths(weekOpenUtc);
+  const [strengthRows, canonicalStrengthRows] = await Promise.all([
+    readWeeklyPairStrengths(weekOpenUtc),
+    readCanonicalStrengthDirections(weekOpenUtc),
+  ]);
   const strengthByPair = new Map(
     strengthRows.map((row) => [row.pair.toUpperCase(), row]),
+  );
+  const canonicalStrengthByPair = new Map(
+    canonicalStrengthRows.map((row) => [row.pair.toUpperCase(), row.direction] as const),
   );
   for (const pairDef of universe) {
     const dealer = computeCotMetrics(pairDef, weekOpenUtc, "dealer", cotHistory);
@@ -608,6 +616,7 @@ export async function buildContextForWeek(
       sentiment,
       strength: toStrengthContext(
         strengthByPair.get(pairDef.pair.toUpperCase()),
+        canonicalStrengthByPair.get(pairDef.pair.toUpperCase()),
         pairDef.pair,
         weekOpenUtc,
         options,

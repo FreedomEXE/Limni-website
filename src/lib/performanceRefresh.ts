@@ -12,6 +12,7 @@ import {
 import { getPairPerformance } from "@/lib/pricePerformance";
 import type { PairSnapshot } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
+import { readWeeklyPairStrengths } from "@/lib/strength/weeklyStrength";
 import {
   getWeekOpenUtc,
   writePerformanceSnapshots,
@@ -105,6 +106,7 @@ export async function refreshPerformanceSnapshots(options: {
     "dealer",
     "commercial",
     "sentiment",
+    "strength",
   ];
   const latestSentiment = await getLatestAggregatesLocked();
 
@@ -140,6 +142,7 @@ export async function refreshPerformanceSnapshots(options: {
         sentimentForWeek = weekStartSentiment;
       }
     }
+    const strengthForWeek = await readWeeklyPairStrengths(weekOpenUtc);
     const snapshots = await Promise.all(
       assetClasses.map((asset) =>
         isCurrentWeek
@@ -166,7 +169,9 @@ export async function refreshPerformanceSnapshots(options: {
           assetClass: asset.id,
           snapshot,
           sentiment: sentimentForWeek,
+          strength: strengthForWeek,
           performance,
+          weekOpenUtc: reportWeekOpenUtc,
         });
         payload.push({
           week_open_utc: reportWeekOpenUtc,

@@ -1,6 +1,8 @@
 import type { AssetClass } from "./cotMarkets";
 import type { Bias, Direction, PairSnapshot, CotSnapshot } from "./cotTypes";
 import type { SentimentAggregate } from "./sentiment/types";
+import type { WeeklyPairStrength } from "./strength/weeklyStrength";
+import { readCanonicalStrengthDirections } from "./strength/canonicalDirection";
 import { DateTime } from "luxon";
 import { PAIRS_BY_ASSET_CLASS } from "./cotPairs";
 import { getPairPerformance } from "./pricePerformance";
@@ -267,6 +269,49 @@ function buildSentimentPairs(
   return pairs;
 }
 
+function getStrengthWeekOpenUtc(reportDate?: string | null, explicitWeekOpenUtc?: string | null) {
+  if (explicitWeekOpenUtc) {
+    return explicitWeekOpenUtc;
+  }
+  const report = reportDate
+    ? DateTime.fromISO(reportDate, { zone: "America/New_York" })
+    : null;
+  if (!report?.isValid) {
+    return null;
+  }
+  const daysUntilSunday = (7 - (report.weekday % 7)) % 7;
+  return report.plus({ days: daysUntilSunday }).set({
+    hour: 19,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  }).toUTC().toISO();
+}
+
+async function buildStrengthPairs(
+  assetClass: AssetClass,
+  strengthData: WeeklyPairStrength[],
+  weekOpenUtc: string | null,
+): Promise<Record<string, PairSnapshot>> {
+  const pairs: Record<string, PairSnapshot> = {};
+  const pairDefs = new Set(PAIRS_BY_ASSET_CLASS[assetClass].map((pairDef) => pairDef.pair.toUpperCase()));
+
+  if (!weekOpenUtc) {
+    return pairs;
+  }
+
+  const canonical = await readCanonicalStrengthDirections(weekOpenUtc);
+  void strengthData;
+  for (const row of canonical) {
+    if (row.assetClass !== assetClass || !pairDefs.has(row.pair.toUpperCase())) {
+      continue;
+    }
+    pairs[row.pair.toUpperCase()] = pairSnapshot(row.direction);
+  }
+
+  return pairs;
+}
+
 function buildBiasPairs(
   assetClass: AssetClass,
   snapshot: CotSnapshot,
@@ -313,14 +358,16 @@ function buildAntikytheraPairs(
   return pairs;
 }
 
-function buildModelPairs(options: {
+async function buildModelPairs(options: {
   model: PerformanceModel;
   assetClass: AssetClass;
   snapshot: CotSnapshot;
   sentiment: SentimentAggregate[];
+  strength?: WeeklyPairStrength[];
   system?: "v1" | "v2" | "v3";
-}): Record<string, PairSnapshot> {
-  const { model, assetClass, snapshot, sentiment, system = "v1" } = options;
+  weekOpenUtc?: string | null;
+}): Promise<Record<string, PairSnapshot>> {
+  const { model, assetClass, snapshot, sentiment, strength, system = "v1", weekOpenUtc } = options;
 
   if (model === "sentiment") {
     return buildSentimentPairs(assetClass, sentiment);
@@ -337,7 +384,11 @@ function buildModelPairs(options: {
   }
 
   if (model === "strength") {
-    return {};
+    if (!strength) {
+      return {};
+    }
+    const effectiveWeekOpenUtc = getStrengthWeekOpenUtc(snapshot.report_date ?? null, weekOpenUtc);
+    return buildStrengthPairs(assetClass, strength, effectiveWeekOpenUtc);
   }
 
   const biasMode: BiasMode = model;
@@ -389,12 +440,25 @@ export async function computeModelPerformance(options: {
   assetClass: AssetClass;
   snapshot: CotSnapshot;
   sentiment: SentimentAggregate[];
+  strength?: WeeklyPairStrength[];
   performance?: Awaited<ReturnType<typeof getPairPerformance>>;
   pairsOverride?: Record<string, PairSnapshot>;
   reasonOverrides?: Map<string, string[]>;
   system?: "v1" | "v2" | "v3";
+  weekOpenUtc?: string | null;
 }): Promise<ModelPerformance> {
-  const { model, assetClass, snapshot, sentiment, performance, pairsOverride, reasonOverrides, system = "v1" } = options;
+  const {
+    model,
+    assetClass,
+    snapshot,
+    sentiment,
+    strength,
+    performance,
+    pairsOverride,
+    reasonOverrides,
+    system = "v1",
+    weekOpenUtc,
+  } = options;
   const sentimentMap = new Map(sentiment.map((item) => [item.symbol, item]));
   let pairs: Record<string, PairSnapshot> = {};
   const reasonMap = new Map<string, string[]>();
@@ -431,12 +495,14 @@ export async function computeModelPerformance(options: {
       reasonMap.set(signal.pair, signal.reasons);
     });
   } else {
-    pairs = buildModelPairs({
+    pairs = await buildModelPairs({
       model,
       assetClass,
       snapshot,
       sentiment,
+      strength,
       system,
+      weekOpenUtc,
     });
     Object.entries(pairs).forEach(([pair, info]) => {
       reasonMap.set(pair, biasReason(model, assetClass, info));

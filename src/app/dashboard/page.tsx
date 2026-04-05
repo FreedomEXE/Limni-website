@@ -41,6 +41,7 @@ import {
   type WeeklyPairStrength,
   type WeeklyUnderlyingStrength,
 } from "@/lib/strength/weeklyStrength";
+import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 import {
   ALL_SENTIMENT_SYMBOLS,
   SENTIMENT_ASSET_CLASSES,
@@ -561,12 +562,25 @@ function formatStrengthLabel(assetClass: AssetClass, symbol: string) {
   return definition.markets[symbol]?.label ?? symbol;
 }
 
-function buildStrengthDetailItems(row: WeeklyPairStrength) {
+function buildStrengthDetailItems(
+  row: WeeklyPairStrength | null,
+  canonicalDirection: Direction,
+  fallbackNote?: string,
+) {
+  if (!row) {
+    return [
+      { label: "Canonical Direction", value: canonicalDirection },
+      { label: "Resolver Mode", value: fallbackNote ?? "Fallback-resolved strength direction" },
+      { label: "Raw Snapshot Detail", value: "No stored 1h/4h/24h snapshot rows for this week" },
+    ];
+  }
+
   const longGate = evaluateStrengthGate(row, "LONG");
   const shortGate = evaluateStrengthGate(row, "SHORT");
   const details = [
     { label: "Asset Class", value: getAssetClassDefinition(row.assetClass).label },
-    { label: "Composite Direction", value: row.compositeDirection },
+    { label: "Canonical Direction", value: canonicalDirection },
+    { label: "Stored Composite Direction", value: row.compositeDirection },
     { label: "Composite Score", value: String(row.compositeScore) },
     { label: "Available Windows", value: `${row.availableWindows}/3` },
     {
@@ -605,6 +619,10 @@ function buildStrengthDetailItems(row: WeeklyPairStrength) {
     );
   });
 
+  if (fallbackNote) {
+    details.push({ label: "Resolver Mode", value: fallbackNote });
+  }
+
   return details;
 }
 
@@ -633,13 +651,19 @@ async function buildStrengthPayloadForWeek({
     };
   }
 
-  const [strengthRows, previousRows, underlyingRows] = await Promise.all([
+  const [strengthRows, underlyingRows] = await Promise.all([
     readWeeklyPairStrengthsForAsset(weekOpenUtc, selectedAsset),
-    previousWeekOpenUtc
-      ? readWeeklyPairStrengthsForAsset(previousWeekOpenUtc, selectedAsset)
-      : Promise.resolve([]),
     readWeeklyUnderlyingStrengths(weekOpenUtc, selectedAsset),
   ]);
+  const [canonicalRows, previousCanonicalRows] = await Promise.all([
+    readCanonicalStrengthDirections(weekOpenUtc),
+    previousWeekOpenUtc
+      ? readCanonicalStrengthDirections(previousWeekOpenUtc)
+      : Promise.resolve([]),
+  ]);
+
+  const canonicalFiltered = canonicalRows.filter((row) => selectedAsset === "all" || row.assetClass === selectedAsset);
+  const previousCanonicalFiltered = previousCanonicalRows.filter((row) => selectedAsset === "all" || row.assetClass === selectedAsset);
 
   const performanceByKey = new Map(
     weeklyReturns.map((row) => [
@@ -647,18 +671,36 @@ async function buildStrengthPayloadForWeek({
       buildCanonicalPairPerformance(weekOpenUtc, row),
     ]),
   );
+  const strengthByPair = new Map(
+    strengthRows.map((row) => [row.pair.toUpperCase(), row] as const),
+  );
   const previousDirections = new Map(
-    previousRows.map((row) => [row.pair, row.compositeDirection]),
+    previousCanonicalFiltered.map((row) => [row.pair.toUpperCase(), row.direction] as const),
   );
 
-  const pairRowsWithPerf = [...strengthRows]
+  const pairRowsWithPerf = [...canonicalFiltered]
     .sort((a, b) => a.pair.localeCompare(b.pair))
     .map((row) => ({
       pair: row.pair,
-      direction: row.compositeDirection,
+      direction: row.direction,
       performance: performanceByKey.get(`${row.assetClass}|${row.pair}`) ?? null,
-      subtitle: row.windows.map((windowRow) => `${windowRow.window} raw ${windowRow.direction}`).join(" · "),
-      details: buildStrengthDetailItems(row),
+      subtitle: (() => {
+        const stored = strengthByPair.get(row.pair.toUpperCase());
+        if (!stored) {
+          return "Canonical fallback-resolved";
+        }
+        return stored.windows.map((windowRow) => `${windowRow.window} raw ${windowRow.direction}`).join(" · ");
+      })(),
+      details: (() => {
+        const stored = strengthByPair.get(row.pair.toUpperCase()) ?? null;
+        const fallbackNote =
+          stored && stored.compositeDirection === row.direction
+            ? undefined
+            : stored
+              ? "Canonical direction differs from stored composite due to hybrid 1w/1m resolver"
+              : "Canonical direction resolved from historical fallback because stored windows were incomplete";
+        return buildStrengthDetailItems(stored, row.direction, fallbackNote);
+      })(),
     }));
 
   const flipDetails = pairRowsWithPerf
@@ -680,11 +722,8 @@ async function buildStrengthPayloadForWeek({
       bias: strengthBias(row.direction),
     }));
 
-  const missingPairs = strengthRows
-    .filter((row) => row.availableWindows < 3)
-    .map((row) => row.pair);
-
   const latestSnapshotUtc = latestIso([
+    ...canonicalFiltered.map((row) => row.latestSnapshotUtc),
     ...strengthRows.map((row) => row.latestSnapshotUtc),
     ...underlyingRows.map((row) => row.snapshotTimeUtc),
   ]);
@@ -693,10 +732,10 @@ async function buildStrengthPayloadForWeek({
     latestSnapshotUtc,
     totalPairsCount,
     pairRowsWithPerf,
-    missingPairs,
+    missingPairs: [],
     stripItems,
     flipDetails,
-    note: "Tiles show the raw composite strength direction. Modal details include the 1h, 4h, and 24h readings plus long/short gate outcomes.",
+    note: "Tiles show the canonical strength direction. Modal details include stored 1h, 4h, and 24h readings plus resolver fallback notes when canonical direction differs.",
   };
 }
 

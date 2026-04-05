@@ -14,6 +14,7 @@ import {
 import type { PairSnapshot } from "../src/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "../src/lib/cotPairs";
 import { getWeekOpenUtc, writePerformanceSnapshots } from "../src/lib/performanceSnapshots";
+import { readWeeklyPairStrengths } from "../src/lib/strength/weeklyStrength";
 import { DateTime } from "luxon";
 
 function reportWeekOpenUtc(reportDate: string): string | null {
@@ -51,6 +52,7 @@ async function main() {
     "dealer",
     "commercial",
     "sentiment",
+    "strength",
   ];
 
   const weekOpenUtc = getWeekOpenUtc();
@@ -64,6 +66,7 @@ async function main() {
     getAggregatesForWeekStart(weekOpenUtc, weekCloseIso),
     readAggregates(),
   ]);
+  const strengthRows = await readWeeklyPairStrengths(weekOpenUtc);
   const snapshots = await Promise.all(
     assetClasses.map((asset) => readSnapshot({ assetClass: asset.id })),
   );
@@ -113,9 +116,11 @@ async function main() {
           assetClass: asset.id,
           snapshot,
           sentiment: latestSentiment,
+          strength: strengthRows,
           performance: sentimentPerformance,
           pairsOverride: sentimentPairs.pairs,
           reasonOverrides: sentimentPairs.reasonOverrides,
+          weekOpenUtc,
         });
       } else {
         result = await computeModelPerformance({
@@ -123,7 +128,9 @@ async function main() {
           assetClass: asset.id,
           snapshot,
           sentiment: latestSentiment,
+          strength: strengthRows,
           performance,
+          weekOpenUtc,
         });
       }
 

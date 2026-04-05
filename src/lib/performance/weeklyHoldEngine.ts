@@ -28,7 +28,7 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
 import type { BiasSourceConfig, EntryStyleConfig } from "@/lib/performance/strategyConfig";
 import { resolveSelectorDirections } from "@/lib/performance/selectorEngine";
-import { readWeeklyPairStrengths } from "@/lib/strength/weeklyStrength";
+import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 import { loadWeeklyAdrMap, getAdrPct, getTargetAdrPct } from "@/lib/performance/adrLookup";
 
 // ─── Trade types (strategy-generic) ─────────────────────────────
@@ -192,12 +192,11 @@ async function resolveDirections(
   }
 
   if (biasSource.id === "strength") {
-    const strengthRows = await readWeeklyPairStrengths(weekOpenUtc);
+    const strengthRows = await readCanonicalStrengthDirections(weekOpenUtc);
     const map: DirectionMap = new Map();
     for (const row of strengthRows) {
-      if (row.compositeDirection === "NEUTRAL") continue;
       map.set(row.pair.toUpperCase(), {
-        direction: row.compositeDirection,
+        direction: row.direction,
         source: "strength",
         tier: null,
         assetClass: row.assetClass,
@@ -217,12 +216,11 @@ async function resolveDirections(
     || (biasSource.type === "tandem" && biasSource.models?.includes("strength"));
 
   if (needsStrengthVotes) {
-    const strengthRows = await readWeeklyPairStrengths(weekOpenUtc);
+    const strengthRows = await readCanonicalStrengthDirections(weekOpenUtc);
     strengthMap = new Map();
     for (const row of strengthRows) {
-      if (row.compositeDirection === "NEUTRAL") continue;
       strengthMap.set(row.pair.toUpperCase(), {
-        direction: row.compositeDirection,
+        direction: row.direction,
         source: "strength",
         tier: null,
         assetClass: row.assetClass,
