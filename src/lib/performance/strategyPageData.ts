@@ -48,7 +48,7 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v13";
+  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v14";
 
 type WeekWatermarkRow = {
   week_open_utc: string;
@@ -72,6 +72,12 @@ type AdrTradeWatermarkRow = {
   max_created_at: string | null;
   max_entry_time_utc: string | null;
   trade_count: number;
+};
+
+type StrengthWatermarkRow = {
+  week_open_utc: string;
+  max_locked_at: string | null;
+  row_count: number;
 };
 
 
@@ -254,7 +260,7 @@ async function readWeekFingerprints(
 
   const uniqueReportDates = Array.from(new Set(weekOptions.map((week) => deriveCotReportDate(week))));
 
-  const [pairRows, cotRows, sentimentRows, adrRunRow] = await Promise.all([
+  const [pairRows, cotRows, sentimentRows, strengthRows, adrRunRow] = await Promise.all([
     query<WeekWatermarkRow>(
       `SELECT period_open_utc::text AS week_open_utc,
               MAX(updated_at)::text AS max_updated_at,
@@ -284,6 +290,19 @@ async function readWeekFingerprints(
          LEFT JOIN sentiment_aggregates sa
            ON sa.timestamp_utc >= requested.week_open_utc
           AND sa.timestamp_utc < requested.week_open_utc + INTERVAL '7 days'
+        GROUP BY requested.week_open_utc`,
+      [weekOptions],
+    ),
+    query<StrengthWatermarkRow>(
+      `WITH requested AS (
+         SELECT unnest($1::timestamptz[]) AS week_open_utc
+       )
+       SELECT requested.week_open_utc::text AS week_open_utc,
+              MAX(sws.locked_at_utc)::text AS max_locked_at,
+              COUNT(sws.*)::int AS row_count
+         FROM requested
+         LEFT JOIN strength_weekly_snapshots sws
+           ON sws.week_open_utc = requested.week_open_utc
         GROUP BY requested.week_open_utc`,
       [weekOptions],
     ),
@@ -328,6 +347,9 @@ async function readWeekFingerprints(
   const sentimentByWeek = new Map(
     sentimentRows.map((row) => [row.week_open_utc, row]),
   );
+  const strengthByWeek = new Map(
+    strengthRows.map((row) => [row.week_open_utc, row]),
+  );
   const adrByWeek = new Map(
     adrTradeRows.map((row) => [row.week_open_utc, row]),
   );
@@ -337,6 +359,7 @@ async function readWeekFingerprints(
     const reportDate = deriveCotReportDate(weekOpenUtc);
     const cotRow = cotByReportDate.get(reportDate);
     const sentimentRow = sentimentByWeek.get(weekOpenUtc);
+    const strengthRow = strengthByWeek.get(weekOpenUtc);
     const adrRow = adrByWeek.get(weekOpenUtc);
 
     fingerprints[weekOpenUtc] = [
@@ -345,6 +368,7 @@ async function readWeekFingerprints(
       `cot:${reportDate}:${normalizeStamp(cotRow?.max_fetched_at)}`,
       `sentc:${normalizeStamp(sentimentRow?.max_created_at)}`,
       `sentt:${normalizeStamp(sentimentRow?.max_timestamp_utc)}`,
+      `str:${normalizeStamp(strengthRow?.max_locked_at)}:${strengthRow?.row_count ?? 0}`,
       `adr-run:${normalizeStamp(adrRunRow?.updated_at)}`,
       `adr:${normalizeStamp(adrRow?.max_created_at)}:${normalizeStamp(adrRow?.max_entry_time_utc)}:${adrRow?.trade_count ?? 0}`,
     ].join("|");
