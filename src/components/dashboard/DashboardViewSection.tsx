@@ -20,7 +20,10 @@ import type { Direction } from "@/lib/cotTypes";
 import type { PairPerformance } from "@/lib/priceStore";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import type { WeekSnapshotProvenance } from "@/lib/performance/snapshotProvenance";
-import type { MyfxbookPositioning } from "@/components/SentimentHeatmap";
+import type {
+  CanonicalSentimentHeatmapRow,
+  MyfxbookPositioning,
+} from "@/components/SentimentHeatmap";
 import SummaryCards from "@/components/SummaryCards";
 import MiniBiasStrip from "@/components/MiniBiasStrip";
 import PairHeatmap from "@/components/PairHeatmap";
@@ -74,6 +77,7 @@ export type DashboardCotPayload = {
 export type DashboardSentimentPayload = {
   latestAggregateTimestamp: string | null;
   aggregates: SentimentAggregate[];
+  resolvedRows: CanonicalSentimentHeatmapRow[];
   performanceByPair: Record<string, number | null>;
   flipDetails: DetailItem[];
 };
@@ -234,19 +238,14 @@ export default function DashboardViewSection({
     .map((row) => ({ label: row.pair, value: "NEUTRAL" }));
 
   const sentimentAggregates = sentimentPayload?.aggregates ?? [];
-  const sentimentSorted = [...sentimentAggregates].sort((a, b) => a.symbol.localeCompare(b.symbol));
-  const crowdedLong = sentimentAggregates.filter((agg) => agg.crowding_state === "CROWDED_LONG").length;
-  const crowdedShort = sentimentAggregates.filter((agg) => agg.crowding_state === "CROWDED_SHORT").length;
-  const neutralSentiment = sentimentAggregates.filter((agg) => agg.crowding_state === "NEUTRAL").length;
-  const sentimentShortDetails = sentimentSorted
-    .filter((agg) => agg.crowding_state === "CROWDED_LONG")
-    .map((agg) => ({ label: agg.symbol, value: "Crowded Long" }));
-  const sentimentLongDetails = sentimentSorted
-    .filter((agg) => agg.crowding_state === "CROWDED_SHORT")
-    .map((agg) => ({ label: agg.symbol, value: "Crowded Short" }));
-  const sentimentNeutralDetails = sentimentSorted
-    .filter((agg) => agg.crowding_state === "NEUTRAL")
-    .map((agg) => ({ label: agg.symbol, value: "NEUTRAL" }));
+  const sentimentResolvedRows = sentimentPayload?.resolvedRows ?? [];
+  const sentimentLongDetails = sentimentResolvedRows
+    .filter((row) => row.direction === "LONG")
+    .map((row) => ({ label: row.symbol, value: row.tier === "F" ? `Tier ${row.tier} · ${row.tierFSubStep ?? "forced"}` : `Tier ${row.tier}` }));
+  const sentimentShortDetails = sentimentResolvedRows
+    .filter((row) => row.direction === "SHORT")
+    .map((row) => ({ label: row.symbol, value: row.tier === "F" ? `Tier ${row.tier} · ${row.tierFSubStep ?? "forced"}` : `Tier ${row.tier}` }));
+  const sentimentNeutralDetails: Array<{ label: string; value: string }> = [];
 
   return (
     <div className="space-y-8">
@@ -264,30 +263,30 @@ export default function DashboardViewSection({
             {
               id: "pairs",
               label: "Pairs tracked",
-              value: String(sentimentAggregates.length),
-              details: sentimentSorted.map((agg) => ({
-                label: agg.symbol,
-                value: agg.crowding_state.replace("CROWDED_", ""),
+              value: String(sentimentResolvedRows.length),
+              details: sentimentResolvedRows.map((row) => ({
+                label: row.symbol,
+                value: `${row.direction} · Tier ${row.tier}${row.tier === "F" && row.tierFSubStep ? ` · ${row.tierFSubStep}` : ""}`,
               })),
             },
             {
               id: "short",
               label: "Short",
-              value: String(crowdedLong),
+              value: String(sentimentShortDetails.length),
               tone: "negative",
               details: sentimentShortDetails,
             },
             {
               id: "long",
               label: "Long",
-              value: String(crowdedShort),
+              value: String(sentimentLongDetails.length),
               tone: "positive",
               details: sentimentLongDetails,
             },
             {
               id: "neutral",
               label: "Neutral",
-              value: String(neutralSentiment),
+              value: String(sentimentNeutralDetails.length),
               details: sentimentNeutralDetails,
             },
             {
@@ -408,6 +407,7 @@ export default function DashboardViewSection({
           {selectedBias === "sentiment" ? (
             <SentimentHeatmap
               aggregates={sentimentAggregates}
+              resolvedRows={sentimentResolvedRows}
               view={selectedView}
               performanceByPair={sentimentPayload?.performanceByPair ?? {}}
               myfxbookPositioningBySymbol={myfxbookPositioningBySymbol}

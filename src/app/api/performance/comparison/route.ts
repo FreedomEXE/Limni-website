@@ -248,6 +248,7 @@ async function buildFallbackSnapshotsForRequestedWeek(
         snapshot,
         sentiment,
         performance,
+        weekOpenUtc: requestedWeek,
       });
       out.push({
         week_open_utc: requestedWeek,

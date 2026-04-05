@@ -27,11 +27,9 @@
 import { readSnapshot } from "@/lib/cotStore";
 import { derivePairDirectionsWithNeutral, derivePairDirectionsByBaseWithNeutral } from "@/lib/cotCompute";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
-import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
-import { sentimentDirectionFromAggregate } from "@/lib/sentiment/daily";
+import { resolveSentimentDirections } from "@/lib/sentiment/resolver";
 import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 import { deriveCotReportDate } from "@/lib/dataSectionWeeks";
-import { DateTime } from "luxon";
 import type { AssetClass } from "@/lib/cotMarkets";
 
 // ─── Public types ───────────────────────────────────────────────
@@ -119,67 +117,26 @@ async function resolveCotBasket(
 async function resolveSentimentBasket(
   weekOpenUtc: string,
 ): Promise<CanonicalBasketSignal[]> {
-  const signals: CanonicalBasketSignal[] = [];
-
   try {
-    const open = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
-    const close = open.plus({ days: 7 });
-    const aggregates = await getAggregatesForWeekStartWithBackfill(
-      open.toUTC().toISO()!,
-      close.toUTC().toISO()!,
-    );
-
-    if (aggregates.length === 0) {
-      // No sentiment data — emit explicit NEUTRAL for all known pairs (Rule 3+4)
-      for (const ac of ASSET_CLASSES) {
-        for (const pd of (PAIRS_BY_ASSET_CLASS[ac] ?? [])) {
-          signals.push({
-            weekOpenUtc, model: "sentiment", symbol: pd.pair,
-            assetClass: ac, direction: "NEUTRAL", sourceReportDate: null,
-            metadata: { reason: "no_sentiment_data" },
-          });
-        }
-      }
-      return signals;
-    }
-
-    // Build set of symbols with sentiment data for gap detection
-    const coveredSymbols = new Set<string>();
-    for (const agg of aggregates) {
-      coveredSymbols.add(agg.symbol);
-      const dir = sentimentDirectionFromAggregate(agg);
-      const direction: BasketDirection =
-        dir === "LONG" ? "LONG" : dir === "SHORT" ? "SHORT" : "NEUTRAL";
-
-      signals.push({
+    const resolved = await resolveSentimentDirections(weekOpenUtc);
+    return resolved.map((row) => ({
         weekOpenUtc,
         model: "sentiment",
-        symbol: agg.symbol,
-        assetClass: inferAssetClass(agg.symbol),
-        direction,
+        symbol: row.symbol,
+        assetClass: row.assetClass,
+        direction: row.direction,
         sourceReportDate: null,
         metadata: {
-          crowdingState: agg.crowding_state,
-          flipState: agg.flip_state,
-          confidence: agg.confidence_score,
+          tier: row.tier,
+          tierFSubStep: row.tierFSubStep ?? null,
+          aggLongPct: row.aggLongPct,
+          crowdingState: row.crowdingState,
+          flipState: row.flipState,
         },
-      });
-    }
-
-    // Emit explicit NEUTRAL for known pairs not covered by sentiment (Rule 3)
-    for (const ac of ASSET_CLASSES) {
-      for (const pd of (PAIRS_BY_ASSET_CLASS[ac] ?? [])) {
-        if (!coveredSymbols.has(pd.pair)) {
-          signals.push({
-            weekOpenUtc, model: "sentiment", symbol: pd.pair,
-            assetClass: ac, direction: "NEUTRAL", sourceReportDate: null,
-            metadata: { reason: "no_sentiment_coverage" },
-          });
-        }
-      }
-    }
+      }));
   } catch {
     // Error fetching sentiment — emit explicit NEUTRAL for all known pairs (Rule 4)
+    const signals: CanonicalBasketSignal[] = [];
     for (const ac of ASSET_CLASSES) {
       for (const pd of (PAIRS_BY_ASSET_CLASS[ac] ?? [])) {
         signals.push({
@@ -189,9 +146,8 @@ async function resolveSentimentBasket(
         });
       }
     }
+    return signals;
   }
-
-  return signals;
 }
 
 // ─── Internal: Strength-based resolution ────────────────────────
@@ -233,20 +189,6 @@ async function resolveStrengthBasket(
     }
     return signals;
   }
-}
-
-// ─── Asset class inference (shared with engine) ─────────────────
-
-const CRYPTO_SYMBOLS = new Set(["BTCUSD", "ETHUSD", "BTCUSDT", "ETHUSDT", "SOLUSD", "SOLUSDT", "XRPUSD", "XRPUSDT", "DOGUSD", "DOGUSDT", "ADAUSD", "ADAUSDT", "AVAUSD", "AVAUSDT", "LINKUSD", "DOTUSDT"]);
-const INDEX_SYMBOLS = new Set(["SPXUSD", "SPX500", "SPX500USD", "NDXUSD", "NDX100", "NAS100USD", "NIKKEIUSD", "JPN225", "JPN225USD", "UKXUSD", "UK100", "DEUUSD", "DE30", "DE40"]);
-const COMMODITY_SYMBOLS = new Set(["XAUUSD", "XAGUSD", "WTIUSD", "BCOUSD", "NGUSD"]);
-
-function inferAssetClass(symbol: string): string {
-  const upper = symbol.toUpperCase().replace(/[/.]/g, "");
-  if (CRYPTO_SYMBOLS.has(upper)) return "crypto";
-  if (INDEX_SYMBOLS.has(upper)) return "indices";
-  if (COMMODITY_SYMBOLS.has(upper)) return "commodities";
-  return "fx";
 }
 
 // ─── Public API ─────────────────────────────────────────────────

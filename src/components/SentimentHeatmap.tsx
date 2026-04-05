@@ -17,8 +17,16 @@ export type MyfxbookPositioning = {
   updatedAtUtc: string | null;
 };
 
+export type CanonicalSentimentHeatmapRow = {
+  symbol: string;
+  direction: "LONG" | "SHORT";
+  tier: "S1" | "A" | "R" | "F";
+  tierFSubStep?: "prior_s1" | "prior_lean" | "two_week_lean" | "hardcoded" | null;
+};
+
 type SentimentHeatmapProps = {
   aggregates: SentimentAggregate[];
+  resolvedRows?: CanonicalSentimentHeatmapRow[];
   view?: "heatmap" | "list";
   performanceByPair?: Record<string, number | null>;
   myfxbookPositioningBySymbol?: Record<string, MyfxbookPositioning | undefined>;
@@ -48,8 +56,21 @@ function tradeBiasLabel(
   return "NEUTRAL";
 }
 
+function canonicalTone(
+  direction: "LONG" | "SHORT",
+): PairSignalSurfaceItem["tone"] {
+  return direction === "LONG" ? "positive" : "negative";
+}
+
+function tierLabel(row: CanonicalSentimentHeatmapRow | undefined) {
+  if (!row) return "Raw crowding";
+  if (row.tier !== "F") return `Tier ${row.tier}`;
+  return row.tierFSubStep ? `Tier F · ${row.tierFSubStep}` : "Tier F";
+}
+
 export default function SentimentHeatmap({
   aggregates,
+  resolvedRows = [],
   view = "heatmap",
   performanceByPair = {},
   myfxbookPositioningBySymbol = {},
@@ -61,25 +82,34 @@ export default function SentimentHeatmap({
   const formatPrice = (value: number | null) =>
     value === null || !Number.isFinite(value) ? "—" : value.toFixed(5);
 
-  const sorted = [...aggregates].sort((a, b) => a.symbol.localeCompare(b.symbol));
-  const items: PairSignalSurfaceItem[] = sorted.map((agg) => {
-    const myfxbook = myfxbookPositioningBySymbol[agg.symbol];
+  const aggregateBySymbol = new Map(aggregates.map((agg) => [agg.symbol, agg] as const));
+  const resolvedBySymbol = new Map(resolvedRows.map((row) => [row.symbol, row] as const));
+  const symbols = resolvedRows.length > 0
+    ? resolvedRows.map((row) => row.symbol).sort((a, b) => a.localeCompare(b))
+    : [...aggregates].map((agg) => agg.symbol).sort((a, b) => a.localeCompare(b));
+  const items: PairSignalSurfaceItem[] = symbols.map((symbol) => {
+    const agg = aggregateBySymbol.get(symbol);
+    const resolved = resolvedBySymbol.get(symbol);
+    const myfxbook = myfxbookPositioningBySymbol[symbol];
+    const crowdingState = agg?.crowding_state ?? "NEUTRAL";
+    const canonicalDirection = resolved?.direction ?? tradeBiasLabel(crowdingState);
     return {
-      id: agg.symbol,
-      label: agg.symbol,
-      tone: crowdingTone(agg.crowding_state),
-      statusLabel: tradeBiasLabel(agg.crowding_state),
-      secondaryLabel: agg.crowding_state.replace("_", " "),
-      modalTitle: agg.symbol,
+      id: symbol,
+      label: symbol,
+      tone: resolved ? canonicalTone(resolved.direction) : crowdingTone(crowdingState),
+      statusLabel: canonicalDirection,
+      secondaryLabel: `${tierLabel(resolved)} · ${crowdingState.replace("_", " ")}`,
+      modalTitle: symbol,
       modalDetails: [
-        { label: "Trade Bias", value: tradeBiasLabel(agg.crowding_state) },
-        { label: "Long", value: `${agg.agg_long_pct.toFixed(1)}%` },
-        { label: "Short", value: `${agg.agg_short_pct.toFixed(1)}%` },
-        { label: "Net", value: agg.agg_net.toFixed(1) },
-        { label: "Crowding", value: agg.crowding_state.replace("_", " ") },
-        { label: "Flip", value: agg.flip_state.replace("_", " ") },
-        { label: "Confidence", value: String(agg.confidence_score) },
-        { label: "Sources", value: agg.sources_used.join(", ") || "—" },
+        { label: "Trade Bias", value: canonicalDirection },
+        { label: "Resolver Tier", value: tierLabel(resolved) },
+        { label: "Long", value: agg ? `${agg.agg_long_pct.toFixed(1)}%` : "—" },
+        { label: "Short", value: agg ? `${agg.agg_short_pct.toFixed(1)}%` : "—" },
+        { label: "Net", value: agg ? agg.agg_net.toFixed(1) : "—" },
+        { label: "Crowding", value: crowdingState.replace("_", " ") },
+        { label: "Flip", value: agg ? agg.flip_state.replace("_", " ") : "—" },
+        { label: "Confidence", value: agg ? String(agg.confidence_score) : "—" },
+        { label: "Sources", value: agg ? agg.sources_used.join(", ") || "—" : "—" },
         { label: "Myfxbook lots long", value: formatLots(myfxbook?.longLots ?? null) },
         { label: "Myfxbook lots short", value: formatLots(myfxbook?.shortLots ?? null) },
         { label: "Myfxbook lots total", value: formatLots(myfxbook?.totalLots ?? null) },
@@ -108,7 +138,7 @@ export default function SentimentHeatmap({
           value: myfxbook?.updatedAtUtc ?? "—",
         },
       ],
-      performancePercent: performanceByPair[agg.symbol] ?? null,
+      performancePercent: performanceByPair[symbol] ?? null,
     };
   });
 

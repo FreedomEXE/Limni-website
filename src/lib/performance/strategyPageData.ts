@@ -48,7 +48,7 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v14";
+  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v15";
 
 type WeekWatermarkRow = {
   week_open_utc: string;
@@ -63,8 +63,10 @@ type CotWatermarkRow = {
 
 type SentimentWatermarkRow = {
   week_open_utc: string;
-  max_created_at: string | null;
-  max_timestamp_utc: string | null;
+  resolver_max_created_at: string | null;
+  resolver_max_timestamp_utc: string | null;
+  latest_created_at: string | null;
+  latest_timestamp_utc: string | null;
 };
 
 type AdrTradeWatermarkRow = {
@@ -282,15 +284,24 @@ async function readWeekFingerprints(
     query<SentimentWatermarkRow>(
       `WITH requested AS (
          SELECT unnest($1::timestamptz[]) AS week_open_utc
+       ),
+       latest AS (
+         SELECT
+           MAX(created_at)::text AS latest_created_at,
+           MAX(timestamp_utc)::text AS latest_timestamp_utc
+         FROM sentiment_aggregates
        )
        SELECT requested.week_open_utc::text AS week_open_utc,
-              MAX(sa.created_at)::text AS max_created_at,
-              MAX(sa.timestamp_utc)::text AS max_timestamp_utc
+              MAX(sa.created_at)::text AS resolver_max_created_at,
+              MAX(sa.timestamp_utc)::text AS resolver_max_timestamp_utc,
+              latest.latest_created_at,
+              latest.latest_timestamp_utc
          FROM requested
          LEFT JOIN sentiment_aggregates sa
-           ON sa.timestamp_utc >= requested.week_open_utc
+           ON sa.timestamp_utc >= requested.week_open_utc - INTERVAL '14 days'
           AND sa.timestamp_utc < requested.week_open_utc + INTERVAL '7 days'
-        GROUP BY requested.week_open_utc`,
+        CROSS JOIN latest
+        GROUP BY requested.week_open_utc, latest.latest_created_at, latest.latest_timestamp_utc`,
       [weekOptions],
     ),
     query<StrengthWatermarkRow>(
@@ -366,8 +377,10 @@ async function readWeekFingerprints(
       `pair:${normalizeStamp(pairRow?.max_updated_at)}`,
       `pairv:${normalizeStamp(pairRow?.derivation_versions)}`,
       `cot:${reportDate}:${normalizeStamp(cotRow?.max_fetched_at)}`,
-      `sentc:${normalizeStamp(sentimentRow?.max_created_at)}`,
-      `sentt:${normalizeStamp(sentimentRow?.max_timestamp_utc)}`,
+      `sentc:${normalizeStamp(sentimentRow?.resolver_max_created_at)}`,
+      `sentt:${normalizeStamp(sentimentRow?.resolver_max_timestamp_utc)}`,
+      `sentlc:${normalizeStamp(sentimentRow?.latest_created_at)}`,
+      `sentlt:${normalizeStamp(sentimentRow?.latest_timestamp_utc)}`,
       `str:${normalizeStamp(strengthRow?.max_locked_at)}:${strengthRow?.row_count ?? 0}`,
       `adr-run:${normalizeStamp(adrRunRow?.updated_at)}`,
       `adr:${normalizeStamp(adrRow?.max_created_at)}:${normalizeStamp(adrRow?.max_entry_time_utc)}:${adrRow?.trade_count ?? 0}`,

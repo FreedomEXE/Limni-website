@@ -52,6 +52,7 @@ import {
   getLatestAggregatesLocked,
   getLatestSnapshotsByProvider,
 } from "@/lib/sentiment/store";
+import { resolveSentimentDirections } from "@/lib/sentiment/resolver";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { latestIso } from "@/lib/time";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
@@ -484,7 +485,8 @@ async function buildSentimentPayloadForWeek(
   weeklyReturns: Array<{ symbol: string; returnPct: number }>,
 ): Promise<DashboardSentimentPayload> {
   let aggregates: SentimentAggregate[] = [];
-  let previousAggregates: SentimentAggregate[] = [];
+  let resolvedRows: Awaited<ReturnType<typeof resolveSentimentDirections>> = [];
+  let previousResolvedRows: Awaited<ReturnType<typeof resolveSentimentDirections>> = [];
 
   try {
     if (weekOpenUtc) {
@@ -496,12 +498,13 @@ async function buildSentimentPayloadForWeek(
             close.toUTC().toISO() ?? weekOpenUtc,
           )
         : await getLatestAggregatesLocked();
+      resolvedRows = open.isValid
+        ? await resolveSentimentDirections(weekOpenUtc)
+        : [];
       const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
       if (prevOpen?.isValid) {
-        const prevClose = prevOpen.plus({ days: 7 });
-        previousAggregates = await getAggregatesForWeekStartWithBackfill(
+        previousResolvedRows = await resolveSentimentDirections(
           prevOpen.toUTC().toISO() ?? weekOpenUtc,
-          prevClose.toUTC().toISO() ?? weekOpenUtc,
         );
       }
     } else {
@@ -513,20 +516,21 @@ async function buildSentimentPayloadForWeek(
 
   const filteredAggregates = aggregates.filter((agg) => sentimentSymbols.includes(agg.symbol));
   const latestAggregateTimestamp = latestIso(filteredAggregates.map((agg) => agg.timestamp_utc));
+  const filteredResolvedRows = resolvedRows.filter((row) => sentimentSymbols.includes(row.symbol));
   const previousBySymbol = new Map(
-    previousAggregates
-      .filter((agg) => sentimentSymbols.includes(agg.symbol))
-      .map((agg) => [agg.symbol, agg.crowding_state]),
+    previousResolvedRows
+      .filter((row) => sentimentSymbols.includes(row.symbol))
+      .map((row) => [row.symbol, row.direction] as const),
   );
-  const flipDetails = filteredAggregates
-    .map((agg) => {
-      const prior = previousBySymbol.get(agg.symbol);
-      if (!prior || prior === agg.crowding_state) {
+  const flipDetails = filteredResolvedRows
+    .map((row) => {
+      const prior = previousBySymbol.get(row.symbol);
+      if (!prior || prior === row.direction) {
         return null;
       }
       return {
-        label: agg.symbol,
-        value: `${prior.replace("CROWDED_", "")} → ${agg.crowding_state.replace("CROWDED_", "")}`,
+        label: row.symbol,
+        value: `${prior} → ${row.direction}`,
       };
     })
     .filter((detail): detail is { label: string; value: string } => Boolean(detail));
@@ -539,6 +543,7 @@ async function buildSentimentPayloadForWeek(
   return {
     latestAggregateTimestamp,
     aggregates: filteredAggregates.sort((a, b) => a.symbol.localeCompare(b.symbol)),
+    resolvedRows: filteredResolvedRows.sort((a, b) => a.symbol.localeCompare(b.symbol)),
     performanceByPair,
     flipDetails,
   };

@@ -1,6 +1,7 @@
 import type { AssetClass } from "./cotMarkets";
 import type { Bias, Direction, PairSnapshot, CotSnapshot } from "./cotTypes";
 import type { SentimentAggregate } from "./sentiment/types";
+import { resolveSentimentDirections } from "./sentiment/resolver";
 import type { WeeklyPairStrength } from "./strength/weeklyStrength";
 import { readCanonicalStrengthDirections } from "./strength/canonicalDirection";
 import { DateTime } from "luxon";
@@ -269,6 +270,38 @@ function buildSentimentPairs(
   return pairs;
 }
 
+async function buildCanonicalSentimentPairs(
+  assetClass: AssetClass,
+  weekOpenUtc: string | null,
+): Promise<{
+  pairs: Record<string, PairSnapshot>;
+  reasonOverrides: Map<string, string[]>;
+}> {
+  const pairs: Record<string, PairSnapshot> = {};
+  const reasonOverrides = new Map<string, string[]>();
+  if (!weekOpenUtc) {
+    return { pairs, reasonOverrides };
+  }
+
+  const resolved = await resolveSentimentDirections(weekOpenUtc);
+  for (const row of resolved) {
+    if (row.assetClass !== assetClass) {
+      continue;
+    }
+    pairs[row.symbol] = pairSnapshot(row.direction);
+    const reason = row.tier === "S1"
+      ? ["Sentiment S1 baseline"]
+      : row.tier === "A"
+        ? ["Sentiment resolver: prior-week S1 carry"]
+        : row.tier === "R"
+          ? ["Sentiment resolver: any measurable lean fade"]
+          : [`Sentiment resolver: forced lean (${row.tierFSubStep ?? "unknown"})`];
+    reasonOverrides.set(row.symbol, reason);
+  }
+
+  return { pairs, reasonOverrides };
+}
+
 function getStrengthWeekOpenUtc(reportDate?: string | null, explicitWeekOpenUtc?: string | null) {
   if (explicitWeekOpenUtc) {
     return explicitWeekOpenUtc;
@@ -370,6 +403,9 @@ async function buildModelPairs(options: {
   const { model, assetClass, snapshot, sentiment, strength, system = "v1", weekOpenUtc } = options;
 
   if (model === "sentiment") {
+    if (weekOpenUtc) {
+      return (await buildCanonicalSentimentPairs(assetClass, weekOpenUtc)).pairs;
+    }
     return buildSentimentPairs(assetClass, sentiment);
   }
 
@@ -464,11 +500,24 @@ export async function computeModelPerformance(options: {
   const reasonMap = new Map<string, string[]>();
 
   if (model === "sentiment") {
-    pairs = pairsOverride ?? buildSentimentPairs(assetClass, sentiment);
+    if (pairsOverride) {
+      pairs = pairsOverride;
+    } else if (weekOpenUtc) {
+      const canonical = await buildCanonicalSentimentPairs(assetClass, weekOpenUtc);
+      pairs = canonical.pairs;
+      canonical.reasonOverrides.forEach((reason, pair) => {
+        reasonMap.set(pair, reason);
+      });
+    } else {
+      pairs = buildSentimentPairs(assetClass, sentiment);
+    }
     Object.entries(pairs).forEach(([pair, info]) => {
       const override = reasonOverrides?.get(pair);
       if (override && override.length > 0) {
         reasonMap.set(pair, override);
+        return;
+      }
+      if (reasonMap.has(pair)) {
         return;
       }
       const agg = sentimentMap.get(pair);

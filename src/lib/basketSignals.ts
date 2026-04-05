@@ -7,8 +7,8 @@ import { derivePairDirections, derivePairDirectionsByBase, type BiasMode } from 
 import { buildAntikytheraSignals } from "@/lib/antikythera";
 import { ANTIKYTHERA_MAX_SIGNALS } from "@/lib/antikythera";
 import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
+import { resolveSentimentDirections } from "@/lib/sentiment/resolver";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
-import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { getAdaptiveTrailProfile, type AdaptiveTrailProfile } from "@/lib/adaptiveTrailProfile";
 import type { PerformanceModel } from "@/lib/performanceLab";
 
@@ -39,28 +39,6 @@ type AvailableSnapshot = {
   snapshot: NonNullable<Awaited<ReturnType<typeof readSnapshot>>>;
   asset: AssetClass;
 };
-
-function sentimentDirection(agg?: SentimentAggregate): "LONG" | "SHORT" | null {
-  if (!agg) {
-    return null;
-  }
-  if (agg.flip_state === "FLIPPED_UP") {
-    return "LONG";
-  }
-  if (agg.flip_state === "FLIPPED_DOWN") {
-    return "SHORT";
-  }
-  if (agg.flip_state === "FLIPPED_NEUTRAL") {
-    return null;
-  }
-  if (agg.crowding_state === "CROWDED_LONG") {
-    return "SHORT";
-  }
-  if (agg.crowding_state === "CROWDED_SHORT") {
-    return "LONG";
-  }
-  return null;
-}
 
 function buildBiasPairs(
   assetClass: AssetClass,
@@ -221,8 +199,6 @@ export async function buildBasketSignals(options?: {
     weekOpenDt.toUTC().toISO() ?? weekOpen,
     weekClose.toUTC().toISO() ?? weekOpen,
   );
-  const sentimentMap = new Map(sentiment.map((agg) => [agg.symbol, agg]));
-
   const pairs: BasketSignal[] = [];
 
   for (const entry of available) {
@@ -249,22 +225,17 @@ export async function buildBasketSignals(options?: {
     );
   }
 
-  for (const asset of assetClasses) {
-    const sentimentPairs = PAIRS_BY_ASSET_CLASS[asset]
-      .map((pairDef) => {
-        const direction = sentimentDirection(sentimentMap.get(pairDef.pair));
-        if (!direction) {
-          return null;
-        }
-        return {
-          symbol: pairDef.pair,
-          direction,
-          model: "sentiment",
-          asset_class: asset,
-        } as BasketSignal;
-      })
-      .filter((row): row is BasketSignal => Boolean(row));
-    pairs.push(...sentimentPairs);
+  const canonicalSentiment = await resolveSentimentDirections(weekOpen);
+  for (const row of canonicalSentiment) {
+    if (!assetClasses.includes(row.assetClass)) {
+      continue;
+    }
+    pairs.push({
+      symbol: row.symbol,
+      direction: row.direction,
+      model: "sentiment",
+      asset_class: row.assetClass,
+    });
   }
 
   // Keep universe coverage explicit for dashboards: add non-trading placeholders
