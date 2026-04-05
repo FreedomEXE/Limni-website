@@ -153,6 +153,9 @@ async function applyAdrNormalization(
 
 type DirectionEntry = { direction: "LONG" | "SHORT"; source: string; tier: number | null; assetClass: string };
 type DirectionMap = Map<string, DirectionEntry>;
+
+type TradeDirection = "LONG" | "SHORT";
+
 function signalsToDirectionMap(signals: CanonicalBasketSignal[], source: string): DirectionMap {
   const map: DirectionMap = new Map();
   for (const s of signals) {
@@ -160,6 +163,55 @@ function signalsToDirectionMap(signals: CanonicalBasketSignal[], source: string)
     map.set(s.symbol, { direction: s.direction, source, tier: null, assetClass: s.assetClass });
   }
   return map;
+}
+
+function classifyFourSourceTiePattern(votes: {
+  dealer?: TradeDirection;
+  commercial?: TradeDirection;
+  sentiment?: TradeDirection;
+  strength?: TradeDirection;
+}): "DC_vs_SeSt" | "DSe_vs_CSt" | "DSt_vs_CSe" | null {
+  const { dealer, commercial, sentiment, strength } = votes;
+  if (!dealer || !commercial || !sentiment || !strength) return null;
+
+  if (dealer === commercial && sentiment === strength && dealer !== sentiment) {
+    return "DC_vs_SeSt";
+  }
+  if (dealer === sentiment && commercial === strength && dealer !== commercial) {
+    return "DSe_vs_CSt";
+  }
+  if (dealer === strength && commercial === sentiment && dealer !== commercial) {
+    return "DSt_vs_CSe";
+  }
+  return null;
+}
+
+function resolveAgree3of4Direction(votes: {
+  dealer?: DirectionEntry;
+  commercial?: DirectionEntry;
+  sentiment?: DirectionEntry;
+  strength?: DirectionEntry;
+}): TradeDirection | null {
+  const directions = [votes.dealer?.direction, votes.commercial?.direction, votes.sentiment?.direction, votes.strength?.direction]
+    .filter(Boolean) as TradeDirection[];
+  const longs = directions.filter((direction) => direction === "LONG").length;
+  const shorts = directions.filter((direction) => direction === "SHORT").length;
+
+  if (longs >= 3) return "LONG";
+  if (shorts >= 3) return "SHORT";
+  if (longs !== 2 || shorts !== 2) return null;
+
+  const tiePattern = classifyFourSourceTiePattern({
+    dealer: votes.dealer?.direction,
+    commercial: votes.commercial?.direction,
+    sentiment: votes.sentiment?.direction,
+    strength: votes.strength?.direction,
+  });
+
+  if (tiePattern === "DC_vs_SeSt") {
+    return votes.sentiment?.direction ?? votes.strength?.direction ?? null;
+  }
+  return null;
 }
 
 async function resolveDirections(
@@ -213,6 +265,7 @@ async function resolveDirections(
   const needsStrengthVotes =
     biasSource.id === "tiered_3_nocomm"
     || biasSource.id === "agree_2of3_nocomm"
+    || biasSource.id === "agree_3of4"
     || (biasSource.type === "tandem" && biasSource.models?.includes("strength"));
 
   if (needsStrengthVotes) {
@@ -300,6 +353,27 @@ async function resolveDirections(
       const shorts = votes.filter((v) => v === "SHORT").length;
       if (longs >= 2) map.set(pair, { direction: "LONG", source: "agree_2of3_nocomm", tier: null, assetClass: ac });
       else if (shorts >= 2) map.set(pair, { direction: "SHORT", source: "agree_2of3_nocomm", tier: null, assetClass: ac });
+    }
+    return map;
+  }
+
+  if (biasSource.id === "agree_3of4") {
+    const map: DirectionMap = new Map();
+    for (const pair of allPairs) {
+      const de = dealerMap.get(pair);
+      const ce = commMap.get(pair);
+      const se = sentMap.get(pair);
+      const st = strengthMap.get(pair);
+      const ac = de?.assetClass ?? ce?.assetClass ?? se?.assetClass ?? st?.assetClass ?? inferAssetClass(pair);
+      const direction = resolveAgree3of4Direction({
+        dealer: de,
+        commercial: ce,
+        sentiment: se,
+        strength: st,
+      });
+      if (direction) {
+        map.set(pair, { direction, source: "agree_3of4", tier: null, assetClass: ac });
+      }
     }
     return map;
   }

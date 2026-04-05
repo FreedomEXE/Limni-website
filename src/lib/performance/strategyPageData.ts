@@ -48,7 +48,7 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v15";
+  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v16";
 
 type WeekWatermarkRow = {
   week_open_utc: string;

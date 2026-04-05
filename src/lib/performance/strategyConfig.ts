@@ -37,6 +37,7 @@ export type StrategyConfig = {
 
 export const SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID = "selector_sentiment_override";
 export const SELECTOR_SENTIMENT_OVERRIDE_RESEARCH_ID = "selector_sentiment_context_override";
+export const AGREE_3OF4_STRATEGY_ID = "agree_3of4";
 
 function normalizeStrategyLookupId(value: string | undefined | null): string | null {
   if (!value) return null;
@@ -109,6 +110,13 @@ export const STRATEGIES: StrategyConfig[] = [
     label: "2-of-3 NoComm",
     type: "agreement",
     description: "Agreement filter requiring at least two of Dealer, Sentiment, and Strength to align before taking a position. Commercial is removed from the voting set so the basket reflects faster directional sources only.",
+    cardBreakdown: "asset_class",
+  },
+  {
+    id: AGREE_3OF4_STRATEGY_ID,
+    label: "3-of-4 Agree",
+    type: "agreement",
+    description: "Four-source agreement system using Dealer, Commercial, Sentiment, and Strength. Trades when 3+ of 4 align, and selectively resolves only the D+C vs Se+St 2v2 tie by following the Sentiment+Strength side. All other 2v2 ties are skipped.",
     cardBreakdown: "asset_class",
   },
   {
