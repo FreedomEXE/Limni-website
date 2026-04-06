@@ -37,6 +37,8 @@ export type StrategyConfig = {
 
 export const SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID = "selector_sentiment_override";
 export const SELECTOR_SENTIMENT_OVERRIDE_RESEARCH_ID = "selector_sentiment_context_override";
+export const SELECTOR_FRAG3_STRATEGY_ID = "selector_frag3";
+export const SELECTOR_SELECTIVE_STRATEGY_ID = "selector_selective";
 export const AGREE_3OF4_STRATEGY_ID = "agree_3of4";
 export const TIERED_4W_STRATEGY_ID = "tiered_4w";
 
@@ -121,6 +123,20 @@ export const STRATEGIES: StrategyConfig[] = [
     label: "Selector",
     type: "single",
     description: "Sentiment-primary with strength tie-break. Follows sentiment as the base signal, allows a dealer override when sentiment is stretched and weakening, and uses strength to resolve sentiment versus dealer conflicts. Commercial is excluded from directional decisions.",
+    cardBreakdown: "asset_class",
+  },
+  {
+    id: SELECTOR_FRAG3_STRATEGY_ID,
+    label: "Selector Frag 3",
+    type: "single",
+    description: "Canonical selector with a surgical commercial fragility veto. Skips only trades where commercial is opposed, highly extreme, and building against the selector direction at the same time.",
+    cardBreakdown: "asset_class",
+  },
+  {
+    id: SELECTOR_SELECTIVE_STRATEGY_ID,
+    label: "Selector Selective",
+    type: "single",
+    description: "Highly selective selector sleeve. Keeps only the cleanest selector trades by skipping when commercial opposes the trade or commercial flow is building against it.",
     cardBreakdown: "asset_class",
   },
 ];

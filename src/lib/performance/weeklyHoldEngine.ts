@@ -27,7 +27,15 @@ import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
 import type { BiasSourceConfig, EntryStyleConfig } from "@/lib/performance/strategyConfig";
-import { resolveSelectorDirections } from "@/lib/performance/selectorEngine";
+import {
+  resolveSelectorDirections,
+  resolveSelectorFragilityDirections,
+} from "@/lib/performance/selectorEngine";
+import {
+  SELECTOR_FRAG3_STRATEGY_ID,
+  SELECTOR_SELECTIVE_STRATEGY_ID,
+  SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID,
+} from "@/lib/performance/strategyConfig";
 import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 import { loadWeeklyAdrMap, getAdrPct, getTargetAdrPct } from "@/lib/performance/adrLookup";
 
@@ -274,8 +282,16 @@ async function resolveDirections(
     return signalsToDirectionMap(sentimentSignals, "sentiment");
   }
 
-  if (biasSource.id === "selector_sentiment_override") {
+  if (biasSource.id === SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID) {
     return resolveSelectorDirections(weekOpenUtc);
+  }
+
+  if (biasSource.id === SELECTOR_FRAG3_STRATEGY_ID) {
+    return resolveSelectorFragilityDirections(weekOpenUtc, "fragility_3");
+  }
+
+  if (biasSource.id === SELECTOR_SELECTIVE_STRATEGY_ID) {
+    return resolveSelectorFragilityDirections(weekOpenUtc, "opposed_or_building_against");
   }
 
   if (biasSource.id === "strength") {

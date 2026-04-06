@@ -142,7 +142,11 @@ export type SelectorStrengthBranch =
   | "strength_tiebreak_dealer"
   | "strength_tiebreak_neutral_fallback"
   | "strength_tiebreak_ambiguous_fallback"
-  | "strength_tiebreak_no_conflict_fallback";
+  | "strength_tiebreak_no_conflict_fallback"
+  | "strength_commercial_tiebreak_sentiment"
+  | "strength_commercial_tiebreak_dealer"
+  | "strength_commercial_tiebreak_support_count"
+  | "strength_commercial_tiebreak_no_conflict_fallback";
 
 export type SelectorCommercialBranch =
   | "commercial_no_caution"
@@ -154,6 +158,7 @@ export type SelectorVariant =
   | "strength_confirmation"
   | "strength_veto"
   | "strength_tiebreak"
+  | "strength_commercial_tiebreak"
   | "commercial_audit_only"
   | "commercial_caution_skip"
   | "commercial_strength_disagree_skip";
@@ -190,6 +195,10 @@ export type SelectorAuditWeek = {
   entries: SelectorAuditEntry[];
   directions: DirectionMap;
 };
+
+export type SelectorFragilityVariant =
+  | "fragility_3"
+  | "opposed_or_building_against";
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -300,6 +309,16 @@ function directionMatchesStrength(
   return direction === strength.compositeDirection;
 }
 
+function directionMatchesCommercial(
+  direction: SelectorDirectionalState,
+  commercial: SourceMetrics,
+): boolean {
+  if (direction === "NEUTRAL") {
+    return false;
+  }
+  return direction === scoreToDirectionalState(commercial.score);
+}
+
 function classifyCommercialCaution(
   commercial: SourceMetrics,
   finalDirection: SelectorDirectionalState,
@@ -315,6 +334,29 @@ function classifyCommercialCaution(
     commercialCaution,
     commercialBranch: commercialCaution ? "commercial_caution_flag" : "commercial_no_caution",
   };
+}
+
+function computeCommercialFragility(
+  selectorDirection: Direction,
+  commercial: SourceMetrics,
+  prevCommercial: SourceMetrics | null,
+) {
+  const commercialDirection = scoreToDirectionalState(commercial.score);
+  const opposed =
+    commercialDirection !== "NEUTRAL"
+    && commercialDirection !== selectorDirection
+    && Math.abs(commercial.score) >= 0.1;
+  const highExtremity = commercial.extremity >= 0.7;
+
+  let buildingAgainst = false;
+  if (prevCommercial !== null) {
+    const scoreDelta = commercial.score - prevCommercial.score;
+    const selectorIsLong = selectorDirection === "LONG";
+    buildingAgainst = selectorIsLong ? scoreDelta < -0.05 : scoreDelta > 0.05;
+  }
+
+  const score = (opposed ? 1 : 0) + (highExtremity ? 1 : 0) + (buildingAgainst ? 1 : 0);
+  return { score, opposed, highExtremity, buildingAgainst };
 }
 
 // ── COT Data Loading ───────────────────────────────────────────────
@@ -873,6 +915,85 @@ function applyStrengthTiebreakVariant(
   };
 }
 
+function applyStrengthCommercialTiebreakVariant(
+  weekOpenUtc: string,
+  context: PairContext,
+  baseDecision: SelectorPolicyDecision,
+): SelectorAuditEntry {
+  const baselineEntry = applyStrengthTiebreakVariant(weekOpenUtc, context, baseDecision);
+  const sentimentDirection = scoreToDirectionalState(context.sentiment.score);
+  const dealerDirection = scoreToDirectionalState(context.dealer.score);
+  const strengthRelationToProposed = baselineEntry.strengthRelationToProposed;
+
+  let finalDirection: SelectorDirectionalState = baselineEntry.finalDirection;
+  let finalScore = baselineEntry.finalScore;
+  let strengthBranch: SelectorStrengthBranch = "strength_commercial_tiebreak_no_conflict_fallback";
+
+  const hasConflict =
+    sentimentDirection !== "NEUTRAL"
+    && dealerDirection !== "NEUTRAL"
+    && sentimentDirection !== dealerDirection;
+
+  if (hasConflict) {
+    const supportsSentiment =
+      directionMatchesStrength(sentimentDirection, context.strength)
+      || directionMatchesCommercial(sentimentDirection, context.commercial);
+    const supportsDealer =
+      directionMatchesStrength(dealerDirection, context.strength)
+      || directionMatchesCommercial(dealerDirection, context.commercial);
+
+    if (supportsSentiment && !supportsDealer) {
+      finalDirection = sentimentDirection;
+      finalScore = context.sentiment.score;
+      strengthBranch = "strength_commercial_tiebreak_sentiment";
+    } else if (supportsDealer && !supportsSentiment) {
+      finalDirection = dealerDirection;
+      finalScore = context.dealer.score;
+      strengthBranch = "strength_commercial_tiebreak_dealer";
+    } else if (supportsSentiment && supportsDealer) {
+      const sentimentSupport =
+        (directionMatchesStrength(sentimentDirection, context.strength) ? 1 : 0)
+        + (directionMatchesCommercial(sentimentDirection, context.commercial) ? 1 : 0);
+      const dealerSupport =
+        (directionMatchesStrength(dealerDirection, context.strength) ? 1 : 0)
+        + (directionMatchesCommercial(dealerDirection, context.commercial) ? 1 : 0);
+      finalDirection = sentimentSupport >= dealerSupport ? sentimentDirection : dealerDirection;
+      finalScore = finalDirection === sentimentDirection ? context.sentiment.score : context.dealer.score;
+      strengthBranch = "strength_commercial_tiebreak_support_count";
+    }
+  }
+  const { commercialCaution, commercialBranch } = classifyCommercialCaution(
+    context.commercial,
+    finalDirection,
+  );
+
+  return {
+    weekOpenUtc,
+    pair: context.pair,
+    assetClass: context.assetClass,
+    selectorVariant: "strength_commercial_tiebreak",
+    sentimentScore: context.sentiment.score,
+    sentimentDirection,
+    dealerScore: context.dealer.score,
+    dealerDirection,
+    commercialScore: context.commercial.score,
+    commercialDirection: scoreToDirectionalState(context.commercial.score),
+    strengthCompositeScore: context.strength.compositeScore,
+    strengthCompositeDirection: context.strength.compositeDirection,
+    strengthAvailableWindows: context.strength.availableWindows,
+    strengthLatestSnapshotUtc: context.strength.latestSnapshotUtc,
+    strengthRelationToProposed,
+    baseSelectorBranch: baselineEntry.baseSelectorBranch,
+    strengthBranch,
+    commercialExtremity: context.commercial.extremity,
+    commercialCaution,
+    commercialBranch,
+    baseDirection: baselineEntry.baseDirection,
+    finalDirection,
+    finalScore,
+  };
+}
+
 function applyCommercialAuditOnlyVariant(
   weekOpenUtc: string,
   context: PairContext,
@@ -1003,6 +1124,8 @@ async function resolveSelectorAuditInternal(
           ? applyStrengthVetoVariant(canonicalWeekOpenUtc, ctx, baseDecision)
           : variant === "strength_tiebreak"
             ? applyStrengthTiebreakVariant(canonicalWeekOpenUtc, ctx, baseDecision)
+            : variant === "strength_commercial_tiebreak"
+              ? applyStrengthCommercialTiebreakVariant(canonicalWeekOpenUtc, ctx, baseDecision)
             : variant === "commercial_audit_only"
               ? applyCommercialAuditOnlyVariant(canonicalWeekOpenUtc, ctx, baseDecision)
               : variant === "commercial_caution_skip"
@@ -1058,6 +1181,12 @@ export async function resolveSelectorStrengthTiebreakAudit(
   return resolveSelectorAuditInternal(weekOpenUtc, "strength_tiebreak", { requireStrength: true });
 }
 
+export async function resolveSelectorStrengthCommercialTiebreakAudit(
+  weekOpenUtc: string,
+): Promise<SelectorAuditWeek> {
+  return resolveSelectorAuditInternal(weekOpenUtc, "strength_commercial_tiebreak", { requireStrength: true });
+}
+
 export async function resolveSelectorCommercialAuditOnly(
   weekOpenUtc: string,
 ): Promise<SelectorAuditWeek> {
@@ -1074,6 +1203,87 @@ export async function resolveSelectorCommercialStrengthDisagreeSkip(
   weekOpenUtc: string,
 ): Promise<SelectorAuditWeek> {
   return resolveSelectorAuditInternal(weekOpenUtc, "commercial_strength_disagree_skip", { requireStrength: true });
+}
+
+export async function resolveSelectorFragilityDirections(
+  weekOpenUtc: string,
+  variant: SelectorFragilityVariant,
+): Promise<DirectionMap> {
+  const canonicalWeekOpenUtc = normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
+  return getOrSetRuntimeCache(
+    `selectorEngine:fragility:${SELECTOR_ENGINE_VERSION}:${variant}:${canonicalWeekOpenUtc}`,
+    getSelectorEngineCacheTtlMs(),
+    async () => {
+      const [baselineAudit, cotHistory, sentimentBySymbol, historicalWeeks] = await Promise.all([
+        resolveSelectorStrengthTiebreakAudit(canonicalWeekOpenUtc),
+        loadCotHistory(),
+        loadSentimentHistory(),
+        listDataSectionWeeks(),
+      ]);
+
+      const universe = buildPairUniverse();
+      const allWeeks = historicalWeeks;
+      const currentWeekIndex = allWeeks.findIndex((week) => {
+        const normalized = normalizeWeekOpenUtc(week) ?? week;
+        return normalized === canonicalWeekOpenUtc || week === weekOpenUtc;
+      });
+      const previousWeekOpenUtc = currentWeekIndex > 0 ? allWeeks[currentWeekIndex - 1]! : null;
+
+      const [contexts, previousContexts] = await Promise.all([
+        buildContextForWeek(
+          canonicalWeekOpenUtc,
+          universe,
+          cotHistory,
+          sentimentBySymbol,
+          allWeeks,
+          { requireStrength: true },
+        ),
+        previousWeekOpenUtc
+          ? buildContextForWeek(
+              previousWeekOpenUtc,
+              universe,
+              cotHistory,
+              sentimentBySymbol,
+              allWeeks,
+              { requireStrength: true },
+            )
+          : Promise.resolve<Map<string, PairContext> | null>(null),
+      ]);
+
+      const directions: DirectionMap = new Map();
+
+      for (const entry of baselineAudit.entries) {
+        if (entry.finalDirection === "NEUTRAL") continue;
+        const context = contexts.get(entry.pair);
+        if (!context) continue;
+        const prevCommercial = previousContexts?.get(entry.pair)?.commercial ?? null;
+        const fragility = computeCommercialFragility(
+          entry.finalDirection,
+          context.commercial,
+          prevCommercial,
+        );
+
+        const shouldSkip =
+          variant === "fragility_3"
+            ? fragility.score >= 3
+            : fragility.opposed || fragility.buildingAgainst;
+
+        if (shouldSkip) continue;
+
+        directions.set(entry.pair, {
+          direction: entry.finalDirection,
+          source:
+            variant === "fragility_3"
+              ? "selector_frag3"
+              : "selector_selective",
+          tier: null,
+          assetClass: entry.assetClass,
+        });
+      }
+
+      return directions;
+    },
+  );
 }
 
 export async function resolveSelectorDirections(
