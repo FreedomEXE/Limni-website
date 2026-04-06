@@ -14,7 +14,7 @@
  * Automation — gets the same historical basket truth.
  *
  * The engine consumes this module's output to compose derived strategies
- * (tiered_v3, agree_2of3, tandem). It must NOT independently rebuild
+ * (tiered_4w, agree_3of4, tandem). It must NOT independently rebuild
  * base-model directions from raw snapshot reads.
  *
  * If COT, sentiment, or strength interpretation changes, fix it HERE. Every

@@ -28,13 +28,11 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
 import type { BiasSourceConfig, EntryStyleConfig } from "@/lib/performance/strategyConfig";
 import {
-  resolveSelectorDirections,
   resolveSelectorFragilityDirections,
 } from "@/lib/performance/selectorEngine";
 import {
   SELECTOR_FRAG3_STRATEGY_ID,
   SELECTOR_SELECTIVE_STRATEGY_ID,
-  SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID,
 } from "@/lib/performance/strategyConfig";
 import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 import { loadWeeklyAdrMap, getAdrPct, getTargetAdrPct } from "@/lib/performance/adrLookup";
@@ -282,10 +280,6 @@ async function resolveDirections(
     return signalsToDirectionMap(sentimentSignals, "sentiment");
   }
 
-  if (biasSource.id === SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID) {
-    return resolveSelectorDirections(weekOpenUtc);
-  }
-
   if (biasSource.id === SELECTOR_FRAG3_STRATEGY_ID) {
     return resolveSelectorFragilityDirections(weekOpenUtc, "fragility_3");
   }
@@ -315,7 +309,6 @@ async function resolveDirections(
   let strengthMap: DirectionMap = new Map();
   const needsStrengthVotes =
     biasSource.id === "tiered_4w"
-    || biasSource.id === "agree_2of3_nocomm"
     || biasSource.id === "agree_3of4"
     || (biasSource.type === "tandem" && biasSource.models?.includes("strength"));
 
@@ -362,38 +355,6 @@ async function resolveDirections(
           assetClass: ac,
         });
       }
-    }
-    return map;
-  }
-
-  if (biasSource.id === "agree_2of3") {
-    const map: DirectionMap = new Map();
-    for (const pair of allPairs) {
-      const de = dealerMap.get(pair);
-      const ce = commMap.get(pair);
-      const se = sentMap.get(pair);
-      const ac = de?.assetClass ?? ce?.assetClass ?? se?.assetClass ?? inferAssetClass(pair);
-      const votes = [de?.direction, ce?.direction, se?.direction].filter(Boolean) as ("LONG" | "SHORT")[];
-      const longs = votes.filter((v) => v === "LONG").length;
-      const shorts = votes.filter((v) => v === "SHORT").length;
-      if (longs >= 2) map.set(pair, { direction: "LONG", source: "agree_2of3", tier: null, assetClass: ac });
-      else if (shorts >= 2) map.set(pair, { direction: "SHORT", source: "agree_2of3", tier: null, assetClass: ac });
-    }
-    return map;
-  }
-
-  if (biasSource.id === "agree_2of3_nocomm") {
-    const map: DirectionMap = new Map();
-    for (const pair of allPairs) {
-      const de = dealerMap.get(pair);
-      const se = sentMap.get(pair);
-      const st = strengthMap.get(pair);
-      const ac = de?.assetClass ?? se?.assetClass ?? st?.assetClass ?? inferAssetClass(pair);
-      const votes = [de?.direction, se?.direction, st?.direction].filter(Boolean) as ("LONG" | "SHORT")[];
-      const longs = votes.filter((v) => v === "LONG").length;
-      const shorts = votes.filter((v) => v === "SHORT").length;
-      if (longs >= 2) map.set(pair, { direction: "LONG", source: "agree_2of3_nocomm", tier: null, assetClass: ac });
-      else if (shorts >= 2) map.set(pair, { direction: "SHORT", source: "agree_2of3_nocomm", tier: null, assetClass: ac });
     }
     return map;
   }

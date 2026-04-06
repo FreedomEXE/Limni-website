@@ -44,11 +44,17 @@ export const TIERED_4W_STRATEGY_ID = "tiered_4w";
 
 function normalizeStrategyLookupId(value: string | undefined | null): string | null {
   if (!value) return null;
-  if (value === SELECTOR_SENTIMENT_OVERRIDE_RESEARCH_ID) {
-    return SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID;
+  if (
+    value === SELECTOR_SENTIMENT_OVERRIDE_RESEARCH_ID
+    || value === SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID
+  ) {
+    return SELECTOR_FRAG3_STRATEGY_ID;
   }
   if (value === "tiered_v3" || value === "tiered_3_nocomm") {
     return TIERED_4W_STRATEGY_ID;
+  }
+  if (value === "agree_2of3" || value === "agree_2of3_nocomm") {
+    return AGREE_3OF4_STRATEGY_ID;
   }
   return value;
 }
@@ -92,44 +98,23 @@ export const STRATEGIES: StrategyConfig[] = [
   },
   {
     id: TIERED_4W_STRATEGY_ID,
-    label: "Tiered 4W",
+    label: "Tiered",
     type: "tiered",
     description: "Selective weighted 4-source tiered system. Dealer, Strength, Sentiment, and Commercial contribute fixed coarse weights, and only Tier 1 plus Tier 2 weighted majorities are traded. Weak Tier 3 leans are skipped to keep the composite selective.",
     cardBreakdown: "tiers",
   },
   {
-    id: "agree_2of3",
-    label: "2-of-3 Agree",
-    type: "agreement",
-    description: "Agreement filter requiring at least two of three sources, Dealer, Commercial, and Sentiment, to align before taking a position. When fewer than two agree, the pair is excluded from the basket. Trades fewer pairs but aims for higher-conviction exposure.",
-    cardBreakdown: "asset_class",
-  },
-  {
-    id: "agree_2of3_nocomm",
-    label: "2-of-3 NoComm",
-    type: "agreement",
-    description: "Agreement filter requiring at least two of Dealer, Sentiment, and Strength to align before taking a position. Commercial is removed from the voting set so the basket reflects faster directional sources only.",
-    cardBreakdown: "asset_class",
-  },
-  {
     id: AGREE_3OF4_STRATEGY_ID,
-    label: "3-of-4 Agree",
+    label: "Agreement",
     type: "agreement",
-    description: "Four-source agreement system using Dealer, Commercial, Sentiment, and Strength. Trades when 3+ of 4 align, and selectively resolves only the D+C vs Se+St 2v2 tie by following the Sentiment+Strength side. All other 2v2 ties are skipped.",
-    cardBreakdown: "asset_class",
-  },
-  {
-    id: SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID,
-    label: "Selector",
-    type: "single",
-    description: "Sentiment-primary with strength tie-break. Follows sentiment as the base signal, allows a dealer override when sentiment is stretched and weakening, and uses strength to resolve sentiment versus dealer conflicts. Commercial is excluded from directional decisions.",
+    description: "Four-source agreement filter. Trades when 3 or more of Dealer, Commercial, Sentiment, and Strength align on direction. Ties are selectively resolved when the Sentiment+Strength side agrees, otherwise the pair is skipped.",
     cardBreakdown: "asset_class",
   },
   {
     id: SELECTOR_FRAG3_STRATEGY_ID,
-    label: "Selector Frag 3",
+    label: "Selector",
     type: "single",
-    description: "Canonical selector with a surgical commercial fragility veto. Skips only trades where commercial is opposed, highly extreme, and building against the selector direction at the same time.",
+    description: "Sentiment-primary weekly selector with strength tiebreak and commercial fragility filter. Follows sentiment as the base signal, allows a dealer override when sentiment is stretched and weakening, uses strength to resolve conflicts, and skips trades where commercial is simultaneously opposed, extreme, and building against.",
     cardBreakdown: "asset_class",
   },
   {
@@ -261,7 +246,7 @@ export function getStrengthGate(id: string): StrengthGateConfig | undefined {
 export function resolveStrategyId(value: string | undefined | null): string {
   const normalized = normalizeStrategyLookupId(value);
   if (normalized && STRATEGIES.some((s) => s.id === normalized)) return normalized;
-  return "agree_2of3_nocomm";
+  return SELECTOR_FRAG3_STRATEGY_ID;
 }
 
 export function resolveEntryStyleId(value: string | undefined | null): string {
