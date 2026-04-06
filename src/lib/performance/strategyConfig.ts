@@ -38,11 +38,15 @@ export type StrategyConfig = {
 export const SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID = "selector_sentiment_override";
 export const SELECTOR_SENTIMENT_OVERRIDE_RESEARCH_ID = "selector_sentiment_context_override";
 export const AGREE_3OF4_STRATEGY_ID = "agree_3of4";
+export const TIERED_4W_STRATEGY_ID = "tiered_4w";
 
 function normalizeStrategyLookupId(value: string | undefined | null): string | null {
   if (!value) return null;
   if (value === SELECTOR_SENTIMENT_OVERRIDE_RESEARCH_ID) {
     return SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID;
+  }
+  if (value === "tiered_v3" || value === "tiered_3_nocomm") {
+    return TIERED_4W_STRATEGY_ID;
   }
   return value;
 }
@@ -85,17 +89,10 @@ export const STRATEGIES: StrategyConfig[] = [
     models: ["dealer", "commercial", "sentiment", "strength"],
   },
   {
-    id: "tiered_v3",
-    label: "Tiered V3",
+    id: TIERED_4W_STRATEGY_ID,
+    label: "Tiered 4W",
     type: "tiered",
-    description: "Three-tier directional voting system: Tier 1 Dealer, Tier 2 Commercial, Tier 3 Sentiment. Each source votes independently and higher tiers override lower tiers when signals conflict. Strength is not part of this stack.",
-    cardBreakdown: "tiers",
-  },
-  {
-    id: "tiered_3_nocomm",
-    label: "Tiered 3 NoComm",
-    type: "tiered",
-    description: "Three-source tiered stack using Dealer, Sentiment, and Strength only. All three vote independently: 3-of-3 becomes Tier 1, 2-of-3 becomes Tier 2, and single-source directional pressure becomes Tier 3. Commercial is excluded from the weekly vote.",
+    description: "Selective weighted 4-source tiered system. Dealer, Strength, Sentiment, and Commercial contribute fixed coarse weights, and only Tier 1 plus Tier 2 weighted majorities are traded. Weak Tier 3 leans are skipped to keep the composite selective.",
     cardBreakdown: "tiers",
   },
   {

@@ -147,7 +147,7 @@ async function applyAdrNormalization(
 // ─── Direction resolvers — compose from canonical basketSource ──
 //
 // Layer A: basketSource provides canonical dealer/commercial/sentiment signals
-// Layer B: this function composes derived strategies (tiered_v3, agree_2of3, tandem)
+// Layer B: this function composes derived strategies (tiered_4w, agreement, tandem)
 //
 // The engine NEVER independently rebuilds base-model directions from raw snapshots.
 
@@ -155,6 +155,19 @@ type DirectionEntry = { direction: "LONG" | "SHORT"; source: string; tier: numbe
 type DirectionMap = Map<string, DirectionEntry>;
 
 type TradeDirection = "LONG" | "SHORT";
+type WeightedTierPack = {
+  dealer: number;
+  commercial: number;
+  sentiment: number;
+  strength: number;
+};
+
+const TIERED_4W_WEIGHTS: WeightedTierPack = {
+  dealer: 2.0,
+  commercial: 0.75,
+  sentiment: 1.25,
+  strength: 1.5,
+};
 
 function signalsToDirectionMap(signals: CanonicalBasketSignal[], source: string): DirectionMap {
   const map: DirectionMap = new Map();
@@ -214,6 +227,28 @@ function resolveAgree3of4Direction(votes: {
   return null;
 }
 
+function computeWeightedScore(votes: {
+  dealer?: DirectionEntry;
+  commercial?: DirectionEntry;
+  sentiment?: DirectionEntry;
+  strength?: DirectionEntry;
+}, weights: WeightedTierPack) {
+  let score = 0;
+  if (votes.dealer?.direction === "LONG") score += weights.dealer;
+  else if (votes.dealer?.direction === "SHORT") score -= weights.dealer;
+
+  if (votes.commercial?.direction === "LONG") score += weights.commercial;
+  else if (votes.commercial?.direction === "SHORT") score -= weights.commercial;
+
+  if (votes.sentiment?.direction === "LONG") score += weights.sentiment;
+  else if (votes.sentiment?.direction === "SHORT") score -= weights.sentiment;
+
+  if (votes.strength?.direction === "LONG") score += weights.strength;
+  else if (votes.strength?.direction === "SHORT") score -= weights.strength;
+
+  return score;
+}
+
 async function resolveDirections(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
@@ -263,7 +298,7 @@ async function resolveDirections(
   const sentMap = signalsToDirectionMap(sentimentSignals, "sentiment");
   let strengthMap: DirectionMap = new Map();
   const needsStrengthVotes =
-    biasSource.id === "tiered_3_nocomm"
+    biasSource.id === "tiered_4w"
     || biasSource.id === "agree_2of3_nocomm"
     || biasSource.id === "agree_3of4"
     || (biasSource.type === "tandem" && biasSource.models?.includes("strength"));
@@ -283,23 +318,34 @@ async function resolveDirections(
 
   const allPairs = new Set([...dealerMap.keys(), ...commMap.keys(), ...sentMap.keys(), ...strengthMap.keys()]);
 
-  if (biasSource.id === "tiered_v3") {
+  if (biasSource.id === "tiered_4w") {
     const map: DirectionMap = new Map();
     for (const pair of allPairs) {
       const de = dealerMap.get(pair);
       const ce = commMap.get(pair);
       const se = sentMap.get(pair);
-      const ac = de?.assetClass ?? ce?.assetClass ?? se?.assetClass ?? inferAssetClass(pair);
-      const votes = [de?.direction, ce?.direction, se?.direction].filter(Boolean) as ("LONG" | "SHORT")[];
-      const longs = votes.filter((v) => v === "LONG").length;
-      const shorts = votes.filter((v) => v === "SHORT").length;
-
-      if (longs === 3) map.set(pair, { direction: "LONG", source: "tiered_v3", tier: 1, assetClass: ac });
-      else if (shorts === 3) map.set(pair, { direction: "SHORT", source: "tiered_v3", tier: 1, assetClass: ac });
-      else if (longs === 2) map.set(pair, { direction: "LONG", source: "tiered_v3", tier: 2, assetClass: ac });
-      else if (shorts === 2) map.set(pair, { direction: "SHORT", source: "tiered_v3", tier: 2, assetClass: ac });
-      else if (longs === 1 && shorts === 0) map.set(pair, { direction: "LONG", source: "tiered_v3", tier: 3, assetClass: ac });
-      else if (shorts === 1 && longs === 0) map.set(pair, { direction: "SHORT", source: "tiered_v3", tier: 3, assetClass: ac });
+      const st = strengthMap.get(pair);
+      const ac = de?.assetClass ?? ce?.assetClass ?? se?.assetClass ?? st?.assetClass ?? inferAssetClass(pair);
+      const score = computeWeightedScore(
+        { dealer: de, commercial: ce, sentiment: se, strength: st },
+        TIERED_4W_WEIGHTS,
+      );
+      const absScore = Math.abs(score);
+      if (absScore >= 4.0) {
+        map.set(pair, {
+          direction: score > 0 ? "LONG" : "SHORT",
+          source: "tiered_4w",
+          tier: 1,
+          assetClass: ac,
+        });
+      } else if (absScore >= 2.0) {
+        map.set(pair, {
+          direction: score > 0 ? "LONG" : "SHORT",
+          source: "tiered_4w",
+          tier: 2,
+          assetClass: ac,
+        });
+      }
     }
     return map;
   }
@@ -316,27 +362,6 @@ async function resolveDirections(
       const shorts = votes.filter((v) => v === "SHORT").length;
       if (longs >= 2) map.set(pair, { direction: "LONG", source: "agree_2of3", tier: null, assetClass: ac });
       else if (shorts >= 2) map.set(pair, { direction: "SHORT", source: "agree_2of3", tier: null, assetClass: ac });
-    }
-    return map;
-  }
-
-  if (biasSource.id === "tiered_3_nocomm") {
-    const map: DirectionMap = new Map();
-    for (const pair of allPairs) {
-      const de = dealerMap.get(pair);
-      const se = sentMap.get(pair);
-      const st = strengthMap.get(pair);
-      const ac = de?.assetClass ?? se?.assetClass ?? st?.assetClass ?? inferAssetClass(pair);
-      const votes = [de?.direction, se?.direction, st?.direction].filter(Boolean) as ("LONG" | "SHORT")[];
-      const longs = votes.filter((v) => v === "LONG").length;
-      const shorts = votes.filter((v) => v === "SHORT").length;
-
-      if (longs === 3) map.set(pair, { direction: "LONG", source: "tiered_3_nocomm", tier: 1, assetClass: ac });
-      else if (shorts === 3) map.set(pair, { direction: "SHORT", source: "tiered_3_nocomm", tier: 1, assetClass: ac });
-      else if (longs === 2) map.set(pair, { direction: "LONG", source: "tiered_3_nocomm", tier: 2, assetClass: ac });
-      else if (shorts === 2) map.set(pair, { direction: "SHORT", source: "tiered_3_nocomm", tier: 2, assetClass: ac });
-      else if (longs === 1 && shorts === 0) map.set(pair, { direction: "LONG", source: "tiered_3_nocomm", tier: 3, assetClass: ac });
-      else if (shorts === 1 && longs === 0) map.set(pair, { direction: "SHORT", source: "tiered_3_nocomm", tier: 3, assetClass: ac });
     }
     return map;
   }
