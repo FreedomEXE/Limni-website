@@ -23,6 +23,11 @@ import type { BiasSourceConfig } from "@/lib/performance/strategyConfig";
 import type { ModelPerformance, PerformanceModel, TradeDetailMeta } from "@/lib/performanceLab";
 import { computeReturnStats } from "@/lib/performanceLab";
 import { PERFORMANCE_MODEL_LABELS } from "@/lib/performance/modelConfig";
+import type {
+  BasketPathPoint,
+  BasketPathResult,
+  BasketPathSummary,
+} from "@/lib/performance/basketPathEngine";
 
 // ─── Card slot mapping ──────────────────────────────────────────
 
@@ -584,6 +589,70 @@ export function multiWeekToSimulation(
   };
 }
 
+function pathPointsToSimulationPoints(points: BasketPathPoint[]) {
+  return points.map((point) => ({
+    ts_utc: point.tsUtc,
+    equity_pct: point.equityPct,
+    lock_pct: null,
+  }));
+}
+
+type MultiWeekPathAggregate = {
+  points: BasketPathPoint[];
+  summary: BasketPathSummary;
+};
+
+export function singleWeekPathToSimulation(
+  path: BasketPathResult,
+  result: WeeklyHoldResult,
+  biasSource: BiasSourceConfig,
+  weekLabel: string,
+  selectionLabel = "Weekly Hold",
+): EngineSimulationGroup {
+  return {
+    title: buildExecutionLabel(biasSource, selectionLabel),
+    description: `Hourly equity path for ${weekLabel}.`,
+    metrics: {
+      returnPct: path.summary.totalReturnPct,
+      maxDrawdownPct: path.summary.maxDrawdownPct,
+      trades: result.tradeCount,
+    },
+    series: [
+      {
+        id: "equity",
+        label: "Equity",
+        color: "#10b981",
+        points: pathPointsToSimulationPoints(path.points),
+      },
+    ],
+  };
+}
+
+export function multiWeekPathToSimulation(
+  path: MultiWeekPathAggregate,
+  result: MultiWeekResult,
+  biasSource: BiasSourceConfig,
+  selectionLabel = "Weekly Hold",
+): EngineSimulationGroup {
+  return {
+    title: buildExecutionLabel(biasSource, selectionLabel),
+    description: `Continuous hourly equity path across ${result.weeks.length} weeks.`,
+    metrics: {
+      returnPct: path.summary.totalReturnPct,
+      maxDrawdownPct: path.summary.maxDrawdownPct,
+      trades: result.totalTrades,
+    },
+    series: [
+      {
+        id: "equity",
+        label: "Equity",
+        color: "#10b981",
+        points: pathPointsToSimulationPoints(path.points),
+      },
+    ],
+  };
+}
+
 // ─── Sidebar stats (lightweight summary) ────────────────────────
 
 export type EngineSidebarStats = {
@@ -591,6 +660,7 @@ export type EngineSidebarStats = {
   biasSourceLabel: string;
   weekOpenUtc: string;
   weekReturnPct: number;
+  maxDrawdownPct: number;
   tradeCount: number;
   winCount: number;
   lossCount: number;
@@ -635,6 +705,25 @@ export function weeklyHoldToSidebarStats(
   biasSource: BiasSourceConfig,
   multiWeek?: MultiWeekResult,
 ): EngineSidebarStats {
+  return weeklyHoldToSidebarStatsWithPath(result, biasSource, {
+    multiWeek,
+    currentWeekPathSummary: null,
+    multiWeekPathSummary: null,
+  });
+}
+
+export function weeklyHoldToSidebarStatsWithPath(
+  result: WeeklyHoldResult,
+  biasSource: BiasSourceConfig,
+  options?: {
+    multiWeek?: MultiWeekResult;
+    currentWeekPathSummary?: BasketPathSummary | null;
+    multiWeekPathSummary?: BasketPathSummary | null;
+  },
+): EngineSidebarStats {
+  const multiWeek = options?.multiWeek;
+  const currentWeekPathSummary = options?.currentWeekPathSummary ?? null;
+  const multiWeekPathSummary = options?.multiWeekPathSummary ?? null;
   let allTime: EngineSidebarStats["allTime"] = null;
   if (multiWeek && multiWeek.weeks.length > 0) {
     const weeklyReturns = multiWeek.weeks.map((w) => w.totalReturnPct);
@@ -643,7 +732,7 @@ export function weeklyHoldToSidebarStats(
       totalReturnPct: multiWeek.totalReturnPct,
       totalTrades: multiWeek.totalTrades,
       weeklyWinRate: (weeklyWins / multiWeek.weeks.length) * 100,
-      maxDrawdownPct: multiWeek.maxDrawdownPct,
+      maxDrawdownPct: multiWeekPathSummary?.maxDrawdownPct ?? multiWeek.maxDrawdownPct,
       weeks: multiWeek.weeks.length,
       avgWeeklyReturn: multiWeek.totalReturnPct / multiWeek.weeks.length,
       sharpe: computeSharpe(weeklyReturns),
@@ -661,6 +750,7 @@ export function weeklyHoldToSidebarStats(
     lossCount: result.lossCount,
     winRate: result.winRate,
     allTime,
+    maxDrawdownPct: currentWeekPathSummary?.maxDrawdownPct ?? 0,
     trades: result.trades.map((t) => ({
       symbol: t.symbol,
       direction: t.direction,

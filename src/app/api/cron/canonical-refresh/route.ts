@@ -26,7 +26,7 @@ import {
   getCanonicalWeekWindow,
 } from "@/lib/canonicalPriceWindows";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
-import { fetchOandaDailySeries } from "@/lib/oandaPrices";
+import { fetchOandaCandleSeries, fetchOandaDailySeries } from "@/lib/oandaPrices";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -75,6 +75,7 @@ export async function GET(request: Request) {
   ).plus({ days: 1 });
 
   let barsUpserted = 0;
+  let hourlyBarsUpserted = 0;
   let weeklyReturnsUpserted = 0;
   const errors: string[] = [];
 
@@ -162,7 +163,7 @@ export async function GET(request: Request) {
         await query(
           `INSERT INTO canonical_price_bars (symbol, asset_class, timeframe, bar_open_utc, bar_close_utc, open_price, high_price, low_price, close_price, source_provider, quality_status)
            VALUES ($1, $2, '1d', $3::timestamptz, $4::timestamptz, $5, $6, $7, $8, $9, 'provider_daily')
-           ON CONFLICT (symbol, asset_class, timeframe, bar_open_utc)
+           ON CONFLICT (symbol, timeframe, bar_open_utc)
            DO UPDATE SET close_price = EXCLUDED.close_price, high_price = EXCLUDED.high_price, low_price = EXCLUDED.low_price, updated_at = NOW()`,
           [
             instrument.symbol, instrument.assetClass,
@@ -172,6 +173,64 @@ export async function GET(request: Request) {
           ],
         );
         barsUpserted++;
+      }
+
+      if (instrument.primaryProvider === "oanda" && instrument.oandaInstrument) {
+        const hourlyBars = await fetchOandaCandleSeries(
+          instrument.oandaInstrument,
+          fromUtc,
+          toUtc,
+        );
+
+        for (const bar of hourlyBars) {
+          const openDt = DateTime.fromMillis(bar.ts, { zone: "utc" });
+          await query(
+            `INSERT INTO canonical_price_bars (symbol, asset_class, timeframe, bar_open_utc, bar_close_utc, open_price, high_price, low_price, close_price, source_provider, quality_status)
+             VALUES ($1, $2, '1h', $3::timestamptz, $4::timestamptz, $5, $6, $7, $8, $9, 'provider_hourly')
+             ON CONFLICT (symbol, timeframe, bar_open_utc)
+             DO UPDATE SET close_price = EXCLUDED.close_price, high_price = EXCLUDED.high_price, low_price = EXCLUDED.low_price, updated_at = NOW()`,
+            [
+              instrument.symbol,
+              instrument.assetClass,
+              openDt.toISO(),
+              openDt.plus({ hours: 1 }).toISO(),
+              round(bar.open),
+              round(bar.high),
+              round(bar.low),
+              round(bar.close),
+              "oanda",
+            ],
+          );
+          hourlyBarsUpserted++;
+        }
+      } else if (instrument.primaryProvider === "bitget" && instrument.bitgetBaseCoin) {
+        const { fetchBitgetSpotCandleSeries } = await import("@/lib/bitget");
+        const hourlyBars = await fetchBitgetSpotCandleSeries(instrument.bitgetBaseCoin, {
+          openUtc: fromUtc,
+          closeUtc: toUtc,
+        });
+
+        for (const bar of hourlyBars) {
+          const openDt = DateTime.fromMillis(bar.ts, { zone: "utc" });
+          await query(
+            `INSERT INTO canonical_price_bars (symbol, asset_class, timeframe, bar_open_utc, bar_close_utc, open_price, high_price, low_price, close_price, source_provider, quality_status)
+             VALUES ($1, $2, '1h', $3::timestamptz, $4::timestamptz, $5, $6, $7, $8, $9, 'provider_hourly_spot')
+             ON CONFLICT (symbol, timeframe, bar_open_utc)
+             DO UPDATE SET close_price = EXCLUDED.close_price, high_price = EXCLUDED.high_price, low_price = EXCLUDED.low_price, updated_at = NOW()`,
+            [
+              instrument.symbol,
+              instrument.assetClass,
+              openDt.toISO(),
+              openDt.plus({ hours: 1 }).toISO(),
+              round(bar.open),
+              round(bar.high),
+              round(bar.low),
+              round(bar.close),
+              instrument.assetClass === "crypto" ? "bitget_spot" : "bitget",
+            ],
+          );
+          hourlyBarsUpserted++;
+        }
       }
 
       // Derive weekly returns for target weeks
@@ -224,6 +283,7 @@ export async function GET(request: Request) {
     durationMs: Date.now() - startedAt,
     targetWeeks,
     barsUpserted,
+    hourlyBarsUpserted,
     weeklyReturnsUpserted,
     instruments: CANONICAL_INSTRUMENTS.filter((i) => i.isActive).length,
     errors: errors.length > 0 ? errors : undefined,

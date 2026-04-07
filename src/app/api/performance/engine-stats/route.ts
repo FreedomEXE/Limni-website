@@ -21,12 +21,33 @@ import {
   normalizeFilterSelection,
   resolveBiasSourceId,
 } from "@/lib/performance/strategyConfig";
-import { weeklyHoldToSidebarStats } from "@/lib/performance/engineAdapter";
+import { weeklyHoldToSidebarStatsWithPath } from "@/lib/performance/engineAdapter";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
+import { buildWeeklyHoldLedger } from "@/lib/performance/positionLedger";
+import { loadPathBars } from "@/lib/performance/pathBarLoader";
+import {
+  computeBasketPath,
+  computeMultiWeekBasketPath,
+  type BasketPathResult,
+  type BasketPathSummary,
+} from "@/lib/performance/basketPathEngine";
+import { CANONICAL_PATH_RESOLUTION } from "@/lib/performance/pathResolution";
 
 export const dynamic = "force-dynamic";
+
+async function computePathSummaryForWeek(result: Awaited<ReturnType<typeof computeWeeklyHold>>) {
+  const ledger = await buildWeeklyHoldLedger(result);
+  const symbols = ledger.legs.map((leg) => leg.symbol);
+  const bars = await loadPathBars(
+    symbols,
+    ledger.weekOpenUtc,
+    ledger.weekCloseUtc,
+    CANONICAL_PATH_RESOLUTION,
+  );
+  return computeBasketPath(ledger, bars);
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -57,7 +78,31 @@ export async function GET(request: NextRequest) {
     }) as string[];
     const multiWeek = await computeMultiWeekHold(biasSource, weekOptions, entryStyle);
 
-    const stats = weeklyHoldToSidebarStats(result, biasSource, multiWeek);
+    const currentWeekPath = await computePathSummaryForWeek(result);
+    const realizedWeekPaths: BasketPathResult[] = [];
+    for (const weekResult of multiWeek.weeks) {
+      realizedWeekPaths.push(await computePathSummaryForWeek(weekResult));
+    }
+    const multiWeekPath = realizedWeekPaths.length > 0
+      ? computeMultiWeekBasketPath(realizedWeekPaths)
+      : {
+          points: [],
+          summary: {
+            totalReturnPct: multiWeek.totalReturnPct,
+            peakPct: multiWeek.totalReturnPct,
+            troughPct: Math.min(0, multiWeek.totalReturnPct),
+            maxDrawdownPct: Math.abs(multiWeek.maxDrawdownPct),
+            peakToCloseGivebackPct: 0,
+            troughToCloseRecoveryPct: multiWeek.totalReturnPct - Math.min(0, multiWeek.totalReturnPct),
+            maxActivePositions: 0,
+          } satisfies BasketPathSummary,
+        };
+
+    const stats = weeklyHoldToSidebarStatsWithPath(result, biasSource, {
+      multiWeek,
+      currentWeekPathSummary: currentWeekPath.summary,
+      multiWeekPathSummary: multiWeekPath.summary,
+    });
     return NextResponse.json(stats);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Engine computation failed";

@@ -17,10 +17,12 @@ import { query, queryOne } from "@/lib/db";
 import { deriveCotReportDate, listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import {
   multiWeekToGridProps,
+  multiWeekPathToSimulation,
   multiWeekToSimulation,
+  singleWeekPathToSimulation,
   singleWeekToSimulation,
   weeklyHoldToGridProps,
-  weeklyHoldToSidebarStats,
+  weeklyHoldToSidebarStatsWithPath,
   type EngineGridProps,
   type EngineSidebarStats,
   type EngineSimulationGroup,
@@ -46,9 +48,18 @@ import { SELECTOR_ENGINE_VERSION } from "@/lib/performance/selectorEngine";
 import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
+import { loadPathBars } from "@/lib/performance/pathBarLoader";
+import { buildWeeklyHoldLedger } from "@/lib/performance/positionLedger";
+import {
+  computeBasketPath,
+  computeMultiWeekBasketPath,
+  type BasketPathResult,
+  type BasketPathSummary,
+} from "@/lib/performance/basketPathEngine";
+import { CANONICAL_PATH_RESOLUTION } from "@/lib/performance/pathResolution";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v19";
+  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v21";
 
 type WeekWatermarkRow = {
   week_open_utc: string;
@@ -92,6 +103,7 @@ export type StrategySelection = {
 export type StrategyPageData = {
   weekMap: Record<string, EngineGridProps>;
   simMap: Record<string, EngineSimulationGroup>;
+  pathSummaryMap: Record<string, BasketPathSummary>;
   multiWeekResult: MultiWeekResult;
   weekResults: Record<string, WeeklyHoldResult>;
   sidebarStats: EngineSidebarStats;
@@ -160,7 +172,7 @@ export async function loadStrategyPageData(
           });
         }
 
-        const artifactPayload = buildStrategyPageDataFromWeekResults({
+        const artifactPayload = await buildStrategyPageDataFromWeekResults({
           biasSource,
           currentWeekOpenUtc,
           entryStyle,
@@ -205,7 +217,7 @@ export async function loadStrategyPageData(
       });
     }
 
-    const artifactPayload = buildStrategyPageDataFromWeekResults({
+    const artifactPayload = await buildStrategyPageDataFromWeekResults({
       biasSource,
       currentWeekOpenUtc,
       entryStyle,
@@ -424,13 +436,97 @@ async function patchWeekResults(options: {
   });
 }
 
-function buildStrategyPageDataFromWeekResults(options: {
+async function buildSimulationMapFromWeekResults(options: {
+  biasSource: BiasSourceConfig;
+  entryStyle: EntryStyleConfig | undefined;
+  selectionLabel: string;
+  orderedWeeks: WeeklyHoldResult[];
+  multiWeekResult: MultiWeekResult;
+}) {
+  const { biasSource, entryStyle, selectionLabel, orderedWeeks, multiWeekResult } = options;
+  const simMap: Record<string, EngineSimulationGroup> = {};
+  const pathSummaryMap: Record<string, BasketPathSummary> = {};
+  const realizedWeekPaths: BasketPathResult[] = [];
+
+  for (const weekResult of orderedWeeks) {
+    const label = weekDisplayLabel(weekResult.weekOpenUtc);
+    try {
+      const ledger = await buildWeeklyHoldLedger(weekResult, {
+        entryStyleId: entryStyle?.id ?? "weekly_hold",
+      });
+      const symbols = ledger.legs.map((leg) => leg.symbol);
+      const bars = await loadPathBars(
+        symbols,
+        ledger.weekOpenUtc,
+        ledger.weekCloseUtc,
+        CANONICAL_PATH_RESOLUTION,
+      );
+      const path = computeBasketPath(ledger, bars);
+      pathSummaryMap[weekResult.weekOpenUtc] = path.summary;
+      simMap[weekResult.weekOpenUtc] = singleWeekPathToSimulation(
+        path,
+        weekResult,
+        biasSource,
+        label,
+        selectionLabel,
+      );
+      if (weekResult.isRealized) {
+        realizedWeekPaths.push(path);
+      }
+    } catch (error) {
+      console.warn(
+        `[strategyPageData] Falling back to legacy simulation for ${biasSource.id} ${weekResult.weekOpenUtc}:`,
+        error instanceof Error ? error.stack ?? error.message : error,
+      );
+      pathSummaryMap[weekResult.weekOpenUtc] = {
+        totalReturnPct: weekResult.totalReturnPct,
+        peakPct: weekResult.totalReturnPct,
+        troughPct: Math.min(0, weekResult.totalReturnPct),
+        maxDrawdownPct: 0,
+        peakToCloseGivebackPct: 0,
+        troughToCloseRecoveryPct: weekResult.totalReturnPct - Math.min(0, weekResult.totalReturnPct),
+        maxActivePositions: weekResult.tradeCount,
+      };
+      simMap[weekResult.weekOpenUtc] = singleWeekToSimulation(
+        weekResult,
+        biasSource,
+        label,
+        selectionLabel,
+      );
+    }
+  }
+
+  try {
+    const multiWeekPath = computeMultiWeekBasketPath(realizedWeekPaths);
+    pathSummaryMap.all = multiWeekPath.summary;
+    simMap.all = multiWeekPathToSimulation(multiWeekPath, multiWeekResult, biasSource, selectionLabel);
+  } catch (error) {
+    console.warn(
+      `[strategyPageData] Falling back to legacy all-time simulation for ${biasSource.id}:`,
+      error instanceof Error ? error.stack ?? error.message : error,
+    );
+    pathSummaryMap.all = {
+      totalReturnPct: multiWeekResult.totalReturnPct,
+      peakPct: multiWeekResult.totalReturnPct,
+      troughPct: Math.min(0, multiWeekResult.totalReturnPct),
+      maxDrawdownPct: Math.abs(multiWeekResult.maxDrawdownPct),
+      peakToCloseGivebackPct: 0,
+      troughToCloseRecoveryPct: multiWeekResult.totalReturnPct - Math.min(0, multiWeekResult.totalReturnPct),
+      maxActivePositions: Math.max(...multiWeekResult.weeks.map((week) => week.tradeCount), 0),
+    };
+    simMap.all = multiWeekToSimulation(multiWeekResult, biasSource, selectionLabel);
+  }
+
+  return { simMap, pathSummaryMap };
+}
+
+async function buildStrategyPageDataFromWeekResults(options: {
   biasSource: BiasSourceConfig;
   currentWeekOpenUtc: string;
   entryStyle: EntryStyleConfig | undefined;
   weekOptions: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
-}): StrategyPageData {
+}): Promise<StrategyPageData> {
   const { biasSource, currentWeekOpenUtc, entryStyle, weekOptions, weekResultsByWeek } = options;
   const selectionLabel = entryStyle?.label ?? "Weekly Hold";
   const orderedWeeks = weekOptions
@@ -439,18 +535,22 @@ function buildStrategyPageDataFromWeekResults(options: {
 
   const multiWeekResult = buildMultiWeekResultFromWeeks(biasSource, orderedWeeks);
   const weekMap: Record<string, EngineGridProps> = {};
-  const simMap: Record<string, EngineSimulationGroup> = {};
   const nextWeekResults: Record<string, WeeklyHoldResult> = {};
 
   for (const weekResult of orderedWeeks) {
     const label = weekDisplayLabel(weekResult.weekOpenUtc);
     weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(weekResult, biasSource, label, selectionLabel);
-    simMap[weekResult.weekOpenUtc] = singleWeekToSimulation(weekResult, biasSource, label, selectionLabel);
     nextWeekResults[weekResult.weekOpenUtc] = weekResult;
   }
 
   weekMap.all = multiWeekToGridProps(multiWeekResult, biasSource, selectionLabel);
-  simMap.all = multiWeekToSimulation(multiWeekResult, biasSource, selectionLabel);
+  const { simMap, pathSummaryMap } = await buildSimulationMapFromWeekResults({
+    biasSource,
+    entryStyle,
+    selectionLabel,
+    orderedWeeks,
+    multiWeekResult,
+  });
 
   const currentWeekResult =
     nextWeekResults[currentWeekOpenUtc] ??
@@ -471,9 +571,14 @@ function buildStrategyPageDataFromWeekResults(options: {
   return {
     weekMap,
     simMap,
+    pathSummaryMap,
     multiWeekResult,
     weekResults: nextWeekResults,
-    sidebarStats: weeklyHoldToSidebarStats(currentWeekResult, biasSource, multiWeekResult),
+    sidebarStats: weeklyHoldToSidebarStatsWithPath(currentWeekResult, biasSource, {
+      multiWeek: multiWeekResult,
+      currentWeekPathSummary: pathSummaryMap[currentWeekResult.weekOpenUtc] ?? null,
+      multiWeekPathSummary: pathSummaryMap.all ?? null,
+    }),
     biasSource,
     entryStyle,
     weekOptions,
