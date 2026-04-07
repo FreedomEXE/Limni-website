@@ -113,6 +113,139 @@ export type StrategyPageData = {
   currentWeekOpenUtc: string;
 };
 
+function weekResultFallbackPathSummary(weekResult: WeeklyHoldResult): BasketPathSummary {
+  return {
+    totalReturnPct: weekResult.totalReturnPct,
+    peakPct: weekResult.totalReturnPct,
+    troughPct: Math.min(0, weekResult.totalReturnPct),
+    maxDrawdownPct: 0,
+    peakToCloseGivebackPct: 0,
+    troughToCloseRecoveryPct: weekResult.totalReturnPct - Math.min(0, weekResult.totalReturnPct),
+    maxActivePositions: weekResult.tradeCount,
+  };
+}
+
+async function computeWeekPathArtifact(options: {
+  weekResult: WeeklyHoldResult;
+  biasSource: BiasSourceConfig;
+  entryStyle: EntryStyleConfig | undefined;
+  selectionLabel: string;
+}) {
+  const { weekResult, biasSource, entryStyle, selectionLabel } = options;
+  const label = weekDisplayLabel(weekResult.weekOpenUtc);
+  const ledger = await buildWeeklyHoldLedger(weekResult, {
+    entryStyleId: entryStyle?.id ?? "weekly_hold",
+  });
+  const symbols = ledger.legs.map((leg) => leg.symbol);
+  const bars = await loadPathBars(
+    symbols,
+    ledger.weekOpenUtc,
+    ledger.weekCloseUtc,
+    CANONICAL_PATH_RESOLUTION,
+  );
+  const path = computeBasketPath(ledger, bars);
+  return {
+    weekKey: weekResult.weekOpenUtc,
+    path,
+    sim: singleWeekPathToSimulation(path, weekResult, biasSource, label, selectionLabel),
+    summary: path.summary,
+  };
+}
+
+function reconstructWeekPathResult(options: {
+  weekOpenUtc: string;
+  strategyId: string;
+  entryStyleId: string;
+  summary: BasketPathSummary;
+  simulation: EngineSimulationGroup;
+}) {
+  const { weekOpenUtc, strategyId, entryStyleId, summary, simulation } = options;
+  const equitySeries = simulation.series[0];
+  if (!equitySeries) return null;
+
+  return {
+    weekOpenUtc,
+    strategyId,
+    entryStyleId,
+    resolution: CANONICAL_PATH_RESOLUTION,
+    points: equitySeries.points.map((point) => ({
+      tsUtc: point.ts_utc,
+      equityPct: point.equity_pct,
+      peakPct: 0,
+      drawdownPct: 0,
+      activePositions: summary.maxActivePositions,
+    })),
+    summary,
+  } satisfies BasketPathResult;
+}
+
+function assembleStrategyPageData(options: {
+  biasSource: BiasSourceConfig;
+  currentWeekOpenUtc: string;
+  entryStyle: EntryStyleConfig | undefined;
+  weekOptions: string[];
+  weekResultsByWeek: Record<string, WeeklyHoldResult>;
+  simMap: Record<string, EngineSimulationGroup>;
+  pathSummaryMap: Record<string, BasketPathSummary>;
+}): StrategyPageData {
+  const {
+    biasSource,
+    currentWeekOpenUtc,
+    entryStyle,
+    weekOptions,
+    weekResultsByWeek,
+    simMap,
+    pathSummaryMap,
+  } = options;
+  const selectionLabel = entryStyle?.label ?? "Weekly Hold";
+  const orderedWeeks = weekOptions
+    .map((weekOpenUtc) => weekResultsByWeek[weekOpenUtc])
+    .filter((weekResult): weekResult is WeeklyHoldResult => Boolean(weekResult));
+
+  const multiWeekResult = buildMultiWeekResultFromWeeks(biasSource, orderedWeeks);
+  const weekMap: Record<string, EngineGridProps> = {};
+
+  for (const weekResult of orderedWeeks) {
+    const label = weekDisplayLabel(weekResult.weekOpenUtc);
+    weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(weekResult, biasSource, label, selectionLabel);
+  }
+
+  weekMap.all = multiWeekToGridProps(multiWeekResult, biasSource, selectionLabel);
+
+  const currentWeekResult =
+    weekResultsByWeek[currentWeekOpenUtc] ??
+    orderedWeeks[0] ??
+    {
+      weekOpenUtc: currentWeekOpenUtc,
+      biasSourceId: biasSource.id,
+      trades: [],
+      totalReturnPct: 0,
+      winCount: 0,
+      lossCount: 0,
+      winRate: 0,
+      tradeCount: 0,
+      signals: [],
+      isRealized: false,
+    };
+
+  return {
+    weekMap,
+    simMap,
+    pathSummaryMap,
+    multiWeekResult,
+    weekResults: weekResultsByWeek,
+    sidebarStats: weeklyHoldToSidebarStatsWithPath(currentWeekResult, biasSource, {
+      multiWeek: multiWeekResult,
+      currentWeekPathSummary: pathSummaryMap[currentWeekResult.weekOpenUtc] ?? null,
+      multiWeekPathSummary: pathSummaryMap.all ?? null,
+    }),
+    biasSource,
+    entryStyle,
+    weekOptions,
+    currentWeekOpenUtc,
+  };
+}
+
 export async function loadStrategyPageData(
   selection: StrategySelection,
 ): Promise<StrategyPageData | null> {
@@ -185,6 +318,32 @@ export async function loadStrategyPageData(
           fingerprint,
           payload: artifactPayload,
         });
+
+        const currentWeekResult = await currentWeekResultPromise;
+        if (currentWeekResult) {
+          nextWeekResults[currentWeekOpenUtc] = currentWeekResult;
+        }
+
+        const merged = await mergeCurrentWeekIntoCachedPathData({
+          currentWeekResult,
+          cachedSimMap: { ...artifactPayload.simMap },
+          cachedPathSummaryMap: { ...artifactPayload.pathSummaryMap },
+          cachedWeeks,
+          biasSource,
+          entryStyle,
+          selectionLabel: entryStyle?.label ?? "Weekly Hold",
+          historicalWeekResults: nextWeekResults,
+        });
+
+        return assembleStrategyPageData({
+          biasSource,
+          currentWeekOpenUtc,
+          entryStyle,
+          weekOptions,
+          weekResultsByWeek: nextWeekResults,
+          simMap: merged.simMap,
+          pathSummaryMap: merged.pathSummaryMap,
+        });
       }
 
       const currentWeekResult = await currentWeekResultPromise;
@@ -192,12 +351,25 @@ export async function loadStrategyPageData(
         nextWeekResults[currentWeekOpenUtc] = currentWeekResult;
       }
 
-      return buildStrategyPageDataFromWeekResults({
+      const merged = await mergeCurrentWeekIntoCachedPathData({
+        currentWeekResult,
+        cachedSimMap: { ...(cached.payload.simMap ?? {}) },
+        cachedPathSummaryMap: { ...(cached.payload.pathSummaryMap ?? {}) },
+        cachedWeeks,
+        biasSource,
+        entryStyle,
+        selectionLabel: entryStyle?.label ?? "Weekly Hold",
+        historicalWeekResults: nextWeekResults,
+      });
+
+      return assembleStrategyPageData({
         biasSource,
         currentWeekOpenUtc,
         entryStyle,
         weekOptions,
         weekResultsByWeek: nextWeekResults,
+        simMap: merged.simMap,
+        pathSummaryMap: merged.pathSummaryMap,
       });
     }
 
@@ -236,12 +408,25 @@ export async function loadStrategyPageData(
       weekResultsByWeek[currentWeekOpenUtc] = currentWeekResult;
     }
 
-    return buildStrategyPageDataFromWeekResults({
+    const merged = await mergeCurrentWeekIntoCachedPathData({
+      currentWeekResult,
+      cachedSimMap: { ...artifactPayload.simMap },
+      cachedPathSummaryMap: { ...artifactPayload.pathSummaryMap },
+      cachedWeeks,
+      biasSource,
+      entryStyle,
+      selectionLabel: entryStyle?.label ?? "Weekly Hold",
+      historicalWeekResults: weekResultsByWeek,
+    });
+
+    return assembleStrategyPageData({
       biasSource,
       currentWeekOpenUtc,
       entryStyle,
       weekOptions,
       weekResultsByWeek,
+      simMap: merged.simMap,
+      pathSummaryMap: merged.pathSummaryMap,
     });
   } catch (err) {
     console.error(
@@ -250,6 +435,116 @@ export async function loadStrategyPageData(
     );
     return null;
   }
+}
+
+async function mergeCurrentWeekIntoCachedPathData(options: {
+  currentWeekResult: WeeklyHoldResult | null;
+  cachedSimMap: Record<string, EngineSimulationGroup>;
+  cachedPathSummaryMap: Record<string, BasketPathSummary>;
+  cachedWeeks: string[];
+  biasSource: BiasSourceConfig;
+  entryStyle: EntryStyleConfig | undefined;
+  selectionLabel: string;
+  historicalWeekResults: Record<string, WeeklyHoldResult>;
+}) {
+  const {
+    currentWeekResult,
+    cachedSimMap,
+    cachedPathSummaryMap,
+    cachedWeeks,
+    biasSource,
+    entryStyle,
+    selectionLabel,
+    historicalWeekResults,
+  } = options;
+
+  if (!currentWeekResult) {
+    return {
+      simMap: cachedSimMap,
+      pathSummaryMap: cachedPathSummaryMap,
+    };
+  }
+
+  try {
+    const computed = await computeWeekPathArtifact({
+      weekResult: currentWeekResult,
+      biasSource,
+      entryStyle,
+      selectionLabel,
+    });
+    cachedSimMap[currentWeekResult.weekOpenUtc] = computed.sim;
+    cachedPathSummaryMap[currentWeekResult.weekOpenUtc] = computed.summary;
+  } catch (error) {
+    console.warn(
+      `[strategyPageData] Falling back to legacy current-week simulation for ${biasSource.id} ${currentWeekResult.weekOpenUtc}:`,
+      error instanceof Error ? error.stack ?? error.message : error,
+    );
+    cachedSimMap[currentWeekResult.weekOpenUtc] = singleWeekToSimulation(
+      currentWeekResult,
+      biasSource,
+      weekDisplayLabel(currentWeekResult.weekOpenUtc),
+      selectionLabel,
+    );
+    cachedPathSummaryMap[currentWeekResult.weekOpenUtc] = weekResultFallbackPathSummary(currentWeekResult);
+  }
+
+  if (currentWeekResult.isRealized) {
+    const reconstructed = cachedWeeks
+      .map((weekOpenUtc) => {
+        const weekResult = historicalWeekResults[weekOpenUtc];
+        const simulation = cachedSimMap[weekOpenUtc];
+        const summary = cachedPathSummaryMap[weekOpenUtc];
+        if (!weekResult || !simulation || !summary) return null;
+        return reconstructWeekPathResult({
+          weekOpenUtc,
+          strategyId: biasSource.id,
+          entryStyleId: entryStyle?.id ?? "weekly_hold",
+          summary,
+          simulation,
+        });
+      })
+      .filter((value): value is BasketPathResult => Boolean(value));
+
+    const currentSummary = cachedPathSummaryMap[currentWeekResult.weekOpenUtc];
+    const currentSimulation = cachedSimMap[currentWeekResult.weekOpenUtc];
+    if (currentSummary && currentSimulation) {
+      const currentPath = reconstructWeekPathResult({
+        weekOpenUtc: currentWeekResult.weekOpenUtc,
+        strategyId: biasSource.id,
+        entryStyleId: entryStyle?.id ?? "weekly_hold",
+        summary: currentSummary,
+        simulation: currentSimulation,
+      });
+      if (currentPath) {
+        reconstructed.push(currentPath);
+      }
+    }
+
+    if (reconstructed.length > 0) {
+      const allPath = computeMultiWeekBasketPath(reconstructed);
+      cachedPathSummaryMap.all = allPath.summary;
+      cachedSimMap.all = multiWeekPathToSimulation(
+        allPath,
+        buildMultiWeekResultFromWeeks(
+          biasSource,
+          [...cachedWeeks, currentWeekResult.weekOpenUtc]
+            .map((weekOpenUtc) =>
+              weekOpenUtc === currentWeekResult.weekOpenUtc
+                ? currentWeekResult
+                : historicalWeekResults[weekOpenUtc],
+            )
+            .filter((weekResult): weekResult is WeeklyHoldResult => Boolean(weekResult) && weekResult.isRealized),
+        ),
+        biasSource,
+        selectionLabel,
+      );
+    }
+  }
+
+  return {
+    simMap: cachedSimMap,
+    pathSummaryMap: cachedPathSummaryMap,
+  };
 }
 
 async function buildStrategyFingerprint(options: {
@@ -447,53 +742,55 @@ async function buildSimulationMapFromWeekResults(options: {
   const simMap: Record<string, EngineSimulationGroup> = {};
   const pathSummaryMap: Record<string, BasketPathSummary> = {};
   const realizedWeekPaths: BasketPathResult[] = [];
+  const weekPathResults: Array<{
+    weekResult: WeeklyHoldResult;
+    computed: Awaited<ReturnType<typeof computeWeekPathArtifact>> | null;
+    error: unknown;
+  }> = [];
+  const chunkSize = 3;
 
-  for (const weekResult of orderedWeeks) {
-    const label = weekDisplayLabel(weekResult.weekOpenUtc);
-    try {
-      const ledger = await buildWeeklyHoldLedger(weekResult, {
-        entryStyleId: entryStyle?.id ?? "weekly_hold",
-      });
-      const symbols = ledger.legs.map((leg) => leg.symbol);
-      const bars = await loadPathBars(
-        symbols,
-        ledger.weekOpenUtc,
-        ledger.weekCloseUtc,
-        CANONICAL_PATH_RESOLUTION,
-      );
-      const path = computeBasketPath(ledger, bars);
-      pathSummaryMap[weekResult.weekOpenUtc] = path.summary;
-      simMap[weekResult.weekOpenUtc] = singleWeekPathToSimulation(
-        path,
-        weekResult,
-        biasSource,
-        label,
-        selectionLabel,
-      );
+  for (let index = 0; index < orderedWeeks.length; index += chunkSize) {
+    const chunk = orderedWeeks.slice(index, index + chunkSize);
+    const chunkResults = await Promise.all(
+      chunk.map(async (weekResult) => {
+        try {
+          const computed = await computeWeekPathArtifact({
+            weekResult,
+            biasSource,
+            entryStyle,
+            selectionLabel,
+          });
+          return { weekResult, computed, error: null as unknown };
+        } catch (error) {
+          return { weekResult, computed: null, error };
+        }
+      }),
+    );
+    weekPathResults.push(...chunkResults);
+  }
+
+  for (const { weekResult, computed, error } of weekPathResults) {
+    if (computed) {
+      pathSummaryMap[computed.weekKey] = computed.summary;
+      simMap[computed.weekKey] = computed.sim;
       if (weekResult.isRealized) {
-        realizedWeekPaths.push(path);
+        realizedWeekPaths.push(computed.path);
       }
-    } catch (error) {
-      console.warn(
-        `[strategyPageData] Falling back to legacy simulation for ${biasSource.id} ${weekResult.weekOpenUtc}:`,
-        error instanceof Error ? error.stack ?? error.message : error,
-      );
-      pathSummaryMap[weekResult.weekOpenUtc] = {
-        totalReturnPct: weekResult.totalReturnPct,
-        peakPct: weekResult.totalReturnPct,
-        troughPct: Math.min(0, weekResult.totalReturnPct),
-        maxDrawdownPct: 0,
-        peakToCloseGivebackPct: 0,
-        troughToCloseRecoveryPct: weekResult.totalReturnPct - Math.min(0, weekResult.totalReturnPct),
-        maxActivePositions: weekResult.tradeCount,
-      };
-      simMap[weekResult.weekOpenUtc] = singleWeekToSimulation(
-        weekResult,
-        biasSource,
-        label,
-        selectionLabel,
-      );
+      continue;
     }
+
+    const label = weekDisplayLabel(weekResult.weekOpenUtc);
+    console.warn(
+      `[strategyPageData] Falling back to legacy simulation for ${biasSource.id} ${weekResult.weekOpenUtc}:`,
+      error instanceof Error ? error.stack ?? error.message : error,
+    );
+    pathSummaryMap[weekResult.weekOpenUtc] = weekResultFallbackPathSummary(weekResult);
+    simMap[weekResult.weekOpenUtc] = singleWeekToSimulation(
+      weekResult,
+      biasSource,
+      label,
+      selectionLabel,
+    );
   }
 
   try {
@@ -527,23 +824,13 @@ async function buildStrategyPageDataFromWeekResults(options: {
   weekOptions: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
 }): Promise<StrategyPageData> {
-  const { biasSource, currentWeekOpenUtc, entryStyle, weekOptions, weekResultsByWeek } = options;
+  const { biasSource, entryStyle, weekOptions, weekResultsByWeek } = options;
   const selectionLabel = entryStyle?.label ?? "Weekly Hold";
   const orderedWeeks = weekOptions
     .map((weekOpenUtc) => weekResultsByWeek[weekOpenUtc])
     .filter((weekResult): weekResult is WeeklyHoldResult => Boolean(weekResult));
 
   const multiWeekResult = buildMultiWeekResultFromWeeks(biasSource, orderedWeeks);
-  const weekMap: Record<string, EngineGridProps> = {};
-  const nextWeekResults: Record<string, WeeklyHoldResult> = {};
-
-  for (const weekResult of orderedWeeks) {
-    const label = weekDisplayLabel(weekResult.weekOpenUtc);
-    weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(weekResult, biasSource, label, selectionLabel);
-    nextWeekResults[weekResult.weekOpenUtc] = weekResult;
-  }
-
-  weekMap.all = multiWeekToGridProps(multiWeekResult, biasSource, selectionLabel);
   const { simMap, pathSummaryMap } = await buildSimulationMapFromWeekResults({
     biasSource,
     entryStyle,
@@ -552,38 +839,11 @@ async function buildStrategyPageDataFromWeekResults(options: {
     multiWeekResult,
   });
 
-  const currentWeekResult =
-    nextWeekResults[currentWeekOpenUtc] ??
-    orderedWeeks[0] ??
-    {
-      weekOpenUtc: currentWeekOpenUtc,
-      biasSourceId: biasSource.id,
-      trades: [],
-      totalReturnPct: 0,
-      winCount: 0,
-      lossCount: 0,
-      winRate: 0,
-      tradeCount: 0,
-      signals: [],
-      isRealized: false,
-    };
-
-  return {
-    weekMap,
+  return assembleStrategyPageData({
+    ...options,
     simMap,
     pathSummaryMap,
-    multiWeekResult,
-    weekResults: nextWeekResults,
-    sidebarStats: weeklyHoldToSidebarStatsWithPath(currentWeekResult, biasSource, {
-      multiWeek: multiWeekResult,
-      currentWeekPathSummary: pathSummaryMap[currentWeekResult.weekOpenUtc] ?? null,
-      multiWeekPathSummary: pathSummaryMap.all ?? null,
-    }),
-    biasSource,
-    entryStyle,
-    weekOptions,
-    currentWeekOpenUtc,
-  };
+  });
 }
 
 function buildMultiWeekResultFromWeeks(
