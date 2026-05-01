@@ -28,7 +28,7 @@ describe("runtimeCache", () => {
 
     expect(loaderCalls).toBe(1);
 
-    resolveLoader?.("shared-result");
+    resolveLoader!("shared-result");
 
     await expect(pending).resolves.toEqual([
       "shared-result",

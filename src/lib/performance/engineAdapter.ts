@@ -28,6 +28,7 @@ import type {
   BasketPathResult,
   BasketPathSummary,
 } from "@/lib/performance/basketPathEngine";
+import type { PositionLeg } from "@/lib/performance/positionLedger";
 
 // ─── Card slot mapping ──────────────────────────────────────────
 
@@ -37,7 +38,7 @@ const DEFAULT_CARD_SLOTS = [
   "sentiment",
 ] as const satisfies readonly PerformanceModel[];
 
-function resolveCardSlots(
+export function resolveCardSlots(
   biasSource: BiasSourceConfig,
 ): readonly PerformanceModel[] {
   return biasSource.models ?? DEFAULT_CARD_SLOTS;
@@ -122,6 +123,39 @@ function getLabels(breakdown: BiasSourceConfig["cardBreakdown"]): Record<Perform
       return TIER_LABELS;
     case "per_model":
       return PER_MODEL_LABELS;
+  }
+}
+
+function legSlotByAssetClass(leg: PositionLeg): number {
+  if (leg.assetClass === "fx") return 0;
+  if (leg.assetClass === "commodities" || leg.assetClass === "indices") return 1;
+  if (leg.assetClass === "crypto") return 2;
+  return 0;
+}
+
+function legSlotByTier(leg: PositionLeg): number {
+  if (leg.tier === 1) return 0;
+  if (leg.tier === 2) return 1;
+  if (leg.tier === 3) return 2;
+  return 0;
+}
+
+function legSlotByModel(leg: PositionLeg, models: readonly PerformanceModel[]): number {
+  const idx = models.indexOf(leg.source as PerformanceModel);
+  return idx >= 0 ? idx : 0;
+}
+
+export function resolveLegSlotFn(
+  breakdown: BiasSourceConfig["cardBreakdown"],
+  models: readonly PerformanceModel[],
+): (leg: PositionLeg) => number {
+  switch (breakdown) {
+    case "asset_class":
+      return legSlotByAssetClass;
+    case "tiers":
+      return legSlotByTier;
+    case "per_model":
+      return (leg) => legSlotByModel(leg, models);
   }
 }
 
@@ -608,7 +642,12 @@ export function singleWeekPathToSimulation(
   biasSource: BiasSourceConfig,
   weekLabel: string,
   selectionLabel = "Weekly Hold",
+  slotPaths: BasketPathResult[] = [],
 ): EngineSimulationGroup {
+  const cardSlots = resolveCardSlots(biasSource);
+  const labels = getLabels(biasSource.cardBreakdown);
+  const slotLabels = cardSlots.map((slot) => labels[slot]);
+
   return {
     title: buildExecutionLabel(biasSource, selectionLabel),
     description: `Hourly equity path for ${weekLabel}.`,
@@ -620,10 +659,16 @@ export function singleWeekPathToSimulation(
     series: [
       {
         id: "equity",
-        label: "Equity",
-        color: "#10b981",
+        label: "Total",
+        color: "#ffffff",
         points: pathPointsToSimulationPoints(path.points),
       },
+      ...slotPaths.map((slotPath, index) => ({
+        id: cardSlots[index] ?? `slot-${index + 1}`,
+        label: slotLabels[index] ?? `Slot ${index + 1}`,
+        color: SERIES_COLORS[index % SERIES_COLORS.length],
+        points: pathPointsToSimulationPoints(slotPath.points),
+      })),
     ],
   };
 }
@@ -633,7 +678,12 @@ export function multiWeekPathToSimulation(
   result: MultiWeekResult,
   biasSource: BiasSourceConfig,
   selectionLabel = "Weekly Hold",
+  slotPaths: MultiWeekPathAggregate[] = [],
 ): EngineSimulationGroup {
+  const cardSlots = resolveCardSlots(biasSource);
+  const labels = getLabels(biasSource.cardBreakdown);
+  const slotLabels = cardSlots.map((slot) => labels[slot]);
+
   return {
     title: buildExecutionLabel(biasSource, selectionLabel),
     description: `Continuous hourly equity path across ${result.weeks.length} weeks.`,
@@ -645,10 +695,16 @@ export function multiWeekPathToSimulation(
     series: [
       {
         id: "equity",
-        label: "Equity",
-        color: "#10b981",
+        label: "Total",
+        color: "#ffffff",
         points: pathPointsToSimulationPoints(path.points),
       },
+      ...slotPaths.map((slotPath, index) => ({
+        id: cardSlots[index] ?? `slot-${index + 1}`,
+        label: slotLabels[index] ?? `Slot ${index + 1}`,
+        color: SERIES_COLORS[index % SERIES_COLORS.length],
+        points: pathPointsToSimulationPoints(slotPath.points),
+      })),
     ],
   };
 }

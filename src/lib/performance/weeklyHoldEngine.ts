@@ -92,6 +92,8 @@ export type WeeklyHoldResult = {
   signals: CanonicalSignal[];
   /** Whether this week should count toward realized aggregate stats. */
   isRealized: boolean;
+  /** Directional signals that could not become trades because price data was missing. */
+  missingPriceSymbols?: string[];
 };
 /** @alias WeeklyHoldResult — use this name in new code */
 export type StrategyWeekResult = WeeklyHoldResult;
@@ -419,6 +421,21 @@ function buildCanonicalSignals(directions: DirectionMap): CanonicalSignal[] {
   }));
 }
 
+function pairFromDirectionKey(key: string) {
+  return (key.includes(":") ? key.split(":")[0]! : key).toUpperCase();
+}
+
+function logMissingWeeklyPrices(
+  biasSourceId: string,
+  weekOpenUtc: string,
+  missingPriceSymbols: string[],
+) {
+  if (missingPriceSymbols.length === 0) return;
+  console.warn(
+    `[weeklyHoldEngine] Missing weekly price rows for ${biasSourceId} ${weekOpenUtc}: ${missingPriceSymbols.join(", ")}`,
+  );
+}
+
 function isWeekRealizedForAggregate(
   weekOpenUtc: string,
   currentDisplayWeekOpenUtc: string,
@@ -660,8 +677,13 @@ export async function computeWeeklyHold(
   const returnMap = new Map(pairReturns.map((r) => [r.symbol.toUpperCase(), r]));
 
   const trades: WeeklyHoldTrade[] = [];
+  const missingPriceSymbolSet = new Set<string>();
 
   if (pairReturns.length === 0) {
+    const missingPriceSymbols = Array.from(
+      new Set(Array.from(directions.keys()).map(pairFromDirectionKey)),
+    ).sort();
+    logMissingWeeklyPrices(biasSource.id, weekOpenUtc, missingPriceSymbols);
     return applyAdrNormalization({
       weekOpenUtc,
       biasSourceId: biasSource.id,
@@ -673,14 +695,18 @@ export async function computeWeeklyHold(
       tradeCount: 0,
       signals,
       isRealized,
+      missingPriceSymbols,
     });
   }
 
   for (const [key, signal] of directions) {
     // For tandem, key is "PAIR:model" — extract the pair name
-    const pair = (key.includes(":") ? key.split(":")[0]! : key).toUpperCase();
+    const pair = pairFromDirectionKey(key);
     const priceData = returnMap.get(pair);
-    if (!priceData) continue;
+    if (!priceData) {
+      missingPriceSymbolSet.add(pair);
+      continue;
+    }
 
     const openPrice = priceData.openPrice;
     const closePrice = priceData.closePrice;
@@ -703,6 +729,8 @@ export async function computeWeeklyHold(
   const totalReturn = trades.reduce((s, t) => s + t.returnPct, 0);
   const wins = trades.filter((t) => t.returnPct > 0).length;
   const losses = trades.filter((t) => t.returnPct <= 0).length;
+  const missingPriceSymbols = Array.from(missingPriceSymbolSet).sort();
+  logMissingWeeklyPrices(biasSource.id, weekOpenUtc, missingPriceSymbols);
 
   const result: WeeklyHoldResult = {
     weekOpenUtc,
@@ -715,6 +743,7 @@ export async function computeWeeklyHold(
     tradeCount: trades.length,
     signals,
     isRealized,
+    missingPriceSymbols,
   };
   return applyAdrNormalization(result);
 }

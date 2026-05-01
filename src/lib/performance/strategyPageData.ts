@@ -19,6 +19,8 @@ import {
   multiWeekToGridProps,
   multiWeekPathToSimulation,
   multiWeekToSimulation,
+  resolveCardSlots,
+  resolveLegSlotFn,
   singleWeekPathToSimulation,
   singleWeekToSimulation,
   weeklyHoldToGridProps,
@@ -49,7 +51,7 @@ import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 import { loadPathBars } from "@/lib/performance/pathBarLoader";
-import { buildWeeklyHoldLedger } from "@/lib/performance/positionLedger";
+import { buildWeeklyHoldLedger, splitLedgerBySlot } from "@/lib/performance/positionLedger";
 import {
   computeBasketPath,
   computeMultiWeekBasketPath,
@@ -59,7 +61,7 @@ import {
 import { CANONICAL_PATH_RESOLUTION } from "@/lib/performance/pathResolution";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v21";
+  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v22";
 
 type WeekWatermarkRow = {
   week_open_utc: string;
@@ -143,11 +145,16 @@ async function computeWeekPathArtifact(options: {
     ledger.weekCloseUtc,
     CANONICAL_PATH_RESOLUTION,
   );
+  const cardSlots = resolveCardSlots(biasSource);
+  const slotFn = resolveLegSlotFn(biasSource.cardBreakdown, cardSlots);
+  const subLedgers = splitLedgerBySlot(ledger, slotFn, cardSlots.length);
   const path = computeBasketPath(ledger, bars);
+  const slotPaths = subLedgers.map((subLedger) => computeBasketPath(subLedger, bars));
   return {
     weekKey: weekResult.weekOpenUtc,
     path,
-    sim: singleWeekPathToSimulation(path, weekResult, biasSource, label, selectionLabel),
+    slotPaths,
+    sim: singleWeekPathToSimulation(path, weekResult, biasSource, label, selectionLabel, slotPaths),
     summary: path.summary,
   };
 }
@@ -741,7 +748,12 @@ async function buildSimulationMapFromWeekResults(options: {
   const { biasSource, entryStyle, selectionLabel, orderedWeeks, multiWeekResult } = options;
   const simMap: Record<string, EngineSimulationGroup> = {};
   const pathSummaryMap: Record<string, BasketPathSummary> = {};
+  const cardSlots = resolveCardSlots(biasSource);
   const realizedWeekPaths: BasketPathResult[] = [];
+  const realizedSlotPaths: BasketPathResult[][] = Array.from(
+    { length: cardSlots.length },
+    () => [],
+  );
   const weekPathResults: Array<{
     weekResult: WeeklyHoldResult;
     computed: Awaited<ReturnType<typeof computeWeekPathArtifact>> | null;
@@ -775,6 +787,9 @@ async function buildSimulationMapFromWeekResults(options: {
       simMap[computed.weekKey] = computed.sim;
       if (weekResult.isRealized) {
         realizedWeekPaths.push(computed.path);
+        computed.slotPaths.forEach((slotPath, slotIndex) => {
+          realizedSlotPaths[slotIndex]?.push(slotPath);
+        });
       }
       continue;
     }
@@ -795,8 +810,17 @@ async function buildSimulationMapFromWeekResults(options: {
 
   try {
     const multiWeekPath = computeMultiWeekBasketPath(realizedWeekPaths);
+    const slotMultiWeekPaths = realizedSlotPaths.map((slotWeekPaths) =>
+      computeMultiWeekBasketPath(slotWeekPaths),
+    );
     pathSummaryMap.all = multiWeekPath.summary;
-    simMap.all = multiWeekPathToSimulation(multiWeekPath, multiWeekResult, biasSource, selectionLabel);
+    simMap.all = multiWeekPathToSimulation(
+      multiWeekPath,
+      multiWeekResult,
+      biasSource,
+      selectionLabel,
+      slotMultiWeekPaths,
+    );
   } catch (error) {
     console.warn(
       `[strategyPageData] Falling back to legacy all-time simulation for ${biasSource.id}:`,

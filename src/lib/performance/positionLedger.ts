@@ -29,6 +29,8 @@ export type PositionLeg = {
   exitPrice: number;
   strategyId: string;
   entryStyleId: string;
+  source: string;
+  tier: number | null;
 };
 
 export type WeekPositionLedger = {
@@ -78,8 +80,8 @@ export async function buildWeeklyHoldLedger(
       symbol: trade.symbol.toUpperCase(),
       assetClass: trade.assetClass,
       direction: trade.direction,
-      entryTimeUtc: result.weekOpenUtc,
-      exitTimeUtc: weekCloseUtc,
+      entryTimeUtc: trade.detail?.entryTimeUtc ?? result.weekOpenUtc,
+      exitTimeUtc: trade.detail?.exitTimeUtc ?? weekCloseUtc,
       // Phase 1 preserves the current live basket economics exactly:
       // each trade contributes as a full 1x leg, and ADR normalization
       // remains the canonical risk-scaling layer on top.
@@ -89,6 +91,8 @@ export async function buildWeeklyHoldLedger(
       exitPrice: trade.closePrice,
       strategyId: result.biasSourceId,
       entryStyleId,
+      source: trade.source,
+      tier: trade.tier,
     };
   });
 
@@ -99,4 +103,18 @@ export async function buildWeeklyHoldLedger(
     entryStyleId,
     legs,
   };
+}
+
+export function splitLedgerBySlot(
+  ledger: WeekPositionLedger,
+  slotFn: (leg: PositionLeg) => number,
+  slotCount: number,
+): WeekPositionLedger[] {
+  return Array.from({ length: slotCount }, (_, slotIndex) => ({
+    weekOpenUtc: ledger.weekOpenUtc,
+    weekCloseUtc: ledger.weekCloseUtc,
+    strategyId: ledger.strategyId,
+    entryStyleId: ledger.entryStyleId,
+    legs: ledger.legs.filter((leg) => slotFn(leg) === slotIndex),
+  }));
 }

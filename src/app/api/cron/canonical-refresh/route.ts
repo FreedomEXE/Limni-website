@@ -5,11 +5,10 @@
  * File: route.ts (cron/canonical-refresh)
  *
  * Description:
- * Refreshes canonical price bars and pair period returns for the current
- * and previous trading weeks. Runs automatically so data section always
- * has the latest week available. Fetches daily bars from Oanda/Bitget,
- * upserts into canonical_price_bars, derives weekly returns into
- * pair_period_returns.
+ * Refreshes canonical daily price bars and pair period returns for the current
+ * and previous trading weeks. Runs automatically so data section always has
+ * the latest week available. Hourly bars are optional via ?includeHourly=1 so
+ * the weekly return refresh cannot be starved by slower intraday work.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -36,6 +35,71 @@ function round(value: number, digits = 6) {
   return Number(value.toFixed(digits));
 }
 
+type DailyBar = {
+  barOpenUtc: string;
+  barCloseUtc: string;
+  openPrice: number;
+  highPrice: number;
+  lowPrice: number;
+  closePrice: number;
+};
+
+type CoverageGap = {
+  weekOpenUtc: string;
+  expectedCount: number;
+  actualCount: number;
+  missingSymbols: string[];
+};
+
+function instrumentCoverageKey(instrument: { symbol: string; assetClass: string }) {
+  return `${instrument.assetClass}:${instrument.symbol.toUpperCase()}`;
+}
+
+async function checkWeeklyReturnCoverage(
+  targetWeeks: string[],
+  instruments: Array<{ symbol: string; assetClass: string }>,
+): Promise<CoverageGap[]> {
+  const expectedKeys = instruments.map(instrumentCoverageKey);
+  const rows = await query<{
+    symbol: string;
+    asset_class: string;
+    period_open_utc: Date;
+  }>(
+    `SELECT symbol, asset_class, period_open_utc
+       FROM pair_period_returns
+      WHERE period_type = 'weekly'
+        AND period_open_utc = ANY($1::timestamptz[])`,
+    [targetWeeks],
+  );
+
+  const actualByWeek = new Map<string, Set<string>>();
+  for (const weekOpen of targetWeeks) {
+    actualByWeek.set(weekOpen, new Set());
+  }
+
+  for (const row of rows) {
+    const weekOpenUtc = row.period_open_utc.toISOString();
+    const actual = actualByWeek.get(weekOpenUtc);
+    if (!actual) continue;
+    actual.add(`${row.asset_class}:${row.symbol.toUpperCase()}`);
+  }
+
+  return targetWeeks
+    .map((weekOpenUtc) => {
+      const actual = actualByWeek.get(weekOpenUtc) ?? new Set<string>();
+      const missingSymbols = instruments
+        .filter((instrument, index) => !actual.has(expectedKeys[index]!))
+        .map((instrument) => instrument.symbol);
+      return {
+        weekOpenUtc,
+        expectedCount: expectedKeys.length,
+        actualCount: expectedKeys.length - missingSymbols.length,
+        missingSymbols,
+      };
+    })
+    .filter((gap) => gap.missingSymbols.length > 0);
+}
+
 export async function GET(request: Request) {
   if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -43,6 +107,11 @@ export async function GET(request: Request) {
 
   const startedAt = Date.now();
   const nowUtc = DateTime.utc();
+  const url = new URL(request.url);
+  const includeHourly = ["1", "true", "yes"].includes(
+    (url.searchParams.get("includeHourly") ?? "").toLowerCase(),
+  );
+  const activeInstruments = CANONICAL_INSTRUMENTS.filter((instrument) => instrument.isActive);
 
   // Determine which weeks need refreshing: current + previous
   const currentWeekOpen = getCanonicalWeekOpenUtc(nowUtc);
@@ -84,14 +153,7 @@ export async function GET(request: Request) {
 
     try {
       // Fetch daily bars from provider
-      let dailyBars: Array<{
-        barOpenUtc: string;
-        barCloseUtc: string;
-        openPrice: number;
-        highPrice: number;
-        lowPrice: number;
-        closePrice: number;
-      }> = [];
+      let dailyBars: DailyBar[] = [];
 
       if (instrument.primaryProvider === "oanda" && instrument.oandaInstrument) {
         const alignment =
@@ -156,7 +218,10 @@ export async function GET(request: Request) {
         }
       }
 
-      if (dailyBars.length === 0) continue;
+      if (dailyBars.length === 0) {
+        errors.push(`${instrument.symbol}: no daily bars returned`);
+        continue;
+      }
 
       // Upsert canonical daily bars
       for (const bar of dailyBars) {
@@ -164,7 +229,15 @@ export async function GET(request: Request) {
           `INSERT INTO canonical_price_bars (symbol, asset_class, timeframe, bar_open_utc, bar_close_utc, open_price, high_price, low_price, close_price, source_provider, quality_status)
            VALUES ($1, $2, '1d', $3::timestamptz, $4::timestamptz, $5, $6, $7, $8, $9, 'provider_daily')
            ON CONFLICT (symbol, timeframe, bar_open_utc)
-           DO UPDATE SET close_price = EXCLUDED.close_price, high_price = EXCLUDED.high_price, low_price = EXCLUDED.low_price, updated_at = NOW()`,
+           DO UPDATE SET
+             bar_close_utc = EXCLUDED.bar_close_utc,
+             open_price = EXCLUDED.open_price,
+             high_price = EXCLUDED.high_price,
+             low_price = EXCLUDED.low_price,
+             close_price = EXCLUDED.close_price,
+             source_provider = EXCLUDED.source_provider,
+             quality_status = EXCLUDED.quality_status,
+             updated_at = NOW()`,
           [
             instrument.symbol, instrument.assetClass,
             bar.barOpenUtc, bar.barCloseUtc,
@@ -175,7 +248,7 @@ export async function GET(request: Request) {
         barsUpserted++;
       }
 
-      if (instrument.primaryProvider === "oanda" && instrument.oandaInstrument) {
+      if (includeHourly && instrument.primaryProvider === "oanda" && instrument.oandaInstrument) {
         const hourlyBars = await fetchOandaCandleSeries(
           instrument.oandaInstrument,
           fromUtc,
@@ -188,7 +261,15 @@ export async function GET(request: Request) {
             `INSERT INTO canonical_price_bars (symbol, asset_class, timeframe, bar_open_utc, bar_close_utc, open_price, high_price, low_price, close_price, source_provider, quality_status)
              VALUES ($1, $2, '1h', $3::timestamptz, $4::timestamptz, $5, $6, $7, $8, $9, 'provider_hourly')
              ON CONFLICT (symbol, timeframe, bar_open_utc)
-             DO UPDATE SET close_price = EXCLUDED.close_price, high_price = EXCLUDED.high_price, low_price = EXCLUDED.low_price, updated_at = NOW()`,
+             DO UPDATE SET
+               bar_close_utc = EXCLUDED.bar_close_utc,
+               open_price = EXCLUDED.open_price,
+               high_price = EXCLUDED.high_price,
+               low_price = EXCLUDED.low_price,
+               close_price = EXCLUDED.close_price,
+               source_provider = EXCLUDED.source_provider,
+               quality_status = EXCLUDED.quality_status,
+               updated_at = NOW()`,
             [
               instrument.symbol,
               instrument.assetClass,
@@ -203,7 +284,7 @@ export async function GET(request: Request) {
           );
           hourlyBarsUpserted++;
         }
-      } else if (instrument.primaryProvider === "bitget" && instrument.bitgetBaseCoin) {
+      } else if (includeHourly && instrument.primaryProvider === "bitget" && instrument.bitgetBaseCoin) {
         const { fetchBitgetSpotCandleSeries } = await import("@/lib/bitget");
         const hourlyBars = await fetchBitgetSpotCandleSeries(instrument.bitgetBaseCoin, {
           openUtc: fromUtc,
@@ -216,7 +297,15 @@ export async function GET(request: Request) {
             `INSERT INTO canonical_price_bars (symbol, asset_class, timeframe, bar_open_utc, bar_close_utc, open_price, high_price, low_price, close_price, source_provider, quality_status)
              VALUES ($1, $2, '1h', $3::timestamptz, $4::timestamptz, $5, $6, $7, $8, $9, 'provider_hourly_spot')
              ON CONFLICT (symbol, timeframe, bar_open_utc)
-             DO UPDATE SET close_price = EXCLUDED.close_price, high_price = EXCLUDED.high_price, low_price = EXCLUDED.low_price, updated_at = NOW()`,
+             DO UPDATE SET
+               bar_close_utc = EXCLUDED.bar_close_utc,
+               open_price = EXCLUDED.open_price,
+               high_price = EXCLUDED.high_price,
+               low_price = EXCLUDED.low_price,
+               close_price = EXCLUDED.close_price,
+               source_provider = EXCLUDED.source_provider,
+               quality_status = EXCLUDED.quality_status,
+               updated_at = NOW()`,
             [
               instrument.symbol,
               instrument.assetClass,
@@ -253,7 +342,17 @@ export async function GET(request: Request) {
           `INSERT INTO pair_period_returns (symbol, asset_class, period_type, period_open_utc, period_close_utc, open_price, close_price, high_price, low_price, return_pct, source, derived_from_timeframe, derivation_version)
            VALUES ($1, $2, 'weekly', $3::timestamptz, $4::timestamptz, $5, $6, $7, $8, $9, 'canonical_price_bars', '1d', 'v1')
            ON CONFLICT (symbol, asset_class, period_type, period_open_utc)
-           DO UPDATE SET close_price = EXCLUDED.close_price, high_price = EXCLUDED.high_price, low_price = EXCLUDED.low_price, return_pct = EXCLUDED.return_pct, updated_at = NOW()`,
+           DO UPDATE SET
+             period_close_utc = EXCLUDED.period_close_utc,
+             open_price = EXCLUDED.open_price,
+             close_price = EXCLUDED.close_price,
+             high_price = EXCLUDED.high_price,
+             low_price = EXCLUDED.low_price,
+             return_pct = EXCLUDED.return_pct,
+             source = EXCLUDED.source,
+             derived_from_timeframe = EXCLUDED.derived_from_timeframe,
+             derivation_version = EXCLUDED.derivation_version,
+             updated_at = NOW()`,
           [
             instrument.symbol, instrument.assetClass,
             weekOpen, window.closeUtc.toISO(),
@@ -277,15 +376,22 @@ export async function GET(request: Request) {
   for (const path of ["/dashboard", "/performance", "/antikythera", "/sentiment", "/flagship"]) {
     revalidatePath(path);
   }
+  const coverageGaps = await checkWeeklyReturnCoverage(targetWeeks, activeInstruments);
+  const ok = errors.length === 0 && coverageGaps.length === 0;
 
-  return NextResponse.json({
-    ok: errors.length === 0,
-    durationMs: Date.now() - startedAt,
-    targetWeeks,
-    barsUpserted,
-    hourlyBarsUpserted,
-    weeklyReturnsUpserted,
-    instruments: CANONICAL_INSTRUMENTS.filter((i) => i.isActive).length,
-    errors: errors.length > 0 ? errors : undefined,
-  });
+  return NextResponse.json(
+    {
+      ok,
+      durationMs: Date.now() - startedAt,
+      targetWeeks,
+      barsUpserted,
+      hourlyBarsUpserted,
+      weeklyReturnsUpserted,
+      instruments: activeInstruments.length,
+      includeHourly,
+      coverageGaps: coverageGaps.length > 0 ? coverageGaps : undefined,
+      errors: errors.length > 0 ? errors : undefined,
+    },
+    { status: ok ? 200 : 500 },
+  );
 }
