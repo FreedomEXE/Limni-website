@@ -126,6 +126,13 @@ function getLabels(breakdown: BiasSourceConfig["cardBreakdown"]): Record<Perform
   }
 }
 
+function getStrategyLabels(biasSource: BiasSourceConfig): Record<PerformanceModel, string> {
+  return {
+    ...getLabels(biasSource.cardBreakdown),
+    ...(biasSource.modelLabels ?? {}),
+  };
+}
+
 function legSlotByAssetClass(leg: PositionLeg): number {
   if (leg.assetClass === "fx") return 0;
   if (leg.assetClass === "commodities" || leg.assetClass === "indices") return 1;
@@ -313,7 +320,7 @@ export function weeklyHoldToGridProps(
 ): EngineGridProps {
   const { trades } = result;
   const cardSlots = resolveCardSlots(biasSource);
-  const labels = getLabels(biasSource.cardBreakdown);
+  const labels = getStrategyLabels(biasSource);
   const slotted = slotTrades(trades, biasSource.cardBreakdown, cardSlots);
 
   const slotLabels = cardSlots.map((slot) => labels[slot]);
@@ -362,7 +369,7 @@ export function multiWeekToGridProps(
   selectionLabel = "Weekly Hold",
 ): EngineGridProps {
   const cardSlots = resolveCardSlots(biasSource);
-  const labels = getLabels(biasSource.cardBreakdown);
+  const labels = getStrategyLabels(biasSource);
   const slotLabels = cardSlots.map((slot) => labels[slot]);
 
   // Aggregate trades across all weeks, grouped per-week for returns array
@@ -512,6 +519,12 @@ export type EngineSimulationGroup = {
       lock_pct: number | null;
     }>;
   }>;
+  seriesGroups?: Array<{
+    id: string;
+    label: string;
+    description: string;
+    seriesIds: string[];
+  }>;
 };
 
 export function singleWeekToSimulation(
@@ -521,7 +534,7 @@ export function singleWeekToSimulation(
   selectionLabel = "Weekly Hold",
 ): EngineSimulationGroup {
   const cardSlots = resolveCardSlots(biasSource);
-  const labels = getLabels(biasSource.cardBreakdown);
+  const labels = getStrategyLabels(biasSource);
   const slotLabels = cardSlots.map((slot) => labels[slot]);
   const slotted = slotTrades(result.trades, biasSource.cardBreakdown, cardSlots);
 
@@ -553,6 +566,21 @@ export function singleWeekToSimulation(
     ],
   };
 
+  const assetSeries = ASSET_SECTIONS.map((asset, index) => {
+    const assetReturn = result.trades
+      .filter((trade) => trade.assetClass === asset.id)
+      .reduce((sum, trade) => sum + trade.returnPct, 0);
+    return {
+      id: `asset:${asset.id}`,
+      label: asset.label,
+      color: SERIES_COLORS[index + 1],
+      points: [
+        { ts_utc: weekStart, equity_pct: 0, lock_pct: null },
+        { ts_utc: weekEnd, equity_pct: assetReturn, lock_pct: null },
+      ],
+    };
+  });
+
   return {
     title: buildExecutionLabel(biasSource, selectionLabel),
     description: `Equity curve for ${weekLabel}.`,
@@ -561,7 +589,8 @@ export function singleWeekToSimulation(
       maxDrawdownPct: null,
       trades: result.tradeCount,
     },
-    series: [totalSeries, ...series],
+    series: [totalSeries, ...assetSeries, ...series],
+    seriesGroups: buildSeriesGroups(totalSeries, assetSeries, series),
   };
 }
 
@@ -571,7 +600,7 @@ export function multiWeekToSimulation(
   selectionLabel = "Weekly Hold",
 ): EngineSimulationGroup {
   const cardSlots = resolveCardSlots(biasSource);
-  const labels = getLabels(biasSource.cardBreakdown);
+  const labels = getStrategyLabels(biasSource);
   const slotLabels = cardSlots.map((slot) => labels[slot]);
 
   // Build one cumulative equity curve per card slot
@@ -611,6 +640,27 @@ export function multiWeekToSimulation(
     }),
   };
 
+  const assetSeries = ASSET_SECTIONS.map((asset, index) => {
+    let cumulative = 0;
+    const points = result.weeks.map((week) => {
+      const weekReturn = week.trades
+        .filter((trade) => trade.assetClass === asset.id)
+        .reduce((sum, trade) => sum + trade.returnPct, 0);
+      cumulative += weekReturn;
+      return {
+        ts_utc: week.weekOpenUtc,
+        equity_pct: cumulative,
+        lock_pct: null,
+      };
+    });
+    return {
+      id: `asset:${asset.id}`,
+      label: asset.label,
+      color: SERIES_COLORS[(index + 1) % SERIES_COLORS.length],
+      points,
+    };
+  });
+
   return {
     title: buildExecutionLabel(biasSource, selectionLabel),
     description: `Cumulative equity curves across ${result.weeks.length} weeks.`,
@@ -619,7 +669,63 @@ export function multiWeekToSimulation(
       maxDrawdownPct: result.maxDrawdownPct,
       trades: result.totalTrades,
     },
-    series: [totalSeries, ...series],
+    series: [totalSeries, ...assetSeries, ...series],
+    seriesGroups: buildSeriesGroups(totalSeries, assetSeries, series),
+  };
+}
+
+function buildSeriesGroups(
+  totalSeries: EngineSimulationGroup["series"][number],
+  assetSeries: EngineSimulationGroup["series"],
+  layerSeries: EngineSimulationGroup["series"],
+): NonNullable<EngineSimulationGroup["seriesGroups"]> {
+  const totalIds = [totalSeries.id];
+  const assetIds = assetSeries.map((series) => series.id);
+  const layerIds = layerSeries.map((series) => series.id);
+  return [
+    {
+      id: "assets",
+      label: "Assets",
+      description: "Total curve plus FX, indices, commodities, and crypto sleeves.",
+      seriesIds: [...totalIds, ...assetIds],
+    },
+    {
+      id: "layers",
+      label: "Layers",
+      description: "Total curve plus the strategy's internal sleeves.",
+      seriesIds: [...totalIds, ...layerIds],
+    },
+    {
+      id: "total",
+      label: "Total",
+      description: "Consolidated portfolio equity curve only.",
+      seriesIds: totalIds,
+    },
+    {
+      id: "all",
+      label: "All",
+      description: "Total, asset sleeves, and internal strategy sleeves together.",
+      seriesIds: [...totalIds, ...assetIds, ...layerIds],
+    },
+  ];
+}
+
+export function withTradeDerivedSeriesGroups(
+  group: EngineSimulationGroup,
+  result: WeeklyHoldResult | MultiWeekResult,
+): EngineSimulationGroup {
+  const totalSeries = group.series[0];
+  if (!totalSeries) return group;
+  const layerSeries = group.series
+    .slice(1)
+    .filter((series) => !series.id.startsWith("asset:"));
+  const assetSeries = "weeks" in result
+    ? buildMultiWeekAssetSeriesFromTrades(result)
+    : buildSingleWeekAssetSeriesFromTrades(result, result.weekOpenUtc);
+  return {
+    ...group,
+    series: [totalSeries, ...assetSeries, ...layerSeries],
+    seriesGroups: buildSeriesGroups(totalSeries, assetSeries, layerSeries),
   };
 }
 
@@ -629,6 +735,53 @@ function pathPointsToSimulationPoints(points: BasketPathPoint[]) {
     equity_pct: point.equityPct,
     lock_pct: null,
   }));
+}
+
+function buildSingleWeekAssetSeriesFromTrades(
+  result: WeeklyHoldResult,
+  weekStart: string,
+): EngineSimulationGroup["series"] {
+  const endDate = new Date(new Date(weekStart).getTime() + 5 * 24 * 60 * 60 * 1000);
+  const weekEnd = endDate.toISOString();
+  return ASSET_SECTIONS.map((asset, index) => {
+    const assetReturn = result.trades
+      .filter((trade) => trade.assetClass === asset.id)
+      .reduce((sum, trade) => sum + trade.returnPct, 0);
+    return {
+      id: `asset:${asset.id}`,
+      label: asset.label,
+      color: SERIES_COLORS[(index + 1) % SERIES_COLORS.length],
+      points: [
+        { ts_utc: weekStart, equity_pct: 0, lock_pct: null },
+        { ts_utc: weekEnd, equity_pct: assetReturn, lock_pct: null },
+      ],
+    };
+  });
+}
+
+function buildMultiWeekAssetSeriesFromTrades(
+  result: MultiWeekResult,
+): EngineSimulationGroup["series"] {
+  return ASSET_SECTIONS.map((asset, index) => {
+    let cumulative = 0;
+    const points = result.weeks.map((week) => {
+      const weekReturn = week.trades
+        .filter((trade) => trade.assetClass === asset.id)
+        .reduce((sum, trade) => sum + trade.returnPct, 0);
+      cumulative += weekReturn;
+      return {
+        ts_utc: week.weekOpenUtc,
+        equity_pct: cumulative,
+        lock_pct: null,
+      };
+    });
+    return {
+      id: `asset:${asset.id}`,
+      label: asset.label,
+      color: SERIES_COLORS[(index + 1) % SERIES_COLORS.length],
+      points,
+    };
+  });
 }
 
 type MultiWeekPathAggregate = {
@@ -643,10 +796,31 @@ export function singleWeekPathToSimulation(
   weekLabel: string,
   selectionLabel = "Weekly Hold",
   slotPaths: BasketPathResult[] = [],
+  assetPaths: BasketPathResult[] = [],
 ): EngineSimulationGroup {
   const cardSlots = resolveCardSlots(biasSource);
-  const labels = getLabels(biasSource.cardBreakdown);
+  const labels = getStrategyLabels(biasSource);
   const slotLabels = cardSlots.map((slot) => labels[slot]);
+  const totalSeries = {
+    id: "equity",
+    label: "Total",
+    color: "#ffffff",
+    points: pathPointsToSimulationPoints(path.points),
+  };
+  const assetSeries = assetPaths.length > 0
+    ? assetPaths.map((assetPath, index) => ({
+        id: `asset:${ASSET_SECTIONS[index]?.id ?? index}`,
+        label: ASSET_SECTIONS[index]?.label ?? `Asset ${index + 1}`,
+        color: SERIES_COLORS[(index + 1) % SERIES_COLORS.length],
+        points: pathPointsToSimulationPoints(assetPath.points),
+      }))
+    : buildSingleWeekAssetSeriesFromTrades(result, result.weekOpenUtc);
+  const layerSeries = slotPaths.map((slotPath, index) => ({
+    id: cardSlots[index] ?? `slot-${index + 1}`,
+    label: slotLabels[index] ?? `Slot ${index + 1}`,
+    color: SERIES_COLORS[(index + assetSeries.length + 1) % SERIES_COLORS.length],
+    points: pathPointsToSimulationPoints(slotPath.points),
+  }));
 
   return {
     title: buildExecutionLabel(biasSource, selectionLabel),
@@ -656,20 +830,8 @@ export function singleWeekPathToSimulation(
       maxDrawdownPct: path.summary.maxDrawdownPct,
       trades: result.tradeCount,
     },
-    series: [
-      {
-        id: "equity",
-        label: "Total",
-        color: "#ffffff",
-        points: pathPointsToSimulationPoints(path.points),
-      },
-      ...slotPaths.map((slotPath, index) => ({
-        id: cardSlots[index] ?? `slot-${index + 1}`,
-        label: slotLabels[index] ?? `Slot ${index + 1}`,
-        color: SERIES_COLORS[index % SERIES_COLORS.length],
-        points: pathPointsToSimulationPoints(slotPath.points),
-      })),
-    ],
+    series: [totalSeries, ...assetSeries, ...layerSeries],
+    seriesGroups: buildSeriesGroups(totalSeries, assetSeries, layerSeries),
   };
 }
 
@@ -679,10 +841,31 @@ export function multiWeekPathToSimulation(
   biasSource: BiasSourceConfig,
   selectionLabel = "Weekly Hold",
   slotPaths: MultiWeekPathAggregate[] = [],
+  assetPaths: MultiWeekPathAggregate[] = [],
 ): EngineSimulationGroup {
   const cardSlots = resolveCardSlots(biasSource);
-  const labels = getLabels(biasSource.cardBreakdown);
+  const labels = getStrategyLabels(biasSource);
   const slotLabels = cardSlots.map((slot) => labels[slot]);
+  const totalSeries = {
+    id: "equity",
+    label: "Total",
+    color: "#ffffff",
+    points: pathPointsToSimulationPoints(path.points),
+  };
+  const assetSeries = assetPaths.length > 0
+    ? assetPaths.map((assetPath, index) => ({
+        id: `asset:${ASSET_SECTIONS[index]?.id ?? index}`,
+        label: ASSET_SECTIONS[index]?.label ?? `Asset ${index + 1}`,
+        color: SERIES_COLORS[(index + 1) % SERIES_COLORS.length],
+        points: pathPointsToSimulationPoints(assetPath.points),
+      }))
+    : buildMultiWeekAssetSeriesFromTrades(result);
+  const layerSeries = slotPaths.map((slotPath, index) => ({
+    id: cardSlots[index] ?? `slot-${index + 1}`,
+    label: slotLabels[index] ?? `Slot ${index + 1}`,
+    color: SERIES_COLORS[(index + assetSeries.length + 1) % SERIES_COLORS.length],
+    points: pathPointsToSimulationPoints(slotPath.points),
+  }));
 
   return {
     title: buildExecutionLabel(biasSource, selectionLabel),
@@ -692,20 +875,8 @@ export function multiWeekPathToSimulation(
       maxDrawdownPct: path.summary.maxDrawdownPct,
       trades: result.totalTrades,
     },
-    series: [
-      {
-        id: "equity",
-        label: "Total",
-        color: "#ffffff",
-        points: pathPointsToSimulationPoints(path.points),
-      },
-      ...slotPaths.map((slotPath, index) => ({
-        id: cardSlots[index] ?? `slot-${index + 1}`,
-        label: slotLabels[index] ?? `Slot ${index + 1}`,
-        color: SERIES_COLORS[index % SERIES_COLORS.length],
-        points: pathPointsToSimulationPoints(slotPath.points),
-      })),
-    ],
+    series: [totalSeries, ...assetSeries, ...layerSeries],
+    seriesGroups: buildSeriesGroups(totalSeries, assetSeries, layerSeries),
   };
 }
 

@@ -30,7 +30,7 @@ import {
   getStrategyClientPayload,
   setStrategyClientPayload,
 } from "@/lib/performance/strategyClientCache";
-import { getStrategy } from "@/lib/performance/strategyConfig";
+import { getEntryStyle, getStrategy } from "@/lib/performance/strategyConfig";
 
 type StrategyBootstrapEntry = {
   engineWeekMap: NonNullable<ComponentProps<typeof PerformanceViewSection>["engineWeekMap"]> | null;
@@ -158,9 +158,21 @@ export default function PerformanceStrategyViewSection({
   }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
 
   const strategyDescription = getStrategy(selectedSelection.strategy)?.description ?? null;
+  const strategyLabel = getStrategy(selectedSelection.strategy)?.label ?? selectedSelection.strategy;
+  const entryStyleLabel = getEntryStyle(selectedSelection.f1)?.label ?? selectedSelection.f1;
 
   return (
     <div className="space-y-4">
+      <header className="mb-8">
+        <div>
+          <h1 className="text-3xl font-semibold text-[var(--foreground)]">
+            Performance
+          </h1>
+          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
+            {strategyLabel} · {entryStyleLabel}
+          </p>
+        </div>
+      </header>
       {loadingSelection && loadedSelectionKey !== selectedSelectionKey ? (
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[color:var(--muted)]">
           Loading strategy data...

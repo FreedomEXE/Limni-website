@@ -23,6 +23,7 @@ import {
   resolveLegSlotFn,
   singleWeekPathToSimulation,
   singleWeekToSimulation,
+  withTradeDerivedSeriesGroups,
   weeklyHoldToGridProps,
   weeklyHoldToSidebarStatsWithPath,
   type EngineGridProps,
@@ -154,7 +155,14 @@ async function computeWeekPathArtifact(options: {
     weekKey: weekResult.weekOpenUtc,
     path,
     slotPaths,
-    sim: singleWeekPathToSimulation(path, weekResult, biasSource, label, selectionLabel, slotPaths),
+    sim: singleWeekPathToSimulation(
+      path,
+      weekResult,
+      biasSource,
+      label,
+      selectionLabel,
+      slotPaths,
+    ),
     summary: path.summary,
   };
 }
@@ -211,13 +219,23 @@ function assembleStrategyPageData(options: {
 
   const multiWeekResult = buildMultiWeekResultFromWeeks(biasSource, orderedWeeks);
   const weekMap: Record<string, EngineGridProps> = {};
+  const enrichedSimMap: Record<string, EngineSimulationGroup> = { ...simMap };
 
   for (const weekResult of orderedWeeks) {
     const label = weekDisplayLabel(weekResult.weekOpenUtc);
     weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(weekResult, biasSource, label, selectionLabel);
+    if (enrichedSimMap[weekResult.weekOpenUtc]) {
+      enrichedSimMap[weekResult.weekOpenUtc] = withTradeDerivedSeriesGroups(
+        enrichedSimMap[weekResult.weekOpenUtc],
+        weekResult,
+      );
+    }
   }
 
   weekMap.all = multiWeekToGridProps(multiWeekResult, biasSource, selectionLabel);
+  if (enrichedSimMap.all) {
+    enrichedSimMap.all = withTradeDerivedSeriesGroups(enrichedSimMap.all, multiWeekResult);
+  }
 
   const currentWeekResult =
     weekResultsByWeek[currentWeekOpenUtc] ??
@@ -237,7 +255,7 @@ function assembleStrategyPageData(options: {
 
   return {
     weekMap,
-    simMap,
+    simMap: enrichedSimMap,
     pathSummaryMap,
     multiWeekResult,
     weekResults: weekResultsByWeek,

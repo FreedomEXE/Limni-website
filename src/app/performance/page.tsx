@@ -38,7 +38,6 @@ import { computeReturnStats, type ModelPerformance, type PerformanceModel } from
 import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegistry";
 import { DateTime } from "luxon";
 import {
-  getEntryStyle,
   getStrategy,
   normalizeFilterSelection,
   resolveBiasSourceId,
@@ -1073,8 +1072,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     f1: f1Value,
     f2: f2Value,
   });
-  const entryStyle = getEntryStyle(normalizedFilters.f1);
-
   const resolvedFamily = parseFamily(styleParamValue);
   const initialStyle: WeeklyPerformanceFamily = resolvedFamily === "universal" ? "universal" : "tiered";
   const initialSystem = resolvePerformanceSystem(systemParamValue);
@@ -1120,7 +1117,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   // ─── Engine-driven computation (shared canonical loader) ────────
   // Uses the same loader as Matrix — compute once, show everywhere.
   const biasSourceId = resolveBiasSourceId(biasParamValue);
-  const selectedStrategyConfig = getStrategy(biasSourceId);
   const initialStrategySelection = {
     strategyId: biasSourceId,
     f1: normalizedFilters.f1,
@@ -1202,17 +1198,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header>
-          <div>
-            <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-              Performance
-            </h1>
-            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-              {selectedStrategyConfig?.label ?? biasSourceId} · {entryStyle?.label ?? normalizedFilters.f1}
-            </p>
-          </div>
-        </header>
-
         <PerformanceStrategyViewSection
           initialMode={initialMode}
           initialView={initialView}
