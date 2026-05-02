@@ -1,0 +1,1571 @@
+{
+  "generatedUtc": "2026-05-01T23:52:17.783Z",
+  "displayWeekOpenUtc": "2026-04-26T23:00:00.000Z",
+  "weeksChecked": 15,
+  "canonicalPairs": 36,
+  "summary": {
+    "signalGapCount": 0,
+    "priceGapCount": 0,
+    "directionNoPriceCount": 0,
+    "priceNeutralSignalCount": 0,
+    "engineShortfalls": 0
+  },
+  "signalCoverage": [
+    {
+      "source": "dealer",
+      "weeks": [
+        {
+          "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 23,
+          "shortCount": 13,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 24,
+          "shortCount": 12,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 21,
+          "shortCount": 15,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 23,
+          "shortCount": 13,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 23,
+          "shortCount": 13,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 24,
+          "shortCount": 12,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 25,
+          "shortCount": 11,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 21,
+          "shortCount": 15,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 20,
+          "shortCount": 16,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 20,
+          "shortCount": 16,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 19,
+          "shortCount": 17,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 20,
+          "shortCount": 16,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 19,
+          "shortCount": 17,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 27,
+          "shortCount": 9,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 26,
+          "shortCount": 10,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        }
+      ]
+    },
+    {
+      "source": "commercial",
+      "weeks": [
+        {
+          "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 10,
+          "shortCount": 26,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 11,
+          "shortCount": 25,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 12,
+          "shortCount": 24,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 11,
+          "shortCount": 25,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 14,
+          "shortCount": 22,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 20,
+          "shortCount": 16,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 16,
+          "shortCount": 20,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 18,
+          "shortCount": 18,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 19,
+          "shortCount": 17,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 10,
+          "shortCount": 26,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 11,
+          "shortCount": 25,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 14,
+          "shortCount": 22,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 19,
+          "shortCount": 17,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 18,
+          "shortCount": 18,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 18,
+          "shortCount": 18,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        }
+      ]
+    },
+    {
+      "source": "sentiment",
+      "weeks": [
+        {
+          "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 18,
+          "shortCount": 18,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 21,
+          "shortCount": 15,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 23,
+          "shortCount": 13,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 18,
+          "shortCount": 18,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 18,
+          "shortCount": 18,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 13,
+          "shortCount": 23,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 12,
+          "shortCount": 24,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 14,
+          "shortCount": 22,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 18,
+          "shortCount": 18,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 16,
+          "shortCount": 20,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 19,
+          "shortCount": 17,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 18,
+          "shortCount": 18,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 16,
+          "shortCount": 20,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 18,
+          "shortCount": 18,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 18,
+          "shortCount": 18,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        }
+      ]
+    },
+    {
+      "source": "strength",
+      "weeks": [
+        {
+          "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 25,
+          "shortCount": 11,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 28,
+          "shortCount": 8,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 28,
+          "shortCount": 8,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 19,
+          "shortCount": 17,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 17,
+          "shortCount": 19,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 21,
+          "shortCount": 15,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 14,
+          "shortCount": 22,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 19,
+          "shortCount": 17,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 24,
+          "shortCount": 12,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 19,
+          "shortCount": 17,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 20,
+          "shortCount": 16,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 20,
+          "shortCount": 16,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 21,
+          "shortCount": 15,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 23,
+          "shortCount": 13,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        },
+        {
+          "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+          "emittedCount": 36,
+          "longCount": 21,
+          "shortCount": 15,
+          "neutralCount": 0,
+          "missingCount": 0,
+          "neutralPairs": [],
+          "missingPairs": []
+        }
+      ]
+    }
+  ],
+  "priceCoverage": [
+    {
+      "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    },
+    {
+      "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+      "rowCount": 36,
+      "coveredCount": 36,
+      "missingPairs": [],
+      "extraPairs": [],
+      "duplicatePairs": []
+    }
+  ],
+  "crossReference": [
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "dealer",
+      "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "commercial",
+      "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "sentiment",
+      "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    },
+    {
+      "source": "strength",
+      "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+      "directionNoPrice": [],
+      "priceNeutralOrMissingSignal": []
+    }
+  ],
+  "engineChecks": [
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": -19.088523340701766,
+      "winCount": 14,
+      "lossCount": 22,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": -7.153332120016837,
+      "winCount": 20,
+      "lossCount": 16,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+      "tradeCount": 27,
+      "expectedTrades": 27,
+      "totalReturnPct": -5.9969650496954765,
+      "winCount": 15,
+      "lossCount": 12,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 1.5855173503258329,
+      "winCount": 19,
+      "lossCount": 17,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+      "tradeCount": 34,
+      "expectedTrades": 34,
+      "totalReturnPct": -6.53476857279058,
+      "winCount": 15,
+      "lossCount": 19,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+      "tradeCount": 28,
+      "expectedTrades": 28,
+      "totalReturnPct": 2.906557110204984,
+      "winCount": 18,
+      "lossCount": 10,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 6.466906439426384,
+      "winCount": 18,
+      "lossCount": 18,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": -2.5924948178979905,
+      "winCount": 16,
+      "lossCount": 20,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+      "tradeCount": 30,
+      "expectedTrades": 30,
+      "totalReturnPct": 6.343445935427082,
+      "winCount": 17,
+      "lossCount": 13,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 10.859203364959845,
+      "winCount": 20,
+      "lossCount": 16,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+      "tradeCount": 35,
+      "expectedTrades": 35,
+      "totalReturnPct": -3.8034146437953527,
+      "winCount": 15,
+      "lossCount": 20,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+      "tradeCount": 30,
+      "expectedTrades": 30,
+      "totalReturnPct": 2.415733071014049,
+      "winCount": 14,
+      "lossCount": 16,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 8.73873817339368,
+      "winCount": 21,
+      "lossCount": 15,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+      "tradeCount": 35,
+      "expectedTrades": 35,
+      "totalReturnPct": 8.954908570200512,
+      "winCount": 18,
+      "lossCount": 17,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+      "tradeCount": 27,
+      "expectedTrades": 27,
+      "totalReturnPct": 7.321306104087199,
+      "winCount": 15,
+      "lossCount": 12,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 0.8328628171588595,
+      "winCount": 20,
+      "lossCount": 16,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+      "tradeCount": 31,
+      "expectedTrades": 31,
+      "totalReturnPct": 6.906475634504823,
+      "winCount": 18,
+      "lossCount": 13,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+      "tradeCount": 26,
+      "expectedTrades": 26,
+      "totalReturnPct": -6.896569075090657,
+      "winCount": 11,
+      "lossCount": 15,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 3.3526914003905395,
+      "winCount": 21,
+      "lossCount": 15,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+      "tradeCount": 32,
+      "expectedTrades": 32,
+      "totalReturnPct": 0.1321225186478685,
+      "winCount": 10,
+      "lossCount": 22,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+      "tradeCount": 24,
+      "expectedTrades": 24,
+      "totalReturnPct": 0.3188518578942381,
+      "winCount": 9,
+      "lossCount": 15,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 2.675136072533536,
+      "winCount": 17,
+      "lossCount": 19,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+      "tradeCount": 33,
+      "expectedTrades": 33,
+      "totalReturnPct": 6.435453926870722,
+      "winCount": 19,
+      "lossCount": 14,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+      "tradeCount": 30,
+      "expectedTrades": 30,
+      "totalReturnPct": -0.8396042428442407,
+      "winCount": 14,
+      "lossCount": 16,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 11.618673420369559,
+      "winCount": 16,
+      "lossCount": 20,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 14.640671311296458,
+      "winCount": 19,
+      "lossCount": 17,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+      "tradeCount": 22,
+      "expectedTrades": 22,
+      "totalReturnPct": -11.092171908107751,
+      "winCount": 10,
+      "lossCount": 12,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 2.547394350032068,
+      "winCount": 20,
+      "lossCount": 16,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": -4.011646223717629,
+      "winCount": 16,
+      "lossCount": 20,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+      "tradeCount": 29,
+      "expectedTrades": 29,
+      "totalReturnPct": 9.834704533630745,
+      "winCount": 21,
+      "lossCount": 8,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 18.386377949004128,
+      "winCount": 28,
+      "lossCount": 8,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+      "tradeCount": 34,
+      "expectedTrades": 34,
+      "totalReturnPct": 15.419542735143985,
+      "winCount": 23,
+      "lossCount": 11,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-02-16T00:00:00.000Z",
+      "tradeCount": 28,
+      "expectedTrades": 28,
+      "totalReturnPct": 3.1518640140950285,
+      "winCount": 16,
+      "lossCount": 12,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 1.925124132722976,
+      "winCount": 20,
+      "lossCount": 16,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+      "tradeCount": 34,
+      "expectedTrades": 34,
+      "totalReturnPct": 6.272199213232102,
+      "winCount": 18,
+      "lossCount": 16,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-02-09T00:00:00.000Z",
+      "tradeCount": 26,
+      "expectedTrades": 26,
+      "totalReturnPct": 5.7311658836741985,
+      "winCount": 18,
+      "lossCount": 8,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 9.824046843550622,
+      "winCount": 22,
+      "lossCount": 14,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+      "tradeCount": 34,
+      "expectedTrades": 34,
+      "totalReturnPct": 15.098826952586121,
+      "winCount": 22,
+      "lossCount": 12,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-02-02T00:00:00.000Z",
+      "tradeCount": 27,
+      "expectedTrades": 27,
+      "totalReturnPct": 21.463781623364167,
+      "winCount": 22,
+      "lossCount": 5,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 7.743394382290372,
+      "winCount": 19,
+      "lossCount": 17,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 11.399560672891305,
+      "winCount": 21,
+      "lossCount": 15,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-01-26T00:00:00.000Z",
+      "tradeCount": 25,
+      "expectedTrades": 25,
+      "totalReturnPct": 15.529083557179788,
+      "winCount": 18,
+      "lossCount": 7,
+      "error": null
+    },
+    {
+      "strategyId": "dealer",
+      "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+      "tradeCount": 36,
+      "expectedTrades": 36,
+      "totalReturnPct": 36.513192142857136,
+      "winCount": 25,
+      "lossCount": 11,
+      "error": null
+    },
+    {
+      "strategyId": "selector_frag3",
+      "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+      "tradeCount": 34,
+      "expectedTrades": 34,
+      "totalReturnPct": 29.727335476190472,
+      "winCount": 20,
+      "lossCount": 14,
+      "error": null
+    },
+    {
+      "strategyId": "agree_3of4",
+      "weekOpenUtc": "2026-01-19T00:00:00.000Z",
+      "tradeCount": 30,
+      "expectedTrades": 30,
+      "totalReturnPct": 59.90514014285715,
+      "winCount": 25,
+      "lossCount": 5,
+      "error": null
+    }
+  ]
+}

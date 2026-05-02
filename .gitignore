@@ -38,6 +38,7 @@ data/
 !package-lock.json
 !tsconfig.json
 !contracts/*.json
+!src/lib/performance/embedded/data-integrity-audit.json
 
 # IDE
 .vscode/

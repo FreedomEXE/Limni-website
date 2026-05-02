@@ -22,6 +22,9 @@ import {
   STRATEGIES,
   ENTRY_STYLE_FILTERS,
   STRENGTH_GATES,
+  AGREE_3OF4_STRATEGY_ID,
+  SELECTOR_STRATEGY_ID,
+  TIERED_4W_STRATEGY_ID,
   getEntryStyle,
   getStrengthGate,
   getStrategy,
@@ -38,6 +41,17 @@ export type StrategySelection = {
   f1: string;
   f2: string;
 };
+
+const VISIBLE_STRATEGY_ORDER = [
+  "tandem",
+  TIERED_4W_STRATEGY_ID,
+  AGREE_3OF4_STRATEGY_ID,
+  SELECTOR_STRATEGY_ID,
+];
+
+const VISIBLE_STRATEGIES = VISIBLE_STRATEGY_ORDER
+  .map((id) => STRATEGIES.find((strategy) => strategy.id === id))
+  .filter((strategy): strategy is NonNullable<typeof strategy> => Boolean(strategy));
 
 /** Read current selection from URL params (handles both old and new param names) */
 export function readSelectionFromParams(searchParams: URLSearchParams): StrategySelection {
@@ -125,7 +139,7 @@ export default function StrategySelector() {
           onChange={(e) => setDraft((prev) => ({ ...prev, strategy: e.target.value }))}
           className={selectClasses}
         >
-          {STRATEGIES.map((s) => (
+          {VISIBLE_STRATEGIES.map((s) => (
             <option key={s.id} value={s.id}>{s.label}</option>
           ))}
         </select>

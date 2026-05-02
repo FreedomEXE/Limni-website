@@ -15,6 +15,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { DateTime } from "luxon";
 
 function loadEnvFileIntoProcess(filePath: string) {
   if (!existsSync(filePath)) return;
@@ -49,6 +50,7 @@ import { readPerformanceSnapshotsByWeek } from "../src/lib/performanceSnapshots"
 import { persistStrategyBacktestSnapshot } from "../src/lib/performance/strategyBacktestIngestion";
 import { getWeeklyPairReturns } from "../src/lib/pairReturns";
 import { computeMaxDrawdownFromPercentReturns, computeMaxDrawdownSimple } from "../src/lib/performance/drawdown";
+import { computeBasketPath, computeMultiWeekBasketPath, type BasketPathResult } from "../src/lib/performance/basketPathEngine";
 import {
   buildCotGateContext,
   buildGateMap,
@@ -58,6 +60,8 @@ import {
   type GateDecision,
   type GateMap,
 } from "../src/lib/performance/gateEvaluation";
+import { loadPathBars } from "../src/lib/performance/pathBarLoader";
+import type { WeekPositionLedger } from "../src/lib/performance/positionLedger";
 
 type Direction = "LONG" | "SHORT" | "NEUTRAL";
 type SystemVersion = "v1" | "v2" | "v3" | "standalone";
@@ -213,7 +217,7 @@ export type ReconstructedSystemReport = {
     hold: "open_to_close";
     weeks: string[];
     models: PerformanceModel[];
-    drawdownMode: "fixed_week_start_reset";
+    drawdownMode: "fixed_week_start_reset" | "path_true_hourly";
     weighting: "net_units" | "tier_weighted" | "equal";
     gateMode: "ungated" | "reduce_as_skip";
   };
@@ -1365,6 +1369,102 @@ function summarizeReport(report: ReconstructedSystemReport) {
   };
 }
 
+function weekCloseUtc(weekOpenUtc: string) {
+  const parsed = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  return (parsed.isValid ? parsed.plus({ weeks: 1 }).toUTC().toISO() : null) ?? weekOpenUtc;
+}
+
+function inferPathLegWeight(pair: WeeklyRow["breakdown"]["nettedPairs"][number]) {
+  if (Math.abs(pair.returnPct) > 0.000001) {
+    const weight = pair.positionContributionPct / pair.returnPct;
+    if (Number.isFinite(weight)) return weight;
+  }
+  if (Number.isFinite(pair.unitsOrWeight) && pair.unitsOrWeight > 0) return pair.unitsOrWeight;
+  if (Number.isFinite(pair.netUnits) && Math.abs(pair.netUnits) > 0) return Math.abs(pair.netUnits);
+  if (Number.isFinite(pair.tierWeight ?? Number.NaN) && (pair.tierWeight ?? 0) > 0) {
+    return pair.tierWeight ?? 1;
+  }
+  return 1;
+}
+
+async function buildPathLedgerFromReconstructionWeek(
+  system: string,
+  week: WeeklyRow,
+): Promise<WeekPositionLedger> {
+  const returns = await getWeeklyPairReturns(week.weekOpenUtc);
+  const returnMap = new Map(returns.map((row) => [row.symbol.toUpperCase(), row]));
+  const weekClose = weekCloseUtc(week.weekOpenUtc);
+
+  return {
+    weekOpenUtc: week.weekOpenUtc,
+    weekCloseUtc: weekClose,
+    strategyId: system,
+    entryStyleId: "weekly_hold",
+    legs: week.breakdown.nettedPairs
+      .filter((pair) => pair.direction === "LONG" || pair.direction === "SHORT")
+      .map((pair) => {
+        const price = returnMap.get(pair.symbol.toUpperCase());
+        if (!price) return null;
+        return {
+          symbol: pair.symbol.toUpperCase(),
+          assetClass: pair.assetClass,
+          direction: pair.direction,
+          entryTimeUtc: week.weekOpenUtc,
+          exitTimeUtc: weekClose,
+          weight: inferPathLegWeight(pair),
+          adrMultiplier: 1,
+          entryPrice: price.openPrice,
+          exitPrice: price.closePrice,
+          strategyId: system,
+          entryStyleId: "weekly_hold",
+          source: system,
+          tier: pair.tier ?? null,
+        };
+      })
+      .filter((leg): leg is WeekPositionLedger["legs"][number] => leg !== null),
+  };
+}
+
+async function computePathMetricsForReport(report: ReconstructedSystemReport) {
+  const weekPaths: BasketPathResult[] = [];
+  const weeklyReturns: WeeklyRow[] = [];
+
+  for (const week of report.weeklyReturns) {
+    const ledger = await buildPathLedgerFromReconstructionWeek(report.system, week);
+    const bars = await loadPathBars(
+      ledger.legs.map((leg) => leg.symbol),
+      ledger.weekOpenUtc,
+      ledger.weekCloseUtc,
+    );
+    const pathResult = computeBasketPath(ledger, bars);
+    weekPaths.push(pathResult);
+    weeklyReturns.push({
+      ...week,
+      drawdownPct: round(pathResult.summary.maxDrawdownPct, 6),
+    });
+  }
+
+  const multiWeekPath = computeMultiWeekBasketPath(weekPaths);
+  return {
+    ...report,
+    weeklyReturns,
+    maxDrawdownSimplePct: round(multiWeekPath.summary.maxDrawdownPct, 6),
+    maxDrawdownPct: round(multiWeekPath.summary.maxDrawdownPct, 6),
+    config: {
+      ...report.config,
+      drawdownMode: "path_true_hourly" as const,
+    },
+  };
+}
+
+async function applyPathTrueMetrics(reports: ReconstructedSystemReport[]) {
+  const enriched: ReconstructedSystemReport[] = [];
+  for (const report of reports) {
+    enriched.push(await computePathMetricsForReport(report));
+  }
+  return enriched;
+}
+
 function buildComponentBreakdowns(
   compositeReports: ReconstructedSystemReport[],
   standaloneReports: ReconstructedSystemReport[],
@@ -1429,7 +1529,7 @@ function buildComponentBreakdowns(
 }
 
 async function buildComprehensiveReconstructionReport(): Promise<ComprehensiveReconstructionReport> {
-  const [compositeReports, standaloneReports, cotContext] = await Promise.all([
+  const [rawCompositeReports, rawStandaloneReports, cotContext] = await Promise.all([
     reconstructAllSystems(),
     reconstructModelSystems(),
     buildCotGateContext(),
@@ -1440,8 +1540,14 @@ async function buildComprehensiveReconstructionReport(): Promise<ComprehensiveRe
     cotContext,
     reduceAsSkip: true,
   };
-  const compositeGated = compositeReports.map((report) => buildGatedReport(report, gateRuntime));
-  const standaloneGated = standaloneReports.map((report) => buildGatedReport(report, gateRuntime));
+  const compositeReports = await applyPathTrueMetrics(rawCompositeReports);
+  const standaloneReports = await applyPathTrueMetrics(rawStandaloneReports);
+  const compositeGated = await applyPathTrueMetrics(
+    rawCompositeReports.map((report) => buildGatedReport(report, gateRuntime)),
+  );
+  const standaloneGated = await applyPathTrueMetrics(
+    rawStandaloneReports.map((report) => buildGatedReport(report, gateRuntime)),
+  );
   const componentBreakdowns = buildComponentBreakdowns(compositeReports, standaloneReports, standaloneGated);
 
   return {
@@ -1725,6 +1831,11 @@ function writeComprehensiveReport(report: ComprehensiveReconstructionReport) {
     mkdirSync(reportsDir, { recursive: true });
   }
   const outputPath = path.join(reportsDir, "comprehensive-reconstruction.json");
+  const embeddedDir = path.join(REPO_ROOT, "src", "lib", "performance", "embedded");
+  if (!existsSync(embeddedDir)) {
+    mkdirSync(embeddedDir, { recursive: true });
+  }
+  const embeddedPath = path.join(embeddedDir, "comprehensive-reconstruction.json");
 
   const serializeReport = (item: ReconstructedSystemReport) => ({
     ...item,
@@ -1739,13 +1850,16 @@ function writeComprehensiveReport(report: ComprehensiveReconstructionReport) {
     })),
   });
 
-  writeFileSync(`${outputPath}`, `${JSON.stringify({
+  const payload = `${JSON.stringify({
     ...report,
     composite_systems: report.composite_systems.map(serializeReport),
     composite_systems_gated: report.composite_systems_gated.map(serializeReport),
     standalone_models: report.standalone_models.map(serializeReport),
     standalone_models_gated: report.standalone_models_gated.map(serializeReport),
-  }, null, 2)}\n`, "utf8");
+  }, null, 2)}\n`;
+
+  writeFileSync(`${outputPath}`, payload, "utf8");
+  writeFileSync(`${embeddedPath}`, payload, "utf8");
   return outputPath;
 }
 

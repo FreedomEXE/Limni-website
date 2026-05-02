@@ -18,6 +18,11 @@ import { readSnapshot } from "@/lib/cotStore";
 import { queryOne } from "@/lib/db";
 import { readNewsWeeklySnapshot } from "@/lib/news/store";
 import { readCanonicalPerformanceReport } from "@/lib/performance/canonicalPerformanceReport";
+import {
+  dataIntegrityAuditPassed,
+  readDataIntegrityAuditReport,
+  type DataIntegrityAuditReport,
+} from "@/lib/performance/dataIntegrityReport";
 import { readMarketSnapshot } from "@/lib/priceStore";
 import { getPriceSymbolCandidates } from "@/lib/pricePerformance";
 import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
@@ -161,6 +166,7 @@ export default async function StatusPage() {
   let canonicalError: string | null = null;
   let newsError: string | null = null;
   let myfxbookDebugError: string | null = null;
+  let dataIntegrityError: string | null = null;
 
   let sentimentAggregates: SentimentAggregate[] = [];
   let accounts: Mt5AccountSnapshot[] = [];
@@ -168,6 +174,7 @@ export default async function StatusPage() {
   let pairReturnStats: CanonicalStatsRow | null = null;
   let canonicalReportGeneratedUtc: string | null = null;
   let canonicalSummaryCount = 0;
+  let dataIntegrityReport: DataIntegrityAuditReport | null = null;
   let latestNewsSnapshot:
     | {
         fetched_at: string;
@@ -289,6 +296,12 @@ export default async function StatusPage() {
   }
 
   try {
+    dataIntegrityReport = await readDataIntegrityAuditReport();
+  } catch (error) {
+    dataIntegrityError = error instanceof Error ? error.message : String(error);
+  }
+
+  try {
     const snapshot = await readNewsWeeklySnapshot();
     if (snapshot) {
       latestNewsSnapshot = {
@@ -397,6 +410,7 @@ export default async function StatusPage() {
     canonicalReportGeneratedUtc,
     latestCanonicalBars,
     latestPairReturns,
+    dataIntegrityReport?.generatedUtc ?? null,
     latestNewsSnapshot?.fetched_at ?? null,
   ]);
 
@@ -417,7 +431,11 @@ export default async function StatusPage() {
       ? "OFF"
       : ["POSITION_OPEN", "SCALING", "TRAILING"].includes(bitgetLifecycle)
         ? "ON"
-        : "WAITING";
+      : "WAITING";
+  const dataIntegrityPassed = dataIntegrityAuditPassed(dataIntegrityReport);
+  const dataIntegrityGapTotal = dataIntegrityReport
+    ? Object.values(dataIntegrityReport.summary).reduce((sum, value) => sum + value, 0)
+    : 0;
 
   const health: HealthItem[] = [
     {
@@ -441,6 +459,20 @@ export default async function StatusPage() {
         : latestPairReturns
           ? undefined
           : "Run canonical price backfill and reconstruction.",
+    },
+    {
+      name: "Data Integrity",
+      status: dataIntegrityError ? "error" : dataIntegrityPassed ? "ok" : "warning",
+      detail: dataIntegrityError
+        ? dataIntegrityError
+        : dataIntegrityReport
+          ? dataIntegrityPassed
+            ? `Audit clean across ${dataIntegrityReport.weeksChecked} weeks and ${dataIntegrityReport.canonicalPairs} pairs.`
+            : `${dataIntegrityGapTotal} gap or engine shortfall count(s) in the latest audit.`
+          : "No data-integrity audit artifact yet.",
+      hint: dataIntegrityPassed
+        ? undefined
+        : "Run npx tsx scripts/audit-data-integrity.ts after canonical refreshes.",
     },
     {
       name: "Sentiment",
@@ -647,6 +679,71 @@ export default async function StatusPage() {
               <FreshnessStatusCard key={card.name} card={card} />
             ))}
           </div>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Data Integrity</h2>
+            <p className="text-sm text-[color:var(--muted)]">
+              Generated audit coverage for signal completeness, price rows, signal/price joins, and engine trade counts.
+            </p>
+          </div>
+          {!dataIntegrityReport ? (
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-5 shadow-sm">
+              <p className="text-sm font-semibold text-[var(--foreground)]">No audit artifact</p>
+              <p className="mt-2 text-sm text-[color:var(--muted)]">
+                Run npx tsx scripts/audit-data-integrity.ts to generate reports/data-integrity-audit.json.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <FreshnessStatusCard
+                card={{
+                  name: "Audit Coverage",
+                  status: dataIntegrityPassed ? "fresh" : "stale",
+                  detail: `${dataIntegrityReport.weeksChecked} weeks x ${dataIntegrityReport.canonicalPairs} canonical pairs.`,
+                  lastUpdated: dataIntegrityReport.generatedUtc,
+                  hint: `Display week ${formatDateET(dataIntegrityReport.displayWeekOpenUtc)}.`,
+                }}
+              />
+              <FreshnessStatusCard
+                card={{
+                  name: "Signals",
+                  status: dataIntegrityReport.summary.signalGapCount === 0 ? "fresh" : "missing",
+                  detail: `${dataIntegrityReport.summary.signalGapCount} neutral or missing source-pair weeks.`,
+                  lastUpdated: dataIntegrityReport.generatedUtc,
+                }}
+              />
+              <FreshnessStatusCard
+                card={{
+                  name: "Prices",
+                  status: dataIntegrityReport.summary.priceGapCount === 0 ? "fresh" : "missing",
+                  detail: `${dataIntegrityReport.summary.priceGapCount} missing or duplicate canonical price rows.`,
+                  lastUpdated: dataIntegrityReport.generatedUtc,
+                }}
+              />
+              <FreshnessStatusCard
+                card={{
+                  name: "Signal / Price",
+                  status:
+                    dataIntegrityReport.summary.directionNoPriceCount === 0
+                    && dataIntegrityReport.summary.priceNeutralSignalCount === 0
+                      ? "fresh"
+                      : "missing",
+                  detail: `${dataIntegrityReport.summary.directionNoPriceCount} directional without price; ${dataIntegrityReport.summary.priceNeutralSignalCount} priced neutral/missing.`,
+                  lastUpdated: dataIntegrityReport.generatedUtc,
+                }}
+              />
+              <FreshnessStatusCard
+                card={{
+                  name: "Engine Counts",
+                  status: dataIntegrityReport.summary.engineShortfalls === 0 ? "fresh" : "missing",
+                  detail: `${dataIntegrityReport.summary.engineShortfalls} trade-count shortfalls or errors.`,
+                  lastUpdated: dataIntegrityReport.generatedUtc,
+                }}
+              />
+            </div>
+          )}
         </section>
 
         <section className="space-y-4">

@@ -16,6 +16,8 @@
 import { loadEnvConfig } from "@next/env";
 loadEnvConfig(process.cwd());
 
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { getPool, query } from "../src/lib/db";
 import { PAIRS_BY_ASSET_CLASS } from "../src/lib/cotPairs";
 import type { AssetClass } from "../src/lib/cotMarkets";
@@ -87,9 +89,26 @@ type EngineCheck = {
   error: string | null;
 };
 
+type AuditSummary = {
+  signalGapCount: number;
+  priceGapCount: number;
+  directionNoPriceCount: number;
+  priceNeutralSignalCount: number;
+  engineShortfalls: number;
+};
+
 const BASE_SOURCES: BaseBasketModel[] = ["dealer", "commercial", "sentiment", "strength"];
 const STRATEGY_IDS = ["dealer", "selector_frag3", "agree_3of4"] as const;
 const DIRECTIONAL: ReadonlySet<BasketDirection> = new Set(["LONG", "SHORT"]);
+const REPORT_PATH = path.join(process.cwd(), "reports", "data-integrity-audit.json");
+const EMBEDDED_REPORT_PATH = path.join(
+  process.cwd(),
+  "src",
+  "lib",
+  "performance",
+  "embedded",
+  "data-integrity-audit.json",
+);
 
 function canonicalPairs(): CanonicalPair[] {
   const orderedAssetClasses: AssetClass[] = ["fx", "indices", "crypto", "commodities"];
@@ -398,13 +417,12 @@ function printEngineChecks(engineChecks: EngineCheck[]) {
   }
 }
 
-function printSummary(params: {
+function buildSummary(params: {
   signalCoverageBySource: Map<BaseBasketModel, SignalCoverage[]>;
   priceCoverages: PriceCoverage[];
   crossGaps: CrossGap[];
   engineChecks: EngineCheck[];
-  canonicalCount: number;
-}) {
+}): AuditSummary {
   const signalGapCount = Array.from(params.signalCoverageBySource.values())
     .flat()
     .reduce((sum, coverage) => sum + coverage.neutralCount + coverage.missingCount, 0);
@@ -428,21 +446,95 @@ function printSummary(params: {
     ),
   ).length;
 
+  return {
+    signalGapCount,
+    priceGapCount,
+    directionNoPriceCount,
+    priceNeutralSignalCount,
+    engineShortfalls,
+  };
+}
+
+function printSummary(params: {
+  signalCoverageBySource: Map<BaseBasketModel, SignalCoverage[]>;
+  priceCoverages: PriceCoverage[];
+  crossGaps: CrossGap[];
+  engineChecks: EngineCheck[];
+  canonicalCount: number;
+}) {
+  const summary = buildSummary(params);
+
   console.log("=== SUMMARY ===");
-  console.log(`Signal gaps: ${signalGapCount} total neutral/missing source-pair weeks`);
-  console.log(`Price gaps: ${priceGapCount} total missing/duplicate canonical price rows`);
-  console.log(`Direction-without-price gaps: ${directionNoPriceCount}`);
-  console.log(`Price-with-neutral/missing-signal gaps: ${priceNeutralSignalCount}`);
-  console.log(`Engine shortfalls/errors: ${engineShortfalls} strategy-week checks`);
+  console.log(`Signal gaps: ${summary.signalGapCount} total neutral/missing source-pair weeks`);
+  console.log(`Price gaps: ${summary.priceGapCount} total missing/duplicate canonical price rows`);
+  console.log(`Direction-without-price gaps: ${summary.directionNoPriceCount}`);
+  console.log(`Price-with-neutral/missing-signal gaps: ${summary.priceNeutralSignalCount}`);
+  console.log(`Engine shortfalls/errors: ${summary.engineShortfalls} strategy-week checks`);
 
   const failed =
-    signalGapCount > 0
-    || priceGapCount > 0
-    || directionNoPriceCount > 0
-    || priceNeutralSignalCount > 0
-    || engineShortfalls > 0;
+    summary.signalGapCount > 0
+    || summary.priceGapCount > 0
+    || summary.directionNoPriceCount > 0
+    || summary.priceNeutralSignalCount > 0
+    || summary.engineShortfalls > 0;
 
   process.exitCode = failed ? 1 : 0;
+}
+
+async function writeAuditReport(params: {
+  generatedUtc: string;
+  weeks: string[];
+  displayWeekOpenUtc: string;
+  canonicalCount: number;
+  signalCoverageBySource: Map<BaseBasketModel, SignalCoverage[]>;
+  priceCoverages: PriceCoverage[];
+  crossGaps: CrossGap[];
+  engineChecks: EngineCheck[];
+}) {
+  const summary = buildSummary(params);
+  const report = {
+    generatedUtc: params.generatedUtc,
+    displayWeekOpenUtc: params.displayWeekOpenUtc,
+    weeksChecked: params.weeks.length,
+    canonicalPairs: params.canonicalCount,
+    summary,
+    signalCoverage: BASE_SOURCES.map((source) => ({
+      source,
+      weeks: (params.signalCoverageBySource.get(source) ?? []).map((coverage) => ({
+        weekOpenUtc: coverage.weekOpenUtc,
+        emittedCount: coverage.emittedCount,
+        longCount: coverage.longCount,
+        shortCount: coverage.shortCount,
+        neutralCount: coverage.neutralCount,
+        missingCount: coverage.missingCount,
+        neutralPairs: coverage.neutralPairs,
+        missingPairs: coverage.missingPairs,
+      })),
+    })),
+    priceCoverage: params.priceCoverages.map((coverage) => ({
+      weekOpenUtc: coverage.weekOpenUtc,
+      rowCount: coverage.rowCount,
+      coveredCount: coverage.coveredCount,
+      missingPairs: coverage.missingPairs,
+      extraPairs: coverage.extraPairs,
+      duplicatePairs: coverage.duplicatePairs,
+    })),
+    crossReference: params.crossGaps.map((gap) => ({
+      source: gap.source,
+      weekOpenUtc: gap.weekOpenUtc,
+      directionNoPrice: gap.directionNoPrice,
+      priceNeutralOrMissingSignal: gap.priceNeutralOrMissingSignal,
+    })),
+    engineChecks: params.engineChecks,
+  };
+
+  const payload = `${JSON.stringify(report, null, 2)}\n`;
+  await mkdir(path.dirname(REPORT_PATH), { recursive: true });
+  await writeFile(REPORT_PATH, payload, "utf8");
+  await mkdir(path.dirname(EMBEDDED_REPORT_PATH), { recursive: true });
+  await writeFile(EMBEDDED_REPORT_PATH, payload, "utf8");
+  console.log(`Wrote ${path.relative(process.cwd(), REPORT_PATH)}`);
+  console.log(`Wrote ${path.relative(process.cwd(), EMBEDDED_REPORT_PATH)}`);
 }
 
 async function main() {
@@ -485,6 +577,16 @@ async function main() {
   printPriceCoverage(priceCoverages, canonicalCount);
   printCrossReference(crossGaps);
   printEngineChecks(engineChecks);
+  await writeAuditReport({
+    generatedUtc: new Date().toISOString(),
+    weeks,
+    displayWeekOpenUtc,
+    canonicalCount,
+    signalCoverageBySource,
+    priceCoverages,
+    crossGaps,
+    engineChecks,
+  });
   printSummary({
     signalCoverageBySource,
     priceCoverages,

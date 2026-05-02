@@ -246,6 +246,85 @@ export default function DashboardViewSection({
     .filter((row) => row.direction === "SHORT")
     .map((row) => ({ label: row.symbol, value: row.tier === "F" ? `Tier ${row.tier} · ${row.tierFSubStep ?? "forced"}` : `Tier ${row.tier}` }));
   const sentimentNeutralDetails: Array<{ label: string; value: string }> = [];
+  const pricedPairCount = pairRows.filter((row) => row.performance !== null).length;
+  const sentimentProviders = Array.from(
+    new Set(sentimentAggregates.flatMap((aggregate) => aggregate.sources_used)),
+  ).sort();
+  const sourceDiagnostics =
+    selectedBias === "sentiment"
+      ? [
+          {
+            label: "Resolver Rows",
+            value: String(sentimentResolvedRows.length),
+          },
+          {
+            label: "Aggregates",
+            value: String(sentimentAggregates.length),
+          },
+          {
+            label: "Providers",
+            value: sentimentProviders.length > 0 ? sentimentProviders.join(", ") : "None",
+          },
+          {
+            label: "Snapshot Source",
+            value: provenance?.sentiment.source ?? "sentiment_aggregates",
+          },
+          {
+            label: "Snapshot",
+            value: provenance?.sentiment.snapshotUtc
+              ? formatDateTimeET(provenance.sentiment.snapshotUtc)
+              : "No snapshot",
+          },
+        ]
+      : selectedBias === "strength"
+        ? [
+            {
+              label: "Canonical Rows",
+              value: String(pairRows.length),
+            },
+            {
+              label: "Price Coverage",
+              value: `${pricedPairCount}/${strengthPayload?.totalPairsCount ?? 0}`,
+            },
+            {
+              label: "Missing Prices",
+              value: String(strengthPayload?.missingPairs.length ?? 0),
+            },
+            {
+              label: "Snapshot Source",
+              value: provenance?.strength.source ?? "strength_weekly_snapshots",
+            },
+            {
+              label: "Snapshot",
+              value: provenance?.strength.snapshotUtc
+                ? formatDateTimeET(provenance.strength.snapshotUtc)
+                : "No snapshot",
+            },
+          ]
+        : [
+            {
+              label: "COT Report",
+              value: selectedReport || "No report",
+            },
+            {
+              label: "Price Coverage",
+              value: `${pricedPairCount}/${cotPayload?.totalPairsCount ?? 0}`,
+            },
+            {
+              label: "Missing Prices",
+              value: String(cotPayload?.missingPairs.length ?? 0),
+            },
+            {
+              label: "Snapshot Source",
+              value: provenance?.cot.source ?? "cot_snapshots",
+            },
+            {
+              label: "Snapshot",
+              value: provenance?.cot.snapshotUtc
+                ? formatDateTimeET(provenance.cot.snapshotUtc)
+                : "No snapshot",
+            },
+          ];
 
   return (
     <div className="space-y-8">
@@ -376,6 +455,22 @@ export default function DashboardViewSection({
           />
         </div>
       )}
+
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {sourceDiagnostics.map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]">
+              {item.label}
+            </p>
+            <p className="mt-2 break-words text-sm font-semibold text-[var(--foreground)]">
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </section>
 
       <section
         data-cot-surface={selectedBias === "sentiment" ? undefined : "true"}

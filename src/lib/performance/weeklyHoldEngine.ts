@@ -31,6 +31,7 @@ import {
   resolveSelectorFragilityDirections,
 } from "@/lib/performance/selectorEngine";
 import {
+  SELECTOR_STRATEGY_ID,
   SELECTOR_FRAG3_STRATEGY_ID,
   SELECTOR_SELECTIVE_STRATEGY_ID,
 } from "@/lib/performance/strategyConfig";
@@ -288,6 +289,21 @@ async function resolveDirections(
 
   if (biasSource.id === SELECTOR_SELECTIVE_STRATEGY_ID) {
     return resolveSelectorFragilityDirections(weekOpenUtc, "opposed_or_building_against");
+  }
+
+  if (biasSource.id === SELECTOR_STRATEGY_ID) {
+    const [baseMap, selectiveMap] = await Promise.all([
+      resolveSelectorFragilityDirections(weekOpenUtc, "fragility_3"),
+      resolveSelectorFragilityDirections(weekOpenUtc, "opposed_or_building_against"),
+    ]);
+    const map: DirectionMap = new Map();
+    for (const [pair, entry] of baseMap) {
+      map.set(`${pair}:dealer`, { ...entry, source: "dealer" });
+    }
+    for (const [pair, entry] of selectiveMap) {
+      map.set(`${pair}:commercial`, { ...entry, source: "commercial" });
+    }
+    return map;
   }
 
   if (biasSource.id === "strength") {

@@ -33,10 +33,13 @@ export type StrategyConfig = {
   cardBreakdown: "asset_class" | "tiers" | "per_model";
   /** For per-model strategies: which models fill the rendered slots. */
   models?: readonly PerformanceModel[];
+  /** Optional display labels for model slots when a system reuses generic slots. */
+  modelLabels?: Partial<Record<PerformanceModel, string>>;
 };
 
 export const SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID = "selector_sentiment_override";
 export const SELECTOR_SENTIMENT_OVERRIDE_RESEARCH_ID = "selector_sentiment_context_override";
+export const SELECTOR_STRATEGY_ID = "selector";
 export const SELECTOR_FRAG3_STRATEGY_ID = "selector_frag3";
 export const SELECTOR_SELECTIVE_STRATEGY_ID = "selector_selective";
 export const AGREE_3OF4_STRATEGY_ID = "agree_3of4";
@@ -48,7 +51,7 @@ function normalizeStrategyLookupId(value: string | undefined | null): string | n
     value === SELECTOR_SENTIMENT_OVERRIDE_RESEARCH_ID
     || value === SELECTOR_SENTIMENT_OVERRIDE_STRATEGY_ID
   ) {
-    return SELECTOR_FRAG3_STRATEGY_ID;
+    return SELECTOR_STRATEGY_ID;
   }
   if (value === "tiered_v3" || value === "tiered_3_nocomm") {
     return TIERED_4W_STRATEGY_ID;
@@ -58,6 +61,8 @@ function normalizeStrategyLookupId(value: string | undefined | null): string | n
   }
   return value;
 }
+
+const CONSOLIDATED_SOURCE_STRATEGY_IDS = new Set(["dealer", "commercial", "sentiment", "strength"]);
 
 export const STRATEGIES: StrategyConfig[] = [
   {
@@ -112,7 +117,7 @@ export const STRATEGIES: StrategyConfig[] = [
   },
   {
     id: SELECTOR_FRAG3_STRATEGY_ID,
-    label: "Selector",
+    label: "Selector Base",
     type: "single",
     description: "Sentiment-primary weekly selector with strength tiebreak and commercial fragility filter. Follows sentiment as the base signal, allows a dealer override when sentiment is stretched and weakening, uses strength to resolve conflicts, and skips trades where commercial is simultaneously opposed, extreme, and building against.",
     cardBreakdown: "asset_class",
@@ -123,6 +128,18 @@ export const STRATEGIES: StrategyConfig[] = [
     type: "single",
     description: "Highly selective selector sleeve. Keeps only the cleanest selector trades by skipping when commercial opposes the trade or commercial flow is building against it.",
     cardBreakdown: "asset_class",
+  },
+  {
+    id: SELECTOR_STRATEGY_ID,
+    label: "Selector",
+    type: "tandem",
+    description: "Consolidated selector view. Shows the base selector and the selective selector as separate sleeves side by side, while preserving a combined total for equity and basket review.",
+    cardBreakdown: "per_model",
+    models: ["dealer", "commercial"],
+    modelLabels: {
+      dealer: "Selector",
+      commercial: "Selector Selective",
+    },
   },
 ];
 
@@ -245,8 +262,14 @@ export function getStrengthGate(id: string): StrengthGateConfig | undefined {
 
 export function resolveStrategyId(value: string | undefined | null): string {
   const normalized = normalizeStrategyLookupId(value);
+  if (normalized === SELECTOR_FRAG3_STRATEGY_ID || normalized === SELECTOR_SELECTIVE_STRATEGY_ID) {
+    return SELECTOR_STRATEGY_ID;
+  }
+  if (normalized && CONSOLIDATED_SOURCE_STRATEGY_IDS.has(normalized)) {
+    return "tandem";
+  }
   if (normalized && STRATEGIES.some((s) => s.id === normalized)) return normalized;
-  return SELECTOR_FRAG3_STRATEGY_ID;
+  return SELECTOR_STRATEGY_ID;
 }
 
 export function resolveEntryStyleId(value: string | undefined | null): string {
