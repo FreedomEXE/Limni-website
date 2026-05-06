@@ -82,10 +82,7 @@ export async function buildWeeklyHoldLedger(
       direction: trade.direction,
       entryTimeUtc: trade.detail?.entryTimeUtc ?? result.weekOpenUtc,
       exitTimeUtc: trade.detail?.exitTimeUtc ?? weekCloseUtc,
-      // Phase 1 preserves the current live basket economics exactly:
-      // each trade contributes as a full 1x leg, and ADR normalization
-      // remains the canonical risk-scaling layer on top.
-      weight: 1,
+      weight: trade.weight ?? 1,
       adrMultiplier,
       entryPrice: trade.openPrice,
       exitPrice: trade.closePrice,

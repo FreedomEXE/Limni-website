@@ -43,6 +43,7 @@ export const SELECTOR_STRATEGY_ID = "selector";
 export const SELECTOR_FRAG3_STRATEGY_ID = "selector_frag3";
 export const SELECTOR_SELECTIVE_STRATEGY_ID = "selector_selective";
 export const AGREE_3OF4_STRATEGY_ID = "agree_3of4";
+export const AGREE_3PLUS_STRATEGY_ID = "agree_3plus";
 export const TIERED_4W_STRATEGY_ID = "tiered_4w";
 
 function normalizeStrategyLookupId(value: string | undefined | null): string | null {
@@ -116,6 +117,13 @@ export const STRATEGIES: StrategyConfig[] = [
     cardBreakdown: "asset_class",
   },
   {
+    id: AGREE_3PLUS_STRATEGY_ID,
+    label: "Agreement 3+",
+    type: "agreement",
+    description: "Strict four-source agreement system. Trades only when at least 3 of Dealer, Commercial, Sentiment, and Strength align on direction. Ties are skipped.",
+    cardBreakdown: "asset_class",
+  },
+  {
     id: SELECTOR_FRAG3_STRATEGY_ID,
     label: "Selector Base",
     type: "single",
@@ -151,8 +159,8 @@ export type EntryStyleConfig = {
   description: string;
   /** Whether this filter produces trade-level data in strategy_backtest_trades */
   hasTradeLog: boolean;
-  /** P/L model: "weekly_hold" = open→close, "adr" = 0.25% per TP, losses at week close */
-  plModel: "weekly_hold" | "adr";
+  /** P/L model: "weekly_hold" = open→close, "adr" = scanner TP, "adr_grid" = app-simulated close/rearm grid */
+  plModel: "weekly_hold" | "adr" | "adr_grid";
   /** Matrix display behavior for this filter. */
   matrixUi: {
     showStatsBar: boolean;
@@ -193,6 +201,21 @@ export const ENTRY_STYLE_FILTERS: EntryStyleConfig[] = [
       currentColumnLabel: "Trigger / Trades",
       historicalColumnLabel: "Trades",
       detailTitle: "Pullback Detail",
+    },
+  },
+  {
+    id: "adr_grid",
+    label: "ADR Grid",
+    description: "0.20 ADR close-and-rearm grid with FX fill-level currency cap",
+    hasTradeLog: true,
+    plModel: "adr_grid",
+    matrixUi: {
+      showStatsBar: true,
+      showTriggerState: true,
+      showIntradayDetail: true,
+      currentColumnLabel: "Grid / Fills",
+      historicalColumnLabel: "Fills",
+      detailTitle: "Grid Detail",
     },
   },
 ];

@@ -34,9 +34,12 @@ import {
   SELECTOR_STRATEGY_ID,
   SELECTOR_FRAG3_STRATEGY_ID,
   SELECTOR_SELECTIVE_STRATEGY_ID,
+  AGREE_3PLUS_STRATEGY_ID,
 } from "@/lib/performance/strategyConfig";
 import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 import { loadWeeklyAdrMap, getAdrPct, getTargetAdrPct } from "@/lib/performance/adrLookup";
+import { loadPathBars } from "@/lib/performance/pathBarLoader";
+import type { CanonicalPriceBar } from "@/lib/canonicalPriceBars";
 
 // ─── Trade types (strategy-generic) ─────────────────────────────
 // "WeeklyHoldTrade" name kept for backward compat; represents any strategy trade.
@@ -65,6 +68,8 @@ export type WeeklyHoldTrade = {
   tier: number | null;
   /** Intraday trade detail (present for ADR/stoch trades, absent for weekly hold) */
   detail?: TradeDetail;
+  /** Position weight for scaled/generated intraday systems. Defaults to 1. */
+  weight?: number;
 };
 /** @alias WeeklyHoldTrade — use this name in new code */
 export type StrategyTrade = WeeklyHoldTrade;
@@ -236,6 +241,22 @@ function resolveAgree3of4Direction(votes: {
   return null;
 }
 
+function resolveStrictAgree3PlusDirection(votes: {
+  dealer?: DirectionEntry;
+  commercial?: DirectionEntry;
+  sentiment?: DirectionEntry;
+  strength?: DirectionEntry;
+}): TradeDirection | null {
+  const directions = [votes.dealer?.direction, votes.commercial?.direction, votes.sentiment?.direction, votes.strength?.direction]
+    .filter(Boolean) as TradeDirection[];
+  const longs = directions.filter((direction) => direction === "LONG").length;
+  const shorts = directions.filter((direction) => direction === "SHORT").length;
+
+  if (longs >= 3) return "LONG";
+  if (shorts >= 3) return "SHORT";
+  return null;
+}
+
 function computeWeightedScore(votes: {
   dealer?: DirectionEntry;
   commercial?: DirectionEntry;
@@ -328,6 +349,7 @@ async function resolveDirections(
   const needsStrengthVotes =
     biasSource.id === "tiered_4w"
     || biasSource.id === "agree_3of4"
+    || biasSource.id === AGREE_3PLUS_STRATEGY_ID
     || (biasSource.type === "tandem" && biasSource.models?.includes("strength"));
 
   if (needsStrengthVotes) {
@@ -393,6 +415,27 @@ async function resolveDirections(
       });
       if (direction) {
         map.set(pair, { direction, source: "agree_3of4", tier: null, assetClass: ac });
+      }
+    }
+    return map;
+  }
+
+  if (biasSource.id === AGREE_3PLUS_STRATEGY_ID) {
+    const map: DirectionMap = new Map();
+    for (const pair of allPairs) {
+      const de = dealerMap.get(pair);
+      const ce = commMap.get(pair);
+      const se = sentMap.get(pair);
+      const st = strengthMap.get(pair);
+      const ac = de?.assetClass ?? ce?.assetClass ?? se?.assetClass ?? st?.assetClass ?? inferAssetClass(pair);
+      const direction = resolveStrictAgree3PlusDirection({
+        dealer: de,
+        commercial: ce,
+        sentiment: se,
+        strength: st,
+      });
+      if (direction) {
+        map.set(pair, { direction, source: AGREE_3PLUS_STRATEGY_ID, tier: null, assetClass: ac });
       }
     }
     return map;
@@ -653,6 +696,375 @@ async function executeAdr(
   };
 }
 
+// ─── ADR Grid executor (0.20 ADR close/rearm + FX currency cap) ─────────────
+
+const ADR_GRID_SPACING = 0.20;
+const ADR_GRID_RESET_ADR = 1.0;
+const ADR_GRID_MAX_LEVELS_PER_SIDE = 50;
+const ADR_GRID_FX_CURRENCY_CAP = 1.5;
+
+type AdrGridTemplate = {
+  symbol: string;
+  assetClass: string;
+  direction: "LONG" | "SHORT";
+  source: string;
+  tier: number | null;
+  openPrice: number;
+  pairAdrPct: number;
+  weightMultiplier: number;
+};
+
+type AdrGridLevel = {
+  index: number;
+  side: "favorable" | "continuation";
+  triggerPrice: number;
+  weight: number;
+};
+
+type AdrGridFill = {
+  levelIndex: number;
+  entryPrice: number;
+  entryTimeUtc: string;
+  entryBarIndex: number;
+  weight: number;
+  active: boolean;
+};
+
+type AdrGridEngine = AdrGridTemplate & {
+  levels: AdrGridLevel[];
+  fills: AdrGridFill[];
+  levelArmed: boolean[];
+  levelRearmBarIndex: number[];
+  cycleHighPrice: number;
+  cycleLowPrice: number;
+  closedForWeek: boolean;
+};
+
+type AdrGridTimeline = {
+  exactBars: Array<CanonicalPriceBar | null>;
+  markBars: Array<CanonicalPriceBar | null>;
+};
+
+function buildAdrGridTimestamps(weekOpenUtc: string, weekCloseUtc: string) {
+  const start = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  const end = DateTime.fromISO(weekCloseUtc, { zone: "utc" });
+  if (!start.isValid || !end.isValid || end < start) return [weekOpenUtc];
+
+  const grid: string[] = [];
+  let cursor = start.startOf("hour");
+  const final = end.startOf("hour");
+  while (cursor <= final) {
+    grid.push(cursor.toUTC().toISO() ?? weekOpenUtc);
+    cursor = cursor.plus({ hours: 1 });
+  }
+  return grid;
+}
+
+function normalizeIso(value: string) {
+  const parsed = DateTime.fromISO(value, { zone: "utc" });
+  return parsed.isValid ? parsed.toUTC().toISO() ?? value : value;
+}
+
+function buildAdrGridLevels(template: AdrGridTemplate): AdrGridLevel[] {
+  const levels: AdrGridLevel[] = [];
+  const step = (ADR_GRID_SPACING * template.pairAdrPct) / 100;
+  const weight = ADR_GRID_SPACING * template.weightMultiplier;
+  let index = 0;
+
+  for (let i = 1; i <= ADR_GRID_MAX_LEVELS_PER_SIDE; i += 1) {
+    levels.push({
+      index: index++,
+      side: "favorable",
+      triggerPrice: template.direction === "LONG"
+        ? template.openPrice * (1 - i * step)
+        : template.openPrice * (1 + i * step),
+      weight,
+    });
+  }
+  for (let i = 1; i <= ADR_GRID_MAX_LEVELS_PER_SIDE; i += 1) {
+    levels.push({
+      index: index++,
+      side: "continuation",
+      triggerPrice: template.direction === "LONG"
+        ? template.openPrice * (1 + i * step)
+        : template.openPrice * (1 - i * step),
+      weight,
+    });
+  }
+  return levels;
+}
+
+function buildAdrGridEngine(template: AdrGridTemplate): AdrGridEngine {
+  const levels = buildAdrGridLevels(template);
+  return {
+    ...template,
+    levels,
+    fills: [],
+    levelArmed: levels.map(() => true),
+    levelRearmBarIndex: levels.map(() => -1),
+    cycleHighPrice: template.openPrice,
+    cycleLowPrice: template.openPrice,
+    closedForWeek: false,
+  };
+}
+
+function directedRawReturnPct(direction: "LONG" | "SHORT", entryPrice: number, exitPrice: number) {
+  if (!Number.isFinite(entryPrice) || entryPrice <= 0 || !Number.isFinite(exitPrice) || exitPrice <= 0) return 0;
+  const rawReturn = ((exitPrice - entryPrice) / entryPrice) * 100;
+  return direction === "SHORT" ? -rawReturn : rawReturn;
+}
+
+function activeAdrGridExposure(engine: AdrGridEngine) {
+  return engine.fills.reduce((sum, fill) => sum + (fill.active ? fill.weight : 0), 0);
+}
+
+function getAdrGridMark(engine: AdrGridEngine, timelines: Map<string, AdrGridTimeline>, barIndex: number) {
+  return timelines.get(engine.symbol)?.markBars[barIndex]?.closePrice ?? engine.openPrice;
+}
+
+function getActiveFxCurrencyNet(engines: AdrGridEngine[]) {
+  const net = new Map<string, number>();
+  for (const engine of engines) {
+    if (engine.assetClass !== "fx") continue;
+    const exposure = activeAdrGridExposure(engine);
+    if (exposure <= 1e-9) continue;
+    const base = engine.symbol.slice(0, 3);
+    const quote = engine.symbol.slice(3, 6);
+    const sign = engine.direction === "LONG" ? 1 : -1;
+    net.set(base, (net.get(base) ?? 0) + sign * exposure);
+    net.set(quote, (net.get(quote) ?? 0) - sign * exposure);
+  }
+  return net;
+}
+
+function wouldBreachFxCurrencyCap(engine: AdrGridEngine, fillWeight: number, engines: AdrGridEngine[]) {
+  if (engine.assetClass !== "fx") return false;
+  const net = getActiveFxCurrencyNet(engines);
+  const base = engine.symbol.slice(0, 3);
+  const quote = engine.symbol.slice(3, 6);
+  const sign = engine.direction === "LONG" ? 1 : -1;
+  return (
+    Math.abs((net.get(base) ?? 0) + sign * fillWeight) > ADR_GRID_FX_CURRENCY_CAP ||
+    Math.abs((net.get(quote) ?? 0) - sign * fillWeight) > ADR_GRID_FX_CURRENCY_CAP
+  );
+}
+
+function closeAdrGridFill(params: {
+  trades: WeeklyHoldTrade[];
+  engine: AdrGridEngine;
+  fill: AdrGridFill;
+  exitPrice: number;
+  exitTimeUtc: string;
+  exitReason: string;
+  tradeNumber: number;
+}) {
+  const { trades, engine, fill, exitPrice, exitTimeUtc, exitReason, tradeNumber } = params;
+  const rawWeightedReturn = directedRawReturnPct(engine.direction, fill.entryPrice, exitPrice) * fill.weight;
+  fill.active = false;
+  trades.push({
+    symbol: engine.symbol,
+    assetClass: engine.assetClass,
+    direction: engine.direction,
+    openPrice: fill.entryPrice,
+    closePrice: exitPrice,
+    returnPct: rawWeightedReturn,
+    source: engine.source,
+    tier: engine.tier,
+    weight: fill.weight,
+    detail: {
+      tradeNumber,
+      entryTimeUtc: fill.entryTimeUtc,
+      exitTimeUtc,
+      exitReason,
+      anchorPrice: engine.openPrice,
+      tpPrice: exitReason === "grid_tp" ? exitPrice : null,
+      adrPct: engine.pairAdrPct,
+      maePct: null,
+    },
+  });
+}
+
+async function executeAdrGrid(
+  biasSource: BiasSourceConfig,
+  weekOpenUtc: string,
+): Promise<WeeklyHoldResult> {
+  const directions = await resolveDirections(biasSource, weekOpenUtc);
+  const signals = buildCanonicalSignals(directions);
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  const isRealized = isWeekRealizedForAggregate(weekOpenUtc, currentWeekOpenUtc);
+  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  const weekCloseUtc = (weekOpen.isValid ? weekOpen.plus({ weeks: 1 }).toUTC().toISO() : null) ?? weekOpenUtc;
+  const pairReturns = await getWeeklyPairReturns(weekOpenUtc);
+  const returnMap = new Map(pairReturns.map((row) => [row.symbol.toUpperCase(), row]));
+  const adrMap = await loadWeeklyAdrMap(weekOpenUtc);
+
+  const templates: AdrGridTemplate[] = [];
+  const missingPriceSymbolSet = new Set<string>();
+  for (const [key, signal] of directions) {
+    const pair = pairFromDirectionKey(key);
+    const priceData = returnMap.get(pair);
+    if (!priceData || !Number.isFinite(priceData.openPrice) || priceData.openPrice <= 0) {
+      missingPriceSymbolSet.add(pair);
+      continue;
+    }
+    const assetClass = priceData.assetClass ?? signal.assetClass ?? inferAssetClass(pair);
+    templates.push({
+      symbol: pair,
+      assetClass,
+      direction: signal.direction,
+      source: signal.source,
+      tier: signal.tier,
+      openPrice: priceData.openPrice,
+      pairAdrPct: getAdrPct(adrMap, pair, assetClass),
+      weightMultiplier: 1,
+    });
+  }
+
+  const symbols = Array.from(new Set(templates.map((template) => template.symbol))).sort();
+  const bars = await loadPathBars(symbols, weekOpenUtc, weekCloseUtc, "1h");
+  const grid = buildAdrGridTimestamps(weekOpenUtc, weekCloseUtc);
+  const timelines = new Map<string, AdrGridTimeline>();
+  for (const symbol of symbols) {
+    const symbolBars = bars.get(symbol) ?? [];
+    const byClose = new Map(symbolBars.map((bar) => [normalizeIso(bar.barCloseUtc), bar]));
+    const exactBars: Array<CanonicalPriceBar | null> = [];
+    const markBars: Array<CanonicalPriceBar | null> = [];
+    let last: CanonicalPriceBar | null = null;
+    for (const tsUtc of grid) {
+      const exact = byClose.get(normalizeIso(tsUtc)) ?? null;
+      if (exact) last = exact;
+      exactBars.push(exact);
+      markBars.push(last);
+    }
+    timelines.set(symbol, { exactBars, markBars });
+  }
+
+  const engines = templates.map(buildAdrGridEngine);
+  const trades: WeeklyHoldTrade[] = [];
+  let tradeNumber = 1;
+
+  for (let barIndex = 0; barIndex < grid.length; barIndex += 1) {
+    const tsUtc = grid[barIndex] ?? weekOpenUtc;
+    for (const engine of engines) {
+      const bar = timelines.get(engine.symbol)?.exactBars[barIndex] ?? null;
+      if (!bar || engine.closedForWeek) continue;
+
+      for (const level of engine.levels) {
+        if (!engine.levelArmed[level.index]) continue;
+        if (engine.levelRearmBarIndex[level.index]! >= barIndex) continue;
+        const triggered = level.side === "favorable"
+          ? (engine.direction === "LONG" ? bar.lowPrice <= level.triggerPrice : bar.highPrice >= level.triggerPrice)
+          : (engine.direction === "LONG" ? bar.highPrice >= level.triggerPrice : bar.lowPrice <= level.triggerPrice);
+        if (!triggered) continue;
+        if (wouldBreachFxCurrencyCap(engine, level.weight, engines)) continue;
+
+        engine.fills.push({
+          levelIndex: level.index,
+          entryPrice: level.triggerPrice,
+          entryTimeUtc: tsUtc,
+          entryBarIndex: barIndex,
+          weight: level.weight,
+          active: true,
+        });
+        engine.levelArmed[level.index] = false;
+      }
+
+      const targetMove = (ADR_GRID_SPACING * engine.pairAdrPct) / 100;
+      for (const fill of engine.fills) {
+        if (!fill.active || barIndex <= fill.entryBarIndex) continue;
+        const targetPrice = engine.direction === "SHORT"
+          ? fill.entryPrice * (1 - targetMove)
+          : fill.entryPrice * (1 + targetMove);
+        const targetHit = engine.direction === "SHORT"
+          ? bar.lowPrice <= targetPrice
+          : bar.highPrice >= targetPrice;
+        if (!targetHit) continue;
+
+        closeAdrGridFill({
+          trades,
+          engine,
+          fill,
+          exitPrice: targetPrice,
+          exitTimeUtc: tsUtc,
+          exitReason: "grid_tp",
+          tradeNumber: tradeNumber++,
+        });
+        engine.levelArmed[fill.levelIndex] = true;
+        engine.levelRearmBarIndex[fill.levelIndex] = barIndex;
+      }
+
+      engine.cycleHighPrice = Math.max(engine.cycleHighPrice, bar.highPrice);
+      engine.cycleLowPrice = Math.min(engine.cycleLowPrice, bar.lowPrice);
+      if (activeAdrGridExposure(engine) > 1e-9) {
+        const resetMove = (ADR_GRID_RESET_ADR * engine.pairAdrPct) / 100;
+        const closeTarget = engine.direction === "SHORT"
+          ? engine.cycleHighPrice * (1 - resetMove)
+          : engine.cycleLowPrice * (1 + resetMove);
+        const resetHit = engine.direction === "SHORT"
+          ? bar.lowPrice <= closeTarget
+          : bar.highPrice >= closeTarget;
+        if (resetHit) {
+          for (const fill of engine.fills) {
+            if (!fill.active) continue;
+            closeAdrGridFill({
+              trades,
+              engine,
+              fill,
+              exitPrice: closeTarget,
+              exitTimeUtc: tsUtc,
+              exitReason: "grid_reset",
+              tradeNumber: tradeNumber++,
+            });
+          }
+          engine.closedForWeek = true;
+        }
+      }
+    }
+
+    if (barIndex === grid.length - 1) {
+      for (const engine of engines) {
+        if (engine.closedForWeek) continue;
+        for (const fill of engine.fills) {
+          if (!fill.active) continue;
+          const exitReason = isRealized ? "week_close" : "active";
+          const exitPrice = isRealized ? getAdrGridMark(engine, timelines, barIndex) : fill.entryPrice;
+          closeAdrGridFill({
+            trades,
+            engine,
+            fill,
+            exitPrice,
+            exitTimeUtc: tsUtc,
+            exitReason,
+            tradeNumber: tradeNumber++,
+          });
+        }
+      }
+    }
+  }
+
+  const totalReturn = trades.reduce((sum, trade) => sum + trade.returnPct, 0);
+  const wins = trades.filter((trade) => trade.returnPct > 0).length;
+  const losses = trades.filter((trade) => trade.returnPct <= 0).length;
+  const missingPriceSymbols = Array.from(missingPriceSymbolSet).sort();
+  logMissingWeeklyPrices(biasSource.id, weekOpenUtc, missingPriceSymbols);
+
+  console.log(`[engine] ADR Grid executor (${biasSource.id}): ${weekOpenUtc} → ${trades.length} fills, ${totalReturn.toFixed(2)}% raw weighted return`);
+
+  return {
+    weekOpenUtc,
+    biasSourceId: biasSource.id,
+    trades,
+    totalReturnPct: totalReturn,
+    winCount: wins,
+    lossCount: losses,
+    winRate: trades.length > 0 ? (wins / trades.length) * 100 : 0,
+    tradeCount: trades.length,
+    signals,
+    isRealized,
+    missingPriceSymbols,
+  };
+}
+
 // ─── Executor registry ──────────────────────────────────────────
 // Adding a new strategy = write an executor function + add one line here.
 
@@ -663,6 +1075,7 @@ type StrategyExecutor = (
 
 const EXECUTORS: Record<string, StrategyExecutor> = {
   adr: executeAdr,
+  adr_grid: executeAdrGrid,
   // Future: stoch, adr_stoch, etc.
 };
 
