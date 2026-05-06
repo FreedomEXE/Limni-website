@@ -32,9 +32,11 @@ import {
 } from "@/lib/performance/engineAdapter";
 import {
   getEntryStyle,
+  getStrengthGate,
   getStrategy,
   type EntryStyleConfig,
   type BiasSourceConfig,
+  type StrengthGateConfig,
 } from "@/lib/performance/strategyConfig";
 import {
   computeMultiWeekHold,
@@ -96,6 +98,14 @@ type StrengthWatermarkRow = {
   row_count: number;
 };
 
+function buildSelectionLabel(
+  entryStyle: EntryStyleConfig | undefined,
+  riskOverlay: StrengthGateConfig | undefined,
+) {
+  const parts = [entryStyle?.label ?? "Weekly Hold"];
+  if (riskOverlay && riskOverlay.id !== "none") parts.push(riskOverlay.label);
+  return parts.join(" · ");
+}
 
 export type StrategySelection = {
   strategyId: string;
@@ -198,6 +208,7 @@ function assembleStrategyPageData(options: {
   biasSource: BiasSourceConfig;
   currentWeekOpenUtc: string;
   entryStyle: EntryStyleConfig | undefined;
+  riskOverlay: StrengthGateConfig | undefined;
   weekOptions: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
   simMap: Record<string, EngineSimulationGroup>;
@@ -207,12 +218,13 @@ function assembleStrategyPageData(options: {
     biasSource,
     currentWeekOpenUtc,
     entryStyle,
+    riskOverlay,
     weekOptions,
     weekResultsByWeek,
     simMap,
     pathSummaryMap,
   } = options;
-  const selectionLabel = entryStyle?.label ?? "Weekly Hold";
+  const selectionLabel = buildSelectionLabel(entryStyle, riskOverlay);
   const orderedWeeks = weekOptions
     .map((weekOpenUtc) => weekResultsByWeek[weekOpenUtc])
     .filter((weekResult): weekResult is WeeklyHoldResult => Boolean(weekResult));
@@ -279,6 +291,7 @@ export async function loadStrategyPageData(
   if (!biasSource) return null;
 
   const entryStyle = getEntryStyle(selection.f1);
+  const riskOverlay = getStrengthGate(selection.f2);
 
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const dataSectionWeeks = await listDataSectionWeeks();
@@ -291,7 +304,7 @@ export async function loadStrategyPageData(
 
   try {
     const currentWeekResultPromise = hasCurrentWeek
-      ? computeWeeklyHold(biasSource, currentWeekOpenUtc, entryStyle)
+      ? computeWeeklyHold(biasSource, currentWeekOpenUtc, entryStyle, riskOverlay)
       : Promise.resolve(null);
     const fingerprint = await buildStrategyFingerprint({
       currentWeekOpenUtc,
@@ -324,6 +337,7 @@ export async function loadStrategyPageData(
           await patchWeekResults({
             biasSource,
             entryStyle,
+            riskOverlay,
             selectionKey,
             targetWeeks: weeksToRefresh,
             weekResultsByWeek: nextWeekResults,
@@ -334,6 +348,7 @@ export async function loadStrategyPageData(
           biasSource,
           currentWeekOpenUtc,
           entryStyle,
+          riskOverlay,
           weekOptions: cachedWeeks,
           weekResultsByWeek: nextWeekResults,
         });
@@ -356,7 +371,7 @@ export async function loadStrategyPageData(
           cachedWeeks,
           biasSource,
           entryStyle,
-          selectionLabel: entryStyle?.label ?? "Weekly Hold",
+          selectionLabel: buildSelectionLabel(entryStyle, riskOverlay),
           historicalWeekResults: nextWeekResults,
         });
 
@@ -364,6 +379,7 @@ export async function loadStrategyPageData(
           biasSource,
           currentWeekOpenUtc,
           entryStyle,
+          riskOverlay,
           weekOptions,
           weekResultsByWeek: nextWeekResults,
           simMap: merged.simMap,
@@ -383,7 +399,7 @@ export async function loadStrategyPageData(
         cachedWeeks,
         biasSource,
         entryStyle,
-        selectionLabel: entryStyle?.label ?? "Weekly Hold",
+        selectionLabel: buildSelectionLabel(entryStyle, riskOverlay),
         historicalWeekResults: nextWeekResults,
       });
 
@@ -391,6 +407,7 @@ export async function loadStrategyPageData(
         biasSource,
         currentWeekOpenUtc,
         entryStyle,
+        riskOverlay,
         weekOptions,
         weekResultsByWeek: nextWeekResults,
         simMap: merged.simMap,
@@ -398,7 +415,7 @@ export async function loadStrategyPageData(
       });
     }
 
-    const multiWeekResult = await computeMultiWeekHold(biasSource, cachedWeeks, entryStyle);
+    const multiWeekResult = await computeMultiWeekHold(biasSource, cachedWeeks, entryStyle, riskOverlay);
     const weekResultsByWeek = Object.fromEntries(
       multiWeekResult.weeks.map((weekResult) => [weekResult.weekOpenUtc, weekResult] as const),
     );
@@ -408,6 +425,7 @@ export async function loadStrategyPageData(
       await patchWeekResults({
         biasSource,
         entryStyle,
+        riskOverlay,
         selectionKey,
         targetWeeks: missingWeeks,
         weekResultsByWeek,
@@ -418,6 +436,7 @@ export async function loadStrategyPageData(
       biasSource,
       currentWeekOpenUtc,
       entryStyle,
+      riskOverlay,
       weekOptions: cachedWeeks,
       weekResultsByWeek,
     });
@@ -440,7 +459,7 @@ export async function loadStrategyPageData(
       cachedWeeks,
       biasSource,
       entryStyle,
-      selectionLabel: entryStyle?.label ?? "Weekly Hold",
+      selectionLabel: buildSelectionLabel(entryStyle, riskOverlay),
       historicalWeekResults: weekResultsByWeek,
     });
 
@@ -448,6 +467,7 @@ export async function loadStrategyPageData(
       biasSource,
       currentWeekOpenUtc,
       entryStyle,
+      riskOverlay,
       weekOptions,
       weekResultsByWeek,
       simMap: merged.simMap,
@@ -733,13 +753,14 @@ function diffChangedWeeks(
 async function patchWeekResults(options: {
   biasSource: BiasSourceConfig;
   entryStyle: EntryStyleConfig | undefined;
+  riskOverlay: StrengthGateConfig | undefined;
   selectionKey: string;
   targetWeeks: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
 }) {
-  const { biasSource, entryStyle, selectionKey, targetWeeks, weekResultsByWeek } = options;
+  const { biasSource, entryStyle, riskOverlay, selectionKey, targetWeeks, weekResultsByWeek } = options;
   const recomputed = await Promise.allSettled(
-    targetWeeks.map((weekOpenUtc) => computeWeeklyHold(biasSource, weekOpenUtc, entryStyle)),
+    targetWeeks.map((weekOpenUtc) => computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, riskOverlay)),
   );
 
   recomputed.forEach((result, index) => {
@@ -863,11 +884,12 @@ async function buildStrategyPageDataFromWeekResults(options: {
   biasSource: BiasSourceConfig;
   currentWeekOpenUtc: string;
   entryStyle: EntryStyleConfig | undefined;
+  riskOverlay: StrengthGateConfig | undefined;
   weekOptions: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
 }): Promise<StrategyPageData> {
-  const { biasSource, entryStyle, weekOptions, weekResultsByWeek } = options;
-  const selectionLabel = entryStyle?.label ?? "Weekly Hold";
+  const { biasSource, entryStyle, riskOverlay, weekOptions, weekResultsByWeek } = options;
+  const selectionLabel = buildSelectionLabel(entryStyle, riskOverlay);
   const orderedWeeks = weekOptions
     .map((weekOpenUtc) => weekResultsByWeek[weekOpenUtc])
     .filter((weekResult): weekResult is WeeklyHoldResult => Boolean(weekResult));

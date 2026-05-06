@@ -206,7 +206,7 @@ export const ENTRY_STYLE_FILTERS: EntryStyleConfig[] = [
   {
     id: "adr_grid",
     label: "ADR Grid",
-    description: "0.20 ADR close-and-rearm grid with FX fill-level currency cap",
+    description: "0.20 ADR close-and-rearm grid",
     hasTradeLog: true,
     plModel: "adr_grid",
     matrixUi: {
@@ -229,8 +229,16 @@ export type StrengthGateConfig = {
 };
 
 export const STRENGTH_GATES: StrengthGateConfig[] = [
-  // ADR normalization is now canonical in the engine.
-  // Keep Filter 2 reserved for future layers (DCA, daily adds, etc.).
+  {
+    id: "none",
+    label: "None",
+    description: "No additional risk overlay",
+  },
+  {
+    id: "exposure_cap",
+    label: "Exposure Cap",
+    description: "Caps fill-level net exposure concentration across FX currencies and non-FX asset classes",
+  },
 ];
 
 const LEGACY_STRENGTH_GATES: StrengthGateConfig[] = [
@@ -262,7 +270,7 @@ export function normalizeFilterSelection(value: {
   return {
     f1: entryStyleId,
     // Backward compatibility: silently absorb old ?f2=adr_normalized URLs.
-    f2: "none",
+    f2: isKnownId(STRENGTH_GATES, rawF2) ? rawF2 : "none",
   };
 }
 

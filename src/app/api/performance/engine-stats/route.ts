@@ -18,6 +18,7 @@ import { computeWeeklyHold, computeMultiWeekHold } from "@/lib/performance/weekl
 import {
   getBiasSource,
   getEntryStyle,
+  getStrengthGate,
   normalizeFilterSelection,
   resolveBiasSourceId,
 } from "@/lib/performance/strategyConfig";
@@ -62,13 +63,14 @@ export async function GET(request: NextRequest) {
     f2: searchParams.get("f2"),
   });
   const entryStyle = getEntryStyle(normalizedFilters.f1);
+  const riskOverlay = getStrengthGate(normalizedFilters.f2);
 
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const weekOpenUtc = searchParams.get("week") ?? currentWeekOpenUtc;
 
   try {
     // Single-week computation
-    const result = await computeWeeklyHold(biasSource, weekOpenUtc, entryStyle);
+    const result = await computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, riskOverlay);
 
     // Multi-week computation for all-time stats
     const dataSectionWeeks = await listDataSectionWeeks();
@@ -76,7 +78,7 @@ export async function GET(request: NextRequest) {
       historicalWeeks: dataSectionWeeks,
       currentWeekOpenUtc,
     }) as string[];
-    const multiWeek = await computeMultiWeekHold(biasSource, weekOptions, entryStyle);
+    const multiWeek = await computeMultiWeekHold(biasSource, weekOptions, entryStyle, riskOverlay);
 
     const currentWeekPath = await computePathSummaryForWeek(result);
     const realizedWeekPaths: BasketPathResult[] = [];

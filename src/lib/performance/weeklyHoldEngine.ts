@@ -36,6 +36,7 @@ import {
   SELECTOR_SELECTIVE_STRATEGY_ID,
   AGREE_3PLUS_STRATEGY_ID,
 } from "@/lib/performance/strategyConfig";
+import type { StrengthGateConfig } from "@/lib/performance/strategyConfig";
 import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 import { loadWeeklyAdrMap, getAdrPct, getTargetAdrPct } from "@/lib/performance/adrLookup";
 import { loadPathBars } from "@/lib/performance/pathBarLoader";
@@ -696,12 +697,12 @@ async function executeAdr(
   };
 }
 
-// ─── ADR Grid executor (0.20 ADR close/rearm + FX currency cap) ─────────────
+// ─── ADR Grid executor (0.20 ADR close/rearm + optional exposure cap) ───────
 
 const ADR_GRID_SPACING = 0.20;
 const ADR_GRID_RESET_ADR = 1.0;
 const ADR_GRID_MAX_LEVELS_PER_SIDE = 50;
-const ADR_GRID_FX_CURRENCY_CAP = 1.5;
+const ADR_GRID_EXPOSURE_CAP = 1.5;
 
 type AdrGridTemplate = {
   symbol: string;
@@ -822,30 +823,35 @@ function getAdrGridMark(engine: AdrGridEngine, timelines: Map<string, AdrGridTim
   return timelines.get(engine.symbol)?.markBars[barIndex]?.closePrice ?? engine.openPrice;
 }
 
-function getActiveFxCurrencyNet(engines: AdrGridEngine[]) {
-  const net = new Map<string, number>();
-  for (const engine of engines) {
-    if (engine.assetClass !== "fx") continue;
-    const exposure = activeAdrGridExposure(engine);
-    if (exposure <= 1e-9) continue;
+function getExposureDeltas(engine: AdrGridEngine, exposure: number) {
+  const sign = engine.direction === "LONG" ? 1 : -1;
+  if (engine.assetClass === "fx" && engine.symbol.length >= 6) {
     const base = engine.symbol.slice(0, 3);
     const quote = engine.symbol.slice(3, 6);
-    const sign = engine.direction === "LONG" ? 1 : -1;
-    net.set(base, (net.get(base) ?? 0) + sign * exposure);
-    net.set(quote, (net.get(quote) ?? 0) - sign * exposure);
+    return [
+      { key: `fx:${base}`, delta: sign * exposure },
+      { key: `fx:${quote}`, delta: -sign * exposure },
+    ];
+  }
+  return [{ key: `asset:${engine.assetClass}`, delta: sign * exposure }];
+}
+
+function getActiveExposureNet(engines: AdrGridEngine[]) {
+  const net = new Map<string, number>();
+  for (const engine of engines) {
+    const exposure = activeAdrGridExposure(engine);
+    if (exposure <= 1e-9) continue;
+    for (const { key, delta } of getExposureDeltas(engine, exposure)) {
+      net.set(key, (net.get(key) ?? 0) + delta);
+    }
   }
   return net;
 }
 
-function wouldBreachFxCurrencyCap(engine: AdrGridEngine, fillWeight: number, engines: AdrGridEngine[]) {
-  if (engine.assetClass !== "fx") return false;
-  const net = getActiveFxCurrencyNet(engines);
-  const base = engine.symbol.slice(0, 3);
-  const quote = engine.symbol.slice(3, 6);
-  const sign = engine.direction === "LONG" ? 1 : -1;
-  return (
-    Math.abs((net.get(base) ?? 0) + sign * fillWeight) > ADR_GRID_FX_CURRENCY_CAP ||
-    Math.abs((net.get(quote) ?? 0) - sign * fillWeight) > ADR_GRID_FX_CURRENCY_CAP
+function wouldBreachExposureCap(engine: AdrGridEngine, fillWeight: number, engines: AdrGridEngine[]) {
+  const net = getActiveExposureNet(engines);
+  return getExposureDeltas(engine, fillWeight).some(({ key, delta }) =>
+    Math.abs((net.get(key) ?? 0) + delta) > ADR_GRID_EXPOSURE_CAP,
   );
 }
 
@@ -887,7 +893,9 @@ function closeAdrGridFill(params: {
 async function executeAdrGrid(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
+  riskOverlay?: StrengthGateConfig,
 ): Promise<WeeklyHoldResult> {
+  const exposureCapEnabled = riskOverlay?.id === "exposure_cap";
   const directions = await resolveDirections(biasSource, weekOpenUtc);
   const signals = buildCanonicalSignals(directions);
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
@@ -956,7 +964,7 @@ async function executeAdrGrid(
           ? (engine.direction === "LONG" ? bar.lowPrice <= level.triggerPrice : bar.highPrice >= level.triggerPrice)
           : (engine.direction === "LONG" ? bar.highPrice >= level.triggerPrice : bar.lowPrice <= level.triggerPrice);
         if (!triggered) continue;
-        if (wouldBreachFxCurrencyCap(engine, level.weight, engines)) continue;
+        if (exposureCapEnabled && wouldBreachExposureCap(engine, level.weight, engines)) continue;
 
         engine.fills.push({
           levelIndex: level.index,
@@ -1071,6 +1079,7 @@ async function executeAdrGrid(
 type StrategyExecutor = (
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
+  riskOverlay?: StrengthGateConfig,
 ) => Promise<WeeklyHoldResult>;
 
 const EXECUTORS: Record<string, StrategyExecutor> = {
@@ -1085,15 +1094,14 @@ export async function computeWeeklyHold(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
   entryStyle?: EntryStyleConfig,
-  _legacyStrengthGate?: unknown,
+  riskOverlay?: StrengthGateConfig,
 ): Promise<WeeklyHoldResult> {
-  void _legacyStrengthGate;
   // Route to the correct executor based on plModel
   const plModel = entryStyle?.plModel ?? "weekly_hold";
   const executor = EXECUTORS[plModel];
   if (executor) {
     console.log(`[engine] Routing to ${plModel} executor for ${weekOpenUtc}`);
-    const result = await executor(biasSource, weekOpenUtc);
+    const result = await executor(biasSource, weekOpenUtc, riskOverlay);
     return applyAdrNormalization(result);
   }
 
@@ -1181,13 +1189,12 @@ export async function computeMultiWeekHold(
   biasSource: BiasSourceConfig,
   weekOpenUtcs: string[],
   entryStyle?: EntryStyleConfig,
-  _legacyStrengthGate?: unknown,
+  riskOverlay?: StrengthGateConfig,
 ): Promise<MultiWeekResult> {
-  void _legacyStrengthGate;
   const computedWeeks: WeeklyHoldResult[] = [];
   for (const weekOpenUtc of weekOpenUtcs) {
     try {
-      const result = await computeWeeklyHold(biasSource, weekOpenUtc, entryStyle);
+      const result = await computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, riskOverlay);
       computedWeeks.push(result);
     } catch (err) {
       console.warn(`[engine] Skipping week ${weekOpenUtc}:`, err instanceof Error ? err.message : err);

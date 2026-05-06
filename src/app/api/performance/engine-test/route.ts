@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { computeWeeklyHold } from "@/lib/performance/weeklyHoldEngine";
 import {
   getEntryStyle,
+  getStrengthGate,
   getStrategy,
   normalizeFilterSelection,
   resolveStrategyId,
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
     f2: searchParams.get("f2"),
   });
   const entryStyle = getEntryStyle(normalizedFilters.f1);
+  const riskOverlay = getStrengthGate(normalizedFilters.f2);
   const weekOpenUtc = searchParams.get("week") ?? "2026-03-15T23:00:00.000Z";
 
   console.log(
@@ -41,7 +43,7 @@ export async function GET(request: NextRequest) {
   );
 
   try {
-    const result = await computeWeeklyHold(strategy, weekOpenUtc, entryStyle);
+    const result = await computeWeeklyHold(strategy, weekOpenUtc, entryStyle, riskOverlay);
     return NextResponse.json({
       params: {
         strategy: strategyId,

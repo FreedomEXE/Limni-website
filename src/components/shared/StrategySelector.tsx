@@ -167,7 +167,7 @@ export default function StrategySelector() {
       {STRENGTH_GATES.length > 0 && (
         <div>
           <label htmlFor="intraday-filter" className={labelClasses}>
-            Filter 2
+            Risk Overlay
           </label>
           <select
             id="intraday-filter"
