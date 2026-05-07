@@ -523,7 +523,9 @@ function parseTier(raw: unknown): number | null {
 async function executeAdr(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
+  riskOverlay?: StrengthGateConfig,
 ): Promise<WeeklyHoldResult> {
+  const exposureCapEnabled = riskOverlay?.id === "exposure_cap";
   // Step 1: Get the bias source's direction signals for this week.
   // This determines WHICH trades to include — only trades where the
   // bias source agrees with the scanner's direction pass through.
@@ -677,21 +679,22 @@ async function executeAdr(
     }
   }
 
-  const totalReturn = trades.reduce((s, t) => s + t.returnPct, 0);
-  const wins = trades.filter((t) => t.returnPct > 0).length;
-  const losses = trades.filter((t) => t.returnPct <= 0).length;
+  const cappedTrades = exposureCapEnabled ? applyExposureCapToPlannedTrades(trades) : trades;
+  const totalReturn = cappedTrades.reduce((s, t) => s + t.returnPct, 0);
+  const wins = cappedTrades.filter((t) => t.returnPct > 0).length;
+  const losses = cappedTrades.filter((t) => t.returnPct <= 0).length;
 
-  console.log(`[engine] ADR executor (${biasSource.id}): ${weekOpenUtc} → ${trades.length} trades (${skippedByDirection} filtered out), ${totalReturn.toFixed(2)}% return`);
+  console.log(`[engine] ADR executor (${biasSource.id}): ${weekOpenUtc} → ${cappedTrades.length} trades (${skippedByDirection} filtered out), ${totalReturn.toFixed(2)}% return`);
 
   return {
     weekOpenUtc,
     biasSourceId: biasSource.id,
-    trades,
+    trades: cappedTrades,
     totalReturnPct: totalReturn,
     winCount: wins,
     lossCount: losses,
-    winRate: trades.length > 0 ? (wins / trades.length) * 100 : 0,
-    tradeCount: trades.length,
+    winRate: cappedTrades.length > 0 ? (wins / cappedTrades.length) * 100 : 0,
+    tradeCount: cappedTrades.length,
     signals,
     isRealized,
   };
@@ -702,7 +705,7 @@ async function executeAdr(
 const ADR_GRID_SPACING = 0.20;
 const ADR_GRID_RESET_ADR = 1.0;
 const ADR_GRID_MAX_LEVELS_PER_SIDE = 50;
-const ADR_GRID_EXPOSURE_CAP = 1.5;
+const EXPOSURE_CAP_LIMIT = 1.5;
 
 type AdrGridTemplate = {
   symbol: string;
@@ -836,6 +839,43 @@ function getExposureDeltas(engine: AdrGridEngine, exposure: number) {
   return [{ key: `asset:${engine.assetClass}`, delta: sign * exposure }];
 }
 
+function getTradeExposureDeltas(trade: Pick<WeeklyHoldTrade, "assetClass" | "direction" | "symbol" | "weight">) {
+  const sign = trade.direction === "LONG" ? 1 : -1;
+  const exposure = trade.weight ?? 1;
+  if (trade.assetClass === "fx" && trade.symbol.length >= 6) {
+    const base = trade.symbol.slice(0, 3);
+    const quote = trade.symbol.slice(3, 6);
+    return [
+      { key: `fx:${base}`, delta: sign * exposure },
+      { key: `fx:${quote}`, delta: -sign * exposure },
+    ];
+  }
+  return [{ key: `asset:${trade.assetClass}`, delta: sign * exposure }];
+}
+
+function wouldBreachNetExposureCap(
+  deltas: Array<{ key: string; delta: number }>,
+  net: Map<string, number>,
+) {
+  return deltas.some(({ key, delta }) =>
+    Math.abs((net.get(key) ?? 0) + delta) > EXPOSURE_CAP_LIMIT,
+  );
+}
+
+function applyExposureCapToPlannedTrades(trades: WeeklyHoldTrade[]) {
+  const net = new Map<string, number>();
+  const kept: WeeklyHoldTrade[] = [];
+  for (const trade of trades) {
+    const deltas = getTradeExposureDeltas(trade);
+    if (wouldBreachNetExposureCap(deltas, net)) continue;
+    kept.push(trade);
+    for (const { key, delta } of deltas) {
+      net.set(key, (net.get(key) ?? 0) + delta);
+    }
+  }
+  return kept;
+}
+
 function getActiveExposureNet(engines: AdrGridEngine[]) {
   const net = new Map<string, number>();
   for (const engine of engines) {
@@ -850,9 +890,7 @@ function getActiveExposureNet(engines: AdrGridEngine[]) {
 
 function wouldBreachExposureCap(engine: AdrGridEngine, fillWeight: number, engines: AdrGridEngine[]) {
   const net = getActiveExposureNet(engines);
-  return getExposureDeltas(engine, fillWeight).some(({ key, delta }) =>
-    Math.abs((net.get(key) ?? 0) + delta) > ADR_GRID_EXPOSURE_CAP,
-  );
+  return wouldBreachNetExposureCap(getExposureDeltas(engine, fillWeight), net);
 }
 
 function closeAdrGridFill(params: {
@@ -1163,21 +1201,24 @@ export async function computeWeeklyHold(
     });
   }
 
-  const totalReturn = trades.reduce((s, t) => s + t.returnPct, 0);
-  const wins = trades.filter((t) => t.returnPct > 0).length;
-  const losses = trades.filter((t) => t.returnPct <= 0).length;
+  const cappedTrades = riskOverlay?.id === "exposure_cap"
+    ? applyExposureCapToPlannedTrades(trades)
+    : trades;
+  const totalReturn = cappedTrades.reduce((s, t) => s + t.returnPct, 0);
+  const wins = cappedTrades.filter((t) => t.returnPct > 0).length;
+  const losses = cappedTrades.filter((t) => t.returnPct <= 0).length;
   const missingPriceSymbols = Array.from(missingPriceSymbolSet).sort();
   logMissingWeeklyPrices(biasSource.id, weekOpenUtc, missingPriceSymbols);
 
   const result: WeeklyHoldResult = {
     weekOpenUtc,
     biasSourceId: biasSource.id,
-    trades,
+    trades: cappedTrades,
     totalReturnPct: totalReturn,
     winCount: wins,
     lossCount: losses,
-    winRate: trades.length > 0 ? (wins / trades.length) * 100 : 0,
-    tradeCount: trades.length,
+    winRate: cappedTrades.length > 0 ? (wins / cappedTrades.length) * 100 : 0,
+    tradeCount: cappedTrades.length,
     signals,
     isRealized,
     missingPriceSymbols,

@@ -107,7 +107,7 @@ export default function MatrixViewSection({
       engineSimMap: null,
       engineWeekResults: initialStrategyData.engineWeekResults,
       sidebarStats: initialStrategyData.sidebarStats,
-    });
+    }, "matrix");
   }, [initialSelection, initialSelectionKey, initialStrategyData]);
 
   useEffect(() => {
@@ -135,30 +135,34 @@ export default function MatrixViewSection({
         return;
       }
 
-      const payload = getStrategyClientPayload(selectedSelection);
+      const payload = getStrategyClientPayload(selectedSelection, "matrix");
       if (payload !== undefined) {
-        const nextData = payload
+        const nextData = payload && (payload.engineWeekResults || payload.sidebarStats)
           ? {
               engineWeekResults: payload.engineWeekResults,
               sidebarStats: payload.sidebarStats,
             }
           : null;
         if (!active) return;
-        setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
+        if (nextData) {
+          setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
+        }
         setStableStrategyData(nextData);
         setLoadedSelectionKey(selectedSelectionKey);
         return;
       }
 
-      const fetched = await fetchStrategyClientPayload(selectedSelection);
+      const fetched = await fetchStrategyClientPayload(selectedSelection, "matrix");
       if (!active) return;
-      const nextData = fetched
+      const nextData = fetched && (fetched.engineWeekResults || fetched.sidebarStats)
         ? {
             engineWeekResults: fetched.engineWeekResults,
             sidebarStats: fetched.sidebarStats,
           }
         : null;
-      setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
+      if (nextData) {
+        setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
+      }
       setStableStrategyData(nextData);
       setLoadedSelectionKey(selectedSelectionKey);
     };

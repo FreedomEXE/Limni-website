@@ -19,11 +19,15 @@ import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
-import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
+import { getEntryStyle, getStrengthGate, normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import {
+  buildStrategySelectionKey,
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
+import { readStrategyArtifactEntry } from "@/lib/performance/strategyArtifactCache";
+import { buildStrategyArtifactEngineVersion } from "@/lib/performance/strategyArtifactVersions";
 import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
+import { toMatrixClientPayload } from "@/lib/performance/strategyClientPayload";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +65,13 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
     f1: normalizedFilters.f1,
     f2: normalizedFilters.f2,
   };
+  const initialEntryStyle = getEntryStyle(initialStrategySelection.f1);
+  const initialRiskOverlay = getStrengthGate(initialStrategySelection.f2);
+  const initialSelectionKey = buildStrategySelectionKey(initialStrategySelection);
+  const initialExpectedEngineVersion = buildStrategyArtifactEngineVersion({
+    entryStyle: initialEntryStyle,
+    riskOverlay: initialRiskOverlay,
+  });
 
   // Shared week switching — same logic as Sentiment/Antikythera
   const currentWeekOpen = getDisplayWeekOpenUtc();
@@ -77,7 +88,13 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
   }) as string | null;
 
   const [initialStrategyData, weeklyReturnEntries] = await Promise.all([
-    loadStrategyPageData(initialStrategySelection),
+    initialEntryStyle?.plModel === "adr_grid"
+      ? readStrategyArtifactEntry(initialSelectionKey).then((entry) => (
+          entry?.fingerprint.engineVersion === initialExpectedEngineVersion
+            ? loadStrategyPageData(initialStrategySelection)
+            : null
+        ))
+      : loadStrategyPageData(initialStrategySelection),
     Promise.all(
       weeks.map(async (week) => [week, await getWeeklyPairReturns(week)] as const),
     ),
@@ -95,7 +112,7 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
         initialStrategyData={
           initialStrategyData
             ? {
-                engineWeekResults: initialStrategyData.weekResults ?? null,
+                engineWeekResults: toMatrixClientPayload(initialStrategyData).engineWeekResults,
                 sidebarStats: initialStrategyData.sidebarStats ?? null,
               }
             : null

@@ -1,40 +1,28 @@
-import type { EngineGridProps, EngineSidebarStats, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import type { RuntimeStrategySelection } from "@/lib/performance/strategySelection";
-import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
+import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
 
-export type StrategyClientPayload = {
-  engineWeekMap: Record<string, EngineGridProps> | null;
-  engineSimMap: Record<string, EngineSimulationGroup> | null;
-  engineWeekResults: Record<string, WeeklyHoldResult> | null;
-  sidebarStats: EngineSidebarStats | null;
-  artifactMeta?: {
-    status: "hit" | "patched" | "miss";
-    selectionKey: string;
-    cachedAtUtc: string | null;
-    refreshedWeeks: string[];
-    removedWeeks: string[];
-    missingWeeks: string[];
-  };
-};
+export type StrategyClientScope = "performance" | "matrix";
 
 const payloadCache = new Map<string, StrategyClientPayload | null>();
 const inflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
 
-function buildSelectionKey(selection: RuntimeStrategySelection) {
-  return `${selection.strategy}:${selection.f1}:${selection.f2}`;
+function buildSelectionKey(selection: RuntimeStrategySelection, scope: StrategyClientScope) {
+  return `${scope}:${selection.strategy}:${selection.f1}:${selection.f2}`;
 }
 
 export function getStrategyClientPayload(
   selection: RuntimeStrategySelection,
+  scope: StrategyClientScope = "performance",
 ): StrategyClientPayload | null | undefined {
-  return payloadCache.get(buildSelectionKey(selection));
+  return payloadCache.get(buildSelectionKey(selection, scope));
 }
 
 export function setStrategyClientPayload(
   selection: RuntimeStrategySelection,
   payload: StrategyClientPayload | null,
+  scope: StrategyClientScope = "performance",
 ) {
-  payloadCache.set(buildSelectionKey(selection), payload);
+  payloadCache.set(buildSelectionKey(selection, scope), payload);
 }
 
 function isStrategyClientPayload(value: unknown): value is StrategyClientPayload {
@@ -50,8 +38,9 @@ function isStrategyClientPayload(value: unknown): value is StrategyClientPayload
 
 export async function fetchStrategyClientPayload(
   selection: RuntimeStrategySelection,
+  scope: StrategyClientScope = "performance",
 ): Promise<StrategyClientPayload | null> {
-  const cacheKey = buildSelectionKey(selection);
+  const cacheKey = buildSelectionKey(selection, scope);
   if (payloadCache.has(cacheKey)) {
     return payloadCache.get(cacheKey) ?? null;
   }
@@ -61,7 +50,7 @@ export async function fetchStrategyClientPayload(
   }
 
   const request = fetch(
-    `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}`,
+    `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}&scope=${scope}`,
     { method: "GET" },
   )
     .then(async (response) => {
@@ -81,7 +70,9 @@ export async function fetchStrategyClientPayload(
       if (!isStrategyClientPayload(data)) {
         throw new Error("Unexpected strategy payload shape");
       }
-      payloadCache.set(cacheKey, data);
+      if (data.artifactMeta?.cachedAtUtc !== null) {
+        payloadCache.set(cacheKey, data);
+      }
       return data;
     })
     .catch((error) => {

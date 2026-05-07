@@ -31,7 +31,7 @@ import {
   getStrategyClientPayload,
   setStrategyClientPayload,
 } from "@/lib/performance/strategyClientCache";
-import { getEntryStyle, getStrategy } from "@/lib/performance/strategyConfig";
+import { getEntryStyle, getStrengthGate, getStrategy } from "@/lib/performance/strategyConfig";
 
 type StrategyBootstrapEntry = {
   engineWeekMap: NonNullable<ComponentProps<typeof PerformanceViewSection>["engineWeekMap"]> | null;
@@ -76,9 +76,9 @@ export default function PerformanceStrategyViewSection({
     setStrategyClientPayload(initialSelection, {
       engineWeekMap: initialEntry.engineWeekMap,
       engineSimMap: initialEntry.engineSimMap,
-      engineWeekResults: initialEntry.engineWeekResults ?? null,
+      engineWeekResults: null,
       sidebarStats: initialEntry.sidebarStats,
-    });
+    }, "performance");
   }, [initialEntry, initialKey, initialSelection]);
 
   useEffect(() => {
@@ -106,32 +106,36 @@ export default function PerformanceStrategyViewSection({
         return;
       }
 
-      const payload = getStrategyClientPayload(selectedSelection);
+      const payload = getStrategyClientPayload(selectedSelection, "performance");
       if (payload !== undefined) {
-        const nextEntry = payload
+        const nextEntry = payload && (payload.engineWeekMap || payload.engineSimMap || payload.sidebarStats)
           ? {
               engineWeekMap: payload.engineWeekMap,
               engineSimMap: payload.engineSimMap,
               sidebarStats: payload.sidebarStats,
-            }
+        }
           : null;
         if (!active) return;
-        setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
+        if (nextEntry) {
+          setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
+        }
         setStableEntry(nextEntry);
         setLoadedSelectionKey(selectedSelectionKey);
         return;
       }
 
-      const fetched = await fetchStrategyClientPayload(selectedSelection);
+      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
       if (!active) return;
-      const nextEntry = fetched
+      const nextEntry = fetched && (fetched.engineWeekMap || fetched.engineSimMap || fetched.sidebarStats)
         ? {
             engineWeekMap: fetched.engineWeekMap,
             engineSimMap: fetched.engineSimMap,
             sidebarStats: fetched.sidebarStats,
           }
         : null;
-      setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
+      if (nextEntry) {
+        setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
+      }
       setStableEntry(nextEntry);
       setLoadedSelectionKey(selectedSelectionKey);
     };
@@ -157,6 +161,12 @@ export default function PerformanceStrategyViewSection({
   const strategyDescription = getStrategy(selectedSelection.strategy)?.description ?? null;
   const strategyLabel = getStrategy(selectedSelection.strategy)?.label ?? selectedSelection.strategy;
   const entryStyleLabel = getEntryStyle(selectedSelection.f1)?.label ?? selectedSelection.f1;
+  const riskOverlay = getStrengthGate(selectedSelection.f2);
+  const selectionLabel = [
+    strategyLabel,
+    entryStyleLabel,
+    riskOverlay && riskOverlay.id !== "none" ? riskOverlay.label : null,
+  ].filter(Boolean).join(" · ");
 
   return (
     <div className="space-y-4">
@@ -166,10 +176,22 @@ export default function PerformanceStrategyViewSection({
             Performance
           </h1>
           <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-            {strategyLabel} · {entryStyleLabel}
+            {selectionLabel}
           </p>
         </div>
       </header>
+      {loadedSelectionKey !== selectedSelectionKey ? (
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 text-sm text-[color:var(--muted)] shadow-sm">
+          Loading {selectionLabel}.
+        </section>
+      ) : !stableEntry ? (
+        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+          <p className="text-sm font-semibold text-[var(--foreground)]">Strategy artifact not ready</p>
+          <p className="mt-2 text-sm text-[color:var(--muted)]">
+            {selectionLabel} has not been precomputed yet. Run the artifact warmer for this selection, then apply it again.
+          </p>
+        </section>
+      ) : (
       <PerformanceViewSection
         {...performanceProps}
         engineWeekMap={stableEntry?.engineWeekMap ?? null}
@@ -177,6 +199,7 @@ export default function PerformanceStrategyViewSection({
         strategyDescription={strategyDescription}
         notesStorageKey={selectedSelectionKey}
       />
+      )}
     </div>
   );
 }

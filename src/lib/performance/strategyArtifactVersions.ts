@@ -14,7 +14,7 @@ const ENTRY_ENGINE_VERSIONS: Record<string, string> = {
 
 const RISK_OVERLAY_VERSIONS: Record<string, string> = {
   none: "risk-overlay-none-v1",
-  exposure_cap: "risk-overlay-exposure-cap-v1",
+  exposure_cap: "risk-overlay-exposure-cap-v2",
 };
 
 const PATH_SIMULATION_VERSION = "path-simulation-v1";

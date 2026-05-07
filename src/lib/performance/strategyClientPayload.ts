@@ -1,0 +1,78 @@
+import type { EngineGridProps, EngineSidebarStats, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
+import type { StrategyPageData } from "@/lib/performance/strategyPageData";
+import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
+
+export type StrategyClientPayload = {
+  engineWeekMap: Record<string, EngineGridProps> | null;
+  engineSimMap: Record<string, EngineSimulationGroup> | null;
+  engineWeekResults: Record<string, WeeklyHoldResult> | null;
+  sidebarStats: EngineSidebarStats | null;
+  artifactMeta?: StrategyPageData["artifactMeta"];
+};
+
+function stripGridProps(grid: EngineGridProps): EngineGridProps {
+  const stripModel = (model: EngineGridProps["combined"]["models"][number]) => ({
+    ...model,
+    pair_details: model.pair_details.map((detail) => ({
+      ...detail,
+      children: undefined,
+      tradeDetail: undefined,
+    })),
+  });
+
+  return {
+    ...grid,
+    combined: {
+      ...grid.combined,
+      models: grid.combined.models.map(stripModel),
+    },
+    perAsset: grid.perAsset.map((section) => ({
+      ...section,
+      models: section.models.map(stripModel),
+    })),
+  };
+}
+
+function stripWeekResult(result: WeeklyHoldResult): WeeklyHoldResult {
+  return {
+    ...result,
+    trades: result.trades.map((trade) => ({
+      ...trade,
+      detail: undefined,
+    })),
+  };
+}
+
+function stripWeekMap(weekMap: StrategyPageData["weekMap"] | null | undefined) {
+  if (!weekMap) return null;
+  return Object.fromEntries(
+    Object.entries(weekMap).map(([week, grid]) => [week, stripGridProps(grid)]),
+  );
+}
+
+function stripWeekResults(weekResults: StrategyPageData["weekResults"] | null | undefined) {
+  if (!weekResults) return null;
+  return Object.fromEntries(
+    Object.entries(weekResults).map(([week, result]) => [week, stripWeekResult(result)]),
+  );
+}
+
+export function toPerformanceClientPayload(data: StrategyPageData): StrategyClientPayload {
+  return {
+    engineWeekMap: stripWeekMap(data.weekMap),
+    engineSimMap: data.simMap ?? null,
+    engineWeekResults: null,
+    sidebarStats: data.sidebarStats ?? null,
+    artifactMeta: data.artifactMeta,
+  };
+}
+
+export function toMatrixClientPayload(data: StrategyPageData): StrategyClientPayload {
+  return {
+    engineWeekMap: null,
+    engineSimMap: null,
+    engineWeekResults: stripWeekResults(data.weekResults),
+    sidebarStats: data.sidebarStats ?? null,
+    artifactMeta: data.artifactMeta,
+  };
+}
