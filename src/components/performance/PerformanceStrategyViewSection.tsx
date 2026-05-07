@@ -16,6 +16,7 @@
 
 import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
+import ArtifactLoadingPanel from "@/components/shared/ArtifactLoadingPanel";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import {
   buildStrategySelectionKey,
@@ -174,9 +175,14 @@ export default function PerformanceStrategyViewSection({
         </div>
       </header>
       {loadingSelection && loadedSelectionKey !== selectedSelectionKey ? (
-        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[color:var(--muted)]">
-          Loading artifacts, checking source fingerprints, and warming strategy cache...
-        </div>
+        <ArtifactLoadingPanel
+          title="Loading strategy update"
+          phases={[
+            "Checking artifact cache",
+            "Comparing source fingerprints",
+            "Warming current-week cache",
+          ]}
+        />
       ) : null}
       <PerformanceViewSection
         {...performanceProps}

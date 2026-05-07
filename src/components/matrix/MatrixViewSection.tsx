@@ -20,6 +20,7 @@ import CryptoBoard from "@/components/flagship/CryptoBoard";
 import FlagshipBoard from "@/components/flagship/FlagshipBoard";
 import MatrixControls, { type MatrixTab } from "@/components/matrix/MatrixControls";
 import RiskBoard from "@/components/matrix/RiskBoard";
+import ArtifactLoadingPanel from "@/components/shared/ArtifactLoadingPanel";
 import type { AssetClass } from "@/lib/cotMarkets";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import {
@@ -216,9 +217,14 @@ export default function MatrixViewSection({
   return (
     <div className="space-y-4">
       {loadingSelection && loadedSelectionKey !== selectedSelectionKey ? (
-        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[color:var(--muted)]">
-          Loading artifacts, checking source fingerprints, and warming strategy cache...
-        </div>
+        <ArtifactLoadingPanel
+          title="Loading matrix update"
+          phases={[
+            "Checking artifact cache",
+            "Comparing source fingerprints",
+            "Preparing matrix signals",
+          ]}
+        />
       ) : null}
       <MatrixControls
         weeks={weeks}

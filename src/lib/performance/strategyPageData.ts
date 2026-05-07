@@ -49,7 +49,10 @@ import {
   readStrategyArtifactEntry,
   type StrategyArtifactFingerprint,
 } from "@/lib/performance/strategyArtifactCache";
-import { SELECTOR_ENGINE_VERSION } from "@/lib/performance/selectorEngine";
+import {
+  buildStrategyArtifactEngineVersion,
+  buildStrategyRuntimeVersionKey,
+} from "@/lib/performance/strategyArtifactVersions";
 import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
@@ -64,8 +67,6 @@ import {
 } from "@/lib/performance/basketPathEngine";
 import { CANONICAL_PATH_RESOLUTION } from "@/lib/performance/pathResolution";
 
-const STRATEGY_ARTIFACT_ENGINE_VERSION =
-  process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v22";
 const STRATEGY_CURRENT_WEEK_CACHE_TTL_MS = Number(
   process.env.STRATEGY_CURRENT_WEEK_CACHE_TTL_MS ?? "300000",
 );
@@ -254,8 +255,7 @@ async function computeCurrentWeekResultCached(options: {
   } = options;
   const cacheKey = [
     "strategyCurrentWeek",
-    STRATEGY_ARTIFACT_ENGINE_VERSION,
-    SELECTOR_ENGINE_VERSION,
+    buildStrategyRuntimeVersionKey(),
     selectionKey,
     currentWeekOpenUtc,
     entryStyle?.id ?? "weekly_hold",
@@ -285,8 +285,7 @@ async function computeCurrentWeekPathArtifactCached(options: {
   } = options;
   const cacheKey = [
     "strategyCurrentWeekPath",
-    STRATEGY_ARTIFACT_ENGINE_VERSION,
-    SELECTOR_ENGINE_VERSION,
+    buildStrategyRuntimeVersionKey(),
     selectionKey,
     entryStyle?.id ?? "weekly_hold",
     buildWeekResultRuntimeSignature(weekResult),
@@ -447,6 +446,7 @@ export async function loadStrategyPageData(
     const fingerprint = await buildStrategyFingerprint({
       currentWeekOpenUtc,
       entryStyle,
+      riskOverlay,
       weekOptions: cachedWeeks,
     });
 
@@ -766,18 +766,20 @@ async function buildStrategyFingerprint(options: {
   weekOptions: string[];
   currentWeekOpenUtc: string;
   entryStyle: EntryStyleConfig | undefined;
+  riskOverlay: StrengthGateConfig | undefined;
 }): Promise<StrategyArtifactFingerprint> {
-  const { weekOptions, currentWeekOpenUtc, entryStyle } = options;
+  const { weekOptions, currentWeekOpenUtc, entryStyle, riskOverlay } = options;
+  const engineVersion = buildStrategyArtifactEngineVersion({ entryStyle, riskOverlay });
   const fingerprintCacheKey = [
     "strategyFingerprint",
-    STRATEGY_ARTIFACT_ENGINE_VERSION,
-    SELECTOR_ENGINE_VERSION,
+    engineVersion,
     currentWeekOpenUtc,
     entryStyle?.id ?? "weekly_hold",
+    riskOverlay?.id ?? "none",
     buildWeekOptionsSignature(weekOptions),
   ].join(":");
   return {
-    engineVersion: `${STRATEGY_ARTIFACT_ENGINE_VERSION}:${SELECTOR_ENGINE_VERSION}`,
+    engineVersion,
     currentWeekOpenUtc,
     weekOptionsSignature: buildWeekOptionsSignature(weekOptions),
     weekFingerprints: await getOrSetRuntimeCache(
