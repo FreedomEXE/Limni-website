@@ -44,10 +44,8 @@ import {
 } from "@/lib/performance/strategyConfig";
 import {
   toRuntimeStrategySelection,
-  buildStrategySelectionKey,
 } from "@/lib/performance/strategySelection";
 import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
-import { loadVisibleStrategyBootstrapMap } from "@/lib/performance/strategyBootstrap.server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -1124,26 +1122,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     f1: normalizedFilters.f1,
     f2: normalizedFilters.f2,
   };
-  // Guardrail: Performance stays fast only if the visible strategy/filter grid
-  // is loaded once here and switched locally in the client view.
-  const strategyBootstrapPairs = await loadVisibleStrategyBootstrapMap();
-  const strategyBootstrapMap = Object.fromEntries(
-    strategyBootstrapPairs.map(([key, data]) => [
-      key,
-      data
-        ? {
-            engineWeekMap: data.weekMap ?? null,
-            engineSimMap: data.simMap ?? null,
-            engineWeekResults: data.weekResults ?? null,
-            sidebarStats: data.sidebarStats ?? null,
-          }
-        : null,
-    ]),
-  );
-  const initialStrategyKey = buildStrategySelectionKey(initialStrategySelection);
-  const initialStrategyData =
-    strategyBootstrapPairs.find(([key]) => key === initialStrategyKey)?.[1] ??
-    await loadStrategyPageData(initialStrategySelection);
+  const initialStrategyData = await loadStrategyPageData(initialStrategySelection);
 
   const universal = buildSystemMaps({
     family: "universal",
@@ -1239,7 +1218,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                 }
               : null
           }
-          initialEntries={strategyBootstrapMap}
           weekOptions={["all", ...weekSelectorOptions]}
           currentWeek={currentWeekOpenUtc}
           initialWeek={selectedWeek}

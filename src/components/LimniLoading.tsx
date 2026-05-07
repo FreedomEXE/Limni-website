@@ -1,14 +1,11 @@
 import Image from "next/image";
-import LoadingStatusText from "@/components/shared/LoadingStatusText";
 
 export default function LimniLoading({
   label = "Loading...",
   compact = false,
-  phases = [],
 }: {
   label?: string;
   compact?: boolean;
-  phases?: string[];
 }) {
   const sizeClass = compact ? "h-20 w-20" : "h-28 w-28";
   const iconSize = compact ? 50 : 68;
@@ -39,7 +36,7 @@ export default function LimniLoading({
           </div>
         </div>
         <p className="text-xs uppercase tracking-[0.25em] text-[color:var(--muted)]">
-          <LoadingStatusText finalLabel={label} phases={phases} />
+          {label}
         </p>
       </div>
     </div>

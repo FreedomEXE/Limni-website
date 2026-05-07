@@ -5,9 +5,9 @@
  * File: PerformanceStrategyViewSection.tsx
  *
  * Description:
- * Client-side strategy switcher for Performance. Receives a preloaded
- * strategy artifact map and swaps the active engine payload locally
- * when the shared sidebar commits a new strategy selection.
+ * Client-side strategy switcher for Performance. Receives the active
+ * strategy payload from the server and caches subsequent selections
+ * locally after the shared sidebar commits them.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -46,21 +46,18 @@ type PerformanceStrategyViewSectionProps = Omit<
 > & {
   initialSelection: RuntimeStrategySelection;
   initialEntry: StrategyBootstrapEntry | null;
-  initialEntries?: Record<string, StrategyBootstrapEntry | null>;
 };
 
 export default function PerformanceStrategyViewSection({
   initialSelection,
   initialEntry,
-  initialEntries = {},
   ...performanceProps
 }: PerformanceStrategyViewSectionProps) {
   const initialKey = buildStrategySelectionKey(initialSelection);
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
-  const [entryCache, setEntryCache] = useState<Record<string, StrategyBootstrapEntry | null>>(() => ({
-    ...initialEntries,
-    ...(initialEntry ? { [initialKey]: initialEntry } : {}),
-  }));
+  const [entryCache, setEntryCache] = useState<Record<string, StrategyBootstrapEntry | null>>(() => (
+    initialEntry ? { [initialKey]: initialEntry } : {}
+  ));
   const [stableEntry, setStableEntry] = useState<StrategyBootstrapEntry | null>(initialEntry);
   const [loadedSelectionKey, setLoadedSelectionKey] = useState(initialKey);
 
@@ -70,7 +67,10 @@ export default function PerformanceStrategyViewSection({
 
   useEffect(() => {
     if (!initialEntry) return;
-    setEntryCache((previous) => ({ ...initialEntries, ...previous, [initialKey]: previous[initialKey] ?? initialEntry }));
+    setEntryCache((previous) => ({
+      ...previous,
+      [initialKey]: previous[initialKey] ?? initialEntry,
+    }));
     setStableEntry((previous) => previous ?? initialEntry);
     setLoadedSelectionKey(initialKey);
     setStrategyClientPayload(initialSelection, {
@@ -79,18 +79,7 @@ export default function PerformanceStrategyViewSection({
       engineWeekResults: initialEntry.engineWeekResults ?? null,
       sidebarStats: initialEntry.sidebarStats,
     });
-    for (const [selectionKey, entry] of Object.entries(initialEntries)) {
-      if (!entry) continue;
-      const [strategy, f1, f2] = selectionKey.split(":");
-      if (!strategy || !f1 || !f2) continue;
-      setStrategyClientPayload({ strategy, f1, f2 }, {
-        engineWeekMap: entry.engineWeekMap,
-        engineSimMap: entry.engineSimMap,
-        engineWeekResults: entry.engineWeekResults ?? null,
-        sidebarStats: entry.sidebarStats,
-      });
-    }
-  }, [initialEntries, initialEntry, initialKey, initialSelection]);
+  }, [initialEntry, initialKey, initialSelection]);
 
   useEffect(() => {
     const onSelectionCommit = (event: Event) => {

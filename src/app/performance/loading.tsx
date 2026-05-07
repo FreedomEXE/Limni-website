@@ -1,15 +1,5 @@
 import LimniLoading from "@/components/LimniLoading";
 
 export default function Loading() {
-  return (
-    <LimniLoading
-      label="Loading Performance Page"
-      compact
-      phases={[
-        "Checking artifacts",
-        "Loading source fingerprints",
-        "Preparing strategy view",
-      ]}
-    />
-  );
+  return <LimniLoading label="Loading Performance Page" compact />;
 }
