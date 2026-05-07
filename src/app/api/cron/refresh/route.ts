@@ -131,7 +131,6 @@ export async function GET(request: Request) {
     revalidatePath("/dashboard");
     revalidatePath("/performance");
     revalidatePath("/sentiment");
-    revalidatePath("/antikythera");
     revalidatePath("/accounts");
   } catch (error) {
     console.error(

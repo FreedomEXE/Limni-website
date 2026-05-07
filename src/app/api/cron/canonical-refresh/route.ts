@@ -373,7 +373,7 @@ export async function GET(request: Request) {
   }
 
   // Revalidate data section pages
-  for (const path of ["/dashboard", "/performance", "/antikythera", "/sentiment", "/flagship"]) {
+  for (const path of ["/dashboard", "/performance", "/sentiment", "/flagship"]) {
     revalidatePath(path);
   }
   const coverageGaps = await checkWeeklyReturnCoverage(targetWeeks, activeInstruments);

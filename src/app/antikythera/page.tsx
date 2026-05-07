@@ -1,343 +1,38 @@
-import DashboardLayout from "@/components/DashboardLayout";
-import SignalHeatmap from "@/components/SignalHeatmap";
-import SummaryCards from "@/components/SummaryCards";
-import { buildAntikytheraSignals } from "@/lib/antikythera";
-import { ANTIKYTHERA_MAX_SIGNALS } from "@/lib/antikythera";
-import { listAssetClasses } from "@/lib/cotMarkets";
-import { readSnapshot } from "@/lib/cotStore";
-import { getAggregatesForWeekStartWithBackfill, getLatestAggregatesLocked } from "@/lib/sentiment/store";
-import { formatDateTimeET, latestIso } from "@/lib/time";
-import type { SentimentAggregate } from "@/lib/sentiment/types";
-import { DateTime } from "luxon";
-import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
-import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
-import AntikytheraControls from "@/components/antikythera/AntikytheraControls";
-import { listDataSectionWeekEntries, listDataSectionWeeks, findDataSectionWeekByReportDate } from "@/lib/dataSectionWeeks";
-import { getWeeklyPairReturns } from "@/lib/pairReturns";
-import { getWeekSnapshotProvenance } from "@/lib/performance/snapshotProvenance";
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: antikythera/page.tsx
+ *
+ * Description:
+ * Redirect shim. The old Antikythera data page has been replaced by the
+ * canonical Data dashboard at /dashboard.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
-type AntikytheraPageProps = {
-  searchParams?:
-    | Record<string, string | string[] | undefined>
-    | Promise<Record<string, string | string[] | undefined>>;
+type AntikytheraRedirectProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function AntikytheraPage({ searchParams }: AntikytheraPageProps) {
-  const resolvedSearchParams = await Promise.resolve(searchParams);
-  const reportParam = resolvedSearchParams?.report;
-  const assetParam = resolvedSearchParams?.asset;
-  const viewParam = resolvedSearchParams?.view;
-  const reportDate =
-    Array.isArray(reportParam) ? reportParam[0] : reportParam;
-  const selectedAsset = Array.isArray(assetParam) ? assetParam[0] : assetParam;
-  const view =
-    viewParam === "list" || viewParam === "heatmap" ? viewParam : "heatmap";
-  const assetClasses = listAssetClasses();
-  const assetIds = assetClasses.map((asset) => asset.id);
-  const weekEntries = await listDataSectionWeekEntries();
-  const availableDates = weekEntries.map((entry) => entry.cotReportDate);
-  const orderedDates = [...availableDates].sort((a, b) => b.localeCompare(a));
-  const selectedReportDate =
-    reportDate && orderedDates.includes(reportDate)
-      ? reportDate
-      : orderedDates[0];
-  const previousReportDate =
-    selectedReportDate
-      ? orderedDates[orderedDates.indexOf(selectedReportDate) + 1] ?? null
-      : null;
-  const snapshots = new Map<string, Awaited<ReturnType<typeof readSnapshot>>>();
-  let sentiment: SentimentAggregate[] = [];
-  let previousSentiment: SentimentAggregate[] = [];
+export default async function AntikytheraRedirect({ searchParams }: AntikytheraRedirectProps) {
+  const resolved = (await Promise.resolve(searchParams)) ?? {};
+  const params = new URLSearchParams();
+  params.set("bias", "dealer");
 
-  try {
-    const snapshotResults = await Promise.all(
-      assetIds.map((assetClass) =>
-        selectedReportDate
-          ? readSnapshot({ assetClass, reportDate: selectedReportDate })
-          : readSnapshot({ assetClass }),
-      ),
-    );
-    snapshotResults.forEach((snapshot, index) => {
-      snapshots.set(assetIds[index], snapshot);
-    });
-  } catch (error) {
-    console.error(
-      "Antikythera data load failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
+  const report = Array.isArray(resolved.report) ? resolved.report[0] : resolved.report;
+  if (report) params.set("report", report);
 
-  const currentWeekOpen = getDisplayWeekOpenUtc();
-  const historicalWeeks = await listDataSectionWeeks();
-  const weeks = buildDataWeekOptions({
-    historicalWeeks,
-    currentWeekOpenUtc: currentWeekOpen,
-  }) as string[];
-  const mappedWeekFromReport = (await findDataSectionWeekByReportDate(selectedReportDate))?.weekOpenUtc ?? null;
-  const selectedWeek = resolveWeekSelection({
-    requestedWeek: mappedWeekFromReport ?? undefined,
-    weekOptions: weeks,
-    currentWeekOpenUtc: currentWeekOpen,
-    allowAll: false,
-  }) as string | null;
-  let selectedWeekProvenance: Awaited<ReturnType<typeof getWeekSnapshotProvenance>> | null = null;
-  if (selectedWeek) {
-    try {
-      selectedWeekProvenance = await getWeekSnapshotProvenance(selectedWeek);
-    } catch (error) {
-      console.error("Antikythera provenance load failed:", error);
-    }
-  }
-  try {
-    if (selectedWeek) {
-      const open = DateTime.fromISO(selectedWeek, { zone: "utc" });
-      const close = open.isValid ? open.plus({ days: 7 }) : open;
-      sentiment = open.isValid
-        ? await getAggregatesForWeekStartWithBackfill(
-            open.toUTC().toISO() ?? selectedWeek,
-            close.toUTC().toISO() ?? selectedWeek,
-          )
-        : await getLatestAggregatesLocked();
-      const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
-      if (prevOpen && prevOpen.isValid) {
-        const prevClose = prevOpen.plus({ days: 7 });
-        previousSentiment = await getAggregatesForWeekStartWithBackfill(
-          prevOpen.toUTC().toISO() ?? selectedWeek,
-          prevClose.toUTC().toISO() ?? selectedWeek,
-        );
-      }
-    } else {
-      sentiment = await getLatestAggregatesLocked();
-    }
-  } catch (error) {
-    console.error(
-      "Antikythera sentiment load failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
-  const performanceByPair: Record<string, number | null> = {};
-  const allSignals = assetClasses.flatMap((asset) => {
-    const snapshot = snapshots.get(asset.id) ?? null;
-    const signals =
-      snapshot
-        ? buildAntikytheraSignals({
-            assetClass: asset.id,
-            snapshot,
-            sentiment,
-            maxSignals: ANTIKYTHERA_MAX_SIGNALS,
-          })
-        : [];
-    return signals.map((signal) => ({
-      ...signal,
-      assetId: asset.id,
-      assetLabel: asset.label,
-    }));
-  });
-  if (selectedWeek) {
-    try {
-      const weeklyReturns = await getWeeklyPairReturns(selectedWeek);
-      const returnByPair = new Map(
-        weeklyReturns.map((row) => [`${row.assetClass}|${row.symbol}`, row.returnPct]),
-      );
-      allSignals.forEach((signal) => {
-        const key = `${signal.pair} (${signal.assetLabel})`;
-        performanceByPair[key] = returnByPair.get(`${signal.assetId}|${signal.pair}`) ?? null;
-      });
-    } catch (error) {
-      console.error("Antikythera performance load failed:", error);
-    }
-  }
-  const signalGroups = assetClasses.map((asset) => ({
-    asset,
-    signals: allSignals
-      .filter((signal) => signal.assetId === asset.id)
-      .map((signal) => ({
-        pair: signal.pair,
-        direction: signal.direction,
-        reasons: signal.reasons,
-        confidence: signal.confidence,
-      })),
-    hasHistory: Boolean(snapshots.get(asset.id)),
-  }));
-  const filteredSignals = selectedAsset && selectedAsset !== "all"
-    ? allSignals.filter((signal) => signal.assetId === selectedAsset)
-    : allSignals;
-  const latestSnapshotRefresh = latestIso(
-    assetClasses.map((asset) => snapshots.get(asset.id)?.last_refresh_utc),
-  );
-  const latestSentimentRefresh = latestIso(
-    sentiment.map((item) => item.timestamp_utc),
-  );
-  const latestAntikytheraRefresh = latestIso([
-    latestSnapshotRefresh,
-    latestSentimentRefresh,
-  ]);
-  const previousSignals: typeof allSignals = [];
-  if (previousReportDate) {
-    try {
-      const previousSnapshots = await Promise.all(
-        assetIds.map((assetClass) =>
-          readSnapshot({ assetClass, reportDate: previousReportDate }),
-        ),
-      );
-      previousSnapshots.forEach((snapshot, index) => {
-        if (!snapshot) {
-          return;
-        }
-        const asset = assetClasses[index];
-        const signals = buildAntikytheraSignals({
-          assetClass: asset.id,
-          snapshot,
-          sentiment: previousSentiment.length > 0 ? previousSentiment : sentiment,
-          maxSignals: ANTIKYTHERA_MAX_SIGNALS,
-        });
-        signals.forEach((signal) => {
-          previousSignals.push({
-            ...signal,
-            assetId: asset.id,
-            assetLabel: asset.label,
-          });
-        });
-      });
-    } catch (error) {
-      console.error("Antikythera previous snapshot load failed:", error);
-    }
-  }
-  const previousMap = new Map(
-    previousSignals.map((signal) => [`${signal.pair} (${signal.assetLabel})`, signal.direction]),
-  );
-  const currentMap = new Map(
-    allSignals.map((signal) => [`${signal.pair} (${signal.assetLabel})`, signal.direction]),
-  );
-  const flipDetails = Array.from(currentMap.entries())
-    .map(([pair, direction]) => {
-      const prior = previousMap.get(pair);
-      if (!prior || prior === direction) {
-        return null;
-      }
-      return { label: pair, value: `${prior} → ${direction}` };
-    })
-    .filter((detail): detail is { label: string; value: string } => Boolean(detail));
-  const longDetails = allSignals
-    .filter((signal) => signal.direction === "LONG")
-    .map((signal) => ({
-      label: `${signal.pair} (${signal.assetLabel})`,
-      value: "LONG",
-    }));
-  const shortDetails = allSignals
-    .filter((signal) => signal.direction === "SHORT")
-    .map((signal) => ({
-      label: `${signal.pair} (${signal.assetLabel})`,
-      value: "SHORT",
-    }));
-  const viewParams = new URLSearchParams();
-  if (selectedReportDate) {
-    viewParams.set("report", selectedReportDate);
-  }
-  if (selectedAsset) {
-    viewParams.set("asset", selectedAsset);
-  }
-  const viewItems = (["heatmap", "list"] as const).map((option) => {
-    const params = new URLSearchParams(viewParams);
-    params.set("view", option);
-    return {
-      value: option,
-      label: option,
-      href: `/antikythera?${params.toString()}`,
-    };
-  });
+  const asset = Array.isArray(resolved.asset) ? resolved.asset[0] : resolved.asset;
+  if (asset) params.set("asset", asset);
 
-  return (
-    <DashboardLayout>
-      <div className="space-y-8">
-        <header className="space-y-2">
-          <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-            Antikythera
-          </h1>
-          <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            {selectedWeekProvenance
-              ? `Snapshot ${formatDateTimeET(
-                  latestIso([
-                    selectedWeekProvenance.cot.snapshotUtc,
-                    selectedWeekProvenance.sentiment.snapshotUtc,
-                  ]),
-                )}`
-              : latestAntikytheraRefresh
-              ? `Last refresh ${formatDateTimeET(latestAntikytheraRefresh)}`
-              : "No refresh yet"}
-          </div>
-        </header>
+  const view = Array.isArray(resolved.view) ? resolved.view[0] : resolved.view;
+  if (view) params.set("view", view);
 
-        <div data-cot-surface="true">
-          <SummaryCards
-            title="Antikythera"
-            centered={true}
-            cards={[
-              {
-                id: "signals",
-                label: "Signals",
-                value: String(allSignals.length),
-                details: [
-                  { label: "FX", value: String(signalGroups.find((g) => g.asset.id === "fx")?.signals.length ?? 0) },
-                  { label: "Indices", value: String(signalGroups.find((g) => g.asset.id === "indices")?.signals.length ?? 0) },
-                  { label: "Crypto", value: String(signalGroups.find((g) => g.asset.id === "crypto")?.signals.length ?? 0) },
-                  { label: "Commodities", value: String(signalGroups.find((g) => g.asset.id === "commodities")?.signals.length ?? 0) },
-                ],
-              },
-              {
-                id: "long",
-                label: "Long signals",
-                value: String(allSignals.filter((s) => s.direction === "LONG").length),
-                tone: "positive",
-                details: longDetails,
-              },
-              {
-                id: "short",
-                label: "Short signals",
-                value: String(allSignals.filter((s) => s.direction === "SHORT").length),
-                tone: "negative",
-                details: shortDetails,
-              },
-              {
-                id: "flips",
-                label: "Flips",
-                value: String(flipDetails.length),
-                details: flipDetails,
-              },
-            ]}
-          />
-        </div>
-
-        <section
-          data-cot-surface="true"
-          className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
-        >
-          <AntikytheraControls
-            availableDates={availableDates}
-            selectedReportDate={selectedReportDate}
-            assetClasses={assetClasses.map((a) => ({ id: a.id, label: a.label }))}
-            selectedAsset={selectedAsset}
-            currentWeekOpenUtc={currentWeekOpen}
-            view={view}
-            viewItems={viewItems}
-          />
-          <div className="mt-6">
-            <SignalHeatmap
-              signals={filteredSignals.map((signal) => ({
-                pair: signal.pair,
-                direction: signal.direction,
-                assetLabel: signal.assetLabel,
-                reasons: signal.reasons,
-              }))}
-              view={view}
-              performanceByPair={performanceByPair}
-            />
-          </div>
-        </section>
-      </div>
-    </DashboardLayout>
-  );
+  redirect(`/dashboard?${params.toString()}`);
 }

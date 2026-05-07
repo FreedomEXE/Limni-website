@@ -1,20 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 const TABS = [
-  { href: "/antikythera", label: "Antikythera" },
-  { href: "/dashboard", label: "Bias" },
-  { href: "/sentiment", label: "Sentiment" },
+  { href: "/dashboard?bias=dealer", label: "Dealer" },
+  { href: "/dashboard?bias=commercial", label: "Commercial" },
+  { href: "/dashboard?bias=sentiment", label: "Sentiment" },
 ];
 
 export default function PageTabs() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   return (
     <div className="grid gap-3 md:grid-cols-3">
       {TABS.map((tab) => {
-        const isActive = pathname.startsWith(tab.href);
+        const [tabPath, tabQuery] = tab.href.split("?");
+        const tabParams = new URLSearchParams(tabQuery ?? "");
+        const tabBias = tabParams.get("bias");
+        const isActive =
+          pathname === tabPath &&
+          (!tabBias || searchParams.get("bias") === tabBias);
         return (
           <Link
             key={tab.href}

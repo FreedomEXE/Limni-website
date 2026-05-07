@@ -31,7 +31,6 @@ export async function GET(request: Request) {
     try {
       revalidatePath("/dashboard");
       revalidatePath("/performance");
-      revalidatePath("/antikythera");
       revalidatePath("/accounts");
     } catch {
       // non-fatal
@@ -58,4 +57,3 @@ export async function GET(request: Request) {
     );
   }
 }
-
