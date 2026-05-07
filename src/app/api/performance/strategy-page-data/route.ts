@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
       engineSimMap: data.simMap ?? null,
       engineWeekResults: data.weekResults ?? null,
       sidebarStats: data.sidebarStats ?? null,
+      artifactMeta: data.artifactMeta ?? null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load strategy data";

@@ -175,7 +175,7 @@ export default function PerformanceStrategyViewSection({
       </header>
       {loadingSelection && loadedSelectionKey !== selectedSelectionKey ? (
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-sm text-[color:var(--muted)]">
-          Loading strategy data...
+          Loading artifacts, checking source fingerprints, and warming strategy cache...
         </div>
       ) : null}
       <PerformanceViewSection

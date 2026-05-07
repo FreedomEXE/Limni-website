@@ -7,6 +7,14 @@ export type StrategyClientPayload = {
   engineSimMap: Record<string, EngineSimulationGroup> | null;
   engineWeekResults: Record<string, WeeklyHoldResult> | null;
   sidebarStats: EngineSidebarStats | null;
+  artifactMeta?: {
+    status: "hit" | "patched" | "miss";
+    selectionKey: string;
+    cachedAtUtc: string | null;
+    refreshedWeeks: string[];
+    removedWeeks: string[];
+    missingWeeks: string[];
+  };
 };
 
 const payloadCache = new Map<string, StrategyClientPayload | null>();

@@ -54,6 +54,7 @@ import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 import { loadPathBars } from "@/lib/performance/pathBarLoader";
+import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
 import { buildWeeklyHoldLedger, splitLedgerBySlot } from "@/lib/performance/positionLedger";
 import {
   computeBasketPath,
@@ -65,6 +66,32 @@ import { CANONICAL_PATH_RESOLUTION } from "@/lib/performance/pathResolution";
 
 const STRATEGY_ARTIFACT_ENGINE_VERSION =
   process.env.STRATEGY_ARTIFACT_ENGINE_VERSION?.trim() || "strategy-artifact-v22";
+const STRATEGY_CURRENT_WEEK_CACHE_TTL_MS = Number(
+  process.env.STRATEGY_CURRENT_WEEK_CACHE_TTL_MS ?? "300000",
+);
+const STRATEGY_FINGERPRINT_CACHE_TTL_MS = Number(
+  process.env.STRATEGY_FINGERPRINT_CACHE_TTL_MS ?? "60000",
+);
+
+function getCurrentWeekCacheTtlMs() {
+  if (
+    Number.isFinite(STRATEGY_CURRENT_WEEK_CACHE_TTL_MS)
+    && STRATEGY_CURRENT_WEEK_CACHE_TTL_MS >= 0
+  ) {
+    return Math.floor(STRATEGY_CURRENT_WEEK_CACHE_TTL_MS);
+  }
+  return 300000;
+}
+
+function getFingerprintCacheTtlMs() {
+  if (
+    Number.isFinite(STRATEGY_FINGERPRINT_CACHE_TTL_MS)
+    && STRATEGY_FINGERPRINT_CACHE_TTL_MS >= 0
+  ) {
+    return Math.floor(STRATEGY_FINGERPRINT_CACHE_TTL_MS);
+  }
+  return 60000;
+}
 
 type WeekWatermarkRow = {
   week_open_utc: string;
@@ -124,6 +151,14 @@ export type StrategyPageData = {
   entryStyle: EntryStyleConfig | undefined;
   weekOptions: string[];
   currentWeekOpenUtc: string;
+  artifactMeta?: {
+    status: "hit" | "patched" | "miss";
+    selectionKey: string;
+    cachedAtUtc: string | null;
+    refreshedWeeks: string[];
+    removedWeeks: string[];
+    missingWeeks: string[];
+  };
 };
 
 function weekResultFallbackPathSummary(weekResult: WeeklyHoldResult): BasketPathSummary {
@@ -177,6 +212,98 @@ async function computeWeekPathArtifact(options: {
   };
 }
 
+function buildWeekResultRuntimeSignature(weekResult: WeeklyHoldResult) {
+  const trades = weekResult.trades.map((trade) => [
+    trade.symbol,
+    trade.source,
+    trade.direction,
+    trade.openPrice,
+    trade.closePrice,
+    trade.returnPct,
+    trade.weight ?? 1,
+    trade.detail?.entryTimeUtc ?? "",
+    trade.detail?.exitTimeUtc ?? "",
+    trade.detail?.exitReason ?? "",
+  ].join("~"));
+
+  return [
+    weekResult.weekOpenUtc,
+    weekResult.biasSourceId,
+    weekResult.totalReturnPct,
+    weekResult.tradeCount,
+    weekResult.winCount,
+    weekResult.lossCount,
+    weekResult.isRealized ? "realized" : "open",
+    trades.join(";"),
+  ].join("|");
+}
+
+async function computeCurrentWeekResultCached(options: {
+  selectionKey: string;
+  biasSource: BiasSourceConfig;
+  currentWeekOpenUtc: string;
+  entryStyle: EntryStyleConfig | undefined;
+  riskOverlay: StrengthGateConfig | undefined;
+}) {
+  const {
+    selectionKey,
+    biasSource,
+    currentWeekOpenUtc,
+    entryStyle,
+    riskOverlay,
+  } = options;
+  const cacheKey = [
+    "strategyCurrentWeek",
+    STRATEGY_ARTIFACT_ENGINE_VERSION,
+    SELECTOR_ENGINE_VERSION,
+    selectionKey,
+    currentWeekOpenUtc,
+    entryStyle?.id ?? "weekly_hold",
+    riskOverlay?.id ?? "none",
+  ].join(":");
+
+  return getOrSetRuntimeCache(
+    cacheKey,
+    getCurrentWeekCacheTtlMs(),
+    () => computeWeeklyHold(biasSource, currentWeekOpenUtc, entryStyle, riskOverlay),
+  );
+}
+
+async function computeCurrentWeekPathArtifactCached(options: {
+  selectionKey: string;
+  weekResult: WeeklyHoldResult;
+  biasSource: BiasSourceConfig;
+  entryStyle: EntryStyleConfig | undefined;
+  selectionLabel: string;
+}) {
+  const {
+    selectionKey,
+    weekResult,
+    biasSource,
+    entryStyle,
+    selectionLabel,
+  } = options;
+  const cacheKey = [
+    "strategyCurrentWeekPath",
+    STRATEGY_ARTIFACT_ENGINE_VERSION,
+    SELECTOR_ENGINE_VERSION,
+    selectionKey,
+    entryStyle?.id ?? "weekly_hold",
+    buildWeekResultRuntimeSignature(weekResult),
+  ].join(":");
+
+  return getOrSetRuntimeCache(
+    cacheKey,
+    getCurrentWeekCacheTtlMs(),
+    () => computeWeekPathArtifact({
+      weekResult,
+      biasSource,
+      entryStyle,
+      selectionLabel,
+    }),
+  );
+}
+
 function reconstructWeekPathResult(options: {
   weekOpenUtc: string;
   strategyId: string;
@@ -213,6 +340,7 @@ function assembleStrategyPageData(options: {
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
   simMap: Record<string, EngineSimulationGroup>;
   pathSummaryMap: Record<string, BasketPathSummary>;
+  artifactMeta?: StrategyPageData["artifactMeta"];
 }): StrategyPageData {
   const {
     biasSource,
@@ -223,6 +351,7 @@ function assembleStrategyPageData(options: {
     weekResultsByWeek,
     simMap,
     pathSummaryMap,
+    artifactMeta,
   } = options;
   const selectionLabel = buildSelectionLabel(entryStyle, riskOverlay);
   const orderedWeeks = weekOptions
@@ -280,6 +409,7 @@ function assembleStrategyPageData(options: {
     entryStyle,
     weekOptions,
     currentWeekOpenUtc,
+    artifactMeta,
   };
 }
 
@@ -303,9 +433,17 @@ export async function loadStrategyPageData(
   const hasCurrentWeek = weekOptions.includes(currentWeekOpenUtc);
 
   try {
-    const currentWeekResultPromise = hasCurrentWeek
-      ? computeWeeklyHold(biasSource, currentWeekOpenUtc, entryStyle, riskOverlay)
-      : Promise.resolve(null);
+    const loadCurrentWeekResult = () => (
+      hasCurrentWeek
+        ? computeCurrentWeekResultCached({
+            selectionKey,
+            biasSource,
+            currentWeekOpenUtc,
+            entryStyle,
+            riskOverlay,
+          })
+        : Promise.resolve(null)
+    );
     const fingerprint = await buildStrategyFingerprint({
       currentWeekOpenUtc,
       entryStyle,
@@ -353,18 +491,20 @@ export async function loadStrategyPageData(
           weekResultsByWeek: nextWeekResults,
         });
 
+        const cachedAtUtc = new Date().toISOString();
         await persistStrategyArtifactEntry(selectionKey, {
-          cachedAtUtc: new Date().toISOString(),
+          cachedAtUtc,
           fingerprint,
           payload: artifactPayload,
         });
 
-        const currentWeekResult = await currentWeekResultPromise;
+        const currentWeekResult = await loadCurrentWeekResult();
         if (currentWeekResult) {
           nextWeekResults[currentWeekOpenUtc] = currentWeekResult;
         }
 
         const merged = await mergeCurrentWeekIntoCachedPathData({
+          selectionKey,
           currentWeekResult,
           cachedSimMap: { ...artifactPayload.simMap },
           cachedPathSummaryMap: { ...artifactPayload.pathSummaryMap },
@@ -384,15 +524,24 @@ export async function loadStrategyPageData(
           weekResultsByWeek: nextWeekResults,
           simMap: merged.simMap,
           pathSummaryMap: merged.pathSummaryMap,
+          artifactMeta: {
+            status: "patched",
+            selectionKey,
+            cachedAtUtc,
+            refreshedWeeks: weeksToRefresh,
+            removedWeeks,
+            missingWeeks,
+          },
         });
       }
 
-      const currentWeekResult = await currentWeekResultPromise;
+      const currentWeekResult = await loadCurrentWeekResult();
       if (currentWeekResult) {
         nextWeekResults[currentWeekOpenUtc] = currentWeekResult;
       }
 
       const merged = await mergeCurrentWeekIntoCachedPathData({
+        selectionKey,
         currentWeekResult,
         cachedSimMap: { ...(cached.payload.simMap ?? {}) },
         cachedPathSummaryMap: { ...(cached.payload.pathSummaryMap ?? {}) },
@@ -412,6 +561,14 @@ export async function loadStrategyPageData(
         weekResultsByWeek: nextWeekResults,
         simMap: merged.simMap,
         pathSummaryMap: merged.pathSummaryMap,
+        artifactMeta: {
+          status: "hit",
+          selectionKey,
+          cachedAtUtc: cached.cachedAtUtc,
+          refreshedWeeks: [],
+          removedWeeks: [],
+          missingWeeks: [],
+        },
       });
     }
 
@@ -441,18 +598,20 @@ export async function loadStrategyPageData(
       weekResultsByWeek,
     });
 
+    const cachedAtUtc = new Date().toISOString();
     await persistStrategyArtifactEntry(selectionKey, {
-      cachedAtUtc: new Date().toISOString(),
+      cachedAtUtc,
       fingerprint,
       payload: artifactPayload,
     });
 
-    const currentWeekResult = await currentWeekResultPromise;
+    const currentWeekResult = await loadCurrentWeekResult();
     if (currentWeekResult) {
       weekResultsByWeek[currentWeekOpenUtc] = currentWeekResult;
     }
 
     const merged = await mergeCurrentWeekIntoCachedPathData({
+      selectionKey,
       currentWeekResult,
       cachedSimMap: { ...artifactPayload.simMap },
       cachedPathSummaryMap: { ...artifactPayload.pathSummaryMap },
@@ -472,6 +631,14 @@ export async function loadStrategyPageData(
       weekResultsByWeek,
       simMap: merged.simMap,
       pathSummaryMap: merged.pathSummaryMap,
+      artifactMeta: {
+        status: "miss",
+        selectionKey,
+        cachedAtUtc,
+        refreshedWeeks: cachedWeeks,
+        removedWeeks: [],
+        missingWeeks,
+      },
     });
   } catch (err) {
     console.error(
@@ -483,6 +650,7 @@ export async function loadStrategyPageData(
 }
 
 async function mergeCurrentWeekIntoCachedPathData(options: {
+  selectionKey: string;
   currentWeekResult: WeeklyHoldResult | null;
   cachedSimMap: Record<string, EngineSimulationGroup>;
   cachedPathSummaryMap: Record<string, BasketPathSummary>;
@@ -493,6 +661,7 @@ async function mergeCurrentWeekIntoCachedPathData(options: {
   historicalWeekResults: Record<string, WeeklyHoldResult>;
 }) {
   const {
+    selectionKey,
     currentWeekResult,
     cachedSimMap,
     cachedPathSummaryMap,
@@ -511,7 +680,8 @@ async function mergeCurrentWeekIntoCachedPathData(options: {
   }
 
   try {
-    const computed = await computeWeekPathArtifact({
+    const computed = await computeCurrentWeekPathArtifactCached({
+      selectionKey,
       weekResult: currentWeekResult,
       biasSource,
       entryStyle,
@@ -598,11 +768,23 @@ async function buildStrategyFingerprint(options: {
   entryStyle: EntryStyleConfig | undefined;
 }): Promise<StrategyArtifactFingerprint> {
   const { weekOptions, currentWeekOpenUtc, entryStyle } = options;
+  const fingerprintCacheKey = [
+    "strategyFingerprint",
+    STRATEGY_ARTIFACT_ENGINE_VERSION,
+    SELECTOR_ENGINE_VERSION,
+    currentWeekOpenUtc,
+    entryStyle?.id ?? "weekly_hold",
+    buildWeekOptionsSignature(weekOptions),
+  ].join(":");
   return {
     engineVersion: `${STRATEGY_ARTIFACT_ENGINE_VERSION}:${SELECTOR_ENGINE_VERSION}`,
     currentWeekOpenUtc,
     weekOptionsSignature: buildWeekOptionsSignature(weekOptions),
-    weekFingerprints: await readWeekFingerprints(weekOptions, entryStyle),
+    weekFingerprints: await getOrSetRuntimeCache(
+      fingerprintCacheKey,
+      getFingerprintCacheTtlMs(),
+      () => readWeekFingerprints(weekOptions, entryStyle),
+    ),
   };
 }
 
