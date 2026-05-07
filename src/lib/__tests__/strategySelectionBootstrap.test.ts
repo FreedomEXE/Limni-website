@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   listStrategyBootstrapSelections,
+  listVisibleStrategyBootstrapSelections,
   buildStrategySelectionKey,
+  VISIBLE_STRATEGY_IDS,
 } from "@/lib/performance/strategySelection";
 import {
   STRATEGIES,
@@ -38,5 +40,19 @@ describe("performance/strategySelection bootstrap coverage", () => {
     );
 
     expect(actualKeys).toEqual(expectedKeys);
+  });
+
+  it("covers the visible selector grid used for Performance preloading", () => {
+    const selections = listVisibleStrategyBootstrapSelections();
+    const filter2Options = STRENGTH_GATES.length > 0
+      ? STRENGTH_GATES
+      : [{ id: "none" }];
+    const expectedCount =
+      VISIBLE_STRATEGY_IDS.length * ENTRY_STYLE_FILTERS.length * filter2Options.length;
+
+    expect(selections).toHaveLength(expectedCount);
+    expect(new Set(selections.map((selection) => selection.strategyId))).toEqual(
+      new Set(VISIBLE_STRATEGY_IDS),
+    );
   });
 });

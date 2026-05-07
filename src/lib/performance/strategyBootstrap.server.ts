@@ -2,14 +2,27 @@ import { loadStrategyPageData, type StrategyPageData } from "@/lib/performance/s
 import {
   buildStrategySelectionKey,
   listStrategyBootstrapSelections,
+  listVisibleStrategyBootstrapSelections,
+  type StrategyBootstrapSelection,
 } from "@/lib/performance/strategySelection";
 
-const BOOTSTRAP_CONCURRENCY = 4;
+const BOOTSTRAP_CONCURRENCY = 2;
 
 export async function loadStrategyBootstrapMap(): Promise<
   [string, StrategyPageData | null][]
 > {
-  const selections = listStrategyBootstrapSelections();
+  return loadStrategyBootstrapMapForSelections(listStrategyBootstrapSelections());
+}
+
+export async function loadVisibleStrategyBootstrapMap(): Promise<
+  [string, StrategyPageData | null][]
+> {
+  return loadStrategyBootstrapMapForSelections(listVisibleStrategyBootstrapSelections());
+}
+
+async function loadStrategyBootstrapMapForSelections(
+  selections: StrategyBootstrapSelection[],
+): Promise<[string, StrategyPageData | null][]> {
   const results: [string, StrategyPageData | null][] = [];
 
   for (let i = 0; i < selections.length; i += BOOTSTRAP_CONCURRENCY) {

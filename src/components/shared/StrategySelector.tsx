@@ -22,10 +22,6 @@ import {
   STRATEGIES,
   ENTRY_STYLE_FILTERS,
   STRENGTH_GATES,
-  AGREE_3OF4_STRATEGY_ID,
-  AGREE_3PLUS_STRATEGY_ID,
-  SELECTOR_STRATEGY_ID,
-  TIERED_4W_STRATEGY_ID,
   getEntryStyle,
   getStrengthGate,
   getStrategy,
@@ -34,6 +30,7 @@ import {
 } from "@/lib/performance/strategyConfig";
 import {
   STRATEGY_SELECTION_COMMIT_EVENT,
+  VISIBLE_STRATEGY_IDS,
   type StrategySelectionCommitDetail,
 } from "@/lib/performance/strategySelection";
 
@@ -43,15 +40,7 @@ export type StrategySelection = {
   f2: string;
 };
 
-const VISIBLE_STRATEGY_ORDER = [
-  "tandem",
-  TIERED_4W_STRATEGY_ID,
-  AGREE_3OF4_STRATEGY_ID,
-  AGREE_3PLUS_STRATEGY_ID,
-  SELECTOR_STRATEGY_ID,
-];
-
-const VISIBLE_STRATEGIES = VISIBLE_STRATEGY_ORDER
+const VISIBLE_STRATEGIES = VISIBLE_STRATEGY_IDS
   .map((id) => STRATEGIES.find((strategy) => strategy.id === id))
   .filter((strategy): strategy is NonNullable<typeof strategy> => Boolean(strategy));
 

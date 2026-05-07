@@ -13,7 +13,15 @@
 -----------------------------------------------*/
 
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
-import { ENTRY_STYLE_FILTERS, STRATEGIES, STRENGTH_GATES } from "@/lib/performance/strategyConfig";
+import {
+  AGREE_3OF4_STRATEGY_ID,
+  AGREE_3PLUS_STRATEGY_ID,
+  ENTRY_STYLE_FILTERS,
+  SELECTOR_STRATEGY_ID,
+  STRATEGIES,
+  STRENGTH_GATES,
+  TIERED_4W_STRATEGY_ID,
+} from "@/lib/performance/strategyConfig";
 
 export const STRATEGY_SELECTION_COMMIT_EVENT = "limni:strategy-selection-commit";
 export const STRATEGY_SIDEBAR_STATS_EVENT = "limni:strategy-sidebar-stats";
@@ -38,6 +46,14 @@ export type StrategySidebarStatsDetail = {
   selection: RuntimeStrategySelection;
   stats: EngineSidebarStats | null;
 };
+
+export const VISIBLE_STRATEGY_IDS = [
+  "tandem",
+  TIERED_4W_STRATEGY_ID,
+  AGREE_3OF4_STRATEGY_ID,
+  AGREE_3PLUS_STRATEGY_ID,
+  SELECTOR_STRATEGY_ID,
+] as const;
 
 export function buildStrategySelectionKey(selection: {
   strategyId?: string;
@@ -65,6 +81,24 @@ export function listStrategyBootstrapSelections(): StrategyBootstrapSelection[] 
     ? STRENGTH_GATES
     : [{ id: "none" }];
   return STRATEGIES.flatMap((strategy) =>
+    ENTRY_STYLE_FILTERS.flatMap((entryStyle) =>
+      filter2Options.map((strengthGate) => ({
+        strategyId: strategy.id,
+        f1: entryStyle.id,
+        f2: strengthGate.id,
+      })),
+    ),
+  );
+}
+
+export function listVisibleStrategyBootstrapSelections(): StrategyBootstrapSelection[] {
+  const visibleStrategies = VISIBLE_STRATEGY_IDS
+    .map((id) => STRATEGIES.find((strategy) => strategy.id === id))
+    .filter((strategy): strategy is NonNullable<typeof strategy> => Boolean(strategy));
+  const filter2Options = STRENGTH_GATES.length > 0
+    ? STRENGTH_GATES
+    : [{ id: "none" }];
+  return visibleStrategies.flatMap((strategy) =>
     ENTRY_STYLE_FILTERS.flatMap((entryStyle) =>
       filter2Options.map((strengthGate) => ({
         strategyId: strategy.id,

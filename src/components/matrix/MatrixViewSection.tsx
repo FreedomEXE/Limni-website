@@ -20,7 +20,6 @@ import CryptoBoard from "@/components/flagship/CryptoBoard";
 import FlagshipBoard from "@/components/flagship/FlagshipBoard";
 import MatrixControls, { type MatrixTab } from "@/components/matrix/MatrixControls";
 import RiskBoard from "@/components/matrix/RiskBoard";
-import ArtifactLoadingPanel from "@/components/shared/ArtifactLoadingPanel";
 import type { AssetClass } from "@/lib/cotMarkets";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import {
@@ -82,7 +81,6 @@ export default function MatrixViewSection({
   ));
   const [stableStrategyData, setStableStrategyData] = useState<MatrixViewSectionProps["initialStrategyData"]>(initialStrategyData);
   const [loadedSelectionKey, setLoadedSelectionKey] = useState(initialSelectionKey);
-  const [loadingSelection, setLoadingSelection] = useState(false);
 
   useEffect(() => {
     setSelectedWeek(resolveSelectedWeek(initialWeek, weeks));
@@ -134,7 +132,6 @@ export default function MatrixViewSection({
       if (cachedData !== undefined) {
         setStableStrategyData(cachedData ?? null);
         setLoadedSelectionKey(selectedSelectionKey);
-        setLoadingSelection(false);
         return;
       }
 
@@ -150,11 +147,9 @@ export default function MatrixViewSection({
         setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
         setStableStrategyData(nextData);
         setLoadedSelectionKey(selectedSelectionKey);
-        setLoadingSelection(false);
         return;
       }
 
-      setLoadingSelection(true);
       const fetched = await fetchStrategyClientPayload(selectedSelection);
       if (!active) return;
       const nextData = fetched
@@ -166,7 +161,6 @@ export default function MatrixViewSection({
       setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
       setStableStrategyData(nextData);
       setLoadedSelectionKey(selectedSelectionKey);
-      setLoadingSelection(false);
     };
 
     void ensureStrategyData();
@@ -216,16 +210,6 @@ export default function MatrixViewSection({
 
   return (
     <div className="space-y-4">
-      {loadingSelection && loadedSelectionKey !== selectedSelectionKey ? (
-        <ArtifactLoadingPanel
-          title="Loading matrix update"
-          phases={[
-            "Checking artifact cache",
-            "Comparing source fingerprints",
-            "Preparing matrix signals",
-          ]}
-        />
-      ) : null}
       <MatrixControls
         weeks={weeks}
         selectedWeek={selectedWeek}
