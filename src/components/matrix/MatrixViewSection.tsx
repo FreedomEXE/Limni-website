@@ -55,6 +55,7 @@ type MatrixViewSectionProps = {
     engineWeekResults: Record<string, WeeklyHoldResult> | null;
     sidebarStats: EngineSidebarStats | null;
   } | null;
+  initialStrategyEntries?: Record<string, MatrixViewSectionProps["initialStrategyData"]>;
   allWeeklyReturns: Record<string, WeeklyReturnRow[]>;
 };
 
@@ -70,15 +71,17 @@ export default function MatrixViewSection({
   initialTab,
   initialSelection,
   initialStrategyData,
+  initialStrategyEntries = {},
   allWeeklyReturns,
 }: MatrixViewSectionProps) {
   const initialSelectionKey = buildStrategySelectionKey(initialSelection);
   const [selectedWeek, setSelectedWeek] = useState<string | null>(() => resolveSelectedWeek(initialWeek, weeks));
   const [selectedTab, setSelectedTab] = useState<MatrixTab>(initialTab);
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
-  const [strategyDataCache, setStrategyDataCache] = useState<Record<string, MatrixViewSectionProps["initialStrategyData"]>>(() => (
-    initialStrategyData ? { [initialSelectionKey]: initialStrategyData } : {}
-  ));
+  const [strategyDataCache, setStrategyDataCache] = useState<Record<string, MatrixViewSectionProps["initialStrategyData"]>>(() => ({
+    ...initialStrategyEntries,
+    ...(initialStrategyData ? { [initialSelectionKey]: initialStrategyData } : {}),
+  }));
   const [stableStrategyData, setStableStrategyData] = useState<MatrixViewSectionProps["initialStrategyData"]>(initialStrategyData);
   const [loadedSelectionKey, setLoadedSelectionKey] = useState(initialSelectionKey);
 
@@ -97,6 +100,7 @@ export default function MatrixViewSection({
   useEffect(() => {
     if (!initialStrategyData) return;
     setStrategyDataCache((previous) => ({
+      ...initialStrategyEntries,
       ...previous,
       [initialSelectionKey]: previous[initialSelectionKey] ?? initialStrategyData,
     }));
@@ -108,7 +112,18 @@ export default function MatrixViewSection({
       engineWeekResults: initialStrategyData.engineWeekResults,
       sidebarStats: initialStrategyData.sidebarStats,
     });
-  }, [initialSelection, initialSelectionKey, initialStrategyData]);
+    for (const [selectionKey, entry] of Object.entries(initialStrategyEntries)) {
+      if (!entry) continue;
+      const [strategy, f1, f2] = selectionKey.split(":");
+      if (!strategy || !f1 || !f2) continue;
+      setStrategyClientPayload({ strategy, f1, f2 }, {
+        engineWeekMap: null,
+        engineSimMap: null,
+        engineWeekResults: entry.engineWeekResults,
+        sidebarStats: entry.sidebarStats,
+      });
+    }
+  }, [initialSelection, initialSelectionKey, initialStrategyData, initialStrategyEntries]);
 
   useEffect(() => {
     const onSelectionCommit = (event: Event) => {

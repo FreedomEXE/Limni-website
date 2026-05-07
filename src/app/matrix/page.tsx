@@ -21,9 +21,11 @@ import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import {
+  buildStrategySelectionKey,
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
 import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
+import { loadVisibleStrategyBootstrapMap } from "@/lib/performance/strategyBootstrap.server";
 
 export const dynamic = "force-dynamic";
 
@@ -76,12 +78,27 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
     allowAll: false,
   }) as string | null;
 
-  const [initialStrategyData, weeklyReturnEntries] = await Promise.all([
-    loadStrategyPageData(initialStrategySelection),
+  const [strategyBootstrapPairs, weeklyReturnEntries] = await Promise.all([
+    loadVisibleStrategyBootstrapMap(),
     Promise.all(
       weeks.map(async (week) => [week, await getWeeklyPairReturns(week)] as const),
     ),
   ]);
+  const initialStrategyKey = buildStrategySelectionKey(initialStrategySelection);
+  const initialStrategyData =
+    strategyBootstrapPairs.find(([key]) => key === initialStrategyKey)?.[1] ??
+    await loadStrategyPageData(initialStrategySelection);
+  const strategyBootstrapMap = Object.fromEntries(
+    strategyBootstrapPairs.map(([key, data]) => [
+      key,
+      data
+        ? {
+            engineWeekResults: data.weekResults ?? null,
+            sidebarStats: data.sidebarStats ?? null,
+          }
+        : null,
+    ]),
+  );
   const allWeeklyReturns = Object.fromEntries(weeklyReturnEntries);
 
   return (
@@ -100,6 +117,7 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
               }
             : null
         }
+        initialStrategyEntries={strategyBootstrapMap}
         allWeeklyReturns={allWeeklyReturns}
       />
     </DashboardLayout>
