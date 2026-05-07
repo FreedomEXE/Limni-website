@@ -14,5 +14,5 @@
 import LimniLoading from "@/components/LimniLoading";
 
 export default function Loading() {
-  return <LimniLoading label="Loading Bitget Bot" compact />;
+  return <LimniLoading label="Loading Bitget Bot Page" compact />;
 }

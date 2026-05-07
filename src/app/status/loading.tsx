@@ -1,5 +1,5 @@
 import LimniLoading from "@/components/LimniLoading";
 
 export default function Loading() {
-  return <LimniLoading label="Loading Status" compact />;
+  return <LimniLoading label="Loading Status Page" compact />;
 }

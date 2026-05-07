@@ -4,14 +4,21 @@ The Performance and Matrix pages should behave like a loaded map: the first load
 
 ## Loading UI
 
-Use `ArtifactLoadingPanel` for strategy or matrix updates. The phases must name the actual work being done, for example:
+Use `ArtifactLoadingPanel` for strategy or matrix updates. The loading text must cycle through a single status line, not a list of boxes. If an artifact/update check is running, the sequence is:
+
+- Loading updates...
+- Checking artifact cache...
+- Comparing source fingerprints...
+- Loading the target page or view
+
+The phases must name the actual work being done, for example:
 
 - Checking artifact cache
 - Comparing source fingerprints
 - Warming current-week cache
 - Preparing matrix signals
 
-Use `LimniLoading` with `phases` for route-level loading screens.
+Use `LimniLoading` with `phases` for route-level loading screens. If no artifact or update phases are needed, do not pass phases; the loader should only show the final page label such as `Loading Performance Page`.
 
 ## Cache Invalidation
 

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import LoadingStatusText from "@/components/shared/LoadingStatusText";
 
 export default function LimniLoading({
   label = "Loading...",
@@ -38,20 +39,8 @@ export default function LimniLoading({
           </div>
         </div>
         <p className="text-xs uppercase tracking-[0.25em] text-[color:var(--muted)]">
-          {label}
+          <LoadingStatusText finalLabel={label} phases={phases} />
         </p>
-        {phases.length > 0 ? (
-          <div className="grid max-w-xl gap-2 text-center sm:grid-cols-3">
-            {phases.map((phase, index) => (
-              <div
-                key={`${phase}-${index}`}
-                className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-[color:var(--muted)]"
-              >
-                {phase}
-              </div>
-            ))}
-          </div>
-        ) : null}
       </div>
     </div>
   );

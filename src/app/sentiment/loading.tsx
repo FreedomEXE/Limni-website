@@ -1,5 +1,5 @@
 import LimniLoading from "@/components/LimniLoading";
 
 export default function Loading() {
-  return <LimniLoading label="Loading Sentiment" compact />;
+  return <LimniLoading label="Loading Sentiment Page" compact />;
 }
