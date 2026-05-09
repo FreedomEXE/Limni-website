@@ -153,7 +153,7 @@ export type StrategyPageData = {
   weekOptions: string[];
   currentWeekOpenUtc: string;
   artifactMeta?: {
-    status: "hit" | "patched" | "miss";
+    status: "hit" | "patched" | "miss" | "stale_week";
     selectionKey: string;
     cachedAtUtc: string | null;
     refreshedWeeks: string[];
