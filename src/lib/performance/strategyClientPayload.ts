@@ -7,6 +7,8 @@ export type StrategyClientPayload = {
   engineSimMap: Record<string, EngineSimulationGroup> | null;
   engineWeekResults: Record<string, WeeklyHoldResult> | null;
   sidebarStats: EngineSidebarStats | null;
+  weekOptions?: string[];
+  currentWeekOpenUtc?: string;
   artifactMeta?: StrategyPageData["artifactMeta"];
 };
 
@@ -63,6 +65,8 @@ export function toPerformanceClientPayload(data: StrategyPageData): StrategyClie
     engineSimMap: data.simMap ?? null,
     engineWeekResults: null,
     sidebarStats: data.sidebarStats ?? null,
+    weekOptions: ["all", ...data.weekOptions],
+    currentWeekOpenUtc: data.currentWeekOpenUtc,
     artifactMeta: data.artifactMeta,
   };
 }
@@ -73,6 +77,8 @@ export function toMatrixClientPayload(data: StrategyPageData): StrategyClientPay
     engineSimMap: null,
     engineWeekResults: stripWeekResults(data.weekResults),
     sidebarStats: data.sidebarStats ?? null,
+    weekOptions: data.weekOptions,
+    currentWeekOpenUtc: data.currentWeekOpenUtc,
     artifactMeta: data.artifactMeta,
   };
 }

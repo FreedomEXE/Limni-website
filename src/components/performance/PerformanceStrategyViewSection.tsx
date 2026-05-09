@@ -40,6 +40,8 @@ type StrategyBootstrapEntry = {
   engineSimMap: NonNullable<ComponentProps<typeof PerformanceViewSection>["engineSimMap"]> | null;
   engineWeekResults?: Record<string, WeeklyHoldResult> | null;
   sidebarStats: EngineSidebarStats | null;
+  weekOptions?: string[];
+  currentWeekOpenUtc?: string;
 };
 
 type PerformanceStrategyViewSectionProps = Omit<
@@ -80,6 +82,8 @@ export default function PerformanceStrategyViewSection({
       engineSimMap: initialEntry.engineSimMap,
       engineWeekResults: null,
       sidebarStats: initialEntry.sidebarStats,
+      weekOptions: initialEntry.weekOptions,
+      currentWeekOpenUtc: initialEntry.currentWeekOpenUtc,
     }, "performance");
   }, [initialEntry, initialKey, initialSelection]);
 
@@ -115,6 +119,8 @@ export default function PerformanceStrategyViewSection({
               engineWeekMap: payload.engineWeekMap,
               engineSimMap: payload.engineSimMap,
               sidebarStats: payload.sidebarStats,
+              weekOptions: payload.weekOptions,
+              currentWeekOpenUtc: payload.currentWeekOpenUtc,
         }
           : null;
         if (!active) return;
@@ -133,6 +139,8 @@ export default function PerformanceStrategyViewSection({
             engineWeekMap: fetched.engineWeekMap,
             engineSimMap: fetched.engineSimMap,
             sidebarStats: fetched.sidebarStats,
+            weekOptions: fetched.weekOptions,
+            currentWeekOpenUtc: fetched.currentWeekOpenUtc,
           }
         : null;
       if (nextEntry) {
@@ -171,6 +179,8 @@ export default function PerformanceStrategyViewSection({
         engineWeekMap: fetched.engineWeekMap,
         engineSimMap: fetched.engineSimMap,
         sidebarStats: fetched.sidebarStats,
+        weekOptions: fetched.weekOptions,
+        currentWeekOpenUtc: fetched.currentWeekOpenUtc,
       };
       setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
       setStableEntry(nextEntry);
@@ -218,6 +228,8 @@ export default function PerformanceStrategyViewSection({
           {...performanceProps}
           engineWeekMap={stableEntry?.engineWeekMap ?? null}
           engineSimMap={stableEntry?.engineSimMap ?? null}
+          weekOptions={stableEntry?.weekOptions ?? performanceProps.weekOptions}
+          currentWeek={stableEntry?.currentWeekOpenUtc ?? performanceProps.currentWeek}
           strategyDescription={strategyDescription}
           notesStorageKey={selectedSelectionKey}
         />
