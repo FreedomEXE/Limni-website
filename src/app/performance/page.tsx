@@ -38,20 +38,15 @@ import { computeReturnStats, type ModelPerformance, type PerformanceModel } from
 import type { PerformanceStrategyFamily } from "@/lib/performance/strategyRegistry";
 import { DateTime } from "luxon";
 import {
-  getEntryStyle,
-  getStrengthGate,
   getStrategy,
   normalizeFilterSelection,
   resolveBiasSourceId,
 } from "@/lib/performance/strategyConfig";
 import {
-  buildStrategySelectionKey,
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
-import { readStrategyArtifactEntry } from "@/lib/performance/strategyArtifactCache";
-import { buildStrategyArtifactEngineVersion } from "@/lib/performance/strategyArtifactVersions";
-import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 import { toPerformanceClientPayload } from "@/lib/performance/strategyClientPayload";
+import { readReadyStrategyArtifactPayload } from "@/lib/performance/strategyArtifactReadiness";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -1128,22 +1123,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     f1: normalizedFilters.f1,
     f2: normalizedFilters.f2,
   };
-  const initialEntryStyle = getEntryStyle(initialStrategySelection.f1);
-  const initialRiskOverlay = getStrengthGate(initialStrategySelection.f2);
-  const initialSelectionKey = buildStrategySelectionKey(initialStrategySelection);
-  const initialExpectedEngineVersion = buildStrategyArtifactEngineVersion({
-    entryStyle: initialEntryStyle,
-    riskOverlay: initialRiskOverlay,
-  });
-  const initialAdrGridArtifact = initialEntryStyle?.plModel === "adr_grid"
-    ? await readStrategyArtifactEntry(initialSelectionKey)
-    : true;
-  const initialCanLoadStrategyData = initialEntryStyle?.plModel !== "adr_grid"
-    || (initialAdrGridArtifact !== true
-      && initialAdrGridArtifact?.fingerprint.engineVersion === initialExpectedEngineVersion);
-  const initialStrategyData = initialCanLoadStrategyData
-    ? await loadStrategyPageData(initialStrategySelection)
-    : null;
+  const initialStrategyData = await readReadyStrategyArtifactPayload(initialStrategySelection);
 
   const universal = buildSystemMaps({
     family: "universal",

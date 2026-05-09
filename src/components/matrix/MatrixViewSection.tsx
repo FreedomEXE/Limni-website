@@ -198,6 +198,30 @@ export default function MatrixViewSection({
   }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableStrategyData]);
 
   useEffect(() => {
+    if (loadedSelectionKey !== selectedSelectionKey || stableStrategyData) return undefined;
+    let active = true;
+    const poll = async () => {
+      const fetched = await fetchStrategyClientPayload(selectedSelection, "matrix");
+      if (!active || !(fetched?.engineWeekResults || fetched?.sidebarStats)) return;
+      const nextData = {
+        engineWeekResults: fetched.engineWeekResults,
+        sidebarStats: fetched.sidebarStats,
+      };
+      setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
+      setStableStrategyData(nextData);
+      setLoadedSelectionKey(selectedSelectionKey);
+    };
+    const intervalId = window.setInterval(() => {
+      void poll();
+    }, 10000);
+    void poll();
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableStrategyData]);
+
+  useEffect(() => {
     const selectedWeekResult = selectedWeek ? engineWeekResults?.[selectedWeek] ?? null : null;
     if (!selectedWeekResult) return;
     window.dispatchEvent(new CustomEvent("performance-week-stats", {

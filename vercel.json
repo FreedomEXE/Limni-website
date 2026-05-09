@@ -29,6 +29,10 @@
       "schedule": "20 * * * *"
     },
     {
+      "path": "/api/cron/strategy-artifacts",
+      "schedule": "40 * * * *"
+    },
+    {
       "path": "/api/cron/market-snapshots",
       "schedule": "0 * * * *"
     },

@@ -158,6 +158,31 @@ export default function PerformanceStrategyViewSection({
     window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
   }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
 
+  useEffect(() => {
+    if (loadedSelectionKey !== selectedSelectionKey || stableEntry) return undefined;
+    let active = true;
+    const poll = async () => {
+      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
+      if (!active || !(fetched?.engineWeekMap || fetched?.engineSimMap || fetched?.sidebarStats)) return;
+      const nextEntry = {
+        engineWeekMap: fetched.engineWeekMap,
+        engineSimMap: fetched.engineSimMap,
+        sidebarStats: fetched.sidebarStats,
+      };
+      setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
+      setStableEntry(nextEntry);
+      setLoadedSelectionKey(selectedSelectionKey);
+    };
+    const intervalId = window.setInterval(() => {
+      void poll();
+    }, 10000);
+    void poll();
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
+
   const strategyDescription = getStrategy(selectedSelection.strategy)?.description ?? null;
   const strategyLabel = getStrategy(selectedSelection.strategy)?.label ?? selectedSelection.strategy;
   const entryStyleLabel = getEntryStyle(selectedSelection.f1)?.label ?? selectedSelection.f1;
@@ -188,7 +213,7 @@ export default function PerformanceStrategyViewSection({
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <p className="text-sm font-semibold text-[var(--foreground)]">Strategy artifact not ready</p>
           <p className="mt-2 text-sm text-[color:var(--muted)]">
-            {selectionLabel} has not been precomputed yet. Run the artifact warmer for this selection, then apply it again.
+            {selectionLabel} has not been precomputed yet. The artifact warmer will build it, and this view will reload automatically when it is ready.
           </p>
         </section>
       ) : (
