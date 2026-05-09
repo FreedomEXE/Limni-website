@@ -122,6 +122,9 @@ export type MultiWeekResult = {
 const CRYPTO_SYMBOLS = new Set(["BTCUSD", "ETHUSD", "BTCUSDT", "ETHUSDT", "SOLUSD", "SOLUSDT", "XRPUSD", "XRPUSDT", "DOGUSD", "DOGUSDT", "ADAUSD", "ADAUSDT", "AVAUSD", "AVAUSDT", "LINKUSD", "DOTUSDT"]);
 const INDEX_SYMBOLS = new Set(["SPXUSD", "SPX500", "SPX500USD", "NDXUSD", "NDX100", "NAS100USD", "NIKKEIUSD", "JPN225", "JPN225USD", "UKXUSD", "UK100", "DEUUSD", "DE30", "DE40"]);
 const COMMODITY_SYMBOLS = new Set(["XAUUSD", "XAGUSD", "WTIUSD", "BCOUSD", "NGUSD"]);
+const MULTI_WEEK_COMPUTE_CONCURRENCY = Number(
+  process.env.MULTI_WEEK_COMPUTE_CONCURRENCY ?? "3",
+);
 
 function inferAssetClass(symbol: string): string {
   const upper = symbol.toUpperCase().replace(/[/.]/g, "");
@@ -131,11 +134,22 @@ function inferAssetClass(symbol: string): string {
   return "fx";
 }
 
+function getMultiWeekComputeConcurrency() {
+  if (
+    Number.isFinite(MULTI_WEEK_COMPUTE_CONCURRENCY) &&
+    MULTI_WEEK_COMPUTE_CONCURRENCY > 0
+  ) {
+    return Math.max(1, Math.min(6, Math.floor(MULTI_WEEK_COMPUTE_CONCURRENCY)));
+  }
+  return 3;
+}
+
 async function applyAdrNormalization(
   result: WeeklyHoldResult,
 ): Promise<WeeklyHoldResult> {
-  const adrMap = await loadWeeklyAdrMap(result.weekOpenUtc);
   const targetAdr = getTargetAdrPct();
+  const needsAdrLookup = result.trades.some((trade) => !(trade.detail?.adrPct && trade.detail.adrPct > 0));
+  const adrMap = needsAdrLookup ? await loadWeeklyAdrMap(result.weekOpenUtc) : new Map();
 
   const normalizedTrades = result.trades.map((trade) => {
     const pairAdr = trade.detail?.adrPct && trade.detail.adrPct > 0
@@ -1233,14 +1247,30 @@ export async function computeMultiWeekHold(
   riskOverlay?: StrengthGateConfig,
 ): Promise<MultiWeekResult> {
   const computedWeeks: WeeklyHoldResult[] = [];
-  for (const weekOpenUtc of weekOpenUtcs) {
-    try {
-      const result = await computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, riskOverlay);
-      computedWeeks.push(result);
-    } catch (err) {
-      console.warn(`[engine] Skipping week ${weekOpenUtc}:`, err instanceof Error ? err.message : err);
-    }
+  const chunkSize = getMultiWeekComputeConcurrency();
+  for (let index = 0; index < weekOpenUtcs.length; index += chunkSize) {
+    const chunk = weekOpenUtcs.slice(index, index + chunkSize);
+    const results = await Promise.allSettled(
+      chunk.map((weekOpenUtc) => computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, riskOverlay)),
+    );
+
+    results.forEach((result, resultIndex) => {
+      const weekOpenUtc = chunk[resultIndex];
+      if (result.status === "fulfilled") {
+        computedWeeks.push(result.value);
+        return;
+      }
+      console.warn(
+        `[engine] Skipping week ${weekOpenUtc}:`,
+        result.reason instanceof Error ? result.reason.message : result.reason,
+      );
+    });
   }
+
+  const weekOrder = new Map(weekOpenUtcs.map((weekOpenUtc, index) => [weekOpenUtc, index]));
+  computedWeeks.sort((left, right) => {
+    return (weekOrder.get(left.weekOpenUtc) ?? 0) - (weekOrder.get(right.weekOpenUtc) ?? 0);
+  });
 
   const weeks = computedWeeks.filter((week) => week.isRealized);
 

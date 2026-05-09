@@ -68,8 +68,9 @@ export async function buildWeeklyHoldLedger(
     return false;
   });
 
-  const adrMap = await loadWeeklyAdrMap(result.weekOpenUtc);
   const targetAdrPct = getTargetAdrPct();
+  const needsAdrLookup = validTrades.some((trade) => !(trade.detail?.adrPct && trade.detail.adrPct > 0));
+  const adrMap = needsAdrLookup ? await loadWeeklyAdrMap(result.weekOpenUtc) : new Map();
   const legs: PositionLeg[] = validTrades.map((trade) => {
     const pairAdrPct = trade.detail?.adrPct && trade.detail.adrPct > 0
       ? trade.detail.adrPct

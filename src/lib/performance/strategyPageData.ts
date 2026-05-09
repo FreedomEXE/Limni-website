@@ -58,9 +58,9 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 import { loadPathBars } from "@/lib/performance/pathBarLoader";
 import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
-import { buildWeeklyHoldLedger, splitLedgerBySlot } from "@/lib/performance/positionLedger";
+import { buildWeeklyHoldLedger } from "@/lib/performance/positionLedger";
 import {
-  computeBasketPath,
+  computeBasketPathWithSlots,
   computeMultiWeekBasketPath,
   type BasketPathResult,
   type BasketPathSummary,
@@ -198,9 +198,7 @@ async function computeWeekPathArtifact(options: {
   );
   const cardSlots = resolveCardSlots(biasSource);
   const slotFn = resolveLegSlotFn(biasSource.cardBreakdown, cardSlots);
-  const subLedgers = splitLedgerBySlot(ledger, slotFn, cardSlots.length);
-  const path = computeBasketPath(ledger, bars);
-  const slotPaths = subLedgers.map((subLedger) => computeBasketPath(subLedger, bars));
+  const { path, slotPaths } = computeBasketPathWithSlots(ledger, bars, slotFn, cardSlots.length);
   return {
     weekKey: weekResult.weekOpenUtc,
     path,

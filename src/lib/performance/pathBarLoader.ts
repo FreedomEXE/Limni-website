@@ -22,7 +22,7 @@ import { CANONICAL_PATH_RESOLUTION } from "@/lib/performance/pathResolution";
 export type PathBarMap = Map<string, CanonicalPriceBar[]>;
 
 const PATH_BAR_LOADER_CACHE_TTL_MS = Number(
-  process.env.PATH_BAR_LOADER_CACHE_TTL_MS ?? "15000",
+  process.env.PATH_BAR_LOADER_CACHE_TTL_MS ?? "600000",
 );
 
 function getPathBarLoaderCacheTtlMs() {
@@ -32,7 +32,7 @@ function getPathBarLoaderCacheTtlMs() {
   ) {
     return Math.floor(PATH_BAR_LOADER_CACHE_TTL_MS);
   }
-  return 15000;
+  return 600000;
 }
 
 function normalizeSymbols(symbols: string[]) {

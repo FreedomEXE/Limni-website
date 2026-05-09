@@ -1,6 +1,8 @@
 import { Pool, type PoolClient } from "pg";
 
 let pool: Pool | null = null;
+let poolResetPromise: Promise<void> | null = null;
+const DB_QUERY_RETRY_LIMIT = Number(process.env.DB_QUERY_RETRY_LIMIT ?? "2");
 
 /**
  * Get the database connection pool (singleton pattern)
@@ -27,7 +29,10 @@ export function getPool(): Pool {
     });
 
     pool.on("error", (err) => {
-      console.error("Unexpected error on idle PostgreSQL client", err);
+      console.error(
+        "Unexpected error on idle PostgreSQL client",
+        err instanceof Error ? err.message : err,
+      );
     });
   }
 
@@ -41,9 +46,31 @@ export async function query<T = unknown>(
   text: string,
   params?: readonly unknown[]
 ): Promise<T[]> {
-  const pool = getPool();
-  const result = await pool.query(text, params as unknown[]);
-  return result.rows;
+  const retryLimit = Number.isFinite(DB_QUERY_RETRY_LIMIT)
+    ? Math.max(0, Math.min(2, Math.floor(DB_QUERY_RETRY_LIMIT)))
+    : 2;
+  const attempts = retryLimit + 1;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const pool = getPool();
+      const result = await pool.query(text, params as unknown[]);
+      return result.rows;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= attempts || !isTransientConnectionError(error)) {
+        throw error;
+      }
+      console.warn(
+        `[db] Retrying transient database query failure (${attempt}/${attempts - 1}):`,
+        error instanceof Error ? error.message : error,
+      );
+      await resetPoolAfterTransientError();
+    }
+  }
+
+  throw lastError;
 }
 
 /**
@@ -63,6 +90,37 @@ export async function queryOne<T = unknown>(
 export async function getClient(): Promise<PoolClient> {
   const pool = getPool();
   return await pool.connect();
+}
+
+function isTransientConnectionError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("connection terminated") ||
+    message.includes("connection timeout") ||
+    message.includes("terminating connection") ||
+    message.includes("connection ended unexpectedly")
+  );
+}
+
+async function resetPoolAfterTransientError() {
+  if (!pool) return;
+  if (!poolResetPromise) {
+    const stalePool = pool;
+    pool = null;
+    poolResetPromise = stalePool
+      .end()
+      .catch((error) => {
+        console.warn(
+          "[db] Failed to close stale PostgreSQL pool:",
+          error instanceof Error ? error.message : error,
+        );
+      })
+      .finally(() => {
+        poolResetPromise = null;
+      });
+  }
+  await poolResetPromise;
 }
 
 /**
