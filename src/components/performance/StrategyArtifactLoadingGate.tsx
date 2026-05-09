@@ -23,8 +23,7 @@ import {
 } from "@/lib/performance/strategySelection";
 import {
   fetchStrategyArtifactStatus,
-  requestStrategyArtifactWarm,
-  type StrategyArtifactStatusRow,
+  requestVisibleStrategyArtifactsWarm,
 } from "@/lib/performance/strategyClientCache";
 
 type StrategyArtifactLoadingGateProps = {
@@ -33,14 +32,6 @@ type StrategyArtifactLoadingGateProps = {
   pageLabel: string;
   children: ReactNode;
 };
-
-function toRuntimeSelection(row: StrategyArtifactStatusRow): RuntimeStrategySelection {
-  return {
-    strategy: row.strategy,
-    f1: row.f1,
-    f2: row.f2,
-  };
-}
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -84,22 +75,34 @@ export default function StrategyArtifactLoadingGate({
           return;
         }
 
-        if (currentArtifact && !currentArtifact.ready) {
-          setLabel(`Building ${currentArtifact.label}...`);
-          await requestStrategyArtifactWarm(toRuntimeSelection(currentArtifact));
-          if (!active) return;
+        const pending = artifacts.filter((artifact) => !artifact.ready);
+        const currentPending = currentArtifact && !currentArtifact.ready ? currentArtifact : null;
+        setLabel(
+          currentPending
+            ? `Building ${currentPending.label}...`
+            : `Building strategy artifacts ${status.readyCount}/${status.totalCount}...`,
+        );
+
+        const warmResult = await requestVisibleStrategyArtifactsWarm();
+        if (!active) return;
+
+        if (warmResult?.failed?.length) {
+          const failed = warmResult.failed[0];
+          setLabel(
+            failed
+              ? `Artifact build failed: ${failed.label}`
+              : "Artifact build failed...",
+          );
+          await wait(10000);
+          continue;
         }
 
-        const pending = artifacts.filter((artifact) => !artifact.ready && artifact.key !== currentKey);
-        for (let index = 0; index < pending.length; index += 1) {
-          const artifact = pending[index];
-          if (!active || !artifact) return;
-          setLabel(`Building strategy artifacts ${index + 1}/${pending.length}...`);
-          await requestStrategyArtifactWarm(toRuntimeSelection(artifact));
-        }
-
-        setLabel(`Loading ${pageLabel}...`);
-        await wait(5000);
+        setLabel(
+          warmResult
+            ? `Verifying strategy artifacts ${warmResult.after.ready}/${warmResult.after.total}...`
+            : `Verifying strategy artifacts ${status.readyCount}/${status.totalCount}...`,
+        );
+        await wait(warmResult?.timedOut || pending.length > 0 ? 2000 : 5000);
       }
     };
 

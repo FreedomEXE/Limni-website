@@ -162,6 +162,10 @@ export type StrategyPageData = {
   };
 };
 
+type LoadStrategyPageDataOptions = {
+  includeCurrentWeek?: boolean;
+};
+
 function weekResultFallbackPathSummary(weekResult: WeeklyHoldResult): BasketPathSummary {
   return {
     totalReturnPct: weekResult.totalReturnPct,
@@ -414,10 +418,12 @@ function assembleStrategyPageData(options: {
 
 export async function loadStrategyPageData(
   selection: StrategySelection,
+  options: LoadStrategyPageDataOptions = {},
 ): Promise<StrategyPageData | null> {
   const selectionKey = buildStrategySelectionKey(selection);
   const biasSource = getStrategy(selection.strategyId);
   if (!biasSource) return null;
+  const includeCurrentWeek = options.includeCurrentWeek !== false;
 
   const entryStyle = getEntryStyle(selection.f1);
   const riskOverlay = getStrengthGate(selection.f2);
@@ -433,7 +439,7 @@ export async function loadStrategyPageData(
 
   try {
     const loadCurrentWeekResult = () => (
-      hasCurrentWeek
+      includeCurrentWeek && hasCurrentWeek
         ? computeCurrentWeekResultCached({
             selectionKey,
             biasSource,
@@ -498,6 +504,20 @@ export async function loadStrategyPageData(
           payload: artifactPayload,
         });
 
+        if (!includeCurrentWeek) {
+          return {
+            ...artifactPayload,
+            artifactMeta: {
+              status: "patched",
+              selectionKey,
+              cachedAtUtc,
+              refreshedWeeks: weeksToRefresh,
+              removedWeeks,
+              missingWeeks,
+            },
+          };
+        }
+
         const currentWeekResult = await loadCurrentWeekResult();
         if (currentWeekResult) {
           nextWeekResults[currentWeekOpenUtc] = currentWeekResult;
@@ -533,6 +553,20 @@ export async function loadStrategyPageData(
             missingWeeks,
           },
         });
+      }
+
+      if (!includeCurrentWeek) {
+        return {
+          ...cached.payload,
+          artifactMeta: {
+            status: "hit",
+            selectionKey,
+            cachedAtUtc: cached.cachedAtUtc,
+            refreshedWeeks: [],
+            removedWeeks: [],
+            missingWeeks: [],
+          },
+        };
       }
 
       const currentWeekResult = await loadCurrentWeekResult();
@@ -604,6 +638,20 @@ export async function loadStrategyPageData(
       fingerprint,
       payload: artifactPayload,
     });
+
+    if (!includeCurrentWeek) {
+      return {
+        ...artifactPayload,
+        artifactMeta: {
+          status: "miss",
+          selectionKey,
+          cachedAtUtc,
+          refreshedWeeks: cachedWeeks,
+          removedWeeks: [],
+          missingWeeks,
+        },
+      };
+    }
 
     const currentWeekResult = await loadCurrentWeekResult();
     if (currentWeekResult) {

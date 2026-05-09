@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   }
 
   const startedAt = Date.now();
-  const data = await loadStrategyPageData(selection);
+  const data = await loadStrategyPageData(selection, { includeCurrentWeek: false });
   const after = await getStrategyArtifactReadiness(selection);
 
   return NextResponse.json({

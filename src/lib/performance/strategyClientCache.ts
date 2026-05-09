@@ -7,7 +7,10 @@ const payloadCache = new Map<string, StrategyClientPayload | null>();
 const inflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
 const warmInflightCache = new Map<string, Promise<boolean>>();
 const warmRequestedAt = new Map<string, number>();
+let bulkWarmInflight: Promise<StrategyBulkWarmPayload | null> | null = null;
+let bulkWarmRequestedAt = 0;
 const WARM_REQUEST_COOLDOWN_MS = 120000;
+const BULK_WARM_REQUEST_COOLDOWN_MS = 30000;
 
 function buildSelectionKey(selection: RuntimeStrategySelection, scope: StrategyClientScope) {
   return `${scope}:${selection.strategy}:${selection.f1}:${selection.f2}`;
@@ -27,6 +30,36 @@ export type StrategyArtifactStatusPayload = {
   readyCount: number;
   totalCount: number;
   artifacts: StrategyArtifactStatusRow[];
+};
+
+export type StrategyBulkWarmPayload = {
+  ok: boolean;
+  timedOut: boolean;
+  durationMs: number;
+  before: {
+    ready: number;
+    total: number;
+  };
+  after: {
+    ready: number;
+    total: number;
+  };
+  warmed: Array<{
+    key: string;
+    label: string;
+    ok: boolean;
+    reason: string;
+    durationMs: number;
+    error?: string;
+  }>;
+  failed: Array<{
+    key: string;
+    label: string;
+    ok: boolean;
+    reason: string;
+    durationMs: number;
+    error?: string;
+  }>;
 };
 
 export function getStrategyClientPayload(
@@ -145,6 +178,36 @@ export async function requestStrategyArtifactWarm(
     });
 
   warmInflightCache.set(cacheKey, request);
+  return request;
+}
+
+export async function requestVisibleStrategyArtifactsWarm(): Promise<StrategyBulkWarmPayload | null> {
+  if (bulkWarmInflight) {
+    return bulkWarmInflight;
+  }
+  if (Date.now() - bulkWarmRequestedAt < BULK_WARM_REQUEST_COOLDOWN_MS) {
+    return null;
+  }
+  bulkWarmRequestedAt = Date.now();
+
+  const request = fetch("/api/performance/strategy-artifacts/request-bulk-warm", {
+    method: "POST",
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`Strategy artifact bulk warm request failed (${response.status})`);
+      }
+      return (await response.json()) as StrategyBulkWarmPayload;
+    })
+    .catch((error) => {
+      console.error("[strategyClientCache] Failed to request visible strategy artifact warm:", error);
+      return null;
+    })
+    .finally(() => {
+      bulkWarmInflight = null;
+    });
+
+  bulkWarmInflight = request;
   return request;
 }
 

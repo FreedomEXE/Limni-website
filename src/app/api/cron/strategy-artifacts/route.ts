@@ -54,7 +54,7 @@ export async function GET(request: Request) {
     if (!selection) continue;
     const selectionStart = Date.now();
     try {
-      const data = await loadStrategyPageData(selection);
+      const data = await loadStrategyPageData(selection, { includeCurrentWeek: false });
       warmed.push({
         key: artifact.key,
         label: artifact.label,
