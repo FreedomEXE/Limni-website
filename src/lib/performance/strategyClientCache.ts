@@ -13,6 +13,22 @@ function buildSelectionKey(selection: RuntimeStrategySelection, scope: StrategyC
   return `${scope}:${selection.strategy}:${selection.f1}:${selection.f2}`;
 }
 
+export type StrategyArtifactStatusRow = {
+  key: string;
+  label: string;
+  strategy: string;
+  f1: string;
+  f2: string;
+  ready: boolean;
+  reason: "ready" | "missing" | "stale" | "stale_week";
+};
+
+export type StrategyArtifactStatusPayload = {
+  readyCount: number;
+  totalCount: number;
+  artifacts: StrategyArtifactStatusRow[];
+};
+
 export function getStrategyClientPayload(
   selection: RuntimeStrategySelection,
   scope: StrategyClientScope = "performance",
@@ -130,4 +146,21 @@ export async function requestStrategyArtifactWarm(
 
   warmInflightCache.set(cacheKey, request);
   return request;
+}
+
+export async function fetchStrategyArtifactStatus(
+  key?: string,
+): Promise<StrategyArtifactStatusPayload | null> {
+  const query = key ? `?key=${encodeURIComponent(key)}` : "";
+  return fetch(`/api/performance/strategy-artifacts/status${query}`, { method: "GET" })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`Strategy artifact status request failed (${response.status})`);
+      }
+      return (await response.json()) as StrategyArtifactStatusPayload;
+    })
+    .catch((error) => {
+      console.error("[strategyClientCache] Failed to fetch strategy artifact status:", error);
+      return null;
+    });
 }

@@ -20,6 +20,7 @@ import CryptoBoard from "@/components/flagship/CryptoBoard";
 import FlagshipBoard from "@/components/flagship/FlagshipBoard";
 import MatrixControls, { type MatrixTab } from "@/components/matrix/MatrixControls";
 import RiskBoard from "@/components/matrix/RiskBoard";
+import StrategyArtifactLoadingGate from "@/components/performance/StrategyArtifactLoadingGate";
 import type { AssetClass } from "@/lib/cotMarkets";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import {
@@ -238,38 +239,46 @@ export default function MatrixViewSection({
     }));
   }, [engineWeekResults, selectedWeek]);
 
-  return (
-    <div className="space-y-4">
-      <MatrixControls
-        weeks={weeks}
-        selectedWeek={selectedWeek}
-        currentWeekOpen={currentWeekOpenUtc}
-        selectedTab={selectedTab}
-        onWeekChange={setSelectedWeek}
-        onTabChange={setSelectedTab}
-      />
+  const currentReady = loadedSelectionKey === selectedSelectionKey && Boolean(stableStrategyData);
 
-      {selectedTab === "crypto" ? <CryptoBoard weekOpenUtc={selectedWeek} /> : null}
-      {selectedTab === "risk" ? (
-        <RiskBoard
-          weekOpenUtc={selectedWeek}
-          currentWeekOpenUtc={currentWeekOpenUtc}
-          selection={selectedSelection}
-          engineWeekResults={engineWeekResults}
-          canonicalSignals={canonicalSignals}
-          weeklyReturns={weeklyReturns}
+  return (
+    <StrategyArtifactLoadingGate
+      currentReady={currentReady}
+      currentSelection={selectedSelection}
+      pageLabel="Matrix Page"
+    >
+      <div className="space-y-4">
+        <MatrixControls
+          weeks={weeks}
+          selectedWeek={selectedWeek}
+          currentWeekOpen={currentWeekOpenUtc}
+          selectedTab={selectedTab}
+          onWeekChange={setSelectedWeek}
+          onTabChange={setSelectedTab}
         />
-      ) : null}
-      {selectedTab === "cfd" ? (
-        <FlagshipBoard
-          weekOpenUtc={selectedWeek}
-          currentWeekOpenUtc={currentWeekOpenUtc}
-          selection={selectedSelection}
-          engineWeekResults={engineWeekResults}
-          canonicalSignals={canonicalSignals}
-          weeklyReturns={weeklyReturns}
-        />
-      ) : null}
-    </div>
+
+        {selectedTab === "crypto" ? <CryptoBoard weekOpenUtc={selectedWeek} /> : null}
+        {selectedTab === "risk" ? (
+          <RiskBoard
+            weekOpenUtc={selectedWeek}
+            currentWeekOpenUtc={currentWeekOpenUtc}
+            selection={selectedSelection}
+            engineWeekResults={engineWeekResults}
+            canonicalSignals={canonicalSignals}
+            weeklyReturns={weeklyReturns}
+          />
+        ) : null}
+        {selectedTab === "cfd" ? (
+          <FlagshipBoard
+            weekOpenUtc={selectedWeek}
+            currentWeekOpenUtc={currentWeekOpenUtc}
+            selection={selectedSelection}
+            engineWeekResults={engineWeekResults}
+            canonicalSignals={canonicalSignals}
+            weeklyReturns={weeklyReturns}
+          />
+        ) : null}
+      </div>
+    </StrategyArtifactLoadingGate>
   );
 }

@@ -16,6 +16,7 @@
 
 import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
+import StrategyArtifactLoadingGate from "@/components/performance/StrategyArtifactLoadingGate";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
@@ -194,39 +195,33 @@ export default function PerformanceStrategyViewSection({
     entryStyleLabel,
     riskOverlay && riskOverlay.id !== "none" ? riskOverlay.label : null,
   ].filter(Boolean).join(" · ");
+  const currentReady = loadedSelectionKey === selectedSelectionKey && Boolean(stableEntry);
 
   return (
-    <div className="space-y-4">
-      <header className="mb-8">
-        <div>
-          <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-            Performance
-          </h1>
-          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
-            {selectionLabel}
-          </p>
-        </div>
-      </header>
-      {loadedSelectionKey !== selectedSelectionKey ? (
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 text-sm text-[color:var(--muted)] shadow-sm">
-          Loading {selectionLabel}.
-        </section>
-      ) : !stableEntry ? (
-        <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
-          <p className="text-sm font-semibold text-[var(--foreground)]">Strategy artifact not ready</p>
-          <p className="mt-2 text-sm text-[color:var(--muted)]">
-            {selectionLabel} has not been precomputed yet. Building this selection now; this view will reload automatically when it is ready.
-          </p>
-        </section>
-      ) : (
-      <PerformanceViewSection
-        {...performanceProps}
-        engineWeekMap={stableEntry?.engineWeekMap ?? null}
-        engineSimMap={stableEntry?.engineSimMap ?? null}
-        strategyDescription={strategyDescription}
-        notesStorageKey={selectedSelectionKey}
-      />
-      )}
-    </div>
+    <StrategyArtifactLoadingGate
+      currentReady={currentReady}
+      currentSelection={selectedSelection}
+      pageLabel="Performance Page"
+    >
+      <div className="space-y-4">
+        <header className="mb-8">
+          <div>
+            <h1 className="text-3xl font-semibold text-[var(--foreground)]">
+              Performance
+            </h1>
+            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[color:var(--muted)]">
+              {selectionLabel}
+            </p>
+          </div>
+        </header>
+        <PerformanceViewSection
+          {...performanceProps}
+          engineWeekMap={stableEntry?.engineWeekMap ?? null}
+          engineSimMap={stableEntry?.engineSimMap ?? null}
+          strategyDescription={strategyDescription}
+          notesStorageKey={selectedSelectionKey}
+        />
+      </div>
+    </StrategyArtifactLoadingGate>
   );
 }
