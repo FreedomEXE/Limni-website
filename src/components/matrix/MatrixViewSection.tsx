@@ -34,6 +34,7 @@ import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
   fetchStrategyClientPayload,
   getStrategyClientPayload,
+  requestStrategyArtifactWarm,
   setStrategyClientPayload,
 } from "@/lib/performance/strategyClientCache";
 
@@ -201,6 +202,7 @@ export default function MatrixViewSection({
     if (loadedSelectionKey !== selectedSelectionKey || stableStrategyData) return undefined;
     let active = true;
     const poll = async () => {
+      void requestStrategyArtifactWarm(selectedSelection);
       const fetched = await fetchStrategyClientPayload(selectedSelection, "matrix");
       if (!active || !(fetched?.engineWeekResults || fetched?.sidebarStats)) return;
       const nextData = {

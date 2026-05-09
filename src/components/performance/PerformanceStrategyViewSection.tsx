@@ -29,6 +29,7 @@ import {
 import {
   fetchStrategyClientPayload,
   getStrategyClientPayload,
+  requestStrategyArtifactWarm,
   setStrategyClientPayload,
 } from "@/lib/performance/strategyClientCache";
 import { getEntryStyle, getStrengthGate, getStrategy } from "@/lib/performance/strategyConfig";
@@ -162,6 +163,7 @@ export default function PerformanceStrategyViewSection({
     if (loadedSelectionKey !== selectedSelectionKey || stableEntry) return undefined;
     let active = true;
     const poll = async () => {
+      void requestStrategyArtifactWarm(selectedSelection);
       const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
       if (!active || !(fetched?.engineWeekMap || fetched?.engineSimMap || fetched?.sidebarStats)) return;
       const nextEntry = {
@@ -213,7 +215,7 @@ export default function PerformanceStrategyViewSection({
         <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
           <p className="text-sm font-semibold text-[var(--foreground)]">Strategy artifact not ready</p>
           <p className="mt-2 text-sm text-[color:var(--muted)]">
-            {selectionLabel} has not been precomputed yet. The artifact warmer will build it, and this view will reload automatically when it is ready.
+            {selectionLabel} has not been precomputed yet. Building this selection now; this view will reload automatically when it is ready.
           </p>
         </section>
       ) : (

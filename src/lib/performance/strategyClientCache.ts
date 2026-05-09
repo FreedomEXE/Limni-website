@@ -5,6 +5,9 @@ export type StrategyClientScope = "performance" | "matrix";
 
 const payloadCache = new Map<string, StrategyClientPayload | null>();
 const inflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
+const warmInflightCache = new Map<string, Promise<boolean>>();
+const warmRequestedAt = new Map<string, number>();
+const WARM_REQUEST_COOLDOWN_MS = 120000;
 
 function buildSelectionKey(selection: RuntimeStrategySelection, scope: StrategyClientScope) {
   return `${scope}:${selection.strategy}:${selection.f1}:${selection.f2}`;
@@ -77,7 +80,6 @@ export async function fetchStrategyClientPayload(
     })
     .catch((error) => {
       console.error("[strategyClientCache] Failed to fetch strategy payload:", error);
-      payloadCache.set(cacheKey, null);
       return null;
     })
     .finally(() => {
@@ -85,5 +87,47 @@ export async function fetchStrategyClientPayload(
     });
 
   inflightCache.set(cacheKey, request);
+  return request;
+}
+
+export async function requestStrategyArtifactWarm(
+  selection: RuntimeStrategySelection,
+): Promise<boolean> {
+  const cacheKey = buildSelectionKey(selection, "performance");
+  const inflight = warmInflightCache.get(cacheKey);
+  if (inflight) {
+    return inflight;
+  }
+  const lastRequestedAt = warmRequestedAt.get(cacheKey) ?? 0;
+  if (Date.now() - lastRequestedAt < WARM_REQUEST_COOLDOWN_MS) {
+    return false;
+  }
+  warmRequestedAt.set(cacheKey, Date.now());
+
+  const request = fetch("/api/performance/strategy-artifacts/request-warm", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      strategy: selection.strategy,
+      f1: selection.f1,
+      f2: selection.f2,
+    }),
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`Strategy artifact warm request failed (${response.status})`);
+      }
+      const data = (await response.json()) as { ok?: unknown };
+      return data.ok === true;
+    })
+    .catch((error) => {
+      console.error("[strategyClientCache] Failed to request strategy artifact warm:", error);
+      return false;
+    })
+    .finally(() => {
+      warmInflightCache.delete(cacheKey);
+    });
+
+  warmInflightCache.set(cacheKey, request);
   return request;
 }
