@@ -305,54 +305,6 @@ export default function PerformanceViewSection({
     }));
   }, [selectedWeek, engineWeekMap]);
 
-  // ─── Engine-driven path (instant week switching) ──────────────
-  if (engineWeekMap && weekOptions) {
-    const gridProps = engineWeekMap[selectedWeek] ?? engineWeekMap["all"];
-    const simulation = engineSimMap?.[selectedWeek] ?? engineSimMap?.["all"] ?? null;
-
-    return (
-      <>
-        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
-          <ScrollableWeekStrip
-            options={weekOptions}
-            selected={selectedWeek}
-            currentWeek={currentWeek}
-            label="Week"
-            onChange={setSelectedWeek}
-          />
-        </div>
-
-        <PerformanceViewCards
-          activeView={view}
-          onViewChange={setView}
-          views={PERFORMANCE_VIEW_CARDS}
-        />
-        {view === "notes" ? (
-          <PerformanceNotesPad
-            selectedWeek={selectedWeek}
-            strategyDescription={strategyDescription ?? null}
-            notesStorageKey={notesStorageKey ?? "performance"}
-          />
-        ) : view === "simulation" ? (
-          <PerformanceSimulationSection group={simulation} />
-        ) : view === "basket" && gridProps ? (
-          <EngineBasketView gridProps={gridProps} />
-        ) : gridProps ? (
-          <PerformanceGrid
-            {...gridProps}
-            combined={gridProps.combined}
-            perAsset={gridProps.perAsset}
-            view={view}
-          />
-        ) : (
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
-            No data for the selected week.
-          </div>
-        )}
-      </>
-    );
-  }
-
   // ─── Legacy path (fallback) ───────────────────────────────────
   useEffect(() => {
     if (engineWeekMap) return;
@@ -416,6 +368,54 @@ export default function PerformanceViewSection({
       ? tieredSimulationBySystem?.[system] ?? null
       : universalSimulationBySystem?.[system] ?? null;
   }, [mode, flagshipSimulation, style, system, tieredSimulationBySystem, universalSimulationBySystem]);
+
+  // ─── Engine-driven path (instant week switching) ──────────────
+  if (engineWeekMap && weekOptions) {
+    const gridProps = engineWeekMap[selectedWeek] ?? engineWeekMap["all"];
+    const simulation = engineSimMap?.[selectedWeek] ?? engineSimMap?.["all"] ?? null;
+
+    return (
+      <>
+        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+          <ScrollableWeekStrip
+            options={weekOptions}
+            selected={selectedWeek}
+            currentWeek={currentWeek}
+            label="Week"
+            onChange={setSelectedWeek}
+          />
+        </div>
+
+        <PerformanceViewCards
+          activeView={view}
+          onViewChange={setView}
+          views={PERFORMANCE_VIEW_CARDS}
+        />
+        {view === "notes" ? (
+          <PerformanceNotesPad
+            selectedWeek={selectedWeek}
+            strategyDescription={strategyDescription ?? null}
+            notesStorageKey={notesStorageKey ?? "performance"}
+          />
+        ) : view === "simulation" ? (
+          <PerformanceSimulationSection group={simulation} />
+        ) : view === "basket" && gridProps ? (
+          <EngineBasketView gridProps={gridProps} />
+        ) : gridProps ? (
+          <PerformanceGrid
+            {...gridProps}
+            combined={gridProps.combined}
+            perAsset={gridProps.perAsset}
+            view={view}
+          />
+        ) : (
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+            No data for the selected week.
+          </div>
+        )}
+      </>
+    );
+  }
 
   if (!baseGridProps) {
     return (
