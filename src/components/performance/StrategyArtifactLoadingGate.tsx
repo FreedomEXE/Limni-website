@@ -23,8 +23,9 @@ import {
 } from "@/lib/performance/strategySelection";
 import {
   fetchStrategyArtifactStatus,
-  requestVisibleStrategyArtifactsWarm,
+  requestStrategyArtifactWarmPayload,
 } from "@/lib/performance/strategyClientCache";
+import type { StrategyArtifactStatusRow } from "@/lib/performance/strategyClientCache";
 
 type StrategyArtifactLoadingGateProps = {
   currentReady: boolean;
@@ -35,6 +36,41 @@ type StrategyArtifactLoadingGateProps = {
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+const WARM_CONCURRENCY = 2;
+
+async function warmPendingArtifacts(
+  pending: StrategyArtifactStatusRow[],
+  currentKey: string,
+  onLabel: (label: string) => void,
+) {
+  const ordered = [...pending].sort((left, right) => {
+    if (left.key === currentKey) return -1;
+    if (right.key === currentKey) return 1;
+    return left.label.localeCompare(right.label);
+  });
+  const results: Array<Awaited<ReturnType<typeof requestStrategyArtifactWarmPayload>>> = [];
+
+  for (let index = 0; index < ordered.length; index += WARM_CONCURRENCY) {
+    const batch = ordered.slice(index, index + WARM_CONCURRENCY);
+    const batchLabel = batch.map((artifact) => artifact.label).join(" + ");
+    onLabel(`Building ${batchLabel}...`);
+    const settled = await Promise.allSettled(
+      batch.map((artifact) =>
+        requestStrategyArtifactWarmPayload({
+          strategy: artifact.strategy,
+          f1: artifact.f1,
+          f2: artifact.f2,
+        }),
+      ),
+    );
+    for (const result of settled) {
+      results.push(result.status === "fulfilled" ? result.value : null);
+    }
+  }
+
+  return results;
 }
 
 export default function StrategyArtifactLoadingGate({
@@ -83,26 +119,24 @@ export default function StrategyArtifactLoadingGate({
             : `Building strategy artifacts ${status.readyCount}/${status.totalCount}...`,
         );
 
-        const warmResult = await requestVisibleStrategyArtifactsWarm();
+        const warmResults = await warmPendingArtifacts(pending, currentKey, (nextLabel) => {
+          if (active) setLabel(nextLabel);
+        });
         if (!active) return;
 
-        if (warmResult?.failed?.length) {
-          const failed = warmResult.failed[0];
+        const failed = warmResults.find((result) => result && !result.ok && !result.after?.ready);
+        if (failed) {
           setLabel(
-            failed
-              ? `Artifact build failed: ${failed.label}`
-              : "Artifact build failed...",
+            failed.after?.label
+              ? `Retrying ${failed.after.label}...`
+              : "Retrying strategy artifact build...",
           );
           await wait(10000);
           continue;
         }
 
-        setLabel(
-          warmResult
-            ? `Verifying strategy artifacts ${warmResult.after.ready}/${warmResult.after.total}...`
-            : `Verifying strategy artifacts ${status.readyCount}/${status.totalCount}...`,
-        );
-        await wait(warmResult?.timedOut || pending.length > 0 ? 2000 : 5000);
+        setLabel(`Verifying strategy artifacts ${status.readyCount}/${status.totalCount}...`);
+        await wait(2000);
       }
     };
 

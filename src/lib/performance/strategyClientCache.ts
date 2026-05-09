@@ -62,6 +62,15 @@ export type StrategyBulkWarmPayload = {
   }>;
 };
 
+export type StrategyArtifactWarmPayload = {
+  ok: boolean;
+  selectionKey: string;
+  status: string;
+  before: StrategyArtifactStatusRow;
+  after: StrategyArtifactStatusRow;
+  durationMs: number;
+};
+
 export function getStrategyClientPayload(
   selection: RuntimeStrategySelection,
   scope: StrategyClientScope = "performance",
@@ -142,14 +151,44 @@ export async function fetchStrategyClientPayload(
 export async function requestStrategyArtifactWarm(
   selection: RuntimeStrategySelection,
 ): Promise<boolean> {
+  const result = await requestStrategyArtifactWarmPayload(selection);
+  return result?.ok === true;
+}
+
+export async function requestStrategyArtifactWarmPayload(
+  selection: RuntimeStrategySelection,
+): Promise<StrategyArtifactWarmPayload | null> {
   const cacheKey = buildSelectionKey(selection, "performance");
   const inflight = warmInflightCache.get(cacheKey);
   if (inflight) {
-    return inflight;
+    return inflight.then((ok) => ({
+      ok,
+      selectionKey: `${selection.strategy}:${selection.f1}:${selection.f2}`,
+      status: ok ? "ready" : "cooldown_or_failed",
+      before: {
+        key: `${selection.strategy}:${selection.f1}:${selection.f2}`,
+        label: `${selection.strategy} · ${selection.f1} · ${selection.f2}`,
+        strategy: selection.strategy,
+        f1: selection.f1,
+        f2: selection.f2,
+        ready: ok,
+        reason: ok ? "ready" : "missing",
+      },
+      after: {
+        key: `${selection.strategy}:${selection.f1}:${selection.f2}`,
+        label: `${selection.strategy} · ${selection.f1} · ${selection.f2}`,
+        strategy: selection.strategy,
+        f1: selection.f1,
+        f2: selection.f2,
+        ready: ok,
+        reason: ok ? "ready" : "missing",
+      },
+      durationMs: 0,
+    }));
   }
   const lastRequestedAt = warmRequestedAt.get(cacheKey) ?? 0;
   if (Date.now() - lastRequestedAt < WARM_REQUEST_COOLDOWN_MS) {
-    return false;
+    return null;
   }
   warmRequestedAt.set(cacheKey, Date.now());
 
@@ -166,18 +205,17 @@ export async function requestStrategyArtifactWarm(
       if (!response.ok) {
         throw new Error(`Strategy artifact warm request failed (${response.status})`);
       }
-      const data = (await response.json()) as { ok?: unknown };
-      return data.ok === true;
+      return (await response.json()) as StrategyArtifactWarmPayload;
     })
     .catch((error) => {
       console.error("[strategyClientCache] Failed to request strategy artifact warm:", error);
-      return false;
+      return null;
     })
     .finally(() => {
       warmInflightCache.delete(cacheKey);
     });
 
-  warmInflightCache.set(cacheKey, request);
+  warmInflightCache.set(cacheKey, request.then((payload) => payload?.ok === true));
   return request;
 }
 
