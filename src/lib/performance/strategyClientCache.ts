@@ -20,7 +20,7 @@ export type StrategyArtifactStatusRow = {
   f1: string;
   f2: string;
   ready: boolean;
-  reason: "ready" | "missing" | "stale" | "stale_week";
+  reason: "ready" | "missing" | "stale";
 };
 
 export type StrategyArtifactStatusPayload = {

@@ -11,19 +11,33 @@ export default function LimniLoading({
   const iconSize = compact ? 50 : 68;
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[var(--background)] px-6 py-10">
+    <div
+      className="flex min-h-screen w-full items-center justify-center px-6 py-10"
+      style={{ background: "var(--background, #f8f7f2)" }}
+    >
       <div className="flex flex-col items-center gap-4">
         <div className={`relative ${sizeClass}`}>
           <div
-            className="absolute inset-0 rounded-full border-2 border-[var(--panel-border)] border-t-[var(--accent)] shadow-[0_0_28px_rgba(16,185,129,0.24)] animate-spin"
+            className="absolute inset-0 rounded-full border-2 shadow-[0_0_28px_rgba(16,185,129,0.24)] animate-spin"
+            style={{
+              borderColor: "var(--panel-border, #d8d4ca)",
+              borderTopColor: "var(--accent, #0f766e)",
+            }}
             aria-hidden
           />
           <div
-            className="absolute inset-2 rounded-full border border-[var(--panel-border)] border-b-[var(--accent)]"
-            style={{ animation: "spin 1.8s linear infinite reverse" }}
+            className="absolute inset-2 rounded-full border"
+            style={{
+              animation: "spin 1.8s linear infinite reverse",
+              borderColor: "var(--panel-border, #d8d4ca)",
+              borderBottomColor: "var(--accent, #0f766e)",
+            }}
             aria-hidden
           />
-          <div className="absolute inset-4 flex items-center justify-center rounded-full bg-[var(--panel)]/95">
+          <div
+            className="absolute inset-4 flex items-center justify-center rounded-full"
+            style={{ background: "color-mix(in srgb, var(--panel, #ffffff) 95%, transparent)" }}
+          >
             <Image
               src="/limni-icon.svg"
               alt="Limni loading"
@@ -35,7 +49,10 @@ export default function LimniLoading({
             />
           </div>
         </div>
-        <p className="text-xs uppercase tracking-[0.25em] text-[color:var(--muted)]">
+        <p
+          className="text-xs uppercase tracking-[0.25em]"
+          style={{ color: "var(--muted, #6b7280)" }}
+        >
           {label}
         </p>
       </div>

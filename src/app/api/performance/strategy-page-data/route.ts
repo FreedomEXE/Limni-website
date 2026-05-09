@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
 import {
-  getStrategyArtifactReadiness,
   readReadyStrategyArtifactPayload,
 } from "@/lib/performance/strategyArtifactReadiness";
 import {
@@ -30,14 +29,13 @@ export async function GET(request: NextRequest) {
     const selectionKey = buildStrategySelectionKey(selection);
     const data = await readReadyStrategyArtifactPayload(selection);
     if (!data) {
-      const readiness = await getStrategyArtifactReadiness(selection);
       return NextResponse.json({
         engineWeekMap: null,
         engineSimMap: null,
         engineWeekResults: null,
         sidebarStats: null,
         artifactMeta: {
-          status: readiness.reason === "stale_week" ? "stale_week" : "miss",
+          status: "miss",
           selectionKey,
           cachedAtUtc: null,
           refreshedWeeks: [],

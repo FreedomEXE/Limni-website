@@ -15,7 +15,6 @@ import {
 } from "@/lib/performance/strategyArtifactCache";
 import { buildStrategyArtifactEngineVersion } from "@/lib/performance/strategyArtifactVersions";
 import type { StrategyPageData } from "@/lib/performance/strategyPageData";
-import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 type ArtifactRow = {
   selection_key: string;
@@ -33,7 +32,7 @@ export type StrategyArtifactReadiness = {
   expectedEngineVersion: string;
   actualEngineVersion: string | null;
   ready: boolean;
-  reason: "ready" | "missing" | "stale" | "stale_week";
+  reason: "ready" | "missing" | "stale";
   cachedAtUtc: string | null;
   payloadBytes: number | null;
 };
@@ -56,13 +55,6 @@ export function labelForStrategyArtifact(selection: StrategyBootstrapSelection) 
   ].filter(Boolean).join(" · ");
 }
 
-export function isArtifactCurrentWeekFresh(
-  fingerprint: StrategyArtifactFingerprint,
-  currentWeekOpenUtc: string,
-): boolean {
-  return fingerprint.currentWeekOpenUtc === currentWeekOpenUtc;
-}
-
 function readinessForRow(
   selection: StrategyBootstrapSelection,
   row: ArtifactRow | undefined,
@@ -70,19 +62,12 @@ function readinessForRow(
   const key = buildStrategySelectionKey(selection);
   const expectedEngineVersion = getExpectedStrategyArtifactEngineVersion(selection);
   const actualEngineVersion = row?.fingerprint_json?.engineVersion ?? null;
-  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  const versionReady = Boolean(row) && actualEngineVersion === expectedEngineVersion;
-  const weekReady = row?.fingerprint_json
-    ? isArtifactCurrentWeekFresh(row.fingerprint_json, currentWeekOpenUtc)
-    : false;
-  const ready = versionReady && weekReady;
+  const ready = Boolean(row) && actualEngineVersion === expectedEngineVersion;
   const reason: StrategyArtifactReadiness["reason"] = ready
     ? "ready"
     : !row
       ? "missing"
-      : !versionReady
-        ? "stale"
-        : "stale_week";
+      : "stale";
   return {
     key,
     label: labelForStrategyArtifact(selection),
@@ -129,8 +114,6 @@ export async function readReadyStrategyArtifactPayload(selection: StrategyBootst
   if (!entry) return null;
   const expectedEngineVersion = getExpectedStrategyArtifactEngineVersion(selection);
   if (entry.fingerprint.engineVersion !== expectedEngineVersion) return null;
-  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  if (!isArtifactCurrentWeekFresh(entry.fingerprint, currentWeekOpenUtc)) return null;
   return {
     ...entry.payload,
     artifactMeta: {
