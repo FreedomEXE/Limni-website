@@ -195,6 +195,40 @@ export async function listReadyWeekShards(
   return { ready, stale, missing };
 }
 
+export async function countWeekShardProgress(
+  selectionKey: string,
+  engineVersion: string,
+  expectedWeeks: string[],
+): Promise<{ ready: number; total: number }> {
+  if (expectedWeeks.length === 0) {
+    return { ready: 0, total: 0 };
+  }
+
+  try {
+    const rows = await query<{ week_open_utc: string }>(
+      `SELECT week_open_utc::text AS week_open_utc
+         FROM ${STRATEGY_WEEK_SHARDS_TABLE}
+        WHERE selection_key = $1
+          AND engine_version = $2
+          AND week_open_utc = ANY($3::timestamptz[])`,
+      [selectionKey, engineVersion, expectedWeeks],
+    );
+    const expectedSet = new Set(expectedWeeks);
+    const ready = new Set(
+      rows
+        .map((row) => normalizeUtcString(row.week_open_utc))
+        .filter((weekOpenUtc) => expectedSet.has(weekOpenUtc)),
+    );
+    return { ready: ready.size, total: expectedWeeks.length };
+  } catch (error) {
+    if (isMissingWeekShardsTable(error)) {
+      await ensureWeekShardsTable();
+      return { ready: 0, total: expectedWeeks.length };
+    }
+    throw error;
+  }
+}
+
 function isMissingWeekShardsTable(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "42P01";
 }

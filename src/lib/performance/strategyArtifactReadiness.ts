@@ -18,7 +18,7 @@ import {
 } from "@/lib/performance/strategyArtifactCache";
 import { buildStrategyArtifactEngineVersion } from "@/lib/performance/strategyArtifactVersions";
 import type { StrategyPageData } from "@/lib/performance/strategyPageData";
-import { readWeekShards } from "@/lib/performance/strategyWeekShardCache";
+import { countWeekShardProgress } from "@/lib/performance/strategyWeekShardCache";
 
 type ArtifactRow = {
   selection_key: string;
@@ -153,20 +153,15 @@ async function addShardProgressIfNeeded(readiness: StrategyArtifactReadiness) {
     }).filter((weekOpenUtc): weekOpenUtc is string =>
       typeof weekOpenUtc === "string" && weekOpenUtc !== "all" && weekOpenUtc !== currentWeekOpenUtc,
     );
-    const shards = await readWeekShards(readiness.key, readiness.expectedEngineVersion);
-    const expectedWeeks = new Set(weekOptions);
-    const ready = new Set(
-      shards
-        .map((shard) => shard.weekOpenUtc)
-        .filter((weekOpenUtc) => expectedWeeks.has(weekOpenUtc)),
+    const shardProgress = await countWeekShardProgress(
+      readiness.key,
+      readiness.expectedEngineVersion,
+      weekOptions,
     );
 
     return {
       ...readiness,
-      shardProgress: {
-        ready: ready.size,
-        total: weekOptions.length,
-      },
+      shardProgress,
     };
   } catch (error) {
     console.error(
