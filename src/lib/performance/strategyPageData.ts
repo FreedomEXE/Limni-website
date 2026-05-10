@@ -52,6 +52,7 @@ import {
   listReadyWeekShards,
   persistWeekShard,
   readWeekShards,
+  type WeekShardEntry,
 } from "@/lib/performance/strategyWeekShardCache";
 import {
   buildStrategyArtifactEngineVersion,
@@ -754,11 +755,18 @@ export async function loadStrategyPageData(
     const missingWeeks = cachedWeeks.filter((week) => !(week in weekResultsByWeek));
 
     const cachedAtUtc = new Date().toISOString();
-    await persistStrategyArtifactEntry(selectionKey, {
-      cachedAtUtc,
-      fingerprint,
-      payload: artifactToPersist,
-    });
+    try {
+      await persistStrategyArtifactEntry(selectionKey, {
+        cachedAtUtc,
+        fingerprint,
+        payload: artifactToPersist,
+      });
+    } catch (persistError) {
+      console.warn(
+        `[strategyPageData] Monolithic artifact persist failed for ${selectionKey}; shards will serve as fallback:`,
+        persistError instanceof Error ? persistError.message : persistError,
+      );
+    }
 
     if (!includeCurrentWeek) {
       return {
@@ -1263,6 +1271,110 @@ async function buildStrategyPageDataFromWeekResults(options: {
   });
 }
 
+export function assembleStrategyPageDataFromShards(options: {
+  biasSource: BiasSourceConfig;
+  currentWeekOpenUtc: string;
+  entryStyle: EntryStyleConfig | undefined;
+  riskOverlay: StrengthGateConfig | undefined;
+  weekOptions: string[];
+  shards: WeekShardEntry[];
+}): StrategyPageData {
+  const {
+    biasSource,
+    currentWeekOpenUtc,
+    entryStyle,
+    riskOverlay,
+    weekOptions,
+    shards,
+  } = options;
+  const selectionLabel = buildSelectionLabel(entryStyle, riskOverlay);
+  const expectedWeekSet = new Set(weekOptions);
+  const weekResultsByWeek: Record<string, WeeklyHoldResult> = {};
+  const simMap: Record<string, EngineSimulationGroup> = {};
+  const pathSummaryMap: Record<string, BasketPathSummary> = {};
+
+  for (const shard of shards) {
+    if (!expectedWeekSet.has(shard.weekOpenUtc)) continue;
+    weekResultsByWeek[shard.weekOpenUtc] = shard.weekResult;
+    simMap[shard.weekOpenUtc] = shard.sim;
+    pathSummaryMap[shard.weekOpenUtc] = shard.pathSummary;
+  }
+
+  const orderedWeeks = weekOptions
+    .map((weekOpenUtc) => weekResultsByWeek[weekOpenUtc])
+    .filter((weekResult): weekResult is WeeklyHoldResult => Boolean(weekResult));
+  const multiWeekResult = buildMultiWeekResultFromWeeks(biasSource, orderedWeeks);
+  const cardSlots = resolveCardSlots(biasSource);
+  const realizedWeekPaths: BasketPathResult[] = [];
+  const realizedSlotPaths: BasketPathResult[][] = Array.from({ length: cardSlots.length }, () => []);
+
+  for (const weekResult of orderedWeeks) {
+    if (!weekResult.isRealized) continue;
+    const simulation = simMap[weekResult.weekOpenUtc];
+    const summary = pathSummaryMap[weekResult.weekOpenUtc];
+    if (!simulation || !summary) continue;
+    const weekPath = reconstructWeekPathResult({
+      weekOpenUtc: weekResult.weekOpenUtc,
+      strategyId: biasSource.id,
+      entryStyleId: entryStyle?.id ?? "weekly_hold",
+      summary,
+      simulation,
+    });
+    if (weekPath) {
+      realizedWeekPaths.push(weekPath);
+    }
+    cardSlots.forEach((slotId, slotIndex) => {
+      const slotPath = reconstructWeekPathResultFromSeries({
+        weekOpenUtc: weekResult.weekOpenUtc,
+        strategyId: biasSource.id,
+        entryStyleId: entryStyle?.id ?? "weekly_hold",
+        simulation,
+        seriesId: slotId,
+      });
+      if (slotPath) {
+        realizedSlotPaths[slotIndex]?.push(slotPath);
+      }
+    });
+  }
+
+  if (realizedWeekPaths.length > 0) {
+    const multiWeekPath = computeMultiWeekBasketPath(realizedWeekPaths);
+    const slotMultiWeekPaths = realizedSlotPaths.map((slotWeekPaths) =>
+      computeMultiWeekBasketPath(slotWeekPaths),
+    );
+    pathSummaryMap.all = multiWeekPath.summary;
+    simMap.all = multiWeekPathToSimulation(
+      multiWeekPath,
+      multiWeekResult,
+      biasSource,
+      selectionLabel,
+      slotMultiWeekPaths,
+    );
+  } else {
+    pathSummaryMap.all = {
+      totalReturnPct: multiWeekResult.totalReturnPct,
+      peakPct: multiWeekResult.totalReturnPct,
+      troughPct: Math.min(0, multiWeekResult.totalReturnPct),
+      maxDrawdownPct: Math.abs(multiWeekResult.maxDrawdownPct),
+      peakToCloseGivebackPct: 0,
+      troughToCloseRecoveryPct: multiWeekResult.totalReturnPct - Math.min(0, multiWeekResult.totalReturnPct),
+      maxActivePositions: Math.max(...multiWeekResult.weeks.map((week) => week.tradeCount), 0),
+    };
+    simMap.all = multiWeekToSimulation(multiWeekResult, biasSource, selectionLabel);
+  }
+
+  return assembleStrategyPageData({
+    biasSource,
+    currentWeekOpenUtc,
+    entryStyle,
+    riskOverlay,
+    weekOptions,
+    weekResultsByWeek,
+    simMap,
+    pathSummaryMap,
+  });
+}
+
 async function buildStrategyPageDataFromWeekShards(options: {
   selectionKey: string;
   fingerprint: StrategyArtifactFingerprint;
@@ -1346,78 +1458,32 @@ async function buildStrategyPageDataFromWeekShards(options: {
     return null;
   }
 
-  const orderedWeeks = weekOptions
-    .map((weekOpenUtc) => weekResultsByWeek[weekOpenUtc])
-    .filter((weekResult): weekResult is WeeklyHoldResult => Boolean(weekResult));
-  const multiWeekResult = buildMultiWeekResultFromWeeks(biasSource, orderedWeeks);
-  const cardSlots = resolveCardSlots(biasSource);
-  const realizedWeekPaths: BasketPathResult[] = [];
-  const realizedSlotPaths: BasketPathResult[][] = Array.from({ length: cardSlots.length }, () => []);
+  const shards = weekOptions
+    .map((weekOpenUtc) => {
+      const weekResult = weekResultsByWeek[weekOpenUtc];
+      const sim = simMap[weekOpenUtc];
+      const pathSummary = pathSummaryMap[weekOpenUtc];
+      if (!weekResult || !sim || !pathSummary) return null;
+      return {
+        selectionKey,
+        weekOpenUtc,
+        engineVersion: fingerprint.engineVersion,
+        weekFingerprint: fingerprint.weekFingerprints[weekOpenUtc] ?? "",
+        weekResult,
+        pathSummary,
+        sim,
+        cachedAtUtc: new Date().toISOString(),
+      } satisfies WeekShardEntry;
+    })
+    .filter((shard): shard is WeekShardEntry => Boolean(shard));
 
-  for (const weekResult of orderedWeeks) {
-    if (!weekResult.isRealized) continue;
-    const simulation = simMap[weekResult.weekOpenUtc];
-    const summary = pathSummaryMap[weekResult.weekOpenUtc];
-    if (!simulation || !summary) continue;
-    const weekPath = reconstructWeekPathResult({
-      weekOpenUtc: weekResult.weekOpenUtc,
-      strategyId: biasSource.id,
-      entryStyleId: entryStyle?.id ?? "weekly_hold",
-      summary,
-      simulation,
-    });
-    if (weekPath) {
-      realizedWeekPaths.push(weekPath);
-    }
-    cardSlots.forEach((slotId, slotIndex) => {
-      const slotPath = reconstructWeekPathResultFromSeries({
-        weekOpenUtc: weekResult.weekOpenUtc,
-        strategyId: biasSource.id,
-        entryStyleId: entryStyle?.id ?? "weekly_hold",
-        simulation,
-        seriesId: slotId,
-      });
-      if (slotPath) {
-        realizedSlotPaths[slotIndex]?.push(slotPath);
-      }
-    });
-  }
-
-  if (realizedWeekPaths.length > 0) {
-    const multiWeekPath = computeMultiWeekBasketPath(realizedWeekPaths);
-    const slotMultiWeekPaths = realizedSlotPaths.map((slotWeekPaths) =>
-      computeMultiWeekBasketPath(slotWeekPaths),
-    );
-    pathSummaryMap.all = multiWeekPath.summary;
-    simMap.all = multiWeekPathToSimulation(
-      multiWeekPath,
-      multiWeekResult,
-      biasSource,
-      selectionLabel,
-      slotMultiWeekPaths,
-    );
-  } else {
-    pathSummaryMap.all = {
-      totalReturnPct: multiWeekResult.totalReturnPct,
-      peakPct: multiWeekResult.totalReturnPct,
-      troughPct: Math.min(0, multiWeekResult.totalReturnPct),
-      maxDrawdownPct: Math.abs(multiWeekResult.maxDrawdownPct),
-      peakToCloseGivebackPct: 0,
-      troughToCloseRecoveryPct: multiWeekResult.totalReturnPct - Math.min(0, multiWeekResult.totalReturnPct),
-      maxActivePositions: Math.max(...multiWeekResult.weeks.map((week) => week.tradeCount), 0),
-    };
-    simMap.all = multiWeekToSimulation(multiWeekResult, biasSource, selectionLabel);
-  }
-
-  return assembleStrategyPageData({
+  return assembleStrategyPageDataFromShards({
     biasSource,
     currentWeekOpenUtc,
     entryStyle,
     riskOverlay,
     weekOptions,
-    weekResultsByWeek,
-    simMap,
-    pathSummaryMap,
+    shards,
   });
 }
 

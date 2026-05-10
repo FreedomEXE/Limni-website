@@ -17,8 +17,14 @@ import {
   type StrategyArtifactFingerprint,
 } from "@/lib/performance/strategyArtifactCache";
 import { buildStrategyArtifactEngineVersion } from "@/lib/performance/strategyArtifactVersions";
-import type { StrategyPageData } from "@/lib/performance/strategyPageData";
-import { countWeekShardProgress } from "@/lib/performance/strategyWeekShardCache";
+import {
+  assembleStrategyPageDataFromShards,
+  type StrategyPageData,
+} from "@/lib/performance/strategyPageData";
+import {
+  countWeekShardProgress,
+  readWeekShards,
+} from "@/lib/performance/strategyWeekShardCache";
 
 type ArtifactRow = {
   selection_key: string;
@@ -119,21 +125,24 @@ export async function getStrategyArtifactReadiness(selection: StrategyBootstrapS
 }
 
 export async function readReadyStrategyArtifactPayload(selection: StrategyBootstrapSelection) {
-  const entry = await readStrategyArtifactEntry<StrategyPageData>(buildStrategySelectionKey(selection));
-  if (!entry) return null;
+  const selectionKey = buildStrategySelectionKey(selection);
+  const entry = await readStrategyArtifactEntry<StrategyPageData>(selectionKey);
   const expectedEngineVersion = getExpectedStrategyArtifactEngineVersion(selection);
-  if (entry.fingerprint.engineVersion !== expectedEngineVersion) return null;
-  return {
-    ...entry.payload,
-    artifactMeta: {
-      status: "hit" as const,
-      selectionKey: buildStrategySelectionKey(selection),
-      cachedAtUtc: entry.cachedAtUtc,
-      refreshedWeeks: [],
-      removedWeeks: [],
-      missingWeeks: [],
-    },
-  };
+  if (entry && entry.fingerprint.engineVersion === expectedEngineVersion) {
+    return {
+      ...entry.payload,
+      artifactMeta: {
+        status: "hit" as const,
+        selectionKey,
+        cachedAtUtc: entry.cachedAtUtc,
+        refreshedWeeks: [],
+        removedWeeks: [],
+        missingWeeks: [],
+      },
+    };
+  }
+
+  return readReadyFromShards(selection, selectionKey, expectedEngineVersion);
 }
 
 async function addShardProgressIfNeeded(readiness: StrategyArtifactReadiness) {
@@ -159,6 +168,15 @@ async function addShardProgressIfNeeded(readiness: StrategyArtifactReadiness) {
       weekOptions,
     );
 
+    if (shardProgress.ready >= shardProgress.total && shardProgress.total > 0) {
+      return {
+        ...readiness,
+        ready: true,
+        reason: "ready" as const,
+        shardProgress,
+      };
+    }
+
     return {
       ...readiness,
       shardProgress,
@@ -173,4 +191,49 @@ async function addShardProgressIfNeeded(readiness: StrategyArtifactReadiness) {
       shardProgress: null,
     };
   }
+}
+
+async function readReadyFromShards(
+  selection: StrategyBootstrapSelection,
+  selectionKey: string,
+  expectedEngineVersion: string,
+): Promise<(StrategyPageData & { artifactMeta: NonNullable<StrategyPageData["artifactMeta"]> }) | null> {
+  const biasSource = getStrategy(selection.strategyId);
+  if (!biasSource) return null;
+
+  const entryStyle = getEntryStyle(selection.f1);
+  const riskOverlay = getStrengthGate(selection.f2);
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  const weekOptions = buildDataWeekOptions({
+    historicalWeeks: await listDataSectionWeeks(),
+    currentWeekOpenUtc,
+  }).filter((weekOpenUtc): weekOpenUtc is string =>
+    typeof weekOpenUtc === "string" && weekOpenUtc !== "all" && weekOpenUtc !== currentWeekOpenUtc,
+  );
+
+  const shards = await readWeekShards(selectionKey, expectedEngineVersion);
+  const shardWeeks = new Set(shards.map((shard) => shard.weekOpenUtc));
+  const allShardsReady = weekOptions.every((weekOpenUtc) => shardWeeks.has(weekOpenUtc));
+  if (!allShardsReady) return null;
+
+  const data = assembleStrategyPageDataFromShards({
+    biasSource,
+    currentWeekOpenUtc,
+    entryStyle,
+    riskOverlay,
+    weekOptions,
+    shards,
+  });
+
+  return {
+    ...data,
+    artifactMeta: {
+      status: "hit" as const,
+      selectionKey,
+      cachedAtUtc: shards[0]?.cachedAtUtc ?? new Date().toISOString(),
+      refreshedWeeks: [],
+      removedWeeks: [],
+      missingWeeks: [],
+    },
+  };
 }
