@@ -132,7 +132,7 @@ export default function PerformanceSimulationSection({
           <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
             Return
           </div>
-          <div className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+          <div data-testid="sim-return" className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
             {formatSignedPercent(group.metrics.returnPct)}
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function PerformanceSimulationSection({
           <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
             Max DD
           </div>
-          <div className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+          <div data-testid="sim-maxdd" className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
             {formatPercent(group.metrics.maxDrawdownPct)}
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function PerformanceSimulationSection({
           <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
             Trades
           </div>
-          <div className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+          <div data-testid="sim-trades" className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
             {group.metrics.trades ?? "—"}
           </div>
         </div>

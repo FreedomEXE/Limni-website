@@ -71,17 +71,22 @@ function MetricCard({
   label,
   value,
   large = false,
+  testId,
 }: {
   label: string;
   value: string;
   large?: boolean;
+  testId?: string;
 }) {
   return (
     <div className="rounded-2xl border border-[var(--panel-border)]/70 bg-[var(--background)]/20 p-4">
       <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
         {label}
       </div>
-      <div className={`mt-2 font-mono text-[var(--foreground)] ${large ? "text-3xl font-bold" : "text-xl font-semibold"}`}>
+      <div
+        data-testid={testId}
+        className={`mt-2 font-mono text-[var(--foreground)] ${large ? "text-3xl font-bold" : "text-xl font-semibold"}`}
+      >
         {value}
       </div>
     </div>
@@ -125,19 +130,19 @@ export default function PerformanceFlagshipCard({
             <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
               Simple Return
             </div>
-            <div className={`mt-2 text-3xl font-bold ${valueTone(data.returnPct)} font-mono`}>
+            <div data-testid="flagship-return" className={`mt-2 text-3xl font-bold ${valueTone(data.returnPct)} font-mono`}>
               {formatPercent(data.returnPct)}
             </div>
           </div>
-          <MetricCard label="Weekly Win" value={formatPercent(data.winRatePct)} />
-          <MetricCard label="Max DD" value={formatPercent(data.maxDrawdownPct)} />
+          <MetricCard label="Weekly Win" value={formatPercent(data.winRatePct)} testId="flagship-winrate" />
+          <MetricCard label="Max DD" value={formatPercent(data.maxDrawdownPct)} testId="flagship-maxdd" />
           <div className="rounded-2xl border border-[var(--panel-border)]/70 bg-[var(--background)]/20 p-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
                   Trades
                 </div>
-                <div className="mt-2 text-xl font-semibold font-mono text-[var(--foreground)]">
+                <div data-testid="flagship-trades" className="mt-2 text-xl font-semibold font-mono text-[var(--foreground)]">
                   {typeof data.trades === "number" ? data.trades : "—"}
                 </div>
               </div>

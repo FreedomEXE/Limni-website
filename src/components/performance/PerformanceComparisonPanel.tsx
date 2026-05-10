@@ -443,7 +443,7 @@ export default function PerformanceComparisonPanel({
               </div>
             </div>
           )}
-          <div className={`text-center text-2xl font-bold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
+          <div data-testid="comparison-return" className={`text-center text-2xl font-bold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
             {formatSignedPercent(displayReturnPct)}
           </div>
           <div className={`text-center text-[10px] uppercase tracking-[0.2em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
@@ -453,7 +453,7 @@ export default function PerformanceComparisonPanel({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
+            <div data-testid="comparison-winrate" className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
               {formatPercentOrDash(displayWinRatePct)}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
@@ -461,7 +461,7 @@ export default function PerformanceComparisonPanel({
             </div>
           </div>
           <div>
-            <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
+            <div data-testid="comparison-maxdd" className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
               {formatPercentOrDash(displayMaxDrawdownPct)}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>
@@ -469,7 +469,7 @@ export default function PerformanceComparisonPanel({
             </div>
           </div>
           <div>
-            <div className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
+            <div data-testid="comparison-trades" className={`text-sm font-semibold ${activeTheme?.valueClass ?? "text-[var(--foreground)]"}`}>
               {displayTrades ?? "—"}
             </div>
             <div className={`text-[9px] uppercase tracking-[0.15em] ${activeTheme?.labelClass ?? "text-[color:var(--muted)]"}`}>

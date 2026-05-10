@@ -153,7 +153,7 @@ function EngineSidebarStatsCard() {
             {at.weeks} Weeks Tracked
           </div>
 
-          <div className={`mt-3 text-3xl font-bold ${returnColor(at.totalReturnPct)}`}>
+          <div data-testid="sidebar-return" className={`mt-3 text-3xl font-bold ${returnColor(at.totalReturnPct)}`}>
             {at.totalReturnPct >= 0 ? "+" : ""}{at.totalReturnPct.toFixed(2)}%
           </div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
@@ -163,11 +163,11 @@ function EngineSidebarStatsCard() {
           <div className="mt-4 grid grid-cols-2 gap-2.5 text-sm">
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Weekly WR</div>
-              <div className="font-bold">{at.weeklyWinRate.toFixed(1)}%</div>
+              <div data-testid="sidebar-winrate" className="font-bold">{at.weeklyWinRate.toFixed(1)}%</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Max DD</div>
-              <div className="font-bold text-red-400">{at.maxDrawdownPct.toFixed(2)}%</div>
+              <div data-testid="sidebar-maxdd" className="font-bold text-red-400">{at.maxDrawdownPct.toFixed(2)}%</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Sharpe</div>
@@ -183,7 +183,7 @@ function EngineSidebarStatsCard() {
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Total Trades</div>
-              <div className="font-bold">{at.totalTrades}</div>
+              <div data-testid="sidebar-trades" className="font-bold">{at.totalTrades}</div>
             </div>
           </div>
         </div>

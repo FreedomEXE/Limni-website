@@ -235,7 +235,7 @@ export default function EquityCurveChart({
         <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
           {title}
         </h3>
-        <span className="text-xs font-semibold" style={{ color: endColor }}>
+        <span data-testid="equity-curve-return" className="text-xs font-semibold" style={{ color: endColor }}>
           {resolvedUnitMode === "usd"
             ? `$${lastValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}`
             : `${lastValue >= 0 ? "+" : ""}${lastValue.toFixed(2)}%`}
