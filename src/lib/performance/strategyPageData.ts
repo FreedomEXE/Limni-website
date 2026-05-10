@@ -56,6 +56,7 @@ import {
 } from "@/lib/performance/strategyWeekShardCache";
 import {
   buildStrategyArtifactEngineVersion,
+  buildStrategyAssemblyVersion,
   buildStrategyRuntimeVersionKey,
 } from "@/lib/performance/strategyArtifactVersions";
 import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
@@ -71,6 +72,7 @@ import {
   type BasketPathSummary,
 } from "@/lib/performance/basketPathEngine";
 import { CANONICAL_PATH_RESOLUTION } from "@/lib/performance/pathResolution";
+import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown";
 
 const STRATEGY_CURRENT_WEEK_CACHE_TTL_MS = Number(
   process.env.STRATEGY_CURRENT_WEEK_CACHE_TTL_MS ?? "300000",
@@ -946,7 +948,7 @@ async function buildStrategyFingerprint(options: {
   riskOverlay: StrengthGateConfig | undefined;
 }): Promise<StrategyArtifactFingerprint> {
   const { weekOptions, currentWeekOpenUtc, entryStyle, riskOverlay } = options;
-  const engineVersion = buildStrategyArtifactEngineVersion({ entryStyle, riskOverlay });
+  const engineVersion = buildStrategyAssemblyVersion({ entryStyle, riskOverlay });
   const fingerprintCacheKey = [
     "strategyFingerprint",
     engineVersion,
@@ -1396,12 +1398,13 @@ async function buildStrategyPageDataFromWeekShards(options: {
   const startedAt = Date.now();
   const timeBudgetMs = getShardBuildTimeBudgetMs();
   const selectionLabel = buildSelectionLabel(entryStyle, riskOverlay);
+  const shardEngineVersion = buildStrategyArtifactEngineVersion({ entryStyle, riskOverlay });
   const shardStatus = await listReadyWeekShards(
     selectionKey,
-    fingerprint.engineVersion,
+    shardEngineVersion,
     fingerprint.weekFingerprints,
   );
-  const readyShards = await readWeekShards(selectionKey, fingerprint.engineVersion);
+  const readyShards = await readWeekShards(selectionKey, shardEngineVersion);
   const expectedWeekSet = new Set(weekOptions);
   const weekResultsByWeek: Record<string, WeeklyHoldResult> = {};
   const simMap: Record<string, EngineSimulationGroup> = {};
@@ -1441,7 +1444,7 @@ async function buildStrategyPageDataFromWeekShards(options: {
     await persistWeekShard({
       selectionKey,
       weekOpenUtc,
-      engineVersion: fingerprint.engineVersion,
+      engineVersion: shardEngineVersion,
       weekFingerprint: fingerprint.weekFingerprints[weekOpenUtc] ?? "",
       weekResult,
       pathSummary: pathArtifact.summary,
@@ -1467,7 +1470,7 @@ async function buildStrategyPageDataFromWeekShards(options: {
       return {
         selectionKey,
         weekOpenUtc,
-        engineVersion: fingerprint.engineVersion,
+        engineVersion: shardEngineVersion,
         weekFingerprint: fingerprint.weekFingerprints[weekOpenUtc] ?? "",
         weekResult,
         pathSummary,
@@ -1496,14 +1499,9 @@ function buildMultiWeekResultFromWeeks(
   const totalTrades = realizedWeeks.reduce((sum, week) => sum + week.tradeCount, 0);
   const totalWins = realizedWeeks.reduce((sum, week) => sum + week.winCount, 0);
 
-  let peak = 0;
-  let cumulative = 0;
-  let maxDrawdown = 0;
-  for (const week of realizedWeeks) {
-    cumulative += week.totalReturnPct;
-    peak = Math.max(peak, cumulative);
-    maxDrawdown = Math.min(maxDrawdown, cumulative - peak);
-  }
+  const maxDrawdownPct = computeMaxDrawdownFromPercentReturns(
+    realizedWeeks.map((week) => week.totalReturnPct),
+  );
 
   const byAssetClass: Record<string, { returnPct: number; trades: number; wins: number }> = {};
   for (const week of realizedWeeks) {
@@ -1526,7 +1524,7 @@ function buildMultiWeekResultFromWeeks(
     totalTrades,
     totalWins,
     winRate: totalTrades > 0 ? (totalWins / totalTrades) * 100 : 0,
-    maxDrawdownPct: maxDrawdown,
+    maxDrawdownPct,
     byAssetClass,
   };
 }

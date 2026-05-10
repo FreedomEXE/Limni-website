@@ -16,7 +16,10 @@ import {
   readStrategyArtifactEntry,
   type StrategyArtifactFingerprint,
 } from "@/lib/performance/strategyArtifactCache";
-import { buildStrategyArtifactEngineVersion } from "@/lib/performance/strategyArtifactVersions";
+import {
+  buildStrategyArtifactEngineVersion,
+  buildStrategyAssemblyVersion,
+} from "@/lib/performance/strategyArtifactVersions";
 import {
   assembleStrategyPageDataFromShards,
   type StrategyPageData,
@@ -74,9 +77,18 @@ function readinessForRow(
   row: ArtifactRow | undefined,
 ): StrategyArtifactReadiness {
   const key = buildStrategySelectionKey(selection);
-  const expectedEngineVersion = getExpectedStrategyArtifactEngineVersion(selection);
+  const entryStyle = getEntryStyle(selection.f1);
+  const riskOverlay = getStrengthGate(selection.f2);
+  const expectedEngineVersion = buildStrategyArtifactEngineVersion({
+    entryStyle,
+    riskOverlay,
+  });
+  const expectedAssemblyVersion = buildStrategyAssemblyVersion({
+    entryStyle,
+    riskOverlay,
+  });
   const actualEngineVersion = row?.fingerprint_json?.engineVersion ?? null;
-  const ready = Boolean(row) && actualEngineVersion === expectedEngineVersion;
+  const ready = Boolean(row) && actualEngineVersion === expectedAssemblyVersion;
   const reason: StrategyArtifactReadiness["reason"] = ready
     ? "ready"
     : !row
@@ -127,8 +139,18 @@ export async function getStrategyArtifactReadiness(selection: StrategyBootstrapS
 export async function readReadyStrategyArtifactPayload(selection: StrategyBootstrapSelection) {
   const selectionKey = buildStrategySelectionKey(selection);
   const entry = await readStrategyArtifactEntry<StrategyPageData>(selectionKey);
-  const expectedEngineVersion = getExpectedStrategyArtifactEngineVersion(selection);
-  if (entry && entry.fingerprint.engineVersion === expectedEngineVersion) {
+  const entryStyle = getEntryStyle(selection.f1);
+  const riskOverlay = getStrengthGate(selection.f2);
+  const expectedShardVersion = buildStrategyArtifactEngineVersion({
+    entryStyle,
+    riskOverlay,
+  });
+  const expectedAssemblyVersion = buildStrategyAssemblyVersion({
+    entryStyle,
+    riskOverlay,
+  });
+
+  if (entry && entry.fingerprint.engineVersion === expectedAssemblyVersion) {
     return {
       ...entry.payload,
       artifactMeta: {
@@ -142,7 +164,7 @@ export async function readReadyStrategyArtifactPayload(selection: StrategyBootst
     };
   }
 
-  return readReadyFromShards(selection, selectionKey, expectedEngineVersion);
+  return readReadyFromShards(selection, selectionKey, expectedShardVersion);
 }
 
 async function addShardProgressIfNeeded(readiness: StrategyArtifactReadiness) {
