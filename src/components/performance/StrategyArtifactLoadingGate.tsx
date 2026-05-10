@@ -38,7 +38,14 @@ function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-const WARM_CONCURRENCY = 2;
+const WARM_CONCURRENCY = 1;
+
+function artifactBuildLabel(artifact: StrategyArtifactStatusRow) {
+  if (artifact.shardProgress && artifact.shardProgress.total > 0) {
+    return `Building ${artifact.label}: ${artifact.shardProgress.ready}/${artifact.shardProgress.total} weeks...`;
+  }
+  return `Building ${artifact.label}...`;
+}
 
 async function warmPendingArtifacts(
   pending: StrategyArtifactStatusRow[],
@@ -54,8 +61,10 @@ async function warmPendingArtifacts(
 
   for (let index = 0; index < ordered.length; index += WARM_CONCURRENCY) {
     const batch = ordered.slice(index, index + WARM_CONCURRENCY);
-    const batchLabel = batch.map((artifact) => artifact.label).join(" + ");
-    onLabel(`Building ${batchLabel}...`);
+    const batchLabel = batch.length === 1
+      ? artifactBuildLabel(batch[0]!)
+      : `Building ${batch.map((artifact) => artifact.label).join(" + ")}...`;
+    onLabel(batchLabel);
     const settled = await Promise.allSettled(
       batch.map((artifact) =>
         requestStrategyArtifactWarmPayload({
@@ -115,7 +124,7 @@ export default function StrategyArtifactLoadingGate({
         const currentPending = currentArtifact && !currentArtifact.ready ? currentArtifact : null;
         setLabel(
           currentPending
-            ? `Building ${currentPending.label}...`
+            ? artifactBuildLabel(currentPending)
             : `Building strategy artifacts ${status.readyCount}/${status.totalCount}...`,
         );
 

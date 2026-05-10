@@ -24,6 +24,10 @@ export type StrategyArtifactStatusRow = {
   f2: string;
   ready: boolean;
   reason: "ready" | "missing" | "stale";
+  shardProgress?: {
+    ready: number;
+    total: number;
+  } | null;
 };
 
 export type StrategyArtifactStatusPayload = {

@@ -720,3 +720,20 @@ CREATE TABLE IF NOT EXISTS strategy_artifacts (
 
 CREATE INDEX IF NOT EXISTS idx_strategy_artifacts_updated_at
   ON strategy_artifacts (updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS strategy_week_shards (
+  selection_key TEXT NOT NULL,
+  week_open_utc TIMESTAMPTZ NOT NULL,
+  engine_version TEXT NOT NULL,
+  week_fingerprint TEXT NOT NULL,
+  week_result_json JSONB NOT NULL,
+  path_summary_json JSONB NOT NULL,
+  sim_json JSONB NOT NULL,
+  cached_at_utc TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (selection_key, week_open_utc)
+);
+
+CREATE INDEX IF NOT EXISTS idx_strategy_week_shards_updated_at
+  ON strategy_week_shards (updated_at DESC);

@@ -1,4 +1,7 @@
 import { query } from "@/lib/db";
+import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import { buildDataWeekOptions } from "@/lib/weekOptions";
 import {
   getEntryStyle,
   getStrengthGate,
@@ -15,6 +18,7 @@ import {
 } from "@/lib/performance/strategyArtifactCache";
 import { buildStrategyArtifactEngineVersion } from "@/lib/performance/strategyArtifactVersions";
 import type { StrategyPageData } from "@/lib/performance/strategyPageData";
+import { readWeekShards } from "@/lib/performance/strategyWeekShardCache";
 
 type ArtifactRow = {
   selection_key: string;
@@ -35,6 +39,10 @@ export type StrategyArtifactReadiness = {
   reason: "ready" | "missing" | "stale";
   cachedAtUtc: string | null;
   payloadBytes: number | null;
+  shardProgress?: {
+    ready: number;
+    total: number;
+  } | null;
 };
 
 export function getExpectedStrategyArtifactEngineVersion(selection: StrategyBootstrapSelection) {
@@ -99,9 +107,10 @@ export async function listStrategyArtifactReadiness(
       )
     : [];
   const rowByKey = new Map(rows.map((row) => [row.selection_key, row]));
-  return selections.map((selection) =>
+  const readiness = selections.map((selection) =>
     readinessForRow(selection, rowByKey.get(buildStrategySelectionKey(selection))),
   );
+  return Promise.all(readiness.map(addShardProgressIfNeeded));
 }
 
 export async function getStrategyArtifactReadiness(selection: StrategyBootstrapSelection) {
@@ -125,4 +134,48 @@ export async function readReadyStrategyArtifactPayload(selection: StrategyBootst
       missingWeeks: [],
     },
   };
+}
+
+async function addShardProgressIfNeeded(readiness: StrategyArtifactReadiness) {
+  if (readiness.ready) {
+    return {
+      ...readiness,
+      shardProgress: null,
+    };
+  }
+
+  try {
+    const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+    const weekOptions = buildDataWeekOptions({
+      historicalWeeks: await listDataSectionWeeks(),
+      currentWeekOpenUtc,
+      limit: 16,
+    }).filter((weekOpenUtc): weekOpenUtc is string =>
+      typeof weekOpenUtc === "string" && weekOpenUtc !== "all" && weekOpenUtc !== currentWeekOpenUtc,
+    );
+    const shards = await readWeekShards(readiness.key, readiness.expectedEngineVersion);
+    const expectedWeeks = new Set(weekOptions);
+    const ready = new Set(
+      shards
+        .map((shard) => shard.weekOpenUtc)
+        .filter((weekOpenUtc) => expectedWeeks.has(weekOpenUtc)),
+    );
+
+    return {
+      ...readiness,
+      shardProgress: {
+        ready: ready.size,
+        total: weekOptions.length,
+      },
+    };
+  } catch (error) {
+    console.error(
+      `[strategyArtifactReadiness] Failed to load shard progress for ${readiness.key}:`,
+      error instanceof Error ? error.message : error,
+    );
+    return {
+      ...readiness,
+      shardProgress: null,
+    };
+  }
 }
