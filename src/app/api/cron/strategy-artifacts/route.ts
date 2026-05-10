@@ -3,6 +3,9 @@ import { isCronAuthorized } from "@/lib/cronAuth";
 import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 import { buildStrategySelectionKey, listVisibleStrategyBootstrapSelections } from "@/lib/performance/strategySelection";
 import { listStrategyArtifactReadiness } from "@/lib/performance/strategyArtifactReadiness";
+import { pruneAllOldWeekShards } from "@/lib/performance/strategyWeekShardCache";
+import { buildStrategyArtifactEngineVersion } from "@/lib/performance/strategyArtifactVersions";
+import { ENTRY_STYLE_FILTERS, STRENGTH_GATES } from "@/lib/performance/strategyConfig";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -75,6 +78,25 @@ export async function GET(request: Request) {
   }
 
   const after = await listStrategyArtifactReadiness(selections);
+  let prunedOldShards = 0;
+  if (!onlyKey && after.length > 0 && after.every((artifact) => artifact.ready)) {
+    const currentVersions = new Set<string>();
+    for (const entryStyle of ENTRY_STYLE_FILTERS) {
+      for (const riskOverlay of STRENGTH_GATES) {
+        currentVersions.add(
+          buildStrategyArtifactEngineVersion({
+            entryStyle,
+            riskOverlay,
+          }),
+        );
+      }
+    }
+    prunedOldShards = await pruneAllOldWeekShards([...currentVersions]);
+    if (prunedOldShards > 0) {
+      console.log(`[strategy-artifacts] Pruned ${prunedOldShards} old-version week shards`);
+    }
+  }
+
   return NextResponse.json({
     ok: !timedOut && warmed.every((item) => item.ok),
     task: "strategy_artifacts_warm",
@@ -94,5 +116,6 @@ export async function GET(request: Request) {
       ready: after.filter((artifact) => artifact.ready).length,
       total: after.length,
     },
+    prunedOldShards,
   });
 }

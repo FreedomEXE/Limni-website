@@ -732,8 +732,11 @@ CREATE TABLE IF NOT EXISTS strategy_week_shards (
   cached_at_utc TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (selection_key, week_open_utc)
+  PRIMARY KEY (selection_key, week_open_utc, engine_version)
 );
 
 CREATE INDEX IF NOT EXISTS idx_strategy_week_shards_updated_at
   ON strategy_week_shards (updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_strategy_week_shards_version
+  ON strategy_week_shards (selection_key, engine_version);

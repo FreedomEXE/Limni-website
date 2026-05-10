@@ -137,9 +137,8 @@ export async function persistWeekShard(entry: WeekShardEntry): Promise<void> {
          cached_at_utc
        )
        VALUES ($1, $2::timestamptz, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8::timestamptz)
-       ON CONFLICT (selection_key, week_open_utc)
+       ON CONFLICT (selection_key, week_open_utc, engine_version)
        DO UPDATE SET
-         engine_version = EXCLUDED.engine_version,
          week_fingerprint = EXCLUDED.week_fingerprint,
          week_result_json = EXCLUDED.week_result_json,
          path_summary_json = EXCLUDED.path_summary_json,
@@ -229,6 +228,53 @@ export async function countWeekShardProgress(
   }
 }
 
+export async function pruneOldWeekShards(
+  selectionKey: string,
+  currentEngineVersion: string,
+): Promise<number> {
+  try {
+    const result = await query<{ count: string }>(
+      `WITH deleted AS (
+         DELETE FROM ${STRATEGY_WEEK_SHARDS_TABLE}
+          WHERE selection_key = $1
+            AND engine_version != $2
+          RETURNING 1
+       )
+       SELECT COUNT(*)::text AS count FROM deleted`,
+      [selectionKey, currentEngineVersion],
+    );
+    return Number.parseInt(result[0]?.count ?? "0", 10);
+  } catch (error) {
+    if (isMissingWeekShardsTable(error)) {
+      return 0;
+    }
+    throw error;
+  }
+}
+
+export async function pruneAllOldWeekShards(
+  currentEngineVersions: string[],
+): Promise<number> {
+  if (currentEngineVersions.length === 0) return 0;
+  try {
+    const result = await query<{ count: string }>(
+      `WITH deleted AS (
+         DELETE FROM ${STRATEGY_WEEK_SHARDS_TABLE}
+          WHERE engine_version != ALL($1::text[])
+          RETURNING 1
+       )
+       SELECT COUNT(*)::text AS count FROM deleted`,
+      [currentEngineVersions],
+    );
+    return Number.parseInt(result[0]?.count ?? "0", 10);
+  } catch (error) {
+    if (isMissingWeekShardsTable(error)) {
+      return 0;
+    }
+    throw error;
+  }
+}
+
 function isMissingWeekShardsTable(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "42P01";
 }
@@ -247,12 +293,16 @@ async function ensureWeekShardsTable() {
         cached_at_utc TIMESTAMPTZ NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (selection_key, week_open_utc)
+        PRIMARY KEY (selection_key, week_open_utc, engine_version)
       )
     `);
     await query(`
       CREATE INDEX IF NOT EXISTS idx_strategy_week_shards_updated_at
         ON ${STRATEGY_WEEK_SHARDS_TABLE} (updated_at DESC)
+    `);
+    await query(`
+      CREATE INDEX IF NOT EXISTS idx_strategy_week_shards_version
+        ON ${STRATEGY_WEEK_SHARDS_TABLE} (selection_key, engine_version)
     `);
   })().catch((error) => {
     ensureWeekShardsTablePromise = null;
