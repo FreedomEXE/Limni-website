@@ -64,8 +64,9 @@ import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 import { loadPathBars } from "@/lib/performance/pathBarLoader";
 import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
-import { buildWeeklyHoldLedger } from "@/lib/performance/positionLedger";
+import { buildWeeklyHoldLedger, splitLedgerBySlot } from "@/lib/performance/positionLedger";
 import {
+  computeBasketPath,
   computeBasketPathWithSlots,
   computeMultiWeekBasketPath,
   type BasketPathResult,
@@ -83,6 +84,7 @@ const STRATEGY_FINGERPRINT_CACHE_TTL_MS = Number(
 const STRATEGY_SHARD_BUILD_TIME_BUDGET_MS = Number(
   process.env.STRATEGY_SHARD_BUILD_TIME_BUDGET_MS ?? "100000",
 );
+const ASSET_PATH_ORDER = ["fx", "indices", "commodities", "crypto"] as const;
 
 function getCurrentWeekCacheTtlMs() {
   if (
@@ -219,10 +221,20 @@ async function computeWeekPathArtifact(options: {
   const cardSlots = resolveCardSlots(biasSource);
   const slotFn = resolveLegSlotFn(biasSource.cardBreakdown, cardSlots);
   const { path, slotPaths } = computeBasketPathWithSlots(ledger, bars, slotFn, cardSlots.length);
+  const assetLedgers = splitLedgerBySlot(
+    ledger,
+    (leg) => {
+      const index = ASSET_PATH_ORDER.indexOf(leg.assetClass as (typeof ASSET_PATH_ORDER)[number]);
+      return index >= 0 ? index : 0;
+    },
+    ASSET_PATH_ORDER.length,
+  );
+  const assetPaths = assetLedgers.map((assetLedger) => computeBasketPath(assetLedger, bars));
   return {
     weekKey: weekResult.weekOpenUtc,
     path,
     slotPaths,
+    assetPaths,
     sim: singleWeekPathToSimulation(
       path,
       weekResult,
@@ -230,6 +242,7 @@ async function computeWeekPathArtifact(options: {
       label,
       selectionLabel,
       slotPaths,
+      assetPaths,
     ),
     summary: path.summary,
   };
@@ -1156,6 +1169,10 @@ async function buildSimulationMapFromWeekResults(options: {
     { length: cardSlots.length },
     () => [],
   );
+  const realizedAssetPaths: BasketPathResult[][] = Array.from(
+    { length: ASSET_PATH_ORDER.length },
+    () => [],
+  );
   const weekPathResults: Array<{
     weekResult: WeeklyHoldResult;
     computed: Awaited<ReturnType<typeof computeWeekPathArtifact>> | null;
@@ -1192,6 +1209,9 @@ async function buildSimulationMapFromWeekResults(options: {
         computed.slotPaths.forEach((slotPath, slotIndex) => {
           realizedSlotPaths[slotIndex]?.push(slotPath);
         });
+        computed.assetPaths.forEach((assetPath, assetIndex) => {
+          realizedAssetPaths[assetIndex]?.push(assetPath);
+        });
       }
       continue;
     }
@@ -1215,6 +1235,9 @@ async function buildSimulationMapFromWeekResults(options: {
     const slotMultiWeekPaths = realizedSlotPaths.map((slotWeekPaths) =>
       computeMultiWeekBasketPath(slotWeekPaths),
     );
+    const assetMultiWeekPaths = realizedAssetPaths.map((assetWeekPaths) =>
+      computeMultiWeekBasketPath(assetWeekPaths),
+    );
     pathSummaryMap.all = multiWeekPath.summary;
     simMap.all = multiWeekPathToSimulation(
       multiWeekPath,
@@ -1222,6 +1245,7 @@ async function buildSimulationMapFromWeekResults(options: {
       biasSource,
       selectionLabel,
       slotMultiWeekPaths,
+      assetMultiWeekPaths,
     );
   } catch (error) {
     console.warn(
@@ -1309,6 +1333,7 @@ export function assembleStrategyPageDataFromShards(options: {
   const cardSlots = resolveCardSlots(biasSource);
   const realizedWeekPaths: BasketPathResult[] = [];
   const realizedSlotPaths: BasketPathResult[][] = Array.from({ length: cardSlots.length }, () => []);
+  const realizedAssetPaths: BasketPathResult[][] = Array.from({ length: ASSET_PATH_ORDER.length }, () => []);
 
   for (const weekResult of orderedWeeks) {
     if (!weekResult.isRealized) continue;
@@ -1337,12 +1362,27 @@ export function assembleStrategyPageDataFromShards(options: {
         realizedSlotPaths[slotIndex]?.push(slotPath);
       }
     });
+    ASSET_PATH_ORDER.forEach((assetId, assetIndex) => {
+      const assetPath = reconstructWeekPathResultFromSeries({
+        weekOpenUtc: weekResult.weekOpenUtc,
+        strategyId: biasSource.id,
+        entryStyleId: entryStyle?.id ?? "weekly_hold",
+        simulation,
+        seriesId: `asset:${assetId}`,
+      });
+      if (assetPath) {
+        realizedAssetPaths[assetIndex]?.push(assetPath);
+      }
+    });
   }
 
   if (realizedWeekPaths.length > 0) {
     const multiWeekPath = computeMultiWeekBasketPath(realizedWeekPaths);
     const slotMultiWeekPaths = realizedSlotPaths.map((slotWeekPaths) =>
       computeMultiWeekBasketPath(slotWeekPaths),
+    );
+    const assetMultiWeekPaths = realizedAssetPaths.map((assetWeekPaths) =>
+      computeMultiWeekBasketPath(assetWeekPaths),
     );
     pathSummaryMap.all = multiWeekPath.summary;
     simMap.all = multiWeekPathToSimulation(
@@ -1351,6 +1391,7 @@ export function assembleStrategyPageDataFromShards(options: {
       biasSource,
       selectionLabel,
       slotMultiWeekPaths,
+      assetMultiWeekPaths,
     );
   } else {
     pathSummaryMap.all = {
@@ -1494,7 +1535,9 @@ function buildMultiWeekResultFromWeeks(
   biasSource: BiasSourceConfig,
   weeks: WeeklyHoldResult[],
 ): MultiWeekResult {
-  const realizedWeeks = weeks.filter((week) => week.isRealized);
+  const realizedWeeks = sortWeeklyResultsChronologically(
+    weeks.filter((week) => week.isRealized),
+  );
   const totalReturn = realizedWeeks.reduce((sum, week) => sum + week.totalReturnPct, 0);
   const totalTrades = realizedWeeks.reduce((sum, week) => sum + week.tradeCount, 0);
   const totalWins = realizedWeeks.reduce((sum, week) => sum + week.winCount, 0);
@@ -1527,6 +1570,12 @@ function buildMultiWeekResultFromWeeks(
     maxDrawdownPct,
     byAssetClass,
   };
+}
+
+function sortWeeklyResultsChronologically(weeks: WeeklyHoldResult[]) {
+  return [...weeks].sort(
+    (left, right) => Date.parse(left.weekOpenUtc) - Date.parse(right.weekOpenUtc),
+  );
 }
 
 function buildWeekOptionsSignature(weekOptions: string[]) {

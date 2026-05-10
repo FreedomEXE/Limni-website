@@ -257,6 +257,13 @@ function computeBasketPathArrays(
     const slotIndex = slotFn ? slotFn(leg) : -1;
     const slotEquity = slotIndex >= 0 && slotIndex < slotCount ? slotEquityByIndex[slotIndex] : null;
     const slotActive = slotIndex >= 0 && slotIndex < slotCount ? slotActiveByIndex[slotIndex] : null;
+    const exitRawReturnPct = ((leg.exitPrice - leg.entryPrice) / leg.entryPrice) * 100;
+    const exitDirectedReturnPct = leg.direction === "SHORT" ? -exitRawReturnPct : exitRawReturnPct;
+    const fallbackScale = leg.weight * leg.adrMultiplier;
+    const pnlScale = Math.abs(exitDirectedReturnPct) > 1e-9
+      ? leg.returnPct / exitDirectedReturnPct
+      : fallbackScale;
+    const realizedLegPnlPct = leg.returnPct;
 
     for (let index = startIndex; index <= endIndex; index += 1) {
       const tsMs = gridMs[index] ?? Number.NaN;
@@ -274,11 +281,21 @@ function computeBasketPathArrays(
       activeByIndex[index] = (activeByIndex[index] ?? 0) + 1;
       const rawReturnPct = ((markPrice - leg.entryPrice) / leg.entryPrice) * 100;
       const directedReturnPct = leg.direction === "SHORT" ? -rawReturnPct : rawReturnPct;
-      const legPnlPct = leg.weight * leg.adrMultiplier * directedReturnPct;
+      const legPnlPct = pnlScale * directedReturnPct;
       equityByIndex[index] = (equityByIndex[index] ?? 0) + legPnlPct;
       if (slotEquity && slotActive) {
         slotEquity[index] = (slotEquity[index] ?? 0) + legPnlPct;
         slotActive[index] = (slotActive[index] ?? 0) + 1;
+      }
+    }
+
+    // Closed trades remain part of portfolio equity after their exit. Without
+    // this carry-forward, fast close/rearm systems drop realized P/L from the
+    // curve as soon as the fill closes.
+    for (let index = endIndex + 1; index < grid.length; index += 1) {
+      equityByIndex[index] = (equityByIndex[index] ?? 0) + realizedLegPnlPct;
+      if (slotEquity) {
+        slotEquity[index] = (slotEquity[index] ?? 0) + realizedLegPnlPct;
       }
     }
   }

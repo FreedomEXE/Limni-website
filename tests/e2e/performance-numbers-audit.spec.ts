@@ -34,6 +34,13 @@ function parsePercent(raw: string | null): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
+function parseNumber(raw: string | null): number | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[,%+]/g, "").trim();
+  const num = Number.parseFloat(cleaned);
+  return Number.isFinite(num) ? num : null;
+}
+
 function isClose(a: number | null, b: number | null, tolerance = 0.1): boolean {
   if (a === null || b === null) return true;
   return Math.abs(a - b) <= tolerance;
@@ -55,6 +62,29 @@ function checkPair(
   }
 }
 
+function requireMetric(issues: string[], label: string, value: string | null) {
+  if (value === null || value.trim().length === 0) {
+    issues.push(`Missing ${label}`);
+  }
+}
+
+function checkNumberPair(
+  issues: string[],
+  label: string,
+  nameA: string,
+  valA: string | null,
+  nameB: string,
+  valB: string | null,
+  tolerance = 0,
+) {
+  const a = parseNumber(valA);
+  const b = parseNumber(valB);
+  if (a === null || b === null) return;
+  if (Math.abs(a - b) > tolerance) {
+    issues.push(`${label} mismatch: ${nameA}=${valA} vs ${nameB}=${valB}`);
+  }
+}
+
 async function safeText(page: Page, testId: string): Promise<string | null> {
   const locator = page.locator(`[data-testid="${testId}"]`).first();
   try {
@@ -65,6 +95,15 @@ async function safeText(page: Page, testId: string): Promise<string | null> {
   }
 }
 
+async function gotoPerformanceView(page: Page, params: URLSearchParams, requiredTestId: string) {
+  const url = `${BASE_URL}/performance?${params.toString()}`;
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120_000 });
+  await page.locator(`[data-testid="${requiredTestId}"]`).first().waitFor({
+    state: "attached",
+    timeout: 120_000,
+  });
+}
+
 test.describe("Performance Numbers Audit", () => {
   const results: AuditResult[] = [];
 
@@ -72,15 +111,13 @@ test.describe("Performance Numbers Audit", () => {
     for (const f1 of ENTRY_STYLES) {
       for (const f2 of OVERLAYS) {
         test(`${strategy} / ${f1} / ${f2}`, async ({ page }) => {
-          const url = `${BASE_URL}/performance?strategy=${strategy}&f1=${f1}&f2=${f2}&view=summary`;
-          await page.goto(url, { waitUntil: "networkidle", timeout: 120_000 });
-
-          await page.waitForFunction(
-            () => !document.querySelector(".fixed.inset-0.z-\\[100\\]"),
-            { timeout: 120_000 },
-          );
-
-          await page.waitForTimeout(2000);
+          const summaryParams = new URLSearchParams({
+            strategy,
+            f1,
+            f2,
+            view: "summary",
+          });
+          await gotoPerformanceView(page, summaryParams, "sidebar-return");
 
           const sidebar: SurfaceMetrics = {
             return: await safeText(page, "sidebar-return"),
@@ -103,6 +140,18 @@ test.describe("Performance Numbers Audit", () => {
             trades: await safeText(page, "comparison-trades"),
           };
 
+          const simulationParams = new URLSearchParams({
+            strategy,
+            f1,
+            f2,
+            view: "simulation",
+          });
+          await gotoPerformanceView(page, simulationParams, "sim-return");
+          await page.locator('[data-testid="equity-curve-return"]').first().waitFor({
+            state: "attached",
+            timeout: 60_000,
+          });
+
           const simCard = {
             return: await safeText(page, "sim-return"),
             maxDD: await safeText(page, "sim-maxdd"),
@@ -111,6 +160,15 @@ test.describe("Performance Numbers Audit", () => {
 
           const equityCurveReturn = await safeText(page, "equity-curve-return");
           const issues: string[] = [];
+
+          requireMetric(issues, "sidebar return", sidebar.return);
+          requireMetric(issues, "sidebar max DD", sidebar.maxDD);
+          requireMetric(issues, "sidebar win rate", sidebar.winRate);
+          requireMetric(issues, "sidebar trades", sidebar.trades);
+          requireMetric(issues, "simulation return", simCard.return);
+          requireMetric(issues, "simulation max DD", simCard.maxDD);
+          requireMetric(issues, "simulation trades", simCard.trades);
+          requireMetric(issues, "equity curve return", equityCurveReturn);
 
           checkPair(issues, "DD", "sidebar", sidebar.maxDD, "flagship", flagship.maxDD);
           checkPair(issues, "DD", "sidebar", sidebar.maxDD, "comparison", comparison.maxDD);
@@ -125,8 +183,8 @@ test.describe("Performance Numbers Audit", () => {
 
           checkPair(issues, "Win rate", "sidebar", sidebar.winRate, "flagship", flagship.winRate, 0.5);
 
-          checkPair(issues, "Trades", "sidebar", sidebar.trades, "flagship", flagship.trades, 0);
-          checkPair(issues, "Trades", "sidebar", sidebar.trades, "sim-card", simCard.trades, 0);
+          checkNumberPair(issues, "Trades", "sidebar", sidebar.trades, "flagship", flagship.trades);
+          checkNumberPair(issues, "Trades", "sidebar", sidebar.trades, "sim-card", simCard.trades);
 
           const ddValues = [sidebar.maxDD, flagship.maxDD, comparison.maxDD, simCard.maxDD];
           for (const [idx, raw] of ddValues.entries()) {

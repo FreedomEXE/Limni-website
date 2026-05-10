@@ -25,6 +25,7 @@ export type PositionLeg = {
   exitTimeUtc: string;
   weight: number;
   adrMultiplier: number;
+  returnPct: number;
   entryPrice: number;
   exitPrice: number;
   strategyId: string;
@@ -85,6 +86,7 @@ export async function buildWeeklyHoldLedger(
       exitTimeUtc: trade.detail?.exitTimeUtc ?? weekCloseUtc,
       weight: trade.weight ?? 1,
       adrMultiplier,
+      returnPct: trade.returnPct,
       entryPrice: trade.openPrice,
       exitPrice: trade.closePrice,
       strategyId: result.biasSourceId,

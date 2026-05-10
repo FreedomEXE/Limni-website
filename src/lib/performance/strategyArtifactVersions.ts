@@ -9,7 +9,7 @@ const STRATEGY_SHARD_ENGINE_VERSION =
 // Assembly version: bump when reading, aggregating, or displaying existing shard data changes.
 // This invalidates monolithic assembled artifacts without forcing shard recomputation.
 const STRATEGY_ASSEMBLY_VERSION =
-  process.env.STRATEGY_ASSEMBLY_VERSION?.trim() || "assembly-v2";
+  process.env.STRATEGY_ASSEMBLY_VERSION?.trim() || "assembly-v3";
 
 // Update only the version for the artifact family touched by a code change.
 // This keeps unrelated strategy pages on their existing persisted artifacts.
@@ -24,7 +24,7 @@ const RISK_OVERLAY_VERSIONS: Record<string, string> = {
   exposure_cap: "risk-overlay-exposure-cap-v2",
 };
 
-const PATH_SIMULATION_VERSION = "path-simulation-v1";
+const PATH_SIMULATION_VERSION = "path-simulation-v3";
 const SOURCE_FINGERPRINT_VERSION = "source-fingerprint-v1";
 
 export function buildStrategyArtifactEngineVersion(options: {

@@ -599,6 +599,7 @@ export function multiWeekToSimulation(
   biasSource: BiasSourceConfig,
   selectionLabel = "Weekly Hold",
 ): EngineSimulationGroup {
+  const chronologicalWeeks = sortWeeksChronologically(result.weeks);
   const cardSlots = resolveCardSlots(biasSource);
   const labels = getStrategyLabels(biasSource);
   const slotLabels = cardSlots.map((slot) => labels[slot]);
@@ -606,7 +607,7 @@ export function multiWeekToSimulation(
   // Build one cumulative equity curve per card slot
   const series = cardSlots.map((slot, i) => {
     let cumulative = 0;
-    const points = result.weeks.map((week) => {
+    const points = chronologicalWeeks.map((week) => {
       const slotted = slotTrades(week.trades, biasSource.cardBreakdown, cardSlots);
       const weekReturn = (slotted[i] ?? []).reduce((s, t) => s + t.returnPct, 0);
       cumulative += weekReturn;
@@ -630,7 +631,7 @@ export function multiWeekToSimulation(
     id: "total",
     label: "Total",
     color: "#ffffff",
-    points: result.weeks.map((week) => {
+    points: chronologicalWeeks.map((week) => {
       totalCum += week.totalReturnPct;
       return {
         ts_utc: week.weekOpenUtc,
@@ -642,7 +643,7 @@ export function multiWeekToSimulation(
 
   const assetSeries = ASSET_SECTIONS.map((asset, index) => {
     let cumulative = 0;
-    const points = result.weeks.map((week) => {
+    const points = chronologicalWeeks.map((week) => {
       const weekReturn = week.trades
         .filter((trade) => trade.assetClass === asset.id)
         .reduce((sum, trade) => sum + trade.returnPct, 0);
@@ -762,9 +763,10 @@ function buildSingleWeekAssetSeriesFromTrades(
 function buildMultiWeekAssetSeriesFromTrades(
   result: MultiWeekResult,
 ): EngineSimulationGroup["series"] {
+  const chronologicalWeeks = sortWeeksChronologically(result.weeks);
   return ASSET_SECTIONS.map((asset, index) => {
     let cumulative = 0;
-    const points = result.weeks.map((week) => {
+    const points = chronologicalWeeks.map((week) => {
       const weekReturn = week.trades
         .filter((trade) => trade.assetClass === asset.id)
         .reduce((sum, trade) => sum + trade.returnPct, 0);
@@ -782,6 +784,12 @@ function buildMultiWeekAssetSeriesFromTrades(
       points,
     };
   });
+}
+
+function sortWeeksChronologically<T extends { weekOpenUtc: string }>(weeks: readonly T[]): T[] {
+  return [...weeks].sort(
+    (left, right) => Date.parse(left.weekOpenUtc) - Date.parse(right.weekOpenUtc),
+  );
 }
 
 type MultiWeekPathAggregate = {
