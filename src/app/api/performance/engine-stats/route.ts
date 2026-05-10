@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
             totalReturnPct: multiWeek.totalReturnPct,
             peakPct: multiWeek.totalReturnPct,
             troughPct: Math.min(0, multiWeek.totalReturnPct),
-            maxDrawdownPct: Math.abs(multiWeek.maxDrawdownPct),
+            maxDrawdownPct: multiWeek.maxDrawdownPct,
             peakToCloseGivebackPct: 0,
             troughToCloseRecoveryPct: multiWeek.totalReturnPct - Math.min(0, multiWeek.totalReturnPct),
             maxActivePositions: 0,

@@ -228,7 +228,7 @@ export default function PerformanceComparisonPanel({
   const displayBadgeLabel = selectedWeekMetrics?.badgeLabel ?? (isWeeklyFlagship ? "Flagship" : badgeLabel);
   const displayReturnPct = selectedWeekMetrics?.returnPct ?? (activeGated ?? activeBaseline)?.simpleReturnPct ?? null;
   const displayWinRatePct = selectedWeekMetrics?.winRatePct ?? (activeGated ?? activeBaseline)?.winRatePct ?? null;
-  const displayMaxDrawdownPct = selectedWeekMetrics?.maxDrawdownPct ?? (activeGated ?? activeBaseline)?.maxDrawdownSimplePct ?? null;
+  const displayMaxDrawdownPct = selectedWeekMetrics?.maxDrawdownPct ?? (activeGated ?? activeBaseline)?.maxDrawdownPct ?? null;
   const displayTrades = selectedWeekMetrics?.trades ?? (activeGated ?? activeBaseline)?.totalTrades ?? null;
   const displayWeeks = selectedWeekMetrics?.weeks ?? (activeGated ?? activeBaseline)?.weeks ?? null;
 

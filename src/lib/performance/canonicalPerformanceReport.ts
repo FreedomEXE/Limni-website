@@ -16,7 +16,10 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { clearRuntimeCacheByPrefix, getOrSetRuntimeCache } from "@/lib/runtimeCache";
-import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown";
+import {
+  computeMaxDrawdownFromPercentReturns,
+  computeMaxDrawdownSimple,
+} from "@/lib/performance/drawdown";
 
 const CANONICAL_PERFORMANCE_REPORT_CACHE_PREFIX = "performance:canonicalReport:";
 const CANONICAL_PERFORMANCE_REPORT_CACHE_TTL_MS = Number(
@@ -571,7 +574,7 @@ function normalizeSystemToOneX(
     weeklyReturns,
     simpleReturnPct: weeklySeries.reduce((sum, value) => sum + value, 0),
     compoundedReturnPct: computeCompoundedReturnPct(weeklySeries),
-    maxDrawdownSimplePct: computeMaxDrawdownFromPercentReturns(weeklySeries),
+    maxDrawdownSimplePct: computeMaxDrawdownSimple(weeklySeries),
     maxDrawdownPct: computeMaxDrawdownFromPercentReturns(weeklySeries),
     totalTrades,
     totalWins,

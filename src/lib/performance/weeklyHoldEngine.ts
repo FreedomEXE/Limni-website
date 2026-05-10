@@ -41,6 +41,7 @@ import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirecti
 import { loadWeeklyAdrMap, getAdrPct, getTargetAdrPct } from "@/lib/performance/adrLookup";
 import { loadPathBars } from "@/lib/performance/pathBarLoader";
 import type { CanonicalPriceBar } from "@/lib/canonicalPriceBars";
+import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown";
 
 // ─── Trade types (strategy-generic) ─────────────────────────────
 // "WeeklyHoldTrade" name kept for backward compat; represents any strategy trade.
@@ -1278,15 +1279,9 @@ export async function computeMultiWeekHold(
   const totalTrades = weeks.reduce((s, w) => s + w.tradeCount, 0);
   const totalWins = weeks.reduce((s, w) => s + w.winCount, 0);
 
-  // Max drawdown from equity curve
-  let peak = 0;
-  let maxDD = 0;
-  let cum = 0;
-  for (const w of weeks) {
-    cum += w.totalReturnPct;
-    peak = Math.max(peak, cum);
-    maxDD = Math.min(maxDD, cum - peak);
-  }
+  const maxDrawdownPct = computeMaxDrawdownFromPercentReturns(
+    weeks.map((week) => week.totalReturnPct),
+  );
 
   // Per asset class
   const byAssetClass: Record<string, { returnPct: number; trades: number; wins: number }> = {};
@@ -1306,7 +1301,7 @@ export async function computeMultiWeekHold(
     totalTrades,
     totalWins,
     winRate: totalTrades > 0 ? (totalWins / totalTrades) * 100 : 0,
-    maxDrawdownPct: maxDD,
+    maxDrawdownPct,
     byAssetClass,
   };
 }
