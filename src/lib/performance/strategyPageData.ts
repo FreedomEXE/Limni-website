@@ -500,6 +500,51 @@ function assembleStrategyPageData(options: {
   };
 }
 
+function stripArtifactGridProps(grid: EngineGridProps): EngineGridProps {
+  const stripModel = (model: EngineGridProps["combined"]["models"][number]) => ({
+    ...model,
+    pair_details: model.pair_details.map((detail) => ({
+      ...detail,
+      children: undefined,
+      tradeDetail: undefined,
+    })),
+  });
+
+  return {
+    ...grid,
+    combined: {
+      ...grid.combined,
+      models: grid.combined.models.map(stripModel),
+    },
+    perAsset: grid.perAsset.map((section) => ({
+      ...section,
+      models: section.models.map(stripModel),
+    })),
+  };
+}
+
+function stripArtifactWeekResult(result: WeeklyHoldResult): WeeklyHoldResult {
+  return {
+    ...result,
+    trades: result.trades.map((trade) => ({
+      ...trade,
+      detail: undefined,
+    })),
+  };
+}
+
+function stripStrategyPageDataForArtifact(data: StrategyPageData): StrategyPageData {
+  return {
+    ...data,
+    weekMap: Object.fromEntries(
+      Object.entries(data.weekMap).map(([week, grid]) => [week, stripArtifactGridProps(grid)]),
+    ),
+    weekResults: Object.fromEntries(
+      Object.entries(data.weekResults).map(([week, result]) => [week, stripArtifactWeekResult(result)]),
+    ),
+  };
+}
+
 export async function loadStrategyPageData(
   selection: StrategySelection,
   options: LoadStrategyPageDataOptions = {},
@@ -581,16 +626,17 @@ export async function loadStrategyPageData(
           weekResultsByWeek: nextWeekResults,
         });
 
+        const artifactToPersist = stripStrategyPageDataForArtifact(artifactPayload);
         const cachedAtUtc = new Date().toISOString();
         await persistStrategyArtifactEntry(selectionKey, {
           cachedAtUtc,
           fingerprint,
-          payload: artifactPayload,
+          payload: artifactToPersist,
         });
 
         if (!includeCurrentWeek) {
           return {
-            ...artifactPayload,
+            ...artifactToPersist,
             artifactMeta: {
               status: "patched",
               selectionKey,
@@ -610,8 +656,8 @@ export async function loadStrategyPageData(
         const merged = await mergeCurrentWeekIntoCachedPathData({
           selectionKey,
           currentWeekResult,
-          cachedSimMap: { ...artifactPayload.simMap },
-          cachedPathSummaryMap: { ...artifactPayload.pathSummaryMap },
+          cachedSimMap: { ...artifactToPersist.simMap },
+          cachedPathSummaryMap: { ...artifactToPersist.pathSummaryMap },
           cachedWeeks,
           biasSource,
           entryStyle,
@@ -703,19 +749,20 @@ export async function loadStrategyPageData(
       return null;
     }
 
-    const weekResultsByWeek = { ...artifactPayload.weekResults };
+    const artifactToPersist = stripStrategyPageDataForArtifact(artifactPayload);
+    const weekResultsByWeek = { ...artifactToPersist.weekResults };
     const missingWeeks = cachedWeeks.filter((week) => !(week in weekResultsByWeek));
 
     const cachedAtUtc = new Date().toISOString();
     await persistStrategyArtifactEntry(selectionKey, {
       cachedAtUtc,
       fingerprint,
-      payload: artifactPayload,
+      payload: artifactToPersist,
     });
 
     if (!includeCurrentWeek) {
       return {
-        ...artifactPayload,
+        ...artifactToPersist,
         artifactMeta: {
           status: "miss",
           selectionKey,
@@ -735,8 +782,8 @@ export async function loadStrategyPageData(
     const merged = await mergeCurrentWeekIntoCachedPathData({
       selectionKey,
       currentWeekResult,
-      cachedSimMap: { ...artifactPayload.simMap },
-      cachedPathSummaryMap: { ...artifactPayload.pathSummaryMap },
+      cachedSimMap: { ...artifactToPersist.simMap },
+      cachedPathSummaryMap: { ...artifactToPersist.pathSummaryMap },
       cachedWeeks,
       biasSource,
       entryStyle,
