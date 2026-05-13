@@ -173,7 +173,7 @@ export default function MatrixViewSection({
         return;
       }
 
-      const payload = getStrategyClientPayload(selectedSelection);
+      const payload = getStrategyClientPayload(selectedSelection, "matrix");
       if (payload !== undefined) {
         const nextData = payload && (payload.engineWeekResults || payload.sidebarStats)
           ? {
@@ -190,7 +190,7 @@ export default function MatrixViewSection({
         return;
       }
 
-      const fetched = await fetchStrategyClientPayload(selectedSelection);
+      const fetched = await fetchStrategyClientPayload(selectedSelection, "matrix");
       if (!active) return;
       const nextData = fetched && (fetched.engineWeekResults || fetched.sidebarStats)
         ? {
@@ -269,7 +269,7 @@ export default function MatrixViewSection({
     let active = true;
     const poll = async () => {
       void requestStrategyArtifactWarm(selectedSelection);
-      const fetched = await fetchStrategyClientPayload(selectedSelection);
+      const fetched = await fetchStrategyClientPayload(selectedSelection, "matrix");
       if (!active || !(fetched?.engineWeekResults || fetched?.sidebarStats)) return;
       const nextData = {
         engineWeekResults: fetched.engineWeekResults,
@@ -298,7 +298,9 @@ export default function MatrixViewSection({
     let active = true;
     void prefetchVisibleStrategyPayloads({
       currentSelection: selectedSelection,
-      concurrency: 3,
+      concurrency: 1,
+      delayMs: 1500,
+      scope: "matrix",
       shouldContinue: () => active,
     });
 

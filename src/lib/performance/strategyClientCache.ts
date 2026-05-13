@@ -1,5 +1,8 @@
 import type { RuntimeStrategySelection } from "@/lib/performance/strategySelection";
-import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
+import type {
+  StrategyClientPayload,
+  StrategyClientPayloadScope,
+} from "@/lib/performance/strategyClientPayload";
 
 const payloadCache = new Map<string, StrategyClientPayload | null>();
 const inflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
@@ -12,6 +15,10 @@ const BULK_WARM_REQUEST_COOLDOWN_MS = 30000;
 
 function buildSelectionKey(selection: RuntimeStrategySelection) {
   return `${selection.strategy}:${selection.f1}:${selection.f2}`;
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 export type StrategyArtifactStatusRow = {
@@ -75,8 +82,11 @@ export type StrategyArtifactWarmPayload = {
 
 export function getStrategyClientPayload(
   selection: RuntimeStrategySelection,
+  scope: StrategyClientPayloadScope = "performance",
 ): StrategyClientPayload | null | undefined {
-  return payloadCache.get(buildSelectionKey(selection));
+  const payload = payloadCache.get(buildSelectionKey(selection));
+  if (payload === undefined || payload === null) return payload;
+  return hasScopePayload(payload, scope) ? payload : undefined;
 }
 
 export function setStrategyClientPayload(
@@ -88,7 +98,40 @@ export function setStrategyClientPayload(
     payloadCache.delete(cacheKey);
     return;
   }
-  payloadCache.set(cacheKey, payload);
+  if (payload === null) {
+    payloadCache.set(cacheKey, null);
+    return;
+  }
+  payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, payload));
+}
+
+function hasScopePayload(payload: StrategyClientPayload, scope: StrategyClientPayloadScope) {
+  if (scope === "matrix") {
+    return Boolean(payload.engineWeekResults || payload.sidebarStats);
+  }
+  if (scope === "full") {
+    return Boolean(
+      (payload.engineWeekMap || payload.engineSimMap) &&
+      (payload.engineWeekResults || payload.sidebarStats)
+    );
+  }
+  return Boolean(payload.engineWeekMap || payload.engineSimMap || payload.sidebarStats);
+}
+
+function mergeStrategyClientPayload(
+  previous: StrategyClientPayload | null,
+  next: StrategyClientPayload,
+): StrategyClientPayload {
+  if (!previous) return next;
+  return {
+    engineWeekMap: next.engineWeekMap ?? previous.engineWeekMap,
+    engineSimMap: next.engineSimMap ?? previous.engineSimMap,
+    engineWeekResults: next.engineWeekResults ?? previous.engineWeekResults,
+    sidebarStats: next.sidebarStats ?? previous.sidebarStats,
+    weekOptions: next.weekOptions ?? previous.weekOptions,
+    currentWeekOpenUtc: next.currentWeekOpenUtc ?? previous.currentWeekOpenUtc,
+    artifactMeta: next.artifactMeta ?? previous.artifactMeta,
+  };
 }
 
 function isStrategyClientPayload(value: unknown): value is StrategyClientPayload {
@@ -104,18 +147,24 @@ function isStrategyClientPayload(value: unknown): value is StrategyClientPayload
 
 export async function fetchStrategyClientPayload(
   selection: RuntimeStrategySelection,
+  scope: StrategyClientPayloadScope = "performance",
 ): Promise<StrategyClientPayload | null> {
   const cacheKey = buildSelectionKey(selection);
-  if (payloadCache.has(cacheKey)) {
-    return payloadCache.get(cacheKey) ?? null;
+  const cached = payloadCache.get(cacheKey);
+  if (cached !== undefined && cached !== null && hasScopePayload(cached, scope)) {
+    return cached;
   }
-  const inflight = inflightCache.get(cacheKey);
+  if (cached === null) {
+    return null;
+  }
+  const inflightKey = `${cacheKey}:${scope}`;
+  const inflight = inflightCache.get(inflightKey);
   if (inflight) {
     return inflight;
   }
 
   const request = fetch(
-    `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}`,
+    `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}&scope=${scope}`,
     { method: "GET" },
   )
     .then(async (response) => {
@@ -136,19 +185,19 @@ export async function fetchStrategyClientPayload(
         throw new Error("Unexpected strategy payload shape");
       }
       if (data.artifactMeta?.cachedAtUtc !== null && data.artifactMeta?.stale !== true) {
-        payloadCache.set(cacheKey, data);
+        payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
       }
-      return data;
+      return payloadCache.get(cacheKey) ?? data;
     })
     .catch((error) => {
       console.error("[strategyClientCache] Failed to fetch strategy payload:", error);
       return null;
     })
     .finally(() => {
-      inflightCache.delete(cacheKey);
+      inflightCache.delete(inflightKey);
     });
 
-  inflightCache.set(cacheKey, request);
+  inflightCache.set(inflightKey, request);
   return request;
 }
 
@@ -256,14 +305,18 @@ export async function requestVisibleStrategyArtifactsWarm(): Promise<StrategyBul
 export async function prefetchVisibleStrategyPayloads(options: {
   currentSelection?: RuntimeStrategySelection;
   concurrency?: number;
+  delayMs?: number;
+  scope?: StrategyClientPayloadScope;
   shouldContinue?: () => boolean;
 } = {}): Promise<void> {
   const {
     currentSelection,
-    concurrency = 3,
+    concurrency = 1,
+    delayMs = 1500,
+    scope = "performance",
     shouldContinue = () => true,
   } = options;
-  const warmPromise = requestVisibleStrategyArtifactsWarm();
+  void requestVisibleStrategyArtifactsWarm();
 
   const status = await fetchStrategyArtifactStatus();
   if (!status || !shouldContinue()) return;
@@ -290,17 +343,16 @@ export async function prefetchVisibleStrategyPayloads(options: {
           const selection = selections[nextIndex];
           nextIndex += 1;
           if (!selection) return;
-          await fetchStrategyClientPayload(selection);
+          await fetchStrategyClientPayload(selection, scope);
+          if (delayMs > 0 && shouldContinue()) {
+            await wait(delayMs);
+          }
         }
       }),
     );
   };
 
   await prefetchSelections();
-  await warmPromise.catch(() => null);
-  if (shouldContinue()) {
-    await prefetchSelections();
-  }
 }
 
 export async function fetchStrategyArtifactStatus(

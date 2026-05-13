@@ -56,7 +56,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   };
   const initialStrategyData = await readReadyStrategyArtifactPayload(initialStrategySelection);
   const initialPayload = initialStrategyData
-    ? toStrategyClientPayload(initialStrategyData)
+    ? toStrategyClientPayload(initialStrategyData, "performance")
     : null;
 
   return (

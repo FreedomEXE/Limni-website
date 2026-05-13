@@ -17,6 +17,11 @@ export async function GET(request: NextRequest) {
     f1: searchParams.get("f1"),
     f2: searchParams.get("f2"),
   });
+  const scope = searchParams.get("scope") === "matrix"
+    ? "matrix"
+    : searchParams.get("scope") === "full"
+      ? "full"
+      : "performance";
   const selection = {
     strategyId,
     f1: normalizedFilters.f1,
@@ -44,7 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      toStrategyClientPayload(data),
+      toStrategyClientPayload(data, scope),
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load strategy data";

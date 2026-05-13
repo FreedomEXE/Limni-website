@@ -12,6 +12,8 @@ export type StrategyClientPayload = {
   artifactMeta?: StrategyPageData["artifactMeta"];
 };
 
+export type StrategyClientPayloadScope = "performance" | "matrix" | "full";
+
 function stripGridProps(grid: EngineGridProps): EngineGridProps {
   const stripModel = (model: EngineGridProps["combined"]["models"][number]) => ({
     ...model,
@@ -59,11 +61,14 @@ function stripWeekResults(weekResults: StrategyPageData["weekResults"] | null | 
   );
 }
 
-export function toStrategyClientPayload(data: StrategyPageData): StrategyClientPayload {
+export function toStrategyClientPayload(
+  data: StrategyPageData,
+  scope: StrategyClientPayloadScope = "performance",
+): StrategyClientPayload {
   return {
-    engineWeekMap: stripWeekMap(data.weekMap),
-    engineSimMap: data.simMap ?? null,
-    engineWeekResults: stripWeekResults(data.weekResults),
+    engineWeekMap: scope === "matrix" ? null : stripWeekMap(data.weekMap),
+    engineSimMap: scope === "matrix" ? null : data.simMap ?? null,
+    engineWeekResults: scope === "performance" ? null : stripWeekResults(data.weekResults),
     sidebarStats: data.sidebarStats ?? null,
     weekOptions: ["all", ...data.weekOptions],
     currentWeekOpenUtc: data.currentWeekOpenUtc,

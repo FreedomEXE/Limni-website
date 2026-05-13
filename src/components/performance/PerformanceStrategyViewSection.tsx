@@ -117,7 +117,7 @@ export default function PerformanceStrategyViewSection({
         return;
       }
 
-      const payload = getStrategyClientPayload(selectedSelection);
+      const payload = getStrategyClientPayload(selectedSelection, "performance");
       if (payload !== undefined) {
         const nextEntry = payload && (payload.engineWeekMap || payload.engineSimMap || payload.sidebarStats)
           ? {
@@ -138,7 +138,7 @@ export default function PerformanceStrategyViewSection({
         return;
       }
 
-      const fetched = await fetchStrategyClientPayload(selectedSelection);
+      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
       if (!active) return;
       const nextEntry = fetched && (fetched.engineWeekMap || fetched.engineSimMap || fetched.sidebarStats)
         ? {
@@ -180,7 +180,7 @@ export default function PerformanceStrategyViewSection({
     let active = true;
     const poll = async () => {
       void requestStrategyArtifactWarm(selectedSelection);
-      const fetched = await fetchStrategyClientPayload(selectedSelection);
+      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
       if (!active || !(fetched?.engineWeekMap || fetched?.engineSimMap || fetched?.sidebarStats)) return;
       const nextEntry = {
         engineWeekMap: fetched.engineWeekMap,
@@ -216,7 +216,7 @@ export default function PerformanceStrategyViewSection({
     const refreshStaleEntry = async () => {
       const warmed = await requestStrategyArtifactWarm(selectedSelection);
       if (!active || !warmed) return;
-      const fetched = await fetchStrategyClientPayload(selectedSelection);
+      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
       if (!active || !(fetched?.engineWeekMap || fetched?.engineSimMap || fetched?.sidebarStats)) return;
       const nextEntry = {
         engineWeekMap: fetched.engineWeekMap,
@@ -246,7 +246,9 @@ export default function PerformanceStrategyViewSection({
     let active = true;
     void prefetchVisibleStrategyPayloads({
       currentSelection: selectedSelection,
-      concurrency: 3,
+      concurrency: 1,
+      delayMs: 1500,
+      scope: "performance",
       shouldContinue: () => active,
     });
 
