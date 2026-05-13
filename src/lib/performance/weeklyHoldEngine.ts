@@ -1305,3 +1305,22 @@ export async function computeMultiWeekHold(
     byAssetClass,
   };
 }
+
+export async function computeWeeklySignalsOnly(
+  biasSource: BiasSourceConfig,
+  weekOpenUtc: string,
+): Promise<WeeklyHoldResult> {
+  const directions = await resolveDirections(biasSource, weekOpenUtc);
+  return {
+    weekOpenUtc,
+    biasSourceId: biasSource.id,
+    trades: [],
+    totalReturnPct: 0,
+    winCount: 0,
+    lossCount: 0,
+    winRate: 0,
+    tradeCount: 0,
+    signals: buildCanonicalSignals(directions),
+    isRealized: false,
+  };
+}

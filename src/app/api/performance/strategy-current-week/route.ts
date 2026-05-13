@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
+import { getStrategy, normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
 import { readReadyStrategyArtifactPayload } from "@/lib/performance/strategyArtifactReadiness";
 import {
   toCurrentWeekStrategyClientPayload,
 } from "@/lib/performance/strategyClientPayload";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import { computeWeeklySignalsOnly } from "@/lib/performance/weeklyHoldEngine";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,35 @@ export async function GET(request: NextRequest) {
 
   try {
     const selectionKey = buildStrategySelectionKey(selection);
+    if (scope === "matrix") {
+      const biasSource = getStrategy(selection.strategyId);
+      if (!biasSource) {
+        return NextResponse.json({ error: "Unknown strategy" }, { status: 400 });
+      }
+      const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+      const result = await computeWeeklySignalsOnly(biasSource, currentWeekOpenUtc);
+      return NextResponse.json({
+        engineWeekMap: null,
+        engineSimMap: null,
+        engineWeekResults: {
+          [currentWeekOpenUtc]: result,
+        },
+        sidebarStats: null,
+        weekOptions: ["all", currentWeekOpenUtc],
+        currentWeekOpenUtc,
+        artifactMeta: {
+          status: "hit",
+          selectionKey,
+          cachedAtUtc: null,
+          refreshedWeeks: [currentWeekOpenUtc],
+          removedWeeks: [],
+          missingWeeks: [],
+          stale: false,
+          staleReason: null,
+        },
+      });
+    }
+
     const data = await readReadyStrategyArtifactPayload(selection, {
       includeCurrentWeek: true,
     });

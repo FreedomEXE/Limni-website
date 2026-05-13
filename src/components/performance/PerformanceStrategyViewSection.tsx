@@ -219,40 +219,6 @@ export default function PerformanceStrategyViewSection({
   }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
 
   useEffect(() => {
-    if (loadedSelectionKey !== selectedSelectionKey || !stableEntry) {
-      return undefined;
-    }
-    if (
-      stableEntry.currentWeekOpenUtc &&
-      stableEntry.weekOptions?.includes(stableEntry.currentWeekOpenUtc)
-    ) {
-      return undefined;
-    }
-
-    let active = true;
-    const loadCurrentWeek = async () => {
-      const payload = await fetchCurrentWeekStrategyClientPayload(selectedSelection, "performance");
-      if (!active || !(payload?.engineWeekMap || payload?.engineSimMap || payload?.sidebarStats)) return;
-      const nextEntry = {
-        engineWeekMap: payload.engineWeekMap,
-        engineSimMap: payload.engineSimMap,
-        sidebarStats: payload.sidebarStats,
-        weekOptions: payload.weekOptions,
-        currentWeekOpenUtc: payload.currentWeekOpenUtc,
-        artifactMeta: payload.artifactMeta,
-      };
-      setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
-      setStableEntry(nextEntry);
-    };
-
-    void loadCurrentWeek();
-
-    return () => {
-      active = false;
-    };
-  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
-
-  useEffect(() => {
     if (prefetchStartedRef.current || loadedSelectionKey !== selectedSelectionKey || !stableEntry) {
       return undefined;
     }
