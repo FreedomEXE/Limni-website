@@ -12,6 +12,9 @@ let bulkWarmInflight: Promise<StrategyBulkWarmPayload | null> | null = null;
 let bulkWarmRequestedAt = 0;
 const WARM_REQUEST_COOLDOWN_MS = 120000;
 const BULK_WARM_REQUEST_COOLDOWN_MS = 30000;
+const PERSISTENT_PAYLOAD_CACHE_NAME = "limni-strategy-payload-v1";
+const PERSISTENT_PAYLOAD_META_PREFIX = "limni:strategy-payload:";
+const PERSISTENT_PAYLOAD_TTL_MS = 6 * 60 * 60 * 1000;
 
 function buildSelectionKey(selection: RuntimeStrategySelection) {
   return `${selection.strategy}:${selection.f1}:${selection.f2}`;
@@ -145,6 +148,103 @@ function isStrategyClientPayload(value: unknown): value is StrategyClientPayload
   );
 }
 
+function canUsePersistentPayloadCache() {
+  return (
+    typeof window !== "undefined" &&
+    "caches" in window &&
+    typeof window.localStorage !== "undefined"
+  );
+}
+
+function toPersistentPayloadUrl(url: string) {
+  return new URL(url, window.location.origin).toString();
+}
+
+function persistentPayloadMetaKey(url: string) {
+  return `${PERSISTENT_PAYLOAD_META_PREFIX}${url}`;
+}
+
+function readPersistentPayloadStoredAt(url: string) {
+  try {
+    const raw = window.localStorage.getItem(persistentPayloadMetaKey(url));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { storedAt?: unknown };
+    return typeof parsed.storedAt === "number" ? parsed.storedAt : null;
+  } catch {
+    return null;
+  }
+}
+
+async function deletePersistentPayload(url: string) {
+  if (!canUsePersistentPayloadCache()) return;
+  try {
+    window.localStorage.removeItem(persistentPayloadMetaKey(url));
+    const cache = await window.caches.open(PERSISTENT_PAYLOAD_CACHE_NAME);
+    await cache.delete(url);
+  } catch {
+    // Browser cache storage is an opportunistic fast path.
+  }
+}
+
+async function readPersistentPayload(
+  url: string,
+  selection: RuntimeStrategySelection,
+  scope: StrategyClientPayloadScope,
+): Promise<StrategyClientPayload | null> {
+  if (!canUsePersistentPayloadCache()) return null;
+
+  const absoluteUrl = toPersistentPayloadUrl(url);
+  const storedAt = readPersistentPayloadStoredAt(absoluteUrl);
+  if (!storedAt || Date.now() - storedAt > PERSISTENT_PAYLOAD_TTL_MS) {
+    await deletePersistentPayload(absoluteUrl);
+    return null;
+  }
+
+  try {
+    const cache = await window.caches.open(PERSISTENT_PAYLOAD_CACHE_NAME);
+    const cachedResponse = await cache.match(absoluteUrl);
+    if (!cachedResponse) return null;
+    const data = (await cachedResponse.clone().json()) as unknown;
+    if (!isStrategyClientPayload(data) || data.artifactMeta?.stale === true || !hasScopePayload(data, scope)) {
+      await deletePersistentPayload(absoluteUrl);
+      return null;
+    }
+
+    payloadCache.set(buildSelectionKey(selection), mergeStrategyClientPayload(payloadCache.get(buildSelectionKey(selection)) ?? null, data));
+    return payloadCache.get(buildSelectionKey(selection)) ?? data;
+  } catch {
+    await deletePersistentPayload(absoluteUrl);
+    return null;
+  }
+}
+
+async function writePersistentPayload(url: string, data: StrategyClientPayload) {
+  if (
+    !canUsePersistentPayloadCache() ||
+    data.artifactMeta?.stale === true ||
+    data.artifactMeta?.cachedAtUtc === null
+  ) {
+    return;
+  }
+
+  const absoluteUrl = toPersistentPayloadUrl(url);
+  try {
+    const cache = await window.caches.open(PERSISTENT_PAYLOAD_CACHE_NAME);
+    await cache.put(
+      absoluteUrl,
+      new Response(JSON.stringify(data), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    window.localStorage.setItem(
+      persistentPayloadMetaKey(absoluteUrl),
+      JSON.stringify({ storedAt: Date.now() }),
+    );
+  } catch {
+    // Ignore quota/private-mode failures; the in-memory cache still works.
+  }
+}
+
 export async function fetchStrategyClientPayload(
   selection: RuntimeStrategySelection,
   scope: StrategyClientPayloadScope = "performance",
@@ -163,12 +263,17 @@ export async function fetchStrategyClientPayload(
     return inflight;
   }
 
+  const url =
+    `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}` +
+    `&f1=${encodeURIComponent(selection.f1)}` +
+    `&f2=${encodeURIComponent(selection.f2)}` +
+    `&scope=${scope}`;
+  const persistentPayload = await readPersistentPayload(url, selection, scope);
+  if (persistentPayload) {
+    return persistentPayload;
+  }
+
   const request = (async () => {
-    const url =
-      `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}` +
-      `&f1=${encodeURIComponent(selection.f1)}` +
-      `&f2=${encodeURIComponent(selection.f2)}` +
-      `&scope=${scope}`;
     const maxAttempts = 3;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -192,6 +297,7 @@ export async function fetchStrategyClientPayload(
         }
         if (data.artifactMeta?.cachedAtUtc !== null && data.artifactMeta?.stale !== true) {
           payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
+          void writePersistentPayload(url, data);
         }
         return payloadCache.get(cacheKey) ?? data;
       } catch (error) {
