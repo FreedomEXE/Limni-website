@@ -163,36 +163,48 @@ export async function fetchStrategyClientPayload(
     return inflight;
   }
 
-  const request = fetch(
-    `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}&scope=${scope}`,
-    { method: "GET" },
-  )
-    .then(async (response) => {
-      if (!response.ok) {
-        throw new Error(`Strategy payload request failed (${response.status})`);
+  const request = (async () => {
+    const url =
+      `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}` +
+      `&f1=${encodeURIComponent(selection.f1)}` +
+      `&f2=${encodeURIComponent(selection.f2)}` +
+      `&scope=${scope}`;
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const response = await fetch(url, { method: "GET" });
+        if (!response.ok) {
+          throw new Error(`Strategy payload request failed (${response.status})`);
+        }
+        const data = (await response.json()) as unknown;
+        if (
+          data &&
+          typeof data === "object" &&
+          "error" in data &&
+          typeof (data as { error?: unknown }).error === "string"
+        ) {
+          const errorData = data as { error: string };
+          throw new Error(errorData.error);
+        }
+        if (!isStrategyClientPayload(data)) {
+          throw new Error("Unexpected strategy payload shape");
+        }
+        if (data.artifactMeta?.cachedAtUtc !== null && data.artifactMeta?.stale !== true) {
+          payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
+        }
+        return payloadCache.get(cacheKey) ?? data;
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          console.error("[strategyClientCache] Failed to fetch strategy payload:", error);
+          return null;
+        }
+        await wait(750 * attempt);
       }
-      const data = (await response.json()) as unknown;
-      if (
-        data &&
-        typeof data === "object" &&
-        "error" in data &&
-        typeof (data as { error?: unknown }).error === "string"
-      ) {
-        const errorData = data as { error: string };
-        throw new Error(errorData.error);
-      }
-      if (!isStrategyClientPayload(data)) {
-        throw new Error("Unexpected strategy payload shape");
-      }
-      if (data.artifactMeta?.cachedAtUtc !== null && data.artifactMeta?.stale !== true) {
-        payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
-      }
-      return payloadCache.get(cacheKey) ?? data;
-    })
-    .catch((error) => {
-      console.error("[strategyClientCache] Failed to fetch strategy payload:", error);
-      return null;
-    })
+    }
+
+    return null;
+  })()
     .finally(() => {
       inflightCache.delete(inflightKey);
     });
@@ -316,8 +328,6 @@ export async function prefetchVisibleStrategyPayloads(options: {
     scope = "performance",
     shouldContinue = () => true,
   } = options;
-  void requestVisibleStrategyArtifactsWarm();
-
   const status = await fetchStrategyArtifactStatus();
   if (!status || !shouldContinue()) return;
 

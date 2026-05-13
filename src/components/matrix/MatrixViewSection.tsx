@@ -36,7 +36,6 @@ import {
   fetchStrategyClientPayload,
   getStrategyClientPayload,
   prefetchVisibleStrategyPayloads,
-  requestStrategyArtifactWarm,
   setStrategyClientPayload,
 } from "@/lib/performance/strategyClientCache";
 import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
@@ -273,31 +272,6 @@ export default function MatrixViewSection({
   }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableStrategyData]);
 
   useEffect(() => {
-    if (loadedSelectionKey !== selectedSelectionKey || stableStrategyData) return undefined;
-    let active = true;
-    const poll = async () => {
-      void requestStrategyArtifactWarm(selectedSelection);
-      const fetched = await fetchStrategyClientPayload(selectedSelection, "matrix");
-      if (!active || !(fetched?.engineWeekResults || fetched?.sidebarStats)) return;
-      const nextData = {
-        engineWeekResults: fetched.engineWeekResults,
-        sidebarStats: fetched.sidebarStats,
-      };
-      setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
-      setStableStrategyData(nextData);
-      setLoadedSelectionKey(selectedSelectionKey);
-    };
-    const intervalId = window.setInterval(() => {
-      void poll();
-    }, 10000);
-    void poll();
-    return () => {
-      active = false;
-      window.clearInterval(intervalId);
-    };
-  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableStrategyData]);
-
-  useEffect(() => {
     if (prefetchStartedRef.current || loadedSelectionKey !== selectedSelectionKey || !stableStrategyData) {
       return undefined;
     }
@@ -337,7 +311,6 @@ export default function MatrixViewSection({
   return (
     <StrategyArtifactLoadingGate
       currentReady={currentReady}
-      currentSelection={selectedSelection}
       pageLabel="Matrix Page"
     >
       <div className="space-y-4">

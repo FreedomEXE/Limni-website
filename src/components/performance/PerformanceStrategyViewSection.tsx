@@ -176,35 +176,6 @@ export default function PerformanceStrategyViewSection({
   }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
 
   useEffect(() => {
-    if (loadedSelectionKey !== selectedSelectionKey || stableEntry) return undefined;
-    let active = true;
-    const poll = async () => {
-      void requestStrategyArtifactWarm(selectedSelection);
-      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
-      if (!active || !(fetched?.engineWeekMap || fetched?.engineSimMap || fetched?.sidebarStats)) return;
-      const nextEntry = {
-        engineWeekMap: fetched.engineWeekMap,
-        engineSimMap: fetched.engineSimMap,
-        sidebarStats: fetched.sidebarStats,
-        weekOptions: fetched.weekOptions,
-        currentWeekOpenUtc: fetched.currentWeekOpenUtc,
-        artifactMeta: fetched.artifactMeta,
-      };
-      setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
-      setStableEntry(nextEntry);
-      setLoadedSelectionKey(selectedSelectionKey);
-    };
-    const intervalId = window.setInterval(() => {
-      void poll();
-    }, 10000);
-    void poll();
-    return () => {
-      active = false;
-      window.clearInterval(intervalId);
-    };
-  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
-
-  useEffect(() => {
     if (
       loadedSelectionKey !== selectedSelectionKey ||
       stableEntry?.artifactMeta?.stale !== true
@@ -272,7 +243,6 @@ export default function PerformanceStrategyViewSection({
   return (
     <StrategyArtifactLoadingGate
       currentReady={currentReady}
-      currentSelection={selectedSelection}
       pageLabel="Performance Page"
     >
       <div className="space-y-4">
