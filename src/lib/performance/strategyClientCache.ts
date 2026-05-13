@@ -344,25 +344,33 @@ export async function fetchCurrentWeekStrategyClientPayload(
     return inflight;
   }
 
-  const request = fetch(
-    `/api/performance/strategy-current-week?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}&scope=${scope}`,
-    { method: "GET", cache: "no-store" },
-  )
-    .then(async (response) => {
-      if (!response.ok) {
-        throw new Error(`Current week strategy payload request failed (${response.status})`);
+  const request = (async () => {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const response = await fetch(
+          `/api/performance/strategy-current-week?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}&scope=${scope}`,
+          { method: "GET", cache: "no-store" },
+        );
+        if (!response.ok) {
+          throw new Error(`Current week strategy payload request failed (${response.status})`);
+        }
+        const data = (await response.json()) as unknown;
+        if (!isStrategyClientPayload(data)) {
+          throw new Error("Unexpected current week strategy payload shape");
+        }
+        payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
+        return payloadCache.get(cacheKey) ?? data;
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          console.error("[strategyClientCache] Failed to fetch current week strategy payload:", error);
+          return null;
+        }
+        await wait(1000 * attempt);
       }
-      const data = (await response.json()) as unknown;
-      if (!isStrategyClientPayload(data)) {
-        throw new Error("Unexpected current week strategy payload shape");
-      }
-      payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
-      return payloadCache.get(cacheKey) ?? data;
-    })
-    .catch((error) => {
-      console.error("[strategyClientCache] Failed to fetch current week strategy payload:", error);
-      return null;
-    })
+    }
+    return null;
+  })()
     .finally(() => {
       currentWeekInflightCache.delete(inflightKey);
     });

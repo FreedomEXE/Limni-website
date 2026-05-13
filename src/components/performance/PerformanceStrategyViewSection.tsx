@@ -211,11 +211,21 @@ export default function PerformanceStrategyViewSection({
 
   useEffect(() => {
     if (loadedSelectionKey !== selectedSelectionKey || !stableEntry) {
-      return;
+      return undefined;
     }
 
-    void fetchStrategyClientPayload(selectedSelection, "matrix");
-    void fetchCurrentWeekStrategyClientPayload(selectedSelection, "matrix");
+    let active = true;
+    const prefetchMatrixEntry = async () => {
+      await fetchStrategyClientPayload(selectedSelection, "matrix");
+      if (!active) return;
+      await fetchCurrentWeekStrategyClientPayload(selectedSelection, "matrix");
+    };
+
+    void prefetchMatrixEntry();
+
+    return () => {
+      active = false;
+    };
   }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
 
   useEffect(() => {

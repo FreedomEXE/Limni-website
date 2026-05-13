@@ -311,6 +311,9 @@ export default function MatrixViewSection({
     if (prefetchStartedRef.current || loadedSelectionKey !== selectedSelectionKey || !stableStrategyData) {
       return undefined;
     }
+    if (selectedWeek === currentWeekOpenUtc && !stableStrategyData.engineWeekResults?.[currentWeekOpenUtc]) {
+      return undefined;
+    }
 
     prefetchStartedRef.current = true;
     let active = true;
@@ -325,7 +328,14 @@ export default function MatrixViewSection({
     return () => {
       active = false;
     };
-  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableStrategyData]);
+  }, [
+    currentWeekOpenUtc,
+    loadedSelectionKey,
+    selectedSelection,
+    selectedSelectionKey,
+    selectedWeek,
+    stableStrategyData,
+  ]);
 
   useEffect(() => {
     const selectedWeekResult = selectedWeek ? engineWeekResults?.[selectedWeek] ?? null : null;

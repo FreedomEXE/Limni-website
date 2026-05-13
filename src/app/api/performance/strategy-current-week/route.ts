@@ -6,9 +6,55 @@ import {
   toCurrentWeekStrategyClientPayload,
 } from "@/lib/performance/strategyClientPayload";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
-import { computeWeeklySignalsOnly } from "@/lib/performance/weeklyHoldEngine";
+import {
+  computeWeeklySignalsOnly,
+  type WeeklyHoldResult,
+} from "@/lib/performance/weeklyHoldEngine";
+import type { BiasSourceConfig } from "@/lib/performance/strategyConfig";
 
 export const dynamic = "force-dynamic";
+
+const CURRENT_WEEK_SIGNAL_ATTEMPTS = 3;
+
+function isTransientDatabaseError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("connection terminated") ||
+    message.includes("connection timeout") ||
+    message.includes("terminating connection") ||
+    message.includes("connection ended unexpectedly")
+  );
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function computeCurrentWeekSignalsWithRetry(
+  biasSource: BiasSourceConfig,
+  currentWeekOpenUtc: string,
+): Promise<WeeklyHoldResult> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= CURRENT_WEEK_SIGNAL_ATTEMPTS; attempt += 1) {
+    try {
+      return await computeWeeklySignalsOnly(biasSource, currentWeekOpenUtc);
+    } catch (error) {
+      lastError = error;
+      if (attempt === CURRENT_WEEK_SIGNAL_ATTEMPTS || !isTransientDatabaseError(error)) {
+        throw error;
+      }
+      console.warn(
+        `[strategy-current-week] Retrying current week signal load (${attempt}/${CURRENT_WEEK_SIGNAL_ATTEMPTS - 1}):`,
+        error instanceof Error ? error.message : error,
+      );
+      await wait(750 * attempt);
+    }
+  }
+
+  throw lastError;
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -36,7 +82,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Unknown strategy" }, { status: 400 });
       }
       const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-      const result = await computeWeeklySignalsOnly(biasSource, currentWeekOpenUtc);
+      const result = await computeCurrentWeekSignalsWithRetry(biasSource, currentWeekOpenUtc);
       return NextResponse.json({
         engineWeekMap: null,
         engineSimMap: null,
