@@ -209,6 +209,14 @@ export default function PerformanceStrategyViewSection({
   }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
 
   useEffect(() => {
+    if (loadedSelectionKey !== selectedSelectionKey || !stableEntry) {
+      return;
+    }
+
+    void fetchStrategyClientPayload(selectedSelection, "matrix");
+  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
+
+  useEffect(() => {
     if (prefetchStartedRef.current || loadedSelectionKey !== selectedSelectionKey || !stableEntry) {
       return undefined;
     }
@@ -222,7 +230,6 @@ export default function PerformanceStrategyViewSection({
       scope: "performance",
       shouldContinue: () => active,
     });
-    void fetchStrategyClientPayload(selectedSelection, "matrix");
 
     return () => {
       active = false;
