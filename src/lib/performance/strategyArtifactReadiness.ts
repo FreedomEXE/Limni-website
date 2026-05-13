@@ -199,12 +199,20 @@ export async function getStrategyArtifactReadiness(selection: StrategyBootstrapS
   return readinessForRow(selection, undefined, expected);
 }
 
-export async function readReadyStrategyArtifactPayload(selection: StrategyBootstrapSelection) {
+type ReadReadyStrategyArtifactPayloadOptions = {
+  includeCurrentWeek?: boolean;
+};
+
+export async function readReadyStrategyArtifactPayload(
+  selection: StrategyBootstrapSelection,
+  options: ReadReadyStrategyArtifactPayloadOptions = {},
+) {
   const selectionKey = buildStrategySelectionKey(selection);
+  const includeCurrentWeek = options.includeCurrentWeek !== false;
   const entry = await readStrategyArtifactEntry<StrategyPageData>(selectionKey);
   if (entry) {
     const staleReason = getReadPathArtifactStaleReason(entry.fingerprint, selection);
-    return overlayCurrentWeekOnStrategyPageData(selection, entry.payload, {
+    const artifactMeta: StrategyPageData["artifactMeta"] = {
       status: "hit",
       selectionKey,
       cachedAtUtc: entry.cachedAtUtc,
@@ -213,7 +221,14 @@ export async function readReadyStrategyArtifactPayload(selection: StrategyBootst
       missingWeeks: [],
       stale: staleReason !== "ready",
       staleReason: staleReason === "ready" ? null : staleReason,
-    });
+    };
+    if (!includeCurrentWeek) {
+      return {
+        ...entry.payload,
+        artifactMeta,
+      };
+    }
+    return overlayCurrentWeekOnStrategyPageData(selection, entry.payload, artifactMeta);
   }
 
   const biasSource = getStrategy(selection.strategyId);
@@ -242,7 +257,7 @@ export async function readReadyStrategyArtifactPayload(selection: StrategyBootst
     const latestShardCachedAtUtc = shards
       .map((shard) => shard.cachedAtUtc)
       .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
-    return overlayCurrentWeekOnStrategyPageData(selection, payload, {
+    const artifactMeta: StrategyPageData["artifactMeta"] = {
       status: "hit",
       selectionKey,
       cachedAtUtc: latestShardCachedAtUtc,
@@ -251,7 +266,14 @@ export async function readReadyStrategyArtifactPayload(selection: StrategyBootst
       missingWeeks: [],
       stale: true,
       staleReason: "missing",
-    });
+    };
+    if (!includeCurrentWeek) {
+      return {
+        ...payload,
+        artifactMeta,
+      };
+    }
+    return overlayCurrentWeekOnStrategyPageData(selection, payload, artifactMeta);
   }
 
   return null;
