@@ -82,6 +82,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
                   sidebarStats: initialPayload.sidebarStats,
                   weekOptions: initialPayload.weekOptions,
                   currentWeekOpenUtc: initialPayload.currentWeekOpenUtc,
+                  artifactMeta: initialPayload.artifactMeta,
                 }
               : null
           }

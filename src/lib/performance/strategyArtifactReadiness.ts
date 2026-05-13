@@ -21,11 +21,13 @@ import {
   buildStrategyAssemblyVersion,
 } from "@/lib/performance/strategyArtifactVersions";
 import {
-  loadStrategyPageData,
+  assembleStrategyPageDataFromShards,
+  overlayCurrentWeekOnStrategyPageData,
   type StrategyPageData,
 } from "@/lib/performance/strategyPageData";
 import {
   countWeekShardProgress,
+  readWeekShards,
 } from "@/lib/performance/strategyWeekShardCache";
 
 type ArtifactRow = {
@@ -142,6 +144,22 @@ function getArtifactStaleReason(
   return "ready";
 }
 
+function getReadPathArtifactStaleReason(
+  fingerprint: StrategyArtifactFingerprint | null | undefined,
+  selection: StrategyBootstrapSelection,
+): StrategyArtifactReadiness["reason"] {
+  if (!fingerprint) return "missing";
+  const entryStyle = getEntryStyle(selection.f1);
+  const riskOverlay = getStrengthGate(selection.f2);
+  const expectedAssemblyVersion = buildStrategyAssemblyVersion({
+    entryStyle,
+    riskOverlay,
+  });
+  if (fingerprint.engineVersion !== expectedAssemblyVersion) return "stale";
+  if (fingerprint.currentWeekOpenUtc !== getDisplayWeekOpenUtc()) return "stale_week";
+  return "ready";
+}
+
 export async function listStrategyArtifactReadiness(
   selections: StrategyBootstrapSelection[] = listVisibleStrategyBootstrapSelections(),
 ) {
@@ -184,22 +202,56 @@ export async function getStrategyArtifactReadiness(selection: StrategyBootstrapS
 export async function readReadyStrategyArtifactPayload(selection: StrategyBootstrapSelection) {
   const selectionKey = buildStrategySelectionKey(selection);
   const entry = await readStrategyArtifactEntry<StrategyPageData>(selectionKey);
-  const expected = await buildExpectedArtifactContext(selection);
-
-  if (entry && getArtifactStaleReason(entry.fingerprint, expected) === "ready") {
-    return loadStrategyPageData(selection);
+  if (entry) {
+    const staleReason = getReadPathArtifactStaleReason(entry.fingerprint, selection);
+    return overlayCurrentWeekOnStrategyPageData(selection, entry.payload, {
+      status: "hit",
+      selectionKey,
+      cachedAtUtc: entry.cachedAtUtc,
+      refreshedWeeks: [],
+      removedWeeks: [],
+      missingWeeks: [],
+      stale: staleReason !== "ready",
+      staleReason: staleReason === "ready" ? null : staleReason,
+    });
   }
 
-  const shardProgress = await countWeekShardProgress(
-    selectionKey,
-    expected.expectedShardVersion,
-    expected.weekOptions,
-  );
-  const allShardsReady =
-    expected.weekOptions.length > 0 &&
-    shardProgress.ready === expected.weekOptions.length;
-  if (allShardsReady) {
-    return loadStrategyPageData(selection);
+  const biasSource = getStrategy(selection.strategyId);
+  if (!biasSource) return null;
+  const entryStyle = getEntryStyle(selection.f1);
+  const riskOverlay = getStrengthGate(selection.f2);
+  const expectedShardVersion = buildStrategyArtifactEngineVersion({
+    entryStyle,
+    riskOverlay,
+  });
+  const shards = await readWeekShards(selectionKey, expectedShardVersion);
+  if (shards.length > 0) {
+    const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+    const weekOptions = shards
+      .map((shard) => shard.weekOpenUtc)
+      .filter((weekOpenUtc) => weekOpenUtc !== currentWeekOpenUtc)
+      .sort((left, right) => Date.parse(right) - Date.parse(left));
+    const payload = assembleStrategyPageDataFromShards({
+      biasSource,
+      currentWeekOpenUtc,
+      entryStyle,
+      riskOverlay,
+      weekOptions,
+      shards,
+    });
+    const latestShardCachedAtUtc = shards
+      .map((shard) => shard.cachedAtUtc)
+      .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
+    return overlayCurrentWeekOnStrategyPageData(selection, payload, {
+      status: "hit",
+      selectionKey,
+      cachedAtUtc: latestShardCachedAtUtc,
+      refreshedWeeks: [],
+      removedWeeks: [],
+      missingWeeks: [],
+      stale: true,
+      staleReason: "missing",
+    });
   }
 
   return null;

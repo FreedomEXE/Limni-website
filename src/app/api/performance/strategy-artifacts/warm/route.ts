@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isCronAuthorized } from "@/lib/cronAuth";
-import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
+import { buildStrategyArtifact } from "@/lib/performance/strategyPageData";
 import {
   normalizeFilterSelection,
   resolveStrategyId,
@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
   };
   const selectionKey = buildStrategySelectionKey(selection);
   const startedAt = Date.now();
-  const data = await loadStrategyPageData(selection);
+  const result = await buildStrategyArtifact(selection);
 
-  if (!data) {
+  if (!result.ok) {
     return NextResponse.json(
       {
         ok: false,
@@ -50,8 +50,8 @@ export async function POST(request: NextRequest) {
     ok: true,
     selectionKey,
     durationMs: Date.now() - startedAt,
-    artifactMeta: data.artifactMeta ?? null,
-    weeks: Object.keys(data.weekResults ?? {}).length,
-    trades: data.sidebarStats?.allTime?.totalTrades ?? null,
+    artifactMeta: result.artifactMeta,
+    weeks: result.weeks,
+    trades: result.trades,
   });
 }

@@ -14,7 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
-import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
+import { buildStrategyArtifact } from "@/lib/performance/strategyPageData";
 import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import {
   buildStrategySelectionKey,
@@ -72,13 +72,13 @@ export async function POST(request: Request) {
   }
 
   const startedAt = Date.now();
-  const data = await loadStrategyPageData(selection, { includeCurrentWeek: false });
+  const result = await buildStrategyArtifact(selection);
   const after = await getStrategyArtifactReadiness(selection);
 
   return NextResponse.json({
-    ok: Boolean(data) || after.ready,
+    ok: result.ok || after.ready,
     selectionKey,
-    status: data?.artifactMeta?.status ?? (after.ready ? "ready" : "failed"),
+    status: result.artifactMeta?.status ?? (after.ready ? "ready" : "failed"),
     before,
     after,
     durationMs: Date.now() - startedAt,

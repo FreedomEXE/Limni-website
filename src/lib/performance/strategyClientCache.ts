@@ -87,7 +87,12 @@ export function setStrategyClientPayload(
   payload: StrategyClientPayload | null,
   scope: StrategyClientScope = "performance",
 ) {
-  payloadCache.set(buildSelectionKey(selection, scope), payload);
+  const cacheKey = buildSelectionKey(selection, scope);
+  if (payload?.artifactMeta?.stale === true) {
+    payloadCache.delete(cacheKey);
+    return;
+  }
+  payloadCache.set(cacheKey, payload);
 }
 
 function isStrategyClientPayload(value: unknown): value is StrategyClientPayload {
@@ -135,7 +140,7 @@ export async function fetchStrategyClientPayload(
       if (!isStrategyClientPayload(data)) {
         throw new Error("Unexpected strategy payload shape");
       }
-      if (data.artifactMeta?.cachedAtUtc !== null) {
+      if (data.artifactMeta?.cachedAtUtc !== null && data.artifactMeta?.stale !== true) {
         payloadCache.set(cacheKey, data);
       }
       return data;

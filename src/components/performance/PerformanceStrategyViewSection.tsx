@@ -33,6 +33,7 @@ import {
   requestStrategyArtifactWarm,
   setStrategyClientPayload,
 } from "@/lib/performance/strategyClientCache";
+import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
 import { getEntryStyle, getStrengthGate, getStrategy } from "@/lib/performance/strategyConfig";
 
 type StrategyBootstrapEntry = {
@@ -42,6 +43,7 @@ type StrategyBootstrapEntry = {
   sidebarStats: EngineSidebarStats | null;
   weekOptions?: string[];
   currentWeekOpenUtc?: string;
+  artifactMeta?: StrategyClientPayload["artifactMeta"];
 };
 
 type PerformanceStrategyViewSectionProps = Omit<
@@ -84,6 +86,7 @@ export default function PerformanceStrategyViewSection({
       sidebarStats: initialEntry.sidebarStats,
       weekOptions: initialEntry.weekOptions,
       currentWeekOpenUtc: initialEntry.currentWeekOpenUtc,
+      artifactMeta: initialEntry.artifactMeta,
     }, "performance");
   }, [initialEntry, initialKey, initialSelection]);
 
@@ -121,6 +124,7 @@ export default function PerformanceStrategyViewSection({
               sidebarStats: payload.sidebarStats,
               weekOptions: payload.weekOptions,
               currentWeekOpenUtc: payload.currentWeekOpenUtc,
+              artifactMeta: payload.artifactMeta,
         }
           : null;
         if (!active) return;
@@ -141,6 +145,7 @@ export default function PerformanceStrategyViewSection({
             sidebarStats: fetched.sidebarStats,
             weekOptions: fetched.weekOptions,
             currentWeekOpenUtc: fetched.currentWeekOpenUtc,
+            artifactMeta: fetched.artifactMeta,
           }
         : null;
       if (nextEntry) {
@@ -181,6 +186,7 @@ export default function PerformanceStrategyViewSection({
         sidebarStats: fetched.sidebarStats,
         weekOptions: fetched.weekOptions,
         currentWeekOpenUtc: fetched.currentWeekOpenUtc,
+        artifactMeta: fetched.artifactMeta,
       };
       setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
       setStableEntry(nextEntry);
@@ -193,6 +199,39 @@ export default function PerformanceStrategyViewSection({
     return () => {
       active = false;
       window.clearInterval(intervalId);
+    };
+  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
+
+  useEffect(() => {
+    if (
+      loadedSelectionKey !== selectedSelectionKey ||
+      stableEntry?.artifactMeta?.stale !== true
+    ) {
+      return undefined;
+    }
+
+    let active = true;
+    const refreshStaleEntry = async () => {
+      const warmed = await requestStrategyArtifactWarm(selectedSelection);
+      if (!active || !warmed) return;
+      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
+      if (!active || !(fetched?.engineWeekMap || fetched?.engineSimMap || fetched?.sidebarStats)) return;
+      const nextEntry = {
+        engineWeekMap: fetched.engineWeekMap,
+        engineSimMap: fetched.engineSimMap,
+        sidebarStats: fetched.sidebarStats,
+        weekOptions: fetched.weekOptions,
+        currentWeekOpenUtc: fetched.currentWeekOpenUtc,
+        artifactMeta: fetched.artifactMeta,
+      };
+      setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
+      setStableEntry(nextEntry);
+    };
+
+    void refreshStaleEntry();
+
+    return () => {
+      active = false;
     };
   }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
 

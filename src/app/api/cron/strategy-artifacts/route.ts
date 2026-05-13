@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isCronAuthorized } from "@/lib/cronAuth";
-import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
+import { buildStrategyArtifact } from "@/lib/performance/strategyPageData";
 import { buildStrategySelectionKey, listVisibleStrategyBootstrapSelections } from "@/lib/performance/strategySelection";
 import { listStrategyArtifactReadiness } from "@/lib/performance/strategyArtifactReadiness";
 import { pruneAllOldWeekShards } from "@/lib/performance/strategyWeekShardCache";
@@ -57,13 +57,13 @@ export async function GET(request: Request) {
     if (!selection) continue;
     const selectionStart = Date.now();
     try {
-      const data = await loadStrategyPageData(selection, { includeCurrentWeek: false });
+      const result = await buildStrategyArtifact(selection);
       warmed.push({
         key: artifact.key,
         label: artifact.label,
-        ok: Boolean(data),
+        ok: result.ok,
         durationMs: Date.now() - selectionStart,
-        status: data?.artifactMeta?.status ?? null,
+        status: result.artifactMeta?.status ?? null,
       });
     } catch (error) {
       warmed.push({

@@ -15,7 +15,7 @@
 
 import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
-import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
+import { buildStrategyArtifact } from "@/lib/performance/strategyPageData";
 import {
   buildStrategySelectionKey,
   listVisibleStrategyBootstrapSelections,
@@ -68,11 +68,11 @@ export async function POST() {
 
     const selectionStartedAt = Date.now();
     try {
-      const data = await loadStrategyPageData(selection, { includeCurrentWeek: false });
+      const result = await buildStrategyArtifact(selection);
       warmed.push({
         key: artifact.key,
         label: artifact.label,
-        ok: Boolean(data),
+        ok: result.ok,
         reason: artifact.reason,
         durationMs: Date.now() - selectionStartedAt,
       });

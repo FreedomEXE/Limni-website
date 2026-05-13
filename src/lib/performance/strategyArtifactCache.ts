@@ -30,24 +30,50 @@ export type StrategyArtifactEntry<T> = {
 
 const STRATEGY_ARTIFACT_CACHE_SYMBOL = Symbol.for("limni.performance.strategyArtifactCache");
 const STRATEGY_ARTIFACTS_TABLE = "strategy_artifacts";
+const STRATEGY_ARTIFACT_MEMORY_CACHE_TTL_MS = Number(
+  process.env.STRATEGY_ARTIFACT_MEMORY_CACHE_TTL_MS ?? "30000",
+);
+
+type StoredStrategyArtifactEntry<T> = StrategyArtifactEntry<T> & {
+  loadedAtMs: number;
+};
+
+function getMemoryCacheTtlMs() {
+  if (
+    Number.isFinite(STRATEGY_ARTIFACT_MEMORY_CACHE_TTL_MS) &&
+    STRATEGY_ARTIFACT_MEMORY_CACHE_TTL_MS >= 0
+  ) {
+    return Math.floor(STRATEGY_ARTIFACT_MEMORY_CACHE_TTL_MS);
+  }
+  return 30000;
+}
 
 function getStore() {
   const scoped = globalThis as typeof globalThis & {
-    [STRATEGY_ARTIFACT_CACHE_SYMBOL]?: Map<string, StrategyArtifactEntry<unknown>>;
+    [STRATEGY_ARTIFACT_CACHE_SYMBOL]?: Map<string, StoredStrategyArtifactEntry<unknown>>;
   };
   if (!scoped[STRATEGY_ARTIFACT_CACHE_SYMBOL]) {
-    scoped[STRATEGY_ARTIFACT_CACHE_SYMBOL] = new Map<string, StrategyArtifactEntry<unknown>>();
+    scoped[STRATEGY_ARTIFACT_CACHE_SYMBOL] = new Map<string, StoredStrategyArtifactEntry<unknown>>();
   }
   return scoped[STRATEGY_ARTIFACT_CACHE_SYMBOL]!;
 }
 
 export function getStrategyArtifactEntry<T>(key: string): StrategyArtifactEntry<T> | null {
   const entry = getStore().get(key);
-  return (entry as StrategyArtifactEntry<T> | undefined) ?? null;
+  if (!entry) return null;
+  const ttlMs = getMemoryCacheTtlMs();
+  if (ttlMs > 0 && Date.now() - entry.loadedAtMs > ttlMs) {
+    getStore().delete(key);
+    return null;
+  }
+  return entry as StrategyArtifactEntry<T>;
 }
 
 export function setStrategyArtifactEntry<T>(key: string, entry: StrategyArtifactEntry<T>) {
-  getStore().set(key, entry as StrategyArtifactEntry<unknown>);
+  getStore().set(key, {
+    ...entry,
+    loadedAtMs: Date.now(),
+  } as StoredStrategyArtifactEntry<unknown>);
 }
 
 export function clearStrategyArtifactEntry(key: string) {

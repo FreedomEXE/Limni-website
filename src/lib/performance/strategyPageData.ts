@@ -181,6 +181,8 @@ export type StrategyPageData = {
     refreshedWeeks: string[];
     removedWeeks: string[];
     missingWeeks: string[];
+    stale?: boolean;
+    staleReason?: string | null;
   };
 };
 
@@ -839,6 +841,81 @@ export async function loadStrategyPageData(
     );
     return null;
   }
+}
+
+export type StrategyArtifactBuildResult = {
+  ok: boolean;
+  selectionKey: string;
+  artifactMeta: StrategyPageData["artifactMeta"] | null;
+  weeks: number;
+  trades: number | null;
+};
+
+export async function buildStrategyArtifact(
+  selection: StrategySelection,
+): Promise<StrategyArtifactBuildResult> {
+  const selectionKey = buildStrategySelectionKey(selection);
+  const data = await loadStrategyPageData(selection, { includeCurrentWeek: false });
+  return {
+    ok: Boolean(data),
+    selectionKey,
+    artifactMeta: data?.artifactMeta ?? null,
+    weeks: data ? Object.keys(data.weekResults ?? {}).length : 0,
+    trades: data?.sidebarStats?.allTime?.totalTrades ?? null,
+  };
+}
+
+export async function overlayCurrentWeekOnStrategyPageData(
+  selection: StrategySelection,
+  artifactPayload: StrategyPageData,
+  artifactMeta: StrategyPageData["artifactMeta"],
+): Promise<StrategyPageData | null> {
+  const selectionKey = buildStrategySelectionKey(selection);
+  const biasSource = getStrategy(selection.strategyId);
+  if (!biasSource) return null;
+
+  const entryStyle = getEntryStyle(selection.f1);
+  const riskOverlay = getStrengthGate(selection.f2);
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  const historicalWeeks = artifactPayload.weekOptions
+    .filter((weekOpenUtc) => weekOpenUtc !== "all" && weekOpenUtc !== currentWeekOpenUtc);
+  const weekOptions = [currentWeekOpenUtc, ...historicalWeeks.filter((week) => week !== currentWeekOpenUtc)];
+  const weekResultsByWeek: Record<string, WeeklyHoldResult> = { ...artifactPayload.weekResults };
+  const currentWeekResult = await computeCurrentWeekResultCached({
+    selectionKey,
+    biasSource,
+    currentWeekOpenUtc,
+    entryStyle,
+    riskOverlay,
+  });
+
+  if (currentWeekResult) {
+    weekResultsByWeek[currentWeekOpenUtc] = currentWeekResult;
+  }
+
+  const merged = await mergeCurrentWeekIntoCachedPathData({
+    selectionKey,
+    currentWeekResult,
+    cachedSimMap: { ...(artifactPayload.simMap ?? {}) },
+    cachedPathSummaryMap: { ...(artifactPayload.pathSummaryMap ?? {}) },
+    cachedWeeks: historicalWeeks,
+    biasSource,
+    entryStyle,
+    selectionLabel: buildSelectionLabel(entryStyle, riskOverlay),
+    historicalWeekResults: weekResultsByWeek,
+  });
+
+  return assembleStrategyPageData({
+    biasSource,
+    currentWeekOpenUtc,
+    entryStyle,
+    riskOverlay,
+    weekOptions,
+    weekResultsByWeek,
+    simMap: merged.simMap,
+    pathSummaryMap: merged.pathSummaryMap,
+    artifactMeta,
+  });
 }
 
 async function mergeCurrentWeekIntoCachedPathData(options: {

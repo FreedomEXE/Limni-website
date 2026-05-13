@@ -99,8 +99,8 @@ export default function StrategyArtifactLoadingGate({
     let active = true;
 
     const warmVisibleArtifacts = async () => {
-      setVisibleArtifactsReady(false);
-      setLabel("Checking updates...");
+      setVisibleArtifactsReady(currentReady);
+      setLabel(currentReady ? `Loading ${pageLabel}...` : "Checking updates...");
 
       while (active) {
         const status = await fetchStrategyArtifactStatus();
@@ -114,18 +114,23 @@ export default function StrategyArtifactLoadingGate({
 
         const artifacts = status.artifacts ?? [];
         const currentArtifact = artifacts.find((artifact) => artifact.key === currentKey);
+        if (currentReady) {
+          setVisibleArtifactsReady(true);
+          return;
+        }
+
         if (status.totalCount > 0 && status.readyCount >= status.totalCount) {
           setLabel(`Loading ${pageLabel}...`);
           setVisibleArtifactsReady(true);
           return;
         }
 
-        const pending = artifacts.filter((artifact) => !artifact.ready);
         const currentPending = currentArtifact && !currentArtifact.ready ? currentArtifact : null;
+        const pending = currentPending ? [currentPending] : artifacts.filter((artifact) => !artifact.ready).slice(0, 1);
         setLabel(
           currentPending
             ? artifactBuildLabel(currentPending)
-            : `Building strategy artifacts ${status.readyCount}/${status.totalCount}...`,
+            : `Building strategy artifact ${status.readyCount}/${status.totalCount}...`,
         );
 
         const warmResults = await warmPendingArtifacts(pending, currentKey, (nextLabel) => {
@@ -154,7 +159,7 @@ export default function StrategyArtifactLoadingGate({
     return () => {
       active = false;
     };
-  }, [currentKey, pageLabel]);
+  }, [currentKey, currentReady, pageLabel]);
 
   if (!visibleArtifactsReady || !currentReady) {
     return (
