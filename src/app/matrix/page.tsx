@@ -67,9 +67,8 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
     historicalWeeks,
     currentWeekOpenUtc: currentWeekOpen,
   }) as string[];
-  const defaultWeek = weeks.find((week) => week !== currentWeekOpen) ?? currentWeekOpen;
   const selectedWeek = resolveWeekSelection({
-    requestedWeek: weekValue ?? defaultWeek,
+    requestedWeek: weekValue,
     weekOptions: weeks,
     currentWeekOpenUtc: currentWeekOpen,
     allowAll: false,

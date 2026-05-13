@@ -6,6 +6,7 @@ import type {
 
 const payloadCache = new Map<string, StrategyClientPayload | null>();
 const inflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
+const currentWeekInflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
 const warmInflightCache = new Map<string, Promise<boolean>>();
 const warmRequestedAt = new Map<string, number>();
 let bulkWarmInflight: Promise<StrategyBulkWarmPayload | null> | null = null;
@@ -123,14 +124,32 @@ function mergeStrategyClientPayload(
 ): StrategyClientPayload {
   if (!previous) return next;
   return {
-    engineWeekMap: next.engineWeekMap ?? previous.engineWeekMap,
-    engineSimMap: next.engineSimMap ?? previous.engineSimMap,
-    engineWeekResults: next.engineWeekResults ?? previous.engineWeekResults,
+    engineWeekMap: mergeRecordPayload(previous.engineWeekMap, next.engineWeekMap),
+    engineSimMap: mergeRecordPayload(previous.engineSimMap, next.engineSimMap),
+    engineWeekResults: mergeRecordPayload(previous.engineWeekResults, next.engineWeekResults),
     sidebarStats: next.sidebarStats ?? previous.sidebarStats,
-    weekOptions: next.weekOptions ?? previous.weekOptions,
+    weekOptions: mergeWeekOptions(previous.weekOptions, next.weekOptions),
     currentWeekOpenUtc: next.currentWeekOpenUtc ?? previous.currentWeekOpenUtc,
     artifactMeta: next.artifactMeta ?? previous.artifactMeta,
   };
+}
+
+function mergeRecordPayload<T>(
+  previous: Record<string, T> | null | undefined,
+  next: Record<string, T> | null | undefined,
+) {
+  if (!next) return previous ?? null;
+  if (!previous) return next;
+  return { ...previous, ...next };
+}
+
+function mergeWeekOptions(
+  previous: string[] | undefined,
+  next: string[] | undefined,
+) {
+  if (!next) return previous;
+  if (!previous) return next;
+  return Array.from(new Set([...next, ...previous]));
 }
 
 function isStrategyClientPayload(value: unknown): value is StrategyClientPayload {
@@ -311,6 +330,44 @@ export async function fetchStrategyClientPayload(
     });
 
   inflightCache.set(inflightKey, request);
+  return request;
+}
+
+export async function fetchCurrentWeekStrategyClientPayload(
+  selection: RuntimeStrategySelection,
+  scope: StrategyClientPayloadScope = "performance",
+): Promise<StrategyClientPayload | null> {
+  const cacheKey = buildSelectionKey(selection);
+  const inflightKey = `${cacheKey}:${scope}`;
+  const inflight = currentWeekInflightCache.get(inflightKey);
+  if (inflight) {
+    return inflight;
+  }
+
+  const request = fetch(
+    `/api/performance/strategy-current-week?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}&scope=${scope}`,
+    { method: "GET", cache: "no-store" },
+  )
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`Current week strategy payload request failed (${response.status})`);
+      }
+      const data = (await response.json()) as unknown;
+      if (!isStrategyClientPayload(data)) {
+        throw new Error("Unexpected current week strategy payload shape");
+      }
+      payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
+      return payloadCache.get(cacheKey) ?? data;
+    })
+    .catch((error) => {
+      console.error("[strategyClientCache] Failed to fetch current week strategy payload:", error);
+      return null;
+    })
+    .finally(() => {
+      currentWeekInflightCache.delete(inflightKey);
+    });
+
+  currentWeekInflightCache.set(inflightKey, request);
   return request;
 }
 

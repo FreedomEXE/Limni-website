@@ -75,3 +75,29 @@ export function toStrategyClientPayload(
     artifactMeta: data.artifactMeta,
   };
 }
+
+export function toCurrentWeekStrategyClientPayload(
+  data: StrategyPageData,
+  scope: StrategyClientPayloadScope = "performance",
+): StrategyClientPayload {
+  const currentWeek = data.currentWeekOpenUtc;
+  const weekOptions = Array.from(new Set(["all", currentWeek, ...data.weekOptions]));
+  return {
+    engineWeekMap:
+      scope === "matrix" || !data.weekMap?.[currentWeek]
+        ? null
+        : { [currentWeek]: stripGridProps(data.weekMap[currentWeek]) },
+    engineSimMap:
+      scope === "matrix" || !data.simMap?.[currentWeek]
+        ? null
+        : { [currentWeek]: data.simMap[currentWeek] },
+    engineWeekResults:
+      scope === "performance" || !data.weekResults?.[currentWeek]
+        ? null
+        : { [currentWeek]: stripWeekResult(data.weekResults[currentWeek]) },
+    sidebarStats: data.sidebarStats ?? null,
+    weekOptions,
+    currentWeekOpenUtc: currentWeek,
+    artifactMeta: data.artifactMeta,
+  };
+}

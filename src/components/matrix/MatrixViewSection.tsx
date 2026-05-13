@@ -33,6 +33,7 @@ import {
 } from "@/lib/performance/strategySelection";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
+  fetchCurrentWeekStrategyClientPayload,
   fetchStrategyClientPayload,
   getStrategyClientPayload,
   prefetchVisibleStrategyPayloads,
@@ -215,11 +216,46 @@ export default function MatrixViewSection({
 
   useEffect(() => {
     if (!engineWeekResults || !selectedWeek || engineWeekResults[selectedWeek]) return;
+    if (selectedWeek === currentWeekOpenUtc) return;
     const fallbackWeek = weeks.find((week) => engineWeekResults[week]);
     if (fallbackWeek && fallbackWeek !== selectedWeek) {
       setSelectedWeek(fallbackWeek);
     }
-  }, [engineWeekResults, selectedWeek, weeks]);
+  }, [currentWeekOpenUtc, engineWeekResults, selectedWeek, weeks]);
+
+  useEffect(() => {
+    if (
+      loadedSelectionKey !== selectedSelectionKey ||
+      !stableStrategyData?.engineWeekResults ||
+      stableStrategyData.engineWeekResults[currentWeekOpenUtc]
+    ) {
+      return undefined;
+    }
+
+    let active = true;
+    const loadCurrentWeek = async () => {
+      const payload = await fetchCurrentWeekStrategyClientPayload(selectedSelection, "matrix");
+      if (!active || !payload?.engineWeekResults) return;
+      const nextData = {
+        engineWeekResults: payload.engineWeekResults,
+        sidebarStats: payload.sidebarStats,
+      };
+      setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
+      setStableStrategyData(nextData);
+    };
+
+    void loadCurrentWeek();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    currentWeekOpenUtc,
+    loadedSelectionKey,
+    selectedSelection,
+    selectedSelectionKey,
+    stableStrategyData,
+  ]);
 
   const canonicalSignals = useMemo(
     () => (selectedWeek ? engineWeekResults?.[selectedWeek]?.signals ?? [] : []),
