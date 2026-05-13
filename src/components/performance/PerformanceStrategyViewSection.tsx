@@ -251,6 +251,7 @@ export default function PerformanceStrategyViewSection({
       scope: "performance",
       shouldContinue: () => active,
     });
+    void fetchStrategyClientPayload(selectedSelection, "matrix");
 
     return () => {
       active = false;
