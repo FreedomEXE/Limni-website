@@ -174,7 +174,7 @@ export default function MatrixViewSection({
 
       const payload = getStrategyClientPayload(selectedSelection, "matrix");
       if (payload !== undefined) {
-        const nextData = payload && (payload.engineWeekResults || payload.sidebarStats)
+        const nextData = payload?.engineWeekResults
           ? {
               engineWeekResults: payload.engineWeekResults,
               sidebarStats: payload.sidebarStats,
@@ -191,7 +191,7 @@ export default function MatrixViewSection({
 
       const fetched = await fetchStrategyClientPayload(selectedSelection, "matrix");
       if (!active) return;
-      const nextData = fetched && (fetched.engineWeekResults || fetched.sidebarStats)
+      const nextData = fetched?.engineWeekResults
         ? {
             engineWeekResults: fetched.engineWeekResults,
             sidebarStats: fetched.sidebarStats,
@@ -306,7 +306,7 @@ export default function MatrixViewSection({
     }));
   }, [engineWeekResults, selectedWeek]);
 
-  const currentReady = loadedSelectionKey === selectedSelectionKey && Boolean(stableStrategyData);
+  const currentReady = loadedSelectionKey === selectedSelectionKey && Boolean(stableStrategyData?.engineWeekResults);
 
   return (
     <StrategyArtifactLoadingGate

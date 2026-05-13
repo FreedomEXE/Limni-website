@@ -107,12 +107,12 @@ export function setStrategyClientPayload(
 
 function hasScopePayload(payload: StrategyClientPayload, scope: StrategyClientPayloadScope) {
   if (scope === "matrix") {
-    return Boolean(payload.engineWeekResults || payload.sidebarStats);
+    return Boolean(payload.engineWeekResults);
   }
   if (scope === "full") {
     return Boolean(
       (payload.engineWeekMap || payload.engineSimMap) &&
-      (payload.engineWeekResults || payload.sidebarStats)
+      payload.engineWeekResults
     );
   }
   return Boolean(payload.engineWeekMap || payload.engineSimMap || payload.sidebarStats);
