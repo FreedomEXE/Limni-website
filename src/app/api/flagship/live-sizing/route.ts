@@ -19,10 +19,10 @@ type LiveSizingReport = {
 export async function GET() {
   try {
     if (!existsSync(REPORT_PATH)) {
-      return NextResponse.json(
-        { error: "Live sizing report not found." },
-        { status: 404 },
-      );
+      return NextResponse.json({
+        generatedUtc: null,
+        positionSizingResearch: null,
+      });
     }
 
     const parsed = JSON.parse(readFileSync(REPORT_PATH, "utf8")) as LiveSizingReport;
