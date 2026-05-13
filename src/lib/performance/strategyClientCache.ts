@@ -97,10 +97,6 @@ export function setStrategyClientPayload(
   payload: StrategyClientPayload | null,
 ) {
   const cacheKey = buildSelectionKey(selection);
-  if (payload?.artifactMeta?.stale === true) {
-    payloadCache.delete(cacheKey);
-    return;
-  }
   if (payload === null) {
     payloadCache.set(cacheKey, null);
     return;
@@ -205,7 +201,7 @@ async function readPersistentPayload(
     const cachedResponse = await cache.match(absoluteUrl);
     if (!cachedResponse) return null;
     const data = (await cachedResponse.clone().json()) as unknown;
-    if (!isStrategyClientPayload(data) || data.artifactMeta?.stale === true || !hasScopePayload(data, scope)) {
+    if (!isStrategyClientPayload(data) || !hasScopePayload(data, scope)) {
       await deletePersistentPayload(absoluteUrl);
       return null;
     }
@@ -221,7 +217,6 @@ async function readPersistentPayload(
 async function writePersistentPayload(url: string, data: StrategyClientPayload) {
   if (
     !canUsePersistentPayloadCache() ||
-    data.artifactMeta?.stale === true ||
     data.artifactMeta?.cachedAtUtc === null
   ) {
     return;
@@ -295,7 +290,7 @@ export async function fetchStrategyClientPayload(
         if (!isStrategyClientPayload(data)) {
           throw new Error("Unexpected strategy payload shape");
         }
-        if (data.artifactMeta?.cachedAtUtc !== null && data.artifactMeta?.stale !== true) {
+        if (data.artifactMeta?.cachedAtUtc !== null) {
           payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
           await writePersistentPayload(url, data);
         }
