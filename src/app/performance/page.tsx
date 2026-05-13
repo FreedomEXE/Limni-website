@@ -19,8 +19,6 @@ import {
   normalizeFilterSelection,
   resolveBiasSourceId,
 } from "@/lib/performance/strategyConfig";
-import { toStrategyClientPayload } from "@/lib/performance/strategyClientPayload";
-import { readReadyStrategyArtifactPayload } from "@/lib/performance/strategyArtifactReadiness";
 import { toRuntimeStrategySelection } from "@/lib/performance/strategySelection";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
@@ -54,13 +52,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     f1: normalizedFilters.f1,
     f2: normalizedFilters.f2,
   };
-  const initialStrategyData = await readReadyStrategyArtifactPayload(initialStrategySelection, {
-    includeCurrentWeek: false,
-  });
-  const initialPayload = initialStrategyData
-    ? toStrategyClientPayload(initialStrategyData, "performance")
-    : null;
-
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -76,21 +67,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           flagshipGridProps={null}
           flagshipSimulation={null}
           initialSelection={toRuntimeStrategySelection(initialStrategySelection)}
-          initialEntry={
-            initialPayload
-              ? {
-                  engineWeekMap: initialPayload.engineWeekMap,
-                  engineSimMap: initialPayload.engineSimMap,
-                  engineWeekResults: initialPayload.engineWeekResults,
-                  sidebarStats: initialPayload.sidebarStats,
-                  weekOptions: initialPayload.weekOptions,
-                  currentWeekOpenUtc: initialPayload.currentWeekOpenUtc,
-                  artifactMeta: initialPayload.artifactMeta,
-                }
-              : null
-          }
-          weekOptions={initialPayload?.weekOptions ?? ["all"]}
-          currentWeek={initialPayload?.currentWeekOpenUtc ?? currentWeekOpenUtc}
+          initialEntry={null}
+          weekOptions={["all"]}
+          currentWeek={currentWeekOpenUtc}
           initialWeek={weekParamValue ?? "all"}
         />
       </div>
