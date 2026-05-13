@@ -54,7 +54,9 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     f1: normalizedFilters.f1,
     f2: normalizedFilters.f2,
   };
-  const initialStrategyData = await readReadyStrategyArtifactPayload(initialStrategySelection);
+  const initialStrategyData = await readReadyStrategyArtifactPayload(initialStrategySelection, {
+    includeCurrentWeek: false,
+  });
   const initialPayload = initialStrategyData
     ? toStrategyClientPayload(initialStrategyData, "performance")
     : null;

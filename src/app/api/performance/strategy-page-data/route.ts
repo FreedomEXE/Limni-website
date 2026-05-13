@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   try {
     const selectionKey = buildStrategySelectionKey(selection);
     const data = await readReadyStrategyArtifactPayload(selection, {
-      includeCurrentWeek: scope !== "matrix",
+      includeCurrentWeek: false,
     });
     if (!data) {
       return NextResponse.json({

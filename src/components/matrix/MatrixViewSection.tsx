@@ -214,6 +214,14 @@ export default function MatrixViewSection({
 
   const engineWeekResults = stableStrategyData?.engineWeekResults ?? null;
 
+  useEffect(() => {
+    if (!engineWeekResults || !selectedWeek || engineWeekResults[selectedWeek]) return;
+    const fallbackWeek = weeks.find((week) => engineWeekResults[week]);
+    if (fallbackWeek && fallbackWeek !== selectedWeek) {
+      setSelectedWeek(fallbackWeek);
+    }
+  }, [engineWeekResults, selectedWeek, weeks]);
+
   const canonicalSignals = useMemo(
     () => (selectedWeek ? engineWeekResults?.[selectedWeek]?.signals ?? [] : []),
     [engineWeekResults, selectedWeek],
