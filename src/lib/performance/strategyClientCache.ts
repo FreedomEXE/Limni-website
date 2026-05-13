@@ -297,7 +297,7 @@ export async function fetchStrategyClientPayload(
         }
         if (data.artifactMeta?.cachedAtUtc !== null && data.artifactMeta?.stale !== true) {
           payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
-          void writePersistentPayload(url, data);
+          await writePersistentPayload(url, data);
         }
         return payloadCache.get(cacheKey) ?? data;
       } catch (error) {
