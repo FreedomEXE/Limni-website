@@ -15,7 +15,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import CryptoBoard from "@/components/flagship/CryptoBoard";
 import FlagshipBoard from "@/components/flagship/FlagshipBoard";
 import MatrixControls, { type MatrixTab } from "@/components/matrix/MatrixControls";
@@ -35,9 +35,11 @@ import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
   fetchStrategyClientPayload,
   getStrategyClientPayload,
+  prefetchVisibleStrategyPayloads,
   requestStrategyArtifactWarm,
   setStrategyClientPayload,
 } from "@/lib/performance/strategyClientCache";
+import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
 
 type WeeklyReturnRow = {
   symbol: string;
@@ -53,11 +55,22 @@ type MatrixViewSectionProps = {
   currentWeekOpenUtc: string;
   initialTab: MatrixTab;
   initialSelection: RuntimeStrategySelection;
-  initialStrategyData: {
+  initialStrategyData: Pick<
+    StrategyClientPayload,
+    | "engineWeekMap"
+    | "engineSimMap"
+    | "engineWeekResults"
+    | "sidebarStats"
+    | "weekOptions"
+    | "currentWeekOpenUtc"
+    | "artifactMeta"
+  > | null;
+  initialWeeklyReturns: Record<string, WeeklyReturnRow[]>;
+};
+
+type MatrixStrategyData = {
     engineWeekResults: Record<string, WeeklyHoldResult> | null;
     sidebarStats: EngineSidebarStats | null;
-  } | null;
-  allWeeklyReturns: Record<string, WeeklyReturnRow[]>;
 };
 
 function resolveSelectedWeek(initialWeek: string | null, weeks: string[]) {
@@ -72,17 +85,33 @@ export default function MatrixViewSection({
   initialTab,
   initialSelection,
   initialStrategyData,
-  allWeeklyReturns,
+  initialWeeklyReturns,
 }: MatrixViewSectionProps) {
   const initialSelectionKey = buildStrategySelectionKey(initialSelection);
   const [selectedWeek, setSelectedWeek] = useState<string | null>(() => resolveSelectedWeek(initialWeek, weeks));
   const [selectedTab, setSelectedTab] = useState<MatrixTab>(initialTab);
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
-  const [strategyDataCache, setStrategyDataCache] = useState<Record<string, MatrixViewSectionProps["initialStrategyData"]>>(() => (
-    initialStrategyData ? { [initialSelectionKey]: initialStrategyData } : {}
+  const [strategyDataCache, setStrategyDataCache] = useState<Record<string, MatrixStrategyData | null>>(() => (
+    initialStrategyData
+      ? {
+          [initialSelectionKey]: {
+            engineWeekResults: initialStrategyData.engineWeekResults,
+            sidebarStats: initialStrategyData.sidebarStats,
+          },
+        }
+      : {}
   ));
-  const [stableStrategyData, setStableStrategyData] = useState<MatrixViewSectionProps["initialStrategyData"]>(initialStrategyData);
+  const [stableStrategyData, setStableStrategyData] = useState<MatrixStrategyData | null>(
+    initialStrategyData
+      ? {
+          engineWeekResults: initialStrategyData.engineWeekResults,
+          sidebarStats: initialStrategyData.sidebarStats,
+        }
+      : null,
+  );
+  const [weeklyReturnsByWeek, setWeeklyReturnsByWeek] = useState<Record<string, WeeklyReturnRow[]>>(initialWeeklyReturns);
   const [loadedSelectionKey, setLoadedSelectionKey] = useState(initialSelectionKey);
+  const prefetchStartedRef = useRef(false);
 
   useEffect(() => {
     setSelectedWeek(resolveSelectedWeek(initialWeek, weeks));
@@ -98,18 +127,25 @@ export default function MatrixViewSection({
 
   useEffect(() => {
     if (!initialStrategyData) return;
-    setStrategyDataCache((previous) => ({
-      ...previous,
-      [initialSelectionKey]: previous[initialSelectionKey] ?? initialStrategyData,
-    }));
-    setStableStrategyData((previous) => previous ?? initialStrategyData);
-    setLoadedSelectionKey(initialSelectionKey);
-    setStrategyClientPayload(initialSelection, {
-      engineWeekMap: null,
-      engineSimMap: null,
+    const initialData = {
       engineWeekResults: initialStrategyData.engineWeekResults,
       sidebarStats: initialStrategyData.sidebarStats,
-    }, "matrix");
+    };
+    setStrategyDataCache((previous) => ({
+      ...previous,
+      [initialSelectionKey]: previous[initialSelectionKey] ?? initialData,
+    }));
+    setStableStrategyData((previous) => previous ?? initialData);
+    setLoadedSelectionKey(initialSelectionKey);
+    setStrategyClientPayload(initialSelection, {
+      engineWeekMap: initialStrategyData.engineWeekMap,
+      engineSimMap: initialStrategyData.engineSimMap,
+      engineWeekResults: initialStrategyData.engineWeekResults,
+      sidebarStats: initialStrategyData.sidebarStats,
+      weekOptions: initialStrategyData.weekOptions,
+      currentWeekOpenUtc: initialStrategyData.currentWeekOpenUtc,
+      artifactMeta: initialStrategyData.artifactMeta,
+    });
   }, [initialSelection, initialSelectionKey, initialStrategyData]);
 
   useEffect(() => {
@@ -137,7 +173,7 @@ export default function MatrixViewSection({
         return;
       }
 
-      const payload = getStrategyClientPayload(selectedSelection, "matrix");
+      const payload = getStrategyClientPayload(selectedSelection);
       if (payload !== undefined) {
         const nextData = payload && (payload.engineWeekResults || payload.sidebarStats)
           ? {
@@ -154,7 +190,7 @@ export default function MatrixViewSection({
         return;
       }
 
-      const fetched = await fetchStrategyClientPayload(selectedSelection, "matrix");
+      const fetched = await fetchStrategyClientPayload(selectedSelection);
       if (!active) return;
       const nextData = fetched && (fetched.engineWeekResults || fetched.sidebarStats)
         ? {
@@ -184,9 +220,38 @@ export default function MatrixViewSection({
   );
 
   const weeklyReturns = useMemo(
-    () => (selectedWeek ? allWeeklyReturns[selectedWeek] ?? [] : []),
-    [allWeeklyReturns, selectedWeek],
+    () => (selectedWeek ? weeklyReturnsByWeek[selectedWeek] ?? [] : []),
+    [selectedWeek, weeklyReturnsByWeek],
   );
+
+  useEffect(() => {
+    if (!selectedWeek || weeklyReturnsByWeek[selectedWeek]) return undefined;
+    let active = true;
+    const loadWeeklyReturns = async () => {
+      try {
+        const response = await fetch(`/api/matrix/weekly-returns?week=${encodeURIComponent(selectedWeek)}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as { rows?: WeeklyReturnRow[] };
+        if (!active) return;
+        setWeeklyReturnsByWeek((previous) => ({
+          ...previous,
+          [selectedWeek]: payload.rows ?? [],
+        }));
+      } catch {
+        if (!active) return;
+        setWeeklyReturnsByWeek((previous) => ({
+          ...previous,
+          [selectedWeek]: [],
+        }));
+      }
+    };
+    void loadWeeklyReturns();
+    return () => {
+      active = false;
+    };
+  }, [selectedWeek, weeklyReturnsByWeek]);
 
   useEffect(() => {
     const detail: StrategySidebarStatsDetail = {
@@ -204,7 +269,7 @@ export default function MatrixViewSection({
     let active = true;
     const poll = async () => {
       void requestStrategyArtifactWarm(selectedSelection);
-      const fetched = await fetchStrategyClientPayload(selectedSelection, "matrix");
+      const fetched = await fetchStrategyClientPayload(selectedSelection);
       if (!active || !(fetched?.engineWeekResults || fetched?.sidebarStats)) return;
       const nextData = {
         engineWeekResults: fetched.engineWeekResults,
@@ -221,6 +286,24 @@ export default function MatrixViewSection({
     return () => {
       active = false;
       window.clearInterval(intervalId);
+    };
+  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableStrategyData]);
+
+  useEffect(() => {
+    if (prefetchStartedRef.current || loadedSelectionKey !== selectedSelectionKey || !stableStrategyData) {
+      return undefined;
+    }
+
+    prefetchStartedRef.current = true;
+    let active = true;
+    void prefetchVisibleStrategyPayloads({
+      currentSelection: selectedSelection,
+      concurrency: 3,
+      shouldContinue: () => active,
+    });
+
+    return () => {
+      active = false;
     };
   }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableStrategyData]);
 

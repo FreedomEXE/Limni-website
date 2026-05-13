@@ -19,7 +19,7 @@ import {
   normalizeFilterSelection,
   resolveBiasSourceId,
 } from "@/lib/performance/strategyConfig";
-import { toPerformanceClientPayload } from "@/lib/performance/strategyClientPayload";
+import { toStrategyClientPayload } from "@/lib/performance/strategyClientPayload";
 import { readReadyStrategyArtifactPayload } from "@/lib/performance/strategyArtifactReadiness";
 import { toRuntimeStrategySelection } from "@/lib/performance/strategySelection";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
@@ -56,7 +56,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   };
   const initialStrategyData = await readReadyStrategyArtifactPayload(initialStrategySelection);
   const initialPayload = initialStrategyData
-    ? toPerformanceClientPayload(initialStrategyData)
+    ? toStrategyClientPayload(initialStrategyData)
     : null;
 
   return (
@@ -79,6 +79,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
               ? {
                   engineWeekMap: initialPayload.engineWeekMap,
                   engineSimMap: initialPayload.engineSimMap,
+                  engineWeekResults: initialPayload.engineWeekResults,
                   sidebarStats: initialPayload.sidebarStats,
                   weekOptions: initialPayload.weekOptions,
                   currentWeekOpenUtc: initialPayload.currentWeekOpenUtc,

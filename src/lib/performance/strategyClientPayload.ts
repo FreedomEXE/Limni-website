@@ -59,25 +59,13 @@ function stripWeekResults(weekResults: StrategyPageData["weekResults"] | null | 
   );
 }
 
-export function toPerformanceClientPayload(data: StrategyPageData): StrategyClientPayload {
+export function toStrategyClientPayload(data: StrategyPageData): StrategyClientPayload {
   return {
     engineWeekMap: stripWeekMap(data.weekMap),
     engineSimMap: data.simMap ?? null,
-    engineWeekResults: null,
-    sidebarStats: data.sidebarStats ?? null,
-    weekOptions: ["all", ...data.weekOptions],
-    currentWeekOpenUtc: data.currentWeekOpenUtc,
-    artifactMeta: data.artifactMeta,
-  };
-}
-
-export function toMatrixClientPayload(data: StrategyPageData): StrategyClientPayload {
-  return {
-    engineWeekMap: null,
-    engineSimMap: null,
     engineWeekResults: stripWeekResults(data.weekResults),
     sidebarStats: data.sidebarStats ?? null,
-    weekOptions: data.weekOptions,
+    weekOptions: ["all", ...data.weekOptions],
     currentWeekOpenUtc: data.currentWeekOpenUtc,
     artifactMeta: data.artifactMeta,
   };

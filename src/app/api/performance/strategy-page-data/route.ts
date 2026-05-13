@@ -5,8 +5,7 @@ import {
   readReadyStrategyArtifactPayload,
 } from "@/lib/performance/strategyArtifactReadiness";
 import {
-  toMatrixClientPayload,
-  toPerformanceClientPayload,
+  toStrategyClientPayload,
 } from "@/lib/performance/strategyClientPayload";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +17,6 @@ export async function GET(request: NextRequest) {
     f1: searchParams.get("f1"),
     f2: searchParams.get("f2"),
   });
-  const scope = searchParams.get("scope") === "matrix" ? "matrix" : "performance";
   const selection = {
     strategyId,
     f1: normalizedFilters.f1,
@@ -46,9 +44,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      scope === "matrix"
-        ? toMatrixClientPayload(data)
-        : toPerformanceClientPayload(data),
+      toStrategyClientPayload(data),
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load strategy data";

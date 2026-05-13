@@ -18,13 +18,10 @@ import MatrixViewSection from "@/components/matrix/MatrixViewSection";
 import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
-import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import {
   toRuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
-import { toMatrixClientPayload } from "@/lib/performance/strategyClientPayload";
-import { readReadyStrategyArtifactPayload } from "@/lib/performance/strategyArtifactReadiness";
 
 export const dynamic = "force-dynamic";
 
@@ -77,14 +74,6 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
     allowAll: false,
   }) as string | null;
 
-  const [initialStrategyData, weeklyReturnEntries] = await Promise.all([
-    readReadyStrategyArtifactPayload(initialStrategySelection),
-    Promise.all(
-      weeks.map(async (week) => [week, await getWeeklyPairReturns(week)] as const),
-    ),
-  ]);
-  const allWeeklyReturns = Object.fromEntries(weeklyReturnEntries);
-
   return (
     <DashboardLayout>
       <MatrixViewSection
@@ -93,15 +82,8 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
         currentWeekOpenUtc={currentWeekOpen}
         initialTab={selectedTab}
         initialSelection={toRuntimeStrategySelection(initialStrategySelection)}
-        initialStrategyData={
-          initialStrategyData
-            ? {
-                engineWeekResults: toMatrixClientPayload(initialStrategyData).engineWeekResults,
-                sidebarStats: initialStrategyData.sidebarStats ?? null,
-              }
-            : null
-        }
-        allWeeklyReturns={allWeeklyReturns}
+        initialStrategyData={null}
+        initialWeeklyReturns={{}}
       />
     </DashboardLayout>
   );

@@ -5,9 +5,9 @@
  * File: StrategyArtifactLoadingGate.tsx
  *
  * Description:
- * Full-page artifact loading gate for strategy-backed pages. It checks
- * readiness, warms missing artifacts, and only releases the page once the
- * visible strategy set is ready.
+ * Full-page artifact loading gate for strategy-backed pages. It releases
+ * immediately when the current selection has data and only warms the
+ * active selection when that data is truly missing.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -25,7 +25,6 @@ import {
   fetchStrategyArtifactStatus,
   requestStrategyArtifactWarmPayload,
 } from "@/lib/performance/strategyClientCache";
-import type { StrategyArtifactStatusRow } from "@/lib/performance/strategyClientCache";
 
 type StrategyArtifactLoadingGateProps = {
   currentReady: boolean;
@@ -38,50 +37,6 @@ function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-const WARM_CONCURRENCY = 1;
-
-function artifactBuildLabel(artifact: StrategyArtifactStatusRow) {
-  if (artifact.shardProgress && artifact.shardProgress.total > 0) {
-    return `Building ${artifact.label}: ${artifact.shardProgress.ready}/${artifact.shardProgress.total} weeks...`;
-  }
-  return `Building ${artifact.label}...`;
-}
-
-async function warmPendingArtifacts(
-  pending: StrategyArtifactStatusRow[],
-  currentKey: string,
-  onLabel: (label: string) => void,
-) {
-  const ordered = [...pending].sort((left, right) => {
-    if (left.key === currentKey) return -1;
-    if (right.key === currentKey) return 1;
-    return left.label.localeCompare(right.label);
-  });
-  const results: Array<Awaited<ReturnType<typeof requestStrategyArtifactWarmPayload>>> = [];
-
-  for (let index = 0; index < ordered.length; index += WARM_CONCURRENCY) {
-    const batch = ordered.slice(index, index + WARM_CONCURRENCY);
-    const batchLabel = batch.length === 1
-      ? artifactBuildLabel(batch[0]!)
-      : `Building ${batch.map((artifact) => artifact.label).join(" + ")}...`;
-    onLabel(batchLabel);
-    const settled = await Promise.allSettled(
-      batch.map((artifact) =>
-        requestStrategyArtifactWarmPayload({
-          strategy: artifact.strategy,
-          f1: artifact.f1,
-          f2: artifact.f2,
-        }),
-      ),
-    );
-    for (const result of settled) {
-      results.push(result.status === "fulfilled" ? result.value : null);
-    }
-  }
-
-  return results;
-}
-
 export default function StrategyArtifactLoadingGate({
   currentReady,
   currentSelection,
@@ -92,18 +47,26 @@ export default function StrategyArtifactLoadingGate({
     () => buildStrategySelectionKey(currentSelection),
     [currentSelection],
   );
-  const [visibleArtifactsReady, setVisibleArtifactsReady] = useState(currentReady);
   const [label, setLabel] = useState(`Loading ${pageLabel}...`);
 
   useEffect(() => {
+    if (currentReady) {
+      return undefined;
+    }
+
     let active = true;
 
-    const warmVisibleArtifacts = async () => {
-      setVisibleArtifactsReady(currentReady);
-      setLabel(currentReady ? `Loading ${pageLabel}...` : "Checking updates...");
+    const warmCurrentArtifact = async () => {
+      setLabel(`Loading ${pageLabel}...`);
 
       while (active) {
-        const status = await fetchStrategyArtifactStatus();
+        const warmResult = await requestStrategyArtifactWarmPayload(currentSelection);
+        if (!active) return;
+        if (warmResult?.after?.label) {
+          setLabel(`Building ${warmResult.after.label}...`);
+        }
+
+        const status = await fetchStrategyArtifactStatus(currentKey);
         if (!active) return;
 
         if (!status) {
@@ -114,54 +77,31 @@ export default function StrategyArtifactLoadingGate({
 
         const artifacts = status.artifacts ?? [];
         const currentArtifact = artifacts.find((artifact) => artifact.key === currentKey);
-        if (currentReady) {
-          setVisibleArtifactsReady(true);
-          return;
-        }
-
-        if (status.totalCount > 0 && status.readyCount >= status.totalCount) {
+        if (currentArtifact?.ready) {
           setLabel(`Loading ${pageLabel}...`);
-          setVisibleArtifactsReady(true);
           return;
         }
 
-        const currentPending = currentArtifact && !currentArtifact.ready ? currentArtifact : null;
-        const pending = currentPending ? [currentPending] : artifacts.filter((artifact) => !artifact.ready).slice(0, 1);
-        setLabel(
-          currentPending
-            ? artifactBuildLabel(currentPending)
-            : `Building strategy artifact ${status.readyCount}/${status.totalCount}...`,
-        );
-
-        const warmResults = await warmPendingArtifacts(pending, currentKey, (nextLabel) => {
-          if (active) setLabel(nextLabel);
-        });
-        if (!active) return;
-
-        const failed = warmResults.find((result) => result && !result.ok && !result.after?.ready);
-        if (failed) {
+        if (currentArtifact?.shardProgress && currentArtifact.shardProgress.total > 0) {
           setLabel(
-            failed.after?.label
-              ? `Retrying ${failed.after.label}...`
-              : "Retrying strategy artifact build...",
+            `Building ${currentArtifact.label}: ${currentArtifact.shardProgress.ready}/${currentArtifact.shardProgress.total} weeks...`,
           );
-          await wait(10000);
-          continue;
+        } else if (currentArtifact?.label) {
+          setLabel(`Building ${currentArtifact.label}...`);
         }
 
-        setLabel(`Verifying strategy artifacts ${status.readyCount}/${status.totalCount}...`);
-        await wait(2000);
+        await wait(5000);
       }
     };
 
-    void warmVisibleArtifacts();
+    void warmCurrentArtifact();
 
     return () => {
       active = false;
     };
-  }, [currentKey, currentReady, pageLabel]);
+  }, [currentKey, currentReady, currentSelection, pageLabel]);
 
-  if (!visibleArtifactsReady || !currentReady) {
+  if (!currentReady) {
     return (
       <div className="fixed inset-0 z-[100]">
         <LimniLoading label={label} compact />

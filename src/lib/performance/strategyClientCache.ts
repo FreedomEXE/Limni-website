@@ -1,8 +1,6 @@
 import type { RuntimeStrategySelection } from "@/lib/performance/strategySelection";
 import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
 
-export type StrategyClientScope = "performance" | "matrix";
-
 const payloadCache = new Map<string, StrategyClientPayload | null>();
 const inflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
 const warmInflightCache = new Map<string, Promise<boolean>>();
@@ -12,8 +10,8 @@ let bulkWarmRequestedAt = 0;
 const WARM_REQUEST_COOLDOWN_MS = 120000;
 const BULK_WARM_REQUEST_COOLDOWN_MS = 30000;
 
-function buildSelectionKey(selection: RuntimeStrategySelection, scope: StrategyClientScope) {
-  return `${scope}:${selection.strategy}:${selection.f1}:${selection.f2}`;
+function buildSelectionKey(selection: RuntimeStrategySelection) {
+  return `${selection.strategy}:${selection.f1}:${selection.f2}`;
 }
 
 export type StrategyArtifactStatusRow = {
@@ -23,7 +21,7 @@ export type StrategyArtifactStatusRow = {
   f1: string;
   f2: string;
   ready: boolean;
-  reason: "ready" | "missing" | "stale";
+  reason: "ready" | "missing" | "stale" | "stale_week" | "stale_options" | "stale_fingerprint";
   shardProgress?: {
     ready: number;
     total: number;
@@ -77,17 +75,15 @@ export type StrategyArtifactWarmPayload = {
 
 export function getStrategyClientPayload(
   selection: RuntimeStrategySelection,
-  scope: StrategyClientScope = "performance",
 ): StrategyClientPayload | null | undefined {
-  return payloadCache.get(buildSelectionKey(selection, scope));
+  return payloadCache.get(buildSelectionKey(selection));
 }
 
 export function setStrategyClientPayload(
   selection: RuntimeStrategySelection,
   payload: StrategyClientPayload | null,
-  scope: StrategyClientScope = "performance",
 ) {
-  const cacheKey = buildSelectionKey(selection, scope);
+  const cacheKey = buildSelectionKey(selection);
   if (payload?.artifactMeta?.stale === true) {
     payloadCache.delete(cacheKey);
     return;
@@ -108,9 +104,8 @@ function isStrategyClientPayload(value: unknown): value is StrategyClientPayload
 
 export async function fetchStrategyClientPayload(
   selection: RuntimeStrategySelection,
-  scope: StrategyClientScope = "performance",
 ): Promise<StrategyClientPayload | null> {
-  const cacheKey = buildSelectionKey(selection, scope);
+  const cacheKey = buildSelectionKey(selection);
   if (payloadCache.has(cacheKey)) {
     return payloadCache.get(cacheKey) ?? null;
   }
@@ -120,7 +115,7 @@ export async function fetchStrategyClientPayload(
   }
 
   const request = fetch(
-    `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}&scope=${scope}`,
+    `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}`,
     { method: "GET" },
   )
     .then(async (response) => {
@@ -167,7 +162,7 @@ export async function requestStrategyArtifactWarm(
 export async function requestStrategyArtifactWarmPayload(
   selection: RuntimeStrategySelection,
 ): Promise<StrategyArtifactWarmPayload | null> {
-  const cacheKey = buildSelectionKey(selection, "performance");
+  const cacheKey = buildSelectionKey(selection);
   const inflight = warmInflightCache.get(cacheKey);
   if (inflight) {
     return inflight.then((ok) => ({
@@ -256,6 +251,56 @@ export async function requestVisibleStrategyArtifactsWarm(): Promise<StrategyBul
 
   bulkWarmInflight = request;
   return request;
+}
+
+export async function prefetchVisibleStrategyPayloads(options: {
+  currentSelection?: RuntimeStrategySelection;
+  concurrency?: number;
+  shouldContinue?: () => boolean;
+} = {}): Promise<void> {
+  const {
+    currentSelection,
+    concurrency = 3,
+    shouldContinue = () => true,
+  } = options;
+  const warmPromise = requestVisibleStrategyArtifactsWarm();
+
+  const status = await fetchStrategyArtifactStatus();
+  if (!status || !shouldContinue()) return;
+
+  const currentKey = currentSelection ? buildSelectionKey(currentSelection) : null;
+  const selections = (status.artifacts ?? [])
+    .filter((artifact) => artifact.key !== currentKey)
+    .map((artifact) => ({
+      strategy: artifact.strategy,
+      f1: artifact.f1,
+      f2: artifact.f2,
+    }));
+
+  const prefetchSelections = async () => {
+    let nextIndex = 0;
+    const requestedConcurrency =
+      Number.isFinite(concurrency) && concurrency > 0
+        ? Math.floor(concurrency)
+        : 3;
+    const workerCount = Math.max(1, Math.min(requestedConcurrency, Math.max(selections.length, 1)));
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        while (shouldContinue()) {
+          const selection = selections[nextIndex];
+          nextIndex += 1;
+          if (!selection) return;
+          await fetchStrategyClientPayload(selection);
+        }
+      }),
+    );
+  };
+
+  await prefetchSelections();
+  await warmPromise.catch(() => null);
+  if (shouldContinue()) {
+    await prefetchSelections();
+  }
 }
 
 export async function fetchStrategyArtifactStatus(

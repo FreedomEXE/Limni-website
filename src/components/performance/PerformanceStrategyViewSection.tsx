@@ -14,7 +14,7 @@
 -----------------------------------------------*/
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
 import StrategyArtifactLoadingGate from "@/components/performance/StrategyArtifactLoadingGate";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
@@ -30,6 +30,7 @@ import {
 import {
   fetchStrategyClientPayload,
   getStrategyClientPayload,
+  prefetchVisibleStrategyPayloads,
   requestStrategyArtifactWarm,
   setStrategyClientPayload,
 } from "@/lib/performance/strategyClientCache";
@@ -66,6 +67,7 @@ export default function PerformanceStrategyViewSection({
   ));
   const [stableEntry, setStableEntry] = useState<StrategyBootstrapEntry | null>(initialEntry);
   const [loadedSelectionKey, setLoadedSelectionKey] = useState(initialKey);
+  const prefetchStartedRef = useRef(false);
 
   useEffect(() => {
     setSelectedSelection(initialSelection);
@@ -82,12 +84,12 @@ export default function PerformanceStrategyViewSection({
     setStrategyClientPayload(initialSelection, {
       engineWeekMap: initialEntry.engineWeekMap,
       engineSimMap: initialEntry.engineSimMap,
-      engineWeekResults: null,
+      engineWeekResults: initialEntry.engineWeekResults ?? null,
       sidebarStats: initialEntry.sidebarStats,
       weekOptions: initialEntry.weekOptions,
       currentWeekOpenUtc: initialEntry.currentWeekOpenUtc,
       artifactMeta: initialEntry.artifactMeta,
-    }, "performance");
+    });
   }, [initialEntry, initialKey, initialSelection]);
 
   useEffect(() => {
@@ -115,7 +117,7 @@ export default function PerformanceStrategyViewSection({
         return;
       }
 
-      const payload = getStrategyClientPayload(selectedSelection, "performance");
+      const payload = getStrategyClientPayload(selectedSelection);
       if (payload !== undefined) {
         const nextEntry = payload && (payload.engineWeekMap || payload.engineSimMap || payload.sidebarStats)
           ? {
@@ -136,7 +138,7 @@ export default function PerformanceStrategyViewSection({
         return;
       }
 
-      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
+      const fetched = await fetchStrategyClientPayload(selectedSelection);
       if (!active) return;
       const nextEntry = fetched && (fetched.engineWeekMap || fetched.engineSimMap || fetched.sidebarStats)
         ? {
@@ -178,7 +180,7 @@ export default function PerformanceStrategyViewSection({
     let active = true;
     const poll = async () => {
       void requestStrategyArtifactWarm(selectedSelection);
-      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
+      const fetched = await fetchStrategyClientPayload(selectedSelection);
       if (!active || !(fetched?.engineWeekMap || fetched?.engineSimMap || fetched?.sidebarStats)) return;
       const nextEntry = {
         engineWeekMap: fetched.engineWeekMap,
@@ -214,7 +216,7 @@ export default function PerformanceStrategyViewSection({
     const refreshStaleEntry = async () => {
       const warmed = await requestStrategyArtifactWarm(selectedSelection);
       if (!active || !warmed) return;
-      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
+      const fetched = await fetchStrategyClientPayload(selectedSelection);
       if (!active || !(fetched?.engineWeekMap || fetched?.engineSimMap || fetched?.sidebarStats)) return;
       const nextEntry = {
         engineWeekMap: fetched.engineWeekMap,
@@ -229,6 +231,24 @@ export default function PerformanceStrategyViewSection({
     };
 
     void refreshStaleEntry();
+
+    return () => {
+      active = false;
+    };
+  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
+
+  useEffect(() => {
+    if (prefetchStartedRef.current || loadedSelectionKey !== selectedSelectionKey || !stableEntry) {
+      return undefined;
+    }
+
+    prefetchStartedRef.current = true;
+    let active = true;
+    void prefetchVisibleStrategyPayloads({
+      currentSelection: selectedSelection,
+      concurrency: 3,
+      shouldContinue: () => active,
+    });
 
     return () => {
       active = false;
