@@ -18,7 +18,7 @@ function parseLimit(value: string | null) {
   if (Number.isFinite(parsed) && parsed > 0) return Math.min(parsed, 10);
   const envLimit = Number.parseInt(process.env.STRATEGY_ARTIFACT_WARM_BATCH_SIZE ?? "", 10);
   if (Number.isFinite(envLimit) && envLimit > 0) return Math.min(envLimit, 10);
-  return 2;
+  return 5;
 }
 
 export async function GET(request: Request) {

@@ -109,19 +109,30 @@ export async function GET(request: NextRequest) {
       includeCurrentWeek: true,
     });
     if (!data) {
+      const biasSource = getStrategy(selection.strategyId);
+      if (!biasSource) {
+        return NextResponse.json({ error: "Unknown strategy" }, { status: 400 });
+      }
+      const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+      const result = await computeCurrentWeekSignalsWithRetry(biasSource, currentWeekOpenUtc);
       return NextResponse.json({
         engineWeekMap: null,
         engineSimMap: null,
-        engineWeekResults: null,
+        engineWeekResults: {
+          [currentWeekOpenUtc]: result,
+        },
         sidebarStats: null,
-        weekOptions: [],
+        weekOptions: ["all", currentWeekOpenUtc],
+        currentWeekOpenUtc,
         artifactMeta: {
           status: "miss",
           selectionKey,
           cachedAtUtc: null,
-          refreshedWeeks: [],
+          refreshedWeeks: [currentWeekOpenUtc],
           removedWeeks: [],
           missingWeeks: [],
+          stale: false,
+          staleReason: null,
         },
       });
     }

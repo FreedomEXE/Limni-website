@@ -236,7 +236,8 @@ async function readPersistentPayload(
 async function writePersistentPayload(url: string, data: StrategyClientPayload) {
   if (
     !canUsePersistentPayloadCache() ||
-    data.artifactMeta?.cachedAtUtc === null
+    data.artifactMeta?.cachedAtUtc === null ||
+    data.artifactMeta?.stale === true
   ) {
     return;
   }
