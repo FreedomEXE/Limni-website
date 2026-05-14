@@ -209,9 +209,17 @@ export async function readReadyStrategyArtifactPayload(
 ) {
   const selectionKey = buildStrategySelectionKey(selection);
   const includeCurrentWeek = options.includeCurrentWeek !== false;
+  const biasSource = getStrategy(selection.strategyId);
+  if (!biasSource) return null;
+  const entryStyle = getEntryStyle(selection.f1);
+  const riskOverlay = getStrengthGate(selection.f2);
+
   const entry = await readStrategyArtifactEntry<StrategyPageData>(selectionKey);
-  if (entry) {
-    const staleReason = getReadPathArtifactStaleReason(entry.fingerprint, selection);
+  const staleReason = entry
+    ? getReadPathArtifactStaleReason(entry.fingerprint, selection)
+    : "missing";
+
+  if (entry && staleReason === "ready") {
     const artifactMeta: StrategyPageData["artifactMeta"] = {
       status: "hit",
       selectionKey,
@@ -219,22 +227,16 @@ export async function readReadyStrategyArtifactPayload(
       refreshedWeeks: [],
       removedWeeks: [],
       missingWeeks: [],
-      stale: staleReason !== "ready",
-      staleReason: staleReason === "ready" ? null : staleReason,
+      stale: false,
+      staleReason: null,
     };
     if (!includeCurrentWeek) {
-      return {
-        ...entry.payload,
-        artifactMeta,
-      };
+      return { ...entry.payload, artifactMeta };
     }
     return overlayCurrentWeekOnStrategyPageData(selection, entry.payload, artifactMeta);
   }
 
-  const biasSource = getStrategy(selection.strategyId);
-  if (!biasSource) return null;
-  const entryStyle = getEntryStyle(selection.f1);
-  const riskOverlay = getStrengthGate(selection.f2);
+  // Version mismatch or no monolithic — prefer fresh shard assembly
   const expectedShardVersion = buildStrategyArtifactEngineVersion({
     entryStyle,
     riskOverlay,
@@ -268,12 +270,27 @@ export async function readReadyStrategyArtifactPayload(
       staleReason: "missing",
     };
     if (!includeCurrentWeek) {
-      return {
-        ...payload,
-        artifactMeta,
-      };
+      return { ...payload, artifactMeta };
     }
     return overlayCurrentWeekOnStrategyPageData(selection, payload, artifactMeta);
+  }
+
+  // No current-version shards — serve stale monolithic as last resort
+  if (entry) {
+    const artifactMeta: StrategyPageData["artifactMeta"] = {
+      status: "hit",
+      selectionKey,
+      cachedAtUtc: entry.cachedAtUtc,
+      refreshedWeeks: [],
+      removedWeeks: [],
+      missingWeeks: [],
+      stale: true,
+      staleReason: staleReason === "ready" ? null : staleReason,
+    };
+    if (!includeCurrentWeek) {
+      return { ...entry.payload, artifactMeta };
+    }
+    return overlayCurrentWeekOnStrategyPageData(selection, entry.payload, artifactMeta);
   }
 
   return null;
