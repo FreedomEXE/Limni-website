@@ -13,7 +13,7 @@ let bulkWarmInflight: Promise<StrategyBulkWarmPayload | null> | null = null;
 let bulkWarmRequestedAt = 0;
 const WARM_REQUEST_COOLDOWN_MS = 120000;
 const BULK_WARM_REQUEST_COOLDOWN_MS = 30000;
-const PERSISTENT_PAYLOAD_CACHE_NAME = "limni-strategy-payload-v1";
+const PERSISTENT_PAYLOAD_CACHE_NAME = "limni-strategy-payload-v2";
 const PERSISTENT_PAYLOAD_META_PREFIX = "limni:strategy-payload:";
 const PERSISTENT_PAYLOAD_TTL_MS = 6 * 60 * 60 * 1000;
 

@@ -41,6 +41,7 @@ type WeekStats = {
   winCount: number;
   lossCount: number;
   winRate: number;
+  empty?: boolean;
 };
 
 function EngineSidebarStatsCard() {
@@ -118,28 +119,36 @@ function EngineSidebarStatsCard() {
             Selected Week
           </div>
 
-          <div className={`mt-2 text-2xl font-bold ${returnColor(weekStats.returnPct)}`}>
-            {weekStats.returnPct >= 0 ? "+" : ""}{weekStats.returnPct.toFixed(2)}%
-          </div>
+          {weekStats.empty ? (
+            <div className="mt-3 rounded-lg border border-dashed border-[var(--panel-border)] px-3 py-2 text-xs text-[color:var(--muted)]">
+              No realized performance data.
+            </div>
+          ) : (
+            <>
+              <div className={`mt-2 text-2xl font-bold ${returnColor(weekStats.returnPct)}`}>
+                {weekStats.returnPct >= 0 ? "+" : ""}{weekStats.returnPct.toFixed(2)}%
+              </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Win Rate</div>
-              <div className="font-bold">{weekStats.winRate.toFixed(1)}%</div>
-            </div>
-            <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Trades</div>
-              <div className="font-bold">{weekStats.tradeCount}</div>
-            </div>
-            <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Wins</div>
-              <div className="font-bold text-lime-400">{weekStats.winCount}</div>
-            </div>
-            <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Losses</div>
-              <div className="font-bold text-red-400">{weekStats.lossCount}</div>
-            </div>
-          </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Win Rate</div>
+                  <div className="font-bold">{weekStats.winRate.toFixed(1)}%</div>
+                </div>
+                <div>
+                  <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Trades</div>
+                  <div className="font-bold">{weekStats.tradeCount}</div>
+                </div>
+                <div>
+                  <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Wins</div>
+                  <div className="font-bold text-lime-400">{weekStats.winCount}</div>
+                </div>
+                <div>
+                  <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Losses</div>
+                  <div className="font-bold text-red-400">{weekStats.lossCount}</div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 

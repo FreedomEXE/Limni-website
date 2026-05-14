@@ -64,6 +64,14 @@ function TradeDetailRow({ detail }: { detail: { entryPrice: number; exitPrice: n
   );
 }
 
+function hasGridActivity(gridProps: EngineGridProps | null | undefined) {
+  return Boolean(gridProps?.combined.models.some((model) => (
+    model.total > 0 ||
+    model.returns.length > 0 ||
+    Math.abs(model.percent) > 1e-9
+  )));
+}
+
 function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
   const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
 
@@ -285,8 +293,11 @@ export default function PerformanceViewSection({
   // Dispatch week change events so sidebar can react
   useEffect(() => {
     if (!engineWeekMap) return;
-    const gridProps = engineWeekMap[selectedWeek] ?? engineWeekMap["all"];
+    const gridProps = selectedWeek === "all"
+      ? engineWeekMap["all"]
+      : engineWeekMap[selectedWeek];
     if (!gridProps) return;
+    const hasActivity = selectedWeek === "all" || hasGridActivity(gridProps);
     // Compute stats from the gridProps models
     const totalReturn = gridProps.combined.models.reduce((s, m) => s + m.percent, 0);
     const totalTrades = gridProps.combined.models.reduce((s, m) => s + m.total, 0);
@@ -301,6 +312,7 @@ export default function PerformanceViewSection({
         winCount: totalWins,
         lossCount: totalTrades - totalWins,
         winRate: totalTrades > 0 ? (totalWins / totalTrades) * 100 : 0,
+        empty: !hasActivity,
       },
     }));
   }, [selectedWeek, engineWeekMap]);
@@ -371,8 +383,13 @@ export default function PerformanceViewSection({
 
   // ─── Engine-driven path (instant week switching) ──────────────
   if (engineWeekMap && weekOptions) {
-    const gridProps = engineWeekMap[selectedWeek] ?? engineWeekMap["all"];
-    const simulation = engineSimMap?.[selectedWeek] ?? engineSimMap?.["all"] ?? null;
+    const gridProps = selectedWeek === "all"
+      ? engineWeekMap["all"]
+      : engineWeekMap[selectedWeek] ?? null;
+    const simulation = selectedWeek === "all"
+      ? engineSimMap?.["all"] ?? null
+      : engineSimMap?.[selectedWeek] ?? null;
+    const gridHasActivity = selectedWeek === "all" || hasGridActivity(gridProps);
 
     return (
       <>
@@ -397,6 +414,10 @@ export default function PerformanceViewSection({
             strategyDescription={strategyDescription ?? null}
             notesStorageKey={notesStorageKey ?? "performance"}
           />
+        ) : !gridHasActivity ? (
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+            No realized performance data for the selected week.
+          </div>
         ) : view === "simulation" ? (
           <PerformanceSimulationSection group={simulation} />
         ) : view === "basket" && gridProps ? (

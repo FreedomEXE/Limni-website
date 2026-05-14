@@ -237,8 +237,11 @@ export default function MatrixViewSection({
       const payload = await fetchCurrentWeekStrategyClientPayload(selectedSelection, "matrix");
       if (!active || !payload?.engineWeekResults) return;
       const nextData = {
-        engineWeekResults: payload.engineWeekResults,
-        sidebarStats: payload.sidebarStats,
+        engineWeekResults: {
+          ...(stableStrategyData.engineWeekResults ?? {}),
+          ...payload.engineWeekResults,
+        },
+        sidebarStats: payload.sidebarStats ?? stableStrategyData.sidebarStats,
       };
       setStrategyDataCache((previous) => ({ ...previous, [selectedSelectionKey]: nextData }));
       setStableStrategyData(nextData);
@@ -348,6 +351,7 @@ export default function MatrixViewSection({
         winCount: selectedWeekResult.winCount,
         lossCount: selectedWeekResult.lossCount,
         winRate: selectedWeekResult.winRate,
+        empty: selectedWeekResult.tradeCount === 0 && Math.abs(selectedWeekResult.totalReturnPct) < 1e-9,
       },
     }));
   }, [engineWeekResults, selectedWeek]);

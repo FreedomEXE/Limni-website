@@ -738,9 +738,14 @@ export function withTradeDerivedSeriesGroups(
   const layerSeries = group.series
     .slice(1)
     .filter((series) => !series.id.startsWith("asset:"));
-  const assetSeries = "weeks" in result
-    ? buildMultiWeekAssetSeriesFromTrades(result)
-    : buildSingleWeekAssetSeriesFromTrades(result, result.weekOpenUtc);
+  const existingAssetSeries = group.series
+    .slice(1)
+    .filter((series) => series.id.startsWith("asset:"));
+  const assetSeries = existingAssetSeries.length > 0
+    ? existingAssetSeries
+    : "weeks" in result
+      ? buildMultiWeekAssetSeriesFromTrades(result)
+      : buildSingleWeekAssetSeriesFromTrades(result, result.weekOpenUtc);
   return {
     ...group,
     series: [totalSeries, ...assetSeries, ...layerSeries],

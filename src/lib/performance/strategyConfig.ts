@@ -266,11 +266,11 @@ export function normalizeFilterSelection(value: {
   const rawF2 = value.f2 ?? null;
   const legacyEntryStyleId = isKnownId(ENTRY_STYLE_FILTERS, rawF2) ? rawF2 : null;
   const entryStyleId = legacyEntryStyleId
-    ?? (isKnownId(ENTRY_STYLE_FILTERS, rawF1) ? rawF1 : "weekly_hold");
+    ?? (isKnownId(ENTRY_STYLE_FILTERS, rawF1) ? rawF1 : "adr_grid");
   return {
     f1: entryStyleId,
     // Backward compatibility: silently absorb old ?f2=adr_normalized URLs.
-    f2: isKnownId(STRENGTH_GATES, rawF2) ? rawF2 : "none",
+    f2: isKnownId(STRENGTH_GATES, rawF2) ? rawF2 : "exposure_cap",
   };
 }
 
@@ -300,7 +300,7 @@ export function resolveStrategyId(value: string | undefined | null): string {
     return "tandem";
   }
   if (normalized && STRATEGIES.some((s) => s.id === normalized)) return normalized;
-  return SELECTOR_STRATEGY_ID;
+  return "tandem";
 }
 
 export function resolveEntryStyleId(value: string | undefined | null): string {

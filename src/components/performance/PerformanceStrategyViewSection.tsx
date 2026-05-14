@@ -14,7 +14,7 @@
 -----------------------------------------------*/
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
 import StrategyArtifactLoadingGate from "@/components/performance/StrategyArtifactLoadingGate";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
@@ -107,6 +107,28 @@ export default function PerformanceStrategyViewSection({
     [selectedSelection],
   );
 
+  const mergeEntryPayload = useCallback((payload: StrategyClientPayload): StrategyBootstrapEntry => ({
+    engineWeekMap: {
+      ...(stableEntry?.engineWeekMap ?? {}),
+      ...(payload.engineWeekMap ?? {}),
+    },
+    engineSimMap: {
+      ...(stableEntry?.engineSimMap ?? {}),
+      ...(payload.engineSimMap ?? {}),
+    },
+    engineWeekResults: {
+      ...(stableEntry?.engineWeekResults ?? {}),
+      ...(payload.engineWeekResults ?? {}),
+    },
+    sidebarStats: payload.sidebarStats ?? stableEntry?.sidebarStats ?? null,
+    weekOptions: Array.from(new Set([
+      ...(payload.weekOptions ?? []),
+      ...(stableEntry?.weekOptions ?? []),
+    ])),
+    currentWeekOpenUtc: payload.currentWeekOpenUtc ?? stableEntry?.currentWeekOpenUtc,
+    artifactMeta: payload.artifactMeta ?? stableEntry?.artifactMeta,
+  }), [stableEntry]);
+
   useEffect(() => {
     let active = true;
 
@@ -174,7 +196,7 @@ export default function PerformanceStrategyViewSection({
           : null,
     };
     window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
-  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
+  }, [loadedSelectionKey, mergeEntryPayload, selectedSelection, selectedSelectionKey, stableEntry]);
 
   useEffect(() => {
     if (
@@ -207,7 +229,31 @@ export default function PerformanceStrategyViewSection({
     return () => {
       active = false;
     };
-  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
+  }, [loadedSelectionKey, mergeEntryPayload, selectedSelection, selectedSelectionKey, stableEntry]);
+
+  useEffect(() => {
+    if (loadedSelectionKey !== selectedSelectionKey || !stableEntry) {
+      return undefined;
+    }
+
+    let active = true;
+    const loadCurrentWeekEntry = async () => {
+      const currentWeek = stableEntry.currentWeekOpenUtc;
+      if (!currentWeek || stableEntry.engineWeekMap?.[currentWeek]) return;
+      const payload = await fetchCurrentWeekStrategyClientPayload(selectedSelection, "performance");
+      if (!active || !payload) return;
+      const nextEntry = mergeEntryPayload(payload);
+      setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
+      setStableEntry(nextEntry);
+      setStrategyClientPayload(selectedSelection, payload);
+    };
+
+    void loadCurrentWeekEntry();
+
+    return () => {
+      active = false;
+    };
+  }, [loadedSelectionKey, mergeEntryPayload, selectedSelection, selectedSelectionKey, stableEntry]);
 
   useEffect(() => {
     if (loadedSelectionKey !== selectedSelectionKey || !stableEntry) {

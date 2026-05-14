@@ -24,6 +24,9 @@ export type PerformanceSimulationSeries = {
     ts_utc: string;
     equity_pct: number;
     lock_pct: number | null;
+    peak_pct?: number;
+    drawdown_pct?: number;
+    active_positions?: number;
   }>;
 };
 
@@ -57,26 +60,77 @@ function formatPercent(value: number | null | undefined) {
   return `${value.toFixed(2)}%`;
 }
 
+function computeMixedSeries(series: PerformanceSimulationSeries[]): PerformanceSimulationSeries {
+  const timestamps = Array.from(new Set(series.flatMap((item) => item.points.map((point) => point.ts_utc))))
+    .sort((left, right) => Date.parse(left) - Date.parse(right));
+  const pointMaps = series.map((item) => new Map(item.points.map((point) => [point.ts_utc, point])));
+  const lastEquityBySeries = new Array<number>(series.length).fill(0);
+  const lastActiveBySeries = new Array<number>(series.length).fill(0);
+  let runningPeakPct = 0;
+  const points = timestamps.map((tsUtc) => {
+    for (let index = 0; index < pointMaps.length; index += 1) {
+      const point = pointMaps[index]?.get(tsUtc);
+      if (point) {
+        lastEquityBySeries[index] = point.equity_pct;
+        lastActiveBySeries[index] = point.active_positions ?? 0;
+      }
+    }
+    const equityPct = lastEquityBySeries.reduce((sum, value) => sum + value, 0);
+    const activePositions = lastActiveBySeries.reduce((sum, value) => sum + value, 0);
+    runningPeakPct = Math.max(runningPeakPct, equityPct);
+    const drawdownPct = (100 + runningPeakPct) <= 0
+      ? -100
+      : (((100 + equityPct) / (100 + runningPeakPct)) - 1) * 100;
+    return {
+      ts_utc: tsUtc,
+      equity_pct: equityPct,
+      lock_pct: null,
+      peak_pct: runningPeakPct,
+      drawdown_pct: drawdownPct,
+      active_positions: activePositions,
+    };
+  });
+
+  return {
+    id: "active-mix",
+    label: series.length === 1 ? series[0]?.label ?? "Active Mix" : "Active Mix",
+    color: "#10b981",
+    points,
+  };
+}
+
+function summarizeMixedSeries(series: PerformanceSimulationSeries, fallbackTrades: number | null) {
+  const last = series.points.at(-1);
+  const drawdowns = series.points
+    .map((point) => point.drawdown_pct)
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return {
+    returnPct: last?.equity_pct ?? null,
+    maxDrawdownPct: drawdowns.length > 0 ? Math.abs(Math.min(...drawdowns)) : null,
+    trades: fallbackTrades,
+  };
+}
+
 export default function PerformanceSimulationSection({
   group,
 }: {
   group: PerformanceSimulationGroup | null;
 }) {
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
-
-  const seriesGroups = useMemo(() => group?.seriesGroups ?? [], [group]);
-  const activeSeriesGroup = useMemo(() => {
-    if (!group || seriesGroups.length === 0) return null;
-    return seriesGroups.find((item) => item.id === activeGroupId)
-      ?? seriesGroups.find((item) => item.id === "assets")
-      ?? seriesGroups[0]
-      ?? null;
-  }, [activeGroupId, group, seriesGroups]);
-  const activeSeries = useMemo(() => {
-    if (!group || !activeSeriesGroup) return group?.series ?? [];
-    const requested = new Set(activeSeriesGroup.seriesIds);
-    return group.series.filter((series) => requested.has(series.id));
-  }, [activeSeriesGroup, group]);
+  const sleeveSeries = useMemo(() => {
+    const assetSleeves = group?.series.filter((series) => series.id.startsWith("asset:")) ?? [];
+    if (assetSleeves.length > 0) return assetSleeves;
+    return group?.series.filter((series) => series.id !== "equity" && series.id !== "total") ?? [];
+  }, [group]);
+  const [selectedSleeves, setSelectedSleeves] = useState<string[] | null>(null);
+  const sleeveIds = sleeveSeries.map((series) => series.id);
+  const selectedSleevesInGroup = selectedSleeves?.filter((id) => sleeveIds.includes(id)) ?? null;
+  const resolvedSelectedSleeves = selectedSleevesInGroup && selectedSleevesInGroup.length > 0
+    ? selectedSleevesInGroup
+    : sleeveIds;
+  const activeSleeves = sleeveSeries.filter((series) => resolvedSelectedSleeves.includes(series.id));
+  const mixedSeries = computeMixedSeries(activeSleeves.length > 0 ? activeSleeves : sleeveSeries);
+  const allSleevesSelected = sleeveSeries.length > 0 && resolvedSelectedSleeves.length === sleeveSeries.length;
+  const mixedMetrics = summarizeMixedSeries(mixedSeries, allSleevesSelected ? group?.metrics.trades ?? null : null);
 
   if (!group) {
     return (
@@ -96,17 +150,25 @@ export default function PerformanceSimulationSection({
           {group.title}
         </h3>
         <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
-          {activeSeriesGroup?.description ?? group.description}
+          Select sleeves to view one combined path and matching path metrics.
         </p>
-        {seriesGroups.length > 0 ? (
+        {sleeveSeries.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
-            {seriesGroups.map((item) => {
-              const active = (activeSeriesGroup?.id ?? "assets") === item.id;
+            {sleeveSeries.map((item) => {
+              const active = resolvedSelectedSleeves.includes(item.id);
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setActiveGroupId(item.id)}
+                  onClick={() => {
+                    setSelectedSleeves((previous) => {
+                      const current = previous ?? sleeveSeries.map((series) => series.id);
+                      const next = current.includes(item.id)
+                        ? current.filter((id) => id !== item.id)
+                        : [...current, item.id];
+                      return next.length > 0 ? next : current;
+                    });
+                  }}
                   className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
                     active
                       ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
@@ -117,14 +179,21 @@ export default function PerformanceSimulationSection({
                 </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setSelectedSleeves(sleeveSeries.map((series) => series.id))}
+              className="rounded-full border border-[var(--panel-border)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)] transition hover:border-[var(--accent)]/50 hover:text-[var(--foreground)]"
+            >
+              All
+            </button>
           </div>
         ) : null}
       </div>
 
       <EquityCurveChart
         title={`${group.title} equity curve`}
-        series={activeSeries}
-        interactive
+        series={[mixedSeries]}
+        interactive={false}
       />
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -133,7 +202,7 @@ export default function PerformanceSimulationSection({
             Return
           </div>
           <div data-testid="sim-return" className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-            {formatSignedPercent(group.metrics.returnPct)}
+            {formatSignedPercent(mixedMetrics.returnPct)}
           </div>
         </div>
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
@@ -141,7 +210,7 @@ export default function PerformanceSimulationSection({
             Max DD
           </div>
           <div data-testid="sim-maxdd" className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-            {formatPercent(group.metrics.maxDrawdownPct)}
+            {formatPercent(mixedMetrics.maxDrawdownPct)}
           </div>
         </div>
         <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
@@ -149,7 +218,7 @@ export default function PerformanceSimulationSection({
             Trades
           </div>
           <div data-testid="sim-trades" className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-            {group.metrics.trades ?? "—"}
+            {mixedMetrics.trades ?? "—"}
           </div>
         </div>
       </div>

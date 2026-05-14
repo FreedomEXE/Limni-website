@@ -73,12 +73,15 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
     currentWeekOpenUtc: currentWeekOpen,
     allowAll: false,
   }) as string | null;
+  const initialWeek = weekValue
+    ? selectedWeek
+    : weeks.find((week) => week !== currentWeekOpen) ?? selectedWeek;
 
   return (
     <DashboardLayout>
       <MatrixViewSection
         weeks={weeks}
-        initialWeek={selectedWeek}
+        initialWeek={initialWeek}
         currentWeekOpenUtc={currentWeekOpen}
         initialTab={selectedTab}
         initialSelection={toRuntimeStrategySelection(initialStrategySelection)}
