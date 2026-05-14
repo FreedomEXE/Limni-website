@@ -10,6 +10,9 @@ type EquityPoint = {
   static_baseline_usd?: number | null;
   static_drawdown_pct?: number;
   trailing_drawdown_pct?: number;
+  peak_pct?: number;
+  drawdown_pct?: number;
+  active_positions?: number;
 };
 
 type EquitySeries = {
@@ -135,15 +138,23 @@ export default function EquityCurveChart({
   const trailingValues = primary.map((p) => valueForPoint(p));
   let peakIndex = 0;
   let troughIndex = 0;
-  let runningPeak = trailingValues[0] ?? 0;
+  let runningPeakPct = primary[0]?.equity_pct ?? 0;
   let maxDrawdown = 0;
-  for (let i = 0; i < trailingValues.length; i += 1) {
-    const current = trailingValues[i];
-    if (current > runningPeak) {
-      runningPeak = current;
+  let peakValue = trailingValues[0] ?? 0;
+  for (let i = 0; i < primary.length; i += 1) {
+    const point = primary[i];
+    if (!point) continue;
+    const current = trailingValues[i] ?? 0;
+    if (current > peakValue) {
+      peakValue = current;
       peakIndex = i;
     }
-    const drawdown = runningPeak - current;
+    runningPeakPct = Math.max(runningPeakPct, point.equity_pct);
+    const drawdown = typeof point.drawdown_pct === "number" && Number.isFinite(point.drawdown_pct)
+      ? Math.abs(point.drawdown_pct)
+      : (100 + runningPeakPct) <= 0
+        ? 100
+        : Math.abs((((100 + point.equity_pct) / (100 + runningPeakPct)) - 1) * 100);
     if (drawdown > maxDrawdown) {
       maxDrawdown = drawdown;
       troughIndex = i;

@@ -24,7 +24,7 @@ const RISK_OVERLAY_VERSIONS: Record<string, string> = {
   exposure_cap: "risk-overlay-exposure-cap-v2",
 };
 
-const PATH_SIMULATION_VERSION = "path-simulation-v3";
+const PATH_SIMULATION_VERSION = "path-simulation-v4";
 const SOURCE_FINGERPRINT_VERSION = "source-fingerprint-v1";
 
 export function buildStrategyArtifactEngineVersion(options: {

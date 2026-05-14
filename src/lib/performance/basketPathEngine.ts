@@ -178,7 +178,9 @@ function buildPathResultFromArrays(
       tsUtc,
       equityPct: basketEquityPct,
       peakPct: runningPeakPct,
-      drawdownPct: basketEquityPct - runningPeakPct,
+      drawdownPct: (100 + runningPeakPct) <= 0
+        ? -100
+        : (((100 + basketEquityPct) / (100 + runningPeakPct)) - 1) * 100,
       activePositions,
     });
   }
@@ -366,7 +368,9 @@ export function computeMultiWeekBasketPath(
         tsUtc: point.tsUtc,
         equityPct: shiftedEquityPct,
         peakPct: runningPeakPct,
-        drawdownPct: shiftedEquityPct - runningPeakPct,
+        drawdownPct: (100 + runningPeakPct) <= 0
+          ? -100
+          : (((100 + shiftedEquityPct) / (100 + runningPeakPct)) - 1) * 100,
         activePositions: point.activePositions,
       });
     }

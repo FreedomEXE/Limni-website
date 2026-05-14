@@ -207,6 +207,7 @@ function tradesToModelPerformance(
   slot: PerformanceModel,
   trades: WeeklyHoldTrade[],
   note: string,
+  maxDrawdownPct: number | null = null,
 ): ModelPerformance {
   const returns = trades.map((t) => ({ pair: t.symbol, percent: t.returnPct }));
 
@@ -264,11 +265,15 @@ function tradesToModelPerformance(
     returns,
     pair_details: pairDetails,
     stats: computeReturnStats(returns),
-    diagnostics: { max_drawdown: null, profit_factor: null },
+    diagnostics: { max_drawdown: maxDrawdownPct, profit_factor: null },
   };
 }
 
 // ─── GridProps types (matches PerformanceGrid expectations) ─────
+
+export type EnginePathDiagnostics = {
+  slotMaxDrawdownPct?: Partial<Record<PerformanceModel, number | null>>;
+};
 
 export type EngineGridProps = {
   combined: {
@@ -317,6 +322,7 @@ export function weeklyHoldToGridProps(
   biasSource: BiasSourceConfig,
   weekLabel: string,
   selectionLabel = "Weekly Hold",
+  pathDiagnostics?: EnginePathDiagnostics,
 ): EngineGridProps {
   const { trades } = result;
   const cardSlots = resolveCardSlots(biasSource);
@@ -326,7 +332,12 @@ export function weeklyHoldToGridProps(
   const slotLabels = cardSlots.map((slot) => labels[slot]);
 
   const models: ModelPerformance[] = cardSlots.map((slot, i) =>
-    tradesToModelPerformance(slot, slotted[i] ?? [], `${slotLabels[i]} contribution for ${weekLabel}.`),
+    tradesToModelPerformance(
+      slot,
+      slotted[i] ?? [],
+      `${slotLabels[i]} contribution for ${weekLabel}.`,
+      pathDiagnostics?.slotMaxDrawdownPct?.[slot] ?? null,
+    ),
   );
 
   // Build perAsset only for tiers and per_model breakdowns
@@ -367,6 +378,7 @@ export function multiWeekToGridProps(
   result: MultiWeekResult,
   biasSource: BiasSourceConfig,
   selectionLabel = "Weekly Hold",
+  pathDiagnostics?: EnginePathDiagnostics,
 ): EngineGridProps {
   const cardSlots = resolveCardSlots(biasSource);
   const labels = getStrategyLabels(biasSource);
@@ -403,7 +415,10 @@ export function multiWeekToGridProps(
       percent: r.percent,
     })),
     stats: computeReturnStats(weeklySlotReturns[i]),
-    diagnostics: { max_drawdown: null, profit_factor: null },
+    diagnostics: {
+      max_drawdown: pathDiagnostics?.slotMaxDrawdownPct?.[slot] ?? null,
+      profit_factor: null,
+    },
   }));
 
   const allTimeCombined = cardSlots.map((slot, i) => ({
@@ -517,6 +532,9 @@ export type EngineSimulationGroup = {
       ts_utc: string;
       equity_pct: number;
       lock_pct: number | null;
+      peak_pct?: number;
+      drawdown_pct?: number;
+      active_positions?: number;
     }>;
   }>;
   seriesGroups?: Array<{
@@ -735,6 +753,9 @@ function pathPointsToSimulationPoints(points: BasketPathPoint[]) {
     ts_utc: point.tsUtc,
     equity_pct: point.equityPct,
     lock_pct: null,
+    peak_pct: point.peakPct,
+    drawdown_pct: point.drawdownPct,
+    active_positions: point.activePositions,
   }));
 }
 

@@ -27,6 +27,7 @@ import {
   weeklyHoldToGridProps,
   weeklyHoldToSidebarStatsWithPath,
   type EngineGridProps,
+  type EnginePathDiagnostics,
   type EngineSidebarStats,
   type EngineSimulationGroup,
 } from "@/lib/performance/engineAdapter";
@@ -359,15 +360,15 @@ function reconstructWeekPathResult(options: {
     points: equitySeries.points.map((point) => ({
       tsUtc: point.ts_utc,
       equityPct: point.equity_pct,
-      peakPct: 0,
-      drawdownPct: 0,
-      activePositions: summary.maxActivePositions,
+      peakPct: point.peak_pct ?? 0,
+      drawdownPct: point.drawdown_pct ?? 0,
+      activePositions: point.active_positions ?? summary.maxActivePositions,
     })),
     summary,
   } satisfies BasketPathResult;
 }
 
-function summarizeSimulationPoints(points: Array<{ ts_utc: string; equity_pct: number }>): BasketPathSummary {
+function summarizeSimulationPoints(points: EngineSimulationGroup["series"][number]["points"]): BasketPathSummary {
   if (points.length === 0) {
     return {
       totalReturnPct: 0,
@@ -384,12 +385,20 @@ function summarizeSimulationPoints(points: Array<{ ts_utc: string; equity_pct: n
   let peakPct = 0;
   let troughPct = 0;
   let maxDrawdownPct = 0;
+  let maxActivePositions = 0;
   for (const point of points) {
     const equityPct = point.equity_pct;
     peakPct = Math.max(peakPct, equityPct);
     troughPct = Math.min(troughPct, equityPct);
     runningPeak = Math.max(runningPeak, equityPct);
-    maxDrawdownPct = Math.max(maxDrawdownPct, runningPeak - equityPct);
+    const drawdownPct =
+      typeof point.drawdown_pct === "number"
+        ? point.drawdown_pct
+        : (100 + runningPeak) <= 0
+          ? -100
+          : (((100 + equityPct) / (100 + runningPeak)) - 1) * 100;
+    maxDrawdownPct = Math.max(maxDrawdownPct, Math.abs(drawdownPct));
+    maxActivePositions = Math.max(maxActivePositions, point.active_positions ?? 0);
   }
   const totalReturnPct = points[points.length - 1]?.equity_pct ?? 0;
 
@@ -400,7 +409,7 @@ function summarizeSimulationPoints(points: Array<{ ts_utc: string; equity_pct: n
     maxDrawdownPct,
     peakToCloseGivebackPct: peakPct - totalReturnPct,
     troughToCloseRecoveryPct: totalReturnPct - troughPct,
-    maxActivePositions: 0,
+    maxActivePositions,
   };
 }
 
@@ -424,16 +433,49 @@ function reconstructWeekPathResultFromSeries(options: {
     resolution: CANONICAL_PATH_RESOLUTION,
     points: series.points.map((point) => {
       runningPeakPct = Math.max(runningPeakPct, point.equity_pct);
+      const peakPct = point.peak_pct ?? runningPeakPct;
+      const drawdownPct =
+        typeof point.drawdown_pct === "number"
+          ? point.drawdown_pct
+          : (100 + peakPct) <= 0
+            ? -100
+            : (((100 + point.equity_pct) / (100 + peakPct)) - 1) * 100;
       return {
         tsUtc: point.ts_utc,
         equityPct: point.equity_pct,
-        peakPct: runningPeakPct,
-        drawdownPct: point.equity_pct - runningPeakPct,
-        activePositions: 0,
+        peakPct,
+        drawdownPct,
+        activePositions: point.active_positions ?? 0,
       };
     }),
     summary,
   } satisfies BasketPathResult;
+}
+
+function maxDrawdownFromSimulationSeries(series: EngineSimulationGroup["series"][number] | undefined) {
+  if (!series) return null;
+  const drawdowns = series.points
+    .map((point) => point.drawdown_pct)
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (drawdowns.length === 0) return null;
+  return Math.abs(Math.min(...drawdowns));
+}
+
+function pathDiagnosticsFromSimulation(
+  biasSource: BiasSourceConfig,
+  simulation: EngineSimulationGroup | undefined,
+): EnginePathDiagnostics | undefined {
+  if (!simulation) return undefined;
+  const slotMaxDrawdownPct: NonNullable<EnginePathDiagnostics["slotMaxDrawdownPct"]> = {};
+  for (const slot of resolveCardSlots(biasSource)) {
+    const maxDrawdownPct = maxDrawdownFromSimulationSeries(
+      simulation.series.find((series) => series.id === slot),
+    );
+    if (maxDrawdownPct !== null) {
+      slotMaxDrawdownPct[slot] = maxDrawdownPct;
+    }
+  }
+  return Object.keys(slotMaxDrawdownPct).length > 0 ? { slotMaxDrawdownPct } : undefined;
 }
 
 function assembleStrategyPageData(options: {
@@ -469,7 +511,17 @@ function assembleStrategyPageData(options: {
 
   for (const weekResult of orderedWeeks) {
     const label = weekDisplayLabel(weekResult.weekOpenUtc);
-    weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(weekResult, biasSource, label, selectionLabel);
+    const pathDiagnostics = pathDiagnosticsFromSimulation(
+      biasSource,
+      enrichedSimMap[weekResult.weekOpenUtc],
+    );
+    weekMap[weekResult.weekOpenUtc] = weeklyHoldToGridProps(
+      weekResult,
+      biasSource,
+      label,
+      selectionLabel,
+      pathDiagnostics,
+    );
     if (enrichedSimMap[weekResult.weekOpenUtc]) {
       enrichedSimMap[weekResult.weekOpenUtc] = withTradeDerivedSeriesGroups(
         enrichedSimMap[weekResult.weekOpenUtc],
@@ -478,7 +530,12 @@ function assembleStrategyPageData(options: {
     }
   }
 
-  weekMap.all = multiWeekToGridProps(multiWeekResult, biasSource, selectionLabel);
+  weekMap.all = multiWeekToGridProps(
+    multiWeekResult,
+    biasSource,
+    selectionLabel,
+    pathDiagnosticsFromSimulation(biasSource, enrichedSimMap.all),
+  );
   if (enrichedSimMap.all) {
     enrichedSimMap.all = withTradeDerivedSeriesGroups(enrichedSimMap.all, multiWeekResult);
   }
