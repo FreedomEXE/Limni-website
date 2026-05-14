@@ -1103,6 +1103,33 @@ async function executeAdrGrid(
     }
   }
 
+  // Unrealized current week with no grid fills: fall back to weekly hold-style
+  // directional signals with live pair returns so the UI always shows data.
+  if (!isRealized && trades.length === 0 && templates.length > 0) {
+    const fallbackTrades: WeeklyHoldTrade[] = [];
+    for (const template of templates) {
+      const priceData = returnMap.get(template.symbol);
+      if (!priceData) continue;
+      const directedReturn = template.direction === "SHORT"
+        ? -priceData.returnPct
+        : priceData.returnPct;
+      fallbackTrades.push({
+        symbol: template.symbol,
+        assetClass: template.assetClass,
+        direction: template.direction,
+        openPrice: template.openPrice,
+        closePrice: priceData.closePrice,
+        returnPct: directedReturn,
+        source: template.source,
+        tier: template.tier,
+      });
+    }
+    const capped = exposureCapEnabled
+      ? applyExposureCapToPlannedTrades(fallbackTrades)
+      : fallbackTrades;
+    trades.push(...capped);
+  }
+
   const totalReturn = trades.reduce((sum, trade) => sum + trade.returnPct, 0);
   const wins = trades.filter((trade) => trade.returnPct > 0).length;
   const losses = trades.filter((trade) => trade.returnPct <= 0).length;

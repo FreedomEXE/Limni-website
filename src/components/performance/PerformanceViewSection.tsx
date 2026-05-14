@@ -414,12 +414,20 @@ export default function PerformanceViewSection({
             strategyDescription={strategyDescription ?? null}
             notesStorageKey={notesStorageKey ?? "performance"}
           />
+        ) : view === "simulation" ? (
+          simulation ? (
+            <PerformanceSimulationSection group={simulation} />
+          ) : (
+            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+              No simulation data for the selected week.
+            </div>
+          )
         ) : !gridHasActivity ? (
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
-            No realized performance data for the selected week.
+            {selectedWeek === currentWeek
+              ? "Current week in progress — no realized fills yet. Switch to Simulation view to see the equity path."
+              : "No realized performance data for the selected week."}
           </div>
-        ) : view === "simulation" ? (
-          <PerformanceSimulationSection group={simulation} />
         ) : view === "basket" && gridProps ? (
           <EngineBasketView gridProps={gridProps} />
         ) : gridProps ? (
