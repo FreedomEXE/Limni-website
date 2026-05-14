@@ -5,16 +5,15 @@
  * File: PerformanceStrategyViewSection.tsx
  *
  * Description:
- * Client-side strategy switcher for Performance. Receives the active
- * strategy payload from the server and caches subsequent selections
- * locally after the shared sidebar commits them.
+ * Performance page selector over the shared strategy session store.
+ * The page no longer owns a strategy payload cache.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
 import StrategyArtifactLoadingGate from "@/components/performance/StrategyArtifactLoadingGate";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
@@ -27,15 +26,11 @@ import {
   type StrategySelectionCommitDetail,
   type StrategySidebarStatsDetail,
 } from "@/lib/performance/strategySelection";
-import {
-  fetchCurrentWeekStrategyClientPayload,
-  fetchStrategyClientPayload,
-  getStrategyClientPayload,
-  prefetchVisibleStrategyPayloads,
-  requestStrategyArtifactWarm,
-  setStrategyClientPayload,
-} from "@/lib/performance/strategyClientCache";
 import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
+import {
+  seedStrategySessionPayload,
+  useStrategySession,
+} from "@/lib/performance/strategySessionStore";
 import { getEntryStyle, getStrengthGate, getStrategy } from "@/lib/performance/strategyConfig";
 
 type StrategyBootstrapEntry = {
@@ -56,19 +51,27 @@ type PerformanceStrategyViewSectionProps = Omit<
   initialEntry: StrategyBootstrapEntry | null;
 };
 
+function entryToPayload(entry: StrategyBootstrapEntry): StrategyClientPayload {
+  return {
+    engineWeekMap: entry.engineWeekMap,
+    engineSimMap: entry.engineSimMap,
+    engineWeekResults: entry.engineWeekResults ?? null,
+    sidebarStats: entry.sidebarStats,
+    weekOptions: entry.weekOptions,
+    currentWeekOpenUtc: entry.currentWeekOpenUtc,
+    artifactMeta: entry.artifactMeta,
+  };
+}
+
 export default function PerformanceStrategyViewSection({
   initialSelection,
   initialEntry,
   ...performanceProps
 }: PerformanceStrategyViewSectionProps) {
-  const initialKey = buildStrategySelectionKey(initialSelection);
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
-  const [entryCache, setEntryCache] = useState<Record<string, StrategyBootstrapEntry | null>>(() => (
-    initialEntry ? { [initialKey]: initialEntry } : {}
-  ));
-  const [stableEntry, setStableEntry] = useState<StrategyBootstrapEntry | null>(initialEntry);
-  const [loadedSelectionKey, setLoadedSelectionKey] = useState(initialKey);
-  const prefetchStartedRef = useRef(false);
+  const selectedSelectionKey = buildStrategySelectionKey(selectedSelection);
+  const session = useStrategySession(selectedSelection, { preload: true });
+  const payload = session.payload;
 
   useEffect(() => {
     setSelectedSelection(initialSelection);
@@ -76,22 +79,8 @@ export default function PerformanceStrategyViewSection({
 
   useEffect(() => {
     if (!initialEntry) return;
-    setEntryCache((previous) => ({
-      ...previous,
-      [initialKey]: previous[initialKey] ?? initialEntry,
-    }));
-    setStableEntry((previous) => previous ?? initialEntry);
-    setLoadedSelectionKey(initialKey);
-    setStrategyClientPayload(initialSelection, {
-      engineWeekMap: initialEntry.engineWeekMap,
-      engineSimMap: initialEntry.engineSimMap,
-      engineWeekResults: initialEntry.engineWeekResults ?? null,
-      sidebarStats: initialEntry.sidebarStats,
-      weekOptions: initialEntry.weekOptions,
-      currentWeekOpenUtc: initialEntry.currentWeekOpenUtc,
-      artifactMeta: initialEntry.artifactMeta,
-    });
-  }, [initialEntry, initialKey, initialSelection]);
+    seedStrategySessionPayload(initialSelection, entryToPayload(initialEntry));
+  }, [initialEntry, initialSelection]);
 
   useEffect(() => {
     const onSelectionCommit = (event: Event) => {
@@ -102,197 +91,13 @@ export default function PerformanceStrategyViewSection({
     return () => window.removeEventListener(STRATEGY_SELECTION_COMMIT_EVENT, onSelectionCommit);
   }, []);
 
-  const selectedSelectionKey = useMemo(
-    () => buildStrategySelectionKey(selectedSelection),
-    [selectedSelection],
-  );
-
-  const mergeEntryPayload = useCallback((payload: StrategyClientPayload): StrategyBootstrapEntry => ({
-    engineWeekMap: {
-      ...(stableEntry?.engineWeekMap ?? {}),
-      ...(payload.engineWeekMap ?? {}),
-    },
-    engineSimMap: {
-      ...(stableEntry?.engineSimMap ?? {}),
-      ...(payload.engineSimMap ?? {}),
-    },
-    engineWeekResults: {
-      ...(stableEntry?.engineWeekResults ?? {}),
-      ...(payload.engineWeekResults ?? {}),
-    },
-    sidebarStats: payload.sidebarStats ?? stableEntry?.sidebarStats ?? null,
-    weekOptions: Array.from(new Set([
-      ...(payload.weekOptions ?? []),
-      ...(stableEntry?.weekOptions ?? []),
-    ])),
-    currentWeekOpenUtc: payload.currentWeekOpenUtc ?? stableEntry?.currentWeekOpenUtc,
-    artifactMeta: payload.artifactMeta ?? stableEntry?.artifactMeta,
-  }), [stableEntry]);
-
-  useEffect(() => {
-    let active = true;
-
-    const ensureSelectionEntry = async () => {
-      const cachedEntry = entryCache[selectedSelectionKey];
-      if (cachedEntry !== undefined) {
-        setStableEntry(cachedEntry ?? null);
-        setLoadedSelectionKey(selectedSelectionKey);
-        return;
-      }
-
-      const payload = getStrategyClientPayload(selectedSelection, "performance");
-      if (payload !== undefined) {
-        const nextEntry = payload && (payload.engineWeekMap || payload.engineSimMap || payload.sidebarStats)
-          ? {
-              engineWeekMap: payload.engineWeekMap,
-              engineSimMap: payload.engineSimMap,
-              sidebarStats: payload.sidebarStats,
-              weekOptions: payload.weekOptions,
-              currentWeekOpenUtc: payload.currentWeekOpenUtc,
-              artifactMeta: payload.artifactMeta,
-        }
-          : null;
-        if (!active) return;
-        if (nextEntry) {
-          setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
-        }
-        setStableEntry(nextEntry);
-        setLoadedSelectionKey(selectedSelectionKey);
-        return;
-      }
-
-      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
-      if (!active) return;
-      const nextEntry = fetched && (fetched.engineWeekMap || fetched.engineSimMap || fetched.sidebarStats)
-        ? {
-            engineWeekMap: fetched.engineWeekMap,
-            engineSimMap: fetched.engineSimMap,
-            sidebarStats: fetched.sidebarStats,
-            weekOptions: fetched.weekOptions,
-            currentWeekOpenUtc: fetched.currentWeekOpenUtc,
-            artifactMeta: fetched.artifactMeta,
-          }
-        : null;
-      if (nextEntry) {
-        setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
-      }
-      setStableEntry(nextEntry);
-      setLoadedSelectionKey(selectedSelectionKey);
-    };
-
-    void ensureSelectionEntry();
-
-    return () => {
-      active = false;
-    };
-  }, [entryCache, selectedSelection, selectedSelectionKey]);
-
   useEffect(() => {
     const detail: StrategySidebarStatsDetail = {
       selection: selectedSelection,
-      stats:
-        loadedSelectionKey === selectedSelectionKey
-          ? stableEntry?.sidebarStats ?? null
-          : null,
+      stats: payload?.sidebarStats ?? null,
     };
     window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
-  }, [loadedSelectionKey, mergeEntryPayload, selectedSelection, selectedSelectionKey, stableEntry]);
-
-  useEffect(() => {
-    if (
-      loadedSelectionKey !== selectedSelectionKey ||
-      stableEntry?.artifactMeta?.stale !== true
-    ) {
-      return undefined;
-    }
-
-    let active = true;
-    const refreshStaleEntry = async () => {
-      const warmed = await requestStrategyArtifactWarm(selectedSelection);
-      if (!active || !warmed) return;
-      const fetched = await fetchStrategyClientPayload(selectedSelection, "performance");
-      if (!active || !(fetched?.engineWeekMap || fetched?.engineSimMap || fetched?.sidebarStats)) return;
-      const nextEntry = {
-        engineWeekMap: fetched.engineWeekMap,
-        engineSimMap: fetched.engineSimMap,
-        sidebarStats: fetched.sidebarStats,
-        weekOptions: fetched.weekOptions,
-        currentWeekOpenUtc: fetched.currentWeekOpenUtc,
-        artifactMeta: fetched.artifactMeta,
-      };
-      setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
-      setStableEntry(nextEntry);
-    };
-
-    void refreshStaleEntry();
-
-    return () => {
-      active = false;
-    };
-  }, [loadedSelectionKey, mergeEntryPayload, selectedSelection, selectedSelectionKey, stableEntry]);
-
-  useEffect(() => {
-    if (loadedSelectionKey !== selectedSelectionKey || !stableEntry) {
-      return undefined;
-    }
-
-    let active = true;
-    const loadCurrentWeekEntry = async () => {
-      const currentWeek = stableEntry.currentWeekOpenUtc;
-      if (!currentWeek || stableEntry.engineWeekMap?.[currentWeek]) return;
-      const payload = await fetchCurrentWeekStrategyClientPayload(selectedSelection, "performance");
-      if (!active || !payload) return;
-      const nextEntry = mergeEntryPayload(payload);
-      setEntryCache((previous) => ({ ...previous, [selectedSelectionKey]: nextEntry }));
-      setStableEntry(nextEntry);
-      setStrategyClientPayload(selectedSelection, payload);
-    };
-
-    void loadCurrentWeekEntry();
-
-    return () => {
-      active = false;
-    };
-  }, [loadedSelectionKey, mergeEntryPayload, selectedSelection, selectedSelectionKey, stableEntry]);
-
-  useEffect(() => {
-    if (loadedSelectionKey !== selectedSelectionKey || !stableEntry) {
-      return undefined;
-    }
-
-    let active = true;
-    const prefetchMatrixEntry = async () => {
-      await fetchStrategyClientPayload(selectedSelection, "matrix");
-      if (!active) return;
-      await fetchCurrentWeekStrategyClientPayload(selectedSelection, "matrix");
-    };
-
-    void prefetchMatrixEntry();
-
-    return () => {
-      active = false;
-    };
-  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
-
-  useEffect(() => {
-    if (prefetchStartedRef.current || loadedSelectionKey !== selectedSelectionKey || !stableEntry) {
-      return undefined;
-    }
-
-    prefetchStartedRef.current = true;
-    let active = true;
-    void prefetchVisibleStrategyPayloads({
-      currentSelection: selectedSelection,
-      concurrency: 1,
-      delayMs: 1500,
-      scope: "performance",
-      shouldContinue: () => active,
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [loadedSelectionKey, selectedSelection, selectedSelectionKey, stableEntry]);
+  }, [payload?.sidebarStats, selectedSelection]);
 
   const strategyDescription = getStrategy(selectedSelection.strategy)?.description ?? null;
   const strategyLabel = getStrategy(selectedSelection.strategy)?.label ?? selectedSelection.strategy;
@@ -303,7 +108,9 @@ export default function PerformanceStrategyViewSection({
     entryStyleLabel,
     riskOverlay && riskOverlay.id !== "none" ? riskOverlay.label : null,
   ].filter(Boolean).join(" · ");
-  const currentReady = loadedSelectionKey === selectedSelectionKey && Boolean(stableEntry);
+
+  const hasRenderablePayload = Boolean(payload?.engineWeekMap || payload?.engineSimMap || payload?.sidebarStats);
+  const currentReady = hasRenderablePayload || session.status === "missing" || session.status === "error";
 
   return (
     <StrategyArtifactLoadingGate
@@ -321,15 +128,22 @@ export default function PerformanceStrategyViewSection({
             </p>
           </div>
         </header>
-        <PerformanceViewSection
-          {...performanceProps}
-          engineWeekMap={stableEntry?.engineWeekMap ?? null}
-          engineSimMap={stableEntry?.engineSimMap ?? null}
-          weekOptions={stableEntry?.weekOptions ?? performanceProps.weekOptions}
-          currentWeek={stableEntry?.currentWeekOpenUtc ?? performanceProps.currentWeek}
-          strategyDescription={strategyDescription}
-          notesStorageKey={selectedSelectionKey}
-        />
+
+        {session.status === "missing" || session.status === "error" ? (
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+            Strategy data is not ready yet.
+          </div>
+        ) : (
+          <PerformanceViewSection
+            {...performanceProps}
+            engineWeekMap={payload?.engineWeekMap ?? null}
+            engineSimMap={payload?.engineSimMap ?? null}
+            weekOptions={payload?.weekOptions ?? performanceProps.weekOptions}
+            currentWeek={payload?.currentWeekOpenUtc ?? performanceProps.currentWeek}
+            strategyDescription={strategyDescription}
+            notesStorageKey={selectedSelectionKey}
+          />
+        )}
       </div>
     </StrategyArtifactLoadingGate>
   );

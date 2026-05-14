@@ -15,9 +15,7 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import MatrixViewSection from "@/components/matrix/MatrixViewSection";
-import { buildDataWeekOptions, resolveWeekSelection } from "@/lib/weekOptions";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
-import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import {
   toRuntimeStrategySelection,
@@ -60,28 +58,16 @@ export default async function MatrixPage({ searchParams }: MatrixPageProps) {
     f2: normalizedFilters.f2,
   };
 
-  // Shared week switching — same logic as Sentiment/Antikythera
   const currentWeekOpen = getDisplayWeekOpenUtc();
-  const historicalWeeks = await listDataSectionWeeks();
-  const weeks = buildDataWeekOptions({
-    historicalWeeks,
-    currentWeekOpenUtc: currentWeekOpen,
-  }) as string[];
-  const selectedWeek = resolveWeekSelection({
-    requestedWeek: weekValue,
-    weekOptions: weeks,
-    currentWeekOpenUtc: currentWeekOpen,
-    allowAll: false,
-  }) as string | null;
-  const initialWeek = weekValue
-    ? selectedWeek
-    : weeks.find((week) => week !== currentWeekOpen) ?? selectedWeek;
+  const weeks = [currentWeekOpen];
+  const initialWeek = weekValue ?? null;
 
   return (
     <DashboardLayout>
       <MatrixViewSection
         weeks={weeks}
         initialWeek={initialWeek}
+        initialWeekExplicit={Boolean(weekValue)}
         currentWeekOpenUtc={currentWeekOpen}
         initialTab={selectedTab}
         initialSelection={toRuntimeStrategySelection(initialStrategySelection)}

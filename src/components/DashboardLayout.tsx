@@ -14,6 +14,16 @@ import {
   resolveDashboardBias,
   type DashboardBias,
 } from "@/lib/dashboard/dashboardSelection";
+import {
+  ensureStrategySession,
+  startStrategySessionPreload,
+} from "@/lib/performance/strategySessionStore";
+
+const DEFAULT_APP_STRATEGY_SELECTION = {
+  strategy: "tandem",
+  f1: "adr_grid",
+  f2: "exposure_cap",
+};
 
 type NavItem = {
   key: string;
@@ -125,6 +135,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener(DATA_DASHBOARD_BIAS_COMMIT_EVENT, handleDashboardBiasCommit);
     };
+  }, []);
+
+  useEffect(() => {
+    void ensureStrategySession(DEFAULT_APP_STRATEGY_SELECTION);
+    void startStrategySessionPreload(DEFAULT_APP_STRATEGY_SELECTION);
   }, []);
 
   const accountBasePath = useMemo(() => {

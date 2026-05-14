@@ -10,19 +10,13 @@ import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { getEntryStyle, resolveEntryStyleId } from "@/lib/performance/strategyConfig";
 import {
   SESSION_ELIGIBILITY,
-  defaultSessionFromUtcDate,
   sessionForUtcHour,
-  sessionWindowLabelEt,
   type SessionName,
 } from "@/lib/flagship/sessionConfig";
 import {
   biasChipClass,
-  contextClass,
   formatPct,
-  gateClass,
   rowHighlightClass,
-  stateClass,
-  stateLabel,
   type MatrixContextView,
   type MatrixGateDecision,
   type MatrixTrendState,
@@ -397,13 +391,6 @@ function formatMove(change24hPct: number | null) {
   return `${change24hPct > 0 ? "+" : ""}${change24hPct.toFixed(1)}%`;
 }
 
-function moveClass(change24hPct: number | null) {
-  if (change24hPct === null || !Number.isFinite(change24hPct)) return "text-[color:var(--muted)]";
-  if (change24hPct > 0) return "text-emerald-700 dark:text-emerald-300";
-  if (change24hPct < 0) return "text-rose-700 dark:text-rose-300";
-  return "text-[color:var(--muted)]";
-}
-
 function weeklyMoveClass(changePct: number | null) {
   if (changePct === null || !Number.isFinite(changePct)) return "text-[color:var(--muted)]";
   if (changePct > 0) return "text-emerald-700 dark:text-emerald-300";
@@ -452,26 +439,6 @@ function summarizeAgreement(inputs: AgreementSignal[]) {
           ? "MIXED"
           : "CONFLICT";
   return { agreeCount, availableCount, gammaState };
-}
-
-function agreementText(agreeCount: number, availableCount: number) {
-  if (availableCount === 0) return "No inputs";
-  return `${agreeCount}/${availableCount} agree`;
-}
-
-function agreementChip(value: AgreementSignal, label: string) {
-  if (value === null) {
-    return (
-      <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${gateClass("NO_DATA")}`}>
-        {label} Unavailable
-      </span>
-    );
-  }
-  return (
-    <span className={`inline-flex rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${value ? gateClass("PASS") : gateClass("SKIP")}`}>
-      {label} {value ? "Agree" : "Miss"}
-    </span>
-  );
 }
 
 function sortBucket(row: MatrixRow) {
@@ -547,7 +514,6 @@ export default function FlagshipBoard({
   const [lastRefreshedUtc, setLastRefreshedUtc] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
   const [nowUtc, setNowUtc] = useState<Date>(() => new Date());
-  const [selectedSession, setSelectedSession] = useState<SessionName>(() => defaultSessionFromUtcDate(new Date()));
   const [expandedPairs, setExpandedPairs] = useState<string[]>([]);
 
   useEffect(() => {
@@ -672,7 +638,10 @@ export default function FlagshipBoard({
     };
   }, [activeFilter?.hasTradeLog, engineWeekResults, refreshTick, weekOpenUtc]);
 
+  const selectedEngineResult = weekOpenUtc ? (engineWeekResults?.[weekOpenUtc] ?? null) : null;
   const loading = staticLoading || weekLoading;
+  const hasCanonicalMatrixInput = Boolean(canonicalSignals || selectedEngineResult);
+  const blockingLoading = loading && !hasCanonicalMatrixInput;
   const refreshing = staticRefreshing || weekRefreshing;
   const warnings = useMemo(
     () => Array.from(new Set([...staticWarnings, ...weekWarnings])),
@@ -961,7 +930,6 @@ export default function FlagshipBoard({
   const mixedCount = matrixRows.filter((row) => row.coreBias === "MIXED").length;
   const neutralCount = matrixRows.filter((row) => row.signalMode === "NEUTRAL").length;
   const activeSession = sessionForUtcHour(nowUtc.getUTCHours());
-  const selectedEngineResult = weekOpenUtc ? (engineWeekResults?.[weekOpenUtc] ?? null) : null;
   const statsTrades = matrixUi.showIntradayDetail
     ? (adrTrades?.totalTrades ?? selectedEngineResult?.tradeCount ?? 0)
     : (selectedEngineResult?.tradeCount ?? 0);
@@ -1005,7 +973,7 @@ export default function FlagshipBoard({
           </div>
         </div>
 
-        {!loading && !error ? (
+        {!blockingLoading && !error ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/55 px-3 py-2 text-[11px] text-[color:var(--muted)]">
             {matrixUi.showTriggerState ? (
               <>
@@ -1045,10 +1013,19 @@ export default function FlagshipBoard({
         ) : null}
       </header>
 
-      {loading ? <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 p-3 text-sm text-[color:var(--muted)]">Loading matrix...</div> : null}
+      {blockingLoading ? (
+        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 p-3 text-sm text-[color:var(--muted)]">
+          Loading matrix...
+        </div>
+      ) : null}
+      {!blockingLoading && loading ? (
+        <div className="rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/60 px-3 py-2 text-xs text-[color:var(--muted)]">
+          Refreshing live overlays...
+        </div>
+      ) : null}
       {error ? <div className="rounded-lg border border-rose-400/40 bg-rose-500/10 p-3 text-sm text-rose-700">{error}</div> : null}
 
-      {!loading && !error ? (
+      {!blockingLoading && !error ? (
         <div className="space-y-2">
           <div className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
             <table className="min-w-full border-separate border-spacing-0 text-xs">
