@@ -935,7 +935,14 @@ export type EngineSidebarStats = {
     weeks: number;
     avgWeeklyReturn: number;
     sharpe: number;
+    sortino: number;
+    calmar: number;
     profitFactor: number | null;
+    expectancy: number;
+    avgWin: number;
+    avgLoss: number;
+    maxConsecutiveWins: number;
+    maxConsecutiveLosses: number;
   } | null;
   trades: Array<{
     symbol: string;
@@ -957,8 +964,59 @@ function computeProfitFactor(weeklyReturns: number[]): number | null {
   const grossProfit = weeklyReturns.filter((r) => r > 0).reduce((s, r) => s + r, 0);
   const grossLoss = Math.abs(weeklyReturns.filter((r) => r < 0).reduce((s, r) => s + r, 0));
   if (grossLoss > 0) return grossProfit / grossLoss;
-  if (grossProfit > 0) return Infinity;
   return null;
+}
+
+function computeSortino(weeklyReturns: number[]): number {
+  if (weeklyReturns.length <= 1) return 0;
+  const avg = weeklyReturns.reduce((s, r) => s + r, 0) / weeklyReturns.length;
+  const downsideSquares = weeklyReturns
+    .filter((r) => r < 0)
+    .map((r) => r ** 2);
+  if (downsideSquares.length === 0) return avg > 0 ? 99 : 0;
+  const downsideDeviation = Math.sqrt(
+    downsideSquares.reduce((s, v) => s + v, 0) / weeklyReturns.length,
+  );
+  return downsideDeviation > 0 ? avg / downsideDeviation : 0;
+}
+
+function computeCalmar(totalReturnPct: number, maxDrawdownPct: number, weeks: number): number {
+  if (maxDrawdownPct === 0 || weeks === 0) return 0;
+  const annualizedReturn = (totalReturnPct / weeks) * 52;
+  return annualizedReturn / Math.abs(maxDrawdownPct);
+}
+
+function computeExpectancy(weeklyReturns: number[]): { expectancy: number; avgWin: number; avgLoss: number } {
+  const wins = weeklyReturns.filter((r) => r > 0);
+  const losses = weeklyReturns.filter((r) => r < 0);
+  const avgWin = wins.length > 0 ? wins.reduce((s, r) => s + r, 0) / wins.length : 0;
+  const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((s, r) => s + r, 0) / losses.length) : 0;
+  const winRate = weeklyReturns.length > 0 ? wins.length / weeklyReturns.length : 0;
+  const lossRate = 1 - winRate;
+  const expectancy = (winRate * avgWin) - (lossRate * avgLoss);
+  return { expectancy, avgWin, avgLoss };
+}
+
+function computeMaxConsecutiveStreaks(weeklyReturns: number[]): { wins: number; losses: number } {
+  let maxWins = 0;
+  let maxLosses = 0;
+  let currentWins = 0;
+  let currentLosses = 0;
+  for (const r of weeklyReturns) {
+    if (r > 0) {
+      currentWins += 1;
+      currentLosses = 0;
+      maxWins = Math.max(maxWins, currentWins);
+    } else if (r < 0) {
+      currentLosses += 1;
+      currentWins = 0;
+      maxLosses = Math.max(maxLosses, currentLosses);
+    } else {
+      currentWins = 0;
+      currentLosses = 0;
+    }
+  }
+  return { wins: maxWins, losses: maxLosses };
 }
 
 export function weeklyHoldToSidebarStats(
@@ -989,15 +1047,25 @@ export function weeklyHoldToSidebarStatsWithPath(
   if (multiWeek && multiWeek.weeks.length > 0) {
     const weeklyReturns = multiWeek.weeks.map((w) => w.totalReturnPct);
     const weeklyWins = multiWeek.weeks.filter((w) => w.totalReturnPct > 0).length;
+    const maxDD = multiWeekPathSummary?.maxDrawdownPct ?? multiWeek.maxDrawdownPct;
+    const { expectancy, avgWin, avgLoss } = computeExpectancy(weeklyReturns);
+    const streaks = computeMaxConsecutiveStreaks(weeklyReturns);
     allTime = {
       totalReturnPct: multiWeek.totalReturnPct,
       totalTrades: multiWeek.totalTrades,
       weeklyWinRate: (weeklyWins / multiWeek.weeks.length) * 100,
-      maxDrawdownPct: multiWeekPathSummary?.maxDrawdownPct ?? multiWeek.maxDrawdownPct,
+      maxDrawdownPct: maxDD,
       weeks: multiWeek.weeks.length,
       avgWeeklyReturn: multiWeek.totalReturnPct / multiWeek.weeks.length,
       sharpe: computeSharpe(weeklyReturns),
+      sortino: computeSortino(weeklyReturns),
+      calmar: computeCalmar(multiWeek.totalReturnPct, maxDD, multiWeek.weeks.length),
       profitFactor: computeProfitFactor(weeklyReturns),
+      expectancy,
+      avgWin,
+      avgLoss,
+      maxConsecutiveWins: streaks.wins,
+      maxConsecutiveLosses: streaks.losses,
     };
   }
 

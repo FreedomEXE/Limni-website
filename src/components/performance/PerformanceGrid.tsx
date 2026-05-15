@@ -148,12 +148,11 @@ function computeProfitFactorFromReturns(returns: Array<{ pair: string; percent: 
       .reduce((sum, item) => sum + item.percent, 0),
   );
   if (grossLoss > 0) return grossProfit / grossLoss;
-  if (grossProfit > 0) return Number.POSITIVE_INFINITY;
   return null;
 }
 
 function formatProfitFactor(value: number | null) {
-  if (value === null || Number.isNaN(value)) return "—";
+  if (value === null || Number.isNaN(value)) return "∞";
   if (!Number.isFinite(value)) return "∞";
   return value.toFixed(2);
 }

@@ -61,7 +61,7 @@
       "schedule": "0 0 1 1 *"
     },
     {
-      "path": "/api/cron/canonical-refresh",
+      "path": "/api/cron/canonical-refresh?includeHourly=1",
       "schedule": "30 * * * *"
     }
   ]

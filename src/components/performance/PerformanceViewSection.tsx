@@ -25,6 +25,8 @@ import PerformanceViewCards, {
 import PerformanceSimulationSection, {
   type PerformanceSimulationGroup,
 } from "@/components/performance/PerformanceSimulationSection";
+import type { WeekReturn } from "@/components/performance/MonthlyReturnsHeatmap";
+import type { MaeTrade } from "@/components/performance/MaeScatterPlot";
 import PerformanceNotesPad from "@/components/performance/PerformanceNotesPad";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import {
@@ -381,6 +383,36 @@ export default function PerformanceViewSection({
       : universalSimulationBySystem?.[system] ?? null;
   }, [mode, flagshipSimulation, style, system, tieredSimulationBySystem, universalSimulationBySystem]);
 
+  const weeklyReturns = useMemo<WeekReturn[]>(() => {
+    if (!engineSimMap) return [];
+    return Object.entries(engineSimMap)
+      .filter(([key, entry]) => key !== "all" && entry.metrics.returnPct !== null)
+      .map(([key, entry]) => ({ weekOpenUtc: key, returnPct: entry.metrics.returnPct! }))
+      .sort((a, b) => a.weekOpenUtc.localeCompare(b.weekOpenUtc));
+  }, [engineSimMap]);
+
+  const maeTrades = useMemo<MaeTrade[]>(() => {
+    if (!engineWeekMap) return [];
+    const allGrid = engineWeekMap["all"];
+    if (!allGrid) return [];
+    const trades: MaeTrade[] = [];
+    for (const model of allGrid.combined.models) {
+      for (const pd of model.pair_details) {
+        if (pd.tradeDetail?.maePct != null && pd.percent != null) {
+          trades.push({ pair: pd.pair, returnPct: pd.percent, maePct: pd.tradeDetail.maePct });
+        }
+        if (pd.children) {
+          for (const child of pd.children) {
+            if (child.tradeDetail?.maePct != null && child.percent != null) {
+              trades.push({ pair: child.pair, returnPct: child.percent, maePct: child.tradeDetail.maePct });
+            }
+          }
+        }
+      }
+    }
+    return trades;
+  }, [engineWeekMap]);
+
   // ─── Engine-driven path (instant week switching) ──────────────
   if (engineWeekMap && weekOptions) {
     const gridProps = selectedWeek === "all"
@@ -416,7 +448,11 @@ export default function PerformanceViewSection({
           />
         ) : view === "simulation" ? (
           simulation ? (
-            <PerformanceSimulationSection group={simulation} />
+            <PerformanceSimulationSection
+              group={simulation}
+              weeklyReturns={selectedWeek === "all" ? weeklyReturns : undefined}
+              maeTrades={selectedWeek === "all" ? maeTrades : undefined}
+            />
           ) : (
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
               No simulation data for the selected week.

@@ -29,7 +29,7 @@ import {
 import { readSelectionFromParams } from "@/components/shared/StrategySelector";
 
 function formatPF(pf: number | null | undefined): string {
-  if (pf == null) return "—";
+  if (pf == null) return "∞";
   if (!isFinite(pf)) return "∞";
   return pf.toFixed(2);
 }
@@ -183,8 +183,16 @@ function EngineSidebarStatsCard() {
               <div className="font-bold">{at.sharpe.toFixed(2)}</div>
             </div>
             <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Sortino</div>
+              <div className="font-bold">{at.sortino >= 99 ? "∞" : at.sortino.toFixed(2)}</div>
+            </div>
+            <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Profit Factor</div>
               <div className="font-bold">{formatPF(at.profitFactor)}</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Calmar</div>
+              <div className="font-bold">{at.calmar.toFixed(2)}</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Avg Weekly</div>
@@ -193,6 +201,25 @@ function EngineSidebarStatsCard() {
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Total Trades</div>
               <div data-testid="sidebar-trades" className="font-bold">{at.totalTrades}</div>
+            </div>
+          </div>
+
+          <div className="mt-3 border-t border-[var(--panel-border)] pt-3 grid grid-cols-2 gap-2.5 text-sm">
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Expectancy</div>
+              <div className={`font-bold ${returnColor(at.expectancy)}`}>{at.expectancy >= 0 ? "+" : ""}{at.expectancy.toFixed(2)}%</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Avg Win / Loss</div>
+              <div className="font-bold text-xs">+{at.avgWin.toFixed(1)} / -{at.avgLoss.toFixed(1)}</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Best Streak</div>
+              <div className="font-bold text-lime-400">{at.maxConsecutiveWins}W</div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Worst Streak</div>
+              <div className="font-bold text-red-400">{at.maxConsecutiveLosses}L</div>
             </div>
           </div>
         </div>

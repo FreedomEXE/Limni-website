@@ -352,7 +352,6 @@ function computeProfitFactorFromReturns(returns: number[]): number | null {
     returns.filter((value) => value < 0).reduce((sum, value) => sum + value, 0),
   );
   if (grossLoss > 0) return grossProfit / grossLoss;
-  if (grossProfit > 0) return Number.POSITIVE_INFINITY;
   return null;
 }
 

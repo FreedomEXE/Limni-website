@@ -41,6 +41,18 @@ function nearestIndexByTs(points: EquityPoint[], tsMs: number) {
 
 const SERIES_COLORS = ["#10b981", "#38bdf8", "#f59e0b", "#a78bfa", "#f43f5e"];
 
+function isWeekendPoint(tsUtc: string): boolean {
+  const d = new Date(tsUtc);
+  const day = d.getUTCDay();
+  if (day === 6) return true;
+  if (day === 0 && d.getUTCHours() < 21) return true;
+  return false;
+}
+
+function filterWeekends(pts: EquityPoint[]): EquityPoint[] {
+  return pts.filter((p) => !isWeekendPoint(p.ts_utc));
+}
+
 export default function EquityCurveChart({
   points,
   series,
@@ -48,6 +60,7 @@ export default function EquityCurveChart({
   interactive = true,
   watermarkText,
   referenceEquityUsd,
+  skipWeekends = false,
 }: {
   points?: EquityPoint[];
   series?: EquitySeries[];
@@ -55,6 +68,7 @@ export default function EquityCurveChart({
   interactive?: boolean;
   watermarkText?: string;
   referenceEquityUsd?: number;
+  skipWeekends?: boolean;
 }) {
   const chartId = useId().replace(/:/g, "");
   const [hoverTsMs, setHoverTsMs] = useState<number | null>(null);
@@ -63,17 +77,21 @@ export default function EquityCurveChart({
   const [unitMode, setUnitMode] = useState<"pct" | "usd">("pct");
 
   const normalized = useMemo(() => {
+    const applyFilter = (pts: EquityPoint[]) => skipWeekends ? filterWeekends(pts) : pts;
     if (series && series.length > 0) {
-      return series.filter((row) => row.points.length > 0).map((row, idx) => ({
-        ...row,
-        color: row.color ?? SERIES_COLORS[idx % SERIES_COLORS.length],
-      }));
+      return series
+        .map((row, idx) => ({
+          ...row,
+          points: applyFilter(row.points),
+          color: row.color ?? SERIES_COLORS[idx % SERIES_COLORS.length],
+        }))
+        .filter((row) => row.points.length > 0);
     }
     if (points && points.length > 0) {
-      return [{ id: "primary", label: "Equity", color: SERIES_COLORS[0], points }];
+      return [{ id: "primary", label: "Equity", color: SERIES_COLORS[0], points: applyFilter(points) }];
     }
     return [];
-  }, [points, series]);
+  }, [points, series, skipWeekends]);
 
   if (normalized.length === 0) {
     return (
@@ -112,12 +130,16 @@ export default function EquityCurveChart({
   };
 
   const primary = displaySeries[0].points;
+  const hasDrawdownData = primary.some((p) => typeof p.drawdown_pct === "number" && p.drawdown_pct < 0);
+  const ddZoneH = hasDrawdownData ? 90 : 0;
+  const ddGap = hasDrawdownData ? 10 : 0;
   const width = 980;
-  const height = 320;
+  const equityH = 280;
+  const height = equityH + ddGap + ddZoneH + 40;
   const paddingX = 44;
   const paddingY = 20;
   const chartW = width - paddingX * 2;
-  const chartH = height - paddingY * 2;
+  const chartH = equityH - paddingY;
 
   const startTs = new Date(primary[0].ts_utc).getTime();
   const endTs = new Date(primary[primary.length - 1].ts_utc).getTime();
@@ -161,6 +183,24 @@ export default function EquityCurveChart({
     }
   }
 
+  const ddTop = equityH + ddGap;
+  const ddBottom = ddTop + ddZoneH;
+  const ddMaxAbs = Math.max(maxDrawdown, 0.01);
+  const toDdY = (ddPct: number) => ddTop + (Math.abs(ddPct) / ddMaxAbs) * ddZoneH;
+  const drawdownSeries = hasDrawdownData
+    ? primary.map((p, i) => {
+        const dd = typeof p.drawdown_pct === "number" && Number.isFinite(p.drawdown_pct)
+          ? p.drawdown_pct
+          : 0;
+        return { tsMs: new Date(p.ts_utc).getTime(), dd, index: i };
+      })
+    : [];
+  const ddAreaPath = drawdownSeries.length > 0
+    ? `M ${toXFromTs(drawdownSeries[0].tsMs).toFixed(2)} ${ddTop} ` +
+      drawdownSeries.map((d) => `L ${toXFromTs(d.tsMs).toFixed(2)} ${toDdY(d.dd).toFixed(2)}`).join(" ") +
+      ` L ${toXFromTs(drawdownSeries[drawdownSeries.length - 1].tsMs).toFixed(2)} ${ddTop} Z`
+    : "";
+
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
     const value = yMin + ySpan * ratio;
     return { value, y: toY(value) };
@@ -171,16 +211,20 @@ export default function EquityCurveChart({
       : `${value.toFixed(1)}%`;
 
   const spanDays = (endTs - startTs) / 86400000;
-  const xTicks = [0, 0.17, 0.33, 0.5, 0.67, 0.83, 1].map((ratio) => {
+  const xTickRatios = [0, 0.25, 0.5, 0.75, 1];
+  const xTicks = xTickRatios.map((ratio) => {
     const tsMs = startTs + ratio * tsSpan;
     const index = nearestIndexByTs(primary, tsMs);
     const pointTs = new Date(primary[index]?.ts_utc ?? primary[0].ts_utc);
+    const formatOpts: Intl.DateTimeFormatOptions = spanDays > 60
+      ? { month: "short", day: "numeric", timeZone: "America/New_York" }
+      : spanDays > 2
+        ? { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" }
+        : { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" };
     return {
       tsMs: pointTs.getTime(),
       x: toXFromTs(pointTs.getTime()),
-      label: pointTs.toLocaleString("en-US", spanDays > 2
-        ? { weekday: "short", month: "short", day: "numeric", timeZone: "America/New_York" }
-        : { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/New_York" }),
+      label: pointTs.toLocaleString("en-US", formatOpts),
     };
   });
 
@@ -330,7 +374,8 @@ export default function EquityCurveChart({
       <div className="relative overflow-hidden rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-2">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="h-[280px] w-full"
+          preserveAspectRatio="none"
+          className={`${hasDrawdownData ? "h-[360px]" : "h-[280px]"} w-full`}
           onMouseMove={(event) => {
             const rect = event.currentTarget.getBoundingClientRect();
             const localX = ((event.clientX - rect.left) / rect.width) * width;
@@ -387,7 +432,7 @@ export default function EquityCurveChart({
           {xTicks.map((tick) => (
             <g key={`${tick.tsMs}-${tick.label}`}>
               <line x1={tick.x} y1={height - paddingY} x2={tick.x} y2={height - paddingY + 4} stroke="rgba(148,163,184,0.45)" strokeWidth="1" />
-              <text x={tick.x} y={height - 2} fill="rgba(100,116,139,0.9)" fontSize="10" textAnchor="middle">
+              <text x={tick.x} y={height - 4} fill="rgba(100,116,139,0.9)" fontSize="10" textAnchor="middle">
                 {tick.label}
               </text>
             </g>
@@ -397,6 +442,16 @@ export default function EquityCurveChart({
             <>
               <path d={areaPath} fill="rgba(16,185,129,0.16)" clipPath={`url(#clip-above-${chartId})`} />
               <path d={areaPath} fill="rgba(244,63,94,0.16)" clipPath={`url(#clip-below-${chartId})`} />
+            </>
+          ) : null}
+
+          {hasDrawdownData && ddAreaPath ? (
+            <>
+              <line x1={paddingX} y1={ddTop} x2={width - paddingX} y2={ddTop} stroke="rgba(148,163,184,0.3)" strokeWidth="0.5" />
+              <text x={paddingX - 8} y={ddTop + 10} fill="rgba(100,116,139,0.7)" fontSize="9" textAnchor="end">0%</text>
+              <text x={paddingX - 8} y={ddBottom - 2} fill="rgba(100,116,139,0.7)" fontSize="9" textAnchor="end">-{ddMaxAbs.toFixed(1)}%</text>
+              <path d={ddAreaPath} fill="rgba(244,63,94,0.25)" stroke="rgba(244,63,94,0.6)" strokeWidth="1" />
+              <text x={paddingX + 2} y={ddTop + 10} fill="rgba(100,116,139,0.5)" fontSize="9">Drawdown</text>
             </>
           ) : null}
 
@@ -438,7 +493,7 @@ export default function EquityCurveChart({
                 x1={hoverX}
                 y1={paddingY}
                 x2={hoverX}
-                y2={height - paddingY}
+                y2={hasDrawdownData ? ddBottom : height - paddingY}
                 stroke="rgba(148,163,184,0.7)"
                 strokeDasharray="4 4"
                 strokeWidth="1.2"
@@ -466,6 +521,19 @@ export default function EquityCurveChart({
                   </g>
                 );
               })}
+              {hasDrawdownData ? (() => {
+                const hoverDd = drawdownSeries[hoverPrimaryIndex];
+                if (!hoverDd) return null;
+                const ddY = toDdY(hoverDd.dd);
+                return (
+                  <g>
+                    <circle cx={hoverX} cy={ddY} r="3.5" fill="#f43f5e" />
+                    <text x={hoverX + 6} y={ddY - 4} fill="#f43f5e" fontSize="9">
+                      {hoverDd.dd.toFixed(2)}%
+                    </text>
+                  </g>
+                );
+              })() : null}
             </>
           ) : null}
         </svg>

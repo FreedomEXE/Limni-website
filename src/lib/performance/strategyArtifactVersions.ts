@@ -15,7 +15,7 @@ const STRATEGY_ASSEMBLY_VERSION =
 // This keeps unrelated strategy pages on their existing persisted artifacts.
 const ENTRY_ENGINE_VERSIONS: Record<string, string> = {
   weekly_hold: "weekly-hold-engine-v1",
-  adr: "adr-pullback-engine-v1",
+  adr: "adr-pullback-engine-v2",
   adr_grid: "adr-grid-engine-v1",
 };
 

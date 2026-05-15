@@ -15,6 +15,11 @@
 
 import { useMemo, useState } from "react";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
+import MonthlyReturnsHeatmap from "@/components/performance/MonthlyReturnsHeatmap";
+import RollingPerformanceWindows from "@/components/performance/RollingPerformanceWindows";
+import AssetContributionChart from "@/components/performance/AssetContributionChart";
+import ReturnDistribution from "@/components/performance/ReturnDistribution";
+import MaeScatterPlot, { type MaeTrade } from "@/components/performance/MaeScatterPlot";
 
 export type PerformanceSimulationSeries = {
   id: string;
@@ -113,8 +118,12 @@ function summarizeMixedSeries(series: PerformanceSimulationSeries, fallbackTrade
 
 export default function PerformanceSimulationSection({
   group,
+  weeklyReturns,
+  maeTrades,
 }: {
   group: PerformanceSimulationGroup | null;
+  weeklyReturns?: Array<{ weekOpenUtc: string; returnPct: number }>;
+  maeTrades?: MaeTrade[];
 }) {
   const sleeveSeries = useMemo(() => {
     const assetSleeves = group?.series.filter((series) => series.id.startsWith("asset:")) ?? [];
@@ -194,6 +203,7 @@ export default function PerformanceSimulationSection({
         title={`${group.title} equity curve`}
         series={[mixedSeries]}
         interactive={false}
+        skipWeekends
       />
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -222,6 +232,20 @@ export default function PerformanceSimulationSection({
           </div>
         </div>
       </div>
+
+      {weeklyReturns && weeklyReturns.length > 0 && (
+        <>
+          <RollingPerformanceWindows weeks={weeklyReturns} />
+          <AssetContributionChart series={group.series} />
+          <ReturnDistribution weeks={weeklyReturns} />
+          {maeTrades && maeTrades.length > 0 && <MaeScatterPlot trades={maeTrades} />}
+          <MonthlyReturnsHeatmap weeks={weeklyReturns} />
+        </>
+      )}
+
+      {!weeklyReturns && group.series.some((s) => s.id.startsWith("asset:")) && (
+        <AssetContributionChart series={group.series} />
+      )}
     </div>
   );
 }

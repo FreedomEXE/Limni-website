@@ -604,7 +604,9 @@ async function executeAdr(
     metadata: Record<string, unknown> | null;
   }>(
     `SELECT symbol, direction, entry_price, exit_price, pnl_pct, exit_reason,
-            entry_time_utc::text, exit_time_utc::text, metadata
+            to_char(entry_time_utc AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS entry_time_utc,
+            to_char(exit_time_utc AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS exit_time_utc,
+            metadata
      FROM strategy_backtest_trades
      WHERE run_id = $1 AND week_open_utc = $2::timestamptz
      ORDER BY entry_time_utc ASC NULLS LAST`,

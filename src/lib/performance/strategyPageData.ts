@@ -1005,20 +1005,6 @@ async function mergeCurrentWeekIntoCachedPathData(options: {
     };
   }
 
-  if (!currentWeekResult.isRealized) {
-    cachedSimMap[currentWeekResult.weekOpenUtc] = singleWeekToSimulation(
-      currentWeekResult,
-      biasSource,
-      weekDisplayLabel(currentWeekResult.weekOpenUtc),
-      selectionLabel,
-    );
-    cachedPathSummaryMap[currentWeekResult.weekOpenUtc] = weekResultFallbackPathSummary(currentWeekResult);
-    return {
-      simMap: cachedSimMap,
-      pathSummaryMap: cachedPathSummaryMap,
-    };
-  }
-
   try {
     const computed = await computeCurrentWeekPathArtifactCached({
       selectionKey,
