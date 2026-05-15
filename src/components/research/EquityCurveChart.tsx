@@ -51,7 +51,11 @@ function isWeekendPoint(tsUtc: string): boolean {
 
 function filterWeekends(pts: EquityPoint[]): EquityPoint[] {
   const now = Date.now();
-  return pts.filter((p) => !isWeekendPoint(p.ts_utc) && new Date(p.ts_utc).getTime() <= now);
+  const filtered = pts.filter((p) => !isWeekendPoint(p.ts_utc) && new Date(p.ts_utc).getTime() <= now);
+  if (filtered.length > 0) return filtered;
+  const pastPoints = pts.filter((p) => new Date(p.ts_utc).getTime() <= now);
+  if (pastPoints.length > 0) return pastPoints;
+  return pts.length > 0 ? [pts[0]] : [];
 }
 
 export default function EquityCurveChart({

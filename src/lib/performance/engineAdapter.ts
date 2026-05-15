@@ -557,8 +557,8 @@ export function singleWeekToSimulation(
   const slotted = slotTrades(result.trades, biasSource.cardBreakdown, cardSlots);
 
   const weekStart = result.weekOpenUtc;
-  // Approximate week end (5 days later)
-  const endDate = new Date(new Date(weekStart).getTime() + 5 * 24 * 60 * 60 * 1000);
+  const fiveDaysLater = new Date(weekStart).getTime() + 5 * 24 * 60 * 60 * 1000;
+  const endDate = new Date(Math.min(fiveDaysLater, Date.now()));
   const weekEnd = endDate.toISOString();
 
   const series = cardSlots.map((slot, i) => {
