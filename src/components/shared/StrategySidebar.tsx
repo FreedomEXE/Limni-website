@@ -184,7 +184,7 @@ function EngineSidebarStatsCard() {
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Sortino</div>
-              <div className="font-bold">{at.sortino >= 99 ? "∞" : at.sortino.toFixed(2)}</div>
+              <div className="font-bold">{at.sortino != null ? (at.sortino >= 99 ? "∞" : at.sortino.toFixed(2)) : "—"}</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Profit Factor</div>
@@ -192,7 +192,7 @@ function EngineSidebarStatsCard() {
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Calmar</div>
-              <div className="font-bold">{at.calmar.toFixed(2)}</div>
+              <div className="font-bold">{at.calmar != null ? at.calmar.toFixed(2) : "—"}</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Avg Weekly</div>
@@ -204,6 +204,7 @@ function EngineSidebarStatsCard() {
             </div>
           </div>
 
+          {at.expectancy != null && (
           <div className="mt-3 border-t border-[var(--panel-border)] pt-3 grid grid-cols-2 gap-2.5 text-sm">
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Expectancy</div>
@@ -211,17 +212,18 @@ function EngineSidebarStatsCard() {
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Avg Win / Loss</div>
-              <div className="font-bold text-xs">+{at.avgWin.toFixed(1)} / -{at.avgLoss.toFixed(1)}</div>
+              <div className="font-bold text-xs">+{(at.avgWin ?? 0).toFixed(1)} / -{(at.avgLoss ?? 0).toFixed(1)}</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Best Streak</div>
-              <div className="font-bold text-lime-400">{at.maxConsecutiveWins}W</div>
+              <div className="font-bold text-lime-400">{at.maxConsecutiveWins ?? 0}W</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Worst Streak</div>
-              <div className="font-bold text-red-400">{at.maxConsecutiveLosses}L</div>
+              <div className="font-bold text-red-400">{at.maxConsecutiveLosses ?? 0}L</div>
             </div>
           </div>
+          )}
         </div>
       )}
     </div>

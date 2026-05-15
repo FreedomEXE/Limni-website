@@ -50,7 +50,8 @@ function isWeekendPoint(tsUtc: string): boolean {
 }
 
 function filterWeekends(pts: EquityPoint[]): EquityPoint[] {
-  return pts.filter((p) => !isWeekendPoint(p.ts_utc));
+  const now = Date.now();
+  return pts.filter((p) => !isWeekendPoint(p.ts_utc) && new Date(p.ts_utc).getTime() <= now);
 }
 
 export default function EquityCurveChart({
@@ -487,7 +488,19 @@ export default function EquityCurveChart({
             </>
           ) : null}
 
-          {hoverPrimaryIndex !== null && hoverTsMs !== null && hoverX !== null ? (
+          {hoverPrimaryIndex !== null && hoverTsMs !== null && hoverX !== null ? (() => {
+            const hoverDate = new Date(primary[hoverPrimaryIndex].ts_utc);
+            const hoverLabel = hoverDate.toLocaleString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "America/New_York",
+            });
+            const labelX = hoverX < width / 2 ? hoverX + 6 : hoverX - 6;
+            const labelAnchor = hoverX < width / 2 ? "start" : "end";
+            return (
             <>
               <line
                 x1={hoverX}
@@ -498,6 +511,16 @@ export default function EquityCurveChart({
                 strokeDasharray="4 4"
                 strokeWidth="1.2"
               />
+              <text
+                x={labelX}
+                y={paddingY - 4}
+                textAnchor={labelAnchor}
+                fill="rgba(148,163,184,0.9)"
+                fontSize="9"
+                fontWeight="600"
+              >
+                {hoverLabel}
+              </text>
               {displaySeries.map((row, idx) => {
                 const pointIndex = nearestIndexByTs(row.points, hoverTsMs);
                 const point = row.points[pointIndex];
@@ -535,7 +558,8 @@ export default function EquityCurveChart({
                 );
               })() : null}
             </>
-          ) : null}
+            );
+          })() : null}
         </svg>
       </div>
     </div>
