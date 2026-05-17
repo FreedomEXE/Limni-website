@@ -515,6 +515,12 @@ export function multiWeekToGridProps(
 // ─── Simulation equity curve from multi-week ────────────────────
 
 const SERIES_COLORS = ["#10b981", "#38bdf8", "#f59e0b", "#a78bfa", "#f43f5e", "#ef4444"];
+const WEEK_SIMULATION_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
+
+function cappedSingleWeekEndUtc(weekStartUtc: string) {
+  const fiveDaysLater = new Date(weekStartUtc).getTime() + WEEK_SIMULATION_WINDOW_MS;
+  return new Date(Math.min(fiveDaysLater, Date.now())).toISOString();
+}
 
 export type EngineSimulationGroup = {
   title: string;
@@ -557,9 +563,7 @@ export function singleWeekToSimulation(
   const slotted = slotTrades(result.trades, biasSource.cardBreakdown, cardSlots);
 
   const weekStart = result.weekOpenUtc;
-  const fiveDaysLater = new Date(weekStart).getTime() + 5 * 24 * 60 * 60 * 1000;
-  const endDate = new Date(Math.min(fiveDaysLater, Date.now()));
-  const weekEnd = endDate.toISOString();
+  const weekEnd = cappedSingleWeekEndUtc(weekStart);
 
   const series = cardSlots.map((slot, i) => {
     const slotReturn = (slotted[i] ?? []).reduce((s, t) => s + t.returnPct, 0);
@@ -768,8 +772,7 @@ function buildSingleWeekAssetSeriesFromTrades(
   result: WeeklyHoldResult,
   weekStart: string,
 ): EngineSimulationGroup["series"] {
-  const endDate = new Date(new Date(weekStart).getTime() + 5 * 24 * 60 * 60 * 1000);
-  const weekEnd = endDate.toISOString();
+  const weekEnd = cappedSingleWeekEndUtc(weekStart);
   return ASSET_SECTIONS.map((asset, index) => {
     const assetReturn = result.trades
       .filter((trade) => trade.assetClass === asset.id)
