@@ -65,6 +65,23 @@ function formatPercent(value: number | null | undefined) {
   return `${value.toFixed(2)}%`;
 }
 
+function isWeekendPoint(tsUtc: string): boolean {
+  const d = new Date(tsUtc);
+  const day = d.getUTCDay();
+  if (day === 6) return true;
+  if (day === 0 && d.getUTCHours() < 21) return true;
+  return false;
+}
+
+function filterMarketHours(pts: PerformanceSimulationSeries["points"]): PerformanceSimulationSeries["points"] {
+  const now = Date.now();
+  const filtered = pts.filter((p) => !isWeekendPoint(p.ts_utc) && new Date(p.ts_utc).getTime() <= now);
+  if (filtered.length > 0) return filtered;
+  const pastPoints = pts.filter((p) => new Date(p.ts_utc).getTime() <= now);
+  if (pastPoints.length > 0) return pastPoints;
+  return pts.length > 0 ? [pts[0]] : [];
+}
+
 function computeMixedSeries(series: PerformanceSimulationSeries[]): PerformanceSimulationSeries {
   const timestamps = Array.from(new Set(series.flatMap((item) => item.points.map((point) => point.ts_utc))))
     .sort((left, right) => Date.parse(left) - Date.parse(right));
@@ -105,8 +122,9 @@ function computeMixedSeries(series: PerformanceSimulationSeries[]): PerformanceS
 }
 
 function summarizeMixedSeries(series: PerformanceSimulationSeries, fallbackTrades: number | null) {
-  const last = series.points.at(-1);
-  const drawdowns = series.points
+  const filtered = filterMarketHours(series.points);
+  const last = filtered.at(-1);
+  const drawdowns = filtered
     .map((point) => point.drawdown_pct)
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   return {
