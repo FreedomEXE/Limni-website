@@ -22,6 +22,15 @@ function buildSelectionKey(selection: RuntimeStrategySelection) {
   return `${selection.strategy}:${selection.f1}:${selection.f2}`;
 }
 
+function currentHourBucket() {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(now.getUTCDate()).padStart(2, "0");
+  const hour = String(now.getUTCHours()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hour}`;
+}
+
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -40,6 +49,8 @@ export type StrategyArtifactStatusRow = {
     ready: number;
     total: number;
   } | null;
+  missingWeeks?: string[];
+  staleWeeks?: string[];
 };
 
 export type StrategyArtifactStatusPayload = {
@@ -309,7 +320,8 @@ export async function fetchStrategyClientPayload(
     `/api/performance/strategy-page-data?strategy=${encodeURIComponent(selection.strategy)}` +
     `&f1=${encodeURIComponent(selection.f1)}` +
     `&f2=${encodeURIComponent(selection.f2)}` +
-    `&scope=${scope}`;
+    `&scope=${scope}` +
+    `${options.force ? "&repair=1" : ""}`;
   const persistentPayload = options.force
     ? null
     : await readPersistentPayload(url, selection, scope);
@@ -372,20 +384,31 @@ export async function fetchCurrentWeekStrategyClientPayload(
   options: { force?: boolean } = {},
 ): Promise<StrategyClientPayload | null> {
   const cacheKey = buildSelectionKey(selection);
-  const inflightKey = `${cacheKey}:${scope}`;
+  const hourBucket = currentHourBucket();
+  const url =
+    `/api/performance/strategy-current-week?strategy=${encodeURIComponent(selection.strategy)}` +
+    `&f1=${encodeURIComponent(selection.f1)}` +
+    `&f2=${encodeURIComponent(selection.f2)}` +
+    `&scope=${scope}` +
+    `&hour=${encodeURIComponent(hourBucket)}`;
+  const inflightKey = `${cacheKey}:${scope}:${hourBucket}${options.force ? ":force" : ""}`;
   const inflight = currentWeekInflightCache.get(inflightKey);
   if (inflight && !options.force) {
     return inflight;
+  }
+
+  const persistentPayload = options.force
+    ? null
+    : await readPersistentPayload(url, selection, scope);
+  if (!options.force && persistentPayload) {
+    return persistentPayload;
   }
 
   const request = (async () => {
     const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        const response = await fetch(
-          `/api/performance/strategy-current-week?strategy=${encodeURIComponent(selection.strategy)}&f1=${encodeURIComponent(selection.f1)}&f2=${encodeURIComponent(selection.f2)}&scope=${scope}`,
-          { method: "GET", cache: "no-store" },
-        );
+        const response = await fetch(url, { method: "GET", cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Current week strategy payload request failed (${response.status})`);
         }
@@ -394,6 +417,7 @@ export async function fetchCurrentWeekStrategyClientPayload(
           throw new Error("Unexpected current week strategy payload shape");
         }
         payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
+        await writePersistentPayload(url, data);
         return payloadCache.get(cacheKey) ?? data;
       } catch (error) {
         if (attempt === maxAttempts) {

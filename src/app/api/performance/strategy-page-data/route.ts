@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
     : searchParams.get("scope") === "full"
       ? "full"
       : "performance";
+  const repairAllMissingWeeks =
+    searchParams.get("repair") === "1" ||
+    searchParams.get("repair") === "true";
   const selection = {
     strategyId,
     f1: normalizedFilters.f1,
@@ -30,6 +33,7 @@ export async function GET(request: NextRequest) {
     const selectionKey = buildStrategySelectionKey(selection);
     const data = await loadStrategyPageData(selection, {
       includeCurrentWeek: false,
+      repairAllMissingWeeks,
     });
     if (!data) {
       return NextResponse.json({

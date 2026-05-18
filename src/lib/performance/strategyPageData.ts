@@ -150,6 +150,7 @@ export type StrategyPageData = {
 
 type LoadStrategyPageDataOptions = {
   includeCurrentWeek?: boolean;
+  repairAllMissingWeeks?: boolean;
 };
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -720,7 +721,9 @@ export async function loadStrategyPageData(
   try {
     const prepared = await ensureHistoricalWeekShardsForSelection(selection, {
       onlyPreviousWeek: false,
-      timeBudgetMs: getPageLoadShardBudgetMs(),
+      timeBudgetMs: options.repairAllMissingWeeks
+        ? getShardBuildTimeBudgetMs()
+        : getPageLoadShardBudgetMs(),
     });
     if (!prepared) return null;
 

@@ -37,6 +37,8 @@ export type StrategyArtifactReadiness = {
     ready: number;
     total: number;
   } | null;
+  missingWeeks?: string[];
+  staleWeeks?: string[];
 };
 
 type ExpectedShardContext = {
@@ -106,12 +108,26 @@ async function readinessForSelection(
   const expected = await buildExpectedShardContext(selection);
   const shards = await readWeekShards(key, expected.expectedEngineVersion);
   const expectedSet = new Set(expected.expectedWeeks);
-  const usableWeeks = new Set(
+  const shardByWeek = new Map(
     shards
-      .filter((shard) => expectedSet.has(shard.weekOpenUtc) && isUsableShard(shard))
-      .map((shard) => shard.weekOpenUtc),
+      .filter((shard) => expectedSet.has(shard.weekOpenUtc))
+      .map((shard) => [shard.weekOpenUtc, shard]),
   );
-  const readyCount = expected.expectedWeeks.filter((weekOpenUtc) => usableWeeks.has(weekOpenUtc)).length;
+  const missingWeeks: string[] = [];
+  const staleWeeks: string[] = [];
+
+  for (const weekOpenUtc of expected.expectedWeeks) {
+    const shard = shardByWeek.get(weekOpenUtc);
+    if (!shard) {
+      missingWeeks.push(weekOpenUtc);
+      continue;
+    }
+    if (!isUsableShard(shard)) {
+      staleWeeks.push(weekOpenUtc);
+    }
+  }
+
+  const readyCount = expected.expectedWeeks.length - missingWeeks.length - staleWeeks.length;
   const ready = readyCount === expected.expectedWeeks.length;
 
   return {
@@ -123,7 +139,7 @@ async function readinessForSelection(
     expectedEngineVersion: expected.expectedEngineVersion,
     actualEngineVersion: shards[0]?.engineVersion ?? null,
     ready,
-    reason: ready ? "ready" : "missing",
+    reason: ready ? "ready" : staleWeeks.length > 0 ? "stale_week" : "missing",
     cachedAtUtc: latestShardCachedAtUtc(shards),
     payloadBytes: null,
     shardProgress: ready
@@ -132,6 +148,8 @@ async function readinessForSelection(
           ready: readyCount,
           total: expected.expectedWeeks.length,
         },
+    missingWeeks,
+    staleWeeks,
   };
 }
 

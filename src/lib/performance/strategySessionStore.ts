@@ -77,6 +77,7 @@ const strategyInflight = new Map<string, Promise<void>>();
 const currentWeekInflight = new Map<string, Promise<void>>();
 const weeklyReturnsInflight = new Map<string, Promise<void>>();
 let preloadInflight: Promise<void> | null = null;
+let backgroundRepairInflight: Promise<void> | null = null;
 let currentWeekRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let currentWeekRefreshInterval: ReturnType<typeof setInterval> | null = null;
 const preloadedEngineVersions = new Map<string, string>();
@@ -200,6 +201,22 @@ function deriveCurrentWeekStatus(payload: StrategyClientPayload | null): Session
     return "current-empty";
   }
   return "current-ready";
+}
+
+function currentUtcHourBucket(date = new Date()) {
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+    String(date.getUTCHours()).padStart(2, "0"),
+  ].join("-");
+}
+
+function loadedThisUtcHour(loadedAtUtc: string | null | undefined) {
+  if (!loadedAtUtc) return false;
+  const loadedAt = new Date(loadedAtUtc);
+  if (Number.isNaN(loadedAt.getTime())) return false;
+  return currentUtcHourBucket(loadedAt) === currentUtcHourBucket();
 }
 
 function updateRecord(
@@ -332,11 +349,16 @@ function loadCurrentWeekSession(
 ) {
   const key = selectionKey(selection);
   const current = state.records[key];
+  const hasFreshCurrentWeek =
+    loadedThisUtcHour(current?.currentWeekLoadedAtUtc) &&
+    (
+      current?.currentWeekStatus === "current-ready" ||
+      current?.currentWeekStatus === "current-empty"
+    );
   if (
     !options.force &&
     (
-      current?.currentWeekStatus === "current-ready" ||
-      current?.currentWeekStatus === "current-empty" ||
+      hasFreshCurrentWeek ||
       current?.currentWeekStatus === "current-loading"
     )
   ) {
@@ -554,6 +576,30 @@ function repairKeysFromStatus(status: StrategyArtifactStatusPayload | null) {
   );
 }
 
+async function runBackgroundRepairs(manifest: PreloadManifest, repairKeys: Set<string>) {
+  if (repairKeys.size === 0 || backgroundRepairInflight) return backgroundRepairInflight;
+
+  const repairTasks = manifest.tasks.filter((task) => repairKeys.has(task.id));
+  if (repairTasks.length === 0) return null;
+
+  backgroundRepairInflight = (async () => {
+    for (const task of repairTasks) {
+      try {
+        await task.run({ force: true });
+      } catch (error) {
+        console.error(
+          `[strategySessionStore] Background repair failed for ${task.id}:`,
+          error,
+        );
+      }
+    }
+  })().finally(() => {
+    backgroundRepairInflight = null;
+  });
+
+  return backgroundRepairInflight;
+}
+
 export function startStrategySessionPreload(manifest: PreloadManifest) {
   if (preloadInflight) return preloadInflight;
 
@@ -588,6 +634,11 @@ async function checkVersionsAndRepreload(manifest: PreloadManifest) {
 
   for (const artifact of status.artifacts) {
     preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
+  }
+
+  if (!versionChanged) {
+    void runBackgroundRepairs(manifest, repairKeys);
+    return;
   }
 
   resetPreloadState();
