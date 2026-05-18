@@ -1349,16 +1349,23 @@ async function buildSimulationMapFromWeekResults(options: {
       pathSummaryMap[computed.weekKey] = computed.summary;
       simMap[computed.weekKey] = computed.sim;
       if (shardPersistence) {
-        await persistWeekShard({
-          selectionKey: shardPersistence.selectionKey,
-          weekOpenUtc: computed.weekKey,
-          engineVersion: shardPersistence.engineVersion,
-          weekFingerprint: shardPersistence.weekFingerprints[computed.weekKey] ?? "",
-          weekResult,
-          pathSummary: computed.summary,
-          sim: computed.sim,
-          cachedAtUtc: new Date().toISOString(),
-        });
+        try {
+          await persistWeekShard({
+            selectionKey: shardPersistence.selectionKey,
+            weekOpenUtc: computed.weekKey,
+            engineVersion: shardPersistence.engineVersion,
+            weekFingerprint: shardPersistence.weekFingerprints[computed.weekKey] ?? "",
+            weekResult,
+            pathSummary: computed.summary,
+            sim: computed.sim,
+            cachedAtUtc: new Date().toISOString(),
+          });
+        } catch (persistError) {
+          console.warn(
+            `[strategyPageData] Shard persist failed for ${computed.weekKey}; non-fatal:`,
+            persistError instanceof Error ? persistError.message : persistError,
+          );
+        }
       }
       if (weekResult.isRealized) {
         realizedWeekPaths.push(computed.path);
