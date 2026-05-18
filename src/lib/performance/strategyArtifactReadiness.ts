@@ -219,7 +219,7 @@ export async function readReadyStrategyArtifactPayload(
     ? getReadPathArtifactStaleReason(entry.fingerprint, selection)
     : "missing";
 
-  if (entry && staleReason === "ready") {
+  if (entry && (staleReason === "ready" || staleReason === "stale_week")) {
     const artifactMeta: StrategyPageData["artifactMeta"] = {
       status: "hit",
       selectionKey,
