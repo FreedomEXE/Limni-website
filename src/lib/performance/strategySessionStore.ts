@@ -31,6 +31,7 @@ export type SessionCurrentWeekStatus =
 export type PreloadPhase =
   | "checking-updates"
   | "loading-active"
+  | "loading-market-data"
   | "loading-strategies"
   | "computing-live-data"
   | "ready";
@@ -689,6 +690,30 @@ async function runPreload(manifest: PreloadManifest) {
       } catch (error) {
         markPreloadTaskFailed(activeTask, error);
       }
+    }
+
+    const activeNonStrategyTasks = manifest.tasks.filter(
+      (task) => task.priority === "active" && task.domain !== "strategy",
+    );
+    if (activeNonStrategyTasks.length > 0) {
+      state = {
+        ...state,
+        preload: {
+          ...state.preload,
+          phase: "loading-market-data",
+        },
+      };
+      emit();
+
+      await Promise.all(activeNonStrategyTasks.map(async (task) => {
+        markPreloadTaskLoading(task);
+        try {
+          await task.run();
+          markPreloadTaskReady(task);
+        } catch (error) {
+          markPreloadTaskFailed(task, error);
+        }
+      }));
     }
 
     const backgroundTasks = manifest.tasks.filter((task) => task.priority === "background");

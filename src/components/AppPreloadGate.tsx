@@ -17,6 +17,7 @@ import {
 const PHASE_LABELS: Record<PreloadPhase, string> = {
   "checking-updates": "Checking for updates...",
   "loading-active": "Loading active strategy...",
+  "loading-market-data": "Loading market data...",
   "loading-strategies": "Loading strategy data...",
   "computing-live-data": "Computing live week data...",
   ready: "Ready.",

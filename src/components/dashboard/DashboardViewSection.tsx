@@ -35,6 +35,13 @@ import {
   resolveDashboardBias,
   type DashboardBias,
 } from "@/lib/dashboard/dashboardSelection";
+import type { MarketIntelligencePayload } from "@/lib/dashboard/marketIntelligencePayload";
+import {
+  clearMarketIntelligenceRefresh,
+  scheduleMarketIntelligenceRefresh,
+  seedMarketIntelligence,
+  useMarketIntelligence,
+} from "@/lib/dashboard/marketIntelligenceStore";
 
 type AssetOption = {
   id: string;
@@ -113,24 +120,47 @@ type DashboardViewSectionProps = {
   provenanceByReport?: Record<string, WeekSnapshotProvenance>;
 };
 
-export default function DashboardViewSection({
-  assetOptions,
-  selectedAsset,
-  reportOptions,
-  initialReport,
-  initialBias,
-  initialView,
-  currentWeekOpenUtc,
-  cotDataByReport,
-  sentimentDataByReport,
-  strengthDataByReport,
-  myfxbookPositioningBySymbol,
-  provenanceByReport,
-}: DashboardViewSectionProps) {
+export default function DashboardViewSection(props: DashboardViewSectionProps) {
+  const store = useMarketIntelligence();
+  const initialPayload = useMemo<MarketIntelligencePayload>(() => ({
+    assetOptions: props.assetOptions,
+    reportOptions: props.reportOptions,
+    selectedAsset: props.selectedAsset,
+    currentWeekOpenUtc: props.currentWeekOpenUtc,
+    cotDataByReport: props.cotDataByReport,
+    sentimentDataByReport: props.sentimentDataByReport,
+    strengthDataByReport: props.strengthDataByReport,
+    myfxbookPositioningBySymbol: props.myfxbookPositioningBySymbol,
+    provenanceByReport: props.provenanceByReport ?? {},
+    fetchedAtUtc: new Date().toISOString(),
+  }), [props]);
+  const storePayload = store.payload?.selectedAsset === props.selectedAsset
+    ? store.payload
+    : null;
+  const assetOptions = storePayload?.assetOptions ?? props.assetOptions;
+  const selectedAsset = storePayload?.selectedAsset ?? props.selectedAsset;
+  const reportOptions = storePayload?.reportOptions ?? props.reportOptions;
+  const currentWeekOpenUtc = storePayload?.currentWeekOpenUtc ?? props.currentWeekOpenUtc;
+  const cotDataByReport = storePayload?.cotDataByReport ?? props.cotDataByReport;
+  const sentimentDataByReport = storePayload?.sentimentDataByReport ?? props.sentimentDataByReport;
+  const strengthDataByReport = storePayload?.strengthDataByReport ?? props.strengthDataByReport;
+  const myfxbookPositioningBySymbol =
+    storePayload?.myfxbookPositioningBySymbol ?? props.myfxbookPositioningBySymbol;
+  const provenanceByReport = storePayload?.provenanceByReport ?? props.provenanceByReport;
+  const { initialReport, initialBias, initialView } = props;
   const defaultReport = initialReport || reportOptions[0]?.value || "";
   const [selectedReport, setSelectedReport] = useState(defaultReport);
   const [selectedBias, setSelectedBias] = useState<DashboardBias>(initialBias);
   const [selectedView, setSelectedView] = useState<"heatmap" | "list">(initialView);
+
+  useEffect(() => {
+    seedMarketIntelligence(initialPayload);
+  }, [initialPayload]);
+
+  useEffect(() => {
+    scheduleMarketIntelligenceRefresh(selectedAsset);
+    return () => clearMarketIntelligenceRefresh();
+  }, [selectedAsset]);
 
   useEffect(() => {
     setSelectedReport(initialReport || reportOptions[0]?.value || "");
