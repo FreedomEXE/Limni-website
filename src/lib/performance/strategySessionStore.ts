@@ -8,6 +8,7 @@ import {
   fetchStrategyClientPayload,
   getStrategyClientPayload,
   setStrategyClientPayload,
+  type StrategyArtifactStatusPayload,
 } from "@/lib/performance/strategyClientCache";
 import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
 import {
@@ -79,6 +80,13 @@ let preloadInflight: Promise<void> | null = null;
 let currentWeekRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let currentWeekRefreshInterval: ReturnType<typeof setInterval> | null = null;
 const preloadedEngineVersions = new Map<string, string>();
+const PRELOAD_COMPLETION_STORAGE_KEY = "limni:strategy-preload-complete:v1";
+const PRELOAD_COMPLETION_TTL_MS = 6 * 60 * 60 * 1000;
+
+type PersistedPreloadCompletion = {
+  completedAt: number;
+  engineVersions: Record<string, string>;
+};
 
 let state: StrategySessionState = {
   activeSelectionKey: null,
@@ -473,8 +481,86 @@ function isStrategyPreloadTask(task: PreloadTask | undefined): task is StrategyP
   return Boolean(task && task.domain === "strategy");
 }
 
+function canUsePreloadCompletionStorage() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function readPersistedPreloadCompletion(): PersistedPreloadCompletion | null {
+  if (!canUsePreloadCompletionStorage()) return null;
+  try {
+    const raw = window.localStorage.getItem(PRELOAD_COMPLETION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedPreloadCompletion>;
+    if (
+      typeof parsed.completedAt !== "number" ||
+      !parsed.engineVersions ||
+      typeof parsed.engineVersions !== "object" ||
+      Date.now() - parsed.completedAt > PRELOAD_COMPLETION_TTL_MS
+    ) {
+      window.localStorage.removeItem(PRELOAD_COMPLETION_STORAGE_KEY);
+      return null;
+    }
+    return {
+      completedAt: parsed.completedAt,
+      engineVersions: parsed.engineVersions as Record<string, string>,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedPreloadCompletion() {
+  if (!canUsePreloadCompletionStorage()) return;
+  try {
+    window.localStorage.setItem(
+      PRELOAD_COMPLETION_STORAGE_KEY,
+      JSON.stringify({
+        completedAt: Date.now(),
+        engineVersions: Object.fromEntries(preloadedEngineVersions.entries()),
+      }),
+    );
+  } catch {}
+}
+
+function hydratePersistedPreloadCompletion() {
+  const persisted = readPersistedPreloadCompletion();
+  if (!persisted) return false;
+  for (const [key, version] of Object.entries(persisted.engineVersions)) {
+    preloadedEngineVersions.set(key, version);
+  }
+  state = {
+    ...state,
+    preload: {
+      ...state.preload,
+      phase: "ready",
+      status: "ready",
+      completedOnce: true,
+    },
+  };
+  emit();
+  return true;
+}
+
+export function hasPersistedStrategyPreloadCompletion() {
+  return readPersistedPreloadCompletion() !== null;
+}
+
+function repairKeysFromStatus(status: StrategyArtifactStatusPayload | null) {
+  if (!status) return new Set<string>();
+  return new Set(
+    status.artifacts
+      .filter((artifact) => !artifact.ready)
+      .map((artifact) => artifact.key),
+  );
+}
+
 export function startStrategySessionPreload(manifest: PreloadManifest) {
   if (preloadInflight) return preloadInflight;
+
+  if (!state.preload.completedOnce && hydratePersistedPreloadCompletion()) {
+    void checkVersionsAndRepreload(manifest);
+    return Promise.resolve();
+  }
 
   if (state.preload.completedOnce) {
     void checkVersionsAndRepreload(manifest);
@@ -496,8 +582,9 @@ async function checkVersionsAndRepreload(manifest: PreloadManifest) {
     const previous = preloadedEngineVersions.get(artifact.key);
     return previous !== artifact.expectedEngineVersion;
   });
+  const repairKeys = repairKeysFromStatus(status);
 
-  if (!versionChanged) return;
+  if (!versionChanged && repairKeys.size === 0) return;
 
   for (const artifact of status.artifacts) {
     preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
@@ -531,6 +618,7 @@ async function runPreload(manifest: PreloadManifest) {
         preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
       }
     }
+    const repairKeys = repairKeysFromStatus(status);
 
     const activeTask = manifest.tasks.find((task) => task.priority === "active");
     if (activeTask) {
@@ -545,7 +633,7 @@ async function runPreload(manifest: PreloadManifest) {
 
       markPreloadTaskLoading(activeTask);
       try {
-        await activeTask.run();
+        await activeTask.run({ force: repairKeys.has(activeTask.id) });
         markPreloadTaskReady(activeTask);
       } catch (error) {
         markPreloadTaskFailed(activeTask, error);
@@ -574,7 +662,7 @@ async function runPreload(manifest: PreloadManifest) {
 
           markPreloadTaskLoading(task);
           try {
-            await task.run();
+            await task.run({ force: repairKeys.has(task.id) });
             markPreloadTaskReady(task);
           } catch (error) {
             markPreloadTaskFailed(task, error);
@@ -610,6 +698,7 @@ async function runPreload(manifest: PreloadManifest) {
       },
     };
     emit();
+    writePersistedPreloadCompletion();
   } finally {
     preloadInflight = null;
   }

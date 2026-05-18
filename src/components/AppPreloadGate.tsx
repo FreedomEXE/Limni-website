@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { LimniSpinner } from "@/components/LimniLoading";
 import {
@@ -8,6 +8,7 @@ import {
   deriveActiveSelectionFromParams,
 } from "@/lib/preload/preloadRegistry";
 import {
+  hasPersistedStrategyPreloadCompletion,
   startStrategySessionPreload,
   usePreloadStatus,
   type PreloadPhase,
@@ -48,6 +49,7 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const preload = usePreloadStatus();
+  const [hasPersistedCompletion] = useState(() => hasPersistedStrategyPreloadCompletion());
   const bypassGate = isBypassedRoute(pathname);
 
   useEffect(() => {
@@ -61,6 +63,7 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
 
   if (
     bypassGate ||
+    (hasPersistedCompletion && preload.status !== "loading") ||
     preload.completedOnce ||
     preload.status === "ready" ||
     preload.status === "partial"
