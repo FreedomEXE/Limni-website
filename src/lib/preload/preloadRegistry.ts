@@ -8,7 +8,9 @@ import {
   normalizeFilterSelection,
   resolveStrategyId,
 } from "@/lib/performance/strategyConfig";
+import { fetchAndSeedAccounts } from "@/lib/accounts/accountsSessionStore";
 import { fetchAndSeedMarketIntelligence } from "@/lib/dashboard/marketIntelligenceStore";
+import { fetchAndSeedNews } from "@/lib/news/newsSessionStore";
 import { ensureStrategySession } from "@/lib/performance/strategySessionStore";
 
 export type PreloadDomain = "strategy" | "market-intelligence" | "news" | "accounts";
@@ -104,6 +106,20 @@ export function buildPreloadManifest(
     domain: "market-intelligence",
     priority: "active",
     run: () => fetchAndSeedMarketIntelligence(),
+  });
+
+  tasks.push({
+    id: "news",
+    domain: "news",
+    priority: "background",
+    run: () => fetchAndSeedNews(),
+  });
+
+  tasks.push({
+    id: "accounts",
+    domain: "accounts",
+    priority: "background",
+    run: () => fetchAndSeedAccounts(),
   });
 
   return {

@@ -5,140 +5,23 @@
  * File: page.tsx
  *
  * Description:
- * Reporting-first account overview page grouped into prop-fund and personal-account sections.
+ * Account overview page backed by a server-built payload and client session store.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 import DashboardLayout from "@/components/DashboardLayout";
-import AccountsDirectory from "@/components/AccountsDirectory";
-import ConnectAccountButton from "@/components/ConnectAccountButton";
-import { formatCurrencySafe } from "@/lib/formatters";
-import { readBotState } from "@/lib/botState";
-import { readMt5Accounts } from "@/lib/mt5Store";
-import { listConnectedAccounts } from "@/lib/connectedAccounts";
-import { formatDateTimeET } from "@/lib/time";
-import type { AccountCard } from "@/lib/accounts/accountsDirectoryTypes";
-import {
-  buildConnectedAccountCards,
-  buildMt5AccountCards,
-  computeAccountsOverview,
-} from "@/lib/accounts/accountsDirectoryData";
-import { collectAccountsLatestSyncIso } from "@/lib/accounts/accountsPageData";
+import AccountsPageClient from "@/components/accounts/AccountsPageClient";
+import { loadAccountsPayload } from "@/lib/accounts/loadAccountsPayload";
 
 export const dynamic = "force-dynamic";
 
-type BitgetV2BotState = {
-  lifecycle?: string;
-  positions?: Array<{
-    currentEquityUsd?: number;
-    entryEquityUsd?: number;
-  }>;
-};
-
 export default async function AccountsPage() {
-  let mt5Accounts: Awaited<ReturnType<typeof readMt5Accounts>> = [];
-  try {
-    mt5Accounts = await readMt5Accounts();
-  } catch (error) {
-    console.error(
-      "Accounts load failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
-
-  const bitgetState = await readBotState<BitgetV2BotState>("bitget_perp_v2");
-
-  let connectedAccounts: Awaited<ReturnType<typeof listConnectedAccounts>> = [];
-  try {
-    connectedAccounts = await listConnectedAccounts();
-  } catch (error) {
-    console.error(
-      "Connected accounts load failed:",
-      error instanceof Error ? error.message : String(error),
-    );
-  }
-
-  const mt5Cards: AccountCard[] = buildMt5AccountCards(mt5Accounts);
-  const connectedCards: AccountCard[] = buildConnectedAccountCards(connectedAccounts, {
-    bitgetState,
-  });
-
-  const accounts: AccountCard[] = [...mt5Cards, ...connectedCards];
-  const { totalEquity, openPositions, propAccounts, personalAccounts } =
-    computeAccountsOverview(accounts);
-  const latestSync = collectAccountsLatestSyncIso({
-    mt5Accounts,
-    connectedAccounts,
-    bitgetUpdatedAt: bitgetState?.updated_at ?? null,
-  });
+  const payload = await loadAccountsPayload();
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-              Account Reporting
-            </h1>
-            <p className="text-sm text-[color:var(--muted)]">
-              Review linked accounts, open trades, history, and sync state
-              across prop funds and personal capital.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <ConnectAccountButton />
-            <span className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Last refresh {latestSync ? formatDateTimeET(latestSync) : "No refresh yet"}
-            </span>
-          </div>
-        </header>
-
-        <section className="grid gap-4 md:grid-cols-5">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Accounts tracked
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {accounts.length}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Total equity
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {formatCurrencySafe(totalEquity, "USD")}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Prop funds
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {propAccounts}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Personal accounts
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {personalAccounts}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              Open positions
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-              {openPositions}
-            </p>
-          </div>
-        </section>
-
-        <AccountsDirectory accounts={accounts} />
-      </div>
+      <AccountsPageClient initialPayload={payload} />
     </DashboardLayout>
   );
 }
