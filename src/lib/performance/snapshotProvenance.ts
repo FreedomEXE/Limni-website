@@ -68,6 +68,7 @@ export async function getWeekSnapshotProvenance(
           SELECT MAX(snapshot_time_utc) AS snapshot_utc
           FROM sentiment_daily_snapshots
           WHERE snapshot_time_utc <= $1::timestamptz
+            AND snapshot_time_utc >= ($1::timestamptz - INTERVAL '7 days')
         `,
         [normalizedWeekOpenUtc],
       ),
@@ -112,25 +113,28 @@ export async function getWeekSnapshotProvenance(
     .filter((value): value is string => Boolean(value))
     .sort()
     .at(-1) ?? null;
+  const sentimentLockUtc = toIsoUtc(sentimentLockRow?.snapshot_utc);
+  const sentimentAggregateUtc = toIsoUtc(sentimentAggregateRow?.snapshot_utc);
+  const canonicalSnapshotUtc = toIsoUtc(normalizedWeekOpenUtc);
 
   return {
     weekOpenUtc: normalizedWeekOpenUtc,
     cot: {
       label: "COT",
-      snapshotUtc: toIsoUtc(cotRow?.snapshot_utc),
+      snapshotUtc: canonicalSnapshotUtc ?? toIsoUtc(cotRow?.snapshot_utc),
       source: "cot_snapshots",
     },
     sentiment: {
       label: "Sentiment",
-      snapshotUtc: toIsoUtc(sentimentLockRow?.snapshot_utc) ?? toIsoUtc(sentimentAggregateRow?.snapshot_utc),
-      source: toIsoUtc(sentimentLockRow?.snapshot_utc)
-        ? "sentiment_daily_snapshots"
+      snapshotUtc: canonicalSnapshotUtc ?? sentimentLockUtc ?? sentimentAggregateUtc,
+      source: sentimentLockUtc
+        ? "sentiment_daily_snapshots_asof_week_open"
         : "sentiment_aggregates",
     },
     strength: {
       label: "Strength",
-      snapshotUtc: lockedStrengthUtc ?? liveStrengthUtc,
-      source: lockedStrengthUtc ? "strength_weekly_snapshots" : "currency_strength_snapshots",
+      snapshotUtc: canonicalSnapshotUtc ?? lockedStrengthUtc ?? liveStrengthUtc,
+      source: lockedStrengthUtc ? "strength_weekly_snapshots" : "strength_snapshots_asof_week_open",
     },
   };
 }
