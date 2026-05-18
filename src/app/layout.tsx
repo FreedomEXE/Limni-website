@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Libre_Baskerville, Source_Sans_3 } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
 import AppPreloadGate from "@/components/AppPreloadGate";
+import LimniLoading from "@/components/LimniLoading";
 import "./globals.css";
 
 const sourceSans = Source_Sans_3({
@@ -70,7 +72,9 @@ export default function RootLayout({
         <Script id="theme-init" strategy="beforeInteractive">
           {THEME_INIT_SCRIPT}
         </Script>
-        <AppPreloadGate>{children}</AppPreloadGate>
+        <Suspense fallback={<LimniLoading label="Checking for updates..." />}>
+          <AppPreloadGate>{children}</AppPreloadGate>
+        </Suspense>
       </body>
     </html>
   );
