@@ -51,6 +51,8 @@ type ReadReadyStrategyArtifactPayloadOptions = {
   includeCurrentWeek?: boolean;
 };
 
+const READINESS_CONCURRENCY = 3;
+
 export function getExpectedStrategyArtifactEngineVersion(selection: StrategyBootstrapSelection) {
   return buildStrategyArtifactEngineVersion({
     entryStyle: getEntryStyle(selection.f1),
@@ -71,8 +73,18 @@ export function labelForStrategyArtifact(selection: StrategyBootstrapSelection) 
 
 function isUsableShard(shard: WeekShardEntry) {
   if (!shard.weekResult || !shard.sim) return false;
-  if (!shard.weekResult.isRealized || shard.weekResult.tradeCount <= 0) return true;
   const primarySeries = shard.sim.series?.[0];
+  const primaryPointCount = primarySeries?.points.length ?? 0;
+  const signalCount = shard.weekResult.signals?.length ?? 0;
+  if (
+    shard.weekResult.isRealized &&
+    shard.weekResult.tradeCount <= 0 &&
+    signalCount > 0 &&
+    primaryPointCount <= 1
+  ) {
+    return false;
+  }
+  if (!shard.weekResult.isRealized || shard.weekResult.tradeCount <= 0) return true;
   return Boolean(primarySeries && primarySeries.points.length > 2);
 }
 
@@ -156,7 +168,21 @@ async function readinessForSelection(
 export async function listStrategyArtifactReadiness(
   selections: StrategyBootstrapSelection[] = listVisibleStrategyBootstrapSelections(),
 ) {
-  return Promise.all(selections.map(readinessForSelection));
+  const results: StrategyArtifactReadiness[] = [];
+  let nextIndex = 0;
+  const workerCount = Math.max(1, Math.min(READINESS_CONCURRENCY, selections.length));
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (nextIndex < selections.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      const selection = selections[currentIndex];
+      if (!selection) return;
+      results[currentIndex] = await readinessForSelection(selection);
+    }
+  }));
+
+  return results;
 }
 
 export async function getStrategyArtifactReadiness(selection: StrategyBootstrapSelection) {

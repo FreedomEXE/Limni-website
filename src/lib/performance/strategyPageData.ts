@@ -168,8 +168,18 @@ function buildPermanentWeekFingerprint(weekOpenUtc: string) {
 
 function isStraightLineFallbackWeekShard(shard: WeekShardEntry) {
   if (!shard.weekResult || !shard.sim) return true;
-  if (!shard.weekResult.isRealized || shard.weekResult.tradeCount <= 0) return false;
   const primarySeries = shard.sim.series?.[0];
+  const primaryPointCount = primarySeries?.points.length ?? 0;
+  const signalCount = shard.weekResult.signals?.length ?? 0;
+  if (
+    shard.weekResult.isRealized &&
+    shard.weekResult.tradeCount <= 0 &&
+    signalCount > 0 &&
+    primaryPointCount <= 1
+  ) {
+    return true;
+  }
+  if (!shard.weekResult.isRealized || shard.weekResult.tradeCount <= 0) return false;
   return !primarySeries || primarySeries.points.length <= 2;
 }
 
