@@ -61,6 +61,12 @@ function mapWeekShardRow(row: WeekShardDbRow): WeekShardEntry {
   };
 }
 
+function isStraightLineFallbackShard(shard: WeekShardEntry) {
+  if (!shard.weekResult.isRealized || shard.weekResult.tradeCount <= 0) return false;
+  const primarySeries = shard.sim.series[0];
+  return !primarySeries || primarySeries.id !== "equity" || primarySeries.points.length <= 2;
+}
+
 export async function readWeekShards(
   selectionKey: string,
   engineVersion: string,
@@ -184,6 +190,10 @@ export async function listReadyWeekShards(
       missing.push(weekOpenUtc);
       continue;
     }
+    if (isStraightLineFallbackShard(shard)) {
+      stale.push(weekOpenUtc);
+      continue;
+    }
     if (shard.weekFingerprint === expectedFingerprints[weekOpenUtc]) {
       ready.push(weekOpenUtc);
     } else {
@@ -204,19 +214,12 @@ export async function countWeekShardProgress(
   }
 
   try {
-    const rows = await query<{ week_open_utc: string }>(
-      `SELECT week_open_utc::text AS week_open_utc
-         FROM ${STRATEGY_WEEK_SHARDS_TABLE}
-        WHERE selection_key = $1
-          AND engine_version = $2
-          AND week_open_utc = ANY($3::timestamptz[])`,
-      [selectionKey, engineVersion, expectedWeeks],
-    );
     const expectedSet = new Set(expectedWeeks);
+    const shards = await readWeekShards(selectionKey, engineVersion);
     const ready = new Set(
-      rows
-        .map((row) => normalizeUtcString(row.week_open_utc))
-        .filter((weekOpenUtc) => expectedSet.has(weekOpenUtc)),
+      shards
+        .filter((shard) => expectedSet.has(shard.weekOpenUtc) && !isStraightLineFallbackShard(shard))
+        .map((shard) => shard.weekOpenUtc),
     );
     return { ready: ready.size, total: expectedWeeks.length };
   } catch (error) {

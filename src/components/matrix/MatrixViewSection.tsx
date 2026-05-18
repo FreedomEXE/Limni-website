@@ -20,6 +20,7 @@ import FlagshipBoard from "@/components/flagship/FlagshipBoard";
 import MatrixControls, { type MatrixTab } from "@/components/matrix/MatrixControls";
 import RiskBoard from "@/components/matrix/RiskBoard";
 import StrategyArtifactLoadingGate from "@/components/performance/StrategyArtifactLoadingGate";
+import StrategyArtifactRecomputeNotice from "@/components/performance/StrategyArtifactRecomputeNotice";
 import {
   buildStrategySelectionKey,
   STRATEGY_SELECTION_COMMIT_EVENT,
@@ -186,6 +187,7 @@ export default function MatrixViewSection({
   }, [engineWeekResults, selectedWeek]);
 
   const currentReady = Boolean(engineWeekResults) || session.status === "missing" || session.status === "error";
+  const staleArtifact = payload?.artifactMeta?.stale === true;
 
   return (
     <StrategyArtifactLoadingGate
@@ -202,14 +204,16 @@ export default function MatrixViewSection({
           onTabChange={setSelectedTab}
         />
 
-        {session.status === "missing" || session.status === "error" ? (
+        {staleArtifact ? (
+          <StrategyArtifactRecomputeNotice artifactMeta={payload?.artifactMeta} />
+        ) : session.status === "missing" || session.status === "error" ? (
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
             Strategy data is not ready yet.
           </div>
         ) : null}
 
-        {selectedTab === "crypto" && selectedWeek ? <CryptoBoard weekOpenUtc={selectedWeek} /> : null}
-        {selectedTab === "risk" && selectedWeek ? (
+        {!staleArtifact && selectedTab === "crypto" && selectedWeek ? <CryptoBoard weekOpenUtc={selectedWeek} /> : null}
+        {!staleArtifact && selectedTab === "risk" && selectedWeek ? (
           <RiskBoard
             weekOpenUtc={selectedWeek}
             currentWeekOpenUtc={currentWeekOpenUtc}
@@ -219,7 +223,7 @@ export default function MatrixViewSection({
             weeklyReturns={weeklyReturns}
           />
         ) : null}
-        {selectedTab === "cfd" && selectedWeek ? (
+        {!staleArtifact && selectedTab === "cfd" && selectedWeek ? (
           <FlagshipBoard
             key={selectedSelectionKey}
             weekOpenUtc={selectedWeek}

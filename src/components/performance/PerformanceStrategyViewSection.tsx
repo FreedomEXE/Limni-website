@@ -16,6 +16,7 @@
 import { useEffect, useState, type ComponentProps } from "react";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
 import StrategyArtifactLoadingGate from "@/components/performance/StrategyArtifactLoadingGate";
+import StrategyArtifactRecomputeNotice from "@/components/performance/StrategyArtifactRecomputeNotice";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
@@ -111,6 +112,7 @@ export default function PerformanceStrategyViewSection({
 
   const hasRenderablePayload = Boolean(payload?.engineWeekMap || payload?.engineSimMap || payload?.sidebarStats);
   const currentReady = hasRenderablePayload || session.status === "missing" || session.status === "error";
+  const staleArtifact = payload?.artifactMeta?.stale === true;
 
   return (
     <StrategyArtifactLoadingGate
@@ -129,7 +131,9 @@ export default function PerformanceStrategyViewSection({
           </div>
         </header>
 
-        {session.status === "missing" || session.status === "error" ? (
+        {staleArtifact ? (
+          <StrategyArtifactRecomputeNotice artifactMeta={payload?.artifactMeta} />
+        ) : session.status === "missing" || session.status === "error" ? (
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
             Strategy data is not ready yet.
           </div>

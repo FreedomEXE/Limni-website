@@ -12,6 +12,8 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 const BURST_TIME_BUDGET_MS = 100_000;
+const AUTO_BURST_MIN_STALE_WEEK_COUNT = 10;
+const AUTO_BURST_STALE_WEEK_RATIO = 0.6;
 
 function parseLimit(value: string | null) {
   const parsed = value ? Number.parseInt(value, 10) : NaN;
@@ -29,13 +31,20 @@ export async function GET(request: Request) {
   const startedAt = Date.now();
   const startedAtUtc = new Date().toISOString();
   const url = new URL(request.url);
-  const mode = url.searchParams.get("mode") === "burst" ? "burst" : "normal";
-  const limit = mode === "burst" ? null : parseLimit(url.searchParams.get("limit"));
+  const requestedMode = url.searchParams.get("mode") === "burst" ? "burst" : "normal";
   const onlyKey = url.searchParams.get("key");
   const selections = listVisibleStrategyBootstrapSelections()
     .filter((selection) => !onlyKey || buildStrategySelectionKey(selection) === onlyKey);
   const readiness = await listStrategyArtifactReadiness(selections);
   const notReady = readiness.filter((artifact) => !artifact.ready);
+  const staleWeekCount = notReady.filter((artifact) => artifact.reason === "stale_week").length;
+  const autoBurst =
+    !onlyKey &&
+    requestedMode !== "burst" &&
+    staleWeekCount >= AUTO_BURST_MIN_STALE_WEEK_COUNT &&
+    staleWeekCount / Math.max(notReady.length, 1) >= AUTO_BURST_STALE_WEEK_RATIO;
+  const mode = requestedMode === "burst" || autoBurst ? "burst" : "normal";
+  const limit = mode === "burst" ? null : parseLimit(url.searchParams.get("limit"));
   const queued = mode === "burst" ? notReady : notReady.slice(0, limit ?? undefined);
 
   const warmed: Array<{
@@ -101,6 +110,8 @@ export async function GET(request: Request) {
     ok: !timedOut && warmed.every((item) => item.ok),
     task: "strategy_artifacts_warm",
     mode,
+    requestedMode,
+    autoBurst,
     timedOut,
     startedAtUtc,
     finishedAtUtc: new Date().toISOString(),
@@ -111,6 +122,7 @@ export async function GET(request: Request) {
     before: {
       ready: readiness.filter((artifact) => artifact.ready).length,
       total: readiness.length,
+      staleWeek: staleWeekCount,
     },
     after: {
       ready: after.filter((artifact) => artifact.ready).length,

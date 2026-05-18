@@ -699,6 +699,11 @@ export async function loadStrategyPageData(
           riskOverlay,
           weekOptions: cachedWeeks,
           weekResultsByWeek: nextWeekResults,
+          shardPersistence: {
+            selectionKey,
+            engineVersion: buildStrategyArtifactEngineVersion({ entryStyle, riskOverlay }),
+            weekFingerprints: fingerprint.weekFingerprints,
+          },
         });
 
         const artifactToPersist = stripStrategyPageDataForArtifact(artifactPayload);
@@ -1293,8 +1298,13 @@ async function buildSimulationMapFromWeekResults(options: {
   selectionLabel: string;
   orderedWeeks: WeeklyHoldResult[];
   multiWeekResult: MultiWeekResult;
+  shardPersistence?: {
+    selectionKey: string;
+    engineVersion: string;
+    weekFingerprints: Record<string, string>;
+  };
 }) {
-  const { biasSource, entryStyle, selectionLabel, orderedWeeks, multiWeekResult } = options;
+  const { biasSource, entryStyle, selectionLabel, orderedWeeks, multiWeekResult, shardPersistence } = options;
   const simMap: Record<string, EngineSimulationGroup> = {};
   const pathSummaryMap: Record<string, BasketPathSummary> = {};
   const cardSlots = resolveCardSlots(biasSource);
@@ -1338,6 +1348,18 @@ async function buildSimulationMapFromWeekResults(options: {
     if (computed) {
       pathSummaryMap[computed.weekKey] = computed.summary;
       simMap[computed.weekKey] = computed.sim;
+      if (shardPersistence) {
+        await persistWeekShard({
+          selectionKey: shardPersistence.selectionKey,
+          weekOpenUtc: computed.weekKey,
+          engineVersion: shardPersistence.engineVersion,
+          weekFingerprint: shardPersistence.weekFingerprints[computed.weekKey] ?? "",
+          weekResult,
+          pathSummary: computed.summary,
+          sim: computed.sim,
+          cachedAtUtc: new Date().toISOString(),
+        });
+      }
       if (weekResult.isRealized) {
         realizedWeekPaths.push(computed.path);
         computed.slotPaths.forEach((slotPath, slotIndex) => {
@@ -1408,8 +1430,13 @@ async function buildStrategyPageDataFromWeekResults(options: {
   riskOverlay: StrengthGateConfig | undefined;
   weekOptions: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
+  shardPersistence?: {
+    selectionKey: string;
+    engineVersion: string;
+    weekFingerprints: Record<string, string>;
+  };
 }): Promise<StrategyPageData> {
-  const { biasSource, entryStyle, riskOverlay, weekOptions, weekResultsByWeek } = options;
+  const { biasSource, entryStyle, riskOverlay, weekOptions, weekResultsByWeek, shardPersistence } = options;
   const selectionLabel = buildSelectionLabel(entryStyle, riskOverlay);
   const orderedWeeks = weekOptions
     .map((weekOpenUtc) => weekResultsByWeek[weekOpenUtc])
@@ -1422,10 +1449,16 @@ async function buildStrategyPageDataFromWeekResults(options: {
     selectionLabel,
     orderedWeeks,
     multiWeekResult,
+    shardPersistence,
   });
 
   return assembleStrategyPageData({
-    ...options,
+    biasSource,
+    currentWeekOpenUtc: options.currentWeekOpenUtc,
+    entryStyle,
+    riskOverlay,
+    weekOptions,
+    weekResultsByWeek,
     simMap,
     pathSummaryMap,
   });

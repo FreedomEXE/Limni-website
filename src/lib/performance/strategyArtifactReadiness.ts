@@ -267,7 +267,7 @@ export async function readReadyStrategyArtifactPayload(
       removedWeeks: [],
       missingWeeks: [],
       stale: true,
-      staleReason: "missing",
+      staleReason: staleReason === "ready" ? "missing" : staleReason,
     };
     if (!includeCurrentWeek) {
       return { ...payload, artifactMeta };
@@ -313,18 +313,6 @@ async function addShardProgressIfNeeded(
       expected.expectedShardVersion,
       expected.weekOptions,
     );
-
-    if (
-      shardProgress.total > 0 &&
-      shardProgress.ready === shardProgress.total
-    ) {
-      return {
-        ...readiness,
-        ready: true,
-        reason: "ready" as const,
-        shardProgress,
-      };
-    }
 
     return {
       ...readiness,
