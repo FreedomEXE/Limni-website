@@ -14,8 +14,6 @@
 
 import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
 type AntikytheraRedirectProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };

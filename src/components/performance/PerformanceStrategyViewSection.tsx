@@ -70,7 +70,7 @@ export default function PerformanceStrategyViewSection({
 }: PerformanceStrategyViewSectionProps) {
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
   const selectedSelectionKey = buildStrategySelectionKey(selectedSelection);
-  const session = useStrategySession(selectedSelection, { preload: true });
+  const session = useStrategySession(selectedSelection);
   const payload = session.payload;
 
   useEffect(() => {

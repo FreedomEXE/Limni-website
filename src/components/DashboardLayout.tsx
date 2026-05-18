@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import AppPreloadGate from "@/components/AppPreloadGate";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
 import StrategySidebar from "@/components/shared/StrategySidebar";
@@ -14,16 +15,6 @@ import {
   resolveDashboardBias,
   type DashboardBias,
 } from "@/lib/dashboard/dashboardSelection";
-import {
-  ensureStrategySession,
-  startStrategySessionPreload,
-} from "@/lib/performance/strategySessionStore";
-
-const DEFAULT_APP_STRATEGY_SELECTION = {
-  strategy: "tandem",
-  f1: "adr_grid",
-  f2: "exposure_cap",
-};
 
 type NavItem = {
   key: string;
@@ -135,11 +126,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener(DATA_DASHBOARD_BIAS_COMMIT_EVENT, handleDashboardBiasCommit);
     };
-  }, []);
-
-  useEffect(() => {
-    void ensureStrategySession(DEFAULT_APP_STRATEGY_SELECTION);
-    void startStrategySessionPreload(DEFAULT_APP_STRATEGY_SELECTION);
   }, []);
 
   const accountBasePath = useMemo(() => {
@@ -428,6 +414,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   };
 
   return (
+    <AppPreloadGate>
     <div className="relative flex min-h-screen bg-[var(--background)]">
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-80 border-r border-[var(--panel-border)] bg-[var(--panel)]/90 backdrop-blur-sm md:flex md:flex-col">
         {sidebarHeader}
@@ -491,5 +478,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
     </div>
+    </AppPreloadGate>
   );
 }

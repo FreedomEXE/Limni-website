@@ -90,7 +90,7 @@ export default function MatrixViewSection({
   const [selectedTab, setSelectedTab] = useState<MatrixTab>(initialTab);
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
   const selectedSelectionKey = buildStrategySelectionKey(selectedSelection);
-  const session = useStrategySession(selectedSelection, { preload: true });
+  const session = useStrategySession(selectedSelection);
   const payload = session.payload;
   const engineWeekResults = payload?.engineWeekResults ?? null;
   const availableWeeks = useMemo(() => {

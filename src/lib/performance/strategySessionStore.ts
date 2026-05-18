@@ -14,6 +14,11 @@ import {
   buildStrategySelectionKey,
   type RuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
+import type {
+  PreloadManifest,
+  PreloadTask,
+  StrategyPreloadTask,
+} from "@/lib/preload/preloadRegistry";
 
 export type SessionLoadStatus = "idle" | "loading" | "ready" | "missing" | "error";
 export type SessionCurrentWeekStatus =
@@ -22,6 +27,12 @@ export type SessionCurrentWeekStatus =
   | "current-ready"
   | "current-empty"
   | "current-error";
+export type PreloadPhase =
+  | "checking-updates"
+  | "loading-active"
+  | "loading-strategies"
+  | "computing-live-data"
+  | "ready";
 
 export type WeeklyReturnRow = {
   symbol: string;
@@ -48,7 +59,9 @@ type StrategySessionState = {
   activeSelectionKey: string | null;
   records: Record<string, StrategySessionRecord>;
   preload: {
+    phase: PreloadPhase;
     status: "idle" | "loading" | "ready" | "partial" | "error";
+    completedOnce: boolean;
     queuedSelectionKeys: string[];
     loadingSelectionKeys: string[];
     readySelectionKeys: string[];
@@ -65,12 +78,15 @@ const weeklyReturnsInflight = new Map<string, Promise<void>>();
 let preloadInflight: Promise<void> | null = null;
 let currentWeekRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let currentWeekRefreshInterval: ReturnType<typeof setInterval> | null = null;
+const preloadedEngineVersions = new Map<string, string>();
 
 let state: StrategySessionState = {
   activeSelectionKey: null,
   records: {},
   preload: {
+    phase: "ready",
     status: "idle",
+    completedOnce: false,
     queuedSelectionKeys: [],
     loadingSelectionKeys: [],
     readySelectionKeys: [],
@@ -394,115 +410,223 @@ function scheduleHourlyCurrentWeekRefresh(selection: RuntimeStrategySelection) {
   }, Math.max(msUntilNextHour, 1000));
 }
 
-export function startStrategySessionPreload(activeSelection: RuntimeStrategySelection) {
-  if (
-    preloadInflight ||
-    state.preload.status === "ready" ||
-    state.preload.status === "partial" ||
-    state.preload.status === "loading"
-  ) {
-    return preloadInflight ?? Promise.resolve();
-  }
+function resetPreloadState(overrides: Partial<StrategySessionState["preload"]> = {}) {
+  state = {
+    ...state,
+    preload: {
+      phase: "checking-updates",
+      status: "loading",
+      completedOnce: false,
+      queuedSelectionKeys: [],
+      loadingSelectionKeys: [],
+      readySelectionKeys: [],
+      failedSelectionKeys: {},
+      ...overrides,
+    },
+  };
+  emit();
+}
 
-  const activeKey = selectionKey(activeSelection);
+function markPreloadTaskLoading(task: PreloadTask) {
   state = {
     ...state,
     preload: {
       ...state.preload,
-      status: "loading",
-      queuedSelectionKeys: [],
-      loadingSelectionKeys: [],
+      queuedSelectionKeys: state.preload.queuedSelectionKeys.filter((key) => key !== task.id),
+      loadingSelectionKeys: Array.from(new Set([...state.preload.loadingSelectionKeys, task.id])),
     },
   };
   emit();
+}
 
-  const request = (async () => {
-    const status = await fetchStrategyArtifactStatus();
-    if (!status) {
-      state = { ...state, preload: { ...state.preload, status: "error" } };
-      emit();
-      return;
-    }
+function markPreloadTaskReady(task: PreloadTask) {
+  state = {
+    ...state,
+    preload: {
+      ...state.preload,
+      loadingSelectionKeys: state.preload.loadingSelectionKeys.filter((key) => key !== task.id),
+      readySelectionKeys: Array.from(new Set([...state.preload.readySelectionKeys, task.id])),
+    },
+  };
+  emit();
+}
 
-    const pending = status.artifacts
-      .filter((artifact) => artifact.key !== activeKey)
-      .map((artifact) => ({
-        key: artifact.key,
-        selection: {
-          strategy: artifact.strategy,
-          f1: artifact.f1,
-          f2: artifact.f2,
-        },
-      }));
+function markPreloadTaskFailed(task: PreloadTask, error: unknown) {
+  state = {
+    ...state,
+    preload: {
+      ...state.preload,
+      loadingSelectionKeys: state.preload.loadingSelectionKeys.filter((key) => key !== task.id),
+      failedSelectionKeys: {
+        ...state.preload.failedSelectionKeys,
+        [task.id]: error instanceof Error ? error.message : String(error),
+      },
+    },
+  };
+  emit();
+}
 
+function isStrategyPreloadTask(task: PreloadTask | undefined): task is StrategyPreloadTask {
+  return Boolean(task && task.domain === "strategy");
+}
+
+export function startStrategySessionPreload(manifest: PreloadManifest) {
+  if (preloadInflight) return preloadInflight;
+
+  if (state.preload.completedOnce) {
+    void checkVersionsAndRepreload(manifest);
+    return Promise.resolve();
+  }
+
+  resetPreloadState();
+
+  const request = runPreload(manifest);
+  preloadInflight = request;
+  return request;
+}
+
+async function checkVersionsAndRepreload(manifest: PreloadManifest) {
+  const status = await fetchStrategyArtifactStatus();
+  if (!status) return;
+
+  const versionChanged = status.artifacts.some((artifact) => {
+    const previous = preloadedEngineVersions.get(artifact.key);
+    return previous !== artifact.expectedEngineVersion;
+  });
+
+  if (!versionChanged) return;
+
+  for (const artifact of status.artifacts) {
+    preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
+  }
+
+  resetPreloadState();
+  state = {
+    ...state,
+    records: {},
+  };
+  emit();
+
+  preloadInflight = runPreload(manifest);
+}
+
+async function runPreload(manifest: PreloadManifest) {
+  try {
     state = {
       ...state,
       preload: {
         ...state.preload,
-        queuedSelectionKeys: pending.map((item) => item.key),
+        phase: "checking-updates",
+        status: "loading",
       },
     };
     emit();
 
-    let index = 0;
-    const workerCount = Math.min(1, Math.max(pending.length, 1));
-    await Promise.all(Array.from({ length: workerCount }, async () => {
-      while (index < pending.length) {
-        const item = pending[index];
-        index += 1;
-        if (!item) return;
-        state = {
-          ...state,
-          preload: {
-            ...state.preload,
-            queuedSelectionKeys: state.preload.queuedSelectionKeys.filter((key) => key !== item.key),
-            loadingSelectionKeys: Array.from(new Set([...state.preload.loadingSelectionKeys, item.key])),
-          },
-        };
-        emit();
+    const status = await fetchStrategyArtifactStatus();
+    if (!status) {
+      state = {
+        ...state,
+        preload: {
+          ...state.preload,
+          phase: "ready",
+          status: "error",
+          completedOnce: true,
+        },
+      };
+      emit();
+      return;
+    }
 
-        try {
-          await ensureStrategySession(item.selection, { currentWeek: false, warm: false });
-          state = {
-            ...state,
-            preload: {
-              ...state.preload,
-              loadingSelectionKeys: state.preload.loadingSelectionKeys.filter((key) => key !== item.key),
-              readySelectionKeys: Array.from(new Set([...state.preload.readySelectionKeys, item.key])),
-            },
-          };
-        } catch (error) {
-          state = {
-            ...state,
-            preload: {
-              ...state.preload,
-              loadingSelectionKeys: state.preload.loadingSelectionKeys.filter((key) => key !== item.key),
-              failedSelectionKeys: {
-                ...state.preload.failedSelectionKeys,
-                [item.key]: error instanceof Error ? error.message : String(error),
-              },
-            },
-          };
-        }
-        emit();
+    for (const artifact of status.artifacts) {
+      preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
+    }
+
+    const activeTask = manifest.tasks.find((task) => task.priority === "active");
+    if (activeTask) {
+      state = {
+        ...state,
+        preload: {
+          ...state.preload,
+          phase: "loading-active",
+        },
+      };
+      emit();
+
+      markPreloadTaskLoading(activeTask);
+      try {
+        await activeTask.run();
+        markPreloadTaskReady(activeTask);
+      } catch (error) {
+        markPreloadTaskFailed(activeTask, error);
       }
-    }));
+    }
+
+    const backgroundTasks = manifest.tasks.filter((task) => task.priority === "background");
+    if (backgroundTasks.length > 0) {
+      state = {
+        ...state,
+        preload: {
+          ...state.preload,
+          phase: "loading-strategies",
+          queuedSelectionKeys: backgroundTasks.map((task) => task.id),
+        },
+      };
+      emit();
+
+      let index = 0;
+      const concurrency = Math.min(3, backgroundTasks.length);
+      await Promise.all(Array.from({ length: concurrency }, async () => {
+        while (index < backgroundTasks.length) {
+          const task = backgroundTasks[index];
+          index += 1;
+          if (!task) return;
+
+          markPreloadTaskLoading(task);
+          try {
+            await task.run();
+            markPreloadTaskReady(task);
+          } catch (error) {
+            markPreloadTaskFailed(task, error);
+          }
+        }
+      }));
+    }
+
+    const activeStrategyTask = manifest.tasks.find(
+      (task): task is StrategyPreloadTask =>
+        task.id === manifest.activeTaskId && isStrategyPreloadTask(task),
+    );
+    if (activeStrategyTask) {
+      state = {
+        ...state,
+        preload: {
+          ...state.preload,
+          phase: "computing-live-data",
+        },
+      };
+      emit();
+      await loadCurrentWeekSession(activeStrategyTask.selection, { force: false });
+    }
 
     const failedCount = Object.keys(state.preload.failedSelectionKeys).length;
     state = {
       ...state,
       preload: {
         ...state.preload,
+        phase: "ready",
         status: failedCount > 0 ? "partial" : "ready",
+        completedOnce: true,
       },
     };
     emit();
-  })().finally(() => {
+  } finally {
     preloadInflight = null;
-  });
+  }
+}
 
-  preloadInflight = request;
-  return request;
+export function usePreloadStatus() {
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  return snapshot.preload;
 }
 
 export function ensureWeeklyReturns(weekOpenUtc: string | null) {
@@ -561,9 +685,7 @@ export function ensureWeeklyReturns(weekOpenUtc: string | null) {
   return request;
 }
 
-export function useStrategySession(selection: RuntimeStrategySelection, options: {
-  preload?: boolean;
-} = {}) {
+export function useStrategySession(selection: RuntimeStrategySelection) {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const key = selectionKey(selection);
   const { strategy, f1, f2 } = selection;
@@ -573,11 +695,8 @@ export function useStrategySession(selection: RuntimeStrategySelection, options:
     setActiveStrategySessionSelection(activeSelection);
     void ensureStrategySession(activeSelection);
     scheduleHourlyCurrentWeekRefresh(activeSelection);
-    if (options.preload !== false) {
-      void startStrategySessionPreload(activeSelection);
-    }
     return () => clearHourlyCurrentWeekRefresh();
-  }, [f1, f2, options.preload, strategy]);
+  }, [f1, f2, strategy]);
 
   return snapshot.records[key] ?? emptyRecord(selection);
 }
