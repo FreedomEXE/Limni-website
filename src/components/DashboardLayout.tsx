@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import AppPreloadGate from "@/components/AppPreloadGate";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
 import StrategySidebar from "@/components/shared/StrategySidebar";
@@ -414,7 +413,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AppPreloadGate>
     <div className="relative flex min-h-screen bg-[var(--background)]">
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-80 border-r border-[var(--panel-border)] bg-[var(--panel)]/90 backdrop-blur-sm md:flex md:flex-col">
         {sidebarHeader}
@@ -478,6 +476,5 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
     </div>
-    </AppPreloadGate>
   );
 }

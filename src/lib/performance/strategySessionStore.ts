@@ -240,16 +240,17 @@ export function setActiveStrategySessionSelection(selection: RuntimeStrategySele
 
 export function ensureStrategySession(
   selection: RuntimeStrategySelection,
-  options: { currentWeek?: boolean; warm?: boolean } = {},
+  options: { currentWeek?: boolean; force?: boolean; warm?: boolean } = {},
 ) {
   const loadCurrentWeek = options.currentWeek !== false;
   const key = selectionKey(selection);
   const current = state.records[key];
-  if (current?.status === "ready" && hasFullPayload(current.payload)) {
+  if (!options.force && current?.status === "ready" && hasFullPayload(current.payload)) {
     if (loadCurrentWeek) void ensureCurrentWeekSession(selection);
     return Promise.resolve();
   }
-  const inflight = strategyInflight.get(key);
+  const inflightKey = options.force ? `${key}:force` : key;
+  const inflight = strategyInflight.get(inflightKey);
   if (inflight) return inflight;
 
   updateRecord(selection, (record) => ({
@@ -261,8 +262,10 @@ export function ensureStrategySession(
   const request = (async () => {
     try {
       let payload = getStrategyClientPayload(selection, "full") ?? null;
-      if (!payload || !hasFullPayload(payload)) {
-        payload = await fetchStrategyClientPayload(selection, "full");
+      if (options.force || !payload || !hasFullPayload(payload)) {
+        payload = await fetchStrategyClientPayload(selection, "full", {
+          force: options.force === true,
+        });
       }
 
       if (!payload || !hasFullPayload(payload)) {
@@ -300,10 +303,10 @@ export function ensureStrategySession(
       }));
     }
   })().finally(() => {
-    strategyInflight.delete(key);
+    strategyInflight.delete(inflightKey);
   });
 
-  strategyInflight.set(key, request);
+  strategyInflight.set(inflightKey, request);
   return request;
 }
 
@@ -486,7 +489,7 @@ export function startStrategySessionPreload(manifest: PreloadManifest) {
 }
 
 async function checkVersionsAndRepreload(manifest: PreloadManifest) {
-  const status = await fetchStrategyArtifactStatus();
+  const status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: 5000 });
   if (!status) return;
 
   const versionChanged = status.artifacts.some((artifact) => {
@@ -522,23 +525,11 @@ async function runPreload(manifest: PreloadManifest) {
     };
     emit();
 
-    const status = await fetchStrategyArtifactStatus();
-    if (!status) {
-      state = {
-        ...state,
-        preload: {
-          ...state.preload,
-          phase: "ready",
-          status: "error",
-          completedOnce: true,
-        },
-      };
-      emit();
-      return;
-    }
-
-    for (const artifact of status.artifacts) {
-      preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
+    const status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: 5000 });
+    if (status) {
+      for (const artifact of status.artifacts) {
+        preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
+      }
     }
 
     const activeTask = manifest.tasks.find((task) => task.priority === "active");

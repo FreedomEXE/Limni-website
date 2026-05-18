@@ -22,7 +22,7 @@ const PHASE_LABELS: Record<PreloadPhase, string> = {
 };
 
 function isBypassedRoute(pathname: string | null) {
-  return pathname?.startsWith("/status") ?? false;
+  return pathname?.startsWith("/status") || pathname?.startsWith("/login") || false;
 }
 
 function progressLabel(preload: ReturnType<typeof usePreloadStatus>) {

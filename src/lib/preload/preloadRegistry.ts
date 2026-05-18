@@ -78,7 +78,7 @@ export function buildPreloadManifest(
       domain: "strategy",
       selection: runtimeSelection,
       priority: key === activeKey ? "active" : "background",
-      run: () => ensureStrategySession(runtimeSelection, { currentWeek: false }),
+      run: () => ensureStrategySession(runtimeSelection, { currentWeek: false, force: true }),
     };
   });
 
@@ -88,7 +88,7 @@ export function buildPreloadManifest(
       domain: "strategy",
       selection: active,
       priority: "active",
-      run: () => ensureStrategySession(active, { currentWeek: false }),
+      run: () => ensureStrategySession(active, { currentWeek: false, force: true }),
     });
   }
 

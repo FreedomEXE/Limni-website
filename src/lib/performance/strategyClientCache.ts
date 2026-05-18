@@ -289,16 +289,17 @@ async function writePersistentPayload(url: string, data: StrategyClientPayload) 
 export async function fetchStrategyClientPayload(
   selection: RuntimeStrategySelection,
   scope: StrategyClientPayloadScope = "performance",
+  options: { force?: boolean } = {},
 ): Promise<StrategyClientPayload | null> {
   const cacheKey = buildSelectionKey(selection);
   const cached = payloadCache.get(cacheKey);
-  if (cached !== undefined && cached !== null && hasScopePayload(cached, scope)) {
+  if (!options.force && cached !== undefined && cached !== null && hasScopePayload(cached, scope)) {
     return cached;
   }
-  if (cached === null) {
+  if (!options.force && cached === null) {
     return null;
   }
-  const inflightKey = `${cacheKey}:${scope}`;
+  const inflightKey = `${cacheKey}:${scope}${options.force ? ":force" : ""}`;
   const inflight = inflightCache.get(inflightKey);
   if (inflight) {
     return inflight;
@@ -309,8 +310,10 @@ export async function fetchStrategyClientPayload(
     `&f1=${encodeURIComponent(selection.f1)}` +
     `&f2=${encodeURIComponent(selection.f2)}` +
     `&scope=${scope}`;
-  const persistentPayload = await readPersistentPayload(url, selection, scope);
-  if (persistentPayload) {
+  const persistentPayload = options.force
+    ? null
+    : await readPersistentPayload(url, selection, scope);
+  if (!options.force && persistentPayload) {
     return persistentPayload;
   }
 
@@ -319,7 +322,10 @@ export async function fetchStrategyClientPayload(
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        const response = await fetch(url, { method: "GET" });
+        const response = await fetch(url, {
+          method: "GET",
+          cache: options.force ? "no-store" : "default",
+        });
         if (!response.ok) {
           throw new Error(`Strategy payload request failed (${response.status})`);
         }
@@ -563,9 +569,19 @@ export async function prefetchVisibleStrategyPayloads(options: {
 
 export async function fetchStrategyArtifactStatus(
   key?: string,
+  options: { timeoutMs?: number } = {},
 ): Promise<StrategyArtifactStatusPayload | null> {
   const query = key ? `?key=${encodeURIComponent(key)}` : "";
-  return fetch(`/api/performance/strategy-artifacts/status${query}`, { method: "GET" })
+  const controller = typeof AbortController !== "undefined" && options.timeoutMs
+    ? new AbortController()
+    : null;
+  const timeout = controller && options.timeoutMs
+    ? window.setTimeout(() => controller.abort(), options.timeoutMs)
+    : null;
+  return fetch(`/api/performance/strategy-artifacts/status${query}`, {
+    method: "GET",
+    signal: controller?.signal,
+  })
     .then(async (response) => {
       if (!response.ok) {
         throw new Error(`Strategy artifact status request failed (${response.status})`);
@@ -577,8 +593,13 @@ export async function fetchStrategyArtifactStatus(
       return status;
     })
     .catch((error) => {
-      console.error("[strategyClientCache] Failed to fetch strategy artifact status:", error);
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        console.error("[strategyClientCache] Failed to fetch strategy artifact status:", error);
+      }
       return null;
+    })
+    .finally(() => {
+      if (timeout) window.clearTimeout(timeout);
     });
 }
 
