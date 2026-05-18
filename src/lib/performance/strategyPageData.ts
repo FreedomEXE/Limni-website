@@ -69,10 +69,13 @@ import { CANONICAL_PATH_RESOLUTION } from "@/lib/performance/pathResolution";
 import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown";
 
 const STRATEGY_CURRENT_WEEK_CACHE_TTL_MS = Number(
-  process.env.STRATEGY_CURRENT_WEEK_CACHE_TTL_MS ?? "300000",
+  process.env.STRATEGY_CURRENT_WEEK_CACHE_TTL_MS ?? "3600000",
 );
 const STRATEGY_SHARD_BUILD_TIME_BUDGET_MS = Number(
   process.env.STRATEGY_SHARD_BUILD_TIME_BUDGET_MS ?? "100000",
+);
+const PAGE_LOAD_SHARD_BUDGET_MS = Number(
+  process.env.PAGE_LOAD_SHARD_BUDGET_MS ?? "15000",
 );
 const ASSET_PATH_ORDER = ["fx", "indices", "commodities", "crypto"] as const;
 
@@ -94,6 +97,16 @@ function getShardBuildTimeBudgetMs() {
     return Math.max(10000, Math.floor(STRATEGY_SHARD_BUILD_TIME_BUDGET_MS));
   }
   return 100000;
+}
+
+function getPageLoadShardBudgetMs() {
+  if (
+    Number.isFinite(PAGE_LOAD_SHARD_BUDGET_MS) &&
+    PAGE_LOAD_SHARD_BUDGET_MS > 0
+  ) {
+    return Math.max(1000, Math.floor(PAGE_LOAD_SHARD_BUDGET_MS));
+  }
+  return 15000;
 }
 
 function buildSelectionLabel(
@@ -131,6 +144,7 @@ export type StrategyPageData = {
     missingWeeks: string[];
     stale?: boolean;
     staleReason?: string | null;
+    engineVersion?: string;
   };
 };
 
@@ -163,6 +177,16 @@ function latestShardCachedAtUtc(shards: WeekShardEntry[]) {
     .map((shard) => shard.cachedAtUtc)
     .filter(Boolean)
     .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
+}
+
+function currentHourBucket() {
+  const now = new Date();
+  return [
+    now.getUTCFullYear(),
+    String(now.getUTCMonth() + 1).padStart(2, "0"),
+    String(now.getUTCDate()).padStart(2, "0"),
+    String(now.getUTCHours()).padStart(2, "0"),
+  ].join("-");
 }
 
 function weekResultFallbackPathSummary(weekResult: WeeklyHoldResult): BasketPathSummary {
@@ -272,6 +296,7 @@ async function computeCurrentWeekResultCached(options: {
     currentWeekOpenUtc,
     entryStyle?.id ?? "weekly_hold",
     riskOverlay?.id ?? "none",
+    currentHourBucket(),
   ].join(":");
 
   return getOrSetRuntimeCache(
@@ -301,6 +326,7 @@ async function computeCurrentWeekPathArtifactCached(options: {
     selectionKey,
     entryStyle?.id ?? "weekly_hold",
     buildWeekResultRuntimeSignature(weekResult),
+    currentHourBucket(),
   ].join(":");
 
   return getOrSetRuntimeCache(
@@ -693,7 +719,8 @@ export async function loadStrategyPageData(
 
   try {
     const prepared = await ensureHistoricalWeekShardsForSelection(selection, {
-      onlyPreviousWeek: true,
+      onlyPreviousWeek: false,
+      timeBudgetMs: getPageLoadShardBudgetMs(),
     });
     if (!prepared) return null;
 
@@ -722,6 +749,7 @@ export async function loadStrategyPageData(
       missingWeeks,
       stale: false,
       staleReason: null,
+      engineVersion: context.engineVersion,
     };
 
     if (!includeCurrentWeek) {
@@ -808,6 +836,7 @@ export async function buildStrategyArtifact(
           missingWeeks: remainingMissing,
           stale: false,
           staleReason: null,
+          engineVersion: prepared.context.engineVersion,
         }
       : null,
     weeks: prepared?.shards.length ?? 0,

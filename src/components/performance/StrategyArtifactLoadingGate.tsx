@@ -21,18 +21,24 @@ import LimniLoading from "@/components/LimniLoading";
 type StrategyArtifactLoadingGateProps = {
   currentReady: boolean;
   pageLabel: string;
+  phase?: "loading" | "current-week" | null;
   children: ReactNode;
 };
 
 export default function StrategyArtifactLoadingGate({
   currentReady,
   pageLabel,
+  phase,
   children,
 }: StrategyArtifactLoadingGateProps) {
   if (!currentReady) {
+    const label = phase === "current-week"
+      ? "Computing current week..."
+      : `Loading ${pageLabel}...`;
+
     return (
       <div className="fixed inset-0 z-[100]">
-        <LimniLoading label={`Loading ${pageLabel}...`} compact />
+        <LimniLoading label={label} compact />
       </div>
     );
   }

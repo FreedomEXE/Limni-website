@@ -7,7 +7,6 @@ import {
   fetchStrategyArtifactStatus,
   fetchStrategyClientPayload,
   getStrategyClientPayload,
-  requestStrategyArtifactWarm,
   setStrategyClientPayload,
 } from "@/lib/performance/strategyClientCache";
 import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
@@ -64,6 +63,8 @@ const strategyInflight = new Map<string, Promise<void>>();
 const currentWeekInflight = new Map<string, Promise<void>>();
 const weeklyReturnsInflight = new Map<string, Promise<void>>();
 let preloadInflight: Promise<void> | null = null;
+let currentWeekRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+let currentWeekRefreshInterval: ReturnType<typeof setInterval> | null = null;
 
 let state: StrategySessionState = {
   activeSelectionKey: null,
@@ -226,7 +227,6 @@ export function ensureStrategySession(
   options: { currentWeek?: boolean; warm?: boolean } = {},
 ) {
   const loadCurrentWeek = options.currentWeek !== false;
-  const warmMissingArtifact = options.warm !== false;
   const key = selectionKey(selection);
   const current = state.records[key];
   if (current?.status === "ready" && hasFullPayload(current.payload)) {
@@ -246,10 +246,6 @@ export function ensureStrategySession(
     try {
       let payload = getStrategyClientPayload(selection, "full") ?? null;
       if (!payload || !hasFullPayload(payload)) {
-        payload = await fetchStrategyClientPayload(selection, "full");
-      }
-      if (warmMissingArtifact && (!payload || !hasFullPayload(payload))) {
-        await requestStrategyArtifactWarm(selection);
         payload = await fetchStrategyClientPayload(selection, "full");
       }
 
@@ -276,25 +272,6 @@ export function ensureStrategySession(
         };
       });
 
-      const merged = state.records[key]?.payload ?? payload;
-      if (warmMissingArtifact && merged?.artifactMeta?.stale === true) {
-        await requestStrategyArtifactWarm(selection);
-        const refreshed = await fetchStrategyClientPayload(selection, "full");
-        if (refreshed && hasFullPayload(refreshed)) {
-          updateRecord(selection, (record) => {
-            const mergedPayload = mergeRecordPayload(record.payload, refreshed);
-            return {
-              ...record,
-              payload: mergedPayload,
-              status: "ready",
-              currentWeekStatus: deriveCurrentWeekStatus(mergedPayload),
-              error: null,
-              loadedAtUtc: new Date().toISOString(),
-            };
-          });
-        }
-      }
-
       if (loadCurrentWeek) {
         await ensureCurrentWeekSession(selection);
       }
@@ -315,18 +292,32 @@ export function ensureStrategySession(
 }
 
 export function ensureCurrentWeekSession(selection: RuntimeStrategySelection) {
+  return loadCurrentWeekSession(selection, { force: false });
+}
+
+export function refreshCurrentWeekSession(selection: RuntimeStrategySelection) {
+  return loadCurrentWeekSession(selection, { force: true });
+}
+
+function loadCurrentWeekSession(
+  selection: RuntimeStrategySelection,
+  options: { force: boolean },
+) {
   const key = selectionKey(selection);
   const current = state.records[key];
   if (
-    current?.currentWeekStatus === "current-ready" ||
-    current?.currentWeekStatus === "current-empty" ||
-    current?.currentWeekStatus === "current-loading"
+    !options.force &&
+    (
+      current?.currentWeekStatus === "current-ready" ||
+      current?.currentWeekStatus === "current-empty" ||
+      current?.currentWeekStatus === "current-loading"
+    )
   ) {
     return currentWeekInflight.get(key) ?? Promise.resolve();
   }
 
   const inflight = currentWeekInflight.get(key);
-  if (inflight) return inflight;
+  if (inflight && !options.force) return inflight;
 
   updateRecord(selection, (record) => ({
     ...record,
@@ -336,7 +327,9 @@ export function ensureCurrentWeekSession(selection: RuntimeStrategySelection) {
 
   const request = (async () => {
     try {
-      const payload = await fetchCurrentWeekStrategyClientPayload(selection, "full");
+      const payload = await fetchCurrentWeekStrategyClientPayload(selection, "full", {
+        force: options.force,
+      });
       if (!payload) {
         updateRecord(selection, (record) => ({
           ...record,
@@ -373,6 +366,34 @@ export function ensureCurrentWeekSession(selection: RuntimeStrategySelection) {
   return request;
 }
 
+function clearHourlyCurrentWeekRefresh() {
+  if (currentWeekRefreshTimer) {
+    clearTimeout(currentWeekRefreshTimer);
+    currentWeekRefreshTimer = null;
+  }
+  if (currentWeekRefreshInterval) {
+    clearInterval(currentWeekRefreshInterval);
+    currentWeekRefreshInterval = null;
+  }
+}
+
+function scheduleHourlyCurrentWeekRefresh(selection: RuntimeStrategySelection) {
+  clearHourlyCurrentWeekRefresh();
+
+  const now = new Date();
+  const msUntilNextHour =
+    (60 - now.getMinutes()) * 60 * 1000 -
+    now.getSeconds() * 1000 -
+    now.getMilliseconds();
+
+  currentWeekRefreshTimer = setTimeout(() => {
+    void refreshCurrentWeekSession(selection);
+    currentWeekRefreshInterval = setInterval(() => {
+      void refreshCurrentWeekSession(selection);
+    }, 3_600_000);
+  }, Math.max(msUntilNextHour, 1000));
+}
+
 export function startStrategySessionPreload(activeSelection: RuntimeStrategySelection) {
   if (
     preloadInflight ||
@@ -404,7 +425,7 @@ export function startStrategySessionPreload(activeSelection: RuntimeStrategySele
     }
 
     const pending = status.artifacts
-      .filter((artifact) => artifact.key !== activeKey && artifact.ready)
+      .filter((artifact) => artifact.key !== activeKey)
       .map((artifact) => ({
         key: artifact.key,
         selection: {
@@ -551,9 +572,11 @@ export function useStrategySession(selection: RuntimeStrategySelection, options:
     const activeSelection = { strategy, f1, f2 };
     setActiveStrategySessionSelection(activeSelection);
     void ensureStrategySession(activeSelection);
+    scheduleHourlyCurrentWeekRefresh(activeSelection);
     if (options.preload !== false) {
       void startStrategySessionPreload(activeSelection);
     }
+    return () => clearHourlyCurrentWeekRefresh();
   }, [f1, f2, options.preload, strategy]);
 
   return snapshot.records[key] ?? emptyRecord(selection);

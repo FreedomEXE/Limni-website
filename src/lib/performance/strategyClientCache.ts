@@ -9,6 +9,7 @@ const inflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
 const currentWeekInflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
 const warmInflightCache = new Map<string, Promise<boolean>>();
 const warmRequestedAt = new Map<string, number>();
+const cachedSelectionEngineVersions = new Map<string, string>();
 let bulkWarmInflight: Promise<StrategyBulkWarmPayload | null> | null = null;
 let bulkWarmRequestedAt = 0;
 const WARM_REQUEST_COOLDOWN_MS = 120000;
@@ -32,6 +33,8 @@ export type StrategyArtifactStatusRow = {
   f1: string;
   f2: string;
   ready: boolean;
+  expectedEngineVersion: string;
+  actualEngineVersion?: string | null;
   reason: "ready" | "missing" | "stale" | "stale_week" | "stale_options" | "stale_fingerprint";
   shardProgress?: {
     ready: number;
@@ -179,12 +182,20 @@ function persistentPayloadMetaKey(url: string) {
   return `${PERSISTENT_PAYLOAD_META_PREFIX}${url}`;
 }
 
-function readPersistentPayloadStoredAt(url: string) {
+type PersistentPayloadMeta = {
+  storedAt: number | null;
+  engineVersion: string | null;
+};
+
+function readPersistentPayloadMeta(url: string): PersistentPayloadMeta | null {
   try {
     const raw = window.localStorage.getItem(persistentPayloadMetaKey(url));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { storedAt?: unknown };
-    return typeof parsed.storedAt === "number" ? parsed.storedAt : null;
+    const parsed = JSON.parse(raw) as { storedAt?: unknown; engineVersion?: unknown };
+    return {
+      storedAt: typeof parsed.storedAt === "number" ? parsed.storedAt : null,
+      engineVersion: typeof parsed.engineVersion === "string" ? parsed.engineVersion : null,
+    };
   } catch {
     return null;
   }
@@ -209,8 +220,20 @@ async function readPersistentPayload(
   if (!canUsePersistentPayloadCache()) return null;
 
   const absoluteUrl = toPersistentPayloadUrl(url);
-  const storedAt = readPersistentPayloadStoredAt(absoluteUrl);
+  const storedMeta = readPersistentPayloadMeta(absoluteUrl);
+  const storedAt = storedMeta?.storedAt ?? null;
   if (!storedAt || Date.now() - storedAt > PERSISTENT_PAYLOAD_TTL_MS) {
+    await deletePersistentPayload(absoluteUrl);
+    return null;
+  }
+
+  const selectionKey = buildSelectionKey(selection);
+  const expectedEngineVersion = await ensureSelectionEngineVersion(selection);
+  if (
+    storedMeta?.engineVersion &&
+    expectedEngineVersion &&
+    storedMeta.engineVersion !== expectedEngineVersion
+  ) {
     await deletePersistentPayload(absoluteUrl);
     return null;
   }
@@ -225,8 +248,8 @@ async function readPersistentPayload(
       return null;
     }
 
-    payloadCache.set(buildSelectionKey(selection), mergeStrategyClientPayload(payloadCache.get(buildSelectionKey(selection)) ?? null, data));
-    return payloadCache.get(buildSelectionKey(selection)) ?? data;
+    payloadCache.set(selectionKey, mergeStrategyClientPayload(payloadCache.get(selectionKey) ?? null, data));
+    return payloadCache.get(selectionKey) ?? data;
   } catch {
     await deletePersistentPayload(absoluteUrl);
     return null;
@@ -253,7 +276,10 @@ async function writePersistentPayload(url: string, data: StrategyClientPayload) 
     );
     window.localStorage.setItem(
       persistentPayloadMetaKey(absoluteUrl),
-      JSON.stringify({ storedAt: Date.now() }),
+      JSON.stringify({
+        storedAt: Date.now(),
+        engineVersion: data.artifactMeta?.engineVersion ?? null,
+      }),
     );
   } catch {
     // Ignore quota/private-mode failures; the in-memory cache still works.
@@ -337,11 +363,12 @@ export async function fetchStrategyClientPayload(
 export async function fetchCurrentWeekStrategyClientPayload(
   selection: RuntimeStrategySelection,
   scope: StrategyClientPayloadScope = "performance",
+  options: { force?: boolean } = {},
 ): Promise<StrategyClientPayload | null> {
   const cacheKey = buildSelectionKey(selection);
   const inflightKey = `${cacheKey}:${scope}`;
   const inflight = currentWeekInflightCache.get(inflightKey);
-  if (inflight) {
+  if (inflight && !options.force) {
     return inflight;
   }
 
@@ -404,6 +431,7 @@ export async function requestStrategyArtifactWarmPayload(
         f1: selection.f1,
         f2: selection.f2,
         ready: ok,
+        expectedEngineVersion: cachedSelectionEngineVersions.get(cacheKey) ?? "",
         reason: ok ? "ready" : "missing",
       },
       after: {
@@ -413,6 +441,7 @@ export async function requestStrategyArtifactWarmPayload(
         f1: selection.f1,
         f2: selection.f2,
         ready: ok,
+        expectedEngineVersion: cachedSelectionEngineVersions.get(cacheKey) ?? "",
         reason: ok ? "ready" : "missing",
       },
       durationMs: 0,
@@ -541,10 +570,22 @@ export async function fetchStrategyArtifactStatus(
       if (!response.ok) {
         throw new Error(`Strategy artifact status request failed (${response.status})`);
       }
-      return (await response.json()) as StrategyArtifactStatusPayload;
+      const status = (await response.json()) as StrategyArtifactStatusPayload;
+      for (const artifact of status.artifacts ?? []) {
+        cachedSelectionEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
+      }
+      return status;
     })
     .catch((error) => {
       console.error("[strategyClientCache] Failed to fetch strategy artifact status:", error);
       return null;
     });
+}
+
+async function ensureSelectionEngineVersion(selection: RuntimeStrategySelection) {
+  const key = buildSelectionKey(selection);
+  const cached = cachedSelectionEngineVersions.get(key);
+  if (cached) return cached;
+  const status = await fetchStrategyArtifactStatus(key);
+  return status?.artifacts?.[0]?.expectedEngineVersion ?? null;
 }

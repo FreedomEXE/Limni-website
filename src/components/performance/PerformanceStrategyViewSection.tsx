@@ -111,11 +111,17 @@ export default function PerformanceStrategyViewSection({
 
   const hasRenderablePayload = Boolean(payload?.engineWeekMap || payload?.engineSimMap || payload?.sidebarStats);
   const currentReady = hasRenderablePayload || session.status === "error";
+  const loadingPhase = session.currentWeekStatus === "current-loading"
+    ? "current-week"
+    : session.status === "loading"
+      ? "loading"
+      : null;
 
   return (
     <StrategyArtifactLoadingGate
       currentReady={currentReady}
       pageLabel="Performance Page"
+      phase={loadingPhase}
     >
       <div className="space-y-4">
         <header className="mb-8">

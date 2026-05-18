@@ -95,7 +95,8 @@ export default function MatrixViewSection({
   const engineWeekResults = payload?.engineWeekResults ?? null;
   const availableWeeks = useMemo(() => {
     const payloadWeeks = (payload?.weekOptions ?? []).filter((week) => week !== "all");
-    const merged = Array.from(new Set([...payloadWeeks, ...weeks, currentWeekOpenUtc]));
+    if (payloadWeeks.length > 0) return payloadWeeks;
+    const merged = Array.from(new Set([...weeks.filter((week) => week !== "all"), currentWeekOpenUtc]));
     return merged.length > 0 ? merged : weeks.filter((week) => week !== "all");
   }, [currentWeekOpenUtc, payload?.weekOptions, weeks]);
   const { rows: weeklyReturns } = useWeeklyReturns(engineWeekResults ? selectedWeek : null);
@@ -186,11 +187,17 @@ export default function MatrixViewSection({
   }, [engineWeekResults, selectedWeek]);
 
   const currentReady = Boolean(engineWeekResults) || session.status === "error";
+  const loadingPhase = session.currentWeekStatus === "current-loading"
+    ? "current-week"
+    : session.status === "loading"
+      ? "loading"
+      : null;
 
   return (
     <StrategyArtifactLoadingGate
       currentReady={currentReady}
       pageLabel="Matrix Page"
+      phase={loadingPhase}
     >
       <div className="space-y-4">
         <MatrixControls

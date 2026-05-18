@@ -8,6 +8,9 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
+const CRON_ROUTE_BUDGET_MS = 100_000;
+const CRON_SELECTION_BUDGET_MS = 20_000;
+
 export async function GET(request: Request) {
   if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,14 +33,26 @@ export async function GET(request: Request) {
     finalizedWeeks: string[];
     error?: string;
   }> = [];
+  let timedOut = false;
 
   for (const selection of selections) {
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs >= CRON_ROUTE_BUDGET_MS) {
+      timedOut = true;
+      break;
+    }
+
     const selectionKey = buildStrategySelectionKey(selection);
     const artifact = readiness.find((item) => item.key === selectionKey);
     const selectionStart = Date.now();
+    const perSelectionBudgetMs = Math.min(
+      CRON_SELECTION_BUDGET_MS,
+      CRON_ROUTE_BUDGET_MS - elapsedMs,
+    );
     try {
       const result = await ensureHistoricalWeekShardsForSelection(selection, {
-        onlyPreviousWeek: true,
+        onlyPreviousWeek: false,
+        timeBudgetMs: perSelectionBudgetMs,
       });
       if ((result?.computedWeeks.length ?? 0) > 0) {
         warmed.push({
@@ -68,7 +83,7 @@ export async function GET(request: Request) {
     mode: "week-finalization",
     requestedMode,
     autoBurst: false,
-    timedOut: false,
+    timedOut,
     startedAtUtc,
     finishedAtUtc: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
