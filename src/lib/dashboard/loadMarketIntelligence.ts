@@ -57,6 +57,8 @@ import { latestIso } from "@/lib/time";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import type { MarketIntelligencePayload } from "@/lib/dashboard/marketIntelligencePayload";
 
+const MARKET_INTELLIGENCE_LOAD_CONCURRENCY = 3;
+
 type ResolvedBias = {
   long: number;
   short: number;
@@ -65,6 +67,29 @@ type ResolvedBias = {
 };
 
 type DashboardPairRow = DashboardCotPayload["pairRowsWithPerf"][number];
+type WeeklyReturnRows = Awaited<ReturnType<typeof getWeeklyPairReturns>>;
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  let nextIndex = 0;
+  const workerCount = Math.max(1, Math.min(concurrency, items.length));
+
+  await Promise.all(Array.from({ length: workerCount }, async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      const item = items[currentIndex];
+      if (item === undefined) return;
+      results[currentIndex] = await mapper(item, currentIndex);
+    }
+  }));
+
+  return results;
+}
 
 function buildResponse(
   snapshot: CotSnapshot | null,
@@ -759,14 +784,16 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
     : PAIRS_BY_ASSET_CLASS[assetClass]?.length ?? 0;
 
   const reportToWeekMap = new Map(allEntries.map((entry) => [entry.cotReportDate, entry.weekOpenUtc]));
-  await Promise.all(
-    orderedDates.map(async (date) => {
+  await mapWithConcurrency(
+    orderedDates,
+    MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
+    async (date) => {
       if (reportToWeekMap.has(date)) return;
       const foundWeek = await findDataSectionWeekByReportDate(date);
       if (foundWeek?.weekOpenUtc) {
         reportToWeekMap.set(date, foundWeek.weekOpenUtc);
       }
-    }),
+    },
   );
 
   const selectedWeeks = orderedDates
@@ -776,8 +803,10 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
     }))
     .filter((entry) => Boolean(entry.reportDate));
 
-  const provenanceEntries = await Promise.all(
-    selectedWeeks.map(async ({ reportDate: currentReportDate, weekOpenUtc }) => {
+  const provenanceEntries = await mapWithConcurrency(
+    selectedWeeks,
+    MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
+    async ({ reportDate: currentReportDate, weekOpenUtc }) => {
       if (!weekOpenUtc) {
         return [currentReportDate, null] as const;
       }
@@ -787,29 +816,39 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
         console.error("Dashboard provenance load failed:", error);
         return [currentReportDate, null] as const;
       }
-    }),
+    },
   );
   const provenanceByReport = Object.fromEntries(
     provenanceEntries.filter((entry): entry is readonly [string, WeekSnapshotProvenance] => Boolean(entry[1])),
   ) as Record<string, WeekSnapshotProvenance>;
 
-  const weeklyReturnsEntries = await Promise.all(
-    selectedWeeks.map(async ({ reportDate, weekOpenUtc }) => [
-      reportDate,
-      weekOpenUtc
-        ? await getWeeklyPairReturns(weekOpenUtc, isAll ? undefined : assetClass)
-        : [],
-    ] as const),
+  const weeklyReturnsEntries = await mapWithConcurrency(
+    selectedWeeks,
+    MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
+    async ({ reportDate, weekOpenUtc }) => {
+      if (!weekOpenUtc) return [reportDate, [] as WeeklyReturnRows] as const;
+      try {
+        return [
+          reportDate,
+          await getWeeklyPairReturns(weekOpenUtc, isAll ? undefined : assetClass),
+        ] as const;
+      } catch (error) {
+        console.error("Dashboard weekly returns load failed:", error);
+        return [reportDate, [] as WeeklyReturnRows] as const;
+      }
+    },
   );
   const weeklyReturnsByReport = new Map(weeklyReturnsEntries);
 
   const snapshotMapsByAsset = new Map<AssetClass, Map<string, CotSnapshot>>();
   const assetsToLoad = isAll ? assetClasses.map((asset) => asset.id) : [assetClass];
-  const snapshotHistories = await Promise.all(
-    assetsToLoad.map(async (assetId) => [
+  const snapshotHistories = await mapWithConcurrency(
+    assetsToLoad,
+    MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
+    async (assetId) => [
       assetId,
       await readSnapshotHistory(assetId, orderedDates.length + 1),
-    ] as const),
+    ] as const,
   );
   snapshotHistories.forEach(([assetId, snapshots]) => {
     snapshotMapsByAsset.set(
@@ -872,8 +911,10 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
     );
   } catch {}
 
-  const sentimentPayloadEntries = await Promise.all(
-    selectedWeeks.map(async ({ reportDate: currentReportDate, weekOpenUtc }) => [
+  const sentimentPayloadEntries = await mapWithConcurrency(
+    selectedWeeks,
+    MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
+    async ({ reportDate: currentReportDate, weekOpenUtc }) => [
       currentReportDate,
       await buildSentimentPayloadForWeek(
         weekOpenUtc,
@@ -883,24 +924,44 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
           returnPct: row.returnPct,
         })),
       ),
-    ] as const),
+    ] as const,
   );
   const sentimentDataByReport = Object.fromEntries(sentimentPayloadEntries) as Record<
     string,
     DashboardSentimentPayload
   >;
 
-  const strengthPayloadEntries = await Promise.all(
-    selectedWeeks.map(async ({ reportDate: currentReportDate, weekOpenUtc }, index) => [
-      currentReportDate,
-      await buildStrengthPayloadForWeek({
-        weekOpenUtc,
-        selectedAsset: isAll ? "all" : assetClass,
-        weeklyReturns: weeklyReturnsByReport.get(currentReportDate) ?? [],
-        previousWeekOpenUtc: selectedWeeks[index + 1]?.weekOpenUtc ?? null,
-        totalPairsCount,
-      }),
-    ] as const),
+  const strengthPayloadEntries = await mapWithConcurrency(
+    selectedWeeks,
+    MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
+    async ({ reportDate: currentReportDate, weekOpenUtc }, index) => {
+      try {
+        return [
+          currentReportDate,
+          await buildStrengthPayloadForWeek({
+            weekOpenUtc,
+            selectedAsset: isAll ? "all" : assetClass,
+            weeklyReturns: weeklyReturnsByReport.get(currentReportDate) ?? [],
+            previousWeekOpenUtc: selectedWeeks[index + 1]?.weekOpenUtc ?? null,
+            totalPairsCount,
+          }),
+        ] as const;
+      } catch (error) {
+        console.error("Dashboard strength load failed:", error);
+        return [
+          currentReportDate,
+          {
+            latestSnapshotUtc: null,
+            totalPairsCount,
+            pairRowsWithPerf: [],
+            missingPairs: [],
+            stripItems: [],
+            flipDetails: [],
+            note: "Strength data failed to load for this report.",
+          },
+        ] as const;
+      }
+    },
   );
   const strengthDataByReport = Object.fromEntries(strengthPayloadEntries) as Record<
     string,
