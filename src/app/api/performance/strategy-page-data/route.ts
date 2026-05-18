@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
-import {
-  readReadyStrategyArtifactPayload,
-} from "@/lib/performance/strategyArtifactReadiness";
+import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
 import {
   toStrategyClientPayload,
 } from "@/lib/performance/strategyClientPayload";
@@ -30,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const selectionKey = buildStrategySelectionKey(selection);
-    const data = await readReadyStrategyArtifactPayload(selection, {
+    const data = await loadStrategyPageData(selection, {
       includeCurrentWeek: false,
     });
     if (!data) {

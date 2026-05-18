@@ -13,8 +13,7 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import { query, queryOne } from "@/lib/db";
-import { deriveCotReportDate, listDataSectionWeeks } from "@/lib/dataSectionWeeks";
+import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import {
   multiWeekToGridProps,
   multiWeekPathToSimulation,
@@ -45,19 +44,12 @@ import {
   type WeeklyHoldResult,
 } from "@/lib/performance/weeklyHoldEngine";
 import {
-  persistStrategyArtifactEntry,
-  readStrategyArtifactEntry,
-  type StrategyArtifactFingerprint,
-} from "@/lib/performance/strategyArtifactCache";
-import {
-  listReadyWeekShards,
   persistWeekShard,
   readWeekShards,
   type WeekShardEntry,
 } from "@/lib/performance/strategyWeekShardCache";
 import {
   buildStrategyArtifactEngineVersion,
-  buildStrategyAssemblyVersion,
   buildStrategyRuntimeVersionKey,
 } from "@/lib/performance/strategyArtifactVersions";
 import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
@@ -79,9 +71,6 @@ import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown
 const STRATEGY_CURRENT_WEEK_CACHE_TTL_MS = Number(
   process.env.STRATEGY_CURRENT_WEEK_CACHE_TTL_MS ?? "300000",
 );
-const STRATEGY_FINGERPRINT_CACHE_TTL_MS = Number(
-  process.env.STRATEGY_FINGERPRINT_CACHE_TTL_MS ?? "60000",
-);
 const STRATEGY_SHARD_BUILD_TIME_BUDGET_MS = Number(
   process.env.STRATEGY_SHARD_BUILD_TIME_BUDGET_MS ?? "100000",
 );
@@ -97,16 +86,6 @@ function getCurrentWeekCacheTtlMs() {
   return 300000;
 }
 
-function getFingerprintCacheTtlMs() {
-  if (
-    Number.isFinite(STRATEGY_FINGERPRINT_CACHE_TTL_MS)
-    && STRATEGY_FINGERPRINT_CACHE_TTL_MS >= 0
-  ) {
-    return Math.floor(STRATEGY_FINGERPRINT_CACHE_TTL_MS);
-  }
-  return 60000;
-}
-
 function getShardBuildTimeBudgetMs() {
   if (
     Number.isFinite(STRATEGY_SHARD_BUILD_TIME_BUDGET_MS) &&
@@ -116,38 +95,6 @@ function getShardBuildTimeBudgetMs() {
   }
   return 100000;
 }
-
-type WeekWatermarkRow = {
-  week_open_utc: string;
-  max_updated_at: string | null;
-  derivation_versions: string | null;
-};
-
-type CotWatermarkRow = {
-  report_date: string;
-  max_fetched_at: string | null;
-};
-
-type SentimentWatermarkRow = {
-  week_open_utc: string;
-  resolver_max_created_at: string | null;
-  resolver_max_timestamp_utc: string | null;
-  latest_created_at: string | null;
-  latest_timestamp_utc: string | null;
-};
-
-type AdrTradeWatermarkRow = {
-  week_open_utc: string;
-  max_created_at: string | null;
-  max_entry_time_utc: string | null;
-  trade_count: number;
-};
-
-type StrengthWatermarkRow = {
-  week_open_utc: string;
-  max_locked_at: string | null;
-  row_count: number;
-};
 
 function buildSelectionLabel(
   entryStyle: EntryStyleConfig | undefined,
@@ -190,6 +137,33 @@ export type StrategyPageData = {
 type LoadStrategyPageDataOptions = {
   includeCurrentWeek?: boolean;
 };
+
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const PERMANENT_SHARD_FINGERPRINT_PREFIX = "permanent";
+
+function getPreviousWeekOpenUtc(currentWeekOpenUtc = getDisplayWeekOpenUtc()) {
+  const parsed = Date.parse(currentWeekOpenUtc);
+  if (!Number.isFinite(parsed)) return currentWeekOpenUtc;
+  return new Date(parsed - ONE_WEEK_MS).toISOString();
+}
+
+function buildPermanentWeekFingerprint(weekOpenUtc: string) {
+  return `${PERMANENT_SHARD_FINGERPRINT_PREFIX}:${weekOpenUtc}`;
+}
+
+function isStraightLineFallbackWeekShard(shard: WeekShardEntry) {
+  if (!shard.weekResult || !shard.sim) return true;
+  if (!shard.weekResult.isRealized || shard.weekResult.tradeCount <= 0) return false;
+  const primarySeries = shard.sim.series?.[0];
+  return !primarySeries || primarySeries.points.length <= 2;
+}
+
+function latestShardCachedAtUtc(shards: WeekShardEntry[]) {
+  return shards
+    .map((shard) => shard.cachedAtUtc)
+    .filter(Boolean)
+    .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
+}
 
 function weekResultFallbackPathSummary(weekResult: WeeklyHoldResult): BasketPathSummary {
   return {
@@ -575,48 +549,139 @@ function assembleStrategyPageData(options: {
   };
 }
 
-function stripArtifactGridProps(grid: EngineGridProps): EngineGridProps {
-  const stripModel = (model: EngineGridProps["combined"]["models"][number]) => ({
-    ...model,
-    pair_details: model.pair_details.map((detail) => ({
-      ...detail,
-      children: undefined,
-      tradeDetail: undefined,
-    })),
+type ShardNativeSelectionContext = {
+  selectionKey: string;
+  biasSource: BiasSourceConfig;
+  entryStyle: EntryStyleConfig | undefined;
+  riskOverlay: StrengthGateConfig | undefined;
+  engineVersion: string;
+  currentWeekOpenUtc: string;
+  previousWeekOpenUtc: string;
+  historicalWeekOptions: string[];
+  selectionLabel: string;
+};
+
+type EnsureHistoricalWeekShardsOptions = {
+  onlyPreviousWeek?: boolean;
+  timeBudgetMs?: number;
+};
+
+async function buildShardNativeSelectionContext(
+  selection: StrategySelection,
+): Promise<ShardNativeSelectionContext | null> {
+  const selectionKey = buildStrategySelectionKey(selection);
+  const biasSource = getStrategy(selection.strategyId);
+  if (!biasSource) return null;
+
+  const entryStyle = getEntryStyle(selection.f1);
+  const riskOverlay = getStrengthGate(selection.f2);
+  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  const historicalWeekOptions = buildDataWeekOptions({
+    historicalWeeks: await listDataSectionWeeks(),
+    currentWeekOpenUtc,
+  }).filter((weekOpenUtc): weekOpenUtc is string =>
+    typeof weekOpenUtc === "string" &&
+    weekOpenUtc !== "all" &&
+    weekOpenUtc !== currentWeekOpenUtc,
+  );
+
+  return {
+    selectionKey,
+    biasSource,
+    entryStyle,
+    riskOverlay,
+    engineVersion: buildStrategyArtifactEngineVersion({ entryStyle, riskOverlay }),
+    currentWeekOpenUtc,
+    previousWeekOpenUtc: getPreviousWeekOpenUtc(currentWeekOpenUtc),
+    historicalWeekOptions,
+    selectionLabel: buildSelectionLabel(entryStyle, riskOverlay),
+  };
+}
+
+async function computeAndPersistPermanentWeekShard(options: {
+  context: ShardNativeSelectionContext;
+  weekOpenUtc: string;
+}): Promise<WeekShardEntry> {
+  const { context, weekOpenUtc } = options;
+  const weekResult = await computeWeeklyHold(
+    context.biasSource,
+    weekOpenUtc,
+    context.entryStyle,
+    context.riskOverlay,
+  );
+  const pathArtifact = await computeWeekPathArtifact({
+    weekResult,
+    biasSource: context.biasSource,
+    entryStyle: context.entryStyle,
+    selectionLabel: context.selectionLabel,
   });
-
-  return {
-    ...grid,
-    combined: {
-      ...grid.combined,
-      models: grid.combined.models.map(stripModel),
-    },
-    perAsset: grid.perAsset.map((section) => ({
-      ...section,
-      models: section.models.map(stripModel),
-    })),
+  const shard: WeekShardEntry = {
+    selectionKey: context.selectionKey,
+    weekOpenUtc,
+    engineVersion: context.engineVersion,
+    weekFingerprint: buildPermanentWeekFingerprint(weekOpenUtc),
+    weekResult,
+    pathSummary: pathArtifact.summary,
+    sim: pathArtifact.sim,
+    cachedAtUtc: new Date().toISOString(),
   };
+  await persistWeekShard(shard);
+  return shard;
 }
 
-function stripArtifactWeekResult(result: WeeklyHoldResult): WeeklyHoldResult {
-  return {
-    ...result,
-    trades: result.trades.map((trade) => ({
-      ...trade,
-      detail: undefined,
-    })),
-  };
-}
+export async function ensureHistoricalWeekShardsForSelection(
+  selection: StrategySelection,
+  options: EnsureHistoricalWeekShardsOptions = {},
+): Promise<{
+  context: ShardNativeSelectionContext;
+  shards: WeekShardEntry[];
+  computedWeeks: string[];
+  missingWeeks: string[];
+  errors: Record<string, string>;
+} | null> {
+  const context = await buildShardNativeSelectionContext(selection);
+  if (!context) return null;
 
-function stripStrategyPageDataForArtifact(data: StrategyPageData): StrategyPageData {
+  const startedAt = Date.now();
+  const timeBudgetMs = options.timeBudgetMs ?? getShardBuildTimeBudgetMs();
+  const existingShards = (await readWeekShards(context.selectionKey, context.engineVersion))
+    .filter((shard) => !isStraightLineFallbackWeekShard(shard));
+  const shardByWeek = new Map(existingShards.map((shard) => [shard.weekOpenUtc, shard]));
+  const missingWeeks = context.historicalWeekOptions.filter((weekOpenUtc) => !shardByWeek.has(weekOpenUtc));
+  const targetWeeks = options.onlyPreviousWeek
+    ? missingWeeks.filter((weekOpenUtc) => weekOpenUtc === context.previousWeekOpenUtc)
+    : missingWeeks;
+  const computedWeeks: string[] = [];
+  const errors: Record<string, string> = {};
+
+  for (const weekOpenUtc of targetWeeks) {
+    if (Date.now() - startedAt > timeBudgetMs) {
+      errors[weekOpenUtc] = "Shard build time budget exhausted";
+      break;
+    }
+
+    try {
+      const shard = await computeAndPersistPermanentWeekShard({ context, weekOpenUtc });
+      shardByWeek.set(weekOpenUtc, shard);
+      computedWeeks.push(weekOpenUtc);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors[weekOpenUtc] = message;
+      console.error(`[strategyPageData] Failed to build week shard ${context.selectionKey} ${weekOpenUtc}:`, message);
+    }
+  }
+
+  const finalShards = context.historicalWeekOptions
+    .map((weekOpenUtc) => shardByWeek.get(weekOpenUtc))
+    .filter((shard): shard is WeekShardEntry => Boolean(shard));
+  const finalShardSet = new Set(finalShards.map((shard) => shard.weekOpenUtc));
+
   return {
-    ...data,
-    weekMap: Object.fromEntries(
-      Object.entries(data.weekMap).map(([week, grid]) => [week, stripArtifactGridProps(grid)]),
-    ),
-    weekResults: Object.fromEntries(
-      Object.entries(data.weekResults).map(([week, result]) => [week, stripArtifactWeekResult(result)]),
-    ),
+    context,
+    shards: finalShards,
+    computedWeeks,
+    missingWeeks: context.historicalWeekOptions.filter((weekOpenUtc) => !finalShardSet.has(weekOpenUtc)),
+    errors,
   };
 }
 
@@ -624,281 +689,86 @@ export async function loadStrategyPageData(
   selection: StrategySelection,
   options: LoadStrategyPageDataOptions = {},
 ): Promise<StrategyPageData | null> {
-  const selectionKey = buildStrategySelectionKey(selection);
-  const biasSource = getStrategy(selection.strategyId);
-  if (!biasSource) return null;
   const includeCurrentWeek = options.includeCurrentWeek !== false;
 
-  const entryStyle = getEntryStyle(selection.f1);
-  const riskOverlay = getStrengthGate(selection.f2);
-
-  const currentWeekOpenUtc = getDisplayWeekOpenUtc();
-  const dataSectionWeeks = await listDataSectionWeeks();
-  const weekOptions = buildDataWeekOptions({
-    historicalWeeks: dataSectionWeeks,
-    currentWeekOpenUtc,
-  }) as string[];
-  const cachedWeeks = weekOptions.filter((weekOpenUtc) => weekOpenUtc !== currentWeekOpenUtc);
-  const hasCurrentWeek = weekOptions.includes(currentWeekOpenUtc);
-
   try {
-    const loadCurrentWeekResult = () => (
-      includeCurrentWeek && hasCurrentWeek
-        ? computeCurrentWeekResultCached({
-            selectionKey,
-            biasSource,
-            currentWeekOpenUtc,
-            entryStyle,
-            riskOverlay,
-          })
-        : Promise.resolve(null)
-    );
-    const fingerprint = await buildStrategyFingerprint({
-      currentWeekOpenUtc,
-      entryStyle,
-      riskOverlay,
-      weekOptions: cachedWeeks,
+    const prepared = await ensureHistoricalWeekShardsForSelection(selection, {
+      onlyPreviousWeek: true,
     });
+    if (!prepared) return null;
 
-    const cached = await readStrategyArtifactEntry<StrategyPageData>(selectionKey);
-
-    if (cached && cached.fingerprint.engineVersion === fingerprint.engineVersion) {
-      const changedWeeks = diffChangedWeeks(cached.fingerprint, fingerprint, cachedWeeks);
-      const removedWeeks = Object.keys(cached.fingerprint.weekFingerprints)
-        .filter((week) => !cachedWeeks.includes(week));
-      const missingWeeks = cachedWeeks.filter((week) => !(week in cached.payload.weekResults));
-
-      const nextWeekResults: Record<string, WeeklyHoldResult> = { ...cached.payload.weekResults };
-      if (
-        changedWeeks.length > 0 ||
-        removedWeeks.length > 0 ||
-        missingWeeks.length > 0 ||
-        cached.fingerprint.currentWeekOpenUtc !== currentWeekOpenUtc ||
-        cached.fingerprint.weekOptionsSignature !== fingerprint.weekOptionsSignature
-      ) {
-        for (const removedWeek of removedWeeks) {
-          delete nextWeekResults[removedWeek];
-        }
-
-        const weeksToRefresh = Array.from(new Set([...changedWeeks, ...missingWeeks]));
-        if (weeksToRefresh.length > 0) {
-          await patchWeekResults({
-            biasSource,
-            entryStyle,
-            riskOverlay,
-            selectionKey,
-            targetWeeks: weeksToRefresh,
-            weekResultsByWeek: nextWeekResults,
-          });
-        }
-
-        const artifactPayload = await buildStrategyPageDataFromWeekResults({
-          biasSource,
-          currentWeekOpenUtc,
-          entryStyle,
-          riskOverlay,
-          weekOptions: cachedWeeks,
-          weekResultsByWeek: nextWeekResults,
-          shardPersistence: {
-            selectionKey,
-            engineVersion: buildStrategyArtifactEngineVersion({ entryStyle, riskOverlay }),
-            weekFingerprints: fingerprint.weekFingerprints,
-          },
-        });
-
-        const artifactToPersist = stripStrategyPageDataForArtifact(artifactPayload);
-        const cachedAtUtc = new Date().toISOString();
-        await persistStrategyArtifactEntry(selectionKey, {
-          cachedAtUtc,
-          fingerprint,
-          payload: artifactToPersist,
-        });
-
-        if (!includeCurrentWeek) {
-          return {
-            ...artifactToPersist,
-            artifactMeta: {
-              status: "patched",
-              selectionKey,
-              cachedAtUtc,
-              refreshedWeeks: weeksToRefresh,
-              removedWeeks,
-              missingWeeks,
-            },
-          };
-        }
-
-        const currentWeekResult = await loadCurrentWeekResult();
-        if (currentWeekResult) {
-          nextWeekResults[currentWeekOpenUtc] = currentWeekResult;
-        }
-
-        const merged = await mergeCurrentWeekIntoCachedPathData({
-          selectionKey,
-          currentWeekResult,
-          cachedSimMap: { ...artifactToPersist.simMap },
-          cachedPathSummaryMap: { ...artifactToPersist.pathSummaryMap },
-          cachedWeeks,
-          biasSource,
-          entryStyle,
-          selectionLabel: buildSelectionLabel(entryStyle, riskOverlay),
-          historicalWeekResults: nextWeekResults,
-        });
-
-        return assembleStrategyPageData({
-          biasSource,
-          currentWeekOpenUtc,
-          entryStyle,
-          riskOverlay,
-          weekOptions,
-          weekResultsByWeek: nextWeekResults,
-          simMap: merged.simMap,
-          pathSummaryMap: merged.pathSummaryMap,
-          artifactMeta: {
-            status: "patched",
-            selectionKey,
-            cachedAtUtc,
-            refreshedWeeks: weeksToRefresh,
-            removedWeeks,
-            missingWeeks,
-          },
-        });
-      }
-
-      if (!includeCurrentWeek) {
-        return {
-          ...cached.payload,
-          artifactMeta: {
-            status: "hit",
-            selectionKey,
-            cachedAtUtc: cached.cachedAtUtc,
-            refreshedWeeks: [],
-            removedWeeks: [],
-            missingWeeks: [],
-          },
-        };
-      }
-
-      const currentWeekResult = await loadCurrentWeekResult();
-      if (currentWeekResult) {
-        nextWeekResults[currentWeekOpenUtc] = currentWeekResult;
-      }
-
-      const merged = await mergeCurrentWeekIntoCachedPathData({
-        selectionKey,
-        currentWeekResult,
-        cachedSimMap: { ...(cached.payload.simMap ?? {}) },
-        cachedPathSummaryMap: { ...(cached.payload.pathSummaryMap ?? {}) },
-        cachedWeeks,
-        biasSource,
-        entryStyle,
-        selectionLabel: buildSelectionLabel(entryStyle, riskOverlay),
-        historicalWeekResults: nextWeekResults,
-      });
-
-      return assembleStrategyPageData({
-        biasSource,
-        currentWeekOpenUtc,
-        entryStyle,
-        riskOverlay,
-        weekOptions,
-        weekResultsByWeek: nextWeekResults,
-        simMap: merged.simMap,
-        pathSummaryMap: merged.pathSummaryMap,
-        artifactMeta: {
-          status: "hit",
-          selectionKey,
-          cachedAtUtc: cached.cachedAtUtc,
-          refreshedWeeks: [],
-          removedWeeks: [],
-          missingWeeks: [],
-        },
-      });
-    }
-
-    const artifactPayload = await buildStrategyPageDataFromWeekShards({
-      selectionKey,
-      fingerprint,
-      biasSource,
-      currentWeekOpenUtc,
-      entryStyle,
-      riskOverlay,
-      weekOptions: cachedWeeks,
+    const {
+      context,
+      shards,
+      computedWeeks,
+      missingWeeks,
+    } = prepared;
+    const historicalWeekOptions = context.historicalWeekOptions
+      .filter((weekOpenUtc) => shards.some((shard) => shard.weekOpenUtc === weekOpenUtc));
+    const historicalPayload = assembleStrategyPageDataFromShards({
+      biasSource: context.biasSource,
+      currentWeekOpenUtc: context.currentWeekOpenUtc,
+      entryStyle: context.entryStyle,
+      riskOverlay: context.riskOverlay,
+      weekOptions: historicalWeekOptions,
+      shards,
     });
-    if (!artifactPayload) {
-      return null;
-    }
-
-    const artifactToPersist = stripStrategyPageDataForArtifact(artifactPayload);
-    const weekResultsByWeek = { ...artifactToPersist.weekResults };
-    const missingWeeks = cachedWeeks.filter((week) => !(week in weekResultsByWeek));
-
-    const cachedAtUtc = new Date().toISOString();
-    try {
-      await persistStrategyArtifactEntry(selectionKey, {
-        cachedAtUtc,
-        fingerprint,
-        payload: artifactToPersist,
-      });
-    } catch (persistError) {
-      console.warn(
-        `[strategyPageData] Monolithic artifact persist failed for ${selectionKey}; shards will serve as fallback:`,
-        persistError instanceof Error ? persistError.message : persistError,
-      );
-    }
+    const artifactMeta: StrategyPageData["artifactMeta"] = {
+      status: computedWeeks.length > 0 ? "patched" : "hit",
+      selectionKey: context.selectionKey,
+      cachedAtUtc: latestShardCachedAtUtc(shards),
+      refreshedWeeks: computedWeeks,
+      removedWeeks: [],
+      missingWeeks,
+      stale: false,
+      staleReason: null,
+    };
 
     if (!includeCurrentWeek) {
       return {
-        ...artifactToPersist,
-        artifactMeta: {
-          status: "miss",
-          selectionKey,
-          cachedAtUtc,
-          refreshedWeeks: cachedWeeks,
-          removedWeeks: [],
-          missingWeeks,
-        },
+        ...historicalPayload,
+        artifactMeta,
       };
     }
 
-    const currentWeekResult = await loadCurrentWeekResult();
+    const weekResultsByWeek: Record<string, WeeklyHoldResult> = { ...historicalPayload.weekResults };
+    const currentWeekResult = await computeCurrentWeekResultCached({
+      selectionKey: context.selectionKey,
+      biasSource: context.biasSource,
+      currentWeekOpenUtc: context.currentWeekOpenUtc,
+      entryStyle: context.entryStyle,
+      riskOverlay: context.riskOverlay,
+    });
     if (currentWeekResult) {
-      weekResultsByWeek[currentWeekOpenUtc] = currentWeekResult;
+      weekResultsByWeek[context.currentWeekOpenUtc] = currentWeekResult;
     }
 
     const merged = await mergeCurrentWeekIntoCachedPathData({
-      selectionKey,
+      selectionKey: context.selectionKey,
       currentWeekResult,
-      cachedSimMap: { ...artifactToPersist.simMap },
-      cachedPathSummaryMap: { ...artifactToPersist.pathSummaryMap },
-      cachedWeeks,
-      biasSource,
-      entryStyle,
-      selectionLabel: buildSelectionLabel(entryStyle, riskOverlay),
+      cachedSimMap: { ...historicalPayload.simMap },
+      cachedPathSummaryMap: { ...historicalPayload.pathSummaryMap },
+      cachedWeeks: historicalWeekOptions,
+      biasSource: context.biasSource,
+      entryStyle: context.entryStyle,
+      selectionLabel: context.selectionLabel,
       historicalWeekResults: weekResultsByWeek,
     });
 
     return assembleStrategyPageData({
-      biasSource,
-      currentWeekOpenUtc,
-      entryStyle,
-      riskOverlay,
-      weekOptions,
+      biasSource: context.biasSource,
+      currentWeekOpenUtc: context.currentWeekOpenUtc,
+      entryStyle: context.entryStyle,
+      riskOverlay: context.riskOverlay,
+      weekOptions: [context.currentWeekOpenUtc, ...historicalWeekOptions],
       weekResultsByWeek,
       simMap: merged.simMap,
       pathSummaryMap: merged.pathSummaryMap,
-      artifactMeta: {
-        status: "miss",
-        selectionKey,
-        cachedAtUtc,
-        refreshedWeeks: cachedWeeks,
-        removedWeeks: [],
-        missingWeeks,
-      },
+      artifactMeta,
     });
   } catch (err) {
     console.error(
-      `[strategyPageData] Failed to load ${selectionKey}:`,
+      `[strategyPageData] Failed to load ${buildStrategySelectionKey(selection)}:`,
       err instanceof Error ? err.stack ?? err.message : err,
     );
     return null;
@@ -917,13 +787,31 @@ export async function buildStrategyArtifact(
   selection: StrategySelection,
 ): Promise<StrategyArtifactBuildResult> {
   const selectionKey = buildStrategySelectionKey(selection);
-  const data = await loadStrategyPageData(selection, { includeCurrentWeek: false });
+  const prepared = await ensureHistoricalWeekShardsForSelection(selection, {
+    onlyPreviousWeek: false,
+  });
+  const remainingMissing = prepared?.missingWeeks ?? [];
+  const cachedAtUtc = latestShardCachedAtUtc(prepared?.shards ?? []);
+  const trades = prepared
+    ? prepared.shards.reduce((sum, shard) => sum + shard.weekResult.tradeCount, 0)
+    : null;
   return {
-    ok: Boolean(data),
+    ok: Boolean(prepared) && remainingMissing.length === 0,
     selectionKey,
-    artifactMeta: data?.artifactMeta ?? null,
-    weeks: data ? Object.keys(data.weekResults ?? {}).length : 0,
-    trades: data?.sidebarStats?.allTime?.totalTrades ?? null,
+    artifactMeta: prepared
+      ? {
+          status: prepared.computedWeeks.length > 0 ? "patched" : "hit",
+          selectionKey,
+          cachedAtUtc,
+          refreshedWeeks: prepared.computedWeeks,
+          removedWeeks: [],
+          missingWeeks: remainingMissing,
+          stale: false,
+          staleReason: null,
+        }
+      : null,
+    weeks: prepared?.shards.length ?? 0,
+    trades,
   };
 }
 
@@ -1093,384 +981,6 @@ async function mergeCurrentWeekIntoCachedPathData(options: {
   };
 }
 
-async function buildStrategyFingerprint(options: {
-  weekOptions: string[];
-  currentWeekOpenUtc: string;
-  entryStyle: EntryStyleConfig | undefined;
-  riskOverlay: StrengthGateConfig | undefined;
-}): Promise<StrategyArtifactFingerprint> {
-  const { weekOptions, currentWeekOpenUtc, entryStyle, riskOverlay } = options;
-  const engineVersion = buildStrategyAssemblyVersion({ entryStyle, riskOverlay });
-  const fingerprintCacheKey = [
-    "strategyFingerprint",
-    engineVersion,
-    currentWeekOpenUtc,
-    entryStyle?.id ?? "weekly_hold",
-    riskOverlay?.id ?? "none",
-    buildWeekOptionsSignature(weekOptions),
-  ].join(":");
-  return {
-    engineVersion,
-    currentWeekOpenUtc,
-    weekOptionsSignature: buildWeekOptionsSignature(weekOptions),
-    weekFingerprints: await getOrSetRuntimeCache(
-      fingerprintCacheKey,
-      getFingerprintCacheTtlMs(),
-      () => readWeekFingerprints(weekOptions, entryStyle),
-    ),
-  };
-}
-
-async function readWeekFingerprints(
-  weekOptions: string[],
-  entryStyle: EntryStyleConfig | undefined,
-): Promise<Record<string, string>> {
-  if (weekOptions.length === 0) return {};
-
-  const uniqueReportDates = Array.from(new Set(weekOptions.map((week) => deriveCotReportDate(week))));
-
-  const [pairRows, cotRows, sentimentRows, strengthRows, adrRunRow] = await Promise.all([
-    query<WeekWatermarkRow>(
-      `SELECT period_open_utc::text AS week_open_utc,
-              MAX(updated_at)::text AS max_updated_at,
-              STRING_AGG(DISTINCT derivation_version, ',' ORDER BY derivation_version) AS derivation_versions
-         FROM pair_period_returns
-        WHERE period_type = 'weekly'
-          AND period_open_utc = ANY($1::timestamptz[])
-        GROUP BY period_open_utc`,
-      [weekOptions],
-    ),
-    query<CotWatermarkRow>(
-      `SELECT report_date::text AS report_date,
-              MAX(fetched_at)::text AS max_fetched_at
-         FROM cot_snapshots
-        WHERE report_date = ANY($1::date[])
-        GROUP BY report_date`,
-      [uniqueReportDates],
-    ),
-    query<SentimentWatermarkRow>(
-      `WITH requested AS (
-         SELECT unnest($1::timestamptz[]) AS week_open_utc
-       ),
-       latest AS (
-         SELECT
-           MAX(created_at)::text AS latest_created_at,
-           MAX(timestamp_utc)::text AS latest_timestamp_utc
-         FROM sentiment_aggregates
-       )
-       SELECT requested.week_open_utc::text AS week_open_utc,
-              MAX(sa.created_at)::text AS resolver_max_created_at,
-              MAX(sa.timestamp_utc)::text AS resolver_max_timestamp_utc,
-              latest.latest_created_at,
-              latest.latest_timestamp_utc
-         FROM requested
-         LEFT JOIN sentiment_aggregates sa
-           ON sa.timestamp_utc >= requested.week_open_utc - INTERVAL '14 days'
-          AND sa.timestamp_utc < requested.week_open_utc + INTERVAL '7 days'
-        CROSS JOIN latest
-        GROUP BY requested.week_open_utc, latest.latest_created_at, latest.latest_timestamp_utc`,
-      [weekOptions],
-    ),
-    query<StrengthWatermarkRow>(
-      `WITH requested AS (
-         SELECT unnest($1::timestamptz[]) AS week_open_utc
-       )
-       SELECT requested.week_open_utc::text AS week_open_utc,
-              MAX(sws.locked_at_utc)::text AS max_locked_at,
-              COUNT(sws.*)::int AS row_count
-         FROM requested
-         LEFT JOIN strength_weekly_snapshots sws
-           ON sws.week_open_utc = requested.week_open_utc
-        GROUP BY requested.week_open_utc`,
-      [weekOptions],
-    ),
-    entryStyle?.plModel === "adr"
-      ? queryOne<{ id: string; updated_at: string | null }>(
-          `SELECT id::text AS id, updated_at::text AS updated_at
-             FROM strategy_backtest_runs
-            WHERE bot_id = 'adr-forward'
-              AND variant = 'fresh-start'
-              AND market = 'multi-asset'
-              AND config_key = 'default'
-            LIMIT 1`,
-          [],
-        )
-      : Promise.resolve(null),
-  ]);
-
-  const adrTradeRows = entryStyle?.plModel === "adr" && adrRunRow?.id
-    ? await query<AdrTradeWatermarkRow>(
-        `WITH requested AS (
-           SELECT unnest($1::timestamptz[]) AS week_open_utc
-         )
-         SELECT requested.week_open_utc::text AS week_open_utc,
-                MAX(t.created_at)::text AS max_created_at,
-                MAX(t.entry_time_utc)::text AS max_entry_time_utc,
-                COUNT(t.id)::int AS trade_count
-           FROM requested
-           LEFT JOIN strategy_backtest_trades t
-             ON t.week_open_utc = requested.week_open_utc
-            AND t.run_id = $2::bigint
-          GROUP BY requested.week_open_utc`,
-        [weekOptions, adrRunRow.id],
-      )
-    : [];
-
-  const pairByWeek = new Map(
-    pairRows.map((row) => [row.week_open_utc, row]),
-  );
-  const cotByReportDate = new Map(
-    cotRows.map((row) => [row.report_date, row]),
-  );
-  const sentimentByWeek = new Map(
-    sentimentRows.map((row) => [row.week_open_utc, row]),
-  );
-  const strengthByWeek = new Map(
-    strengthRows.map((row) => [row.week_open_utc, row]),
-  );
-  const adrByWeek = new Map(
-    adrTradeRows.map((row) => [row.week_open_utc, row]),
-  );
-  const fingerprints: Record<string, string> = {};
-  for (const weekOpenUtc of weekOptions) {
-    const pairRow = pairByWeek.get(weekOpenUtc);
-    const reportDate = deriveCotReportDate(weekOpenUtc);
-    const cotRow = cotByReportDate.get(reportDate);
-    const sentimentRow = sentimentByWeek.get(weekOpenUtc);
-    const strengthRow = strengthByWeek.get(weekOpenUtc);
-    const adrRow = adrByWeek.get(weekOpenUtc);
-
-    fingerprints[weekOpenUtc] = [
-      `pair:${normalizeStamp(pairRow?.max_updated_at)}`,
-      `pairv:${normalizeStamp(pairRow?.derivation_versions)}`,
-      `cot:${reportDate}:${normalizeStamp(cotRow?.max_fetched_at)}`,
-      `sentc:${normalizeStamp(sentimentRow?.resolver_max_created_at)}`,
-      `sentt:${normalizeStamp(sentimentRow?.resolver_max_timestamp_utc)}`,
-      `sentlc:${normalizeStamp(sentimentRow?.latest_created_at)}`,
-      `sentlt:${normalizeStamp(sentimentRow?.latest_timestamp_utc)}`,
-      `str:${normalizeStamp(strengthRow?.max_locked_at)}:${strengthRow?.row_count ?? 0}`,
-      `adr-run:${normalizeStamp(adrRunRow?.updated_at)}`,
-      `adr:${normalizeStamp(adrRow?.max_created_at)}:${normalizeStamp(adrRow?.max_entry_time_utc)}:${adrRow?.trade_count ?? 0}`,
-    ].join("|");
-  }
-
-  return fingerprints;
-}
-
-function diffChangedWeeks(
-  previous: StrategyArtifactFingerprint,
-  current: StrategyArtifactFingerprint,
-  weekOptions: string[],
-) {
-  return weekOptions.filter((week) => previous.weekFingerprints[week] !== current.weekFingerprints[week]);
-}
-
-async function patchWeekResults(options: {
-  biasSource: BiasSourceConfig;
-  entryStyle: EntryStyleConfig | undefined;
-  riskOverlay: StrengthGateConfig | undefined;
-  selectionKey: string;
-  targetWeeks: string[];
-  weekResultsByWeek: Record<string, WeeklyHoldResult>;
-}) {
-  const { biasSource, entryStyle, riskOverlay, selectionKey, targetWeeks, weekResultsByWeek } = options;
-  const recomputed = await Promise.allSettled(
-    targetWeeks.map((weekOpenUtc) => computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, riskOverlay)),
-  );
-
-  recomputed.forEach((result, index) => {
-    const targetWeek = targetWeeks[index];
-    if (!targetWeek) return;
-    if (result.status === "fulfilled") {
-      weekResultsByWeek[targetWeek] = result.value;
-      return;
-    }
-    console.warn(
-      `[strategyPageData] Failed to refresh ${selectionKey} for ${targetWeek}:`,
-      result.reason instanceof Error ? result.reason.stack ?? result.reason.message : result.reason,
-    );
-  });
-}
-
-async function buildSimulationMapFromWeekResults(options: {
-  biasSource: BiasSourceConfig;
-  entryStyle: EntryStyleConfig | undefined;
-  selectionLabel: string;
-  orderedWeeks: WeeklyHoldResult[];
-  multiWeekResult: MultiWeekResult;
-  shardPersistence?: {
-    selectionKey: string;
-    engineVersion: string;
-    weekFingerprints: Record<string, string>;
-  };
-}) {
-  const { biasSource, entryStyle, selectionLabel, orderedWeeks, multiWeekResult, shardPersistence } = options;
-  const simMap: Record<string, EngineSimulationGroup> = {};
-  const pathSummaryMap: Record<string, BasketPathSummary> = {};
-  const cardSlots = resolveCardSlots(biasSource);
-  const realizedWeekPaths: BasketPathResult[] = [];
-  const realizedSlotPaths: BasketPathResult[][] = Array.from(
-    { length: cardSlots.length },
-    () => [],
-  );
-  const realizedAssetPaths: BasketPathResult[][] = Array.from(
-    { length: ASSET_PATH_ORDER.length },
-    () => [],
-  );
-  const weekPathResults: Array<{
-    weekResult: WeeklyHoldResult;
-    computed: Awaited<ReturnType<typeof computeWeekPathArtifact>> | null;
-    error: unknown;
-  }> = [];
-  const chunkSize = 3;
-
-  for (let index = 0; index < orderedWeeks.length; index += chunkSize) {
-    const chunk = orderedWeeks.slice(index, index + chunkSize);
-    const chunkResults = await Promise.all(
-      chunk.map(async (weekResult) => {
-        try {
-          const computed = await computeWeekPathArtifact({
-            weekResult,
-            biasSource,
-            entryStyle,
-            selectionLabel,
-          });
-          return { weekResult, computed, error: null as unknown };
-        } catch (error) {
-          return { weekResult, computed: null, error };
-        }
-      }),
-    );
-    weekPathResults.push(...chunkResults);
-  }
-
-  for (const { weekResult, computed, error } of weekPathResults) {
-    if (computed) {
-      pathSummaryMap[computed.weekKey] = computed.summary;
-      simMap[computed.weekKey] = computed.sim;
-      if (shardPersistence) {
-        try {
-          await persistWeekShard({
-            selectionKey: shardPersistence.selectionKey,
-            weekOpenUtc: computed.weekKey,
-            engineVersion: shardPersistence.engineVersion,
-            weekFingerprint: shardPersistence.weekFingerprints[computed.weekKey] ?? "",
-            weekResult,
-            pathSummary: computed.summary,
-            sim: computed.sim,
-            cachedAtUtc: new Date().toISOString(),
-          });
-        } catch (persistError) {
-          console.warn(
-            `[strategyPageData] Shard persist failed for ${computed.weekKey}; non-fatal:`,
-            persistError instanceof Error ? persistError.message : persistError,
-          );
-        }
-      }
-      if (weekResult.isRealized) {
-        realizedWeekPaths.push(computed.path);
-        computed.slotPaths.forEach((slotPath, slotIndex) => {
-          realizedSlotPaths[slotIndex]?.push(slotPath);
-        });
-        computed.assetPaths.forEach((assetPath, assetIndex) => {
-          realizedAssetPaths[assetIndex]?.push(assetPath);
-        });
-      }
-      continue;
-    }
-
-    const label = weekDisplayLabel(weekResult.weekOpenUtc);
-    console.warn(
-      `[strategyPageData] Falling back to legacy simulation for ${biasSource.id} ${weekResult.weekOpenUtc}:`,
-      error instanceof Error ? error.stack ?? error.message : error,
-    );
-    pathSummaryMap[weekResult.weekOpenUtc] = weekResultFallbackPathSummary(weekResult);
-    simMap[weekResult.weekOpenUtc] = singleWeekToSimulation(
-      weekResult,
-      biasSource,
-      label,
-      selectionLabel,
-    );
-  }
-
-  try {
-    const multiWeekPath = computeMultiWeekBasketPath(realizedWeekPaths);
-    const slotMultiWeekPaths = realizedSlotPaths.map((slotWeekPaths) =>
-      computeMultiWeekBasketPath(slotWeekPaths),
-    );
-    const assetMultiWeekPaths = realizedAssetPaths.map((assetWeekPaths) =>
-      computeMultiWeekBasketPath(assetWeekPaths),
-    );
-    pathSummaryMap.all = multiWeekPath.summary;
-    simMap.all = multiWeekPathToSimulation(
-      multiWeekPath,
-      multiWeekResult,
-      biasSource,
-      selectionLabel,
-      slotMultiWeekPaths,
-      assetMultiWeekPaths,
-    );
-  } catch (error) {
-    console.warn(
-      `[strategyPageData] Falling back to legacy all-time simulation for ${biasSource.id}:`,
-      error instanceof Error ? error.stack ?? error.message : error,
-    );
-    pathSummaryMap.all = {
-      totalReturnPct: multiWeekResult.totalReturnPct,
-      peakPct: multiWeekResult.totalReturnPct,
-      troughPct: Math.min(0, multiWeekResult.totalReturnPct),
-      maxDrawdownPct: multiWeekResult.maxDrawdownPct,
-      peakToCloseGivebackPct: 0,
-      troughToCloseRecoveryPct: multiWeekResult.totalReturnPct - Math.min(0, multiWeekResult.totalReturnPct),
-      maxActivePositions: Math.max(...multiWeekResult.weeks.map((week) => week.tradeCount), 0),
-    };
-    simMap.all = multiWeekToSimulation(multiWeekResult, biasSource, selectionLabel);
-  }
-
-  return { simMap, pathSummaryMap };
-}
-
-async function buildStrategyPageDataFromWeekResults(options: {
-  biasSource: BiasSourceConfig;
-  currentWeekOpenUtc: string;
-  entryStyle: EntryStyleConfig | undefined;
-  riskOverlay: StrengthGateConfig | undefined;
-  weekOptions: string[];
-  weekResultsByWeek: Record<string, WeeklyHoldResult>;
-  shardPersistence?: {
-    selectionKey: string;
-    engineVersion: string;
-    weekFingerprints: Record<string, string>;
-  };
-}): Promise<StrategyPageData> {
-  const { biasSource, entryStyle, riskOverlay, weekOptions, weekResultsByWeek, shardPersistence } = options;
-  const selectionLabel = buildSelectionLabel(entryStyle, riskOverlay);
-  const orderedWeeks = weekOptions
-    .map((weekOpenUtc) => weekResultsByWeek[weekOpenUtc])
-    .filter((weekResult): weekResult is WeeklyHoldResult => Boolean(weekResult));
-
-  const multiWeekResult = buildMultiWeekResultFromWeeks(biasSource, orderedWeeks);
-  const { simMap, pathSummaryMap } = await buildSimulationMapFromWeekResults({
-    biasSource,
-    entryStyle,
-    selectionLabel,
-    orderedWeeks,
-    multiWeekResult,
-    shardPersistence,
-  });
-
-  return assembleStrategyPageData({
-    biasSource,
-    currentWeekOpenUtc: options.currentWeekOpenUtc,
-    entryStyle,
-    riskOverlay,
-    weekOptions,
-    weekResultsByWeek,
-    simMap,
-    pathSummaryMap,
-  });
-}
-
 export function assembleStrategyPageDataFromShards(options: {
   biasSource: BiasSourceConfig;
   currentWeekOpenUtc: string;
@@ -1592,119 +1102,6 @@ export function assembleStrategyPageDataFromShards(options: {
   });
 }
 
-async function buildStrategyPageDataFromWeekShards(options: {
-  selectionKey: string;
-  fingerprint: StrategyArtifactFingerprint;
-  biasSource: BiasSourceConfig;
-  currentWeekOpenUtc: string;
-  entryStyle: EntryStyleConfig | undefined;
-  riskOverlay: StrengthGateConfig | undefined;
-  weekOptions: string[];
-}): Promise<StrategyPageData | null> {
-  const {
-    selectionKey,
-    fingerprint,
-    biasSource,
-    currentWeekOpenUtc,
-    entryStyle,
-    riskOverlay,
-    weekOptions,
-  } = options;
-  const startedAt = Date.now();
-  const timeBudgetMs = getShardBuildTimeBudgetMs();
-  const selectionLabel = buildSelectionLabel(entryStyle, riskOverlay);
-  const shardEngineVersion = buildStrategyArtifactEngineVersion({ entryStyle, riskOverlay });
-  const shardStatus = await listReadyWeekShards(
-    selectionKey,
-    shardEngineVersion,
-    fingerprint.weekFingerprints,
-  );
-  const readyShards = await readWeekShards(selectionKey, shardEngineVersion);
-  const expectedWeekSet = new Set(weekOptions);
-  const weekResultsByWeek: Record<string, WeeklyHoldResult> = {};
-  const simMap: Record<string, EngineSimulationGroup> = {};
-  const pathSummaryMap: Record<string, BasketPathSummary> = {};
-
-  for (const shard of readyShards) {
-    if (!expectedWeekSet.has(shard.weekOpenUtc)) continue;
-    if (fingerprint.weekFingerprints[shard.weekOpenUtc] !== shard.weekFingerprint) continue;
-    weekResultsByWeek[shard.weekOpenUtc] = shard.weekResult;
-    simMap[shard.weekOpenUtc] = shard.sim;
-    pathSummaryMap[shard.weekOpenUtc] = shard.pathSummary;
-  }
-
-  const weeksToCompute = Array.from(new Set([...shardStatus.missing, ...shardStatus.stale]))
-    .filter((weekOpenUtc) => expectedWeekSet.has(weekOpenUtc))
-    .sort((left, right) => weekOptions.indexOf(left) - weekOptions.indexOf(right));
-
-  for (const weekOpenUtc of weeksToCompute) {
-    if (Date.now() - startedAt > timeBudgetMs) {
-      console.log(
-        `[strategyPageData] Shard budget exhausted for ${selectionKey}: ${Object.keys(weekResultsByWeek).length}/${weekOptions.length} weeks ready`,
-      );
-      return null;
-    }
-
-    const weekResult = await computeWeeklyHold(biasSource, weekOpenUtc, entryStyle, riskOverlay);
-    const pathArtifact = await computeWeekPathArtifact({
-      weekResult,
-      biasSource,
-      entryStyle,
-      selectionLabel,
-    });
-    weekResultsByWeek[weekOpenUtc] = weekResult;
-    simMap[weekOpenUtc] = pathArtifact.sim;
-    pathSummaryMap[weekOpenUtc] = pathArtifact.summary;
-
-    await persistWeekShard({
-      selectionKey,
-      weekOpenUtc,
-      engineVersion: shardEngineVersion,
-      weekFingerprint: fingerprint.weekFingerprints[weekOpenUtc] ?? "",
-      weekResult,
-      pathSummary: pathArtifact.summary,
-      sim: pathArtifact.sim,
-      cachedAtUtc: new Date().toISOString(),
-    });
-  }
-
-  const missingAfterBuild = weekOptions.filter((weekOpenUtc) => !weekResultsByWeek[weekOpenUtc]);
-  if (missingAfterBuild.length > 0) {
-    console.log(
-      `[strategyPageData] Shards incomplete for ${selectionKey}: missing ${missingAfterBuild.length}/${weekOptions.length}`,
-    );
-    return null;
-  }
-
-  const shards = weekOptions
-    .map((weekOpenUtc) => {
-      const weekResult = weekResultsByWeek[weekOpenUtc];
-      const sim = simMap[weekOpenUtc];
-      const pathSummary = pathSummaryMap[weekOpenUtc];
-      if (!weekResult || !sim || !pathSummary) return null;
-      return {
-        selectionKey,
-        weekOpenUtc,
-        engineVersion: shardEngineVersion,
-        weekFingerprint: fingerprint.weekFingerprints[weekOpenUtc] ?? "",
-        weekResult,
-        pathSummary,
-        sim,
-        cachedAtUtc: new Date().toISOString(),
-      } satisfies WeekShardEntry;
-    })
-    .filter((shard): shard is WeekShardEntry => Boolean(shard));
-
-  return assembleStrategyPageDataFromShards({
-    biasSource,
-    currentWeekOpenUtc,
-    entryStyle,
-    riskOverlay,
-    weekOptions,
-    shards,
-  });
-}
-
 function buildMultiWeekResultFromWeeks(
   biasSource: BiasSourceConfig,
   weeks: WeeklyHoldResult[],
@@ -1750,14 +1147,6 @@ function sortWeeklyResultsChronologically(weeks: WeeklyHoldResult[]) {
   return [...weeks].sort(
     (left, right) => Date.parse(left.weekOpenUtc) - Date.parse(right.weekOpenUtc),
   );
-}
-
-function buildWeekOptionsSignature(weekOptions: string[]) {
-  return weekOptions.join("|");
-}
-
-function normalizeStamp(value: string | null | undefined) {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : "none";
 }
 
 function weekDisplayLabel(weekOpenUtc: string): string {
