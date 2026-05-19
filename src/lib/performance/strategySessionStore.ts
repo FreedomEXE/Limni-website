@@ -220,6 +220,35 @@ function loadedThisUtcHour(loadedAtUtc: string | null | undefined) {
   return currentUtcHourBucket(loadedAt) === currentUtcHourBucket();
 }
 
+function assetSeriesMismatchForCurrentWeek(payload: StrategyClientPayload | null) {
+  const currentWeek = payload?.currentWeekOpenUtc;
+  if (!payload || !currentWeek) return false;
+
+  const result = payload.engineWeekResults?.[currentWeek];
+  const simulation = payload.engineSimMap?.[currentWeek];
+  if (!result || !simulation) return false;
+
+  const expected = new Map<string, { trades: number; returnPct: number }>();
+  for (const trade of result.trades ?? []) {
+    const current = expected.get(trade.assetClass) ?? { trades: 0, returnPct: 0 };
+    current.trades += 1;
+    current.returnPct += trade.returnPct;
+    expected.set(trade.assetClass, current);
+  }
+
+  for (const [assetClass, stats] of expected) {
+    if (stats.trades <= 0) continue;
+    const series = simulation.series.find((item) => item.id === `asset:${assetClass}`);
+    if (!series) return true;
+    if ((series.trades ?? 0) !== stats.trades) return true;
+    const lastPoint = series.points.at(-1);
+    const actualReturn = lastPoint?.equity_pct ?? 0;
+    if (Math.abs(actualReturn - stats.returnPct) > 0.05) return true;
+  }
+
+  return false;
+}
+
 function updateRecord(
   selection: RuntimeStrategySelection,
   updater: (record: StrategySessionRecord) => StrategySessionRecord,
@@ -356,13 +385,11 @@ function loadCurrentWeekSession(
       current?.currentWeekStatus === "current-ready" ||
       current?.currentWeekStatus === "current-empty"
     );
-  if (
-    !options.force &&
-    (
-      hasFreshCurrentWeek ||
-      current?.currentWeekStatus === "current-loading"
-    )
-  ) {
+  const currentWeekAssetMismatch = assetSeriesMismatchForCurrentWeek(current?.payload ?? null);
+  if (!options.force && current?.currentWeekStatus === "current-loading") {
+    return currentWeekInflight.get(key) ?? Promise.resolve();
+  }
+  if (!options.force && hasFreshCurrentWeek && !currentWeekAssetMismatch) {
     return currentWeekInflight.get(key) ?? Promise.resolve();
   }
 

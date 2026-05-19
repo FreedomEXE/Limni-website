@@ -14,8 +14,8 @@ let bulkWarmInflight: Promise<StrategyBulkWarmPayload | null> | null = null;
 let bulkWarmRequestedAt = 0;
 const WARM_REQUEST_COOLDOWN_MS = 120000;
 const BULK_WARM_REQUEST_COOLDOWN_MS = 30000;
-const PERSISTENT_PAYLOAD_CACHE_NAME = "limni-strategy-payload-v2";
-const PERSISTENT_PAYLOAD_META_PREFIX = "limni:strategy-payload:";
+const PERSISTENT_PAYLOAD_CACHE_NAME = "limni-strategy-payload-v3";
+const PERSISTENT_PAYLOAD_META_PREFIX = "limni:strategy-payload:v3:";
 const PERSISTENT_PAYLOAD_TTL_MS = 6 * 60 * 60 * 1000;
 
 function buildSelectionKey(selection: RuntimeStrategySelection) {
@@ -397,13 +397,6 @@ export async function fetchCurrentWeekStrategyClientPayload(
     return inflight;
   }
 
-  const persistentPayload = options.force
-    ? null
-    : await readPersistentPayload(url, selection, scope);
-  if (!options.force && persistentPayload) {
-    return persistentPayload;
-  }
-
   const request = (async () => {
     const maxAttempts = 3;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -417,7 +410,6 @@ export async function fetchCurrentWeekStrategyClientPayload(
           throw new Error("Unexpected current week strategy payload shape");
         }
         payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
-        await writePersistentPayload(url, data);
         return payloadCache.get(cacheKey) ?? data;
       } catch (error) {
         if (attempt === maxAttempts) {

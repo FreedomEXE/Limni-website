@@ -753,27 +753,46 @@ export function withTradeDerivedSeriesGroups(
   const layerSeries = group.series
     .slice(1)
     .filter((series) => !series.id.startsWith("asset:"));
-  const existingAssetSeries = group.series
+  const existingAssetSeriesById = new Map(group.series
     .slice(1)
-    .filter((series) => series.id.startsWith("asset:"));
-  const hasRealAssetData = existingAssetSeries.some(
-    (series) =>
-      series.points.length > 2 ||
-      series.points.some((point) => Math.abs(point.equity_pct) > 1e-9),
-  );
-  const assetSeries = existingAssetSeries.length > 0 && hasRealAssetData
-    ? existingAssetSeries.map((series) => ({
-        ...series,
-        trades: series.trades ?? assetTradeCountForResult(result, series.id.replace("asset:", "")),
-      }))
-    : "weeks" in result
-      ? buildMultiWeekAssetSeriesFromTrades(result)
-      : buildSingleWeekAssetSeriesFromTrades(result, result.weekOpenUtc);
+    .filter((series) => series.id.startsWith("asset:"))
+    .map((series) => [series.id, series]));
+  const derivedAssetSeries = "weeks" in result
+    ? buildMultiWeekAssetSeriesFromTrades(result)
+    : buildSingleWeekAssetSeriesFromTrades(result, result.weekOpenUtc);
+  const assetSeries = derivedAssetSeries.map((derivedSeries) => {
+    const existingSeries = existingAssetSeriesById.get(derivedSeries.id);
+    if (!existingSeries) return derivedSeries;
+
+    const assetId = derivedSeries.id.replace("asset:", "");
+    const expectedTrades = assetTradeCountForResult(result, assetId);
+    const expectedReturn = assetReturnForResult(result, assetId);
+    const existingTrades = existingSeries.trades ?? expectedTrades;
+    const existingReturn = finalSeriesReturn(existingSeries);
+    const returnMismatch = Math.abs(existingReturn - expectedReturn) > 0.05;
+    const tradeMismatch = existingTrades !== expectedTrades;
+    const flatButExpectedActive =
+      expectedTrades > 0 &&
+      existingSeries.points.every((point) => Math.abs(point.equity_pct) <= 1e-9);
+
+    if (tradeMismatch || returnMismatch || flatButExpectedActive) {
+      return derivedSeries;
+    }
+
+    return {
+      ...existingSeries,
+      trades: existingSeries.trades ?? expectedTrades,
+    };
+  });
   return {
     ...group,
     series: [totalSeries, ...assetSeries, ...layerSeries],
     seriesGroups: buildSeriesGroups(totalSeries, assetSeries, layerSeries),
   };
+}
+
+function finalSeriesReturn(series: EngineSimulationGroup["series"][number]) {
+  return series.points.at(-1)?.equity_pct ?? 0;
 }
 
 function pathPointsToSimulationPoints(points: BasketPathPoint[]) {
@@ -862,6 +881,25 @@ function assetTradeCountForResult(
     );
   }
   return result.trades.filter((trade) => trade.assetClass === assetId).length;
+}
+
+function assetReturnForResult(
+  result: WeeklyHoldResult | MultiWeekResult,
+  assetId: string,
+) {
+  if ("weeks" in result) {
+    return result.weeks.reduce(
+      (sum, week) =>
+        sum +
+        week.trades
+          .filter((trade) => trade.assetClass === assetId)
+          .reduce((weekSum, trade) => weekSum + trade.returnPct, 0),
+      0,
+    );
+  }
+  return result.trades
+    .filter((trade) => trade.assetClass === assetId)
+    .reduce((sum, trade) => sum + trade.returnPct, 0);
 }
 
 type MultiWeekPathAggregate = {
