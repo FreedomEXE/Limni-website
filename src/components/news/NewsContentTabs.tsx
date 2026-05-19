@@ -69,13 +69,45 @@ function impactTone(impact: NewsEvent["impact"]) {
   return "bg-[var(--panel-border)]/60 text-[color:var(--muted)]";
 }
 
-function hasReleased(event: NewsEvent) {
+function hasReleased(event: NewsEvent, nowMs: number) {
   if (!event.datetime_utc) return false;
   const ts = Date.parse(event.datetime_utc);
-  return Number.isFinite(ts) && ts <= Date.now();
+  return Number.isFinite(ts) && ts <= nowMs;
 }
 
-function renderEventMetricValue(value: string | null | undefined, event: NewsEvent) {
+function recentlyReleased(event: NewsEvent, nowMs: number, hours = 36) {
+  if (!event.datetime_utc) return false;
+  const ts = Date.parse(event.datetime_utc);
+  if (!Number.isFinite(ts)) return false;
+  const ageMs = nowMs - ts;
+  return ageMs >= 0 && ageMs <= hours * 60 * 60 * 1000;
+}
+
+function expectsActualValue(event: NewsEvent) {
+  if (event.impact === "Holiday") return false;
+  const title = event.title.toLowerCase();
+  return ![
+    "speaks",
+    "speech",
+    "testifies",
+    "testimony",
+    "meeting",
+    "meetings",
+    "minutes",
+    "statement",
+    "press conference",
+    "holiday",
+    "auction",
+    "tentative",
+  ].some((token) => title.includes(token));
+}
+
+function renderEventMetricValue(
+  value: string | null | undefined,
+  event: NewsEvent,
+  field: "actual" | "forecast" | "previous",
+  nowMs: number,
+) {
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (trimmed.length > 0) {
@@ -86,20 +118,22 @@ function renderEventMetricValue(value: string | null | undefined, event: NewsEve
   if (value !== null && value !== undefined) {
     return String(value);
   }
-  if (hasReleased(event)) {
+  if (field === "actual" && hasReleased(event, nowMs) && recentlyReleased(event, nowMs) && expectsActualValue(event)) {
     return (
       <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-amber-700 dark:text-amber-300">
         Pending
       </span>
     );
   }
-  return "";
+  return "—";
 }
 
 export default function NewsContentTabs({
   announcements,
   calendar,
 }: NewsContentTabsProps) {
+  const [nowMs] = useState(() => Date.now());
+  const [todayKey] = useState(() => DateTime.now().setZone(NEWS_TIME_ZONE).toFormat("yyyy-LL-dd"));
   const groupedCalendar = useMemo(() => {
     const groups = new Map<
       string,
@@ -118,24 +152,39 @@ export default function NewsContentTabs({
       }
       groups.get(key)!.events.push(event);
     }
-    return Array.from(groups.values()).sort((a, b) => b.ts - a.ts);
-  }, [calendar]);
+    return Array.from(groups.values()).sort((a, b) => {
+      if (a.key === todayKey) return -1;
+      if (b.key === todayKey) return 1;
+      return a.ts - b.ts;
+    });
+  }, [calendar, todayKey]);
 
-  const leadingGroupKey = useMemo(() => {
+  const defaultOpenGroupKey = useMemo(() => {
     if (groupedCalendar.length === 0) return null;
+    const currentDayGroup = groupedCalendar.find((group) => group.key === todayKey);
+    if (currentDayGroup) return currentDayGroup.key;
     return groupedCalendar[0]?.key ?? null;
-  }, [groupedCalendar]);
+  }, [groupedCalendar, todayKey]);
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() =>
-    leadingGroupKey ? new Set([leadingGroupKey]) : new Set(),
+    defaultOpenGroupKey ? new Set([defaultOpenGroupKey]) : new Set(),
   );
 
-  const todayKey = DateTime.now().setZone(NEWS_TIME_ZONE).toFormat("yyyy-LL-dd");
   const highImpactEvents = useMemo(
     () => calendar.filter((event) => event.impact === "High"),
     [calendar],
   );
-  const topAnnouncements = useMemo(() => announcements.slice(0, 8), [announcements]);
+  const topAnnouncements = useMemo(() => {
+    const candidates = announcements.length > 0 ? announcements : calendar;
+    const upcoming = candidates.filter((event) => {
+      if (!event.datetime_utc) return false;
+      const ts = Date.parse(event.datetime_utc);
+      return Number.isFinite(ts) && ts >= nowMs;
+    });
+    return (upcoming.length > 0 ? upcoming : candidates)
+      .filter((event) => event.impact === "High" || event.impact === "Medium")
+      .slice(0, 8);
+  }, [announcements, calendar, nowMs]);
 
   function toggleGroup(key: string) {
     setOpenGroups((prev) => {
@@ -163,21 +212,21 @@ export default function NewsContentTabs({
               {groupedCalendar.map((group) => {
                 const isOpen = openGroups.has(group.key);
                 const isCurrentDay = group.key === todayKey;
-                const isLeading = group.key === leadingGroupKey;
+                const isDefaultOpen = group.key === defaultOpenGroupKey;
                 return (
                   <div key={group.key} className="bg-[var(--panel)]/40">
                     <button
                       type="button"
                       onClick={() => toggleGroup(group.key)}
                       className={`w-full border-b border-[var(--panel-border)] px-4 py-3 text-left transition ${
-                        isCurrentDay || isLeading ? "bg-emerald-50/60 dark:bg-emerald-900/20" : "bg-[var(--panel)]/95"
+                        isCurrentDay || isDefaultOpen ? "bg-emerald-50/60 dark:bg-emerald-900/20" : "bg-[var(--panel)]/95"
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                             {group.label}
-                            {isCurrentDay ? " • Current Day" : isLeading ? " • Latest" : ""}
+                            {isCurrentDay ? " • Current Day" : ""}
                           </p>
                           <p className="text-sm font-semibold text-[var(--foreground)]">
                             {group.events.length} event{group.events.length !== 1 ? "s" : ""}
@@ -236,19 +285,19 @@ export default function NewsContentTabs({
                                   <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
                                     Actual{" "}
                                   </span>
-                                  {renderEventMetricValue(event.actual, event)}
+                                  {renderEventMetricValue(event.actual, event, "actual", nowMs)}
                                 </div>
                                 <div className="text-right text-xs text-[var(--foreground)]">
                                   <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
                                     Forecast{" "}
                                   </span>
-                                  {renderEventMetricValue(event.forecast, event)}
+                                  {renderEventMetricValue(event.forecast, event, "forecast", nowMs)}
                                 </div>
                                 <div className="text-right text-xs text-[var(--foreground)]">
                                   <span className="md:hidden text-[10px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
                                     Previous{" "}
                                   </span>
-                                  {renderEventMetricValue(event.previous, event)}
+                                  {renderEventMetricValue(event.previous, event, "previous", nowMs)}
                                 </div>
                               </div>
                             );

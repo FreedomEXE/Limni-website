@@ -254,7 +254,7 @@ export default function PerformanceSimulationSection({
       {weeklyReturns && weeklyReturns.length > 0 && (
         <>
           <RollingPerformanceWindows weeks={weeklyReturns} />
-          <AssetContributionChart series={group.series} />
+          <AssetContributionChart series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries} />
           <ReturnDistribution weeks={weeklyReturns} />
           {maeTrades && maeTrades.length > 0 && <MaeScatterPlot trades={maeTrades} />}
           <MonthlyReturnsHeatmap weeks={weeklyReturns} />
@@ -262,7 +262,7 @@ export default function PerformanceSimulationSection({
       )}
 
       {!weeklyReturns && group.series.some((s) => s.id.startsWith("asset:")) && (
-        <AssetContributionChart series={group.series} />
+        <AssetContributionChart series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries} />
       )}
     </div>
   );

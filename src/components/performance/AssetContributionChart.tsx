@@ -31,7 +31,7 @@ export type SimulationSeries = {
   id: string;
   label: string;
   color?: string;
-  points: Array<{ equity_pct: number }>;
+  points: Array<{ ts_utc?: string; equity_pct: number }>;
 };
 
 export default function AssetContributionChart({ series }: { series: SimulationSeries[] }) {
@@ -40,7 +40,7 @@ export default function AssetContributionChart({ series }: { series: SimulationS
 
   const bars: AssetBar[] = assetSeries.map((s) => {
     const assetId = s.id.replace("asset:", "");
-    const lastPoint = s.points.at(-1);
+    const lastPoint = filterMarketHours(s.points).at(-1);
     return {
       label: s.label,
       returnPct: lastPoint?.equity_pct ?? 0,
@@ -93,4 +93,29 @@ export default function AssetContributionChart({ series }: { series: SimulationS
       </div>
     </div>
   );
+}
+
+function isWeekendPoint(tsUtc: string): boolean {
+  const d = new Date(tsUtc);
+  const day = d.getUTCDay();
+  if (day === 6) return true;
+  if (day === 0 && d.getUTCHours() < 21) return true;
+  return false;
+}
+
+function filterMarketHours<T extends { ts_utc?: string }>(points: T[]): T[] {
+  const now = Date.now();
+  const filtered = points.filter((point) => {
+    if (!point.ts_utc) return true;
+    const ts = new Date(point.ts_utc).getTime();
+    return Number.isFinite(ts) && ts <= now && !isWeekendPoint(point.ts_utc);
+  });
+  if (filtered.length > 0) return filtered;
+  const pastPoints = points.filter((point) => {
+    if (!point.ts_utc) return true;
+    const ts = new Date(point.ts_utc).getTime();
+    return Number.isFinite(ts) && ts <= now;
+  });
+  if (pastPoints.length > 0) return pastPoints;
+  return points.length > 0 ? [points[0] as T] : [];
 }

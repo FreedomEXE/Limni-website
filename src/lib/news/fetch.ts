@@ -3,7 +3,10 @@ import type { NewsEvent } from "./types";
 
 const FOREX_FACTORY_WEEK_FEED =
   "https://nfs.faireconomy.media/ff_calendar_thisweek.xml";
-const FOREX_FACTORY_CALENDAR_PAGE = "https://secure.forexfactory.com/calendar";
+const FOREX_FACTORY_CALENDAR_PAGES = [
+  "https://www.forexfactory.com/calendar",
+  "https://secure.forexfactory.com/calendar",
+];
 const NEWS_DISPLAY_TIME_ZONE = "America/Toronto";
 const XML_SOURCE_TIME_ZONE = process.env.NEWS_XML_SOURCE_TIMEZONE?.trim() || "UTC";
 
@@ -348,12 +351,14 @@ function parseForexFactoryCalendarPage(html: string): NewsEvent[] {
   });
 }
 
-async function fetchForexFactoryCalendarPageEvents(): Promise<NewsEvent[]> {
-  const response = await fetch(FOREX_FACTORY_CALENDAR_PAGE, {
+async function fetchForexFactoryCalendarPageEventsFromUrl(url: string): Promise<NewsEvent[]> {
+  const response = await fetch(url, {
     headers: {
       "User-Agent": "Mozilla/5.0 (compatible; LimniLabs-NewsBot/1.0)",
       "Accept-Language": "en-US,en;q=0.9",
-      Accept: "text/html,application/xhtml+xml",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
     },
     cache: "no-store",
   });
@@ -377,12 +382,24 @@ async function fetchForexFactoryCalendarPageEvents(): Promise<NewsEvent[]> {
   return tableEvents;
 }
 
+async function fetchForexFactoryCalendarPageEvents(): Promise<NewsEvent[]> {
+  const errors: string[] = [];
+  for (const url of FOREX_FACTORY_CALENDAR_PAGES) {
+    try {
+      return await fetchForexFactoryCalendarPageEventsFromUrl(url);
+    } catch (error) {
+      errors.push(`${url}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  throw new Error(errors.join("; "));
+}
+
 export async function fetchForexFactoryCalendarEvents(): Promise<NewsEvent[]> {
   try {
     return await fetchForexFactoryCalendarPageEvents();
   } catch (primaryError) {
     console.warn(
-      "[news] secure ForexFactory calendar parse failed; falling back to export feed:",
+      "[news] ForexFactory calendar page parse failed; falling back to export feed:",
       primaryError instanceof Error ? primaryError.message : String(primaryError),
     );
   }
