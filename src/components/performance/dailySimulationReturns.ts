@@ -22,6 +22,7 @@ export type DailySimulationReturn = {
 };
 
 export const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
+export const CALENDAR_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 function isWeekendPoint(tsUtc: string): boolean {
   const d = new Date(tsUtc);
@@ -31,8 +32,15 @@ function isWeekendPoint(tsUtc: string): boolean {
   return false;
 }
 
-function filterMarketHours(points: PerformanceSimulationSeries["points"], nowMs: number) {
-  const filtered = points.filter((point) => !isWeekendPoint(point.ts_utc) && new Date(point.ts_utc).getTime() <= nowMs);
+function filterMarketHours(
+  points: PerformanceSimulationSeries["points"],
+  nowMs: number,
+  includeWeekends: boolean,
+) {
+  const filtered = points.filter((point) => (
+    (includeWeekends || !isWeekendPoint(point.ts_utc)) &&
+    new Date(point.ts_utc).getTime() <= nowMs
+  ));
   if (filtered.length > 0) return filtered;
   const pastPoints = points.filter((point) => new Date(point.ts_utc).getTime() <= nowMs);
   if (pastPoints.length > 0) return pastPoints;
@@ -58,12 +66,15 @@ function formatDayLabel(dateKey: string) {
 export function buildDailySimulationReturns(
   series: PerformanceSimulationSeries,
   nowMs = Date.now(),
+  options: { includeWeekends?: boolean } = {},
 ): DailySimulationReturn[] {
+  const includeWeekends = options.includeWeekends === true;
+  const allowedLabels: readonly string[] = includeWeekends ? CALENDAR_DAY_LABELS : WEEKDAY_LABELS;
   const groups = new Map<string, PerformanceSimulationSeries["points"]>();
-  for (const point of filterMarketHours(series.points, nowMs)) {
+  for (const point of filterMarketHours(series.points, nowMs, includeWeekends)) {
     const dateKey = tradingDateKey(point.ts_utc);
     const label = formatDayLabel(dateKey);
-    if (!WEEKDAY_LABELS.includes(label as (typeof WEEKDAY_LABELS)[number])) continue;
+    if (!allowedLabels.includes(label)) continue;
     if (!groups.has(dateKey)) groups.set(dateKey, []);
     groups.get(dateKey)!.push(point);
   }

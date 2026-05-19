@@ -20,6 +20,7 @@ import {
   resolveBiasSourceId,
 } from "@/lib/performance/strategyConfig";
 import { toRuntimeStrategySelection } from "@/lib/performance/strategySelection";
+import { parsePerformanceAssetScope } from "@/lib/performance/performanceAssetScope";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   const resolvedSearchParams = (await Promise.resolve(searchParams)) ?? {};
   const viewParamValue = firstParam(resolvedSearchParams.view);
   const weekParamValue = firstParam(resolvedSearchParams.week);
+  const scopeParamValue = firstParam(resolvedSearchParams.scope);
   const strategyParamValue = firstParam(resolvedSearchParams.strategy ?? resolvedSearchParams.bias);
   const f1Value = firstParam(resolvedSearchParams.f1 ?? resolvedSearchParams.filter);
   const f2Value = firstParam(resolvedSearchParams.f2);
@@ -71,6 +73,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           weekOptions={["all"]}
           currentWeek={currentWeekOpenUtc}
           initialWeek={weekParamValue ?? "all"}
+          initialAssetScope={parsePerformanceAssetScope(scopeParamValue)}
         />
       </div>
     </DashboardLayout>

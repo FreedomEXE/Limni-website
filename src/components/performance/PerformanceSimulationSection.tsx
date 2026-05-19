@@ -20,6 +20,10 @@ import RollingPerformanceWindows from "@/components/performance/RollingPerforman
 import AssetContributionChart from "@/components/performance/AssetContributionChart";
 import ReturnDistribution from "@/components/performance/ReturnDistribution";
 import MaeScatterPlot, { type MaeTrade } from "@/components/performance/MaeScatterPlot";
+import {
+  PERFORMANCE_ASSET_SCOPE_LABELS,
+  type PerformanceAssetScope,
+} from "@/lib/performance/performanceAssetScope";
 
 export type PerformanceSimulationSeries = {
   id: string;
@@ -74,9 +78,15 @@ function isWeekendPoint(tsUtc: string): boolean {
   return false;
 }
 
-function filterMarketHours(pts: PerformanceSimulationSeries["points"]): PerformanceSimulationSeries["points"] {
+function filterMarketHours(
+  pts: PerformanceSimulationSeries["points"],
+  includeWeekends: boolean,
+): PerformanceSimulationSeries["points"] {
   const now = Date.now();
-  const filtered = pts.filter((p) => !isWeekendPoint(p.ts_utc) && new Date(p.ts_utc).getTime() <= now);
+  const filtered = pts.filter((p) => (
+    (includeWeekends || !isWeekendPoint(p.ts_utc)) &&
+    new Date(p.ts_utc).getTime() <= now
+  ));
   if (filtered.length > 0) return filtered;
   const pastPoints = pts.filter((p) => new Date(p.ts_utc).getTime() <= now);
   if (pastPoints.length > 0) return pastPoints;
@@ -122,8 +132,12 @@ function computeMixedSeries(series: PerformanceSimulationSeries[]): PerformanceS
   };
 }
 
-function summarizeMixedSeries(series: PerformanceSimulationSeries, fallbackTrades: number | null) {
-  const filtered = filterMarketHours(series.points);
+function summarizeMixedSeries(
+  series: PerformanceSimulationSeries,
+  fallbackTrades: number | null,
+  includeWeekends: boolean,
+) {
+  const filtered = filterMarketHours(series.points, includeWeekends);
   const last = filtered.at(-1);
   const drawdowns = filtered
     .map((point) => point.drawdown_pct)
@@ -139,10 +153,14 @@ export default function PerformanceSimulationSection({
   group,
   weeklyReturns,
   maeTrades,
+  assetScope,
+  onAssetScopeChange,
 }: {
   group: PerformanceSimulationGroup | null;
   weeklyReturns?: Array<{ weekOpenUtc: string; returnPct: number }>;
   maeTrades?: MaeTrade[];
+  assetScope?: PerformanceAssetScope;
+  onAssetScopeChange?: (scope: PerformanceAssetScope) => void;
 }) {
   const sleeveSeries = useMemo(() => {
     const assetSleeves = group?.series.filter((series) => series.id.startsWith("asset:")) ?? [];
@@ -151,12 +169,18 @@ export default function PerformanceSimulationSection({
   }, [group]);
   const [selectedSleeves, setSelectedSleeves] = useState<string[] | null>(null);
   const sleeveIds = sleeveSeries.map((series) => series.id);
-  const selectedSleevesInGroup = selectedSleeves?.filter((id) => sleeveIds.includes(id)) ?? null;
+  const controlledSleeves = assetScope && assetScope !== "all"
+    ? [`asset:${assetScope}`].filter((id) => sleeveIds.includes(id))
+    : assetScope === "all"
+      ? sleeveIds
+      : null;
+  const selectedSleevesInGroup = (controlledSleeves ?? selectedSleeves)?.filter((id) => sleeveIds.includes(id)) ?? null;
   const resolvedSelectedSleeves = selectedSleevesInGroup && selectedSleevesInGroup.length > 0
     ? selectedSleevesInGroup
     : sleeveIds;
   const activeSleeves = sleeveSeries.filter((series) => resolvedSelectedSleeves.includes(series.id));
   const mixedSeries = computeMixedSeries(activeSleeves.length > 0 ? activeSleeves : sleeveSeries);
+  const includeWeekends = activeSleeves.some((series) => series.id === "asset:crypto");
   const allSleevesSelected = sleeveSeries.length > 0 && resolvedSelectedSleeves.length === sleeveSeries.length;
   const sleeveTradeCount = activeSleeves.reduce(
     (sum, series) => sum + (series.trades ?? 0),
@@ -165,7 +189,7 @@ export default function PerformanceSimulationSection({
   const resolvedTrades = allSleevesSelected
     ? group?.metrics.trades ?? sleeveTradeCount
     : sleeveTradeCount;
-  const mixedMetrics = summarizeMixedSeries(mixedSeries, resolvedTrades);
+  const mixedMetrics = summarizeMixedSeries(mixedSeries, resolvedTrades, includeWeekends);
 
   if (!group) {
     return (
@@ -191,11 +215,18 @@ export default function PerformanceSimulationSection({
           <div className="mt-4 flex flex-wrap gap-2">
             {sleeveSeries.map((item) => {
               const active = resolvedSelectedSleeves.includes(item.id);
+              const itemScope = item.id.startsWith("asset:")
+                ? item.id.replace("asset:", "") as PerformanceAssetScope
+                : null;
               return (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => {
+                    if (itemScope && onAssetScopeChange) {
+                      onAssetScopeChange(active && !allSleevesSelected ? "all" : itemScope);
+                      return;
+                    }
                     setSelectedSleeves((previous) => {
                       const current = previous ?? sleeveSeries.map((series) => series.id);
                       const next = current.includes(item.id)
@@ -210,13 +241,19 @@ export default function PerformanceSimulationSection({
                       : "border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)]/50 hover:text-[var(--foreground)]"
                   }`}
                 >
-                  {item.label}
+                  {itemScope ? PERFORMANCE_ASSET_SCOPE_LABELS[itemScope] : item.label}
                 </button>
               );
             })}
             <button
               type="button"
-              onClick={() => setSelectedSleeves(sleeveSeries.map((series) => series.id))}
+              onClick={() => {
+                if (onAssetScopeChange) {
+                  onAssetScopeChange("all");
+                  return;
+                }
+                setSelectedSleeves(sleeveSeries.map((series) => series.id));
+              }}
               className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
                 allSleevesSelected
                   ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
@@ -233,7 +270,7 @@ export default function PerformanceSimulationSection({
         title={`${group.title} equity curve`}
         series={[mixedSeries]}
         interactive={false}
-        skipWeekends
+        skipWeekends={!includeWeekends}
       />
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -269,14 +306,19 @@ export default function PerformanceSimulationSection({
           <AssetContributionChart series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries} />
           <ReturnDistribution weeks={weeklyReturns} />
           {maeTrades && maeTrades.length > 0 && <MaeScatterPlot trades={maeTrades} />}
-          <ReturnsCalendar weeks={weeklyReturns} series={mixedSeries} />
+          <ReturnsCalendar weeks={weeklyReturns} series={mixedSeries} includeWeekends={includeWeekends} />
         </>
       )}
 
       {!weeklyReturns && group.series.some((s) => s.id.startsWith("asset:")) && (
         <>
           <AssetContributionChart series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries} />
-          <ReturnsCalendar series={mixedSeries} forcedMode="daily" showModeToggle={false} />
+          <ReturnsCalendar
+            series={mixedSeries}
+            forcedMode="daily"
+            showModeToggle={false}
+            includeWeekends={includeWeekends}
+          />
         </>
       )}
     </div>

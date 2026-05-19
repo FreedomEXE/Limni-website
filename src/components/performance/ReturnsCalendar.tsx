@@ -39,6 +39,7 @@ type ReturnsCalendarProps = {
   series?: PerformanceSimulationSeries;
   forcedMode?: CalendarMode;
   showModeToggle?: boolean;
+  includeWeekends?: boolean;
 };
 
 function aggregateToMonths(weeks: WeekReturn[]): Map<string, MonthCell> {
@@ -118,10 +119,12 @@ export default function ReturnsCalendar({
   series,
   forcedMode,
   showModeToggle = true,
+  includeWeekends = false,
 }: ReturnsCalendarProps) {
+  const [nowMs] = useState(() => Date.now());
   const dailyReturns = useMemo(
-    () => series ? buildDailySimulationReturns(series) : [],
-    [series],
+    () => series ? buildDailySimulationReturns(series, nowMs, { includeWeekends }) : [],
+    [includeWeekends, nowMs, series],
   );
   const availableModes = getAvailableModes(weeks, dailyReturns.length > 0);
   const fallbackMode = availableModes[0] ?? "monthly";
@@ -163,9 +166,9 @@ export default function ReturnsCalendar({
       ) : mode === "weekly" ? (
         <WeeklyGrid weeks={weeks} />
       ) : forcedMode === "daily" ? (
-        <DailyWeekStrip days={dailyReturns} />
+        <DailyWeekStrip days={dailyReturns} includeWeekends={includeWeekends} />
       ) : (
-        <DailyMonthCalendars days={dailyReturns} />
+        <DailyMonthCalendars days={dailyReturns} includeWeekends={includeWeekends} />
       )}
     </div>
   );
@@ -252,13 +255,20 @@ function WeeklyGrid({ weeks }: { weeks: WeekReturn[] }) {
   );
 }
 
-function DailyWeekStrip({ days }: { days: DailySimulationReturn[] }) {
+function DailyWeekStrip({
+  days,
+  includeWeekends,
+}: {
+  days: DailySimulationReturn[];
+  includeWeekends: boolean;
+}) {
   const cellsByDay = new Map(days.map((day) => [day.dayLabel, day]));
   const maxAbs = Math.max(...days.map((day) => Math.abs(day.returnPct)), 0.01);
+  const labels = includeWeekends ? WEEKDAY_LABELS : TRADING_WEEKDAY_LABELS;
 
   return (
-    <div className="grid gap-3 lg:grid-cols-5">
-      {TRADING_WEEKDAY_LABELS.map((dayLabel) => {
+    <div className={`grid gap-3 ${includeWeekends ? "lg:grid-cols-7" : "lg:grid-cols-5"}`}>
+      {labels.map((dayLabel) => {
         const day = cellsByDay.get(dayLabel);
         return (
           <div
@@ -285,7 +295,13 @@ function DailyWeekStrip({ days }: { days: DailySimulationReturn[] }) {
   );
 }
 
-function DailyMonthCalendars({ days }: { days: DailySimulationReturn[] }) {
+function DailyMonthCalendars({
+  days,
+  includeWeekends,
+}: {
+  days: DailySimulationReturn[];
+  includeWeekends: boolean;
+}) {
   const daysByDate = new Map(days.map((day) => [day.dateKey, day]));
   const monthKeys = [...new Set(days.map((day) => monthKeyFromDateKey(day.dateKey)))].sort();
   const maxAbs = Math.max(...days.map((day) => Math.abs(day.returnPct)), 0.01);
@@ -327,7 +343,7 @@ function DailyMonthCalendars({ days }: { days: DailySimulationReturn[] }) {
                 return (
                   <div
                     key={dateKey}
-                    className={`min-h-20 rounded-lg border border-[var(--panel-border)] p-2 ${isWeekend ? "opacity-45" : ""}`}
+                    className={`min-h-20 rounded-lg border border-[var(--panel-border)] p-2 ${isWeekend && !includeWeekends ? "opacity-45" : ""}`}
                     style={day ? { backgroundColor: cellColor(day.returnPct, maxAbs) } : undefined}
                     title={day ? `${dateKey}: ${signed(day.returnPct, 2)}` : dateKey}
                   >

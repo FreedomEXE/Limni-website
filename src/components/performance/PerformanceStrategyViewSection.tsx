@@ -45,7 +45,7 @@ type StrategyBootstrapEntry = {
 
 type PerformanceStrategyViewSectionProps = Omit<
   ComponentProps<typeof PerformanceViewSection>,
-  "engineWeekMap" | "engineSimMap"
+  "engineWeekMap" | "engineSimMap" | "engineWeekResults" | "selection" | "sidebarStats"
 > & {
   initialSelection: RuntimeStrategySelection;
   initialEntry: StrategyBootstrapEntry | null;
@@ -144,6 +144,9 @@ export default function PerformanceStrategyViewSection({
             {...performanceProps}
             engineWeekMap={payload?.engineWeekMap ?? null}
             engineSimMap={payload?.engineSimMap ?? null}
+            engineWeekResults={payload?.engineWeekResults ?? null}
+            selection={selectedSelection}
+            sidebarStats={payload?.sidebarStats ?? null}
             weekOptions={payload?.weekOptions ?? performanceProps.weekOptions}
             currentWeek={payload?.currentWeekOpenUtc ?? performanceProps.currentWeek}
             strategyDescription={strategyDescription}
