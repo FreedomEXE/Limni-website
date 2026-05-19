@@ -20,7 +20,7 @@ import {
   resolveBiasSourceId,
 } from "@/lib/performance/strategyConfig";
 import { toRuntimeStrategySelection } from "@/lib/performance/strategySelection";
-import { parsePerformanceAssetScope } from "@/lib/performance/performanceAssetScope";
+import { parsePerformanceAssetSelection } from "@/lib/performance/performanceAssetScope";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const dynamic = "force-dynamic";
@@ -73,7 +73,7 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
           weekOptions={["all"]}
           currentWeek={currentWeekOpenUtc}
           initialWeek={weekParamValue ?? "all"}
-          initialAssetScope={parsePerformanceAssetScope(scopeParamValue)}
+          initialAssetScope={parsePerformanceAssetSelection(scopeParamValue)}
         />
       </div>
     </DashboardLayout>

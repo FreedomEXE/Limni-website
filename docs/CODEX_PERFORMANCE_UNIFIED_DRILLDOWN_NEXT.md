@@ -124,6 +124,18 @@ Build or preserve continuous realized price paths for every asset sleeve, not ju
 
 This is not the immediate next fix, but it should be tracked as the next quality upgrade after unified scope.
 
+Observed follow-up:
+
+Some non-FX sleeves, especially indices/commodities/crypto in certain weekly-hold views, still render as flat-through-week plus one final jump. That means the selected sleeve is using a coarse weekly/trade-derived fallback instead of a canonical hourly path. In those cases, return may be numerically right, but drawdown and intraperiod shape are not reliable.
+
+Next path-engine task:
+
+- audit `canonical_price_bars` coverage for non-FX symbols used by strategy paths
+- verify `loadPathBars()` returns hourly rows for symbols like `SPXUSD`, `NDXUSD`, `NIKKEIUSD`, `XAUUSD`, `XAGUSD`, `WTIUSD`, `BTCUSD`, `ETHUSD`
+- preserve native asset paths when their final return matches the trade log
+- only use trade-derived fallback when hourly data is truly unavailable
+- expose a path-quality flag in simulation data so the UI can distinguish `hourly` vs `weekly fallback`
+
 ## Implementation Plan
 
 1. Add shared asset scope state.

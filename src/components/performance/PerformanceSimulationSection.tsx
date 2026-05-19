@@ -21,8 +21,9 @@ import AssetContributionChart from "@/components/performance/AssetContributionCh
 import ReturnDistribution from "@/components/performance/ReturnDistribution";
 import MaeScatterPlot, { type MaeTrade } from "@/components/performance/MaeScatterPlot";
 import {
+  PERFORMANCE_ASSET_CLASSES,
   PERFORMANCE_ASSET_SCOPE_LABELS,
-  type PerformanceAssetScope,
+  type PerformanceAssetSelection,
 } from "@/lib/performance/performanceAssetScope";
 
 export type PerformanceSimulationSeries = {
@@ -159,8 +160,8 @@ export default function PerformanceSimulationSection({
   group: PerformanceSimulationGroup | null;
   weeklyReturns?: Array<{ weekOpenUtc: string; returnPct: number }>;
   maeTrades?: MaeTrade[];
-  assetScope?: PerformanceAssetScope;
-  onAssetScopeChange?: (scope: PerformanceAssetScope) => void;
+  assetScope?: PerformanceAssetSelection;
+  onAssetScopeChange?: (scope: PerformanceAssetSelection) => void;
 }) {
   const sleeveSeries = useMemo(() => {
     const assetSleeves = group?.series.filter((series) => series.id.startsWith("asset:")) ?? [];
@@ -169,11 +170,9 @@ export default function PerformanceSimulationSection({
   }, [group]);
   const [selectedSleeves, setSelectedSleeves] = useState<string[] | null>(null);
   const sleeveIds = sleeveSeries.map((series) => series.id);
-  const controlledSleeves = assetScope && assetScope !== "all"
-    ? [`asset:${assetScope}`].filter((id) => sleeveIds.includes(id))
-    : assetScope === "all"
-      ? sleeveIds
-      : null;
+  const controlledSleeves = assetScope
+    ? assetScope.map((scope) => `asset:${scope}`).filter((id) => sleeveIds.includes(id))
+    : null;
   const selectedSleevesInGroup = (controlledSleeves ?? selectedSleeves)?.filter((id) => sleeveIds.includes(id)) ?? null;
   const resolvedSelectedSleeves = selectedSleevesInGroup && selectedSleevesInGroup.length > 0
     ? selectedSleevesInGroup
@@ -216,7 +215,7 @@ export default function PerformanceSimulationSection({
             {sleeveSeries.map((item) => {
               const active = resolvedSelectedSleeves.includes(item.id);
               const itemScope = item.id.startsWith("asset:")
-                ? item.id.replace("asset:", "") as PerformanceAssetScope
+                ? item.id.replace("asset:", "") as PerformanceAssetSelection[number]
                 : null;
               return (
                 <button
@@ -224,7 +223,13 @@ export default function PerformanceSimulationSection({
                   type="button"
                   onClick={() => {
                     if (itemScope && onAssetScopeChange) {
-                      onAssetScopeChange(active && !allSleevesSelected ? "all" : itemScope);
+                      const current = assetScope && assetScope.length > 0
+                        ? assetScope
+                        : [...PERFORMANCE_ASSET_CLASSES];
+                      const next = active
+                        ? current.filter((scope) => scope !== itemScope)
+                        : [...current, itemScope];
+                      onAssetScopeChange(next.length > 0 ? Array.from(new Set(next)) : current);
                       return;
                     }
                     setSelectedSleeves((previous) => {
@@ -249,7 +254,7 @@ export default function PerformanceSimulationSection({
               type="button"
               onClick={() => {
                 if (onAssetScopeChange) {
-                  onAssetScopeChange("all");
+                  onAssetScopeChange([...PERFORMANCE_ASSET_CLASSES]);
                   return;
                 }
                 setSelectedSleeves(sleeveSeries.map((series) => series.id));

@@ -36,9 +36,11 @@ import {
 } from "@/lib/performance/strategyRegistry";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
+  formatPerformanceAssetSelection,
+  isAllPerformanceAssetSelection,
   assetMatchesPerformanceScope,
   symbolMatchesPerformanceScope,
-  type PerformanceAssetScope,
+  type PerformanceAssetSelection,
 } from "@/lib/performance/performanceAssetScope";
 import {
   STRATEGY_SIDEBAR_STATS_EVENT,
@@ -85,15 +87,15 @@ function hasGridActivity(gridProps: EngineGridProps | null | undefined) {
   )));
 }
 
-function scopedReturnFromWeekResult(result: WeeklyHoldResult, scope: PerformanceAssetScope) {
-  if (scope === "all") return result.totalReturnPct;
+function scopedReturnFromWeekResult(result: WeeklyHoldResult, scope: PerformanceAssetSelection) {
+  if (isAllPerformanceAssetSelection(scope)) return result.totalReturnPct;
   return result.trades
     .filter((trade) => assetMatchesPerformanceScope(trade.assetClass, scope))
     .reduce((sum, trade) => sum + trade.returnPct, 0);
 }
 
-function scopedTradesFromWeekResult(result: WeeklyHoldResult, scope: PerformanceAssetScope) {
-  return scope === "all"
+function scopedTradesFromWeekResult(result: WeeklyHoldResult, scope: PerformanceAssetSelection) {
+  return isAllPerformanceAssetSelection(scope)
     ? result.trades
     : result.trades.filter((trade) => assetMatchesPerformanceScope(trade.assetClass, scope));
 }
@@ -114,9 +116,9 @@ function computeScopedSidebarStats(
   baseStats: EngineSidebarStats | null | undefined,
   weekResults: Record<string, WeeklyHoldResult> | null | undefined,
   selectedWeek: string,
-  scope: PerformanceAssetScope,
+  scope: PerformanceAssetSelection,
 ): EngineSidebarStats | null {
-  if (scope === "all" || !baseStats || !weekResults) return baseStats ?? null;
+  if (isAllPerformanceAssetSelection(scope) || !baseStats || !weekResults) return baseStats ?? null;
 
   const sortedWeeks = Object.values(weekResults)
     .filter((week) => week.isRealized)
@@ -238,11 +240,34 @@ function recomputeReturns(values: Array<{ pair: string; percent: number }>) {
   };
 }
 
+function combineAllTimeStats(rows: EngineGridProps["allTime"]["combined"]) {
+  const byModel = new Map<EngineGridProps["allTime"]["combined"][number]["model"], EngineGridProps["allTime"]["combined"][number]>();
+  for (const row of rows) {
+    const current = byModel.get(row.model);
+    if (!current) {
+      byModel.set(row.model, { ...row });
+      continue;
+    }
+    const weeks = Math.max(current.weeks, row.weeks);
+    byModel.set(row.model, {
+      ...current,
+      totalPercent: current.totalPercent + row.totalPercent,
+      weeks,
+      winRate:
+        current.weeks + row.weeks > 0
+          ? ((current.winRate * current.weeks) + (row.winRate * row.weeks)) / (current.weeks + row.weeks)
+          : 0,
+      avgWeekly: weeks > 0 ? (current.totalPercent + row.totalPercent) / weeks : 0,
+    });
+  }
+  return Array.from(byModel.values());
+}
+
 function filterGridPropsByScope(
   gridProps: EngineGridProps | null,
-  scope: PerformanceAssetScope,
+  scope: PerformanceAssetSelection,
 ): EngineGridProps | null {
-  if (!gridProps || scope === "all") return gridProps;
+  if (!gridProps || isAllPerformanceAssetSelection(scope)) return gridProps;
 
   const filterModel = (model: EngineGridProps["combined"]["models"][number]) => {
     const pairDetails = model.pair_details.filter((detail) =>
@@ -267,9 +292,9 @@ function filterGridPropsByScope(
     ...gridProps,
     allTime: {
       ...gridProps.allTime,
-      combined: gridProps.allTime.perAsset[scope] ?? [],
+      combined: combineAllTimeStats(scope.flatMap((assetClass) => gridProps.allTime.perAsset[assetClass] ?? [])),
       perAsset: {
-        [scope]: gridProps.allTime.perAsset[scope] ?? [],
+        ...Object.fromEntries(scope.map((assetClass) => [assetClass, gridProps.allTime.perAsset[assetClass] ?? []])),
       },
     },
     combined: {
@@ -472,7 +497,7 @@ type PerformanceViewSectionProps = {
   currentWeek?: string;
   /** Initial selected week (from URL) */
   initialWeek?: string;
-  initialAssetScope?: PerformanceAssetScope;
+  initialAssetScope?: PerformanceAssetSelection;
   strategyDescription?: string | null;
   notesStorageKey?: string;
 };
@@ -496,13 +521,14 @@ export default function PerformanceViewSection({
   weekOptions,
   currentWeek,
   initialWeek,
-  initialAssetScope = "all",
+  initialAssetScope,
   strategyDescription,
   notesStorageKey,
 }: PerformanceViewSectionProps) {
   const [view, setView] = useState<PerformanceView>(initialView);
   const [selectedWeek, setSelectedWeek] = useState(initialWeek ?? "all");
-  const [assetScope, setAssetScope] = useState<PerformanceAssetScope>(initialAssetScope);
+  const [assetScope, setAssetScope] = useState<PerformanceAssetSelection>(initialAssetScope ?? ["fx", "indices", "commodities", "crypto"]);
+  const [scopeDeriving, setScopeDeriving] = useState(false);
 
   // Legacy mode state
   const [mode, setMode] = useState<"flagship" | "legacy" | "matrix">(initialMode);
@@ -514,15 +540,25 @@ export default function PerformanceViewSection({
   useEffect(() => { setSystem(initialSystem); }, [initialSystem]);
   useEffect(() => { setStyle(initialStyle); }, [initialStyle]);
   useEffect(() => { setSelectedWeek(initialWeek ?? "all"); }, [initialWeek]);
-  useEffect(() => { setAssetScope(initialAssetScope); }, [initialAssetScope]);
+  useEffect(() => {
+    if (initialAssetScope) setAssetScope(initialAssetScope);
+  }, [initialAssetScope]);
+
+  useEffect(() => {
+    if (!engineWeekMap) return;
+    setScopeDeriving(true);
+    const timeout = window.setTimeout(() => setScopeDeriving(false), 300);
+    return () => window.clearTimeout(timeout);
+  }, [assetScope, engineWeekMap, selectedWeek, view]);
 
   useEffect(() => {
     if (!engineWeekMap || typeof window === "undefined") return;
     const url = new URL(window.location.href);
     if (selectedWeek === "all") url.searchParams.delete("week");
     else url.searchParams.set("week", selectedWeek);
-    if (assetScope === "all") url.searchParams.delete("scope");
-    else url.searchParams.set("scope", assetScope);
+    const formattedScope = formatPerformanceAssetSelection(assetScope);
+    if (formattedScope === "all") url.searchParams.delete("scope");
+    else url.searchParams.set("scope", formattedScope);
     url.searchParams.set("view", view);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
   }, [assetScope, engineWeekMap, selectedWeek, view]);
@@ -701,6 +737,11 @@ export default function PerformanceViewSection({
           onViewChange={setView}
           views={PERFORMANCE_VIEW_CARDS}
         />
+        {scopeDeriving ? (
+          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)] shadow-sm">
+            Updating scoped performance stats...
+          </div>
+        ) : null}
         {view === "notes" ? (
           <PerformanceNotesPad
             selectedWeek={selectedWeek}
