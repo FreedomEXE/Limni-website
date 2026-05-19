@@ -15,12 +15,10 @@
 
 import { useMemo, useState } from "react";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
-import MonthlyReturnsHeatmap from "@/components/performance/MonthlyReturnsHeatmap";
+import ReturnsCalendar from "@/components/performance/ReturnsCalendar";
 import RollingPerformanceWindows from "@/components/performance/RollingPerformanceWindows";
 import AssetContributionChart from "@/components/performance/AssetContributionChart";
 import ReturnDistribution from "@/components/performance/ReturnDistribution";
-import DailyReturnDistribution from "@/components/performance/DailyReturnDistribution";
-import DailyReturnsTable from "@/components/performance/DailyReturnsTable";
 import MaeScatterPlot, { type MaeTrade } from "@/components/performance/MaeScatterPlot";
 
 export type PerformanceSimulationSeries = {
@@ -271,15 +269,14 @@ export default function PerformanceSimulationSection({
           <AssetContributionChart series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries} />
           <ReturnDistribution weeks={weeklyReturns} />
           {maeTrades && maeTrades.length > 0 && <MaeScatterPlot trades={maeTrades} />}
-          <MonthlyReturnsHeatmap weeks={weeklyReturns} />
+          <ReturnsCalendar weeks={weeklyReturns} series={mixedSeries} />
         </>
       )}
 
       {!weeklyReturns && group.series.some((s) => s.id.startsWith("asset:")) && (
         <>
           <AssetContributionChart series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries} />
-          <DailyReturnDistribution series={mixedSeries} />
-          <DailyReturnsTable series={mixedSeries} />
+          <ReturnsCalendar series={mixedSeries} forcedMode="daily" showModeToggle={false} />
         </>
       )}
     </div>

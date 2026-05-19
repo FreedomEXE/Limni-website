@@ -297,7 +297,25 @@ export async function getWeeklyPairReturns(
   if (isCurrentDisplayWeek(weekOpenUtc)) {
     const liveRows = await fetchLiveWeeklyReturns(weekOpenUtc, assetClass);
     if (liveRows.length > 0) {
-      return liveRows;
+      const expectedCount = listCanonicalInstruments(assetClass).filter((instrument) => instrument.isActive).length;
+      if (liveRows.length >= expectedCount) {
+        return liveRows;
+      }
+
+      const storedRows = await readStoredWeeklyPairReturns(weekOpenUtc, assetClass);
+      if (storedRows.length === 0) {
+        return liveRows;
+      }
+
+      const mergedBySymbol = new Map(storedRows.map((row) => [row.symbol.toUpperCase(), row]));
+      for (const row of liveRows) {
+        mergedBySymbol.set(row.symbol.toUpperCase(), row);
+      }
+      return Array.from(mergedBySymbol.values()).sort((left, right) =>
+        left.assetClass === right.assetClass
+          ? left.symbol.localeCompare(right.symbol)
+          : left.assetClass.localeCompare(right.assetClass),
+      );
     }
   }
 

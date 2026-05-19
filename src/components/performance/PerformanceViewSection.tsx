@@ -25,7 +25,7 @@ import PerformanceViewCards, {
 import PerformanceSimulationSection, {
   type PerformanceSimulationGroup,
 } from "@/components/performance/PerformanceSimulationSection";
-import type { WeekReturn } from "@/components/performance/MonthlyReturnsHeatmap";
+import type { WeekReturn } from "@/components/performance/ReturnsCalendar";
 import type { MaeTrade } from "@/components/performance/MaeScatterPlot";
 import PerformanceNotesPad from "@/components/performance/PerformanceNotesPad";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
