@@ -20,6 +20,7 @@
     "trade:backtest-session": "npx tsx scripts/backtest-session-top-pick.ts",
     "performance:cleanup-duplicates": "tsx scripts/cleanup-performance-snapshot-duplicates.ts",
     "performance:coverage:check": "tsx scripts/check-performance-coverage.ts",
+    "performance:backfill-hourly": "tsx scripts/backfill-canonical-hourly-bars.ts",
     "db:migrate": "tsx db/migrate.ts",
     "bot:bitget": "tsx bots/bitget-perp-bot.ts",
     "bot:oanda": "tsx bots/oanda-universal-bot.ts",

@@ -16,7 +16,7 @@ const STRATEGY_ASSEMBLY_VERSION =
 const ENTRY_ENGINE_VERSIONS: Record<string, string> = {
   weekly_hold: "weekly-hold-engine-v1",
   adr: "adr-pullback-engine-v2",
-  adr_grid: "adr-grid-engine-v2",
+  adr_grid: "adr-grid-engine-v3",
 };
 
 const RISK_OVERLAY_VERSIONS: Record<string, string> = {
@@ -24,7 +24,7 @@ const RISK_OVERLAY_VERSIONS: Record<string, string> = {
   exposure_cap: "risk-overlay-exposure-cap-v2",
 };
 
-const PATH_SIMULATION_VERSION = "path-simulation-v4";
+const PATH_SIMULATION_VERSION = "path-simulation-v5";
 const SOURCE_FINGERPRINT_VERSION = "source-fingerprint-v1";
 
 export function buildStrategyArtifactEngineVersion(options: {

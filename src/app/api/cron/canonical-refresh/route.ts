@@ -24,8 +24,9 @@ import {
   CANONICAL_WEEKS,
   getCanonicalWeekWindow,
 } from "@/lib/canonicalPriceWindows";
+import { upsertCanonicalHourlyBarsForInstrument } from "@/lib/canonicalHourlyBars";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
-import { fetchOandaCandleSeries, fetchOandaDailySeries } from "@/lib/oandaPrices";
+import { fetchOandaDailySeries } from "@/lib/oandaPrices";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -248,77 +249,13 @@ export async function GET(request: Request) {
         barsUpserted++;
       }
 
-      if (includeHourly && instrument.primaryProvider === "oanda" && instrument.oandaInstrument) {
-        const hourlyBars = await fetchOandaCandleSeries(
-          instrument.oandaInstrument,
-          fromUtc,
-          toUtc,
-        );
-
-        for (const bar of hourlyBars) {
-          const openDt = DateTime.fromMillis(bar.ts, { zone: "utc" });
-          await query(
-            `INSERT INTO canonical_price_bars (symbol, asset_class, timeframe, bar_open_utc, bar_close_utc, open_price, high_price, low_price, close_price, source_provider, quality_status)
-             VALUES ($1, $2, '1h', $3::timestamptz, $4::timestamptz, $5, $6, $7, $8, $9, 'provider_hourly')
-             ON CONFLICT (symbol, timeframe, bar_open_utc)
-             DO UPDATE SET
-               bar_close_utc = EXCLUDED.bar_close_utc,
-               open_price = EXCLUDED.open_price,
-               high_price = EXCLUDED.high_price,
-               low_price = EXCLUDED.low_price,
-               close_price = EXCLUDED.close_price,
-               source_provider = EXCLUDED.source_provider,
-               quality_status = EXCLUDED.quality_status,
-               updated_at = NOW()`,
-            [
-              instrument.symbol,
-              instrument.assetClass,
-              openDt.toISO(),
-              openDt.plus({ hours: 1 }).toISO(),
-              round(bar.open),
-              round(bar.high),
-              round(bar.low),
-              round(bar.close),
-              "oanda",
-            ],
-          );
-          hourlyBarsUpserted++;
-        }
-      } else if (includeHourly && instrument.primaryProvider === "bitget" && instrument.bitgetBaseCoin) {
-        const { fetchBitgetSpotCandleSeries } = await import("@/lib/bitget");
-        const hourlyBars = await fetchBitgetSpotCandleSeries(instrument.bitgetBaseCoin, {
-          openUtc: fromUtc,
-          closeUtc: toUtc,
-        });
-
-        for (const bar of hourlyBars) {
-          const openDt = DateTime.fromMillis(bar.ts, { zone: "utc" });
-          await query(
-            `INSERT INTO canonical_price_bars (symbol, asset_class, timeframe, bar_open_utc, bar_close_utc, open_price, high_price, low_price, close_price, source_provider, quality_status)
-             VALUES ($1, $2, '1h', $3::timestamptz, $4::timestamptz, $5, $6, $7, $8, $9, 'provider_hourly_spot')
-             ON CONFLICT (symbol, timeframe, bar_open_utc)
-             DO UPDATE SET
-               bar_close_utc = EXCLUDED.bar_close_utc,
-               open_price = EXCLUDED.open_price,
-               high_price = EXCLUDED.high_price,
-               low_price = EXCLUDED.low_price,
-               close_price = EXCLUDED.close_price,
-               source_provider = EXCLUDED.source_provider,
-               quality_status = EXCLUDED.quality_status,
-               updated_at = NOW()`,
-            [
-              instrument.symbol,
-              instrument.assetClass,
-              openDt.toISO(),
-              openDt.plus({ hours: 1 }).toISO(),
-              round(bar.open),
-              round(bar.high),
-              round(bar.low),
-              round(bar.close),
-              instrument.assetClass === "crypto" ? "bitget_spot" : "bitget",
-            ],
-          );
-          hourlyBarsUpserted++;
+      if (includeHourly) {
+        for (const weekOpenUtc of targetWeeks) {
+          const result = await upsertCanonicalHourlyBarsForInstrument({
+            instrument,
+            weekOpenUtc,
+          });
+          hourlyBarsUpserted += result.barsUpserted;
         }
       }
 

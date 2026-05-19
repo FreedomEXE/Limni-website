@@ -136,6 +136,49 @@ Next path-engine task:
 - only use trade-derived fallback when hourly data is truly unavailable
 - expose a path-quality flag in simulation data so the UI can distinguish `hourly` vs `weekly fallback`
 
+## Canonical Hourly Backfill Pass
+
+Implemented on 2026-05-19:
+
+- `src/lib/canonicalHourlyBars.ts` centralizes provider hourly fetch, canonical H1 upsert, historical backfill, and coverage reporting.
+- `scripts/backfill-canonical-hourly-bars.ts` runs the one-time backfill against the canonical instrument registry.
+- `/api/admin/canonical-hourly-coverage` reports H1 coverage by symbol and week.
+- Cron now reuses the same H1 upsert helper instead of carrying its own provider-specific write path.
+- `adr_grid` and path simulation versions were bumped so shards rebuilt after the backfill do not keep old weekly-fallback grid behavior.
+
+Crypto rule:
+
+- Crypto H1 bars use Bitget spot as the canonical source for now.
+- This is acceptable for BTC/ETH strategy research, but the UI/research notes should continue to mark crypto path basis as `bitget_spot` until/unless futures bars become the canonical execution basis.
+
+Operational sequence:
+
+1. Run coverage before backfill:
+
+```bash
+npm run performance:backfill-hourly -- --coverage-only
+```
+
+2. Run a targeted crypto dry run if needed:
+
+```bash
+npm run performance:backfill-hourly -- --asset=crypto --dry-run
+```
+
+3. Run the coverage-driven gap backfill:
+
+```bash
+npm run performance:backfill-hourly -- --only-gaps
+```
+
+4. Trigger the existing strategy preload/healer or cron rebuild. The version bump makes affected ADR Grid/path shards stale so they rebuild from H1 data.
+
+5. Re-check coverage and then verify:
+
+- ADR Grid no longer uses weekly endpoint jumps for non-FX sleeves when H1 bars exist.
+- Crypto and `all` scope calendar views can show weekend P/L.
+- FX-only scope still skips closed-market weekends.
+
 ## Implementation Plan
 
 1. Add shared asset scope state.
