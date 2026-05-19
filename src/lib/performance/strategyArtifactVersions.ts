@@ -4,7 +4,7 @@ import type { EntryStyleConfig, StrengthGateConfig } from "@/lib/performance/str
 // Shard engine version: bump only when raw per-week shard data changes.
 // This covers direction resolution, entry engines, risk overlays, and path simulation.
 const STRATEGY_SHARD_ENGINE_VERSION =
-  process.env.STRATEGY_SHARD_ENGINE_VERSION?.trim() || "strategy-artifact-v23";
+  process.env.STRATEGY_SHARD_ENGINE_VERSION?.trim() || "strategy-artifact-v24";
 
 // Assembly version: bump when reading, aggregating, or displaying existing shard data changes.
 // This invalidates monolithic assembled artifacts without forcing shard recomputation.
@@ -16,7 +16,7 @@ const STRATEGY_ASSEMBLY_VERSION =
 const ENTRY_ENGINE_VERSIONS: Record<string, string> = {
   weekly_hold: "weekly-hold-engine-v1",
   adr: "adr-pullback-engine-v2",
-  adr_grid: "adr-grid-engine-v1",
+  adr_grid: "adr-grid-engine-v2",
 };
 
 const RISK_OVERLAY_VERSIONS: Record<string, string> = {

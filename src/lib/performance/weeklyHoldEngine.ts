@@ -893,6 +893,29 @@ function applyExposureCapToPlannedTrades(trades: WeeklyHoldTrade[]) {
   return kept;
 }
 
+function applyExposureCapToAdditionalTrades(
+  existingTrades: WeeklyHoldTrade[],
+  candidateTrades: WeeklyHoldTrade[],
+) {
+  const net = new Map<string, number>();
+  for (const trade of existingTrades) {
+    for (const { key, delta } of getTradeExposureDeltas(trade)) {
+      net.set(key, (net.get(key) ?? 0) + delta);
+    }
+  }
+
+  const kept: WeeklyHoldTrade[] = [];
+  for (const trade of candidateTrades) {
+    const deltas = getTradeExposureDeltas(trade);
+    if (wouldBreachNetExposureCap(deltas, net)) continue;
+    kept.push(trade);
+    for (const { key, delta } of deltas) {
+      net.set(key, (net.get(key) ?? 0) + delta);
+    }
+  }
+  return kept;
+}
+
 function getActiveExposureNet(engines: AdrGridEngine[]) {
   const net = new Map<string, number>();
   for (const engine of engines) {
@@ -943,6 +966,53 @@ function closeAdrGridFill(params: {
       maePct: null,
     },
   });
+}
+
+function timelineHasExactBars(timeline: AdrGridTimeline | undefined) {
+  return Boolean(timeline?.exactBars.some((bar) => bar !== null));
+}
+
+function lastElapsedGridTimestamp(grid: string[], fallback: string) {
+  const nowMs = Date.now();
+  for (let index = grid.length - 1; index >= 0; index -= 1) {
+    const tsUtc = grid[index];
+    if (!tsUtc) continue;
+    const tsMs = Date.parse(tsUtc);
+    if (Number.isFinite(tsMs) && tsMs <= nowMs) return tsUtc;
+  }
+  return fallback;
+}
+
+function buildLiveReturnFallbackTrade(params: {
+  template: AdrGridTemplate;
+  priceData: { closePrice: number; returnPct: number };
+  exitTimeUtc: string;
+  tradeNumber: number;
+}): WeeklyHoldTrade {
+  const { template, priceData, exitTimeUtc, tradeNumber } = params;
+  const directedReturn = template.direction === "SHORT"
+    ? -priceData.returnPct
+    : priceData.returnPct;
+  return {
+    symbol: template.symbol,
+    assetClass: template.assetClass,
+    direction: template.direction,
+    openPrice: template.openPrice,
+    closePrice: priceData.closePrice,
+    returnPct: directedReturn,
+    source: template.source,
+    tier: template.tier,
+    detail: {
+      tradeNumber,
+      entryTimeUtc: null,
+      exitTimeUtc,
+      exitReason: "live_return_fallback",
+      anchorPrice: template.openPrice,
+      tpPrice: null,
+      adrPct: template.pairAdrPct,
+      maePct: null,
+    },
+  };
 }
 
 async function executeAdrGrid(
@@ -1107,27 +1177,32 @@ async function executeAdrGrid(
 
   // Unrealized current week with no grid fills: fall back to weekly hold-style
   // directional signals with live pair returns so the UI always shows data.
-  if (!isRealized && trades.length === 0 && templates.length > 0) {
+  if (!isRealized && templates.length > 0) {
     const fallbackTrades: WeeklyHoldTrade[] = [];
+    const exitTimeUtc = lastElapsedGridTimestamp(grid, weekOpenUtc);
+    const symbolsWithGridTrades = new Set(trades.map((trade) => trade.symbol));
     for (const template of templates) {
+      const shouldFallback =
+        trades.length === 0 ||
+        (
+          template.assetClass !== "fx" &&
+          !symbolsWithGridTrades.has(template.symbol) &&
+          !timelineHasExactBars(timelines.get(template.symbol))
+        );
+      if (!shouldFallback) continue;
       const priceData = returnMap.get(template.symbol);
       if (!priceData) continue;
-      const directedReturn = template.direction === "SHORT"
-        ? -priceData.returnPct
-        : priceData.returnPct;
-      fallbackTrades.push({
-        symbol: template.symbol,
-        assetClass: template.assetClass,
-        direction: template.direction,
-        openPrice: template.openPrice,
-        closePrice: priceData.closePrice,
-        returnPct: directedReturn,
-        source: template.source,
-        tier: template.tier,
-      });
+      fallbackTrades.push(buildLiveReturnFallbackTrade({
+        template,
+        priceData,
+        exitTimeUtc,
+        tradeNumber: tradeNumber++,
+      }));
     }
     const capped = exposureCapEnabled
-      ? applyExposureCapToPlannedTrades(fallbackTrades)
+      ? trades.length === 0
+        ? applyExposureCapToPlannedTrades(fallbackTrades)
+        : applyExposureCapToAdditionalTrades(trades, fallbackTrades)
       : fallbackTrades;
     trades.push(...capped);
   }
