@@ -178,9 +178,14 @@ export default function PerformanceSimulationSection({
     ? selectedSleevesInGroup
     : sleeveIds;
   const activeSleeves = sleeveSeries.filter((series) => resolvedSelectedSleeves.includes(series.id));
-  const mixedSeries = computeMixedSeries(activeSleeves.length > 0 ? activeSleeves : sleeveSeries);
-  const includeWeekends = activeSleeves.some((series) => series.id === "asset:crypto");
   const allSleevesSelected = sleeveSeries.length > 0 && resolvedSelectedSleeves.length === sleeveSeries.length;
+  const totalSeries = group?.series.find((series) => series.id === "equity" || series.id === "total") ?? group?.series[0] ?? null;
+  const includeWeekends = allSleevesSelected
+    ? sleeveSeries.some((series) => series.id === "asset:crypto")
+    : activeSleeves.some((series) => series.id === "asset:crypto");
+  const mixedSeries = allSleevesSelected && totalSeries
+    ? totalSeries
+    : computeMixedSeries(activeSleeves.length > 0 ? activeSleeves : sleeveSeries);
   const sleeveTradeCount = activeSleeves.reduce(
     (sum, series) => sum + (series.trades ?? 0),
     0,

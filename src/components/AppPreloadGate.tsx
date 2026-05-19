@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { LimniSpinner } from "@/components/LimniLoading";
 import {
@@ -8,7 +8,6 @@ import {
   deriveActiveSelectionFromParams,
 } from "@/lib/preload/preloadRegistry";
 import {
-  hasPersistedStrategyPreloadCompletion,
   startStrategySessionPreload,
   usePreloadStatus,
   type PreloadPhase,
@@ -50,21 +49,29 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const preload = usePreloadStatus();
-  const [hasPersistedCompletion] = useState(() => hasPersistedStrategyPreloadCompletion());
   const bypassGate = isBypassedRoute(pathname);
+  const strategyParam = searchParams?.get("strategy") ?? searchParams?.get("bias") ?? "";
+  const f1Param = searchParams?.get("f1") ?? searchParams?.get("filter") ?? "";
+  const f2Param = searchParams?.get("f2") ?? "";
+  const activeSelection = useMemo(
+    () => {
+      const params = new URLSearchParams();
+      if (strategyParam) params.set("strategy", strategyParam);
+      if (f1Param) params.set("f1", f1Param);
+      if (f2Param) params.set("f2", f2Param);
+      return deriveActiveSelectionFromParams(params);
+    },
+    [f1Param, f2Param, strategyParam],
+  );
 
   useEffect(() => {
     if (bypassGate) return;
-    const activeSelection = deriveActiveSelectionFromParams(
-      searchParams ? new URLSearchParams(searchParams.toString()) : null,
-    );
     const manifest = buildPreloadManifest(activeSelection);
     void startStrategySessionPreload(manifest);
-  }, [bypassGate, searchParams]);
+  }, [activeSelection, bypassGate]);
 
   if (
     bypassGate ||
-    (hasPersistedCompletion && preload.status !== "loading") ||
     preload.completedOnce ||
     preload.status === "ready" ||
     preload.status === "partial"

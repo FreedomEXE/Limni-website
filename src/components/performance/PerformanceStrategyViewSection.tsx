@@ -21,10 +21,8 @@ import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
   buildStrategySelectionKey,
   STRATEGY_SELECTION_COMMIT_EVENT,
-  STRATEGY_SIDEBAR_STATS_EVENT,
   type RuntimeStrategySelection,
   type StrategySelectionCommitDetail,
-  type StrategySidebarStatsDetail,
 } from "@/lib/performance/strategySelection";
 import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
 import {
@@ -90,14 +88,6 @@ export default function PerformanceStrategyViewSection({
     window.addEventListener(STRATEGY_SELECTION_COMMIT_EVENT, onSelectionCommit);
     return () => window.removeEventListener(STRATEGY_SELECTION_COMMIT_EVENT, onSelectionCommit);
   }, []);
-
-  useEffect(() => {
-    const detail: StrategySidebarStatsDetail = {
-      selection: selectedSelection,
-      stats: payload?.sidebarStats ?? null,
-    };
-    window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
-  }, [payload?.sidebarStats, selectedSelection]);
 
   const strategyDescription = getStrategy(selectedSelection.strategy)?.description ?? null;
   const strategyLabel = getStrategy(selectedSelection.strategy)?.label ?? selectedSelection.strategy;

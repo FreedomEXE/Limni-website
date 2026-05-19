@@ -232,7 +232,8 @@ function EngineSidebarStatsCard() {
 
 export default function StrategySidebar() {
   const searchParams = useSearchParams();
-  const sidebarKey = searchParams.toString();
+  const selection = readSelectionFromParams(searchParams);
+  const sidebarKey = `${selection.strategy}:${selection.f1}:${selection.f2}`;
 
   return (
     <div className="flex-1 space-y-4 p-4">

@@ -528,7 +528,6 @@ export default function PerformanceViewSection({
   const [view, setView] = useState<PerformanceView>(initialView);
   const [selectedWeek, setSelectedWeek] = useState(initialWeek ?? "all");
   const [assetScope, setAssetScope] = useState<PerformanceAssetSelection>(initialAssetScope ?? ["fx", "indices", "commodities", "crypto"]);
-  const [scopeDeriving, setScopeDeriving] = useState(false);
 
   // Legacy mode state
   const [mode, setMode] = useState<"flagship" | "legacy" | "matrix">(initialMode);
@@ -543,13 +542,6 @@ export default function PerformanceViewSection({
   useEffect(() => {
     if (initialAssetScope) setAssetScope(initialAssetScope);
   }, [initialAssetScope]);
-
-  useEffect(() => {
-    if (!engineWeekMap) return;
-    setScopeDeriving(true);
-    const timeout = window.setTimeout(() => setScopeDeriving(false), 300);
-    return () => window.clearTimeout(timeout);
-  }, [assetScope, engineWeekMap, selectedWeek, view]);
 
   useEffect(() => {
     if (!engineWeekMap || typeof window === "undefined") return;
@@ -737,11 +729,6 @@ export default function PerformanceViewSection({
           onViewChange={setView}
           views={PERFORMANCE_VIEW_CARDS}
         />
-        {scopeDeriving ? (
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)] shadow-sm">
-            Updating scoped performance stats...
-          </div>
-        ) : null}
         {view === "notes" ? (
           <PerformanceNotesPad
             selectedWeek={selectedWeek}

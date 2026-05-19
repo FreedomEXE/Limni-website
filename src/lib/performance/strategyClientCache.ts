@@ -162,8 +162,7 @@ function mergeWeekOptions(
   next: string[] | undefined,
 ) {
   if (!next) return previous;
-  if (!previous) return next;
-  return Array.from(new Set([...next, ...previous]));
+  return next;
 }
 
 function isStrategyClientPayload(value: unknown): value is StrategyClientPayload {
