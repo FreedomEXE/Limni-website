@@ -19,12 +19,15 @@ import MonthlyReturnsHeatmap from "@/components/performance/MonthlyReturnsHeatma
 import RollingPerformanceWindows from "@/components/performance/RollingPerformanceWindows";
 import AssetContributionChart from "@/components/performance/AssetContributionChart";
 import ReturnDistribution from "@/components/performance/ReturnDistribution";
+import DailyReturnDistribution from "@/components/performance/DailyReturnDistribution";
+import DailyReturnsTable from "@/components/performance/DailyReturnsTable";
 import MaeScatterPlot, { type MaeTrade } from "@/components/performance/MaeScatterPlot";
 
 export type PerformanceSimulationSeries = {
   id: string;
   label: string;
   color?: string;
+  trades?: number;
   points: Array<{
     ts_utc: string;
     equity_pct: number;
@@ -157,7 +160,14 @@ export default function PerformanceSimulationSection({
   const activeSleeves = sleeveSeries.filter((series) => resolvedSelectedSleeves.includes(series.id));
   const mixedSeries = computeMixedSeries(activeSleeves.length > 0 ? activeSleeves : sleeveSeries);
   const allSleevesSelected = sleeveSeries.length > 0 && resolvedSelectedSleeves.length === sleeveSeries.length;
-  const mixedMetrics = summarizeMixedSeries(mixedSeries, allSleevesSelected ? group?.metrics.trades ?? null : null);
+  const sleeveTradeCount = activeSleeves.reduce(
+    (sum, series) => sum + (series.trades ?? 0),
+    0,
+  );
+  const resolvedTrades = allSleevesSelected
+    ? group?.metrics.trades ?? sleeveTradeCount
+    : sleeveTradeCount;
+  const mixedMetrics = summarizeMixedSeries(mixedSeries, resolvedTrades);
 
   if (!group) {
     return (
@@ -262,7 +272,11 @@ export default function PerformanceSimulationSection({
       )}
 
       {!weeklyReturns && group.series.some((s) => s.id.startsWith("asset:")) && (
-        <AssetContributionChart series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries} />
+        <>
+          <AssetContributionChart series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries} />
+          <DailyReturnDistribution series={mixedSeries} />
+          <DailyReturnsTable series={mixedSeries} />
+        </>
       )}
     </div>
   );

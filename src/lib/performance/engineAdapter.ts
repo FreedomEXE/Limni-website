@@ -534,6 +534,7 @@ export type EngineSimulationGroup = {
     id: string;
     label: string;
     color?: string;
+    trades?: number;
     points: Array<{
       ts_utc: string;
       equity_pct: number;
@@ -566,11 +567,13 @@ export function singleWeekToSimulation(
   const weekEnd = cappedSingleWeekEndUtc(weekStart);
 
   const series = cardSlots.map((slot, i) => {
-    const slotReturn = (slotted[i] ?? []).reduce((s, t) => s + t.returnPct, 0);
+    const slotTradesForSeries = slotted[i] ?? [];
+    const slotReturn = slotTradesForSeries.reduce((s, t) => s + t.returnPct, 0);
     return {
       id: slot,
       label: slotLabels[i],
       color: SERIES_COLORS[i],
+      trades: slotTradesForSeries.length,
       points: [
         { ts_utc: weekStart, equity_pct: 0, lock_pct: null },
         { ts_utc: weekEnd, equity_pct: slotReturn, lock_pct: null },
@@ -582,6 +585,7 @@ export function singleWeekToSimulation(
     id: "total",
     label: "Total",
     color: "#ffffff",
+    trades: result.tradeCount,
     points: [
       { ts_utc: weekStart, equity_pct: 0, lock_pct: null },
       { ts_utc: weekEnd, equity_pct: result.totalReturnPct, lock_pct: null },
@@ -589,13 +593,13 @@ export function singleWeekToSimulation(
   };
 
   const assetSeries = ASSET_SECTIONS.map((asset, index) => {
-    const assetReturn = result.trades
-      .filter((trade) => trade.assetClass === asset.id)
-      .reduce((sum, trade) => sum + trade.returnPct, 0);
+    const assetTrades = result.trades.filter((trade) => trade.assetClass === asset.id);
+    const assetReturn = assetTrades.reduce((sum, trade) => sum + trade.returnPct, 0);
     return {
       id: `asset:${asset.id}`,
       label: asset.label,
       color: SERIES_COLORS[index + 1],
+      trades: assetTrades.length,
       points: [
         { ts_utc: weekStart, equity_pct: 0, lock_pct: null },
         { ts_utc: weekEnd, equity_pct: assetReturn, lock_pct: null },
@@ -629,9 +633,12 @@ export function multiWeekToSimulation(
   // Build one cumulative equity curve per card slot
   const series = cardSlots.map((slot, i) => {
     let cumulative = 0;
+    let tradeCount = 0;
     const points = chronologicalWeeks.map((week) => {
       const slotted = slotTrades(week.trades, biasSource.cardBreakdown, cardSlots);
-      const weekReturn = (slotted[i] ?? []).reduce((s, t) => s + t.returnPct, 0);
+      const slotTradesForWeek = slotted[i] ?? [];
+      const weekReturn = slotTradesForWeek.reduce((s, t) => s + t.returnPct, 0);
+      tradeCount += slotTradesForWeek.length;
       cumulative += weekReturn;
       return {
         ts_utc: week.weekOpenUtc,
@@ -643,6 +650,7 @@ export function multiWeekToSimulation(
       id: slot,
       label: slotLabels[i],
       color: SERIES_COLORS[i],
+      trades: tradeCount,
       points,
     };
   });
@@ -653,6 +661,7 @@ export function multiWeekToSimulation(
     id: "total",
     label: "Total",
     color: "#ffffff",
+    trades: result.totalTrades,
     points: chronologicalWeeks.map((week) => {
       totalCum += week.totalReturnPct;
       return {
@@ -665,10 +674,11 @@ export function multiWeekToSimulation(
 
   const assetSeries = ASSET_SECTIONS.map((asset, index) => {
     let cumulative = 0;
+    let tradeCount = 0;
     const points = chronologicalWeeks.map((week) => {
-      const weekReturn = week.trades
-        .filter((trade) => trade.assetClass === asset.id)
-        .reduce((sum, trade) => sum + trade.returnPct, 0);
+      const assetTrades = week.trades.filter((trade) => trade.assetClass === asset.id);
+      const weekReturn = assetTrades.reduce((sum, trade) => sum + trade.returnPct, 0);
+      tradeCount += assetTrades.length;
       cumulative += weekReturn;
       return {
         ts_utc: week.weekOpenUtc,
@@ -680,6 +690,7 @@ export function multiWeekToSimulation(
       id: `asset:${asset.id}`,
       label: asset.label,
       color: SERIES_COLORS[(index + 1) % SERIES_COLORS.length],
+      trades: tradeCount,
       points,
     };
   });
@@ -745,8 +756,16 @@ export function withTradeDerivedSeriesGroups(
   const existingAssetSeries = group.series
     .slice(1)
     .filter((series) => series.id.startsWith("asset:"));
-  const assetSeries = existingAssetSeries.length > 0
-    ? existingAssetSeries
+  const hasRealAssetData = existingAssetSeries.some(
+    (series) =>
+      series.points.length > 2 ||
+      series.points.some((point) => Math.abs(point.equity_pct) > 1e-9),
+  );
+  const assetSeries = existingAssetSeries.length > 0 && hasRealAssetData
+    ? existingAssetSeries.map((series) => ({
+        ...series,
+        trades: series.trades ?? assetTradeCountForResult(result, series.id.replace("asset:", "")),
+      }))
     : "weeks" in result
       ? buildMultiWeekAssetSeriesFromTrades(result)
       : buildSingleWeekAssetSeriesFromTrades(result, result.weekOpenUtc);
@@ -774,13 +793,13 @@ function buildSingleWeekAssetSeriesFromTrades(
 ): EngineSimulationGroup["series"] {
   const weekEnd = cappedSingleWeekEndUtc(weekStart);
   return ASSET_SECTIONS.map((asset, index) => {
-    const assetReturn = result.trades
-      .filter((trade) => trade.assetClass === asset.id)
-      .reduce((sum, trade) => sum + trade.returnPct, 0);
+    const assetTrades = result.trades.filter((trade) => trade.assetClass === asset.id);
+    const assetReturn = assetTrades.reduce((sum, trade) => sum + trade.returnPct, 0);
     return {
       id: `asset:${asset.id}`,
       label: asset.label,
       color: SERIES_COLORS[(index + 1) % SERIES_COLORS.length],
+      trades: assetTrades.length,
       points: [
         { ts_utc: weekStart, equity_pct: 0, lock_pct: null },
         { ts_utc: weekEnd, equity_pct: assetReturn, lock_pct: null },
@@ -795,10 +814,11 @@ function buildMultiWeekAssetSeriesFromTrades(
   const chronologicalWeeks = sortWeeksChronologically(result.weeks);
   return ASSET_SECTIONS.map((asset, index) => {
     let cumulative = 0;
+    let tradeCount = 0;
     const points = chronologicalWeeks.map((week) => {
-      const weekReturn = week.trades
-        .filter((trade) => trade.assetClass === asset.id)
-        .reduce((sum, trade) => sum + trade.returnPct, 0);
+      const assetTrades = week.trades.filter((trade) => trade.assetClass === asset.id);
+      const weekReturn = assetTrades.reduce((sum, trade) => sum + trade.returnPct, 0);
+      tradeCount += assetTrades.length;
       cumulative += weekReturn;
       return {
         ts_utc: week.weekOpenUtc,
@@ -810,6 +830,7 @@ function buildMultiWeekAssetSeriesFromTrades(
       id: `asset:${asset.id}`,
       label: asset.label,
       color: SERIES_COLORS[(index + 1) % SERIES_COLORS.length],
+      trades: tradeCount,
       points,
     };
   });
@@ -819,6 +840,28 @@ function sortWeeksChronologically<T extends { weekOpenUtc: string }>(weeks: read
   return [...weeks].sort(
     (left, right) => Date.parse(left.weekOpenUtc) - Date.parse(right.weekOpenUtc),
   );
+}
+
+function slottedTradeCount(
+  trades: WeeklyHoldResult["trades"],
+  biasSource: BiasSourceConfig,
+  cardSlots: readonly PerformanceModel[],
+  slotIndex: number,
+) {
+  return (slotTrades(trades, biasSource.cardBreakdown, cardSlots)[slotIndex] ?? []).length;
+}
+
+function assetTradeCountForResult(
+  result: WeeklyHoldResult | MultiWeekResult,
+  assetId: string,
+) {
+  if ("weeks" in result) {
+    return result.weeks.reduce(
+      (sum, week) => sum + week.trades.filter((trade) => trade.assetClass === assetId).length,
+      0,
+    );
+  }
+  return result.trades.filter((trade) => trade.assetClass === assetId).length;
 }
 
 type MultiWeekPathAggregate = {
@@ -842,6 +885,7 @@ export function singleWeekPathToSimulation(
     id: "equity",
     label: "Total",
     color: "#ffffff",
+    trades: result.tradeCount,
     points: pathPointsToSimulationPoints(path.points),
   };
   const assetSeries = assetPaths.length > 0
@@ -849,6 +893,7 @@ export function singleWeekPathToSimulation(
         id: `asset:${ASSET_SECTIONS[index]?.id ?? index}`,
         label: ASSET_SECTIONS[index]?.label ?? `Asset ${index + 1}`,
         color: SERIES_COLORS[(index + 1) % SERIES_COLORS.length],
+        trades: result.trades.filter((trade) => trade.assetClass === ASSET_SECTIONS[index]?.id).length,
         points: pathPointsToSimulationPoints(assetPath.points),
       }))
     : buildSingleWeekAssetSeriesFromTrades(result, result.weekOpenUtc);
@@ -856,6 +901,7 @@ export function singleWeekPathToSimulation(
     id: cardSlots[index] ?? `slot-${index + 1}`,
     label: slotLabels[index] ?? `Slot ${index + 1}`,
     color: SERIES_COLORS[(index + assetSeries.length + 1) % SERIES_COLORS.length],
+    trades: slottedTradeCount(result.trades, biasSource, cardSlots, index),
     points: pathPointsToSimulationPoints(slotPath.points),
   }));
 
@@ -887,6 +933,7 @@ export function multiWeekPathToSimulation(
     id: "equity",
     label: "Total",
     color: "#ffffff",
+    trades: result.totalTrades,
     points: pathPointsToSimulationPoints(path.points),
   };
   const assetSeries = assetPaths.length > 0
@@ -894,6 +941,10 @@ export function multiWeekPathToSimulation(
         id: `asset:${ASSET_SECTIONS[index]?.id ?? index}`,
         label: ASSET_SECTIONS[index]?.label ?? `Asset ${index + 1}`,
         color: SERIES_COLORS[(index + 1) % SERIES_COLORS.length],
+        trades: result.weeks.reduce(
+          (sum, week) => sum + week.trades.filter((trade) => trade.assetClass === ASSET_SECTIONS[index]?.id).length,
+          0,
+        ),
         points: pathPointsToSimulationPoints(assetPath.points),
       }))
     : buildMultiWeekAssetSeriesFromTrades(result);
@@ -901,6 +952,10 @@ export function multiWeekPathToSimulation(
     id: cardSlots[index] ?? `slot-${index + 1}`,
     label: slotLabels[index] ?? `Slot ${index + 1}`,
     color: SERIES_COLORS[(index + assetSeries.length + 1) % SERIES_COLORS.length],
+    trades: result.weeks.reduce(
+      (sum, week) => sum + slottedTradeCount(week.trades, biasSource, cardSlots, index),
+      0,
+    ),
     points: pathPointsToSimulationPoints(slotPath.points),
   }));
 

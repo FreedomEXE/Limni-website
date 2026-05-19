@@ -189,21 +189,6 @@ export const ENTRY_STYLE_FILTERS: EntryStyleConfig[] = [
     },
   },
   {
-    id: "adr_pullback",
-    label: "ADR Pullback",
-    description: "Enter on 1 ADR pullback from weekly anchor",
-    hasTradeLog: true,
-    plModel: "adr",
-    matrixUi: {
-      showStatsBar: true,
-      showTriggerState: true,
-      showIntradayDetail: true,
-      currentColumnLabel: "Trigger / Trades",
-      historicalColumnLabel: "Trades",
-      detailTitle: "Pullback Detail",
-    },
-  },
-  {
     id: "adr_grid",
     label: "ADR Grid",
     description: "0.20 ADR close-and-rearm grid",
@@ -305,7 +290,7 @@ export function resolveStrategyId(value: string | undefined | null): string {
 
 export function resolveEntryStyleId(value: string | undefined | null): string {
   if (value && ENTRY_STYLE_FILTERS.some((f) => f.id === value)) return value;
-  return "weekly_hold";
+  return "adr_grid";
 }
 
 export function resolveStrengthGateId(value: string | undefined | null): string {

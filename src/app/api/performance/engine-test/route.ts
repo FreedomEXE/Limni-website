@@ -6,8 +6,8 @@
  *
  * Description:
  * Test endpoint to verify the strategy engine returns correct data.
- * Hit /api/performance/engine-test?f1=adr_pullback&f2=strength_gate&week=2026-03-15T23:00:00.000Z
- * to confirm ADR data flows through.
+ * Hit /api/performance/engine-test?f1=adr_grid&f2=exposure_cap&week=2026-03-15T23:00:00.000Z
+ * to confirm ADR grid data flows through.
  * DELETE THIS FILE once engine is verified working.
  */
 /*-----------------------------------------------
