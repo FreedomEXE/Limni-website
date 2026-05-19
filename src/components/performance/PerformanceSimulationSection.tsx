@@ -219,7 +219,11 @@ export default function PerformanceSimulationSection({
             <button
               type="button"
               onClick={() => setSelectedSleeves(sleeveSeries.map((series) => series.id))}
-              className="rounded-full border border-[var(--panel-border)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)] transition hover:border-[var(--accent)]/50 hover:text-[var(--foreground)]"
+              className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] transition ${
+                allSleevesSelected
+                  ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent-strong)]"
+                  : "border-[var(--panel-border)] text-[color:var(--muted)] hover:border-[var(--accent)]/50 hover:text-[var(--foreground)]"
+              }`}
             >
               All
             </button>

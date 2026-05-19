@@ -13,58 +13,7 @@
 "use client";
 
 import type { PerformanceSimulationSeries } from "@/components/performance/PerformanceSimulationSection";
-
-type DailyReturn = {
-  dayLabel: string;
-  returnPct: number;
-};
-
-function isWeekendPoint(tsUtc: string): boolean {
-  const d = new Date(tsUtc);
-  const day = d.getUTCDay();
-  if (day === 6) return true;
-  if (day === 0 && d.getUTCHours() < 21) return true;
-  return false;
-}
-
-function filterMarketHours(points: PerformanceSimulationSeries["points"]) {
-  const now = Date.now();
-  const filtered = points.filter((point) => !isWeekendPoint(point.ts_utc) && new Date(point.ts_utc).getTime() <= now);
-  if (filtered.length > 0) return filtered;
-  const pastPoints = points.filter((point) => new Date(point.ts_utc).getTime() <= now);
-  if (pastPoints.length > 0) return pastPoints;
-  return points.length > 0 ? [points[0]] : [];
-}
-
-function extractDailyReturns(series: PerformanceSimulationSeries): DailyReturn[] {
-  const groups = new Map<string, PerformanceSimulationSeries["points"]>();
-  for (const point of filterMarketHours(series.points)) {
-    const dateKey = point.ts_utc.slice(0, 10);
-    if (!groups.has(dateKey)) groups.set(dateKey, []);
-    groups.get(dateKey)!.push(point);
-  }
-
-  return [...groups.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([dateKey, points]) => {
-      const ordered = [...points].sort((left, right) => Date.parse(left.ts_utc) - Date.parse(right.ts_utc));
-      const first = ordered[0];
-      const last = ordered.at(-1);
-      return {
-        dayLabel: formatDayLabel(dateKey),
-        returnPct: first && last ? last.equity_pct - first.equity_pct : 0,
-      };
-    })
-    .filter((day) => Number.isFinite(day.returnPct));
-}
-
-function formatDayLabel(dateKey: string) {
-  const date = new Date(`${dateKey}T00:00:00.000Z`);
-  return date.toLocaleDateString("en-US", {
-    weekday: "short",
-    timeZone: "UTC",
-  });
-}
+import { buildDailySimulationReturns } from "@/components/performance/dailySimulationReturns";
 
 function computeBins(returns: number[], binCount: number) {
   if (returns.length === 0) return { bins: [], min: 0, max: 0 };
@@ -92,8 +41,8 @@ export default function DailyReturnDistribution({
 }: {
   series: PerformanceSimulationSeries;
 }) {
-  const dailyReturns = extractDailyReturns(series);
-  if (dailyReturns.length < 3) return null;
+  const dailyReturns = buildDailySimulationReturns(series);
+  if (dailyReturns.length < 4) return null;
 
   const returns = dailyReturns.map((day) => day.returnPct).sort((left, right) => left - right);
   const binCount = Math.min(Math.max(Math.ceil(Math.sqrt(returns.length)), 3), 8);
@@ -111,7 +60,7 @@ export default function DailyReturnDistribution({
   const stdDev = Math.sqrt(variance);
 
   const chartW = 600;
-  const chartH = 180;
+  const chartH = 160;
   const padL = 40;
   const padR = 20;
   const padT = 10;
@@ -193,18 +142,18 @@ export default function DailyReturnDistribution({
           strokeDasharray="3,2"
         />
         <text x={meanX} y={padT + plotH + 16} textAnchor="middle" fill="#60a5fa" fontSize={9}>
-          u
+          Mean
         </text>
-        {bins.map((bin, index) => (
+        {bins.filter((_, index) => index === 0 || index === bins.length - 1).map((bin, index) => (
           <text
             key={`label-${bin.start}-${index}`}
-            x={padL + index * (barW + barGap) + barW / 2}
+            x={index === 0 ? toX(bin.start) : toX(bin.end)}
             y={padT + plotH + 30}
-            textAnchor="middle"
+            textAnchor={index === 0 ? "start" : "end"}
             fill="var(--muted)"
             fontSize={9}
           >
-            {bin.start.toFixed(1)}%
+            {index === 0 ? bin.start.toFixed(1) : bin.end.toFixed(1)}%
           </text>
         ))}
       </svg>
