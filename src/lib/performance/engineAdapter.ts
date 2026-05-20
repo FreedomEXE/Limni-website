@@ -804,7 +804,7 @@ export function withTradeDerivedSeriesGroups(
       expectedTrades > 0 &&
       existingSeries.points.every((point) => Math.abs(point.equity_pct) <= 1e-9);
 
-    const hasUsableCanonicalPath = hasCanonicalPathShape(existingSeries) && !flatButExpectedActive;
+    const hasUsableCanonicalPath = hasCanonicalPathShape(existingSeries);
 
     if (!hasUsableCanonicalPath && (tradeMismatch || returnMismatch || flatButExpectedActive)) {
       return withSeriesDrawdowns(derivedSeries);
