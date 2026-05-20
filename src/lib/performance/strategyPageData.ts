@@ -180,7 +180,25 @@ function isStraightLineFallbackWeekShard(shard: WeekShardEntry) {
     return true;
   }
   if (!shard.weekResult.isRealized || shard.weekResult.tradeCount <= 0) return false;
-  return !primarySeries || primarySeries.points.length <= 2;
+  if (!primarySeries || primarySeries.points.length <= 2) return true;
+
+  const tradedAssetClasses = new Set(
+    shard.weekResult.trades
+      .map((trade) => trade.assetClass)
+      .filter((assetClass): assetClass is (typeof ASSET_PATH_ORDER)[number] =>
+        ASSET_PATH_ORDER.includes(assetClass as (typeof ASSET_PATH_ORDER)[number]),
+      ),
+  );
+  if (tradedAssetClasses.size === 0) return false;
+
+  for (const assetClass of tradedAssetClasses) {
+    const assetSeries = shard.sim.series.find((series) => series.id === `asset:${assetClass}`);
+    if (!assetSeries || assetSeries.points.length <= 2) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function latestShardCachedAtUtc(shards: WeekShardEntry[]) {
@@ -980,6 +998,46 @@ async function mergeCurrentWeekIntoCachedPathData(options: {
         });
       })
       .filter((value): value is BasketPathResult => Boolean(value));
+    const reconstructedSlotPaths: BasketPathResult[][] = Array.from(
+      { length: resolveCardSlots(biasSource).length },
+      () => [],
+    );
+    const reconstructedAssetPaths: BasketPathResult[][] = Array.from(
+      { length: ASSET_PATH_ORDER.length },
+      () => [],
+    );
+
+    for (const weekOpenUtc of cachedWeeks) {
+      const weekResult = historicalWeekResults[weekOpenUtc];
+      const simulation = cachedSimMap[weekOpenUtc];
+      if (!weekResult || !simulation) continue;
+
+      resolveCardSlots(biasSource).forEach((slotId, slotIndex) => {
+        const slotPath = reconstructWeekPathResultFromSeries({
+          weekOpenUtc,
+          strategyId: biasSource.id,
+          entryStyleId: entryStyle?.id ?? "weekly_hold",
+          simulation,
+          seriesId: slotId,
+        });
+        if (slotPath) {
+          reconstructedSlotPaths[slotIndex]?.push(slotPath);
+        }
+      });
+
+      ASSET_PATH_ORDER.forEach((assetId, assetIndex) => {
+        const assetPath = reconstructWeekPathResultFromSeries({
+          weekOpenUtc,
+          strategyId: biasSource.id,
+          entryStyleId: entryStyle?.id ?? "weekly_hold",
+          simulation,
+          seriesId: `asset:${assetId}`,
+        });
+        if (assetPath) {
+          reconstructedAssetPaths[assetIndex]?.push(assetPath);
+        }
+      });
+    }
 
     const currentSummary = cachedPathSummaryMap[currentWeekResult.weekOpenUtc];
     const currentSimulation = cachedSimMap[currentWeekResult.weekOpenUtc];
@@ -994,10 +1052,42 @@ async function mergeCurrentWeekIntoCachedPathData(options: {
       if (currentPath) {
         reconstructed.push(currentPath);
       }
+
+      resolveCardSlots(biasSource).forEach((slotId, slotIndex) => {
+        const slotPath = reconstructWeekPathResultFromSeries({
+          weekOpenUtc: currentWeekResult.weekOpenUtc,
+          strategyId: biasSource.id,
+          entryStyleId: entryStyle?.id ?? "weekly_hold",
+          simulation: currentSimulation,
+          seriesId: slotId,
+        });
+        if (slotPath) {
+          reconstructedSlotPaths[slotIndex]?.push(slotPath);
+        }
+      });
+
+      ASSET_PATH_ORDER.forEach((assetId, assetIndex) => {
+        const assetPath = reconstructWeekPathResultFromSeries({
+          weekOpenUtc: currentWeekResult.weekOpenUtc,
+          strategyId: biasSource.id,
+          entryStyleId: entryStyle?.id ?? "weekly_hold",
+          simulation: currentSimulation,
+          seriesId: `asset:${assetId}`,
+        });
+        if (assetPath) {
+          reconstructedAssetPaths[assetIndex]?.push(assetPath);
+        }
+      });
     }
 
     if (reconstructed.length > 0) {
       const allPath = computeMultiWeekBasketPath(reconstructed);
+      const slotMultiWeekPaths = reconstructedSlotPaths.map((slotWeekPaths) =>
+        computeMultiWeekBasketPath(slotWeekPaths),
+      );
+      const assetMultiWeekPaths = reconstructedAssetPaths.map((assetWeekPaths) =>
+        computeMultiWeekBasketPath(assetWeekPaths),
+      );
       cachedPathSummaryMap.all = allPath.summary;
       cachedSimMap.all = multiWeekPathToSimulation(
         allPath,
@@ -1013,6 +1103,8 @@ async function mergeCurrentWeekIntoCachedPathData(options: {
         ),
         biasSource,
         selectionLabel,
+        slotMultiWeekPaths,
+        assetMultiWeekPaths,
       );
     }
   }

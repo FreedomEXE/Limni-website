@@ -19,6 +19,7 @@ import type { EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 
 const STRATEGY_WEEK_SHARDS_TABLE = "strategy_week_shards";
+const ASSET_PATH_SERIES_IDS = ["asset:fx", "asset:indices", "asset:commodities", "asset:crypto"] as const;
 let ensureWeekShardsTablePromise: Promise<void> | null = null;
 
 export type WeekShardEntry = {
@@ -67,7 +68,25 @@ function isStraightLineFallbackShard(shard: WeekShardEntry) {
   const series = shard.sim.series;
   if (!Array.isArray(series) || series.length === 0) return true;
   const primarySeries = series[0];
-  return !primarySeries || primarySeries.points.length <= 2;
+  if (!primarySeries || primarySeries.points.length <= 2) return true;
+
+  const tradedAssetSeriesIds = new Set(
+    shard.weekResult.trades
+      .map((trade) => `asset:${trade.assetClass}`)
+      .filter((seriesId): seriesId is (typeof ASSET_PATH_SERIES_IDS)[number] =>
+        ASSET_PATH_SERIES_IDS.includes(seriesId as (typeof ASSET_PATH_SERIES_IDS)[number]),
+      ),
+  );
+  if (tradedAssetSeriesIds.size === 0) return false;
+
+  for (const seriesId of tradedAssetSeriesIds) {
+    const assetSeries = series.find((item) => item.id === seriesId);
+    if (!assetSeries || assetSeries.points.length <= 2) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export async function readWeekShards(

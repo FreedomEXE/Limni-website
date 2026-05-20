@@ -552,6 +552,34 @@ export type EngineSimulationGroup = {
   }>;
 };
 
+function withSeriesDrawdowns<T extends EngineSimulationGroup["series"][number]>(series: T): T {
+  let runningPeakPct = 0;
+  return {
+    ...series,
+    points: series.points.map((point) => {
+      runningPeakPct = Math.max(runningPeakPct, point.equity_pct);
+      const drawdownPct = (100 + runningPeakPct) <= 0
+        ? -100
+        : (((100 + point.equity_pct) / (100 + runningPeakPct)) - 1) * 100;
+      return {
+        ...point,
+        peak_pct: point.peak_pct ?? runningPeakPct,
+        drawdown_pct: point.drawdown_pct ?? drawdownPct,
+      };
+    }),
+  };
+}
+
+function hasCanonicalPathShape(series: EngineSimulationGroup["series"][number]) {
+  const pointCount = series.points.length;
+  if (pointCount <= 2) return false;
+  return series.points.some((point) => (
+    typeof point.drawdown_pct === "number" ||
+    typeof point.peak_pct === "number" ||
+    typeof point.active_positions === "number"
+  ));
+}
+
 export function singleWeekToSimulation(
   result: WeeklyHoldResult,
   biasSource: BiasSourceConfig,
@@ -748,11 +776,12 @@ export function withTradeDerivedSeriesGroups(
   group: EngineSimulationGroup,
   result: WeeklyHoldResult | MultiWeekResult,
 ): EngineSimulationGroup {
-  const totalSeries = group.series[0];
+  const totalSeries = group.series[0] ? withSeriesDrawdowns(group.series[0]) : undefined;
   if (!totalSeries) return group;
   const layerSeries = group.series
     .slice(1)
-    .filter((series) => !series.id.startsWith("asset:"));
+    .filter((series) => !series.id.startsWith("asset:"))
+    .map((series) => withSeriesDrawdowns(series));
   const existingAssetSeriesById = new Map(group.series
     .slice(1)
     .filter((series) => series.id.startsWith("asset:"))
@@ -775,12 +804,14 @@ export function withTradeDerivedSeriesGroups(
       expectedTrades > 0 &&
       existingSeries.points.every((point) => Math.abs(point.equity_pct) <= 1e-9);
 
-    if (tradeMismatch || returnMismatch || flatButExpectedActive) {
-      return derivedSeries;
+    const hasUsableCanonicalPath = hasCanonicalPathShape(existingSeries) && !flatButExpectedActive;
+
+    if (!hasUsableCanonicalPath && (tradeMismatch || returnMismatch || flatButExpectedActive)) {
+      return withSeriesDrawdowns(derivedSeries);
     }
 
     return {
-      ...existingSeries,
+      ...withSeriesDrawdowns(existingSeries),
       trades: existingSeries.trades ?? expectedTrades,
     };
   });
