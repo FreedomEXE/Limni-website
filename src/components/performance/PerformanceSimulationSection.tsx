@@ -21,8 +21,9 @@ import AssetContributionChart from "@/components/performance/AssetContributionCh
 import ReturnDistribution from "@/components/performance/ReturnDistribution";
 import MaeScatterPlot, { type MaeTrade } from "@/components/performance/MaeScatterPlot";
 import {
-  PERFORMANCE_ASSET_CLASSES,
+  ALL_PERFORMANCE_ASSET_SELECTION,
   PERFORMANCE_ASSET_SCOPE_LABELS,
+  togglePerformanceAssetSelection,
   type PerformanceAssetSelection,
 } from "@/lib/performance/performanceAssetScope";
 
@@ -230,11 +231,8 @@ export default function PerformanceSimulationSection({
                     if (itemScope && onAssetScopeChange) {
                       const current = assetScope && assetScope.length > 0
                         ? assetScope
-                        : [...PERFORMANCE_ASSET_CLASSES];
-                      const next = active
-                        ? current.filter((scope) => scope !== itemScope)
-                        : [...current, itemScope];
-                      onAssetScopeChange(next.length > 0 ? Array.from(new Set(next)) : current);
+                        : ALL_PERFORMANCE_ASSET_SELECTION;
+                      onAssetScopeChange(togglePerformanceAssetSelection(current, itemScope));
                       return;
                     }
                     setSelectedSleeves((previous) => {
@@ -259,7 +257,7 @@ export default function PerformanceSimulationSection({
               type="button"
               onClick={() => {
                 if (onAssetScopeChange) {
-                  onAssetScopeChange([...PERFORMANCE_ASSET_CLASSES]);
+                  onAssetScopeChange([...ALL_PERFORMANCE_ASSET_SELECTION]);
                   return;
                 }
                 setSelectedSleeves(sleeveSeries.map((series) => series.id));

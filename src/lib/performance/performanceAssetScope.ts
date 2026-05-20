@@ -11,6 +11,10 @@ export const PERFORMANCE_ASSET_CLASSES: AssetClass[] = [
   "crypto",
 ];
 
+export const ALL_PERFORMANCE_ASSET_SELECTION: PerformanceAssetSelection = [
+  ...PERFORMANCE_ASSET_CLASSES,
+];
+
 export const PERFORMANCE_ASSET_SCOPES: PerformanceAssetScope[] = [
   "all",
   ...PERFORMANCE_ASSET_CLASSES,
@@ -37,22 +41,49 @@ export function parsePerformanceAssetScope(value: string | null | undefined): Pe
 }
 
 export function parsePerformanceAssetSelection(value: string | null | undefined): PerformanceAssetSelection {
-  if (!value || value === "all") return [...PERFORMANCE_ASSET_CLASSES];
+  if (!value || value === "all") return [...ALL_PERFORMANCE_ASSET_SELECTION];
   const selected = value
     .split(",")
     .map((item) => item.trim())
     .filter((item): item is AssetClass => PERFORMANCE_ASSET_CLASSES.includes(item as AssetClass));
-  return selected.length > 0
-    ? Array.from(new Set(selected))
-    : [...PERFORMANCE_ASSET_CLASSES];
+  return normalizePerformanceAssetSelection(selected);
 }
 
 export function formatPerformanceAssetSelection(selection: readonly AssetClass[]) {
-  return isAllPerformanceAssetSelection(selection) ? "all" : selection.join(",");
+  const normalized = normalizePerformanceAssetSelection(selection);
+  return isAllPerformanceAssetSelection(normalized) ? "all" : normalized.join(",");
 }
 
 export function isAllPerformanceAssetSelection(selection: readonly AssetClass[]) {
-  return PERFORMANCE_ASSET_CLASSES.every((assetClass) => selection.includes(assetClass));
+  const selected = new Set(selection);
+  return PERFORMANCE_ASSET_CLASSES.every((assetClass) => selected.has(assetClass));
+}
+
+export function normalizePerformanceAssetSelection(
+  selection: readonly AssetClass[] | null | undefined,
+): PerformanceAssetSelection {
+  if (!selection || selection.length === 0) return [...ALL_PERFORMANCE_ASSET_SELECTION];
+  const selected = new Set(
+    selection.filter((assetClass): assetClass is AssetClass =>
+      PERFORMANCE_ASSET_CLASSES.includes(assetClass),
+    ),
+  );
+  if (selected.size === 0) return [...ALL_PERFORMANCE_ASSET_SELECTION];
+  return PERFORMANCE_ASSET_CLASSES.filter((assetClass) => selected.has(assetClass));
+}
+
+export function togglePerformanceAssetSelection(
+  selection: readonly AssetClass[] | null | undefined,
+  assetClass: AssetClass,
+): PerformanceAssetSelection {
+  const current = new Set(normalizePerformanceAssetSelection(selection));
+  if (current.has(assetClass)) {
+    if (current.size === 1) return normalizePerformanceAssetSelection(Array.from(current));
+    current.delete(assetClass);
+  } else {
+    current.add(assetClass);
+  }
+  return normalizePerformanceAssetSelection(Array.from(current));
 }
 
 export function inferPerformanceAssetClass(symbol: string): AssetClass {

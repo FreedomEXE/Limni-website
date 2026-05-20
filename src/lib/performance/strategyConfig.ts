@@ -57,7 +57,7 @@ function normalizeStrategyLookupId(value: string | undefined | null): string | n
   if (value === "tiered_v3" || value === "tiered_3_nocomm") {
     return TIERED_4W_STRATEGY_ID;
   }
-  if (value === "agree_2of3" || value === "agree_2of3_nocomm") {
+  if (value === "agree_2of3" || value === "agree_2of3_nocomm" || value === AGREE_3PLUS_STRATEGY_ID) {
     return AGREE_3OF4_STRATEGY_ID;
   }
   return value;

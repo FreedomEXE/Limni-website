@@ -14,7 +14,7 @@
 -----------------------------------------------*/
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentProps } from "react";
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
 import type { PerformanceSystem } from "@/lib/performance/modelConfig";
 import type { PerformanceView } from "@/lib/performance/pageState";
 import type { EngineGridProps, EngineSidebarStats, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
@@ -36,8 +36,10 @@ import {
 } from "@/lib/performance/strategyRegistry";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
+  ALL_PERFORMANCE_ASSET_SELECTION,
   formatPerformanceAssetSelection,
   isAllPerformanceAssetSelection,
+  normalizePerformanceAssetSelection,
   assetMatchesPerformanceScope,
   symbolMatchesPerformanceScope,
   type PerformanceAssetSelection,
@@ -527,7 +529,12 @@ export default function PerformanceViewSection({
 }: PerformanceViewSectionProps) {
   const [view, setView] = useState<PerformanceView>(initialView);
   const [selectedWeek, setSelectedWeek] = useState(initialWeek ?? "all");
-  const [assetScope, setAssetScope] = useState<PerformanceAssetSelection>(initialAssetScope ?? ["fx", "indices", "commodities", "crypto"]);
+  const [assetScope, setAssetScope] = useState<PerformanceAssetSelection>(() =>
+    normalizePerformanceAssetSelection(initialAssetScope ?? ALL_PERFORMANCE_ASSET_SELECTION),
+  );
+  const setNormalizedAssetScope = useCallback((next: PerformanceAssetSelection) => {
+    setAssetScope(normalizePerformanceAssetSelection(next));
+  }, []);
 
   // Legacy mode state
   const [mode, setMode] = useState<"flagship" | "legacy" | "matrix">(initialMode);
@@ -540,7 +547,7 @@ export default function PerformanceViewSection({
   useEffect(() => { setStyle(initialStyle); }, [initialStyle]);
   useEffect(() => { setSelectedWeek(initialWeek ?? "all"); }, [initialWeek]);
   useEffect(() => {
-    if (initialAssetScope) setAssetScope(initialAssetScope);
+    setAssetScope(normalizePerformanceAssetSelection(initialAssetScope ?? ALL_PERFORMANCE_ASSET_SELECTION));
   }, [initialAssetScope]);
 
   useEffect(() => {
@@ -742,7 +749,7 @@ export default function PerformanceViewSection({
               weeklyReturns={selectedWeek === "all" ? weeklyReturns : undefined}
               maeTrades={selectedWeek === "all" ? maeTrades : undefined}
               assetScope={assetScope}
-              onAssetScopeChange={setAssetScope}
+              onAssetScopeChange={setNormalizedAssetScope}
             />
           ) : (
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">

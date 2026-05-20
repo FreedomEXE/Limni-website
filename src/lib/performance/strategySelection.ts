@@ -15,7 +15,6 @@
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import {
   AGREE_3OF4_STRATEGY_ID,
-  AGREE_3PLUS_STRATEGY_ID,
   ENTRY_STYLE_FILTERS,
   SELECTOR_STRATEGY_ID,
   STRATEGIES,
@@ -51,7 +50,6 @@ export const VISIBLE_STRATEGY_IDS = [
   "tandem",
   TIERED_4W_STRATEGY_ID,
   AGREE_3OF4_STRATEGY_ID,
-  AGREE_3PLUS_STRATEGY_ID,
   SELECTOR_STRATEGY_ID,
 ] as const;
 
