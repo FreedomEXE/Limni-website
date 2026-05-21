@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE_NAME = "limni_session";
-const SESSION_SECRETS = new Set(["admin", "viewer", "authenticated"]);
+const SESSION_SECRETS = new Set(["admin"]);
 
 export function middleware(request: NextRequest) {
   // Dev/CI auth bypass — allows Playwright and Codex to browse without login
