@@ -1,9 +1,22 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: strategyArtifactReadiness.ts
+ *
+ * Description:
+ * Readiness checks for versioned strategy artifact shards.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 import {
   getEntryStyle,
-  getStrengthGate,
+  getRiskOverlay,
   getStrategy,
 } from "@/lib/performance/strategyConfig";
 import {
@@ -56,14 +69,14 @@ const READINESS_CONCURRENCY = 3;
 export function getExpectedStrategyArtifactEngineVersion(selection: StrategyBootstrapSelection) {
   return buildStrategyArtifactEngineVersion({
     entryStyle: getEntryStyle(selection.f1),
-    riskOverlay: getStrengthGate(selection.f2),
+    riskOverlay: getRiskOverlay(selection.f2),
   });
 }
 
 export function labelForStrategyArtifact(selection: StrategyBootstrapSelection) {
   const strategy = getStrategy(selection.strategyId)?.label ?? selection.strategyId;
   const entry = getEntryStyle(selection.f1)?.label ?? selection.f1;
-  const overlay = getStrengthGate(selection.f2);
+  const overlay = getRiskOverlay(selection.f2);
   return [
     strategy,
     entry,

@@ -18,7 +18,7 @@ import { computeWeeklyHold, computeMultiWeekHold } from "@/lib/performance/weekl
 import {
   getBiasSource,
   getEntryStyle,
-  getStrengthGate,
+  getRiskOverlay,
   normalizeFilterSelection,
   resolveBiasSourceId,
 } from "@/lib/performance/strategyConfig";
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     f2: searchParams.get("f2"),
   });
   const entryStyle = getEntryStyle(normalizedFilters.f1);
-  const riskOverlay = getStrengthGate(normalizedFilters.f2);
+  const riskOverlay = getRiskOverlay(normalizedFilters.f2);
 
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const weekOpenUtc = searchParams.get("week") ?? currentWeekOpenUtc;

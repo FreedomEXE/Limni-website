@@ -16,10 +16,11 @@ import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import {
   AGREE_3OF4_STRATEGY_ID,
   ENTRY_STYLE_FILTERS,
+  RISK_OVERLAYS,
   SELECTOR_STRATEGY_ID,
   STRATEGIES,
-  STRENGTH_GATES,
   TIERED_4W_STRATEGY_ID,
+  isRiskOverlayValidForEntryStyle,
 } from "@/lib/performance/strategyConfig";
 
 export const STRATEGY_SELECTION_COMMIT_EVENT = "limni:strategy-selection-commit";
@@ -75,16 +76,16 @@ export function listStrategyBootstrapSelections(): StrategyBootstrapSelection[] 
   // Guardrail: this registry defines the client-side fast path. New strategies
   // or filters must appear here or they will silently fall back to slower
   // route-driven behavior in sections that expect the full bootstrapped map.
-  const filter2Options = STRENGTH_GATES.length > 0
-    ? STRENGTH_GATES
-    : [{ id: "none" }];
+  const filter2Options = RISK_OVERLAYS;
   return STRATEGIES.flatMap((strategy) =>
     ENTRY_STYLE_FILTERS.flatMap((entryStyle) =>
-      filter2Options.map((strengthGate) => ({
-        strategyId: strategy.id,
-        f1: entryStyle.id,
-        f2: strengthGate.id,
-      })),
+      filter2Options
+        .filter((riskOverlay) => isRiskOverlayValidForEntryStyle(riskOverlay, entryStyle.id))
+        .map((riskOverlay) => ({
+          strategyId: strategy.id,
+          f1: entryStyle.id,
+          f2: riskOverlay.id,
+        })),
     ),
   );
 }
@@ -93,16 +94,16 @@ export function listVisibleStrategyBootstrapSelections(): StrategyBootstrapSelec
   const visibleStrategies = VISIBLE_STRATEGY_IDS
     .map((id) => STRATEGIES.find((strategy) => strategy.id === id))
     .filter((strategy): strategy is NonNullable<typeof strategy> => Boolean(strategy));
-  const filter2Options = STRENGTH_GATES.length > 0
-    ? STRENGTH_GATES
-    : [{ id: "none" }];
+  const filter2Options = RISK_OVERLAYS;
   return visibleStrategies.flatMap((strategy) =>
     ENTRY_STYLE_FILTERS.flatMap((entryStyle) =>
-      filter2Options.map((strengthGate) => ({
-        strategyId: strategy.id,
-        f1: entryStyle.id,
-        f2: strengthGate.id,
-      })),
+      filter2Options
+        .filter((riskOverlay) => isRiskOverlayValidForEntryStyle(riskOverlay, entryStyle.id))
+        .map((riskOverlay) => ({
+          strategyId: strategy.id,
+          f1: entryStyle.id,
+          f2: riskOverlay.id,
+        })),
     ),
   );
 }

@@ -7,9 +7,9 @@
  * Description:
  * Config-driven strategy definitions for Performance and Matrix sections.
  * Three selection levels:
- *   Strategy   — directional bias source (Dealer, Tiered V3, etc.)
- *   Filter 1   — entry style (Weekly Hold, ADR Pullback, etc.)
- *   Filter 2   — reserved for future reusable overlays (currently empty)
+ *   Signal Model — directional source system (Tandem, Tiered, Agreement, Selector)
+ *   Execution    — entry/exit engine (Weekly Hold, ADR Grid)
+ *   Risk Overlay — optional execution-compatible risk layer
  *
  * Adding a new option is just adding an entry to the array.
  * URL params: ?strategy=dealer&f1=weekly_hold&f2=none
@@ -205,37 +205,49 @@ export const ENTRY_STYLE_FILTERS: EntryStyleConfig[] = [
   },
 ];
 
-/* ─── Filter 2 (overlay gate) ─────────────────────────────────── */
+/* ─── Risk Overlay ────────────────────────────────────────────── */
 
-export type StrengthGateConfig = {
+export type RiskOverlayConfig = {
   id: string;
   label: string;
   description: string;
+  /** Which entry styles this overlay applies to. "all" = universal, string[] = specific IDs only. */
+  appliesToEntryStyles: "all" | readonly string[];
 };
 
-export const STRENGTH_GATES: StrengthGateConfig[] = [
+export const RISK_OVERLAYS: RiskOverlayConfig[] = [
   {
     id: "none",
     label: "None",
     description: "No additional risk overlay",
+    appliesToEntryStyles: "all",
   },
   {
-    id: "exposure_cap",
-    label: "Exposure Cap",
-    description: "Caps fill-level net exposure concentration across FX currencies and non-FX asset classes",
+    id: "pair_fill_cap",
+    label: "Pair Fill Cap",
+    description: "Max 3 active grid fills per pair. Prevents deep averaging into losing positions.",
+    appliesToEntryStyles: ["adr_grid"],
   },
 ];
 
-const LEGACY_STRENGTH_GATES: StrengthGateConfig[] = [
+const LEGACY_RISK_OVERLAYS: RiskOverlayConfig[] = [
   {
     id: "none",
     label: "None",
     description: "No overlay — retained only for backward compatibility",
+    appliesToEntryStyles: "all",
   },
   {
     id: "adr_normalized",
     label: "ADR Normalized",
     description: "Canonical risk layer retained only for backward compatibility",
+    appliesToEntryStyles: "all",
+  },
+  {
+    id: "exposure_cap",
+    label: "Exposure Cap",
+    description: "Legacy overlay — replaced by Pair Fill Cap",
+    appliesToEntryStyles: ["adr_grid"],
   },
 ];
 
@@ -252,10 +264,15 @@ export function normalizeFilterSelection(value: {
   const legacyEntryStyleId = isKnownId(ENTRY_STYLE_FILTERS, rawF2) ? rawF2 : null;
   const entryStyleId = legacyEntryStyleId
     ?? (isKnownId(ENTRY_STYLE_FILTERS, rawF1) ? rawF1 : "adr_grid");
+  const mappedF2 = rawF2 === "exposure_cap" ? "pair_fill_cap" : rawF2;
+  const overlay = isKnownId(RISK_OVERLAYS, mappedF2) ? getRiskOverlay(mappedF2) : undefined;
+  const defaultOverlayId = entryStyleId === "adr_grid" ? "pair_fill_cap" : "none";
+  const f2 = overlay && isRiskOverlayValidForEntryStyle(overlay, entryStyleId)
+    ? overlay.id
+    : defaultOverlayId;
   return {
     f1: entryStyleId,
-    // Backward compatibility: silently absorb old ?f2=adr_normalized URLs.
-    f2: isKnownId(STRENGTH_GATES, rawF2) ? rawF2 : "exposure_cap",
+    f2,
   };
 }
 
@@ -271,9 +288,18 @@ export function getEntryStyle(id: string): EntryStyleConfig | undefined {
   return ENTRY_STYLE_FILTERS.find((f) => f.id === id);
 }
 
-export function getStrengthGate(id: string): StrengthGateConfig | undefined {
-  return STRENGTH_GATES.find((f) => f.id === id)
-    ?? LEGACY_STRENGTH_GATES.find((f) => f.id === id);
+export function isRiskOverlayValidForEntryStyle(
+  overlay: RiskOverlayConfig | undefined,
+  entryStyleId: string,
+): boolean {
+  if (!overlay || overlay.id === "none") return true;
+  if (overlay.appliesToEntryStyles === "all") return true;
+  return overlay.appliesToEntryStyles.includes(entryStyleId);
+}
+
+export function getRiskOverlay(id: string): RiskOverlayConfig | undefined {
+  return RISK_OVERLAYS.find((f) => f.id === id)
+    ?? LEGACY_RISK_OVERLAYS.find((f) => f.id === id);
 }
 
 export function resolveStrategyId(value: string | undefined | null): string {
@@ -293,8 +319,8 @@ export function resolveEntryStyleId(value: string | undefined | null): string {
   return "adr_grid";
 }
 
-export function resolveStrengthGateId(value: string | undefined | null): string {
-  if (value && STRENGTH_GATES.some((f) => f.id === value)) return value;
+export function resolveRiskOverlayId(value: string | undefined | null): string {
+  if (value && RISK_OVERLAYS.some((f) => f.id === value)) return value;
   return "none";
 }
 
@@ -336,3 +362,11 @@ export type IntradayFilterConfig = EntryStyleConfig;
 export const getIntradayFilter = getEntryStyle;
 /** @deprecated Use resolveEntryStyleId */
 export const resolveIntradayFilterId = resolveEntryStyleId;
+/** @deprecated Use RiskOverlayConfig */
+export type StrengthGateConfig = RiskOverlayConfig;
+/** @deprecated Use RISK_OVERLAYS */
+export const STRENGTH_GATES = RISK_OVERLAYS;
+/** @deprecated Use getRiskOverlay */
+export const getStrengthGate = getRiskOverlay;
+/** @deprecated Use resolveRiskOverlayId */
+export const resolveStrengthGateId = resolveRiskOverlayId;

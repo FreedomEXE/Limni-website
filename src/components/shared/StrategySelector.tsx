@@ -21,10 +21,11 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   STRATEGIES,
   ENTRY_STYLE_FILTERS,
-  STRENGTH_GATES,
+  RISK_OVERLAYS,
   getEntryStyle,
-  getStrengthGate,
+  getRiskOverlay,
   getStrategy,
+  isRiskOverlayValidForEntryStyle,
   normalizeFilterSelection,
   resolveStrategyId,
 } from "@/lib/performance/strategyConfig";
@@ -61,7 +62,7 @@ export function readSelectionFromParams(searchParams: URLSearchParams): Strategy
 export function selectionLabel(sel: StrategySelection): string {
   const s = getStrategy(sel.strategy);
   const f1 = getEntryStyle(sel.f1);
-  const f2 = getStrengthGate(sel.f2);
+  const f2 = getRiskOverlay(sel.f2);
   const parts = [s?.label ?? sel.strategy, f1?.label ?? sel.f1];
   if (f2 && f2.id !== "none") parts.push(f2.label);
   return parts.join(" · ");
@@ -89,6 +90,10 @@ export default function StrategySelector() {
     draft.strategy !== committed.strategy ||
     draft.f1 !== committed.f1 ||
     draft.f2 !== committed.f2;
+  const validOverlays = RISK_OVERLAYS.filter((overlay) =>
+    isRiskOverlayValidForEntryStyle(overlay, draft.f1),
+  );
+  const onlyNoneOverlay = validOverlays.length === 1 && validOverlays[0]?.id === "none";
 
   const apply = () => {
     // Update URL for bookmarking without triggering a server re-render
@@ -119,10 +124,10 @@ export default function StrategySelector() {
 
   return (
     <div className="space-y-3">
-      {/* Strategy */}
+      {/* Signal Model */}
       <div>
         <label htmlFor="strategy-select" className={labelClasses}>
-          Strategy
+          Signal Model
         </label>
         <select
           id="strategy-select"
@@ -136,15 +141,22 @@ export default function StrategySelector() {
         </select>
       </div>
 
-      {/* Filter 1 (entry style) */}
+      {/* Execution */}
       <div>
         <label htmlFor="basket-filter" className={labelClasses}>
-          Filter 1
+          Execution
         </label>
         <select
           id="basket-filter"
           value={draft.f1}
-          onChange={(e) => setDraft((prev) => ({ ...prev, f1: e.target.value }))}
+          onChange={(e) => {
+            const newF1 = e.target.value;
+            setDraft((prev) => {
+              const overlay = getRiskOverlay(prev.f2);
+              const f2Valid = isRiskOverlayValidForEntryStyle(overlay, newF1);
+              return { ...prev, f1: newF1, f2: f2Valid ? prev.f2 : "none" };
+            });
+          }}
           className={selectClasses}
         >
           {ENTRY_STYLE_FILTERS.map((f) => (
@@ -153,7 +165,7 @@ export default function StrategySelector() {
         </select>
       </div>
 
-      {STRENGTH_GATES.length > 0 && (
+      {validOverlays.length > 0 && (
         <div>
           <label htmlFor="intraday-filter" className={labelClasses}>
             Risk Overlay
@@ -162,9 +174,10 @@ export default function StrategySelector() {
             id="intraday-filter"
             value={draft.f2}
             onChange={(e) => setDraft((prev) => ({ ...prev, f2: e.target.value }))}
-            className={selectClasses}
+            disabled={onlyNoneOverlay}
+            className={`${selectClasses} ${onlyNoneOverlay ? "cursor-not-allowed opacity-70" : ""}`}
           >
-            {STRENGTH_GATES.map((f) => (
+            {validOverlays.map((f) => (
               <option key={f.id} value={f.id}>{f.label}</option>
             ))}
           </select>

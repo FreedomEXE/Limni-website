@@ -29,7 +29,7 @@ import {
   seedStrategySessionPayload,
   useStrategySession,
 } from "@/lib/performance/strategySessionStore";
-import { getEntryStyle, getStrengthGate, getStrategy } from "@/lib/performance/strategyConfig";
+import { getEntryStyle, getRiskOverlay, getStrategy } from "@/lib/performance/strategyConfig";
 
 type StrategyBootstrapEntry = {
   engineWeekMap: NonNullable<ComponentProps<typeof PerformanceViewSection>["engineWeekMap"]> | null;
@@ -92,7 +92,7 @@ export default function PerformanceStrategyViewSection({
   const strategyDescription = getStrategy(selectedSelection.strategy)?.description ?? null;
   const strategyLabel = getStrategy(selectedSelection.strategy)?.label ?? selectedSelection.strategy;
   const entryStyleLabel = getEntryStyle(selectedSelection.f1)?.label ?? selectedSelection.f1;
-  const riskOverlay = getStrengthGate(selectedSelection.f2);
+  const riskOverlay = getRiskOverlay(selectedSelection.f2);
   const selectionLabel = [
     strategyLabel,
     entryStyleLabel,

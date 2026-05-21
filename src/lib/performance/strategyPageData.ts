@@ -32,11 +32,11 @@ import {
 } from "@/lib/performance/engineAdapter";
 import {
   getEntryStyle,
-  getStrengthGate,
+  getRiskOverlay,
   getStrategy,
   type EntryStyleConfig,
   type BiasSourceConfig,
-  type StrengthGateConfig,
+  type RiskOverlayConfig,
 } from "@/lib/performance/strategyConfig";
 import {
   computeWeeklyHold,
@@ -111,7 +111,7 @@ function getPageLoadShardBudgetMs() {
 
 function buildSelectionLabel(
   entryStyle: EntryStyleConfig | undefined,
-  riskOverlay: StrengthGateConfig | undefined,
+  riskOverlay: RiskOverlayConfig | undefined,
 ) {
   const parts = [entryStyle?.label ?? "Weekly Hold"];
   if (riskOverlay && riskOverlay.id !== "none") parts.push(riskOverlay.label);
@@ -309,7 +309,7 @@ async function computeCurrentWeekResultCached(options: {
   biasSource: BiasSourceConfig;
   currentWeekOpenUtc: string;
   entryStyle: EntryStyleConfig | undefined;
-  riskOverlay: StrengthGateConfig | undefined;
+  riskOverlay: RiskOverlayConfig | undefined;
 }) {
   const {
     selectionKey,
@@ -511,7 +511,7 @@ function assembleStrategyPageData(options: {
   biasSource: BiasSourceConfig;
   currentWeekOpenUtc: string;
   entryStyle: EntryStyleConfig | undefined;
-  riskOverlay: StrengthGateConfig | undefined;
+  riskOverlay: RiskOverlayConfig | undefined;
   weekOptions: string[];
   weekResultsByWeek: Record<string, WeeklyHoldResult>;
   simMap: Record<string, EngineSimulationGroup>;
@@ -608,7 +608,7 @@ type ShardNativeSelectionContext = {
   selectionKey: string;
   biasSource: BiasSourceConfig;
   entryStyle: EntryStyleConfig | undefined;
-  riskOverlay: StrengthGateConfig | undefined;
+  riskOverlay: RiskOverlayConfig | undefined;
   engineVersion: string;
   currentWeekOpenUtc: string;
   previousWeekOpenUtc: string;
@@ -629,7 +629,7 @@ async function buildShardNativeSelectionContext(
   if (!biasSource) return null;
 
   const entryStyle = getEntryStyle(selection.f1);
-  const riskOverlay = getStrengthGate(selection.f2);
+  const riskOverlay = getRiskOverlay(selection.f2);
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const historicalWeekOptions = buildDataWeekOptions({
     historicalWeeks: await listDataSectionWeeks(),
@@ -885,7 +885,7 @@ export async function overlayCurrentWeekOnStrategyPageData(
   if (!biasSource) return null;
 
   const entryStyle = getEntryStyle(selection.f1);
-  const riskOverlay = getStrengthGate(selection.f2);
+  const riskOverlay = getRiskOverlay(selection.f2);
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const historicalWeeks = artifactPayload.weekOptions
     .filter((weekOpenUtc) => weekOpenUtc !== "all" && weekOpenUtc !== currentWeekOpenUtc);
@@ -1119,7 +1119,7 @@ export function assembleStrategyPageDataFromShards(options: {
   biasSource: BiasSourceConfig;
   currentWeekOpenUtc: string;
   entryStyle: EntryStyleConfig | undefined;
-  riskOverlay: StrengthGateConfig | undefined;
+  riskOverlay: RiskOverlayConfig | undefined;
   weekOptions: string[];
   shards: WeekShardEntry[];
 }): StrategyPageData {

@@ -26,7 +26,7 @@ import { DateTime } from "luxon";
 import { getWeeklyPairReturns } from "@/lib/pairReturns";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
-import type { BiasSourceConfig, EntryStyleConfig } from "@/lib/performance/strategyConfig";
+import type { BiasSourceConfig, EntryStyleConfig, RiskOverlayConfig } from "@/lib/performance/strategyConfig";
 import {
   resolveSelectorFragilityDirections,
 } from "@/lib/performance/selectorEngine";
@@ -36,7 +36,6 @@ import {
   SELECTOR_SELECTIVE_STRATEGY_ID,
   AGREE_3PLUS_STRATEGY_ID,
 } from "@/lib/performance/strategyConfig";
-import type { StrengthGateConfig } from "@/lib/performance/strategyConfig";
 import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 import { loadWeeklyAdrMap, getAdrPct, getTargetAdrPct } from "@/lib/performance/adrLookup";
 import { loadPathBars } from "@/lib/performance/pathBarLoader";
@@ -538,7 +537,7 @@ function parseTier(raw: unknown): number | null {
 async function executeAdr(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
-  riskOverlay?: StrengthGateConfig,
+  riskOverlay?: RiskOverlayConfig,
 ): Promise<WeeklyHoldResult> {
   const exposureCapEnabled = riskOverlay?.id === "exposure_cap";
   // Step 1: Get the bias source's direction signals for this week.
@@ -723,6 +722,7 @@ const ADR_GRID_SPACING = 0.20;
 const ADR_GRID_RESET_ADR = 1.0;
 const ADR_GRID_MAX_LEVELS_PER_SIDE = 50;
 const EXPOSURE_CAP_LIMIT = 1.5;
+const PAIR_FILL_CAP_LIMIT = 3;
 
 type AdrGridTemplate = {
   symbol: string;
@@ -839,6 +839,10 @@ function activeAdrGridExposure(engine: AdrGridEngine) {
   return engine.fills.reduce((sum, fill) => sum + (fill.active ? fill.weight : 0), 0);
 }
 
+function activePairFillCount(engine: AdrGridEngine) {
+  return engine.fills.filter((fill) => fill.active).length;
+}
+
 function getAdrGridMark(engine: AdrGridEngine, timelines: Map<string, AdrGridTimeline>, barIndex: number) {
   return timelines.get(engine.symbol)?.markBars[barIndex]?.closePrice ?? engine.openPrice;
 }
@@ -933,6 +937,10 @@ function wouldBreachExposureCap(engine: AdrGridEngine, fillWeight: number, engin
   return wouldBreachNetExposureCap(getExposureDeltas(engine, fillWeight), net);
 }
 
+function wouldBreachPairFillCap(engine: AdrGridEngine) {
+  return activePairFillCount(engine) >= PAIR_FILL_CAP_LIMIT;
+}
+
 function closeAdrGridFill(params: {
   trades: WeeklyHoldTrade[];
   engine: AdrGridEngine;
@@ -1018,9 +1026,10 @@ function buildLiveReturnFallbackTrade(params: {
 async function executeAdrGrid(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
-  riskOverlay?: StrengthGateConfig,
+  riskOverlay?: RiskOverlayConfig,
 ): Promise<WeeklyHoldResult> {
   const exposureCapEnabled = riskOverlay?.id === "exposure_cap";
+  const pairFillCapEnabled = riskOverlay?.id === "pair_fill_cap";
   const directions = await resolveDirections(biasSource, weekOpenUtc);
   const signals = buildCanonicalSignals(directions);
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
@@ -1090,6 +1099,7 @@ async function executeAdrGrid(
           : (engine.direction === "LONG" ? bar.highPrice >= level.triggerPrice : bar.lowPrice <= level.triggerPrice);
         if (!triggered) continue;
         if (exposureCapEnabled && wouldBreachExposureCap(engine, level.weight, engines)) continue;
+        if (pairFillCapEnabled && wouldBreachPairFillCap(engine)) continue;
 
         engine.fills.push({
           levelIndex: level.index,
@@ -1236,7 +1246,7 @@ async function executeAdrGrid(
 type StrategyExecutor = (
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
-  riskOverlay?: StrengthGateConfig,
+  riskOverlay?: RiskOverlayConfig,
 ) => Promise<WeeklyHoldResult>;
 
 const EXECUTORS: Record<string, StrategyExecutor> = {
@@ -1251,7 +1261,7 @@ export async function computeWeeklyHold(
   biasSource: BiasSourceConfig,
   weekOpenUtc: string,
   entryStyle?: EntryStyleConfig,
-  riskOverlay?: StrengthGateConfig,
+  riskOverlay?: RiskOverlayConfig,
 ): Promise<WeeklyHoldResult> {
   // Route to the correct executor based on plModel
   const plModel = entryStyle?.plModel ?? "weekly_hold";
@@ -1349,7 +1359,7 @@ export async function computeMultiWeekHold(
   biasSource: BiasSourceConfig,
   weekOpenUtcs: string[],
   entryStyle?: EntryStyleConfig,
-  riskOverlay?: StrengthGateConfig,
+  riskOverlay?: RiskOverlayConfig,
 ): Promise<MultiWeekResult> {
   const computedWeeks: WeeklyHoldResult[] = [];
   const chunkSize = getMultiWeekComputeConcurrency();

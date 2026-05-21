@@ -18,8 +18,10 @@ const BASE_URL = (process.env.PRODUCTION_BASE_URL || process.env.PROD_BASE_URL |
 const REQUEST_DELAY_MS = 2_000;
 
 const STRATEGIES = ["tandem", "tiered_4w", "agree_3of4", "selector"] as const;
-const ENTRY_STYLES = ["weekly_hold", "adr_grid"] as const;
-const OVERLAYS = ["none", "exposure_cap"] as const;
+const EXECUTIONS = [
+  { f1: "weekly_hold", overlays: ["none"] },
+  { f1: "adr_grid", overlays: ["none", "pair_fill_cap"] },
+] as const;
 
 type Selection = {
   strategy: string;
@@ -144,8 +146,8 @@ function selectionKey(strategy: string, f1: string, f2: string) {
 
 function buildSelections(): Selection[] {
   return STRATEGIES.flatMap((strategy) =>
-    ENTRY_STYLES.flatMap((f1) =>
-      OVERLAYS.map((f2) => ({
+    EXECUTIONS.flatMap(({ f1, overlays }) =>
+      overlays.map((f2) => ({
         strategy,
         f1,
         f2,

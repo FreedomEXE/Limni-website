@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-const STRATEGIES = ["tandem", "tiered_4w", "agree_3of4", "agree_3plus", "selector"];
-const ENTRY_STYLES = ["weekly_hold", "adr_pullback", "adr_grid"];
-const OVERLAYS = ["none", "exposure_cap"];
+const STRATEGIES = ["tandem", "tiered_4w", "agree_3of4", "selector"];
+const EXECUTIONS = [
+  { f1: "weekly_hold", overlays: ["none"] },
+  { f1: "adr_grid", overlays: ["none", "pair_fill_cap"] },
+];
 
 type SurfaceMetrics = {
   return: string | null;
@@ -108,8 +110,8 @@ test.describe("Performance Numbers Audit", () => {
   const results: AuditResult[] = [];
 
   for (const strategy of STRATEGIES) {
-    for (const f1 of ENTRY_STYLES) {
-      for (const f2 of OVERLAYS) {
+    for (const { f1, overlays } of EXECUTIONS) {
+      for (const f2 of overlays) {
         test(`${strategy} / ${f1} / ${f2}`, async ({ page }) => {
           const summaryParams = new URLSearchParams({
             strategy,

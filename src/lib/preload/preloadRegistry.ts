@@ -39,7 +39,7 @@ export type PreloadManifest = {
 export const FALLBACK_DEFAULT_SELECTION: RuntimeStrategySelection = {
   strategy: "tandem",
   f1: "adr_grid",
-  f2: "exposure_cap",
+  f2: "pair_fill_cap",
 };
 
 export function deriveActiveSelectionFromParams(
