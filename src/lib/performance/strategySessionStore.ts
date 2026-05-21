@@ -7,6 +7,7 @@ import {
   fetchStrategyArtifactStatus,
   fetchStrategyClientPayload,
   getStrategyClientPayload,
+  requestVisibleStrategyArtifactsWarm,
   setStrategyClientPayload,
   type StrategyArtifactStatusPayload,
 } from "@/lib/performance/strategyClientCache";
@@ -82,6 +83,7 @@ let backgroundRepairInflight: Promise<void> | null = null;
 let currentWeekRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let currentWeekRefreshInterval: ReturnType<typeof setInterval> | null = null;
 const preloadedEngineVersions = new Map<string, string>();
+const PRELOAD_REPAIR_MAX_PASSES = 3;
 
 let state: StrategySessionState = {
   activeSelectionKey: null,
@@ -162,7 +164,12 @@ function mergeWeekOptions(previous: string[] | undefined, next: string[] | undef
   return next;
 }
 
+function hasMissingArtifactWeeks(payload: StrategyClientPayload | null | undefined) {
+  return (payload?.artifactMeta?.missingWeeks?.length ?? 0) > 0;
+}
+
 function hasFullPayload(payload: StrategyClientPayload | null) {
+  if (hasMissingArtifactWeeks(payload)) return false;
   return Boolean((payload?.engineWeekMap || payload?.engineSimMap) && payload?.engineWeekResults);
 }
 
@@ -532,6 +539,13 @@ function repairKeysFromStatus(status: StrategyArtifactStatusPayload | null) {
   );
 }
 
+function missingWeekCountFromStatus(status: StrategyArtifactStatusPayload | null) {
+  return (status?.artifacts ?? []).reduce(
+    (total, artifact) => total + (artifact.missingWeeks?.length ?? 0),
+    0,
+  );
+}
+
 async function runBackgroundRepairs(manifest: PreloadManifest, repairKeys: Set<string>) {
   if (repairKeys.size === 0 || backgroundRepairInflight) return backgroundRepairInflight;
 
@@ -554,6 +568,41 @@ async function runBackgroundRepairs(manifest: PreloadManifest, repairKeys: Set<s
   });
 
   return backgroundRepairInflight;
+}
+
+async function repairMissingArtifactsBeforePreload(
+  initialStatus: StrategyArtifactStatusPayload | null,
+) {
+  let status = initialStatus;
+
+  for (let pass = 0; pass < PRELOAD_REPAIR_MAX_PASSES; pass += 1) {
+    const repairKeys = repairKeysFromStatus(status);
+    if (repairKeys.size === 0) return status;
+
+    state = {
+      ...state,
+      preload: {
+        ...state.preload,
+        phase: "loading-strategies",
+        status: "loading",
+        queuedSelectionKeys: Array.from(repairKeys),
+      },
+    };
+    emit();
+
+    const missingBefore = missingWeekCountFromStatus(status);
+    await requestVisibleStrategyArtifactsWarm({ force: true });
+    status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: 10_000 }) ?? status;
+
+    for (const artifact of status?.artifacts ?? []) {
+      preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
+    }
+
+    if (!status || status.readyCount >= status.totalCount) return status;
+    if (missingWeekCountFromStatus(status) >= missingBefore) return status;
+  }
+
+  return status;
 }
 
 export function startStrategySessionPreload(manifest: PreloadManifest) {
@@ -614,12 +663,13 @@ async function runPreload(manifest: PreloadManifest) {
     };
     emit();
 
-    const status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: 5000 });
+    let status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: 5000 });
     if (status) {
       for (const artifact of status.artifacts) {
         preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
       }
     }
+    status = await repairMissingArtifactsBeforePreload(status);
     const repairKeys = repairKeysFromStatus(status);
 
     const activeTask = manifest.tasks.find((task) => task.priority === "active");
@@ -713,14 +763,23 @@ async function runPreload(manifest: PreloadManifest) {
       await loadCurrentWeekSession(activeStrategyTask.selection, { force: false });
     }
 
-    const failedCount = Object.keys(state.preload.failedSelectionKeys).length;
+    const finalStatus = await fetchStrategyArtifactStatus(undefined, { timeoutMs: 10_000 }) ?? status;
+    const stillMissingKeys = repairKeysFromStatus(finalStatus);
+    const failedSelectionKeys = {
+      ...state.preload.failedSelectionKeys,
+      ...Object.fromEntries(
+        Array.from(stillMissingKeys).map((key) => [key, "Historical weeks are still rebuilding"]),
+      ),
+    };
+    const failedCount = Object.keys(failedSelectionKeys).length;
     state = {
       ...state,
       preload: {
         ...state.preload,
         phase: "ready",
         status: failedCount > 0 ? "partial" : "ready",
-        completedOnce: true,
+        completedOnce: failedCount === 0,
+        failedSelectionKeys,
       },
     };
     emit();

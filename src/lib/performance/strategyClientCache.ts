@@ -120,6 +120,7 @@ export function setStrategyClientPayload(
 }
 
 function hasScopePayload(payload: StrategyClientPayload, scope: StrategyClientPayloadScope) {
+  if ((payload.artifactMeta?.missingWeeks?.length ?? 0) > 0) return false;
   if (scope === "matrix") {
     return Boolean(payload.engineWeekResults);
   }
@@ -270,7 +271,8 @@ async function writePersistentPayload(url: string, data: StrategyClientPayload) 
   if (
     !canUsePersistentPayloadCache() ||
     data.artifactMeta?.cachedAtUtc === null ||
-    data.artifactMeta?.stale === true
+    data.artifactMeta?.stale === true ||
+    (data.artifactMeta?.missingWeeks?.length ?? 0) > 0
   ) {
     return;
   }
@@ -501,11 +503,13 @@ export async function requestStrategyArtifactWarmPayload(
   return request;
 }
 
-export async function requestVisibleStrategyArtifactsWarm(): Promise<StrategyBulkWarmPayload | null> {
+export async function requestVisibleStrategyArtifactsWarm(
+  options: { force?: boolean } = {},
+): Promise<StrategyBulkWarmPayload | null> {
   if (bulkWarmInflight) {
     return bulkWarmInflight;
   }
-  if (Date.now() - bulkWarmRequestedAt < BULK_WARM_REQUEST_COOLDOWN_MS) {
+  if (!options.force && Date.now() - bulkWarmRequestedAt < BULK_WARM_REQUEST_COOLDOWN_MS) {
     return null;
   }
   bulkWarmRequestedAt = Date.now();

@@ -66,24 +66,35 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (bypassGate) return;
+    if (preload.completedOnce || preload.status === "ready") return;
     const manifest = buildPreloadManifest(activeSelection);
-    void startStrategySessionPreload(manifest);
-  }, [activeSelection, bypassGate]);
+    const run = () => {
+      void startStrategySessionPreload(manifest);
+    };
+    if (preload.status !== "partial") {
+      run();
+      return;
+    }
+    const timeout = window.setTimeout(run, 5000);
+    return () => window.clearTimeout(timeout);
+  }, [activeSelection, bypassGate, preload.completedOnce, preload.status]);
 
   if (
     bypassGate ||
     preload.completedOnce ||
-    preload.status === "ready" ||
-    preload.status === "partial"
+    preload.status === "ready"
   ) {
     return <>{children}</>;
   }
 
   const progress = progressLabel(preload);
   const displayPhase = preload.status === "idle" ? "checking-updates" : preload.phase;
-  const label = progress
-    ? `${PHASE_LABELS[displayPhase]} (${progress})`
+  const phaseLabel = preload.status === "partial"
+    ? "Rebuilding missing strategy data..."
     : PHASE_LABELS[displayPhase];
+  const label = progress
+    ? `${phaseLabel} (${progress})`
+    : phaseLabel;
 
   return (
     <div

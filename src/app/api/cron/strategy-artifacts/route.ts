@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 const CRON_ROUTE_BUDGET_MS = 100_000;
-const CRON_SELECTION_BUDGET_MS = 20_000;
+const CRON_SELECTION_BUDGET_MS = 60_000;
 
 export async function GET(request: Request) {
   if (!isCronAuthorized(request)) {
@@ -44,6 +44,9 @@ export async function GET(request: Request) {
 
     const selectionKey = buildStrategySelectionKey(selection);
     const artifact = readiness.find((item) => item.key === selectionKey);
+    if (!onlyKey && artifact?.ready) {
+      continue;
+    }
     const selectionStart = Date.now();
     const perSelectionBudgetMs = Math.min(
       CRON_SELECTION_BUDGET_MS,
