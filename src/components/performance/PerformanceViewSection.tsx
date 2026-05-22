@@ -45,6 +45,10 @@ import {
   type PerformanceAssetSelection,
 } from "@/lib/performance/performanceAssetScope";
 import {
+  deriveScopedSimulationMetrics,
+  filterGridPropsByPerformanceScope,
+} from "@/lib/performance/scopedPerformanceModel";
+import {
   STRATEGY_SIDEBAR_STATS_EVENT,
   type RuntimeStrategySelection,
   type StrategySidebarStatsDetail,
@@ -210,105 +214,30 @@ function computeScopedSidebarStats(
   };
 }
 
-function recomputeReturns(values: Array<{ pair: string; percent: number }>) {
-  const percents = values.map((value) => value.percent);
-  const avg = percents.length > 0 ? percents.reduce((sum, value) => sum + value, 0) / percents.length : 0;
-  const sorted = [...percents].sort((left, right) => left - right);
-  const median = sorted.length === 0
-    ? 0
-    : sorted.length % 2 === 1
-      ? sorted[Math.floor(sorted.length / 2)] ?? 0
-      : ((sorted[(sorted.length / 2) - 1] ?? 0) + (sorted[sorted.length / 2] ?? 0)) / 2;
-  const volatility = percents.length > 1
-    ? Math.sqrt(percents.reduce((sum, value) => sum + (value - avg) ** 2, 0) / (percents.length - 1))
-    : 0;
-  const best = values.reduce<typeof values[number] | null>(
-    (current, value) => (!current || value.percent > current.percent ? value : current),
-    null,
-  );
-  const worst = values.reduce<typeof values[number] | null>(
-    (current, value) => (!current || value.percent < current.percent ? value : current),
-    null,
-  );
-  return {
-    avg_return: avg,
-    median_return: median,
-    win_rate: percents.length > 0
-      ? (percents.filter((value) => value > 0).length / percents.length) * 100
-      : 0,
-    volatility,
-    best_pair: best,
-    worst_pair: worst,
-  };
-}
+function applySimulationMetricsToSidebarStats(
+  stats: EngineSidebarStats | null,
+  metrics: { returnPct: number | null; maxDrawdownPct: number | null; trades: number | null } | null,
+  selectedWeek: string,
+): EngineSidebarStats | null {
+  if (!stats || !metrics) return stats;
 
-function combineAllTimeStats(rows: EngineGridProps["allTime"]["combined"]) {
-  const byModel = new Map<EngineGridProps["allTime"]["combined"][number]["model"], EngineGridProps["allTime"]["combined"][number]>();
-  for (const row of rows) {
-    const current = byModel.get(row.model);
-    if (!current) {
-      byModel.set(row.model, { ...row });
-      continue;
-    }
-    const weeks = Math.max(current.weeks, row.weeks);
-    byModel.set(row.model, {
-      ...current,
-      totalPercent: current.totalPercent + row.totalPercent,
-      weeks,
-      winRate:
-        current.weeks + row.weeks > 0
-          ? ((current.winRate * current.weeks) + (row.winRate * row.weeks)) / (current.weeks + row.weeks)
-          : 0,
-      avgWeekly: weeks > 0 ? (current.totalPercent + row.totalPercent) / weeks : 0,
-    });
-  }
-  return Array.from(byModel.values());
-}
-
-function filterGridPropsByScope(
-  gridProps: EngineGridProps | null,
-  scope: PerformanceAssetSelection,
-): EngineGridProps | null {
-  if (!gridProps || isAllPerformanceAssetSelection(scope)) return gridProps;
-
-  const filterModel = (model: EngineGridProps["combined"]["models"][number]) => {
-    const pairDetails = model.pair_details.filter((detail) =>
-      symbolMatchesPerformanceScope(detail.pair, scope),
-    );
-    const returns = pairDetails
-      .filter((detail): detail is typeof detail & { percent: number } => typeof detail.percent === "number")
-      .map((detail) => ({ pair: detail.pair, percent: detail.percent }));
-    const total = pairDetails.reduce((sum, detail) => sum + (detail.children?.length ?? 1), 0);
-    return {
-      ...model,
-      percent: returns.reduce((sum, value) => sum + value.percent, 0),
-      priced: returns.length,
-      total,
-      returns,
-      pair_details: pairDetails,
-      stats: recomputeReturns(returns),
-    };
-  };
+  const maxDrawdownPct = metrics.maxDrawdownPct ?? stats.maxDrawdownPct;
+  const tradeCount = metrics.trades ?? stats.tradeCount;
+  const weekReturnPct = selectedWeek === "all" ? stats.weekReturnPct : metrics.returnPct ?? stats.weekReturnPct;
 
   return {
-    ...gridProps,
-    allTime: {
-      ...gridProps.allTime,
-      combined: combineAllTimeStats(scope.flatMap((assetClass) => gridProps.allTime.perAsset[assetClass] ?? [])),
-      perAsset: {
-        ...Object.fromEntries(scope.map((assetClass) => [assetClass, gridProps.allTime.perAsset[assetClass] ?? []])),
-      },
-    },
-    combined: {
-      ...gridProps.combined,
-      models: gridProps.combined.models.map(filterModel),
-    },
-    perAsset: gridProps.perAsset
-      .filter((section) => assetMatchesPerformanceScope(section.id, scope))
-      .map((section) => ({
-        ...section,
-        models: section.models.map(filterModel),
-      })),
+    ...stats,
+    weekReturnPct,
+    maxDrawdownPct,
+    tradeCount,
+    allTime: stats.allTime
+      ? {
+          ...stats.allTime,
+          maxDrawdownPct: selectedWeek === "all"
+            ? metrics.maxDrawdownPct ?? stats.allTime.maxDrawdownPct
+            : stats.allTime.maxDrawdownPct,
+        }
+      : stats.allTime,
   };
 }
 
@@ -568,7 +497,9 @@ export default function PerformanceViewSection({
     const rawGridProps = selectedWeek === "all"
       ? engineWeekMap["all"]
       : engineWeekMap[selectedWeek];
-    const gridProps = filterGridPropsByScope(rawGridProps ?? null, assetScope);
+    const gridProps = filterGridPropsByPerformanceScope(rawGridProps ?? null, assetScope, {
+      allTimeMode: selectedWeek === "all",
+    });
     if (!gridProps) return;
     const hasActivity = selectedWeek === "all" || hasGridActivity(gridProps);
     const weekResult = selectedWeek === "all" ? null : engineWeekResults?.[selectedWeek] ?? null;
@@ -599,13 +530,21 @@ export default function PerformanceViewSection({
 
   useEffect(() => {
     if (!selection) return;
-    const stats = computeScopedSidebarStats(sidebarStats, engineWeekResults, selectedWeek, assetScope);
+    const simulation = selectedWeek === "all"
+      ? engineSimMap?.["all"] ?? null
+      : engineSimMap?.[selectedWeek] ?? null;
+    const simulationMetrics = deriveScopedSimulationMetrics(simulation, assetScope);
+    const stats = applySimulationMetricsToSidebarStats(
+      computeScopedSidebarStats(sidebarStats, engineWeekResults, selectedWeek, assetScope),
+      simulationMetrics,
+      selectedWeek,
+    );
     const detail: StrategySidebarStatsDetail = {
       selection,
       stats,
     };
     window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
-  }, [assetScope, engineWeekResults, selectedWeek, selection, sidebarStats]);
+  }, [assetScope, engineSimMap, engineWeekResults, selectedWeek, selection, sidebarStats]);
 
   // ─── Legacy path (fallback) ───────────────────────────────────
   useEffect(() => {
@@ -713,7 +652,9 @@ export default function PerformanceViewSection({
     const rawGridProps = selectedWeek === "all"
       ? engineWeekMap["all"]
       : engineWeekMap[selectedWeek] ?? null;
-    const gridProps = filterGridPropsByScope(rawGridProps, assetScope);
+    const gridProps = filterGridPropsByPerformanceScope(rawGridProps, assetScope, {
+      allTimeMode: selectedWeek === "all",
+    });
     const simulation = selectedWeek === "all"
       ? engineSimMap?.["all"] ?? null
       : engineSimMap?.[selectedWeek] ?? null;
