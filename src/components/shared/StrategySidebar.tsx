@@ -116,102 +116,87 @@ function EngineSidebarStatsCard() {
     entryStyleLabel,
     overlayLabel,
   ].filter(Boolean).join(" · ");
+  const activeReturn = isAllTime
+    ? at?.totalReturnPct ?? 0
+    : allTimeStats?.weekReturnPct ?? weekStats?.returnPct ?? 0;
+  const activeWinRate = isAllTime
+    ? at?.weeklyWinRate ?? 0
+    : allTimeStats?.winRate ?? weekStats?.winRate ?? 0;
+  const activeMaxDrawdown = isAllTime
+    ? at?.maxDrawdownPct ?? 0
+    : allTimeStats?.maxDrawdownPct ?? 0;
+  const activeTrades = isAllTime
+    ? at?.totalTrades ?? 0
+    : allTimeStats?.tradeCount ?? weekStats?.tradeCount ?? 0;
+  const activeWins = isAllTime
+    ? null
+    : allTimeStats?.winCount ?? weekStats?.winCount ?? 0;
+  const activeLosses = isAllTime
+    ? null
+    : allTimeStats?.lossCount ?? weekStats?.lossCount ?? 0;
 
   return (
     <div className="space-y-3">
-      {/* Selected week stats */}
-      {weekStats && !isAllTime && (
-        <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
-            Selected Week
-          </div>
-
-          {weekStats.empty ? (
-            <div className="mt-3 rounded-lg border border-dashed border-[var(--panel-border)] px-3 py-2 text-xs text-[color:var(--muted)]">
-              No realized performance data.
-            </div>
-          ) : (
-            <>
-              <div className={`mt-2 text-2xl font-bold ${returnColor(weekStats.returnPct)}`}>
-                {weekStats.returnPct >= 0 ? "+" : ""}{weekStats.returnPct.toFixed(2)}%
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Win Rate</div>
-                  <div className="font-bold">{weekStats.winRate.toFixed(1)}%</div>
-                </div>
-                <div>
-                  <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Trades</div>
-                  <div className="font-bold">{weekStats.tradeCount}</div>
-                </div>
-                <div>
-                  <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Wins</div>
-                  <div className="font-bold text-lime-400">{weekStats.winCount}</div>
-                </div>
-                <div>
-                  <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Losses</div>
-                  <div className="font-bold text-red-400">{weekStats.lossCount}</div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* All-time aggregate stats */}
-      {at && (
+      {(at || allTimeStats) && (
         <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--accent-strong)]">
             {allTimeLabel}
           </div>
           <div className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-            {at.weeks} Weeks Tracked
+            {isAllTime ? `${at?.weeks ?? 0} Weeks Tracked` : "Selected Week"}
           </div>
 
-          <div data-testid="sidebar-return" className={`mt-3 text-3xl font-bold ${returnColor(at.totalReturnPct)}`}>
-            {at.totalReturnPct >= 0 ? "+" : ""}{at.totalReturnPct.toFixed(2)}%
+          {weekStats?.empty && !isAllTime ? (
+            <div className="mt-3 rounded-lg border border-dashed border-[var(--panel-border)] px-3 py-2 text-xs text-[color:var(--muted)]">
+              No realized performance data.
+            </div>
+          ) : (
+          <>
+          <div data-testid="sidebar-return" className={`mt-3 text-3xl font-bold ${returnColor(activeReturn)}`}>
+            {activeReturn >= 0 ? "+" : ""}{activeReturn.toFixed(2)}%
           </div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
-            Total Return
+            {isAllTime ? "Total Return" : "Week Return"}
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2.5 text-sm">
             <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Weekly WR</div>
-              <div data-testid="sidebar-winrate" className="font-bold">{at.weeklyWinRate.toFixed(1)}%</div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">{isAllTime ? "Weekly WR" : "Win Rate"}</div>
+              <div data-testid="sidebar-winrate" className="font-bold">{activeWinRate.toFixed(1)}%</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Max DD</div>
-              <div data-testid="sidebar-maxdd" className="font-bold text-red-400">{at.maxDrawdownPct.toFixed(2)}%</div>
+              <div data-testid="sidebar-maxdd" className="font-bold text-red-400">{activeMaxDrawdown.toFixed(2)}%</div>
             </div>
             <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Sharpe</div>
-              <div className="font-bold">{at.sharpe.toFixed(2)}</div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">{isAllTime ? "Sharpe" : "Trades"}</div>
+              <div data-testid={!isAllTime ? "sidebar-trades" : undefined} className="font-bold">{isAllTime && at ? at.sharpe.toFixed(2) : activeTrades}</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Sortino</div>
-              <div className="font-bold">{at.sortino != null ? (at.sortino >= 99 ? "∞" : at.sortino.toFixed(2)) : "—"}</div>
+              <div className="font-bold">{isAllTime && at?.sortino != null ? (at.sortino >= 99 ? "∞" : at.sortino.toFixed(2)) : "—"}</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Profit Factor</div>
-              <div className="font-bold">{formatPF(at.profitFactor)}</div>
+              <div className="font-bold">{isAllTime && at ? formatPF(at.profitFactor) : "—"}</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Calmar</div>
-              <div className="font-bold">{at.calmar != null ? at.calmar.toFixed(2) : "—"}</div>
+              <div className="font-bold">{isAllTime && at?.calmar != null ? at.calmar.toFixed(2) : "—"}</div>
             </div>
             <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Avg Weekly</div>
-              <div className="font-bold">{at.avgWeeklyReturn >= 0 ? "+" : ""}{at.avgWeeklyReturn.toFixed(2)}%</div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">{isAllTime ? "Avg Weekly" : "Wins"}</div>
+              <div className="font-bold">
+                {isAllTime && at ? `${at.avgWeeklyReturn >= 0 ? "+" : ""}${at.avgWeeklyReturn.toFixed(2)}%` : <span className="text-lime-400">{activeWins ?? 0}</span>}
+              </div>
             </div>
             <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Total Trades</div>
-              <div data-testid="sidebar-trades" className="font-bold">{at.totalTrades}</div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">{isAllTime ? "Total Trades" : "Losses"}</div>
+              <div data-testid={isAllTime ? "sidebar-trades" : undefined} className={`font-bold ${isAllTime ? "" : "text-red-400"}`}>{isAllTime ? activeTrades : activeLosses ?? 0}</div>
             </div>
           </div>
 
-          {at.expectancy != null && (
+          {isAllTime && at && at.expectancy != null && (
           <div className="mt-3 border-t border-[var(--panel-border)] pt-3 grid grid-cols-2 gap-2.5 text-sm">
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Expectancy</div>
@@ -230,6 +215,8 @@ function EngineSidebarStatsCard() {
               <div className="font-bold text-red-400">{at.maxConsecutiveLosses ?? 0}L</div>
             </div>
           </div>
+          )}
+          </>
           )}
         </div>
       )}

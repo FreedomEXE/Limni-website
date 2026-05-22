@@ -157,12 +157,14 @@ export default function PerformanceSimulationSection({
   maeTrades,
   assetScope,
   onAssetScopeChange,
+  showAssetControls = true,
 }: {
   group: PerformanceSimulationGroup | null;
   weeklyReturns?: Array<{ weekOpenUtc: string; returnPct: number }>;
   maeTrades?: MaeTrade[];
   assetScope?: PerformanceAssetSelection;
   onAssetScopeChange?: (scope: PerformanceAssetSelection) => void;
+  showAssetControls?: boolean;
 }) {
   const sleeveSeries = useMemo(() => {
     const assetSleeves = group?.series.filter((series) => series.id.startsWith("asset:")) ?? [];
@@ -214,9 +216,9 @@ export default function PerformanceSimulationSection({
           {group.title}
         </h3>
         <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
-          Select sleeves to view one combined path and matching path metrics.
+          Combined path and matching path metrics for the active page scope.
         </p>
-        {sleeveSeries.length > 0 ? (
+        {showAssetControls && sleeveSeries.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {sleeveSeries.map((item) => {
               const active = resolvedSelectedSleeves.includes(item.id);

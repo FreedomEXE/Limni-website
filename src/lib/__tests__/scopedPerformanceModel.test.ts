@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { EngineGridProps } from "@/lib/performance/engineAdapter";
-import { filterGridPropsByPerformanceScope } from "@/lib/performance/scopedPerformanceModel";
+import type { EngineGridProps, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
+import {
+  deriveScopedSimulationMetrics,
+  filterGridPropsByPerformanceScope,
+} from "@/lib/performance/scopedPerformanceModel";
 
 function model(overrides: Partial<EngineGridProps["combined"]["models"][number]> = {}) {
   return {
@@ -144,5 +147,63 @@ describe("scoped performance model", () => {
 
     expect(scoped?.combined.models[0]?.percent).toBe(3);
     expect(scoped?.combined.models[0]?.pair_details.map((detail) => detail.pair)).toEqual(["XAUUSD"]);
+  });
+
+  it("derives custom mixed-scope path metrics from selected asset series", () => {
+    const group: EngineSimulationGroup = {
+      title: "Agreement",
+      description: "",
+      metrics: {
+        returnPct: 99,
+        maxDrawdownPct: 99,
+        trades: 99,
+      },
+      series: [
+        {
+          id: "total",
+          label: "Total",
+          trades: 99,
+          points: [
+            { ts_utc: "2026-01-05T00:00:00.000Z", equity_pct: 0, lock_pct: null, drawdown_pct: 0 },
+            { ts_utc: "2026-01-06T00:00:00.000Z", equity_pct: 99, lock_pct: null, drawdown_pct: -99 },
+          ],
+        },
+        {
+          id: "asset:fx",
+          label: "FX",
+          trades: 10,
+          points: [
+            { ts_utc: "2026-01-05T00:00:00.000Z", equity_pct: 0, lock_pct: null, drawdown_pct: 0 },
+            { ts_utc: "2026-01-06T00:00:00.000Z", equity_pct: 10, lock_pct: null, drawdown_pct: 0 },
+            { ts_utc: "2026-01-07T00:00:00.000Z", equity_pct: 10, lock_pct: null, drawdown_pct: 0 },
+          ],
+        },
+        {
+          id: "asset:indices",
+          label: "Indices",
+          trades: 2,
+          points: [
+            { ts_utc: "2026-01-05T00:00:00.000Z", equity_pct: 0, lock_pct: null, drawdown_pct: 0 },
+            { ts_utc: "2026-01-06T00:00:00.000Z", equity_pct: 2, lock_pct: null, drawdown_pct: 0 },
+            { ts_utc: "2026-01-07T00:00:00.000Z", equity_pct: -2, lock_pct: null, drawdown_pct: -4 },
+          ],
+        },
+        {
+          id: "asset:crypto",
+          label: "Crypto",
+          trades: 5,
+          points: [
+            { ts_utc: "2026-01-05T00:00:00.000Z", equity_pct: 0, lock_pct: null, drawdown_pct: 0 },
+            { ts_utc: "2026-01-06T00:00:00.000Z", equity_pct: 50, lock_pct: null, drawdown_pct: 0 },
+          ],
+        },
+      ],
+    };
+
+    const metrics = deriveScopedSimulationMetrics(group, ["fx", "indices"]);
+
+    expect(metrics?.returnPct).toBe(8);
+    expect(metrics?.maxDrawdownPct).toBeCloseTo(3.5714, 4);
+    expect(metrics?.trades).toBe(12);
   });
 });

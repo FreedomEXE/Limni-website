@@ -270,33 +270,41 @@ function resolveScopedSimulationSeries(
 }
 
 function computeMixedSeries(seriesList: EngineSimulationSeries[]): EngineSimulationSeries {
-  const pointMap = new Map<string, EngineSimulationSeries["points"][number]>();
+  const timestamps = Array.from(new Set(seriesList.flatMap((series) =>
+    series.points.map((point) => point.ts_utc),
+  ))).sort((left, right) => Date.parse(left) - Date.parse(right));
+  const pointMaps = seriesList.map((series) =>
+    new Map(series.points.map((point) => [point.ts_utc, point])),
+  );
+  const lastEquityBySeries = new Array<number>(seriesList.length).fill(0);
+  const lastActiveBySeries = new Array<number>(seriesList.length).fill(0);
+  let runningPeakPct = 0;
 
-  for (const series of seriesList) {
-    for (const point of series.points) {
-      const existing = pointMap.get(point.ts_utc);
-      if (!existing) {
-        pointMap.set(point.ts_utc, { ...point });
-        continue;
+  const points = timestamps.map((tsUtc) => {
+    for (let index = 0; index < pointMaps.length; index += 1) {
+      const point = pointMaps[index]?.get(tsUtc);
+      if (point) {
+        lastEquityBySeries[index] = point.equity_pct;
+        lastActiveBySeries[index] = point.active_positions ?? 0;
       }
-      existing.equity_pct += point.equity_pct;
-      existing.lock_pct = (existing.lock_pct ?? 0) + (point.lock_pct ?? 0);
-      existing.active_positions = (existing.active_positions ?? 0) + (point.active_positions ?? 0);
     }
-  }
 
-  let peak = -Infinity;
-  const points = Array.from(pointMap.values())
-    .sort((a, b) => new Date(a.ts_utc).getTime() - new Date(b.ts_utc).getTime())
-    .map((point) => {
-      peak = Math.max(peak, point.equity_pct);
-      const drawdown = point.equity_pct - peak;
-      return {
-        ...point,
-        peak_pct: peak,
-        drawdown_pct: drawdown < 0 ? drawdown : 0,
-      };
-    });
+    const equityPct = lastEquityBySeries.reduce((sum, value) => sum + value, 0);
+    const activePositions = lastActiveBySeries.reduce((sum, value) => sum + value, 0);
+    runningPeakPct = Math.max(runningPeakPct, equityPct);
+    const drawdownPct = (100 + runningPeakPct) <= 0
+      ? -100
+      : (((100 + equityPct) / (100 + runningPeakPct)) - 1) * 100;
+
+    return {
+      ts_utc: tsUtc,
+      equity_pct: equityPct,
+      lock_pct: null,
+      peak_pct: runningPeakPct,
+      drawdown_pct: drawdownPct,
+      active_positions: activePositions,
+    };
+  });
 
   return {
     id: "scoped-mix",
@@ -312,12 +320,19 @@ function filterMarketHours<T extends { ts_utc: string }>(
   options: { includeWeekends: boolean },
 ): T[] {
   const now = Date.now();
-  return points.filter((point) => {
+  const filtered = points.filter((point) => {
     const ts = new Date(point.ts_utc).getTime();
     if (!Number.isFinite(ts) || ts > now) return false;
     if (options.includeWeekends) return true;
     return !isWeekend(point.ts_utc);
   });
+  if (filtered.length > 0) return filtered;
+  const pastPoints = points.filter((point) => {
+    const ts = new Date(point.ts_utc).getTime();
+    return Number.isFinite(ts) && ts <= now;
+  });
+  if (pastPoints.length > 0) return pastPoints;
+  return points.length > 0 ? [points[0]] : [];
 }
 
 function isWeekend(tsUtc: string): boolean {

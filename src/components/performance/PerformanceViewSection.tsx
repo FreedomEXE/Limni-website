@@ -25,6 +25,7 @@ import PerformanceViewCards, {
 import PerformanceSimulationSection, {
   type PerformanceSimulationGroup,
 } from "@/components/performance/PerformanceSimulationSection";
+import PerformanceScopeControl from "@/components/performance/PerformanceScopeControl";
 import type { WeekReturn } from "@/components/performance/ReturnsCalendar";
 import type { MaeTrade } from "@/components/performance/MaeScatterPlot";
 import PerformanceNotesPad from "@/components/performance/PerformanceNotesPad";
@@ -216,14 +217,17 @@ function computeScopedSidebarStats(
 
 function applySimulationMetricsToSidebarStats(
   stats: EngineSidebarStats | null,
-  metrics: { returnPct: number | null; maxDrawdownPct: number | null; trades: number | null } | null,
+  selectedMetrics: { returnPct: number | null; maxDrawdownPct: number | null; trades: number | null } | null,
+  allTimeMetrics: { returnPct: number | null; maxDrawdownPct: number | null; trades: number | null } | null,
   selectedWeek: string,
 ): EngineSidebarStats | null {
-  if (!stats || !metrics) return stats;
+  if (!stats) return stats;
 
-  const maxDrawdownPct = metrics.maxDrawdownPct ?? stats.maxDrawdownPct;
-  const tradeCount = metrics.trades ?? stats.tradeCount;
-  const weekReturnPct = selectedWeek === "all" ? stats.weekReturnPct : metrics.returnPct ?? stats.weekReturnPct;
+  const maxDrawdownPct = selectedMetrics?.maxDrawdownPct ?? stats.maxDrawdownPct;
+  const tradeCount = selectedMetrics?.trades ?? stats.tradeCount;
+  const weekReturnPct = selectedWeek === "all"
+    ? stats.weekReturnPct
+    : selectedMetrics?.returnPct ?? stats.weekReturnPct;
 
   return {
     ...stats,
@@ -233,9 +237,9 @@ function applySimulationMetricsToSidebarStats(
     allTime: stats.allTime
       ? {
           ...stats.allTime,
-          maxDrawdownPct: selectedWeek === "all"
-            ? metrics.maxDrawdownPct ?? stats.allTime.maxDrawdownPct
-            : stats.allTime.maxDrawdownPct,
+          totalReturnPct: allTimeMetrics?.returnPct ?? stats.allTime.totalReturnPct,
+          totalTrades: allTimeMetrics?.trades ?? stats.allTime.totalTrades,
+          maxDrawdownPct: allTimeMetrics?.maxDrawdownPct ?? stats.allTime.maxDrawdownPct,
         }
       : stats.allTime,
   };
@@ -528,15 +532,19 @@ export default function PerformanceViewSection({
     }));
   }, [assetScope, selectedWeek, engineWeekMap, engineWeekResults]);
 
+  const sidebarSelectedSimulation = selectedWeek === "all"
+    ? engineSimMap?.["all"] ?? null
+    : engineSimMap?.[selectedWeek] ?? null;
+  const sidebarAllTimeSimulation = engineSimMap?.["all"] ?? null;
+
   useEffect(() => {
     if (!selection) return;
-    const simulation = selectedWeek === "all"
-      ? engineSimMap?.["all"] ?? null
-      : engineSimMap?.[selectedWeek] ?? null;
-    const simulationMetrics = deriveScopedSimulationMetrics(simulation, assetScope);
+    const simulationMetrics = deriveScopedSimulationMetrics(sidebarSelectedSimulation, assetScope);
+    const allTimeSimulationMetrics = deriveScopedSimulationMetrics(sidebarAllTimeSimulation, assetScope);
     const stats = applySimulationMetricsToSidebarStats(
       computeScopedSidebarStats(sidebarStats, engineWeekResults, selectedWeek, assetScope),
       simulationMetrics,
+      allTimeSimulationMetrics,
       selectedWeek,
     );
     const detail: StrategySidebarStatsDetail = {
@@ -544,7 +552,15 @@ export default function PerformanceViewSection({
       stats,
     };
     window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
-  }, [assetScope, engineSimMap, engineWeekResults, selectedWeek, selection, sidebarStats]);
+  }, [
+    assetScope,
+    engineWeekResults,
+    selectedWeek,
+    selection,
+    sidebarAllTimeSimulation,
+    sidebarSelectedSimulation,
+    sidebarStats,
+  ]);
 
   // ─── Legacy path (fallback) ───────────────────────────────────
   useEffect(() => {
@@ -662,13 +678,17 @@ export default function PerformanceViewSection({
 
     return (
       <>
-        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+        <div className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
           <ScrollableWeekStrip
             options={weekOptions}
             selected={selectedWeek}
             currentWeek={currentWeek}
             label="Week"
             onChange={setSelectedWeek}
+          />
+          <PerformanceScopeControl
+            value={assetScope}
+            onChange={setNormalizedAssetScope}
           />
         </div>
 
@@ -691,6 +711,7 @@ export default function PerformanceViewSection({
               maeTrades={selectedWeek === "all" ? maeTrades : undefined}
               assetScope={assetScope}
               onAssetScopeChange={setNormalizedAssetScope}
+              showAssetControls={false}
             />
           ) : (
             <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
@@ -711,6 +732,7 @@ export default function PerformanceViewSection({
             combined={gridProps.combined}
             perAsset={gridProps.perAsset}
             view={view}
+            showSectionTabs={selection?.strategy !== "agree_3of4"}
           />
         ) : (
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
