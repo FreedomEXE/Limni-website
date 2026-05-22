@@ -166,9 +166,31 @@ function buildPermanentWeekFingerprint(weekOpenUtc: string) {
   return `${PERMANENT_SHARD_FINGERPRINT_PREFIX}:${weekOpenUtc}`;
 }
 
-function isStraightLineFallbackWeekShard(shard: WeekShardEntry) {
+function hasRenderablePrimarySeries(shard: WeekShardEntry) {
+  const primarySeries =
+    shard.sim?.series?.find((series) => series.id === "equity" || series.id === "total")
+    ?? shard.sim?.series?.[0];
+  return (primarySeries?.points.length ?? 0) > 2;
+}
+
+function hasNonPrimaryPathSeries(shard: WeekShardEntry) {
+  return (shard.sim?.series ?? []).some((series) =>
+    series.id !== "equity" &&
+    series.id !== "total" &&
+    !series.id.startsWith("asset:") &&
+    (series.points?.length ?? 0) > 2,
+  );
+}
+
+export function isInvalidWeekShardForSelection(
+  shard: WeekShardEntry,
+  entryStyle: EntryStyleConfig | undefined,
+  riskOverlay: RiskOverlayConfig | undefined,
+) {
   if (!shard.weekResult || !shard.sim) return true;
-  const primarySeries = shard.sim.series?.[0];
+  const primarySeries =
+    shard.sim.series?.find((series) => series.id === "equity" || series.id === "total")
+    ?? shard.sim.series?.[0];
   const primaryPointCount = primarySeries?.points.length ?? 0;
   const signalCount = shard.weekResult.signals?.length ?? 0;
   if (
@@ -179,8 +201,22 @@ function isStraightLineFallbackWeekShard(shard: WeekShardEntry) {
   ) {
     return true;
   }
+
+  if (
+    entryStyle?.id === "adr_grid" &&
+    riskOverlay &&
+    riskOverlay.id !== "none" &&
+    shard.weekResult.isRealized &&
+    shard.weekResult.tradeCount <= 0 &&
+    signalCount === 0 &&
+    primaryPointCount <= 1 &&
+    hasNonPrimaryPathSeries(shard)
+  ) {
+    return true;
+  }
+
   if (!shard.weekResult.isRealized || shard.weekResult.tradeCount <= 0) return false;
-  if (!primarySeries || primarySeries.points.length <= 2) return true;
+  if (!hasRenderablePrimarySeries(shard)) return true;
 
   const tradedAssetClasses = new Set(
     shard.weekResult.trades
@@ -700,7 +736,7 @@ export async function ensureHistoricalWeekShardsForSelection(
   const startedAt = Date.now();
   const timeBudgetMs = options.timeBudgetMs ?? getShardBuildTimeBudgetMs();
   const existingShards = (await readWeekShards(context.selectionKey, context.engineVersion))
-    .filter((shard) => !isStraightLineFallbackWeekShard(shard));
+    .filter((shard) => !isInvalidWeekShardForSelection(shard, context.entryStyle, context.riskOverlay));
   const shardByWeek = new Map(existingShards.map((shard) => [shard.weekOpenUtc, shard]));
   const missingWeeks = context.historicalWeekOptions.filter((weekOpenUtc) => !shardByWeek.has(weekOpenUtc));
   const targetWeeks = options.onlyPreviousWeek

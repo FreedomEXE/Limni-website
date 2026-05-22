@@ -340,22 +340,18 @@ export function weeklyHoldToGridProps(
     ),
   );
 
-  // Build perAsset only for tiers and per_model breakdowns
-  // For asset_class breakdown, cards already ARE the asset breakdown
   const perAsset: EngineGridProps["perAsset"] = [];
-  if (biasSource.cardBreakdown !== "asset_class") {
-    for (const ac of ASSET_SECTIONS) {
-      const acTrades = trades.filter((t) => t.assetClass === ac.id);
-      const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
-      perAsset.push({
-        id: ac.id,
-        label: ac.label,
-        description: `${ac.label} contribution`,
-        models: cardSlots.map((slot, i) =>
-          tradesToModelPerformance(slot, acSlotted[i] ?? [], `${slotLabels[i]} — ${ac.label}.`),
-        ),
-      });
-    }
+  for (const ac of ASSET_SECTIONS) {
+    const acTrades = trades.filter((t) => t.assetClass === ac.id);
+    const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
+    perAsset.push({
+      id: ac.id,
+      label: ac.label,
+      description: `${ac.label} contribution`,
+      models: cardSlots.map((slot, i) =>
+        tradesToModelPerformance(slot, acSlotted[i] ?? [], `${slotLabels[i]} — ${ac.label}.`),
+      ),
+    });
   }
 
   return {
@@ -429,73 +425,68 @@ export function multiWeekToGridProps(
     avgWeekly: computeReturnStats(weeklySlotReturns[i]).avg_return,
   }));
 
-  // Per-asset all-time (for tiers/per_model)
   const allTimePerAsset: Record<string, typeof allTimeCombined> = {};
-  if (biasSource.cardBreakdown !== "asset_class") {
-    for (const ac of ASSET_SECTIONS) {
-      const weeklyAcSlotReturns: typeof weeklySlotReturns = cardSlots.map(() => []);
-      for (const week of result.weeks) {
-        const acTrades = week.trades.filter((t) => t.assetClass === ac.id);
-        const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
-        for (let i = 0; i < cardSlots.length; i++) {
-          const weekReturn = (acSlotted[i] ?? []).reduce((s, t) => s + t.returnPct, 0);
-          weeklyAcSlotReturns[i].push({
-            pair: `Week of ${week.weekOpenUtc.split("T")[0]}`,
-            percent: weekReturn,
-          });
-        }
+  for (const ac of ASSET_SECTIONS) {
+    const weeklyAcSlotReturns: typeof weeklySlotReturns = cardSlots.map(() => []);
+    for (const week of result.weeks) {
+      const acTrades = week.trades.filter((t) => t.assetClass === ac.id);
+      const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
+      for (let i = 0; i < cardSlots.length; i++) {
+        const weekReturn = (acSlotted[i] ?? []).reduce((s, t) => s + t.returnPct, 0);
+        weeklyAcSlotReturns[i].push({
+          pair: `Week of ${week.weekOpenUtc.split("T")[0]}`,
+          percent: weekReturn,
+        });
       }
-      allTimePerAsset[ac.id] = cardSlots.map((slot, i) => ({
-        model: slot,
-        totalPercent: weeklyAcSlotReturns[i].reduce((s, r) => s + r.percent, 0),
-        weeks: weeklyAcSlotReturns[i].length,
-        winRate: computeReturnStats(weeklyAcSlotReturns[i]).win_rate,
-        avgWeekly: computeReturnStats(weeklyAcSlotReturns[i]).avg_return,
-      }));
     }
+    allTimePerAsset[ac.id] = cardSlots.map((slot, i) => ({
+      model: slot,
+      totalPercent: weeklyAcSlotReturns[i].reduce((s, r) => s + r.percent, 0),
+      weeks: weeklyAcSlotReturns[i].length,
+      winRate: computeReturnStats(weeklyAcSlotReturns[i]).win_rate,
+      avgWeekly: computeReturnStats(weeklyAcSlotReturns[i]).avg_return,
+    }));
   }
 
   // Per-asset sections for the multi-week view
   const perAsset: EngineGridProps["perAsset"] = [];
-  if (biasSource.cardBreakdown !== "asset_class") {
-    for (const ac of ASSET_SECTIONS) {
-      const weeklyAcSlotReturns: typeof weeklySlotReturns = cardSlots.map(() => []);
-      for (const week of result.weeks) {
-        const acTrades = week.trades.filter((t) => t.assetClass === ac.id);
-        const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
-        for (let i = 0; i < cardSlots.length; i++) {
-          const weekReturn = (acSlotted[i] ?? []).reduce((s, t) => s + t.returnPct, 0);
-          weeklyAcSlotReturns[i].push({
-            pair: `Week of ${week.weekOpenUtc.split("T")[0]}`,
-            percent: weekReturn,
-          });
-        }
+  for (const ac of ASSET_SECTIONS) {
+    const weeklyAcSlotReturns: typeof weeklySlotReturns = cardSlots.map(() => []);
+    for (const week of result.weeks) {
+      const acTrades = week.trades.filter((t) => t.assetClass === ac.id);
+      const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
+      for (let i = 0; i < cardSlots.length; i++) {
+        const weekReturn = (acSlotted[i] ?? []).reduce((s, t) => s + t.returnPct, 0);
+        weeklyAcSlotReturns[i].push({
+          pair: `Week of ${week.weekOpenUtc.split("T")[0]}`,
+          percent: weekReturn,
+        });
       }
-      perAsset.push({
-        id: ac.id,
-        label: ac.label,
-        description: `${ac.label} contribution across ${result.weeks.length} weeks`,
-        models: cardSlots.map((slot, i) => ({
-          model: slot,
-          percent: weeklyAcSlotReturns[i].reduce((s, r) => s + r.percent, 0),
-          priced: weeklyAcSlotReturns[i].length,
-          total: weeklyAcSlotReturns[i].length,
-          note:
-            biasSource.cardBreakdown === "tiers"
-              ? `${slotLabels[i]} — ${ac.label} across ${result.weeks.length} weeks.`
-              : biasSource.description,
-          returns: weeklyAcSlotReturns[i],
-          pair_details: weeklyAcSlotReturns[i].map((r) => ({
-            pair: r.pair,
-            direction: (r.percent >= 0 ? "LONG" : "SHORT") as "LONG" | "SHORT",
-            reason: [`Weekly return ${r.percent >= 0 ? "+" : ""}${r.percent.toFixed(2)}%`],
-            percent: r.percent,
-          })),
-          stats: computeReturnStats(weeklyAcSlotReturns[i]),
-          diagnostics: { max_drawdown: null, profit_factor: null },
-        })),
-      });
     }
+    perAsset.push({
+      id: ac.id,
+      label: ac.label,
+      description: `${ac.label} contribution across ${result.weeks.length} weeks`,
+      models: cardSlots.map((slot, i) => ({
+        model: slot,
+        percent: weeklyAcSlotReturns[i].reduce((s, r) => s + r.percent, 0),
+        priced: weeklyAcSlotReturns[i].length,
+        total: weeklyAcSlotReturns[i].length,
+        note:
+          biasSource.cardBreakdown === "tiers"
+            ? `${slotLabels[i]} — ${ac.label} across ${result.weeks.length} weeks.`
+            : biasSource.description,
+        returns: weeklyAcSlotReturns[i],
+        pair_details: weeklyAcSlotReturns[i].map((r) => ({
+          pair: r.pair,
+          direction: (r.percent >= 0 ? "LONG" : "SHORT") as "LONG" | "SHORT",
+          reason: [`Weekly return ${r.percent >= 0 ? "+" : ""}${r.percent.toFixed(2)}%`],
+          percent: r.percent,
+        })),
+        stats: computeReturnStats(weeklyAcSlotReturns[i]),
+        diagnostics: { max_drawdown: null, profit_factor: null },
+      })),
+    });
   }
 
   return {

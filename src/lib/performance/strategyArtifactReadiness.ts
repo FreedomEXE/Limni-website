@@ -26,6 +26,7 @@ import {
 } from "@/lib/performance/strategySelection";
 import { buildStrategyArtifactEngineVersion } from "@/lib/performance/strategyArtifactVersions";
 import {
+  isInvalidWeekShardForSelection,
   loadStrategyPageData,
   type StrategyPageData,
 } from "@/lib/performance/strategyPageData";
@@ -84,21 +85,12 @@ export function labelForStrategyArtifact(selection: StrategyBootstrapSelection) 
   ].filter(Boolean).join(" · ");
 }
 
-function isUsableShard(shard: WeekShardEntry) {
-  if (!shard.weekResult || !shard.sim) return false;
-  const primarySeries = shard.sim.series?.[0];
-  const primaryPointCount = primarySeries?.points.length ?? 0;
-  const signalCount = shard.weekResult.signals?.length ?? 0;
-  if (
-    shard.weekResult.isRealized &&
-    shard.weekResult.tradeCount <= 0 &&
-    signalCount > 0 &&
-    primaryPointCount <= 1
-  ) {
-    return false;
-  }
-  if (!shard.weekResult.isRealized || shard.weekResult.tradeCount <= 0) return true;
-  return Boolean(primarySeries && primarySeries.points.length > 2);
+function isUsableShard(shard: WeekShardEntry, selection: StrategyBootstrapSelection) {
+  return !isInvalidWeekShardForSelection(
+    shard,
+    getEntryStyle(selection.f1),
+    getRiskOverlay(selection.f2),
+  );
 }
 
 function latestShardCachedAtUtc(shards: WeekShardEntry[]) {
@@ -147,7 +139,7 @@ async function readinessForSelection(
       missingWeeks.push(weekOpenUtc);
       continue;
     }
-    if (!isUsableShard(shard)) {
+    if (!isUsableShard(shard, selection)) {
       staleWeeks.push(weekOpenUtc);
     }
   }
