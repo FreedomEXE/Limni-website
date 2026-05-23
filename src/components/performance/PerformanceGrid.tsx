@@ -153,8 +153,7 @@ function computeProfitFactorFromReturns(returns: Array<{ pair: string; percent: 
 }
 
 function formatProfitFactor(value: number | null) {
-  if (value === null || Number.isNaN(value)) return "∞";
-  if (!Number.isFinite(value)) return "∞";
+  if (value === null || Number.isNaN(value) || !Number.isFinite(value)) return "—";
   return value.toFixed(2);
 }
 
@@ -389,7 +388,7 @@ function PerformanceCard({
             <MetricPill
               label="Profit Factor"
               value={formatProfitFactor(profitFactor)}
-              good={profitFactor !== null && profitFactor > 1}
+              good={profitFactor !== null && Number.isFinite(profitFactor) && profitFactor > 1}
             />
           </div>
           <div className="mt-4 flex items-center justify-between gap-2">

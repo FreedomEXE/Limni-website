@@ -28,10 +28,26 @@ import {
 } from "@/lib/performance/strategySelection";
 import { readSelectionFromParams } from "@/components/shared/StrategySelector";
 
-function formatPF(pf: number | null | undefined): string {
-  if (pf == null) return "∞";
-  if (!isFinite(pf)) return "∞";
-  return pf.toFixed(2);
+function formatRatio(value: number | null | undefined, digits = 2): string {
+  if (value == null || Number.isNaN(value) || !Number.isFinite(value)) return "—";
+  return value.toFixed(digits);
+}
+
+function formatSortino(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value) || !Number.isFinite(value)) return "—";
+  return value >= 99 ? "—" : value.toFixed(2);
+}
+
+function formatCalmar(value: number | null | undefined, returnPct: number, drawdownPct: number): string {
+  if (value == null || Number.isNaN(value) || !Number.isFinite(value)) return "—";
+  if (returnPct > 0 && drawdownPct <= 0) return "—";
+  return value.toFixed(2);
+}
+
+function formatAverageLoss(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value) || !Number.isFinite(value)) return "—";
+  const normalized = Math.abs(value) < 0.05 ? 0 : Math.abs(value);
+  return normalized.toFixed(1);
 }
 
 type WeekStats = {
@@ -174,15 +190,17 @@ function EngineSidebarStatsCard() {
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Sortino</div>
-              <div className="font-bold">{isAllTime && at?.sortino != null ? (at.sortino >= 99 ? "∞" : at.sortino.toFixed(2)) : "—"}</div>
+              <div className="font-bold">{isAllTime && at ? formatSortino(at.sortino) : "—"}</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Profit Factor</div>
-              <div className="font-bold">{isAllTime && at ? formatPF(at.profitFactor) : "—"}</div>
+              <div className="font-bold">{isAllTime && at ? formatRatio(at.profitFactor) : "—"}</div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Calmar</div>
-              <div className="font-bold">{isAllTime && at?.calmar != null ? at.calmar.toFixed(2) : "—"}</div>
+              <div className="font-bold">
+                {isAllTime && at ? formatCalmar(at.calmar, at.totalReturnPct, at.maxDrawdownPct) : "—"}
+              </div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">{isAllTime ? "Avg Weekly" : "Wins"}</div>
@@ -204,7 +222,9 @@ function EngineSidebarStatsCard() {
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Avg Win / Loss</div>
-              <div className="font-bold text-xs">+{(at.avgWin ?? 0).toFixed(1)} / -{(at.avgLoss ?? 0).toFixed(1)}</div>
+              <div className="font-bold text-xs">
+                +{formatRatio(at.avgWin, 1)} / -{formatAverageLoss(at.avgLoss)}
+              </div>
             </div>
             <div>
               <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Best Streak</div>
