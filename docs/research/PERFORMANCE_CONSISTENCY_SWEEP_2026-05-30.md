@@ -26,10 +26,10 @@ Backend engines, ledger schema, trade readers, ViewMode store, and resolver help
 | ReturnsCalendar | Resolved | Receives resolved weekly returns or the resolved chart series from Simulation. | Verified. No code change. |
 | Performance basket pair rows | Resolved | Weekly rows are projected through `projectGridPropsForViewMode`; all-time basket receives resolved weekly rows after this sweep. | Verified. No extra code change beyond all-time projection. |
 | Performance research cards | Resolved | Uses the same `PerformanceGrid` projected model data as summary cards. | Verified. No extra code change beyond all-time projection. |
-| PerformanceComparisonPanel | Not in active ViewMode path | Uses its own comparison API/weekly basket metrics and does not expose Performance ViewMode controls. | No change. Future comparison-specific migration can audit separately. |
-| PerformanceAllSystemsTable | Not in active ViewMode path | Static comparison table, not part of the ViewMode-controlled Performance section. | No change. |
+| PerformanceComparisonPanel | Inactive in current source/UI | Source reference audit found no active imports/usages outside docs; Playwright sweep found no DOM hits across normal Performance tabs, strategy variants, and legacy query variants. | No change. Treat as parked legacy code unless reintroduced. |
+| PerformanceAllSystemsTable | Inactive in current source/UI | Source reference audit found no active imports/usages outside docs; Playwright sweep found no DOM hits across normal Performance tabs, strategy variants, and legacy query variants. | No change. Treat as parked legacy code unless reintroduced. |
 | PerformanceStrategyViewSection | Resolved wrapper | Passes bootstrapped payloads into `PerformanceViewSection`; no independent metric rendering. | Verified. No code change. |
-| PerformanceFlagshipCard | Not in active ViewMode path | Flagship card data is not driven by Performance ViewMode controls. | No change. |
+| PerformanceFlagshipCard | Inactive in current source/UI | Source reference audit found no active imports/usages outside docs; Playwright sweep found no DOM hits across normal Performance tabs, strategy variants, and legacy query variants. | No change. Treat as parked legacy code unless reintroduced. |
 | Matrix RiskBoard | Resolved | Uses `useViewMode("matrix")` and `resolveDisplayReturn` for displayed rows. | Verified. No code change. |
 | Matrix FlagshipBoard | Resolved | Uses `useViewMode("matrix")` and `resolveDisplayReturn` for displayed rows. | Verified. No code change. |
 | MatrixViewSection aggregates | Resolved wrapper | Dispatches sidebar stats from already-resolved Matrix payloads. | Verified. No code change. |
@@ -65,3 +65,13 @@ Manual browser verification should confirm:
 - Agreement Weekly Hold, All Time, Crypto: main summary card matches sidebar in ADR-normalized and raw.
 - Agreement Weekly Hold, May 11 2026, Crypto: only Crypto card renders.
 - Simulation return, MaxDD, chart, rolling windows, asset contribution, distribution, and calendar update consistently with raw/ADR.
+
+## Follow-up Clarification
+
+After the initial sweep, `PerformanceComparisonPanel`, `PerformanceAllSystemsTable`, and `PerformanceFlagshipCard` were rechecked with both source references and Playwright. The only source hits are their own component definitions and documentation references. A Playwright sweep across Performance Summary, Simulation, Basket, Research, Notes, visible strategy variants, and legacy/flagship/matrix query variants found zero matching DOM markers:
+
+- `data-testid="comparison-return"`
+- `data-testid="flagship-return"`
+- All Systems table heading/copy
+
+Conclusion: these are parked legacy component files, not active Performance ViewMode surfaces as of this audit.

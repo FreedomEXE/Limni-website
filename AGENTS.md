@@ -25,3 +25,12 @@ Do not rebuild base-model weekly directions independently from raw data if the c
 Use this line in future sessions or handoffs:
 
 `Before any new backtest, verify parity against canonical app baselines using basketSource.ts and the approved closed-week window. If parity fails, stop research and fix parity first.`
+
+## Audit Discipline
+
+When classifying a UI surface as inactive, verify both sides before making the claim:
+
+- Source references: search for active imports/usages, not just file existence.
+- Runtime reachability: use Playwright to exercise the normal route/tabs/modes and probe for component-specific test IDs or visible copy.
+
+If only the audited paths are clean, say "not found in audited paths." Say "inactive in current source/UI" only when source references are absent outside docs and Playwright also finds no DOM evidence in the relevant flows.
