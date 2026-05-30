@@ -61,6 +61,7 @@ type PerformanceGridProps = {
     trades: number;
   };
   showAllTime?: boolean;
+  /** QUARANTINED 2026-05-30: vestigial no-op while legacy in-grid tabs are preserved but disabled. */
   showSectionTabs?: boolean;
   comparisonOverlay?: {
     mode: "standard" | "gated";
@@ -671,12 +672,17 @@ export default function PerformanceGrid({
     comparisonOverlay?.mode === "gated" && comparisonOverlay.gateAvailable && comparisonOverlay.gated
       ? comparisonOverlay.gated
       : comparisonOverlay?.standard ?? null;
+  // QUARANTINED 2026-05-30 - legacy in-grid section tabs.
+  // Replaced by top-level <PerformanceScopeControl>. Preserved here for
+  // reference and possible audit. See docs/QUARANTINED_CODE_INVENTORY.md.
+  // Do NOT remove without future cleanup pass approval.
+  const renderLegacySectionTabs = false as boolean;
 
   return (
     <>
       <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          {showSectionTabs && sections.length > 1 && (
+          {renderLegacySectionTabs && showSectionTabs && sections.length > 1 && (
             <div className="flex flex-wrap items-center gap-2">
               {sections.map((section) => (
                 <button

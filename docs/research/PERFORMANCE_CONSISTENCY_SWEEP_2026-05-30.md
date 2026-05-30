@@ -66,6 +66,27 @@ Manual browser verification should confirm:
 - Agreement Weekly Hold, May 11 2026, Crypto: only Crypto card renders.
 - Simulation return, MaxDD, chart, rolling windows, asset contribution, distribution, and calendar update consistently with raw/ADR.
 
+## Visual Consistency Follow-up: Secondary Scope Tabs
+
+After browser review, Performance still has an older secondary section-tab control inside the summary card panel for non-Agreement strategies. This is distinct from the shared top-level `PerformanceScopeControl` added during the ViewMode/scope migration.
+
+Evidence:
+
+- `PerformanceViewSection` renders the shared top-level `PerformanceScopeControl` for all strategies.
+- `PerformanceGrid` still renders internal section tabs when `showSectionTabs && sections.length > 1`.
+- The active engine path passes `showSectionTabs={selection?.strategy !== "agree_3of4"}`, so Agreement hides the old control while Tandem and other strategies still show both the shared Scope row and the older in-panel `All / FX / Indices / Commodities / Crypto` row.
+- Playwright check against summary routes confirmed Agreement renders one scope-button set (`ALL`, `FX`, `INDICES`, `COMMODITIES`, `CRYPTO` count = 1 each), while Tandem renders two complete sets of the same labels.
+
+Quarantine resolution:
+
+- Engine-driven Performance views are standardized on the shared top-level Scope control only.
+- `PerformanceGrid` keeps the legacy in-panel tab JSX behind a documented false guard.
+- `PerformanceViewSection` no longer passes the strategy-specific `showSectionTabs={selection?.strategy !== "agree_3of4"}` prop.
+- The quarantined code is tracked in `docs/QUARANTINED_CODE_INVENTORY.md`.
+- Tandem, Tiered, and Agreement should each render one scope set through `PerformanceScopeControl`.
+
+This is not a return-resolution correctness bug like the all-time raw/ADR issue. It is a visual/state consistency issue: two controls imply two competing scope concepts, while only the top-level Scope row should own the view filter.
+
 ## Follow-up Clarification
 
 After the initial sweep, `PerformanceComparisonPanel`, `PerformanceAllSystemsTable`, and `PerformanceFlagshipCard` were rechecked with both source references and Playwright. The only source hits are their own component definitions and documentation references. A Playwright sweep across Performance Summary, Simulation, Basket, Research, Notes, visible strategy variants, and legacy/flagship/matrix query variants found zero matching DOM markers:

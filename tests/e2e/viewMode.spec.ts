@@ -2,6 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 
 const WEEK_BUTTON = /MAY 11 2026/i;
 const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
+const PERFORMANCE_SCOPE_LABELS = ["ALL", "FX", "INDICES", "COMMODITIES", "CRYPTO"] as const;
+const EXPECTED_PERFORMANCE_SCOPE_COUNTS = JSON.stringify(
+  Object.fromEntries(PERFORMANCE_SCOPE_LABELS.map((label) => [label, 1])),
+);
 
 async function waitForViewModeControls(page: Page) {
   await page.getByRole("button", { name: /ADR/i }).first().waitFor({ state: "visible", timeout: 120_000 });
@@ -41,6 +45,19 @@ function summaryCard(page: Page, label: string) {
 
 async function summaryCardReturn(page: Page, label: string) {
   return (await summaryCard(page, label).getByTestId("performance-card-return").innerText()).trim();
+}
+
+async function performanceScopeButtonCounts(page: Page) {
+  return page.evaluate((labels) => {
+    const wanted = new Set<string>(labels);
+    const counts: Record<string, number> = {};
+    for (const label of labels) counts[label] = 0;
+    for (const button of Array.from(document.querySelectorAll("button"))) {
+      const text = (button.textContent ?? "").trim().replace(/\s+/g, " ").toUpperCase();
+      if (wanted.has(text)) counts[text] += 1;
+    }
+    return counts;
+  }, [...PERFORMANCE_SCOPE_LABELS]);
 }
 
 test.describe("ViewMode parity", () => {
@@ -116,6 +133,26 @@ test.describe("ViewMode parity", () => {
     await expect(page.getByTestId("performance-summary-card")).toHaveCount(1);
     await expect(summaryCard(page, "FX")).toHaveCount(0);
     await expect(summaryCard(page, "Commodities & Indices")).toHaveCount(0);
+  });
+
+  test("Performance scope control renders once per strategy", async ({ page }) => {
+    const routes = [
+      "/performance?strategy=agree_3of4&f1=adr_grid&f2=pair_fill_cap&view=summary",
+      "/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&view=summary",
+      "/performance?strategy=tiered_4w&f1=adr_grid&f2=pair_fill_cap&view=summary",
+    ];
+
+    for (const route of routes) {
+      await page.goto(route, {
+        waitUntil: "domcontentloaded",
+        timeout: 120_000,
+      });
+      await waitForViewModeControls(page);
+      await expect.poll(async () => JSON.stringify(await performanceScopeButtonCounts(page)), {
+        message: `${route} should render exactly one Performance scope-control set`,
+        timeout: 120_000,
+      }).toBe(EXPECTED_PERFORMANCE_SCOPE_COUNTS);
+    }
   });
 
   test("Data AUDCAD May 11 supports canonical/execution and raw/ADR-normalized", async ({ page }) => {

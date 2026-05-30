@@ -1286,12 +1286,20 @@ export default function PerformanceViewSection({
             isAllTime={selectedWeekKey === "all"}
           />
         ) : gridProps ? (
+          /*
+           * QUARANTINED 2026-05-30 - legacy showSectionTabs strategy special case.
+           * Previous active prop:
+           *   showSectionTabs={selection?.strategy !== "agree_3of4"}
+           * The in-grid tabs are now disabled inside PerformanceGrid; the
+           * top-level PerformanceScopeControl is the canonical scope control.
+           * See docs/QUARANTINED_CODE_INVENTORY.md.
+           */
           <PerformanceGrid
             {...gridProps}
             combined={gridProps.combined}
             perAsset={gridProps.perAsset}
             view={view}
-            showSectionTabs={selection?.strategy !== "agree_3of4"}
+            showSectionTabs={false}
           />
         ) : (
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">

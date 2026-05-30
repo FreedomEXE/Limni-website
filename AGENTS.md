@@ -34,3 +34,5 @@ When classifying a UI surface as inactive, verify both sides before making the c
 - Runtime reachability: use Playwright to exercise the normal route/tabs/modes and probe for component-specific test IDs or visible copy.
 
 If only the audited paths are clean, say "not found in audited paths." Say "inactive in current source/UI" only when source references are absent outside docs and Playwright also finds no DOM evidence in the relevant flows.
+
+When a migrated surface has both a new shared control and an older local control for the same concept, treat that as an audit finding even if the numbers are correct. Identify which control owns state, document the duplicate path, and clean up the older control before building new hierarchy or drilldown features on top of it.
