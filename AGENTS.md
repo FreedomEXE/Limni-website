@@ -36,3 +36,11 @@ When classifying a UI surface as inactive, verify both sides before making the c
 If only the audited paths are clean, say "not found in audited paths." Say "inactive in current source/UI" only when source references are absent outside docs and Playwright also finds no DOM evidence in the relevant flows.
 
 When a migrated surface has both a new shared control and an older local control for the same concept, treat that as an audit finding even if the numbers are correct. Identify which control owns state, document the duplicate path, and clean up the older control before building new hierarchy or drilldown features on top of it.
+
+## Architecture Fit Check
+
+Before implementing or accepting Nyx/UI prompts, compare the requested data flow against [docs/FUTURE_UPGRADES.md](C:/Users/User/Documents/GitHub/limni-website/docs/FUTURE_UPGRADES.md), especially the app-versioned immutable historical canon model.
+
+Closed historical weeks should be treated as immutable under an app/engine version. New all-time historical UI should consume a versioned local/bundled canon shape, or a temporary whole-bundle endpoint with the same shape. Do not introduce paginated/lazy historical fetching for closed-week canon unless the user explicitly approves it as temporary debt.
+
+If a recommendation optimizes for incremental fetching of historical canon, pause and flag the architecture conflict before implementation. Prefer "version first" or "single bundle now, swap source later" over building a UI around pagination that will be removed by v2.0.0 versioning.
