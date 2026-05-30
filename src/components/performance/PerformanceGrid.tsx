@@ -16,6 +16,9 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import type { ModelPerformance, PerformanceModel } from "@/lib/performanceLab";
 import PerformanceModal from "@/components/performance/PerformanceModal";
+import { resolveDisplayReturn, type ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
+import { useViewMode } from "@/lib/viewMode/viewModeStore";
+import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
 
 type Section = {
   id: string;
@@ -149,12 +152,119 @@ function computeProfitFactorFromReturns(returns: Array<{ pair: string; percent: 
       .reduce((sum, item) => sum + item.percent, 0),
   );
   if (grossLoss > 0) return grossProfit / grossLoss;
-  return null;
+  return grossProfit > 0 ? Number.POSITIVE_INFINITY : null;
+}
+
+function detailReturnMatrix(
+  detail: { tradeDetail?: { rawReturnPct?: number; normalizedReturnPct?: number; displayReturnPct?: number; adrPct?: number | null } },
+): ReturnMatrix | null {
+  const trade = detail.tradeDetail;
+  if (!trade || typeof trade.rawReturnPct !== "number") return null;
+  const normalized = typeof trade.normalizedReturnPct === "number"
+    ? trade.normalizedReturnPct
+    : typeof trade.displayReturnPct === "number"
+      ? trade.displayReturnPct
+      : null;
+  const adrPct = typeof trade.adrPct === "number" && trade.adrPct > 0
+    ? trade.adrPct
+    : normalized !== null && Math.abs(normalized) > 1e-9
+      ? trade.rawReturnPct / normalized
+      : 1;
+  return {
+    canonical: null,
+    execution: { rawPct: trade.rawReturnPct },
+    adrPct,
+  };
+}
+
+function resolveDetailPercent<T extends { percent: number | null; tradeDetail?: { rawReturnPct?: number; normalizedReturnPct?: number; displayReturnPct?: number; adrPct?: number | null } }>(
+  detail: T,
+  viewMode: ViewMode,
+): number | null {
+  const matrix = detailReturnMatrix(detail);
+  return matrix ? resolveDisplayReturn(matrix, viewMode) : detail.percent;
+}
+
+function recomputeStats(returns: Array<{ pair: string; percent: number }>): ModelPerformance["stats"] {
+  const values = returns.map((item) => item.percent).filter(Number.isFinite);
+  const sorted = [...values].sort((a, b) => a - b);
+  const avg = values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+  const median = sorted.length === 0
+    ? 0
+    : sorted.length % 2 === 1
+      ? sorted[Math.floor(sorted.length / 2)] ?? 0
+      : ((sorted[(sorted.length / 2) - 1] ?? 0) + (sorted[sorted.length / 2] ?? 0)) / 2;
+  const best = returns.reduce<ModelPerformance["stats"]["best_pair"]>(
+    (current, item) => (current === null || item.percent > current.percent ? item : current),
+    null,
+  );
+  const worst = returns.reduce<ModelPerformance["stats"]["worst_pair"]>(
+    (current, item) => (current === null || item.percent < current.percent ? item : current),
+    null,
+  );
+  const variance = values.length > 0
+    ? values.reduce((sum, value) => sum + ((value - avg) ** 2), 0) / values.length
+    : 0;
+  return {
+    avg_return: avg,
+    median_return: median,
+    win_rate: values.length > 0 ? (values.filter((value) => value > 0).length / values.length) * 100 : 0,
+    volatility: Math.sqrt(variance),
+    best_pair: best,
+    worst_pair: worst,
+  };
+}
+
+function projectModelPerformance(performance: ModelPerformance, viewMode: ViewMode): ModelPerformance {
+  if (viewMode.normalization !== "raw") return performance;
+  const pairDetails = performance.pair_details.map((detail) => {
+    const children = detail.children?.map((child) => ({
+      ...child,
+      percent: resolveDetailPercent(child, viewMode),
+    }));
+    const childTotal = children && children.length > 0
+      ? children.reduce((sum, child) => sum + (child.percent ?? 0), 0)
+      : null;
+    return {
+      ...detail,
+      children,
+      percent: childTotal ?? resolveDetailPercent(detail, viewMode),
+    };
+  });
+  const returns = pairDetails.length > 0
+    ? pairDetails
+        .filter((detail) => detail.percent !== null && Number.isFinite(detail.percent))
+        .map((detail) => ({ pair: detail.pair, percent: detail.percent ?? 0 }))
+    : performance.returns;
+  const percent = returns.reduce((sum, item) => sum + item.percent, 0);
+  return {
+    ...performance,
+    percent,
+    returns,
+    pair_details: pairDetails,
+    stats: recomputeStats(returns),
+    diagnostics: {
+      ...performance.diagnostics,
+      profit_factor: computeProfitFactorFromReturns(returns),
+    },
+    trailing: performance.trailing
+      ? {
+          ...performance.trailing,
+          peak_percent: percent,
+          locked_percent: percent,
+        }
+      : performance.trailing,
+  };
 }
 
 function formatProfitFactor(value: number | null) {
-  if (value === null || Number.isNaN(value) || !Number.isFinite(value)) return "—";
+  if (value === null || Number.isNaN(value)) return "—";
+  if (!Number.isFinite(value)) return value > 0 ? "No loss" : "—";
   return value.toFixed(2);
+}
+
+function isStrongProfitFactor(value: number | null) {
+  return value !== null && !Number.isNaN(value) && (value > 1 || value === Number.POSITIVE_INFINITY);
 }
 
 type PerformanceTier = {
@@ -351,6 +461,8 @@ function PerformanceCard({
       onClick={onOpenDetails}
       aria-label={`Open ${label} details`}
       style={style}
+      data-testid="performance-summary-card"
+      data-performance-label={label}
       data-cot-surface={isCotBased ? "true" : undefined}
       className={`relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in hover:scale-[1.01] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${tier.card}`}
     >
@@ -359,7 +471,7 @@ function PerformanceCard({
         {label}
       </p>
       <div className="mt-2 text-center">
-        <div className={`text-3xl font-black ${tone(displayPercent)}`}>
+        <div data-testid="performance-card-return" className={`text-3xl font-black ${tone(displayPercent)}`}>
           {formatPercent(displayPercent)}
         </div>
         <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -388,7 +500,7 @@ function PerformanceCard({
             <MetricPill
               label="Profit Factor"
               value={formatProfitFactor(profitFactor)}
-              good={profitFactor !== null && Number.isFinite(profitFactor) && profitFactor > 1}
+              good={isStrongProfitFactor(profitFactor)}
             />
           </div>
           <div className="mt-4 flex items-center justify-between gap-2">
@@ -528,12 +640,13 @@ export default function PerformanceGrid({
   showSectionTabs = true,
   comparisonOverlay,
 }: PerformanceGridProps) {
+  const [viewMode] = useViewMode("performance");
   const sections = useMemo(() => {
     return [combined, ...perAsset].map((section) => ({
       ...section,
-      models: sortModels(section.models),
+      models: sortModels(section.models.map((model) => projectModelPerformance(model, viewMode))),
     }));
-  }, [combined, perAsset]);
+  }, [combined, perAsset, viewMode]);
   const [selectedSectionId, setSelectedSectionId] = useState(
     sections[0]?.id ?? "combined",
   );

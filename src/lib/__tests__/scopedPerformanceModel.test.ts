@@ -149,6 +149,43 @@ describe("scoped performance model", () => {
     expect(scoped?.combined.models[0]?.pair_details.map((detail) => detail.pair)).toEqual(["XAUUSD"]);
   });
 
+  it("removes inactive single-week summary cards for scoped assets", () => {
+    const grid = fixtureGrid();
+    grid.combined.models = [
+      model({
+        model: "dealer",
+        percent: 1,
+        priced: 1,
+        total: 1,
+        returns: [{ pair: "EURUSD", percent: 1 }],
+        pair_details: [{ pair: "EURUSD", direction: "LONG", reason: [], percent: 1 }],
+      }),
+      model({
+        model: "commercial",
+        percent: 3,
+        priced: 1,
+        total: 1,
+        returns: [{ pair: "XAUUSD", percent: 3 }],
+        pair_details: [{ pair: "XAUUSD", direction: "LONG", reason: [], percent: 3 }],
+      }),
+      model({
+        model: "sentiment",
+        percent: 4,
+        priced: 1,
+        total: 1,
+        returns: [{ pair: "BTCUSD", percent: 4 }],
+        pair_details: [{ pair: "BTCUSD", direction: "LONG", reason: [], percent: 4 }],
+      }),
+    ];
+
+    const scoped = filterGridPropsByPerformanceScope(grid, ["crypto"], {
+      allTimeMode: false,
+    });
+
+    expect(scoped?.combined.models.map((entry) => entry.model)).toEqual(["sentiment"]);
+    expect(scoped?.combined.models[0]?.pair_details.map((detail) => detail.pair)).toEqual(["BTCUSD"]);
+  });
+
   it("derives custom mixed-scope path metrics from selected asset series", () => {
     const group: EngineSimulationGroup = {
       title: "Agreement",

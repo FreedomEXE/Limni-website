@@ -35,6 +35,14 @@ async function expectNearText(page: Page, symbol: string, expected: string) {
   }).toContain(expected);
 }
 
+function summaryCard(page: Page, label: string) {
+  return page.locator(`[data-testid="performance-summary-card"][data-performance-label="${label}"]`).first();
+}
+
+async function summaryCardReturn(page: Page, label: string) {
+  return (await summaryCard(page, label).getByTestId("performance-card-return").innerText()).trim();
+}
+
 test.describe("ViewMode parity", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -76,6 +84,38 @@ test.describe("ViewMode parity", () => {
     await expect(page.locator("body")).toContainText(/Asset Contribution/i);
     await expect(page.locator("body")).toContainText(/FX\s*\+384\.06%/);
     await expect(page.locator("body")).not.toContainText(/Max DD\s*0\.00%/i);
+  });
+
+  test("Performance all-time summary cards reflect raw vs ADR-normalized return", async ({ page }) => {
+    await page.goto("/performance?strategy=agree_3of4&f1=weekly_hold&f2=none&view=summary&scope=crypto", {
+      waitUntil: "domcontentloaded",
+      timeout: 120_000,
+    });
+    await waitForViewModeControls(page);
+
+    await expect(summaryCard(page, "Crypto")).toBeVisible({ timeout: 120_000 });
+    const adrReturn = await summaryCardReturn(page, "Crypto");
+    await expect(page.getByTestId("sidebar-return")).toHaveText(adrReturn, { timeout: 120_000 });
+
+    await page.getByRole("button", { name: /Raw/i }).first().click();
+    await expect.poll(async () => summaryCardReturn(page, "Crypto"), {
+      timeout: 120_000,
+    }).not.toBe(adrReturn);
+    const rawReturn = await summaryCardReturn(page, "Crypto");
+    await expect(page.getByTestId("sidebar-return")).toHaveText(rawReturn, { timeout: 120_000 });
+  });
+
+  test("Performance weekly Crypto scope hides inactive summary cards", async ({ page }) => {
+    await page.goto("/performance?strategy=agree_3of4&f1=weekly_hold&f2=none&view=summary&scope=crypto&week=2026-05-10T23%3A00%3A00.000Z", {
+      waitUntil: "domcontentloaded",
+      timeout: 120_000,
+    });
+    await waitForViewModeControls(page);
+
+    await expect(summaryCard(page, "Crypto")).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByTestId("performance-summary-card")).toHaveCount(1);
+    await expect(summaryCard(page, "FX")).toHaveCount(0);
+    await expect(summaryCard(page, "Commodities & Indices")).toHaveCount(0);
   });
 
   test("Data AUDCAD May 11 supports canonical/execution and raw/ADR-normalized", async ({ page }) => {

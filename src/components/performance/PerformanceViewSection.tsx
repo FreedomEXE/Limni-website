@@ -18,6 +18,9 @@ import { useCallback, useEffect, useMemo, useState, type ComponentProps } from "
 import type { PerformanceSystem } from "@/lib/performance/modelConfig";
 import type { PerformanceView } from "@/lib/performance/pageState";
 import type { EngineGridProps, EngineSidebarStats, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
+import AnchorDisclosureLabel from "@/components/common/AnchorDisclosureLabel";
+import TradeDrilldownModal from "@/components/common/trades/TradeDrilldownModal";
+import ViewModeControls from "@/components/common/ViewModeControls";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
 import PerformanceViewCards, {
   PERFORMANCE_VIEW_CARDS,
@@ -35,30 +38,46 @@ import {
   resolveDisplayModelsForEntry,
   type PerformanceStrategyFamily,
 } from "@/lib/performance/strategyRegistry";
+import { getStrategy, type StrategyConfig } from "@/lib/performance/strategyConfig";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
   ALL_PERFORMANCE_ASSET_SELECTION,
   formatPerformanceAssetSelection,
-  isAllPerformanceAssetSelection,
   normalizePerformanceAssetSelection,
-  assetMatchesPerformanceScope,
   symbolMatchesPerformanceScope,
   type PerformanceAssetSelection,
 } from "@/lib/performance/performanceAssetScope";
 import {
   deriveScopedSimulationMetrics,
   filterGridPropsByPerformanceScope,
+  resolveScopedSimulationSeries,
 } from "@/lib/performance/scopedPerformanceModel";
+import { computeSidebarAllTimeMetricBasis } from "@/lib/performance/performanceMetricBasis";
+import { resolveSimulationGroupForViewMode } from "@/lib/performance/simulationReturnModes";
+import {
+  buildResolvedAssetContributions,
+  buildResolvedWeekReturns,
+  resolveStrategyTradeReturn,
+  scopedStrategyTrades,
+  scopedStrategyWeekReturn,
+} from "@/lib/performance/resolvedPerformanceMetrics";
+import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 import {
   STRATEGY_SIDEBAR_STATS_EVENT,
   type RuntimeStrategySelection,
   type StrategySidebarStatsDetail,
 } from "@/lib/performance/strategySelection";
+import { useViewMode } from "@/lib/viewMode/viewModeStore";
+import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
+import type { AnchorType, TradeDirection, TradeStrategyFamily } from "@/lib/trades/tradeTypes";
 
 type GridProps = Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined" | "perAsset"> & {
   combined: ComponentProps<typeof PerformanceGrid>["combined"];
   perAsset: ComponentProps<typeof PerformanceGrid>["perAsset"];
 };
+type GridSection = EngineGridProps["combined"];
+type GridModel = GridSection["models"][number];
+type GridReturn = GridModel["returns"][number];
 
 type WeeklyPerformanceFamily = Exclude<PerformanceStrategyFamily, "katarakti">;
 
@@ -94,29 +113,330 @@ function hasGridActivity(gridProps: EngineGridProps | null | undefined) {
   )));
 }
 
-function scopedReturnFromWeekResult(result: WeeklyHoldResult, scope: PerformanceAssetSelection) {
-  if (isAllPerformanceAssetSelection(scope)) return result.totalReturnPct;
-  return result.trades
-    .filter((trade) => assetMatchesPerformanceScope(trade.assetClass, scope))
-    .reduce((sum, trade) => sum + trade.returnPct, 0);
-}
-
-function scopedTradesFromWeekResult(result: WeeklyHoldResult, scope: PerformanceAssetSelection) {
-  return isAllPerformanceAssetSelection(scope)
-    ? result.trades
-    : result.trades.filter((trade) => assetMatchesPerformanceScope(trade.assetClass, scope));
-}
-
-function computeMaxDrawdownFromReturns(returns: number[]) {
-  let peak = 0;
-  let equity = 0;
-  let maxDrawdown = 0;
-  for (const value of returns) {
-    equity += value;
-    peak = Math.max(peak, equity);
-    maxDrawdown = Math.max(maxDrawdown, peak - equity);
+function resolveGridDetailPercent(
+  detail: {
+    percent: number | null;
+    tradeDetail?: { rawReturnPct?: number };
+    children?: Array<{ percent: number | null; tradeDetail?: { rawReturnPct?: number } }>;
+  },
+  viewMode: ViewMode,
+) {
+  if (viewMode.normalization !== "raw") return detail.percent;
+  if (detail.children && detail.children.length > 0) {
+    return detail.children.reduce((sum, child) => (
+      sum + (typeof child.tradeDetail?.rawReturnPct === "number" ? child.tradeDetail.rawReturnPct : child.percent ?? 0)
+    ), 0);
   }
-  return maxDrawdown;
+  return typeof detail.tradeDetail?.rawReturnPct === "number"
+    ? detail.tradeDetail.rawReturnPct
+    : detail.percent;
+}
+
+function projectGridPropsForViewMode<T extends { combined: EngineGridProps["combined"]; perAsset: EngineGridProps["perAsset"] }>(
+  gridProps: T | null,
+  viewMode: ViewMode,
+): T | null {
+  if (!gridProps || viewMode.normalization !== "raw") return gridProps;
+  const projectSection = (section: EngineGridProps["combined"]) => ({
+    ...section,
+    models: section.models.map((model) => {
+      const pairDetails = model.pair_details.map((detail) => {
+        const children = detail.children?.map((child) => ({
+          ...child,
+          percent: typeof child.tradeDetail?.rawReturnPct === "number"
+            ? child.tradeDetail.rawReturnPct
+            : child.percent,
+        }));
+        const percent = resolveGridDetailPercent({ ...detail, children }, viewMode);
+        return { ...detail, children, percent };
+      });
+      const returns = pairDetails
+        .filter((detail) => detail.percent !== null && Number.isFinite(detail.percent))
+        .map((detail) => ({ pair: detail.pair, percent: detail.percent ?? 0 }));
+      return {
+        ...model,
+        pair_details: pairDetails,
+        returns,
+        percent: returns.reduce((sum, item) => sum + item.percent, 0),
+      };
+    }),
+  });
+  return {
+    ...gridProps,
+    combined: projectSection(gridProps.combined),
+    perAsset: gridProps.perAsset.map(projectSection),
+  } as T;
+}
+
+function profitFactorFromReturns(returns: GridReturn[]) {
+  const grossProfit = returns
+    .filter((entry) => Number.isFinite(entry.percent) && entry.percent > 0)
+    .reduce((sum, entry) => sum + entry.percent, 0);
+  const grossLoss = Math.abs(
+    returns
+      .filter((entry) => Number.isFinite(entry.percent) && entry.percent < 0)
+      .reduce((sum, entry) => sum + entry.percent, 0),
+  );
+  if (grossLoss > 0) return grossProfit / grossLoss;
+  return grossProfit > 0 ? Number.POSITIVE_INFINITY : null;
+}
+
+function maxDrawdownFromReturns(returns: GridReturn[]) {
+  if (returns.length === 0) return null;
+  let equity = 0;
+  let peak = 0;
+  let maxDrawdown = 0;
+  for (const entry of returns) {
+    if (!Number.isFinite(entry.percent)) continue;
+    equity += entry.percent;
+    peak = Math.max(peak, equity);
+    maxDrawdown = Math.min(maxDrawdown, equity - peak);
+  }
+  return Math.abs(maxDrawdown);
+}
+
+function computeGridReturnStats(returns: GridReturn[]): GridModel["stats"] {
+  if (returns.length === 0) {
+    return {
+      avg_return: 0,
+      median_return: 0,
+      win_rate: 0,
+      volatility: 0,
+      best_pair: null,
+      worst_pair: null,
+    };
+  }
+
+  const values = returns.map((entry) => entry.percent).filter(Number.isFinite);
+  if (values.length === 0) {
+    return {
+      avg_return: 0,
+      median_return: 0,
+      win_rate: 0,
+      volatility: 0,
+      best_pair: null,
+      worst_pair: null,
+    };
+  }
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const avg = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const median = sorted.length % 2 === 1
+    ? sorted[Math.floor(sorted.length / 2)] ?? 0
+    : ((sorted[(sorted.length / 2) - 1] ?? 0) + (sorted[sorted.length / 2] ?? 0)) / 2;
+  const variance = values.reduce((sum, value) => sum + ((value - avg) ** 2), 0) / values.length;
+  return {
+    avg_return: avg,
+    median_return: median,
+    win_rate: (values.filter((value) => value > 0).length / values.length) * 100,
+    volatility: Math.sqrt(variance),
+    best_pair: returns.reduce((best, entry) => (
+      entry.percent > (best?.percent ?? -Infinity) ? entry : best
+    ), null as GridReturn | null),
+    worst_pair: returns.reduce((worst, entry) => (
+      entry.percent < (worst?.percent ?? Infinity) ? entry : worst
+    ), null as GridReturn | null),
+  };
+}
+
+function tradeMatchesGridSlot(
+  trade: WeeklyHoldResult["trades"][number],
+  model: GridModel["model"],
+  strategy: StrategyConfig,
+) {
+  switch (strategy.cardBreakdown) {
+    case "asset_class":
+      if (model === "dealer") return trade.assetClass === "fx";
+      if (model === "commercial") return trade.assetClass === "commodities" || trade.assetClass === "indices";
+      if (model === "sentiment") return trade.assetClass === "crypto";
+      return false;
+    case "tiers":
+      if (model === "dealer") return trade.tier === 1;
+      if (model === "commercial") return trade.tier === 2;
+      if (model === "sentiment") return trade.tier === 3;
+      return false;
+    case "per_model":
+      return trade.source === model;
+  }
+}
+
+function resolveAllTimeSectionForViewMode(
+  section: GridSection,
+  weekResults: Record<string, WeeklyHoldResult>,
+  scope: PerformanceAssetSelection,
+  viewMode: ViewMode,
+  strategy: StrategyConfig,
+): GridSection {
+  const weeks = Object.values(weekResults)
+    .filter((week) => week.isRealized)
+    .sort((left, right) => left.weekOpenUtc.localeCompare(right.weekOpenUtc));
+
+  return {
+    ...section,
+    models: section.models.map((model) => {
+      const returns = weeks.map((week) => {
+        const trades = scopedStrategyTrades(week, scope)
+          .filter((trade) => tradeMatchesGridSlot(trade, model.model, strategy));
+        const percent = trades.reduce(
+          (sum, trade) => sum + resolveStrategyTradeReturn(trade, viewMode),
+          0,
+        );
+        return {
+          pair: `Week of ${week.weekOpenUtc.split("T")[0]}`,
+          percent,
+        };
+      });
+      const percent = returns.reduce((sum, entry) => sum + entry.percent, 0);
+      return {
+        ...model,
+        percent,
+        priced: returns.length,
+        total: returns.length,
+        returns,
+        pair_details: returns.map((entry) => ({
+          pair: entry.pair,
+          direction: (entry.percent >= 0 ? "LONG" : "SHORT") as "LONG" | "SHORT",
+          reason: [`Weekly return ${entry.percent >= 0 ? "+" : ""}${entry.percent.toFixed(2)}%`],
+          percent: entry.percent,
+        })),
+        stats: computeGridReturnStats(returns),
+        diagnostics: {
+          ...model.diagnostics,
+          max_drawdown: maxDrawdownFromReturns(returns),
+          profit_factor: profitFactorFromReturns(returns),
+        },
+      };
+    }),
+  };
+}
+
+function allTimeRowsFromSection(section: GridSection): EngineGridProps["allTime"]["combined"] {
+  return section.models.map((model) => ({
+    model: model.model,
+    totalPercent: model.percent,
+    weeks: model.returns.length,
+    winRate: model.stats.win_rate,
+    avgWeekly: model.stats.avg_return,
+  }));
+}
+
+function resolveAllTimeGridPropsForViewMode(
+  gridProps: EngineGridProps | null,
+  weekResults: Record<string, WeeklyHoldResult> | null | undefined,
+  scope: PerformanceAssetSelection,
+  viewMode: ViewMode,
+  selection: RuntimeStrategySelection | undefined,
+): EngineGridProps | null {
+  if (!gridProps || !weekResults || !selection) return gridProps;
+  const strategy = getStrategy(selection.strategy);
+  if (!strategy) return gridProps;
+
+  const combined = resolveAllTimeSectionForViewMode(gridProps.combined, weekResults, scope, viewMode, strategy);
+  const perAsset = gridProps.perAsset.map((section) =>
+    resolveAllTimeSectionForViewMode(
+      section,
+      weekResults,
+      [section.id as PerformanceAssetSelection[number]],
+      viewMode,
+      strategy,
+    ),
+  );
+
+  return {
+    ...gridProps,
+    combined,
+    perAsset,
+    allTime: {
+      combined: allTimeRowsFromSection(combined),
+      perAsset: Object.fromEntries(
+        perAsset.map((section) => [section.id, allTimeRowsFromSection(section)]),
+      ),
+    },
+  };
+}
+
+function enrichGridPropsWithWeekRawTradeMeta<T extends EngineGridProps>(
+  gridProps: T | null,
+  weekResult: WeeklyHoldResult | null | undefined,
+): T | null {
+  if (!gridProps || !weekResult) return gridProps;
+
+  const bySymbolDirection = new Map<string, WeeklyHoldResult["trades"]>();
+  for (const trade of weekResult.trades) {
+    const key = `${trade.symbol}|${trade.direction}`;
+    const bucket = bySymbolDirection.get(key) ?? [];
+    bucket.push(trade);
+    bySymbolDirection.set(key, bucket);
+  }
+
+  const tradeToDetail = (trade: WeeklyHoldResult["trades"][number]) => ({
+    tradeNumber: trade.detail?.tradeNumber ?? 1,
+    entryPrice: trade.openPrice,
+    exitPrice: trade.closePrice ?? null,
+    tpPrice: trade.detail?.tpPrice ?? null,
+    adrPct: trade.adrPct ?? trade.detail?.adrPct ?? null,
+    maePct: trade.detail?.maePct ?? null,
+    exitReason: trade.detail?.exitReason ?? "week_close",
+    entryTimeUtc: trade.detail?.entryTimeUtc ?? null,
+    rawReturnPct: trade.rawReturnPct,
+    normalizedReturnPct: trade.normalizedReturnPct,
+    displayReturnPct: trade.displayReturnPct ?? trade.returnPct,
+    adrMultiplier: trade.adrMultiplier ?? null,
+    returnMode: trade.returnMode,
+  });
+
+  const enrichSection = (section: EngineGridProps["combined"]) => ({
+    ...section,
+    models: section.models.map((model) => ({
+      ...model,
+      pair_details: model.pair_details.map((detail) => {
+        if (typeof detail.tradeDetail?.rawReturnPct === "number" || detail.children?.length) {
+          return detail;
+        }
+        const candidates = bySymbolDirection.get(`${detail.pair}|${detail.direction}`) ?? [];
+        const matched =
+          candidates.find((trade) => trade.source === model.model) ??
+          (candidates.length === 1 ? candidates[0] : undefined);
+        if (!matched || typeof matched.rawReturnPct !== "number") return detail;
+        return {
+          ...detail,
+          tradeDetail: tradeToDetail(matched),
+        };
+      }),
+    })),
+  });
+
+  return {
+    ...gridProps,
+    combined: enrichSection(gridProps.combined),
+    perAsset: gridProps.perAsset.map(enrichSection),
+  };
+}
+
+function resolveCanonicalWeekSelection(
+  selectedWeek: string,
+  sources: Array<Record<string, unknown> | readonly string[] | null | undefined>,
+): string {
+  if (selectedWeek === "all") return "all";
+
+  const available = new Set<string>();
+  for (const source of sources) {
+    if (!source) continue;
+    if (Array.isArray(source)) {
+      for (const key of source) {
+        if (key !== "all") available.add(key);
+      }
+      continue;
+    }
+    for (const key of Object.keys(source)) {
+      if (key !== "all") available.add(key);
+    }
+  }
+
+  if (available.has(selectedWeek)) return selectedWeek;
+  const normalized = normalizeWeekOpenUtc(selectedWeek);
+  if (normalized && available.has(normalized)) return normalized;
+  return selectedWeek;
 }
 
 function computeScopedSidebarStats(
@@ -124,94 +444,51 @@ function computeScopedSidebarStats(
   weekResults: Record<string, WeeklyHoldResult> | null | undefined,
   selectedWeek: string,
   scope: PerformanceAssetSelection,
+  viewMode: ViewMode,
+  allTimeSimulation: EngineSimulationGroup | null,
 ): EngineSidebarStats | null {
-  if (isAllPerformanceAssetSelection(scope) || !baseStats || !weekResults) return baseStats ?? null;
+  if (!baseStats || !weekResults) return baseStats ?? null;
 
   const sortedWeeks = Object.values(weekResults)
     .filter((week) => week.isRealized)
     .sort((left, right) => left.weekOpenUtc.localeCompare(right.weekOpenUtc));
-  const weeklyReturns = sortedWeeks.map((week) => scopedReturnFromWeekResult(week, scope));
+  const weeklyRows = buildResolvedWeekReturns(weekResults, scope, viewMode);
+  const weeklyReturns = weeklyRows.map((week) => week.returnPct);
+  const allScopedTrades = sortedWeeks.flatMap((week) => scopedStrategyTrades(week, scope));
+  const tradeReturns = allScopedTrades.map((trade) => resolveStrategyTradeReturn(trade, viewMode));
+  const scopedAllTimeSeries = resolveScopedSimulationSeries(allTimeSimulation, scope);
   const selectedResult =
     selectedWeek !== "all"
       ? weekResults[selectedWeek] ?? sortedWeeks.at(-1) ?? null
       : sortedWeeks.at(-1) ?? null;
-  const selectedTrades = selectedResult ? scopedTradesFromWeekResult(selectedResult, scope) : [];
-  const totalTrades = sortedWeeks.reduce(
-    (sum, week) => sum + scopedTradesFromWeekResult(week, scope).length,
-    0,
-  );
-  const totalReturnPct = weeklyReturns.reduce((sum, value) => sum + value, 0);
-  const maxDrawdownPct = computeMaxDrawdownFromReturns(weeklyReturns);
-  const weeklyWins = weeklyReturns.filter((value) => value > 0).length;
-  const wins = weeklyReturns.filter((value) => value > 0);
-  const losses = weeklyReturns.filter((value) => value < 0);
-  const avgWin = wins.length > 0 ? wins.reduce((sum, value) => sum + value, 0) / wins.length : 0;
-  const avgLoss = losses.length > 0
-    ? Math.abs(losses.reduce((sum, value) => sum + value, 0) / losses.length)
-    : 0;
-  const winRate = weeklyReturns.length > 0 ? wins.length / weeklyReturns.length : 0;
-
-  let maxConsecutiveWins = 0;
-  let maxConsecutiveLosses = 0;
-  let currentWins = 0;
-  let currentLosses = 0;
-  for (const value of weeklyReturns) {
-    if (value > 0) {
-      currentWins += 1;
-      currentLosses = 0;
-    } else if (value < 0) {
-      currentLosses += 1;
-      currentWins = 0;
-    } else {
-      currentWins = 0;
-      currentLosses = 0;
-    }
-    maxConsecutiveWins = Math.max(maxConsecutiveWins, currentWins);
-    maxConsecutiveLosses = Math.max(maxConsecutiveLosses, currentLosses);
-  }
-
-  const avgWeeklyReturn = weeklyReturns.length > 0 ? totalReturnPct / weeklyReturns.length : 0;
-  const grossProfit = weeklyReturns.filter((value) => value > 0).reduce((sum, value) => sum + value, 0);
-  const grossLoss = Math.abs(weeklyReturns.filter((value) => value < 0).reduce((sum, value) => sum + value, 0));
+  const selectedTrades = selectedResult ? scopedStrategyTrades(selectedResult, scope) : [];
+  const totalTrades = weeklyRows.reduce((sum, week) => sum + (week.trades ?? 0), 0);
+  const allTimeBasis = computeSidebarAllTimeMetricBasis({
+    weeklyReturns,
+    tradeReturns,
+    pathPoints: scopedAllTimeSeries?.points ?? null,
+    totalTrades,
+  });
 
   return {
     ...baseStats,
     weekOpenUtc: selectedResult?.weekOpenUtc ?? baseStats.weekOpenUtc,
-    weekReturnPct: selectedResult ? scopedReturnFromWeekResult(selectedResult, scope) : 0,
+    weekReturnPct: selectedResult ? scopedStrategyWeekReturn(selectedResult, scope, viewMode) : 0,
     tradeCount: selectedTrades.length,
-    winCount: selectedTrades.filter((trade) => trade.returnPct > 0).length,
-    lossCount: selectedTrades.filter((trade) => trade.returnPct < 0).length,
+    winCount: selectedTrades.filter((trade) => resolveStrategyTradeReturn(trade, viewMode) > 0).length,
+    lossCount: selectedTrades.filter((trade) => resolveStrategyTradeReturn(trade, viewMode) < 0).length,
     winRate:
       selectedTrades.length > 0
-        ? (selectedTrades.filter((trade) => trade.returnPct > 0).length / selectedTrades.length) * 100
+        ? (selectedTrades.filter((trade) => resolveStrategyTradeReturn(trade, viewMode) > 0).length / selectedTrades.length) * 100
         : 0,
-    maxDrawdownPct,
+    maxDrawdownPct: selectedWeek === "all" ? allTimeBasis.maxDrawdownPct : baseStats.maxDrawdownPct,
     trades: selectedTrades.map((trade) => ({
       symbol: trade.symbol,
       direction: trade.direction,
-      returnPct: trade.returnPct,
+      returnPct: resolveStrategyTradeReturn(trade, viewMode),
       assetClass: trade.assetClass,
     })),
-    allTime: {
-      totalReturnPct,
-      totalTrades,
-      weeklyWinRate: weeklyReturns.length > 0 ? (weeklyWins / weeklyReturns.length) * 100 : 0,
-      maxDrawdownPct,
-      weeks: weeklyReturns.length,
-      avgWeeklyReturn,
-      sharpe: baseStats.allTime?.sharpe ?? 0,
-      sortino: baseStats.allTime?.sortino ?? 0,
-      calmar:
-        maxDrawdownPct > 0 && weeklyReturns.length > 0
-          ? ((totalReturnPct / weeklyReturns.length) * 52) / maxDrawdownPct
-          : 0,
-      profitFactor: grossLoss > 0 ? grossProfit / grossLoss : null,
-      expectancy: (winRate * avgWin) - ((1 - winRate) * avgLoss),
-      avgWin,
-      avgLoss,
-      maxConsecutiveWins,
-      maxConsecutiveLosses,
-    },
+    allTime: allTimeBasis,
   };
 }
 
@@ -245,8 +522,44 @@ function applySimulationMetricsToSidebarStats(
   };
 }
 
-function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
+function parseWeekKeyFromBasketLabel(label: string): string | null {
+  const match = label.match(/\bweek of\s+(\d{4}-\d{2}-\d{2})\b/i);
+  if (!match) return null;
+  return `${match[1]}T00:00:00.000Z`;
+}
+
+function formatWeekBasketLabel(weekOpenUtc: string) {
+  const date = new Date(weekOpenUtc);
+  return `Week of ${date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  })}`;
+}
+
+function EngineBasketView({
+  gridProps,
+  weeklyReturns,
+  selection,
+  weekOpenUtc,
+  isAllTime = false,
+}: {
+  gridProps: EngineGridProps;
+  weeklyReturns?: WeekReturn[];
+  selection?: RuntimeStrategySelection;
+  weekOpenUtc?: string | null;
+  isAllTime?: boolean;
+}) {
   const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
+  const [drilldown, setDrilldown] = useState<{
+    symbol: string;
+    weekOpenUtc: string;
+    strategyFamily: TradeStrategyFamily;
+    strategyVariant: string;
+    anchorType: AnchorType;
+    direction?: TradeDirection | null;
+  } | null>(null);
 
   // Flatten all trades from all models into a single list
   const allTrades = gridProps.combined.models.flatMap((model) =>
@@ -255,6 +568,135 @@ function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
       slotLabel: gridProps.labels[model.model] ?? model.model,
     })),
   );
+
+  const toggleExpand = (key: string) => {
+    setExpandedPairs((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const strategyFamily = (selection?.f1 ?? "weekly_hold") as TradeStrategyFamily;
+  const strategyVariant = selection
+    ? `${selection.strategy}-${selection.f1}-${selection.f2}`
+    : "tandem-weekly_hold-none";
+
+  const openDrilldown = (trade: { pair: string; direction: "LONG" | "SHORT" | "NEUTRAL" }) => {
+    if (isAllTime || !weekOpenUtc || trade.direction === "NEUTRAL") return;
+    setDrilldown({
+      symbol: trade.pair,
+      weekOpenUtc,
+      strategyFamily,
+      strategyVariant,
+      anchorType: "execution",
+    });
+  };
+
+  if (isAllTime && weeklyReturns && weeklyReturns.length > 0) {
+    type BasketTradeRow = (typeof allTrades)[number];
+    const sleeveRowsByWeek = new Map<string, BasketTradeRow[]>();
+    for (const trade of allTrades) {
+      const weekKey = parseWeekKeyFromBasketLabel(trade.pair);
+      if (!weekKey) continue;
+      if (!sleeveRowsByWeek.has(weekKey)) sleeveRowsByWeek.set(weekKey, []);
+      sleeveRowsByWeek.get(weekKey)!.push(trade);
+    }
+    const weeks = [...weeklyReturns].sort((left, right) => right.weekOpenUtc.localeCompare(left.weekOpenUtc));
+    const totalReturn = weeks.reduce((sum, week) => sum + week.returnPct, 0);
+    const wins = weeks.filter((week) => week.returnPct > 0).length;
+    const totalTrades = weeks.reduce((sum, week) => sum + (week.trades ?? 0), 0);
+
+    return (
+      <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">
+              {gridProps.combined.description}
+            </p>
+          </div>
+          <div className="flex items-center gap-4 text-xs">
+            <span className="text-[color:var(--muted)]">{weeks.length} weeks</span>
+            <span className="text-[color:var(--muted)]">{totalTrades} trades</span>
+            <span className="text-lime-400">{wins}W</span>
+            <span className="text-red-400">{weeks.length - wins}L</span>
+            <span className={totalReturn >= 0 ? "font-bold text-lime-400" : "font-bold text-red-400"}>
+              {formatPct(totalReturn)}
+            </span>
+          </div>
+        </div>
+
+        <div className="max-h-[65vh] space-y-1.5 overflow-y-auto">
+          {weeks.map((week) => {
+            const sleeveRows = sleeveRowsByWeek.get(week.weekOpenUtc) ?? [];
+            const rowKey = `week-${week.weekOpenUtc}`;
+            const isExpanded = expandedPairs.has(rowKey);
+            const isWin = week.returnPct > 0;
+            return (
+              <div key={rowKey}>
+                <div
+                  className={`flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2.5 ${sleeveRows.length > 0 ? "cursor-pointer hover:border-[var(--accent)]/30" : ""}`}
+                  onClick={sleeveRows.length > 0 ? () => toggleExpand(rowKey) : undefined}
+                >
+                  <div className="flex items-center gap-3">
+                    {sleeveRows.length > 0 && (
+                      <span className="w-4 text-[10px] text-[color:var(--muted)]">{isExpanded ? "▾" : "▸"}</span>
+                    )}
+                    <span className="w-36 text-sm font-semibold text-[var(--foreground)]">
+                      {formatWeekBasketLabel(week.weekOpenUtc)}
+                    </span>
+                    <span className="text-[10px] text-[color:var(--muted)]">
+                      {week.trades ?? 0} trades
+                    </span>
+                    {sleeveRows.length > 0 && (
+                      <span className="text-[10px] text-[color:var(--muted)]">
+                        {sleeveRows.length} sleeves
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={`text-sm font-semibold ${
+                      isWin ? "text-lime-400" : week.returnPct < 0 ? "text-red-400" : "text-[color:var(--muted)]"
+                    }`}
+                  >
+                    {formatPct(week.returnPct)}
+                  </span>
+                </div>
+
+                {isExpanded && sleeveRows.length > 0 && (
+                  <div className="ml-7 mt-1 space-y-1">
+                    {sleeveRows
+                      .sort((left, right) => (right.percent ?? 0) - (left.percent ?? 0))
+                      .map((sleeve, index) => (
+                        <div
+                          key={`${rowKey}-sleeve-${index}`}
+                          className="flex items-center justify-between rounded-lg border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-4 py-2"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] text-[color:var(--muted)]">{sleeve.slotLabel}</span>
+                            <span
+                              className={`text-[10px] font-bold uppercase ${
+                                sleeve.direction === "LONG" ? "text-emerald-500" : sleeve.direction === "SHORT" ? "text-rose-500" : "text-[color:var(--muted)]"
+                              }`}
+                            >
+                              {sleeve.direction}
+                            </span>
+                          </div>
+                          <span className={`text-xs font-semibold ${(sleeve.percent ?? 0) >= 0 ? "text-lime-400" : "text-red-400"}`}>
+                            {formatPct(sleeve.percent)}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
 
   // Direction-first ordering makes planned/current baskets much easier to compare
   // against the Data section and copied pair lists.
@@ -270,15 +712,6 @@ function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
   const totalTradeCount = sorted.reduce((s, t) => s + (t.children?.length ?? 1), 0);
   const totalReturn = sorted.reduce((s, t) => s + (t.percent ?? 0), 0);
   const wins = sorted.filter((t) => (t.percent ?? 0) > 0).length;
-
-  const toggleExpand = (key: string) => {
-    setExpandedPairs((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
 
   return (
     <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
@@ -314,12 +747,23 @@ function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
               <div key={rowKey}>
                 {/* Parent row */}
                 <div
-                  className={`flex items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2.5 ${hasChildren ? "cursor-pointer hover:border-[var(--accent)]/30" : ""}`}
-                  onClick={hasChildren ? () => toggleExpand(rowKey) : undefined}
+                  className="flex cursor-pointer items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2.5 hover:border-[var(--accent)]/30"
+                  onClick={() => openDrilldown(trade)}
+                  title="Open ledger drilldown"
                 >
                   <div className="flex items-center gap-3">
                     {hasChildren && (
-                      <span className="w-4 text-[10px] text-[color:var(--muted)]">{isExpanded ? "▾" : "▸"}</span>
+                      <button
+                        type="button"
+                        className="w-4 text-[10px] text-[color:var(--muted)] hover:text-[var(--accent-strong)]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleExpand(rowKey);
+                        }}
+                        aria-label={`${isExpanded ? "Collapse" : "Expand"} ${trade.pair} detail`}
+                      >
+                        {isExpanded ? "▾" : "▸"}
+                      </button>
                     )}
                     <span className="w-24 text-sm font-semibold text-[var(--foreground)]">
                       {trade.pair}
@@ -402,6 +846,12 @@ function EngineBasketView({ gridProps }: { gridProps: EngineGridProps }) {
           })
         )}
       </div>
+      {drilldown ? (
+        <TradeDrilldownModal
+          {...drilldown}
+          onClose={() => setDrilldown(null)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -460,6 +910,7 @@ export default function PerformanceViewSection({
   strategyDescription,
   notesStorageKey,
 }: PerformanceViewSectionProps) {
+  const [performanceViewMode] = useViewMode("performance");
   const [view, setView] = useState<PerformanceView>(initialView);
   const [selectedWeek, setSelectedWeek] = useState(initialWeek ?? "all");
   const [assetScope, setAssetScope] = useState<PerformanceAssetSelection>(() =>
@@ -483,45 +934,69 @@ export default function PerformanceViewSection({
     setAssetScope(normalizePerformanceAssetSelection(initialAssetScope ?? ALL_PERFORMANCE_ASSET_SELECTION));
   }, [initialAssetScope]);
 
+  const selectedWeekKey = useMemo(() => (
+    resolveCanonicalWeekSelection(selectedWeek, [
+      engineWeekMap,
+      engineSimMap,
+      engineWeekResults,
+      weekOptions,
+    ])
+  ), [engineSimMap, engineWeekMap, engineWeekResults, selectedWeek, weekOptions]);
+
+  useEffect(() => {
+    if (selectedWeek !== selectedWeekKey) {
+      setSelectedWeek(selectedWeekKey);
+    }
+  }, [selectedWeek, selectedWeekKey]);
+
   useEffect(() => {
     if (!engineWeekMap || typeof window === "undefined") return;
     const url = new URL(window.location.href);
-    if (selectedWeek === "all") url.searchParams.delete("week");
-    else url.searchParams.set("week", selectedWeek);
+    if (selectedWeekKey === "all") url.searchParams.delete("week");
+    else url.searchParams.set("week", selectedWeekKey);
     const formattedScope = formatPerformanceAssetSelection(assetScope);
     if (formattedScope === "all") url.searchParams.delete("scope");
     else url.searchParams.set("scope", formattedScope);
     url.searchParams.set("view", view);
     window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-  }, [assetScope, engineWeekMap, selectedWeek, view]);
+  }, [assetScope, engineWeekMap, selectedWeekKey, view]);
 
   // Dispatch week change events so sidebar can react
   useEffect(() => {
     if (!engineWeekMap) return;
-    const rawGridProps = selectedWeek === "all"
+    const rawGridProps = selectedWeekKey === "all"
       ? engineWeekMap["all"]
-      : engineWeekMap[selectedWeek];
-    const gridProps = filterGridPropsByPerformanceScope(rawGridProps ?? null, assetScope, {
-      allTimeMode: selectedWeek === "all",
+      : engineWeekMap[selectedWeekKey];
+    const filteredGridProps = filterGridPropsByPerformanceScope(rawGridProps ?? null, assetScope, {
+      allTimeMode: selectedWeekKey === "all",
     });
+    const gridProps = selectedWeekKey === "all"
+      ? resolveAllTimeGridPropsForViewMode(
+          filteredGridProps,
+          engineWeekResults,
+          assetScope,
+          performanceViewMode,
+          selection,
+        )
+      : filteredGridProps;
     if (!gridProps) return;
-    const hasActivity = selectedWeek === "all" || hasGridActivity(gridProps);
-    const weekResult = selectedWeek === "all" ? null : engineWeekResults?.[selectedWeek] ?? null;
-    const scopedTrades = weekResult ? scopedTradesFromWeekResult(weekResult, assetScope) : [];
+    const hasActivity = selectedWeekKey === "all" || hasGridActivity(gridProps);
+    const weekResult = selectedWeekKey === "all" ? null : engineWeekResults?.[selectedWeekKey] ?? null;
+    const scopedTrades = weekResult ? scopedStrategyTrades(weekResult, assetScope) : [];
     const totalReturn = weekResult
-      ? scopedReturnFromWeekResult(weekResult, assetScope)
+      ? scopedStrategyWeekReturn(weekResult, assetScope, performanceViewMode)
       : gridProps.combined.models.reduce((s, m) => s + m.percent, 0);
     const totalTrades = weekResult
       ? scopedTrades.length
       : gridProps.combined.models.reduce((s, m) => s + m.total, 0);
     const totalWins = weekResult
-      ? scopedTrades.filter((trade) => trade.returnPct > 0).length
+      ? scopedTrades.filter((trade) => resolveStrategyTradeReturn(trade, performanceViewMode) > 0).length
       : gridProps.combined.models.reduce((s, m) => {
           return s + m.returns.filter((r) => r.percent > 0).length;
         }, 0);
     window.dispatchEvent(new CustomEvent("performance-week-stats", {
       detail: {
-        weekKey: selectedWeek,
+        weekKey: selectedWeekKey,
         returnPct: totalReturn,
         tradeCount: totalTrades,
         winCount: totalWins,
@@ -530,22 +1005,35 @@ export default function PerformanceViewSection({
         empty: !hasActivity,
       },
     }));
-  }, [assetScope, selectedWeek, engineWeekMap, engineWeekResults]);
+  }, [assetScope, selectedWeekKey, engineWeekMap, engineWeekResults, performanceViewMode, selection]);
 
-  const sidebarSelectedSimulation = selectedWeek === "all"
+  const sidebarSelectedSimulation = selectedWeekKey === "all"
     ? engineSimMap?.["all"] ?? null
-    : engineSimMap?.[selectedWeek] ?? null;
+    : engineSimMap?.[selectedWeekKey] ?? null;
   const sidebarAllTimeSimulation = engineSimMap?.["all"] ?? null;
+  const resolvedSidebarSelectedSimulation = useMemo(() => (
+    resolveSimulationGroupForViewMode(sidebarSelectedSimulation, performanceViewMode)
+  ), [performanceViewMode, sidebarSelectedSimulation]);
+  const resolvedSidebarAllTimeSimulation = useMemo(() => (
+    resolveSimulationGroupForViewMode(sidebarAllTimeSimulation, performanceViewMode)
+  ), [performanceViewMode, sidebarAllTimeSimulation]);
 
   useEffect(() => {
     if (!selection) return;
-    const simulationMetrics = deriveScopedSimulationMetrics(sidebarSelectedSimulation, assetScope);
-    const allTimeSimulationMetrics = deriveScopedSimulationMetrics(sidebarAllTimeSimulation, assetScope);
+    const simulationMetrics = deriveScopedSimulationMetrics(resolvedSidebarSelectedSimulation, assetScope);
+    const allTimeSimulationMetrics = deriveScopedSimulationMetrics(resolvedSidebarAllTimeSimulation, assetScope);
     const stats = applySimulationMetricsToSidebarStats(
-      computeScopedSidebarStats(sidebarStats, engineWeekResults, selectedWeek, assetScope),
+      computeScopedSidebarStats(
+        sidebarStats,
+        engineWeekResults,
+        selectedWeekKey,
+        assetScope,
+        performanceViewMode,
+        resolvedSidebarAllTimeSimulation,
+      ),
       simulationMetrics,
       allTimeSimulationMetrics,
-      selectedWeek,
+      selectedWeekKey,
     );
     const detail: StrategySidebarStatsDetail = {
       selection,
@@ -555,11 +1043,12 @@ export default function PerformanceViewSection({
   }, [
     assetScope,
     engineWeekResults,
-    selectedWeek,
+    selectedWeekKey,
     selection,
-    sidebarAllTimeSimulation,
-    sidebarSelectedSimulation,
+    resolvedSidebarAllTimeSimulation,
+    resolvedSidebarSelectedSimulation,
     sidebarStats,
+    performanceViewMode,
   ]);
 
   // ─── Legacy path (fallback) ───────────────────────────────────
@@ -628,16 +1117,31 @@ export default function PerformanceViewSection({
 
   const weeklyReturns = useMemo<WeekReturn[]>(() => {
     if (!engineSimMap) return [];
+    if (performanceViewMode.normalization === "raw") {
+      return buildResolvedWeekReturns(engineWeekResults, assetScope, performanceViewMode);
+    }
     return Object.entries(engineSimMap)
-      .filter(([key, entry]) => key !== "all" && entry.metrics.returnPct !== null)
-      .map(([key, entry]) => ({
-        weekOpenUtc: key,
-        returnPct: engineWeekResults?.[key]
-          ? scopedReturnFromWeekResult(engineWeekResults[key], assetScope)
-          : entry.metrics.returnPct!,
-      }))
+      .filter(([key]) => key !== "all")
+      .map(([key, entry]) => {
+        const fallbackReturn = engineWeekResults?.[key]
+          ? scopedStrategyWeekReturn(engineWeekResults[key], assetScope, performanceViewMode)
+          : entry.metrics.returnPct;
+        const metrics = performanceViewMode.normalization === "raw"
+          ? null
+          : deriveScopedSimulationMetrics(entry, assetScope);
+        const fallbackTrades = engineWeekResults?.[key]
+          ? scopedStrategyTrades(engineWeekResults[key], assetScope).length
+          : entry.metrics.trades;
+        return {
+          weekOpenUtc: key,
+          returnPct: metrics?.returnPct ?? fallbackReturn ?? 0,
+          maxDrawdownPct: metrics?.maxDrawdownPct ?? entry.metrics.maxDrawdownPct ?? null,
+          trades: metrics?.trades ?? fallbackTrades ?? null,
+        };
+      })
+      .filter((week) => Number.isFinite(week.returnPct))
       .sort((a, b) => a.weekOpenUtc.localeCompare(b.weekOpenUtc));
-  }, [assetScope, engineSimMap, engineWeekResults]);
+  }, [assetScope, engineSimMap, engineWeekResults, performanceViewMode]);
 
   const maeTrades = useMemo<MaeTrade[]>(() => {
     if (!engineWeekMap) return [];
@@ -648,40 +1152,88 @@ export default function PerformanceViewSection({
       for (const pd of model.pair_details) {
         if (pd.tradeDetail?.maePct != null && pd.percent != null) {
           if (!symbolMatchesPerformanceScope(pd.pair, assetScope)) continue;
-          trades.push({ pair: pd.pair, returnPct: pd.percent, maePct: pd.tradeDetail.maePct });
+          trades.push({
+            pair: pd.pair,
+            returnPct: performanceViewMode.normalization === "raw" && typeof pd.tradeDetail.rawReturnPct === "number"
+              ? pd.tradeDetail.rawReturnPct
+              : pd.percent,
+            maePct: pd.tradeDetail.maePct,
+          });
         }
         if (pd.children) {
           for (const child of pd.children) {
             if (child.tradeDetail?.maePct != null && child.percent != null) {
               if (!symbolMatchesPerformanceScope(child.pair, assetScope)) continue;
-              trades.push({ pair: child.pair, returnPct: child.percent, maePct: child.tradeDetail.maePct });
+              trades.push({
+                pair: child.pair,
+                returnPct: performanceViewMode.normalization === "raw" && typeof child.tradeDetail.rawReturnPct === "number"
+                  ? child.tradeDetail.rawReturnPct
+                  : child.percent,
+                maePct: child.tradeDetail.maePct,
+              });
             }
           }
         }
       }
     }
     return trades;
-  }, [assetScope, engineWeekMap]);
+  }, [assetScope, engineWeekMap, performanceViewMode]);
+
+  const assetContributions = useMemo(() => (
+    buildResolvedAssetContributions(
+      engineWeekResults,
+      assetScope,
+      performanceViewMode,
+      selectedWeekKey,
+    )
+  ), [assetScope, engineWeekResults, performanceViewMode, selectedWeekKey]);
 
   // ─── Engine-driven path (instant week switching) ──────────────
   if (engineWeekMap && weekOptions) {
-    const rawGridProps = selectedWeek === "all"
+    const rawGridProps = selectedWeekKey === "all"
       ? engineWeekMap["all"]
-      : engineWeekMap[selectedWeek] ?? null;
-    const gridProps = filterGridPropsByPerformanceScope(rawGridProps, assetScope, {
-      allTimeMode: selectedWeek === "all",
+      : engineWeekMap[selectedWeekKey] ?? null;
+    const selectedWeekResult = selectedWeekKey !== "all"
+      ? engineWeekResults?.[selectedWeekKey] ?? null
+      : null;
+    const enrichedGridProps = enrichGridPropsWithWeekRawTradeMeta(rawGridProps, selectedWeekResult);
+    const filteredGridProps = filterGridPropsByPerformanceScope(enrichedGridProps, assetScope, {
+      allTimeMode: selectedWeekKey === "all",
     });
-    const simulation = selectedWeek === "all"
+    const gridProps = selectedWeekKey === "all"
+      ? resolveAllTimeGridPropsForViewMode(
+          filteredGridProps,
+          engineWeekResults,
+          assetScope,
+          performanceViewMode,
+          selection,
+        )
+      : projectGridPropsForViewMode(filteredGridProps, performanceViewMode);
+    const simulation = selectedWeekKey === "all"
       ? engineSimMap?.["all"] ?? null
-      : engineSimMap?.[selectedWeek] ?? null;
-    const gridHasActivity = selectedWeek === "all" || hasGridActivity(gridProps);
+      : engineSimMap?.[selectedWeekKey] ?? null;
+    const gridHasActivity = selectedWeekKey === "all" || hasGridActivity(gridProps);
+    const simulationWeeklyReturns = selectedWeekKey === "all"
+      ? weeklyReturns
+      : performanceViewMode.normalization === "raw"
+        ? weeklyReturns.filter((week) => week.weekOpenUtc === selectedWeekKey)
+        : undefined;
 
     return (
       <>
         <div className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                View mode
+              </p>
+              <AnchorDisclosureLabel anchor="execution" />
+            </div>
+            <ViewModeControls surface="performance" size="sm" />
+          </div>
           <ScrollableWeekStrip
             options={weekOptions}
-            selected={selectedWeek}
+            selected={selectedWeekKey}
             currentWeek={currentWeek}
             label="Week"
             onChange={setSelectedWeek}
@@ -699,7 +1251,7 @@ export default function PerformanceViewSection({
         />
         {view === "notes" ? (
           <PerformanceNotesPad
-            selectedWeek={selectedWeek}
+            selectedWeek={selectedWeekKey}
             strategyDescription={strategyDescription ?? null}
             notesStorageKey={notesStorageKey ?? "performance"}
           />
@@ -707,8 +1259,9 @@ export default function PerformanceViewSection({
           simulation ? (
             <PerformanceSimulationSection
               group={simulation}
-              weeklyReturns={selectedWeek === "all" ? weeklyReturns : undefined}
-              maeTrades={selectedWeek === "all" ? maeTrades : undefined}
+              weeklyReturns={simulationWeeklyReturns}
+              maeTrades={selectedWeekKey === "all" ? maeTrades : undefined}
+              assetContributions={assetContributions}
               assetScope={assetScope}
               onAssetScopeChange={setNormalizedAssetScope}
               showAssetControls={false}
@@ -720,12 +1273,18 @@ export default function PerformanceViewSection({
           )
         ) : !gridHasActivity ? (
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
-            {selectedWeek === currentWeek
+            {selectedWeekKey === currentWeek
               ? "Current week in progress — no realized fills yet. Switch to Simulation view to see the equity path."
               : "No realized performance data for the selected week."}
           </div>
         ) : view === "basket" && gridProps ? (
-          <EngineBasketView gridProps={gridProps} />
+          <EngineBasketView
+            gridProps={gridProps}
+            weeklyReturns={selectedWeekKey === "all" ? weeklyReturns : undefined}
+            selection={selection}
+            weekOpenUtc={selectedWeekKey === "all" ? null : selectedWeekKey}
+            isAllTime={selectedWeekKey === "all"}
+          />
         ) : gridProps ? (
           <PerformanceGrid
             {...gridProps}
@@ -752,11 +1311,12 @@ export default function PerformanceViewSection({
   }
 
   const modelSet = new Set(resolveDisplayModelsForEntry(activeEntry));
+  const projectedBaseGridProps = projectGridPropsForViewMode(baseGridProps, performanceViewMode) ?? baseGridProps;
   const filteredCombined = {
-    ...baseGridProps.combined,
-    models: baseGridProps.combined.models.filter((entry) => modelSet.has(entry.model)),
+    ...projectedBaseGridProps.combined,
+    models: projectedBaseGridProps.combined.models.filter((entry) => modelSet.has(entry.model)),
   };
-  const filteredPerAsset = baseGridProps.perAsset.map((section) => ({
+  const filteredPerAsset = projectedBaseGridProps.perAsset.map((section) => ({
     ...section,
     models: section.models.filter((entry) => modelSet.has(entry.model)),
   }));
@@ -778,7 +1338,7 @@ export default function PerformanceViewSection({
         <PerformanceSimulationSection group={simulationGroup} />
       ) : (
         <PerformanceGrid
-          {...baseGridProps}
+          {...projectedBaseGridProps}
           combined={filteredCombined}
           perAsset={filteredPerAsset}
           view={view}

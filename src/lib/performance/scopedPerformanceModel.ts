@@ -64,12 +64,12 @@ function filterSymbolGridPropsByScope(
     return rebuildModel(model, returns, details);
   };
 
-  const combinedModels = gridProps.combined.models.map(filterModel);
+  const combinedModels = gridProps.combined.models.map(filterModel).filter(hasModelActivity);
   const scopedPerAsset = gridProps.perAsset
     .filter((section) => assetMatchesPerformanceScope(section.id, scope))
     .map((section) => ({
       ...section,
-      models: section.models.map(filterModel),
+      models: section.models.map(filterModel).filter(hasModelActivity),
     }));
   const scopedAllTimePerAsset = filterAllTimePerAsset(gridProps.allTime.perAsset, scope);
 
@@ -252,7 +252,7 @@ function combineAllTimeRows(
   return Array.from(byModel.values());
 }
 
-function resolveScopedSimulationSeries(
+export function resolveScopedSimulationSeries(
   simulation: EngineSimulationGroup | null,
   scope: PerformanceAssetSelection,
 ): EngineSimulationSeries | null {
