@@ -29,6 +29,7 @@ export type TradeDrilldownModalProps = {
   tier?: number | null;
   direction?: TradeDirection | null;
   origin?: TradeOrigin;
+  parentTradeId?: string | null;
   onClose: () => void;
 };
 
@@ -85,6 +86,7 @@ function buildUrl(props: TradeDrilldownModalProps) {
   if (props.sourceModel) params.set("sourceModel", props.sourceModel);
   if (props.tier !== undefined && props.tier !== null) params.set("tier", String(props.tier));
   if (props.direction) params.set("direction", props.direction);
+  if (props.parentTradeId) params.set("parentTradeId", props.parentTradeId);
   return `/api/trades/drilldown?${params.toString()}`;
 }
 

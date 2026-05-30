@@ -23,6 +23,33 @@ async function waitForAudcad(page: Page) {
   await expect(page.locator("body")).toContainText("AUDCAD", { timeout: 120_000 });
 }
 
+async function openAgreementWeeklyHoldTradeFromBasket(page: Page) {
+  const audcad = page.locator('[data-testid="basket-symbol-row"][data-node-id$="|symbol|AUDCAD"]').first();
+  await expect(audcad).toBeVisible({ timeout: 120_000 });
+  await audcad.getByRole("button", { name: /Expand AUDCAD/i }).click();
+  await page.getByTestId("basket-trade-row").filter({ hasText: "AUDCAD" }).first().click();
+}
+
+async function openAgreementAdrGridFromBasket(page: Page) {
+  const audcad = page.locator('[data-testid="basket-symbol-row"][data-node-id$="|symbol|AUDCAD"]').first();
+  await expect(audcad).toBeVisible({ timeout: 120_000 });
+  await audcad.getByRole("button", { name: /Expand AUDCAD/i }).click();
+  await page.getByTestId("basket-grid-row").first().click();
+}
+
+async function openFirstTandemAudcadTradeFromBasket(page: Page) {
+  await expect(page.getByTestId("basket-portfolio-row").first()).toBeVisible({ timeout: 120_000 });
+  const audcad = page.locator('[data-testid="basket-symbol-row"][data-node-id$="|symbol|AUDCAD"]').first();
+  for (const portfolio of await page.getByTestId("basket-portfolio-row").all()) {
+    if (await audcad.count()) break;
+    const expand = portfolio.getByRole("button", { name: /Expand/i });
+    if (await expand.count()) await expand.click();
+  }
+  await expect(audcad).toBeVisible({ timeout: 120_000 });
+  await audcad.getByRole("button", { name: /Expand AUDCAD/i }).click();
+  await page.getByTestId("basket-trade-row").filter({ hasText: "AUDCAD" }).first().click();
+}
+
 async function bodyText(page: Page) {
   return page.locator("body").innerText();
 }
@@ -252,7 +279,7 @@ test.describe("ViewMode parity", () => {
     await selectMay11(page);
     await waitForAudcad(page);
 
-    await page.locator('[title="Open ledger drilldown"]').filter({ hasText: "AUDCAD" }).first().click();
+    await openAgreementWeeklyHoldTradeFromBasket(page);
 
     const modal = page.getByRole("dialog");
     const tradeRow = modal.getByTestId("trade-row").first();
@@ -294,7 +321,7 @@ test.describe("ViewMode parity", () => {
     await selectMay11(page);
     await waitForAudcad(page);
 
-    await page.locator('[title="Open ledger drilldown"]').filter({ hasText: "AUDCAD" }).first().click();
+    await openAgreementAdrGridFromBasket(page);
 
     const modal = page.getByRole("dialog");
     const tradeRow = modal.getByTestId("trade-row").first();
@@ -310,20 +337,17 @@ test.describe("ViewMode parity", () => {
     await expect(firstFillRow.getByTestId("trade-id-badge")).toHaveAttribute("title", UUID_PATTERN, { timeout: 120_000 });
   });
 
-  test("Trade drilldown shows all Tandem source groups for a pair", async ({ page }) => {
+  test("Trade drilldown opened from Tandem hierarchy narrows to the selected source group", async ({ page }) => {
     await page.goto("/performance?strategy=tandem&f1=weekly_hold&f2=none&view=basket", {
       waitUntil: "domcontentloaded",
       timeout: 120_000,
     });
     await waitForViewModeControls(page);
     await selectMay11(page);
-    await waitForAudcad(page);
 
-    await page.locator('[title="Open ledger drilldown"]').filter({ hasText: "AUDCAD" }).first().click();
+    await openFirstTandemAudcadTradeFromBasket(page);
 
-    await expect(page.getByRole("dialog")).toContainText("Source commercial", { timeout: 120_000 });
-    await expect(page.getByRole("dialog")).toContainText("Source dealer", { timeout: 120_000 });
-    await expect(page.getByRole("dialog")).toContainText("Source sentiment", { timeout: 120_000 });
-    await expect(page.getByRole("dialog")).toContainText("Source strength", { timeout: 120_000 });
+    await expect(page.getByRole("dialog")).toContainText(/Source (commercial|dealer|sentiment|strength)/i, { timeout: 120_000 });
+    await expect(page.getByTestId("trade-row")).toHaveCount(1);
   });
 });

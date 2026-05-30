@@ -22,6 +22,30 @@
 - **Replacement:** No separate replacement needed. Top-level `<PerformanceScopeControl>` is uniform across strategies.
 - **Removal criteria:** Future cleanup pass; ensure no test fixture or caller depends on the `showSectionTabs` prop signature.
 
+### 3. Basket-local This Week / All Time mode toggle
+
+- **File:** `src/components/performance/PerformanceViewSection.tsx`
+- **Quarantined:** 2026-05-30
+- **Reason:** Duplicate navigation control from the first Basket Phase 2 pass. The top-level week selector is the canonical entry point: All Time starts the hierarchy at Week, while a selected week skips Week.
+- **Replacement:** `<BasketHierarchy>` inherits `selectedWeek` from the existing top-level week selector.
+- **Removal criteria:** Future cleanup pass; verify no test fixture depends on `src/lib/basket/basketModeStore.ts`.
+
+### 4. Basket paginated all-time browser and load-more path
+
+- **Files:** `src/components/common/basket/BasketAllTimeBrowser.tsx`, `src/components/common/basket/BasketLoadMore.tsx`, `src/app/api/basket/weeks/route.ts`, `src/app/api/basket/week-pairs/route.ts`
+- **Quarantined:** 2026-05-30
+- **Reason:** Paginated lazy-load contradicted the immutable historical canon direction and duplicated data-source responsibilities.
+- **Replacement:** Bundle-backed `src/components/common/basket/BasketHierarchy.tsx` consuming `basketDataSource.loadClosedHistory(...)` and `/api/basket/closed-history`.
+- **Removal criteria:** Future cleanup pass after v2.0.0 canon-bundle data source lands and browser verification confirms no fallback path still uses the paginated routes.
+
+### 5. Basket Phase 2 WeekRow / PairRow renderers
+
+- **Files:** `src/components/common/basket/WeekRow.tsx`, `src/components/common/basket/PairRow.tsx`, `src/components/common/basket/WeekDetailExpanded.tsx`
+- **Quarantined:** 2026-05-30
+- **Reason:** These renderers only support the first Phase 2 hierarchy shape (`Week -> Pair`) and cannot represent portfolio, tier, grid, fill, or trade levels.
+- **Replacement:** `src/components/common/basket/BasketHierarchyLevel.tsx`.
+- **Removal criteria:** Future cleanup pass; remove with legacy paginated browser once no tests or docs reference the old selectors.
+
 ## Related Inventories
 
 - `docs/research/LEGACY_SCRIPT_AUDIT_2026-05-28.md` tracks quarantined legacy research scripts.

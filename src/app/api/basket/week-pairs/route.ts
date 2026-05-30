@@ -5,70 +5,24 @@
  * File: route.ts
  *
  * Description:
- * Read-only pair summaries for one all-time Basket browser week.
+ * Quarantined legacy paginated Basket week-pairs endpoint.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import { NextResponse, type NextRequest } from "next/server";
-import { getBasketWeekPairs } from "@/lib/basket/basketSummaries";
-import type { AnchorType } from "@/lib/trades/tradeTypes";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const VALID_ANCHORS = new Set<AnchorType>(["canonical", "execution"]);
-
-function requiredParam(params: URLSearchParams, key: string) {
-  const value = params.get(key)?.trim();
-  return value && value.length > 0 ? value : null;
-}
-
-function normalizeDateIso(value: string) {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const params = request.nextUrl.searchParams;
-    const weekOpenUtcRaw = requiredParam(params, "weekOpenUtc");
-    const strategyVariant = requiredParam(params, "strategyVariant");
-    const anchorType = requiredParam(params, "anchorType") as AnchorType | null;
-
-    if (!weekOpenUtcRaw || !strategyVariant || !anchorType) {
-      return NextResponse.json(
-        { error: "Missing required params: weekOpenUtc, strategyVariant, anchorType" },
-        { status: 400 },
-      );
-    }
-    if (!VALID_ANCHORS.has(anchorType)) {
-      return NextResponse.json({ error: "anchorType must be canonical or execution" }, { status: 400 });
-    }
-    const weekOpenUtc = normalizeDateIso(weekOpenUtcRaw);
-    if (!weekOpenUtc) {
-      return NextResponse.json({ error: "weekOpenUtc must be a valid ISO timestamp" }, { status: 400 });
-    }
-
-    const pairs = await getBasketWeekPairs({
-      weekOpenUtc,
-      strategyVariant,
-      anchorType,
-    });
-
-    return NextResponse.json({
-      pairs,
-      meta: {
-        weekOpenUtc,
-        strategyVariant,
-        anchorType,
-      },
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : String(error) },
-      { status: 500 },
-    );
-  }
+export async function GET() {
+  // QUARANTINED 2026-05-30 - legacy paginated Basket endpoint.
+  // Replaced by /api/basket/closed-history bundle loading. Preserved as an
+  // explicit disabled endpoint until a future cleanup pass removes the old
+  // Phase 2 pagination path. See docs/QUARANTINED_CODE_INVENTORY.md.
+  return NextResponse.json(
+    { error: "Legacy Basket pagination endpoint is quarantined; use /api/basket/closed-history." },
+    { status: 410 },
+  );
 }

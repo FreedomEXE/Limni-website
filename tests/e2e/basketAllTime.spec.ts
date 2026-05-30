@@ -1,103 +1,165 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const ROUTE = "/performance?strategy=agree_3of4&f1=weekly_hold&f2=none&view=basket";
 const MAY_11_WEEK = "2026-05-10T23:00:00.000Z";
-const CURRENT_EMPTY_WEEK = "2026-05-24T23:00:00.000Z";
 const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
 
-async function openBasketAllTime(
+async function gotoBasket(
   page: Page,
+  params: Record<string, string>,
   viewMode = { anchor: "execution", normalization: "adr_normalized" },
 ) {
   await page.addInitScript((mode) => {
-    window.localStorage.setItem("limni-performance-basket-mode", JSON.stringify("all_time"));
-    window.localStorage.setItem("limni-viewmode", JSON.stringify({ performance: mode }));
+    window.localStorage.removeItem("limni-performance-basket-mode");
+    window.localStorage.setItem(
+      "limni-viewmode",
+      JSON.stringify({ performance: mode }),
+    );
   }, viewMode);
-  await page.goto(ROUTE, { waitUntil: "domcontentloaded", timeout: 120_000 });
-  await expect(page.getByTestId("basket-all-time-browser")).toBeVisible({ timeout: 120_000 });
+  const search = new URLSearchParams({ view: "basket", ...params });
+  await page.goto(`/performance?${search.toString()}`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+  await expect(page.getByTestId("basket-hierarchy")).toBeVisible({ timeout: 120_000 });
 }
 
-async function expandMay11(page: Page) {
-  const week = page.locator(`[data-testid="basket-week-row"][data-week-open-utc="${MAY_11_WEEK}"]`);
-  await expect(week).toBeVisible({ timeout: 120_000 });
-  await week.click();
-  await expect(page.getByTestId("basket-week-detail")).toBeVisible({ timeout: 120_000 });
+function node(page: Page, testId: string, nodeId: string) {
+  return page.locator(`[data-testid="${testId}"][data-node-id="${nodeId}"]`).first();
 }
 
-async function pairSymbols(page: Page) {
-  return page.getByTestId("basket-pair-row").evaluateAll((rows) =>
-    rows.map((row) => row.getAttribute("data-symbol") ?? ""),
+async function expandNode(page: Page, testId: string, nodeId: string) {
+  const row = node(page, testId, nodeId);
+  await expect(row).toBeVisible({ timeout: 120_000 });
+  await row.getByRole("button", { name: /Expand/i }).click();
+}
+
+async function weekIds(page: Page) {
+  return page.getByTestId("basket-week-row").evaluateAll((rows) =>
+    rows.map((row) => (row.getAttribute("data-node-id") ?? "").replace(/^week\|/, "")),
   );
 }
 
-function audcadPairRow(page: Page) {
-  return page.locator('[data-testid="basket-pair-row"][data-symbol="AUDCAD"]').first();
+async function symbolIds(page: Page) {
+  return page.getByTestId("basket-symbol-row").evaluateAll((rows) =>
+    rows.map((row) => (row.getAttribute("data-node-id") ?? "").split("|symbol|").pop() ?? ""),
+  );
 }
 
-test.describe("Basket all-time browser", () => {
-  test("loads 8 most-recent non-empty weeks newest first", async ({ page }) => {
-    await openBasketAllTime(page);
+test.describe("Basket hierarchy", () => {
+  test("Agreement weekly hold uses Week -> Symbol -> Trade with newest weeks first", async ({ page }) => {
+    await gotoBasket(page, { strategy: "agree_3of4", f1: "weekly_hold", f2: "none" });
+    await expect(page.getByTestId("basket-week-row").first()).toBeVisible({ timeout: 120_000 });
 
-    await expect(page.getByTestId("basket-week-row")).toHaveCount(8, { timeout: 120_000 });
-    const weeks = await page.getByTestId("basket-week-row").evaluateAll((rows) =>
-      rows.map((row) => row.getAttribute("data-week-open-utc") ?? ""),
-    );
-
+    const weeks = await weekIds(page);
+    expect(weeks.length).toBeGreaterThan(8);
     expect(weeks).toEqual([...weeks].sort((left, right) => right.localeCompare(left)));
-  });
 
-  test("scrolling near the bottom lazy-loads 4 more weeks", async ({ page }) => {
-    await openBasketAllTime(page);
-    await expect(page.getByTestId("basket-week-row")).toHaveCount(8, { timeout: 120_000 });
-
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await expect(page.getByTestId("basket-week-row")).toHaveCount(12, { timeout: 120_000 });
-  });
-
-  test("expands a week with pairs sorted alphabetically", async ({ page }) => {
-    await openBasketAllTime(page);
-    await expandMay11(page);
-
-    await expect(audcadPairRow(page)).toBeVisible({ timeout: 120_000 });
-    const symbols = await pairSymbols(page);
+    await expandNode(page, "basket-week-row", `week|${MAY_11_WEEK}`);
+    await expect(page.getByTestId("basket-portfolio-row")).toHaveCount(0);
+    await expect(page.getByTestId("basket-tier-row")).toHaveCount(0);
+    await expect(page.getByTestId("basket-symbol-row").first()).toBeVisible({ timeout: 120_000 });
+    const symbols = await symbolIds(page);
     expect(symbols[0]).toBe("AUDCAD");
     expect(symbols).toEqual([...symbols].sort((left, right) => left.localeCompare(right)));
   });
 
-  test("opens the Phase 1 trade drilldown modal from a pair row", async ({ page }) => {
-    await openBasketAllTime(page);
-    await expandMay11(page);
+  test("Tandem ADR Grid exposes Portfolio -> Symbol -> Grid -> Fills and parent modal", async ({ page }) => {
+    await gotoBasket(page, { strategy: "tandem", f1: "adr_grid", f2: "pair_fill_cap" });
+    await expandNode(page, "basket-week-row", `week|${MAY_11_WEEK}`);
 
-    await audcadPairRow(page).click();
-    await expect(page.getByRole("dialog")).toContainText("AUDCAD", { timeout: 120_000 });
-    await expect(page.getByTestId("trade-id-badge").first()).toHaveAttribute("title", UUID_PATTERN);
-    await expect(page.getByTestId("trade-adr-norm-pct").first()).toContainText("-0.9411");
+    await expect(page.getByTestId("basket-portfolio-row")).toHaveCount(4, { timeout: 120_000 });
+    const portfolioLabels = await page.getByTestId("basket-portfolio-row").evaluateAll((rows) =>
+      rows.map((row) => row.textContent ?? ""),
+    );
+    expect(portfolioLabels.join(" ")).toMatch(/Commercial/);
+    expect(portfolioLabels.join(" ")).toMatch(/Dealer/);
+    expect(portfolioLabels.join(" ")).toMatch(/Sentiment/);
+    expect(portfolioLabels.join(" ")).toMatch(/Strength/);
+
+    for (const portfolio of await page.getByTestId("basket-portfolio-row").all()) {
+      await portfolio.getByRole("button", { name: /Expand/i }).click();
+    }
+    const audcad = page.locator('[data-testid="basket-symbol-row"][data-node-id$="|symbol|AUDCAD"]').first();
+    await expect(audcad).toBeVisible({ timeout: 120_000 });
+    await expect(audcad).toContainText("FX");
+    await audcad.getByRole("button", { name: /Expand AUDCAD/i }).click();
+
+    const grid = page.getByTestId("basket-grid-row").first();
+    await expect(grid).toBeVisible({ timeout: 120_000 });
+    await grid.click();
+    const modal = page.getByRole("dialog");
+    await expect(modal).toContainText("AUDCAD", { timeout: 120_000 });
+    await expect(modal.getByTestId("trade-id-badge").first()).toHaveAttribute("title", UUID_PATTERN);
+    await expect(modal.getByTestId("fills-table")).toBeVisible({ timeout: 120_000 });
+    await page.keyboard.press("Escape");
+
+    await grid.getByRole("button", { name: /Expand Grid/i }).click();
+    const fills = page.getByTestId("basket-fill-row");
+    await expect(fills.first()).toBeVisible({ timeout: 120_000 });
+    const fillSeqs = await fills.evaluateAll((rows) =>
+      rows.map((row) => Number((row.textContent ?? "").match(/#?(\d+)/)?.[1] ?? "0")),
+    );
+    expect(fillSeqs).toEqual([...fillSeqs].sort((left, right) => left - right));
   });
 
-  test("hides empty current weeks from the all-time tree", async ({ page }) => {
-    await openBasketAllTime(page);
+  test("Tiered strategies render Tier level, and specific week skips Week level", async ({ page }) => {
+    await gotoBasket(page, {
+      strategy: "tiered_4w",
+      f1: "weekly_hold",
+      f2: "none",
+      week: MAY_11_WEEK,
+    });
 
-    await expect(page.locator(`[data-testid="basket-week-row"][data-week-open-utc="${CURRENT_EMPTY_WEEK}"]`)).toHaveCount(0);
+    await expect(page.getByTestId("basket-week-row")).toHaveCount(0);
+    await expect(page.getByTestId("basket-tier-row").first()).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByTestId("basket-tier-row").first()).toContainText(/Tier \d+/);
   });
 
-  test("normalization toggle updates the hierarchy values", async ({ page }) => {
-    await openBasketAllTime(page);
-    await expandMay11(page);
+  test("scope filter is honored and symbol rows keep asset badges", async ({ page }) => {
+    await gotoBasket(page, {
+      strategy: "agree_3of4",
+      f1: "weekly_hold",
+      f2: "none",
+      week: MAY_11_WEEK,
+      scope: "crypto",
+    });
 
-    await expect(audcadPairRow(page)).toContainText("-0.94", { timeout: 120_000 });
+    await expect(page.getByTestId("basket-symbol-row")).toHaveCount(2, { timeout: 120_000 });
+    const text = await page.getByTestId("basket-symbol-row").allTextContents();
+    expect(text.every((row) => row.includes("Crypto"))).toBe(true);
+  });
+
+  test("normalization flips reuse the bundle and both anchors are present in the payload", async ({ page }) => {
+    let bundleRequests = 0;
+    await page.route("**/api/basket/closed-history?**", async (route) => {
+      bundleRequests += 1;
+      await route.continue();
+    });
+    await gotoBasket(page, {
+      strategy: "agree_3of4",
+      f1: "weekly_hold",
+      f2: "none",
+      week: MAY_11_WEEK,
+    });
+
+    const audcad = page.locator('[data-testid="basket-symbol-row"][data-node-id$="|symbol|AUDCAD"]').first();
+    await expect(audcad).toContainText("-0.94", { timeout: 120_000 });
     await page.getByRole("button", { name: /Raw/i }).first().click();
-    await expect(audcadPairRow(page)).toContainText("-0.71", { timeout: 120_000 });
-  });
+    await expect(audcad).toContainText("-0.71", { timeout: 120_000 });
+    expect(bundleRequests).toBe(1);
 
-  test("programmatic anchor change updates the hierarchy values", async ({ page, context }) => {
-    await openBasketAllTime(page);
-    await expandMay11(page);
-    await expect(audcadPairRow(page)).toContainText("-0.94", { timeout: 120_000 });
-
-    const canonicalPage = await context.newPage();
-    await openBasketAllTime(canonicalPage, { anchor: "canonical", normalization: "adr_normalized" });
-    await expandMay11(canonicalPage);
-    await expect(audcadPairRow(canonicalPage)).toContainText("-0.78", { timeout: 120_000 });
-    await canonicalPage.close();
+    const response = await page.request.get(
+      `/api/basket/closed-history?strategyVariant=agree_3of4-weekly_hold-none&scope=all`,
+    );
+    expect(response.ok()).toBe(true);
+    const json = await response.json();
+    const audcadPayloadRow = json.bundle.rows.find((row: {
+      rowKind: string;
+      symbol: string;
+      weekOpenUtc: string;
+      returnMatrix: {
+        canonical: { rawPct: number } | null;
+        execution: { rawPct: number } | null;
+      };
+    }) => row.rowKind === "trade" && row.symbol === "AUDCAD" && row.weekOpenUtc === MAY_11_WEEK);
+    expect(audcadPayloadRow.returnMatrix.canonical.rawPct).toBeCloseTo(-0.5836, 4);
+    expect(audcadPayloadRow.returnMatrix.execution.rawPct).toBeCloseTo(-0.7082, 4);
   });
 });

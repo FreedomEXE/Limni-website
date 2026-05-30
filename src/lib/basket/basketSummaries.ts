@@ -5,197 +5,207 @@
  * File: basketSummaries.ts
  *
  * Description:
- * Read-only all-time Basket summary helpers backed by tradeReaders.
+ * Read-only closed-history basket bundle helpers backed by tradeReaders.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
+import type { AssetClass } from "@/lib/cotMarkets";
+import { inferPerformanceAssetClass, normalizePerformanceAssetSelection } from "@/lib/performance/performanceAssetScope";
 import { getTradesForSurface } from "@/lib/trades/tradeReaders";
 import type { AnchorType, Trade, TradeStrategyFamily } from "@/lib/trades/tradeTypes";
-import type {
-  BasketPairExtreme,
-  BasketPairSummary,
-  BasketReturnMatrixRow,
-  BasketWeekSummary,
-} from "@/lib/basket/basketSummaryTypes";
+import type { BasketRowKind, ClosedHistoryBundle, ClosedHistoryRow } from "@/lib/basket/basketSummaryTypes";
+import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 
-type BasketSummaryOptions = {
+type BuildClosedHistoryBundleOptions = {
   strategyVariant: string;
-  anchorType: AnchorType;
+  scope: readonly AssetClass[];
 };
 
-type BasketWeekOptions = BasketSummaryOptions & {
-  limit: number;
-  offset: number;
+type MergeDraft = Omit<ClosedHistoryRow, "canonicalTradeId" | "executionTradeId" | "returnMatrix" | "warnings"> & {
+  canonicalTradeId: string | null;
+  executionTradeId: string | null;
+  returnMatrix: ClosedHistoryRow["returnMatrix"];
+  warnings: Set<string>;
 };
-
-type BasketPairOptions = BasketSummaryOptions & {
-  weekOpenUtc: string;
-};
-
-function normalizeWeekOpenUtc(value: string) {
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-}
 
 export function inferStrategyFamilyFromVariant(strategyVariant: string): TradeStrategyFamily {
   const parts = strategyVariant.split("-").filter(Boolean);
   return parts.includes("adr_grid") ? "adr_grid" : "weekly_hold";
 }
 
-function parentBacktestRows(trades: Trade[]) {
-  return trades.filter((trade) => trade.origin === "backtest" && trade.parentTradeId === null);
+function rowKindForTrade(strategyFamily: TradeStrategyFamily, trade: Trade): BasketRowKind {
+  if (trade.parentTradeId) return "fill";
+  return strategyFamily === "adr_grid" ? "grid" : "trade";
 }
 
-function sumNullable(values: Array<number | null>) {
-  const finite = values.filter((value): value is number => value !== null && Number.isFinite(value));
-  return finite.length === 0 ? null : finite.reduce((sum, value) => sum + value, 0);
+function normalizeWeekOpenUtc(value: string) {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString();
 }
 
-function adrNormalizedPct(trade: Trade) {
-  if (trade.adrNormalizedPct !== null && Number.isFinite(trade.adrNormalizedPct)) return trade.adrNormalizedPct;
-  if (
-    trade.rawPct !== null
-    && Number.isFinite(trade.rawPct)
-    && trade.adrPct !== null
-    && Number.isFinite(trade.adrPct)
-    && trade.adrPct > 0
-  ) {
-    return trade.rawPct / trade.adrPct;
+function safePart(value: string | number | null | undefined) {
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function parentNaturalIdentity(strategyFamily: TradeStrategyFamily, trade: Trade) {
+  return [
+    "parent",
+    trade.origin,
+    strategyFamily,
+    trade.strategyVariant,
+    trade.symbol,
+    normalizeWeekOpenUtc(trade.weekOpenUtc),
+    trade.sourceModel ?? "",
+    trade.tier ?? -1,
+    trade.direction ?? "",
+  ].map(safePart).join("|");
+}
+
+function rowNaturalIdentity(rowKind: BasketRowKind, trade: Trade, parentNaturalRef: string | null) {
+  return [
+    rowKind,
+    trade.origin,
+    trade.strategyFamily,
+    trade.strategyVariant,
+    trade.symbol,
+    normalizeWeekOpenUtc(trade.weekOpenUtc),
+    trade.sourceModel ?? "",
+    trade.tier ?? -1,
+    trade.direction ?? "",
+    trade.fillSeq ?? -1,
+    parentNaturalRef ?? "",
+  ].map(safePart).join("|");
+}
+
+function parentRefForTrade(trade: Trade, parentByTradeId: Map<string, Trade>) {
+  if (!trade.parentTradeId) return null;
+  const parent = parentByTradeId.get(trade.parentTradeId);
+  return parent ? parentNaturalIdentity(parent.strategyFamily, parent) : null;
+}
+
+function baseDraft(trade: Trade, rowKind: BasketRowKind, parentNaturalRef: string | null): MergeDraft {
+  return {
+    rowKind,
+    origin: trade.origin,
+    strategyFamily: trade.strategyFamily,
+    strategyVariant: trade.strategyVariant,
+    symbol: trade.symbol,
+    assetClass: inferPerformanceAssetClass(trade.symbol),
+    weekOpenUtc: normalizeWeekOpenUtc(trade.weekOpenUtc),
+    sourceModel: trade.sourceModel,
+    tier: trade.tier,
+    direction: trade.direction,
+    fillSeq: trade.fillSeq,
+    parentNaturalRef,
+    canonicalTradeId: null,
+    executionTradeId: null,
+    entryUtc: trade.entryUtc,
+    exitUtc: trade.exitUtc,
+    entryPrice: trade.entryPrice,
+    exitPrice: trade.exitPrice,
+    returnMatrix: {
+      canonical: null,
+      execution: null,
+      adrPct: trade.adrPct,
+    },
+    exitReason: trade.exitReason,
+    capActiveFillsAtEntry: trade.activeFillsAtEntry,
+    capThresholdAtEntry: trade.capThresholdAtEntry,
+    capViolated: trade.capViolated,
+    warnings: new Set(trade.warnings),
+  };
+}
+
+function mergeAnchorTrade(draft: MergeDraft, trade: Trade, anchorType: AnchorType) {
+  if (anchorType === "canonical") {
+    draft.canonicalTradeId = trade.tradeId;
+    draft.returnMatrix.canonical = trade.rawPct === null ? null : { rawPct: trade.rawPct };
+  } else {
+    draft.executionTradeId = trade.tradeId;
+    draft.returnMatrix.execution = trade.rawPct === null ? null : { rawPct: trade.rawPct };
   }
-  return null;
+  draft.returnMatrix.adrPct = draft.returnMatrix.adrPct ?? trade.adrPct;
+  draft.entryUtc = draft.entryUtc ?? trade.entryUtc;
+  draft.exitUtc = draft.exitUtc ?? trade.exitUtc;
+  draft.entryPrice = draft.entryPrice ?? trade.entryPrice;
+  draft.exitPrice = draft.exitPrice ?? trade.exitPrice;
+  draft.exitReason = draft.exitReason ?? trade.exitReason;
+  draft.capActiveFillsAtEntry = draft.capActiveFillsAtEntry ?? trade.activeFillsAtEntry;
+  draft.capThresholdAtEntry = draft.capThresholdAtEntry ?? trade.capThresholdAtEntry;
+  draft.capViolated = draft.capViolated || trade.capViolated;
+  for (const warning of trade.warnings) draft.warnings.add(warning);
 }
 
-function matrixRow(trade: Trade): BasketReturnMatrixRow {
-  const anchorValue = trade.rawPct === null ? null : { rawPct: trade.rawPct };
-  return {
-    canonical: trade.anchorType === "canonical" ? anchorValue : null,
-    execution: trade.anchorType === "execution" ? anchorValue : null,
-    adrPct: trade.adrPct,
-  };
-}
-
-function warningsForRows(rows: Trade[]) {
-  return [...new Set(rows.flatMap((trade) => trade.warnings))].sort((left, right) => left.localeCompare(right));
-}
-
-function aggregatePairExtreme(symbol: string, rows: Trade[]): BasketPairExtreme {
-  return {
-    symbol,
-    rawPct: sumNullable(rows.map((trade) => trade.rawPct)),
-    adrNormalizedPct: sumNullable(rows.map(adrNormalizedPct)),
-  };
-}
-
-function pairExtremeSortValue(pair: BasketPairExtreme) {
-  return pair.adrNormalizedPct ?? pair.rawPct ?? 0;
-}
-
-function bestWorstPairs(rows: Trade[]) {
-  const bySymbol = new Map<string, Trade[]>();
-  for (const row of rows) {
-    const bucket = bySymbol.get(row.symbol) ?? [];
-    bucket.push(row);
-    bySymbol.set(row.symbol, bucket);
-  }
-  const pairs = [...bySymbol.entries()].map(([symbol, pairRows]) => aggregatePairExtreme(symbol, pairRows));
-  if (pairs.length === 0) return { bestPair: null, worstPair: null };
-  const sorted = [...pairs].sort((left, right) => pairExtremeSortValue(right) - pairExtremeSortValue(left));
-  return {
-    bestPair: sorted[0] ?? null,
-    worstPair: sorted[sorted.length - 1] ?? null,
-  };
-}
-
-function summarizeWeek(weekOpenUtc: string, anchorType: AnchorType, rows: Trade[]): BasketWeekSummary {
-  const pairSet = new Set(rows.map((trade) => trade.symbol));
-  const { bestPair, worstPair } = bestWorstPairs(rows);
-  return {
-    weekOpenUtc,
-    anchorType,
-    totalRawPct: sumNullable(rows.map((trade) => trade.rawPct)),
-    totalAdrPct: sumNullable(rows.map(adrNormalizedPct)),
-    tradeCount: rows.length,
-    pairCount: pairSet.size,
-    bestPair,
-    worstPair,
-    returnRows: rows.map(matrixRow),
-    warnings: warningsForRows(rows),
-  };
-}
-
-function summarizePair(symbol: string, anchorType: AnchorType, rows: Trade[]): BasketPairSummary {
-  return {
-    symbol,
-    anchorType,
-    totalRawPct: sumNullable(rows.map((trade) => trade.rawPct)),
-    totalAdrPct: sumNullable(rows.map(adrNormalizedPct)),
-    strategyCount: new Set(rows.map((trade) => trade.strategyVariant)).size,
-    tradeCount: rows.length,
-    returnRows: rows.map(matrixRow),
-    warnings: warningsForRows(rows),
-  };
-}
-
-export async function getBasketWeekSummaries({
-  strategyVariant,
-  anchorType,
-  limit,
-  offset,
-}: BasketWeekOptions): Promise<{ weeks: BasketWeekSummary[]; hasMore: boolean }> {
+async function getAnchorRows(strategyVariant: string, anchorType: AnchorType) {
   const strategyFamily = inferStrategyFamilyFromVariant(strategyVariant);
-  const trades = parentBacktestRows(await getTradesForSurface({
+  const rows = await getTradesForSurface({
     surface: "performance",
     strategyFamily,
     strategyVariant,
     anchorType,
-  }));
-
-  const byWeek = new Map<string, Trade[]>();
-  for (const trade of trades) {
-    const weekOpenUtc = normalizeWeekOpenUtc(trade.weekOpenUtc);
-    if (!weekOpenUtc) continue;
-    const bucket = byWeek.get(weekOpenUtc) ?? [];
-    bucket.push(trade);
-    byWeek.set(weekOpenUtc, bucket);
-  }
-
-  const allWeeks = [...byWeek.entries()]
-    .filter(([, rows]) => rows.length > 0)
-    .sort(([left], [right]) => right.localeCompare(left))
-    .map(([weekOpenUtc, rows]) => summarizeWeek(weekOpenUtc, anchorType, rows));
-  const page = allWeeks.slice(offset, offset + limit);
-  return {
-    weeks: page,
-    hasMore: offset + limit < allWeeks.length,
-  };
+  });
+  return rows.filter((trade) => trade.origin === "backtest");
 }
 
-export async function getBasketWeekPairs({
-  weekOpenUtc,
+export async function buildClosedHistoryBundle({
   strategyVariant,
-  anchorType,
-}: BasketPairOptions): Promise<BasketPairSummary[]> {
-  const normalizedWeek = normalizeWeekOpenUtc(weekOpenUtc);
-  if (!normalizedWeek) return [];
-  const strategyFamily = inferStrategyFamilyFromVariant(strategyVariant);
-  const trades = parentBacktestRows(await getTradesForSurface({
-    surface: "performance",
-    strategyFamily,
-    strategyVariant,
-    anchorType,
-    weekOpenUtc: normalizedWeek,
-  }));
-
-  const bySymbol = new Map<string, Trade[]>();
-  for (const trade of trades) {
-    const bucket = bySymbol.get(trade.symbol) ?? [];
-    bucket.push(trade);
-    bySymbol.set(trade.symbol, bucket);
+  scope,
+}: BuildClosedHistoryBundleOptions): Promise<ClosedHistoryBundle> {
+  const normalizedScope = normalizePerformanceAssetSelection(scope);
+  const [canonicalRows, executionRows] = await Promise.all([
+    getAnchorRows(strategyVariant, "canonical"),
+    getAnchorRows(strategyVariant, "execution"),
+  ]);
+  const currentWeekOpenUtc = normalizeWeekOpenUtc(getCanonicalWeekOpenUtc());
+  const allRows = [
+    ...canonicalRows.map((trade) => ({ trade, anchorType: "canonical" as const })),
+    ...executionRows.map((trade) => ({ trade, anchorType: "execution" as const })),
+  ].filter(({ trade }) => normalizeWeekOpenUtc(trade.weekOpenUtc) < currentWeekOpenUtc);
+  const parentByTradeId = new Map<string, Trade>();
+  for (const { trade } of allRows) {
+    if (!trade.parentTradeId) parentByTradeId.set(trade.tradeId, trade);
   }
 
-  return [...bySymbol.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([symbol, rows]) => summarizePair(symbol, anchorType, rows));
+  const drafts = new Map<string, MergeDraft>();
+  for (const { trade, anchorType } of allRows) {
+    const assetClass = inferPerformanceAssetClass(trade.symbol);
+    if (!normalizedScope.includes(assetClass)) continue;
+    const rowKind = rowKindForTrade(trade.strategyFamily, trade);
+    const parentNaturalRef = parentRefForTrade(trade, parentByTradeId);
+    const key = rowNaturalIdentity(rowKind, trade, parentNaturalRef);
+    const draft = drafts.get(key) ?? baseDraft(trade, rowKind, parentNaturalRef);
+    mergeAnchorTrade(draft, trade, anchorType);
+    drafts.set(key, draft);
+  }
+
+  const rows: ClosedHistoryRow[] = [...drafts.values()]
+    .map((draft) => ({
+      ...draft,
+      warnings: [...draft.warnings].sort((left, right) => left.localeCompare(right)),
+    }))
+    .filter((row) =>
+      row.returnMatrix.canonical !== null
+      || row.returnMatrix.execution !== null
+      || row.warnings.length > 0,
+    )
+    .sort((left, right) => {
+      const weekDiff = right.weekOpenUtc.localeCompare(left.weekOpenUtc);
+      if (weekDiff !== 0) return weekDiff;
+      const symbolDiff = left.symbol.localeCompare(right.symbol);
+      if (symbolDiff !== 0) return symbolDiff;
+      const sourceDiff = (left.sourceModel ?? "").localeCompare(right.sourceModel ?? "");
+      if (sourceDiff !== 0) return sourceDiff;
+      const tierDiff = (left.tier ?? -1) - (right.tier ?? -1);
+      if (tierDiff !== 0) return tierDiff;
+      return (left.fillSeq ?? -1) - (right.fillSeq ?? -1);
+    });
+
+  return {
+    rows,
+    strategyVariant,
+    scope: normalizedScope,
+    generatedAt: new Date().toISOString(),
+  };
 }

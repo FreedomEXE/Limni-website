@@ -5,14 +5,71 @@
  * File: basketSummaryTypes.ts
  *
  * Description:
- * Serializable payload contracts for the all-time Basket browser.
+ * Serializable closed-history basket bundle contracts.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import type { AnchorType } from "@/lib/trades/tradeTypes";
+import type { AssetClass } from "@/lib/cotMarkets";
+import type { TradeDirection, TradeOrigin, TradeStrategyFamily } from "@/lib/trades/tradeTypes";
 
+export type BasketRowKind = "trade" | "grid" | "fill";
+
+export type BasketReturnMatrix = {
+  canonical: { rawPct: number } | null;
+  execution: { rawPct: number } | null;
+  adrPct: number | null;
+};
+
+export type ClosedHistoryRow = {
+  rowKind: BasketRowKind;
+  origin: TradeOrigin;
+  strategyFamily: TradeStrategyFamily;
+  strategyVariant: string;
+  symbol: string;
+  assetClass: AssetClass;
+  weekOpenUtc: string;
+  sourceModel: string | null;
+  tier: number | null;
+  direction: TradeDirection | null;
+  fillSeq: number | null;
+  parentNaturalRef: string | null;
+  canonicalTradeId: string | null;
+  executionTradeId: string | null;
+  entryUtc: string | null;
+  exitUtc: string | null;
+  entryPrice: number | null;
+  exitPrice: number | null;
+  returnMatrix: BasketReturnMatrix;
+  exitReason: string | null;
+  capActiveFillsAtEntry: number | null;
+  capThresholdAtEntry: number | null;
+  capViolated: boolean;
+  warnings: string[];
+};
+
+export type ClosedHistoryBundle = {
+  rows: ClosedHistoryRow[];
+  strategyVariant: string;
+  scope: AssetClass[];
+  generatedAt: string;
+};
+
+export type CurrentWeekSlice = {
+  rows: ClosedHistoryRow[];
+  strategyVariant: string;
+  scope: AssetClass[];
+  generatedAt: string;
+};
+
+export type ClosedHistoryResponse = {
+  bundle: ClosedHistoryBundle;
+};
+
+// QUARANTINED 2026-05-30 - legacy paginated Basket browser contracts.
+// The active Basket hierarchy uses ClosedHistoryBundle above. These aliases keep
+// the preserved Phase 2 files parseable until a future cleanup pass removes them.
 export type BasketReturnMatrixRow = {
   canonical: { rawPct: number } | null;
   execution: { rawPct: number } | null;
@@ -27,44 +84,28 @@ export type BasketPairExtreme = {
 
 export type BasketWeekSummary = {
   weekOpenUtc: string;
-  anchorType: AnchorType;
-  totalRawPct: number | null;
-  totalAdrPct: number | null;
+  anchorType: string;
+  returnRows: BasketReturnMatrixRow[];
   tradeCount: number;
   pairCount: number;
   bestPair: BasketPairExtreme | null;
   worstPair: BasketPairExtreme | null;
-  returnRows: BasketReturnMatrixRow[];
   warnings: string[];
 };
 
 export type BasketPairSummary = {
   symbol: string;
-  anchorType: AnchorType;
-  totalRawPct: number | null;
-  totalAdrPct: number | null;
+  returnRows: BasketReturnMatrixRow[];
   strategyCount: number;
   tradeCount: number;
-  returnRows: BasketReturnMatrixRow[];
   warnings: string[];
 };
 
 export type BasketWeeksResponse = {
   weeks: BasketWeekSummary[];
   hasMore: boolean;
-  meta: {
-    strategyVariant: string;
-    anchorType: AnchorType;
-    limit: number;
-    offset: number;
-  };
 };
 
 export type BasketWeekPairsResponse = {
   pairs: BasketPairSummary[];
-  meta: {
-    weekOpenUtc: string;
-    strategyVariant: string;
-    anchorType: AnchorType;
-  };
 };

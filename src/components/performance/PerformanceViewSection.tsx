@@ -19,8 +19,7 @@ import type { PerformanceSystem } from "@/lib/performance/modelConfig";
 import type { PerformanceView } from "@/lib/performance/pageState";
 import type { EngineGridProps, EngineSidebarStats, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import AnchorDisclosureLabel from "@/components/common/AnchorDisclosureLabel";
-import BasketAllTimeBrowser from "@/components/common/basket/BasketAllTimeBrowser";
-import SegmentedToggle from "@/components/common/SegmentedToggle";
+import BasketHierarchy from "@/components/common/basket/BasketHierarchy";
 import TradeDrilldownModal from "@/components/common/trades/TradeDrilldownModal";
 import ViewModeControls from "@/components/common/ViewModeControls";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
@@ -72,7 +71,6 @@ import {
 import { useViewMode } from "@/lib/viewMode/viewModeStore";
 import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
 import type { AnchorType, TradeDirection, TradeStrategyFamily } from "@/lib/trades/tradeTypes";
-import { useBasketMode } from "@/lib/basket/basketModeStore";
 
 type GridProps = Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined" | "perAsset"> & {
   combined: ComponentProps<typeof PerformanceGrid>["combined"];
@@ -546,6 +544,8 @@ function EngineBasketView({
   weeklyReturns,
   selection,
   weekOpenUtc,
+  currentWeek,
+  scope,
   viewMode,
   isAllTime = false,
 }: {
@@ -553,10 +553,11 @@ function EngineBasketView({
   weeklyReturns?: WeekReturn[];
   selection?: RuntimeStrategySelection;
   weekOpenUtc?: string | null;
+  currentWeek?: string;
+  scope: PerformanceAssetSelection;
   viewMode: ViewMode;
   isAllTime?: boolean;
 }) {
-  const [basketMode, setBasketMode] = useBasketMode();
   const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
   const [drilldown, setDrilldown] = useState<{
     symbol: string;
@@ -588,18 +589,6 @@ function EngineBasketView({
   const strategyVariant = selection
     ? `${selection.strategy}-${selection.f1}-${selection.f2}`
     : "tandem-weekly_hold-none";
-  const basketModeToggle = (
-    <SegmentedToggle
-      value={basketMode}
-      onChange={setBasketMode}
-      ariaLabel="Basket mode"
-      size="sm"
-      items={[
-        { value: "this_week", label: "This Week" },
-        { value: "all_time", label: "All Time" },
-      ]}
-    />
-  );
 
   const openDrilldown = (trade: { pair: string; direction: "LONG" | "SHORT" | "NEUTRAL" }) => {
     if (isAllTime || !weekOpenUtc || trade.direction === "NEUTRAL") return;
@@ -608,26 +597,26 @@ function EngineBasketView({
       weekOpenUtc,
       strategyFamily,
       strategyVariant,
-      anchorType: "execution",
+      anchorType: viewMode.anchor,
     });
   };
 
-  if (basketMode === "all_time") {
+  const canUseHierarchy = Boolean(selection);
+  const hierarchySelectedWeek = isAllTime ? "all" : weekOpenUtc ?? null;
+  const shouldUseClosedHistoryHierarchy = canUseHierarchy
+    && hierarchySelectedWeek !== null
+    && (hierarchySelectedWeek === "all" || hierarchySelectedWeek !== currentWeek);
+
+  if (shouldUseClosedHistoryHierarchy && hierarchySelectedWeek) {
     return (
-      <div className="space-y-4">
-        <div className="flex flex-col gap-3 rounded-2xl border border-(--panel-border) bg-(--panel) px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-(--foreground)">Basket</p>
-            <p className="mt-1 text-xs text-(--muted)">All-time hierarchical browser</p>
-          </div>
-          {basketModeToggle}
-        </div>
-        <BasketAllTimeBrowser
-          strategyVariant={strategyVariant}
-          strategyFamily={strategyFamily}
-          viewMode={viewMode}
-        />
-      </div>
+      <BasketHierarchy
+        strategyVariant={strategyVariant}
+        strategyFamily={strategyFamily}
+        selectedWeek={hierarchySelectedWeek}
+        currentWeek={currentWeek}
+        scope={scope}
+        viewMode={viewMode}
+      />
     );
   }
 
@@ -663,7 +652,6 @@ function EngineBasketView({
                 {formatPct(totalReturn)}
               </span>
             </div>
-            {basketModeToggle}
           </div>
         </div>
 
@@ -770,7 +758,6 @@ function EngineBasketView({
               {formatPct(totalReturn)}
             </span>
           </div>
-          {basketModeToggle}
         </div>
       </div>
 
@@ -1326,6 +1313,8 @@ export default function PerformanceViewSection({
             weeklyReturns={selectedWeekKey === "all" ? weeklyReturns : undefined}
             selection={selection}
             weekOpenUtc={selectedWeekKey === "all" ? null : selectedWeekKey}
+            currentWeek={currentWeek}
+            scope={assetScope}
             viewMode={performanceViewMode}
             isAllTime={selectedWeekKey === "all"}
           />
