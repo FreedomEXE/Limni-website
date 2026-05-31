@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import MissingReturnCell from "@/components/common/MissingReturnCell";
 import { formatDateLabel, formatSignedPercent } from "@/components/common/trade-list/formatters";
 import type { TradeListNode } from "@/components/common/trade-list/types";
@@ -22,6 +22,7 @@ import { buildBasketTradeListNodes } from "@/lib/basket/buildBasketTradeListNode
 import { basketDataSource } from "@/lib/basket/basketDataSource";
 import { resolveBasketHierarchy } from "@/lib/basket/basketHierarchy";
 import type { ClosedHistoryRow } from "@/lib/basket/basketSummaryTypes";
+import type { AssetClass } from "@/lib/cotMarkets";
 import type { PerformanceAssetSelection } from "@/lib/performance/performanceAssetScope";
 import { getStrategy, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import type { TradeStrategyFamily } from "@/lib/trades/tradeTypes";
@@ -73,6 +74,23 @@ function directionTone(direction: ClosedHistoryRow["direction"]) {
   if (direction === "LONG") return "text-emerald-600";
   if (direction === "SHORT") return "text-rose-500";
   return "text-[color:var(--muted)]";
+}
+
+function assetClassTone(assetClass: AssetClass | "all") {
+  if (assetClass === "all") return "border-emerald-500/40 bg-emerald-500/15 text-emerald-500";
+  if (assetClass === "fx") return "border-sky-500/45 bg-sky-500/15 text-sky-400";
+  if (assetClass === "crypto") return "border-orange-500/45 bg-orange-500/15 text-orange-400";
+  if (assetClass === "commodities") return "border-yellow-500/45 bg-yellow-500/15 text-yellow-400";
+  if (assetClass === "indices") return "border-purple-500/45 bg-purple-500/15 text-purple-400";
+  return "border-[var(--panel-border)] text-[color:var(--muted)]";
+}
+
+function AssetClassBadge({ assetClass }: { assetClass: AssetClass }) {
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] ${assetClassTone(assetClass)}`}>
+      {assetClass}
+    </span>
+  );
 }
 
 function titleForLevel(node: TradeListNode) {
@@ -187,27 +205,125 @@ function headerSegments(stats: BasketVisibleStats, selectedWeek: string, levels:
   return segments;
 }
 
+function formatPrice(value: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  if (Math.abs(value) >= 1000) return value.toFixed(2);
+  if (Math.abs(value) >= 100) return value.toFixed(3);
+  if (Math.abs(value) >= 10) return value.toFixed(4);
+  return value.toFixed(5);
+}
+
+function formatDateTimeLabel(value: string | null) {
+  if (!value) return "--";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  });
+}
+
+function formatDuration(entryUtc: string | null, exitUtc: string | null) {
+  if (!entryUtc || !exitUtc) return "--";
+  const entry = new Date(entryUtc).getTime();
+  const exit = new Date(exitUtc).getTime();
+  if (!Number.isFinite(entry) || !Number.isFinite(exit) || exit < entry) return "--";
+  const totalMinutes = Math.round((exit - entry) / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+function resolvedRowReturn(row: ClosedHistoryRow, viewMode: ViewMode) {
+  const raw = viewMode.anchor === "canonical"
+    ? row.returnMatrix.canonical?.rawPct
+    : row.returnMatrix.execution?.rawPct;
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return null;
+  if (viewMode.normalization === "adr_normalized") {
+    return typeof row.returnMatrix.adrPct === "number" && row.returnMatrix.adrPct > 0
+      ? raw / row.returnMatrix.adrPct
+      : null;
+  }
+  return raw;
+}
+
+function simplePathDrawdown(values: number[]) {
+  let cumulative = 0;
+  let peak = 0;
+  let maxDrawdown = 0;
+  for (const value of values) {
+    cumulative += value;
+    peak = Math.max(peak, cumulative);
+    maxDrawdown = Math.max(maxDrawdown, peak - cumulative);
+  }
+  return maxDrawdown;
+}
+
+function DetailMetric({ label, value, tone }: { label: string; value: ReactNode; tone?: string }) {
+  return (
+    <div>
+      <span className="block uppercase tracking-[0.16em] text-[color:var(--muted)]">{label}</span>
+      <span className={`font-semibold ${tone ?? "text-[var(--foreground)]"}`}>{value}</span>
+    </div>
+  );
+}
+
+function InlineGridDetail({ node, viewMode }: { node: TradeListNode; viewMode: ViewMode }) {
+  const row = primaryRow(node);
+  const fills = node.children ?? [];
+  if (!row) return null;
+  const fillRows = fills
+    .map((fillNode) => primaryRow(fillNode))
+    .filter((fillRow): fillRow is ClosedHistoryRow => Boolean(fillRow));
+  const returns = fillRows
+    .map((fillRow) => resolvedRowReturn(fillRow, viewMode))
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  const pathDrawdown = returns.length > 0 ? simplePathDrawdown(returns) : null;
+  const violations = fillRows.filter((fillRow) => fillRow.capViolated).length;
+  const maxActiveFills = Math.max(0, ...fillRows.map((fillRow) => fillRow.capActiveFillsAtEntry ?? 0));
+  const capThreshold = row.capThresholdAtEntry
+    ?? fillRows.find((fillRow) => fillRow.capThresholdAtEntry !== null)?.capThresholdAtEntry
+    ?? "--";
+
+  return (
+    <div className="ml-7 mt-1 grid gap-3 rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/55 px-4 py-3 text-[11px] sm:grid-cols-2 lg:grid-cols-6">
+      <DetailMetric label="Window" value={`${formatDateTimeLabel(row.entryUtc)} -> ${formatDateTimeLabel(row.exitUtc)}`} />
+      <DetailMetric label="Duration" value={formatDuration(row.entryUtc, row.exitUtc)} />
+      <DetailMetric label="Entry / Exit" value={`${formatPrice(row.entryPrice)} -> ${formatPrice(row.exitPrice)}`} />
+      <DetailMetric label="Fill Path DD" value={pathDrawdown === null ? "--" : formatSignedPercent(-pathDrawdown, 2)} tone="text-rose-500" />
+      <DetailMetric label="Cap" value={`${maxActiveFills}/${capThreshold} max active`} />
+      <DetailMetric label="Violations" value={violations} tone={violations > 0 ? "text-rose-500" : "text-lime-500"} />
+    </div>
+  );
+}
+
 function InlineTradeDetail({ node }: { node: TradeListNode }) {
   const row = primaryRow(node);
   if (!row) return null;
   const tradeId = row.executionTradeId ?? row.canonicalTradeId ?? "--";
   return (
-    <div className="ml-7 mt-1 grid gap-2 rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/55 px-4 py-3 text-[11px] text-[color:var(--muted)] sm:grid-cols-2 lg:grid-cols-4">
-      <div>
-        <span className="block uppercase tracking-[0.16em]">Entry</span>
-        <span className="font-semibold text-[var(--foreground)]">{row.entryUtc ? formatDateLabel(row.entryUtc) : "--"}</span>
-      </div>
-      <div>
-        <span className="block uppercase tracking-[0.16em]">Exit</span>
-        <span className="font-semibold text-[var(--foreground)]">{row.exitUtc ? formatDateLabel(row.exitUtc) : "--"}</span>
-      </div>
-      <div>
-        <span className="block uppercase tracking-[0.16em]">Reason</span>
-        <span className="font-semibold text-[var(--foreground)]">{row.exitReason ?? "--"}</span>
-      </div>
-      <div className="min-w-0">
-        <span className="block uppercase tracking-[0.16em]">Trade ID</span>
-        <span className="block truncate font-mono text-[10px] text-[var(--foreground)]" title={tradeId}>
+    <div className="ml-7 mt-1 grid gap-3 rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/55 px-4 py-3 text-[11px] sm:grid-cols-2 lg:grid-cols-6">
+      <DetailMetric label="Entry" value={formatDateTimeLabel(row.entryUtc)} />
+      <DetailMetric label="Exit" value={formatDateTimeLabel(row.exitUtc)} />
+      <DetailMetric label="Duration" value={formatDuration(row.entryUtc, row.exitUtc)} />
+      <DetailMetric label="Entry Price" value={formatPrice(row.entryPrice)} />
+      <DetailMetric label="Exit Price" value={formatPrice(row.exitPrice)} />
+      <DetailMetric label="Exit Reason" value={row.exitReason ?? "--"} />
+      <DetailMetric label="Canonical Raw" value={row.returnMatrix.canonical ? formatSignedPercent(row.returnMatrix.canonical.rawPct, 4) : "--"} tone={pctTone(row.returnMatrix.canonical?.rawPct)} />
+      <DetailMetric label="Execution Raw" value={row.returnMatrix.execution ? formatSignedPercent(row.returnMatrix.execution.rawPct, 4) : "--"} tone={pctTone(row.returnMatrix.execution?.rawPct)} />
+      <DetailMetric label="ADR Basis" value={row.returnMatrix.adrPct === null ? "--" : `${row.returnMatrix.adrPct.toFixed(4)}%`} />
+      <DetailMetric label="Cap At Entry" value={`${row.capActiveFillsAtEntry ?? "--"} / ${row.capThresholdAtEntry ?? "--"}`} tone={row.capViolated ? "text-rose-500" : undefined} />
+      <DetailMetric label="Max DD" value="Not captured in v2 canon" />
+      <div className="min-w-0 lg:col-span-2">
+        <span className="block uppercase tracking-[0.16em] text-[color:var(--muted)]">Trade ID</span>
+        <span className="block truncate font-mono text-[10px] font-semibold text-[var(--foreground)]" title={tradeId}>
           {tradeId}
         </span>
       </div>
@@ -218,9 +334,11 @@ function InlineTradeDetail({ node }: { node: TradeListNode }) {
 function BasketNodeRow({
   node,
   depth = 0,
+  viewMode,
 }: {
   node: TradeListNode;
   depth?: number;
+  viewMode: ViewMode;
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasChildren = Boolean(node.children?.length);
@@ -229,6 +347,7 @@ function BasketNodeRow({
   const warnings = rowWarnings(node);
   const summary = childSummary(node);
   const isLeaf = node.level === "fill" || node.level === "trade";
+  const isGrid = node.level === "grid";
   const canExpand = hasChildren || isLeaf;
 
   return (
@@ -254,9 +373,7 @@ function BasketNodeRow({
             </span>
           ) : null}
           {node.assetClass ? (
-            <span className="rounded-full border border-[var(--panel-border)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
-              {node.assetClass}
-            </span>
+            <AssetClassBadge assetClass={node.assetClass} />
           ) : null}
           {summary ? (
             <span className="text-[10px] text-[color:var(--muted)]">
@@ -280,8 +397,9 @@ function BasketNodeRow({
 
       {expanded && hasChildren ? (
         <div className="mt-1 space-y-1">
+          {isGrid ? <InlineGridDetail node={node} viewMode={viewMode} /> : null}
           {node.children?.map((child) => (
-            <BasketNodeRow key={child.id} node={child} depth={depth + 1} />
+            <BasketNodeRow key={child.id} node={child} depth={depth + 1} viewMode={viewMode} />
           ))}
         </div>
       ) : null}
@@ -360,7 +478,7 @@ export default function BasketHierarchy({
             No basket rows matched this week, strategy, and scope.
           </div>
         ) : (
-          nodes.map((node) => <BasketNodeRow key={node.id} node={node} />)
+          nodes.map((node) => <BasketNodeRow key={node.id} node={node} viewMode={viewMode} />)
         )}
       </div>
     </section>
