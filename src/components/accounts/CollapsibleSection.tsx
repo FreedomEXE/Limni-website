@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
+import DisclosureChevron from "@/components/common/disclosure/DisclosureChevron";
+import { useDisclosureHeight } from "@/components/common/disclosure/useDisclosureHeight";
 
 type CollapsibleSectionProps = {
   title: string;
@@ -41,27 +43,7 @@ export default function CollapsibleSection({
   onToggle,
 }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [contentHeight, setContentHeight] = useState<number | "auto">("auto");
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  // Update height when content changes or open state changes
-  useEffect(() => {
-    if (!contentRef.current) return;
-
-    if (isOpen) {
-      const height = contentRef.current.scrollHeight;
-      setContentHeight(height);
-      // After transition completes, set to auto for dynamic content
-      const timer = setTimeout(() => setContentHeight("auto"), 300);
-      return () => clearTimeout(timer);
-    } else {
-      // Set explicit height before collapsing for smooth transition
-      setContentHeight(contentRef.current.scrollHeight);
-      requestAnimationFrame(() => {
-        setContentHeight(0);
-      });
-    }
-  }, [isOpen]);
+  const { contentRef, contentStyle } = useDisclosureHeight(isOpen);
 
   const handleToggle = () => {
     const newState = !isOpen;
@@ -112,23 +94,7 @@ export default function CollapsibleSection({
 
         {/* Chevron Icon */}
         <div className="ml-4 flex-shrink-0 text-[var(--muted)] transition-transform duration-300 ease-out">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className={`transform transition-transform duration-300 ease-out ${isOpen ? "rotate-180" : "rotate-0"}`}
-            aria-hidden="true"
-          >
-            <path
-              d="M5 7.5L10 12.5L15 7.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <DisclosureChevron open={isOpen} />
         </div>
       </button>
 
@@ -136,9 +102,7 @@ export default function CollapsibleSection({
       <div
         id={`section-content-${title.replace(/\s+/g, "-").toLowerCase()}`}
         ref={contentRef}
-        style={{
-          height: contentHeight === "auto" ? "auto" : `${contentHeight}px`,
-        }}
+        style={contentStyle}
         className="overflow-hidden transition-[height] duration-300 ease-out"
         aria-hidden={!isOpen}
       >
