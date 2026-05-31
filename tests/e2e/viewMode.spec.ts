@@ -23,33 +23,6 @@ async function waitForAudcad(page: Page) {
   await expect(page.locator("body")).toContainText("AUDCAD", { timeout: 120_000 });
 }
 
-async function openAgreementWeeklyHoldTradeFromBasket(page: Page) {
-  const audcad = page.locator('[data-testid="basket-symbol-row"][data-node-id$="|symbol|AUDCAD"]').first();
-  await expect(audcad).toBeVisible({ timeout: 120_000 });
-  await audcad.getByRole("button", { name: /Expand AUDCAD/i }).click();
-  await page.getByTestId("basket-trade-row").filter({ hasText: "AUDCAD" }).first().click();
-}
-
-async function openAgreementAdrGridFromBasket(page: Page) {
-  const audcad = page.locator('[data-testid="basket-symbol-row"][data-node-id$="|symbol|AUDCAD"]').first();
-  await expect(audcad).toBeVisible({ timeout: 120_000 });
-  await audcad.getByRole("button", { name: /Expand AUDCAD/i }).click();
-  await page.getByTestId("basket-grid-row").first().click();
-}
-
-async function openFirstTandemAudcadTradeFromBasket(page: Page) {
-  await expect(page.getByTestId("basket-portfolio-row").first()).toBeVisible({ timeout: 120_000 });
-  const audcad = page.locator('[data-testid="basket-symbol-row"][data-node-id$="|symbol|AUDCAD"]').first();
-  for (const portfolio of await page.getByTestId("basket-portfolio-row").all()) {
-    if (await audcad.count()) break;
-    const expand = portfolio.getByRole("button", { name: /Expand/i });
-    if (await expand.count()) await expand.click();
-  }
-  await expect(audcad).toBeVisible({ timeout: 120_000 });
-  await audcad.getByRole("button", { name: /Expand AUDCAD/i }).click();
-  await page.getByTestId("basket-trade-row").filter({ hasText: "AUDCAD" }).first().click();
-}
-
 async function bodyText(page: Page) {
   return page.locator("body").innerText();
 }
@@ -93,7 +66,7 @@ test.describe("ViewMode parity", () => {
     await page.evaluate(() => localStorage.removeItem("limni-viewmode"));
   });
 
-  test("Performance AUDCAD May 11 uses execution anchor and flips normalization", async ({ page }) => {
+  test("Performance Basket containment hides rejected v3 pair rows", async ({ page }) => {
     await page.goto("/performance?strategy=agree_3of4&f1=weekly_hold&f2=none&view=basket", {
       waitUntil: "domcontentloaded",
       timeout: 120_000,
@@ -103,13 +76,9 @@ test.describe("ViewMode parity", () => {
     await expect(page.getByRole("button", { name: /Market truth/i })).toHaveCount(0);
     await selectMay11(page);
     await page.getByText(/^BASKET$/i).first().click();
-    await waitForAudcad(page);
-
-    await page.getByRole("button", { name: /ADR/i }).first().click();
-    await expectNearText(page, "AUDCAD", "-0.94%");
-
-    await page.getByRole("button", { name: /Raw/i }).first().click();
-    await expectNearText(page, "AUDCAD", "-0.71%");
+    await expect(page.getByTestId("basket-containment-notice")).toContainText("Basket view is being rebuilt for v2.0.0");
+    await expect(page.getByTestId("basket-hierarchy")).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText("Loading basket history");
   });
 
   test("Performance raw mode resolves simulation, sidebar, rolling, and asset totals from one path", async ({ page }) => {
@@ -270,25 +239,15 @@ test.describe("ViewMode parity", () => {
     await expectNearText(page, "XAUUSD", "—");
   });
 
-  test("Trade drilldown opens from Performance Basket with execution ledger identity", async ({ page }) => {
-    await page.goto("/performance?strategy=agree_3of4&f1=weekly_hold&f2=none&view=basket", {
+  test("Performance Basket is contained while v2 rebuild is pending", async ({ page }) => {
+    await page.goto("/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&view=basket", {
       waitUntil: "domcontentloaded",
       timeout: 120_000,
     });
     await waitForViewModeControls(page);
-    await selectMay11(page);
-    await waitForAudcad(page);
-
-    await openAgreementWeeklyHoldTradeFromBasket(page);
-
-    const modal = page.getByRole("dialog");
-    const tradeRow = modal.getByTestId("trade-row").first();
-    await expect(modal).toContainText("Trade Drilldown", { timeout: 120_000 });
-    await expect(tradeRow.getByTestId("trade-id-badge")).toHaveAttribute("title", UUID_PATTERN, { timeout: 120_000 });
-    await expect(tradeRow.getByTestId("trade-direction")).toContainText("LONG", { timeout: 120_000 });
-    await expect(tradeRow.getByTestId("trade-raw-pct")).toContainText("-0.7082%", { timeout: 120_000 });
-    await expect(tradeRow.getByTestId("trade-adr-norm-pct")).toContainText("-0.9411%", { timeout: 120_000 });
-    await page.screenshot({ path: "reports/playwright/trade-drilldown-performance.png", fullPage: true });
+    await expect(page.getByTestId("basket-containment-notice")).toContainText("Basket view is being rebuilt for v2.0.0");
+    await expect(page.getByTestId("basket-hierarchy")).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText("Loading basket history");
   });
 
   test("Trade drilldown opens from Matrix with canonical anchor identity", async ({ page }) => {
@@ -312,42 +271,4 @@ test.describe("ViewMode parity", () => {
     await page.screenshot({ path: "reports/playwright/trade-drilldown-matrix.png", fullPage: true });
   });
 
-  test("Trade drilldown shows ADR Grid parent and fill rows", async ({ page }) => {
-    await page.goto("/performance?strategy=agree_3of4&f1=adr_grid&f2=pair_fill_cap&view=basket", {
-      waitUntil: "domcontentloaded",
-      timeout: 120_000,
-    });
-    await waitForViewModeControls(page);
-    await selectMay11(page);
-    await waitForAudcad(page);
-
-    await openAgreementAdrGridFromBasket(page);
-
-    const modal = page.getByRole("dialog");
-    const tradeRow = modal.getByTestId("trade-row").first();
-    const firstFillRow = modal.getByTestId("fills-table").getByTestId("fill-row").first();
-    await expect(tradeRow.getByTestId("trade-id-badge")).toHaveAttribute("title", UUID_PATTERN, { timeout: 120_000 });
-    await expect(tradeRow.getByTestId("trade-raw-pct")).toContainText("0.2023%", { timeout: 120_000 });
-    await expect(tradeRow.getByTestId("trade-adr-norm-pct")).toContainText("0.2688%", { timeout: 120_000 });
-    await expect(modal).toContainText("Fills", { timeout: 120_000 });
-    await expect(modal).toContainText("0 violations", { timeout: 120_000 });
-    await expect(firstFillRow.getByTestId("fill-seq")).toContainText("1", { timeout: 120_000 });
-    await expect(firstFillRow.getByTestId("fill-raw-pct")).toContainText("0.0301%", { timeout: 120_000 });
-    await expect(firstFillRow.getByTestId("fill-adr-norm-pct")).toContainText("0.0400%", { timeout: 120_000 });
-    await expect(firstFillRow.getByTestId("trade-id-badge")).toHaveAttribute("title", UUID_PATTERN, { timeout: 120_000 });
-  });
-
-  test("Trade drilldown opened from Tandem hierarchy narrows to the selected source group", async ({ page }) => {
-    await page.goto("/performance?strategy=tandem&f1=weekly_hold&f2=none&view=basket", {
-      waitUntil: "domcontentloaded",
-      timeout: 120_000,
-    });
-    await waitForViewModeControls(page);
-    await selectMay11(page);
-
-    await openFirstTandemAudcadTradeFromBasket(page);
-
-    await expect(page.getByRole("dialog")).toContainText(/Source (commercial|dealer|sentiment|strength)/i, { timeout: 120_000 });
-    await expect(page.getByTestId("trade-row")).toHaveCount(1);
-  });
 });

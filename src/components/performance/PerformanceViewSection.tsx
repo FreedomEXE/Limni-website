@@ -539,6 +539,23 @@ function formatWeekBasketLabel(weekOpenUtc: string) {
   })}`;
 }
 
+function BasketHierarchyContainmentNotice() {
+  return (
+    <section
+      data-testid="basket-containment-notice"
+      className="rounded-2xl border border-(--panel-border) bg-(--panel) px-5 py-4 shadow-sm"
+    >
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-(--foreground)">
+        Basket
+      </p>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-(--muted)">
+        Basket view is being rebuilt for v2.0.0. Pair-level data still available via
+        Performance Summary and Simulation tabs.
+      </p>
+    </section>
+  );
+}
+
 function EngineBasketView({
   gridProps,
   weeklyReturns,
@@ -568,14 +585,6 @@ function EngineBasketView({
     direction?: TradeDirection | null;
   } | null>(null);
 
-  // Flatten all trades from all models into a single list
-  const allTrades = gridProps.combined.models.flatMap((model) =>
-    model.pair_details.map((detail) => ({
-      ...detail,
-      slotLabel: gridProps.labels[model.model] ?? model.model,
-    })),
-  );
-
   const toggleExpand = (key: string) => {
     setExpandedPairs((prev) => {
       const next = new Set(prev);
@@ -589,6 +598,11 @@ function EngineBasketView({
   const strategyVariant = selection
     ? `${selection.strategy}-${selection.f1}-${selection.f2}`
     : "tandem-weekly_hold-none";
+
+  const renderBasketHierarchyV3 = false as boolean;
+  if (!renderBasketHierarchyV3) {
+    return <BasketHierarchyContainmentNotice />;
+  }
 
   const openDrilldown = (trade: { pair: string; direction: "LONG" | "SHORT" | "NEUTRAL" }) => {
     if (isAllTime || !weekOpenUtc || trade.direction === "NEUTRAL") return;
@@ -619,6 +633,15 @@ function EngineBasketView({
       />
     );
   }
+
+  // Flatten all trades from all models into a single list for the quarantined
+  // legacy Basket fallback path.
+  const allTrades = gridProps.combined.models.flatMap((model) =>
+    model.pair_details.map((detail) => ({
+      ...detail,
+      slotLabel: gridProps.labels[model.model] ?? model.model,
+    })),
+  );
 
   if (isAllTime && weeklyReturns && weeklyReturns.length > 0) {
     type BasketTradeRow = (typeof allTrades)[number];

@@ -46,6 +46,14 @@
 - **Replacement:** `src/components/common/basket/BasketHierarchyLevel.tsx`.
 - **Removal criteria:** Future cleanup pass; remove with legacy paginated browser once no tests or docs reference the old selectors.
 
+### 6. Basket Hierarchy v3 active UI
+
+- **File:** `src/components/performance/PerformanceViewSection.tsx`
+- **Quarantined:** 2026-05-30
+- **Reason:** UX and performance failures found in Freedom browser review: visible loading state on Basket open, a third expandable-row pattern in the app, and over-engineered sort controls. The underlying data layer (`/api/basket/closed-history`, `basketDataSource`, and drilldown modal extensions) is preserved.
+- **Replacement:** Rebuild Basket on the v2.0.0 canon foundation after the shared trade-list/disclosure primitive audit and Performance tab-switching perf audit complete.
+- **Removal criteria:** Full Basket rebuild on canon completes and Freedom verifies the rebuilt UI and speed in browser.
+
 ## Related Inventories
 
 - `docs/research/LEGACY_SCRIPT_AUDIT_2026-05-28.md` tracks quarantined legacy research scripts.
