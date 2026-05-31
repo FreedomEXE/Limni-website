@@ -166,6 +166,11 @@ export function buildBasketTradeListNodes({
     ? rows
     : rows.filter((row) => row.weekOpenUtc === selectedWeek);
   const hasGrid = levels.includes("grid");
+  const parentRowsByRef = new Map(
+    selectedRows
+      .filter((row) => row.rowKind === "grid")
+      .map((row) => [parentNaturalRef(row), row]),
+  );
 
   const buildLeaves = (leafRows: ClosedHistoryRow[], parentId: string) =>
     [...leafRows]
@@ -181,18 +186,23 @@ export function buildBasketTradeListNodes({
           count: row.rowKind === "fill" ? row.exitReason ?? "Fill" : "Trade",
           row,
           parentRow: row.rowKind === "fill" && row.parentNaturalRef
-            ? selectedRows.find((candidate) => candidate.rowKind === "grid" && parentNaturalRef(candidate) === row.parentNaturalRef)
+            ? parentRowsByRef.get(row.parentNaturalRef)
             : row,
         },
       ));
 
-  const buildGrids = (gridRows: ClosedHistoryRow[], parentId: string) =>
-    gridRows
+  const buildGrids = (gridRows: ClosedHistoryRow[], parentId: string) => {
+    const fillsByParentRef = groupBy(
+      gridRows.filter((row) => row.rowKind === "fill" && row.parentNaturalRef),
+      (row) => row.parentNaturalRef ?? "",
+    );
+
+    return gridRows
       .filter((row) => row.rowKind === "grid")
       .sort((left, right) => left.symbol.localeCompare(right.symbol))
       .map((grid, index) => {
         const ref = parentNaturalRef(grid);
-        const fills = gridRows.filter((row) => row.rowKind === "fill" && row.parentNaturalRef === ref);
+        const fills = fillsByParentRef.get(ref) ?? [];
         return node(
           `${parentId}|grid|${grid.canonicalTradeId ?? grid.executionTradeId ?? index}`,
           "grid",
@@ -208,6 +218,7 @@ export function buildBasketTradeListNodes({
           buildLeaves(fills, `${parentId}|grid|${grid.canonicalTradeId ?? grid.executionTradeId ?? index}`),
         );
       });
+  };
 
   const buildSymbols = (symbolRows: ClosedHistoryRow[], parentId: string) =>
     sortEntries(
