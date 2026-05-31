@@ -12,6 +12,7 @@
 -----------------------------------------------*/
 
 import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildClosedHistoryBundle } from "@/lib/basket/basketSummaries";
@@ -30,6 +31,27 @@ type Args = {
   version: string;
   generatedAt?: string;
 };
+
+function loadLocalEnv() {
+  for (const file of [".env", ".env.local"]) {
+    if (!existsSync(file)) continue;
+    for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const idx = trimmed.indexOf("=");
+      if (idx < 0) continue;
+      const key = trimmed.slice(0, idx);
+      let value = trimmed.slice(idx + 1);
+      if (
+        (value.startsWith("\"") && value.endsWith("\""))
+        || (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] ??= value;
+    }
+  }
+}
 
 function parseArgs(): Args {
   const args = process.argv.slice(2);
@@ -73,6 +95,7 @@ async function writeJson(filePath: string, value: unknown) {
 }
 
 async function main() {
+  loadLocalEnv();
   const root = process.cwd();
   const args = parseArgs();
   const { manifestPath, manifest } = await readManifest(root);
