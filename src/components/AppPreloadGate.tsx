@@ -110,7 +110,9 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
   const phaseLabel = canonPreload.status === "error"
     ? `App update failed: ${canonPreload.error ?? "unknown error"}`
     : canonPreload.status !== "ready"
-      ? `Updating to app version ${canonPreload.appVersion ?? "v2"}...`
+      ? canonPreload.phase === "loading-cache"
+        ? `Restoring cached app version ${canonPreload.appVersion ?? "v2"}...`
+        : `Updating to app version ${canonPreload.appVersion ?? "v2"}...`
       : preload.status === "partial"
         ? "Rebuilding missing strategy data..."
         : PHASE_LABELS[displayPhase];
