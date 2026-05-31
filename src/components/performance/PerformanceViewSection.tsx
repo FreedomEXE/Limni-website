@@ -599,11 +599,6 @@ function EngineBasketView({
     ? `${selection.strategy}-${selection.f1}-${selection.f2}`
     : "tandem-weekly_hold-none";
 
-  const renderBasketHierarchyV3 = false as boolean;
-  if (!renderBasketHierarchyV3) {
-    return <BasketHierarchyContainmentNotice />;
-  }
-
   const openDrilldown = (trade: { pair: string; direction: "LONG" | "SHORT" | "NEUTRAL" }) => {
     if (isAllTime || !weekOpenUtc || trade.direction === "NEUTRAL") return;
     setDrilldown({

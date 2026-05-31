@@ -20,8 +20,14 @@
 import type { PerformanceAssetSelection } from "@/lib/performance/performanceAssetScope";
 import { formatPerformanceAssetSelection } from "@/lib/performance/performanceAssetScope";
 import type { ClosedHistoryBundle, ClosedHistoryResponse, CurrentWeekSlice } from "@/lib/basket/basketSummaryTypes";
+import { getCanonClosedHistorySnapshot } from "@/lib/canon/canonStore";
 
 export interface BasketDataSource {
+  getClosedHistorySnapshot?: (opts: {
+    strategyVariant: string;
+    scope: PerformanceAssetSelection;
+  }) => ClosedHistoryBundle | null;
+
   loadClosedHistory(opts: {
     strategyVariant: string;
     scope: PerformanceAssetSelection;
@@ -74,5 +80,28 @@ export const apiBasketDataSource: BasketDataSource = {
   },
 };
 
-// Future v2.0.0: export const canonBasketDataSource: BasketDataSource = { ... };
-export const basketDataSource = apiBasketDataSource;
+export const canonBasketDataSource: BasketDataSource = {
+  getClosedHistorySnapshot(opts) {
+    return getCanonClosedHistorySnapshot(opts);
+  },
+
+  async loadClosedHistory(opts) {
+    const bundle = this.getClosedHistorySnapshot?.(opts);
+    if (!bundle) {
+      throw new Error("Canon bundle is not loaded in memory. The app preload gate should load canon before Basket renders.");
+    }
+    return bundle;
+  },
+
+  async loadCurrentWeekSlice(opts) {
+    const bundle = this.getClosedHistorySnapshot?.(opts);
+    return {
+      rows: [],
+      strategyVariant: opts.strategyVariant,
+      scope: opts.scope,
+      generatedAt: bundle?.generatedAt ?? new Date().toISOString(),
+    };
+  },
+};
+
+export const basketDataSource = canonBasketDataSource;

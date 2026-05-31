@@ -1,0 +1,296 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: buildBasketTradeListNodes.ts
+ *
+ * Description:
+ * Converts canon basket rows into shared TradeList nodes.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
+import type { ClosedHistoryRow } from "@/lib/basket/basketSummaryTypes";
+import { hierarchyWithoutWeek, resolveBasketHierarchy } from "@/lib/basket/basketHierarchy";
+import type { StrategyConfig } from "@/lib/performance/strategyConfig";
+import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
+import { resolveDisplayReturn, type ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
+import type { TradeListNode, SortState } from "@/components/common/trade-list/types";
+
+type BuildBasketTradeListNodesOptions = {
+  rows: ClosedHistoryRow[];
+  strategy: StrategyConfig;
+  strategyVariant: string;
+  selectedWeek: string;
+  viewMode: ViewMode;
+  sourceLabels?: Record<string, string>;
+  sort?: SortState;
+};
+
+function groupBy<T>(items: T[], keyFn: (item: T) => string) {
+  const map = new Map<string, T[]>();
+  for (const item of items) {
+    const key = keyFn(item);
+    const bucket = map.get(key) ?? [];
+    bucket.push(item);
+    map.set(key, bucket);
+  }
+  return map;
+}
+
+function uniqueCount<T>(values: T[]) {
+  return new Set(values).size;
+}
+
+function aggregateRows(rows: ClosedHistoryRow[]) {
+  return rows.filter((row) => row.rowKind !== "fill");
+}
+
+function returnValue(rows: ClosedHistoryRow[], viewMode: ViewMode) {
+  const values = rows
+    .map((row): ReturnMatrix => ({
+      canonical: row.returnMatrix.canonical,
+      execution: row.returnMatrix.execution,
+      adrPct: row.returnMatrix.adrPct ?? 0,
+    }))
+    .map((matrix) => resolveDisplayReturn(matrix, viewMode))
+    .filter((value): value is number => value !== null);
+  return values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0);
+}
+
+function formatWeekLabel(weekOpenUtc: string) {
+  const parsed = new Date(weekOpenUtc);
+  if (Number.isNaN(parsed.getTime())) return weekOpenUtc;
+  return `Week of ${parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  })}`;
+}
+
+function sourceDisplay(sourceModel: string | null, sourceLabels: Record<string, string>) {
+  if (!sourceModel) return "Unknown";
+  return sourceLabels[sourceModel] ?? sourceModel.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function parentNaturalRef(row: ClosedHistoryRow) {
+  return [
+    "parent",
+    row.origin,
+    row.strategyFamily,
+    row.strategyVariant,
+    row.symbol,
+    row.weekOpenUtc,
+    row.sourceModel ?? "",
+    row.tier ?? -1,
+    row.direction ?? "",
+  ].join("|");
+}
+
+function countPreview(rows: ClosedHistoryRow[], hasGrid: boolean) {
+  if (hasGrid) {
+    const grids = rows.filter((row) => row.rowKind === "grid").length;
+    const fills = rows.filter((row) => row.rowKind === "fill").length;
+    return `${grids}G · ${fills}F`;
+  }
+  const trades = rows.filter((row) => row.rowKind === "trade").length;
+  return `${trades}T`;
+}
+
+function weekPreview(rows: ClosedHistoryRow[], levels: string[]) {
+  const hasPortfolio = levels.includes("portfolio");
+  const hasTier = levels.includes("tier");
+  const hasGrid = levels.includes("grid");
+  const pieces: string[] = [];
+  if (hasPortfolio) pieces.push(`${uniqueCount(rows.map((row) => row.sourceModel ?? "unknown"))}P`);
+  if (hasTier) pieces.push(`${uniqueCount(rows.map((row) => row.tier ?? -1))}Tiers`);
+  pieces.push(countPreview(rows, hasGrid));
+  return pieces.join(" · ");
+}
+
+function sortEntries(
+  entries: Array<[string, ClosedHistoryRow[]]>,
+  sort: SortState | undefined,
+  viewMode: ViewMode,
+  defaultCompare: (left: [string, ClosedHistoryRow[]], right: [string, ClosedHistoryRow[]]) => number,
+) {
+  if (sort?.key === "returnPct") {
+    return entries.sort((left, right) => {
+      const leftValue = returnValue(aggregateRows(left[1]), viewMode) ?? 0;
+      const rightValue = returnValue(aggregateRows(right[1]), viewMode) ?? 0;
+      return sort.direction === "asc" ? leftValue - rightValue : rightValue - leftValue;
+    });
+  }
+  return entries.sort(defaultCompare);
+}
+
+function node(
+  id: string,
+  level: string,
+  label: string,
+  rows: ClosedHistoryRow[],
+  viewMode: ViewMode,
+  values: Record<string, unknown>,
+  children?: TradeListNode[],
+): TradeListNode {
+  return {
+    id,
+    level,
+    label,
+    values: {
+      ...values,
+      returnPct: returnValue(level === "fill" || level === "trade" ? rows : aggregateRows(rows), viewMode),
+      rows,
+    },
+    assetClass: level === "symbol" ? rows[0]?.assetClass : undefined,
+    direction: level === "fill" || level === "trade" ? rows[0]?.direction ?? null : undefined,
+    children,
+    expandable: Boolean(children?.length),
+  };
+}
+
+export function buildBasketTradeListNodes({
+  rows,
+  strategy,
+  strategyVariant,
+  selectedWeek,
+  viewMode,
+  sourceLabels = {},
+  sort,
+}: BuildBasketTradeListNodesOptions): TradeListNode[] {
+  const levels = resolveBasketHierarchy(strategy, strategyVariant);
+  const visibleLevels = selectedWeek === "all" ? levels : hierarchyWithoutWeek(levels);
+  const selectedRows = selectedWeek === "all"
+    ? rows
+    : rows.filter((row) => row.weekOpenUtc === selectedWeek);
+  const hasGrid = levels.includes("grid");
+
+  const buildLeaves = (leafRows: ClosedHistoryRow[], parentId: string) =>
+    [...leafRows]
+      .sort((left, right) => (left.fillSeq ?? 0) - (right.fillSeq ?? 0))
+      .map((row) => node(
+        `${parentId}|${row.rowKind}|${row.canonicalTradeId ?? row.executionTradeId ?? row.fillSeq ?? "row"}`,
+        row.rowKind,
+        row.rowKind === "fill" ? `Fill ${row.fillSeq ?? "--"}` : row.symbol,
+        [row],
+        viewMode,
+        {
+          date: row.entryUtc,
+          count: row.rowKind === "fill" ? row.exitReason ?? "Fill" : "Trade",
+          row,
+          parentRow: row.rowKind === "fill" && row.parentNaturalRef
+            ? selectedRows.find((candidate) => candidate.rowKind === "grid" && parentNaturalRef(candidate) === row.parentNaturalRef)
+            : row,
+        },
+      ));
+
+  const buildGrids = (gridRows: ClosedHistoryRow[], parentId: string) =>
+    gridRows
+      .filter((row) => row.rowKind === "grid")
+      .sort((left, right) => left.symbol.localeCompare(right.symbol))
+      .map((grid, index) => {
+        const ref = parentNaturalRef(grid);
+        const fills = gridRows.filter((row) => row.rowKind === "fill" && row.parentNaturalRef === ref);
+        return node(
+          `${parentId}|grid|${grid.canonicalTradeId ?? grid.executionTradeId ?? index}`,
+          "grid",
+          "Grid",
+          [grid],
+          viewMode,
+          {
+            date: grid.entryUtc,
+            count: `${fills.length}F`,
+            row: grid,
+            parentRow: grid,
+          },
+          buildLeaves(fills, `${parentId}|grid|${grid.canonicalTradeId ?? grid.executionTradeId ?? index}`),
+        );
+      });
+
+  const buildSymbols = (symbolRows: ClosedHistoryRow[], parentId: string) =>
+    sortEntries(
+      [...groupBy(symbolRows, (row) => row.symbol).entries()],
+      sort,
+      viewMode,
+      ([left], [right]) => left.localeCompare(right),
+    ).map(([symbol, rowsForSymbol]) => node(
+      `${parentId}|symbol|${symbol}`,
+      "symbol",
+      symbol,
+      rowsForSymbol,
+      viewMode,
+      {
+        date: rowsForSymbol[0]?.weekOpenUtc ?? null,
+        count: countPreview(rowsForSymbol, hasGrid),
+      },
+      hasGrid
+        ? buildGrids(rowsForSymbol, `${parentId}|symbol|${symbol}`)
+        : buildLeaves(rowsForSymbol.filter((row) => row.rowKind === "trade"), `${parentId}|symbol|${symbol}`),
+    ));
+
+  const buildTiers = (tierRows: ClosedHistoryRow[], parentId: string) =>
+    [...groupBy(tierRows, (row) => String(row.tier ?? 0)).entries()]
+      .sort(([left], [right]) => Number(left) - Number(right))
+      .map(([tier, rowsForTier]) => node(
+        `${parentId}|tier|${tier}`,
+        "tier",
+        `Tier ${tier}`,
+        rowsForTier,
+        viewMode,
+        {
+          date: rowsForTier[0]?.weekOpenUtc ?? null,
+          count: countPreview(rowsForTier, hasGrid),
+        },
+        buildSymbols(rowsForTier, `${parentId}|tier|${tier}`),
+      ));
+
+  const buildPortfolios = (portfolioRows: ClosedHistoryRow[], parentId: string) =>
+    sortEntries(
+      [...groupBy(portfolioRows, (row) => row.sourceModel ?? "unknown").entries()],
+      sort,
+      viewMode,
+      ([left], [right]) => sourceDisplay(left, sourceLabels).localeCompare(sourceDisplay(right, sourceLabels)),
+    ).map(([source, rowsForSource]) => node(
+      `${parentId}|portfolio|${source}`,
+      "portfolio",
+      sourceDisplay(source, sourceLabels),
+      rowsForSource,
+      viewMode,
+      {
+        date: rowsForSource[0]?.weekOpenUtc ?? null,
+        count: countPreview(rowsForSource, hasGrid),
+      },
+      buildSymbols(rowsForSource, `${parentId}|portfolio|${source}`),
+    ));
+
+  const buildNext = (nextRows: ClosedHistoryRow[], parentId: string) => {
+    if (visibleLevels.includes("portfolio")) return buildPortfolios(nextRows, parentId);
+    if (visibleLevels.includes("tier")) return buildTiers(nextRows, parentId);
+    return buildSymbols(nextRows, parentId);
+  };
+
+  if (selectedWeek !== "all") return buildNext(selectedRows, `selected-week|${selectedWeek}`);
+
+  const weekEntries = [...groupBy(selectedRows, (row) => row.weekOpenUtc).entries()];
+  const sortedWeeks = sort?.key === "returnPct"
+    ? sortEntries(weekEntries, sort, viewMode, ([left], [right]) => right.localeCompare(left))
+    : weekEntries.sort(([left], [right]) => {
+      const direction = sort?.key === "date" ? sort.direction : "desc";
+      return direction === "asc" ? left.localeCompare(right) : right.localeCompare(left);
+    });
+
+  return sortedWeeks.map(([week, weekRows]) => node(
+    `week|${week}`,
+    "week",
+    formatWeekLabel(week),
+    weekRows,
+    viewMode,
+    {
+      date: week,
+      count: weekPreview(weekRows, levels),
+    },
+    buildNext(weekRows, `week|${week}`),
+  ));
+}
