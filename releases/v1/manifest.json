@@ -1,0 +1,21 @@
+{
+  "appVersion": "v1",
+  "semanticVersion": "1.0.0",
+  "releasedAt": "2026-05-22",
+  "anchorCommit": "a424b04",
+  "baselineDocumentedAt": "2026-05-30",
+  "baselineNote": "v1 shipped at a424b04. This manifest documents the pre-v2 state including post-a424b04 migration work.",
+  "components": {
+    "engineVersion": "strategy-artifact-v28",
+    "assemblyVersion": "assembly-v3",
+    "selectorEngineVersion": "selector-engine-v6",
+    "anchorVersion": "execution_monday_utc_v1",
+    "canonicalAnchorVersion": "canonical_weekly_v2",
+    "tradeLedgerVersion": "trade-identity-v2-direction-key",
+    "preloadCacheVersion": "global-preload-v1:canonical-weekly-v3-full-coverage:execution-weekly-v1:strategy-artifact-v28:dashboard-cache-v2",
+    "canonicalDerivationVersion": "v2_intraday_weekly",
+    "executionDerivationVersion": "v1_execution_monday_utc"
+  },
+  "changes": [],
+  "previousVersion": null
+}
