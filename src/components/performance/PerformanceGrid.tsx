@@ -15,7 +15,6 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import type { ModelPerformance, PerformanceModel } from "@/lib/performanceLab";
-import PerformanceModal from "@/components/performance/PerformanceModal";
 import { resolveDisplayReturn, type ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
 import { useViewMode } from "@/lib/viewMode/viewModeStore";
 import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
@@ -406,7 +405,6 @@ function PerformanceCard({
   calibrationSize,
   calibrationLabel,
   isCotBased,
-  onOpenDetails,
   style,
 }: {
   label: string;
@@ -415,7 +413,6 @@ function PerformanceCard({
   calibrationSize?: number;
   calibrationLabel?: string;
   isCotBased: boolean;
-  onOpenDetails: () => void;
   style?: CSSProperties;
 }) {
   const tier = getPerformanceTier(performance.percent, performance.stats.win_rate);
@@ -457,15 +454,12 @@ function PerformanceCard({
           reason: ["Weekly aggregate return"],
         }));
   return (
-    <button
-      type="button"
-      onClick={onOpenDetails}
-      aria-label={`Open ${label} details`}
+    <div
       style={style}
       data-testid="performance-summary-card"
       data-performance-label={label}
       data-cot-surface={isCotBased ? "true" : undefined}
-      className={`relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in hover:scale-[1.01] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${tier.card}`}
+      className={`relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in ${tier.card}`}
     >
       <div className="absolute right-4 top-3 text-4xl opacity-10">{tier.emoji}</div>
       <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
@@ -617,10 +611,7 @@ function PerformanceCard({
           {calibrationLabel ? `${calibrationLabel}: ` : ""} {formatMoney(calibrationPnl)}
         </div>
       ) : null}
-      <div className="mt-3 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
-        View details
-      </div>
-    </button>
+    </div>
   );
 }
 
@@ -651,13 +642,6 @@ export default function PerformanceGrid({
   const [selectedSectionId, setSelectedSectionId] = useState(
     sections[0]?.id ?? "combined",
   );
-  const [modalAccountSizeOverride, setModalAccountSizeOverride] = useState<number | null>(null);
-  const modalAccountSize = modalAccountSizeOverride ?? calibration?.accountSize ?? 100000;
-  const [selectedModel, setSelectedModel] = useState<{
-    sectionLabel: string;
-    modelLabel: string;
-    performance: ModelPerformance;
-  } | null>(null);
 
   const resolvedSectionId = sections.find((section) => section.id === selectedSectionId)
     ? selectedSectionId
@@ -783,13 +767,6 @@ export default function PerformanceGrid({
                       isCotBased={result.model !== "sentiment"}
                       calibrationSize={calibration?.accountSize}
                       calibrationLabel={calibration ? "MT5 sized" : undefined}
-                      onOpenDetails={() =>
-                        setSelectedModel({
-                          sectionLabel: section.label,
-                          modelLabel: labels[result.model],
-                          performance: result,
-                        })
-                      }
                       style={{ animationDelay: `${index * 50}ms` }}
                     />
                   ))}
@@ -840,18 +817,6 @@ export default function PerformanceGrid({
             ))}
           </div>
         </section>
-      ) : null}
-      {selectedModel ? (
-        <PerformanceModal
-          sectionLabel={selectedModel.sectionLabel}
-          modelLabel={selectedModel.modelLabel}
-          performance={selectedModel.performance}
-          onClose={() => setSelectedModel(null)}
-          accountSize={modalAccountSize}
-          setAccountSize={setModalAccountSizeOverride}
-          initialView={view}
-          calibration={calibration}
-        />
       ) : null}
     </>
   );

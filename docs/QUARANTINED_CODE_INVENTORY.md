@@ -51,8 +51,24 @@
 - **File:** `src/components/performance/PerformanceViewSection.tsx`
 - **Quarantined:** 2026-05-30
 - **Reason:** UX and performance failures found in Freedom browser review: visible loading state on Basket open, a third expandable-row pattern in the app, and over-engineered sort controls. The underlying data layer (`/api/basket/closed-history`, `basketDataSource`, and drilldown modal extensions) is preserved.
-- **Replacement:** Rebuild Basket on the v2.0.0 canon foundation after the shared trade-list/disclosure primitive audit and Performance tab-switching perf audit complete.
+- **Replacement:** v2 Basket renders from materialized canon through `src/components/common/trade-list/TradeList.tsx`.
 - **Removal criteria:** Full Basket rebuild on canon completes and Freedom verifies the rebuilt UI and speed in browser.
+
+### 7. Matrix active surface
+
+- **Files:** `src/app/matrix/page.tsx`, `src/components/matrix/*`, `src/components/flagship/*`
+- **Quarantined:** 2026-05-30
+- **Reason:** Matrix is not part of the v2 active flow. Historical performance inspection now routes through versioned canon and Performance/Basket. Matrix code remains available for audit and a future cleanup decision.
+- **Replacement:** `/matrix` renders `MatrixQuarantineNotice`; top-level navigation no longer links to Matrix.
+- **Removal criteria:** Future cleanup pass decides whether Matrix is retired, rebuilt, or migrated to a canon-backed surface.
+
+### 8. Performance summary-card modal click handlers
+
+- **File:** `src/components/performance/PerformanceGrid.tsx`
+- **Quarantined:** 2026-05-30
+- **Reason:** Summary cards should be static metric displays in v2. Detailed trade inspection is handled by Basket and the Trade Drilldown modal, not card-level modals.
+- **Replacement:** Basket leaf clicks open `TradeDrilldownModal`.
+- **Removal criteria:** Future UX review explicitly reintroduces a modal path with a distinct purpose from Basket drilldown.
 
 ## Related Inventories
 

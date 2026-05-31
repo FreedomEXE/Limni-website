@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Libre_Baskerville, Source_Sans_3 } from "next/font/googl
 import Script from "next/script";
 import { Suspense } from "react";
 import AppPreloadGate from "@/components/AppPreloadGate";
+import AppVersionBadge from "@/components/AppVersionBadge";
 import LimniLoading from "@/components/LimniLoading";
 import "./globals.css";
 
@@ -75,6 +76,7 @@ export default function RootLayout({
         <Suspense fallback={<LimniLoading label="Checking for updates..." />}>
           <AppPreloadGate>{children}</AppPreloadGate>
         </Suspense>
+        <AppVersionBadge />
       </body>
     </html>
   );

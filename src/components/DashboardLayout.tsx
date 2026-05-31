@@ -31,7 +31,6 @@ type SubNavItem = {
 const TOP_LEVEL: NavItem[] = [
   { key: "data", href: "/dashboard?bias=dealer", label: "Data", letter: "L" },
   { key: "performance", href: "/performance", label: "Performance", letter: "I" },
-  { key: "flagship", href: "/matrix", label: "Matrix", letter: "M" },
   { key: "accounts", href: "/accounts", label: "Accounts", letter: "A" },
   { key: "automation", href: "/automation", label: "Automation", letter: "U" },
   { key: "news", href: "/news", label: "News", letter: "N" },
@@ -55,7 +54,6 @@ function resolveSection(pathname: string) {
   if (pathname.startsWith("/performance")) return "performance";
   if (pathname.startsWith("/automation")) return "automation";
   if (pathname.startsWith("/accounts")) return "accounts";
-  if (pathname.startsWith("/matrix") || pathname.startsWith("/flagship")) return "flagship";
   if (pathname.startsWith("/status")) return "status";
   if (pathname.startsWith("/news")) return "news";
   return null;
@@ -311,10 +309,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
 
     if (activeSection === "performance") {
-      return <StrategySidebar />;
-    }
-
-    if (activeSection === "flagship") {
       return <StrategySidebar />;
     }
 
