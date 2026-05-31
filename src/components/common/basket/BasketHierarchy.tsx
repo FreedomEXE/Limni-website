@@ -120,7 +120,7 @@ export default function BasketHierarchy({
   }
   const levels = resolveBasketHierarchy(strategy, strategyVariant);
   const bundle = basketDataSource.getClosedHistorySnapshot?.({ strategyVariant, scope }) ?? null;
-  const sourceLabels = sourceLabelMap(strategyId);
+  const sourceLabels = useMemo(() => sourceLabelMap(strategyId), [strategyId]);
 
   const nodes = useMemo(() => {
     if (!bundle) return [];

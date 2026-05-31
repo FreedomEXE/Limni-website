@@ -92,6 +92,7 @@ export default function TradeListRow({
   const childRegionId = useId();
   const isExpandable = node.expandable ?? Boolean(node.children?.length);
   const hasChildren = Boolean(node.children?.length);
+  const shouldRenderChildren = hasChildren && isOpen;
   const { contentRef, contentStyle } = useDisclosureHeight(isOpen);
   const rowPadding = density === "comfortable" ? "px-4 py-3" : "px-3 py-2";
   const childIndentClass = depth > 0 ? "relative border-l border-(--accent)/20" : "relative";
@@ -162,19 +163,21 @@ export default function TradeListRow({
           className="overflow-hidden transition-[height] duration-300 ease-out"
           aria-hidden={!isOpen}
         >
-          <div>
-            {node.children?.map((child) => (
-              <TradeListRow
-                key={child.id}
-                node={child}
-                columns={columns}
-                gridTemplateColumns={gridTemplateColumns}
-                depth={depth + 1}
-                density={density}
-                onNodeClick={onNodeClick}
-              />
-            ))}
-          </div>
+          {shouldRenderChildren ? (
+            <div>
+              {node.children?.map((child) => (
+                <TradeListRow
+                  key={child.id}
+                  node={child}
+                  columns={columns}
+                  gridTemplateColumns={gridTemplateColumns}
+                  depth={depth + 1}
+                  density={density}
+                  onNodeClick={onNodeClick}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
