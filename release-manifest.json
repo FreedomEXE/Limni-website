@@ -19,10 +19,83 @@
     "executionDerivationVersion": "v1_execution_monday_utc"
   },
   "canon": {
-    "generatedAt": "pending",
-    "sourceLedgerRowCount": 0,
-    "sourceHash": "sha256:pending",
-    "variants": []
+    "generatedAt": "2026-05-30T00:00:00.000Z",
+    "sourceLedgerRowCount": 118204,
+    "sourceHash": "sha256:23b1028494c6155f04ad94b896a0ad8b3e7766efe238112b1e61d21f2cf1bd30",
+    "variants": [
+      {
+        "strategyVariant": "tandem-weekly_hold-none",
+        "file": "tandem__weekly_hold__none.json",
+        "rowCount": 2568,
+        "sha256": "sha256:b7e2957484d3f9c8ddfc11a190303c50e4ca03c79a301673db0a5fbd47a448da"
+      },
+      {
+        "strategyVariant": "tandem-adr_grid-none",
+        "file": "tandem__adr_grid__none.json",
+        "rowCount": 40273,
+        "sha256": "sha256:aed23e49897405d5d60a9c3a8fd8ea4afa0e4bafa18b558854d565176f43c174"
+      },
+      {
+        "strategyVariant": "tandem-adr_grid-pair_fill_cap",
+        "file": "tandem__adr_grid__pair_fill_cap.json",
+        "rowCount": 28680,
+        "sha256": "sha256:2156b2a853dc9647ce231c8a015bf5014af7b8b77a8fa1fda3026aa28ff94e28"
+      },
+      {
+        "strategyVariant": "tiered_4w-weekly_hold-none",
+        "file": "tiered_4w__weekly_hold__none.json",
+        "rowCount": 330,
+        "sha256": "sha256:6a80f9f6ce04eb67f60c56606d5940c01cdfe3faa78ebfbe7ce37b5fadc1de42"
+      },
+      {
+        "strategyVariant": "tiered_4w-adr_grid-none",
+        "file": "tiered_4w__adr_grid__none.json",
+        "rowCount": 5158,
+        "sha256": "sha256:50f689b8195704d60410a5a1eff50e2cc9ef6e00b5f47f109e85115c87ffe7eb"
+      },
+      {
+        "strategyVariant": "tiered_4w-adr_grid-pair_fill_cap",
+        "file": "tiered_4w__adr_grid__pair_fill_cap.json",
+        "rowCount": 3829,
+        "sha256": "sha256:23f02b0199046371b58ccce0e32e627d7a11ec719011eaa7799a40e26d00e8e5"
+      },
+      {
+        "strategyVariant": "agree_3of4-weekly_hold-none",
+        "file": "agree_3of4__weekly_hold__none.json",
+        "rowCount": 489,
+        "sha256": "sha256:004909b7bace00affb456b1730ac149e64b5369a4eaf3645f63c2b0b19f5785a"
+      },
+      {
+        "strategyVariant": "agree_3of4-adr_grid-none",
+        "file": "agree_3of4__adr_grid__none.json",
+        "rowCount": 7848,
+        "sha256": "sha256:0d8141cf3b701976e391a64c90510a9d70106c31f860a394d5c01e9918c36d83"
+      },
+      {
+        "strategyVariant": "agree_3of4-adr_grid-pair_fill_cap",
+        "file": "agree_3of4__adr_grid__pair_fill_cap.json",
+        "rowCount": 5684,
+        "sha256": "sha256:cadfc8b43de5bb75e2065176b8696ac18c7d4edcea7ed4f4d0cb342c942756af"
+      },
+      {
+        "strategyVariant": "selector-weekly_hold-none",
+        "file": "selector__weekly_hold__none.json",
+        "rowCount": 831,
+        "sha256": "sha256:d6063ce57580c89b88c62b8d324039ac7c7039e0c315fbea09375fcfd6d1f7a2"
+      },
+      {
+        "strategyVariant": "selector-adr_grid-none",
+        "file": "selector__adr_grid__none.json",
+        "rowCount": 13205,
+        "sha256": "sha256:ec7a01d5a372348a53f276b5256e095b7c6abb39cb8cf9d1ef50b96780ab7e2d"
+      },
+      {
+        "strategyVariant": "selector-adr_grid-pair_fill_cap",
+        "file": "selector__adr_grid__pair_fill_cap.json",
+        "rowCount": 9309,
+        "sha256": "sha256:ec0baca876bc5d001cd2c42f26bbb710ac9b8ffea2495c3433af34ccee836683"
+      }
+    ]
   },
   "changes": [
     "Version-aware app shell and release manifest.",
