@@ -1,19 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import CotModeBanner from "@/components/CotModeBanner";
 import StrategySidebar from "@/components/shared/StrategySidebar";
-import { resolveAccountView, type AccountPageView } from "@/lib/accounts/navigation";
-import {
-  DATA_DASHBOARD_BIAS_COMMIT_EVENT,
-  resolveDashboardBias,
-  type DashboardBias,
-} from "@/lib/dashboard/dashboardSelection";
 
 type NavItem = {
   key: string;
@@ -22,18 +15,15 @@ type NavItem = {
   letter: string;
 };
 
-type SubNavItem = {
-  href: string;
-  label: string;
-  matchPrefixes?: string[];
-};
-
 const TOP_LEVEL: NavItem[] = [
-  { key: "data", href: "/dashboard?bias=dealer", label: "Data", letter: "L" },
-  { key: "performance", href: "/performance", label: "Performance", letter: "I" },
-  { key: "accounts", href: "/accounts", label: "Accounts", letter: "A" },
-  { key: "automation", href: "/automation", label: "Automation", letter: "U" },
-  { key: "news", href: "/news", label: "News", letter: "N" },
+  { key: "performance", href: "/performance", label: "Performance", letter: "L" },
+  { key: "data", href: "/dashboard?bias=dealer", label: "Data", letter: "I" },
+  { key: "accounts", href: "/accounts", label: "Accounts", letter: "M" },
+  { key: "automation", href: "/automation", label: "Automation", letter: "N" },
+  { key: "research", href: "/research", label: "Research Lab", letter: "I" },
+  { key: "documents", href: "/documents", label: "Documents", letter: "L" },
+  { key: "agents", href: "/agents", label: "Agents", letter: "A" },
+  { key: "news", href: "/news", label: "News", letter: "B" },
   { key: "status", href: "/status", label: "Status", letter: "S" },
 ];
 
@@ -42,7 +32,9 @@ const SECTION_LABELS: Record<string, string> = {
   performance: "Performance",
   automation: "Automation",
   accounts: "Accounts",
-  flagship: "Matrix",
+  research: "Research Lab",
+  documents: "Documents",
+  agents: "Agents",
   news: "News",
   status: "Status",
 };
@@ -52,6 +44,9 @@ function resolveSection(pathname: string) {
     return "data";
   }
   if (pathname.startsWith("/performance")) return "performance";
+  if (pathname.startsWith("/research")) return "research";
+  if (pathname.startsWith("/documents")) return "documents";
+  if (pathname.startsWith("/agents")) return "agents";
   if (pathname.startsWith("/automation")) return "automation";
   if (pathname.startsWith("/accounts")) return "accounts";
   if (pathname.startsWith("/status")) return "status";
@@ -59,125 +54,19 @@ function resolveSection(pathname: string) {
   return null;
 }
 
-function parseHref(href: string) {
-  const [path, query] = href.split("?");
-  const params = new URLSearchParams(query ?? "");
-  return { path, params };
-}
-
-function isActiveHref(
-  href: string,
-  pathname: string,
-  viewParam: string | null,
-  defaultView?: string | null,
-  currentSearchParams?: URLSearchParams | null,
-) {
-  const { path, params } = parseHref(href);
-  if (path !== pathname) {
-    return false;
-  }
-  const expectedView = params.get("view");
-  if (expectedView) {
-    const resolvedView = viewParam ?? defaultView ?? null;
-    if (resolvedView !== expectedView) return false;
-  }
-  // Check any other query params in the href (e.g. bias=dealer)
-  for (const [key, value] of params.entries()) {
-    if (key === "view") continue; // already handled above
-    if (currentSearchParams && currentSearchParams.get(key) !== value) return false;
-  }
-  return true;
-}
-
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const activeSection = resolveSection(pathname);
-  const viewParamRaw = searchParams.get("view");
-  const accountViewFromUrl = resolveAccountView(viewParamRaw);
-  const viewParam = activeSection === "accounts" ? accountViewFromUrl : viewParamRaw;
-  const dashboardBiasFromUrl = resolveDashboardBias(searchParams.get("bias"));
   const [rootLockSection, setRootLockSection] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [localDashboardBias, setLocalDashboardBias] = useState<DashboardBias>(dashboardBiasFromUrl);
-  const supportsSectionNav = true;
+  const supportsSectionNav = activeSection === "performance";
   const navMode: "root" | "section" =
     activeSection && rootLockSection === activeSection
       ? "root"
       : activeSection && supportsSectionNav
         ? "section"
         : "root";
-  const effectiveAccountView = accountViewFromUrl;
-
-  useEffect(() => {
-    setLocalDashboardBias(dashboardBiasFromUrl);
-  }, [dashboardBiasFromUrl]);
-
-  useEffect(() => {
-    const handleDashboardBiasCommit = (event: Event) => {
-      const detail = (event as CustomEvent<{ bias?: string }>).detail;
-      setLocalDashboardBias(resolveDashboardBias(detail?.bias));
-    };
-    window.addEventListener(DATA_DASHBOARD_BIAS_COMMIT_EVENT, handleDashboardBiasCommit);
-    return () => {
-      window.removeEventListener(DATA_DASHBOARD_BIAS_COMMIT_EVENT, handleDashboardBiasCommit);
-    };
-  }, []);
-
-  const accountBasePath = useMemo(() => {
-    if (pathname.startsWith("/accounts/connected/")) {
-      return pathname;
-    }
-    if (pathname.startsWith("/accounts/") && pathname !== "/accounts") {
-      return pathname;
-    }
-    return "/accounts";
-  }, [pathname]);
-
-  const subNavItems: SubNavItem[] = (() => {
-    if (!activeSection) return [];
-    if (activeSection === "data") {
-      return [
-        { href: "/dashboard?bias=dealer", label: "Dealer" },
-        { href: "/dashboard?bias=commercial", label: "Commercial" },
-        { href: "/dashboard?bias=sentiment", label: "Sentiment" },
-        { href: "/dashboard?bias=strength", label: "Strength" },
-      ];
-    }
-    if (activeSection === "performance") {
-      // Performance uses a dedicated sidebar component instead of query-param subnav.
-      return [];
-    }
-    if (activeSection === "automation") {
-      return [
-        {
-          href: "/automation/bots",
-          label: "Bots",
-          matchPrefixes: ["/automation/bots", "/automation/solana-meme-bot"],
-        },
-        {
-          href: "/automation/research",
-          label: "Research",
-          matchPrefixes: ["/automation/research"],
-        },
-      ];
-    }
-    if (activeSection === "accounts") {
-      if (accountBasePath === "/accounts") {
-        return [{ href: "/accounts", label: "All Accounts" }];
-      }
-      return [
-        { href: `${accountBasePath}?view=overview`, label: "Overview" },
-        { href: `${accountBasePath}?view=trades`, label: "Trades" },
-        { href: `${accountBasePath}?view=analytics`, label: "Analytics" },
-      ];
-    }
-    if (activeSection === "news") {
-      return [{ href: "/news", label: "News" }];
-    }
-    return [];
-  })();
 
   const handleOpenSection = (sectionKey: string) => {
     setRootLockSection(null);
@@ -199,27 +88,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       }
       return activeSection;
     });
-  };
-
-  const handleAccountViewChange = (nextView: AccountPageView) => {
-    setMobileOpen(false);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", nextView);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    window.dispatchEvent(new CustomEvent("accounts-view-change", { detail: nextView }));
-  };
-
-  const handleDashboardBiasChange = (nextBias: DashboardBias) => {
-    setMobileOpen(false);
-    setLocalDashboardBias(nextBias);
-    const url = new URL(window.location.href);
-    url.searchParams.set("bias", nextBias);
-    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
-    window.dispatchEvent(
-      new CustomEvent(DATA_DASHBOARD_BIAS_COMMIT_EVENT, {
-        detail: { bias: nextBias },
-      }),
-    );
   };
 
   const sectionLabel = activeSection ? SECTION_LABELS[activeSection] : "Navigation";
@@ -269,9 +137,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <nav className="flex-1 space-y-1 p-4">
           {TOP_LEVEL.map((item) => {
             const isActive = activeSection === item.key;
-            const isNews = item.key === "news";
-            const isStatus = item.key === "status";
-            const isSpecial = isNews || isStatus;
             return (
               <button
                 key={item.key}
@@ -280,27 +145,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 className={`group flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                   isActive
                     ? "border border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                    : isNews
-                      ? "border border-amber-400/40 bg-amber-500/10 dark:bg-amber-900/30 text-amber-700 hover:border-amber-300/70 hover:bg-amber-500/15 dark:hover:bg-amber-900/40 dark:text-amber-200"
-                      : isStatus
-                        ? "border border-emerald-400/40 bg-emerald-500/10 dark:bg-emerald-900/30 text-emerald-700 hover:border-emerald-300/70 hover:bg-emerald-500/15 dark:hover:bg-emerald-900/40 dark:text-emerald-200"
-                        : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
+                    : "border border-transparent text-[var(--foreground)] hover:border-[var(--panel-border)] hover:bg-[var(--panel)]/70"
                 }`}
               >
-                {isNews ? (
-                  <span className="rounded-full border border-amber-400/50 bg-amber-500/15 dark:bg-amber-900/40 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-current">
-                    News
-                  </span>
-                ) : isStatus ? (
-                  <span className="rounded-full border border-emerald-400/50 bg-emerald-500/15 dark:bg-emerald-900/40 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-current">
-                    Status
-                  </span>
-                ) : (
-                  <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-base font-bold text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
-                    {item.letter}
-                  </span>
-                )}
-                {!isSpecial ? <span className="tracking-tight">{item.label}</span> : null}
+                <span className="flex size-12 items-center justify-center overflow-hidden rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 text-base font-bold text-[var(--muted)] group-hover:border-[var(--accent)] group-hover:text-[var(--accent)]">
+                  {item.letter}
+                </span>
+                <span className="tracking-tight">{item.label}</span>
               </button>
             );
           })}
@@ -313,96 +164,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
 
     return (
-      <nav className="flex-1 space-y-2 p-4">
-        {subNavItems.map((item) => {
-          const defaultView =
-            activeSection === "accounts"
-                ? "overview"
-                : null;
-          const resolvedViewParam =
-            activeSection === "accounts" ? effectiveAccountView : viewParam;
-          const { path: itemPath, params: itemParams } = parseHref(item.href);
-          const dashboardItemBias = itemParams.get("bias");
-          const isLocalDataToggle =
-            activeSection === "data" &&
-            itemPath === pathname &&
-            dashboardItemBias !== null;
-          const isActive =
-            isLocalDataToggle
-              ? localDashboardBias === resolveDashboardBias(dashboardItemBias)
-              : item.matchPrefixes && item.matchPrefixes.length > 0
-                ? item.matchPrefixes.some((prefix) => pathname.startsWith(prefix))
-                : isActiveHref(item.href, pathname, resolvedViewParam, defaultView, searchParams);
-          const accountItemView = itemParams.get("view");
-          const isLocalAccountToggle =
-            activeSection === "accounts" &&
-            itemPath === pathname &&
-            accountItemView !== null;
-          if (isLocalDataToggle) {
-            const nextDashboardBias = resolveDashboardBias(dashboardItemBias);
-            return (
-              <button
-                key={item.href}
-                type="button"
-                onClick={() => handleDashboardBiasChange(nextDashboardBias)}
-                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-                  isActive
-                    ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                    : "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)]/80 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-                }`}
-              >
-                <span className="tracking-tight">{item.label}</span>
-                {isActive ? (
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-strong)]">
-                    Active
-                  </span>
-                ) : null}
-              </button>
-            );
-          }
-          if (isLocalAccountToggle) {
-            const nextAccountView = resolveAccountView(accountItemView);
-            return (
-              <button
-                key={item.href}
-                type="button"
-                onClick={() => handleAccountViewChange(nextAccountView)}
-                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-                  isActive
-                    ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                    : "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)]/80 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-                }`}
-              >
-                <span className="tracking-tight">{item.label}</span>
-                {isActive ? (
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-strong)]">
-                    Active
-                  </span>
-                ) : null}
-              </button>
-            );
-          }
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-                isActive
-                  ? "border-[var(--accent)]/40 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                  : "border-[var(--panel-border)] bg-[var(--panel)]/80 text-[var(--foreground)]/80 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-              }`}
-            >
-              <span className="tracking-tight">{item.label}</span>
-              {isActive ? (
-                <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--accent-strong)]">
-                  Active
-                </span>
-              ) : null}
-            </Link>
-          );
-        })}
-      </nav>
+      <div className="flex-1 p-4">
+        <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[color:var(--muted)]">
+            Active Surface
+          </p>
+          <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">
+            {sectionLabel}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-[color:var(--muted)]">
+            Section controls now live in the main workspace. Use Back to return to LIMNI LABS.
+          </p>
+        </div>
+      </div>
     );
   };
 
