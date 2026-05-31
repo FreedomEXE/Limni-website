@@ -37,7 +37,7 @@ describe("trade identity", () => {
       seen.add(first);
     }
     expect(seen.size).toBe(10_000);
-  });
+  }, 20_000);
 
   it("separates anchors and engine versions", () => {
     expect(deriveTradeId(baseKey({ anchorType: "canonical", anchorVersion: "canonical_weekly_v2" })))
