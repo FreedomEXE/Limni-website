@@ -275,6 +275,14 @@ function DetailMetric({ label, value, tone }: { label: string; value: ReactNode;
   );
 }
 
+function ExpandedBranchPanel({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-1.5 space-y-1 rounded-xl border border-[var(--accent)]/15 bg-[var(--accent)]/[0.025] p-2 shadow-inner shadow-black/5">
+      {children}
+    </div>
+  );
+}
+
 function InlineGridDetail({ node, viewMode }: { node: TradeListNode; viewMode: ViewMode }) {
   const row = primaryRow(node);
   const fills = node.children ?? [];
@@ -293,7 +301,7 @@ function InlineGridDetail({ node, viewMode }: { node: TradeListNode; viewMode: V
     ?? "--";
 
   return (
-    <div className="ml-7 mt-1 grid gap-3 rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/55 px-4 py-3 text-[11px] sm:grid-cols-2 lg:grid-cols-6">
+    <div className="grid gap-3 rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/60 px-4 py-3 text-[11px] sm:grid-cols-2 lg:grid-cols-6">
       <DetailMetric label="Window" value={`${formatDateTimeLabel(row.entryUtc)} -> ${formatDateTimeLabel(row.exitUtc)}`} />
       <DetailMetric label="Duration" value={formatDuration(row.entryUtc, row.exitUtc)} />
       <DetailMetric label="Entry / Exit" value={`${formatPrice(row.entryPrice)} -> ${formatPrice(row.exitPrice)}`} />
@@ -304,20 +312,27 @@ function InlineGridDetail({ node, viewMode }: { node: TradeListNode; viewMode: V
   );
 }
 
-function InlineTradeDetail({ node }: { node: TradeListNode }) {
+function InlineTradeDetail({ node, viewMode }: { node: TradeListNode; viewMode: ViewMode }) {
   const row = primaryRow(node);
   if (!row) return null;
   const tradeId = row.executionTradeId ?? row.canonicalTradeId ?? "--";
+  const activeRaw = viewMode.anchor === "canonical"
+    ? row.returnMatrix.canonical?.rawPct
+    : row.returnMatrix.execution?.rawPct;
+  const displayReturn = resolvedRowReturn(row, viewMode);
+  const activeRawLabel = viewMode.anchor === "canonical" ? "Canonical Raw" : "Execution Raw";
+  const displayLabel = viewMode.normalization === "adr_normalized" ? "Displayed ADR-norm" : "Displayed Raw";
+
   return (
-    <div className="ml-7 mt-1 grid gap-3 rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/55 px-4 py-3 text-[11px] sm:grid-cols-2 lg:grid-cols-6">
+    <div className="grid gap-3 rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/60 px-4 py-3 text-[11px] sm:grid-cols-2 lg:grid-cols-6">
       <DetailMetric label="Entry" value={formatDateTimeLabel(row.entryUtc)} />
       <DetailMetric label="Exit" value={formatDateTimeLabel(row.exitUtc)} />
       <DetailMetric label="Duration" value={formatDuration(row.entryUtc, row.exitUtc)} />
       <DetailMetric label="Entry Price" value={formatPrice(row.entryPrice)} />
       <DetailMetric label="Exit Price" value={formatPrice(row.exitPrice)} />
       <DetailMetric label="Exit Reason" value={row.exitReason ?? "--"} />
-      <DetailMetric label="Canonical Raw" value={row.returnMatrix.canonical ? formatSignedPercent(row.returnMatrix.canonical.rawPct, 4) : "--"} tone={pctTone(row.returnMatrix.canonical?.rawPct)} />
-      <DetailMetric label="Execution Raw" value={row.returnMatrix.execution ? formatSignedPercent(row.returnMatrix.execution.rawPct, 4) : "--"} tone={pctTone(row.returnMatrix.execution?.rawPct)} />
+      <DetailMetric label={activeRawLabel} value={typeof activeRaw === "number" ? formatSignedPercent(activeRaw, 4) : "--"} tone={pctTone(activeRaw)} />
+      <DetailMetric label={displayLabel} value={displayReturn === null ? "--" : formatSignedPercent(displayReturn, 4)} tone={pctTone(displayReturn)} />
       <DetailMetric label="ADR Basis" value={row.returnMatrix.adrPct === null ? "--" : `${row.returnMatrix.adrPct.toFixed(4)}%`} />
       <DetailMetric label="Cap At Entry" value={`${row.capActiveFillsAtEntry ?? "--"} / ${row.capThresholdAtEntry ?? "--"}`} tone={row.capViolated ? "text-rose-500" : undefined} />
       <DetailMetric label="Max DD" value="Not captured in v2 canon" />
@@ -335,12 +350,17 @@ function BasketNodeRow({
   node,
   depth = 0,
   viewMode,
+  dimmed = false,
+  onFocusChange,
 }: {
   node: TradeListNode;
   depth?: number;
   viewMode: ViewMode;
+  dimmed?: boolean;
+  onFocusChange?: (nodeId: string | null) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [focusedChildId, setFocusedChildId] = useState<string | null>(null);
   const hasChildren = Boolean(node.children?.length);
   const row = primaryRow(node);
   const value = node.values.returnPct;
@@ -349,13 +369,26 @@ function BasketNodeRow({
   const isLeaf = node.level === "fill" || node.level === "trade";
   const isGrid = node.level === "grid";
   const canExpand = hasChildren || isLeaf;
+  const handleToggle = () => {
+    if (!canExpand) return;
+    setExpanded((current) => {
+      const next = !current;
+      onFocusChange?.(next ? node.id : null);
+      if (!next) setFocusedChildId(null);
+      return next;
+    });
+  };
 
   return (
-    <div>
+    <div className={`transition duration-150 ${dimmed ? "opacity-35 saturate-50" : "opacity-100"}`}>
       <button
         type="button"
-        onClick={() => canExpand ? setExpanded((current) => !current) : undefined}
-        className="flex w-full items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2.5 text-left transition hover:border-[var(--accent)]/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+        onClick={handleToggle}
+        className={`flex w-full items-center justify-between rounded-lg border px-4 py-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+          expanded
+            ? "border-[var(--accent)]/35 bg-[var(--accent)]/[0.06]"
+            : "border-[var(--panel-border)] bg-[var(--panel)]/70 hover:border-[var(--accent)]/30"
+        }`}
         style={{ paddingLeft: `${16 + depth * 22}px` }}
         aria-expanded={canExpand ? expanded : undefined}
         data-testid="basket-canon-row"
@@ -396,14 +429,25 @@ function BasketNodeRow({
       </button>
 
       {expanded && hasChildren ? (
-        <div className="mt-1 space-y-1">
+        <ExpandedBranchPanel>
           {isGrid ? <InlineGridDetail node={node} viewMode={viewMode} /> : null}
           {node.children?.map((child) => (
-            <BasketNodeRow key={child.id} node={child} depth={depth + 1} viewMode={viewMode} />
+            <BasketNodeRow
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              viewMode={viewMode}
+              dimmed={focusedChildId !== null && focusedChildId !== child.id}
+              onFocusChange={setFocusedChildId}
+            />
           ))}
-        </div>
+        </ExpandedBranchPanel>
       ) : null}
-      {expanded && !hasChildren && isLeaf ? <InlineTradeDetail node={node} /> : null}
+      {expanded && !hasChildren && isLeaf ? (
+        <ExpandedBranchPanel>
+          <InlineTradeDetail node={node} viewMode={viewMode} />
+        </ExpandedBranchPanel>
+      ) : null}
     </div>
   );
 }
@@ -446,6 +490,7 @@ export default function BasketHierarchy({
   }, 0);
   const periodLabel = selectedWeek === "all" ? "All closed weeks" : formatDateLabel(selectedWeek);
   const segments = headerSegments(stats, selectedWeek, levels);
+  const [focusedRootId, setFocusedRootId] = useState<string | null>(null);
 
   return (
     <section
@@ -478,7 +523,15 @@ export default function BasketHierarchy({
             No basket rows matched this week, strategy, and scope.
           </div>
         ) : (
-          nodes.map((node) => <BasketNodeRow key={node.id} node={node} viewMode={viewMode} />)
+          nodes.map((node) => (
+            <BasketNodeRow
+              key={node.id}
+              node={node}
+              viewMode={viewMode}
+              dimmed={focusedRootId !== null && focusedRootId !== node.id}
+              onFocusChange={setFocusedRootId}
+            />
+          ))
         )}
       </div>
     </section>
