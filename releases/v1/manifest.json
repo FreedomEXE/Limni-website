@@ -17,5 +17,619 @@
     "executionDerivationVersion": "v1_execution_monday_utc"
   },
   "changes": [],
-  "previousVersion": null
+  "previousVersion": null,
+  "screenshots": [
+    {
+      "file": "screenshots/_review/legacy-screenshot_2-2-2026_232346_limni-website-ecp7tdi6t-freedomexes-projects.vercel.app.jpeg",
+      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 2 2 2026 232346 Limni Website Ecp7tdi6t Freedomexes Projects.Vercel.App."
+    },
+    {
+      "file": "screenshots/_review/legacy-screenshot_20-2-2026_185356_limni-website-nine.vercel.app.jpeg",
+      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 20 2 2026 185356 Limni Website Nine.Vercel.App."
+    },
+    {
+      "file": "screenshots/_review/legacy-screenshot_3-2-2026_21334_limni-website-jzi491d5a-freedomexes-projects.vercel.app.jpeg",
+      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 3 2 2026 21334 Limni Website Jzi491d5a Freedomexes Projects.Vercel.App."
+    },
+    {
+      "file": "screenshots/_review/legacy-screenshot_8-2-2026_2027_limni-website-nine.vercel.app.jpeg",
+      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 8 2 2026 2027 Limni Website Nine.Vercel.App."
+    },
+    {
+      "file": "screenshots/_review/legacy-screenshot-2026-02-01-222755.png",
+      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 2026 02 01 222755."
+    },
+    {
+      "file": "screenshots/_review/legacy-screenshot-2026-02-01-224722.png",
+      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 2026 02 01 224722."
+    },
+    {
+      "file": "screenshots/_review/legacy-screenshot-2026-02-17-193910.png",
+      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 2026 02 17 193910."
+    },
+    {
+      "file": "screenshots/accounts/accounts-overview.png",
+      "description": "Accounts v1 screenshot: Accounts Overview."
+    },
+    {
+      "file": "screenshots/antikythera/antikythera-overview.png",
+      "description": "Antikythera v1 screenshot: Antikythera Overview."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-active-surface-sweep-final.png",
+      "description": "Visual audit evidence: Active Surface Sweep Final."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-basket-hierarchy-agreement-alltime.png",
+      "description": "Visual audit evidence: Basket Hierarchy Agreement Alltime."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-basket-hierarchy-tandem-adr-expanded.png",
+      "description": "Visual audit evidence: Basket Hierarchy Tandem Adr Expanded."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-basket-hierarchy-tandem-modal-parent.png",
+      "description": "Visual audit evidence: Basket Hierarchy Tandem Modal Parent."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-basket-hierarchy-tiered-week.png",
+      "description": "Visual audit evidence: Basket Hierarchy Tiered Week."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-basket-v3-containment-notice.png",
+      "description": "Visual audit evidence: Basket V3 Containment Notice."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-consistency-alltime-summary-adr.png",
+      "description": "Visual audit evidence: Consistency Alltime Summary Adr."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-consistency-alltime-summary-raw.png",
+      "description": "Visual audit evidence: Consistency Alltime Summary Raw."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-consistency-simulation-adr.png",
+      "description": "Visual audit evidence: Consistency Simulation Adr."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-consistency-simulation-raw.png",
+      "description": "Visual audit evidence: Consistency Simulation Raw."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-consistency-weekly-crypto-scoped.png",
+      "description": "Visual audit evidence: Consistency Weekly Crypto Scoped."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-fbdr-basket-raw-after.png",
+      "description": "Visual audit evidence: Fbdr Basket Raw After."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-fbdr-raw-fx-after.png",
+      "description": "Visual audit evidence: Fbdr Raw Fx After."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-fbdr-raw-hourly-fx-after.png",
+      "description": "Visual audit evidence: Fbdr Raw Hourly Fx After."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-trade-drilldown-matrix.png",
+      "description": "Visual audit evidence: Trade Drilldown Matrix."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-trade-drilldown-performance.png",
+      "description": "Visual audit evidence: Trade Drilldown Performance."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-trade-list-fixture-preview-dark-final.png",
+      "description": "Visual audit evidence: Trade List Fixture Preview Dark Final."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-trade-list-fixture-preview-dark-tightened.png",
+      "description": "Visual audit evidence: Trade List Fixture Preview Dark Tightened."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-trade-list-fixture-preview.png",
+      "description": "Visual audit evidence: Trade List Fixture Preview."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-data-before-click.png",
+      "description": "Visual audit evidence: Ui Wiring Data Before Click."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-data-canonical-clicked.png",
+      "description": "Visual audit evidence: Ui Wiring Data Canonical Clicked."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-data-default.png",
+      "description": "Visual audit evidence: Ui Wiring Data Default."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-data-execution-clicked.png",
+      "description": "Visual audit evidence: Ui Wiring Data Execution Clicked."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-matrix-probe.png",
+      "description": "Visual audit evidence: Ui Wiring Matrix Probe."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-adr.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Adr."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-after-120s.png",
+      "description": "Visual audit evidence: Ui Wiring Performance After 120s."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-adr-may11-final.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Basket Adr May11 Final."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-adr-may11-fixed.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Basket Adr May11 Fixed."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-adr-may11-fixed2.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Basket Adr May11 Fixed2."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-adr-may11.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Basket Adr May11."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-raw-may11-final.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Basket Raw May11 Final."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-raw-may11-fixed.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Basket Raw May11 Fixed."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-raw-may11-fixed2.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Basket Raw May11 Fixed2."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-raw-may11.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Basket Raw May11."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-timeout-final.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Basket Timeout Final."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-before-click.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Before Click."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-load-state.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Load State."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-longwait-raw.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Longwait Raw."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-longwait.png",
+      "description": "Visual audit evidence: Ui Wiring Performance Longwait."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-verify-adr-grid-drilldown-fixed.png",
+      "description": "Visual audit evidence: Verify Adr Grid Drilldown Fixed."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-verify-matrix-canonical-drilldown.png",
+      "description": "Visual audit evidence: Verify Matrix Canonical Drilldown."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-verify-missing-data-drilldown.png",
+      "description": "Visual audit evidence: Verify Missing Data Drilldown."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-verify-performance-weekly-hold-drilldown.png",
+      "description": "Visual audit evidence: Verify Performance Weekly Hold Drilldown."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-verify-tandem-multisource-drilldown-fixed.png",
+      "description": "Visual audit evidence: Verify Tandem Multisource Drilldown Fixed."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-viewmode-data-audcad-may11-canonical-adr.png",
+      "description": "Visual audit evidence: Viewmode Data Audcad May11 Canonical Adr."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-viewmode-matrix-audcad-may11-canonical-raw.png",
+      "description": "Visual audit evidence: Viewmode Matrix Audcad May11 Canonical Raw."
+    },
+    {
+      "file": "screenshots/audit-evidence/audit-viewmode-performance-audcad-may11.png",
+      "description": "Visual audit evidence: Viewmode Performance Audcad May11."
+    },
+    {
+      "file": "screenshots/automation/automation-bots-index.png",
+      "description": "Automation v1 screenshot: Automation Bots Index."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-01.jpeg",
+      "description": "Automation manually captured v1 screenshot 01."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-02.jpeg",
+      "description": "Automation manually captured v1 screenshot 02."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-03.jpeg",
+      "description": "Automation manually captured v1 screenshot 03."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-04.jpeg",
+      "description": "Automation manually captured v1 screenshot 04."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-05.jpeg",
+      "description": "Automation manually captured v1 screenshot 05."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-06.jpeg",
+      "description": "Automation manually captured v1 screenshot 06."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-07.jpeg",
+      "description": "Automation manually captured v1 screenshot 07."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-08.jpeg",
+      "description": "Automation manually captured v1 screenshot 08."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-09.jpeg",
+      "description": "Automation manually captured v1 screenshot 09."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-10.jpeg",
+      "description": "Automation manually captured v1 screenshot 10."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-11.jpeg",
+      "description": "Automation manually captured v1 screenshot 11."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-12.jpeg",
+      "description": "Automation manually captured v1 screenshot 12."
+    },
+    {
+      "file": "screenshots/automation/automation-manual-13.jpeg",
+      "description": "Automation manually captured v1 screenshot 13."
+    },
+    {
+      "file": "screenshots/automation/automation-research-index.png",
+      "description": "Automation v1 screenshot: Automation Research Index."
+    },
+    {
+      "file": "screenshots/data/data-heatmap-commercial-all-assets.png",
+      "description": "Data v1 screenshot: Data Heatmap Commercial All Assets."
+    },
+    {
+      "file": "screenshots/data/data-heatmap-dealer-all-assets.png",
+      "description": "Data v1 screenshot: Data Heatmap Dealer All Assets."
+    },
+    {
+      "file": "screenshots/data/data-list-dealer-all-assets.png",
+      "description": "Data v1 screenshot: Data List Dealer All Assets."
+    },
+    {
+      "file": "screenshots/data/data-manual-01.jpeg",
+      "description": "Data manually captured v1 screenshot 01."
+    },
+    {
+      "file": "screenshots/data/data-manual-02.jpeg",
+      "description": "Data manually captured v1 screenshot 02."
+    },
+    {
+      "file": "screenshots/data/data-manual-03.jpeg",
+      "description": "Data manually captured v1 screenshot 03."
+    },
+    {
+      "file": "screenshots/data/data-manual-04.jpeg",
+      "description": "Data manually captured v1 screenshot 04."
+    },
+    {
+      "file": "screenshots/data/data-manual-05.jpeg",
+      "description": "Data manually captured v1 screenshot 05."
+    },
+    {
+      "file": "screenshots/data/data-manual-06.jpeg",
+      "description": "Data manually captured v1 screenshot 06."
+    },
+    {
+      "file": "screenshots/flagship/flagship-crypto.png",
+      "description": "Flagship v1 screenshot: Flagship Crypto."
+    },
+    {
+      "file": "screenshots/flagship/flagship-intraday.png",
+      "description": "Flagship v1 screenshot: Flagship Intraday."
+    },
+    {
+      "file": "screenshots/flagship/flagship-overview.png",
+      "description": "Flagship v1 screenshot: Flagship Overview."
+    },
+    {
+      "file": "screenshots/flagship/flagship-weekly-hold.png",
+      "description": "Flagship v1 screenshot: Flagship Weekly Hold."
+    },
+    {
+      "file": "screenshots/flagship/legacy-codex-review-intraday-dark-before.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-codex-review-intraday-light-before.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-codex-review-swing-dark-before.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-codex-review-swing-light-before.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-crypto-sanity-dark.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-crypto-webpack-sanity-dark.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-intraday-desktop-dark-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-intraday-desktop-light-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-intraday-mobile-dark-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-intraday-mobile-light-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-intraday-tablet-dark-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-intraday-tablet-light-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-sanity-dark.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-webpack-sanity-dark.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-weekly-hold-desktop-dark-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-weekly-hold-desktop-light-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-weekly-hold-mobile-dark-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-weekly-hold-mobile-light-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-weekly-hold-tablet-dark-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/flagship/legacy-flagship-weekly-hold-tablet-light-after.png",
+      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/full-app-context/full-app-context-performance.png",
+      "description": "Full App Context v1 screenshot: Full App Context Performance."
+    },
+    {
+      "file": "screenshots/indicator/legacy-audnzd_2026-03-25_00-33-04_49f4a.png",
+      "description": "Legacy indicator / chart comparison screenshot: Audnzd 2026 03 25 00 33 04 49f4a."
+    },
+    {
+      "file": "screenshots/indicator/legacy-btcusdt.p_2026-03-25_04-34-33_09e20.png",
+      "description": "Legacy indicator / chart comparison screenshot: Btcusdt.P 2026 03 25 04 34 33 09e20."
+    },
+    {
+      "file": "screenshots/indicator/legacy-btcusdt.p_2026-03-25_04-40-49_4d567.png",
+      "description": "Legacy indicator / chart comparison screenshot: Btcusdt.P 2026 03 25 04 40 49 4d567."
+    },
+    {
+      "file": "screenshots/indicator/legacy-btcusdt.p_2026-03-28_12-11-17_55419.png",
+      "description": "Legacy indicator / chart comparison screenshot: Btcusdt.P 2026 03 28 12 11 17 55419."
+    },
+    {
+      "file": "screenshots/indicator/legacy-weekly-audnzd-adr-limni.png",
+      "description": "Legacy indicator / chart comparison screenshot: Weekly Audnzd Adr Limni."
+    },
+    {
+      "file": "screenshots/login/legacy-login-webpack-sanity-dark.png",
+      "description": "Login legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/matrix/legacy-codex-review-matrix-dark-before.png",
+      "description": "Matrix legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/matrix/legacy-codex-review-matrix-light-before-loaded.png",
+      "description": "Matrix legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/matrix/legacy-codex-review-matrix-light-before.png",
+      "description": "Matrix legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/matrix/matrix-manual-01.jpeg",
+      "description": "Matrix manually captured v1 screenshot 01."
+    },
+    {
+      "file": "screenshots/matrix/matrix-manual-02.jpeg",
+      "description": "Matrix manually captured v1 screenshot 02."
+    },
+    {
+      "file": "screenshots/matrix/matrix-manual-03.jpeg",
+      "description": "Matrix manually captured v1 screenshot 03."
+    },
+    {
+      "file": "screenshots/matrix/matrix-manual-04.jpeg",
+      "description": "Matrix manually captured v1 screenshot 04."
+    },
+    {
+      "file": "screenshots/matrix/matrix-manual-05.jpeg",
+      "description": "Matrix manually captured v1 screenshot 05."
+    },
+    {
+      "file": "screenshots/matrix/matrix-manual-06.jpeg",
+      "description": "Matrix manually captured v1 screenshot 06."
+    },
+    {
+      "file": "screenshots/matrix/matrix-overview.png",
+      "description": "Matrix v1 screenshot: Matrix Overview."
+    },
+    {
+      "file": "screenshots/news/news-manual-01.jpeg",
+      "description": "News manually captured v1 screenshot 01."
+    },
+    {
+      "file": "screenshots/news/news-manual-02.jpeg",
+      "description": "News manually captured v1 screenshot 02."
+    },
+    {
+      "file": "screenshots/news/news-overview.png",
+      "description": "News v1 screenshot: News Overview."
+    },
+    {
+      "file": "screenshots/performance/legacy-performance-desktop-dark-after.png",
+      "description": "Performance legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/performance/legacy-performance-desktop-light-after.png",
+      "description": "Performance legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/performance/legacy-performance-mobile-dark-after.png",
+      "description": "Performance legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/performance/legacy-performance-mobile-light-after.png",
+      "description": "Performance legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/performance/legacy-performance-sanity-dark.png",
+      "description": "Performance legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/performance/legacy-performance-tablet-dark-after.png",
+      "description": "Performance legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/performance/legacy-performance-tablet-light-after.png",
+      "description": "Performance legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/performance/legacy-performance-webpack-sanity-dark.png",
+      "description": "Performance legacy screenshot copied from the original screenshots archive."
+    },
+    {
+      "file": "screenshots/performance/performance-basket-tandem-adr-grid-pair-fill-cap-alltime.png",
+      "description": "Performance v1 screenshot: Performance Basket Tandem Adr Grid Pair Fill Cap Alltime."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-01.jpeg",
+      "description": "Performance manually captured v1 screenshot 01."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-02.jpeg",
+      "description": "Performance manually captured v1 screenshot 02."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-03.jpeg",
+      "description": "Performance manually captured v1 screenshot 03."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-04.jpeg",
+      "description": "Performance manually captured v1 screenshot 04."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-05.jpeg",
+      "description": "Performance manually captured v1 screenshot 05."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-06.jpeg",
+      "description": "Performance manually captured v1 screenshot 06."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-07.jpeg",
+      "description": "Performance manually captured v1 screenshot 07."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-08.jpeg",
+      "description": "Performance manually captured v1 screenshot 08."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-09.jpeg",
+      "description": "Performance manually captured v1 screenshot 09."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-10.jpeg",
+      "description": "Performance manually captured v1 screenshot 10."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-11.jpeg",
+      "description": "Performance manually captured v1 screenshot 11."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-12.jpeg",
+      "description": "Performance manually captured v1 screenshot 12."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-13.jpeg",
+      "description": "Performance manually captured v1 screenshot 13."
+    },
+    {
+      "file": "screenshots/performance/performance-manual-14.jpeg",
+      "description": "Performance manually captured v1 screenshot 14."
+    },
+    {
+      "file": "screenshots/performance/performance-research-tandem-adr-grid-pair-fill-cap-alltime.png",
+      "description": "Performance v1 screenshot: Performance Research Tandem Adr Grid Pair Fill Cap Alltime."
+    },
+    {
+      "file": "screenshots/performance/performance-simulation-tandem-adr-grid-pair-fill-cap-alltime.png",
+      "description": "Performance v1 screenshot: Performance Simulation Tandem Adr Grid Pair Fill Cap Alltime."
+    },
+    {
+      "file": "screenshots/performance/performance-summary-tandem-adr-grid-pair-fill-cap-alltime.png",
+      "description": "Performance v1 screenshot: Performance Summary Tandem Adr Grid Pair Fill Cap Alltime."
+    },
+    {
+      "file": "screenshots/sentiment/sentiment-overview.png",
+      "description": "Sentiment v1 screenshot: Sentiment Overview."
+    },
+    {
+      "file": "screenshots/status/status-manual-01.jpeg",
+      "description": "Status manually captured v1 screenshot 01."
+    },
+    {
+      "file": "screenshots/status/status-overview.png",
+      "description": "Status v1 screenshot: Status Overview."
+    }
+  ]
 }
