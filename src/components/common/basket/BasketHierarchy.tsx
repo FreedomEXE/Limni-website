@@ -277,10 +277,8 @@ function DetailMetric({ label, value, tone }: { label: string; value: ReactNode;
 
 function ExpandedBranchPanel({ children }: { children: ReactNode }) {
   return (
-    <div className="ml-4 mt-1.5 border-l border-[var(--accent)]/35 pl-3">
-      <div className="space-y-1 rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/[0.035] p-2 shadow-inner shadow-black/10">
-        {children}
-      </div>
+    <div className="mt-1.5 space-y-1 rounded-xl bg-[var(--accent)]/[0.035] p-2 shadow-inner shadow-black/10">
+      {children}
     </div>
   );
 }
@@ -378,6 +376,10 @@ function BasketNodeRow({
   const summary = childSummary(node);
   const isLeaf = node.level === "fill" || node.level === "trade";
   const isGrid = node.level === "grid";
+  const flattenedGrid = node.level === "symbol" && node.children?.length === 1 && node.children[0]?.level === "grid"
+    ? node.children[0]
+    : null;
+  const branchChildren = flattenedGrid?.children ?? node.children;
   const canExpand = hasChildren || isLeaf;
   const handleToggle = () => {
     if (!canExpand) return;
@@ -390,7 +392,7 @@ function BasketNodeRow({
   };
 
   return (
-    <div className={`transition duration-150 ${dimmed ? "opacity-20 grayscale-[35%] contrast-75" : "opacity-100"}`}>
+    <div className={`transition duration-150 ${dimmed ? "opacity-[0.16] blur-[1px] grayscale contrast-50" : "opacity-100 blur-0"}`}>
       <button
         type="button"
         onClick={handleToggle}
@@ -441,7 +443,8 @@ function BasketNodeRow({
       {expanded && hasChildren ? (
         <ExpandedBranchPanel>
           {isGrid ? <InlineGridDetail node={node} viewMode={viewMode} /> : null}
-          {node.children?.map((child) => (
+          {flattenedGrid ? <InlineGridDetail node={flattenedGrid} viewMode={viewMode} /> : null}
+          {branchChildren?.map((child) => (
             <BasketNodeRow
               key={child.id}
               node={child}
