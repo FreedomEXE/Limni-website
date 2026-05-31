@@ -40,7 +40,7 @@ export default function TradeList({
 
   return (
     <div
-      className="overflow-hidden rounded-lg border border-(--panel-border) bg-(--panel)/80 shadow-[0_10px_28px_rgba(0,0,0,0.18)]"
+      className="overflow-hidden rounded-lg border border-(--panel-border) bg-(--panel)/90 shadow-[0_14px_34px_rgba(0,0,0,0.22)] ring-1 ring-white/[0.025]"
       data-testid="trade-list"
     >
       <TradeListHeader
@@ -55,7 +55,7 @@ export default function TradeList({
           {emptyState ?? "No trades to display."}
         </div>
       ) : (
-        <div role="treegrid" aria-label="Trade list">
+        <div role="treegrid" aria-label="Trade list" className="bg-(--background)/10">
           {nodes.map((node) => (
             <TradeListRow
               key={node.id}

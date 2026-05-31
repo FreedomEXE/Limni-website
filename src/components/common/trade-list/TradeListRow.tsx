@@ -56,10 +56,12 @@ function renderLabelContent(node: TradeListNode, isExpandable: boolean, isOpen: 
   const levelClass =
     node.level === "symbol"
       ? "font-mono text-[13px] font-semibold tracking-[0.04em] text-(--foreground)"
+      : node.level === "week" || node.level === "portfolio"
+        ? "font-semibold text-(--foreground)"
       : "font-semibold text-(--foreground)";
 
   return (
-    <div className="flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2 overflow-hidden">
       <span className="flex h-4 w-4 shrink-0 items-center justify-center text-(--muted)">
         {isExpandable ? (
           <DisclosureChevron open={isOpen} size={14} rotationDegrees={90} />
@@ -92,7 +94,7 @@ export default function TradeListRow({
   const hasChildren = Boolean(node.children?.length);
   const { contentRef, contentStyle } = useDisclosureHeight(isOpen);
   const rowPadding = density === "comfortable" ? "px-4 py-3" : "px-3 py-2";
-  const childIndentClass = depth > 0 ? "border-l border-(--panel-border)/50" : "";
+  const childIndentClass = depth > 0 ? "relative border-l border-(--accent)/20" : "relative";
 
   const handlePrimaryAction = () => {
     if (isExpandable && hasChildren) {
@@ -104,8 +106,14 @@ export default function TradeListRow({
 
   return (
     <div className={childIndentClass} data-level={node.level}>
+      {depth > 0 ? (
+        <span
+          className="pointer-events-none absolute left-0 top-0 h-full w-px bg-(--accent)/10"
+          aria-hidden="true"
+        />
+      ) : null}
       <div
-        className={`group/row grid min-h-10 border-b border-(--panel-border)/45 border-l-2 border-l-transparent text-xs transition hover:border-l-(--accent) hover:bg-(--accent)/5 ${rowPadding}`}
+        className={`group/row grid min-h-10 border-b border-(--panel-border)/35 border-l-2 border-l-transparent text-xs transition hover:border-l-(--accent) hover:bg-(--accent)/5 ${rowPadding}`}
         style={{ gridTemplateColumns }}
         role="row"
         data-testid="trade-list-row"
@@ -119,7 +127,7 @@ export default function TradeListRow({
                 ? column.format(value, node)
                 : formatRawValue(value);
 
-          const labelPadding = column.key === "label" ? depth * 18 : 0;
+          const labelPadding = column.key === "label" ? depth * 22 : 0;
           const isInteractiveLabel = column.key === "label" && (isExpandable || onNodeClick);
 
           return (
@@ -132,7 +140,7 @@ export default function TradeListRow({
                 <button
                   type="button"
                   onClick={handlePrimaryAction}
-                  className="min-w-0 rounded-sm text-left outline-none transition focus-visible:ring-2 focus-visible:ring-(--accent)"
+                  className="min-w-0 max-w-full rounded-sm text-left outline-none transition focus-visible:ring-2 focus-visible:ring-(--accent)"
                   aria-expanded={isExpandable && hasChildren ? isOpen : undefined}
                   aria-controls={isExpandable && hasChildren ? childRegionId : undefined}
                 >

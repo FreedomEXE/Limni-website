@@ -59,6 +59,7 @@ export function formatDateLabel(value: unknown) {
     month: "short",
     day: "2-digit",
     year: "numeric",
+    timeZone: "UTC",
   }).format(date);
 }
 
@@ -71,6 +72,7 @@ export function formatTimeLabel(value: unknown) {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: "UTC",
   }).format(date);
 }
 

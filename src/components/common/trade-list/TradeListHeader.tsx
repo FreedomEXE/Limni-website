@@ -57,7 +57,7 @@ export default function TradeListHeader({
 }: TradeListHeaderProps) {
   return (
     <div
-      className="grid border-b border-(--panel-border) bg-(--panel)/50 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-(--muted)"
+      className="grid border-b border-(--panel-border) bg-(--background)/20 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-(--muted)"
       style={{ gridTemplateColumns }}
       role="row"
     >
@@ -97,7 +97,7 @@ export default function TradeListHeader({
             <button
               type="button"
               onClick={handleSort}
-              className={`flex items-center gap-1.5 transition hover:text-(--accent-strong) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) ${alignmentClass(column.align)}`}
+              className={`rounded-sm flex items-center gap-1.5 transition hover:text-(--accent-strong) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) ${alignmentClass(column.align)}`}
             >
               <span>{column.label}</span>
               <SortIcon active={active} direction={sort?.direction} />

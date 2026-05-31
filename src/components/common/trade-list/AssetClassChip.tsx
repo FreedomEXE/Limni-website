@@ -23,7 +23,7 @@ export default function AssetClassChip({ assetClass }: AssetClassChipProps) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] ${tone.bg} ${tone.text} ${tone.border}`}
+      className={`inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${tone.bg} ${tone.text} ${tone.border}`}
     >
       {ASSET_CLASS_LABEL[assetClass]}
     </span>

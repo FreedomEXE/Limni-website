@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 
 export function useDisclosureHeight(isOpen: boolean, durationMs = 300) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [contentHeight, setContentHeight] = useState<number | "auto">("auto");
+  const [contentHeight, setContentHeight] = useState<number | "auto">(() => (isOpen ? "auto" : 0));
 
   useEffect(() => {
     if (!contentRef.current) return;

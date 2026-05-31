@@ -28,10 +28,10 @@ export const tradeListFixtureColumns: TradeListColumn[] = [
   },
   {
     key: "entryUtc",
-    label: "Date",
+    label: "Week / Entry",
     sortable: true,
     defaultDirection: "desc",
-    width: "minmax(130px, 0.9fr)",
+    width: "minmax(150px, 0.9fr)",
     format: formatDateLabel,
   },
   {
