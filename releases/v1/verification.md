@@ -33,8 +33,10 @@ Most recent observed trace preserved:
 
 Pair Fill Cap concurrency verification remains a v1 baseline gate. Latest accepted state:
 
+- Total ledger rows: `122,422`
+- ADR Grid rows with `fill_seq IS NOT NULL OR parent_trade_id IS NOT NULL`: `105,550` rows (parents + fills combined)
+- Cap-tracked rows with `active_fills_at_entry IS NOT NULL`: `43,284` fills
 - `cap_violated = TRUE`: `0`
-- Fill population referenced for cap gate: `113,986` fills
 
 ## Latest Green Checks
 
