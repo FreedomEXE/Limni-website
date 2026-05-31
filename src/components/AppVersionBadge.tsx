@@ -58,12 +58,11 @@ export default function AppVersionBadge() {
       ref={rootRef}
       className="fixed right-4 top-4 z-[70]"
       onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
     >
       <button
         type="button"
-        onClick={() => setOpen((current) => !current)}
-        className="rounded-full border border-(--panel-border) bg-(--panel)/90 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--muted) shadow-lg backdrop-blur transition hover:border-(--accent) hover:text-(--accent-strong) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)"
+        onClick={() => setOpen(true)}
+        className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] shadow-lg transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
         aria-expanded={open}
         aria-label={`App version ${manifest.appVersion}`}
         data-testid="app-version-badge"
@@ -73,31 +72,32 @@ export default function AppVersionBadge() {
 
       {open ? (
         <div
-          className="absolute right-0 mt-2 w-80 rounded-xl border border-(--panel-border) bg-(--panel) p-4 text-sm text-(--foreground) shadow-2xl"
+          className="absolute right-0 mt-2 w-80 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 text-sm text-[var(--foreground)] shadow-2xl"
+          style={{ backgroundColor: "var(--panel, #ffffff)" }}
           data-testid="app-version-popover"
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-(--muted)">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Limni Labs
               </p>
-              <h2 className="mt-1 text-lg font-semibold text-(--foreground)">
+              <h2 className="mt-1 text-lg font-semibold text-[var(--foreground)]">
                 {manifest.appVersion}
               </h2>
             </div>
-            <p className="text-right text-[11px] text-(--muted)">
+            <p className="text-right text-[11px] text-[color:var(--muted)]">
               {manifest.releasedAt}
             </p>
           </div>
-          <ul className="mt-3 space-y-2 text-xs leading-relaxed text-(--muted)">
+          <ul className="mt-3 space-y-2 text-xs leading-relaxed text-[color:var(--muted)]">
             {manifest.changes.slice(0, 5).map((change) => (
               <li key={change} className="flex gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-(--accent)" />
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
                 <span>{change}</span>
               </li>
             ))}
           </ul>
-          <div className="mt-4 rounded-lg border border-(--panel-border) bg-(--background)/20 px-3 py-2 text-[11px] text-(--muted)">
+          <div className="mt-4 rounded-lg border border-[var(--panel-border)] bg-[var(--background)] px-3 py-2 text-[11px] text-[color:var(--muted)]">
             Canon rows: {manifest.canon.sourceLedgerRowCount.toLocaleString()} · {manifest.canon.variants.length} variants
           </div>
         </div>

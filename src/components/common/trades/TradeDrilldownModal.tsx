@@ -159,8 +159,11 @@ export default function TradeDrilldownModal(props: TradeDrilldownModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6" role="dialog" aria-modal="true">
-      <div className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-lg border border-(--panel-border) bg-(--background) shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-(--panel-border) px-5 py-4">
+      <div
+        className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-lg border border-[var(--panel-border)] bg-[var(--panel)] shadow-2xl"
+        style={{ backgroundColor: "var(--panel, #ffffff)" }}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--panel-border)] px-5 py-4">
           <div>
             <p className="text-[10px] uppercase tracking-[0.2em] text-(--muted)">
               Trade Drilldown
