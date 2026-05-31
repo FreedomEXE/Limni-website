@@ -4,6 +4,10 @@ import { useEffect, useMemo, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { LimniSpinner } from "@/components/LimniLoading";
 import {
+  startCanonPreload,
+  useCanonPreloadStatus,
+} from "@/lib/canon/canonStore";
+import {
   buildPreloadManifest,
   deriveActiveSelectionFromParams,
 } from "@/lib/preload/preloadRegistry";
@@ -23,7 +27,11 @@ const PHASE_LABELS: Record<PreloadPhase, string> = {
 };
 
 function isBypassedRoute(pathname: string | null) {
-  return pathname?.startsWith("/status") || pathname?.startsWith("/login") || false;
+  return (
+    pathname?.startsWith("/status") ||
+    pathname?.startsWith("/login") ||
+    false
+  );
 }
 
 function progressLabel(preload: ReturnType<typeof usePreloadStatus>) {
@@ -48,6 +56,7 @@ function progressLabel(preload: ReturnType<typeof usePreloadStatus>) {
 export default function AppPreloadGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const canonPreload = useCanonPreloadStatus();
   const preload = usePreloadStatus();
   const bypassGate = isBypassedRoute(pathname);
   const strategyParam = searchParams?.get("strategy") ?? searchParams?.get("bias") ?? "";
@@ -66,6 +75,13 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (bypassGate) return;
+    if (canonPreload.status === "ready") return;
+    void startCanonPreload();
+  }, [bypassGate, canonPreload.status]);
+
+  useEffect(() => {
+    if (bypassGate) return;
+    if (canonPreload.status !== "ready") return;
     if (preload.completedOnce || preload.status === "ready") return;
     const manifest = buildPreloadManifest(activeSelection);
     const run = () => {
@@ -77,21 +93,27 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
     }
     const timeout = window.setTimeout(run, 5000);
     return () => window.clearTimeout(timeout);
-  }, [activeSelection, bypassGate, preload.completedOnce, preload.status]);
+  }, [activeSelection, bypassGate, canonPreload.status, preload.completedOnce, preload.status]);
 
   if (
     bypassGate ||
-    preload.completedOnce ||
-    preload.status === "ready"
+    (canonPreload.status === "ready" && (preload.completedOnce || preload.status === "ready"))
   ) {
     return <>{children}</>;
   }
 
-  const progress = progressLabel(preload);
+  const canonProgress = canonPreload.total > 0
+    ? `${canonPreload.completed}/${canonPreload.total}`
+    : null;
+  const progress = canonPreload.status !== "ready" ? canonProgress : progressLabel(preload);
   const displayPhase = preload.status === "idle" ? "checking-updates" : preload.phase;
-  const phaseLabel = preload.status === "partial"
-    ? "Rebuilding missing strategy data..."
-    : PHASE_LABELS[displayPhase];
+  const phaseLabel = canonPreload.status === "error"
+    ? `App update failed: ${canonPreload.error ?? "unknown error"}`
+    : canonPreload.status !== "ready"
+      ? `Updating to app version ${canonPreload.appVersion ?? "v2"}...`
+      : preload.status === "partial"
+        ? "Rebuilding missing strategy data..."
+        : PHASE_LABELS[displayPhase];
   const label = progress
     ? `${phaseLabel} (${progress})`
     : phaseLabel;
@@ -118,14 +140,18 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
                   0,
                   Math.min(
                     100,
-                    (preload.readySelectionKeys.length
-                      + Object.keys(preload.failedSelectionKeys).length)
+                    (canonPreload.status !== "ready"
+                      ? canonPreload.completed
+                      : preload.readySelectionKeys.length
+                        + Object.keys(preload.failedSelectionKeys).length)
                       / Math.max(
                         1,
-                        preload.queuedSelectionKeys.length
-                          + preload.loadingSelectionKeys.length
-                          + preload.readySelectionKeys.length
-                          + Object.keys(preload.failedSelectionKeys).length,
+                        canonPreload.status !== "ready"
+                          ? canonPreload.total
+                          : preload.queuedSelectionKeys.length
+                            + preload.loadingSelectionKeys.length
+                            + preload.readySelectionKeys.length
+                            + Object.keys(preload.failedSelectionKeys).length,
                       )
                       * 100,
                   ),
