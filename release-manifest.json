@@ -1,0 +1,34 @@
+{
+  "appVersion": "v2",
+  "semanticVersion": "2.0.0",
+  "releasedAt": "2026-05-30",
+  "anchorCommit": "pending-v2-tag",
+  "previousVersion": {
+    "appVersion": "v1",
+    "semanticVersion": "1.0.0"
+  },
+  "components": {
+    "engineVersion": "strategy-artifact-v28",
+    "assemblyVersion": "assembly-v3",
+    "selectorEngineVersion": "selector-engine-v6",
+    "anchorVersion": "execution_monday_utc_v1",
+    "canonicalAnchorVersion": "canonical_weekly_v2",
+    "tradeLedgerVersion": "trade-identity-v2-direction-key",
+    "preloadCacheVersion": "global-preload-v1:canonical-weekly-v3-full-coverage:execution-weekly-v1:strategy-artifact-v28:dashboard-cache-v2",
+    "canonicalDerivationVersion": "v2_intraday_weekly",
+    "executionDerivationVersion": "v1_execution_monday_utc"
+  },
+  "canon": {
+    "generatedAt": "pending",
+    "sourceLedgerRowCount": 0,
+    "sourceHash": "sha256:pending",
+    "variants": []
+  },
+  "changes": [
+    "Version-aware app shell and release manifest.",
+    "Immutable historical canon under v2.",
+    "Basket rebuilt on local canon with the shared TradeList.",
+    "Matrix and legacy summary-card drilldowns quarantined from active flow."
+  ],
+  "changelogMarkdown": null
+}
