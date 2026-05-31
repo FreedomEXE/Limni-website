@@ -2,7 +2,7 @@
   "appVersion": "v2",
   "semanticVersion": "2.0.0",
   "releasedAt": "2026-05-30",
-  "anchorCommit": "pending-v2-tag",
+  "anchorCommit": "v2",
   "previousVersion": {
     "appVersion": "v1",
     "semanticVersion": "1.0.0"
