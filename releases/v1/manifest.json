@@ -20,616 +20,618 @@
   "previousVersion": null,
   "screenshots": [
     {
-      "file": "screenshots/_review/legacy-screenshot_2-2-2026_232346_limni-website-ecp7tdi6t-freedomexes-projects.vercel.app.jpeg",
-      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 2 2 2026 232346 Limni Website Ecp7tdi6t Freedomexes Projects.Vercel.App."
+      "file": "screenshots/_legacy-dev-artifacts/legacy-flagship-crypto-sanity-dark.png",
+      "description": "Dev artifact · CSS/webpack sanity render · Legacy Flagship Crypto Sanity Dark. Preserved for engineering context only; this is not a user-visible v1 surface."
     },
     {
-      "file": "screenshots/_review/legacy-screenshot_20-2-2026_185356_limni-website-nine.vercel.app.jpeg",
-      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 20 2 2026 185356 Limni Website Nine.Vercel.App."
+      "file": "screenshots/_legacy-dev-artifacts/legacy-flagship-crypto-webpack-sanity-dark.png",
+      "description": "Dev artifact · CSS/webpack sanity render · Legacy Flagship Crypto Webpack Sanity Dark. Preserved for engineering context only; this is not a user-visible v1 surface."
     },
     {
-      "file": "screenshots/_review/legacy-screenshot_3-2-2026_21334_limni-website-jzi491d5a-freedomexes-projects.vercel.app.jpeg",
-      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 3 2 2026 21334 Limni Website Jzi491d5a Freedomexes Projects.Vercel.App."
+      "file": "screenshots/_legacy-dev-artifacts/legacy-flagship-sanity-dark.png",
+      "description": "Dev artifact · CSS/webpack sanity render · Legacy Flagship Sanity Dark. Preserved for engineering context only; this is not a user-visible v1 surface."
     },
     {
-      "file": "screenshots/_review/legacy-screenshot_8-2-2026_2027_limni-website-nine.vercel.app.jpeg",
-      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 8 2 2026 2027 Limni Website Nine.Vercel.App."
+      "file": "screenshots/_legacy-dev-artifacts/legacy-flagship-webpack-sanity-dark.png",
+      "description": "Dev artifact · CSS/webpack sanity render · Legacy Flagship Webpack Sanity Dark. Preserved for engineering context only; this is not a user-visible v1 surface."
     },
     {
-      "file": "screenshots/_review/legacy-screenshot-2026-02-01-222755.png",
-      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 2026 02 01 222755."
+      "file": "screenshots/_legacy-dev-artifacts/legacy-login-webpack-sanity-dark.png",
+      "description": "Dev artifact · CSS/webpack sanity render · Legacy Login Webpack Sanity Dark. Preserved for engineering context only; this is not a user-visible v1 surface."
     },
     {
-      "file": "screenshots/_review/legacy-screenshot-2026-02-01-224722.png",
-      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 2026 02 01 224722."
+      "file": "screenshots/_legacy-dev-artifacts/legacy-performance-sanity-dark.png",
+      "description": "Dev artifact · CSS/webpack sanity render · Legacy Performance Sanity Dark. Preserved for engineering context only; this is not a user-visible v1 surface."
     },
     {
-      "file": "screenshots/_review/legacy-screenshot-2026-02-17-193910.png",
-      "description": "Unclassified legacy screenshot for manual review: Legacy Screenshot 2026 02 17 193910."
+      "file": "screenshots/_legacy-dev-artifacts/legacy-performance-webpack-sanity-dark.png",
+      "description": "Dev artifact · CSS/webpack sanity render · Legacy Performance Webpack Sanity Dark. Preserved for engineering context only; this is not a user-visible v1 surface."
+    },
+    {
+      "file": "screenshots/accounts/accounts-connect-mt5-modal.jpeg",
+      "description": "Accounts · MT5 connection modal. Shows the manual setup instructions for connecting an MT5 account in v1."
+    },
+    {
+      "file": "screenshots/accounts/accounts-mt5-tyrell-tsolakis-detail-feb03.jpeg",
+      "description": "Accounts · MT5 account detail · Tyrell Tsolakis. Shows a detailed account/trade ledger view from the early v1 account surface."
+    },
+    {
+      "file": "screenshots/accounts/accounts-oanda-freedom-trades-feb16-week.jpeg",
+      "description": "Accounts · OANDA trades · Freedom account. Shows the v1 account trade list for the Feb 16 week."
     },
     {
       "file": "screenshots/accounts/accounts-overview.png",
-      "description": "Accounts v1 screenshot: Accounts Overview."
+      "description": "Accounts · Overview · v1. Shows the account management surface preserved for the v1 visual baseline."
+    },
+    {
+      "file": "screenshots/antikythera/antikythera-annotated-data-tab-feb02.jpeg",
+      "description": "Antikythera · Annotated data tab · Feb 02 capture. Shows an early annotated market-data dashboard from the v1-era app."
     },
     {
       "file": "screenshots/antikythera/antikythera-overview.png",
-      "description": "Antikythera v1 screenshot: Antikythera Overview."
+      "description": "Antikythera · Overview · v1. Shows the Antikythera research surface preserved as part of the v1 visual record."
     },
     {
-      "file": "screenshots/audit-evidence/audit-active-surface-sweep-final.png",
-      "description": "Visual audit evidence: Active Surface Sweep Final."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-basket-hierarchy-agreement-alltime.png",
-      "description": "Visual audit evidence: Basket Hierarchy Agreement Alltime."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-basket-hierarchy-tandem-adr-expanded.png",
-      "description": "Visual audit evidence: Basket Hierarchy Tandem Adr Expanded."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-basket-hierarchy-tandem-modal-parent.png",
-      "description": "Visual audit evidence: Basket Hierarchy Tandem Modal Parent."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-basket-hierarchy-tiered-week.png",
-      "description": "Visual audit evidence: Basket Hierarchy Tiered Week."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-basket-v3-containment-notice.png",
-      "description": "Visual audit evidence: Basket V3 Containment Notice."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-consistency-alltime-summary-adr.png",
-      "description": "Visual audit evidence: Consistency Alltime Summary Adr."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-consistency-alltime-summary-raw.png",
-      "description": "Visual audit evidence: Consistency Alltime Summary Raw."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-consistency-simulation-adr.png",
-      "description": "Visual audit evidence: Consistency Simulation Adr."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-consistency-simulation-raw.png",
-      "description": "Visual audit evidence: Consistency Simulation Raw."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-consistency-weekly-crypto-scoped.png",
-      "description": "Visual audit evidence: Consistency Weekly Crypto Scoped."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-fbdr-basket-raw-after.png",
-      "description": "Visual audit evidence: Fbdr Basket Raw After."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-fbdr-raw-fx-after.png",
-      "description": "Visual audit evidence: Fbdr Raw Fx After."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-fbdr-raw-hourly-fx-after.png",
-      "description": "Visual audit evidence: Fbdr Raw Hourly Fx After."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-trade-drilldown-matrix.png",
-      "description": "Visual audit evidence: Trade Drilldown Matrix."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-trade-drilldown-performance.png",
-      "description": "Visual audit evidence: Trade Drilldown Performance."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-trade-list-fixture-preview-dark-final.png",
-      "description": "Visual audit evidence: Trade List Fixture Preview Dark Final."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-trade-list-fixture-preview-dark-tightened.png",
-      "description": "Visual audit evidence: Trade List Fixture Preview Dark Tightened."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-trade-list-fixture-preview.png",
-      "description": "Visual audit evidence: Trade List Fixture Preview."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-data-before-click.png",
-      "description": "Visual audit evidence: Ui Wiring Data Before Click."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-data-canonical-clicked.png",
-      "description": "Visual audit evidence: Ui Wiring Data Canonical Clicked."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-data-default.png",
-      "description": "Visual audit evidence: Ui Wiring Data Default."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-data-execution-clicked.png",
-      "description": "Visual audit evidence: Ui Wiring Data Execution Clicked."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-matrix-probe.png",
-      "description": "Visual audit evidence: Ui Wiring Matrix Probe."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-adr.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Adr."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-after-120s.png",
-      "description": "Visual audit evidence: Ui Wiring Performance After 120s."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-adr-may11-final.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Basket Adr May11 Final."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-adr-may11-fixed.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Basket Adr May11 Fixed."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-adr-may11-fixed2.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Basket Adr May11 Fixed2."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-adr-may11.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Basket Adr May11."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-raw-may11-final.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Basket Raw May11 Final."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-raw-may11-fixed.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Basket Raw May11 Fixed."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-raw-may11-fixed2.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Basket Raw May11 Fixed2."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-raw-may11.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Basket Raw May11."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-basket-timeout-final.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Basket Timeout Final."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-before-click.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Before Click."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-load-state.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Load State."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-longwait-raw.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Longwait Raw."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-ui-wiring-performance-longwait.png",
-      "description": "Visual audit evidence: Ui Wiring Performance Longwait."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-verify-adr-grid-drilldown-fixed.png",
-      "description": "Visual audit evidence: Verify Adr Grid Drilldown Fixed."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-verify-matrix-canonical-drilldown.png",
-      "description": "Visual audit evidence: Verify Matrix Canonical Drilldown."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-verify-missing-data-drilldown.png",
-      "description": "Visual audit evidence: Verify Missing Data Drilldown."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-verify-performance-weekly-hold-drilldown.png",
-      "description": "Visual audit evidence: Verify Performance Weekly Hold Drilldown."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-verify-tandem-multisource-drilldown-fixed.png",
-      "description": "Visual audit evidence: Verify Tandem Multisource Drilldown Fixed."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-viewmode-data-audcad-may11-canonical-adr.png",
-      "description": "Visual audit evidence: Viewmode Data Audcad May11 Canonical Adr."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-viewmode-matrix-audcad-may11-canonical-raw.png",
-      "description": "Visual audit evidence: Viewmode Matrix Audcad May11 Canonical Raw."
-    },
-    {
-      "file": "screenshots/audit-evidence/audit-viewmode-performance-audcad-may11.png",
-      "description": "Visual audit evidence: Viewmode Performance Audcad May11."
+      "file": "screenshots/automation/automation-bots-index-manual-dark.jpeg",
+      "description": "Automation · Bots index · manual capture. Shows the dark-theme bot catalog as captured during the v1 visual baseline pass."
     },
     {
       "file": "screenshots/automation/automation-bots-index.png",
-      "description": "Automation v1 screenshot: Automation Bots Index."
+      "description": "Automation · Bots index · v1. Shows the original bot catalog with active, paused, and research-stage automation cards."
     },
     {
       "file": "screenshots/automation/automation-manual-01.jpeg",
-      "description": "Automation manually captured v1 screenshot 01."
+      "description": "Automation · Account reporting · overview. Shows the v1 account-reporting summary cards and portfolio reporting shell."
     },
     {
       "file": "screenshots/automation/automation-manual-02.jpeg",
-      "description": "Automation manually captured v1 screenshot 02."
+      "description": "Automation · Weekly Basket EA · bot detail. Shows the v1 bot detail page with setup notes and operational panels."
     },
     {
       "file": "screenshots/automation/automation-manual-03.jpeg",
-      "description": "Automation manually captured v1 screenshot 03."
+      "description": "Automation · Kataraksi Crypto · bot detail. Shows the v1 bot specification cards and operating notes."
     },
     {
       "file": "screenshots/automation/automation-manual-04.jpeg",
-      "description": "Automation manually captured v1 screenshot 04."
+      "description": "Automation · Kataraksi Crypto Lite · bot detail. Shows the lightweight crypto bot variant with v1 configuration panels."
     },
     {
       "file": "screenshots/automation/automation-manual-05.jpeg",
-      "description": "Automation manually captured v1 screenshot 05."
+      "description": "Automation · Kataraksi CTD · bot detail. Shows the v1 CTD bot overview and account/status cards."
     },
     {
       "file": "screenshots/automation/automation-manual-06.jpeg",
-      "description": "Automation manually captured v1 screenshot 06."
+      "description": "Automation · Kataraksi CTD Lite · bot detail. Shows the v1 CTD Lite bot configuration and operations panels."
     },
     {
       "file": "screenshots/automation/automation-manual-07.jpeg",
-      "description": "Automation manually captured v1 screenshot 07."
+      "description": "Automation · Solana Meme Bot · bot detail. Shows the v1 Solana automation surface and rules panels."
     },
     {
       "file": "screenshots/automation/automation-manual-08.jpeg",
-      "description": "Automation manually captured v1 screenshot 08."
+      "description": "Automation · Research charts · bot research. Shows v1 research curves used to compare bot variants."
     },
     {
       "file": "screenshots/automation/automation-manual-09.jpeg",
-      "description": "Automation manually captured v1 screenshot 09."
+      "description": "Automation · Strategy explorer · comparison grid. Shows a dense v1 grid of strategy/bot candidates."
     },
     {
       "file": "screenshots/automation/automation-manual-10.jpeg",
-      "description": "Automation manually captured v1 screenshot 10."
+      "description": "Automation · Universal report · strategy detail. Shows v1 report metrics, settings, and result tables for one research run."
     },
     {
       "file": "screenshots/automation/automation-manual-11.jpeg",
-      "description": "Automation manually captured v1 screenshot 11."
+      "description": "Automation · Strategy table · tall detail. Shows a long v1 tabular research view for bot/strategy comparison."
     },
     {
       "file": "screenshots/automation/automation-manual-12.jpeg",
-      "description": "Automation manually captured v1 screenshot 12."
+      "description": "Automation · Research detail · performance curves. Shows v1 charts and tables for a selected automation research run."
     },
     {
       "file": "screenshots/automation/automation-manual-13.jpeg",
-      "description": "Automation manually captured v1 screenshot 13."
+      "description": "Automation · Research filters · selection modal. Shows the v1 filter/selection panel used to choose instruments or strategy inputs."
     },
     {
       "file": "screenshots/automation/automation-research-index.png",
-      "description": "Automation v1 screenshot: Automation Research Index."
+      "description": "Automation · Research index · v1. Shows the original research-card index before Research Lab was promoted to a top-level v2 surface."
+    },
+    {
+      "file": "screenshots/automation/automation-research-performance-detail.jpeg",
+      "description": "Automation · Research detail · performance table. Shows a v1 research detail page that was originally captured from the News/Research flow."
+    },
+    {
+      "file": "screenshots/automation/ea-logs/ea-debug-symbol-normalization.png",
+      "description": "Automation · EA logs · symbol normalization. Shows a debug log proving symbol normalization behavior for EA inputs."
+    },
+    {
+      "file": "screenshots/automation/ea-logs/ea-log-symbol-not-in-allowed-list.png",
+      "description": "Automation · EA logs · symbol allow-list. Shows an EA log where a symbol was rejected because it was not in the configured allow-list."
     },
     {
       "file": "screenshots/data/data-heatmap-commercial-all-assets.png",
-      "description": "Data v1 screenshot: Data Heatmap Commercial All Assets."
+      "description": "Data · Heatmap view · Commercial · all assets. Shows the v1 commercial source heatmap with red/green pair tiles."
     },
     {
       "file": "screenshots/data/data-heatmap-dealer-all-assets.png",
-      "description": "Data v1 screenshot: Data Heatmap Dealer All Assets."
+      "description": "Data · Heatmap view · Dealer · all assets. Shows the canonical v1 dealer heatmap layout used for market breadth inspection."
     },
     {
       "file": "screenshots/data/data-list-dealer-all-assets.png",
-      "description": "Data v1 screenshot: Data List Dealer All Assets."
+      "description": "Data · List view · Dealer · all assets. Shows the v1 empty/list-state behavior for the dealer source."
     },
     {
       "file": "screenshots/data/data-manual-01.jpeg",
-      "description": "Data manually captured v1 screenshot 01."
+      "description": "Data · Heatmap view · Dealer · all assets. Manual dark-theme capture of the v1 dealer pair heatmap."
     },
     {
       "file": "screenshots/data/data-manual-02.jpeg",
-      "description": "Data manually captured v1 screenshot 02."
+      "description": "Data · List view · Dealer · all assets. Manual capture of the v1 long pair list for dealer data."
     },
     {
       "file": "screenshots/data/data-manual-03.jpeg",
-      "description": "Data manually captured v1 screenshot 03."
+      "description": "Data · Heatmap view · Commercial · all assets. Manual dark-theme capture of the commercial pair heatmap."
     },
     {
       "file": "screenshots/data/data-manual-04.jpeg",
-      "description": "Data manually captured v1 screenshot 04."
+      "description": "Data · Heatmap view · Sentiment · all assets. Manual capture of the v1 sentiment source heatmap."
     },
     {
       "file": "screenshots/data/data-manual-05.jpeg",
-      "description": "Data manually captured v1 screenshot 05."
+      "description": "Data · Heatmap view · Strength · all assets. Manual capture of the v1 strength source heatmap."
     },
     {
       "file": "screenshots/data/data-manual-06.jpeg",
-      "description": "Data manually captured v1 screenshot 06."
+      "description": "Data · Heatmap view · Dealer · light theme. Manual light-theme capture of the dealer heatmap."
     },
     {
       "file": "screenshots/flagship/flagship-crypto.png",
-      "description": "Flagship v1 screenshot: Flagship Crypto."
+      "description": "Flagship · Crypto · v1. Shows the v1 flagship crypto surface."
     },
     {
       "file": "screenshots/flagship/flagship-intraday.png",
-      "description": "Flagship v1 screenshot: Flagship Intraday."
+      "description": "Flagship · Intraday · desktop dark theme. Shows the v1 flagship intraday layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/flagship-overview.png",
-      "description": "Flagship v1 screenshot: Flagship Overview."
+      "description": "Flagship · Overview · v1. Shows the flagship strategy surface preserved for visual comparison."
     },
     {
       "file": "screenshots/flagship/flagship-weekly-hold.png",
-      "description": "Flagship v1 screenshot: Flagship Weekly Hold."
+      "description": "Flagship · Weekly Hold · desktop dark theme. Shows the v1 flagship weekly-hold layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-codex-review-intraday-dark-before.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Intraday review · dark theme. Shows the v1-era intraday flagship review layout."
     },
     {
       "file": "screenshots/flagship/legacy-codex-review-intraday-light-before.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Intraday review · light theme. Shows the v1-era intraday flagship review layout."
     },
     {
       "file": "screenshots/flagship/legacy-codex-review-swing-dark-before.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Swing review · dark theme. Shows the v1-era swing flagship review layout."
     },
     {
       "file": "screenshots/flagship/legacy-codex-review-swing-light-before.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
-    },
-    {
-      "file": "screenshots/flagship/legacy-flagship-crypto-sanity-dark.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
-    },
-    {
-      "file": "screenshots/flagship/legacy-flagship-crypto-webpack-sanity-dark.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Swing review · light theme. Shows the v1-era swing flagship review layout."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-intraday-desktop-dark-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Intraday · desktop dark theme. Shows the v1 flagship intraday layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-intraday-desktop-light-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Intraday · desktop light theme. Shows the v1 flagship intraday layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-intraday-mobile-dark-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Intraday · mobile dark theme. Shows the v1 flagship intraday layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-intraday-mobile-light-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Intraday · mobile light theme. Shows the v1 flagship intraday layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-intraday-tablet-dark-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Intraday · tablet dark theme. Shows the v1 flagship intraday layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-intraday-tablet-light-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
-    },
-    {
-      "file": "screenshots/flagship/legacy-flagship-sanity-dark.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
-    },
-    {
-      "file": "screenshots/flagship/legacy-flagship-webpack-sanity-dark.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Intraday · tablet light theme. Shows the v1 flagship intraday layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-weekly-hold-desktop-dark-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Weekly Hold · desktop dark theme. Shows the v1 flagship weekly-hold layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-weekly-hold-desktop-light-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Weekly Hold · desktop light theme. Shows the v1 flagship weekly-hold layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-weekly-hold-mobile-dark-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Weekly Hold · mobile dark theme. Shows the v1 flagship weekly-hold layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-weekly-hold-mobile-light-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Weekly Hold · mobile light theme. Shows the v1 flagship weekly-hold layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-weekly-hold-tablet-dark-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Weekly Hold · tablet dark theme. Shows the v1 flagship weekly-hold layout across responsive breakpoints."
     },
     {
       "file": "screenshots/flagship/legacy-flagship-weekly-hold-tablet-light-after.png",
-      "description": "Flagship legacy screenshot copied from the original screenshots archive."
+      "description": "Flagship · Weekly Hold · tablet light theme. Shows the v1 flagship weekly-hold layout across responsive breakpoints."
     },
     {
       "file": "screenshots/full-app-context/full-app-context-performance.png",
-      "description": "Full App Context v1 screenshot: Full App Context Performance."
+      "description": "Full app · Performance context · v1. Shows the full sidebar and main Performance shell as a visual baseline."
     },
     {
       "file": "screenshots/indicator/legacy-audnzd_2026-03-25_00-33-04_49f4a.png",
-      "description": "Legacy indicator / chart comparison screenshot: Audnzd 2026 03 25 00 33 04 49f4a."
+      "description": "Indicator · TradingView comparison · Legacy Audnzd 2026 03 25 00 33 04 49f4a. Preserves legacy indicator/chart evidence for later app-vs-indicator verification."
     },
     {
       "file": "screenshots/indicator/legacy-btcusdt.p_2026-03-25_04-34-33_09e20.png",
-      "description": "Legacy indicator / chart comparison screenshot: Btcusdt.P 2026 03 25 04 34 33 09e20."
+      "description": "Indicator · TradingView comparison · Legacy Btcusdt.P 2026 03 25 04 34 33 09e20. Preserves legacy indicator/chart evidence for later app-vs-indicator verification."
     },
     {
       "file": "screenshots/indicator/legacy-btcusdt.p_2026-03-25_04-40-49_4d567.png",
-      "description": "Legacy indicator / chart comparison screenshot: Btcusdt.P 2026 03 25 04 40 49 4d567."
+      "description": "Indicator · TradingView comparison · Legacy Btcusdt.P 2026 03 25 04 40 49 4d567. Preserves legacy indicator/chart evidence for later app-vs-indicator verification."
     },
     {
       "file": "screenshots/indicator/legacy-btcusdt.p_2026-03-28_12-11-17_55419.png",
-      "description": "Legacy indicator / chart comparison screenshot: Btcusdt.P 2026 03 28 12 11 17 55419."
+      "description": "Indicator · TradingView comparison · Legacy Btcusdt.P 2026 03 28 12 11 17 55419. Preserves legacy indicator/chart evidence for later app-vs-indicator verification."
     },
     {
       "file": "screenshots/indicator/legacy-weekly-audnzd-adr-limni.png",
-      "description": "Legacy indicator / chart comparison screenshot: Weekly Audnzd Adr Limni."
-    },
-    {
-      "file": "screenshots/login/legacy-login-webpack-sanity-dark.png",
-      "description": "Login legacy screenshot copied from the original screenshots archive."
+      "description": "Indicator · TradingView comparison · Legacy Weekly Audnzd Adr Limni. Preserves legacy indicator/chart evidence for later app-vs-indicator verification."
     },
     {
       "file": "screenshots/matrix/legacy-codex-review-matrix-dark-before.png",
-      "description": "Matrix legacy screenshot copied from the original screenshots archive."
+      "description": "Matrix · Legacy dark review · pre-v2. Shows the old Matrix review surface before it was removed from the active v2 flow."
     },
     {
       "file": "screenshots/matrix/legacy-codex-review-matrix-light-before-loaded.png",
-      "description": "Matrix legacy screenshot copied from the original screenshots archive."
+      "description": "Matrix · Legacy light review · loaded state. Shows the old Matrix light-theme loaded state before v2 quarantine."
     },
     {
       "file": "screenshots/matrix/legacy-codex-review-matrix-light-before.png",
-      "description": "Matrix legacy screenshot copied from the original screenshots archive."
+      "description": "Matrix · Legacy light review · pre-load state. Shows the old Matrix light-theme shell before v2 quarantine."
     },
     {
       "file": "screenshots/matrix/matrix-manual-01.jpeg",
-      "description": "Matrix manually captured v1 screenshot 01."
+      "description": "Matrix · Long table · v1. Manual capture of the old matrix table in dark theme before v2 quarantine."
     },
     {
       "file": "screenshots/matrix/matrix-manual-02.jpeg",
-      "description": "Matrix manually captured v1 screenshot 02."
+      "description": "Matrix · Dense table · v1. Manual capture of a tall matrix table with many pair rows before v2 quarantine."
     },
     {
       "file": "screenshots/matrix/matrix-manual-03.jpeg",
-      "description": "Matrix manually captured v1 screenshot 03."
+      "description": "Matrix · Tall scroll state · v1. Manual capture of an extremely narrow/tall matrix scroll state before quarantine."
     },
     {
       "file": "screenshots/matrix/matrix-manual-04.jpeg",
-      "description": "Matrix manually captured v1 screenshot 04."
+      "description": "Matrix · Portfolio table · v1. Manual capture of the old Matrix pair table for historical reference."
     },
     {
       "file": "screenshots/matrix/matrix-manual-05.jpeg",
-      "description": "Matrix manually captured v1 screenshot 05."
-    },
-    {
-      "file": "screenshots/matrix/matrix-manual-06.jpeg",
-      "description": "Matrix manually captured v1 screenshot 06."
+      "description": "Matrix · Portfolio table · v1. Alternate manual capture of the old Matrix pair table before quarantine."
     },
     {
       "file": "screenshots/matrix/matrix-overview.png",
-      "description": "Matrix v1 screenshot: Matrix Overview."
-    },
-    {
-      "file": "screenshots/news/news-manual-01.jpeg",
-      "description": "News manually captured v1 screenshot 01."
+      "description": "Matrix · COT matrix · v1. Shows the old matrix surface with strategy metrics, pair rows, and portfolio filters; Matrix is quarantined in v2."
     },
     {
       "file": "screenshots/news/news-manual-02.jpeg",
-      "description": "News manually captured v1 screenshot 02."
+      "description": "News · Filter modal · v1. Shows the v1 news filter/selection panel."
     },
     {
       "file": "screenshots/news/news-overview.png",
-      "description": "News v1 screenshot: News Overview."
+      "description": "News · Economic calendar · v1. Shows the v1 news surface with calendar rows and summary counters."
     },
     {
       "file": "screenshots/performance/legacy-performance-desktop-dark-after.png",
-      "description": "Performance legacy screenshot copied from the original screenshots archive."
+      "description": "Performance · Legacy desktop · dark theme. Shows the pre-v2 desktop Performance layout."
     },
     {
       "file": "screenshots/performance/legacy-performance-desktop-light-after.png",
-      "description": "Performance legacy screenshot copied from the original screenshots archive."
+      "description": "Performance · Legacy desktop · light theme. Shows the pre-v2 desktop Performance layout."
     },
     {
       "file": "screenshots/performance/legacy-performance-mobile-dark-after.png",
-      "description": "Performance legacy screenshot copied from the original screenshots archive."
+      "description": "Performance · Legacy mobile · dark theme. Shows the pre-v2 mobile Performance layout."
     },
     {
       "file": "screenshots/performance/legacy-performance-mobile-light-after.png",
-      "description": "Performance legacy screenshot copied from the original screenshots archive."
-    },
-    {
-      "file": "screenshots/performance/legacy-performance-sanity-dark.png",
-      "description": "Performance legacy screenshot copied from the original screenshots archive."
+      "description": "Performance · Legacy mobile · light theme. Shows the pre-v2 mobile Performance layout."
     },
     {
       "file": "screenshots/performance/legacy-performance-tablet-dark-after.png",
-      "description": "Performance legacy screenshot copied from the original screenshots archive."
+      "description": "Performance · Legacy tablet · dark theme. Shows the pre-v2 tablet Performance layout."
     },
     {
       "file": "screenshots/performance/legacy-performance-tablet-light-after.png",
-      "description": "Performance legacy screenshot copied from the original screenshots archive."
-    },
-    {
-      "file": "screenshots/performance/legacy-performance-webpack-sanity-dark.png",
-      "description": "Performance legacy screenshot copied from the original screenshots archive."
+      "description": "Performance · Legacy tablet · light theme. Shows the pre-v2 tablet Performance layout."
     },
     {
       "file": "screenshots/performance/performance-basket-tandem-adr-grid-pair-fill-cap-alltime.png",
-      "description": "Performance v1 screenshot: Performance Basket Tandem Adr Grid Pair Fill Cap Alltime."
+      "description": "Performance · Basket · Tandem ADR Grid Pair Fill Cap. Shows the v1 basket pane before the canon-backed v2 TradeList rebuild."
     },
     {
       "file": "screenshots/performance/performance-manual-01.jpeg",
-      "description": "Performance manually captured v1 screenshot 01."
+      "description": "Performance · Summary cards · Tandem ADR Grid Pair Fill Cap. Captures the pre-migration v1 all-time summary state with inflated Tandem return values corrected in v2."
     },
     {
       "file": "screenshots/performance/performance-manual-02.jpeg",
-      "description": "Performance manually captured v1 screenshot 02."
+      "description": "Performance · Summary cards · Tandem ADR Grid Pair Fill Cap. Alternate v1 all-time summary capture showing the same pre-migration inflated return story corrected in v2."
     },
     {
       "file": "screenshots/performance/performance-manual-03.jpeg",
-      "description": "Performance manually captured v1 screenshot 03."
+      "description": "Performance · Weekly summary · Tandem ADR Grid Pair Fill Cap. Shows the v1 weekly summary-card layout before the canon-backed Basket rebuild."
     },
     {
       "file": "screenshots/performance/performance-manual-04.jpeg",
-      "description": "Performance manually captured v1 screenshot 04."
+      "description": "Performance · Simulation · Tandem ADR Grid Pair Fill Cap. Shows the v1 equity curve and drawdown panel used before v2 canon consolidation."
     },
     {
       "file": "screenshots/performance/performance-manual-05.jpeg",
-      "description": "Performance manually captured v1 screenshot 05."
+      "description": "Performance · Basket · Tandem ADR Grid Pair Fill Cap. Shows the v1 basket list layout with pair rows, direction, portfolio labels, and returns."
     },
     {
       "file": "screenshots/performance/performance-manual-06.jpeg",
-      "description": "Performance manually captured v1 screenshot 06."
+      "description": "Performance · Summary cards · Tandem ADR Grid Pair Fill Cap. Shows a scoped v1 summary-card state before v2 standardized historical canon reads."
     },
     {
       "file": "screenshots/performance/performance-manual-07.jpeg",
-      "description": "Performance manually captured v1 screenshot 07."
+      "description": "Performance · Notes · Tandem ADR Grid Pair Fill Cap. Shows the v1 observations/notes surface for the selected strategy."
     },
     {
       "file": "screenshots/performance/performance-manual-08.jpeg",
-      "description": "Performance manually captured v1 screenshot 08."
+      "description": "Performance · Simulation distribution · Tandem ADR Grid Pair Fill Cap. Shows the v1 simulation chart and return distribution panels."
     },
     {
       "file": "screenshots/performance/performance-manual-09.jpeg",
-      "description": "Performance manually captured v1 screenshot 09."
+      "description": "Performance · Summary cards · Tandem ADR Grid Pair Fill Cap. Shows a weekly/scoped summary state in the original card layout."
     },
     {
       "file": "screenshots/performance/performance-manual-10.jpeg",
-      "description": "Performance manually captured v1 screenshot 10."
+      "description": "Performance · Simulation distribution · Tandem ADR Grid Pair Fill Cap. Shows the v1 distribution panel with histogram-style weekly return bars."
     },
     {
       "file": "screenshots/performance/performance-manual-11.jpeg",
-      "description": "Performance manually captured v1 screenshot 11."
+      "description": "Performance · Simulation distribution · Tandem ADR Grid Pair Fill Cap. Shows another v1 distribution state for comparison against v2."
     },
     {
       "file": "screenshots/performance/performance-manual-12.jpeg",
-      "description": "Performance manually captured v1 screenshot 12."
+      "description": "Performance · Summary cards · Tandem ADR Grid Pair Fill Cap. Shows a narrower scoped card set in the pre-v2 layout."
     },
     {
       "file": "screenshots/performance/performance-manual-13.jpeg",
-      "description": "Performance manually captured v1 screenshot 13."
+      "description": "Performance · Summary cards · Tandem ADR Grid Pair Fill Cap. Shows a reduced-scope v1 summary-card state before card rendering was normalized."
     },
     {
       "file": "screenshots/performance/performance-manual-14.jpeg",
-      "description": "Performance manually captured v1 screenshot 14."
+      "description": "Performance · Simulation distribution · Tandem ADR Grid Pair Fill Cap. Shows the v1 equity curve and weekly distribution view."
     },
     {
       "file": "screenshots/performance/performance-research-tandem-adr-grid-pair-fill-cap-alltime.png",
-      "description": "Performance v1 screenshot: Performance Research Tandem Adr Grid Pair Fill Cap Alltime."
+      "description": "Performance · Research · Tandem ADR Grid Pair Fill Cap. Shows the v1 research pane associated with the pre-migration Tandem state corrected in v2."
     },
     {
       "file": "screenshots/performance/performance-simulation-tandem-adr-grid-pair-fill-cap-alltime.png",
-      "description": "Performance v1 screenshot: Performance Simulation Tandem Adr Grid Pair Fill Cap Alltime."
+      "description": "Performance · Simulation · Tandem ADR Grid Pair Fill Cap. Shows the v1 simulation curve for the inflated pre-migration Tandem state corrected in v2."
     },
     {
       "file": "screenshots/performance/performance-summary-tandem-adr-grid-pair-fill-cap-alltime.png",
-      "description": "Performance v1 screenshot: Performance Summary Tandem Adr Grid Pair Fill Cap Alltime."
+      "description": "Performance · All-time summary · Tandem ADR Grid Pair Fill Cap. Captures the pre-migration v1 state where the inflated Tandem return was incorrect; corrected in v2."
+    },
+    {
+      "file": "screenshots/performance/performance-summary-waiting-week-open-feb23.jpeg",
+      "description": "Performance · Summary · waiting for next week open. Shows the v1 empty/zero summary cards while waiting for the Feb 23 week window."
     },
     {
       "file": "screenshots/sentiment/sentiment-overview.png",
-      "description": "Sentiment v1 screenshot: Sentiment Overview."
+      "description": "Sentiment · Overview · v1. Shows the legacy sentiment overview surface preserved for the v1 baseline."
     },
     {
       "file": "screenshots/status/status-manual-01.jpeg",
-      "description": "Status manually captured v1 screenshot 01."
+      "description": "Status · System status · manual capture. Shows the v1 status cards and service health rows in a tall capture."
     },
     {
       "file": "screenshots/status/status-overview.png",
-      "description": "Status v1 screenshot: Status Overview."
+      "description": "Status · System status · v1. Shows the v1 service health dashboard and data pipeline status cards."
+    }
+  ],
+  "auditTrail": [
+    {
+      "file": "audit-trail/audit-active-surface-sweep-final.png",
+      "description": "v1-to-v2 migration audit trail · Active surface sweep · final. Captures the final active-surface audit state used before v2."
+    },
+    {
+      "file": "audit-trail/audit-basket-hierarchy-agreement-alltime.png",
+      "description": "v1-to-v2 migration audit trail · Basket hierarchy · Audit Basket Hierarchy Agreement Alltime. Captures an intermediate Basket rebuild state kept out of the main v1 visual story."
+    },
+    {
+      "file": "audit-trail/audit-basket-hierarchy-tandem-adr-expanded.png",
+      "description": "v1-to-v2 migration audit trail · Basket hierarchy · Audit Basket Hierarchy Tandem Adr Expanded. Captures an intermediate Basket rebuild state kept out of the main v1 visual story."
+    },
+    {
+      "file": "audit-trail/audit-basket-hierarchy-tandem-modal-parent.png",
+      "description": "v1-to-v2 migration audit trail · Basket hierarchy · Audit Basket Hierarchy Tandem Modal Parent. Captures an intermediate Basket rebuild state kept out of the main v1 visual story."
+    },
+    {
+      "file": "audit-trail/audit-basket-hierarchy-tiered-week.png",
+      "description": "v1-to-v2 migration audit trail · Basket hierarchy · Audit Basket Hierarchy Tiered Week. Captures an intermediate Basket rebuild state kept out of the main v1 visual story."
+    },
+    {
+      "file": "audit-trail/audit-basket-v3-containment-notice.png",
+      "description": "v1-to-v2 migration audit trail · Basket containment · v3 quarantine. Shows the temporary containment notice used while the bad Basket hierarchy was hidden."
+    },
+    {
+      "file": "audit-trail/audit-consistency-alltime-summary-adr.png",
+      "description": "v1-to-v2 migration audit trail · Performance consistency · all-time ADR-normalized. Shows the corrected all-time summary after the ViewMode consistency sweep."
+    },
+    {
+      "file": "audit-trail/audit-consistency-alltime-summary-raw.png",
+      "description": "v1-to-v2 migration audit trail · Performance consistency · all-time raw. Shows the same all-time summary responding to the raw-return toggle."
+    },
+    {
+      "file": "audit-trail/audit-consistency-simulation-adr.png",
+      "description": "v1-to-v2 migration audit trail · Simulation consistency · ADR-normalized. Shows simulation metrics after they were routed through resolved ViewMode values."
+    },
+    {
+      "file": "audit-trail/audit-consistency-simulation-raw.png",
+      "description": "v1-to-v2 migration audit trail · Simulation consistency · raw. Shows simulation metrics changing under the raw-return toggle."
+    },
+    {
+      "file": "audit-trail/audit-consistency-weekly-crypto-scoped.png",
+      "description": "v1-to-v2 migration audit trail · Scope consistency · weekly crypto. Shows weekly cards hiding inactive asset classes after the scope-filter fix."
+    },
+    {
+      "file": "audit-trail/audit-fbdr-basket-raw-after.png",
+      "description": "v1-to-v2 migration audit trail · Freedom Basket Drilldown review · Audit Fbdr Basket Raw After. Captures a regression check from the drilldown stabilization work."
+    },
+    {
+      "file": "audit-trail/audit-fbdr-raw-fx-after.png",
+      "description": "v1-to-v2 migration audit trail · Freedom Basket Drilldown review · Audit Fbdr Raw Fx After. Captures a regression check from the drilldown stabilization work."
+    },
+    {
+      "file": "audit-trail/audit-fbdr-raw-hourly-fx-after.png",
+      "description": "v1-to-v2 migration audit trail · Freedom Basket Drilldown review · Audit Fbdr Raw Hourly Fx After. Captures a regression check from the drilldown stabilization work."
+    },
+    {
+      "file": "audit-trail/audit-trade-drilldown-matrix.png",
+      "description": "v1-to-v2 migration audit trail · Trade drilldown · Audit Trade Drilldown Matrix. Captures Phase 1 drilldown verification evidence."
+    },
+    {
+      "file": "audit-trail/audit-trade-drilldown-performance.png",
+      "description": "v1-to-v2 migration audit trail · Trade drilldown · Audit Trade Drilldown Performance. Captures Phase 1 drilldown verification evidence."
+    },
+    {
+      "file": "audit-trail/audit-trade-list-fixture-preview-dark-final.png",
+      "description": "v1-to-v2 migration audit trail · TradeList fixture · Audit Trade List Fixture Preview Dark Final. Captures fixture-only visual verification for the canonical TradeList component."
+    },
+    {
+      "file": "audit-trail/audit-trade-list-fixture-preview-dark-tightened.png",
+      "description": "v1-to-v2 migration audit trail · TradeList fixture · Audit Trade List Fixture Preview Dark Tightened. Captures fixture-only visual verification for the canonical TradeList component."
+    },
+    {
+      "file": "audit-trail/audit-trade-list-fixture-preview.png",
+      "description": "v1-to-v2 migration audit trail · TradeList fixture · Audit Trade List Fixture Preview. Captures fixture-only visual verification for the canonical TradeList component."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-data-before-click.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Data Before Click. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-data-canonical-clicked.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Data Canonical Clicked. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-data-default.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Data Default. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-data-execution-clicked.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Data Execution Clicked. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-matrix-probe.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Matrix Probe. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-adr.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Adr. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-after-120s.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance After 120s. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-basket-adr-may11-final.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Basket Adr May11 Final. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-basket-adr-may11-fixed.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Basket Adr May11 Fixed. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-basket-adr-may11-fixed2.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Basket Adr May11 Fixed2. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-basket-adr-may11.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Basket Adr May11. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-basket-raw-may11-final.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Basket Raw May11 Final. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-basket-raw-may11-fixed.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Basket Raw May11 Fixed. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-basket-raw-may11-fixed2.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Basket Raw May11 Fixed2. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-basket-raw-may11.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Basket Raw May11. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-basket-timeout-final.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Basket Timeout Final. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-before-click.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Before Click. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-load-state.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Load State. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-longwait-raw.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Longwait Raw. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-ui-wiring-performance-longwait.png",
+      "description": "v1-to-v2 migration audit trail · UI wiring · Audit Ui Wiring Performance Longwait. Captures ViewMode/UI wiring verification during the v1-to-v2 migration."
+    },
+    {
+      "file": "audit-trail/audit-verify-adr-grid-drilldown-fixed.png",
+      "description": "v1-to-v2 migration audit trail · Trade drilldown · Audit Verify Adr Grid Drilldown Fixed. Captures Phase 1 drilldown verification evidence."
+    },
+    {
+      "file": "audit-trail/audit-verify-matrix-canonical-drilldown.png",
+      "description": "v1-to-v2 migration audit trail · Trade drilldown · Audit Verify Matrix Canonical Drilldown. Captures Phase 1 drilldown verification evidence."
+    },
+    {
+      "file": "audit-trail/audit-verify-missing-data-drilldown.png",
+      "description": "v1-to-v2 migration audit trail · Trade drilldown · Audit Verify Missing Data Drilldown. Captures Phase 1 drilldown verification evidence."
+    },
+    {
+      "file": "audit-trail/audit-verify-performance-weekly-hold-drilldown.png",
+      "description": "v1-to-v2 migration audit trail · Trade drilldown · Audit Verify Performance Weekly Hold Drilldown. Captures Phase 1 drilldown verification evidence."
+    },
+    {
+      "file": "audit-trail/audit-verify-tandem-multisource-drilldown-fixed.png",
+      "description": "v1-to-v2 migration audit trail · Trade drilldown · Audit Verify Tandem Multisource Drilldown Fixed. Captures Phase 1 drilldown verification evidence."
+    },
+    {
+      "file": "audit-trail/audit-viewmode-data-audcad-may11-canonical-adr.png",
+      "description": "v1-to-v2 migration audit trail · ViewMode verification · Audit Viewmode Data Audcad May11 Canonical Adr. Captures canonical/execution and raw/ADR verification evidence."
+    },
+    {
+      "file": "audit-trail/audit-viewmode-matrix-audcad-may11-canonical-raw.png",
+      "description": "v1-to-v2 migration audit trail · ViewMode verification · Audit Viewmode Matrix Audcad May11 Canonical Raw. Captures canonical/execution and raw/ADR verification evidence."
+    },
+    {
+      "file": "audit-trail/audit-viewmode-performance-audcad-may11.png",
+      "description": "v1-to-v2 migration audit trail · ViewMode verification · Audit Viewmode Performance Audcad May11. Captures canonical/execution and raw/ADR verification evidence."
     }
   ]
 }

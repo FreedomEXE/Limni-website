@@ -1,76 +1,32 @@
 # v1 Screenshot Inventory
 
-Visual baseline screenshots for the v1 / pre-v2 state. These files are organized for the future Documents page; richer captions can be added when that page is built.
+User-visible visual baseline screenshots for the v1 / pre-v2 state. These files are organized for the future Documents page; richer long-form annotations can be layered on top of the manifest captions.
 
-Total screenshots: 153.
+Total images: 106.
 
 ## Inventory
 
-### _review
-- `_review/legacy-screenshot_2-2-2026_232346_limni-website-ecp7tdi6t-freedomexes-projects.vercel.app.jpeg` (94.7 KB)
-- `_review/legacy-screenshot_20-2-2026_185356_limni-website-nine.vercel.app.jpeg` (130.6 KB)
-- `_review/legacy-screenshot_3-2-2026_21334_limni-website-jzi491d5a-freedomexes-projects.vercel.app.jpeg` (666.2 KB)
-- `_review/legacy-screenshot_8-2-2026_2027_limni-website-nine.vercel.app.jpeg` (115.3 KB)
-- `_review/legacy-screenshot-2026-02-01-222755.png` (166.6 KB)
-- `_review/legacy-screenshot-2026-02-01-224722.png` (26.2 KB)
-- `_review/legacy-screenshot-2026-02-17-193910.png` (47.4 KB)
+### _legacy-dev-artifacts
+- `_legacy-dev-artifacts/legacy-flagship-crypto-sanity-dark.png` (37.2 KB)
+- `_legacy-dev-artifacts/legacy-flagship-crypto-webpack-sanity-dark.png` (23.2 KB)
+- `_legacy-dev-artifacts/legacy-flagship-sanity-dark.png` (37.2 KB)
+- `_legacy-dev-artifacts/legacy-flagship-webpack-sanity-dark.png` (23.2 KB)
+- `_legacy-dev-artifacts/legacy-login-webpack-sanity-dark.png` (23.2 KB)
+- `_legacy-dev-artifacts/legacy-performance-sanity-dark.png` (37.2 KB)
+- `_legacy-dev-artifacts/legacy-performance-webpack-sanity-dark.png` (23.2 KB)
 
 ### accounts
+- `accounts/accounts-connect-mt5-modal.jpeg` (47.4 KB)
+- `accounts/accounts-mt5-tyrell-tsolakis-detail-feb03.jpeg` (666.2 KB)
+- `accounts/accounts-oanda-freedom-trades-feb16-week.jpeg` (115.3 KB)
 - `accounts/accounts-overview.png` (46 KB)
 
 ### antikythera
+- `antikythera/antikythera-annotated-data-tab-feb02.jpeg` (94.7 KB)
 - `antikythera/antikythera-overview.png` (90.8 KB)
 
-### audit-evidence
-- `audit-evidence/audit-active-surface-sweep-final.png` (107.6 KB)
-- `audit-evidence/audit-basket-hierarchy-agreement-alltime.png` (178.7 KB)
-- `audit-evidence/audit-basket-hierarchy-tandem-adr-expanded.png` (853.4 KB)
-- `audit-evidence/audit-basket-hierarchy-tandem-modal-parent.png` (902 KB)
-- `audit-evidence/audit-basket-hierarchy-tiered-week.png` (89.1 KB)
-- `audit-evidence/audit-basket-v3-containment-notice.png` (94.2 KB)
-- `audit-evidence/audit-consistency-alltime-summary-adr.png` (115.5 KB)
-- `audit-evidence/audit-consistency-alltime-summary-raw.png` (112.6 KB)
-- `audit-evidence/audit-consistency-simulation-adr.png` (208.4 KB)
-- `audit-evidence/audit-consistency-simulation-raw.png` (211.4 KB)
-- `audit-evidence/audit-consistency-weekly-crypto-scoped.png` (105.8 KB)
-- `audit-evidence/audit-fbdr-basket-raw-after.png` (130.2 KB)
-- `audit-evidence/audit-fbdr-raw-fx-after.png` (182.9 KB)
-- `audit-evidence/audit-fbdr-raw-hourly-fx-after.png` (204.9 KB)
-- `audit-evidence/audit-trade-drilldown-matrix.png` (331.5 KB)
-- `audit-evidence/audit-trade-drilldown-performance.png` (195.4 KB)
-- `audit-evidence/audit-trade-list-fixture-preview-dark-final.png` (78.7 KB)
-- `audit-evidence/audit-trade-list-fixture-preview-dark-tightened.png` (79.6 KB)
-- `audit-evidence/audit-trade-list-fixture-preview.png` (116.9 KB)
-- `audit-evidence/audit-ui-wiring-data-before-click.png` (110.6 KB)
-- `audit-evidence/audit-ui-wiring-data-canonical-clicked.png` (110.5 KB)
-- `audit-evidence/audit-ui-wiring-data-default.png` (66.4 KB)
-- `audit-evidence/audit-ui-wiring-data-execution-clicked.png` (110.7 KB)
-- `audit-evidence/audit-ui-wiring-matrix-probe.png` (310.3 KB)
-- `audit-evidence/audit-ui-wiring-performance-adr.png` (36.2 KB)
-- `audit-evidence/audit-ui-wiring-performance-after-120s.png` (157.1 KB)
-- `audit-evidence/audit-ui-wiring-performance-basket-adr-may11-final.png` (130.6 KB)
-- `audit-evidence/audit-ui-wiring-performance-basket-adr-may11-fixed.png` (37.3 KB)
-- `audit-evidence/audit-ui-wiring-performance-basket-adr-may11-fixed2.png` (37 KB)
-- `audit-evidence/audit-ui-wiring-performance-basket-adr-may11.png` (130.8 KB)
-- `audit-evidence/audit-ui-wiring-performance-basket-raw-may11-final.png` (130.4 KB)
-- `audit-evidence/audit-ui-wiring-performance-basket-raw-may11-fixed.png` (35 KB)
-- `audit-evidence/audit-ui-wiring-performance-basket-raw-may11-fixed2.png` (37 KB)
-- `audit-evidence/audit-ui-wiring-performance-basket-raw-may11.png` (129.7 KB)
-- `audit-evidence/audit-ui-wiring-performance-basket-timeout-final.png` (163.6 KB)
-- `audit-evidence/audit-ui-wiring-performance-before-click.png` (36 KB)
-- `audit-evidence/audit-ui-wiring-performance-load-state.png` (157.1 KB)
-- `audit-evidence/audit-ui-wiring-performance-longwait-raw.png` (138.4 KB)
-- `audit-evidence/audit-ui-wiring-performance-longwait.png` (138.2 KB)
-- `audit-evidence/audit-verify-adr-grid-drilldown-fixed.png` (207.3 KB)
-- `audit-evidence/audit-verify-matrix-canonical-drilldown.png` (339.2 KB)
-- `audit-evidence/audit-verify-missing-data-drilldown.png` (349.8 KB)
-- `audit-evidence/audit-verify-performance-weekly-hold-drilldown.png` (149.5 KB)
-- `audit-evidence/audit-verify-tandem-multisource-drilldown-fixed.png` (199.2 KB)
-- `audit-evidence/audit-viewmode-data-audcad-may11-canonical-adr.png` (111.2 KB)
-- `audit-evidence/audit-viewmode-matrix-audcad-may11-canonical-raw.png` (310.3 KB)
-- `audit-evidence/audit-viewmode-performance-audcad-may11.png` (124 KB)
-
 ### automation
+- `automation/automation-bots-index-manual-dark.jpeg` (178.2 KB)
 - `automation/automation-bots-index.png` (139 KB)
 - `automation/automation-manual-01.jpeg` (61.6 KB)
 - `automation/automation-manual-02.jpeg` (155.5 KB)
@@ -86,6 +42,9 @@ Total screenshots: 153.
 - `automation/automation-manual-12.jpeg` (254.8 KB)
 - `automation/automation-manual-13.jpeg` (243 KB)
 - `automation/automation-research-index.png` (135.5 KB)
+- `automation/automation-research-performance-detail.jpeg` (137 KB)
+- `automation/ea-logs/ea-debug-symbol-normalization.png` (26.2 KB)
+- `automation/ea-logs/ea-log-symbol-not-in-allowed-list.png` (166.6 KB)
 
 ### data
 - `data/data-heatmap-commercial-all-assets.png` (93.1 KB)
@@ -107,16 +66,12 @@ Total screenshots: 153.
 - `flagship/legacy-codex-review-intraday-light-before.png` (121.8 KB)
 - `flagship/legacy-codex-review-swing-dark-before.png` (90 KB)
 - `flagship/legacy-codex-review-swing-light-before.png` (91.8 KB)
-- `flagship/legacy-flagship-crypto-sanity-dark.png` (37.2 KB)
-- `flagship/legacy-flagship-crypto-webpack-sanity-dark.png` (23.2 KB)
 - `flagship/legacy-flagship-intraday-desktop-dark-after.png` (57.6 KB)
 - `flagship/legacy-flagship-intraday-desktop-light-after.png` (57.6 KB)
 - `flagship/legacy-flagship-intraday-mobile-dark-after.png` (33 KB)
 - `flagship/legacy-flagship-intraday-mobile-light-after.png` (33 KB)
 - `flagship/legacy-flagship-intraday-tablet-dark-after.png` (55.2 KB)
 - `flagship/legacy-flagship-intraday-tablet-light-after.png` (55.2 KB)
-- `flagship/legacy-flagship-sanity-dark.png` (37.2 KB)
-- `flagship/legacy-flagship-webpack-sanity-dark.png` (23.2 KB)
 - `flagship/legacy-flagship-weekly-hold-desktop-dark-after.png` (58.8 KB)
 - `flagship/legacy-flagship-weekly-hold-desktop-light-after.png` (58.8 KB)
 - `flagship/legacy-flagship-weekly-hold-mobile-dark-after.png` (33.6 KB)
@@ -134,9 +89,6 @@ Total screenshots: 153.
 - `indicator/legacy-btcusdt.p_2026-03-28_12-11-17_55419.png` (241.6 KB)
 - `indicator/legacy-weekly-audnzd-adr-limni.png` (243.7 KB)
 
-### login
-- `login/legacy-login-webpack-sanity-dark.png` (23.2 KB)
-
 ### matrix
 - `matrix/legacy-codex-review-matrix-dark-before.png` (49.5 KB)
 - `matrix/legacy-codex-review-matrix-light-before-loaded.png` (50 KB)
@@ -146,11 +98,9 @@ Total screenshots: 153.
 - `matrix/matrix-manual-03.jpeg` (1173.4 KB)
 - `matrix/matrix-manual-04.jpeg` (300.8 KB)
 - `matrix/matrix-manual-05.jpeg` (293.7 KB)
-- `matrix/matrix-manual-06.jpeg` (178.2 KB)
 - `matrix/matrix-overview.png` (119.4 KB)
 
 ### news
-- `news/news-manual-01.jpeg` (137 KB)
 - `news/news-manual-02.jpeg` (235.3 KB)
 - `news/news-overview.png` (94.6 KB)
 
@@ -159,10 +109,8 @@ Total screenshots: 153.
 - `performance/legacy-performance-desktop-light-after.png` (101.8 KB)
 - `performance/legacy-performance-mobile-dark-after.png` (91 KB)
 - `performance/legacy-performance-mobile-light-after.png` (91 KB)
-- `performance/legacy-performance-sanity-dark.png` (37.2 KB)
 - `performance/legacy-performance-tablet-dark-after.png` (120.2 KB)
 - `performance/legacy-performance-tablet-light-after.png` (120.2 KB)
-- `performance/legacy-performance-webpack-sanity-dark.png` (23.2 KB)
 - `performance/performance-basket-tandem-adr-grid-pair-fill-cap-alltime.png` (133.4 KB)
 - `performance/performance-manual-01.jpeg` (154.3 KB)
 - `performance/performance-manual-02.jpeg` (145.3 KB)
@@ -181,6 +129,7 @@ Total screenshots: 153.
 - `performance/performance-research-tandem-adr-grid-pair-fill-cap-alltime.png` (141.5 KB)
 - `performance/performance-simulation-tandem-adr-grid-pair-fill-cap-alltime.png` (141 KB)
 - `performance/performance-summary-tandem-adr-grid-pair-fill-cap-alltime.png` (185 KB)
+- `performance/performance-summary-waiting-week-open-feb23.jpeg` (130.6 KB)
 
 ### sentiment
 - `sentiment/sentiment-overview.png` (95.1 KB)
