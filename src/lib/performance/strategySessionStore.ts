@@ -2,6 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import type { AssetClass } from "@/lib/cotMarkets";
+import type { ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
 import {
   fetchCurrentWeekStrategyClientPayload,
   fetchStrategyArtifactStatus,
@@ -21,6 +22,11 @@ import type {
   PreloadTask,
   StrategyPreloadTask,
 } from "@/lib/preload/preloadRegistry";
+import {
+  clearGlobalPreloadStamp,
+  hasTrustedGlobalPreloadStamp,
+  writeGlobalPreloadStamp,
+} from "@/lib/preload/preloadContract";
 
 export type SessionLoadStatus = "idle" | "loading" | "ready" | "missing" | "error";
 export type SessionCurrentWeekStatus =
@@ -43,6 +49,11 @@ export type WeeklyReturnRow = {
   returnPct: number;
   openPrice: number;
   closePrice: number;
+  canonical?: { rawPct: number };
+  execution?: { rawPct: number } | null;
+  adrPct?: number;
+  warnings?: string[];
+  returnMatrix?: ReturnMatrix;
 };
 
 export type StrategySessionRecord = {
@@ -84,6 +95,7 @@ let currentWeekRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let currentWeekRefreshInterval: ReturnType<typeof setInterval> | null = null;
 const preloadedEngineVersions = new Map<string, string>();
 const PRELOAD_REPAIR_MAX_PASSES = 3;
+const PRELOAD_ARTIFACT_STATUS_TIMEOUT_MS = 30_000;
 
 let state: StrategySessionState = {
   activeSelectionKey: null,
@@ -530,6 +542,13 @@ function isStrategyPreloadTask(task: PreloadTask | undefined): task is StrategyP
   return Boolean(task && task.domain === "strategy");
 }
 
+function postGateTaskPriority(task: PreloadTask) {
+  if (task.domain === "market-intelligence") return 0;
+  if (task.domain === "strategy") return 1;
+  if (task.domain === "accounts") return 2;
+  return 3;
+}
+
 function repairKeysFromStatus(status: StrategyArtifactStatusPayload | null) {
   if (!status) return new Set<string>();
   return new Set(
@@ -551,23 +570,69 @@ async function runBackgroundRepairs(manifest: PreloadManifest, repairKeys: Set<s
 
   const repairTasks = manifest.tasks.filter((task) => repairKeys.has(task.id));
   if (repairTasks.length === 0) return null;
+  clearGlobalPreloadStamp();
 
   backgroundRepairInflight = (async () => {
+    let failed = false;
     for (const task of repairTasks) {
       try {
         await task.run({ force: true });
       } catch (error) {
+        failed = true;
         console.error(
           `[strategySessionStore] Background repair failed for ${task.id}:`,
           error,
         );
       }
     }
+    if (!failed) {
+      writeGlobalPreloadStamp();
+    }
   })().finally(() => {
     backgroundRepairInflight = null;
   });
 
   return backgroundRepairInflight;
+}
+
+async function runPostGatePreloadTasks(
+  manifest: PreloadManifest,
+  repairKeys: Set<string>,
+) {
+  const tasks = manifest.tasks
+    .filter((task) => task.id !== manifest.activeTaskId)
+    .sort((left, right) => postGateTaskPriority(left) - postGateTaskPriority(right));
+  if (tasks.length === 0) return;
+
+  state = {
+    ...state,
+    preload: {
+      ...state.preload,
+      queuedSelectionKeys: Array.from(new Set([
+        ...state.preload.queuedSelectionKeys,
+        ...tasks.map((task) => task.id),
+      ])),
+    },
+  };
+  emit();
+
+  let index = 0;
+  const concurrency = Math.min(3, tasks.length);
+  await Promise.all(Array.from({ length: concurrency }, async () => {
+    while (index < tasks.length) {
+      const task = tasks[index];
+      index += 1;
+      if (!task) return;
+
+      markPreloadTaskLoading(task);
+      try {
+        await task.run({ force: repairKeys.has(task.id) });
+        markPreloadTaskReady(task);
+      } catch (error) {
+        markPreloadTaskFailed(task, error);
+      }
+    }
+  }));
 }
 
 async function repairMissingArtifactsBeforePreload(
@@ -592,7 +657,7 @@ async function repairMissingArtifactsBeforePreload(
 
     const missingBefore = missingWeekCountFromStatus(status);
     await requestVisibleStrategyArtifactsWarm({ force: true });
-    status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: 10_000 }) ?? status;
+    status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: PRELOAD_ARTIFACT_STATUS_TIMEOUT_MS }) ?? status;
 
     for (const artifact of status?.artifacts ?? []) {
       preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
@@ -608,6 +673,21 @@ async function repairMissingArtifactsBeforePreload(
 export function startStrategySessionPreload(manifest: PreloadManifest) {
   if (preloadInflight) return preloadInflight;
 
+  if (!state.preload.completedOnce && hasTrustedGlobalPreloadStamp()) {
+    state = {
+      ...state,
+      preload: {
+        ...state.preload,
+        phase: "ready",
+        status: "ready",
+        completedOnce: true,
+      },
+    };
+    emit();
+    void checkVersionsAndRepreload(manifest);
+    return Promise.resolve();
+  }
+
   if (state.preload.completedOnce) {
     void checkVersionsAndRepreload(manifest);
     return Promise.resolve();
@@ -621,7 +701,7 @@ export function startStrategySessionPreload(manifest: PreloadManifest) {
 }
 
 async function checkVersionsAndRepreload(manifest: PreloadManifest) {
-  const status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: 5000 });
+  const status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: PRELOAD_ARTIFACT_STATUS_TIMEOUT_MS });
   if (!status) return;
 
   const versionChanged = status.artifacts.some((artifact) => {
@@ -641,6 +721,7 @@ async function checkVersionsAndRepreload(manifest: PreloadManifest) {
     return;
   }
 
+  clearGlobalPreloadStamp();
   resetPreloadState();
   state = {
     ...state,
@@ -663,7 +744,7 @@ async function runPreload(manifest: PreloadManifest) {
     };
     emit();
 
-    let status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: 5000 });
+    let status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: PRELOAD_ARTIFACT_STATUS_TIMEOUT_MS });
     if (status) {
       for (const artifact of status.artifacts) {
         preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
@@ -672,7 +753,10 @@ async function runPreload(manifest: PreloadManifest) {
     status = await repairMissingArtifactsBeforePreload(status);
     const repairKeys = repairKeysFromStatus(status);
 
-    const activeTask = manifest.tasks.find((task) => task.priority === "active");
+    const activeTask = manifest.tasks.find(
+      (task): task is StrategyPreloadTask =>
+        task.id === manifest.activeTaskId && isStrategyPreloadTask(task),
+    );
     if (activeTask) {
       state = {
         ...state,
@@ -692,66 +776,7 @@ async function runPreload(manifest: PreloadManifest) {
       }
     }
 
-    const activeNonStrategyTasks = manifest.tasks.filter(
-      (task) => task.priority === "active" && task.domain !== "strategy",
-    );
-    if (activeNonStrategyTasks.length > 0) {
-      state = {
-        ...state,
-        preload: {
-          ...state.preload,
-          phase: "loading-market-data",
-        },
-      };
-      emit();
-
-      await Promise.all(activeNonStrategyTasks.map(async (task) => {
-        markPreloadTaskLoading(task);
-        try {
-          await task.run();
-          markPreloadTaskReady(task);
-        } catch (error) {
-          markPreloadTaskFailed(task, error);
-        }
-      }));
-    }
-
-    const backgroundTasks = manifest.tasks.filter((task) => task.priority === "background");
-    if (backgroundTasks.length > 0) {
-      state = {
-        ...state,
-        preload: {
-          ...state.preload,
-          phase: "loading-strategies",
-          queuedSelectionKeys: backgroundTasks.map((task) => task.id),
-        },
-      };
-      emit();
-
-      let index = 0;
-      const concurrency = Math.min(3, backgroundTasks.length);
-      await Promise.all(Array.from({ length: concurrency }, async () => {
-        while (index < backgroundTasks.length) {
-          const task = backgroundTasks[index];
-          index += 1;
-          if (!task) return;
-
-          markPreloadTaskLoading(task);
-          try {
-            await task.run({ force: repairKeys.has(task.id) });
-            markPreloadTaskReady(task);
-          } catch (error) {
-            markPreloadTaskFailed(task, error);
-          }
-        }
-      }));
-    }
-
-    const activeStrategyTask = manifest.tasks.find(
-      (task): task is StrategyPreloadTask =>
-        task.id === manifest.activeTaskId && isStrategyPreloadTask(task),
-    );
-    if (activeStrategyTask) {
+    if (activeTask) {
       state = {
         ...state,
         preload: {
@@ -760,29 +785,36 @@ async function runPreload(manifest: PreloadManifest) {
         },
       };
       emit();
-      await loadCurrentWeekSession(activeStrategyTask.selection, { force: false });
+      await loadCurrentWeekSession(activeTask.selection, { force: false });
     }
 
-    const finalStatus = await fetchStrategyArtifactStatus(undefined, { timeoutMs: 10_000 }) ?? status;
+    const finalStatus = repairKeys.size > 0
+      ? await fetchStrategyArtifactStatus(undefined, { timeoutMs: PRELOAD_ARTIFACT_STATUS_TIMEOUT_MS }) ?? status
+      : status;
     const stillMissingKeys = repairKeysFromStatus(finalStatus);
     const failedSelectionKeys = {
       ...state.preload.failedSelectionKeys,
-      ...Object.fromEntries(
-        Array.from(stillMissingKeys).map((key) => [key, "Historical weeks are still rebuilding"]),
-      ),
+      ...(activeTask && stillMissingKeys.has(activeTask.id)
+        ? { [activeTask.id]: "Historical weeks are still rebuilding" }
+        : {}),
     };
-    const failedCount = Object.keys(failedSelectionKeys).length;
+    const activeFailed = Boolean(activeTask && failedSelectionKeys[activeTask.id]);
     state = {
       ...state,
       preload: {
         ...state.preload,
         phase: "ready",
-        status: failedCount > 0 ? "partial" : "ready",
-        completedOnce: failedCount === 0,
+        status: activeFailed ? "partial" : "ready",
+        completedOnce: !activeFailed,
         failedSelectionKeys,
       },
     };
     emit();
+
+    if (!activeFailed) {
+      writeGlobalPreloadStamp();
+      void runPostGatePreloadTasks(manifest, repairKeys);
+    }
   } finally {
     preloadInflight = null;
   }
@@ -815,11 +847,23 @@ export function ensureWeeklyReturns(weekOpenUtc: string | null) {
       });
       if (!response.ok) throw new Error(`Weekly returns request failed (${response.status})`);
       const payload = (await response.json()) as { rows?: WeeklyReturnRow[] };
+      const rows = (payload.rows ?? []).map((row) => ({
+        ...row,
+        returnMatrix: row.returnMatrix ?? (
+          row.canonical && typeof row.adrPct === "number"
+            ? {
+                canonical: row.canonical,
+                execution: row.execution ?? null,
+                adrPct: row.adrPct,
+              }
+            : undefined
+        ),
+      }));
       state = {
         ...state,
         weeklyReturnsByWeek: {
           ...state.weeklyReturnsByWeek,
-          [weekOpenUtc]: payload.rows ?? [],
+          [weekOpenUtc]: rows,
         },
         weeklyReturnStatusByWeek: {
           ...state.weeklyReturnStatusByWeek,

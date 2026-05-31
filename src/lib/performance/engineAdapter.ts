@@ -169,7 +169,23 @@ export function resolveLegSlotFn(
 // ─── Trade → ModelPerformance conversion ────────────────────────
 
 function toDetailMeta(t: WeeklyHoldTrade): TradeDetailMeta | undefined {
-  if (!t.detail) return undefined;
+  if (!t.detail) {
+    return {
+      tradeNumber: 1,
+      entryPrice: t.openPrice,
+      exitPrice: t.closePrice || null,
+      tpPrice: null,
+      adrPct: t.adrPct ?? null,
+      maePct: null,
+      exitReason: "week_close",
+      entryTimeUtc: null,
+      rawReturnPct: t.rawReturnPct,
+      normalizedReturnPct: t.normalizedReturnPct,
+      displayReturnPct: t.displayReturnPct ?? t.returnPct,
+      adrMultiplier: t.adrMultiplier ?? null,
+      returnMode: t.returnMode,
+    };
+  }
   return {
     tradeNumber: t.detail.tradeNumber,
     entryPrice: t.openPrice,
@@ -179,6 +195,11 @@ function toDetailMeta(t: WeeklyHoldTrade): TradeDetailMeta | undefined {
     maePct: t.detail.maePct,
     exitReason: t.detail.exitReason,
     entryTimeUtc: t.detail.entryTimeUtc,
+    rawReturnPct: t.rawReturnPct,
+    normalizedReturnPct: t.normalizedReturnPct,
+    displayReturnPct: t.displayReturnPct ?? t.returnPct,
+    adrMultiplier: t.adrMultiplier ?? null,
+    returnMode: t.returnMode,
   };
 }
 
@@ -412,8 +433,10 @@ export function multiWeekToGridProps(
     })),
     stats: computeReturnStats(weeklySlotReturns[i]),
     diagnostics: {
-      max_drawdown: pathDiagnostics?.slotMaxDrawdownPct?.[slot] ?? null,
-      profit_factor: null,
+      max_drawdown:
+        pathDiagnostics?.slotMaxDrawdownPct?.[slot] ??
+        computeMaxDrawdownFromReturns(weeklySlotReturns[i].map((entry) => entry.percent)),
+      profit_factor: computeProfitFactor(weeklySlotReturns[i].map((entry) => entry.percent)),
     },
   }));
 
@@ -484,7 +507,10 @@ export function multiWeekToGridProps(
           percent: r.percent,
         })),
         stats: computeReturnStats(weeklyAcSlotReturns[i]),
-        diagnostics: { max_drawdown: null, profit_factor: null },
+        diagnostics: {
+          max_drawdown: computeMaxDrawdownFromReturns(weeklyAcSlotReturns[i].map((entry) => entry.percent)),
+          profit_factor: computeProfitFactor(weeklyAcSlotReturns[i].map((entry) => entry.percent)),
+        },
       })),
     });
   }
@@ -541,6 +567,10 @@ export type EngineSimulationGroup = {
     description: string;
     seriesIds: string[];
   }>;
+  returnModes?: Partial<Record<"raw" | "normalized", {
+    metrics: EngineSimulationGroup["metrics"];
+    series: EngineSimulationGroup["series"];
+  }>>;
 };
 
 function withSeriesDrawdowns<T extends EngineSimulationGroup["series"][number]>(series: T): T {
@@ -1082,7 +1112,21 @@ function computeProfitFactor(weeklyReturns: number[]): number | null {
   const grossProfit = weeklyReturns.filter((r) => r > 0).reduce((s, r) => s + r, 0);
   const grossLoss = Math.abs(weeklyReturns.filter((r) => r < 0).reduce((s, r) => s + r, 0));
   if (grossLoss > 0) return grossProfit / grossLoss;
-  return null;
+  return grossProfit > 0 ? Number.POSITIVE_INFINITY : null;
+}
+
+function computeMaxDrawdownFromReturns(weeklyReturns: number[]): number | null {
+  if (weeklyReturns.length === 0) return null;
+  let equity = 0;
+  let peak = 0;
+  let maxDrawdown = 0;
+  for (const value of weeklyReturns) {
+    if (!Number.isFinite(value)) continue;
+    equity += value;
+    peak = Math.max(peak, equity);
+    maxDrawdown = Math.min(maxDrawdown, equity - peak);
+  }
+  return Math.abs(maxDrawdown);
 }
 
 function computeSortino(weeklyReturns: number[]): number {

@@ -17,6 +17,7 @@ type DashboardFiltersProps = {
   selectedBias: "dealer" | "commercial" | "sentiment" | "strength";
   selectedView: "heatmap" | "list";
   currentWeekOpenUtc?: string;
+  onAssetChange?: (asset: string) => void;
   onReportChange?: (report: string) => void;
   onBiasChange?: (bias: "dealer" | "commercial" | "sentiment" | "strength") => void;
 };
@@ -29,6 +30,7 @@ export default function DashboardFilters({
   selectedBias,
   selectedView,
   currentWeekOpenUtc,
+  onAssetChange,
   onReportChange,
   onBiasChange,
 }: DashboardFiltersProps) {
@@ -126,7 +128,13 @@ export default function DashboardFilters({
         </label>
         <select
           value={selectedAsset}
-          onChange={(event) => navigate({ asset: event.target.value })}
+          onChange={(event) => {
+            if (onAssetChange) {
+              onAssetChange(event.target.value);
+              return;
+            }
+            navigate({ asset: event.target.value });
+          }}
           className="rounded-full border border-[var(--panel-border)] bg-[var(--panel)]/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
           <option value="all">ALL</option>

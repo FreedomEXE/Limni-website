@@ -13,7 +13,6 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import { DateTime } from "luxon";
 import type { WeeklyHoldResult, WeeklyHoldTrade } from "@/lib/performance/weeklyHoldEngine";
 import { getAdrPct, getTargetAdrPct, loadWeeklyAdrMap } from "@/lib/performance/adrLookup";
 
@@ -24,7 +23,11 @@ export type PositionLeg = {
   entryTimeUtc: string;
   exitTimeUtc: string;
   weight: number;
+  adrPct: number;
   adrMultiplier: number;
+  rawReturnPct: number;
+  normalizedReturnPct: number;
+  displayReturnPct: number;
   returnPct: number;
   entryPrice: number;
   exitPrice: number;
@@ -35,6 +38,7 @@ export type PositionLeg = {
 };
 
 export type WeekPositionLedger = {
+  logicalWeekOpenUtc: string;
   weekOpenUtc: string;
   weekCloseUtc: string;
   strategyId: string;
@@ -51,15 +55,21 @@ function isValidTrade(trade: WeeklyHoldTrade) {
   );
 }
 
+function isPositiveFinite(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function finiteOrUndefined(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 export async function buildWeeklyHoldLedger(
   result: WeeklyHoldResult,
   options?: { entryStyleId?: string },
 ): Promise<WeekPositionLedger> {
   const entryStyleId = options?.entryStyleId ?? "weekly_hold";
-  const weekOpen = DateTime.fromISO(result.weekOpenUtc, { zone: "utc" });
-  const weekCloseUtc = (weekOpen.isValid
-    ? weekOpen.plus({ weeks: 1 }).toUTC().toISO()
-    : null) ?? result.weekOpenUtc;
+  const ledgerOpenUtc = result.executionWindowOpenUtc ?? result.weekOpenUtc;
+  const ledgerCloseUtc = result.executionWindowCloseUtc ?? ledgerOpenUtc;
 
   const validTrades = result.trades.filter((trade) => {
     if (isValidTrade(trade)) return true;
@@ -70,23 +80,44 @@ export async function buildWeeklyHoldLedger(
   });
 
   const targetAdrPct = getTargetAdrPct();
-  const needsAdrLookup = validTrades.some((trade) => !(trade.detail?.adrPct && trade.detail.adrPct > 0));
+  const needsAdrLookup = validTrades.some((trade) => {
+    return !isPositiveFinite(trade.adrPct) && !isPositiveFinite(trade.detail?.adrPct);
+  });
   const adrMap = needsAdrLookup ? await loadWeeklyAdrMap(result.weekOpenUtc) : new Map();
   const legs: PositionLeg[] = validTrades.map((trade) => {
-    const pairAdrPct = trade.detail?.adrPct && trade.detail.adrPct > 0
-      ? trade.detail.adrPct
-      : getAdrPct(adrMap, trade.symbol, trade.assetClass);
-    const adrMultiplier = targetAdrPct / pairAdrPct;
+    const detailAdrPct = trade.detail?.adrPct;
+    const pairAdrPct = isPositiveFinite(trade.adrPct)
+      ? trade.adrPct
+      : isPositiveFinite(detailAdrPct)
+        ? detailAdrPct
+        : getAdrPct(adrMap, trade.symbol, trade.assetClass);
+    const tradeAdrMultiplier = trade.adrMultiplier;
+    const adrMultiplier = isPositiveFinite(tradeAdrMultiplier)
+      ? tradeAdrMultiplier
+      : targetAdrPct / pairAdrPct;
+    const rawReturnPct = finiteOrUndefined(trade.rawReturnPct)
+      ?? (
+        adrMultiplier !== 0
+          ? trade.returnPct / adrMultiplier
+          : trade.returnPct
+      );
+    const normalizedReturnPct = finiteOrUndefined(trade.normalizedReturnPct)
+      ?? rawReturnPct * adrMultiplier;
+    const displayReturnPct = finiteOrUndefined(trade.displayReturnPct) ?? trade.returnPct;
 
     return {
       symbol: trade.symbol.toUpperCase(),
       assetClass: trade.assetClass,
       direction: trade.direction,
-      entryTimeUtc: trade.detail?.entryTimeUtc ?? result.weekOpenUtc,
-      exitTimeUtc: trade.detail?.exitTimeUtc ?? weekCloseUtc,
+      entryTimeUtc: trade.detail?.entryTimeUtc ?? ledgerOpenUtc,
+      exitTimeUtc: trade.detail?.exitTimeUtc ?? ledgerCloseUtc,
       weight: trade.weight ?? 1,
+      adrPct: pairAdrPct,
       adrMultiplier,
-      returnPct: trade.returnPct,
+      rawReturnPct,
+      normalizedReturnPct,
+      displayReturnPct,
+      returnPct: displayReturnPct,
       entryPrice: trade.openPrice,
       exitPrice: trade.closePrice,
       strategyId: result.biasSourceId,
@@ -97,8 +128,9 @@ export async function buildWeeklyHoldLedger(
   });
 
   return {
-    weekOpenUtc: result.weekOpenUtc,
-    weekCloseUtc,
+    logicalWeekOpenUtc: result.weekOpenUtc,
+    weekOpenUtc: ledgerOpenUtc,
+    weekCloseUtc: ledgerCloseUtc,
     strategyId: result.biasSourceId,
     entryStyleId,
     legs,
@@ -111,6 +143,7 @@ export function splitLedgerBySlot(
   slotCount: number,
 ): WeekPositionLedger[] {
   return Array.from({ length: slotCount }, (_, slotIndex) => ({
+    logicalWeekOpenUtc: ledger.logicalWeekOpenUtc,
     weekOpenUtc: ledger.weekOpenUtc,
     weekCloseUtc: ledger.weekCloseUtc,
     strategyId: ledger.strategyId,

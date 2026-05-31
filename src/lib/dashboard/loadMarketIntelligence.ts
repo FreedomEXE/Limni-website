@@ -31,7 +31,7 @@ import {
   getWeekSnapshotProvenance,
   type WeekSnapshotProvenance,
 } from "@/lib/performance/snapshotProvenance";
-import { getWeeklyPairReturns } from "@/lib/pairReturns";
+import { loadWeeklyReturnDisplayRows } from "@/lib/weeklyReturnDisplay";
 import type { PairPerformance } from "@/lib/priceStore";
 import {
   evaluateStrengthGate,
@@ -55,9 +55,14 @@ import { resolveSentimentDirections } from "@/lib/sentiment/resolver";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { latestIso } from "@/lib/time";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import type { ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
 import type { MarketIntelligencePayload } from "@/lib/dashboard/marketIntelligencePayload";
+import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
 
 const MARKET_INTELLIGENCE_LOAD_CONCURRENCY = 3;
+const MARKET_INTELLIGENCE_CACHE_TTL_MS = Number(
+  process.env.MARKET_INTELLIGENCE_CACHE_TTL_MS ?? "300000",
+);
 
 type ResolvedBias = {
   long: number;
@@ -67,7 +72,8 @@ type ResolvedBias = {
 };
 
 type DashboardPairRow = DashboardCotPayload["pairRowsWithPerf"][number];
-type WeeklyReturnRows = Awaited<ReturnType<typeof getWeeklyPairReturns>>;
+type WeeklyReturnRows = Awaited<ReturnType<typeof loadWeeklyReturnDisplayRows>>;
+type WeeklyReturnRow = WeeklyReturnRows[number];
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -166,7 +172,10 @@ function buildBiasDetails({
 
 function buildCanonicalPairPerformance(
   selectedWeekOpenUtc: string,
-  row: { openPrice: number; closePrice: number; returnPct: number } | null,
+  row: Pick<
+    WeeklyReturnRow,
+    "openPrice" | "closePrice" | "returnPct" | "canonical" | "execution" | "adrPct" | "warnings"
+  > | null,
 ): PairPerformance | null {
   if (!row) return null;
   return {
@@ -176,6 +185,20 @@ function buildCanonicalPairPerformance(
     pips: 0,
     open_time_utc: selectedWeekOpenUtc,
     current_time_utc: selectedWeekOpenUtc,
+    returnMatrix: {
+      canonical: row.canonical,
+      execution: row.execution,
+      adrPct: row.adrPct,
+    },
+    returnWarnings: row.warnings,
+  };
+}
+
+function weeklyReturnMatrix(row: Pick<WeeklyReturnRow, "canonical" | "execution" | "adrPct">): ReturnMatrix {
+  return {
+    canonical: row.canonical,
+    execution: row.execution,
+    adrPct: row.adrPct,
   };
 }
 
@@ -302,6 +325,7 @@ function buildCotPayloadForReport({
             return null;
           }
           return {
+            assetClass: entry.asset.id,
             assetLabel: entry.asset.label,
             currency,
             long: resolved.long,
@@ -331,6 +355,7 @@ function buildCotPayloadForReport({
       pairDefs.forEach((pairDef) => {
         const row = allPairs[pairDef.pair];
         pairRowsWithPerf.push({
+          assetClass: entry.asset.id,
           pair: `${pairDef.pair} (${entry.asset.label})`,
           direction: row.direction,
           performance: canonicalReturnMap.get(`${entry.asset.id}|${pairDef.pair}`) ?? null,
@@ -374,6 +399,7 @@ function buildCotPayloadForReport({
         const resolved = resolveMarketBias(snapshotValue, biasMode);
         return resolved
           ? {
+              assetClass,
               assetLabel: assetDefinition.label,
               currency,
               label: assetDefinition.markets[currency]?.label ?? currency,
@@ -416,6 +442,7 @@ function buildCotPayloadForReport({
 
     pairRows.forEach(({ pairDef, row }) => {
       pairRowsWithPerf.push({
+        assetClass,
         pair: pairDef.pair,
         direction: row.direction,
         performance: canonicalReturnMap.get(`${assetClass}|${pairDef.pair}`) ?? null,
@@ -498,7 +525,7 @@ function buildCotPayloadForReport({
 async function buildSentimentPayloadForWeek(
   weekOpenUtc: string | null,
   sentimentSymbols: readonly string[],
-  weeklyReturns: Array<{ symbol: string; returnPct: number }>,
+  weeklyReturns: WeeklyReturnRows,
 ): Promise<DashboardSentimentPayload> {
   let aggregates: SentimentAggregate[] = [];
   let resolvedRows: Awaited<ReturnType<typeof resolveSentimentDirections>> = [];
@@ -551,8 +578,8 @@ async function buildSentimentPayloadForWeek(
     })
     .filter((detail): detail is { label: string; value: string } => Boolean(detail));
 
-  const performanceByPair = weeklyReturns.reduce<Record<string, number | null>>((acc, row) => {
-    acc[row.symbol] = row.returnPct;
+  const performanceByPair = weeklyReturns.reduce<Record<string, ReturnMatrix | null>>((acc, row) => {
+    acc[row.symbol] = weeklyReturnMatrix(row);
     return acc;
   }, {});
 
@@ -656,7 +683,7 @@ async function buildStrengthPayloadForWeek({
 }: {
   weekOpenUtc: string | null;
   selectedAsset: AssetClass | "all";
-  weeklyReturns: Array<{ symbol: string; assetClass: AssetClass; returnPct: number; openPrice: number; closePrice: number }>;
+  weeklyReturns: WeeklyReturnRows;
   previousWeekOpenUtc: string | null;
   totalPairsCount: number;
 }): Promise<DashboardStrengthPayload> {
@@ -702,6 +729,7 @@ async function buildStrengthPayloadForWeek({
   const pairRowsWithPerf = [...canonicalFiltered]
     .sort((a, b) => a.pair.localeCompare(b.pair))
     .map((row) => ({
+      assetClass: row.assetClass,
       pair: row.pair,
       direction: row.direction,
       performance: performanceByKey.get(`${row.assetClass}|${row.pair}`) ?? null,
@@ -739,6 +767,7 @@ async function buildStrengthPayloadForWeek({
     .sort((a, b) => a.symbol.localeCompare(b.symbol))
     .map((row: WeeklyUnderlyingStrength) => ({
       id: row.id,
+      assetClass: row.assetClass,
       label: formatStrengthLabel(row.assetClass, row.symbol),
       bias: strengthBias(row.direction),
     }));
@@ -830,7 +859,7 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
       try {
         return [
           reportDate,
-          await getWeeklyPairReturns(weekOpenUtc, isAll ? undefined : assetClass),
+          await loadWeeklyReturnDisplayRows(weekOpenUtc, isAll ? undefined : assetClass),
         ] as const;
       } catch (error) {
         console.error("Dashboard weekly returns load failed:", error);
@@ -919,10 +948,7 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
       await buildSentimentPayloadForWeek(
         weekOpenUtc,
         sentimentSymbols,
-        (weeklyReturnsByReport.get(currentReportDate) ?? []).map((row) => ({
-          symbol: row.symbol,
-          returnPct: row.returnPct,
-        })),
+        weeklyReturnsByReport.get(currentReportDate) ?? [],
       ),
     ] as const,
   );
@@ -983,4 +1009,17 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
     provenanceByReport,
     fetchedAtUtc: new Date().toISOString(),
   };
+}
+
+export async function loadCachedMarketIntelligence(
+  rawAsset?: string | null,
+): Promise<MarketIntelligencePayload> {
+  const cacheAsset = rawAsset === "all" || !rawAsset
+    ? "all"
+    : getAssetClass(rawAsset);
+  return getOrSetRuntimeCache(
+    `marketIntelligence:${cacheAsset}`,
+    MARKET_INTELLIGENCE_CACHE_TTL_MS,
+    () => loadMarketIntelligence(cacheAsset),
+  );
 }

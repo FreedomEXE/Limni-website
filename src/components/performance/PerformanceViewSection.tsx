@@ -81,6 +81,12 @@ type GridModel = GridSection["models"][number];
 type GridReturn = GridModel["returns"][number];
 
 type WeeklyPerformanceFamily = Exclude<PerformanceStrategyFamily, "katarakti">;
+type RawReturnTradeDetail = { rawReturnPct?: number };
+
+function readRawReturnPct(tradeDetail: unknown): number | null {
+  const rawReturnPct = (tradeDetail as RawReturnTradeDetail | null | undefined)?.rawReturnPct;
+  return typeof rawReturnPct === "number" ? rawReturnPct : null;
+}
 
 function formatPct(value: number | null): string {
   if (value === null) return "—";
@@ -117,20 +123,18 @@ function hasGridActivity(gridProps: EngineGridProps | null | undefined) {
 function resolveGridDetailPercent(
   detail: {
     percent: number | null;
-    tradeDetail?: { rawReturnPct?: number };
-    children?: Array<{ percent: number | null; tradeDetail?: { rawReturnPct?: number } }>;
+    tradeDetail?: unknown;
+    children?: Array<{ percent: number | null; tradeDetail?: unknown }>;
   },
   viewMode: ViewMode,
 ) {
   if (viewMode.normalization !== "raw") return detail.percent;
   if (detail.children && detail.children.length > 0) {
     return detail.children.reduce((sum, child) => (
-      sum + (typeof child.tradeDetail?.rawReturnPct === "number" ? child.tradeDetail.rawReturnPct : child.percent ?? 0)
+      sum + (readRawReturnPct(child.tradeDetail) ?? child.percent ?? 0)
     ), 0);
   }
-  return typeof detail.tradeDetail?.rawReturnPct === "number"
-    ? detail.tradeDetail.rawReturnPct
-    : detail.percent;
+  return readRawReturnPct(detail.tradeDetail) ?? detail.percent;
 }
 
 function projectGridPropsForViewMode<T extends { combined: EngineGridProps["combined"]; perAsset: EngineGridProps["perAsset"] }>(
@@ -144,9 +148,7 @@ function projectGridPropsForViewMode<T extends { combined: EngineGridProps["comb
       const pairDetails = model.pair_details.map((detail) => {
         const children = detail.children?.map((child) => ({
           ...child,
-          percent: typeof child.tradeDetail?.rawReturnPct === "number"
-            ? child.tradeDetail.rawReturnPct
-            : child.percent,
+          percent: readRawReturnPct(child.tradeDetail) ?? child.percent,
         }));
         const percent = resolveGridDetailPercent({ ...detail, children }, viewMode);
         return { ...detail, children, percent };
@@ -391,7 +393,7 @@ function enrichGridPropsWithWeekRawTradeMeta<T extends EngineGridProps>(
     models: section.models.map((model) => ({
       ...model,
       pair_details: model.pair_details.map((detail) => {
-        if (typeof detail.tradeDetail?.rawReturnPct === "number" || detail.children?.length) {
+        if (readRawReturnPct(detail.tradeDetail) !== null || detail.children?.length) {
           return detail;
         }
         const candidates = bySymbolDirection.get(`${detail.pair}|${detail.direction}`) ?? [];
@@ -1202,8 +1204,8 @@ export default function PerformanceViewSection({
           if (!symbolMatchesPerformanceScope(pd.pair, assetScope)) continue;
           trades.push({
             pair: pd.pair,
-            returnPct: performanceViewMode.normalization === "raw" && typeof pd.tradeDetail.rawReturnPct === "number"
-              ? pd.tradeDetail.rawReturnPct
+            returnPct: performanceViewMode.normalization === "raw"
+              ? readRawReturnPct(pd.tradeDetail) ?? pd.percent
               : pd.percent,
             maePct: pd.tradeDetail.maePct,
           });
@@ -1214,8 +1216,8 @@ export default function PerformanceViewSection({
               if (!symbolMatchesPerformanceScope(child.pair, assetScope)) continue;
               trades.push({
                 pair: child.pair,
-                returnPct: performanceViewMode.normalization === "raw" && typeof child.tradeDetail.rawReturnPct === "number"
-                  ? child.tradeDetail.rawReturnPct
+                returnPct: performanceViewMode.normalization === "raw"
+                  ? readRawReturnPct(child.tradeDetail) ?? child.percent
                   : child.percent,
                 maePct: child.tradeDetail.maePct,
               });

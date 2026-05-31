@@ -1,6 +1,7 @@
 "use client";
 
 import type { SentimentAggregate } from "@/lib/sentiment/types";
+import type { ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
 import PairSignalSurface, {
   type PairSignalSurfaceItem,
 } from "@/components/PairSignalSurface";
@@ -19,6 +20,7 @@ export type MyfxbookPositioning = {
 
 export type CanonicalSentimentHeatmapRow = {
   symbol: string;
+  assetClass?: string;
   direction: "LONG" | "SHORT";
   tier: "S1" | "A" | "R" | "F";
   tierFSubStep?: "prior_s1" | "prior_lean" | "two_week_lean" | "hardcoded" | null;
@@ -28,9 +30,13 @@ type SentimentHeatmapProps = {
   aggregates: SentimentAggregate[];
   resolvedRows?: CanonicalSentimentHeatmapRow[];
   view?: "heatmap" | "list";
-  performanceByPair?: Record<string, number | null>;
+  performanceByPair?: Record<string, number | ReturnMatrix | null>;
   myfxbookPositioningBySymbol?: Record<string, MyfxbookPositioning | undefined>;
 };
+
+function isReturnMatrix(value: number | ReturnMatrix | null | undefined): value is ReturnMatrix {
+  return Boolean(value && typeof value === "object" && "adrPct" in value);
+}
 
 function crowdingTone(
   state: SentimentAggregate["crowding_state"],
@@ -91,6 +97,7 @@ export default function SentimentHeatmap({
     const agg = aggregateBySymbol.get(symbol);
     const resolved = resolvedBySymbol.get(symbol);
     const myfxbook = myfxbookPositioningBySymbol[symbol];
+    const performance = performanceByPair[symbol] ?? null;
     const crowdingState = agg?.crowding_state ?? "NEUTRAL";
     const canonicalDirection = resolved?.direction ?? tradeBiasLabel(crowdingState);
     return {
@@ -138,7 +145,8 @@ export default function SentimentHeatmap({
           value: myfxbook?.updatedAtUtc ?? "—",
         },
       ],
-      performancePercent: performanceByPair[symbol] ?? null,
+      performancePercent: typeof performance === "number" ? performance : null,
+      returnMatrix: isReturnMatrix(performance) ? performance : null,
     };
   });
 

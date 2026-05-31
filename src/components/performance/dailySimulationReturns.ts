@@ -47,9 +47,9 @@ function filterMarketHours(
   return points.length > 0 ? [points[0]] : [];
 }
 
-function tradingDateKey(tsUtc: string) {
+function tradingDateKey(tsUtc: string, includeWeekends: boolean) {
   const date = new Date(tsUtc);
-  if (date.getUTCDay() === 0 && date.getUTCHours() >= 21) {
+  if (!includeWeekends && date.getUTCDay() === 0 && date.getUTCHours() >= 21) {
     date.setUTCDate(date.getUTCDate() + 1);
   }
   return date.toISOString().slice(0, 10);
@@ -70,35 +70,39 @@ export function buildDailySimulationReturns(
 ): DailySimulationReturn[] {
   const includeWeekends = options.includeWeekends === true;
   const allowedLabels: readonly string[] = includeWeekends ? CALENDAR_DAY_LABELS : WEEKDAY_LABELS;
-  const groups = new Map<string, PerformanceSimulationSeries["points"]>();
-  for (const point of filterMarketHours(series.points, nowMs, includeWeekends)) {
-    const dateKey = tradingDateKey(point.ts_utc);
+  const days = new Map<string, DailySimulationReturn>();
+  let previousEquity = 0;
+
+  for (const point of [...filterMarketHours(series.points, nowMs, includeWeekends)]
+    .sort((left, right) => Date.parse(left.ts_utc) - Date.parse(right.ts_utc))) {
+    const dateKey = tradingDateKey(point.ts_utc, includeWeekends);
     const label = formatDayLabel(dateKey);
-    if (!allowedLabels.includes(label)) continue;
-    if (!groups.has(dateKey)) groups.set(dateKey, []);
-    groups.get(dateKey)!.push(point);
+    const currentEquity = Number.isFinite(point.equity_pct) ? point.equity_pct : previousEquity;
+
+    if (allowedLabels.includes(label)) {
+      const existing = days.get(dateKey) ?? {
+        dateKey,
+        dayLabel: label,
+        returnPct: 0,
+        maxDrawdownPct: 0,
+        activePositions: 0,
+      };
+
+      const drawdownPct = typeof point.drawdown_pct === "number" && Number.isFinite(point.drawdown_pct)
+        ? Math.abs(point.drawdown_pct)
+        : 0;
+      days.set(dateKey, {
+        ...existing,
+        returnPct: existing.returnPct + (currentEquity - previousEquity),
+        maxDrawdownPct: Math.max(existing.maxDrawdownPct, drawdownPct),
+        activePositions: point.active_positions ?? existing.activePositions,
+      });
+    }
+
+    previousEquity = currentEquity;
   }
 
-  let previousClose: number | null = null;
-  return [...groups.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([dateKey, points]) => {
-      const ordered = [...points].sort((left, right) => Date.parse(left.ts_utc) - Date.parse(right.ts_utc));
-      const first = ordered[0];
-      const last = ordered.at(-1);
-      const startEquity = previousClose ?? first?.equity_pct ?? 0;
-      const endEquity = last?.equity_pct ?? startEquity;
-      previousClose = endEquity;
-      const drawdowns = ordered
-        .map((point) => point.drawdown_pct)
-        .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-      return {
-        dateKey,
-        dayLabel: formatDayLabel(dateKey),
-        returnPct: endEquity - startEquity,
-        maxDrawdownPct: drawdowns.length > 0 ? Math.abs(Math.min(...drawdowns)) : 0,
-        activePositions: last?.active_positions ?? 0,
-      };
-    })
+  return [...days.values()]
+    .sort((left, right) => left.dateKey.localeCompare(right.dateKey))
     .filter((day) => Number.isFinite(day.returnPct));
 }

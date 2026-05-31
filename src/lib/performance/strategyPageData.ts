@@ -49,9 +49,14 @@ import {
   type WeekShardEntry,
 } from "@/lib/performance/strategyWeekShardCache";
 import {
+  listWeeklySourceFingerprints,
+  fingerprintMapToStringMap,
+} from "@/lib/performance/sourceFingerprint";
+import {
   buildStrategyArtifactEngineVersion,
   buildStrategyRuntimeVersionKey,
 } from "@/lib/performance/strategyArtifactVersions";
+import { attachSimulationReturnModes } from "@/lib/performance/simulationReturnModes";
 import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
@@ -286,7 +291,16 @@ async function computeWeekPathArtifact(options: {
   );
   const cardSlots = resolveCardSlots(biasSource);
   const slotFn = resolveLegSlotFn(biasSource.cardBreakdown, cardSlots);
-  const { path, slotPaths } = computeBasketPathWithSlots(ledger, bars, slotFn, cardSlots.length);
+  const { path, slotPaths } = computeBasketPathWithSlots(ledger, bars, slotFn, cardSlots.length, {
+    returnMode: "normalized",
+  });
+  const { path: rawPath, slotPaths: rawSlotPaths } = computeBasketPathWithSlots(
+    ledger,
+    bars,
+    slotFn,
+    cardSlots.length,
+    { returnMode: "raw" },
+  );
   const assetLedgers = splitLedgerBySlot(
     ledger,
     (leg) => {
@@ -295,21 +309,36 @@ async function computeWeekPathArtifact(options: {
     },
     ASSET_PATH_ORDER.length,
   );
-  const assetPaths = assetLedgers.map((assetLedger) => computeBasketPath(assetLedger, bars));
+  const assetPaths = assetLedgers.map((assetLedger) =>
+    computeBasketPath(assetLedger, bars, { returnMode: "normalized" }),
+  );
+  const rawAssetPaths = assetLedgers.map((assetLedger) =>
+    computeBasketPath(assetLedger, bars, { returnMode: "raw" }),
+  );
+  const sim = singleWeekPathToSimulation(
+    path,
+    weekResult,
+    biasSource,
+    label,
+    selectionLabel,
+    slotPaths,
+    assetPaths,
+  );
+  const rawSim = singleWeekPathToSimulation(
+    rawPath,
+    weekResult,
+    biasSource,
+    label,
+    selectionLabel,
+    rawSlotPaths,
+    rawAssetPaths,
+  );
   return {
     weekKey: weekResult.weekOpenUtc,
     path,
     slotPaths,
     assetPaths,
-    sim: singleWeekPathToSimulation(
-      path,
-      weekResult,
-      biasSource,
-      label,
-      selectionLabel,
-      slotPaths,
-      assetPaths,
-    ),
+    sim: attachSimulationReturnModes(sim, { raw: rawSim }),
     summary: path.summary,
   };
 }
@@ -412,8 +441,9 @@ function reconstructWeekPathResult(options: {
   entryStyleId: string;
   summary: BasketPathSummary;
   simulation: EngineSimulationGroup;
+  returnMode?: BasketPathResult["returnMode"];
 }) {
-  const { weekOpenUtc, strategyId, entryStyleId, summary, simulation } = options;
+  const { weekOpenUtc, strategyId, entryStyleId, summary, simulation, returnMode = "normalized" } = options;
   const equitySeries = simulation.series[0];
   if (!equitySeries) return null;
 
@@ -421,6 +451,7 @@ function reconstructWeekPathResult(options: {
     weekOpenUtc,
     strategyId,
     entryStyleId,
+    returnMode,
     resolution: CANONICAL_PATH_RESOLUTION,
     points: equitySeries.points.map((point) => ({
       tsUtc: point.ts_utc,
@@ -484,8 +515,9 @@ function reconstructWeekPathResultFromSeries(options: {
   entryStyleId: string;
   simulation: EngineSimulationGroup;
   seriesId: string;
+  returnMode?: BasketPathResult["returnMode"];
 }) {
-  const { weekOpenUtc, strategyId, entryStyleId, simulation, seriesId } = options;
+  const { weekOpenUtc, strategyId, entryStyleId, simulation, seriesId, returnMode = "normalized" } = options;
   const series = simulation.series.find((candidate) => candidate.id === seriesId);
   if (!series) return null;
   const summary = summarizeSimulationPoints(series.points);
@@ -495,6 +527,7 @@ function reconstructWeekPathResultFromSeries(options: {
     weekOpenUtc,
     strategyId,
     entryStyleId,
+    returnMode,
     resolution: CANONICAL_PATH_RESOLUTION,
     points: series.points.map((point) => {
       runningPeakPct = Math.max(runningPeakPct, point.equity_pct);
@@ -649,6 +682,7 @@ type ShardNativeSelectionContext = {
   currentWeekOpenUtc: string;
   previousWeekOpenUtc: string;
   historicalWeekOptions: string[];
+  sourceFingerprints: Record<string, string>;
   selectionLabel: string;
 };
 
@@ -675,6 +709,9 @@ async function buildShardNativeSelectionContext(
     weekOpenUtc !== "all" &&
     weekOpenUtc !== currentWeekOpenUtc,
   );
+  const sourceFingerprints = fingerprintMapToStringMap(
+    await listWeeklySourceFingerprints(historicalWeekOptions),
+  );
 
   return {
     selectionKey,
@@ -685,6 +722,7 @@ async function buildShardNativeSelectionContext(
     currentWeekOpenUtc,
     previousWeekOpenUtc: getPreviousWeekOpenUtc(currentWeekOpenUtc),
     historicalWeekOptions,
+    sourceFingerprints,
     selectionLabel: buildSelectionLabel(entryStyle, riskOverlay),
   };
 }
@@ -710,7 +748,7 @@ async function computeAndPersistPermanentWeekShard(options: {
     selectionKey: context.selectionKey,
     weekOpenUtc,
     engineVersion: context.engineVersion,
-    weekFingerprint: buildPermanentWeekFingerprint(weekOpenUtc),
+    weekFingerprint: context.sourceFingerprints[weekOpenUtc] ?? buildPermanentWeekFingerprint(weekOpenUtc),
     weekResult,
     pathSummary: pathArtifact.summary,
     sim: pathArtifact.sim,
@@ -736,7 +774,10 @@ export async function ensureHistoricalWeekShardsForSelection(
   const startedAt = Date.now();
   const timeBudgetMs = options.timeBudgetMs ?? getShardBuildTimeBudgetMs();
   const existingShards = (await readWeekShards(context.selectionKey, context.engineVersion))
-    .filter((shard) => !isInvalidWeekShardForSelection(shard, context.entryStyle, context.riskOverlay));
+    .filter((shard) => (
+      !isInvalidWeekShardForSelection(shard, context.entryStyle, context.riskOverlay) &&
+      shard.weekFingerprint === context.sourceFingerprints[shard.weekOpenUtc]
+    ));
   const shardByWeek = new Map(existingShards.map((shard) => [shard.weekOpenUtc, shard]));
   const missingWeeks = context.historicalWeekOptions.filter((weekOpenUtc) => !shardByWeek.has(weekOpenUtc));
   const targetWeeks = options.onlyPreviousWeek
@@ -1188,12 +1229,19 @@ export function assembleStrategyPageDataFromShards(options: {
   const realizedWeekPaths: BasketPathResult[] = [];
   const realizedSlotPaths: BasketPathResult[][] = Array.from({ length: cardSlots.length }, () => []);
   const realizedAssetPaths: BasketPathResult[][] = Array.from({ length: ASSET_PATH_ORDER.length }, () => []);
+  const realizedRawWeekPaths: BasketPathResult[] = [];
+  const realizedRawSlotPaths: BasketPathResult[][] = Array.from({ length: cardSlots.length }, () => []);
+  const realizedRawAssetPaths: BasketPathResult[][] = Array.from({ length: ASSET_PATH_ORDER.length }, () => []);
 
   for (const weekResult of orderedWeeks) {
     if (!weekResult.isRealized) continue;
     const simulation = simMap[weekResult.weekOpenUtc];
     const summary = pathSummaryMap[weekResult.weekOpenUtc];
     if (!simulation || !summary) continue;
+    const rawMode = simulation.returnModes?.raw;
+    const rawSimulation = rawMode
+      ? { ...simulation, metrics: rawMode.metrics, series: rawMode.series }
+      : null;
     const weekPath = reconstructWeekPathResult({
       weekOpenUtc: weekResult.weekOpenUtc,
       strategyId: biasSource.id,
@@ -1203,6 +1251,19 @@ export function assembleStrategyPageDataFromShards(options: {
     });
     if (weekPath) {
       realizedWeekPaths.push(weekPath);
+    }
+    if (rawSimulation) {
+      const rawWeekPath = reconstructWeekPathResult({
+        weekOpenUtc: weekResult.weekOpenUtc,
+        strategyId: biasSource.id,
+        entryStyleId: entryStyle?.id ?? "weekly_hold",
+        summary: summarizeSimulationPoints(rawSimulation.series[0]?.points ?? []),
+        simulation: rawSimulation,
+        returnMode: "raw",
+      });
+      if (rawWeekPath) {
+        realizedRawWeekPaths.push(rawWeekPath);
+      }
     }
     cardSlots.forEach((slotId, slotIndex) => {
       const slotPath = reconstructWeekPathResultFromSeries({
@@ -1214,6 +1275,19 @@ export function assembleStrategyPageDataFromShards(options: {
       });
       if (slotPath) {
         realizedSlotPaths[slotIndex]?.push(slotPath);
+      }
+      if (rawSimulation) {
+        const rawSlotPath = reconstructWeekPathResultFromSeries({
+          weekOpenUtc: weekResult.weekOpenUtc,
+          strategyId: biasSource.id,
+          entryStyleId: entryStyle?.id ?? "weekly_hold",
+          simulation: rawSimulation,
+          seriesId: slotId,
+          returnMode: "raw",
+        });
+        if (rawSlotPath) {
+          realizedRawSlotPaths[slotIndex]?.push(rawSlotPath);
+        }
       }
     });
     ASSET_PATH_ORDER.forEach((assetId, assetIndex) => {
@@ -1227,6 +1301,19 @@ export function assembleStrategyPageDataFromShards(options: {
       if (assetPath) {
         realizedAssetPaths[assetIndex]?.push(assetPath);
       }
+      if (rawSimulation) {
+        const rawAssetPath = reconstructWeekPathResultFromSeries({
+          weekOpenUtc: weekResult.weekOpenUtc,
+          strategyId: biasSource.id,
+          entryStyleId: entryStyle?.id ?? "weekly_hold",
+          simulation: rawSimulation,
+          seriesId: `asset:${assetId}`,
+          returnMode: "raw",
+        });
+        if (rawAssetPath) {
+          realizedRawAssetPaths[assetIndex]?.push(rawAssetPath);
+        }
+      }
     });
   }
 
@@ -1239,7 +1326,7 @@ export function assembleStrategyPageDataFromShards(options: {
       computeMultiWeekBasketPath(assetWeekPaths),
     );
     pathSummaryMap.all = multiWeekPath.summary;
-    simMap.all = multiWeekPathToSimulation(
+    const normalizedAllSim = multiWeekPathToSimulation(
       multiWeekPath,
       multiWeekResult,
       biasSource,
@@ -1247,6 +1334,26 @@ export function assembleStrategyPageDataFromShards(options: {
       slotMultiWeekPaths,
       assetMultiWeekPaths,
     );
+    if (realizedRawWeekPaths.length > 0) {
+      const rawMultiWeekPath = computeMultiWeekBasketPath(realizedRawWeekPaths);
+      const rawSlotMultiWeekPaths = realizedRawSlotPaths.map((slotWeekPaths) =>
+        computeMultiWeekBasketPath(slotWeekPaths),
+      );
+      const rawAssetMultiWeekPaths = realizedRawAssetPaths.map((assetWeekPaths) =>
+        computeMultiWeekBasketPath(assetWeekPaths),
+      );
+      const rawAllSim = multiWeekPathToSimulation(
+        rawMultiWeekPath,
+        multiWeekResult,
+        biasSource,
+        selectionLabel,
+        rawSlotMultiWeekPaths,
+        rawAssetMultiWeekPaths,
+      );
+      simMap.all = attachSimulationReturnModes(normalizedAllSim, { raw: rawAllSim });
+    } else {
+      simMap.all = normalizedAllSim;
+    }
   } else {
     pathSummaryMap.all = {
       totalReturnPct: multiWeekResult.totalReturnPct,

@@ -1,6 +1,7 @@
 import type { EngineGridProps, EngineSidebarStats, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import type { StrategyPageData } from "@/lib/performance/strategyPageData";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
+import type { WeeklyReturnDisplayRow } from "@/lib/weeklyReturnDisplay";
 
 export type StrategyClientPayload = {
   engineWeekMap: Record<string, EngineGridProps> | null;
@@ -10,6 +11,7 @@ export type StrategyClientPayload = {
   weekOptions?: string[];
   currentWeekOpenUtc?: string;
   artifactMeta?: StrategyPageData["artifactMeta"];
+  weeklyReturnDisplayRows?: WeeklyReturnDisplayRow[];
 };
 
 export type StrategyClientPayloadScope = "performance" | "matrix" | "full";

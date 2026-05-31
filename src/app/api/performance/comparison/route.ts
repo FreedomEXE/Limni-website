@@ -48,6 +48,7 @@ import { readSnapshot } from "@/lib/cotStore";
 import { getPairPerformance } from "@/lib/pricePerformance";
 import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
 import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown";
+import { loadWeeklyReturnDisplayRows, type WeeklyReturnDisplayRow } from "@/lib/weeklyReturnDisplay";
 
 const V1_MODELS: PerformanceModel[] = PERFORMANCE_V1_MODELS;
 const V2_MODELS: PerformanceModel[] = PERFORMANCE_V2_MODELS;
@@ -87,6 +88,7 @@ type StrategyComparisonEntry = {
   entryId: string;
   metrics: ComparisonMetrics;
   source: ComparisonSourceMeta;
+  weeklyReturnDisplayRows?: WeeklyReturnDisplayRow[];
 };
 
 type GateOverlayStrategyMetrics = {
@@ -185,6 +187,7 @@ export type PerformanceComparisonPayload = {
   };
   gating: GateOverlayPayload;
   weeksAnalyzed: number;
+  weeklyReturnDisplayRows: WeeklyReturnDisplayRow[];
 };
 
 function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
@@ -981,6 +984,7 @@ function buildStrategiesMap(options: {
       mt5_forex: ComparisonSourceMeta;
     };
   };
+  weeklyReturnDisplayRows?: WeeklyReturnDisplayRow[];
 }) {
   const strategies: Record<string, StrategyComparisonEntry> = {};
   for (const entry of options.entries) {
@@ -1005,6 +1009,7 @@ function buildStrategiesMap(options: {
       entryId: entry.entryId,
       metrics,
       source,
+      weeklyReturnDisplayRows: options.weeklyReturnDisplayRows,
     };
   }
   return strategies;
@@ -1040,6 +1045,9 @@ async function buildPerformanceComparisonPayload(
     }
     const selectedWeeks = new Set(selectedWeekList);
     const annualizeSharpe = requestedWeek === null;
+    const weeklyReturnDisplayRows = requestedWeek
+      ? await loadWeeklyReturnDisplayRows(requestedWeek)
+      : [];
 
     const universalV1Backtest = await readStrategyBacktestWeeklySeries({
       botId: "universal_v1_tp1_friday_carry_aligned",
@@ -1372,6 +1380,7 @@ async function buildPerformanceComparisonPayload(
       universalSources: sources.universal,
       tieredSources: sources.tiered,
       kataraktiSources: sources.katarakti,
+      weeklyReturnDisplayRows,
     });
 
     return {
@@ -1385,6 +1394,7 @@ async function buildPerformanceComparisonPayload(
       sources,
       gating,
       weeksAnalyzed: selectedWeekList.length,
+      weeklyReturnDisplayRows,
     };
 }
 

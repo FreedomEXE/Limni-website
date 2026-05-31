@@ -23,9 +23,9 @@ describe("performance/strategyConfig", () => {
     expect(resolveStrategyId(SELECTOR_FRAG3_STRATEGY_ID)).toBe(SELECTOR_STRATEGY_ID);
   });
 
-  it("defaults to consolidated selector for unknown ids", () => {
-    expect(resolveStrategyId("nonexistent")).toBe(SELECTOR_STRATEGY_ID);
-    expect(resolveStrategyId(null)).toBe(SELECTOR_STRATEGY_ID);
-    expect(resolveStrategyId(undefined)).toBe(SELECTOR_STRATEGY_ID);
+  it("defaults to tandem for unknown ids", () => {
+    expect(resolveStrategyId("nonexistent")).toBe("tandem");
+    expect(resolveStrategyId(null)).toBe("tandem");
+    expect(resolveStrategyId(undefined)).toBe("tandem");
   });
 });

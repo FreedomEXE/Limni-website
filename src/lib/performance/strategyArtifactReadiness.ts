@@ -34,6 +34,10 @@ import {
   readWeekShards,
   type WeekShardEntry,
 } from "@/lib/performance/strategyWeekShardCache";
+import {
+  listWeeklySourceFingerprints,
+  fingerprintMapToStringMap,
+} from "@/lib/performance/sourceFingerprint";
 
 export type StrategyArtifactReadiness = {
   key: string;
@@ -59,7 +63,10 @@ type ExpectedShardContext = {
   currentWeekOpenUtc: string;
   expectedWeeks: string[];
   expectedEngineVersion: string;
+  expectedFingerprints: Record<string, string>;
 };
+
+type ExpectedShardBaseContext = Omit<ExpectedShardContext, "expectedEngineVersion">;
 
 type ReadReadyStrategyArtifactPayloadOptions = {
   includeCurrentWeek?: boolean;
@@ -100,7 +107,7 @@ function latestShardCachedAtUtc(shards: WeekShardEntry[]) {
     .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
 }
 
-async function buildExpectedShardContext(selection: StrategyBootstrapSelection): Promise<ExpectedShardContext> {
+async function buildExpectedShardBaseContext(): Promise<ExpectedShardBaseContext> {
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const expectedWeeks = buildDataWeekOptions({
     historicalWeeks: await listDataSectionWeeks(),
@@ -111,18 +118,34 @@ async function buildExpectedShardContext(selection: StrategyBootstrapSelection):
     weekOpenUtc !== currentWeekOpenUtc,
   );
 
+  const expectedFingerprints = fingerprintMapToStringMap(
+    await listWeeklySourceFingerprints(expectedWeeks),
+  );
+
   return {
     currentWeekOpenUtc,
     expectedWeeks,
+    expectedFingerprints,
+  };
+}
+
+async function buildExpectedShardContext(
+  selection: StrategyBootstrapSelection,
+  base?: ExpectedShardBaseContext,
+): Promise<ExpectedShardContext> {
+  const expectedBase = base ?? await buildExpectedShardBaseContext();
+  return {
+    ...expectedBase,
     expectedEngineVersion: getExpectedStrategyArtifactEngineVersion(selection),
   };
 }
 
 async function readinessForSelection(
   selection: StrategyBootstrapSelection,
+  base?: ExpectedShardBaseContext,
 ): Promise<StrategyArtifactReadiness> {
   const key = buildStrategySelectionKey(selection);
-  const expected = await buildExpectedShardContext(selection);
+  const expected = await buildExpectedShardContext(selection, base);
   const shards = await readWeekShards(key, expected.expectedEngineVersion);
   const expectedSet = new Set(expected.expectedWeeks);
   const shardByWeek = new Map(
@@ -140,6 +163,10 @@ async function readinessForSelection(
       continue;
     }
     if (!isUsableShard(shard, selection)) {
+      staleWeeks.push(weekOpenUtc);
+      continue;
+    }
+    if (shard.weekFingerprint !== expected.expectedFingerprints[weekOpenUtc]) {
       staleWeeks.push(weekOpenUtc);
     }
   }
@@ -174,6 +201,7 @@ export async function listStrategyArtifactReadiness(
   selections: StrategyBootstrapSelection[] = listVisibleStrategyBootstrapSelections(),
 ) {
   const results: StrategyArtifactReadiness[] = [];
+  const expectedBase = await buildExpectedShardBaseContext();
   let nextIndex = 0;
   const workerCount = Math.max(1, Math.min(READINESS_CONCURRENCY, selections.length));
 
@@ -183,7 +211,7 @@ export async function listStrategyArtifactReadiness(
       nextIndex += 1;
       const selection = selections[currentIndex];
       if (!selection) return;
-      results[currentIndex] = await readinessForSelection(selection);
+      results[currentIndex] = await readinessForSelection(selection, expectedBase);
     }
   }));
 

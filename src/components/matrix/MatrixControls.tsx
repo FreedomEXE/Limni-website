@@ -14,6 +14,8 @@
 
 "use client";
 
+import SegmentedToggle from "@/components/common/SegmentedToggle";
+import ViewModeControls from "@/components/common/ViewModeControls";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 
 export type MatrixTab = "cfd" | "crypto" | "risk";
@@ -27,10 +29,10 @@ type MatrixControlsProps = {
   onTabChange: (tab: MatrixTab) => void;
 };
 
-const TABS = [
-  { key: "cfd", label: "CFD" },
-  { key: "crypto", label: "Crypto" },
-  { key: "risk", label: "Risk" },
+const MATRIX_TAB_OPTIONS = [
+  { value: "cfd", label: "CFD" },
+  { value: "crypto", label: "Crypto" },
+  { value: "risk", label: "Risk" },
 ] as const;
 
 export default function MatrixControls({
@@ -55,21 +57,14 @@ export default function MatrixControls({
         />
       )}
 
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => onTabChange(tab.key)}
-            className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-              selectedTab === tab.key
-                ? "border-[var(--accent)]/50 bg-[var(--accent)]/10 text-[var(--accent-strong)]"
-                : "border-[var(--panel-border)] bg-[var(--panel)] text-[var(--foreground)]/70 hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-2">
+        <SegmentedToggle
+          value={selectedTab}
+          items={MATRIX_TAB_OPTIONS}
+          onChange={onTabChange}
+          ariaLabel="Matrix view tab"
+        />
+        <ViewModeControls surface="matrix" size="sm" />
       </div>
     </div>
   );

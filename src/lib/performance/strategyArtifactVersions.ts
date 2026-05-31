@@ -16,8 +16,13 @@ import type { EntryStyleConfig, RiskOverlayConfig } from "@/lib/performance/stra
 
 // Shard engine version: bump only when raw per-week shard data changes.
 // This covers direction resolution, entry engines, risk overlays, and path simulation.
+//
+// History:
+// - strategy-artifact-v26: canonical weekly return source with path simulation v6.
+// - strategy-artifact-v27: strategy P/L reads execution-anchored weekly rows.
+// - strategy-artifact-v28: stores dual raw/normalized hourly path simulations.
 const STRATEGY_SHARD_ENGINE_VERSION =
-  process.env.STRATEGY_SHARD_ENGINE_VERSION?.trim() || "strategy-artifact-v25";
+  process.env.STRATEGY_SHARD_ENGINE_VERSION?.trim() || "strategy-artifact-v28";
 
 // Assembly version: bump when reading, aggregating, or displaying existing shard data changes.
 // This invalidates monolithic assembled artifacts without forcing shard recomputation.
@@ -38,8 +43,8 @@ const RISK_OVERLAY_VERSIONS: Record<string, string> = {
   pair_fill_cap: "risk-overlay-pair-fill-cap-v1",
 };
 
-const PATH_SIMULATION_VERSION = "path-simulation-v6";
-const SOURCE_FINGERPRINT_VERSION = "source-fingerprint-v1";
+const PATH_SIMULATION_VERSION = "path-simulation-v7-dual-return-mode";
+const SOURCE_FINGERPRINT_VERSION = "source-fingerprint-v2-execution";
 
 export function buildStrategyArtifactEngineVersion(options: {
   entryStyle: EntryStyleConfig | undefined;

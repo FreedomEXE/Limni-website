@@ -25,6 +25,8 @@ const TRADING_WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 export type WeekReturn = {
   weekOpenUtc: string;
   returnPct: number;
+  maxDrawdownPct?: number | null;
+  trades?: number | null;
 };
 
 type CalendarMode = "monthly" | "weekly" | "daily";

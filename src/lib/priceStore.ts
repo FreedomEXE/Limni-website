@@ -1,5 +1,6 @@
 import { query, queryOne } from "./db";
 import type { AssetClass } from "./cotMarkets";
+import type { ReturnMatrix } from "./viewMode/resolveDisplayValue";
 import { clearRuntimeCacheByPrefix, getOrSetRuntimeCache } from "./runtimeCache";
 
 export type PairPerformance = {
@@ -9,6 +10,8 @@ export type PairPerformance = {
   pips: number;
   open_time_utc: string;
   current_time_utc: string;
+  returnMatrix?: ReturnMatrix;
+  returnWarnings?: string[];
 };
 
 export type MarketSnapshot = {

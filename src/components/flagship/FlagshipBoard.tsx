@@ -6,6 +6,7 @@ import type { WeeklyHoldResult, CanonicalSignal } from "@/lib/performance/weekly
 
 import AdrStatsBar from "@/components/flagship/AdrStatsBar";
 import { readSelectionFromParams, selectionLabel } from "@/components/shared/StrategySelector";
+import TradeDrilldownModal from "@/components/common/trades/TradeDrilldownModal";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { getEntryStyle, resolveEntryStyleId } from "@/lib/performance/strategyConfig";
 import {
@@ -22,6 +23,9 @@ import {
   type MatrixTrendState,
 } from "@/lib/flagship/matrixStyles";
 import { formatDateTimeET } from "@/lib/time";
+import { resolveDisplayReturn, type ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
+import { useViewMode } from "@/lib/viewMode/viewModeStore";
+import type { AnchorType, TradeDirection, TradeStrategyFamily } from "@/lib/trades/tradeTypes";
 
 type TrendState = MatrixTrendState;
 type GateDecision = MatrixGateDecision;
@@ -186,6 +190,10 @@ function makeTradeId(trade: AdrTradeRow, assetClass: string): string {
   const date = trade.entryTimeUtc ? trade.entryTimeUtc.slice(2, 10).replace(/-/g, "") : "000000";
   const seq = String(trade.tradeNumber ?? 1).padStart(3, "0");
   return `SADR-${assetCode}-${dir}-${trade.symbol}-${date}-${seq}`;
+}
+
+function directionMultiplier(direction: "LONG" | "SHORT") {
+  return direction === "LONG" ? 1 : -1;
 }
 
 type PairUniverseRow = {
@@ -471,6 +479,10 @@ type FlagshipBoardProps = {
     returnPct: number;
     openPrice: number;
     closePrice: number;
+    canonical?: { rawPct: number };
+    execution?: { rawPct: number } | null;
+    adrPct?: number;
+    returnMatrix?: ReturnMatrix;
   }>;
 };
 
@@ -482,6 +494,7 @@ export default function FlagshipBoard({
   canonicalSignals,
   weeklyReturns,
 }: FlagshipBoardProps) {
+  const [viewMode] = useViewMode("matrix");
   const matrixSearchParams = useSearchParams();
   const activeSelection = selection ?? readSelectionFromParams(matrixSearchParams);
   const activeLabel = selectionLabel(activeSelection);
@@ -515,6 +528,27 @@ export default function FlagshipBoard({
   const [refreshTick, setRefreshTick] = useState(0);
   const [nowUtc, setNowUtc] = useState<Date>(() => new Date());
   const [expandedPairs, setExpandedPairs] = useState<string[]>([]);
+  const [drilldown, setDrilldown] = useState<{
+    symbol: string;
+    weekOpenUtc: string;
+    strategyFamily: TradeStrategyFamily;
+    strategyVariant: string;
+    anchorType: AnchorType;
+    direction?: TradeDirection | null;
+  } | null>(null);
+
+  const openLedgerDrilldown = (row: MatrixRow) => {
+    if (!weekOpenUtc) return;
+    if (row.coreBias !== "LONG" && row.coreBias !== "SHORT") return;
+    setDrilldown({
+      symbol: row.pair,
+      weekOpenUtc,
+      strategyFamily: activeSelection.f1 as TradeStrategyFamily,
+      strategyVariant: `${activeSelection.strategy}-${activeSelection.f1}-${activeSelection.f2}`,
+      anchorType: viewMode.anchor,
+      direction: row.coreBias,
+    });
+  };
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowUtc(new Date()), 60_000);
@@ -747,11 +781,19 @@ export default function FlagshipBoard({
 
     const weeklyReturnsByPair = new Map<
       string,
-      { returnPct: number; openPrice: number; closePrice: number }
+      { returnPct: number; openPrice: number; closePrice: number; returnMatrix?: ReturnMatrix }
     >();
     for (const row of weeklyReturns ?? []) {
       weeklyReturnsByPair.set(normalizeKey(row.symbol), {
-        returnPct: row.returnPct,
+        returnPct: row.returnMatrix
+          ? resolveDisplayReturn(row.returnMatrix, viewMode) ?? row.returnPct
+          : row.canonical && typeof row.adrPct === "number"
+            ? resolveDisplayReturn({
+                canonical: row.canonical,
+                execution: row.execution ?? null,
+                adrPct: row.adrPct,
+              }, viewMode) ?? row.returnPct
+            : row.returnPct,
         openPrice: row.openPrice,
         closePrice: row.closePrice,
       });
@@ -856,7 +898,16 @@ export default function FlagshipBoard({
         const pairTrades = adrTradesByPair.get(key) ?? [];
         const pairEngineTrades = engineTradesByPair.get(key) ?? [];
         const pairReturnPct = pairEngineTrades.length > 0
-          ? pairEngineTrades.reduce((sum, trade) => sum + trade.returnPct, 0)
+          ? activeFilter?.plModel === "weekly_hold" && weeklyMove
+            ? pairEngineTrades.reduce((sum, trade) => (
+                sum + (weeklyMove.returnPct * directionMultiplier(trade.direction) * (trade.weight ?? 1))
+              ), 0)
+            : pairEngineTrades.reduce((sum, trade) => {
+                if (viewMode.normalization === "raw" && typeof trade.rawReturnPct === "number") {
+                  return sum + trade.rawReturnPct;
+                }
+                return sum + trade.returnPct;
+              }, 0)
           : null;
         const hasActiveTrade = pairTrades.some(t => t.exitReason === "active");
         let triggerState: TriggerState = "INACTIVE";
@@ -920,7 +971,7 @@ export default function FlagshipBoard({
         if (bucketDiff !== 0) return bucketDiff;
         return left.pair.localeCompare(right.pair);
       });
-  }, [adrTrades, assetStrength, canonicalSignals, cotMatrix, currencyStrength, dailySentiment, engineWeekResults, intradayLevels, liveSizing, menthorqOverlay, priceMoves, weekOpenUtc, weeklyReturns]);
+  }, [activeFilter?.plModel, adrTrades, assetStrength, canonicalSignals, cotMatrix, currencyStrength, dailySentiment, engineWeekResults, intradayLevels, liveSizing, menthorqOverlay, priceMoves, viewMode, weekOpenUtc, weeklyReturns]);
 
   const flagshipCount = matrixRows.filter((row) => row.signalMode === "FLAGSHIP").length;
   const adrDipCount = matrixRows.filter((row) => row.signalMode === "ADR_DIP").length;
@@ -1106,6 +1157,15 @@ export default function FlagshipBoard({
                                 {formatPrice(row.weeklyOpenPrice)} → {formatPrice(row.weeklyClosePrice)}
                               </div>
                             ) : null}
+                            {row.coreBias === "LONG" || row.coreBias === "SHORT" ? (
+                              <button
+                                type="button"
+                                onClick={() => openLedgerDrilldown(row)}
+                                className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--accent-strong)] hover:text-[var(--foreground)]"
+                              >
+                                Inspect trade
+                              </button>
+                            ) : null}
                           </div>
                         </td>
                         <td className="border-r border-[var(--panel-border)] px-3 py-2">
@@ -1253,6 +1313,12 @@ export default function FlagshipBoard({
             <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-slate-600 dark:text-slate-300">N = Neutral</span>
           </div>
         </div>
+      ) : null}
+      {drilldown ? (
+        <TradeDrilldownModal
+          {...drilldown}
+          onClose={() => setDrilldown(null)}
+        />
       ) : null}
     </section>
   );

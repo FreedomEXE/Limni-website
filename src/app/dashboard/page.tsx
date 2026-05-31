@@ -1,7 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import DashboardViewSection from "@/components/dashboard/DashboardViewSection";
 import { resolveDashboardBias } from "@/lib/dashboard/dashboardSelection";
-import { loadMarketIntelligence } from "@/lib/dashboard/loadMarketIntelligence";
+import { loadCachedMarketIntelligence } from "@/lib/dashboard/loadMarketIntelligence";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -22,7 +22,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const reportParam = firstParam(resolvedSearchParams?.report);
   const biasParam = firstParam(resolvedSearchParams?.bias);
   const viewParam = firstParam(resolvedSearchParams?.view);
-  const payload = await loadMarketIntelligence(rawAsset);
+  const payload = await loadCachedMarketIntelligence("all");
 
   const reportValues = new Set(payload.reportOptions.map((option) => option.value));
   const selectedReportDate =
@@ -36,6 +36,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     <DashboardLayout>
       <DashboardViewSection
         {...payload}
+        initialAsset={rawAsset ?? "all"}
         initialReport={selectedReportDate}
         initialBias={biasMode}
         initialView={view}

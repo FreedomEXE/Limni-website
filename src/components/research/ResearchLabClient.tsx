@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
+import ViewModeControls from "@/components/common/ViewModeControls";
 import type { ResearchConfig, ResearchRunResult } from "@/lib/research/types";
 import {
   defaultResearchConfig,
@@ -110,9 +111,12 @@ export default function ResearchLabClient() {
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          Config Builder (Phase 1B)
-        </h2>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            Config Builder (Phase 1B)
+          </h2>
+          <ViewModeControls surface="research" size="sm" />
+        </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <label className="space-y-1 text-sm">
             <span className="text-[color:var(--muted)]">Mode</span>

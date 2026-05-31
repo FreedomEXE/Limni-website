@@ -3,7 +3,12 @@
 -----------------------------------------------*/
 /**
  * File: pairReturns.ts
- * Description: Read helpers for derived canonical pair period returns.
+ *
+ * Description:
+ * Read helpers for derived pair period returns. Canonical helpers read market
+ * truth windows; execution helpers read tradable windows stored beside them.
+ * Existing generic callers remain canonical until Phase 2 migrates strategy
+ * code explicitly.
  */
 /*-----------------------------------------------
   Manifested by Freedom_EXE
@@ -18,15 +23,24 @@ import { DateTime } from "luxon";
 import { fetchOandaCandleSeries } from "./oandaPrices";
 import { fetchBitgetSpotCandleSeries } from "./bitget";
 import { getDisplayWeekOpenUtc } from "./weekAnchor";
+import { getExecutionWeekWindow } from "./executionPriceWindows";
 
 type PeriodType = "weekly" | "daily";
+export type AnchorType = "canonical" | "execution";
+
+export const CANONICAL_ANCHOR_VERSION = "canonical_weekly_v2";
+export const EXECUTION_ANCHOR_VERSION = "execution_monday_utc_v1";
 
 export type PairReturnRow = {
   symbol: string;
   assetClass: AssetClass;
   periodType: PeriodType;
+  anchorType?: AnchorType;
+  anchorVersion?: string;
   periodOpenUtc: string;
   periodCloseUtc: string;
+  windowOpenUtc?: string | null;
+  windowCloseUtc?: string | null;
   returnPct: number;
   openPrice: number;
   closePrice: number;
@@ -56,8 +70,12 @@ function mapPairReturnRow(row: {
   symbol: string;
   asset_class: AssetClass;
   period_type: PeriodType;
+  anchor_type?: AnchorType;
+  anchor_version?: string;
   period_open_utc: Date;
   period_close_utc: Date;
+  window_open_utc?: Date | null;
+  window_close_utc?: Date | null;
   return_pct: number | string;
   open_price: number | string;
   close_price: number | string;
@@ -71,8 +89,12 @@ function mapPairReturnRow(row: {
     symbol: row.symbol,
     assetClass: row.asset_class,
     periodType: row.period_type,
+    anchorType: row.anchor_type,
+    anchorVersion: row.anchor_version,
     periodOpenUtc: row.period_open_utc.toISOString(),
     periodCloseUtc: row.period_close_utc.toISOString(),
+    windowOpenUtc: row.window_open_utc?.toISOString() ?? null,
+    windowCloseUtc: row.window_close_utc?.toISOString() ?? null,
     returnPct: Number(row.return_pct),
     openPrice: Number(row.open_price),
     closePrice: Number(row.close_price),
@@ -91,6 +113,7 @@ function isCurrentDisplayWeek(weekOpenUtc: string) {
 async function readStoredWeeklyPairReturns(
   weekOpenUtc: string,
   assetClass?: AssetClass,
+  anchorType: AnchorType = "canonical",
 ): Promise<Array<{
   symbol: string;
   assetClass: AssetClass;
@@ -98,12 +121,17 @@ async function readStoredWeeklyPairReturns(
   openPrice: number;
   closePrice: number;
 }>> {
+  const anchorVersion = anchorType === "execution" ? EXECUTION_ANCHOR_VERSION : CANONICAL_ANCHOR_VERSION;
   const rows = await query<{
     symbol: string;
     asset_class: AssetClass;
     period_type: PeriodType;
+    anchor_type: AnchorType;
+    anchor_version: string;
     period_open_utc: Date;
     period_close_utc: Date;
+    window_open_utc: Date | null;
+    window_close_utc: Date | null;
     return_pct: number | string;
     open_price: number | string;
     close_price: number | string;
@@ -113,15 +141,18 @@ async function readStoredWeeklyPairReturns(
     derived_from_timeframe: string;
     derivation_version: string;
   }>(
-    `SELECT symbol, asset_class, period_type, period_open_utc, period_close_utc,
+    `SELECT symbol, asset_class, period_type, anchor_type, anchor_version,
+            period_open_utc, period_close_utc, window_open_utc, window_close_utc,
             return_pct, open_price, close_price, high_price, low_price,
             source, derived_from_timeframe, derivation_version
        FROM pair_period_returns
       WHERE period_type = 'weekly'
         AND period_open_utc = $1::timestamptz
-        AND ($2::text IS NULL OR asset_class = $2::text)
+        AND anchor_type = $2
+        AND anchor_version = $3
+        AND ($4::text IS NULL OR asset_class = $4::text)
       ORDER BY asset_class ASC, symbol ASC`,
-    [weekOpenUtc, assetClass ?? null],
+    [weekOpenUtc, anchorType, anchorVersion, assetClass ?? null],
   );
   return rows.map((row) => {
     const mapped = mapPairReturnRow(row);
@@ -138,6 +169,7 @@ async function readStoredWeeklyPairReturns(
 async function fetchLiveWeeklyReturns(
   weekOpenUtc: string,
   assetClass?: AssetClass,
+  anchorType: AnchorType = "canonical",
 ): Promise<Array<{
   symbol: string;
   assetClass: AssetClass;
@@ -145,7 +177,7 @@ async function fetchLiveWeeklyReturns(
   openPrice: number;
   closePrice: number;
 }>> {
-  const cacheKey = `pairReturns:liveWeeklyPairReturns:${weekOpenUtc}:${assetClass ?? "all"}`;
+  const cacheKey = `pairReturns:liveWeeklyPairReturns:${anchorType}:${weekOpenUtc}:${assetClass ?? "all"}`;
   return getOrSetRuntimeCache(cacheKey, getLivePairReturnsCacheTtlMs(), async () => {
     const weekOpenDt = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
     if (!weekOpenDt.isValid) {
@@ -168,11 +200,22 @@ async function fetchLiveWeeklyReturns(
       const batchResults = await Promise.all(
         batch.map(async (instrument) => {
           try {
+            const liveWindow = anchorType === "execution"
+              ? getExecutionWeekWindow(weekOpenUtc, instrument.assetClass)
+              : null;
+            const openUtc = liveWindow?.windowOpenUtc ?? weekOpenDt;
+            const closeUtc = liveWindow
+              ? DateTime.min(nowUtc, liveWindow.windowCloseUtc)
+              : nowUtc;
+            if (!closeUtc.isValid || closeUtc <= openUtc) {
+              return null;
+            }
+
             if (instrument.primaryProvider === "oanda" && instrument.oandaInstrument) {
               const candles = await fetchOandaCandleSeries(
                 instrument.oandaInstrument,
-                weekOpenDt,
-                nowUtc,
+                openUtc,
+                closeUtc,
               );
               if (candles.length === 0) return null;
 
@@ -193,8 +236,8 @@ async function fetchLiveWeeklyReturns(
 
             if (instrument.primaryProvider === "bitget" && instrument.bitgetBaseCoin) {
               const candles = await fetchBitgetSpotCandleSeries(instrument.bitgetBaseCoin, {
-                openUtc: weekOpenDt,
-                closeUtc: nowUtc,
+                openUtc,
+                closeUtc,
               });
               if (candles.length === 0) return null;
 
@@ -251,8 +294,12 @@ export async function getPairReturn(
       symbol: string;
       asset_class: AssetClass;
       period_type: PeriodType;
+      anchor_type: AnchorType;
+      anchor_version: string;
       period_open_utc: Date;
       period_close_utc: Date;
+      window_open_utc: Date | null;
+      window_close_utc: Date | null;
       return_pct: number | string;
       open_price: number | string;
       close_price: number | string;
@@ -262,15 +309,18 @@ export async function getPairReturn(
       derived_from_timeframe: string;
       derivation_version: string;
     }>(
-      `SELECT symbol, asset_class, period_type, period_open_utc, period_close_utc,
+      `SELECT symbol, asset_class, period_type, anchor_type, anchor_version,
+              period_open_utc, period_close_utc, window_open_utc, window_close_utc,
               return_pct, open_price, close_price, high_price, low_price,
               source, derived_from_timeframe, derivation_version
          FROM pair_period_returns
         WHERE symbol = $1
           AND period_type = $2
           AND period_open_utc = $3::timestamptz
+          AND anchor_type = 'canonical'
+          AND anchor_version = $4
         LIMIT 1`,
-      [normalizedSymbol, periodType, periodOpenUtc],
+      [normalizedSymbol, periodType, periodOpenUtc, CANONICAL_ANCHOR_VERSION],
     );
     if (!row) {
       return null;
@@ -284,7 +334,12 @@ export async function getPairReturn(
   });
 }
 
-export async function getWeeklyPairReturns(
+/**
+ * Canonical market-truth weekly pair returns.
+ *
+ * @deprecated Strategy code should migrate to getExecutionWeeklyPairReturns in Phase 2.
+ */
+export async function getCanonicalWeeklyPairReturns(
   weekOpenUtc: string,
   assetClass?: AssetClass,
 ): Promise<Array<{
@@ -324,6 +379,52 @@ export async function getWeeklyPairReturns(
     readStoredWeeklyPairReturns(weekOpenUtc, assetClass));
 }
 
+export async function getExecutionWeeklyPairReturns(
+  weekOpenUtc: string,
+  assetClass?: AssetClass,
+): Promise<Array<{
+  symbol: string;
+  assetClass: AssetClass;
+  returnPct: number;
+  openPrice: number;
+  closePrice: number;
+}>> {
+  if (isCurrentDisplayWeek(weekOpenUtc)) {
+    const liveRows = await fetchLiveWeeklyReturns(weekOpenUtc, assetClass, "execution");
+    if (liveRows.length > 0) {
+      const expectedCount = listCanonicalInstruments(assetClass).filter((instrument) => instrument.isActive).length;
+      if (liveRows.length >= expectedCount) {
+        return liveRows;
+      }
+
+      const storedRows = await readStoredWeeklyPairReturns(weekOpenUtc, assetClass, "execution");
+      if (storedRows.length === 0) {
+        return liveRows;
+      }
+
+      const mergedBySymbol = new Map(storedRows.map((row) => [row.symbol.toUpperCase(), row]));
+      for (const row of liveRows) {
+        mergedBySymbol.set(row.symbol.toUpperCase(), row);
+      }
+      return Array.from(mergedBySymbol.values()).sort((left, right) =>
+        left.assetClass === right.assetClass
+          ? left.symbol.localeCompare(right.symbol)
+          : left.assetClass.localeCompare(right.assetClass),
+      );
+    }
+  }
+
+  const cacheKey = `pairReturns:getExecutionWeeklyPairReturns:${weekOpenUtc}:${assetClass ?? "all"}`;
+  return getOrSetRuntimeCache(cacheKey, getPairReturnsCacheTtlMs(), async () =>
+    readStoredWeeklyPairReturns(weekOpenUtc, assetClass, "execution"));
+}
+
+/**
+ * @deprecated Use getCanonicalWeeklyPairReturns or getExecutionWeeklyPairReturns explicitly.
+ * This shim remains canonical so Phase 1 does not change existing consumers.
+ */
+export const getWeeklyPairReturns = getCanonicalWeeklyPairReturns;
+
 export async function getPairReturnHistory(
   symbol: string,
   periodType: PeriodType,
@@ -340,8 +441,12 @@ export async function getPairReturnHistory(
       symbol: string;
       asset_class: AssetClass;
       period_type: PeriodType;
+      anchor_type: AnchorType;
+      anchor_version: string;
       period_open_utc: Date;
       period_close_utc: Date;
+      window_open_utc: Date | null;
+      window_close_utc: Date | null;
       return_pct: number | string;
       open_price: number | string;
       close_price: number | string;
@@ -351,14 +456,17 @@ export async function getPairReturnHistory(
       derived_from_timeframe: string;
       derivation_version: string;
     }>(
-      `SELECT symbol, asset_class, period_type, period_open_utc, period_close_utc,
+      `SELECT symbol, asset_class, period_type, anchor_type, anchor_version,
+              period_open_utc, period_close_utc, window_open_utc, window_close_utc,
               return_pct, open_price, close_price, high_price, low_price,
               source, derived_from_timeframe, derivation_version
          FROM pair_period_returns
         WHERE symbol = $1
           AND period_type = $2
+          AND anchor_type = 'canonical'
+          AND anchor_version = $3
         ORDER BY period_open_utc ASC`,
-      [normalizedSymbol, periodType],
+      [normalizedSymbol, periodType, CANONICAL_ANCHOR_VERSION],
     );
     return rows.map((row) => {
       const mapped = mapPairReturnRow(row);
@@ -393,8 +501,12 @@ export async function getPairDailyBreakdown(
       symbol: string;
       asset_class: AssetClass;
       period_type: PeriodType;
+      anchor_type: AnchorType;
+      anchor_version: string;
       period_open_utc: Date;
       period_close_utc: Date;
+      window_open_utc: Date | null;
+      window_close_utc: Date | null;
       return_pct: number | string;
       open_price: number | string;
       close_price: number | string;
@@ -404,16 +516,19 @@ export async function getPairDailyBreakdown(
       derived_from_timeframe: string;
       derivation_version: string;
     }>(
-      `SELECT symbol, asset_class, period_type, period_open_utc, period_close_utc,
+      `SELECT symbol, asset_class, period_type, anchor_type, anchor_version,
+              period_open_utc, period_close_utc, window_open_utc, window_close_utc,
               return_pct, open_price, close_price, high_price, low_price,
               source, derived_from_timeframe, derivation_version
          FROM pair_period_returns
         WHERE symbol = $1
           AND period_type = 'daily'
+          AND anchor_type = 'canonical'
+          AND anchor_version = $4
           AND period_open_utc >= $2::timestamptz
           AND period_open_utc < $3::timestamptz
         ORDER BY period_open_utc ASC`,
-      [normalizedSymbol, weeklyWindow.openUtc.toISO(), weeklyWindow.closeUtc.toISO()],
+      [normalizedSymbol, weeklyWindow.openUtc.toISO(), weeklyWindow.closeUtc.toISO(), CANONICAL_ANCHOR_VERSION],
     );
     return rows.map((row) => {
       const mapped = mapPairReturnRow(row);

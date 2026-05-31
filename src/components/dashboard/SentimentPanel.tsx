@@ -15,7 +15,7 @@
 import SentimentHeatmap, {
   type MyfxbookPositioning,
 } from "@/components/SentimentHeatmap";
-import ViewToggle from "@/components/ViewToggle";
+import SegmentedToggle from "@/components/common/SegmentedToggle";
 import SummaryCards from "@/components/SummaryCards";
 import DashboardFilters from "@/components/dashboard/DashboardFilters";
 import {
@@ -31,7 +31,8 @@ import {
   type SentimentAssetClass,
 } from "@/lib/sentiment/symbols";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
-import { getWeeklyPairReturns } from "@/lib/pairReturns";
+import { loadWeeklyReturnDisplayRows } from "@/lib/weeklyReturnDisplay";
+import type { ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
 
 type MyfxbookRawPayload = {
   longVolume?: number | string;
@@ -133,11 +134,17 @@ export default async function SentimentPanel({
     .map((agg) => ({ label: agg.symbol, value: "Crowded Short" }));
   const neutralDetails = sortedAggregates.filter((agg) => agg.crowding_state === "NEUTRAL").map((agg) => ({ label: agg.symbol, value: "NEUTRAL" }));
 
-  const performanceByPair: Record<string, number | null> = {};
+  const performanceByPair: Record<string, ReturnMatrix | null> = {};
   if (weekOpenUtc) {
     try {
-      const weeklyReturns = await getWeeklyPairReturns(weekOpenUtc);
-      weeklyReturns.forEach((row) => { performanceByPair[row.symbol] = row.returnPct; });
+      const weeklyReturns = await loadWeeklyReturnDisplayRows(weekOpenUtc);
+      weeklyReturns.forEach((row) => {
+        performanceByPair[row.symbol] = {
+          canonical: row.canonical,
+          execution: row.execution,
+          adrPct: row.adrPct,
+        };
+      });
     } catch {}
   }
 
@@ -188,7 +195,7 @@ export default async function SentimentPanel({
             selectedView={view}
             currentWeekOpenUtc={currentWeekOpenUtc}
           />
-          <ViewToggle value={view} items={viewItems} />
+          <SegmentedToggle value={view} items={viewItems} />
         </div>
         <div className="mt-6">
           <SentimentHeatmap

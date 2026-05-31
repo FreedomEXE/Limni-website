@@ -60,6 +60,8 @@ export default function PairHeatmap({
         : [{ label: "Direction", value: row.direction }],
     performancePercent: row.performance?.percent ?? null,
     performanceNote: note,
+    returnMatrix: row.performance?.returnMatrix ?? null,
+    returnWarnings: row.performance?.returnWarnings,
   }));
 
   const footerContent =

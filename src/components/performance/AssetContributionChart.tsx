@@ -15,6 +15,7 @@
 "use client";
 
 type AssetBar = {
+  id?: string;
   label: string;
   returnPct: number;
   color: string;
@@ -34,14 +35,29 @@ export type SimulationSeries = {
   points: Array<{ ts_utc?: string; equity_pct: number }>;
 };
 
-export default function AssetContributionChart({ series }: { series: SimulationSeries[] }) {
+export default function AssetContributionChart({
+  series,
+  bars: overrideBars,
+}: {
+  series: SimulationSeries[];
+  bars?: Array<{ id: string; label: string; returnPct: number; color?: string }>;
+}) {
   const assetSeries = series.filter((s) => s.id.startsWith("asset:"));
-  if (assetSeries.length === 0) return null;
+  if (assetSeries.length === 0 && (!overrideBars || overrideBars.length === 0)) return null;
 
-  const bars: AssetBar[] = assetSeries.map((s) => {
+  const bars: AssetBar[] = overrideBars?.map((bar) => {
+    const assetId = bar.id.replace("asset:", "");
+    return {
+      id: bar.id,
+      label: bar.label,
+      returnPct: bar.returnPct,
+      color: bar.color ?? ASSET_COLORS[assetId] ?? "#94a3b8",
+    };
+  }) ?? assetSeries.map((s) => {
     const assetId = s.id.replace("asset:", "");
     const lastPoint = filterMarketHours(s.points).at(-1);
     return {
+      id: s.id,
       label: s.label,
       returnPct: lastPoint?.equity_pct ?? 0,
       color: ASSET_COLORS[assetId] ?? s.color ?? "#94a3b8",
@@ -69,7 +85,7 @@ export default function AssetContributionChart({ series }: { series: SimulationS
           const widthPct = Math.min((Math.abs(bar.returnPct) / maxAbs) * 100, 100);
           const isPositive = bar.returnPct >= 0;
           return (
-            <div key={bar.label}>
+            <div key={bar.id ?? bar.label}>
               <div className="mb-1 flex items-center justify-between text-xs">
                 <span className="font-semibold text-[var(--foreground)]">{bar.label}</span>
                 <span className={`font-bold ${isPositive ? "text-lime-400" : "text-red-400"}`}>

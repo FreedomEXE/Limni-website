@@ -3,6 +3,10 @@ import type {
   StrategyClientPayload,
   StrategyClientPayloadScope,
 } from "@/lib/performance/strategyClientPayload";
+import {
+  GLOBAL_PRELOAD_CACHE_VERSION,
+  hasTrustedGlobalPreloadStamp,
+} from "@/lib/preload/preloadContract";
 
 const payloadCache = new Map<string, StrategyClientPayload | null>();
 const inflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
@@ -10,13 +14,14 @@ const currentWeekInflightCache = new Map<string, Promise<StrategyClientPayload |
 const warmInflightCache = new Map<string, Promise<boolean>>();
 const warmRequestedAt = new Map<string, number>();
 const cachedSelectionEngineVersions = new Map<string, string>();
+const cachedSelectionArtifactStatuses = new Map<string, StrategyArtifactStatusRow>();
 let bulkWarmInflight: Promise<StrategyBulkWarmPayload | null> | null = null;
 let bulkWarmRequestedAt = 0;
 const WARM_REQUEST_COOLDOWN_MS = 120000;
 const BULK_WARM_REQUEST_COOLDOWN_MS = 30000;
 const PERSISTENT_PAYLOAD_CACHE_NAME = "limni-strategy-payload-v3";
 const PERSISTENT_PAYLOAD_META_PREFIX = "limni:strategy-payload:v3:";
-const PERSISTENT_PAYLOAD_TTL_MS = 6 * 60 * 60 * 1000;
+const PERSISTENT_PAYLOAD_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 function buildSelectionKey(selection: RuntimeStrategySelection) {
   return `${selection.strategy}:${selection.f1}:${selection.f2}`;
@@ -196,16 +201,22 @@ function persistentPayloadMetaKey(url: string) {
 type PersistentPayloadMeta = {
   storedAt: number | null;
   engineVersion: string | null;
+  contractVersion: string | null;
 };
 
 function readPersistentPayloadMeta(url: string): PersistentPayloadMeta | null {
   try {
     const raw = window.localStorage.getItem(persistentPayloadMetaKey(url));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { storedAt?: unknown; engineVersion?: unknown };
+    const parsed = JSON.parse(raw) as {
+      storedAt?: unknown;
+      engineVersion?: unknown;
+      contractVersion?: unknown;
+    };
     return {
       storedAt: typeof parsed.storedAt === "number" ? parsed.storedAt : null,
       engineVersion: typeof parsed.engineVersion === "string" ? parsed.engineVersion : null,
+      contractVersion: typeof parsed.contractVersion === "string" ? parsed.contractVersion : null,
     };
   } catch {
     return null;
@@ -237,9 +248,21 @@ async function readPersistentPayload(
     await deletePersistentPayload(absoluteUrl);
     return null;
   }
+  if (storedMeta?.contractVersion !== GLOBAL_PRELOAD_CACHE_VERSION) {
+    await deletePersistentPayload(absoluteUrl);
+    return null;
+  }
 
   const selectionKey = buildSelectionKey(selection);
-  const expectedEngineVersion = await ensureSelectionEngineVersion(selection);
+  const artifactStatus = hasTrustedGlobalPreloadStamp()
+    ? null
+    : await ensureSelectionArtifactStatus(selection);
+  if (artifactStatus && !artifactStatus.ready) {
+    await deletePersistentPayload(absoluteUrl);
+    return null;
+  }
+
+  const expectedEngineVersion = artifactStatus?.expectedEngineVersion ?? null;
   if (
     storedMeta?.engineVersion &&
     expectedEngineVersion &&
@@ -291,6 +314,7 @@ async function writePersistentPayload(url: string, data: StrategyClientPayload) 
       JSON.stringify({
         storedAt: Date.now(),
         engineVersion: data.artifactMeta?.engineVersion ?? null,
+        contractVersion: GLOBAL_PRELOAD_CACHE_VERSION,
       }),
     );
   } catch {
@@ -608,6 +632,7 @@ export async function fetchStrategyArtifactStatus(
       const status = (await response.json()) as StrategyArtifactStatusPayload;
       for (const artifact of status.artifacts ?? []) {
         cachedSelectionEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
+        cachedSelectionArtifactStatuses.set(artifact.key, artifact);
       }
       return status;
     })
@@ -622,10 +647,10 @@ export async function fetchStrategyArtifactStatus(
     });
 }
 
-async function ensureSelectionEngineVersion(selection: RuntimeStrategySelection) {
+async function ensureSelectionArtifactStatus(selection: RuntimeStrategySelection) {
   const key = buildSelectionKey(selection);
-  const cached = cachedSelectionEngineVersions.get(key);
+  const cached = cachedSelectionArtifactStatuses.get(key);
   if (cached) return cached;
   const status = await fetchStrategyArtifactStatus(key);
-  return status?.artifacts?.[0]?.expectedEngineVersion ?? null;
+  return status?.artifacts?.[0] ?? null;
 }

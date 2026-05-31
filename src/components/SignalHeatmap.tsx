@@ -3,6 +3,7 @@
 import PairSignalSurface, {
   type PairSignalSurfaceItem,
 } from "@/components/PairSignalSurface";
+import type { ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
 
 type SignalRow = {
   pair: string;
@@ -14,10 +15,14 @@ type SignalRow = {
 type SignalHeatmapProps = {
   signals: SignalRow[];
   view: "heatmap" | "list";
-  performanceByPair?: Record<string, number | null>;
+  performanceByPair?: Record<string, number | ReturnMatrix | null>;
   title?: string;
   description?: string;
 };
+
+function isReturnMatrix(value: number | ReturnMatrix | null | undefined): value is ReturnMatrix {
+  return Boolean(value && typeof value === "object" && "adrPct" in value);
+}
 
 function signalTone(
   direction: SignalRow["direction"],
@@ -40,6 +45,7 @@ export default function SignalHeatmap({
 }: SignalHeatmapProps) {
   const items: PairSignalSurfaceItem[] = signals.map((signal) => {
     const key = `${signal.pair} (${signal.assetLabel})`;
+    const performance = performanceByPair[key] ?? null;
     const details =
       signal.reasons.length > 0
         ? signal.reasons.map((reason, index) => ({
@@ -56,7 +62,8 @@ export default function SignalHeatmap({
       modalTitle: `${signal.pair} ${signal.direction}`,
       modalSubtitle: signal.assetLabel,
       modalDetails: details,
-      performancePercent: performanceByPair[key] ?? null,
+      performancePercent: typeof performance === "number" ? performance : null,
+      returnMatrix: isReturnMatrix(performance) ? performance : null,
     };
   });
 

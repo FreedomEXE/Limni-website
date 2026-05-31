@@ -2,6 +2,12 @@
 
 import type { Direction } from "@/lib/cotTypes";
 import type { PairPerformance } from "@/lib/priceStore";
+import MissingReturnCell from "@/components/common/MissingReturnCell";
+import TradeDrilldownModal from "@/components/common/trades/TradeDrilldownModal";
+import { resolveDisplayReturn } from "@/lib/viewMode/resolveDisplayValue";
+import { useViewMode } from "@/lib/viewMode/viewModeStore";
+import { useState } from "react";
+import type { AnchorType, TradeDirection } from "@/lib/trades/tradeTypes";
 
 type PairRow = {
   pair: string;
@@ -13,6 +19,8 @@ type PairPerformanceTableProps = {
   rows: PairRow[];
   note?: string;
   missingPairs?: string[];
+  weekOpenUtc?: string;
+  strategyVariant?: string;
 };
 
 function formatSigned(value: number, decimals: number, suffix = "") {
@@ -30,16 +38,45 @@ function valueTone(value: number) {
   return "text-[color:var(--muted)]";
 }
 
+function warningReason(warnings: string[] | undefined) {
+  if (warnings?.includes("execution_close_bar_missing")) {
+    return "Execution data unavailable: incomplete close bar";
+  }
+  return "Data unavailable";
+}
+
+function resolvePerformancePercent(performance: PairPerformance | null | undefined, viewMode: Parameters<typeof resolveDisplayReturn>[1]) {
+  if (!performance) return null;
+  if (performance.returnMatrix) {
+    return resolveDisplayReturn(performance.returnMatrix, viewMode);
+  }
+  return performance.percent;
+}
+
+function isTradeDirection(direction: Direction): direction is TradeDirection {
+  return direction === "LONG" || direction === "SHORT";
+}
+
 export default function PairPerformanceTable({
   rows,
   note,
   missingPairs,
+  weekOpenUtc,
+  strategyVariant = "tandem-weekly_hold-none",
 }: PairPerformanceTableProps) {
+  const [viewMode] = useViewMode("data");
+  const [drilldown, setDrilldown] = useState<{
+    symbol: string;
+    weekOpenUtc: string;
+    anchorType: AnchorType;
+    direction: TradeDirection;
+  } | null>(null);
   const totals = rows.reduce(
     (acc, row) => {
-      if (row.performance) {
+      const resolvedPercent = resolvePerformancePercent(row.performance, viewMode);
+      if (row.performance && resolvedPercent !== null) {
         const directionFactor = row.direction === "LONG" ? 1 : -1;
-        acc.percent += row.performance.percent * directionFactor;
+        acc.percent += resolvedPercent * directionFactor;
         acc.pips += row.performance.pips;
         acc.count += 1;
       }
@@ -81,7 +118,9 @@ export default function PairPerformanceTable({
               rows.map((row) => {
                 const perf = row.performance;
                 const directionFactor = row.direction === "LONG" ? 1 : -1;
-                const pnlPercent = perf ? perf.percent * directionFactor : 0;
+                const resolvedPercent = resolvePerformancePercent(perf, viewMode);
+                const pnlPercent = resolvedPercent !== null ? resolvedPercent * directionFactor : 0;
+                const drillDirection = isTradeDirection(row.direction) ? row.direction : null;
                 const rowTone = perf
                   ? pnlPercent > 0
                     ? "bg-emerald-50/60 dark:bg-emerald-900/20"
@@ -92,7 +131,16 @@ export default function PairPerformanceTable({
                 return (
                   <tr
                     key={row.pair}
-                    className={`border-t border-[var(--panel-border)] ${rowTone}`}
+                    onClick={weekOpenUtc && drillDirection
+                      ? () => setDrilldown({
+                          symbol: row.pair,
+                          weekOpenUtc,
+                          anchorType: viewMode.anchor,
+                          direction: drillDirection,
+                        })
+                      : undefined}
+                    title={weekOpenUtc && drillDirection ? "Open ledger drilldown" : undefined}
+                    className={`border-t border-[var(--panel-border)] ${rowTone} ${weekOpenUtc && drillDirection ? "cursor-pointer hover:outline hover:outline-1 hover:outline-[var(--accent)]/40" : ""}`}
                   >
                     <td className="py-2 font-semibold">{row.pair}</td>
                     <td
@@ -106,10 +154,14 @@ export default function PairPerformanceTable({
                     </td>
                     <td
                       className={`py-2 ${
-                        perf ? valueTone(perf.percent) : "text-[color:var(--muted)]"
+                        resolvedPercent !== null ? valueTone(resolvedPercent) : "text-[color:var(--muted)]"
                       }`}
                     >
-                      {perf ? formatSigned(perf.percent, 2, "%") : "--"}
+                      {resolvedPercent !== null ? (
+                        formatSigned(resolvedPercent, 2, "%")
+                      ) : (
+                        <MissingReturnCell reason={warningReason(perf?.returnWarnings)} />
+                      )}
                     </td>
                     <td
                       className={`py-2 ${
@@ -169,6 +221,17 @@ export default function PairPerformanceTable({
         <div className="mt-3 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-xs text-[var(--accent-strong)]">
           Missing prices for: {missingPairs.join(", ")}
         </div>
+      ) : null}
+      {drilldown ? (
+        <TradeDrilldownModal
+          symbol={drilldown.symbol}
+          weekOpenUtc={drilldown.weekOpenUtc}
+          strategyFamily="weekly_hold"
+          strategyVariant={strategyVariant}
+          anchorType={drilldown.anchorType}
+          direction={drilldown.direction}
+          onClose={() => setDrilldown(null)}
+        />
       ) : null}
     </div>
   );

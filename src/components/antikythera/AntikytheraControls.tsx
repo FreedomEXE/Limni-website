@@ -17,7 +17,7 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { DateTime } from "luxon";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
-import ViewToggle from "@/components/ViewToggle";
+import SegmentedToggle from "@/components/common/SegmentedToggle";
 
 type ViewOption = "heatmap" | "list";
 
@@ -59,6 +59,17 @@ export default function AntikytheraControls({
     params.set("asset", asset);
     if (selectedReportDate) params.set("report", selectedReportDate);
     params.set("view", view);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const handleViewChange = (nextView: ViewOption) => {
+    const selectedItem = viewItems.find((item) => item.value === nextView);
+    if (selectedItem?.href) {
+      router.push(selectedItem.href, { scroll: false });
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", nextView);
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
@@ -107,7 +118,7 @@ export default function AntikytheraControls({
         </div>
       </div>
       <div className="shrink-0">
-        <ViewToggle value={view} items={viewItems} />
+        <SegmentedToggle value={view} items={viewItems} onChange={handleViewChange} />
       </div>
     </div>
   );

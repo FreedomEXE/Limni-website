@@ -23,8 +23,10 @@
 
 import { query } from "@/lib/db";
 import { DateTime } from "luxon";
-import { getWeeklyPairReturns } from "@/lib/pairReturns";
+import { getExecutionWeeklyPairReturns } from "@/lib/pairReturns";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import { getExecutionWeekWindow } from "@/lib/executionPriceWindows";
+import type { AssetClass } from "@/lib/cotMarkets";
 import { getCanonicalBasketWeek, filterByModel, nonNeutralSignals, type CanonicalBasketSignal } from "@/lib/performance/basketSource";
 import type { BiasSourceConfig, EntryStyleConfig, RiskOverlayConfig } from "@/lib/performance/strategyConfig";
 import {
@@ -62,7 +64,23 @@ export type WeeklyHoldTrade = {
   direction: "LONG" | "SHORT";
   openPrice: number;
   closePrice: number;
+  /**
+   * Current display return. For existing Performance UI behavior this remains
+   * ADR-normalized after computeWeeklyHold() returns.
+   */
   returnPct: number;
+  /** Direction-adjusted return before ADR normalization. */
+  rawReturnPct?: number;
+  /** Direction-adjusted return after ADR normalization. */
+  normalizedReturnPct?: number;
+  /** Explicit display value selected by projection code. Currently normalized. */
+  displayReturnPct?: number;
+  /** Pair ADR percent used for normalization. */
+  adrPct?: number;
+  /** targetADR / pairADR. */
+  adrMultiplier?: number;
+  /** Return mode represented by returnPct/displayReturnPct. */
+  returnMode?: "raw" | "normalized";
   /** The model that generated this signal (dealer/commercial/sentiment/etc.) */
   source: string;
   /** Tier (1=high, 2=medium, 3=low) or null */
@@ -87,9 +105,16 @@ export type CanonicalSignal = {
 
 export type WeeklyHoldResult = {
   weekOpenUtc: string;
+  executionWindowOpenUtc?: string;
+  executionWindowCloseUtc?: string;
   biasSourceId: string;
   trades: WeeklyHoldTrade[];
+  /** Current display total. For existing UI behavior this remains normalized. */
   totalReturnPct: number;
+  rawTotalReturnPct?: number;
+  normalizedTotalReturnPct?: number;
+  displayTotalReturnPct?: number;
+  returnMode?: "raw" | "normalized";
   winCount: number;
   lossCount: number;
   winRate: number;
@@ -126,12 +151,63 @@ const MULTI_WEEK_COMPUTE_CONCURRENCY = Number(
   process.env.MULTI_WEEK_COMPUTE_CONCURRENCY ?? "3",
 );
 
-function inferAssetClass(symbol: string): string {
+function inferAssetClass(symbol: string): AssetClass {
   const upper = symbol.toUpperCase().replace(/[/.]/g, "");
   if (CRYPTO_SYMBOLS.has(upper)) return "crypto";
   if (INDEX_SYMBOLS.has(upper)) return "indices";
   if (COMMODITY_SYMBOLS.has(upper)) return "commodities";
   return "fx";
+}
+
+function normalizeAssetClass(value: string | null | undefined): AssetClass {
+  return value === "indices" || value === "commodities" || value === "crypto" || value === "fx"
+    ? value
+    : "fx";
+}
+
+function getExecutionBoundaryIso(weekOpenUtc: string, assetClass: AssetClass) {
+  const window = getExecutionWeekWindow(weekOpenUtc, assetClass);
+  return {
+    windowOpenUtc: window.windowOpenUtc.toUTC().toISO() ?? weekOpenUtc,
+    windowCloseUtc: window.windowCloseUtc.toUTC().toISO() ?? weekOpenUtc,
+  };
+}
+
+function mergeExecutionBoundaries(
+  weekOpenUtc: string,
+  assetClasses: Iterable<string | null | undefined>,
+): { executionWindowOpenUtc: string; executionWindowCloseUtc: string } {
+  let minOpenMs = Number.POSITIVE_INFINITY;
+  let maxCloseMs = Number.NEGATIVE_INFINITY;
+  let executionWindowOpenUtc = weekOpenUtc;
+  let executionWindowCloseUtc = weekOpenUtc;
+
+  for (const assetClassValue of assetClasses) {
+    const { windowOpenUtc, windowCloseUtc } = getExecutionBoundaryIso(
+      weekOpenUtc,
+      normalizeAssetClass(assetClassValue),
+    );
+    const openMs = Date.parse(windowOpenUtc);
+    const closeMs = Date.parse(windowCloseUtc);
+    if (Number.isFinite(openMs) && openMs < minOpenMs) {
+      minOpenMs = openMs;
+      executionWindowOpenUtc = windowOpenUtc;
+    }
+    if (Number.isFinite(closeMs) && closeMs > maxCloseMs) {
+      maxCloseMs = closeMs;
+      executionWindowCloseUtc = windowCloseUtc;
+    }
+  }
+
+  if (!Number.isFinite(minOpenMs) || !Number.isFinite(maxCloseMs)) {
+    const fallback = getExecutionBoundaryIso(weekOpenUtc, "fx");
+    return {
+      executionWindowOpenUtc: fallback.windowOpenUtc,
+      executionWindowCloseUtc: fallback.windowCloseUtc,
+    };
+  }
+
+  return { executionWindowOpenUtc, executionWindowCloseUtc };
 }
 
 function getMultiWeekComputeConcurrency() {
@@ -144,29 +220,81 @@ function getMultiWeekComputeConcurrency() {
   return 3;
 }
 
+function isPositiveFinite(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
+}
+
+function finiteOrUndefined(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function getTradePairAdrPct(
+  trade: WeeklyHoldTrade,
+  adrMap: Map<string, number>,
+): number {
+  if (isPositiveFinite(trade.adrPct)) return trade.adrPct;
+  const detailAdrPct = trade.detail?.adrPct;
+  if (isPositiveFinite(detailAdrPct)) return detailAdrPct;
+  return getAdrPct(adrMap, trade.symbol, trade.assetClass);
+}
+
+export function normalizeTradeReturnForAdr(
+  trade: WeeklyHoldTrade,
+  pairAdrPct: number,
+  targetAdrPct = getTargetAdrPct(),
+): WeeklyHoldTrade {
+  const safePairAdrPct = isPositiveFinite(pairAdrPct) ? pairAdrPct : targetAdrPct;
+  const adrMultiplier = safePairAdrPct > 0 ? targetAdrPct / safePairAdrPct : 1;
+  const rawReturnPct = finiteOrUndefined(trade.rawReturnPct) ?? trade.returnPct;
+  const normalizedReturnPct = rawReturnPct * adrMultiplier;
+  const detail = trade.detail;
+  const detailAdrPct = detail?.adrPct;
+
+  return {
+    ...trade,
+    rawReturnPct,
+    normalizedReturnPct,
+    displayReturnPct: normalizedReturnPct,
+    returnPct: normalizedReturnPct,
+    adrPct: safePairAdrPct,
+    adrMultiplier,
+    returnMode: "normalized",
+    detail: detail
+      ? {
+        ...detail,
+        adrPct: isPositiveFinite(detailAdrPct) ? detailAdrPct : safePairAdrPct,
+      }
+      : detail,
+  };
+}
+
 async function applyAdrNormalization(
   result: WeeklyHoldResult,
 ): Promise<WeeklyHoldResult> {
   const targetAdr = getTargetAdrPct();
-  const needsAdrLookup = result.trades.some((trade) => !(trade.detail?.adrPct && trade.detail.adrPct > 0));
+  const needsAdrLookup = result.trades.some((trade) => {
+    return !isPositiveFinite(trade.adrPct) && !isPositiveFinite(trade.detail?.adrPct);
+  });
   const adrMap = needsAdrLookup ? await loadWeeklyAdrMap(result.weekOpenUtc) : new Map();
 
   const normalizedTrades = result.trades.map((trade) => {
-    const pairAdr = trade.detail?.adrPct && trade.detail.adrPct > 0
-      ? trade.detail.adrPct
-      : getAdrPct(adrMap, trade.symbol, trade.assetClass);
-    const multiplier = targetAdr / pairAdr;
-    return { ...trade, returnPct: trade.returnPct * multiplier };
+    const pairAdr = getTradePairAdrPct(trade, adrMap);
+    return normalizeTradeReturnForAdr(trade, pairAdr, targetAdr);
   });
 
-  const totalReturn = normalizedTrades.reduce((s, t) => s + t.returnPct, 0);
+  const rawTotalReturn = normalizedTrades.reduce((s, t) => s + (t.rawReturnPct ?? t.returnPct), 0);
+  const normalizedTotalReturn = normalizedTrades.reduce((s, t) => s + (t.normalizedReturnPct ?? t.returnPct), 0);
   const wins = normalizedTrades.filter((t) => t.returnPct > 0).length;
   const losses = normalizedTrades.filter((t) => t.returnPct <= 0).length;
 
   return {
     ...result,
     trades: normalizedTrades,
-    totalReturnPct: totalReturn,
+    totalReturnPct: normalizedTotalReturn,
+    rawTotalReturnPct: rawTotalReturn,
+    normalizedTotalReturnPct: normalizedTotalReturn,
+    displayTotalReturnPct: normalizedTotalReturn,
+    returnMode: "normalized",
     winCount: wins,
     lossCount: losses,
     winRate: normalizedTrades.length > 0 ? (wins / normalizedTrades.length) * 100 : 0,
@@ -726,13 +854,15 @@ const PAIR_FILL_CAP_LIMIT = 3;
 
 type AdrGridTemplate = {
   symbol: string;
-  assetClass: string;
+  assetClass: AssetClass;
   direction: "LONG" | "SHORT";
   source: string;
   tier: number | null;
   openPrice: number;
   pairAdrPct: number;
   weightMultiplier: number;
+  executionWindowOpenUtc: string;
+  executionWindowCloseUtc: string;
 };
 
 type AdrGridLevel = {
@@ -759,6 +889,7 @@ type AdrGridEngine = AdrGridTemplate & {
   cycleHighPrice: number;
   cycleLowPrice: number;
   closedForWeek: boolean;
+  closeGridIndex: number;
 };
 
 type AdrGridTimeline = {
@@ -826,6 +957,7 @@ function buildAdrGridEngine(template: AdrGridTemplate): AdrGridEngine {
     cycleHighPrice: template.openPrice,
     cycleLowPrice: template.openPrice,
     closedForWeek: false,
+    closeGridIndex: -1,
   };
 }
 
@@ -991,6 +1123,26 @@ function lastElapsedGridTimestamp(grid: string[], fallback: string) {
   return fallback;
 }
 
+function findGridIndexAtOrBefore(grid: string[], timestampUtc: string) {
+  const targetMs = Date.parse(timestampUtc);
+  if (!Number.isFinite(targetMs)) return Math.max(0, grid.length - 1);
+  for (let index = grid.length - 1; index >= 0; index -= 1) {
+    const tsMs = Date.parse(grid[index] ?? "");
+    if (Number.isFinite(tsMs) && tsMs <= targetMs) {
+      return index;
+    }
+  }
+  return 0;
+}
+
+function effectiveWindowCloseIso(windowCloseUtc: string, isRealized: boolean) {
+  if (isRealized) return windowCloseUtc;
+  const close = DateTime.fromISO(windowCloseUtc, { zone: "utc" });
+  const now = DateTime.utc();
+  if (!close.isValid) return now.toUTC().toISO() ?? windowCloseUtc;
+  return DateTime.min(close, now).startOf("hour").toUTC().toISO() ?? windowCloseUtc;
+}
+
 function buildLiveReturnFallbackTrade(params: {
   template: AdrGridTemplate;
   priceData: { closePrice: number; returnPct: number };
@@ -1012,7 +1164,7 @@ function buildLiveReturnFallbackTrade(params: {
     tier: template.tier,
     detail: {
       tradeNumber,
-      entryTimeUtc: null,
+      entryTimeUtc: template.executionWindowOpenUtc,
       exitTimeUtc,
       exitReason: "live_return_fallback",
       anchorPrice: template.openPrice,
@@ -1034,9 +1186,7 @@ async function executeAdrGrid(
   const signals = buildCanonicalSignals(directions);
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const isRealized = isWeekRealizedForAggregate(weekOpenUtc, currentWeekOpenUtc);
-  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
-  const weekCloseUtc = (weekOpen.isValid ? weekOpen.plus({ weeks: 1 }).toUTC().toISO() : null) ?? weekOpenUtc;
-  const pairReturns = await getWeeklyPairReturns(weekOpenUtc);
+  const pairReturns = await getExecutionWeeklyPairReturns(weekOpenUtc);
   const returnMap = new Map(pairReturns.map((row) => [row.symbol.toUpperCase(), row]));
   const adrMap = await loadWeeklyAdrMap(weekOpenUtc);
 
@@ -1049,7 +1199,8 @@ async function executeAdrGrid(
       missingPriceSymbolSet.add(pair);
       continue;
     }
-    const assetClass = priceData.assetClass ?? signal.assetClass ?? inferAssetClass(pair);
+    const assetClass = normalizeAssetClass(priceData.assetClass ?? signal.assetClass ?? inferAssetClass(pair));
+    const executionBoundary = getExecutionBoundaryIso(weekOpenUtc, assetClass);
     templates.push({
       symbol: pair,
       assetClass,
@@ -1059,12 +1210,19 @@ async function executeAdrGrid(
       openPrice: priceData.openPrice,
       pairAdrPct: getAdrPct(adrMap, pair, assetClass),
       weightMultiplier: 1,
+      executionWindowOpenUtc: executionBoundary.windowOpenUtc,
+      executionWindowCloseUtc: executionBoundary.windowCloseUtc,
     });
   }
 
+  const resultBoundaries = mergeExecutionBoundaries(
+    weekOpenUtc,
+    templates.length > 0 ? templates.map((template) => template.assetClass) : ["fx"],
+  );
+  const effectiveResultCloseUtc = effectiveWindowCloseIso(resultBoundaries.executionWindowCloseUtc, isRealized);
   const symbols = Array.from(new Set(templates.map((template) => template.symbol))).sort();
-  const bars = await loadPathBars(symbols, weekOpenUtc, weekCloseUtc, "1h");
-  const grid = buildAdrGridTimestamps(weekOpenUtc, weekCloseUtc);
+  const bars = await loadPathBars(symbols, resultBoundaries.executionWindowOpenUtc, effectiveResultCloseUtc, "1h");
+  const grid = buildAdrGridTimestamps(resultBoundaries.executionWindowOpenUtc, effectiveResultCloseUtc);
   const timelines = new Map<string, AdrGridTimeline>();
   for (const symbol of symbols) {
     const symbolBars = bars.get(symbol) ?? [];
@@ -1081,92 +1239,96 @@ async function executeAdrGrid(
     timelines.set(symbol, { exactBars, markBars });
   }
 
-  const engines = templates.map(buildAdrGridEngine);
+  const engines = templates.map((template) => {
+    const engine = buildAdrGridEngine(template);
+    const engineCloseUtc = effectiveWindowCloseIso(template.executionWindowCloseUtc, isRealized);
+    engine.closeGridIndex = findGridIndexAtOrBefore(grid, engineCloseUtc);
+    return engine;
+  });
   const trades: WeeklyHoldTrade[] = [];
   let tradeNumber = 1;
 
   for (let barIndex = 0; barIndex < grid.length; barIndex += 1) {
-    const tsUtc = grid[barIndex] ?? weekOpenUtc;
+    const tsUtc = grid[barIndex] ?? resultBoundaries.executionWindowOpenUtc;
     for (const engine of engines) {
       const bar = timelines.get(engine.symbol)?.exactBars[barIndex] ?? null;
-      if (!bar || engine.closedForWeek) continue;
+      if (engine.closedForWeek || barIndex > engine.closeGridIndex) continue;
 
-      for (const level of engine.levels) {
-        if (!engine.levelArmed[level.index]) continue;
-        if (engine.levelRearmBarIndex[level.index]! >= barIndex) continue;
-        const triggered = level.side === "favorable"
-          ? (engine.direction === "LONG" ? bar.lowPrice <= level.triggerPrice : bar.highPrice >= level.triggerPrice)
-          : (engine.direction === "LONG" ? bar.highPrice >= level.triggerPrice : bar.lowPrice <= level.triggerPrice);
-        if (!triggered) continue;
-        if (exposureCapEnabled && wouldBreachExposureCap(engine, level.weight, engines)) continue;
-        if (pairFillCapEnabled && wouldBreachPairFillCap(engine)) continue;
+      if (bar) {
+        for (const level of engine.levels) {
+          if (!engine.levelArmed[level.index]) continue;
+          if (engine.levelRearmBarIndex[level.index]! >= barIndex) continue;
+          const triggered = level.side === "favorable"
+            ? (engine.direction === "LONG" ? bar.lowPrice <= level.triggerPrice : bar.highPrice >= level.triggerPrice)
+            : (engine.direction === "LONG" ? bar.highPrice >= level.triggerPrice : bar.lowPrice <= level.triggerPrice);
+          if (!triggered) continue;
+          if (exposureCapEnabled && wouldBreachExposureCap(engine, level.weight, engines)) continue;
+          if (pairFillCapEnabled && wouldBreachPairFillCap(engine)) continue;
 
-        engine.fills.push({
-          levelIndex: level.index,
-          entryPrice: level.triggerPrice,
-          entryTimeUtc: tsUtc,
-          entryBarIndex: barIndex,
-          weight: level.weight,
-          active: true,
-        });
-        engine.levelArmed[level.index] = false;
-      }
+          engine.fills.push({
+            levelIndex: level.index,
+            entryPrice: level.triggerPrice,
+            entryTimeUtc: tsUtc,
+            entryBarIndex: barIndex,
+            weight: level.weight,
+            active: true,
+          });
+          engine.levelArmed[level.index] = false;
+        }
 
-      const targetMove = (ADR_GRID_SPACING * engine.pairAdrPct) / 100;
-      for (const fill of engine.fills) {
-        if (!fill.active || barIndex <= fill.entryBarIndex) continue;
-        const targetPrice = engine.direction === "SHORT"
-          ? fill.entryPrice * (1 - targetMove)
-          : fill.entryPrice * (1 + targetMove);
-        const targetHit = engine.direction === "SHORT"
-          ? bar.lowPrice <= targetPrice
-          : bar.highPrice >= targetPrice;
-        if (!targetHit) continue;
+        const targetMove = (ADR_GRID_SPACING * engine.pairAdrPct) / 100;
+        for (const fill of engine.fills) {
+          if (!fill.active || barIndex <= fill.entryBarIndex) continue;
+          const targetPrice = engine.direction === "SHORT"
+            ? fill.entryPrice * (1 - targetMove)
+            : fill.entryPrice * (1 + targetMove);
+          const targetHit = engine.direction === "SHORT"
+            ? bar.lowPrice <= targetPrice
+            : bar.highPrice >= targetPrice;
+          if (!targetHit) continue;
 
-        closeAdrGridFill({
-          trades,
-          engine,
-          fill,
-          exitPrice: targetPrice,
-          exitTimeUtc: tsUtc,
-          exitReason: "grid_tp",
-          tradeNumber: tradeNumber++,
-        });
-        engine.levelArmed[fill.levelIndex] = true;
-        engine.levelRearmBarIndex[fill.levelIndex] = barIndex;
-      }
+          closeAdrGridFill({
+            trades,
+            engine,
+            fill,
+            exitPrice: targetPrice,
+            exitTimeUtc: tsUtc,
+            exitReason: "grid_tp",
+            tradeNumber: tradeNumber++,
+          });
+          engine.levelArmed[fill.levelIndex] = true;
+          engine.levelRearmBarIndex[fill.levelIndex] = barIndex;
+        }
 
-      engine.cycleHighPrice = Math.max(engine.cycleHighPrice, bar.highPrice);
-      engine.cycleLowPrice = Math.min(engine.cycleLowPrice, bar.lowPrice);
-      if (activeAdrGridExposure(engine) > 1e-9) {
-        const resetMove = (ADR_GRID_RESET_ADR * engine.pairAdrPct) / 100;
-        const closeTarget = engine.direction === "SHORT"
-          ? engine.cycleHighPrice * (1 - resetMove)
-          : engine.cycleLowPrice * (1 + resetMove);
-        const resetHit = engine.direction === "SHORT"
-          ? bar.lowPrice <= closeTarget
-          : bar.highPrice >= closeTarget;
-        if (resetHit) {
-          for (const fill of engine.fills) {
-            if (!fill.active) continue;
-            closeAdrGridFill({
-              trades,
-              engine,
-              fill,
-              exitPrice: closeTarget,
-              exitTimeUtc: tsUtc,
-              exitReason: "grid_reset",
-              tradeNumber: tradeNumber++,
-            });
+        engine.cycleHighPrice = Math.max(engine.cycleHighPrice, bar.highPrice);
+        engine.cycleLowPrice = Math.min(engine.cycleLowPrice, bar.lowPrice);
+        if (activeAdrGridExposure(engine) > 1e-9) {
+          const resetMove = (ADR_GRID_RESET_ADR * engine.pairAdrPct) / 100;
+          const closeTarget = engine.direction === "SHORT"
+            ? engine.cycleHighPrice * (1 - resetMove)
+            : engine.cycleLowPrice * (1 + resetMove);
+          const resetHit = engine.direction === "SHORT"
+            ? bar.lowPrice <= closeTarget
+            : bar.highPrice >= closeTarget;
+          if (resetHit) {
+            for (const fill of engine.fills) {
+              if (!fill.active) continue;
+              closeAdrGridFill({
+                trades,
+                engine,
+                fill,
+                exitPrice: closeTarget,
+                exitTimeUtc: tsUtc,
+                exitReason: "grid_reset",
+                tradeNumber: tradeNumber++,
+              });
+            }
+            engine.closedForWeek = true;
           }
-          engine.closedForWeek = true;
         }
       }
-    }
 
-    if (barIndex === grid.length - 1) {
-      for (const engine of engines) {
-        if (engine.closedForWeek) continue;
+      if (barIndex === engine.closeGridIndex && !engine.closedForWeek) {
         for (const fill of engine.fills) {
           if (!fill.active) continue;
           const exitReason = isRealized ? "week_close" : "active";
@@ -1227,6 +1389,8 @@ async function executeAdrGrid(
 
   return {
     weekOpenUtc,
+    executionWindowOpenUtc: resultBoundaries.executionWindowOpenUtc,
+    executionWindowCloseUtc: resultBoundaries.executionWindowCloseUtc,
     biasSourceId: biasSource.id,
     trades,
     totalReturnPct: totalReturn,
@@ -1277,8 +1441,12 @@ export async function computeWeeklyHold(
   const signals = buildCanonicalSignals(directions);
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const isRealized = isWeekRealizedForAggregate(weekOpenUtc, currentWeekOpenUtc);
-  const pairReturns = await getWeeklyPairReturns(weekOpenUtc);
+  const pairReturns = await getExecutionWeeklyPairReturns(weekOpenUtc);
   const returnMap = new Map(pairReturns.map((r) => [r.symbol.toUpperCase(), r]));
+  const resultBoundaries = mergeExecutionBoundaries(
+    weekOpenUtc,
+    pairReturns.length > 0 ? pairReturns.map((row) => row.assetClass) : ["fx"],
+  );
 
   const trades: WeeklyHoldTrade[] = [];
   const missingPriceSymbolSet = new Set<string>();
@@ -1290,6 +1458,8 @@ export async function computeWeeklyHold(
     logMissingWeeklyPrices(biasSource.id, weekOpenUtc, missingPriceSymbols);
     return applyAdrNormalization({
       weekOpenUtc,
+      executionWindowOpenUtc: resultBoundaries.executionWindowOpenUtc,
+      executionWindowCloseUtc: resultBoundaries.executionWindowCloseUtc,
       biasSourceId: biasSource.id,
       trades,
       totalReturnPct: 0,
@@ -1318,15 +1488,28 @@ export async function computeWeeklyHold(
     // If direction is SHORT, negate the return (price going down = profit)
     const directedReturn = signal.direction === "SHORT" ? -actualReturn : actualReturn;
 
+    const assetClass = normalizeAssetClass(priceData.assetClass ?? signal.assetClass);
+    const executionBoundary = getExecutionBoundaryIso(weekOpenUtc, assetClass);
+    const detailExitTimeUtc = effectiveWindowCloseIso(executionBoundary.windowCloseUtc, isRealized);
     trades.push({
       symbol: pair,
-      assetClass: priceData.assetClass ?? signal.assetClass,
+      assetClass,
       direction: signal.direction,
       openPrice,
       closePrice,
       returnPct: directedReturn,
       source: signal.source,
       tier: signal.tier,
+      detail: {
+        tradeNumber: trades.length + 1,
+        entryTimeUtc: executionBoundary.windowOpenUtc,
+        exitTimeUtc: detailExitTimeUtc,
+        exitReason: isRealized ? "week_close" : "active",
+        anchorPrice: openPrice,
+        tpPrice: null,
+        adrPct: null,
+        maePct: null,
+      },
     });
   }
 
@@ -1341,6 +1524,8 @@ export async function computeWeeklyHold(
 
   const result: WeeklyHoldResult = {
     weekOpenUtc,
+    executionWindowOpenUtc: resultBoundaries.executionWindowOpenUtc,
+    executionWindowCloseUtc: resultBoundaries.executionWindowCloseUtc,
     biasSourceId: biasSource.id,
     trades: cappedTrades,
     totalReturnPct: totalReturn,
@@ -1425,8 +1610,11 @@ export async function computeWeeklySignalsOnly(
   weekOpenUtc: string,
 ): Promise<WeeklyHoldResult> {
   const directions = await resolveDirections(biasSource, weekOpenUtc);
+  const resultBoundaries = mergeExecutionBoundaries(weekOpenUtc, ["fx"]);
   return {
     weekOpenUtc,
+    executionWindowOpenUtc: resultBoundaries.executionWindowOpenUtc,
+    executionWindowCloseUtc: resultBoundaries.executionWindowCloseUtc,
     biasSourceId: biasSource.id,
     trades: [],
     totalReturnPct: 0,

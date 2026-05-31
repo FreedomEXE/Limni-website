@@ -14,12 +14,11 @@
 -----------------------------------------------*/
 "use client";
 
-const WINDOWS = [4, 8, 12] as const;
+import type { WeekReturn } from "@/components/performance/ReturnsCalendar";
+import type { PerformanceSimulationSeries } from "@/components/performance/PerformanceSimulationSection";
+import { computeRollingWindowStatsFromWeekReturns } from "@/lib/performance/resolvedPerformanceMetrics";
 
-type WeekReturn = {
-  weekOpenUtc: string;
-  returnPct: number;
-};
+const WINDOWS = [4, 8, 12] as const;
 
 type WindowStats = {
   weeks: number;
@@ -28,46 +27,69 @@ type WindowStats = {
   sharpe: number;
 };
 
-function computeWindowStats(returns: number[]): WindowStats {
-  const totalReturn = returns.reduce((s, r) => s + r, 0);
+export function computeWindowStats(weeks: WeekReturn[]): WindowStats {
+  return computeRollingWindowStatsFromWeekReturns(weeks);
+}
 
+function computeWindowStatsFromPath(
+  weeks: WeekReturn[],
+  series: PerformanceSimulationSeries | null | undefined,
+): WindowStats | null {
+  if (!series || series.points.length === 0 || weeks.length === 0) return null;
+  const sortedWeeks = [...weeks].sort((a, b) => a.weekOpenUtc.localeCompare(b.weekOpenUtc));
+  const startMs = Date.parse(sortedWeeks[0]?.weekOpenUtc ?? "");
+  if (!Number.isFinite(startMs)) return null;
+  const points = series.points
+    .filter((point) => Date.parse(point.ts_utc) >= startMs)
+    .sort((left, right) => Date.parse(left.ts_utc) - Date.parse(right.ts_utc));
+  if (points.length === 0) return null;
+
+  const baseline = points[0]?.equity_pct ?? 0;
+  const shiftedReturns = points.map((point) => point.equity_pct - baseline);
+  const returnPct = shiftedReturns.at(-1) ?? 0;
   let peak = 0;
-  let equity = 0;
-  let maxDD = 0;
-  for (const r of returns) {
-    equity += r;
-    peak = Math.max(peak, equity);
-    const dd = peak - equity;
-    maxDD = Math.max(maxDD, dd);
+  let maxDrawdownPct = 0;
+  for (const value of shiftedReturns) {
+    peak = Math.max(peak, value);
+    const drawdownPct = (100 + peak) <= 0
+      ? 100
+      : Math.abs((((100 + value) / (100 + peak)) - 1) * 100);
+    maxDrawdownPct = Math.max(maxDrawdownPct, drawdownPct);
   }
 
+  const returns = sortedWeeks.map((week) => week.returnPct);
   let sharpe = 0;
   if (returns.length > 1) {
-    const avg = totalReturn / returns.length;
-    const variance = returns.reduce((s, r) => s + (r - avg) ** 2, 0) / (returns.length - 1);
+    const avg = returns.reduce((sum, value) => sum + value, 0) / returns.length;
+    const variance = returns.reduce((sum, value) => sum + (value - avg) ** 2, 0) / (returns.length - 1);
     const std = Math.sqrt(variance);
     sharpe = std > 0 ? avg / std : 0;
   }
 
   return {
-    weeks: returns.length,
-    returnPct: totalReturn,
-    maxDrawdownPct: maxDD,
+    weeks: sortedWeeks.length,
+    returnPct,
+    maxDrawdownPct,
     sharpe,
   };
 }
 
-export default function RollingPerformanceWindows({ weeks }: { weeks: WeekReturn[] }) {
+export default function RollingPerformanceWindows({
+  weeks,
+  series,
+}: {
+  weeks: WeekReturn[];
+  series?: PerformanceSimulationSeries | null;
+}) {
   if (weeks.length < WINDOWS[0]) return null;
 
   const sorted = [...weeks].sort((a, b) => a.weekOpenUtc.localeCompare(b.weekOpenUtc));
-  const returns = sorted.map((w) => w.returnPct);
 
   const windows = WINDOWS
-    .filter((size) => returns.length >= size)
+    .filter((size) => sorted.length >= size)
     .map((size) => ({
       size,
-      stats: computeWindowStats(returns.slice(-size)),
+      stats: computeWindowStatsFromPath(sorted.slice(-size), series) ?? computeWindowStats(sorted.slice(-size)),
     }));
 
   if (windows.length === 0) return null;

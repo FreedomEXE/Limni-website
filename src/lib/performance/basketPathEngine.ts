@@ -40,10 +40,13 @@ export type BasketPathResult = {
   weekOpenUtc: string;
   strategyId: string;
   entryStyleId: string;
+  returnMode: BasketPathReturnMode;
   resolution: string;
   points: BasketPathPoint[];
   summary: BasketPathSummary;
 };
+
+export type BasketPathReturnMode = "normalized" | "raw" | "display";
 
 type PricePoint = {
   tsUtc: string;
@@ -165,6 +168,7 @@ function buildPathResultFromArrays(
   grid: string[],
   equityByIndex: number[],
   activeByIndex: number[],
+  returnMode: BasketPathReturnMode,
 ): BasketPathResult {
   const points: BasketPathPoint[] = [];
   let runningPeakPct = 0;
@@ -186,16 +190,21 @@ function buildPathResultFromArrays(
   }
 
   return {
-    weekOpenUtc: ledger.weekOpenUtc,
+    weekOpenUtc: ledger.logicalWeekOpenUtc,
     strategyId: ledger.strategyId,
     entryStyleId: ledger.entryStyleId,
+    returnMode,
     resolution: "1h",
     points,
     summary: summarizePoints(points),
   };
 }
 
-function emptyPathResult(ledger: WeekPositionLedger, grid: string[]): BasketPathResult {
+function emptyPathResult(
+  ledger: WeekPositionLedger,
+  grid: string[],
+  returnMode: BasketPathReturnMode,
+): BasketPathResult {
   const points = grid.slice(0, 1).map((tsUtc) => ({
     tsUtc,
     equityPct: 0,
@@ -204,9 +213,10 @@ function emptyPathResult(ledger: WeekPositionLedger, grid: string[]): BasketPath
     activePositions: 0,
   }));
   return {
-    weekOpenUtc: ledger.weekOpenUtc,
+    weekOpenUtc: ledger.logicalWeekOpenUtc,
     strategyId: ledger.strategyId,
     entryStyleId: ledger.entryStyleId,
+    returnMode,
     resolution: "1h",
     points,
     summary: summarizePoints(points),
@@ -218,6 +228,7 @@ function computeBasketPathArrays(
   bars: PathBarMap,
   slotFn?: (leg: PositionLeg) => number,
   slotCount = 0,
+  returnMode: BasketPathReturnMode = "normalized",
 ) {
   const grid = buildCanonicalHourlyGrid(ledger.weekOpenUtc, ledger.weekCloseUtc);
   if (ledger.legs.length === 0) {
@@ -261,11 +272,20 @@ function computeBasketPathArrays(
     const slotActive = slotIndex >= 0 && slotIndex < slotCount ? slotActiveByIndex[slotIndex] : null;
     const exitRawReturnPct = ((leg.exitPrice - leg.entryPrice) / leg.entryPrice) * 100;
     const exitDirectedReturnPct = leg.direction === "SHORT" ? -exitRawReturnPct : exitRawReturnPct;
-    const fallbackScale = leg.weight * leg.adrMultiplier;
+    const targetReturnPct = returnMode === "raw"
+      ? leg.rawReturnPct
+      : returnMode === "normalized"
+        ? leg.normalizedReturnPct
+        : leg.returnPct;
+    const fallbackScale = returnMode === "raw"
+      ? leg.weight
+      : returnMode === "normalized"
+        ? leg.weight * leg.adrMultiplier
+        : leg.weight * leg.adrMultiplier;
     const pnlScale = Math.abs(exitDirectedReturnPct) > 1e-9
-      ? leg.returnPct / exitDirectedReturnPct
+      ? targetReturnPct / exitDirectedReturnPct
       : fallbackScale;
-    const realizedLegPnlPct = leg.returnPct;
+    const realizedLegPnlPct = targetReturnPct;
 
     for (let index = startIndex; index <= endIndex; index += 1) {
       const tsMs = gridMs[index] ?? Number.NaN;
@@ -314,12 +334,14 @@ function computeBasketPathArrays(
 export function computeBasketPath(
   ledger: WeekPositionLedger,
   bars: PathBarMap,
+  options: { returnMode?: BasketPathReturnMode } = {},
 ): BasketPathResult {
-  const arrays = computeBasketPathArrays(ledger, bars);
+  const returnMode = options.returnMode ?? "normalized";
+  const arrays = computeBasketPathArrays(ledger, bars, undefined, 0, returnMode);
   if (ledger.legs.length === 0) {
-    return emptyPathResult(ledger, arrays.grid);
+    return emptyPathResult(ledger, arrays.grid, returnMode);
   }
-  return buildPathResultFromArrays(ledger, arrays.grid, arrays.equityByIndex, arrays.activeByIndex);
+  return buildPathResultFromArrays(ledger, arrays.grid, arrays.equityByIndex, arrays.activeByIndex, returnMode);
 }
 
 export function computeBasketPathWithSlots(
@@ -327,17 +349,20 @@ export function computeBasketPathWithSlots(
   bars: PathBarMap,
   slotFn: (leg: PositionLeg) => number,
   slotCount: number,
+  options: { returnMode?: BasketPathReturnMode } = {},
 ): { path: BasketPathResult; slotPaths: BasketPathResult[] } {
-  const arrays = computeBasketPathArrays(ledger, bars, slotFn, slotCount);
+  const returnMode = options.returnMode ?? "normalized";
+  const arrays = computeBasketPathArrays(ledger, bars, slotFn, slotCount, returnMode);
   const path = ledger.legs.length === 0
-    ? emptyPathResult(ledger, arrays.grid)
-    : buildPathResultFromArrays(ledger, arrays.grid, arrays.equityByIndex, arrays.activeByIndex);
+    ? emptyPathResult(ledger, arrays.grid, returnMode)
+    : buildPathResultFromArrays(ledger, arrays.grid, arrays.equityByIndex, arrays.activeByIndex, returnMode);
   const slotPaths = arrays.slotEquityByIndex.map((slotEquity, slotIndex) =>
     buildPathResultFromArrays(
       ledger,
       arrays.grid,
       slotEquity,
       arrays.slotActiveByIndex[slotIndex] ?? new Array<number>(arrays.grid.length).fill(0),
+      returnMode,
     ),
   );
   return { path, slotPaths };

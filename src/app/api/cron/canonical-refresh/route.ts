@@ -25,6 +25,7 @@ import {
   getCanonicalWeekWindow,
 } from "@/lib/canonicalPriceWindows";
 import { upsertCanonicalHourlyBarsForInstrument } from "@/lib/canonicalHourlyBars";
+import { loadCanonicalWeeklyReturnFromHourlyBars } from "@/lib/canonicalWeeklyReturns";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import { fetchOandaDailySeries } from "@/lib/oandaPrices";
 
@@ -122,6 +123,7 @@ export async function GET(request: Request) {
   const targetWeeks = [prevWeekOpen, currentWeekOpen].filter(
     (w) => CANONICAL_WEEKS.includes(w),
   );
+  const weeklyTargetWeeks = targetWeeks.filter((weekOpenUtc) => weekOpenUtc !== currentWeekOpen);
 
   if (targetWeeks.length === 0) {
     return NextResponse.json({
@@ -259,28 +261,42 @@ export async function GET(request: Request) {
         }
       }
 
-      // Derive weekly returns for target weeks
-      for (const weekOpen of targetWeeks) {
-        const window = getCanonicalWeekWindow(weekOpen, instrument.assetClass);
-        const weekBars = dailyBars.filter((bar) => {
-          const barMs = DateTime.fromISO(bar.barOpenUtc, { zone: "utc" }).toMillis();
-          return barMs >= window.openUtc.toMillis() && barMs < window.closeUtc.toMillis();
+      // Derive finalized weekly returns from exact 1h Limni week windows.
+      // Current in-progress week is intentionally excluded; live current-week
+      // returns are fetched dynamically by getWeeklyPairReturns.
+      for (const weekOpen of weeklyTargetWeeks) {
+        const weekly = await loadCanonicalWeeklyReturnFromHourlyBars({
+          symbol: instrument.symbol,
+          assetClass: instrument.assetClass,
+          weekOpenUtc: weekOpen,
         });
-
-        if (weekBars.length === 0) continue;
-
-        const first = weekBars[0]!;
-        const last = weekBars[weekBars.length - 1]!;
-        const returnPct = first.openPrice === 0
-          ? 0
-          : round(((last.closePrice - first.openPrice) / first.openPrice) * 100);
+        if (!weekly) {
+          errors.push(`${instrument.symbol}: no complete hourly weekly return for ${weekOpen}`);
+          continue;
+        }
+        if (!weekly.complete) {
+          errors.push(`${instrument.symbol}: incomplete hourly weekly return for ${weekOpen} (${weekly.warnings.join(", ")})`);
+          continue;
+        }
 
         await query(
-          `INSERT INTO pair_period_returns (symbol, asset_class, period_type, period_open_utc, period_close_utc, open_price, close_price, high_price, low_price, return_pct, source, derived_from_timeframe, derivation_version)
-           VALUES ($1, $2, 'weekly', $3::timestamptz, $4::timestamptz, $5, $6, $7, $8, $9, 'canonical_price_bars', '1d', 'v1')
-           ON CONFLICT (symbol, asset_class, period_type, period_open_utc)
+          `INSERT INTO pair_period_returns (
+             symbol, asset_class, period_type, period_open_utc, period_close_utc,
+             anchor_type, anchor_version, window_open_utc, window_close_utc,
+             open_price, close_price, high_price, low_price, return_pct,
+             source, derived_from_timeframe, derivation_version
+           )
+           VALUES (
+             $1, $2, 'weekly', $3::timestamptz, $4::timestamptz,
+             'canonical', 'canonical_weekly_v2', $5::timestamptz, $6::timestamptz,
+             $7, $8, $9, $10, $11,
+             'canonical_price_bars', '1h', $12
+           )
+           ON CONFLICT (symbol, asset_class, period_type, period_open_utc, anchor_type, anchor_version)
            DO UPDATE SET
              period_close_utc = EXCLUDED.period_close_utc,
+             window_open_utc = EXCLUDED.window_open_utc,
+             window_close_utc = EXCLUDED.window_close_utc,
              open_price = EXCLUDED.open_price,
              close_price = EXCLUDED.close_price,
              high_price = EXCLUDED.high_price,
@@ -292,11 +308,12 @@ export async function GET(request: Request) {
              updated_at = NOW()`,
           [
             instrument.symbol, instrument.assetClass,
-            weekOpen, window.closeUtc.toISO(),
-            first.openPrice, last.closePrice,
-            round(Math.max(...weekBars.map((b) => b.highPrice))),
-            round(Math.min(...weekBars.map((b) => b.lowPrice))),
-            returnPct,
+            weekOpen, weekly.periodCloseUtc,
+            weekly.periodOpenUtc, weekly.periodCloseUtc,
+            weekly.openPrice, weekly.closePrice,
+            weekly.highPrice, weekly.lowPrice,
+            weekly.returnPct,
+            weekly.derivationVersion,
           ],
         );
         weeklyReturnsUpserted++;
@@ -313,7 +330,7 @@ export async function GET(request: Request) {
   for (const path of ["/dashboard", "/performance", "/sentiment", "/flagship"]) {
     revalidatePath(path);
   }
-  const coverageGaps = await checkWeeklyReturnCoverage(targetWeeks, activeInstruments);
+  const coverageGaps = await checkWeeklyReturnCoverage(weeklyTargetWeeks, activeInstruments);
   const ok = errors.length === 0 && coverageGaps.length === 0;
 
   return NextResponse.json(

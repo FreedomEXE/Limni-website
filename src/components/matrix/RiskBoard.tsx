@@ -33,6 +33,8 @@ import type { CryptoMatrixPayload } from "@/lib/flagship/cryptoMatrix";
 import { getStrategy } from "@/lib/performance/strategyConfig";
 import type { RuntimeStrategySelection } from "@/lib/performance/strategySelection";
 import type { CanonicalSignal, WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
+import { resolveDisplayReturn, type ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
+import { useViewMode } from "@/lib/viewMode/viewModeStore";
 
 type WeeklyReturnRow = {
   symbol: string;
@@ -40,6 +42,10 @@ type WeeklyReturnRow = {
   returnPct: number;
   openPrice: number;
   closePrice: number;
+  canonical?: { rawPct: number };
+  execution?: { rawPct: number } | null;
+  adrPct?: number;
+  returnMatrix?: ReturnMatrix;
 };
 
 type RiskBoardProps = {
@@ -181,6 +187,7 @@ function weekLabel(weekOpenUtc: string | null) {
 
 export default function RiskBoard(props: RiskBoardProps) {
   const { weekOpenUtc, selection, engineWeekResults, weeklyReturns } = props;
+  const [viewMode] = useViewMode("matrix");
   const {
     accounts,
     activeAccount,
@@ -300,6 +307,15 @@ export default function RiskBoard(props: RiskBoardProps) {
         const pairKey = normalizeSymbol(trade.symbol);
         const normalizedClass = normalizeAssetClass(trade.assetClass);
         const currentWeekRow = weeklyReturnsByPair.get(pairKey) ?? null;
+        const resolvedWeekReturn = currentWeekRow?.returnMatrix
+          ? resolveDisplayReturn(currentWeekRow.returnMatrix, viewMode)
+          : currentWeekRow?.canonical && typeof currentWeekRow.adrPct === "number"
+            ? resolveDisplayReturn({
+                canonical: currentWeekRow.canonical,
+                execution: currentWeekRow.execution ?? null,
+                adrPct: currentWeekRow.adrPct,
+              }, viewMode)
+            : currentWeekRow?.returnPct ?? null;
         const intradayRow = intradayByPair.get(pairKey) ?? null;
         const cryptoRow = cryptoByPair.get(pairKey) ?? null;
         const adrPct = cryptoRow?.adrPct ?? intradayRow?.adrPct ?? null;
@@ -346,14 +362,14 @@ export default function RiskBoard(props: RiskBoardProps) {
           maxLots,
           baseMarginUsd: sizing && baseLots !== null && sizing.lotSize > 0 ? (sizing.marginRequired * baseLots) / sizing.lotSize : null,
           maxMarginUsd: sizing && maxLots !== null && sizing.lotSize > 0 ? (sizing.marginRequired * maxLots) / sizing.lotSize : null,
-          currentReturnPct: currentWeekRow?.returnPct ?? trade.returnPct ?? null,
+          currentReturnPct: resolvedWeekReturn ?? trade.returnPct ?? null,
           slDistancePips: slRequirement?.distancePips ?? null,
           slDistancePrice: slRequirement?.distancePrice ?? null,
           usesBrokerSpec: brokerSpec != null,
         } satisfies RiskRow;
       })
       .sort(compareRows);
-  }, [activeAccount, brokerProfile, cryptoByPair, intradayByPair, selectedWeekResult, weeklyReturnsByPair]);
+  }, [activeAccount, brokerProfile, cryptoByPair, intradayByPair, selectedWeekResult, viewMode, weeklyReturnsByPair]);
 
   const groupedRows = useMemo(() => {
     const groups = new Map<string, RiskRow[]>();

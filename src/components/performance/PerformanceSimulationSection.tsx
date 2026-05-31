@@ -15,7 +15,7 @@
 
 import { useMemo, useState } from "react";
 import EquityCurveChart from "@/components/research/EquityCurveChart";
-import ReturnsCalendar from "@/components/performance/ReturnsCalendar";
+import ReturnsCalendar, { type WeekReturn } from "@/components/performance/ReturnsCalendar";
 import RollingPerformanceWindows from "@/components/performance/RollingPerformanceWindows";
 import AssetContributionChart from "@/components/performance/AssetContributionChart";
 import ReturnDistribution from "@/components/performance/ReturnDistribution";
@@ -26,6 +26,13 @@ import {
   togglePerformanceAssetSelection,
   type PerformanceAssetSelection,
 } from "@/lib/performance/performanceAssetScope";
+import {
+  buildAdditiveSeriesFromWeekReturns,
+  type ResolvedAssetContribution,
+  summarizeResolvedWeekReturns,
+} from "@/lib/performance/resolvedPerformanceMetrics";
+import { resolveSimulationGroupForViewMode } from "@/lib/performance/simulationReturnModes";
+import { useViewMode } from "@/lib/viewMode/viewModeStore";
 
 export type PerformanceSimulationSeries = {
   id: string;
@@ -59,6 +66,10 @@ export type PerformanceSimulationGroup = {
     description: string;
     seriesIds: string[];
   }>;
+  returnModes?: Partial<Record<"raw" | "normalized", {
+    metrics: PerformanceSimulationMetrics;
+    series: PerformanceSimulationSeries[];
+  }>>;
 };
 
 function formatSignedPercent(value: number | null | undefined) {
@@ -155,22 +166,28 @@ export default function PerformanceSimulationSection({
   group,
   weeklyReturns,
   maeTrades,
+  assetContributions,
   assetScope,
   onAssetScopeChange,
   showAssetControls = true,
 }: {
   group: PerformanceSimulationGroup | null;
-  weeklyReturns?: Array<{ weekOpenUtc: string; returnPct: number }>;
+  weeklyReturns?: WeekReturn[];
   maeTrades?: MaeTrade[];
+  assetContributions?: ResolvedAssetContribution[];
   assetScope?: PerformanceAssetSelection;
   onAssetScopeChange?: (scope: PerformanceAssetSelection) => void;
   showAssetControls?: boolean;
 }) {
+  const [viewMode] = useViewMode("performance");
+  const resolvedGroup = useMemo(() => (
+    resolveSimulationGroupForViewMode(group, viewMode)
+  ), [group, viewMode]);
   const sleeveSeries = useMemo(() => {
-    const assetSleeves = group?.series.filter((series) => series.id.startsWith("asset:")) ?? [];
+    const assetSleeves = resolvedGroup?.series.filter((series) => series.id.startsWith("asset:")) ?? [];
     if (assetSleeves.length > 0) return assetSleeves;
-    return group?.series.filter((series) => series.id !== "equity" && series.id !== "total") ?? [];
-  }, [group]);
+    return resolvedGroup?.series.filter((series) => series.id !== "equity" && series.id !== "total") ?? [];
+  }, [resolvedGroup]);
   const [selectedSleeves, setSelectedSleeves] = useState<string[] | null>(null);
   const sleeveIds = sleeveSeries.map((series) => series.id);
   const controlledSleeves = assetScope
@@ -182,7 +199,7 @@ export default function PerformanceSimulationSection({
     : sleeveIds;
   const activeSleeves = sleeveSeries.filter((series) => resolvedSelectedSleeves.includes(series.id));
   const allSleevesSelected = sleeveSeries.length > 0 && resolvedSelectedSleeves.length === sleeveSeries.length;
-  const totalSeries = group?.series.find((series) => series.id === "equity" || series.id === "total") ?? group?.series[0] ?? null;
+  const totalSeries = resolvedGroup?.series.find((series) => series.id === "equity" || series.id === "total") ?? resolvedGroup?.series[0] ?? null;
   const includeWeekends = allSleevesSelected
     ? sleeveSeries.some((series) => series.id === "asset:crypto")
     : activeSleeves.some((series) => series.id === "asset:crypto");
@@ -194,9 +211,22 @@ export default function PerformanceSimulationSection({
     0,
   );
   const resolvedTrades = allSleevesSelected
-    ? group?.metrics.trades ?? sleeveTradeCount
+    ? resolvedGroup?.metrics.trades ?? sleeveTradeCount
     : sleeveTradeCount;
-  const mixedMetrics = summarizeMixedSeries(mixedSeries, resolvedTrades, includeWeekends);
+  const hasRawHourlyPath = viewMode.normalization === "raw" && Boolean(group?.returnModes?.raw);
+  const resolvedWeeklySeries = weeklyReturns && weeklyReturns.length > 0
+    ? buildAdditiveSeriesFromWeekReturns(weeklyReturns, {
+        id: "performance-raw-weekly-path",
+        label: "Raw Weekly Path",
+        color: "#10b981",
+      })
+    : null;
+  const chartSeries = viewMode.normalization === "raw" && !hasRawHourlyPath && resolvedWeeklySeries
+    ? resolvedWeeklySeries
+    : mixedSeries;
+  const mixedMetrics = viewMode.normalization === "raw" && !hasRawHourlyPath && weeklyReturns && weeklyReturns.length > 0
+    ? summarizeResolvedWeekReturns(weeklyReturns)
+    : summarizeMixedSeries(mixedSeries, resolvedTrades, includeWeekends);
 
   if (!group) {
     return (
@@ -213,7 +243,7 @@ export default function PerformanceSimulationSection({
           Simulation
         </div>
         <h3 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-          {group.title}
+          {resolvedGroup?.title ?? group.title}
         </h3>
         <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
           Combined path and matching path metrics for the active page scope.
@@ -277,8 +307,8 @@ export default function PerformanceSimulationSection({
       </div>
 
       <EquityCurveChart
-        title={`${group.title} equity curve`}
-        series={[mixedSeries]}
+        title={`${resolvedGroup?.title ?? group.title} equity curve`}
+        series={[chartSeries]}
         interactive={false}
         skipWeekends={!includeWeekends}
       />
@@ -312,19 +342,25 @@ export default function PerformanceSimulationSection({
 
       {weeklyReturns && weeklyReturns.length > 0 && (
         <>
-          <RollingPerformanceWindows weeks={weeklyReturns} />
-          <AssetContributionChart series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries} />
+          <RollingPerformanceWindows weeks={weeklyReturns} series={chartSeries} />
+          <AssetContributionChart
+            series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries}
+            bars={viewMode.normalization === "raw" ? assetContributions : undefined}
+          />
           <ReturnDistribution weeks={weeklyReturns} />
           {maeTrades && maeTrades.length > 0 && <MaeScatterPlot trades={maeTrades} />}
-          <ReturnsCalendar weeks={weeklyReturns} series={mixedSeries} includeWeekends={includeWeekends} />
+          <ReturnsCalendar weeks={weeklyReturns} series={chartSeries} includeWeekends={includeWeekends} />
         </>
       )}
 
-      {!weeklyReturns && group.series.some((s) => s.id.startsWith("asset:")) && (
+      {!weeklyReturns && resolvedGroup?.series.some((s) => s.id.startsWith("asset:")) && (
         <>
-          <AssetContributionChart series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries} />
+          <AssetContributionChart
+            series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries}
+            bars={viewMode.normalization === "raw" ? assetContributions : undefined}
+          />
           <ReturnsCalendar
-            series={mixedSeries}
+            series={chartSeries}
             forcedMode="daily"
             showModeToggle={false}
             includeWeekends={includeWeekends}

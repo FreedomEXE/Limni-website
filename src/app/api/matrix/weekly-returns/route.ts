@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWeeklyPairReturns } from "@/lib/pairReturns";
+import { loadWeeklyReturnDisplayRows } from "@/lib/weeklyReturnDisplay";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const rows = await getWeeklyPairReturns(week);
+    const rows = await loadWeeklyReturnDisplayRows(week);
     return NextResponse.json({
       weekOpenUtc: week,
       rows,

@@ -28,6 +28,11 @@ export type TradeDetailMeta = {
   maePct: number | null;
   exitReason: string | null;
   entryTimeUtc: string | null;
+  rawReturnPct?: number;
+  normalizedReturnPct?: number;
+  displayReturnPct?: number;
+  adrMultiplier?: number | null;
+  returnMode?: "raw" | "normalized";
 };
 
 export type PerformanceModel =

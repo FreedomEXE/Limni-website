@@ -17,7 +17,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatDateTimeET } from "@/lib/time";
 import type { Direction } from "@/lib/cotTypes";
+import type { AssetClass } from "@/lib/cotMarkets";
 import type { PairPerformance } from "@/lib/priceStore";
+import type { ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import type { WeekSnapshotProvenance } from "@/lib/performance/snapshotProvenance";
 import type {
@@ -28,7 +30,8 @@ import SummaryCards from "@/components/SummaryCards";
 import MiniBiasStrip from "@/components/MiniBiasStrip";
 import PairHeatmap from "@/components/PairHeatmap";
 import SentimentHeatmap from "@/components/SentimentHeatmap";
-import ViewToggle from "@/components/ViewToggle";
+import SegmentedToggle from "@/components/common/SegmentedToggle";
+import ViewModeControls from "@/components/common/ViewModeControls";
 import DashboardFilters from "@/components/dashboard/DashboardFilters";
 import {
   DATA_DASHBOARD_BIAS_COMMIT_EVENT,
@@ -54,6 +57,7 @@ type DetailItem = {
 };
 
 type DashboardPairRow = {
+  assetClass?: AssetClass;
   pair: string;
   direction: Direction;
   performance: PairPerformance | null;
@@ -62,6 +66,7 @@ type DashboardPairRow = {
 };
 
 type DashboardCurrencyRow = {
+  assetClass?: AssetClass;
   assetLabel: string;
   currency: string;
   label: string;
@@ -85,7 +90,7 @@ export type DashboardSentimentPayload = {
   latestAggregateTimestamp: string | null;
   aggregates: SentimentAggregate[];
   resolvedRows: CanonicalSentimentHeatmapRow[];
-  performanceByPair: Record<string, number | null>;
+  performanceByPair: Record<string, number | ReturnMatrix | null>;
   flipDetails: DetailItem[];
 };
 
@@ -94,7 +99,7 @@ export type DashboardStrengthPayload = {
   totalPairsCount: number;
   pairRowsWithPerf: DashboardPairRow[];
   missingPairs: string[];
-  stripItems: Array<{ id: string; label: string; bias: string }>;
+  stripItems: Array<{ id: string; label: string; bias: string; assetClass?: AssetClass }>;
   flipDetails: DetailItem[];
   note?: string;
 };
@@ -104,6 +109,7 @@ type DashboardViewSectionProps = {
   selectedAsset: string;
   reportOptions: Array<{ value: string; label: string }>;
   initialReport: string;
+  initialAsset?: string;
   initialBias: DashboardBias;
   initialView: "heatmap" | "list";
   currentWeekOpenUtc: string;
@@ -120,6 +126,120 @@ type DashboardViewSectionProps = {
   provenanceByReport?: Record<string, WeekSnapshotProvenance>;
 };
 
+function normalizeSelectedAsset(value: string | undefined, options: AssetOption[]) {
+  if (!value || value === "all") return "all";
+  return options.some((option) => option.id === value) ? value : "all";
+}
+
+function assetLabelFor(asset: string, options: AssetOption[]) {
+  return options.find((option) => option.id === asset)?.label ?? asset.toUpperCase();
+}
+
+function stripAssetSuffix(pair: string) {
+  return pair.replace(/\s*\([^)]+\)\s*$/, "");
+}
+
+function filterMissingPairs(missingPairs: string[], asset: string, options: AssetOption[]) {
+  if (asset === "all") return missingPairs;
+  const label = assetLabelFor(asset, options);
+  return missingPairs
+    .filter((pair) => pair.includes(`(${label})`) || !pair.includes("("))
+    .map(stripAssetSuffix);
+}
+
+function filterCotPayload(
+  payload: DashboardCotPayload,
+  asset: string,
+  options: AssetOption[],
+): DashboardCotPayload {
+  if (asset === "all") return payload;
+  const pairRowsWithPerf = payload.pairRowsWithPerf
+    .filter((row) => row.assetClass === asset)
+    .map((row) => ({ ...row, pair: stripAssetSuffix(row.pair) }));
+  const pairLabels = new Set(pairRowsWithPerf.map((row) => row.pair));
+  return {
+    ...payload,
+    totalPairsCount: pairRowsWithPerf.length,
+    pairRowsWithPerf,
+    missingPairs: filterMissingPairs(payload.missingPairs, asset, options),
+    currencyRows: payload.currencyRows.filter((row) => row.assetClass === asset),
+    biasLabel: assetLabelFor(asset, options),
+    flipDetails: payload.flipDetails
+      .filter((detail) => pairLabels.has(stripAssetSuffix(detail.label)))
+      .map((detail) => ({ ...detail, label: stripAssetSuffix(detail.label) })),
+  };
+}
+
+function filterSentimentPayload(
+  payload: DashboardSentimentPayload,
+  asset: string,
+): DashboardSentimentPayload {
+  if (asset === "all") return payload;
+  const resolvedRows = payload.resolvedRows.filter((row) => row.assetClass === asset);
+  const symbolSet = new Set(resolvedRows.map((row) => row.symbol));
+  return {
+    ...payload,
+    aggregates: payload.aggregates.filter((row) => symbolSet.has(row.symbol)),
+    resolvedRows,
+    performanceByPair: Object.fromEntries(
+      Object.entries(payload.performanceByPair).filter(([symbol]) => symbolSet.has(symbol)),
+    ),
+    flipDetails: payload.flipDetails.filter((detail) => symbolSet.has(detail.label)),
+  };
+}
+
+function filterStrengthPayload(
+  payload: DashboardStrengthPayload,
+  asset: string,
+): DashboardStrengthPayload {
+  if (asset === "all") return payload;
+  const pairRowsWithPerf = payload.pairRowsWithPerf.filter((row) => row.assetClass === asset);
+  const pairLabels = new Set(pairRowsWithPerf.map((row) => row.pair));
+  return {
+    ...payload,
+    totalPairsCount: pairRowsWithPerf.length,
+    pairRowsWithPerf,
+    missingPairs: payload.missingPairs.filter((pair) => pairLabels.has(pair)),
+    stripItems: payload.stripItems.filter((row) => row.assetClass === asset),
+    flipDetails: payload.flipDetails.filter((detail) => pairLabels.has(detail.label)),
+  };
+}
+
+function projectMarketIntelligencePayload(
+  payload: MarketIntelligencePayload,
+  selectedAsset: string,
+): MarketIntelligencePayload {
+  const asset = normalizeSelectedAsset(selectedAsset, payload.assetOptions);
+  if (asset === payload.selectedAsset) return payload;
+  if (payload.selectedAsset !== "all") return payload;
+
+  return {
+    ...payload,
+    selectedAsset: asset,
+    cotDataByReport: Object.fromEntries(
+      Object.entries(payload.cotDataByReport).map(([report, data]) => [
+        report,
+        {
+          dealer: filterCotPayload(data.dealer, asset, payload.assetOptions),
+          commercial: filterCotPayload(data.commercial, asset, payload.assetOptions),
+        },
+      ]),
+    ),
+    sentimentDataByReport: Object.fromEntries(
+      Object.entries(payload.sentimentDataByReport).map(([report, data]) => [
+        report,
+        filterSentimentPayload(data, asset),
+      ]),
+    ),
+    strengthDataByReport: Object.fromEntries(
+      Object.entries(payload.strengthDataByReport).map(([report, data]) => [
+        report,
+        filterStrengthPayload(data, asset),
+      ]),
+    ),
+  };
+}
+
 export default function DashboardViewSection(props: DashboardViewSectionProps) {
   const store = useMarketIntelligence();
   const initialPayload = useMemo<MarketIntelligencePayload>(() => ({
@@ -134,21 +254,24 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
     provenanceByReport: props.provenanceByReport ?? {},
     fetchedAtUtc: new Date().toISOString(),
   }), [props]);
-  const storePayload = store.payload?.selectedAsset === props.selectedAsset
-    ? store.payload
-    : null;
-  const assetOptions = storePayload?.assetOptions ?? props.assetOptions;
-  const selectedAsset = storePayload?.selectedAsset ?? props.selectedAsset;
-  const reportOptions = storePayload?.reportOptions ?? props.reportOptions;
-  const currentWeekOpenUtc = storePayload?.currentWeekOpenUtc ?? props.currentWeekOpenUtc;
-  const cotDataByReport = storePayload?.cotDataByReport ?? props.cotDataByReport;
-  const sentimentDataByReport = storePayload?.sentimentDataByReport ?? props.sentimentDataByReport;
-  const strengthDataByReport = storePayload?.strengthDataByReport ?? props.strengthDataByReport;
-  const myfxbookPositioningBySymbol =
-    storePayload?.myfxbookPositioningBySymbol ?? props.myfxbookPositioningBySymbol;
-  const provenanceByReport = storePayload?.provenanceByReport ?? props.provenanceByReport;
   const { initialReport, initialBias, initialView } = props;
-  const defaultReport = initialReport || reportOptions[0]?.value || "";
+  const [selectedAsset, setSelectedAsset] = useState(() =>
+    normalizeSelectedAsset(props.initialAsset ?? props.selectedAsset, initialPayload.assetOptions),
+  );
+  const basePayload = store.payload?.selectedAsset === "all" ? store.payload : initialPayload;
+  const projectedPayload = useMemo(
+    () => projectMarketIntelligencePayload(basePayload, selectedAsset),
+    [basePayload, selectedAsset],
+  );
+  const assetOptions = projectedPayload.assetOptions;
+  const reportOptions = projectedPayload.reportOptions;
+  const currentWeekOpenUtc = projectedPayload.currentWeekOpenUtc;
+  const cotDataByReport = projectedPayload.cotDataByReport;
+  const sentimentDataByReport = projectedPayload.sentimentDataByReport;
+  const strengthDataByReport = projectedPayload.strengthDataByReport;
+  const myfxbookPositioningBySymbol = projectedPayload.myfxbookPositioningBySymbol;
+  const provenanceByReport = projectedPayload.provenanceByReport;
+  const defaultReport = initialReport || projectedPayload.reportOptions[0]?.value || "";
   const [selectedReport, setSelectedReport] = useState(defaultReport);
   const [selectedBias, setSelectedBias] = useState<DashboardBias>(initialBias);
   const [selectedView, setSelectedView] = useState<"heatmap" | "list">(initialView);
@@ -158,9 +281,9 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
   }, [initialPayload]);
 
   useEffect(() => {
-    scheduleMarketIntelligenceRefresh(selectedAsset);
+    scheduleMarketIntelligenceRefresh("all");
     return () => clearMarketIntelligenceRefresh();
-  }, [selectedAsset]);
+  }, []);
 
   useEffect(() => {
     setSelectedReport(initialReport || reportOptions[0]?.value || "");
@@ -358,11 +481,14 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
 
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-[var(--foreground)]">{headerTitle}</h1>
-        <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          {headerRefreshLabel}
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold text-[var(--foreground)]">{headerTitle}</h1>
+          <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            {headerRefreshLabel}
+          </div>
         </div>
+        <ViewModeControls surface="data" size="sm" />
       </header>
 
       {selectedBias === "sentiment" ? (
@@ -515,10 +641,11 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
             selectedBias={selectedBias}
             selectedView={selectedView}
             currentWeekOpenUtc={currentWeekOpenUtc}
+            onAssetChange={(asset) => setSelectedAsset(normalizeSelectedAsset(asset, assetOptions))}
             onReportChange={(report) => setSelectedReport(report)}
             onBiasChange={(bias) => setSelectedBias(bias)}
           />
-          <ViewToggle
+          <SegmentedToggle
             value={selectedView}
             onChange={setSelectedView}
             items={[

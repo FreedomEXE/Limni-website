@@ -11,6 +11,7 @@ import {
   type WeeklyHoldResult,
 } from "@/lib/performance/weeklyHoldEngine";
 import type { BiasSourceConfig } from "@/lib/performance/strategyConfig";
+import { loadWeeklyReturnDisplayRows } from "@/lib/weeklyReturnDisplay";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,7 @@ export async function GET(request: NextRequest) {
       }
       const currentWeekOpenUtc = getDisplayWeekOpenUtc();
       const result = await computeCurrentWeekSignalsWithRetry(biasSource, currentWeekOpenUtc);
+      const weeklyReturnDisplayRows = await loadWeeklyReturnDisplayRows(currentWeekOpenUtc);
       return NextResponse.json({
         engineWeekMap: null,
         engineSimMap: null,
@@ -92,6 +94,7 @@ export async function GET(request: NextRequest) {
         sidebarStats: null,
         weekOptions: ["all", currentWeekOpenUtc],
         currentWeekOpenUtc,
+        weeklyReturnDisplayRows,
         artifactMeta: {
           status: "hit",
           selectionKey,
@@ -115,6 +118,7 @@ export async function GET(request: NextRequest) {
       }
       const currentWeekOpenUtc = getDisplayWeekOpenUtc();
       const result = await computeCurrentWeekSignalsWithRetry(biasSource, currentWeekOpenUtc);
+      const weeklyReturnDisplayRows = await loadWeeklyReturnDisplayRows(currentWeekOpenUtc);
       return NextResponse.json({
         engineWeekMap: null,
         engineSimMap: null,
@@ -124,6 +128,7 @@ export async function GET(request: NextRequest) {
         sidebarStats: null,
         weekOptions: ["all", currentWeekOpenUtc],
         currentWeekOpenUtc,
+        weeklyReturnDisplayRows,
         artifactMeta: {
           status: "miss",
           selectionKey,
@@ -137,7 +142,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(toCurrentWeekStrategyClientPayload(data, scope));
+    const payload = toCurrentWeekStrategyClientPayload(data, scope);
+    payload.weeklyReturnDisplayRows = await loadWeeklyReturnDisplayRows(payload.currentWeekOpenUtc ?? getDisplayWeekOpenUtc());
+    return NextResponse.json(payload);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load current week strategy data";
     return NextResponse.json({ error: message }, { status: 500 });

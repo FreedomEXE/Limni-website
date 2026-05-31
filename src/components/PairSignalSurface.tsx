@@ -3,6 +3,10 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import PairModal from "@/components/PairModal";
+import MissingReturnCell from "@/components/common/MissingReturnCell";
+import { resolveDisplayReturn, type ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
+import { useViewMode } from "@/lib/viewMode/viewModeStore";
+import type { ViewSurface } from "@/lib/viewMode/viewModeTypes";
 
 export type SignalTone = "positive" | "negative" | "neutral";
 
@@ -17,6 +21,8 @@ export type PairSignalSurfaceItem = {
   modalDetails: Array<{ label: string; value: string }>;
   performancePercent?: number | null;
   performanceNote?: string;
+  returnMatrix?: ReturnMatrix | null;
+  returnWarnings?: string[];
 };
 
 type PairSignalSurfaceProps = {
@@ -28,6 +34,7 @@ type PairSignalSurfaceProps = {
   emptyDescription: string;
   updatedLabel?: string;
   footerContent?: ReactNode;
+  viewSurface?: ViewSurface;
 };
 
 function toneClass(tone: SignalTone) {
@@ -60,6 +67,14 @@ function formatPercent(value: number | null | undefined) {
   return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
+function warningReason(warnings: string[] | undefined) {
+  if (!warnings || warnings.length === 0) return "Data unavailable";
+  if (warnings.includes("execution_close_bar_missing")) {
+    return "Execution data unavailable: incomplete close bar";
+  }
+  return warnings.join(", ");
+}
+
 export default function PairSignalSurface({
   title,
   description,
@@ -69,12 +84,21 @@ export default function PairSignalSurface({
   emptyDescription,
   updatedLabel,
   footerContent,
+  viewSurface = "data",
 }: PairSignalSurfaceProps) {
+  const [viewMode] = useViewMode(viewSurface);
   const [active, setActive] = useState<PairSignalSurfaceItem | null>(null);
   const [showNeutralPairs, setShowNeutralPairs] = useState(false);
   const visibleItems = showNeutralPairs
     ? items
     : items.filter((item) => item.tone !== "neutral");
+
+  const resolveItemPercent = (item: PairSignalSurfaceItem) => {
+    if (item.returnMatrix) {
+      return resolveDisplayReturn(item.returnMatrix, viewMode);
+    }
+    return item.performancePercent ?? null;
+  };
 
   return (
     <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm backdrop-blur-sm">
@@ -115,56 +139,74 @@ export default function PairSignalSurface({
       ) : view === "heatmap" ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           {visibleItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActive(item)}
-              className="group relative min-h-[96px] overflow-hidden rounded-lg border border-[var(--panel-border)] text-left"
-            >
-              <div
-                className={`flex h-full flex-col items-center justify-center px-4 py-3 text-white transition ${toneClass(
-                  item.tone,
-                )}`}
-              >
-                <div className="text-xs font-bold">{item.label}</div>
-              </div>
+            (() => {
+              const resolvedPercent = resolveItemPercent(item);
+              const missingReason = item.returnMatrix ? warningReason(item.returnWarnings) : "Data unavailable";
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActive({ ...item, performancePercent: resolvedPercent })}
+                  className="group relative min-h-[96px] overflow-hidden rounded-lg border border-[var(--panel-border)] text-left"
+                >
+                  <div
+                    className={`flex h-full flex-col items-center justify-center px-4 py-3 text-white transition ${toneClass(
+                      item.tone,
+                    )}`}
+                  >
+                    <div className="text-xs font-bold">{item.label}</div>
+                  </div>
 
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
-                <div className="text-center text-xs text-white">
-                  <p className="font-semibold">{item.label}</p>
-                  <p className="mt-1">{item.statusLabel}</p>
-                  {item.secondaryLabel ? (
-                    <p className="mt-1 text-[10px]">{item.secondaryLabel}</p>
-                  ) : null}
-                  <p className="mt-1 text-[10px]">
-                    {formatPercent(item.performancePercent)}
-                  </p>
-                </div>
-              </div>
-            </button>
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[var(--foreground)]/90 opacity-0 transition group-hover:opacity-100">
+                    <div className="text-center text-xs text-white">
+                      <p className="font-semibold">{item.label}</p>
+                      <p className="mt-1">{item.statusLabel}</p>
+                      {item.secondaryLabel ? (
+                        <p className="mt-1 text-[10px]">{item.secondaryLabel}</p>
+                      ) : null}
+                      <p className="mt-1 text-[10px]">
+                        {resolvedPercent === null ? (
+                          <MissingReturnCell reason={missingReason} className="text-white/50" />
+                        ) : (
+                          formatPercent(resolvedPercent)
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })()
           ))}
         </div>
       ) : (
         <div className="space-y-2">
-          {visibleItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActive(item)}
-              className="flex w-full items-center justify-between rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-left text-sm transition hover:border-[var(--accent)]"
-            >
-              <div>
-                <p className="font-semibold text-[var(--foreground)]">{item.label}</p>
-                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  {item.statusLabel}
-                  {item.secondaryLabel ? ` · ${item.secondaryLabel}` : ""}
-                </p>
-              </div>
-              <span className={`text-xs font-semibold ${percentTone(item.performancePercent)}`}>
-                {formatPercent(item.performancePercent)}
-              </span>
-            </button>
-          ))}
+          {visibleItems.map((item) => {
+            const resolvedPercent = resolveItemPercent(item);
+            const missingReason = item.returnMatrix ? warningReason(item.returnWarnings) : "Data unavailable";
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActive({ ...item, performancePercent: resolvedPercent })}
+                className="flex w-full items-center justify-between rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-3 text-left text-sm transition hover:border-[var(--accent)]"
+              >
+                <div>
+                  <p className="font-semibold text-[var(--foreground)]">{item.label}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                    {item.statusLabel}
+                    {item.secondaryLabel ? ` · ${item.secondaryLabel}` : ""}
+                  </p>
+                </div>
+                <span className={`text-xs font-semibold ${percentTone(resolvedPercent)}`}>
+                  {resolvedPercent === null ? (
+                    <MissingReturnCell reason={missingReason} />
+                  ) : (
+                    formatPercent(resolvedPercent)
+                  )}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 

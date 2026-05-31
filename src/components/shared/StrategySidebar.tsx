@@ -26,6 +26,10 @@ import {
   type StrategySelectionCommitDetail,
   type StrategySidebarStatsDetail,
 } from "@/lib/performance/strategySelection";
+import {
+  computeProfitFactorFromTradeReturns,
+  computeReturnSortino,
+} from "@/lib/performance/performanceMetricBasis";
 import { readSelectionFromParams } from "@/components/shared/StrategySelector";
 
 function formatRatio(value: number | null | undefined, digits = 2): string {
@@ -33,14 +37,24 @@ function formatRatio(value: number | null | undefined, digits = 2): string {
   return value.toFixed(digits);
 }
 
-function formatSortino(value: number | null | undefined): string {
-  if (value == null || Number.isNaN(value) || !Number.isFinite(value)) return "—";
-  return value >= 99 ? "—" : value.toFixed(2);
+function formatSortino(value: number | null | undefined, returnPct: number, trades: number): string {
+  if (value == null || Number.isNaN(value) || !Number.isFinite(value)) {
+    return returnPct > 0 && trades > 0 ? "No loss" : "—";
+  }
+  return value >= 99 ? "No loss" : value.toFixed(2);
+}
+
+function formatProfitFactor(value: number | null | undefined, returnPct: number, trades: number): string {
+  if (value == null || Number.isNaN(value)) {
+    return returnPct > 0 && trades > 0 ? "No loss" : "—";
+  }
+  if (!Number.isFinite(value)) return returnPct > 0 && trades > 0 ? "No loss" : "—";
+  return value.toFixed(2);
 }
 
 function formatCalmar(value: number | null | undefined, returnPct: number, drawdownPct: number): string {
+  if (returnPct > 0 && drawdownPct <= 0) return "No DD";
   if (value == null || Number.isNaN(value) || !Number.isFinite(value)) return "—";
-  if (returnPct > 0 && drawdownPct <= 0) return "—";
   return value.toFixed(2);
 }
 
@@ -144,6 +158,10 @@ function EngineSidebarStatsCard() {
   const activeTrades = isAllTime
     ? at?.totalTrades ?? 0
     : allTimeStats?.tradeCount ?? weekStats?.tradeCount ?? 0;
+  const activeTradeReturns = isAllTime ? [] : (allTimeStats?.trades ?? []).map((trade) => trade.returnPct);
+  const selectedProfitFactor = computeProfitFactorFromTradeReturns(activeTradeReturns);
+  const selectedSortino = activeTradeReturns.length > 1 ? computeReturnSortino(activeTradeReturns) : null;
+  const selectedCalmar = activeMaxDrawdown > 0 ? activeReturn / activeMaxDrawdown : null;
   const activeWins = isAllTime
     ? null
     : allTimeStats?.winCount ?? weekStats?.winCount ?? 0;
@@ -185,21 +203,31 @@ function EngineSidebarStatsCard() {
               <div data-testid="sidebar-maxdd" className="font-bold text-red-400">{activeMaxDrawdown.toFixed(2)}%</div>
             </div>
             <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">{isAllTime ? "Sharpe" : "Trades"}</div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">{isAllTime ? "Path Sharpe" : "Trades"}</div>
               <div data-testid={!isAllTime ? "sidebar-trades" : undefined} className="font-bold">{isAllTime && at ? at.sharpe.toFixed(2) : activeTrades}</div>
             </div>
             <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Sortino</div>
-              <div className="font-bold">{isAllTime && at ? formatSortino(at.sortino) : "—"}</div>
-            </div>
-            <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Profit Factor</div>
-              <div className="font-bold">{isAllTime && at ? formatRatio(at.profitFactor) : "—"}</div>
-            </div>
-            <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Calmar</div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">{isAllTime ? "Path Sortino" : "Sortino"}</div>
               <div className="font-bold">
-                {isAllTime && at ? formatCalmar(at.calmar, at.totalReturnPct, at.maxDrawdownPct) : "—"}
+                {isAllTime && at
+                  ? formatSortino(at.sortino, at.totalReturnPct, activeTrades)
+                  : formatSortino(selectedSortino, activeReturn, activeTrades)}
+              </div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Trade PF</div>
+              <div className="font-bold">
+                {isAllTime && at
+                  ? formatProfitFactor(at.profitFactor, at.totalReturnPct, activeTrades)
+                  : formatProfitFactor(selectedProfitFactor, activeReturn, activeTrades)}
+              </div>
+            </div>
+            <div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Path Calmar</div>
+              <div className="font-bold">
+                {isAllTime && at
+                  ? formatCalmar(at.calmar, at.totalReturnPct, at.maxDrawdownPct)
+                  : formatCalmar(selectedCalmar, activeReturn, activeMaxDrawdown)}
               </div>
             </div>
             <div>
@@ -217,11 +245,11 @@ function EngineSidebarStatsCard() {
           {isAllTime && at && at.expectancy != null && (
           <div className="mt-3 border-t border-[var(--panel-border)] pt-3 grid grid-cols-2 gap-2.5 text-sm">
             <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Expectancy</div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Trade Exp</div>
               <div className={`font-bold ${returnColor(at.expectancy)}`}>{at.expectancy >= 0 ? "+" : ""}{at.expectancy.toFixed(2)}%</div>
             </div>
             <div>
-              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Avg Win / Loss</div>
+              <div className="text-[color:var(--muted)] text-[10px] uppercase tracking-[0.08em]">Trade Avg W/L</div>
               <div className="font-bold text-xs">
                 +{formatRatio(at.avgWin, 1)} / -{formatAverageLoss(at.avgLoss)}
               </div>

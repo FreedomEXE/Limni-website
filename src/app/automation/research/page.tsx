@@ -13,6 +13,7 @@
 -----------------------------------------------*/
 
 import DashboardLayout from "@/components/DashboardLayout";
+import ViewModeControls from "@/components/common/ViewModeControls";
 import AutomationResearchCards from "@/components/automation/AutomationResearchCards";
 import AutomationResearchHubClient from "@/components/automation/AutomationResearchHubClient";
 import {
@@ -119,14 +120,17 @@ export default async function AutomationResearchIndexPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <header className="space-y-3">
-          <h1 className="text-3xl font-semibold text-[var(--foreground)]">
-            Research
-          </h1>
-          <p className="max-w-3xl text-sm leading-6 text-[color:var(--muted)]">
-            Canonical research hub for strategy curves and drilldowns. This replaces the old
-            lab-first entry point with a stable view of the systems that actually matter now.
-          </p>
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-3">
+            <h1 className="text-3xl font-semibold text-[var(--foreground)]">
+              Research
+            </h1>
+            <p className="max-w-3xl text-sm leading-6 text-[color:var(--muted)]">
+              Canonical research hub for strategy curves and drilldowns. This replaces the old
+              lab-first entry point with a stable view of the systems that actually matter now.
+            </p>
+          </div>
+          <ViewModeControls surface="research" size="sm" />
         </header>
 
         <AutomationResearchCards active="overview" />

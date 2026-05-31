@@ -15,7 +15,6 @@ describe("accounts week options", () => {
       4,
     );
     expect(result).toEqual([
-      "2026-02-16T00:00:00.000Z",
       "2026-02-09T00:00:00.000Z",
       "2026-02-02T00:00:00.000Z",
     ]);

@@ -66,6 +66,7 @@ describe("performance/engineAdapter simulations", () => {
       weekOpenUtc: currentWeekResult.weekOpenUtc,
       strategyId: "dealer",
       entryStyleId: "weekly_hold",
+      returnMode: "normalized",
       resolution: "1h",
       points: [
         {
