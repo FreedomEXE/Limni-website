@@ -277,8 +277,10 @@ function DetailMetric({ label, value, tone }: { label: string; value: ReactNode;
 
 function ExpandedBranchPanel({ children }: { children: ReactNode }) {
   return (
-    <div className="mt-1.5 space-y-1 rounded-xl border border-[var(--accent)]/15 bg-[var(--accent)]/[0.025] p-2 shadow-inner shadow-black/5">
-      {children}
+    <div className="ml-4 mt-1.5 border-l border-[var(--accent)]/35 pl-3">
+      <div className="space-y-1 rounded-xl border border-[var(--accent)]/20 bg-[var(--accent)]/[0.035] p-2 shadow-inner shadow-black/10">
+        {children}
+      </div>
     </div>
   );
 }
@@ -305,7 +307,7 @@ function InlineGridDetail({ node, viewMode }: { node: TradeListNode; viewMode: V
       <DetailMetric label="Window" value={`${formatDateTimeLabel(row.entryUtc)} -> ${formatDateTimeLabel(row.exitUtc)}`} />
       <DetailMetric label="Duration" value={formatDuration(row.entryUtc, row.exitUtc)} />
       <DetailMetric label="Entry / Exit" value={`${formatPrice(row.entryPrice)} -> ${formatPrice(row.exitPrice)}`} />
-      <DetailMetric label="Fill Path DD" value={pathDrawdown === null ? "--" : formatSignedPercent(-pathDrawdown, 2)} tone="text-rose-500" />
+      <DetailMetric label="Path DD (fills)" value={pathDrawdown === null ? "--" : formatSignedPercent(-pathDrawdown, 2)} tone="text-rose-500" />
       <DetailMetric label="Cap" value={`${maxActiveFills}/${capThreshold} max active`} />
       <DetailMetric label="Violations" value={violations} tone={violations > 0 ? "text-rose-500" : "text-lime-500"} />
     </div>
@@ -322,25 +324,33 @@ function InlineTradeDetail({ node, viewMode }: { node: TradeListNode; viewMode: 
   const displayReturn = resolvedRowReturn(row, viewMode);
   const activeRawLabel = viewMode.anchor === "canonical" ? "Canonical Raw" : "Execution Raw";
   const displayLabel = viewMode.normalization === "adr_normalized" ? "Displayed ADR-norm" : "Displayed Raw";
+  const showNormalizationContext = viewMode.normalization === "adr_normalized";
 
   return (
-    <div className="grid gap-3 rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/60 px-4 py-3 text-[11px] sm:grid-cols-2 lg:grid-cols-6">
-      <DetailMetric label="Entry" value={formatDateTimeLabel(row.entryUtc)} />
-      <DetailMetric label="Exit" value={formatDateTimeLabel(row.exitUtc)} />
-      <DetailMetric label="Duration" value={formatDuration(row.entryUtc, row.exitUtc)} />
-      <DetailMetric label="Entry Price" value={formatPrice(row.entryPrice)} />
-      <DetailMetric label="Exit Price" value={formatPrice(row.exitPrice)} />
-      <DetailMetric label="Exit Reason" value={row.exitReason ?? "--"} />
-      <DetailMetric label={activeRawLabel} value={typeof activeRaw === "number" ? formatSignedPercent(activeRaw, 4) : "--"} tone={pctTone(activeRaw)} />
-      <DetailMetric label={displayLabel} value={displayReturn === null ? "--" : formatSignedPercent(displayReturn, 4)} tone={pctTone(displayReturn)} />
-      <DetailMetric label="ADR Basis" value={row.returnMatrix.adrPct === null ? "--" : `${row.returnMatrix.adrPct.toFixed(4)}%`} />
-      <DetailMetric label="Cap At Entry" value={`${row.capActiveFillsAtEntry ?? "--"} / ${row.capThresholdAtEntry ?? "--"}`} tone={row.capViolated ? "text-rose-500" : undefined} />
-      <DetailMetric label="Max DD" value="Not captured in v2 canon" />
-      <div className="min-w-0 lg:col-span-2">
-        <span className="block uppercase tracking-[0.16em] text-[color:var(--muted)]">Trade ID</span>
-        <span className="block truncate font-mono text-[10px] font-semibold text-[var(--foreground)]" title={tradeId}>
-          {tradeId}
-        </span>
+    <div className="rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/60 px-4 py-3 text-[11px]">
+      <div className="mb-3 grid gap-3 rounded-md border border-[var(--panel-border)]/50 bg-black/[0.04] px-3 py-2 sm:grid-cols-3">
+        <DetailMetric label={displayLabel} value={displayReturn === null ? "--" : formatSignedPercent(displayReturn, 4)} tone={pctTone(displayReturn)} />
+        {showNormalizationContext ? (
+          <DetailMetric label={activeRawLabel} value={typeof activeRaw === "number" ? formatSignedPercent(activeRaw, 4) : "--"} tone={pctTone(activeRaw)} />
+        ) : null}
+        {showNormalizationContext ? (
+          <DetailMetric label="ADR Used" value={row.returnMatrix.adrPct === null ? "--" : `${row.returnMatrix.adrPct.toFixed(4)}%`} />
+        ) : null}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <DetailMetric label="Entry" value={formatDateTimeLabel(row.entryUtc)} />
+        <DetailMetric label="Exit" value={formatDateTimeLabel(row.exitUtc)} />
+        <DetailMetric label="Duration" value={formatDuration(row.entryUtc, row.exitUtc)} />
+        <DetailMetric label="Entry Price" value={formatPrice(row.entryPrice)} />
+        <DetailMetric label="Exit Price" value={formatPrice(row.exitPrice)} />
+        <DetailMetric label="Exit Reason" value={row.exitReason ?? "--"} />
+        <DetailMetric label="Cap At Entry" value={`${row.capActiveFillsAtEntry ?? "--"} / ${row.capThresholdAtEntry ?? "--"}`} tone={row.capViolated ? "text-rose-500" : undefined} />
+        <div className="min-w-0 lg:col-span-3">
+          <span className="block uppercase tracking-[0.16em] text-[color:var(--muted)]">Trade ID</span>
+          <span className="block truncate font-mono text-[10px] font-semibold text-[var(--foreground)]" title={tradeId}>
+            {tradeId}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -380,7 +390,7 @@ function BasketNodeRow({
   };
 
   return (
-    <div className={`transition duration-150 ${dimmed ? "opacity-35 saturate-50" : "opacity-100"}`}>
+    <div className={`transition duration-150 ${dimmed ? "opacity-20 grayscale-[35%] contrast-75" : "opacity-100"}`}>
       <button
         type="button"
         onClick={handleToggle}
