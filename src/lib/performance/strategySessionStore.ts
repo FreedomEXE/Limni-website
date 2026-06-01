@@ -14,6 +14,10 @@ import {
 } from "@/lib/performance/strategyClientCache";
 import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
 import {
+  hasHistoricalStrategyPayload,
+  mergeStrategyWeekOptions,
+} from "@/lib/performance/strategyPayloadCompleteness";
+import {
   buildStrategySelectionKey,
   type RuntimeStrategySelection,
 } from "@/lib/performance/strategySelection";
@@ -156,7 +160,11 @@ function mergeRecordPayload(
     engineSimMap: mergeMap(previous.engineSimMap, next.engineSimMap),
     engineWeekResults: mergeMap(previous.engineWeekResults, next.engineWeekResults),
     sidebarStats: next.sidebarStats ?? previous.sidebarStats,
-    weekOptions: mergeWeekOptions(previous.weekOptions, next.weekOptions),
+    weekOptions: mergeStrategyWeekOptions(
+      previous.weekOptions,
+      next.weekOptions,
+      next.currentWeekOpenUtc ?? previous.currentWeekOpenUtc,
+    ),
     currentWeekOpenUtc: next.currentWeekOpenUtc ?? previous.currentWeekOpenUtc,
     artifactMeta: next.artifactMeta ?? previous.artifactMeta,
   };
@@ -171,18 +179,17 @@ function mergeMap<T>(
   return { ...previous, ...next };
 }
 
-function mergeWeekOptions(previous: string[] | undefined, next: string[] | undefined) {
-  if (!next) return previous;
-  return next;
-}
-
 function hasMissingArtifactWeeks(payload: StrategyClientPayload | null | undefined) {
   return (payload?.artifactMeta?.missingWeeks?.length ?? 0) > 0;
 }
 
 function hasFullPayload(payload: StrategyClientPayload | null) {
   if (hasMissingArtifactWeeks(payload)) return false;
-  return Boolean((payload?.engineWeekMap || payload?.engineSimMap) && payload?.engineWeekResults);
+  return Boolean(
+    (payload?.engineWeekMap || payload?.engineSimMap) &&
+    payload?.engineWeekResults &&
+    hasHistoricalStrategyPayload(payload)
+  );
 }
 
 function gridHasActivity(payload: StrategyClientPayload | null, weekOpenUtc: string | undefined) {

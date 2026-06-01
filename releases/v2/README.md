@@ -21,3 +21,7 @@ Direct DB writes to historical rows after release should never happen. If they d
 ## Previous Version
 
 v2 references [`../v1/manifest.json`](../v1/manifest.json) as its previous version.
+
+## Open Issues
+
+Active post-launch issues are tracked in [`open-issues.md`](open-issues.md).

@@ -7,6 +7,10 @@ import {
   GLOBAL_PRELOAD_CACHE_VERSION,
   hasTrustedGlobalPreloadStamp,
 } from "@/lib/preload/preloadContract";
+import {
+  hasHistoricalStrategyPayload,
+  mergeStrategyWeekOptions,
+} from "@/lib/performance/strategyPayloadCompleteness";
 
 const payloadCache = new Map<string, StrategyClientPayload | null>();
 const inflightCache = new Map<string, Promise<StrategyClientPayload | null>>();
@@ -127,12 +131,13 @@ export function setStrategyClientPayload(
 function hasScopePayload(payload: StrategyClientPayload, scope: StrategyClientPayloadScope) {
   if ((payload.artifactMeta?.missingWeeks?.length ?? 0) > 0) return false;
   if (scope === "matrix") {
-    return Boolean(payload.engineWeekResults);
+    return Boolean(payload.engineWeekResults && hasHistoricalStrategyPayload(payload));
   }
   if (scope === "full") {
     return Boolean(
       (payload.engineWeekMap || payload.engineSimMap) &&
-      payload.engineWeekResults
+      payload.engineWeekResults &&
+      hasHistoricalStrategyPayload(payload)
     );
   }
   return Boolean(payload.engineWeekMap || payload.engineSimMap || payload.sidebarStats);
@@ -148,7 +153,11 @@ function mergeStrategyClientPayload(
     engineSimMap: mergeRecordPayload(previous.engineSimMap, next.engineSimMap),
     engineWeekResults: mergeRecordPayload(previous.engineWeekResults, next.engineWeekResults),
     sidebarStats: next.sidebarStats ?? previous.sidebarStats,
-    weekOptions: mergeWeekOptions(previous.weekOptions, next.weekOptions),
+    weekOptions: mergeStrategyWeekOptions(
+      previous.weekOptions,
+      next.weekOptions,
+      next.currentWeekOpenUtc ?? previous.currentWeekOpenUtc,
+    ),
     currentWeekOpenUtc: next.currentWeekOpenUtc ?? previous.currentWeekOpenUtc,
     artifactMeta: next.artifactMeta ?? previous.artifactMeta,
   };
@@ -161,14 +170,6 @@ function mergeRecordPayload<T>(
   if (!next) return previous ?? null;
   if (!previous) return next;
   return { ...previous, ...next };
-}
-
-function mergeWeekOptions(
-  previous: string[] | undefined,
-  next: string[] | undefined,
-) {
-  if (!next) return previous;
-  return next;
 }
 
 function isStrategyClientPayload(value: unknown): value is StrategyClientPayload {
