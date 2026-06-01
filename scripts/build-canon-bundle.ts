@@ -75,9 +75,9 @@ function strategyVariantFromSelectionKey(selectionKey: string) {
   return selectionKey.replaceAll(":", "-");
 }
 
-function releaseDateToGeneratedAt(releasedAt: string) {
-  const parsed = new Date(releasedAt.includes("T") ? releasedAt : `${releasedAt}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime())) return releasedAt;
+function releaseDateToGeneratedAt(timestamp: string) {
+  const parsed = new Date(timestamp.includes("T") ? timestamp : `${timestamp}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return timestamp;
   return parsed.toISOString();
 }
 
@@ -99,11 +99,11 @@ async function main() {
   const root = process.cwd();
   const args = parseArgs();
   const { manifestPath, manifest } = await readManifest(root);
-  if (manifest.appVersion !== args.version) {
-    throw new Error(`Manifest appVersion ${manifest.appVersion} does not match --version=${args.version}`);
+  if (manifest.canonVersion !== args.version) {
+    throw new Error(`Manifest canonVersion ${manifest.canonVersion} does not match --version=${args.version}`);
   }
 
-  const canonGeneratedAt = args.generatedAt ?? releaseDateToGeneratedAt(manifest.releasedAt);
+  const canonGeneratedAt = args.generatedAt ?? releaseDateToGeneratedAt(manifest.releasedAt ?? manifest.preparedAt);
   const releaseDir = path.join(root, "releases", args.version);
   const canonDir = path.join(releaseDir, "canon");
   await mkdir(canonDir, { recursive: true });
@@ -132,6 +132,9 @@ async function main() {
       metadata: {
         appVersion: manifest.appVersion,
         semanticVersion: manifest.semanticVersion,
+        releaseLine: manifest.releaseLine,
+        canonVersion: manifest.canonVersion,
+        preparedAt: manifest.preparedAt,
         releasedAt: manifest.releasedAt,
         canonGeneratedAt,
         strategyVariant,

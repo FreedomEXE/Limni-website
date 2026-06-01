@@ -1,5 +1,11 @@
 # v2 Changes
 
+## v2.0.1 - 2026-05-31 - Patch
+
+Week rollover cache readiness fix and version discipline formalization. See `patches/v2.0.1.md` for details.
+
+## v2.0.0 - 2026-05-30 - Major
+
 ## Versioning
 
 - Added a root `release-manifest.json`.

@@ -26,8 +26,10 @@ import {
   writeCanonMeta,
 } from "@/lib/canon/canonIndexedDb";
 import { normalizePerformanceAssetSelection } from "@/lib/performance/performanceAssetScope";
+import { clearStrategyClientPayloadCaches } from "@/lib/performance/strategyClientCache";
+import { clearGlobalPreloadStamp } from "@/lib/preload/preloadContract";
 
-const APP_VERSION_STORAGE_KEY = "limni-app-version";
+const CACHE_NAMESPACE_STORAGE_KEY = "limni-cache-namespace";
 const MANIFEST_STORAGE_KEY = "limni-app-manifest-summary";
 
 export type CanonPreloadPhase =
@@ -48,8 +50,11 @@ type CanonPreloadState = {
 };
 
 type CanonMeta = {
+  releaseLine: string;
   appVersion: string;
   semanticVersion: string;
+  canonVersion: string;
+  cacheNamespace: string;
   canonGeneratedAt: string;
   sourceLedgerRowCount: number;
   sourceHash: string;
@@ -91,19 +96,19 @@ function canUseLocalStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
-function readStoredVersion() {
+function readStoredCacheNamespace() {
   if (!canUseLocalStorage()) return null;
   try {
-    return window.localStorage.getItem(APP_VERSION_STORAGE_KEY);
+    return window.localStorage.getItem(CACHE_NAMESPACE_STORAGE_KEY);
   } catch {
     return null;
   }
 }
 
-function writeStoredVersion(version: string) {
+function writeStoredCacheNamespace(cacheNamespace: string) {
   if (!canUseLocalStorage()) return;
   try {
-    window.localStorage.setItem(APP_VERSION_STORAGE_KEY, version);
+    window.localStorage.setItem(CACHE_NAMESPACE_STORAGE_KEY, cacheNamespace);
   } catch {}
 }
 
@@ -114,8 +119,12 @@ function writeManifestSummary(manifest: ReleaseManifest) {
       MANIFEST_STORAGE_KEY,
       JSON.stringify({
         appVersion: manifest.appVersion,
+        displayVersion: manifest.displayVersion,
         semanticVersion: manifest.semanticVersion,
+        canonVersion: manifest.canonVersion,
+        cacheNamespace: manifest.cacheNamespace,
         releasedAt: manifest.releasedAt,
+        preparedAt: manifest.preparedAt,
         canon: manifest.canon,
       }),
     );
@@ -128,9 +137,9 @@ async function fetchCurrentManifest() {
   return await response.json() as ReleaseManifest;
 }
 
-async function fetchCanonBundle(appVersion: string, strategyVariant: string) {
+async function fetchCanonBundle(canonVersion: string, strategyVariant: string) {
   const params = new URLSearchParams({ strategyVariant, scope: "all" });
-  const response = await fetch(`/api/canon/${appVersion}/historical?${params.toString()}`, {
+  const response = await fetch(`/api/canon/${canonVersion}/historical?${params.toString()}`, {
     cache: "force-cache",
   });
   const json = await response.json() as { bundle?: ClosedHistoryBundle; error?: string };
@@ -143,10 +152,11 @@ async function fetchCanonBundle(appVersion: string, strategyVariant: string) {
 async function loadBundlesFromIndexedDb(manifest: ReleaseManifest) {
   memoryBundles.clear();
   for (const variant of manifest.canon.variants) {
-    const key = canonBundleKey(manifest.appVersion, variant.strategyVariant);
+    const key = canonBundleKey(manifest.canonVersion, variant.strategyVariant);
     const bundle = await readCanonBundle<ClosedHistoryBundle>(key);
     if (!bundle) throw new Error(`Missing IndexedDB canon bundle: ${key}`);
     memoryBundles.set(variant.strategyVariant, bundle);
+    setState({ completed: Math.min(state.total, state.completed + 1) });
   }
 }
 
@@ -163,24 +173,27 @@ async function fetchAndPersistBundles(manifest: ReleaseManifest) {
   });
 
   for (const variant of variants) {
-    const bundle = await fetchCanonBundle(manifest.appVersion, variant.strategyVariant);
-    const key = canonBundleKey(manifest.appVersion, variant.strategyVariant);
+    const bundle = await fetchCanonBundle(manifest.canonVersion, variant.strategyVariant);
+    const key = canonBundleKey(manifest.canonVersion, variant.strategyVariant);
     await writeCanonBundle(key, bundle);
     memoryBundles.set(variant.strategyVariant, bundle);
     setState({ completed: state.completed + 1 });
   }
 
   const meta: CanonMeta = {
+    releaseLine: manifest.releaseLine,
     appVersion: manifest.appVersion,
     semanticVersion: manifest.semanticVersion,
+    canonVersion: manifest.canonVersion,
+    cacheNamespace: manifest.cacheNamespace,
     canonGeneratedAt: manifest.canon.generatedAt,
     sourceLedgerRowCount: manifest.canon.sourceLedgerRowCount,
     sourceHash: manifest.canon.sourceHash,
     cachedAtUtc: new Date().toISOString(),
   };
-  await writeCanonMeta(canonMetaKey(manifest.appVersion), meta);
+  await writeCanonMeta(canonMetaKey(manifest.canonVersion), meta);
   writeManifestSummary(manifest);
-  writeStoredVersion(manifest.appVersion);
+  writeStoredCacheNamespace(manifest.cacheNamespace);
 }
 
 export function startCanonPreload() {
@@ -198,14 +211,20 @@ export function startCanonPreload() {
       });
       const manifest = await fetchCurrentManifest();
       currentManifest = manifest;
-      const storedVersion = readStoredVersion();
+      const storedCacheNamespace = readStoredCacheNamespace();
+      const cacheNamespaceChanged = storedCacheNamespace !== manifest.cacheNamespace;
       const keys = manifest.canon.variants.map((variant) =>
-        canonBundleKey(manifest.appVersion, variant.strategyVariant),
+        canonBundleKey(manifest.canonVersion, variant.strategyVariant),
       );
 
-      if (storedVersion === manifest.appVersion && await hasCanonBundles(keys)) {
+      if (cacheNamespaceChanged) {
+        clearGlobalPreloadStamp();
+        await clearStrategyClientPayloadCaches();
+      }
+
+      if (await hasCanonBundles(keys)) {
         setState({
-          phase: "loading-cache",
+          phase: cacheNamespaceChanged ? "updating-app-version" : "loading-cache",
           status: "loading",
           appVersion: manifest.appVersion,
           total: keys.length,
@@ -213,6 +232,8 @@ export function startCanonPreload() {
           error: null,
         });
         await loadBundlesFromIndexedDb(manifest);
+        writeManifestSummary(manifest);
+        writeStoredCacheNamespace(manifest.cacheNamespace);
         setState({
           phase: "ready",
           status: "ready",

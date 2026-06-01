@@ -235,6 +235,25 @@ async function deletePersistentPayload(url: string) {
   }
 }
 
+export async function clearStrategyClientPayloadCaches() {
+  payloadCache.clear();
+  inflightCache.clear();
+  currentWeekInflightCache.clear();
+  if (!canUsePersistentPayloadCache()) return;
+
+  try {
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith(PERSISTENT_PAYLOAD_META_PREFIX)) keysToRemove.push(key);
+    }
+    for (const key of keysToRemove) window.localStorage.removeItem(key);
+    await window.caches.delete(PERSISTENT_PAYLOAD_CACHE_NAME);
+  } catch {
+    // Cache invalidation is best effort; the exact patch namespace still forces fresh reads.
+  }
+}
+
 async function readPersistentPayload(
   url: string,
   selection: RuntimeStrategySelection,

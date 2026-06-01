@@ -52,6 +52,9 @@ export default function AppVersionBadge() {
   }, [open]);
 
   if (!manifest) return null;
+  const latestPatch = manifest.versionHistory?.find((entry) => entry.appVersion === manifest.appVersion);
+  const releaseLine = manifest.versionHistory?.find((entry) => entry.type === "major");
+  const releaseLineLabel = manifest.releaseLine ?? manifest.displayVersion ?? "v2";
 
   return (
     <div
@@ -67,7 +70,7 @@ export default function AppVersionBadge() {
         aria-label={`App version ${manifest.appVersion}`}
         data-testid="app-version-badge"
       >
-        {manifest.appVersion}
+        {manifest.displayVersion ?? manifest.appVersion}
       </button>
 
       {open ? (
@@ -84,11 +87,18 @@ export default function AppVersionBadge() {
               <h2 className="mt-1 text-lg font-semibold text-[var(--foreground)]">
                 {manifest.appVersion}
               </h2>
+              <div className="mt-2 space-y-1 text-[11px] text-[color:var(--muted)]">
+                <p>Patch: {latestPatch?.date ?? manifest.preparedAt.slice(0, 10)}</p>
+                <p>{releaseLineLabel} line: {releaseLine?.date ?? manifest.releasedAt ?? manifest.preparedAt.slice(0, 10)}</p>
+              </div>
             </div>
             <p className="text-right text-[11px] text-[color:var(--muted)]">
-              {manifest.releasedAt}
+              {manifest.releasedAt ?? "Local patch"}
             </p>
           </div>
+          <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
+            Recent changes
+          </p>
           <ul className="mt-3 space-y-2 text-xs leading-relaxed text-[color:var(--muted)]">
             {manifest.changes.slice(0, 5).map((change) => (
               <li key={change} className="flex gap-2">
@@ -100,6 +110,12 @@ export default function AppVersionBadge() {
           <div className="mt-4 rounded-lg border border-[var(--panel-border)] bg-[var(--background)] px-3 py-2 text-[11px] text-[color:var(--muted)]">
             Canon rows: {manifest.canon.sourceLedgerRowCount.toLocaleString()} · {manifest.canon.variants.length} variants
           </div>
+          <a
+            href="/documents#version-history"
+            className="mt-3 inline-flex text-xs font-semibold text-[var(--accent-strong)] transition hover:text-[var(--accent)]"
+          >
+            View full version history -&gt;
+          </a>
         </div>
       ) : null}
     </div>

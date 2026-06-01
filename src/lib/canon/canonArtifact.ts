@@ -14,9 +14,12 @@
 import type { ClosedHistoryBundle } from "@/lib/basket/basketSummaryTypes";
 
 export type CanonArtifactMetadata = {
+  releaseLine?: string;
   appVersion: string;
   semanticVersion: string;
-  releasedAt: string;
+  canonVersion?: string;
+  preparedAt?: string;
+  releasedAt: string | null;
   canonGeneratedAt: string;
   strategyVariant: string;
   sourceLedgerRowCount: number;

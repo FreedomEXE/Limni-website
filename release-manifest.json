@@ -1,11 +1,16 @@
 {
-  "appVersion": "v2",
-  "semanticVersion": "2.0.0",
-  "releasedAt": "2026-05-30",
+  "releaseLine": "v2",
+  "displayVersion": "v2",
+  "appVersion": "v2.0.1",
+  "semanticVersion": "2.0.1",
+  "canonVersion": "v2",
+  "cacheNamespace": "v2.0.1",
+  "preparedAt": "2026-06-01T00:56:34.632Z",
+  "releasedAt": null,
   "anchorCommit": "v2",
   "previousVersion": {
-    "appVersion": "v1",
-    "semanticVersion": "1.0.0"
+    "appVersion": "v2.0.0",
+    "semanticVersion": "2.0.0"
   },
   "components": {
     "engineVersion": "strategy-artifact-v28",
@@ -98,10 +103,25 @@
     ]
   },
   "changes": [
-    "Version-aware app shell and release manifest.",
-    "Immutable historical canon under v2.",
-    "Basket rebuilt on local canon with the shared TradeList.",
-    "Matrix and legacy summary-card drilldowns quarantined from active flow."
+    "Fixed week rollover cache readiness so current-week slices no longer mask historical week data.",
+    "Patch release identity now bumps cacheNamespace to force client-side invalidation while reusing v2 canon.",
+    "Preload, badge, and Documents version history now show the exact v2.0.1 patch identity."
+  ],
+  "versionHistory": [
+    {
+      "appVersion": "v2.0.1",
+      "date": "2026-05-31",
+      "type": "patch",
+      "summary": "Week rollover cache readiness fix + version discipline formalization.",
+      "file": "releases/v2/patches/v2.0.1.md"
+    },
+    {
+      "appVersion": "v2.0.0",
+      "date": "2026-05-30",
+      "type": "major",
+      "summary": "Versioning + immutable canon + Basket rebuild + LIMNI LABS nav.",
+      "file": "releases/v2/changes.md"
+    }
   ],
   "changelogMarkdown": null
 }

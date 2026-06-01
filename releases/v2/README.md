@@ -2,6 +2,8 @@
 
 v2 is the first active app-level version after the documented v1 baseline.
 
+Current patch: `v2.0.1`.
+
 ## Scope
 
 - App version manifest and `/api/version/current`.
@@ -25,3 +27,8 @@ v2 references [`../v1/manifest.json`](../v1/manifest.json) as its previous versi
 ## Open Issues
 
 Active post-launch issues are tracked in [`open-issues.md`](open-issues.md).
+
+## Version History
+
+Patch-level changes inside the v2 line are tracked in [`changes.md`](changes.md)
+and focused patch notes under [`patches/`](patches/).

@@ -15,9 +15,14 @@ import { z } from "zod";
 import rawManifest from "../../../release-manifest.json";
 
 export const releaseManifestSchema = z.object({
+  releaseLine: z.string().regex(/^v\d+$/),
+  displayVersion: z.string().regex(/^v\d+$/),
   appVersion: z.string().regex(/^v\d+(?:\.\d+){0,2}$/),
   semanticVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
-  releasedAt: z.string().min(1),
+  canonVersion: z.string().regex(/^v\d+(?:\.\d+){0,2}$/),
+  cacheNamespace: z.string().min(1),
+  preparedAt: z.string().min(1),
+  releasedAt: z.string().min(1).nullable(),
   anchorCommit: z.string().min(1),
   previousVersion: z.object({
     appVersion: z.string().regex(/^v\d+(?:\.\d+){0,2}$/),
@@ -46,6 +51,13 @@ export const releaseManifestSchema = z.object({
     })),
   }),
   changes: z.array(z.string().min(1)).min(1),
+  versionHistory: z.array(z.object({
+    appVersion: z.string().regex(/^v\d+(?:\.\d+){0,2}$/),
+    date: z.string().min(1),
+    type: z.enum(["major", "minor", "patch"]),
+    summary: z.string().min(1),
+    file: z.string().min(1),
+  })).optional(),
   changelogMarkdown: z.string().nullable().optional(),
 });
 

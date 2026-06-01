@@ -6,16 +6,30 @@ import DashboardLayout from "@/components/DashboardLayout";
 import CollapsibleSection from "@/components/accounts/CollapsibleSection";
 
 type ReleaseManifest = {
+  releaseLine?: string;
+  displayVersion?: string;
   appVersion: string;
   semanticVersion?: string;
-  releasedAt?: string;
+  preparedAt?: string;
+  releasedAt?: string | null;
   baselineDocumentedAt?: string;
   baselineNote?: string;
   changes?: string[];
+  versionHistory?: Array<{
+    appVersion: string;
+    date: string;
+    type: "major" | "minor" | "patch";
+    summary: string;
+    file: string;
+  }>;
   screenshots?: Array<{
     file: string;
     description: string;
   }>;
+};
+
+type ReleaseHistoryEntry = NonNullable<ReleaseManifest["versionHistory"]>[number] & {
+  body: string | null;
 };
 
 type ReleaseDoc = {
@@ -28,6 +42,7 @@ type ReleaseRecord = {
   version: string;
   manifest: ReleaseManifest | null;
   docs: ReleaseDoc[];
+  versionHistory: ReleaseHistoryEntry[];
   screenshotGroups: Array<{
     name: string;
     screenshots: NonNullable<ReleaseManifest["screenshots"]>;
@@ -72,6 +87,21 @@ function loadRelease(version: string): ReleaseRecord {
     body: readFileSync(file, "utf8"),
   }));
 
+  const versionHistory = (manifest?.versionHistory ?? []).map((entry) => {
+    const releasePrefix = `releases/${version}/`;
+    const relativeFile = entry.file.startsWith(releasePrefix)
+      ? entry.file.slice(releasePrefix.length)
+      : entry.file;
+    const normalized = path.normalize(relativeFile);
+    const bodyPath = normalized.startsWith("..")
+      ? null
+      : path.join(releaseDir, normalized);
+    return {
+      ...entry,
+      body: bodyPath && existsSync(bodyPath) ? readFileSync(bodyPath, "utf8") : null,
+    };
+  });
+
   const screenshots = manifest?.screenshots ?? [];
   const grouped = new Map<string, NonNullable<ReleaseManifest["screenshots"]>>();
   for (const screenshot of screenshots) {
@@ -85,6 +115,7 @@ function loadRelease(version: string): ReleaseRecord {
     version,
     manifest,
     docs,
+    versionHistory,
     screenshotGroups: [...grouped.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([name, group]) => ({ name, screenshots: group })),
@@ -237,6 +268,55 @@ function ScreenshotGrid({ version, group }: { version: string; group: ReleaseRec
   );
 }
 
+const HISTORY_BADGE_VARIANT: Record<
+  NonNullable<ReleaseManifest["versionHistory"]>[number]["type"],
+  "default" | "success" | "warning" | "error"
+> = {
+  major: "success",
+  minor: "default",
+  patch: "warning",
+};
+
+function VersionHistory({ release }: { release: ReleaseRecord }) {
+  const history = release.versionHistory;
+  if (history.length === 0) return null;
+
+  return (
+    <section id="version-history" className="space-y-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
+          Version History
+        </p>
+        <p className="mt-1 text-sm text-[color:var(--muted)]">
+          Patch, minor, and major updates inside the {release.manifest?.releaseLine ?? release.version} release line.
+        </p>
+      </div>
+      <div className="space-y-3">
+        {history.map((entry, index) => {
+          return (
+            <CollapsibleSection
+              key={entry.appVersion}
+              title={`${entry.appVersion} - ${entry.summary}`}
+              subtitle={`${entry.date} · ${entry.type}`}
+              badge={entry.type}
+              badgeVariant={HISTORY_BADGE_VARIANT[entry.type]}
+              defaultOpen={index === 0}
+            >
+              {entry.body ? (
+                <MarkdownBlock body={entry.body} />
+              ) : (
+                <p className="text-sm text-[color:var(--muted)]">
+                  Version note file not found: {entry.file}
+                </p>
+              )}
+            </CollapsibleSection>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function DocumentsPage() {
   const releases = loadReleases();
 
@@ -259,14 +339,15 @@ export default function DocumentsPage() {
 
         <div className="space-y-5">
           {releases.map((release, index) => {
-            const versionLabel = release.manifest?.appVersion ?? release.version;
-            const releaseDate = release.manifest?.releasedAt ?? release.manifest?.baselineDocumentedAt ?? "Unreleased";
+            const versionLabel = release.manifest?.displayVersion ?? release.manifest?.appVersion ?? release.version;
+            const exactVersion = release.manifest?.appVersion ?? release.version;
+            const releaseDate = release.manifest?.releasedAt ?? release.manifest?.preparedAt ?? release.manifest?.baselineDocumentedAt ?? "Unreleased";
             const screenshotCount = release.manifest?.screenshots?.length ?? 0;
             return (
               <CollapsibleSection
                 key={release.version}
                 title={`${versionLabel} Release`}
-                subtitle={`${releaseDate} · ${release.docs.length} docs · ${screenshotCount} screenshots`}
+                subtitle={`${exactVersion} · ${releaseDate} · ${release.docs.length} docs · ${screenshotCount} screenshots`}
                 badge={release.manifest?.semanticVersion ?? release.version}
                 defaultOpen={index === 0}
               >
@@ -292,6 +373,8 @@ export default function DocumentsPage() {
                       </ul>
                     </section>
                   ) : null}
+
+                  <VersionHistory release={release} />
 
                   <div className="space-y-4">
                     {release.docs.map((doc) => (

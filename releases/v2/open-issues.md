@@ -8,7 +8,7 @@
 - **Opened:** 2026-05-31 19:45 America/Toronto
 - **Reported by:** Freedom
 - **Severity:** High
-- **Status:** Fixed locally, pending production verification
+- **Status:** Pushed, formalized as `v2.0.1`, monitoring through next rollover
 - **Surface:** Performance
 - **Affected context:** Tandem / ADR Grid, Summary view, current and most-recent week selection
 
@@ -49,6 +49,16 @@ Production API checks showed the server had valid `MAY 25 2026` historical paylo
 
 The empty previous-week UI was therefore client-side. The strategy client cache and session store considered any payload with maps plus week results to be a complete full session. During rollover, a current-week-only payload could satisfy that check, leaving historical week labels visible but without matching historical maps/results.
 
+### Lifecycle
+
+- **Reported:** 2026-05-31
+- **Fixed locally:** 2026-05-31, commit `6e5dd4d`
+- **Pushed:** 2026-05-31, accidental push before version formalization
+- **Formalized:** v2.0.1 local patch follow-up
+- **Verified in production:** Pending after v2.0.1 deploy
+- **Monitoring window:** Through the next week rollover and after the next major release
+- **Fix mechanism:** Cache readiness check plus `cacheNamespace: v2.0.1` client invalidation while reusing `canonVersion: v2`
+
 ### Fix Direction
 
 Implement a modular week-transition contract rather than patching individual views:
@@ -71,3 +81,4 @@ Implement a modular week-transition contract rather than patching individual vie
 ### Resolution Log
 
 - 2026-05-31: Added a shared strategy payload completeness guard. Current-week-only slices no longer satisfy full historical readiness; full/matrix payloads must contain `all` or at least one closed historical week. Week-option merging now preserves historical options while keeping `all` first and the current week second.
+- 2026-05-31: Formalized the fix as v2.0.1 so clients get a cache namespace bump instead of continuing to restore stale v2.0.0 state.

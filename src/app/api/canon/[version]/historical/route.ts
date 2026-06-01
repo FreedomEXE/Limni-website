@@ -30,7 +30,7 @@ function requiredParam(params: URLSearchParams, key: string) {
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const { version } = await context.params;
-  if (version !== releaseManifest.appVersion) {
+  if (version !== releaseManifest.canonVersion) {
     return NextResponse.json({ error: `Unknown canon version: ${version}` }, { status: 404 });
   }
 

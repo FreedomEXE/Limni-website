@@ -113,8 +113,8 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
       ? canonPreload.phase === "idle" || canonPreload.phase === "checking-version"
         ? "Checking app version..."
         : canonPreload.phase === "loading-cache"
-        ? `Restoring cached app version ${canonPreload.appVersion ?? "v2"}...`
-        : `Updating to app version ${canonPreload.appVersion ?? "v2"}...`
+        ? `Restoring ${canonPreload.appVersion ?? "current version"}...`
+        : `Updating to ${canonPreload.appVersion ?? "current version"}...`
       : preload.status === "partial"
         ? "Rebuilding missing strategy data..."
         : PHASE_LABELS[displayPhase];
