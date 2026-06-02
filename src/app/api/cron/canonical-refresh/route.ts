@@ -26,6 +26,9 @@ import {
 } from "@/lib/canonicalPriceWindows";
 import { upsertCanonicalHourlyBarsForInstrument } from "@/lib/canonicalHourlyBars";
 import { loadCanonicalWeeklyReturnFromHourlyBars } from "@/lib/canonicalWeeklyReturns";
+import {
+  loadExecutionWeeklyReturnFromHourlyBars,
+} from "@/lib/executionWeeklyReturns";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import { fetchOandaDailySeries } from "@/lib/oandaPrices";
 
@@ -60,6 +63,7 @@ function instrumentCoverageKey(instrument: { symbol: string; assetClass: string 
 async function checkWeeklyReturnCoverage(
   targetWeeks: string[],
   instruments: Array<{ symbol: string; assetClass: string }>,
+  anchor: { anchorType: "canonical" | "execution"; anchorVersion: string },
 ): Promise<CoverageGap[]> {
   const expectedKeys = instruments.map(instrumentCoverageKey);
   const rows = await query<{
@@ -70,8 +74,10 @@ async function checkWeeklyReturnCoverage(
     `SELECT symbol, asset_class, period_open_utc
        FROM pair_period_returns
       WHERE period_type = 'weekly'
-        AND period_open_utc = ANY($1::timestamptz[])`,
-    [targetWeeks],
+        AND period_open_utc = ANY($1::timestamptz[])
+        AND anchor_type = $2
+        AND anchor_version = $3`,
+    [targetWeeks, anchor.anchorType, anchor.anchorVersion],
   );
 
   const actualByWeek = new Map<string, Set<string>>();
@@ -148,7 +154,8 @@ export async function GET(request: Request) {
 
   let barsUpserted = 0;
   let hourlyBarsUpserted = 0;
-  let weeklyReturnsUpserted = 0;
+  let canonicalWeeklyReturnsUpserted = 0;
+  let executionWeeklyReturnsUpserted = 0;
   const errors: string[] = [];
 
   for (const instrument of CANONICAL_INSTRUMENTS) {
@@ -263,7 +270,9 @@ export async function GET(request: Request) {
 
       // Derive finalized weekly returns from exact 1h Limni week windows.
       // Current in-progress week is intentionally excluded; live current-week
-      // returns are fetched dynamically by getWeeklyPairReturns.
+      // returns are fetched dynamically by getWeeklyPairReturns. Closed weeks
+      // need both canonical and execution-anchor rows: ADR Grid execution paths
+      // read the execution rows, while canonical views read the canonical rows.
       for (const weekOpen of weeklyTargetWeeks) {
         const weekly = await loadCanonicalWeeklyReturnFromHourlyBars({
           symbol: instrument.symbol,
@@ -316,7 +325,61 @@ export async function GET(request: Request) {
             weekly.derivationVersion,
           ],
         );
-        weeklyReturnsUpserted++;
+        canonicalWeeklyReturnsUpserted++;
+
+        const executionWeekly = await loadExecutionWeeklyReturnFromHourlyBars({
+          symbol: instrument.symbol,
+          assetClass: instrument.assetClass,
+          weekOpenUtc: weekOpen,
+        });
+        if (!executionWeekly) {
+          errors.push(`${instrument.symbol}: no complete hourly execution weekly return for ${weekOpen}`);
+          continue;
+        }
+        if (!executionWeekly.complete) {
+          errors.push(`${instrument.symbol}: incomplete hourly execution weekly return for ${weekOpen} (${executionWeekly.warnings.join(", ")})`);
+          continue;
+        }
+
+        await query(
+          `INSERT INTO pair_period_returns (
+             symbol, asset_class, period_type, period_open_utc, period_close_utc,
+             anchor_type, anchor_version, window_open_utc, window_close_utc,
+             open_price, close_price, high_price, low_price, return_pct,
+             source, derived_from_timeframe, derivation_version
+           )
+           VALUES (
+             $1, $2, 'weekly', $3::timestamptz, $4::timestamptz,
+             $5, $6, $7::timestamptz, $8::timestamptz,
+             $9, $10, $11, $12, $13,
+             'canonical_price_bars', '1h', $14
+           )
+           ON CONFLICT (symbol, asset_class, period_type, period_open_utc, anchor_type, anchor_version)
+           DO UPDATE SET
+             period_close_utc = EXCLUDED.period_close_utc,
+             window_open_utc = EXCLUDED.window_open_utc,
+             window_close_utc = EXCLUDED.window_close_utc,
+             open_price = EXCLUDED.open_price,
+             close_price = EXCLUDED.close_price,
+             high_price = EXCLUDED.high_price,
+             low_price = EXCLUDED.low_price,
+             return_pct = EXCLUDED.return_pct,
+             source = EXCLUDED.source,
+             derived_from_timeframe = EXCLUDED.derived_from_timeframe,
+             derivation_version = EXCLUDED.derivation_version,
+             updated_at = NOW()`,
+          [
+            instrument.symbol, instrument.assetClass,
+            weekOpen, executionWeekly.periodCloseUtc,
+            executionWeekly.anchorType, executionWeekly.anchorVersion,
+            executionWeekly.windowOpenUtc, executionWeekly.windowCloseUtc,
+            executionWeekly.openPrice, executionWeekly.closePrice,
+            executionWeekly.highPrice, executionWeekly.lowPrice,
+            executionWeekly.returnPct,
+            executionWeekly.derivationVersion,
+          ],
+        );
+        executionWeeklyReturnsUpserted++;
       }
     } catch (err) {
       errors.push(`${instrument.symbol}: ${(err as Error).message}`);
@@ -330,7 +393,15 @@ export async function GET(request: Request) {
   for (const path of ["/dashboard", "/performance", "/sentiment", "/flagship"]) {
     revalidatePath(path);
   }
-  const coverageGaps = await checkWeeklyReturnCoverage(weeklyTargetWeeks, activeInstruments);
+  const canonicalCoverageGaps = await checkWeeklyReturnCoverage(weeklyTargetWeeks, activeInstruments, {
+    anchorType: "canonical",
+    anchorVersion: "canonical_weekly_v2",
+  });
+  const executionCoverageGaps = await checkWeeklyReturnCoverage(weeklyTargetWeeks, activeInstruments, {
+    anchorType: "execution",
+    anchorVersion: "execution_monday_utc_v1",
+  });
+  const coverageGaps = [...canonicalCoverageGaps, ...executionCoverageGaps];
   const ok = errors.length === 0 && coverageGaps.length === 0;
 
   return NextResponse.json(
@@ -340,10 +411,13 @@ export async function GET(request: Request) {
       targetWeeks,
       barsUpserted,
       hourlyBarsUpserted,
-      weeklyReturnsUpserted,
+      weeklyReturnsUpserted: canonicalWeeklyReturnsUpserted + executionWeeklyReturnsUpserted,
+      canonicalWeeklyReturnsUpserted,
+      executionWeeklyReturnsUpserted,
       instruments: activeInstruments.length,
       includeHourly,
-      coverageGaps: coverageGaps.length > 0 ? coverageGaps : undefined,
+      canonicalCoverageGaps: canonicalCoverageGaps.length > 0 ? canonicalCoverageGaps : undefined,
+      executionCoverageGaps: executionCoverageGaps.length > 0 ? executionCoverageGaps : undefined,
       errors: errors.length > 0 ? errors : undefined,
     },
     { status: ok ? 200 : 500 },

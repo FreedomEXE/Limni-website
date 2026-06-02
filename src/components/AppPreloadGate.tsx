@@ -8,23 +8,18 @@ import {
   useCanonPreloadStatus,
 } from "@/lib/canon/canonStore";
 import {
+  startCanonKernelSync,
+  useCanonKernelStatus,
+} from "@/lib/canon/canonKernelStore";
+import {
   buildPreloadManifest,
   deriveActiveSelectionFromParams,
+  FALLBACK_DEFAULT_SELECTION,
 } from "@/lib/preload/preloadRegistry";
 import {
   startStrategySessionPreload,
   usePreloadStatus,
-  type PreloadPhase,
 } from "@/lib/performance/strategySessionStore";
-
-const PHASE_LABELS: Record<PreloadPhase, string> = {
-  "checking-updates": "Checking for updates...",
-  "loading-active": "Loading active strategy...",
-  "loading-market-data": "Loading market data...",
-  "loading-strategies": "Loading app data...",
-  "computing-live-data": "Computing live week data...",
-  ready: "Ready.",
-};
 
 function isBypassedRoute(pathname: string | null) {
   return (
@@ -34,29 +29,15 @@ function isBypassedRoute(pathname: string | null) {
   );
 }
 
-function progressLabel(preload: ReturnType<typeof usePreloadStatus>) {
-  if (preload.phase !== "loading-strategies") {
-    return null;
-  }
-
-  const total =
-    preload.queuedSelectionKeys.length +
-    preload.loadingSelectionKeys.length +
-    preload.readySelectionKeys.length +
-    Object.keys(preload.failedSelectionKeys).length;
-
-  if (total <= 0) return null;
-
-  const completed =
-    preload.readySelectionKeys.length + Object.keys(preload.failedSelectionKeys).length;
-
-  return `${completed}/${total}`;
+function isKernelRoute(pathname: string | null) {
+  return pathname?.startsWith("/performance") ?? false;
 }
 
 export default function AppPreloadGate({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const canonPreload = useCanonPreloadStatus();
+  const canonKernel = useCanonKernelStatus();
   const preload = usePreloadStatus();
   const bypassGate = isBypassedRoute(pathname);
   const strategyParam = searchParams?.get("strategy") ?? searchParams?.get("bias") ?? "";
@@ -72,20 +53,41 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
     },
     [f1Param, f2Param, strategyParam],
   );
+  const activeKernelSelection = useMemo(
+    () => activeSelection ?? (isKernelRoute(pathname) ? FALLBACK_DEFAULT_SELECTION : null),
+    [activeSelection, pathname],
+  );
+  const kernelReady = Boolean(activeKernelSelection && canonKernel.status === "ready");
+  const shouldUseLegacyCanonGate = !activeKernelSelection
+    || canonKernel.status === "degraded"
+    || canonKernel.status === "error";
+  const appHistoricalReady = canonPreload.status === "ready" || kernelReady;
+
+  useEffect(() => {
+    if (bypassGate) return;
+    if (!activeKernelSelection) return;
+    void startCanonKernelSync(activeKernelSelection);
+  }, [activeKernelSelection, bypassGate]);
 
   useEffect(() => {
     if (bypassGate) return;
     if (canonPreload.status === "ready") return;
+    if (!shouldUseLegacyCanonGate) return;
     void startCanonPreload();
-  }, [bypassGate, canonPreload.status]);
+  }, [bypassGate, canonPreload.status, shouldUseLegacyCanonGate]);
 
   useEffect(() => {
     if (bypassGate) return;
-    if (canonPreload.status !== "ready") return;
+    if (!appHistoricalReady) return;
+    if (!activeKernelSelection) return;
     if (preload.completedOnce || preload.status === "ready") return;
-    const manifest = buildPreloadManifest(activeSelection);
+    const manifest = buildPreloadManifest(activeKernelSelection);
     const run = () => {
-      void startStrategySessionPreload(manifest);
+      void startStrategySessionPreload(manifest, {
+        trustGlobalStamp: !kernelReady,
+        includeBackgroundStrategyTasks: !kernelReady,
+        useKernelPayload: kernelReady,
+      });
     };
     if (preload.status !== "partial") {
       run();
@@ -93,31 +95,41 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
     }
     const timeout = window.setTimeout(run, 5000);
     return () => window.clearTimeout(timeout);
-  }, [activeSelection, bypassGate, canonPreload.status, preload.completedOnce, preload.status]);
+  }, [
+    activeKernelSelection,
+    appHistoricalReady,
+    bypassGate,
+    kernelReady,
+    preload.completedOnce,
+    preload.status,
+  ]);
 
-  if (
-    bypassGate ||
-    (canonPreload.status === "ready" && (preload.completedOnce || preload.status === "ready"))
-  ) {
+  if (bypassGate || appHistoricalReady) {
     return <>{children}</>;
   }
 
   const canonProgress = canonPreload.total > 0
     ? `${canonPreload.completed}/${canonPreload.total}`
     : null;
-  const progress = canonPreload.status !== "ready" ? canonProgress : progressLabel(preload);
-  const displayPhase = preload.status === "idle" ? "checking-updates" : preload.phase;
-  const phaseLabel = canonPreload.status === "error"
+  const kernelProgress = activeKernelSelection && canonKernel.totalWeeks > 0
+    ? `${canonKernel.readyWeeks}/${canonKernel.totalWeeks}`
+    : null;
+  const progress = shouldUseLegacyCanonGate ? canonProgress : kernelProgress;
+  const phaseLabel = shouldUseLegacyCanonGate && canonPreload.status === "error"
     ? `App update failed: ${canonPreload.error ?? "unknown error"}`
-    : canonPreload.status !== "ready"
-      ? canonPreload.phase === "idle" || canonPreload.phase === "checking-version"
-        ? "Checking app version..."
-        : canonPreload.phase === "loading-cache"
-        ? `Restoring ${canonPreload.appVersion ?? "current version"}...`
-        : `Updating to ${canonPreload.appVersion ?? "current version"}...`
-      : preload.status === "partial"
-        ? "Rebuilding missing strategy data..."
-        : PHASE_LABELS[displayPhase];
+    : !shouldUseLegacyCanonGate && activeKernelSelection
+    ? canonKernel.phase === "fetching-closed-week-deltas"
+      ? "Updating closed weeks..."
+      : canonKernel.phase === "hydrating-local-canon"
+      ? "Restoring v2 history..."
+      : canonKernel.phase === "composing-active-history"
+      ? "Preparing performance history..."
+      : "Checking closed weeks..."
+    : canonPreload.phase === "idle" || canonPreload.phase === "checking-version"
+      ? "Checking app version..."
+      : canonPreload.phase === "loading-cache"
+      ? `Restoring ${canonPreload.appVersion ?? "current version"}...`
+      : `Updating to ${canonPreload.appVersion ?? "current version"}...`;
   const label = progress
     ? `${phaseLabel} (${progress})`
     : phaseLabel;
@@ -144,18 +156,14 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
                   0,
                   Math.min(
                     100,
-                    (canonPreload.status !== "ready"
+                    (shouldUseLegacyCanonGate
                       ? canonPreload.completed
-                      : preload.readySelectionKeys.length
-                        + Object.keys(preload.failedSelectionKeys).length)
+                      : canonKernel.readyWeeks)
                       / Math.max(
                         1,
-                        canonPreload.status !== "ready"
+                        shouldUseLegacyCanonGate
                           ? canonPreload.total
-                          : preload.queuedSelectionKeys.length
-                            + preload.loadingSelectionKeys.length
-                            + preload.readySelectionKeys.length
-                            + Object.keys(preload.failedSelectionKeys).length,
+                          : canonKernel.totalWeeks,
                       )
                       * 100,
                   ),

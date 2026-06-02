@@ -94,12 +94,15 @@ function AssetClassBadge({ assetClass }: { assetClass: AssetClass }) {
 }
 
 function titleForLevel(node: TradeListNode) {
-  if (node.level === "fill") return `Fill ${primaryRow(node)?.fillSeq ?? "--"}`;
+  if (node.level === "fill") {
+    const displayFillSeq = node.values.displayFillSeq;
+    return `Fill ${typeof displayFillSeq === "number" ? displayFillSeq : "--"}`;
+  }
   if (node.level === "trade") return primaryRow(node)?.symbol ?? node.label;
   return node.label;
 }
 
-function childSummary(node: TradeListNode) {
+function childCountSummary(node: TradeListNode) {
   const rows = rowsForNode(node);
   if (node.level === "week") {
     const count = node.children?.length ?? 0;
@@ -125,6 +128,50 @@ function childSummary(node: TradeListNode) {
     return `${fills} ${fills === 1 ? "fill" : "fills"}`;
   }
   return "";
+}
+
+function nodeLeafRows(node: TradeListNode) {
+  return rowsForNode(node).filter((row) => row.rowKind === "fill" || row.rowKind === "trade");
+}
+
+function nodeWinLoss(node: TradeListNode, viewMode: ViewMode) {
+  const unitRows = nodeLeafRows(node);
+  const values = unitRows
+    .map((row) => resolvedRowReturn(row, viewMode))
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  const wins = values.filter((value) => value > 0).length;
+  return {
+    total: values.length,
+    wins,
+    losses: values.length - wins,
+  };
+}
+
+function rowSummarySegments(node: TradeListNode, viewMode: ViewMode) {
+  const segments: ReactNode[] = [];
+  const countSummary = childCountSummary(node);
+  if (countSummary) segments.push(countSummary);
+
+  const winLoss = nodeWinLoss(node, viewMode);
+  if (winLoss.total > 0) {
+    segments.push(
+      <span key="wins" className="font-semibold text-lime-500">{winLoss.wins}W</span>,
+      <span key="losses" className="font-semibold text-rose-500">{winLoss.losses}L</span>,
+    );
+  }
+
+  const displayFillSeq = node.values.displayFillSeq;
+  const sourceFillSeq = node.values.sourceFillSeq;
+  if (
+    node.level === "fill" &&
+    typeof displayFillSeq === "number" &&
+    typeof sourceFillSeq === "number" &&
+    displayFillSeq !== sourceFillSeq
+  ) {
+    segments.push(<span key="source-seq">source #{sourceFillSeq}</span>);
+  }
+
+  return segments;
 }
 
 type BasketVisibleStats = {
@@ -373,7 +420,7 @@ function BasketNodeRow({
   const row = primaryRow(node);
   const value = node.values.returnPct;
   const warnings = rowWarnings(node);
-  const summary = childSummary(node);
+  const summarySegments = rowSummarySegments(node, viewMode);
   const isLeaf = node.level === "fill" || node.level === "trade";
   const isGrid = node.level === "grid";
   const flattenedGrid = node.level === "symbol" && node.children?.length === 1 && node.children[0]?.level === "grid"
@@ -420,11 +467,11 @@ function BasketNodeRow({
           {node.assetClass ? (
             <AssetClassBadge assetClass={node.assetClass} />
           ) : null}
-          {summary ? (
-            <span className="text-[10px] text-[color:var(--muted)]">
-              {summary}
+          {summarySegments.map((segment, index) => (
+            <span key={index} className="text-[10px] text-[color:var(--muted)]">
+              {segment}
             </span>
-          ) : null}
+          ))}
           {row?.sourceModel && isLeaf ? (
             <span className="text-[10px] text-[color:var(--muted)]">
               {row.sourceModel}

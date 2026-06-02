@@ -75,6 +75,13 @@ function sourceDisplay(sourceModel: string | null, sourceLabels: Record<string, 
   return sourceLabels[sourceModel] ?? sourceModel.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function tierDisplay(tier: string) {
+  if (tier === "1") return "Tier 1 — High Confidence";
+  if (tier === "2") return "Tier 2 — Medium Confidence";
+  if (tier === "3") return "Tier 3 — Low Confidence";
+  return `Tier ${tier}`;
+}
+
 function parentNaturalRef(row: ClosedHistoryRow) {
   return [
     "parent",
@@ -126,6 +133,23 @@ function sortEntries(
   return entries.sort(defaultCompare);
 }
 
+function tradeTime(value: string | null) {
+  const parsed = value ? Date.parse(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+}
+
+function compareTradeOrder(left: ClosedHistoryRow, right: ClosedHistoryRow) {
+  const entryDiff = tradeTime(left.entryUtc) - tradeTime(right.entryUtc);
+  if (entryDiff !== 0) return entryDiff;
+  const fillDiff = (left.fillSeq ?? Number.MAX_SAFE_INTEGER) - (right.fillSeq ?? Number.MAX_SAFE_INTEGER);
+  if (fillDiff !== 0) return fillDiff;
+  const exitDiff = tradeTime(left.exitUtc) - tradeTime(right.exitUtc);
+  if (exitDiff !== 0) return exitDiff;
+  return (left.executionTradeId ?? left.canonicalTradeId ?? "").localeCompare(
+    right.executionTradeId ?? right.canonicalTradeId ?? "",
+  );
+}
+
 function node(
   id: string,
   level: string,
@@ -174,16 +198,18 @@ export function buildBasketTradeListNodes({
 
   const buildLeaves = (leafRows: ClosedHistoryRow[], parentId: string) =>
     [...leafRows]
-      .sort((left, right) => (left.fillSeq ?? 0) - (right.fillSeq ?? 0))
-      .map((row) => node(
+      .sort(compareTradeOrder)
+      .map((row, index) => node(
         `${parentId}|${row.rowKind}|${row.canonicalTradeId ?? row.executionTradeId ?? row.fillSeq ?? "row"}`,
         row.rowKind,
-        row.rowKind === "fill" ? `Fill ${row.fillSeq ?? "--"}` : row.symbol,
+        row.rowKind === "fill" ? `Fill ${index + 1}` : row.symbol,
         [row],
         viewMode,
         {
           date: row.entryUtc,
           count: row.rowKind === "fill" ? row.exitReason ?? "Fill" : "Trade",
+          displayFillSeq: row.rowKind === "fill" ? index + 1 : null,
+          sourceFillSeq: row.fillSeq,
           row,
           parentRow: row.rowKind === "fill" && row.parentNaturalRef
             ? parentRowsByRef.get(row.parentNaturalRef)
@@ -199,7 +225,7 @@ export function buildBasketTradeListNodes({
 
     return gridRows
       .filter((row) => row.rowKind === "grid")
-      .sort((left, right) => left.symbol.localeCompare(right.symbol))
+      .sort(compareTradeOrder)
       .map((grid, index) => {
         const ref = parentNaturalRef(grid);
         const fills = fillsByParentRef.get(ref) ?? [];
@@ -247,7 +273,7 @@ export function buildBasketTradeListNodes({
       .map(([tier, rowsForTier]) => node(
         `${parentId}|tier|${tier}`,
         "tier",
-        `Tier ${tier}`,
+        tierDisplay(tier),
         rowsForTier,
         viewMode,
         {

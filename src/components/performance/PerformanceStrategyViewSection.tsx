@@ -16,6 +16,7 @@
 import { useEffect, useState, type ComponentProps } from "react";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
 import StrategyArtifactLoadingGate from "@/components/performance/StrategyArtifactLoadingGate";
+import { startCanonKernelSync } from "@/lib/canon/canonKernelStore";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
@@ -68,7 +69,7 @@ export default function PerformanceStrategyViewSection({
 }: PerformanceStrategyViewSectionProps) {
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
   const selectedSelectionKey = buildStrategySelectionKey(selectedSelection);
-  const session = useStrategySession(selectedSelection);
+  const session = useStrategySession(selectedSelection, { kernel: true });
   const payload = session.payload;
 
   useEffect(() => {
@@ -79,6 +80,10 @@ export default function PerformanceStrategyViewSection({
     if (!initialEntry) return;
     seedStrategySessionPayload(initialSelection, entryToPayload(initialEntry));
   }, [initialEntry, initialSelection]);
+
+  useEffect(() => {
+    void startCanonKernelSync(selectedSelection);
+  }, [selectedSelection]);
 
   useEffect(() => {
     const onSelectionCommit = (event: Event) => {

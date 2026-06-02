@@ -1,16 +1,16 @@
 {
   "releaseLine": "v2",
   "displayVersion": "v2",
-  "appVersion": "v2.0.1",
-  "semanticVersion": "2.0.1",
+  "appVersion": "v2.0.2",
+  "semanticVersion": "2.0.2",
   "canonVersion": "v2",
-  "cacheNamespace": "v2.0.1",
-  "preparedAt": "2026-06-01T00:56:34.632Z",
+  "cacheNamespace": "v2.0.2",
+  "preparedAt": "2026-06-01T13:51:33.950Z",
   "releasedAt": null,
   "anchorCommit": "v2",
   "previousVersion": {
-    "appVersion": "v2.0.0",
-    "semanticVersion": "2.0.0"
+    "appVersion": "v2.0.1",
+    "semanticVersion": "2.0.1"
   },
   "components": {
     "engineVersion": "strategy-artifact-v28",
@@ -103,16 +103,37 @@
     ]
   },
   "changes": [
-    "Fixed week rollover cache readiness so current-week slices no longer mask historical week data.",
-    "Patch release identity now bumps cacheNamespace to force client-side invalidation while reusing v2 canon.",
-    "Preload, badge, and Documents version history now show the exact v2.0.1 patch identity."
+    "Added the v2.0.2 kernel data architecture spec for release canon, closed-week delta, and live-week boundaries.",
+    "Added read-only canon inventory and one-week shard API contracts over existing immutable v2 canon artifacts.",
+    "Added closed-week delta shard support for post-release closed weeks without mutating immutable v2 canon artifacts.",
+    "Reserved aggregate shard metadata for future path-dependent all-time metrics without mutating v2 canon.",
+    "Added IndexedDB v2 shard stores and pure local inventory gap helpers beside the legacy monolithic bundle cache.",
+    "Added non-blocking active-variant kernel sync and a version badge kernel diagnostic line.",
+    "Added Status page kernel diagnostics for app/cache/canon identity, active shard inventory, and the closed/live boundary.",
+    "Wired kernel diagnostics to active Performance selection changes and added Status query-param inspection for selected strategy variants.",
+    "Added closed-history bundle composition from verified week shards with Basket snapshot fallback to legacy canon.",
+    "Allowed active Performance routes to open on kernel readiness while keeping legacy monolithic canon as failure fallback instead of delayed background download.",
+    "Skipped the legacy all-strategy background preload, repair, and global stamp path on kernel routes while still loading the active strategy payload explicitly.",
+    "Added an explicit active Performance strategy kernel payload endpoint over server-side strategy week shards.",
+    "Marked Matrix CFD/Crypto as provisional and outside the v2.0.2 Performance kernel readiness gate.",
+    "Aligned Performance week-strip overflow arrows and constrained the version popover with an opaque, internally scrollable release briefing list using no-store manifest reads.",
+    "Unified Basket drilldown row context across all periods, preserved current-week grid details for active full payloads including single-fill grids, and normalized per-grid fill display ordering for sparse delta sequences.",
+    "Added deterministic shard derivation tests so Phase 1 can validate per-week hashes before client cutover.",
+    "Bumped cacheNamespace to v2.0.2 for the new kernel contract surface while keeping canonVersion at v2."
   ],
   "versionHistory": [
+    {
+      "appVersion": "v2.0.2",
+      "date": "2026-06-01",
+      "type": "patch",
+      "summary": "Kernel Phase 1/3 read-only canon inventory, week/delta shard API contracts, client shard-store groundwork, active-variant runtime sync, strategy kernel payload, active-only strategy boot, and Status diagnostics.",
+      "file": "releases/v2/patches/v2.0.2.md"
+    },
     {
       "appVersion": "v2.0.1",
       "date": "2026-05-31",
       "type": "patch",
-      "summary": "Week rollover cache readiness fix + version discipline formalization.",
+      "summary": "Week rollover execution-return fix, current-week Basket alignment, and version discipline formalization.",
       "file": "releases/v2/patches/v2.0.1.md"
     },
     {

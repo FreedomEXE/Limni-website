@@ -20,6 +20,7 @@
 import type { PerformanceAssetSelection } from "@/lib/performance/performanceAssetScope";
 import { formatPerformanceAssetSelection } from "@/lib/performance/performanceAssetScope";
 import type { ClosedHistoryBundle, ClosedHistoryResponse, CurrentWeekSlice } from "@/lib/basket/basketSummaryTypes";
+import { getCanonKernelClosedHistorySnapshot } from "@/lib/canon/canonKernelStore";
 import { getCanonClosedHistorySnapshot } from "@/lib/canon/canonStore";
 
 export interface BasketDataSource {
@@ -82,7 +83,7 @@ export const apiBasketDataSource: BasketDataSource = {
 
 export const canonBasketDataSource: BasketDataSource = {
   getClosedHistorySnapshot(opts) {
-    return getCanonClosedHistorySnapshot(opts);
+    return getCanonKernelClosedHistorySnapshot(opts) ?? getCanonClosedHistorySnapshot(opts);
   },
 
   async loadClosedHistory(opts) {

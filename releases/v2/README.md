@@ -2,7 +2,7 @@
 
 v2 is the first active app-level version after the documented v1 baseline.
 
-Current patch: `v2.0.1`.
+Current patch: `v2.0.2`.
 
 ## Scope
 
@@ -11,7 +11,9 @@ Current patch: `v2.0.1`.
 - IndexedDB-backed first-load canon preload, then synchronous in-memory reads.
 - Version badge with release popover.
 - Basket rebuilt on canon using the shared `TradeList` component.
-- Matrix active flow quarantined behind a placeholder.
+- Basket drilldown row context is consistent across all-time, closed-week, and current-week views, with current-week grid detail kept live-only.
+- Kernel Phase 1/3 read-only canon inventory, week/delta shard contracts, active sync, closed-history composition, active strategy kernel payload, active Performance kernel gate, active-selection Status diagnostics, and active-only strategy boot on kernel routes.
+- Matrix active flow remains quarantined/provisional and outside the v2.0.2 kernel readiness gate.
 - Performance summary-card modal click handlers quarantined.
 
 ## Canon Freeze Policy

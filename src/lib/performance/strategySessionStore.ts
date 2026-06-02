@@ -7,8 +7,8 @@ import {
   fetchCurrentWeekStrategyClientPayload,
   fetchStrategyArtifactStatus,
   fetchStrategyClientPayload,
+  fetchStrategyKernelPayload,
   getStrategyClientPayload,
-  requestVisibleStrategyArtifactsWarm,
   setStrategyClientPayload,
   type StrategyArtifactStatusPayload,
 } from "@/lib/performance/strategyClientCache";
@@ -89,6 +89,12 @@ type StrategySessionState = {
   weeklyReturnStatusByWeek: Record<string, WeeklyReturnStatus>;
 };
 
+type StrategySessionPreloadOptions = {
+  trustGlobalStamp?: boolean;
+  includeBackgroundStrategyTasks?: boolean;
+  useKernelPayload?: boolean;
+};
+
 const listeners = new Set<() => void>();
 const strategyInflight = new Map<string, Promise<void>>();
 const currentWeekInflight = new Map<string, Promise<void>>();
@@ -98,8 +104,8 @@ let backgroundRepairInflight: Promise<void> | null = null;
 let currentWeekRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let currentWeekRefreshInterval: ReturnType<typeof setInterval> | null = null;
 const preloadedEngineVersions = new Map<string, string>();
-const PRELOAD_REPAIR_MAX_PASSES = 3;
-const PRELOAD_ARTIFACT_STATUS_TIMEOUT_MS = 30_000;
+const PRELOAD_GATE_ARTIFACT_STATUS_TIMEOUT_MS = 5_000;
+const PRELOAD_BACKGROUND_ARTIFACT_STATUS_TIMEOUT_MS = 30_000;
 
 let state: StrategySessionState = {
   activeSelectionKey: null,
@@ -313,7 +319,7 @@ export function setActiveStrategySessionSelection(selection: RuntimeStrategySele
 
 export function ensureStrategySession(
   selection: RuntimeStrategySelection,
-  options: { currentWeek?: boolean; force?: boolean; warm?: boolean } = {},
+  options: { currentWeek?: boolean; force?: boolean; warm?: boolean; kernel?: boolean } = {},
 ) {
   const loadCurrentWeek = options.currentWeek !== false;
   const key = selectionKey(selection);
@@ -336,7 +342,8 @@ export function ensureStrategySession(
     try {
       let payload = getStrategyClientPayload(selection, "full") ?? null;
       if (options.force || !payload || !hasFullPayload(payload)) {
-        payload = await fetchStrategyClientPayload(selection, "full", {
+        const fetchPayload = options.kernel ? fetchStrategyKernelPayload : fetchStrategyClientPayload;
+        payload = await fetchPayload(selection, "full", {
           force: options.force === true,
         });
       }
@@ -565,13 +572,6 @@ function repairKeysFromStatus(status: StrategyArtifactStatusPayload | null) {
   );
 }
 
-function missingWeekCountFromStatus(status: StrategyArtifactStatusPayload | null) {
-  return (status?.artifacts ?? []).reduce(
-    (total, artifact) => total + (artifact.missingWeeks?.length ?? 0),
-    0,
-  );
-}
-
 async function runBackgroundRepairs(manifest: PreloadManifest, repairKeys: Set<string>) {
   if (repairKeys.size === 0 || backgroundRepairInflight) return backgroundRepairInflight;
 
@@ -605,9 +605,15 @@ async function runBackgroundRepairs(manifest: PreloadManifest, repairKeys: Set<s
 async function runPostGatePreloadTasks(
   manifest: PreloadManifest,
   repairKeys: Set<string>,
+  options: StrategySessionPreloadOptions = {},
 ) {
   const tasks = manifest.tasks
     .filter((task) => task.id !== manifest.activeTaskId)
+    .filter((task) =>
+      options.includeBackgroundStrategyTasks === false
+        ? task.domain !== "strategy"
+        : true,
+    )
     .sort((left, right) => postGateTaskPriority(left) - postGateTaskPriority(right));
   if (tasks.length === 0) return;
 
@@ -633,7 +639,10 @@ async function runPostGatePreloadTasks(
 
       markPreloadTaskLoading(task);
       try {
-        await task.run({ force: repairKeys.has(task.id) });
+        await task.run({
+          force: repairKeys.has(task.id),
+          kernel: options.useKernelPayload === true,
+        });
         markPreloadTaskReady(task);
       } catch (error) {
         markPreloadTaskFailed(task, error);
@@ -642,45 +651,28 @@ async function runPostGatePreloadTasks(
   }));
 }
 
-async function repairMissingArtifactsBeforePreload(
-  initialStatus: StrategyArtifactStatusPayload | null,
-) {
-  let status = initialStatus;
-
-  for (let pass = 0; pass < PRELOAD_REPAIR_MAX_PASSES; pass += 1) {
-    const repairKeys = repairKeysFromStatus(status);
-    if (repairKeys.size === 0) return status;
-
-    state = {
-      ...state,
-      preload: {
-        ...state.preload,
-        phase: "loading-strategies",
-        status: "loading",
-        queuedSelectionKeys: Array.from(repairKeys),
-      },
-    };
-    emit();
-
-    const missingBefore = missingWeekCountFromStatus(status);
-    await requestVisibleStrategyArtifactsWarm({ force: true });
-    status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: PRELOAD_ARTIFACT_STATUS_TIMEOUT_MS }) ?? status;
-
-    for (const artifact of status?.artifacts ?? []) {
-      preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
-    }
-
-    if (!status || status.readyCount >= status.totalCount) return status;
-    if (missingWeekCountFromStatus(status) >= missingBefore) return status;
-  }
-
-  return status;
+function activeManifestRecordIsReady(manifest: PreloadManifest) {
+  const activeTask = manifest.tasks.find(
+    (task): task is StrategyPreloadTask =>
+      task.id === manifest.activeTaskId && isStrategyPreloadTask(task),
+  );
+  if (!activeTask) return true;
+  const record = state.records[activeTask.id];
+  return Boolean(record?.status === "ready" && hasFullPayload(record.payload));
 }
 
-export function startStrategySessionPreload(manifest: PreloadManifest) {
+export function startStrategySessionPreload(
+  manifest: PreloadManifest,
+  options: StrategySessionPreloadOptions = {},
+) {
   if (preloadInflight) return preloadInflight;
 
-  if (!state.preload.completedOnce && hasTrustedGlobalPreloadStamp()) {
+  const trustGlobalStamp = options.trustGlobalStamp !== false;
+  if (
+    trustGlobalStamp &&
+    !state.preload.completedOnce &&
+    hasTrustedGlobalPreloadStamp()
+  ) {
     state = {
       ...state,
       preload: {
@@ -691,24 +683,30 @@ export function startStrategySessionPreload(manifest: PreloadManifest) {
       },
     };
     emit();
-    void checkVersionsAndRepreload(manifest);
+    if (options.useKernelPayload !== true) {
+      void checkVersionsAndRepreload(manifest);
+    }
     return Promise.resolve();
   }
 
-  if (state.preload.completedOnce) {
-    void checkVersionsAndRepreload(manifest);
+  if (state.preload.completedOnce && (trustGlobalStamp || activeManifestRecordIsReady(manifest))) {
+    if (options.useKernelPayload !== true) {
+      void checkVersionsAndRepreload(manifest);
+    }
     return Promise.resolve();
   }
 
   resetPreloadState();
 
-  const request = runPreload(manifest);
+  const request = runPreload(manifest, options);
   preloadInflight = request;
   return request;
 }
 
 async function checkVersionsAndRepreload(manifest: PreloadManifest) {
-  const status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: PRELOAD_ARTIFACT_STATUS_TIMEOUT_MS });
+  const status = await fetchStrategyArtifactStatus(undefined, {
+    timeoutMs: PRELOAD_BACKGROUND_ARTIFACT_STATUS_TIMEOUT_MS,
+  });
   if (!status) return;
 
   const versionChanged = status.artifacts.some((artifact) => {
@@ -739,7 +737,10 @@ async function checkVersionsAndRepreload(manifest: PreloadManifest) {
   preloadInflight = runPreload(manifest);
 }
 
-async function runPreload(manifest: PreloadManifest) {
+async function runPreload(
+  manifest: PreloadManifest,
+  options: StrategySessionPreloadOptions = {},
+) {
   try {
     state = {
       ...state,
@@ -751,19 +752,24 @@ async function runPreload(manifest: PreloadManifest) {
     };
     emit();
 
-    let status = await fetchStrategyArtifactStatus(undefined, { timeoutMs: PRELOAD_ARTIFACT_STATUS_TIMEOUT_MS });
+    const activeTask = manifest.tasks.find(
+      (task): task is StrategyPreloadTask =>
+        task.id === manifest.activeTaskId && isStrategyPreloadTask(task),
+    );
+    const status = options.useKernelPayload === true
+      ? null
+      : activeTask
+      ? await fetchStrategyArtifactStatus(activeTask.id, {
+          timeoutMs: PRELOAD_GATE_ARTIFACT_STATUS_TIMEOUT_MS,
+        })
+      : null;
     if (status) {
       for (const artifact of status.artifacts) {
         preloadedEngineVersions.set(artifact.key, artifact.expectedEngineVersion);
       }
     }
-    status = await repairMissingArtifactsBeforePreload(status);
     const repairKeys = repairKeysFromStatus(status);
 
-    const activeTask = manifest.tasks.find(
-      (task): task is StrategyPreloadTask =>
-        task.id === manifest.activeTaskId && isStrategyPreloadTask(task),
-    );
     if (activeTask) {
       state = {
         ...state,
@@ -776,7 +782,10 @@ async function runPreload(manifest: PreloadManifest) {
 
       markPreloadTaskLoading(activeTask);
       try {
-        await activeTask.run({ force: repairKeys.has(activeTask.id) });
+        await activeTask.run({
+          force: repairKeys.has(activeTask.id),
+          kernel: options.useKernelPayload === true,
+        });
         markPreloadTaskReady(activeTask);
       } catch (error) {
         markPreloadTaskFailed(activeTask, error);
@@ -795,8 +804,12 @@ async function runPreload(manifest: PreloadManifest) {
       await loadCurrentWeekSession(activeTask.selection, { force: false });
     }
 
-    const finalStatus = repairKeys.size > 0
-      ? await fetchStrategyArtifactStatus(undefined, { timeoutMs: PRELOAD_ARTIFACT_STATUS_TIMEOUT_MS }) ?? status
+    const finalStatus = options.useKernelPayload === true
+      ? status
+      : repairKeys.size > 0 && activeTask
+      ? await fetchStrategyArtifactStatus(activeTask.id, {
+          timeoutMs: PRELOAD_GATE_ARTIFACT_STATUS_TIMEOUT_MS,
+        }) ?? status
       : status;
     const stillMissingKeys = repairKeysFromStatus(finalStatus);
     const failedSelectionKeys = {
@@ -818,9 +831,9 @@ async function runPreload(manifest: PreloadManifest) {
     };
     emit();
 
-    if (!activeFailed) {
+    if (!activeFailed && options.useKernelPayload !== true) {
       writeGlobalPreloadStamp();
-      void runPostGatePreloadTasks(manifest, repairKeys);
+      void runPostGatePreloadTasks(manifest, repairKeys, options);
     }
   } finally {
     preloadInflight = null;
@@ -900,7 +913,10 @@ export function ensureWeeklyReturns(weekOpenUtc: string | null) {
   return request;
 }
 
-export function useStrategySession(selection: RuntimeStrategySelection) {
+export function useStrategySession(
+  selection: RuntimeStrategySelection,
+  options: { kernel?: boolean } = {},
+) {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const key = selectionKey(selection);
   const { strategy, f1, f2 } = selection;
@@ -908,10 +924,10 @@ export function useStrategySession(selection: RuntimeStrategySelection) {
   useEffect(() => {
     const activeSelection = { strategy, f1, f2 };
     setActiveStrategySessionSelection(activeSelection);
-    void ensureStrategySession(activeSelection);
+    void ensureStrategySession(activeSelection, { kernel: options.kernel === true });
     scheduleHourlyCurrentWeekRefresh(activeSelection);
     return () => clearHourlyCurrentWeekRefresh();
-  }, [f1, f2, strategy]);
+  }, [f1, f2, options.kernel, strategy]);
 
   return snapshot.records[key] ?? emptyRecord(selection);
 }

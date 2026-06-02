@@ -267,7 +267,7 @@ export default function ScrollableWeekStrip({
             type="button"
             onClick={() => scroll("left")}
             aria-label="Scroll weeks left"
-            className="absolute left-0 z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+            className="absolute left-0 top-1/2 z-10 flex h-8 w-8 shrink-0 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M10 4L6 8L10 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -315,7 +315,7 @@ export default function ScrollableWeekStrip({
             type="button"
             onClick={() => scroll("right")}
             aria-label="Scroll weeks right"
-            className="absolute right-0 z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
+            className="absolute right-0 top-1/2 z-10 flex h-8 w-8 shrink-0 -translate-y-1/2 items-center justify-center rounded-full border border-[var(--panel-border)] bg-[var(--panel)] text-[color:var(--muted)] shadow-sm transition hover:border-[var(--accent)] hover:text-[var(--accent-strong)]"
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

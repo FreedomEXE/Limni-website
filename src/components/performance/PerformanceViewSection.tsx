@@ -20,7 +20,6 @@ import type { PerformanceView } from "@/lib/performance/pageState";
 import type { EngineGridProps, EngineSidebarStats, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
 import AnchorDisclosureLabel from "@/components/common/AnchorDisclosureLabel";
 import BasketHierarchy from "@/components/common/basket/BasketHierarchy";
-import TradeDrilldownModal from "@/components/common/trades/TradeDrilldownModal";
 import ViewModeControls from "@/components/common/ViewModeControls";
 import PerformanceGrid from "@/components/performance/PerformanceGrid";
 import PerformanceViewCards, {
@@ -44,6 +43,7 @@ import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
   ALL_PERFORMANCE_ASSET_SELECTION,
   formatPerformanceAssetSelection,
+  inferPerformanceAssetClass,
   normalizePerformanceAssetSelection,
   symbolMatchesPerformanceScope,
   type PerformanceAssetSelection,
@@ -70,7 +70,7 @@ import {
 } from "@/lib/performance/strategySelection";
 import { useViewMode } from "@/lib/viewMode/viewModeStore";
 import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
-import type { AnchorType, TradeDirection, TradeStrategyFamily } from "@/lib/trades/tradeTypes";
+import type { TradeStrategyFamily } from "@/lib/trades/tradeTypes";
 
 type GridProps = Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined" | "perAsset"> & {
   combined: ComponentProps<typeof PerformanceGrid>["combined"];
@@ -93,10 +93,43 @@ function formatPct(value: number | null): string {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
+function liveAssetClassTone(assetClass: ReturnType<typeof inferPerformanceAssetClass>) {
+  if (assetClass === "fx") return "border-sky-500/45 bg-sky-500/15 text-sky-400";
+  if (assetClass === "crypto") return "border-orange-500/45 bg-orange-500/15 text-orange-400";
+  if (assetClass === "commodities") return "border-yellow-500/45 bg-yellow-500/15 text-yellow-400";
+  if (assetClass === "indices") return "border-purple-500/45 bg-purple-500/15 text-purple-400";
+  return "border-[var(--panel-border)] text-[color:var(--muted)]";
+}
+
+function LiveAssetClassBadge({ symbol }: { symbol: string }) {
+  const assetClass = inferPerformanceAssetClass(symbol);
+  return (
+    <span className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] ${liveAssetClassTone(assetClass)}`}>
+      {assetClass}
+    </span>
+  );
+}
+
 function directionSortValue(direction: "LONG" | "SHORT" | "NEUTRAL"): number {
   if (direction === "SHORT") return 0;
   if (direction === "LONG") return 1;
   return 2;
+}
+
+function liveTradeTime(value: string | null | undefined) {
+  const parsed = value ? Date.parse(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+}
+
+function sortLiveTradeChildren<T extends { tradeDetail?: { entryTimeUtc: string | null; tradeNumber: number }; percent: number | null }>(
+  children: T[],
+) {
+  return [...children].sort((left, right) => {
+    const entryDiff = liveTradeTime(left.tradeDetail?.entryTimeUtc) - liveTradeTime(right.tradeDetail?.entryTimeUtc);
+    if (entryDiff !== 0) return entryDiff;
+    return (left.tradeDetail?.tradeNumber ?? Number.MAX_SAFE_INTEGER) -
+      (right.tradeDetail?.tradeNumber ?? Number.MAX_SAFE_INTEGER);
+  });
 }
 
 function TradeDetailRow({ detail }: { detail: { entryPrice: number; exitPrice: number | null; tpPrice: number | null; adrPct: number | null; maePct: number | null; exitReason: string | null; entryTimeUtc: string | null; tradeNumber: number } }) {
@@ -578,14 +611,6 @@ function EngineBasketView({
   isAllTime?: boolean;
 }) {
   const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
-  const [drilldown, setDrilldown] = useState<{
-    symbol: string;
-    weekOpenUtc: string;
-    strategyFamily: TradeStrategyFamily;
-    strategyVariant: string;
-    anchorType: AnchorType;
-    direction?: TradeDirection | null;
-  } | null>(null);
 
   const toggleExpand = (key: string) => {
     setExpandedPairs((prev) => {
@@ -600,17 +625,6 @@ function EngineBasketView({
   const strategyVariant = selection
     ? `${selection.strategy}-${selection.f1}-${selection.f2}`
     : "tandem-weekly_hold-none";
-
-  const openDrilldown = (trade: { pair: string; direction: "LONG" | "SHORT" | "NEUTRAL" }) => {
-    if (isAllTime || !weekOpenUtc || trade.direction === "NEUTRAL") return;
-    setDrilldown({
-      symbol: trade.pair,
-      weekOpenUtc,
-      strategyFamily,
-      strategyVariant,
-      anchorType: viewMode.anchor,
-    });
-  };
 
   const canUseHierarchy = Boolean(selection);
   const hierarchySelectedWeek = isAllTime ? "all" : weekOpenUtc ?? null;
@@ -759,21 +773,40 @@ function EngineBasketView({
   // Count total individual trades (children count as separate trades)
   const totalTradeCount = sorted.reduce((s, t) => s + (t.children?.length ?? 1), 0);
   const totalReturn = sorted.reduce((s, t) => s + (t.percent ?? 0), 0);
-  const wins = sorted.filter((t) => (t.percent ?? 0) > 0).length;
+  const tradeUnitReturns = sorted.flatMap((trade) => (
+    trade.children?.length
+      ? trade.children.map((child) => child.percent ?? 0)
+      : [trade.percent ?? 0]
+  ));
+  const wins = tradeUnitReturns.filter((value) => value > 0).length;
+  const losses = tradeUnitReturns.length - wins;
+  const slotGroups = new Map<string, typeof sorted>();
+  for (const trade of sorted) {
+    const label = trade.slotLabel || "Basket";
+    if (!slotGroups.has(label)) slotGroups.set(label, []);
+    slotGroups.get(label)!.push(trade);
+  }
+  const showSlotGroups = slotGroups.size > 1;
+  const sectionLabel = `${gridProps.combined.description}${weekOpenUtc ? ` · ${new Date(weekOpenUtc).toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  })}` : ""}`;
 
   return (
     <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--muted)]">
-            {gridProps.combined.description}
+            {sectionLabel}
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-4 text-xs">
           <div className="flex items-center gap-4">
             <span className="text-[color:var(--muted)]">{totalTradeCount} trades</span>
             <span className="text-lime-400">{wins}W</span>
-            <span className="text-red-400">{sorted.length - wins}L</span>
+            <span className="text-red-400">{losses}L</span>
             <span className={totalReturn >= 0 ? "font-bold text-lime-400" : "font-bold text-red-400"}>
               {formatPct(totalReturn)}
             </span>
@@ -787,121 +820,173 @@ function EngineBasketView({
             No trades for this period.
           </div>
         ) : (
-          sorted.map((trade, i) => {
-            const isWin = (trade.percent ?? 0) > 0;
-            const hasChildren = trade.children && trade.children.length > 0;
-            const rowKey = `${trade.pair}-${trade.direction}-${i}`;
-            const isExpanded = expandedPairs.has(rowKey);
+          [...slotGroups.entries()].map(([slotLabel, slotTrades]) => {
+            const slotReturn = slotTrades.reduce((sum, trade) => sum + (trade.percent ?? 0), 0);
+            const slotUnitReturns = slotTrades.flatMap((trade) => (
+              trade.children?.length
+                ? trade.children.map((child) => child.percent ?? 0)
+                : [trade.percent ?? 0]
+            ));
+            const slotWins = slotUnitReturns.filter((value) => value > 0).length;
+            const slotKey = `live-slot-${slotLabel}`;
+            const slotExpanded = expandedPairs.has(slotKey) || !showSlotGroups;
+            const slotTradeCount = slotTrades.reduce((sum, trade) => sum + (trade.children?.length ?? 1), 0);
 
             return (
-              <div key={rowKey}>
-                {/* Parent row */}
-                <div
-                  className="flex cursor-pointer items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2.5 hover:border-[var(--accent)]/30"
-                  onClick={() => openDrilldown(trade)}
-                  title="Open ledger drilldown"
-                >
-                  <div className="flex items-center gap-3">
-                    {hasChildren && (
-                      <button
-                        type="button"
-                        className="w-4 text-[10px] text-[color:var(--muted)] hover:text-[var(--accent-strong)]"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          toggleExpand(rowKey);
-                        }}
-                        aria-label={`${isExpanded ? "Collapse" : "Expand"} ${trade.pair} detail`}
-                      >
-                        {isExpanded ? "▾" : "▸"}
-                      </button>
-                    )}
-                    <span className="w-24 text-sm font-semibold text-[var(--foreground)]">
-                      {trade.pair}
-                    </span>
-                    <span
-                      className={`text-[11px] font-bold uppercase ${
-                        trade.direction === "LONG" ? "text-emerald-500" : "text-rose-500"
-                      }`}
-                    >
-                      {trade.direction}
-                    </span>
-                    <span className="text-[10px] text-[color:var(--muted)]">
-                      {trade.slotLabel}
-                    </span>
-                    {hasChildren && (
+              <div key={slotKey} className="space-y-1">
+                {showSlotGroups ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2.5 text-left hover:border-[var(--accent)]/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                    onClick={() => toggleExpand(slotKey)}
+                    aria-expanded={slotExpanded}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-4 text-[10px] text-[color:var(--muted)]">{slotExpanded ? "▾" : "▸"}</span>
+                      <span className="min-w-[9rem] text-sm font-semibold text-[var(--foreground)]">{slotLabel}</span>
                       <span className="text-[10px] text-[color:var(--muted)]">
-                        {trade.children!.length} trades
+                        {slotTradeCount} {slotTradeCount === 1 ? "trade" : "trades"}
                       </span>
-                    )}
-                  </div>
-                  <span
-                    className={`text-sm font-semibold ${
-                      isWin ? "text-lime-400" : (trade.percent ?? 0) < 0 ? "text-red-400" : "text-[color:var(--muted)]"
-                    }`}
-                  >
-                    {formatPct(trade.percent)}
-                  </span>
-                </div>
+                      <span className="text-[10px] text-lime-500">{slotWins}W</span>
+                      <span className="text-[10px] text-rose-500">{slotTradeCount - slotWins}L</span>
+                    </div>
+                    <span className={`text-sm font-semibold ${slotReturn > 0 ? "text-lime-400" : slotReturn < 0 ? "text-red-400" : "text-[color:var(--muted)]"}`}>
+                      {formatPct(slotReturn)}
+                    </span>
+                  </button>
+                ) : null}
 
-                {/* Trade detail for single trades */}
-                {!hasChildren && trade.tradeDetail && isExpanded && (
-                  <div className="ml-7 mt-1 rounded-lg border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-4 py-2">
-                    <TradeDetailRow detail={trade.tradeDetail} />
-                  </div>
-                )}
-
-                {/* Single trade — make it expandable too for detail */}
-                {!hasChildren && trade.tradeDetail && !isExpanded && (
-                  <div
-                    className="ml-7 mt-0.5 cursor-pointer text-[10px] text-[color:var(--muted)] hover:text-[var(--accent)]"
-                    onClick={() => toggleExpand(rowKey)}
-                  >
-                    show detail
-                  </div>
-                )}
-
-                {/* Children trades (expanded) */}
-                {hasChildren && isExpanded && (
-                  <div className="ml-7 mt-1 space-y-1">
-                    {trade.children!.map((child, ci) => {
-                      const childWin = (child.percent ?? 0) > 0;
+                {slotExpanded ? (
+                  <div className={showSlotGroups ? "ml-7 space-y-1 rounded-xl bg-[var(--accent)]/[0.035] p-2" : "space-y-1"}>
+                    {slotTrades.map((trade, index) => {
+                      const hasChildren = Boolean(trade.children?.length);
+                      const sortedChildren = hasChildren ? sortLiveTradeChildren(trade.children!) : [];
+                      const isAdrGridTrade = strategyFamily === "adr_grid";
+                      const rowKey = `${slotKey}-${trade.pair}-${trade.direction}-${index}`;
+                      const isExpanded = expandedPairs.has(rowKey);
+                      const tradeCount = sortedChildren.length || 1;
+                      const tradeUnitReturns = sortedChildren.length > 0
+                        ? sortedChildren.map((child) => child.percent ?? 0)
+                        : [trade.percent ?? 0];
+                      const tradeWins = tradeUnitReturns.filter((value) => value > 0).length;
                       return (
-                        <div key={ci} className="rounded-lg border border-[var(--panel-border)]/50 bg-[var(--panel)]/40 px-4 py-2">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] text-[color:var(--muted)]">#{child.tradeDetail?.tradeNumber ?? ci + 1}</span>
+                        <div key={rowKey} className="space-y-1">
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-between rounded-lg border border-[var(--panel-border)] bg-[var(--panel)]/70 px-4 py-2.5 text-left transition hover:border-[var(--accent)]/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                            onClick={() => toggleExpand(rowKey)}
+                            aria-expanded={isExpanded}
+                          >
+                            <div className="flex min-w-0 items-center gap-3">
+                              <span className="w-4 text-[10px] text-[color:var(--muted)]">{isExpanded ? "▾" : "▸"}</span>
+                              <span className="min-w-[7rem] truncate font-mono text-sm font-semibold text-[var(--foreground)]">
+                                {trade.pair}
+                              </span>
+                              <LiveAssetClassBadge symbol={trade.pair} />
                               <span
-                                className={`text-[10px] font-bold uppercase ${
-                                  child.direction === "LONG" ? "text-emerald-500" : "text-rose-500"
+                                className={`text-[10px] font-bold uppercase tracking-[0.08em] ${
+                                  trade.direction === "LONG" ? "text-emerald-500" : trade.direction === "SHORT" ? "text-rose-500" : "text-[color:var(--muted)]"
                                 }`}
                               >
-                                {child.direction}
+                                {trade.direction}
                               </span>
+                              {!showSlotGroups ? (
+                                <span className="text-[10px] text-[color:var(--muted)]">{trade.slotLabel}</span>
+                              ) : null}
                               <span className="text-[10px] text-[color:var(--muted)]">
-                                {child.tradeDetail?.exitReason?.toUpperCase() ?? ""}
+                                {isAdrGridTrade
+                                  ? `${tradeCount} ${tradeCount === 1 ? "fill" : "fills"}`
+                                  : "1 trade"}
                               </span>
+                              <span className="text-[10px] font-semibold text-lime-500">{tradeWins}W</span>
+                              <span className="text-[10px] font-semibold text-rose-500">{tradeUnitReturns.length - tradeWins}L</span>
                             </div>
-                            <span className={`text-xs font-semibold ${childWin ? "text-lime-400" : (child.percent ?? 0) < 0 ? "text-red-400" : "text-[color:var(--muted)]"}`}>
-                              {formatPct(child.percent)}
+                            <span className={`ml-4 shrink-0 text-sm font-semibold ${(trade.percent ?? 0) > 0 ? "text-lime-400" : (trade.percent ?? 0) < 0 ? "text-red-400" : "text-[color:var(--muted)]"}`}>
+                              {formatPct(trade.percent)}
                             </span>
-                          </div>
-                          {child.tradeDetail && <TradeDetailRow detail={child.tradeDetail} />}
+                          </button>
+
+                          {isExpanded ? (
+                            <div className="ml-7 space-y-1 rounded-xl bg-[var(--accent)]/[0.035] p-2">
+                              {!hasChildren && trade.tradeDetail && !isAdrGridTrade ? (
+                                <div className="rounded-lg border border-[var(--panel-border)]/50 bg-[var(--panel)]/50 px-4 py-2">
+                                  <TradeDetailRow detail={trade.tradeDetail} />
+                                </div>
+                              ) : null}
+                              {!hasChildren && trade.tradeDetail && isAdrGridTrade ? (
+                                <div className="rounded-lg border border-[var(--panel-border)]/50 bg-[var(--panel)]/50 px-4 py-2">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                      <span className="font-mono text-sm font-semibold text-[var(--foreground)]">
+                                        Fill 1
+                                      </span>
+                                      <span
+                                        className={`text-[10px] font-bold uppercase tracking-[0.08em] ${
+                                          trade.direction === "LONG" ? "text-emerald-500" : trade.direction === "SHORT" ? "text-rose-500" : "text-[color:var(--muted)]"
+                                        }`}
+                                      >
+                                        {trade.direction}
+                                      </span>
+                                      <span className="text-[10px] text-[color:var(--muted)]">
+                                        {trade.tradeDetail.exitReason ?? ""}
+                                      </span>
+                                      {trade.tradeDetail.tradeNumber !== 1 ? (
+                                        <span className="text-[10px] text-[color:var(--muted)]">
+                                          source #{trade.tradeDetail.tradeNumber}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <span className={`text-xs font-semibold ${(trade.percent ?? 0) > 0 ? "text-lime-400" : (trade.percent ?? 0) < 0 ? "text-red-400" : "text-[color:var(--muted)]"}`}>
+                                      {formatPct(trade.percent)}
+                                    </span>
+                                  </div>
+                                  <TradeDetailRow detail={trade.tradeDetail} />
+                                </div>
+                              ) : null}
+                              {hasChildren ? (
+                                sortedChildren.map((child, childIndex) => (
+                                  <div key={`${rowKey}-child-${childIndex}`} className="rounded-lg border border-[var(--panel-border)]/50 bg-[var(--panel)]/50 px-4 py-2">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex min-w-0 items-center gap-3">
+                                        <span className="font-mono text-sm font-semibold text-[var(--foreground)]">
+                                          Fill {childIndex + 1}
+                                        </span>
+                                        <span
+                                          className={`text-[10px] font-bold uppercase tracking-[0.08em] ${
+                                            child.direction === "LONG" ? "text-emerald-500" : child.direction === "SHORT" ? "text-rose-500" : "text-[color:var(--muted)]"
+                                          }`}
+                                        >
+                                          {child.direction}
+                                        </span>
+                                        <span className="text-[10px] text-[color:var(--muted)]">
+                                          {child.tradeDetail?.exitReason ?? ""}
+                                        </span>
+                                        {child.tradeDetail?.tradeNumber && child.tradeDetail.tradeNumber !== childIndex + 1 ? (
+                                          <span className="text-[10px] text-[color:var(--muted)]">
+                                            source #{child.tradeDetail.tradeNumber}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <span className={`text-xs font-semibold ${(child.percent ?? 0) > 0 ? "text-lime-400" : (child.percent ?? 0) < 0 ? "text-red-400" : "text-[color:var(--muted)]"}`}>
+                                        {formatPct(child.percent)}
+                                      </span>
+                                    </div>
+                                    {child.tradeDetail ? <TradeDetailRow detail={child.tradeDetail} /> : null}
+                                  </div>
+                                ))
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
                       );
                     })}
                   </div>
-                )}
+                ) : null}
               </div>
             );
           })
         )}
       </div>
-      {drilldown ? (
-        <TradeDrilldownModal
-          {...drilldown}
-          onClose={() => setDrilldown(null)}
-        />
-      ) : null}
     </section>
   );
 }

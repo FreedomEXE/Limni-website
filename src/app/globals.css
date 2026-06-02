@@ -110,3 +110,21 @@ html[data-cot-mode="sentiment_only"] [data-cot-surface="true"] {
   filter: grayscale(1);
   pointer-events: none;
 }
+
+.version-popover-scroll {
+  scrollbar-color: var(--panel-border) transparent;
+  scrollbar-width: thin;
+}
+
+.version-popover-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.version-popover-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.version-popover-scroll::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 999px;
+}

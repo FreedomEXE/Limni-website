@@ -423,6 +423,70 @@ export async function fetchStrategyClientPayload(
   return request;
 }
 
+export async function fetchStrategyKernelPayload(
+  selection: RuntimeStrategySelection,
+  scope: StrategyClientPayloadScope = "performance",
+  options: { force?: boolean } = {},
+): Promise<StrategyClientPayload | null> {
+  const cacheKey = buildSelectionKey(selection);
+  const cached = payloadCache.get(cacheKey);
+  if (!options.force && cached !== undefined && cached !== null && hasScopePayload(cached, scope)) {
+    return cached;
+  }
+
+  const inflightKey = `${cacheKey}:kernel:${scope}${options.force ? ":force" : ""}`;
+  const inflight = inflightCache.get(inflightKey);
+  if (inflight) return inflight;
+
+  const url =
+    `/api/performance/strategy-kernel-payload?strategy=${encodeURIComponent(selection.strategy)}` +
+    `&f1=${encodeURIComponent(selection.f1)}` +
+    `&f2=${encodeURIComponent(selection.f2)}` +
+    `&scope=${scope}` +
+    `${options.force ? "&repair=1" : ""}`;
+
+  const request = (async () => {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error(`Strategy kernel payload request failed (${response.status})`);
+        }
+        const data = (await response.json()) as unknown;
+        if (
+          data &&
+          typeof data === "object" &&
+          "error" in data &&
+          typeof (data as { error?: unknown }).error === "string"
+        ) {
+          throw new Error((data as { error: string }).error);
+        }
+        if (!isStrategyClientPayload(data)) {
+          throw new Error("Unexpected strategy kernel payload shape");
+        }
+        payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
+        return payloadCache.get(cacheKey) ?? data;
+      } catch (error) {
+        if (attempt === maxAttempts) {
+          console.error("[strategyClientCache] Failed to fetch strategy kernel payload:", error);
+          return null;
+        }
+        await wait(750 * attempt);
+      }
+    }
+    return null;
+  })().finally(() => {
+    inflightCache.delete(inflightKey);
+  });
+
+  inflightCache.set(inflightKey, request);
+  return request;
+}
+
 export async function fetchCurrentWeekStrategyClientPayload(
   selection: RuntimeStrategySelection,
   scope: StrategyClientPayloadScope = "performance",

@@ -12,6 +12,7 @@
 -----------------------------------------------*/
 import DashboardLayout from "@/components/DashboardLayout";
 import StatusPanel from "@/components/StatusPanel";
+import { buildCanonInventoryManifest } from "@/lib/canon/canonWeekShard.server";
 import { getAppDiagnostics } from "@/lib/diagnostics";
 import { listAssetClasses } from "@/lib/cotMarkets";
 import { readSnapshot } from "@/lib/cotStore";
@@ -23,6 +24,11 @@ import {
   readDataIntegrityAuditReport,
   type DataIntegrityAuditReport,
 } from "@/lib/performance/dataIntegrityReport";
+import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
+import {
+  strategyVariantFromRuntimeSelection,
+  type RuntimeStrategySelection,
+} from "@/lib/performance/strategySelection";
 import { readMarketSnapshot } from "@/lib/priceStore";
 import { getPriceSymbolCandidates } from "@/lib/pricePerformance";
 import { getLatestAggregatesLocked } from "@/lib/sentiment/store";
@@ -33,6 +39,8 @@ import type { Mt5AccountSnapshot } from "@/lib/mt5Store";
 import { readMt5Accounts } from "@/lib/mt5Store";
 import { readBotState } from "@/lib/botState";
 import { formatDateET, formatDateTimeET, latestIso } from "@/lib/time";
+import { releaseManifest } from "@/lib/version/releaseManifest";
+import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +59,28 @@ type FreshnessCard = {
   detail: string;
   lastUpdated: string | null;
   hint?: string;
+};
+
+type KernelDiagnostics = {
+  status: FreshnessStatus;
+  activeStrategyVariant: string;
+  appVersion: string;
+  cacheNamespace: string;
+  canonVersion: string;
+  baselineWeeks: number;
+  deltaWeeks: number;
+  totalWeeks: number;
+  latestClosedWeekOpenUtc: string | null;
+  currentWeekOpenUtc: string;
+  rowCount: number;
+  generatedAtUtc: string;
+  error: string | null;
+};
+
+type StatusPageSearchParams = Record<string, string | string[] | undefined>;
+
+type StatusPageProps = {
+  searchParams?: StatusPageSearchParams | Promise<StatusPageSearchParams>;
 };
 
 type CanonicalStatsRow = {
@@ -90,6 +120,43 @@ const botToneMap = {
   WAITING: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
   OFF: "bg-[var(--panel-border)]/40 text-[var(--foreground)]/70",
 };
+
+const DEFAULT_KERNEL_STATUS_SELECTION: RuntimeStrategySelection = {
+  strategy: "tandem",
+  f1: "adr_grid",
+  f2: "pair_fill_cap",
+};
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function hasKernelSelectionParams(params: StatusPageSearchParams) {
+  return Boolean(
+    firstParam(params.strategy)
+      ?? firstParam(params.bias)
+      ?? firstParam(params.f1)
+      ?? firstParam(params.filter)
+      ?? firstParam(params.f2),
+  );
+}
+
+function resolveKernelStatusSelection(params: StatusPageSearchParams): RuntimeStrategySelection {
+  if (!hasKernelSelectionParams(params)) {
+    return DEFAULT_KERNEL_STATUS_SELECTION;
+  }
+
+  const normalized = normalizeFilterSelection({
+    f1: firstParam(params.f1) ?? firstParam(params.filter),
+    f2: firstParam(params.f2),
+  });
+
+  return {
+    strategy: resolveStrategyId(firstParam(params.strategy) ?? firstParam(params.bias)),
+    f1: normalized.f1,
+    f2: normalized.f2,
+  };
+}
 
 function isFresh(iso: string | null | undefined, minutes = 15) {
   if (!iso) return false;
@@ -158,7 +225,8 @@ function buildWorkspaceHealthCard(options: {
   };
 }
 
-export default async function StatusPage() {
+export default async function StatusPage({ searchParams }: StatusPageProps) {
+  const resolvedSearchParams = (await Promise.resolve(searchParams)) ?? {};
   let dbError: string | null = null;
   let priceError: string | null = null;
   let sentimentError: string | null = null;
@@ -167,6 +235,7 @@ export default async function StatusPage() {
   let newsError: string | null = null;
   let myfxbookDebugError: string | null = null;
   let dataIntegrityError: string | null = null;
+  let kernelDiagnostics: KernelDiagnostics | null = null;
 
   let sentimentAggregates: SentimentAggregate[] = [];
   let accounts: Mt5AccountSnapshot[] = [];
@@ -213,6 +282,8 @@ export default async function StatusPage() {
   }> = [];
   let priceDebug: PriceDebugRow[] = [];
 
+  const kernelActiveSelection = resolveKernelStatusSelection(resolvedSearchParams);
+  const kernelActiveStrategyVariant = strategyVariantFromRuntimeSelection(kernelActiveSelection);
   const assetClasses = listAssetClasses();
   const bitgetState = await readBotState("bitget_perp_v2");
 
@@ -299,6 +370,68 @@ export default async function StatusPage() {
     dataIntegrityReport = await readDataIntegrityAuditReport();
   } catch (error) {
     dataIntegrityError = error instanceof Error ? error.message : String(error);
+  }
+
+  try {
+    const inventory = await buildCanonInventoryManifest({
+      manifest: releaseManifest,
+      currentWeekOpenUtc: getDisplayWeekOpenUtc(),
+      strategyVariants: [kernelActiveStrategyVariant],
+    });
+    const variant = inventory.variants[kernelActiveStrategyVariant];
+    if (!variant) {
+      kernelDiagnostics = {
+        status: "missing",
+        activeStrategyVariant: kernelActiveStrategyVariant,
+        appVersion: releaseManifest.appVersion,
+        cacheNamespace: releaseManifest.cacheNamespace,
+        canonVersion: releaseManifest.canonVersion,
+        baselineWeeks: 0,
+        deltaWeeks: 0,
+        totalWeeks: 0,
+        latestClosedWeekOpenUtc: null,
+        currentWeekOpenUtc: inventory.currentWeekOpenUtc,
+        rowCount: 0,
+        generatedAtUtc: inventory.generatedAtUtc,
+        error: "Kernel inventory did not include the active Performance variant.",
+      };
+    } else {
+      const rowCount = [...variant.baselineWeeks, ...variant.deltaWeeks].reduce(
+        (sum, week) => sum + week.rowCounts.rows,
+        0,
+      );
+      kernelDiagnostics = {
+        status: variant.deltaWeeks.length > 0 ? "fresh" : "provisional",
+        activeStrategyVariant: kernelActiveStrategyVariant,
+        appVersion: releaseManifest.appVersion,
+        cacheNamespace: releaseManifest.cacheNamespace,
+        canonVersion: releaseManifest.canonVersion,
+        baselineWeeks: variant.baselineWeeks.length,
+        deltaWeeks: variant.deltaWeeks.length,
+        totalWeeks: variant.baselineWeeks.length + variant.deltaWeeks.length,
+        latestClosedWeekOpenUtc: variant.latestClosedWeekOpenUtc,
+        currentWeekOpenUtc: inventory.currentWeekOpenUtc,
+        rowCount,
+        generatedAtUtc: inventory.generatedAtUtc,
+        error: null,
+      };
+    }
+  } catch (error) {
+    kernelDiagnostics = {
+      status: "missing",
+      activeStrategyVariant: kernelActiveStrategyVariant,
+      appVersion: releaseManifest.appVersion,
+      cacheNamespace: releaseManifest.cacheNamespace,
+      canonVersion: releaseManifest.canonVersion,
+      baselineWeeks: 0,
+      deltaWeeks: 0,
+      totalWeeks: 0,
+      latestClosedWeekOpenUtc: null,
+      currentWeekOpenUtc: getDisplayWeekOpenUtc(),
+      rowCount: 0,
+      generatedAtUtc: new Date().toISOString(),
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 
   try {
@@ -411,6 +544,7 @@ export default async function StatusPage() {
     latestCanonicalBars,
     latestPairReturns,
     dataIntegrityReport?.generatedUtc ?? null,
+    kernelDiagnostics?.generatedAtUtc ?? null,
     latestNewsSnapshot?.fetched_at ?? null,
   ]);
 
@@ -543,6 +677,32 @@ export default async function StatusPage() {
     };
   }
 
+  const kernelCards: FreshnessCard[] = kernelDiagnostics
+    ? [
+        buildWorkspaceHealthCard({
+          name: "Kernel Version",
+          status: kernelDiagnostics.error ? "missing" : "fresh",
+          detail: `${kernelDiagnostics.appVersion} / cache ${kernelDiagnostics.cacheNamespace} / canon ${kernelDiagnostics.canonVersion}.`,
+          lastUpdated: kernelDiagnostics.generatedAtUtc,
+          hint: kernelDiagnostics.error ?? "Patch cache changes do not re-download unchanged v2 canon shards.",
+        }),
+        buildWorkspaceHealthCard({
+          name: "Active Shard Inventory",
+          status: kernelDiagnostics.status,
+          detail: `${kernelDiagnostics.totalWeeks} closed week shard(s): ${kernelDiagnostics.baselineWeeks} release + ${kernelDiagnostics.deltaWeeks} delta.`,
+          lastUpdated: kernelDiagnostics.generatedAtUtc,
+          hint: `${kernelDiagnostics.activeStrategyVariant}; ${kernelDiagnostics.rowCount.toLocaleString()} closed-history rows.`,
+        }),
+        buildWorkspaceHealthCard({
+          name: "Closed / Live Boundary",
+          status: kernelDiagnostics.error ? "missing" : "fresh",
+          detail: `Latest closed ${kernelDiagnostics.latestClosedWeekOpenUtc ? formatDateET(kernelDiagnostics.latestClosedWeekOpenUtc) : "none"}; live week ${formatDateET(kernelDiagnostics.currentWeekOpenUtc)}.`,
+          lastUpdated: kernelDiagnostics.generatedAtUtc,
+          hint: "Current/open week remains live-only and never satisfies historical readiness.",
+        }),
+      ]
+    : [];
+
   const liveFeedCards: FreshnessCard[] = [
     buildFreshnessCard({
       name: "COT Snapshots",
@@ -588,44 +748,23 @@ export default async function StatusPage() {
     }),
   ];
 
-  const nonCryptoAssetCount = assetClasses.filter((asset) => asset.id !== "crypto").length;
-  const cotFreshCount = cotSnapshotsByAsset.filter((asset) => isFresh(asset.lastRefreshUtc, 60 * 24 * 7)).length;
-  const priceFreshCount = priceSnapshots.filter((asset) => isFresh(asset.lastRefreshUtc, 60 * 24)).length;
-  const cfdSourceHealthy =
-    cotFreshCount >= Math.max(1, nonCryptoAssetCount - 1) &&
-    priceFreshCount >= Math.max(1, nonCryptoAssetCount - 1) &&
-    sentimentAggregates.length > 0;
-  const cryptoSourcesHealthy =
-    isFresh(
-      cotSnapshotsByAsset.find((asset) => asset.assetId === "crypto")?.lastRefreshUtc ?? null,
-      60 * 24 * 7,
-    ) &&
-    isFresh(
-      priceSnapshots.find((asset) => asset.assetId === "crypto")?.lastRefreshUtc ?? null,
-      60 * 24,
-    );
-
   const workspaceCards: FreshnessCard[] = [
     buildWorkspaceHealthCard({
       name: "Matrix CFD",
-      status: cfdSourceHealthy ? "fresh" : "stale",
-      detail: cfdSourceHealthy
-        ? "Live CFD matrix inputs are available."
-        : "One or more CFD live inputs are stale.",
+      status: "provisional",
+      detail: "Matrix is intentionally outside the v2.0.2 kernel gate.",
       lastUpdated: latestIso([latestCotRefresh, latestPriceSnapshotRefresh, latestSentimentTimestamp]),
-      hint: cfdSourceHealthy ? undefined : "Check COT, live prices, and sentiment refresh jobs.",
+      hint: "Treat Matrix as degraded until the Performance data kernel and indicator verification are complete.",
     }),
     buildWorkspaceHealthCard({
       name: "Matrix Crypto",
-      status: cryptoSourcesHealthy ? "fresh" : "stale",
-      detail: cryptoSourcesHealthy
-        ? "Crypto matrix inputs are available."
-        : "Crypto COT or price snapshot inputs are stale.",
+      status: "provisional",
+      detail: "Crypto Matrix is intentionally outside the v2.0.2 kernel gate.",
       lastUpdated: latestIso([
         cotSnapshotsByAsset.find((asset) => asset.assetId === "crypto")?.lastRefreshUtc ?? null,
         priceSnapshots.find((asset) => asset.assetId === "crypto")?.lastRefreshUtc ?? null,
       ]),
-      hint: cryptoSourcesHealthy ? undefined : "Refresh crypto COT and price snapshots.",
+      hint: "Do not use Matrix readiness to judge v2.0.2 Performance kernel readiness.",
     }),
     buildWorkspaceHealthCard({
       name: "Swing Board",
@@ -676,6 +815,20 @@ export default async function StatusPage() {
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {canonicalCards.map((card) => (
+              <FreshnessStatusCard key={card.name} card={card} />
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Kernel Data Layer</h2>
+            <p className="text-sm text-[color:var(--muted)]">
+              Versioned release canon, closed-week delta, and live-week boundary for active Performance verification.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {kernelCards.map((card) => (
               <FreshnessStatusCard key={card.name} card={card} />
             ))}
           </div>

@@ -19,7 +19,7 @@ type BasePreloadTask = {
   id: string;
   domain: PreloadDomain;
   priority: "active" | "background";
-  run: (options?: { force?: boolean }) => Promise<void>;
+  run: (options?: { force?: boolean; kernel?: boolean }) => Promise<void>;
 };
 
 export type StrategyPreloadTask = BasePreloadTask & {
@@ -84,6 +84,7 @@ export function buildPreloadManifest(
       run: (options) => ensureStrategySession(runtimeSelection, {
         currentWeek: false,
         force: options?.force === true,
+        kernel: options?.kernel === true,
       }),
     };
   });
@@ -97,6 +98,7 @@ export function buildPreloadManifest(
       run: (options) => ensureStrategySession(active, {
         currentWeek: false,
         force: options?.force === true,
+        kernel: options?.kernel === true,
       }),
     });
   }

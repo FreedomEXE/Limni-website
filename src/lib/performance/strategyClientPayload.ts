@@ -84,19 +84,21 @@ export function toCurrentWeekStrategyClientPayload(
 ): StrategyClientPayload {
   const currentWeek = data.currentWeekOpenUtc;
   const weekOptions = Array.from(new Set(["all", currentWeek, ...data.weekOptions]));
+  const currentWeekGrid = data.weekMap?.[currentWeek];
+  const currentWeekResult = data.weekResults?.[currentWeek];
   return {
     engineWeekMap:
-      scope === "matrix" || !data.weekMap?.[currentWeek]
+      scope === "matrix" || !currentWeekGrid
         ? null
-        : { [currentWeek]: stripGridProps(data.weekMap[currentWeek]) },
+        : { [currentWeek]: scope === "full" ? currentWeekGrid : stripGridProps(currentWeekGrid) },
     engineSimMap:
       scope === "matrix" || !data.simMap?.[currentWeek]
         ? null
         : { [currentWeek]: data.simMap[currentWeek] },
     engineWeekResults:
-      scope === "performance" || !data.weekResults?.[currentWeek]
+      scope === "performance" || !currentWeekResult
         ? null
-        : { [currentWeek]: stripWeekResult(data.weekResults[currentWeek]) },
+        : { [currentWeek]: scope === "full" ? currentWeekResult : stripWeekResult(currentWeekResult) },
     sidebarStats: data.sidebarStats ?? null,
     weekOptions,
     currentWeekOpenUtc: currentWeek,

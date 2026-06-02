@@ -64,6 +64,10 @@ export function buildStrategySelectionKey(selection: {
   return `${strategyId}:${selection.f1}:${selection.f2}`;
 }
 
+export function strategyVariantFromRuntimeSelection(selection: RuntimeStrategySelection) {
+  return `${selection.strategy}-${selection.f1}-${selection.f2}`;
+}
+
 export function toRuntimeStrategySelection(selection: StrategyBootstrapSelection): RuntimeStrategySelection {
   return {
     strategy: selection.strategyId,
