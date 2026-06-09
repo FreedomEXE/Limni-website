@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatDateTimeET } from "@/lib/time";
 import type { Direction } from "@/lib/cotTypes";
 import type { AssetClass } from "@/lib/cotMarkets";
@@ -41,6 +41,7 @@ import {
 import type { MarketIntelligencePayload } from "@/lib/dashboard/marketIntelligencePayload";
 import {
   clearMarketIntelligenceRefresh,
+  fetchAndSeedMarketIntelligence,
   scheduleMarketIntelligenceRefresh,
   seedMarketIntelligence,
   useMarketIntelligence,
@@ -107,7 +108,8 @@ export type DashboardStrengthPayload = {
 type DashboardViewSectionProps = {
   assetOptions: AssetOption[];
   selectedAsset: string;
-  reportOptions: Array<{ value: string; label: string }>;
+  reportOptions: MarketIntelligencePayload["reportOptions"];
+  activeBaseline: MarketIntelligencePayload["activeBaseline"];
   initialReport: string;
   initialAsset?: string;
   initialBias: DashboardBias;
@@ -240,11 +242,31 @@ function projectMarketIntelligencePayload(
   };
 }
 
+function selectedSourceProvenance(
+  provenance: WeekSnapshotProvenance | null,
+  bias: DashboardBias,
+) {
+  if (!provenance) return null;
+  if (bias === "sentiment") return provenance.sentiment;
+  if (bias === "strength") return provenance.strength;
+  return provenance.cot;
+}
+
+function hasLoadedEveryReport(payload: MarketIntelligencePayload) {
+  return payload.reportOptions.every((option) => (
+    Boolean(payload.cotDataByReport[option.value])
+      && Boolean(payload.sentimentDataByReport[option.value])
+      && Boolean(payload.strengthDataByReport[option.value])
+  ));
+}
+
 export default function DashboardViewSection(props: DashboardViewSectionProps) {
   const store = useMarketIntelligence();
+  const requestedAllReportsRef = useRef(false);
   const initialPayload = useMemo<MarketIntelligencePayload>(() => ({
     assetOptions: props.assetOptions,
     reportOptions: props.reportOptions,
+    activeBaseline: props.activeBaseline,
     selectedAsset: props.selectedAsset,
     currentWeekOpenUtc: props.currentWeekOpenUtc,
     cotDataByReport: props.cotDataByReport,
@@ -265,6 +287,7 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
   );
   const assetOptions = projectedPayload.assetOptions;
   const reportOptions = projectedPayload.reportOptions;
+  const activeBaseline = projectedPayload.activeBaseline;
   const currentWeekOpenUtc = projectedPayload.currentWeekOpenUtc;
   const cotDataByReport = projectedPayload.cotDataByReport;
   const sentimentDataByReport = projectedPayload.sentimentDataByReport;
@@ -273,6 +296,7 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
   const provenanceByReport = projectedPayload.provenanceByReport;
   const defaultReport = initialReport || projectedPayload.reportOptions[0]?.value || "";
   const [selectedReport, setSelectedReport] = useState(defaultReport);
+  const [displayReport, setDisplayReport] = useState(defaultReport);
   const [selectedBias, setSelectedBias] = useState<DashboardBias>(initialBias);
   const [selectedView, setSelectedView] = useState<"heatmap" | "list">(initialView);
 
@@ -281,12 +305,27 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
   }, [initialPayload]);
 
   useEffect(() => {
-    scheduleMarketIntelligenceRefresh("all");
-    return () => clearMarketIntelligenceRefresh();
-  }, []);
+    if (requestedAllReportsRef.current || hasLoadedEveryReport(basePayload)) {
+      return;
+    }
+    requestedAllReportsRef.current = true;
+    void fetchAndSeedMarketIntelligence("all", null, { includeAllReports: true });
+  }, [basePayload]);
 
   useEffect(() => {
-    setSelectedReport(initialReport || reportOptions[0]?.value || "");
+    scheduleMarketIntelligenceRefresh("all", selectedReport);
+    return () => clearMarketIntelligenceRefresh();
+  }, [selectedReport]);
+
+  useEffect(() => {
+    const fallbackReport = initialReport || reportOptions[0]?.value || "";
+    setSelectedReport((currentReport) => {
+      if (!currentReport) return fallbackReport;
+      if (reportOptions.some((option) => option.value === currentReport)) {
+        return currentReport;
+      }
+      return fallbackReport;
+    });
   }, [initialReport, reportOptions]);
 
   useEffect(() => {
@@ -331,22 +370,68 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
     );
   }, [selectedBias]);
 
+  const selectedReportLoaded = Boolean(
+    cotDataByReport[selectedReport]
+      && sentimentDataByReport[selectedReport]
+      && strengthDataByReport[selectedReport],
+  );
+  const displayReportLoaded = Boolean(
+    cotDataByReport[displayReport]
+      && sentimentDataByReport[displayReport]
+      && strengthDataByReport[displayReport],
+  );
+
+  useEffect(() => {
+    if (selectedReportLoaded) {
+      setDisplayReport(selectedReport);
+      return;
+    }
+    if (!displayReportLoaded) {
+      const firstLoadedReport = reportOptions.find((option) => (
+        Boolean(cotDataByReport[option.value])
+          && Boolean(sentimentDataByReport[option.value])
+          && Boolean(strengthDataByReport[option.value])
+      ))?.value;
+      if (firstLoadedReport) {
+        setDisplayReport(firstLoadedReport);
+      }
+    }
+  }, [
+    cotDataByReport,
+    displayReportLoaded,
+    reportOptions,
+    selectedReport,
+    selectedReportLoaded,
+    sentimentDataByReport,
+    strengthDataByReport,
+  ]);
+
+  const activeReport = selectedReportLoaded ? selectedReport : displayReport;
+  const isReportSwitchPending = Boolean(selectedReport && activeReport !== selectedReport);
+
   const cotPayload = useMemo(() => {
     if (selectedBias === "sentiment" || selectedBias === "strength") {
       return null;
     }
-    return cotDataByReport[selectedReport]?.[selectedBias] ?? null;
-  }, [cotDataByReport, selectedBias, selectedReport]);
+    return cotDataByReport[activeReport]?.[selectedBias] ?? null;
+  }, [activeReport, cotDataByReport, selectedBias]);
 
   const sentimentPayload = useMemo(
-    () => sentimentDataByReport[selectedReport] ?? null,
-    [selectedReport, sentimentDataByReport],
+    () => sentimentDataByReport[activeReport] ?? null,
+    [activeReport, sentimentDataByReport],
   );
 
   const strengthPayload = useMemo(
-    () => strengthDataByReport[selectedReport] ?? null,
-    [selectedReport, strengthDataByReport],
+    () => strengthDataByReport[activeReport] ?? null,
+    [activeReport, strengthDataByReport],
   );
+
+  useEffect(() => {
+    if (!selectedReport || selectedReportLoaded) {
+      return;
+    }
+    void fetchAndSeedMarketIntelligence("all", selectedReport);
+  }, [selectedReport, selectedReportLoaded]);
 
   const headerTitle = selectedBias === "commercial"
     ? "Commercial"
@@ -356,16 +441,25 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
         ? "Strength"
       : "Dealer";
 
-  const provenance = provenanceByReport?.[selectedReport] ?? null;
+  const provenance = provenanceByReport?.[activeReport] ?? null;
+  const isLiveReport = activeReport === reportOptions[0]?.value;
+  const myfxbookPositioningForSelectedReport = isLiveReport ? myfxbookPositioningBySymbol : {};
   const headerRefreshLabel = useMemo(() => {
     if (provenance) {
-      const snapshotUtc =
-        selectedBias === "sentiment"
-          ? provenance.sentiment.snapshotUtc
-          : selectedBias === "strength"
-            ? provenance.strength.snapshotUtc
-            : provenance.cot.snapshotUtc;
-      return snapshotUtc ? `Snapshot ${formatDateTimeET(snapshotUtc)}` : "No snapshot yet";
+      const source = selectedSourceProvenance(provenance, selectedBias);
+      if (source?.status === "invalid_future") {
+        return "Snapshot invalid: future source timestamp";
+      }
+      if (source?.snapshotUtc) {
+        const suffix =
+          source.status === "legacy_fallback" && (selectedBias === "sentiment" || selectedBias === "strength")
+            ? " (legacy fallback)"
+            : "";
+        return `Snapshot ${formatDateTimeET(source.snapshotUtc)}${suffix}`;
+      }
+      return source?.status === "missing"
+        ? "No valid snapshot"
+        : "No snapshot yet";
     }
 
     const fallback = selectedBias === "sentiment"
@@ -373,7 +467,7 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
       : selectedBias === "strength"
         ? strengthPayload?.latestSnapshotUtc ?? null
       : cotPayload?.combinedRefresh ?? null;
-    return fallback ? `Last refresh ${formatDateTimeET(fallback)}` : "No refresh yet";
+    return fallback ? `Snapshot ${formatDateTimeET(fallback)}` : "No snapshot yet";
   }, [cotPayload?.combinedRefresh, provenance, selectedBias, sentimentPayload?.latestAggregateTimestamp, strengthPayload?.latestSnapshotUtc]);
 
   const pairRows =
@@ -399,85 +493,6 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
     .filter((row) => row.direction === "SHORT")
     .map((row) => ({ label: row.symbol, value: row.tier === "F" ? `Tier ${row.tier} · ${row.tierFSubStep ?? "forced"}` : `Tier ${row.tier}` }));
   const sentimentNeutralDetails: Array<{ label: string; value: string }> = [];
-  const pricedPairCount = pairRows.filter((row) => row.performance !== null).length;
-  const sentimentProviders = Array.from(
-    new Set(sentimentAggregates.flatMap((aggregate) => aggregate.sources_used)),
-  ).sort();
-  const sourceDiagnostics =
-    selectedBias === "sentiment"
-      ? [
-          {
-            label: "Resolver Rows",
-            value: String(sentimentResolvedRows.length),
-          },
-          {
-            label: "Aggregates",
-            value: String(sentimentAggregates.length),
-          },
-          {
-            label: "Providers",
-            value: sentimentProviders.length > 0 ? sentimentProviders.join(", ") : "None",
-          },
-          {
-            label: "Snapshot Source",
-            value: provenance?.sentiment.source ?? "sentiment_aggregates",
-          },
-          {
-            label: "Snapshot",
-            value: provenance?.sentiment.snapshotUtc
-              ? formatDateTimeET(provenance.sentiment.snapshotUtc)
-              : "No snapshot",
-          },
-        ]
-      : selectedBias === "strength"
-        ? [
-            {
-              label: "Canonical Rows",
-              value: String(pairRows.length),
-            },
-            {
-              label: "Price Coverage",
-              value: `${pricedPairCount}/${strengthPayload?.totalPairsCount ?? 0}`,
-            },
-            {
-              label: "Missing Prices",
-              value: String(strengthPayload?.missingPairs.length ?? 0),
-            },
-            {
-              label: "Snapshot Source",
-              value: provenance?.strength.source ?? "strength_weekly_snapshots",
-            },
-            {
-              label: "Snapshot",
-              value: provenance?.strength.snapshotUtc
-                ? formatDateTimeET(provenance.strength.snapshotUtc)
-                : "No snapshot",
-            },
-          ]
-        : [
-            {
-              label: "COT Report",
-              value: selectedReport || "No report",
-            },
-            {
-              label: "Price Coverage",
-              value: `${pricedPairCount}/${cotPayload?.totalPairsCount ?? 0}`,
-            },
-            {
-              label: "Missing Prices",
-              value: String(cotPayload?.missingPairs.length ?? 0),
-            },
-            {
-              label: "Snapshot Source",
-              value: provenance?.cot.source ?? "cot_snapshots",
-            },
-            {
-              label: "Snapshot",
-              value: provenance?.cot.snapshotUtc
-                ? formatDateTimeET(provenance.cot.snapshotUtc)
-                : "No snapshot",
-            },
-          ];
 
   return (
     <div className="space-y-8">
@@ -612,22 +627,6 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
         </div>
       )}
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        {sourceDiagnostics.map((item) => (
-          <div
-            key={item.label}
-            className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)] p-4 shadow-sm"
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]">
-              {item.label}
-            </p>
-            <p className="mt-2 break-words text-sm font-semibold text-[var(--foreground)]">
-              {item.value}
-            </p>
-          </div>
-        ))}
-      </section>
-
       <section
         data-cot-surface={selectedBias === "sentiment" ? undefined : "true"}
         className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
@@ -636,6 +635,7 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
           <DashboardFilters
             assetOptions={assetOptions}
             reportOptions={reportOptions}
+            activeBaseline={activeBaseline}
             selectedAsset={selectedAsset}
             selectedReport={selectedReport}
             selectedBias={selectedBias}
@@ -656,13 +656,21 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
         </div>
 
         <div className="mt-6">
+          {isReportSwitchPending ? (
+            <div
+              className="mb-4 rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--muted)]"
+              data-testid="data-report-loading-preserved-view"
+            >
+              Loading selected week while preserving the last ready view.
+            </div>
+          ) : null}
           {selectedBias === "sentiment" ? (
             <SentimentHeatmap
               aggregates={sentimentAggregates}
               resolvedRows={sentimentResolvedRows}
               view={selectedView}
               performanceByPair={sentimentPayload?.performanceByPair ?? {}}
-              myfxbookPositioningBySymbol={myfxbookPositioningBySymbol}
+              myfxbookPositioningBySymbol={myfxbookPositioningForSelectedReport}
             />
           ) : (
             <PairHeatmap

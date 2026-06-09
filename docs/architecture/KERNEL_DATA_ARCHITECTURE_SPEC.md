@@ -1,5 +1,9 @@
 # Kernel Data Architecture Spec
 
+> Historical implementation evidence. This document is superseded as the top-level architecture authority by `docs/architecture/APP_TRUTH_ARCHITECTURE_V1_SPEC_2026-06-08.md` and the current index `docs/architecture/APP_TRUTH_ARCHITECTURE_INDEX.md`.
+>
+> Keep using this file to understand existing kernel/shard implementation intent. Do not use it to authorize new app truth, cache, route readiness, or preload behavior by itself.
+
 > Design foundation for the Limni v2.x loading, cache, and version kernel. It does not authorize release-canon mutation, pushing, or tagging.
 
 ## Implementation Status

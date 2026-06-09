@@ -1,0 +1,19 @@
+{
+  "route": "/dashboard",
+  "status": 200,
+  "url": "http://127.0.0.1:3001/dashboard?asset=all&report=2026-06-02&bias=dealer&view=heatmap",
+  "title": "Limni Labs",
+  "checks": {
+    "hasJune8": true,
+    "hasJune1": true,
+    "hasClean14": false,
+    "hasSeedBaseline": true,
+    "hasActiveBaselineReady": false,
+    "hasWeeklyLifecycleReady": false,
+    "hasSourceFreezeCron": false,
+    "hasActiveCertificationCron": false,
+    "hasFreezeLedgerReady": true
+  },
+  "bodyLength": 2303,
+  "bodyPreview": "LIMNI LABS\nNAVIGATION\nL\nPerformance\nI\nData\nM\nAccounts\nN\nAutomation\nI\nResearch Lab\nL\nDocuments\nA\nAgents\nB\nNews\nS\nStatus\nDARK MODE\nSign Out\nDealer\nSNAPSHOT JUN 05, 2026, 3:40 PM ET\nANCHOR\nExecution\nMarket truth\nMETRIC\nADR-norm\nRaw %\n\nPAIRS TRACKED\n\n36\n\nLONG SIGNALS\n\n24\n\nSHORT SIGNALS\n\n12\n\nNEUTRAL/IGNORED\n\n0\n\nFLIPS\n\n3\n\nBIAS\nDEALER\nCOMMERCIAL\nSENTIMENT\nSTRENGTH\n\nACTIVE BASELINE V2.0.3-INSTITUTIONAL-SEED | 15 WEEKS | ARCHIVE SEPARATE\n\nTRADING WEEK\nJUN 08 2026\nJUN 01 2026\nMAY 25 2026\nMAY 18 2026\nMAY 11 2026\nMAY 04 2026\nAPR 27 2026\nAPR 20 2026\nAPR 13 2026\nAPR 06 2026\nMAR 30 2026\nMAR 23 2026\nMAR 16 2026\nMAR 09 2026\nMAR 02 2026\nFEB 23 2026\n\nTRADING WEEK JUN 08 2026 | FRIDAY FREEZE JUN 05 2026 5:00 PM EDT | COT REPORT JUN 02 2026 | FREEZE LEDGER READY\n\nASSET CLASS\nALL\nFX\nIndices\nCrypto\nCommodities\nheatmap\nlist\nBias Heatmap\n\nCOT positioning bias across pairs\n\nSHOW NEUTRAL PAIRS\nAUDCAD\n\nAUDCAD\n\nLONG\n\nFX\n\n-0.08%\n\nAUDCHF\n\nAUDCHF\n\nLONG\n\nFX\n\n+0.04%\n\nAUDJPY\n\nAUDJPY\n\nLONG\n\nFX\n\n-0.13%\n\nAUDNZD\n\nAUDNZD\n\nLONG\n\nFX\n\n-0.57%\n\nAUDUSD\n\nAUDUSD\n\nSHORT\n\nFX\n\n-0.14%\n\nBTCUSD\n\nBTCUSD\n\nSHORT\n\nCrypto\n\n-2.43%\n\nCADCHF\n\nCADCHF\n\nSHORT\n\nFX\n\n+0.12%\n\nCADJPY\n\nCADJPY\n\nLONG\n\nFX\n\n-0.03%\n\nCHFJPY\n\nCHFJPY\n\nLONG\n\nFX\n\n-0.15%\n\nETHUSD\n\nETHUSD\n\nSHORT\n\nCrypto\n\n-2.26%\n\nEURAUD\n\nEURAUD\n\nLONG\n\nFX\n\n+0.38%\n\nEURCAD\n\nEURCAD\n\nLONG\n\nFX\n\n+0.29%\n\nEURCHF\n\nEURCHF\n\nLONG\n\nFX\n\n+0.41%\n\nEURGBP\n\nEURGBP\n\nLONG\n\nFX\n\n-0.16%\n\nEURJPY\n\nEURJPY\n\nLONG\n\nFX\n\n+0.26%\n\nEURNZD\n\nEURNZD\n\nLONG\n\nFX\n\n-0.20%\n\nEURUSD\n\nEURUSD\n\nSHORT\n\nFX\n\n+0.24%\n\nGBPAUD\n\nGBPAUD\n\nSHORT\n\nFX\n\n+0.53%\n\nGBPCAD\n\nGBPCAD\n\nLONG\n\nFX\n\n+0.45%\n\nGBPCHF\n\nGBPCHF\n\nSHORT\n\nFX\n\n+0.57%\n\nGBPJPY\n\nGBPJPY\n\nLONG\n\nFX\n\n+0.41%\n\nGBPNZD\n\nGBPNZD\n\nLONG\n\nFX\n\n-0.04%\n\nGBPUSD\n\nGBPUSD\n\nSHORT\n\nFX\n\n+0.40%\n\nNDXUSD\n\nNDXUSD\n\nLONG\n\nIndices\n\n-0.04%\n\nNIKKEIUSD\n\nNIKKEIUSD\n\nSHORT\n\nIndices\n\n+1.29%\n\nNZDCAD\n\nNZDCAD\n\nSHORT\n\nFX\n\n+0.49%\n\nNZDCHF\n\nNZDCHF\n\nSHORT\n\nFX\n\n+0.61%\n\nNZDJPY\n\nNZDJPY\n\nLONG\n\nFX\n\n+0.45%\n\nNZDUSD\n\nNZDUSD\n\nSHORT\n\nFX\n\n+0.44%\n\nSPXUSD\n\nSPXUSD\n\nLONG\n\nIndices\n\n-0.12%\n\nUSDCAD\n\nUSDCAD\n\nLONG\n\nFX\n\n+0.05%\n\nUSDCHF\n\nUSDCHF\n\nLONG\n\nFX\n\n+0.17%\n\nUSDJPY\n\nUSDJPY\n\nLONG\n\nFX\n\n+0.02%\n\nWTIUSD\n\nWTIUSD\n\nLONG\n\nCommodities\n\n-5.27%\n\nXAGUSD\n\nXAGUSD\n\nLONG\n\nCommodities\n\n-3.73%\n\nXAUUSD\n\nXAUUSD\n\nLONG\n\nCommodities\n\n-1.71%\n\nASSET BIAS STRIP\nWTI CRUDE\nSILVER\nGOLD\nBITCOIN\nETHER\nAUD\nCAD\nCHF\nEUR\nGBP\nJPY\nNZD\nUSD\nNASDAQ 100\nNIKKEI 225\nS&P 500\nV2V2.0.3 PENDING"
+}

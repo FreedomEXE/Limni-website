@@ -18,7 +18,7 @@ import { getCanonicalBars } from "@/lib/canonicalPriceBars";
 import type { AssetClass } from "@/lib/cotMarkets";
 import { getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
 
-export const CANONICAL_WEEKLY_RETURN_DERIVATION_VERSION = "v2_intraday_weekly";
+export const CANONICAL_WEEKLY_RETURN_DERIVATION_VERSION = "v3_intraday_weekly_early_close";
 
 export type CanonicalWeeklyReturn = {
   symbol: string;
@@ -60,6 +60,22 @@ function normalizeBars(bars: CanonicalPriceBar[]) {
   return [...bars].sort((left, right) => left.barOpenUtc.localeCompare(right.barOpenUtc));
 }
 
+function resolveActualCloseUtc(expectedCloseUtc: string, actualCloseUtc: string, warnings: string[]) {
+  if (actualCloseUtc === expectedCloseUtc) {
+    return { closeUtc: expectedCloseUtc, closeIsComplete: true };
+  }
+
+  const expectedMs = Date.parse(expectedCloseUtc);
+  const actualMs = Date.parse(actualCloseUtc);
+  if (Number.isFinite(expectedMs) && Number.isFinite(actualMs) && actualMs < expectedMs) {
+    warnings.push("inferred_early_close");
+    return { closeUtc: actualCloseUtc, closeIsComplete: true };
+  }
+
+  warnings.push("close_after_window");
+  return { closeUtc: actualCloseUtc, closeIsComplete: false };
+}
+
 export function deriveWeeklyReturnFromHourlyBars(options: {
   symbol: string;
   assetClass: AssetClass;
@@ -82,8 +98,13 @@ export function deriveWeeklyReturnFromHourlyBars(options: {
   const first = sortedBars[0]!;
   const last = sortedBars[sortedBars.length - 1]!;
   const warnings: string[] = [];
-  if (first.barOpenUtc !== periodOpenUtc) warnings.push("missing_exact_open_bar");
-  if (last.barCloseUtc !== periodCloseUtc) warnings.push("missing_exact_close_bar");
+  const openIsComplete = first.barOpenUtc === periodOpenUtc;
+  if (!openIsComplete) warnings.push("missing_exact_open_bar");
+  const { closeUtc: actualPeriodCloseUtc, closeIsComplete } = resolveActualCloseUtc(
+    periodCloseUtc,
+    last.barCloseUtc,
+    warnings,
+  );
 
   const openPrice = round(first.openPrice, 6);
   const closePrice = round(last.closePrice, 6);
@@ -95,7 +116,7 @@ export function deriveWeeklyReturnFromHourlyBars(options: {
     assetClass: options.assetClass,
     weekOpenUtc: options.weekOpenUtc,
     periodOpenUtc,
-    periodCloseUtc,
+    periodCloseUtc: actualPeriodCloseUtc,
     openPrice,
     closePrice,
     highPrice,
@@ -107,7 +128,7 @@ export function deriveWeeklyReturnFromHourlyBars(options: {
     openBarOpenUtc: first.barOpenUtc,
     closeBarOpenUtc: last.barOpenUtc,
     barsInWindow: sortedBars.length,
-    complete: warnings.length === 0,
+    complete: openIsComplete && closeIsComplete,
     warnings,
   };
 }

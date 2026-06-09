@@ -12,6 +12,7 @@ import {
 } from "@/lib/performance/weeklyHoldEngine";
 import type { BiasSourceConfig } from "@/lib/performance/strategyConfig";
 import { loadWeeklyReturnDisplayRows } from "@/lib/weeklyReturnDisplay";
+import { ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW } from "@/lib/appTruth/activeBaseline";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +111,7 @@ export async function GET(request: NextRequest) {
 
     const data = await loadStrategyPageData(selection, {
       includeCurrentWeek: true,
+      historyWindow: ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW,
     });
     if (!data) {
       const biasSource = getStrategy(selection.strategyId);

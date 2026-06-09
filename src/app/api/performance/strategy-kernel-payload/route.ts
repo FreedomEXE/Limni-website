@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeFilterSelection, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import { buildStrategySelectionKey } from "@/lib/performance/strategySelection";
-import { loadStrategyPageData } from "@/lib/performance/strategyPageData";
+import { loadStrategyPageData, type StrategyHistoryWindow } from "@/lib/performance/strategyPageData";
 import { toStrategyClientPayload } from "@/lib/performance/strategyClientPayload";
+import {
+  ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW,
+  ACTIVE_BASELINE_SEED_HISTORY_WINDOW,
+} from "@/lib/appTruth/activeBaseline";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +25,18 @@ export async function GET(request: NextRequest) {
   const repairAllMissingWeeks =
     searchParams.get("repair") === "1" ||
     searchParams.get("repair") === "true";
+  const historyWindow: StrategyHistoryWindow =
+    searchParams.get("history") === "all-data-section" ||
+    searchParams.get("window") === "all-data-section"
+      ? "data-section"
+      : searchParams.get("history") === "seed-window" ||
+          searchParams.get("window") === ACTIVE_BASELINE_SEED_HISTORY_WINDOW ||
+          searchParams.get("history") === "v2.0.3-clean14" ||
+          searchParams.get("window") === "v2.0.3-clean14" ||
+          searchParams.get("history") === "clean14" ||
+          searchParams.get("window") === "clean14"
+        ? ACTIVE_BASELINE_SEED_HISTORY_WINDOW
+        : ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW;
   const selection = {
     strategyId,
     f1: normalizedFilters.f1,
@@ -32,6 +48,7 @@ export async function GET(request: NextRequest) {
     const data = await loadStrategyPageData(selection, {
       includeCurrentWeek: false,
       repairAllMissingWeeks,
+      historyWindow,
     });
     if (!data) {
       return NextResponse.json(

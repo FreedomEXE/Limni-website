@@ -14,6 +14,7 @@ loadEnvConfig(process.cwd());
 type CliOptions = {
   assetClass: AssetClass | "all";
   symbols: string[];
+  weeks: string[];
   fromWeek?: string;
   toWeek?: string;
   dryRun: boolean;
@@ -51,6 +52,13 @@ function parseIsoWeek(value?: string) {
   return dt.toUTC().toISO() ?? value;
 }
 
+function parseIsoWeeks(value?: string) {
+  return (value ?? "")
+    .split(",")
+    .map((week) => parseIsoWeek(week.trim()))
+    .filter((week): week is string => Boolean(week));
+}
+
 function parseCli(): CliOptions {
   return {
     assetClass: parseAssetClass(readArg("asset")),
@@ -58,6 +66,7 @@ function parseCli(): CliOptions {
       .split(",")
       .map((symbol) => symbol.trim().toUpperCase())
       .filter(Boolean),
+    weeks: parseIsoWeeks(readArg("weeks")),
     fromWeek: parseIsoWeek(readArg("from-week") ?? readArg("from")),
     toWeek: parseIsoWeek(readArg("to-week") ?? readArg("to")),
     dryRun: hasFlag("dry-run"),
@@ -76,11 +85,12 @@ async function main() {
 
   if (!options.coverageOnly && options.onlyGaps) {
     const coverage = await getCanonicalHourlyCoverage({
-      assetClass: options.assetClass,
-      symbols: options.symbols,
-      fromWeek: options.fromWeek,
-      toWeek: options.toWeek,
-    });
+        assetClass: options.assetClass,
+        symbols: options.symbols,
+        weeks: options.weeks,
+        fromWeek: options.fromWeek,
+        toWeek: options.toWeek,
+      });
     const gaps = coverage.rows.filter(
       (row) => row.status === "missing" || row.status === "partial",
     );
@@ -130,6 +140,7 @@ async function main() {
         "Starting canonical hourly backfill",
         `asset=${options.assetClass}`,
         options.symbols.length ? `symbols=${options.symbols.join(",")}` : "symbols=all",
+        options.weeks.length ? `weeks=${options.weeks.join(",")}` : "weeks=canonical range",
         options.fromWeek ? `from=${options.fromWeek}` : "from=first canonical week",
         options.toWeek ? `to=${options.toWeek}` : "to=current canonical week",
         options.dryRun ? "dryRun=true" : "dryRun=false",
@@ -140,6 +151,7 @@ async function main() {
     const result = await backfillCanonicalHourlyBars({
       assetClass: options.assetClass,
       symbols: options.symbols,
+      weeks: options.weeks,
       fromWeek: options.fromWeek,
       toWeek: options.toWeek,
       dryRun: options.dryRun,
@@ -161,6 +173,7 @@ async function main() {
   const coverage = await getCanonicalHourlyCoverage({
     assetClass: options.assetClass,
     symbols: options.symbols,
+    weeks: options.weeks,
     fromWeek: options.fromWeek,
     toWeek: options.toWeek,
   });

@@ -19,7 +19,7 @@ export const CANON_WEEK_SHARD_SCHEMA_VERSION = "canon-week-shard-v1" as const;
 export const CANON_AGGREGATE_SHARD_SCHEMA_VERSION = "canon-aggregate-shard-v1" as const;
 export const CANON_WEEK_KEY_SEMANTICS = "display-week-open-utc" as const;
 
-export type CanonShardSource = "release-canon" | "closed-week-delta";
+export type CanonShardSource = "release-canon" | "closed-week-delta" | "strategy-artifact-correction";
 
 export type CanonWeekShardEntry = {
   weekOpenUtc: string;
@@ -136,4 +136,3 @@ export function canonWeekShardKey(canonVersion: string, strategyVariant: string,
 export function canonVariantInventoryKey(canonVersion: string, strategyVariant: string) {
   return `${canonVersion}::${strategyVariant}`;
 }
-

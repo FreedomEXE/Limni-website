@@ -14,25 +14,25 @@
 
 import { DateTime } from "luxon";
 import type { AssetClass } from "@/lib/cotMarkets";
-import { getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
 import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 
-export type ExecutionAnchorVersion = "execution_monday_utc_v1";
+export type ExecutionAnchorVersion = "execution_ny_fri9_entry_fri11_close_v1" | "execution_ny_crypto_sun20_v2";
 
-export const EXECUTION_ANCHOR_VERSION: ExecutionAnchorVersion = "execution_monday_utc_v1";
+export const EXECUTION_ANCHOR_VERSION: ExecutionAnchorVersion = "execution_ny_fri9_entry_fri11_close_v1";
 
 export type ExecutionWindow = {
   logicalWeekOpenUtc: string;
   windowOpenUtc: DateTime;
+  entryCutoffUtc: DateTime;
   windowCloseUtc: DateTime;
   offsetHours: number;
   anchorVersion: ExecutionAnchorVersion;
 };
 
 const EXECUTION_WINDOW_OFFSET_HOURS: Record<AssetClass, number> = {
-  fx: 3,
-  indices: 2,
-  commodities: 2,
+  fx: 1,
+  indices: 1,
+  commodities: 1,
   crypto: 0,
 };
 
@@ -45,25 +45,11 @@ function parseLogicalWeek(logicalWeekOpenUtc: string) {
   return { normalized, parsed };
 }
 
-function getMondayUtcOpen(logicalWeekOpenUtc: string) {
-  const { normalized, parsed } = parseLogicalWeek(logicalWeekOpenUtc);
-  const utc = parsed.toUTC();
-
-  if (utc.weekday === 1) {
-    return utc.startOf("day");
-  }
-
-  if (utc.weekday === 7) {
-    return utc.plus({ days: 1 }).startOf("day");
-  }
-
-  const reparsed = DateTime.fromISO(normalizeWeekOpenUtc(normalized) ?? normalized, { zone: "utc" });
-  if (!reparsed.isValid) {
-    throw new Error(`Invalid normalized execution week open: ${logicalWeekOpenUtc}`);
-  }
-  return reparsed.weekday === 7
-    ? reparsed.plus({ days: 1 }).startOf("day")
-    : reparsed.startOf("day");
+function getExecutionSundayNy(logicalWeekOpenUtc: string) {
+  const { parsed } = parseLogicalWeek(logicalWeekOpenUtc);
+  const nyWeek = parsed.setZone("America/New_York");
+  const daysSinceSunday = nyWeek.weekday % 7;
+  return nyWeek.minus({ days: daysSinceSunday }).startOf("day");
 }
 
 export function getExecutionWeekWindow(
@@ -71,15 +57,31 @@ export function getExecutionWeekWindow(
   assetClass: AssetClass,
 ): ExecutionWindow {
   const { normalized } = parseLogicalWeek(logicalWeekOpenUtc);
-  const windowOpenUtc = getMondayUtcOpen(normalized);
-  const canonicalWindow = getCanonicalWeekWindow(normalized, assetClass);
-  const windowCloseUtc = assetClass === "crypto"
-    ? windowOpenUtc.plus({ days: 7 })
-    : canonicalWindow.closeUtc;
+  const executionSundayNy = getExecutionSundayNy(normalized);
+  const windowOpenUtc = executionSundayNy.set({
+    hour: 20,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  }).toUTC();
+  const fridayNy = executionSundayNy.plus({ days: 5 });
+  const entryCutoffUtc = fridayNy.set({
+    hour: 9,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  }).toUTC();
+  const windowCloseUtc = fridayNy.set({
+    hour: 11,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  }).toUTC();
 
   return {
     logicalWeekOpenUtc: normalized,
     windowOpenUtc,
+    entryCutoffUtc,
     windowCloseUtc,
     offsetHours: EXECUTION_WINDOW_OFFSET_HOURS[assetClass],
     anchorVersion: EXECUTION_ANCHOR_VERSION,

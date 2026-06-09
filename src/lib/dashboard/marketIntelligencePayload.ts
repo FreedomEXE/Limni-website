@@ -8,9 +8,23 @@ import type { WeekSnapshotProvenance } from "@/lib/performance/snapshotProvenanc
 
 export type MarketIntelligencePayload = {
   assetOptions: Array<{ id: string; label: string }>;
-  reportOptions: Array<{ value: string; label: string }>;
+  reportOptions: Array<{
+    value: string;
+    label: string;
+    cotReportLabel?: string;
+    fridayFreezeLabel?: string;
+    fridayFreezeUtc?: string;
+    freezeStatusLabel?: string;
+    freezeLedgerReady?: boolean;
+  }>;
   selectedAsset: string;
   currentWeekOpenUtc: string;
+  activeBaseline: {
+    id: string;
+    mode: "active";
+    activeWeekCount: number;
+    archiveAvailable: boolean;
+  };
   cotDataByReport: Record<
     string,
     {

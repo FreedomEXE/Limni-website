@@ -1,0 +1,68 @@
+{
+  "route": "/performance",
+  "expected": "Jun 08 2026 is selectable and current-week metrics are sane.",
+  "observed": {
+    "hasJun8Text": true,
+    "hasJun1Text": true,
+    "clean14TextPresent": false,
+    "performanceButtons": [
+      "LIMNI LABSPerformance",
+      "Back",
+      "Applied",
+      "Dark mode",
+      "Sign Out",
+      "Menu",
+      "ADR-norm",
+      "Raw %",
+      "All Time",
+      "Jun 08 2026",
+      "Jun 01 2026",
+      "May 25 2026",
+      "May 18 2026",
+      "May 11 2026",
+      "May 04 2026",
+      "Apr 27 2026",
+      "Apr 20 2026",
+      "Apr 13 2026",
+      "Apr 06 2026",
+      "Mar 30 2026",
+      "Mar 23 2026",
+      "Mar 16 2026",
+      "Mar 09 2026",
+      "Mar 02 2026",
+      "Feb 23 2026",
+      "All",
+      "FX",
+      "Indices",
+      "Commodities",
+      "Crypto"
+    ],
+    "sidebarStats": {
+      "hasJun8": true,
+      "hasJun1": true,
+      "hasInvalidWinRate151": false,
+      "return40": false,
+      "winRate715": false,
+      "trades305": false,
+      "nearbyMetricLines": [
+        "1.18",
+        "+18.66%",
+        "MAY 18 2026"
+      ]
+    },
+    "apiResponses": [
+      {
+        "url": "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=active-baseline",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:3001/api/dashboard/payload?asset=all&allReports=1",
+        "status": 200
+      }
+    ],
+    "failedRequests": [],
+    "consoleErrors": []
+  },
+  "screenshot": "performance-june8-live-overlay-after-data-fix.png",
+  "capturedAtUtc": "2026-06-09T17:51:59.084Z"
+}

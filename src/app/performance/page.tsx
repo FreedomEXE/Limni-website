@@ -13,6 +13,10 @@
 -----------------------------------------------*/
 
 import DashboardLayout from "@/components/DashboardLayout";
+import AppTruthRouteGate from "@/components/appTruth/AppTruthRouteGate";
+import { getActiveBaselineSelectableWeeks } from "@/lib/appTruth/activeBaseline";
+import { readActiveBaselineRouteReadiness } from "@/lib/appTruth/routeReadiness";
+import type { AppTruthActiveBaselineRouteReadiness } from "@/lib/appTruth/routeReadiness";
 import PerformanceStrategyViewSection from "@/components/performance/PerformanceStrategyViewSection";
 import { resolvePerformanceView } from "@/lib/performance/pageState";
 import {
@@ -36,6 +40,10 @@ function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export default async function PerformancePage({ searchParams }: PerformancePageProps) {
   const resolvedSearchParams = (await Promise.resolve(searchParams)) ?? {};
   const viewParamValue = firstParam(resolvedSearchParams.view);
@@ -48,7 +56,31 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     f1: f1Value,
     f2: f2Value,
   });
+  let routeReadiness: AppTruthActiveBaselineRouteReadiness | null = null;
+  let routeReadinessError: string | null = null;
+
+  try {
+    routeReadiness = await readActiveBaselineRouteReadiness();
+  } catch (error) {
+    routeReadinessError = errorMessage(error);
+  }
+
+  if (!routeReadiness?.performance.ready || routeReadinessError) {
+    return (
+      <DashboardLayout>
+        <AppTruthRouteGate
+          route="performance"
+          readiness={routeReadiness}
+          readinessError={routeReadinessError}
+        >
+          {null}
+        </AppTruthRouteGate>
+      </DashboardLayout>
+    );
+  }
+
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  const selectableWeeks = getActiveBaselineSelectableWeeks(currentWeekOpenUtc);
   const initialStrategySelection = {
     strategyId: resolveBiasSourceId(strategyParamValue),
     f1: normalizedFilters.f1,
@@ -56,26 +88,28 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   };
   return (
     <DashboardLayout>
-      <div className="space-y-8">
-        <PerformanceStrategyViewSection
-          initialMode="legacy"
-          initialView={resolvePerformanceView(viewParamValue)}
-          initialSystem="v3"
-          initialStyle="tiered"
-          universalGridPropsBySystem={{}}
-          tieredGridPropsBySystem={{}}
-          universalSimulationBySystem={{}}
-          tieredSimulationBySystem={{}}
-          flagshipGridProps={null}
-          flagshipSimulation={null}
-          initialSelection={toRuntimeStrategySelection(initialStrategySelection)}
-          initialEntry={null}
-          weekOptions={["all"]}
-          currentWeek={currentWeekOpenUtc}
-          initialWeek={weekParamValue ?? "all"}
-          initialAssetScope={parsePerformanceAssetSelection(scopeParamValue)}
-        />
-      </div>
+      <AppTruthRouteGate route="performance" readiness={routeReadiness}>
+        <div className="space-y-8">
+          <PerformanceStrategyViewSection
+            initialMode="legacy"
+            initialView={resolvePerformanceView(viewParamValue)}
+            initialSystem="v3"
+            initialStyle="tiered"
+            universalGridPropsBySystem={{}}
+            tieredGridPropsBySystem={{}}
+            universalSimulationBySystem={{}}
+            tieredSimulationBySystem={{}}
+            flagshipGridProps={null}
+            flagshipSimulation={null}
+            initialSelection={toRuntimeStrategySelection(initialStrategySelection)}
+            initialEntry={null}
+            weekOptions={["all", ...selectableWeeks]}
+            currentWeek={currentWeekOpenUtc}
+            initialWeek={weekParamValue ?? "all"}
+            initialAssetScope={parsePerformanceAssetSelection(scopeParamValue)}
+          />
+        </div>
+      </AppTruthRouteGate>
     </DashboardLayout>
   );
 }

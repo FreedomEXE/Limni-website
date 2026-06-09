@@ -1,6 +1,7 @@
 import type { Direction } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
 import { getClient, query } from "@/lib/db";
+import { dbTimestampValueToIsoUtc } from "@/lib/dbUtcTimestamp";
 import type { AssetClass } from "@/lib/cotMarkets";
 import { clearRuntimeCacheKey, getOrSetRuntimeCache } from "@/lib/runtimeCache";
 import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
@@ -112,9 +113,7 @@ type StrengthWeeklySnapshotRow = {
 let ensuredStrengthWeeklySchema = false;
 
 function toIsoUtc(value: Date | string): string {
-  if (value instanceof Date) return value.toISOString();
-  const date = new Date(String(value));
-  return Number.isNaN(date.getTime()) ? String(value) : date.toISOString();
+  return dbTimestampValueToIsoUtc(value) ?? String(value);
 }
 
 function toNumber(value: number | string): number {
@@ -144,7 +143,7 @@ export async function ensureStrengthWeeklySchema(): Promise<void> {
       raw_strength DECIMAL(12, 6),
       normalized_strength DECIMAL(12, 6),
       source_snapshot_utc TIMESTAMP,
-      locked_at_utc TIMESTAMP NOT NULL DEFAULT NOW(),
+      locked_at_utc TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC'),
       PRIMARY KEY (week_open_utc, source_type, "window", "key")
     )
   `);
@@ -184,11 +183,11 @@ async function readCurrencyStrengthRows(weekOpenUtc: string) {
       SELECT DISTINCT ON ("window", currency)
              "window",
              currency,
-             snapshot_time_utc,
+             snapshot_time_utc::text AS snapshot_time_utc,
              raw_strength,
              normalized_strength
         FROM currency_strength_snapshots
-       WHERE snapshot_time_utc <= $1::timestamptz
+       WHERE snapshot_time_utc <= ($1::timestamptz AT TIME ZONE 'UTC')
          AND "window" IN ('1h', '4h', '24h')
        ORDER BY "window", currency, snapshot_time_utc DESC
     `,
@@ -203,11 +202,11 @@ async function readAssetStrengthRows(weekOpenUtc: string) {
              asset_class,
              "window",
              asset,
-             snapshot_time_utc,
+             snapshot_time_utc::text AS snapshot_time_utc,
              raw_strength,
              normalized_strength
         FROM asset_strength_snapshots
-       WHERE snapshot_time_utc <= $1::timestamptz
+       WHERE snapshot_time_utc <= ($1::timestamptz AT TIME ZONE 'UTC')
          AND asset_class IN ('crypto', 'commodities', 'indices')
          AND "window" IN ('1h', '4h', '24h')
        ORDER BY asset_class, "window", asset, snapshot_time_utc DESC
@@ -252,14 +251,24 @@ export async function lockStrengthForWeek(weekOpenUtc: string): Promise<void> {
             source_snapshot_utc,
             locked_at_utc
           )
-          VALUES ($1::timestamp, 'currency', $2, $3, NULL, $4, $5, $6::timestamp, NOW())
+          VALUES (
+            ($1::timestamptz AT TIME ZONE 'UTC'),
+            'currency',
+            $2,
+            $3,
+            NULL,
+            $4,
+            $5,
+            ($6::timestamptz AT TIME ZONE 'UTC'),
+            (NOW() AT TIME ZONE 'UTC')
+          )
           ON CONFLICT (week_open_utc, source_type, "window", "key")
           DO UPDATE SET
             asset_class = EXCLUDED.asset_class,
             raw_strength = EXCLUDED.raw_strength,
             normalized_strength = EXCLUDED.normalized_strength,
             source_snapshot_utc = EXCLUDED.source_snapshot_utc,
-            locked_at_utc = NOW()
+            locked_at_utc = (NOW() AT TIME ZONE 'UTC')
         `,
         [
           normalizedWeekOpenUtc,
@@ -286,14 +295,24 @@ export async function lockStrengthForWeek(weekOpenUtc: string): Promise<void> {
             source_snapshot_utc,
             locked_at_utc
           )
-          VALUES ($1::timestamp, 'asset', $2, $3, $4, $5, $6, $7::timestamp, NOW())
+          VALUES (
+            ($1::timestamptz AT TIME ZONE 'UTC'),
+            'asset',
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            ($7::timestamptz AT TIME ZONE 'UTC'),
+            (NOW() AT TIME ZONE 'UTC')
+          )
           ON CONFLICT (week_open_utc, source_type, "window", "key")
           DO UPDATE SET
             asset_class = EXCLUDED.asset_class,
             raw_strength = EXCLUDED.raw_strength,
             normalized_strength = EXCLUDED.normalized_strength,
             source_snapshot_utc = EXCLUDED.source_snapshot_utc,
-            locked_at_utc = NOW()
+            locked_at_utc = (NOW() AT TIME ZONE 'UTC')
         `,
         [
           normalizedWeekOpenUtc,
@@ -324,17 +343,17 @@ export async function readLockedStrengthForWeek(weekOpenUtc: string): Promise<We
   const rows = await query<StrengthWeeklySnapshotRow>(
     `
       SELECT
-        week_open_utc,
+        week_open_utc::text AS week_open_utc,
         source_type,
         "window",
         "key",
         asset_class,
         raw_strength,
         normalized_strength,
-        source_snapshot_utc,
-        locked_at_utc
+        source_snapshot_utc::text AS source_snapshot_utc,
+        locked_at_utc::text AS locked_at_utc
       FROM strength_weekly_snapshots
-      WHERE week_open_utc = $1::timestamp
+      WHERE week_open_utc = ($1::timestamptz AT TIME ZONE 'UTC')
       ORDER BY source_type ASC, asset_class ASC NULLS FIRST, "window" ASC, "key" ASC
     `,
     [normalizedWeekOpenUtc],
@@ -519,6 +538,33 @@ export async function readWeeklyPairStrengths(weekOpenUtc: string): Promise<Week
         ),
       );
   });
+}
+
+export async function readWeeklyPairStrengthsAtCutoff(cutoffUtc: string): Promise<WeeklyPairStrength[]> {
+  const [currencyRows, assetRows] = await Promise.all([
+    readCurrencyStrengthRows(cutoffUtc),
+    readAssetStrengthRows(cutoffUtc),
+  ]);
+  const byCurrency = new Map<string, CurrencyStrengthRow>(
+    currencyRows.map((row) => [`${row.window}:${row.currency.toUpperCase()}`, row]),
+  );
+  const byAsset = new Map<string, AssetStrengthRow>(
+    assetRows.map((row) => [`${row.asset_class}:${row.window}:${row.asset.toUpperCase()}`, row]),
+  );
+
+  return (Object.entries(PAIRS_BY_ASSET_CLASS) as Array<[AssetClass, typeof PAIRS_BY_ASSET_CLASS[AssetClass]]>)
+    .flatMap(([assetClass, pairDefs]) =>
+      pairDefs.map((pairDef) =>
+        buildPairStrength(
+          assetClass,
+          pairDef.pair.toUpperCase(),
+          pairDef.base.toUpperCase(),
+          pairDef.quote.toUpperCase(),
+          byCurrency,
+          byAsset,
+        ),
+      ),
+    );
 }
 
 export async function readWeeklyUnderlyingStrengths(

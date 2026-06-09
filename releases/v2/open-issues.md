@@ -8,7 +8,7 @@
 - **Opened:** 2026-05-31 19:45 America/Toronto
 - **Reported by:** Freedom
 - **Severity:** High
-- **Status:** Fixed locally for v2.0.1 symptoms; v2.0.2 kernel active-variant sync added; pending full runtime composition cutover
+- **Status:** Fixed locally in the v2.0.3 institutional-seed candidate; monitor next production rollover after promotion
 - **Surface:** Performance
 - **Affected context:** Tandem / ADR Grid, Summary view, current and most-recent week selection
 
@@ -90,6 +90,7 @@ Implement a modular week-transition contract rather than patching individual vie
 - 2026-06-01: Added non-blocking active-variant kernel sync and closed-history bundle composition. Browser smoke verified first fill to `Kernel: ready (18/18 weeks)` for `tandem-weekly_hold-none`, then reload reused IndexedDB shards with one inventory request and zero week-shard requests. Basket closed-history snapshots now prefer kernel-composed bundles with legacy canon fallback. The issue remains open until full strategy rendering composes from the kernel and closed-week delta materialization is implemented.
 - 2026-06-01: Implemented server-derived `closed-week-delta` entries in the canon inventory and `/api/canon/v2/week` fallback. Post-release closed weeks are now eligible for active-variant delta fetch without mutating `releases/v2/canon/`. The issue remains open until rollover browser verification proves the active page consumes the delta path end to end.
 - 2026-06-01: Added active Performance kernel payload routing so the active page consumes the release-canon plus closed-week-delta server path through `/api/performance/strategy-kernel-payload`. Status page diagnostics now expose the active shard inventory and closed/live boundary. The issue remains open pending final browser inspection and the next rollover monitoring window.
+- 2026-06-09: v2.0.3 institutional-seed candidate fixed the broader weekly rollover failure mode. Active closed history now contains 15 receipt-backed weeks through Jun 01 2026, while Jun 08 2026 is visible as live overlay only. Source-freeze and active-baseline certification receipts are materialized and visible in Status. Data and Performance route readiness report `15/15`. Browser evidence is saved under `screenshots/weekly-rollover-active-baseline-2026-06-09/`.
 
 ## 1a. Current-Week Basket Legacy Renderer Regression
 
@@ -114,6 +115,35 @@ The Basket path intentionally avoided the canon-backed `BasketHierarchy` for `se
 - 2026-05-31: Replaced the current-week fallback with an inline hierarchy-style live Basket renderer that uses the same Performance row language, asset-class chips, expandable detail panels, and summary counts. It still reads live strategy data rather than frozen canon, preserving the current-week/canon split.
 - 2026-06-01: v2.0.2 kernel spec records the permanent boundary: current/open week stays live-only, while closed weeks come from release canon plus future closed-week deltas.
 - 2026-06-01: Preserved active current-week grid children/details in the full current-week payload, unified count/W/L row context across current, closed-week, and all-time Basket drilldowns, and normalized displayed fill ordinals per grid so sparse/global source sequences render as entry-ordered `Fill 1`, `Fill 2`, ...
+
+## 1b. ADR Grid Capped Basket Return/DD Regression
+
+- **Opened:** 2026-06-04
+- **Reported by:** Freedom
+- **Severity:** High
+- **Status:** Fix candidate browser-verified locally; keep open for final parity/approval gate
+- **Surface:** Performance Basket, Simulation, sidebar
+- **Affected context:** Tiered / ADR Grid / Pair Fill Cap, FX-only scope, week `May 18 2026`
+
+### Symptoms
+
+- ADR-normalized grid TP rows display `+0.04%` instead of `+0.20%`.
+- Basket shows a small positive selected-week result while Simulation/sidebar shows `-13.36%` for the same selected week.
+- EURUSD capped grid row shows missing `Grid DD`, `Max fill MAE`, and fill-level MAE/DD values.
+- Basket currently groups ADR Grid as grid -> fills, but the verifier evidence is easier to audit as grid -> level -> fills.
+
+### Required Fix Direction
+
+- Re-verify both ADR-normalized and Raw return math for ADR Grid close-and-rearm fills.
+- Reconcile Basket, Simulation, sidebar, and canonical/script data sources for May 18 before treating v2.0.3 app numbers as a frozen baseline.
+- Add Basket grid-level grouping so each price level totals fills, TP/loss/reset counts, return, and MAE/DD before expanding to individual fills.
+
+### Resolution Log
+
+- 2026-06-04: Implemented ADR Grid return/risk fix candidate. ADR-normalized TP rows now read the stored ADR-normalized fill return, so a `0.20` ADR TP displays as `+0.20%`; raw mode remains true price-return based. Added May 18 Tiered / ADR Grid / Pair Fill Cap correction shard routing for closed-history composition, and changed Basket ADR Grid detail to `Grid -> Level -> Fill` with cap, `Grid DD`, `Max fill MAE`, and fill MAE metadata.
+- 2026-06-04: Rechecked EURUSD May 18 Tiered / ADR Grid / Pair Fill Cap with `scripts/verification/inspect-adr-grid-week.ts`; output showed `7` fills, each `adrNormalizedReturnPct: 0.2`, total raw `+0.6940235423%`, total ADR-normalized `+1.4000000000%`, grid DD raw `0.4938782544%`, max fill MAE raw `0.2637717154%`, cap state `3/3`.
+- 2026-06-04: Re-ran the 12-system comparison with `scripts/report-corrected-path-metrics.ts`; current app-visible rows match `reports/data-verification/app/visible-engine-stats-2026-06-04.md`.
+- 2026-06-04: Playwright-verified the fresh local server at `http://127.0.0.1:3104/performance?strategy=tiered_4w&f1=adr_grid&f2=pair_fill_cap&view=basket&week=2026-05-17T23%3A00%3A00.000Z&scope=fx`. Expanded May 18 FX Basket showed EURUSD `+1.40%`, levels `+0.60% / +0.60% / +0.20%`, fill rows `+0.20%`, `Grid DD -1.00%`, `Max fill MAE -0.53%`, cap `3/3 max active`, and no visible bad `+0.04%` TP display. Screenshot: `screenshots/codex-performance-3104-tiered-may18-fx-basket-expanded-clean-2026-06-04.png`.
 
 ## 2. Preloader Status Loop / Legacy Broad Strategy Gate
 

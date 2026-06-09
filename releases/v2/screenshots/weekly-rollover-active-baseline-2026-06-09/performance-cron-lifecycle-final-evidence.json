@@ -1,0 +1,22 @@
+{
+  "route": "/performance",
+  "status": 200,
+  "url": "http://127.0.0.1:3001/performance?view=summary",
+  "title": "Limni Labs",
+  "waitResult": "metrics-ready",
+  "checks": {
+    "stillLoading": false,
+    "hasJune8": true,
+    "hasJune1": true,
+    "hasClean14": false,
+    "hasSeedBaseline": false,
+    "hasBadPerformanceNumber": false,
+    "hasExpectedLiveSelectedMetric": false,
+    "hasWinRate71": false,
+    "hasTrades307": false
+  },
+  "failedRequests": [],
+  "consoleMessages": [],
+  "bodyLength": 1664,
+  "bodyPreview": "LIMNI LABS\nPERFORMANCE\nBACK\nSIGNAL MODEL\nTandem\nTiered\nAgreement\nSelector\nEXECUTION\nWeekly Hold\nADR Grid\nRISK OVERLAY\nNone\nPair Fill Cap\nAPPLIED\nTANDEM · ADR GRID · PAIR FILL CAP\n15 WEEKS TRACKED\n+279.91%\nTOTAL RETURN\nWEEKLY WR\n66.7%\nMAX DD\n149.00%\nPATH SHARPE\n0.30\nPATH SORTINO\n0.27\nTRADE PF\n1.18\nPATH CALMAR\n6.51\nAVG WEEKLY\n+18.66%\nTOTAL TRADES\n11496\nTRADE EXP\n+0.02%\nTRADE AVG W/L\n+0.2 / -0.8\nBEST STREAK\n4W\nWORST STREAK\n2L\nDARK MODE\nSign Out\nPerformance\n\nTANDEM · ADR GRID · PAIR FILL CAP\n\nVIEW MODE\n\nRETURNS MEASURED FROM EXECUTION OPEN (MON 00:00 UTC)\n\nMETRIC\nADR-norm\nRaw %\nWEEK\nALL TIME\nJUN 08 2026\nJUN 01 2026\nMAY 25 2026\nMAY 18 2026\nMAY 11 2026\nMAY 04 2026\nAPR 27 2026\nAPR 20 2026\nAPR 13 2026\nAPR 06 2026\nMAR 30 2026\nMAR 23 2026\nMAR 16 2026\nMAR 09 2026\nMAR 02 2026\nFEB 23 2026\nSCOPE\nALL\nFX\nINDICES\nCOMMODITIES\nCRYPTO\nSUMMARY\nKey metrics and model ranking.\nSIMULATION\nTrailing-stop and sizing perspective.\nBASKET\nSee every pair, direction, and return.\nRESEARCH\nDiagnostics and pair-level distribution.\nNOTES\nWeekly observations and takeaways.\n+++\n\nDEALER PORTFOLIO\n\n+140.62%\nTOTAL RETURN\nWIN RATE\n87%\nSHARPE (WK)\n0.69\nMAX DD\n48.90%\nPROFIT FACTOR\n4.27\n87%\n\nRETURN SPREAD\n\n*** High Confidence\n+++\n\nCOMMERCIAL PORTFOLIO\n\n+59.54%\nTOTAL RETURN\nWIN RATE\n67%\nSHARPE (WK)\n0.17\nMAX DD\n42.49%\nPROFIT FACTOR\n1.53\n67%\n\nRETURN SPREAD\n\n*** High Confidence\n+\n\nSENTIMENT PORTFOLIO\n\n+24.86%\nTOTAL RETURN\nWIN RATE\n53%\nSHARPE (WK)\n0.10\nMAX DD\n42.49%\nPROFIT FACTOR\n1.28\n53%\n\nRETURN SPREAD\n\n** Medium Confidence\n++\n\nSTRENGTH PORTFOLIO\n\n+54.90%\nTOTAL RETURN\nWIN RATE\n60%\nSHARPE (WK)\n0.27\nMAX DD\n48.90%\nPROFIT FACTOR\n1.84\n60%\n\nRETURN SPREAD\n\n*** High Confidence\nV2V2.0.3 PENDING"
+}

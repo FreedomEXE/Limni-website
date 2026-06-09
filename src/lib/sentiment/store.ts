@@ -1,4 +1,5 @@
 import { query } from "../db";
+import { dbTimestampValueToIsoUtc } from "../dbUtcTimestamp";
 import { DateTime } from "luxon";
 import { getWeekOpenUtc } from "../performanceSnapshots";
 import { clearRuntimeCacheByPrefix, getOrSetRuntimeCache } from "../runtimeCache";
@@ -9,6 +10,8 @@ import type {
 } from "./types";
 
 const SENTIMENT_STORE_CACHE_TTL_MS = Number(process.env.SENTIMENT_STORE_CACHE_TTL_MS ?? "15000");
+const DEFAULT_SNAPSHOT_READ_HOURS = 24;
+const DEFAULT_RAW_RETENTION_DAYS = 2555; // Seven years.
 
 function getSentimentStoreCacheTtlMs() {
   return Number.isFinite(SENTIMENT_STORE_CACHE_TTL_MS) && SENTIMENT_STORE_CACHE_TTL_MS >= 0
@@ -16,9 +19,23 @@ function getSentimentStoreCacheTtlMs() {
     : 15000;
 }
 
+function readPositiveIntegerEnv(name: string): number | null {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+}
+
+export function getSnapshotReadHours() {
+  return readPositiveIntegerEnv("SENTIMENT_SNAPSHOT_READ_HOURS")
+    ?? readPositiveIntegerEnv("SENTIMENT_SNAPSHOT_RETENTION_HOURS")
+    ?? DEFAULT_SNAPSHOT_READ_HOURS;
+}
+
+export function getRawRetentionDays() {
+  return readPositiveIntegerEnv("SENTIMENT_RAW_RETENTION_DAYS") ?? DEFAULT_RAW_RETENTION_DAYS;
+}
+
 export async function readSnapshots(): Promise<ProviderSentiment[]> {
-  const retentionHours = Number(process.env.SENTIMENT_SNAPSHOT_RETENTION_HOURS ?? "24");
-  const hours = Number.isFinite(retentionHours) && retentionHours > 0 ? retentionHours : 24;
+  const hours = getSnapshotReadHours();
   const cacheKey = `sentimentStore:readSnapshots:${hours}`;
   return getOrSetRuntimeCache(cacheKey, getSentimentStoreCacheTtlMs(), async () => {
     try {
@@ -31,11 +48,11 @@ export async function readSnapshots(): Promise<ProviderSentiment[]> {
         ratio: string | null;
         raw_payload: unknown;
         fetch_latency_ms: number | null;
-        timestamp_utc: Date;
+        timestamp_utc: string;
       }>(
-        `SELECT provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc
+        `SELECT provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc::text AS timestamp_utc
          FROM sentiment_data
-         WHERE timestamp_utc > NOW() - INTERVAL '${hours} hours'
+         WHERE timestamp_utc > ((NOW() AT TIME ZONE 'UTC') - INTERVAL '${hours} hours')
          ORDER BY timestamp_utc DESC`
       );
 
@@ -59,7 +76,7 @@ export async function readSnapshots(): Promise<ProviderSentiment[]> {
               : Number(row.ratio),
           raw_payload: row.raw_payload ?? undefined,
           fetch_latency_ms: row.fetch_latency_ms ?? undefined,
-          timestamp_utc: row.timestamp_utc.toISOString(),
+          timestamp_utc: dbTimestampValueToIsoUtc(row.timestamp_utc) ?? row.timestamp_utc,
         };
       });
     } catch (error) {
@@ -85,7 +102,7 @@ export async function appendSnapshots(
         `INSERT INTO sentiment_data
           (provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc)
          VALUES
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          ($1, $2, $3, $4, $5, $6, $7, $8, ($9::timestamptz AT TIME ZONE 'UTC'))`,
         [
           snapshot.provider,
           snapshot.symbol,
@@ -95,16 +112,16 @@ export async function appendSnapshots(
           snapshot.ratio,
           snapshot.raw_payload ?? null,
           snapshot.fetch_latency_ms ?? null,
-          new Date(snapshot.timestamp_utc),
+          snapshot.timestamp_utc,
         ]
       );
     }
 
-    const retentionHours = Number(process.env.SENTIMENT_SNAPSHOT_RETENTION_HOURS ?? "24");
-    const hours = Number.isFinite(retentionHours) && retentionHours > 0 ? retentionHours : 24;
-    // Clean up old data
+    const retentionDays = getRawRetentionDays();
+    // Keep raw provider snapshots for release audit and historical source proof.
     await query(
-      `DELETE FROM sentiment_data WHERE timestamp_utc < NOW() - INTERVAL '${hours} hours'`
+      `DELETE FROM sentiment_data WHERE timestamp_utc < NOW() - ($1::int * INTERVAL '1 day')`,
+      [retentionDays],
     );
   } catch (error) {
     console.error("Error appending sentiment snapshots:", error);
@@ -130,16 +147,16 @@ export async function getLatestSnapshotsByProvider(
       ratio: string | null;
       raw_payload: unknown;
       fetch_latency_ms: number | null;
-      timestamp_utc: Date;
+      timestamp_utc: string;
     }>(
       symbols && symbols.length > 0
         ? `SELECT DISTINCT ON (symbol)
-             provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc
+             provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc::text AS timestamp_utc
            FROM sentiment_data
            WHERE provider = $1 AND symbol = ANY($2)
            ORDER BY symbol, timestamp_utc DESC`
         : `SELECT DISTINCT ON (symbol)
-             provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc
+             provider, symbol, long_pct, short_pct, net, ratio, raw_payload, fetch_latency_ms, timestamp_utc::text AS timestamp_utc
            FROM sentiment_data
            WHERE provider = $1
            ORDER BY symbol, timestamp_utc DESC`,
@@ -166,7 +183,7 @@ export async function getLatestSnapshotsByProvider(
             : Number(row.ratio),
         raw_payload: row.raw_payload ?? undefined,
         fetch_latency_ms: row.fetch_latency_ms ?? undefined,
-        timestamp_utc: row.timestamp_utc.toISOString(),
+        timestamp_utc: dbTimestampValueToIsoUtc(row.timestamp_utc) ?? row.timestamp_utc,
       };
     });
   });
@@ -187,11 +204,11 @@ export async function readAggregates(): Promise<SentimentAggregate[]> {
         confidence_score: string;
         crowding_state: string;
         flip_state: string;
-        timestamp_utc: Date;
+        timestamp_utc: string;
       }>(
-        `SELECT symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc
+        `SELECT symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc::text AS timestamp_utc
          FROM sentiment_aggregates
-         WHERE timestamp_utc > NOW() - INTERVAL '${days} days'
+         WHERE timestamp_utc > ((NOW() AT TIME ZONE 'UTC') - INTERVAL '${days} days')
          ORDER BY timestamp_utc DESC`
       );
 
@@ -204,7 +221,7 @@ export async function readAggregates(): Promise<SentimentAggregate[]> {
         confidence_score: Number(row.confidence_score),
         crowding_state: row.crowding_state as SentimentAggregate["crowding_state"],
         flip_state: row.flip_state as SentimentAggregate["flip_state"],
-        timestamp_utc: row.timestamp_utc.toISOString(),
+        timestamp_utc: dbTimestampValueToIsoUtc(row.timestamp_utc) ?? row.timestamp_utc,
       }));
     } catch (error) {
       console.error("Error reading sentiment aggregates:", error);
@@ -227,7 +244,7 @@ export async function appendAggregates(
     for (const agg of newAggregates) {
       await query(
         `INSERT INTO sentiment_aggregates (symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, ($9::timestamptz AT TIME ZONE 'UTC'))`,
         [
           agg.symbol,
           agg.agg_long_pct,
@@ -237,7 +254,7 @@ export async function appendAggregates(
           agg.confidence_score,
           agg.crowding_state,
           agg.flip_state,
-          new Date(agg.timestamp_utc),
+          agg.timestamp_utc,
         ]
       );
     }
@@ -269,10 +286,10 @@ export async function getLatestAggregates(): Promise<SentimentAggregate[]> {
         confidence_score: string;
         crowding_state: string;
         flip_state: string;
-        timestamp_utc: Date;
+        timestamp_utc: string;
       }>(
         `SELECT DISTINCT ON (symbol)
-           symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc
+           symbol, agg_long_pct, agg_short_pct, agg_net, sources_used, confidence_score, crowding_state, flip_state, timestamp_utc::text AS timestamp_utc
          FROM sentiment_aggregates
          ORDER BY symbol, timestamp_utc DESC`
       );
@@ -286,7 +303,7 @@ export async function getLatestAggregates(): Promise<SentimentAggregate[]> {
         confidence_score: Number(row.confidence_score),
         crowding_state: row.crowding_state as SentimentAggregate["crowding_state"],
         flip_state: row.flip_state as SentimentAggregate["flip_state"],
-        timestamp_utc: row.timestamp_utc.toISOString(),
+        timestamp_utc: dbTimestampValueToIsoUtc(row.timestamp_utc) ?? row.timestamp_utc,
       }));
     } catch (error) {
       console.error("Error getting latest sentiment aggregates:", error);

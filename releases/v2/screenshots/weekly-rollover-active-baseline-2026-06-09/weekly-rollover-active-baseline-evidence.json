@@ -1,0 +1,39 @@
+{
+  "generatedAtUtc": "2026-06-09T15:59:35.373Z",
+  "routes": [
+    {
+      "route": "/dashboard",
+      "hasInstitutionalSeed": true,
+      "hasJune1": true,
+      "hasJune8": false,
+      "hasMissingSourceFreeze": true,
+      "hasRouteBlocked": true,
+      "excerpt": "LIMNI LABS\nNAVIGATION\nL\nPerformance\nI\nData\nM\nAccounts\nN\nAutomation\nI\nResearch Lab\nL\nDocuments\nA\nAgents\nB\nNews\nS\nStatus\nDARK MODE\nSign Out\n\nApp truth route gate\n\nData is waiting for certified baseline receipts\n\nData route active baseline receipts are blocked: 14/15 week(s) ready.\n\nBaseline\n\nv2.0.3-institutional-seed\n\nExpected weeks\n\n15\n\nStatus\n\nblocked\n\nFirst blockers\n\nsource_freeze_ledger missing for 2026-05-31T23:00:00.000Z\ncanonical_price_and_weekly_returns missing for 2026-05-31T23:00:00.000Z\nOpen Status\nV2V2.0.3 PENDING"
+    },
+    {
+      "route": "/performance",
+      "hasInstitutionalSeed": true,
+      "hasJune1": true,
+      "hasJune8": false,
+      "hasMissingSourceFreeze": true,
+      "hasRouteBlocked": true,
+      "excerpt": "LIMNI LABS\nPERFORMANCE\nBACK\nSIGNAL MODEL\nTandem\nTiered\nAgreement\nSelector\nEXECUTION\nWeekly Hold\nADR Grid\nRISK OVERLAY\nNone\nPair Fill Cap\nAPPLIED\nComputing stats...\nDARK MODE\nSign Out\n\nApp truth route gate\n\nPerformance is waiting for certified baseline receipts\n\nPerformance route active baseline receipts are blocked: 14/15 week(s) ready.\n\nBaseline\n\nv2.0.3-institutional-seed\n\nExpected weeks\n\n15\n\nStatus\n\nblocked\n\nFirst blockers\n\nsource_freeze_ledger missing for 2026-05-31T23:00:00.000Z\ncanonical_price_and_weekly_returns missing for 2026-05-31T23:00:00.000Z\nstrategy_week_shards missing for 2026-05-31T23:00:00.000Z\nOpen Status\nV2V2.0.3 PENDING"
+    },
+    {
+      "route": "/status",
+      "hasInstitutionalSeed": true,
+      "hasJune1": true,
+      "hasJune8": true,
+      "hasMissingSourceFreeze": false,
+      "hasRouteBlocked": false,
+      "excerpt": "LIMNI LABS\nNAVIGATION\nL\nPerformance\nI\nData\nM\nAccounts\nN\nAutomation\nI\nResearch Lab\nL\nDocuments\nA\nAgents\nB\nNews\nS\nStatus\nDARK MODE\nSign Out\nSystem Status\n\nOperational health for canonical data, live feeds, account sync, and workspace surfaces.\n\nLAST REFRESH JUN 09, 2026, 3:20 PM ET\n\nDatabase\n\nOK\n\nConnection OK\n\nCanonical data\n\nOK\n\nCanonical bars, returns, and reconstruction report are available.\n\nData Integrity\n\nOK\n\nAudit clean across 15 weeks and 36 pairs.\n\nSentiment\n\nOK\n\nAggregates available.\n\nAccounts\n\nWARNING\n\nNo MT5 accounts connected.\n\nFix: Check MT5 push URL + token.\n\nNews\n\nOK\n\nForexFactory snapshot cache available.\n\nApp Truth Control Plane\n\nPhase 1 read-only route truth projection. This reports current evidence and missing contracts without changing route behavior.\n\nRelease Identity\n\nREADY\nLIVE\nv2.0.2\nCANDIDATE\nv2.0.3\nCACHE NAMESPACE\nv2.0.3-clean14-friday-runtime\n\nActive Baseline\n\nBLOCKED\n\nv2.0.3-institutional-seed\n\n15 closed week(s); latest closed May 31, 2026; live week Jun 07, 2026.\n\nAPPROVAL\nunder review\nSOURCE WINDOW\nv2.0.3-clean-14w\nPERFORMANCE WINDOW\nactive-baseline\nARCHIVE MODE\nseparate\n\nSource ledger: partial\n\n14/15 active week(s) matched; 1 missing, 0 extra.\n\nPerfor"
+    }
+  ],
+  "failedRequests": [
+    {
+      "url": "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=clean14",
+      "failure": "net::ERR_ABORTED"
+    }
+  ],
+  "consoleErrors": []
+}

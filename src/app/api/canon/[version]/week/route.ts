@@ -14,8 +14,15 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  canonArtifactCacheControl,
+  canonArtifactStatusHeaders,
+  isCanonArtifactStale,
+  staleCanonErrorMessage,
+} from "@/lib/canon/canonArtifactStatus";
+import {
   buildClosedWeekDeltaShard,
   buildCanonWeekShard,
+  buildStrategyArtifactCorrectionShard,
   readReleaseCanonArtifact,
 } from "@/lib/canon/canonWeekShard.server";
 import { releaseManifest } from "@/lib/version/releaseManifest";
@@ -50,6 +57,46 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   try {
+    const staleCanon = isCanonArtifactStale(releaseManifest);
+    if (staleCanon) {
+      return NextResponse.json(
+        { error: staleCanonErrorMessage(releaseManifest), canon: releaseManifest.canon },
+        {
+          status: 409,
+          headers: {
+            "Cache-Control": "no-store",
+            "X-Limni-Canon-Version": version,
+            ...canonArtifactStatusHeaders(releaseManifest),
+          },
+        },
+      );
+    }
+
+    const correctionShard = await buildStrategyArtifactCorrectionShard({
+      manifest: releaseManifest,
+      strategyVariant,
+      weekOpenUtc,
+      currentWeekOpenUtc: getDisplayWeekOpenUtc(),
+    });
+    if (correctionShard) {
+      return NextResponse.json(
+        { shard: correctionShard },
+        {
+          headers: {
+            "Cache-Control": canonArtifactCacheControl(
+              releaseManifest,
+              "public, max-age=300, stale-while-revalidate=3600",
+            ),
+            "X-Limni-Canon-Version": version,
+            "X-Limni-Canon-Shard-Schema": correctionShard.metadata.schemaVersion,
+            "X-Limni-Canon-Shard-Hash": correctionShard.metadata.payloadHash,
+            "X-Limni-Canon-Shard-Source": correctionShard.metadata.source,
+            ...canonArtifactStatusHeaders(releaseManifest),
+          },
+        },
+      );
+    }
+
     const artifact = await readReleaseCanonArtifact(releaseManifest, strategyVariant);
     const shard = buildCanonWeekShard({
       manifest: releaseManifest,
@@ -82,6 +129,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
             "X-Limni-Canon-Shard-Schema": deltaShard.metadata.schemaVersion,
             "X-Limni-Canon-Shard-Hash": deltaShard.metadata.payloadHash,
             "X-Limni-Canon-Shard-Source": deltaShard.metadata.source,
+            ...canonArtifactStatusHeaders(releaseManifest),
           },
         },
       );
@@ -96,6 +144,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           "X-Limni-Canon-Shard-Schema": shard.metadata.schemaVersion,
           "X-Limni-Canon-Shard-Hash": shard.metadata.payloadHash,
           "X-Limni-Canon-Shard-Source": shard.metadata.source,
+          ...canonArtifactStatusHeaders(releaseManifest),
         },
       },
     );

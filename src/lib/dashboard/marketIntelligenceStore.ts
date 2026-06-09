@@ -13,7 +13,7 @@ type MarketIntelligenceState = {
 };
 
 const listeners = new Set<() => void>();
-let inflight: Promise<void> | null = null;
+const inflightByKey = new Map<string, Promise<void>>();
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -48,25 +48,58 @@ function normalizeAsset(asset?: string | null) {
   return asset && asset.length > 0 ? asset : "all";
 }
 
+type FetchMarketIntelligenceOptions = {
+  includeAllReports?: boolean;
+};
+
+function mergePayload(
+  current: MarketIntelligencePayload | null,
+  incoming: MarketIntelligencePayload,
+): MarketIntelligencePayload {
+  if (!current || current.selectedAsset !== incoming.selectedAsset) {
+    return incoming;
+  }
+
+  return {
+    ...incoming,
+    cotDataByReport: {
+      ...current.cotDataByReport,
+      ...incoming.cotDataByReport,
+    },
+    sentimentDataByReport: {
+      ...current.sentimentDataByReport,
+      ...incoming.sentimentDataByReport,
+    },
+    strengthDataByReport: {
+      ...current.strengthDataByReport,
+      ...incoming.strengthDataByReport,
+    },
+    provenanceByReport: {
+      ...current.provenanceByReport,
+      ...incoming.provenanceByReport,
+    },
+  };
+}
+
 export function seedMarketIntelligence(payload: MarketIntelligencePayload): void {
-  if (state.payload && state.payload.selectedAsset === payload.selectedAsset) return;
+  const mergedPayload = mergePayload(state.payload, payload);
   setState({
-    payload,
+    payload: mergedPayload,
     status: "ready",
     error: null,
-    lastFetchedUtc: payload.fetchedAtUtc,
+    lastFetchedUtc: mergedPayload.fetchedAtUtc,
   });
 }
 
-export async function fetchAndSeedMarketIntelligence(asset?: string | null): Promise<void> {
+export async function fetchAndSeedMarketIntelligence(
+  asset?: string | null,
+  report?: string | null,
+  options: FetchMarketIntelligenceOptions = {},
+): Promise<void> {
   const requestedAsset = normalizeAsset(asset ?? state.payload?.selectedAsset);
-  if (
-    inflight &&
-    state.status === "loading" &&
-    normalizeAsset(state.payload?.selectedAsset) === requestedAsset
-  ) {
-    return inflight;
-  }
+  const requestKey = `${requestedAsset}:${options.includeAllReports ? "all-reports" : report ?? "default"}`;
+  const existingInflight = inflightByKey.get(requestKey);
+  if (existingInflight) return existingInflight;
 
   setState({
     ...state,
@@ -74,21 +107,25 @@ export async function fetchAndSeedMarketIntelligence(asset?: string | null): Pro
     error: null,
   });
 
-  inflight = (async () => {
+  const request = (async () => {
     try {
+      const params = new URLSearchParams({ asset: requestedAsset });
+      if (report) params.set("report", report);
+      if (options.includeAllReports) params.set("allReports", "1");
       const response = await fetch(
-        `/api/dashboard/payload?asset=${encodeURIComponent(requestedAsset)}`,
+        `/api/dashboard/payload?${params.toString()}`,
         { method: "GET", cache: "no-store" },
       );
       if (!response.ok) {
         throw new Error(`Market intelligence request failed (${response.status})`);
       }
       const payload = (await response.json()) as MarketIntelligencePayload;
+      const mergedPayload = mergePayload(state.payload, payload);
       setState({
-        payload,
+        payload: mergedPayload,
         status: "ready",
         error: null,
-        lastFetchedUtc: payload.fetchedAtUtc,
+        lastFetchedUtc: mergedPayload.fetchedAtUtc,
       });
     } catch (error) {
       setState({
@@ -98,13 +135,14 @@ export async function fetchAndSeedMarketIntelligence(asset?: string | null): Pro
       });
     }
   })().finally(() => {
-    inflight = null;
+    inflightByKey.delete(requestKey);
   });
 
-  return inflight;
+  inflightByKey.set(requestKey, request);
+  return request;
 }
 
-export function scheduleMarketIntelligenceRefresh(asset?: string | null): void {
+export function scheduleMarketIntelligenceRefresh(asset?: string | null, report?: string | null): void {
   clearMarketIntelligenceRefresh();
 
   const now = new Date();
@@ -115,9 +153,9 @@ export function scheduleMarketIntelligenceRefresh(asset?: string | null): void {
   }
 
   refreshTimer = setTimeout(() => {
-    void fetchAndSeedMarketIntelligence(asset);
+    void fetchAndSeedMarketIntelligence(asset, report);
     refreshInterval = setInterval(() => {
-      void fetchAndSeedMarketIntelligence(asset);
+      void fetchAndSeedMarketIntelligence(asset, report);
     }, 3_600_000);
   }, Math.max(next.getTime() - now.getTime(), 1000));
 }

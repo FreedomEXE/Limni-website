@@ -33,6 +33,10 @@ export type TradeDetailMeta = {
   displayReturnPct?: number;
   adrMultiplier?: number | null;
   returnMode?: "raw" | "normalized";
+  gridPathDrawdownRawPct?: number | null;
+  capActiveFillsAtEntry?: number | null;
+  capThresholdAtEntry?: number | null;
+  capViolated?: boolean;
 };
 
 export type PerformanceModel =

@@ -11,6 +11,7 @@ import {
 import type { AssetClass } from "@/lib/cotMarkets";
 import { query } from "@/lib/db";
 import { fetchOandaCandleSeries, type OandaHourlyCandle } from "@/lib/oandaPrices";
+import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 
 export type CanonicalHourlyBackfillOptions = {
   assetClass?: AssetClass | "all";
@@ -119,8 +120,11 @@ function selectWeeks(options: {
   toWeek?: string;
 }) {
   if (options.weeks && options.weeks.length > 0) {
-    const requested = new Set(options.weeks.map((week) => week.trim()).filter(Boolean));
-    return CANONICAL_WEEKS.filter((week) => requested.has(week));
+    return [...new Set(
+      options.weeks
+        .map((week) => normalizeWeekOpenUtc(week.trim()) ?? week.trim())
+        .filter(Boolean),
+    )].sort();
   }
 
   const fromMs = options.fromWeek

@@ -17,6 +17,25 @@ import { useEffect, useRef, useState } from "react";
 import { useCanonKernelStatus } from "@/lib/canon/canonKernelStore";
 import type { ReleaseManifest } from "@/lib/version/releaseManifest";
 
+let cachedManifest: ReleaseManifest | null = null;
+let manifestRequest: Promise<ReleaseManifest | null> | null = null;
+
+function fetchVersionManifest() {
+  if (cachedManifest) return Promise.resolve(cachedManifest);
+  if (manifestRequest) return manifestRequest;
+  manifestRequest = fetch("/api/version/current", { cache: "no-store" })
+    .then((response) => response.ok ? response.json() as Promise<ReleaseManifest> : null)
+    .then((next) => {
+      cachedManifest = next;
+      return next;
+    })
+    .catch(() => null)
+    .finally(() => {
+      manifestRequest = null;
+    });
+  return manifestRequest;
+}
+
 export default function AppVersionBadge() {
   const [manifest, setManifest] = useState<ReleaseManifest | null>(null);
   const [open, setOpen] = useState(false);
@@ -25,12 +44,10 @@ export default function AppVersionBadge() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/version/current", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() as Promise<ReleaseManifest> : null)
+    fetchVersionManifest()
       .then((next) => {
         if (!cancelled && next) setManifest(next);
-      })
-      .catch(() => {});
+      });
     return () => {
       cancelled = true;
     };
@@ -57,6 +74,7 @@ export default function AppVersionBadge() {
   const latestPatch = manifest.versionHistory?.find((entry) => entry.appVersion === manifest.appVersion);
   const releaseLine = manifest.versionHistory?.find((entry) => entry.type === "major");
   const releaseLineLabel = manifest.releaseLine ?? manifest.displayVersion ?? "v2";
+  const pendingRelease = manifest.pendingRelease;
 
   return (
     <div
@@ -72,7 +90,12 @@ export default function AppVersionBadge() {
         aria-label={`App version ${manifest.appVersion}`}
         data-testid="app-version-badge"
       >
-        {manifest.displayVersion ?? manifest.appVersion}
+        <span>{manifest.displayVersion ?? manifest.appVersion}</span>
+        {pendingRelease ? (
+          <span className="ml-2 rounded-full border border-[var(--accent)]/40 px-2 py-0.5 text-[9px] tracking-[0.16em] text-[var(--accent-strong)]">
+            {pendingRelease.appVersion} pending
+          </span>
+        ) : null}
       </button>
 
       {open ? (
@@ -98,6 +121,12 @@ export default function AppVersionBadge() {
                   <p>Patch: {latestPatch?.date ?? manifest.preparedAt.slice(0, 10)}</p>
                   <p>{releaseLineLabel} line: {releaseLine?.date ?? manifest.releasedAt ?? manifest.preparedAt.slice(0, 10)}</p>
                 </div>
+                {pendingRelease ? (
+                  <div className="mt-3 rounded-lg border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-3 py-2 text-[11px] text-[var(--accent-strong)]">
+                    <p className="font-semibold uppercase tracking-[0.16em]">{pendingRelease.label}</p>
+                    <p className="mt-1 text-[color:var(--muted)]">{pendingRelease.status}</p>
+                  </div>
+                ) : null}
               </div>
               <p className="text-right text-[11px] text-[color:var(--muted)]">
                 {manifest.releasedAt ?? "Local patch"}

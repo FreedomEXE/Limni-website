@@ -22,12 +22,17 @@ import {
   canonMetaKey,
   hasCanonBundles,
   readCanonBundle,
+  readCanonMeta,
   writeCanonBundle,
   writeCanonMeta,
 } from "@/lib/canon/canonIndexedDb";
 import { normalizePerformanceAssetSelection } from "@/lib/performance/performanceAssetScope";
 import { clearStrategyClientPayloadCaches } from "@/lib/performance/strategyClientCache";
 import { clearGlobalPreloadStamp } from "@/lib/preload/preloadContract";
+import {
+  isCanonArtifactStale,
+  staleCanonErrorMessage,
+} from "@/lib/canon/canonArtifactStatus";
 
 const CACHE_NAMESPACE_STORAGE_KEY = "limni-cache-namespace";
 const MANIFEST_STORAGE_KEY = "limni-app-manifest-summary";
@@ -37,6 +42,7 @@ export type CanonPreloadPhase =
   | "checking-version"
   | "loading-cache"
   | "updating-app-version"
+  | "stale-canon"
   | "ready"
   | "error";
 
@@ -58,6 +64,8 @@ type CanonMeta = {
   canonGeneratedAt: string;
   sourceLedgerRowCount: number;
   sourceHash: string;
+  engineVersion: string;
+  variantHashes: Record<string, string>;
   cachedAtUtc: string;
 };
 
@@ -149,6 +157,53 @@ async function fetchCanonBundle(canonVersion: string, strategyVariant: string) {
   return json.bundle;
 }
 
+function canonMetaFromManifest(manifest: ReleaseManifest): CanonMeta {
+  return {
+    releaseLine: manifest.releaseLine,
+    appVersion: manifest.appVersion,
+    semanticVersion: manifest.semanticVersion,
+    canonVersion: manifest.canonVersion,
+    cacheNamespace: manifest.cacheNamespace,
+    canonGeneratedAt: manifest.canon.generatedAt,
+    sourceLedgerRowCount: manifest.canon.sourceLedgerRowCount,
+    sourceHash: manifest.canon.sourceHash,
+    engineVersion: manifest.components.engineVersion,
+    variantHashes: Object.fromEntries(
+      manifest.canon.variants.map((variant) => [variant.strategyVariant, variant.sha256]),
+    ),
+    cachedAtUtc: new Date().toISOString(),
+  };
+}
+
+function canonMetaMatchesManifest(meta: CanonMeta | null, manifest: ReleaseManifest) {
+  if (!meta) return false;
+  if (meta.releaseLine !== manifest.releaseLine) return false;
+  if (meta.appVersion !== manifest.appVersion) return false;
+  if (meta.semanticVersion !== manifest.semanticVersion) return false;
+  if (meta.canonVersion !== manifest.canonVersion) return false;
+  if (meta.cacheNamespace !== manifest.cacheNamespace) return false;
+  if (meta.canonGeneratedAt !== manifest.canon.generatedAt) return false;
+  if (meta.sourceLedgerRowCount !== manifest.canon.sourceLedgerRowCount) return false;
+  if (meta.sourceHash !== manifest.canon.sourceHash) return false;
+  if (meta.engineVersion !== manifest.components.engineVersion) return false;
+
+  for (const variant of manifest.canon.variants) {
+    if (meta.variantHashes?.[variant.strategyVariant] !== variant.sha256) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+async function hasValidatedCanonBundles(manifest: ReleaseManifest, keys: string[]) {
+  const meta = await readCanonMeta<CanonMeta>(canonMetaKey(manifest.canonVersion));
+  if (!canonMetaMatchesManifest(meta, manifest)) {
+    return false;
+  }
+  return hasCanonBundles(keys);
+}
+
 async function loadBundlesFromIndexedDb(manifest: ReleaseManifest) {
   memoryBundles.clear();
   for (const variant of manifest.canon.variants) {
@@ -180,18 +235,7 @@ async function fetchAndPersistBundles(manifest: ReleaseManifest) {
     setState({ completed: state.completed + 1 });
   }
 
-  const meta: CanonMeta = {
-    releaseLine: manifest.releaseLine,
-    appVersion: manifest.appVersion,
-    semanticVersion: manifest.semanticVersion,
-    canonVersion: manifest.canonVersion,
-    cacheNamespace: manifest.cacheNamespace,
-    canonGeneratedAt: manifest.canon.generatedAt,
-    sourceLedgerRowCount: manifest.canon.sourceLedgerRowCount,
-    sourceHash: manifest.canon.sourceHash,
-    cachedAtUtc: new Date().toISOString(),
-  };
-  await writeCanonMeta(canonMetaKey(manifest.canonVersion), meta);
+  await writeCanonMeta(canonMetaKey(manifest.canonVersion), canonMetaFromManifest(manifest));
   writeManifestSummary(manifest);
   writeStoredCacheNamespace(manifest.cacheNamespace);
 }
@@ -222,7 +266,21 @@ export function startCanonPreload() {
         await clearStrategyClientPayloadCaches();
       }
 
-      if (await hasCanonBundles(keys)) {
+      if (isCanonArtifactStale(manifest)) {
+        memoryBundles.clear();
+        writeManifestSummary(manifest);
+        setState({
+          phase: "stale-canon",
+          status: "error",
+          appVersion: manifest.appVersion,
+          total: keys.length,
+          completed: 0,
+          error: staleCanonErrorMessage(manifest),
+        });
+        return;
+      }
+
+      if (!cacheNamespaceChanged && await hasValidatedCanonBundles(manifest, keys)) {
         setState({
           phase: cacheNamespaceChanged ? "updating-app-version" : "loading-cache",
           status: "loading",

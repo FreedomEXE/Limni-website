@@ -1,0 +1,14 @@
+{
+  "checkedAtUtc": "2026-06-09T17:21:09.281Z",
+  "route": "http://127.0.0.1:3001/status",
+  "screenshotPath": "C:\\Users\\User\\Documents\\GitHub\\limni-website\\releases\\v2\\screenshots\\weekly-rollover-active-baseline-2026-06-09\\status-institutional-seed-runtime-name.png",
+  "ui": {
+    "hasInstitutionalSeedRuntime": true,
+    "hasClean14Text": false,
+    "activeBaselineReady": true,
+    "weeklyLifecycleReady": true,
+    "sampleText": "LIMNI LABS\nNAVIGATION\nL\nPerformance\nI\nData\nM\nAccounts\nN\nAutomation\nI\nResearch Lab\nL\nDocuments\nA\nAgents\nB\nNews\nS\nStatus\nDARK MODE\nSign Out\nSystem Status\n\nOperational health for canonical data, live feeds, account sync, and workspace surfaces.\n\nLAST REFRESH JUN 09, 2026, 5:05 PM ET\n\nDatabase\n\nOK\n\nConnection OK\n\nCanonical data\n\nOK\n\nCanonical bars, returns, and reconstruction report are available.\n\nData Integrity\n\nOK\n\nAudit clean across 15 weeks and 36 pairs.\n\nSentiment\n\nOK\n\nAggregates available.\n\nAccounts\n\nWARNING\n\nNo MT5 accounts connected.\n\nFix: Check MT5 push URL + token.\n\nNews\n\nOK\n\nForexFactory snapshot cache available.\n\nApp Truth Control Plane\n\nPhase 1 read-only route truth projection. This reports current evidence and missing contracts without changing route behavior.\n\nRelease Identity\n\nREADY\nLIVE\nv2.0.2\nCANDIDATE\nv2.0.3\nCACHE NAMESPACE\nv2.0.3-institutional-seed-runtime\n\nActive Baseline\n\nREADY\n\nv2.0.3-institutional-seed\n\n15 closed week(s); latest closed May 31, 2026; live week Jun 07, 2026.\n\nAPPROVAL\nunder review\nSOURCE WINDOW\nactive-baseline-source-freeze\nPERFORMANCE WINDOW\nactive-baseline\nARCHIVE MODE\nseparate\n\nSource ledger: match\n\nSource-freeze ledger matches the active base"
+  },
+  "failedRequests": [],
+  "consoleErrors": []
+}

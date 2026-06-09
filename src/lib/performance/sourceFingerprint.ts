@@ -16,6 +16,7 @@
 import crypto from "node:crypto";
 import { query } from "@/lib/db";
 import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
+import { readFrozenSourceLedgerWeek, type FrozenSourceLedgerWeek } from "@/lib/sourceFreeze/sourceLedger";
 import {
   CANONICAL_ANCHOR_VERSION,
   EXECUTION_ANCHOR_VERSION,
@@ -45,6 +46,15 @@ export type WeeklySourceFingerprint = {
   derivationVersions: string[];
 };
 
+type FrozenLedgerFingerprintPayload = {
+  ledgerVersion: string;
+  releaseWindow: string;
+  freezeTargetUtc: string;
+  complete: boolean;
+  trustedForFreeze: boolean;
+  sourceHash: string;
+} | null;
+
 const SOURCE_FINGERPRINT_CACHE_TTL_MS = Number(
   process.env.SOURCE_FINGERPRINT_CACHE_TTL_MS ?? "30000",
 );
@@ -67,6 +77,7 @@ function buildHashPayload(
   anchorType: AnchorType,
   anchorVersion: string,
   rows: WeeklySourceRow[],
+  frozenLedger: FrozenLedgerFingerprintPayload,
 ) {
   const normalizedRows = rows
     .map((row) => ({
@@ -89,6 +100,7 @@ function buildHashPayload(
     weekOpenUtc,
     anchorType,
     anchorVersion,
+    frozenLedger,
     rows: normalizedRows,
   });
 }
@@ -97,11 +109,26 @@ function hash(value: string) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+function toFrozenLedgerFingerprintPayload(
+  ledger: FrozenSourceLedgerWeek | null,
+): FrozenLedgerFingerprintPayload {
+  if (!ledger) return null;
+  return {
+    ledgerVersion: ledger.ledgerVersion,
+    releaseWindow: ledger.releaseWindow,
+    freezeTargetUtc: ledger.freezeTargetUtc,
+    complete: ledger.complete,
+    trustedForFreeze: ledger.trustedForFreeze,
+    sourceHash: ledger.sourceHash,
+  };
+}
+
 function buildFingerprint(
   weekOpenUtc: string,
   anchorType: AnchorType,
   anchorVersion: string,
   rows: WeeklySourceRow[],
+  frozenLedger: FrozenLedgerFingerprintPayload,
 ): WeeklySourceFingerprint {
   const updatedValues = rows
     .map((row) => row.updated_at.toISOString())
@@ -113,8 +140,8 @@ function buildFingerprint(
     weekOpenUtc,
     anchorType,
     anchorVersion,
-    fingerprint: `weekly-source-v2:${anchorType}:${anchorVersion}:${hash(
-      buildHashPayload(weekOpenUtc, anchorType, anchorVersion, rows),
+    fingerprint: `weekly-source-v3:${anchorType}:${anchorVersion}:${hash(
+      buildHashPayload(weekOpenUtc, anchorType, anchorVersion, rows, frozenLedger),
     )}`,
     rowCount: rows.length,
     maxUpdatedAtUtc: updatedValues[0] ?? null,
@@ -129,7 +156,7 @@ export async function listWeeklySourceFingerprints(
   const uniqueWeeks = Array.from(new Set(weekOpenUtcs)).sort();
   if (uniqueWeeks.length === 0) return {};
   const anchorVersion = getAnchorVersion(anchorType);
-  const cacheKey = `weeklySourceFingerprints:${anchorType}:${anchorVersion}:${uniqueWeeks.join(",")}`;
+  const cacheKey = `weeklySourceFingerprints:v3:${anchorType}:${anchorVersion}:${uniqueWeeks.join(",")}`;
   return getOrSetRuntimeCache(cacheKey, SOURCE_FINGERPRINT_CACHE_TTL_MS, async () => {
     const rows = await query<WeeklySourceRow>(
       `SELECT period_open_utc,
@@ -159,10 +186,25 @@ export async function listWeeklySourceFingerprints(
       if (list) list.push(row);
     }
 
+    const frozenLedgersByWeek = new Map(
+      await Promise.all(
+        uniqueWeeks.map(async (weekOpenUtc) => [
+          weekOpenUtc,
+          toFrozenLedgerFingerprintPayload(await readFrozenSourceLedgerWeek(weekOpenUtc)),
+        ] as const),
+      ),
+    );
+
     return Object.fromEntries(
       uniqueWeeks.map((weekOpenUtc) => [
         weekOpenUtc,
-        buildFingerprint(weekOpenUtc, anchorType, anchorVersion, rowsByWeek.get(weekOpenUtc) ?? []),
+        buildFingerprint(
+          weekOpenUtc,
+          anchorType,
+          anchorVersion,
+          rowsByWeek.get(weekOpenUtc) ?? [],
+          frozenLedgersByWeek.get(weekOpenUtc) ?? null,
+        ),
       ]),
     );
   });

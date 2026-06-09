@@ -1,0 +1,63 @@
+{
+  "schema": "app-truth-active-baseline-certification-v1",
+  "ok": true,
+  "baselineId": "v2.0.3-institutional-seed",
+  "weeks": [
+    "2026-02-23T00:00:00Z",
+    "2026-03-02T00:00:00Z",
+    "2026-03-08T23:00:00Z",
+    "2026-03-15T23:00:00Z",
+    "2026-03-22T23:00:00Z",
+    "2026-03-29T23:00:00Z",
+    "2026-04-05T23:00:00Z",
+    "2026-04-12T23:00:00Z",
+    "2026-04-19T23:00:00Z",
+    "2026-04-26T23:00:00Z",
+    "2026-05-03T23:00:00Z",
+    "2026-05-10T23:00:00Z",
+    "2026-05-17T23:00:00Z",
+    "2026-05-24T23:00:00Z",
+    "2026-05-31T23:00:00Z"
+  ],
+  "schedulerRunId": "active-baseline-certification-20260609190033-9b8c3f1d",
+  "evidenceHash": "f79cacb4bd3b52d0625dcf1ace31dcb8f131d1ae22c404150e9d656b0e84bff2",
+  "results": [
+    {
+      "materializationType": "source_freeze_ledger",
+      "ok": true,
+      "expectedRows": 15,
+      "actualRows": 15,
+      "extraRows": 0,
+      "missingInputs": [],
+      "outputArtifacts": [
+        "source_freeze_ledger_weeks:15",
+        "source_freeze_ledger_contract:trusted-week-ledger"
+      ]
+    },
+    {
+      "materializationType": "canonical_price_and_weekly_returns",
+      "ok": true,
+      "expectedRows": 1080,
+      "actualRows": 1080,
+      "extraRows": 0,
+      "missingInputs": [],
+      "outputArtifacts": [
+        "pair_period_returns:1080",
+        "canonical_anchor:canonical_weekly_v2",
+        "execution_anchor:execution_ny_fri9_entry_fri11_close_v1"
+      ]
+    },
+    {
+      "materializationType": "strategy_week_shards",
+      "ok": true,
+      "expectedRows": 180,
+      "actualRows": 180,
+      "extraRows": 0,
+      "missingInputs": [],
+      "outputArtifacts": [
+        "strategy_week_shards:180",
+        "visible_selections:12"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "task": "source_freeze_ledger",
+  "status": "succeeded",
+  "targetWeek": "2026-06-07T23:00:00Z",
+  "freezeTargetUtc": "2026-06-05T21:00:00Z",
+  "releaseWindow": "current-friday-freeze",
+  "sourceHash": "90fd8ed4602b6fbb838e57556e47f80f8003e36a1cce461b2f5c0371b2acd612",
+  "complete": true,
+  "trustedForFreeze": true,
+  "reusedExisting": true,
+  "incidents": [
+    "sentiment:raw_provider_evidence_missing:0/36"
+  ],
+  "appTruthLedger": {
+    "schedulerRunId": "source-freeze-ledger-20260609194304-84bf4efd",
+    "materializationRunId": "source-freeze-ledger-20260609194304-4f6808cd"
+  }
+}

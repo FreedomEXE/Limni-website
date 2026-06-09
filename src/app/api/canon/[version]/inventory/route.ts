@@ -14,6 +14,10 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  canonArtifactCacheControl,
+  canonArtifactStatusHeaders,
+} from "@/lib/canon/canonArtifactStatus";
+import {
   buildCanonInventoryManifest,
 } from "@/lib/canon/canonWeekShard.server";
 import { releaseManifest } from "@/lib/version/releaseManifest";
@@ -42,9 +46,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     { inventory },
     {
       headers: {
-        "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+        "Cache-Control": canonArtifactCacheControl(
+          releaseManifest,
+          "public, max-age=60, stale-while-revalidate=300",
+        ),
         "X-Limni-Canon-Version": version,
         "X-Limni-Canon-Inventory-Schema": inventory.schemaVersion,
+        ...canonArtifactStatusHeaders(releaseManifest),
       },
     },
   );

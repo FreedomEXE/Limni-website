@@ -1,0 +1,105 @@
+{
+  "route": "/dashboard",
+  "expected": "Jun 08 2026 is selectable as the live Data/source week while activeBaseline.activeWeekCount remains closed-only.",
+  "observed": {
+    "hasJun8Text": true,
+    "hasJun1Text": true,
+    "clean14TextPresent": false,
+    "dashboardButtons": [
+      "LIMNI LABSNavigation",
+      "LPerformance",
+      "IData",
+      "MAccounts",
+      "NAutomation",
+      "IResearch Lab",
+      "LDocuments",
+      "AAgents",
+      "BNews",
+      "SStatus",
+      "Dark mode",
+      "Sign Out",
+      "Menu",
+      "Execution",
+      "Market truth",
+      "ADR-norm",
+      "Raw %",
+      "Pairs tracked36",
+      "Long signals24",
+      "Short signals12",
+      "Neutral/ignored0",
+      "Flips3",
+      "Dealer",
+      "Commercial",
+      "Sentiment"
+    ],
+    "payload": {
+      "status": 200,
+      "currentWeekOpenUtc": "2026-06-07T23:00:00.000Z",
+      "activeBaseline": {
+        "id": "v2.0.3-institutional-seed",
+        "mode": "active",
+        "activeWeekCount": 15,
+        "archiveAvailable": true
+      },
+      "firstReportOptions": [
+        {
+          "value": "2026-06-02",
+          "label": "Jun 08 2026",
+          "cotReportLabel": "Jun 02 2026",
+          "fridayFreezeLabel": "Jun 05 2026 5:00 PM EDT",
+          "fridayFreezeUtc": "2026-06-05T21:00:00.000Z",
+          "freezeStatusLabel": "Freeze ledger missing; legacy fallback",
+          "freezeLedgerReady": false
+        },
+        {
+          "value": "2026-05-26",
+          "label": "Jun 01 2026",
+          "cotReportLabel": "May 26 2026",
+          "fridayFreezeLabel": "May 29 2026 5:00 PM EDT",
+          "fridayFreezeUtc": "2026-05-29T21:00:00.000Z",
+          "freezeStatusLabel": "Freeze ledger ready",
+          "freezeLedgerReady": true
+        },
+        {
+          "value": "2026-05-19",
+          "label": "May 25 2026",
+          "cotReportLabel": "May 19 2026",
+          "fridayFreezeLabel": "May 22 2026 5:00 PM EDT",
+          "fridayFreezeUtc": "2026-05-22T21:00:00.000Z",
+          "freezeStatusLabel": "Freeze ledger ready",
+          "freezeLedgerReady": true
+        },
+        {
+          "value": "2026-05-12",
+          "label": "May 18 2026",
+          "cotReportLabel": "May 12 2026",
+          "fridayFreezeLabel": "May 15 2026 5:00 PM EDT",
+          "fridayFreezeUtc": "2026-05-15T21:00:00.000Z",
+          "freezeStatusLabel": "Freeze ledger ready",
+          "freezeLedgerReady": true
+        },
+        {
+          "value": "2026-05-05",
+          "label": "May 11 2026",
+          "cotReportLabel": "May 05 2026",
+          "fridayFreezeLabel": "May 08 2026 5:00 PM EDT",
+          "fridayFreezeUtc": "2026-05-08T21:00:00.000Z",
+          "freezeStatusLabel": "Freeze ledger ready",
+          "freezeLedgerReady": true
+        }
+      ],
+      "hasJun8Label": true,
+      "hasJun1Label": true
+    },
+    "apiResponses": [
+      {
+        "url": "http://127.0.0.1:3001/api/dashboard/payload?asset=all&allReports=1",
+        "status": 200
+      }
+    ],
+    "failedRequests": [],
+    "consoleErrors": []
+  },
+  "screenshot": "dashboard-june8-live-source-week.png",
+  "capturedAtUtc": "2026-06-09T17:51:14.680Z"
+}

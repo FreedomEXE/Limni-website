@@ -16,17 +16,20 @@
 import { useEffect, useState, type ComponentProps } from "react";
 import PerformanceViewSection from "@/components/performance/PerformanceViewSection";
 import StrategyArtifactLoadingGate from "@/components/performance/StrategyArtifactLoadingGate";
-import { startCanonKernelSync } from "@/lib/canon/canonKernelStore";
+import { startCanonKernelSync, useCanonKernelStatus } from "@/lib/canon/canonKernelStore";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import {
   buildStrategySelectionKey,
   STRATEGY_SELECTION_COMMIT_EVENT,
+  STRATEGY_SIDEBAR_STATS_EVENT,
   type RuntimeStrategySelection,
   type StrategySelectionCommitDetail,
+  type StrategySidebarStatsDetail,
 } from "@/lib/performance/strategySelection";
 import type { StrategyClientPayload } from "@/lib/performance/strategyClientPayload";
 import {
+  ensureCurrentWeekSession,
   seedStrategySessionPayload,
   useStrategySession,
 } from "@/lib/performance/strategySessionStore";
@@ -40,6 +43,7 @@ type StrategyBootstrapEntry = {
   weekOptions?: string[];
   currentWeekOpenUtc?: string;
   artifactMeta?: StrategyClientPayload["artifactMeta"];
+  selectedTradeRowsBundle?: StrategyClientPayload["selectedTradeRowsBundle"];
 };
 
 type PerformanceStrategyViewSectionProps = Omit<
@@ -59,6 +63,7 @@ function entryToPayload(entry: StrategyBootstrapEntry): StrategyClientPayload {
     weekOptions: entry.weekOptions,
     currentWeekOpenUtc: entry.currentWeekOpenUtc,
     artifactMeta: entry.artifactMeta,
+    selectedTradeRowsBundle: entry.selectedTradeRowsBundle ?? null,
   };
 }
 
@@ -69,7 +74,8 @@ export default function PerformanceStrategyViewSection({
 }: PerformanceStrategyViewSectionProps) {
   const [selectedSelection, setSelectedSelection] = useState<RuntimeStrategySelection>(initialSelection);
   const selectedSelectionKey = buildStrategySelectionKey(selectedSelection);
-  const session = useStrategySession(selectedSelection, { kernel: true });
+  const session = useStrategySession(selectedSelection, { kernel: true, currentWeek: true });
+  const canonKernel = useCanonKernelStatus();
   const payload = session.payload;
 
   useEffect(() => {
@@ -105,12 +111,38 @@ export default function PerformanceStrategyViewSection({
   ].filter(Boolean).join(" · ");
 
   const hasRenderablePayload = Boolean(payload?.engineWeekMap || payload?.engineSimMap || payload?.sidebarStats);
-  const currentReady = hasRenderablePayload || session.status === "error";
+  const performanceCanonReady = canonKernel.status === "ready" && canonKernel.totalWeeks >= 14;
+  const activeRuntimeReady = Boolean(
+    hasRenderablePayload &&
+    payload?.artifactMeta?.historyWindow === "active-baseline" &&
+    (payload.artifactMeta.expectedWeeks ?? 0) >= 14 &&
+    (payload.artifactMeta.missingWeeks?.length ?? 0) === 0,
+  );
+  const blockDeprecatedPerformance = !performanceCanonReady && !activeRuntimeReady;
+  const showUnavailableMessage =
+    session.status === "missing" ||
+    session.status === "error" ||
+    (blockDeprecatedPerformance && session.status === "ready");
+  const currentReady = hasRenderablePayload || session.status === "missing" || session.status === "error";
   const loadingPhase = session.currentWeekStatus === "current-loading"
     ? "current-week"
     : session.status === "loading"
       ? "loading"
       : null;
+
+  useEffect(() => {
+    if (!activeRuntimeReady) return;
+    void ensureCurrentWeekSession(selectedSelection);
+  }, [activeRuntimeReady, selectedSelection]);
+
+  useEffect(() => {
+    if (!showUnavailableMessage) return;
+    const detail: StrategySidebarStatsDetail = {
+      selection: selectedSelection,
+      stats: null,
+    };
+    window.dispatchEvent(new CustomEvent(STRATEGY_SIDEBAR_STATS_EVENT, { detail }));
+  }, [selectedSelection, showUnavailableMessage]);
 
   return (
     <StrategyArtifactLoadingGate
@@ -130,9 +162,15 @@ export default function PerformanceStrategyViewSection({
           </div>
         </header>
 
-        {session.status === "missing" || session.status === "error" ? (
+        {showUnavailableMessage ? (
           <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
-            Strategy data is not ready yet.
+            <p className="font-semibold text-[var(--foreground)]">Active Performance runtime is not ready.</p>
+            <p className="mt-2">
+              {canonKernel.error ?? session.error ?? "Strategy data is not ready yet."}
+            </p>
+            <p className="mt-2">
+              Active runtime window: {payload?.artifactMeta?.historyWindow ?? "unknown"}; expected weeks: {payload?.artifactMeta?.expectedWeeks ?? 0}; missing weeks: {payload?.artifactMeta?.missingWeeks?.length ?? 0}. Current app comparison baseline is receipt-backed active closed-week history. Do not treat deprecated broad-history Performance data as v2.0.3 canon.
+            </p>
           </div>
         ) : (
           <PerformanceViewSection
@@ -144,6 +182,7 @@ export default function PerformanceStrategyViewSection({
             sidebarStats={payload?.sidebarStats ?? null}
             weekOptions={payload?.weekOptions ?? performanceProps.weekOptions}
             currentWeek={payload?.currentWeekOpenUtc ?? performanceProps.currentWeek}
+            selectedTradeRowsBundle={payload?.selectedTradeRowsBundle ?? null}
             strategyDescription={strategyDescription}
             notesStorageKey={selectedSelectionKey}
           />

@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { ACTIVE_BASELINE_ID } from "@/lib/appTruth/activeBaseline";
 import type {
   DashboardCotPayload,
   DashboardStrengthPayload,
@@ -23,9 +24,9 @@ import { readSnapshotHistory } from "@/lib/cotStore";
 import type { CotSnapshot, CotSnapshotResponse, PairSnapshot } from "@/lib/cotTypes";
 import type { Direction } from "@/lib/cotTypes";
 import {
-  deriveCotReportDate,
   findDataSectionWeekByReportDate,
-  listDataSectionWeekEntries,
+  listActiveDataSectionSelectableWeekEntries,
+  listActiveDataSectionWeekEntries,
 } from "@/lib/dataSectionWeeks";
 import {
   getWeekSnapshotProvenance,
@@ -41,6 +42,8 @@ import {
   type WeeklyUnderlyingStrength,
 } from "@/lib/strength/weeklyStrength";
 import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
+import { readFrozenSourceLedgerWeek, type FrozenSourceLedgerWeek } from "@/lib/sourceFreeze/sourceLedger";
+import { getFridayFreezeDisplayWeekOpenUtc, getFridayFreezeTargetUtc } from "@/lib/sourceFreeze/fridayFreeze";
 import {
   ALL_SENTIMENT_SYMBOLS,
   SENTIMENT_ASSET_CLASSES,
@@ -54,7 +57,6 @@ import {
 import { resolveSentimentDirections } from "@/lib/sentiment/resolver";
 import type { SentimentAggregate } from "@/lib/sentiment/types";
 import { latestIso } from "@/lib/time";
-import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import type { ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
 import type { MarketIntelligencePayload } from "@/lib/dashboard/marketIntelligencePayload";
 import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
@@ -63,6 +65,11 @@ const MARKET_INTELLIGENCE_LOAD_CONCURRENCY = 3;
 const MARKET_INTELLIGENCE_CACHE_TTL_MS = Number(
   process.env.MARKET_INTELLIGENCE_CACHE_TTL_MS ?? "300000",
 );
+
+type MarketIntelligenceLoadOptions = {
+  reportDate?: string | null;
+  includeAllReports?: boolean;
+};
 
 type ResolvedBias = {
   long: number;
@@ -194,6 +201,22 @@ function buildCanonicalPairPerformance(
   };
 }
 
+function sourceIsBlocked(provenance: WeekSnapshotProvenance[keyof Pick<WeekSnapshotProvenance, "cot" | "sentiment" | "strength">] | undefined) {
+  return provenance?.status === "invalid_future" || provenance?.status === "missing";
+}
+
+function sourceStatusDetail(
+  provenance: WeekSnapshotProvenance[keyof Pick<WeekSnapshotProvenance, "cot" | "sentiment" | "strength">] | undefined,
+) {
+  if (provenance?.status === "invalid_future") {
+    return "Blocked because the latest source timestamp is later than current app/server time.";
+  }
+  if (provenance?.status === "missing") {
+    return "Blocked because no valid source timestamp is available.";
+  }
+  return "";
+}
+
 function weeklyReturnMatrix(row: Pick<WeeklyReturnRow, "canonical" | "execution" | "adrPct">): ReturnMatrix {
   return {
     canonical: row.canonical,
@@ -209,6 +232,78 @@ function toNullableNumber(value: unknown): number | null {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+}
+
+function metadataString(metadata: Record<string, unknown> | undefined, key: string): string | null {
+  const value = metadata?.[key];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function metadataNumber(metadata: Record<string, unknown> | undefined, key: string): number | null {
+  return toNullableNumber(metadata?.[key]);
+}
+
+function sentimentRowsFromFrozenLedger(ledger: FrozenSourceLedgerWeek | null) {
+  if (!ledger) return [];
+  return ledger.signals
+    .filter((signal) => signal.model === "sentiment")
+    .map((signal) => ({
+      symbol: signal.symbol,
+      assetClass: signal.assetClass as AssetClass,
+      direction: signal.direction === "LONG" ? "LONG" as const : "SHORT" as const,
+      tier: (metadataString(signal.metadata, "tier") ?? "F") as "S1" | "A" | "R" | "F",
+      tierFSubStep: metadataString(signal.metadata, "tierFSubStep") as
+        | "prior_s1"
+        | "prior_lean"
+        | "two_week_lean"
+        | "hardcoded"
+        | null,
+      aggLongPct: metadataNumber(signal.metadata, "aggLongPct"),
+      crowdingState: metadataString(signal.metadata, "crowdingState"),
+      flipState: metadataString(signal.metadata, "flipState"),
+    }));
+}
+
+function sentimentAggregatesFromFrozenLedger(ledger: FrozenSourceLedgerWeek | null): SentimentAggregate[] {
+  if (!ledger) return [];
+  return ledger.signals
+    .filter((signal) => signal.model === "sentiment")
+    .map((signal) => {
+      const aggLongPct = metadataNumber(signal.metadata, "aggLongPct") ?? 50;
+      return {
+        symbol: signal.symbol,
+        timestamp_utc: signal.sourceTimestampUtc ?? ledger.freezeTargetUtc,
+        agg_long_pct: aggLongPct,
+        agg_short_pct: 100 - aggLongPct,
+        agg_net: aggLongPct - (100 - aggLongPct),
+        sources_used: [],
+        confidence_score: 0,
+        crowding_state: (metadataString(signal.metadata, "crowdingState") ?? "NEUTRAL") as SentimentAggregate["crowding_state"],
+        flip_state: (metadataString(signal.metadata, "flipState") ?? "NONE") as SentimentAggregate["flip_state"],
+      };
+    });
+}
+
+function strengthRowsFromFrozenLedger(ledger: FrozenSourceLedgerWeek | null) {
+  if (!ledger) return [];
+  return ledger.signals
+    .filter((signal) => signal.model === "strength")
+    .map((signal) => ({
+      pair: signal.symbol,
+      assetClass: signal.assetClass as AssetClass,
+      direction: signal.direction === "SHORT" ? "SHORT" as const : "LONG" as const,
+      availableWindows: metadataNumber(signal.metadata, "availableWindows") ?? 0,
+      compositeScore: metadataNumber(signal.metadata, "compositeScore") ?? 0,
+      latestSnapshotUtc: signal.sourceTimestampUtc,
+      raw1w: metadataNumber(signal.metadata, "raw1w"),
+      raw1m: metadataNumber(signal.metadata, "raw1m"),
+      missingStoredPriorWeeks: Array.isArray(signal.metadata?.missingStoredPriorWeeks)
+        ? signal.metadata.missingStoredPriorWeeks.filter((value): value is string => typeof value === "string")
+        : [],
+      providerFallbackAttempted: Boolean(signal.metadata?.providerFallbackAttempted),
+      providerFallbackUsed: Boolean(signal.metadata?.providerFallbackUsed),
+      fallbackBranch: metadataString(signal.metadata, "fallbackBranch") ?? "hybrid_stored",
+    }));
 }
 
 function parseMyfxbookPositioning(payload: unknown, timestampUtc: string): MyfxbookPositioning | null {
@@ -241,7 +336,11 @@ function getSentimentSymbolsForAsset(assetClass: AssetClass | "all") {
   return ALL_SENTIMENT_SYMBOLS;
 }
 
-function buildReportOptions(reportDates: string[]) {
+function buildReportOptions(
+  reportDates: string[],
+  reportToWeekMap: Map<string, string>,
+  freezeStatusByWeek: Map<string, { ready: boolean; label: string }> = new Map(),
+) {
   return reportDates.map((date) => {
     const report = DateTime.fromISO(date, { zone: "America/New_York" });
     if (!report.isValid) {
@@ -251,7 +350,21 @@ function buildReportOptions(reportDates: string[]) {
     const monday = report
       .plus({ days: daysUntilMonday })
       .set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
-    return { value: date, label: monday.toFormat("MMM dd yyyy") };
+    const weekOpenUtc = reportToWeekMap.get(date);
+    const freezeTargetUtc = weekOpenUtc ? getFridayFreezeTargetUtc(weekOpenUtc) : null;
+    const freeze = freezeTargetUtc
+      ? DateTime.fromISO(freezeTargetUtc, { zone: "utc" }).setZone("America/New_York")
+      : null;
+    const freezeStatus = weekOpenUtc ? freezeStatusByWeek.get(weekOpenUtc) : null;
+    return {
+      value: date,
+      label: monday.toFormat("MMM dd yyyy"),
+      cotReportLabel: report.toFormat("MMM dd yyyy"),
+      fridayFreezeLabel: freeze?.isValid ? freeze.toFormat("MMM dd yyyy h:mm a ZZZZ") : undefined,
+      fridayFreezeUtc: freezeTargetUtc ?? undefined,
+      freezeStatusLabel: freezeStatus?.label,
+      freezeLedgerReady: freezeStatus?.ready,
+    };
   });
 }
 
@@ -533,22 +646,29 @@ async function buildSentimentPayloadForWeek(
 
   try {
     if (weekOpenUtc) {
+      const frozenLedger = await readFrozenSourceLedgerWeek(weekOpenUtc);
       const open = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
       const close = open.isValid ? open.plus({ days: 7 }) : open;
-      aggregates = open.isValid
-        ? await getAggregatesForWeekStartWithBackfill(
-            open.toUTC().toISO() ?? weekOpenUtc,
-            close.toUTC().toISO() ?? weekOpenUtc,
-          )
-        : await getLatestAggregatesLocked();
-      resolvedRows = open.isValid
-        ? await resolveSentimentDirections(weekOpenUtc)
-        : [];
+      aggregates = frozenLedger
+        ? sentimentAggregatesFromFrozenLedger(frozenLedger)
+        : open.isValid
+          ? await getAggregatesForWeekStartWithBackfill(
+              open.toUTC().toISO() ?? weekOpenUtc,
+              close.toUTC().toISO() ?? weekOpenUtc,
+            )
+          : await getLatestAggregatesLocked();
+      resolvedRows = frozenLedger
+        ? sentimentRowsFromFrozenLedger(frozenLedger)
+        : open.isValid
+          ? await resolveSentimentDirections(weekOpenUtc)
+          : [];
       const prevOpen = open.isValid ? open.minus({ days: 7 }) : null;
       if (prevOpen?.isValid) {
-        previousResolvedRows = await resolveSentimentDirections(
-          prevOpen.toUTC().toISO() ?? weekOpenUtc,
-        );
+        const previousWeekOpenUtc = prevOpen.toUTC().toISO() ?? weekOpenUtc;
+        const previousFrozenLedger = await readFrozenSourceLedgerWeek(previousWeekOpenUtc);
+        previousResolvedRows = previousFrozenLedger
+          ? sentimentRowsFromFrozenLedger(previousFrozenLedger)
+          : await resolveSentimentDirections(previousWeekOpenUtc);
       }
     } else {
       aggregates = await getLatestAggregatesLocked();
@@ -703,9 +823,17 @@ async function buildStrengthPayloadForWeek({
     readWeeklyPairStrengthsForAsset(weekOpenUtc, selectedAsset),
     readWeeklyUnderlyingStrengths(weekOpenUtc, selectedAsset),
   ]);
+  const [frozenLedger, previousFrozenLedger] = await Promise.all([
+    readFrozenSourceLedgerWeek(weekOpenUtc),
+    previousWeekOpenUtc ? readFrozenSourceLedgerWeek(previousWeekOpenUtc) : Promise.resolve(null),
+  ]);
   const [canonicalRows, previousCanonicalRows] = await Promise.all([
-    readCanonicalStrengthDirections(weekOpenUtc),
-    previousWeekOpenUtc
+    frozenLedger
+      ? Promise.resolve(strengthRowsFromFrozenLedger(frozenLedger))
+      : readCanonicalStrengthDirections(weekOpenUtc),
+    previousFrozenLedger
+      ? Promise.resolve(strengthRowsFromFrozenLedger(previousFrozenLedger))
+      : previousWeekOpenUtc
       ? readCanonicalStrengthDirections(previousWeekOpenUtc)
       : Promise.resolve([]),
   ]);
@@ -789,30 +917,40 @@ async function buildStrengthPayloadForWeek({
   };
 }
 
-export async function loadMarketIntelligence(rawAsset?: string | null): Promise<MarketIntelligencePayload> {
+export async function loadMarketIntelligence(
+  rawAsset?: string | null,
+  options: MarketIntelligenceLoadOptions = {},
+): Promise<MarketIntelligencePayload> {
   const isAll = rawAsset === "all" || !rawAsset;
   const assetClass = getAssetClass(rawAsset ?? undefined);
   const selectedAsset = isAll ? "all" : assetClass;
-  const currentWeekOpen = getDisplayWeekOpenUtc();
+  const currentWeekOpen = getFridayFreezeDisplayWeekOpenUtc();
 
   const assetClasses = listAssetClasses();
-  const weekEntries = await listDataSectionWeekEntries();
-  const currentWeekEntry = {
-    weekOpenUtc: currentWeekOpen,
-    cotReportDate: deriveCotReportDate(currentWeekOpen),
-  };
-  const allEntries = [currentWeekEntry, ...weekEntries].filter(
+  const closedWeekEntries = listActiveDataSectionWeekEntries();
+  const weekEntries = listActiveDataSectionSelectableWeekEntries({
+    currentWeekOpenUtc: currentWeekOpen,
+  });
+  const allEntries = weekEntries.filter(
     (entry, index, all) =>
       all.findIndex((candidate) => candidate.cotReportDate === entry.cotReportDate) === index,
   );
+  const reportToWeekMap = new Map(allEntries.map((entry) => [entry.cotReportDate, entry.weekOpenUtc]));
   const availableDates = allEntries.map((entry) => entry.cotReportDate);
   const orderedDates = [...availableDates].sort((a, b) => b.localeCompare(a));
-  const reportOptions = buildReportOptions(orderedDates);
+  const selectedReportDate =
+    options.reportDate && orderedDates.includes(options.reportDate)
+      ? options.reportDate
+      : orderedDates[0] ?? "";
+  const payloadDates = options.includeAllReports
+    ? orderedDates
+    : selectedReportDate
+      ? [selectedReportDate]
+      : [];
   const totalPairsCount = isAll
     ? assetClasses.reduce((sum, asset) => sum + (PAIRS_BY_ASSET_CLASS[asset.id]?.length ?? 0), 0)
     : PAIRS_BY_ASSET_CLASS[assetClass]?.length ?? 0;
 
-  const reportToWeekMap = new Map(allEntries.map((entry) => [entry.cotReportDate, entry.weekOpenUtc]));
   await mapWithConcurrency(
     orderedDates,
     MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
@@ -825,12 +963,38 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
     },
   );
 
-  const selectedWeeks = orderedDates
+  const selectedWeeks = payloadDates
     .map((date) => ({
       reportDate: date,
       weekOpenUtc: reportToWeekMap.get(date) ?? null,
     }))
     .filter((entry) => Boolean(entry.reportDate));
+
+  const freezeStatusEntries = await mapWithConcurrency(
+    selectedWeeks,
+    MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
+    async ({ weekOpenUtc }) => {
+      if (!weekOpenUtc) return null;
+      try {
+        const ledger = await readFrozenSourceLedgerWeek(weekOpenUtc);
+        return [
+          weekOpenUtc,
+          ledger
+            ? { ready: true, label: "Freeze ledger ready" }
+            : { ready: false, label: "Freeze ledger missing; legacy fallback" },
+        ] as const;
+      } catch {
+        return [
+          weekOpenUtc,
+          { ready: false, label: "Freeze ledger unavailable; legacy fallback" },
+        ] as const;
+      }
+    },
+  );
+  const freezeStatusByWeek = new Map(
+    freezeStatusEntries.filter((entry): entry is readonly [string, { ready: boolean; label: string }] => Boolean(entry)),
+  );
+  const reportOptions = buildReportOptions(orderedDates, reportToWeekMap, freezeStatusByWeek);
 
   const provenanceEntries = await mapWithConcurrency(
     selectedWeeks,
@@ -876,7 +1040,7 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
     MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
     async (assetId) => [
       assetId,
-      await readSnapshotHistory(assetId, orderedDates.length + 1),
+      await readSnapshotHistory(assetId, Math.max(orderedDates.length + 1, payloadDates.length + 1)),
     ] as const,
   );
   snapshotHistories.forEach(([assetId, snapshots]) => {
@@ -886,8 +1050,8 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
     );
   });
 
-  const cotDataByReport = orderedDates.reduce<Record<string, { dealer: DashboardCotPayload; commercial: DashboardCotPayload }>>(
-    (acc, currentReportDate, index) => {
+  const cotDataByReport = payloadDates.reduce<Record<string, { dealer: DashboardCotPayload; commercial: DashboardCotPayload }>>(
+    (acc, currentReportDate) => {
       const currentWeekOpenUtc = reportToWeekMap.get(currentReportDate) ?? null;
       const canonicalReturns = weeklyReturnsByReport.get(currentReportDate) ?? [];
       const canonicalReturnMap = new Map(
@@ -896,30 +1060,62 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
           buildCanonicalPairPerformance(currentWeekOpenUtc ?? row.symbol, row),
         ]),
       );
-      const previousReportDate = orderedDates[index + 1] ?? null;
+      const orderedIndex = orderedDates.indexOf(currentReportDate);
+      const previousReportDate = orderedIndex >= 0 ? orderedDates[orderedIndex + 1] ?? null : null;
+      const dealer = buildCotPayloadForReport({
+        isAll,
+        assetClass,
+        assetClasses,
+        biasMode: "dealer",
+        reportDate: currentReportDate,
+        previousReportDate,
+        snapshotMapsByAsset,
+        canonicalReturnMap,
+        totalPairsCount,
+      });
+      const commercial = buildCotPayloadForReport({
+        isAll,
+        assetClass,
+        assetClasses,
+        biasMode: "commercial",
+        reportDate: currentReportDate,
+        previousReportDate,
+        snapshotMapsByAsset,
+        canonicalReturnMap,
+        totalPairsCount,
+      });
+      const cotProvenance = provenanceByReport[currentReportDate]?.cot;
+      if (sourceIsBlocked(cotProvenance)) {
+        const blockedDetail = { label: "Source status", value: sourceStatusDetail(cotProvenance) };
+        acc[currentReportDate] = {
+          dealer: {
+            ...dealer,
+            combinedRefresh: "",
+            pairRowsWithPerf: [],
+            missingPairs: [],
+            currencyRows: [],
+            flipDetails: [blockedDetail],
+          },
+          commercial: {
+            ...commercial,
+            combinedRefresh: "",
+            pairRowsWithPerf: [],
+            missingPairs: [],
+            currencyRows: [],
+            flipDetails: [blockedDetail],
+          },
+        };
+        return acc;
+      }
       acc[currentReportDate] = {
-        dealer: buildCotPayloadForReport({
-          isAll,
-          assetClass,
-          assetClasses,
-          biasMode: "dealer",
-          reportDate: currentReportDate,
-          previousReportDate,
-          snapshotMapsByAsset,
-          canonicalReturnMap,
-          totalPairsCount,
-        }),
-        commercial: buildCotPayloadForReport({
-          isAll,
-          assetClass,
-          assetClasses,
-          biasMode: "commercial",
-          reportDate: currentReportDate,
-          previousReportDate,
-          snapshotMapsByAsset,
-          canonicalReturnMap,
-          totalPairsCount,
-        }),
+        dealer: {
+          ...dealer,
+          combinedRefresh: cotProvenance?.snapshotUtc ?? dealer.combinedRefresh,
+        },
+        commercial: {
+          ...commercial,
+          combinedRefresh: cotProvenance?.snapshotUtc ?? commercial.combinedRefresh,
+        },
       };
       return acc;
     },
@@ -943,14 +1139,34 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
   const sentimentPayloadEntries = await mapWithConcurrency(
     selectedWeeks,
     MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
-    async ({ reportDate: currentReportDate, weekOpenUtc }) => [
-      currentReportDate,
-      await buildSentimentPayloadForWeek(
+    async ({ reportDate: currentReportDate, weekOpenUtc }) => {
+      const payload = await buildSentimentPayloadForWeek(
         weekOpenUtc,
         sentimentSymbols,
         weeklyReturnsByReport.get(currentReportDate) ?? [],
-      ),
-    ] as const,
+      );
+      const sentimentProvenance = provenanceByReport[currentReportDate]?.sentiment;
+      if (sourceIsBlocked(sentimentProvenance)) {
+        return [
+          currentReportDate,
+          {
+            ...payload,
+            latestAggregateTimestamp: null,
+            aggregates: [],
+            resolvedRows: [],
+            performanceByPair: {},
+            flipDetails: [{ label: "Source status", value: sourceStatusDetail(sentimentProvenance) }],
+          },
+        ] as const;
+      }
+      return [
+        currentReportDate,
+        {
+          ...payload,
+          latestAggregateTimestamp: sentimentProvenance?.snapshotUtc ?? payload.latestAggregateTimestamp,
+        },
+      ] as const;
+    },
   );
   const sentimentDataByReport = Object.fromEntries(sentimentPayloadEntries) as Record<
     string,
@@ -960,17 +1176,39 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
   const strengthPayloadEntries = await mapWithConcurrency(
     selectedWeeks,
     MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
-    async ({ reportDate: currentReportDate, weekOpenUtc }, index) => {
+    async ({ reportDate: currentReportDate, weekOpenUtc }) => {
+      const orderedIndex = orderedDates.indexOf(currentReportDate);
+      const previousReportDate = orderedIndex >= 0 ? orderedDates[orderedIndex + 1] ?? null : null;
+      const previousWeekOpenUtc = previousReportDate ? reportToWeekMap.get(previousReportDate) ?? null : null;
       try {
+        const payload = await buildStrengthPayloadForWeek({
+          weekOpenUtc,
+          selectedAsset: isAll ? "all" : assetClass,
+          weeklyReturns: weeklyReturnsByReport.get(currentReportDate) ?? [],
+          previousWeekOpenUtc,
+          totalPairsCount,
+        });
+        const strengthProvenance = provenanceByReport[currentReportDate]?.strength;
+        if (sourceIsBlocked(strengthProvenance)) {
+          return [
+            currentReportDate,
+            {
+              ...payload,
+              latestSnapshotUtc: null,
+              pairRowsWithPerf: [],
+              missingPairs: [],
+              stripItems: [],
+              flipDetails: [{ label: "Source status", value: sourceStatusDetail(strengthProvenance) }],
+              note: sourceStatusDetail(strengthProvenance),
+            },
+          ] as const;
+        }
         return [
           currentReportDate,
-          await buildStrengthPayloadForWeek({
-            weekOpenUtc,
-            selectedAsset: isAll ? "all" : assetClass,
-            weeklyReturns: weeklyReturnsByReport.get(currentReportDate) ?? [],
-            previousWeekOpenUtc: selectedWeeks[index + 1]?.weekOpenUtc ?? null,
-            totalPairsCount,
-          }),
+          {
+            ...payload,
+            latestSnapshotUtc: strengthProvenance?.snapshotUtc ?? payload.latestSnapshotUtc,
+          },
         ] as const;
       } catch (error) {
         console.error("Dashboard strength load failed:", error);
@@ -1002,6 +1240,12 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
     selectedAsset,
     reportOptions,
     currentWeekOpenUtc: currentWeekOpen,
+    activeBaseline: {
+      id: ACTIVE_BASELINE_ID,
+      mode: "active",
+      activeWeekCount: closedWeekEntries.length,
+      archiveAvailable: true,
+    },
     cotDataByReport,
     sentimentDataByReport,
     strengthDataByReport,
@@ -1013,13 +1257,15 @@ export async function loadMarketIntelligence(rawAsset?: string | null): Promise<
 
 export async function loadCachedMarketIntelligence(
   rawAsset?: string | null,
+  options: MarketIntelligenceLoadOptions = {},
 ): Promise<MarketIntelligencePayload> {
   const cacheAsset = rawAsset === "all" || !rawAsset
     ? "all"
     : getAssetClass(rawAsset);
+  const cacheReport = options.includeAllReports ? "all-reports" : options.reportDate ?? "default";
   return getOrSetRuntimeCache(
-    `marketIntelligence:${cacheAsset}`,
+    `marketIntelligence:${cacheAsset}:${cacheReport}`,
     MARKET_INTELLIGENCE_CACHE_TTL_MS,
-    () => loadMarketIntelligence(cacheAsset),
+    () => loadMarketIntelligence(cacheAsset, options),
   );
 }

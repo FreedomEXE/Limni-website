@@ -1,0 +1,12 @@
+{
+  "generatedAtUtc": "2026-06-09T16:03:43.899Z",
+  "hasInstitutionalSeed": true,
+  "hasJune1": true,
+  "hasJune8": false,
+  "hasBlocked": true,
+  "requests": [
+    "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=active-baseline"
+  ],
+  "failedRequests": [],
+  "consoleErrors": []
+}

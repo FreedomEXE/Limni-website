@@ -11,7 +11,7 @@
   Manifested by Freedom_EXE
 -----------------------------------------------*/
 
-import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
+import { getActiveBaselineWeeks } from "@/lib/appTruth/activeBaseline";
 import { getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { buildDataWeekOptions } from "@/lib/weekOptions";
 import {
@@ -110,7 +110,7 @@ function latestShardCachedAtUtc(shards: WeekShardEntry[]) {
 async function buildExpectedShardBaseContext(): Promise<ExpectedShardBaseContext> {
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const expectedWeeks = buildDataWeekOptions({
-    historicalWeeks: await listDataSectionWeeks(),
+    historicalWeeks: getActiveBaselineWeeks(currentWeekOpenUtc),
     currentWeekOpenUtc,
   }).filter((weekOpenUtc): weekOpenUtc is string =>
     typeof weekOpenUtc === "string" &&

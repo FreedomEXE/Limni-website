@@ -1,0 +1,71 @@
+{
+  "route": "/performance",
+  "expected": "Jun 08 selected-week live overlay is visible with sane current-week stats.",
+  "observed": {
+    "hasJun8Text": true,
+    "hasJun1Text": true,
+    "clean14TextPresent": false,
+    "currentWeekInProgressMessage": false,
+    "return4078": false,
+    "winRate728": false,
+    "trades305": false,
+    "wins222": false,
+    "losses21": true,
+    "invalidWinRate151": false,
+    "metricLines": [
+      "218",
+      "12.21"
+    ],
+    "currentWeekApiPayload": {
+      "status": 200,
+      "currentWeekOpenUtc": "2026-06-07T23:00:00.000Z",
+      "totalReturnPct": 43.80471026018896,
+      "tradeCount": 307,
+      "models": [
+        {
+          "model": "dealer",
+          "percent": 6.827116418907876,
+          "total": 36
+        },
+        {
+          "model": "commercial",
+          "percent": 13.248161496641409,
+          "total": 36
+        },
+        {
+          "model": "sentiment",
+          "percent": 13.983489281592044,
+          "total": 36
+        },
+        {
+          "model": "strength",
+          "percent": 9.7459430630476,
+          "total": 36
+        }
+      ]
+    },
+    "apiRequests": [
+      "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=active-baseline",
+      "http://127.0.0.1:3001/api/performance/strategy-current-week?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&hour=2026-06-09T18",
+      "http://127.0.0.1:3001/api/performance/strategy-current-week?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&hour=2026-06-09T17"
+    ],
+    "apiResponses": [
+      {
+        "url": "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=active-baseline",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:3001/api/performance/strategy-current-week?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&hour=2026-06-09T18",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:3001/api/performance/strategy-current-week?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&hour=2026-06-09T17",
+        "status": 200
+      }
+    ],
+    "failedRequests": [],
+    "consoleErrors": []
+  },
+  "screenshot": "performance-june8-live-overlay-current-metrics.png",
+  "capturedAtUtc": "2026-06-09T18:01:48.335Z"
+}

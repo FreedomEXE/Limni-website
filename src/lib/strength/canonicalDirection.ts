@@ -1,3 +1,18 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: canonicalDirection.ts
+ *
+ * Description:
+ * Resolves canonical weekly strength directions and exposes resolution
+ * provenance so source-readiness audits can distinguish locked source data
+ * from provider or fallback-derived completions.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+
 import { DateTime } from "luxon";
 
 import type { AssetClass } from "@/lib/cotMarkets";
@@ -9,12 +24,20 @@ import { getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
 import { fetchOandaCandleSeries } from "@/lib/oandaPrices";
 import { fetchBitgetSpotCandleSeries } from "@/lib/bitget";
 import { getOrSetRuntimeCache } from "@/lib/runtimeCache";
-import { readWeeklyPairStrengths, type WeeklyPairStrength } from "@/lib/strength/weeklyStrength";
+import {
+  readWeeklyPairStrengths,
+  readWeeklyPairStrengthsAtCutoff,
+  type WeeklyPairStrength,
+} from "@/lib/strength/weeklyStrength";
 import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
 
 type StrengthLookback = {
   raw1w: number | null;
   raw1m: number | null;
+  priorWeeks: StrengthLookbackWeek[];
+  missingStoredPriorWeeks: string[];
+  providerFallbackAttempted: boolean;
+  providerFallbackUsed: boolean;
 };
 
 export type CanonicalStrengthDirection = {
@@ -26,10 +49,43 @@ export type CanonicalStrengthDirection = {
   latestSnapshotUtc: string | null;
   raw1w: number | null;
   raw1m: number | null;
+  missingStoredPriorWeeks: string[];
+  providerFallbackAttempted: boolean;
+  providerFallbackUsed: boolean;
+  fallbackBranch: StrengthResolutionBranch;
+};
+
+export type StrengthResolutionBranch =
+  | "hybrid_stored"
+  | "hybrid_provider"
+  | "fallback_sum"
+  | "fallback_raw1m"
+  | "fallback_raw1w"
+  | "fallback_24h"
+  | "fallback_4h"
+  | "fallback_1h"
+  | "fallback_long_default";
+
+type StrengthLookbackWeek = {
+  weekOpenUtc: string;
+  returnPct: number | null;
+  source: "stored" | "provider" | "missing";
 };
 
 const CANONICAL_STRENGTH_CACHE_TTL_MS = 5 * 60 * 1000;
 const strengthLookbackCache = new Map<string, Promise<StrengthLookback>>();
+
+export function derivePriorStrengthWeekOpenUtcs(weekOpenUtc: string, count = 4): string[] {
+  const baseTime = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  if (!baseTime.isValid) {
+    return [];
+  }
+
+  const baseNyOpen = baseTime.setZone("America/New_York");
+  return Array.from({ length: count }, (_, index) =>
+    baseNyOpen.minus({ weeks: index + 1 }).toUTC().toISO(),
+  ).filter((value): value is string => Boolean(value));
+}
 
 function signDirection(value: number | null): Exclude<Direction, "NEUTRAL"> | null {
   if (value === null || !Number.isFinite(value)) return null;
@@ -101,33 +157,55 @@ async function loadStrengthLookback(
   const promise = (async () => {
     const baseTime = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
     if (!baseTime.isValid) {
-      return { raw1w: null, raw1m: null };
+      return {
+        raw1w: null,
+        raw1m: null,
+        priorWeeks: [],
+        missingStoredPriorWeeks: [],
+        providerFallbackAttempted: false,
+        providerFallbackUsed: false,
+      };
     }
 
     const exactPriorWeeks = await Promise.all(
-      [1, 2, 3, 4].map(async (weeksBack) => {
-        const priorWeekOpenUtc = baseTime.minus({ weeks: weeksBack }).toUTC().toISO();
-        if (!priorWeekOpenUtc) {
-          return null;
-        }
+      derivePriorStrengthWeekOpenUtcs(weekOpenUtc).map(async (priorWeekOpenUtc) => {
         const stored = await readStoredExactPriorWeeklyReturn(symbol, priorWeekOpenUtc);
         if (stored !== null || mode === "stored_only") {
-          return stored;
+          return {
+            weekOpenUtc: priorWeekOpenUtc,
+            returnPct: stored,
+            source: stored === null ? "missing" : "stored",
+          } satisfies StrengthLookbackWeek;
         }
-        return fetchWeeklyReturnFallback(symbol, assetClass, priorWeekOpenUtc);
+        const provider = await fetchWeeklyReturnFallback(symbol, assetClass, priorWeekOpenUtc);
+        return {
+          weekOpenUtc: priorWeekOpenUtc,
+          returnPct: provider,
+          source: provider === null ? "missing" : "provider",
+        } satisfies StrengthLookbackWeek;
       }),
     );
 
-    const raw1w = exactPriorWeeks[0] ?? null;
-    const monthlyComponents = exactPriorWeeks.filter(
+    const priorWeeks = exactPriorWeeks.filter(
+      (value): value is StrengthLookbackWeek => value !== null,
+    );
+    const raw1w = priorWeeks[0]?.returnPct ?? null;
+    const monthlyComponents = priorWeeks.map((row) => row.returnPct).filter(
       (value): value is number => value !== null && Number.isFinite(value),
     );
+    const missingStoredPriorWeeks = priorWeeks
+      .filter((row) => row.source !== "stored")
+      .map((row) => row.weekOpenUtc);
 
     return {
       raw1w,
       raw1m: monthlyComponents.length > 0
         ? monthlyComponents.reduce((sum, value) => sum + value, 0)
         : null,
+      priorWeeks,
+      missingStoredPriorWeeks,
+      providerFallbackAttempted: mode === "fill_missing_with_provider" && missingStoredPriorWeeks.length > 0,
+      providerFallbackUsed: priorWeeks.some((row) => row.source === "provider"),
     };
   })();
 
@@ -184,10 +262,13 @@ function resolveStrengthHybrid(
 function resolveStrengthHybridFallback(
   ps: WeeklyPairStrength | null,
   lookback: StrengthLookback,
-): Exclude<Direction, "NEUTRAL"> {
+): { direction: Exclude<Direction, "NEUTRAL">; branch: StrengthResolutionBranch } {
   const base = resolveStrengthHybrid(ps, lookback);
   if (base) {
-    return base;
+    return {
+      direction: base,
+      branch: lookback.providerFallbackUsed ? "hybrid_provider" : "hybrid_stored",
+    };
   }
 
   let sum = 0;
@@ -207,17 +288,71 @@ function resolveStrengthHybridFallback(
   }
 
   if (hasData && sum !== 0) {
-    return sum > 0 ? "LONG" : "SHORT";
+    return { direction: sum > 0 ? "LONG" : "SHORT", branch: "fallback_sum" };
   }
 
-  return (
-    signDirection(lookback.raw1m) ??
-    signDirection(lookback.raw1w) ??
-    signDirection(ps?.windows.find((w) => w.window === "24h")?.signedSpread ?? null) ??
-    signDirection(ps?.windows.find((w) => w.window === "4h")?.signedSpread ?? null) ??
-    signDirection(ps?.windows.find((w) => w.window === "1h")?.signedSpread ?? null) ??
-    "LONG"
-  );
+  const raw1m = signDirection(lookback.raw1m);
+  if (raw1m) return { direction: raw1m, branch: "fallback_raw1m" };
+
+  const raw1w = signDirection(lookback.raw1w);
+  if (raw1w) return { direction: raw1w, branch: "fallback_raw1w" };
+
+  const window24h = signDirection(ps?.windows.find((w) => w.window === "24h")?.signedSpread ?? null);
+  if (window24h) return { direction: window24h, branch: "fallback_24h" };
+
+  const window4h = signDirection(ps?.windows.find((w) => w.window === "4h")?.signedSpread ?? null);
+  if (window4h) return { direction: window4h, branch: "fallback_4h" };
+
+  const window1h = signDirection(ps?.windows.find((w) => w.window === "1h")?.signedSpread ?? null);
+  if (window1h) return { direction: window1h, branch: "fallback_1h" };
+
+  return { direction: "LONG", branch: "fallback_long_default" };
+}
+
+async function resolveCanonicalStrengthDirectionsFromPairStrengths(
+  weekOpenUtc: string,
+  rows: WeeklyPairStrength[],
+): Promise<CanonicalStrengthDirection[]> {
+  const normalizedWeekOpenUtc = normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
+  const rowMap = new Map(rows.map((row) => [row.pair.toUpperCase(), row] as const));
+  const resolved: CanonicalStrengthDirection[] = [];
+
+  for (const assetClass of Object.keys(PAIRS_BY_ASSET_CLASS) as AssetClass[]) {
+    for (const pairDef of PAIRS_BY_ASSET_CLASS[assetClass]) {
+      const pair = pairDef.pair.toUpperCase();
+      const ps = rowMap.get(pair) ?? null;
+      let lookback = await loadStrengthLookback(pair, assetClass, normalizedWeekOpenUtc, "stored_only");
+      let direction = resolveStrengthHybrid(ps, lookback);
+      let fallbackBranch: StrengthResolutionBranch = "hybrid_stored";
+      if (!direction) {
+        lookback = await loadStrengthLookback(
+          pair,
+          assetClass,
+          normalizedWeekOpenUtc,
+          "fill_missing_with_provider",
+        );
+        const resolved = resolveStrengthHybridFallback(ps, lookback);
+        direction = resolved.direction;
+        fallbackBranch = resolved.branch;
+      }
+      resolved.push({
+        pair,
+        assetClass,
+        direction,
+        availableWindows: ps?.availableWindows ?? 0,
+        compositeScore: ps?.compositeScore ?? 0,
+        latestSnapshotUtc: ps?.latestSnapshotUtc ?? null,
+        raw1w: lookback.raw1w,
+        raw1m: lookback.raw1m,
+        missingStoredPriorWeeks: lookback.missingStoredPriorWeeks,
+        providerFallbackAttempted: lookback.providerFallbackAttempted,
+        providerFallbackUsed: lookback.providerFallbackUsed,
+        fallbackBranch,
+      });
+    }
+  }
+
+  return resolved;
 }
 
 export async function readCanonicalStrengthDirections(
@@ -229,38 +364,22 @@ export async function readCanonicalStrengthDirections(
     CANONICAL_STRENGTH_CACHE_TTL_MS,
     async () => {
       const rows = await readWeeklyPairStrengths(normalizedWeekOpenUtc);
-      const rowMap = new Map(rows.map((row) => [row.pair.toUpperCase(), row] as const));
-      const resolved: CanonicalStrengthDirection[] = [];
+      return resolveCanonicalStrengthDirectionsFromPairStrengths(normalizedWeekOpenUtc, rows);
+    },
+  );
+}
 
-      for (const assetClass of Object.keys(PAIRS_BY_ASSET_CLASS) as AssetClass[]) {
-        for (const pairDef of PAIRS_BY_ASSET_CLASS[assetClass]) {
-          const pair = pairDef.pair.toUpperCase();
-          const ps = rowMap.get(pair) ?? null;
-          let lookback = await loadStrengthLookback(pair, assetClass, normalizedWeekOpenUtc, "stored_only");
-          let direction = resolveStrengthHybrid(ps, lookback);
-          if (!direction) {
-            lookback = await loadStrengthLookback(
-              pair,
-              assetClass,
-              normalizedWeekOpenUtc,
-              "fill_missing_with_provider",
-            );
-            direction = resolveStrengthHybridFallback(ps, lookback);
-          }
-          resolved.push({
-            pair,
-            assetClass,
-            direction,
-            availableWindows: ps?.availableWindows ?? 0,
-            compositeScore: ps?.compositeScore ?? 0,
-            latestSnapshotUtc: ps?.latestSnapshotUtc ?? null,
-            raw1w: lookback.raw1w,
-            raw1m: lookback.raw1m,
-          });
-        }
-      }
-
-      return resolved;
+export async function readCanonicalStrengthDirectionsAtCutoff(
+  weekOpenUtc: string,
+  cutoffUtc: string,
+): Promise<CanonicalStrengthDirection[]> {
+  const normalizedWeekOpenUtc = normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
+  return getOrSetRuntimeCache(
+    `canonicalStrengthAtCutoff:${normalizedWeekOpenUtc}:${cutoffUtc}`,
+    CANONICAL_STRENGTH_CACHE_TTL_MS,
+    async () => {
+      const rows = await readWeeklyPairStrengthsAtCutoff(cutoffUtc);
+      return resolveCanonicalStrengthDirectionsFromPairStrengths(normalizedWeekOpenUtc, rows);
     },
   );
 }

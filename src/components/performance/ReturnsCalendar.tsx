@@ -17,48 +17,32 @@
 import { useMemo, useState } from "react";
 import type { PerformanceSimulationSeries } from "@/components/performance/PerformanceSimulationSection";
 import { buildDailySimulationReturns, type DailySimulationReturn } from "@/components/performance/dailySimulationReturns";
+import {
+  aggregateDailyReturnsToMonthMetrics,
+  aggregateDailyReturnsToWeekMetrics,
+  aggregateWeekReturnsToMonthMetrics,
+  aggregateWeekReturnsToWeekMetrics,
+  type CalendarPeriodMetric,
+  type WeekReturn,
+} from "@/components/performance/returnsCalendarMetrics";
+
+export type { WeekReturn } from "@/components/performance/returnsCalendarMetrics";
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TRADING_WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
-export type WeekReturn = {
-  weekOpenUtc: string;
-  returnPct: number;
-  maxDrawdownPct?: number | null;
-  trades?: number | null;
-};
-
 type CalendarMode = "monthly" | "weekly" | "daily";
-
-type MonthCell = {
-  returnPct: number;
-  weekCount: number;
-};
+type SeriesPrecision = "intraday_path" | "weekly_close";
 
 type ReturnsCalendarProps = {
   weeks?: WeekReturn[];
   series?: PerformanceSimulationSeries;
+  seriesPrecision?: SeriesPrecision;
   forcedMode?: CalendarMode;
   showModeToggle?: boolean;
   includeWeekends?: boolean;
 };
-
-function aggregateToMonths(weeks: WeekReturn[]): Map<string, MonthCell> {
-  const map = new Map<string, MonthCell>();
-  for (const week of weeks) {
-    const d = new Date(week.weekOpenUtc);
-    const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
-    const existing = map.get(key);
-    if (existing) {
-      existing.returnPct += week.returnPct;
-      existing.weekCount += 1;
-    } else {
-      map.set(key, { returnPct: week.returnPct, weekCount: 1 });
-    }
-  }
-  return map;
-}
 
 function aggregateToWeeksByMonth(weeks: WeekReturn[]): Map<string, WeekReturn[]> {
   const map = new Map<string, WeekReturn[]>();
@@ -109,6 +93,18 @@ function signed(value: number, digits = 1) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(digits)}%`;
 }
 
+function ddLabel(source: CalendarPeriodMetric["drawdownSource"], compact = false) {
+  if (source === "path") return compact ? "Path DD" : "Path DD";
+  if (source === "close") return compact ? "Close DD" : "Close DD";
+  if (source === "week") return compact ? "Week DD" : "Week DD";
+  return compact ? "DD" : "Drawdown";
+}
+
+function formatDrawdown(cell: CalendarPeriodMetric | undefined | null, digits = 1) {
+  if (!cell || cell.maxDrawdownPct == null || !Number.isFinite(cell.maxDrawdownPct)) return "-";
+  return `${cell.maxDrawdownPct.toFixed(digits)}%`;
+}
+
 function getAvailableModes(weeks: WeekReturn[], hasSeries: boolean): CalendarMode[] {
   const modes: CalendarMode[] = [];
   if (weeks.length > 0) modes.push("monthly", "weekly");
@@ -119,14 +115,16 @@ function getAvailableModes(weeks: WeekReturn[], hasSeries: boolean): CalendarMod
 export default function ReturnsCalendar({
   weeks = [],
   series,
+  seriesPrecision = "intraday_path",
   forcedMode,
   showModeToggle = true,
   includeWeekends = false,
 }: ReturnsCalendarProps) {
   const [nowMs] = useState(() => Date.now());
+  const canUseDailyPath = seriesPrecision === "intraday_path";
   const dailyReturns = useMemo(
-    () => series ? buildDailySimulationReturns(series, nowMs, { includeWeekends }) : [],
-    [includeWeekends, nowMs, series],
+    () => series && canUseDailyPath ? buildDailySimulationReturns(series, nowMs, { includeWeekends }) : [],
+    [canUseDailyPath, includeWeekends, nowMs, series],
   );
   const availableModes = getAvailableModes(weeks, dailyReturns.length > 0);
   const fallbackMode = availableModes[0] ?? "monthly";
@@ -164,9 +162,9 @@ export default function ReturnsCalendar({
       </div>
 
       {mode === "monthly" ? (
-        <MonthlyGrid weeks={weeks} />
+        <MonthlyGrid weeks={weeks} days={dailyReturns} />
       ) : mode === "weekly" ? (
-        <WeeklyGrid weeks={weeks} />
+        <WeeklyGrid weeks={weeks} days={dailyReturns} />
       ) : forcedMode === "daily" ? (
         <DailyWeekStrip days={dailyReturns} includeWeekends={includeWeekends} />
       ) : (
@@ -176,8 +174,10 @@ export default function ReturnsCalendar({
   );
 }
 
-function MonthlyGrid({ weeks }: { weeks: WeekReturn[] }) {
-  const monthMap = aggregateToMonths(weeks);
+function MonthlyGrid({ weeks, days }: { weeks: WeekReturn[]; days: DailySimulationReturn[] }) {
+  const monthMap = days.length > 0
+    ? aggregateDailyReturnsToMonthMetrics(days)
+    : aggregateWeekReturnsToMonthMetrics(weeks);
   const years = [...new Set(weeks.map((week) => new Date(week.weekOpenUtc).getUTCFullYear()))].sort();
   const maxAbs = Math.max(...Array.from(monthMap.values()).map((cell) => Math.abs(cell.returnPct)), 0.01);
 
@@ -192,9 +192,9 @@ function MonthlyGrid({ weeks }: { weeks: WeekReturn[] }) {
               return (
                 <div
                   key={month}
-                  className="min-h-14 rounded-lg border border-[var(--panel-border)] p-2 text-center"
+                  className="min-h-[78px] rounded-lg border border-[var(--panel-border)] p-2 text-center"
                   style={cell ? { backgroundColor: cellColor(cell.returnPct, maxAbs) } : undefined}
-                  title={cell ? `${monthTitle(year, month)}: ${signed(cell.returnPct, 2)} (${cell.weekCount} weeks)` : monthTitle(year, month)}
+                  title={cell ? `${monthTitle(year, month)} P/L: ${signed(cell.returnPct, 2)} | ${ddLabel(cell.drawdownSource)}: ${formatDrawdown(cell, 2)} (${cell.itemCount} ${days.length > 0 ? "days" : "weeks"})` : monthTitle(year, month)}
                 >
                   <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
                     {MONTH_LABELS[month]}
@@ -202,6 +202,11 @@ function MonthlyGrid({ weeks }: { weeks: WeekReturn[] }) {
                   <div className={`mt-2 text-sm font-bold ${!cell ? "text-[color:var(--muted)]" : cell.returnPct >= 0 ? "text-lime-400" : "text-red-400"}`}>
                     {cell ? signed(cell.returnPct) : "-"}
                   </div>
+                  {cell ? (
+                    <div className="mt-1 text-[9px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                      {ddLabel(cell.drawdownSource, true)} {formatDrawdown(cell)}
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
@@ -212,10 +217,13 @@ function MonthlyGrid({ weeks }: { weeks: WeekReturn[] }) {
   );
 }
 
-function WeeklyGrid({ weeks }: { weeks: WeekReturn[] }) {
+function WeeklyGrid({ weeks, days }: { weeks: WeekReturn[]; days: DailySimulationReturn[] }) {
   const years = [...new Set(weeks.map((week) => new Date(week.weekOpenUtc).getUTCFullYear()))].sort();
   const weekMap = aggregateToWeeksByMonth(weeks);
-  const maxAbs = Math.max(...weeks.map((week) => Math.abs(week.returnPct)), 0.01);
+  const weekMetrics = days.length > 0
+    ? aggregateDailyReturnsToWeekMetrics(weeks, days)
+    : aggregateWeekReturnsToWeekMetrics(weeks);
+  const maxAbs = Math.max(...Array.from(weekMetrics.values()).map((week) => Math.abs(week.returnPct)), 0.01);
 
   return (
     <div className="overflow-x-auto">
@@ -233,19 +241,26 @@ function WeeklyGrid({ weeks }: { weeks: WeekReturn[] }) {
                   <div className="grid gap-1.5">
                     {monthWeeks.length === 0 ? (
                       <div className="rounded-md px-2 py-3 text-center text-[color:var(--muted)]">-</div>
-                    ) : monthWeeks.map((week) => (
-                      <div
-                        key={week.weekOpenUtc}
-                        className="rounded-md px-2 py-2 text-center"
-                        style={{ backgroundColor: cellColor(week.returnPct, maxAbs) }}
-                        title={`${formatWeekLabel(week.weekOpenUtc)}: ${signed(week.returnPct, 2)}`}
-                      >
-                        <div className="text-[10px] text-[color:var(--muted)]">{formatWeekLabel(week.weekOpenUtc)}</div>
-                        <div className={`text-sm font-bold ${week.returnPct >= 0 ? "text-lime-400" : "text-red-400"}`}>
-                          {signed(week.returnPct)}
+                    ) : monthWeeks.map((week) => {
+                      const metric = weekMetrics.get(week.weekOpenUtc);
+                      const returnPct = metric?.returnPct ?? week.returnPct;
+                      return (
+                        <div
+                          key={week.weekOpenUtc}
+                          className="rounded-md px-2 py-2 text-center"
+                          style={{ backgroundColor: cellColor(returnPct, maxAbs) }}
+                          title={`${formatWeekLabel(week.weekOpenUtc)} P/L: ${signed(returnPct, 2)} | ${ddLabel(metric?.drawdownSource ?? "none")}: ${formatDrawdown(metric, 2)}`}
+                        >
+                          <div className="text-[10px] text-[color:var(--muted)]">{formatWeekLabel(week.weekOpenUtc)}</div>
+                          <div className={`text-sm font-bold ${returnPct >= 0 ? "text-lime-400" : "text-red-400"}`}>
+                            {signed(returnPct)}
+                          </div>
+                          <div className="mt-1 text-[9px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
+                            {ddLabel(metric?.drawdownSource ?? "none", true)} {formatDrawdown(metric)}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -277,7 +292,7 @@ function DailyWeekStrip({
             key={dayLabel}
             className="min-h-32 rounded-xl border border-[var(--panel-border)] p-4"
             style={day ? { backgroundColor: cellColor(day.returnPct, maxAbs) } : undefined}
-            title={day ? `${day.dateKey}: DD ${day.maxDrawdownPct.toFixed(2)}%, active ${day.activePositions}` : undefined}
+            title={day ? `${day.dateKey} P/L: ${signed(day.returnPct, 2)} | Path DD: ${day.maxDrawdownPct.toFixed(2)}%, active ${day.activePositions}` : undefined}
           >
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]">
               {dayLabel}
@@ -287,7 +302,7 @@ function DailyWeekStrip({
             </div>
             {day ? (
               <div className="mt-4 text-[10px] uppercase tracking-[0.12em] text-[color:var(--muted)]">
-                DD {day.maxDrawdownPct.toFixed(2)}% - Active {day.activePositions}
+                Path DD {day.maxDrawdownPct.toFixed(2)}% - Active {day.activePositions}
               </div>
             ) : null}
           </div>
@@ -347,7 +362,7 @@ function DailyMonthCalendars({
                     key={dateKey}
                     className={`min-h-20 rounded-lg border border-[var(--panel-border)] p-2 ${isWeekend && !includeWeekends ? "opacity-45" : ""}`}
                     style={day ? { backgroundColor: cellColor(day.returnPct, maxAbs) } : undefined}
-                    title={day ? `${dateKey}: ${signed(day.returnPct, 2)}` : dateKey}
+                    title={day ? `${dateKey} P/L: ${signed(day.returnPct, 2)} | Path DD: ${day.maxDrawdownPct.toFixed(2)}%` : dateKey}
                   >
                     <div className="text-[10px] font-semibold text-[color:var(--muted)]">{dayOfMonth}</div>
                     {day ? (
@@ -356,7 +371,7 @@ function DailyMonthCalendars({
                           {signed(day.returnPct)}
                         </div>
                         <div className="mt-1 text-[9px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-                          DD {day.maxDrawdownPct.toFixed(1)}%
+                          Path DD {day.maxDrawdownPct.toFixed(1)}%
                         </div>
                       </>
                     ) : null}

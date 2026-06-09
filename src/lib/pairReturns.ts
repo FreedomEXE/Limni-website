@@ -23,13 +23,16 @@ import { DateTime } from "luxon";
 import { fetchOandaCandleSeries } from "./oandaPrices";
 import { fetchBitgetSpotCandleSeries } from "./bitget";
 import { getDisplayWeekOpenUtc } from "./weekAnchor";
-import { getExecutionWeekWindow } from "./executionPriceWindows";
+import {
+  EXECUTION_ANCHOR_VERSION as EXECUTION_WINDOW_ANCHOR_VERSION,
+  getExecutionWeekWindow,
+} from "./executionPriceWindows";
 
 type PeriodType = "weekly" | "daily";
 export type AnchorType = "canonical" | "execution";
 
 export const CANONICAL_ANCHOR_VERSION = "canonical_weekly_v2";
-export const EXECUTION_ANCHOR_VERSION = "execution_monday_utc_v1";
+export const EXECUTION_ANCHOR_VERSION = EXECUTION_WINDOW_ANCHOR_VERSION;
 
 export type PairReturnRow = {
   symbol: string;
@@ -200,13 +203,16 @@ async function fetchLiveWeeklyReturns(
       const batchResults = await Promise.all(
         batch.map(async (instrument) => {
           try {
-            const liveWindow = anchorType === "execution"
-              ? getExecutionWeekWindow(weekOpenUtc, instrument.assetClass)
-              : null;
-            const openUtc = liveWindow?.windowOpenUtc ?? weekOpenDt;
-            const closeUtc = liveWindow
-              ? DateTime.min(nowUtc, liveWindow.windowCloseUtc)
-              : nowUtc;
+            const { openUtc, windowCloseUtc } = anchorType === "execution"
+              ? (() => {
+                  const window = getExecutionWeekWindow(weekOpenUtc, instrument.assetClass);
+                  return { openUtc: window.windowOpenUtc, windowCloseUtc: window.windowCloseUtc };
+                })()
+              : (() => {
+                  const window = getCanonicalWeekWindow(weekOpenUtc, instrument.assetClass);
+                  return { openUtc: window.openUtc, windowCloseUtc: window.closeUtc };
+                })();
+            const closeUtc = DateTime.min(nowUtc, windowCloseUtc);
             if (!closeUtc.isValid || closeUtc <= openUtc) {
               return null;
             }

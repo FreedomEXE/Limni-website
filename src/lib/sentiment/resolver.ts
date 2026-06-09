@@ -78,7 +78,7 @@ async function loadResolverBundle(weekOpenUtc: string): Promise<SentimentWeekBun
   };
 }
 
-function resolveOnePair(options: {
+export function resolveSentimentDirectionFromRows(options: {
   symbol: string;
   assetClass: AssetClass;
   currentAgg: SentimentAggregate | null;
@@ -160,7 +160,7 @@ export async function resolveSentimentDirections(
         for (const pairDef of PAIRS_BY_ASSET_CLASS[assetClass]) {
           const symbol = pairDef.pair.toUpperCase();
           resolved.push(
-            resolveOnePair({
+            resolveSentimentDirectionFromRows({
               symbol,
               assetClass,
               currentAgg: bundle.current.get(symbol) ?? null,

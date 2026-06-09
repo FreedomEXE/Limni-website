@@ -23,6 +23,13 @@ export const releaseManifestSchema = z.object({
   cacheNamespace: z.string().min(1),
   preparedAt: z.string().min(1),
   releasedAt: z.string().min(1).nullable(),
+  pendingRelease: z.object({
+    appVersion: z.string().regex(/^v\d+(?:\.\d+){0,2}$/),
+    semanticVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
+    label: z.string().min(1),
+    status: z.string().min(1),
+    file: z.string().min(1),
+  }).nullable().optional(),
   anchorCommit: z.string().min(1),
   previousVersion: z.object({
     appVersion: z.string().regex(/^v\d+(?:\.\d+){0,2}$/),
@@ -40,6 +47,9 @@ export const releaseManifestSchema = z.object({
     executionDerivationVersion: z.string().min(1),
   }),
   canon: z.object({
+    artifactStatus: z.enum(["valid", "stale_pending_regeneration"]).default("valid"),
+    validForEngineVersion: z.string().min(1).optional(),
+    requiresEngineVersion: z.string().min(1).optional(),
     generatedAt: z.string().min(1),
     sourceLedgerRowCount: z.number().int().nonnegative(),
     sourceHash: z.string().regex(/^sha256:[a-z0-9]+$/),

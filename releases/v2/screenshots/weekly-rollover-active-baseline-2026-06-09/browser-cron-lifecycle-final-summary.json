@@ -1,0 +1,37 @@
+{
+  "generatedAtUtc": "2026-06-09T19:47:35.884Z",
+  "failedRequests": [],
+  "consoleMessages": [],
+  "results": [
+    {
+      "route": "/status",
+      "status": 200,
+      "checks": {
+        "hasJune8": true,
+        "hasJune1": false,
+        "hasClean14": false,
+        "hasSeedBaseline": true,
+        "hasActiveBaselineReady": true,
+        "hasWeeklyLifecycleReady": true,
+        "hasSourceFreezeCron": true,
+        "hasActiveCertificationCron": true,
+        "hasFreezeLedgerReady": false
+      }
+    },
+    {
+      "route": "/dashboard",
+      "status": 200,
+      "checks": {
+        "hasJune8": true,
+        "hasJune1": true,
+        "hasClean14": false,
+        "hasSeedBaseline": true,
+        "hasActiveBaselineReady": false,
+        "hasWeeklyLifecycleReady": false,
+        "hasSourceFreezeCron": false,
+        "hasActiveCertificationCron": false,
+        "hasFreezeLedgerReady": true
+      }
+    }
+  ]
+}

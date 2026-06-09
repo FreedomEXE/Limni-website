@@ -1,6 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { DateTime } from "luxon";
-import { getCanonicalWeekOpenUtc, getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
+import {
+  formatTradingWeekLabelDate,
+  formatTradingWeekLabelIsoDate,
+  getCanonicalWeekOpenUtc,
+  getDisplayWeekOpenUtc,
+  normalizeWeekOpenUtc,
+} from "@/lib/weekAnchor";
 
 describe("weekAnchor", () => {
   test("anchors to Sunday 19:00 ET", () => {
@@ -25,5 +31,12 @@ describe("weekAnchor", () => {
     const now = DateTime.fromISO("2026-02-15T22:30:00Z") as DateTime<true>; // Sun 17:30 ET (pre-open)
     const weekOpen = getDisplayWeekOpenUtc(now);
     expect(weekOpen).toBe("2026-02-09T00:00:00.000Z");
+  });
+
+  test("labels DST Sunday-open baskets as the Monday trading week", () => {
+    const weekOpen = "2026-05-24T23:00:00.000Z";
+    expect(formatTradingWeekLabelDate(weekOpen)).toBe("May 25 2026");
+    expect(formatTradingWeekLabelIsoDate(weekOpen)).toBe("2026-05-25");
+    expect(normalizeWeekOpenUtc("2026-05-25T00:00:00.000Z")).toBe(weekOpen);
   });
 });

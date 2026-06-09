@@ -28,6 +28,7 @@ import {
   isRiskOverlayValidForEntryStyle,
   normalizeFilterSelection,
   resolveStrategyId,
+  shouldSerializeRiskOverlayParam,
 } from "@/lib/performance/strategyConfig";
 import {
   STRATEGY_SELECTION_COMMIT_EVENT,
@@ -96,11 +97,21 @@ export default function StrategySelector() {
   const onlyNoneOverlay = validOverlays.length === 1 && validOverlays[0]?.id === "none";
 
   const apply = () => {
+    const normalizedFilters = normalizeFilterSelection({
+      f1: draft.f1,
+      f2: draft.f2,
+    });
+    const nextSelection = {
+      strategy: draft.strategy,
+      f1: normalizedFilters.f1,
+      f2: normalizedFilters.f2,
+    };
+
     // Update URL for bookmarking without triggering a server re-render
     const params = new URLSearchParams(searchParams.toString());
-    params.set("strategy", draft.strategy);
-    params.set("f1", draft.f1);
-    if (draft.f2 !== "none") params.set("f2", draft.f2);
+    params.set("strategy", nextSelection.strategy);
+    params.set("f1", nextSelection.f1);
+    if (shouldSerializeRiskOverlayParam(nextSelection)) params.set("f2", nextSelection.f2);
     else params.delete("f2");
     params.delete("bias");
     params.delete("filter");
@@ -111,8 +122,9 @@ export default function StrategySelector() {
     window.history.replaceState(window.history.state, "", nextUrl);
 
     // Commit locally and notify view sections via the shared event
-    setCommitted(draft);
-    const detail: StrategySelectionCommitDetail = { selection: draft };
+    setDraft(nextSelection);
+    setCommitted(nextSelection);
+    const detail: StrategySelectionCommitDetail = { selection: nextSelection };
     window.dispatchEvent(new CustomEvent(STRATEGY_SELECTION_COMMIT_EVENT, { detail }));
   };
 
@@ -154,7 +166,11 @@ export default function StrategySelector() {
             setDraft((prev) => {
               const overlay = getRiskOverlay(prev.f2);
               const f2Valid = isRiskOverlayValidForEntryStyle(overlay, newF1);
-              return { ...prev, f1: newF1, f2: f2Valid ? prev.f2 : "none" };
+              const normalizedFilters = normalizeFilterSelection({
+                f1: newF1,
+                f2: f2Valid ? prev.f2 : null,
+              });
+              return { ...prev, f1: normalizedFilters.f1, f2: normalizedFilters.f2 };
             });
           }}
           className={selectClasses}

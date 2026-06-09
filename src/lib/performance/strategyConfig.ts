@@ -276,6 +276,13 @@ export function normalizeFilterSelection(value: {
   };
 }
 
+export function shouldSerializeRiskOverlayParam(selection: {
+  f1: string;
+  f2: string;
+}): boolean {
+  return selection.f2 !== "none" || selection.f1 === "adr_grid";
+}
+
 /* ─── Lookup helpers ──────────────────────────────────────────── */
 
 export function getStrategy(id: string): StrategyConfig | undefined {

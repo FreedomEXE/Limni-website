@@ -20,7 +20,7 @@ import {
   getExecutionWeekWindow,
 } from "@/lib/executionPriceWindows";
 
-export const EXECUTION_WEEKLY_RETURN_DERIVATION_VERSION = "v1_execution_monday_utc";
+export const EXECUTION_WEEKLY_RETURN_DERIVATION_VERSION = "v4_execution_fri11_close_early_close";
 
 export type ExecutionWeeklyReturn = {
   symbol: string;
@@ -66,6 +66,22 @@ function normalizeBars(bars: CanonicalPriceBar[]) {
   return [...bars].sort((left, right) => left.barOpenUtc.localeCompare(right.barOpenUtc));
 }
 
+function resolveActualCloseUtc(expectedCloseUtc: string, actualCloseUtc: string, warnings: string[]) {
+  if (actualCloseUtc === expectedCloseUtc) {
+    return { closeUtc: expectedCloseUtc, closeIsComplete: true };
+  }
+
+  const expectedMs = Date.parse(expectedCloseUtc);
+  const actualMs = Date.parse(actualCloseUtc);
+  if (Number.isFinite(expectedMs) && Number.isFinite(actualMs) && actualMs < expectedMs) {
+    warnings.push("inferred_early_close");
+    return { closeUtc: actualCloseUtc, closeIsComplete: true };
+  }
+
+  warnings.push("close_after_window");
+  return { closeUtc: actualCloseUtc, closeIsComplete: false };
+}
+
 export function deriveExecutionWeeklyReturnFromHourlyBars(options: {
   symbol: string;
   assetClass: AssetClass;
@@ -88,8 +104,13 @@ export function deriveExecutionWeeklyReturnFromHourlyBars(options: {
   const first = sortedBars[0]!;
   const last = sortedBars[sortedBars.length - 1]!;
   const warnings: string[] = [];
-  if (first.barOpenUtc !== windowOpenUtc) warnings.push("missing_exact_open_bar");
-  if (last.barCloseUtc !== windowCloseUtc) warnings.push("missing_exact_close_bar");
+  const openIsComplete = first.barOpenUtc === windowOpenUtc;
+  if (!openIsComplete) warnings.push("missing_exact_open_bar");
+  const { closeUtc: actualWindowCloseUtc, closeIsComplete } = resolveActualCloseUtc(
+    windowCloseUtc,
+    last.barCloseUtc,
+    warnings,
+  );
 
   const openPrice = round(first.openPrice, 6);
   const closePrice = round(last.closePrice, 6);
@@ -101,9 +122,9 @@ export function deriveExecutionWeeklyReturnFromHourlyBars(options: {
     assetClass: options.assetClass,
     weekOpenUtc: executionWindow.logicalWeekOpenUtc,
     periodOpenUtc: executionWindow.logicalWeekOpenUtc,
-    periodCloseUtc: windowCloseUtc,
+    periodCloseUtc: actualWindowCloseUtc,
     windowOpenUtc,
-    windowCloseUtc,
+    windowCloseUtc: actualWindowCloseUtc,
     openPrice,
     closePrice,
     highPrice,
@@ -117,7 +138,7 @@ export function deriveExecutionWeeklyReturnFromHourlyBars(options: {
     openBarOpenUtc: first.barOpenUtc,
     closeBarOpenUtc: last.barOpenUtc,
     barsInWindow: sortedBars.length,
-    complete: warnings.length === 0,
+    complete: openIsComplete && closeIsComplete,
     warnings,
   };
 }

@@ -4,26 +4,36 @@
   "appVersion": "v2.0.2",
   "semanticVersion": "2.0.2",
   "canonVersion": "v2",
-  "cacheNamespace": "v2.0.2",
+  "cacheNamespace": "v2.0.3-institutional-seed-runtime",
   "preparedAt": "2026-06-01T13:51:33.950Z",
   "releasedAt": null,
+  "pendingRelease": {
+    "appVersion": "v2.0.3",
+    "semanticVersion": "2.0.3",
+    "label": "v2.0.3 candidate",
+    "status": "Local pending release",
+    "file": "releases/v2/patches/v2.0.3.md"
+  },
   "anchorCommit": "v2",
   "previousVersion": {
     "appVersion": "v2.0.1",
     "semanticVersion": "2.0.1"
   },
   "components": {
-    "engineVersion": "strategy-artifact-v28",
-    "assemblyVersion": "assembly-v3",
+    "engineVersion": "strategy-artifact-v34",
+    "assemblyVersion": "assembly-v8-reset-result-display",
     "selectorEngineVersion": "selector-engine-v6",
-    "anchorVersion": "execution_monday_utc_v1",
+    "anchorVersion": "execution_ny_fri9_entry_fri11_close_v1",
     "canonicalAnchorVersion": "canonical_weekly_v2",
     "tradeLedgerVersion": "trade-identity-v2-direction-key",
-    "preloadCacheVersion": "global-preload-v1:canonical-weekly-v3-full-coverage:execution-weekly-v1:strategy-artifact-v28:dashboard-cache-v2",
+    "preloadCacheVersion": "global-preload-v1:canonical-weekly-v3-full-coverage:execution-weekly-v4-friday-close:strategy-artifact-v34:adr-grid-reset-close-v9:dashboard-cache-v4-institutional-seed",
     "canonicalDerivationVersion": "v2_intraday_weekly",
-    "executionDerivationVersion": "v1_execution_monday_utc"
+    "executionDerivationVersion": "v4_execution_fri11_close_early_close"
   },
   "canon": {
+    "artifactStatus": "stale_pending_regeneration",
+    "validForEngineVersion": "strategy-artifact-v28",
+    "requiresEngineVersion": "strategy-artifact-v34",
     "generatedAt": "2026-05-30T00:00:00.000Z",
     "sourceLedgerRowCount": 118204,
     "sourceHash": "sha256:23b1028494c6155f04ad94b896a0ad8b3e7766efe238112b1e61d21f2cf1bd30",
@@ -119,9 +129,17 @@
     "Aligned Performance week-strip overflow arrows and constrained the version popover with an opaque, internally scrollable release briefing list using no-store manifest reads.",
     "Unified Basket drilldown row context across all periods, preserved current-week grid details for active full payloads including single-fill grids, and normalized per-grid fill display ordering for sparse delta sequences.",
     "Added deterministic shard derivation tests so Phase 1 can validate per-week hashes before client cutover.",
-    "Bumped cacheNamespace to v2.0.2 for the new kernel contract surface while keeping canonVersion at v2."
+    "Bumped cacheNamespace to v2.0.2 for the new kernel contract surface while keeping canonVersion at v2.",
+    "Prepared v2.0.3 institutional-seed runtime metadata, source-freeze/certification lifecycle gates, active-baseline route readiness, and live-week overlay separation while keeping canonVersion at v2."
   ],
   "versionHistory": [
+    {
+      "appVersion": "v2.0.3",
+      "date": "2026-06-09",
+      "type": "patch",
+      "summary": "Institutional seed active baseline, source-freeze lifecycle, active-baseline certification, route readiness, and live-week overlay separation.",
+      "file": "releases/v2/patches/v2.0.3.md"
+    },
     {
       "appVersion": "v2.0.2",
       "date": "2026-06-01",

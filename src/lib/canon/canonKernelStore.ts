@@ -48,6 +48,10 @@ import {
 } from "@/lib/performance/strategySelection";
 import { clearGlobalPreloadStamp } from "@/lib/preload/preloadContract";
 import type { ReleaseManifest } from "@/lib/version/releaseManifest";
+import {
+  isCanonArtifactStale,
+  staleCanonErrorMessage,
+} from "@/lib/canon/canonArtifactStatus";
 
 const CACHE_NAMESPACE_STORAGE_KEY = "limni-cache-namespace";
 
@@ -156,6 +160,10 @@ function composedBundleKey(canonVersion: string, strategyVariant: string) {
   return `${canonVersion}::${strategyVariant}`;
 }
 
+function clearAllComposedBundles() {
+  composedClosedHistoryBundles.clear();
+}
+
 async function fetchReleaseManifest() {
   const response = await fetch("/api/version/current", { cache: "no-store" });
   if (!response.ok) throw new Error(`Version manifest request failed (${response.status})`);
@@ -181,6 +189,8 @@ async function fetchWeekShard(options: {
   canonVersion: string;
   strategyVariant: string;
   weekOpenUtc: string;
+  staleCanon: boolean;
+  staleCanonError: string;
 }) {
   const params = new URLSearchParams({
     strategyVariant: options.strategyVariant,
@@ -188,7 +198,7 @@ async function fetchWeekShard(options: {
   });
   const response = await fetch(
     `/api/canon/${encodeURIComponent(options.canonVersion)}/week?${params.toString()}`,
-    { cache: "force-cache" },
+    { cache: options.staleCanon ? "no-store" : "force-cache" },
   );
   const json = await response.json() as WeekShardResponse;
   if (!response.ok || !json.shard) {
@@ -196,6 +206,9 @@ async function fetchWeekShard(options: {
   }
   if (json.shard.metadata.schemaVersion !== CANON_WEEK_SHARD_SCHEMA_VERSION) {
     throw new Error(`Unsupported canon week shard schema: ${json.shard.metadata.schemaVersion}`);
+  }
+  if (options.staleCanon && json.shard.metadata.source === "release-canon") {
+    throw new Error(options.staleCanonError);
   }
   return json.shard;
 }
@@ -244,12 +257,37 @@ async function runKernelSync(selection: RuntimeStrategySelection) {
   });
 
   const manifest = await fetchReleaseManifest();
+  const staleCanon = isCanonArtifactStale(manifest);
+  const staleCanonError = staleCanonErrorMessage(manifest);
+  if (staleCanon) {
+    clearAllComposedBundles();
+  }
   setState({
     appVersion: manifest.appVersion,
     canonVersion: manifest.canonVersion,
     cacheNamespace: manifest.cacheNamespace,
   });
   await syncCacheNamespace(manifest);
+
+  if (staleCanon) {
+    setState({
+      phase: "error",
+      status: "error",
+      activeStrategyVariant,
+      appVersion: manifest.appVersion,
+      canonVersion: manifest.canonVersion,
+      cacheNamespace: manifest.cacheNamespace,
+      totalWeeks: 0,
+      readyWeeks: 0,
+      composedRows: 0,
+      fetchedWeeks: 0,
+      repairedWeeks: 0,
+      missingWeeks: [],
+      error: staleCanonError,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return;
+  }
 
   setState({ phase: "checking-closed-week-manifest", status: "loading" });
   const inventory = await fetchInventory(manifest.canonVersion, activeStrategyVariant);
@@ -275,10 +313,12 @@ async function runKernelSync(selection: RuntimeStrategySelection) {
     totalWeeks: expectedWeeks.length,
   });
 
-  const localRecords = await listCanonWeekShardRecords({
-    canonVersion: inventory.canonVersion,
-    strategyVariant: activeStrategyVariant,
-  });
+  const localRecords = staleCanon
+    ? []
+    : await listCanonWeekShardRecords({
+        canonVersion: inventory.canonVersion,
+        strategyVariant: activeStrategyVariant,
+      });
   let gaps = computeCanonShardGaps(variantInventory, localRecords);
   let readyWeeks = Math.max(0, expectedWeeks.length - gaps.length);
   setState({
@@ -288,6 +328,7 @@ async function runKernelSync(selection: RuntimeStrategySelection) {
 
   let fetchedWeeks = 0;
   let repairedWeeks = 0;
+  const transientRecords: CanonShardRecord[] = [];
   if (gaps.length > 0) {
     setState({ phase: "fetching-closed-week-deltas", status: "loading" });
     for (const gap of gaps) {
@@ -299,11 +340,18 @@ async function runKernelSync(selection: RuntimeStrategySelection) {
         canonVersion: inventory.canonVersion,
         strategyVariant: activeStrategyVariant,
         weekOpenUtc: gap.weekOpenUtc,
+        staleCanon,
+        staleCanonError,
       });
       if (shard.metadata.payloadHash !== gap.expected.sha256) {
         throw new Error(`Canon shard hash mismatch for ${activeStrategyVariant} ${gap.weekOpenUtc}`);
       }
-      await writeCanonWeekShardRecord(shardToRecord(shard));
+      const record = shardToRecord(shard);
+      if (staleCanon) {
+        transientRecords.push(record);
+      } else {
+        await writeCanonWeekShardRecord(record);
+      }
       fetchedWeeks += 1;
       readyWeeks = Math.min(expectedWeeks.length, readyWeeks + 1);
       setState({
@@ -314,32 +362,37 @@ async function runKernelSync(selection: RuntimeStrategySelection) {
     }
   }
 
-  const finalRecords = await listCanonWeekShardRecords({
-    canonVersion: inventory.canonVersion,
-    strategyVariant: activeStrategyVariant,
-  });
+  const finalRecords = staleCanon
+    ? transientRecords
+    : await listCanonWeekShardRecords({
+        canonVersion: inventory.canonVersion,
+        strategyVariant: activeStrategyVariant,
+      });
   gaps = computeCanonShardGaps(variantInventory, finalRecords);
 
-  await writeCanonInventoryRecord({
-    key: canonVariantInventoryKey(inventory.canonVersion, activeStrategyVariant),
-    canonVersion: inventory.canonVersion,
-    strategyVariant: activeStrategyVariant,
-    weeks: expectedWeeks.map((week) => week.weekOpenUtc),
-    latestClosedWeekOpenUtc: variantInventory.latestClosedWeekOpenUtc,
-    updatedAtUtc: new Date().toISOString(),
-  });
-  await writeCanonKernelMeta({
-    key: inventory.canonVersion,
-    releaseLine: inventory.releaseLine,
-    appVersion: inventory.appVersion,
-    canonVersion: inventory.canonVersion,
-    cacheNamespace: inventory.cacheNamespace,
-    schemaVersion: inventory.schemaVersion,
-    updatedAtUtc: new Date().toISOString(),
-  });
+  if (!staleCanon) {
+    await writeCanonInventoryRecord({
+      key: canonVariantInventoryKey(inventory.canonVersion, activeStrategyVariant),
+      canonVersion: inventory.canonVersion,
+      strategyVariant: activeStrategyVariant,
+      weeks: expectedWeeks.map((week) => week.weekOpenUtc),
+      latestClosedWeekOpenUtc: variantInventory.latestClosedWeekOpenUtc,
+      updatedAtUtc: new Date().toISOString(),
+    });
+    await writeCanonKernelMeta({
+      key: inventory.canonVersion,
+      releaseLine: inventory.releaseLine,
+      appVersion: inventory.appVersion,
+      canonVersion: inventory.canonVersion,
+      cacheNamespace: inventory.cacheNamespace,
+      schemaVersion: inventory.schemaVersion,
+      updatedAtUtc: new Date().toISOString(),
+    });
+  }
 
   const updatedAtUtc = new Date().toISOString();
   if (gaps.length > 0) {
+    clearAllComposedBundles();
     setState({
       phase: "degraded",
       status: "degraded",
@@ -376,12 +429,19 @@ async function runKernelSync(selection: RuntimeStrategySelection) {
 
 export function startCanonKernelSync(selection: RuntimeStrategySelection) {
   const activeStrategyVariant = strategyVariantFromRuntimeSelection(selection);
+  if (
+    state.activeStrategyVariant === activeStrategyVariant
+    && (state.status === "loading" || state.status === "ready" || state.status === "error" || state.status === "degraded")
+  ) {
+    return Promise.resolve();
+  }
   const key = `${activeStrategyVariant}:${state.cacheNamespace ?? "unknown"}`;
   const existing = inflight.get(key);
   if (existing) return existing;
 
   const request = runKernelSync(selection)
     .catch((error) => {
+      clearAllComposedBundles();
       setState({
         phase: "error",
         status: "error",
@@ -406,6 +466,8 @@ export function getCanonKernelClosedHistorySnapshot(opts: {
   strategyVariant: string;
   scope: readonly AssetClass[];
 }) {
+  if (state.status !== "ready") return null;
+  if (opts.strategyVariant !== state.activeStrategyVariant) return null;
   const canonVersion = state.canonVersion;
   if (!canonVersion) return null;
   const bundle = composedClosedHistoryBundles.get(composedBundleKey(canonVersion, opts.strategyVariant));

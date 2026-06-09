@@ -14,7 +14,7 @@
 -----------------------------------------------*/
 
 export const GLOBAL_PRELOAD_CACHE_VERSION =
-  "global-preload-v1:canonical-weekly-v3-full-coverage:execution-weekly-v1:strategy-artifact-v28:dashboard-cache-v2";
+  "global-preload-v1:canonical-weekly-v3-full-coverage:execution-weekly-v4-friday-close:strategy-artifact-v34:adr-grid-reset-close-v9:dashboard-cache-v4-institutional-seed";
 
 const GLOBAL_PRELOAD_STAMP_KEY = "limni:global-preload:stamp:v1";
 const GLOBAL_PRELOAD_STAMP_TTL_MS = 30 * 24 * 60 * 60 * 1000;

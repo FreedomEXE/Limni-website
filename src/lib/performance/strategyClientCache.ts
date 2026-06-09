@@ -137,7 +137,8 @@ function hasScopePayload(payload: StrategyClientPayload, scope: StrategyClientPa
     return Boolean(
       (payload.engineWeekMap || payload.engineSimMap) &&
       payload.engineWeekResults &&
-      hasHistoricalStrategyPayload(payload)
+      hasHistoricalStrategyPayload(payload) &&
+      payload.selectedTradeRowsBundle?.ledgerIdentity
     );
   }
   return Boolean(payload.engineWeekMap || payload.engineSimMap || payload.sidebarStats);
@@ -148,6 +149,9 @@ function mergeStrategyClientPayload(
   next: StrategyClientPayload,
 ): StrategyClientPayload {
   if (!previous) return next;
+  if (next.artifactMeta?.historyWindow && previous.artifactMeta?.historyWindow !== next.artifactMeta.historyWindow) {
+    return next;
+  }
   return {
     engineWeekMap: mergeRecordPayload(previous.engineWeekMap, next.engineWeekMap),
     engineSimMap: mergeRecordPayload(previous.engineSimMap, next.engineSimMap),
@@ -160,6 +164,7 @@ function mergeStrategyClientPayload(
     ),
     currentWeekOpenUtc: next.currentWeekOpenUtc ?? previous.currentWeekOpenUtc,
     artifactMeta: next.artifactMeta ?? previous.artifactMeta,
+    selectedTradeRowsBundle: next.selectedTradeRowsBundle ?? previous.selectedTradeRowsBundle ?? null,
   };
 }
 
@@ -443,6 +448,7 @@ export async function fetchStrategyKernelPayload(
     `&f1=${encodeURIComponent(selection.f1)}` +
     `&f2=${encodeURIComponent(selection.f2)}` +
     `&scope=${scope}` +
+    `&history=active-baseline` +
     `${options.force ? "&repair=1" : ""}`;
 
   const request = (async () => {
@@ -647,6 +653,7 @@ export async function prefetchVisibleStrategyPayloads(options: {
   currentSelection?: RuntimeStrategySelection;
   concurrency?: number;
   delayMs?: number;
+  includeMissing?: boolean;
   scope?: StrategyClientPayloadScope;
   shouldContinue?: () => boolean;
 } = {}): Promise<void> {
@@ -654,6 +661,7 @@ export async function prefetchVisibleStrategyPayloads(options: {
     currentSelection,
     concurrency = 1,
     delayMs = 1500,
+    includeMissing = false,
     scope = "performance",
     shouldContinue = () => true,
   } = options;
@@ -662,6 +670,7 @@ export async function prefetchVisibleStrategyPayloads(options: {
 
   const currentKey = currentSelection ? buildSelectionKey(currentSelection) : null;
   const selections = (status.artifacts ?? [])
+    .filter((artifact) => includeMissing || artifact.ready)
     .filter((artifact) => artifact.key !== currentKey)
     .map((artifact) => ({
       strategy: artifact.strategy,

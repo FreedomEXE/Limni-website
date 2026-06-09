@@ -1,4 +1,6 @@
 import type { EngineGridProps, EngineSidebarStats, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
+import type { ClosedHistoryBundle } from "@/lib/basket/basketSummaryTypes";
+import { buildClosedHistoryBundleFromStrategyResults } from "@/lib/basket/strategyRuntimeRows";
 import type { StrategyPageData } from "@/lib/performance/strategyPageData";
 import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import type { WeeklyReturnDisplayRow } from "@/lib/weeklyReturnDisplay";
@@ -12,6 +14,7 @@ export type StrategyClientPayload = {
   currentWeekOpenUtc?: string;
   artifactMeta?: StrategyPageData["artifactMeta"];
   weeklyReturnDisplayRows?: WeeklyReturnDisplayRow[];
+  selectedTradeRowsBundle?: ClosedHistoryBundle | null;
 };
 
 export type StrategyClientPayloadScope = "performance" | "matrix" | "full";
@@ -63,18 +66,40 @@ function stripWeekResults(weekResults: StrategyPageData["weekResults"] | null | 
   );
 }
 
+function strategyVariantForData(data: StrategyPageData) {
+  return [
+    data.biasSource.id,
+    data.entryStyle?.id ?? "weekly_hold",
+    data.riskOverlay?.id ?? "none",
+  ].join("-");
+}
+
+function buildSelectedTradeRowsBundle(
+  data: StrategyPageData,
+  scope: StrategyClientPayloadScope,
+): ClosedHistoryBundle | null {
+  if (scope !== "full") return null;
+  return buildClosedHistoryBundleFromStrategyResults({
+    strategyVariant: strategyVariantForData(data),
+    weekResults: data.weekResults,
+    generatedAt: data.artifactMeta?.cachedAtUtc ?? undefined,
+  });
+}
+
 export function toStrategyClientPayload(
   data: StrategyPageData,
   scope: StrategyClientPayloadScope = "performance",
 ): StrategyClientPayload {
+  const weekOptions = Array.from(new Set(["all", data.currentWeekOpenUtc, ...data.weekOptions]));
   return {
     engineWeekMap: scope === "matrix" ? null : stripWeekMap(data.weekMap),
     engineSimMap: scope === "matrix" ? null : data.simMap ?? null,
     engineWeekResults: scope === "performance" ? null : stripWeekResults(data.weekResults),
     sidebarStats: data.sidebarStats ?? null,
-    weekOptions: ["all", ...data.weekOptions],
+    weekOptions,
     currentWeekOpenUtc: data.currentWeekOpenUtc,
     artifactMeta: data.artifactMeta,
+    selectedTradeRowsBundle: buildSelectedTradeRowsBundle(data, scope),
   };
 }
 
@@ -103,5 +128,6 @@ export function toCurrentWeekStrategyClientPayload(
     weekOptions,
     currentWeekOpenUtc: currentWeek,
     artifactMeta: data.artifactMeta,
+    selectedTradeRowsBundle: null,
   };
 }

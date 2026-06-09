@@ -41,9 +41,22 @@ describe("performance/strategySelection bootstrap coverage", () => {
 
   it("covers the visible selector grid used for Performance preloading", () => {
     const selections = listVisibleStrategyBootstrapSelections();
-    const expectedCount = VISIBLE_STRATEGY_IDS.length * 3;
+    const visibleStrategies = STRATEGIES.filter((strategy) =>
+      VISIBLE_STRATEGY_IDS.includes(strategy.id as (typeof VISIBLE_STRATEGY_IDS)[number]),
+    );
+    const expectedSelections = visibleStrategies.flatMap((strategy) =>
+      ENTRY_STYLE_FILTERS.flatMap((entryStyle) =>
+        RISK_OVERLAYS
+          .filter((riskOverlay) => isRiskOverlayValidForEntryStyle(riskOverlay, entryStyle.id))
+          .map((riskOverlay) => ({
+            strategyId: strategy.id,
+            f1: entryStyle.id,
+            f2: riskOverlay.id,
+          })),
+      ),
+    );
 
-    expect(selections).toHaveLength(expectedCount);
+    expect(selections).toHaveLength(expectedSelections.length);
     expect(new Set(selections.map((selection) => selection.strategyId))).toEqual(
       new Set(VISIBLE_STRATEGY_IDS),
     );
@@ -52,6 +65,9 @@ describe("performance/strategySelection bootstrap coverage", () => {
     ).toBe(false);
     expect(
       selections.some((selection) => selection.f1 === "adr_grid" && selection.f2 === "pair_fill_cap"),
+    ).toBe(true);
+    expect(
+      selections.some((selection) => selection.f1 === "adr_grid" && selection.f2 === "none"),
     ).toBe(true);
   });
 });

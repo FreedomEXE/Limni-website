@@ -1,0 +1,16 @@
+{
+  "status": 200,
+  "currentWeekOpenUtc": "2026-06-07T23:00:00.000Z",
+  "weekKeys": [
+    "2026-06-07T23:00:00.000Z"
+  ],
+  "totalReturnPct": 46.34477065809279,
+  "tradeCount": 309,
+  "winCount": 219,
+  "lossCount": 25,
+  "winRate": 70.87378640776699,
+  "computedWins": 219,
+  "computedLosses": 25,
+  "flatTrades": 65,
+  "lossCountAligned": true
+}

@@ -92,6 +92,28 @@ export function scopedStrategyTrades(
     : result.trades.filter((trade) => assetMatchesPerformanceScope(trade.assetClass, scope));
 }
 
+export function strategyDisplayTrades(result: WeeklyHoldResult): WeeklyHoldTrade[] {
+  if (
+    result.displayUnit === "grids" &&
+    !result.isRealized &&
+    result.plannedTrades &&
+    result.plannedTrades.length > 0
+  ) {
+    return result.plannedTrades;
+  }
+  return result.trades;
+}
+
+export function scopedStrategyDisplayTrades(
+  result: WeeklyHoldResult,
+  scope: PerformanceAssetSelection,
+): WeeklyHoldTrade[] {
+  const trades = strategyDisplayTrades(result);
+  return isAllPerformanceAssetSelection(scope)
+    ? trades
+    : trades.filter((trade) => assetMatchesPerformanceScope(trade.assetClass, scope));
+}
+
 export function scopedStrategyWeekReturn(
   result: WeeklyHoldResult,
   scope: PerformanceAssetSelection,

@@ -27,6 +27,7 @@
 
 import { DateTime } from "luxon";
 import { query } from "@/lib/db";
+import { parseUtcSqlTimestamp } from "@/lib/dbUtcTimestamp";
 import { readSnapshotHistory } from "@/lib/cotStore";
 import { resolveMarketBias, type BiasMode } from "@/lib/cotCompute";
 import { PAIRS_BY_ASSET_CLASS, type PairDefinition } from "@/lib/cotPairs";
@@ -393,11 +394,9 @@ export async function loadCotHistory(): Promise<Map<AssetClass, CotHistoryPoint[
 
 export type SentimentRow = { ts: number; aggNet: number };
 
-const SENTIMENT_TIMESTAMP_ZONE = "America/New_York";
-
 function parseUtcSqlTimestampToMillis(value: string): number | null {
-  const parsed = DateTime.fromSQL(value, { zone: SENTIMENT_TIMESTAMP_ZONE });
-  return parsed.isValid ? parsed.toMillis() : null;
+  const parsed = parseUtcSqlTimestamp(value);
+  return parsed?.toMillis() ?? null;
 }
 
 export async function loadSentimentHistory(): Promise<Map<string, SentimentRow[]>> {

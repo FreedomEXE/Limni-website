@@ -818,3 +818,62 @@ CREATE INDEX IF NOT EXISTS idx_trades_live
 CREATE INDEX IF NOT EXISTS idx_trades_cap_violated
   ON trades (strategy_variant, week_open_utc DESC)
   WHERE cap_violated;
+
+CREATE TABLE IF NOT EXISTS app_truth_scheduler_run_ledger (
+  run_id TEXT PRIMARY KEY,
+  job_id TEXT NOT NULL,
+  job_type TEXT NOT NULL,
+  trigger_type TEXT NOT NULL,
+  route_path TEXT NOT NULL,
+  schedule TEXT,
+  scheduled_at_utc TIMESTAMPTZ,
+  started_at_utc TIMESTAMPTZ NOT NULL,
+  completed_at_utc TIMESTAMPTZ,
+  input_artifacts JSONB NOT NULL DEFAULT '[]'::jsonb,
+  required_inputs JSONB NOT NULL DEFAULT '[]'::jsonb,
+  missing_inputs JSONB NOT NULL DEFAULT '[]'::jsonb,
+  output_artifacts JSONB NOT NULL DEFAULT '[]'::jsonb,
+  namespace_produced TEXT,
+  status TEXT NOT NULL,
+  retry_policy TEXT,
+  backfill_status TEXT,
+  degraded_reasons JSONB NOT NULL DEFAULT '[]'::jsonb,
+  error_message TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_truth_scheduler_run_ledger_started
+  ON app_truth_scheduler_run_ledger (started_at_utc DESC);
+
+CREATE INDEX IF NOT EXISTS idx_app_truth_scheduler_run_ledger_job
+  ON app_truth_scheduler_run_ledger (job_id, started_at_utc DESC);
+
+CREATE TABLE IF NOT EXISTS app_truth_materialization_run_ledger (
+  run_id TEXT PRIMARY KEY,
+  scheduler_run_id TEXT,
+  materialization_type TEXT NOT NULL,
+  domain TEXT NOT NULL,
+  baseline_id TEXT,
+  week_window JSONB NOT NULL DEFAULT '[]'::jsonb,
+  rows_touched INTEGER,
+  input_artifacts JSONB NOT NULL DEFAULT '[]'::jsonb,
+  output_artifacts JSONB NOT NULL DEFAULT '[]'::jsonb,
+  namespace_produced TEXT,
+  status TEXT NOT NULL,
+  missing_inputs JSONB NOT NULL DEFAULT '[]'::jsonb,
+  degraded_reasons JSONB NOT NULL DEFAULT '[]'::jsonb,
+  evidence_hash TEXT,
+  error_message TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  started_at_utc TIMESTAMPTZ NOT NULL,
+  completed_at_utc TIMESTAMPTZ NOT NULL,
+  created_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_app_truth_materialization_run_ledger_completed
+  ON app_truth_materialization_run_ledger (completed_at_utc DESC);
+
+CREATE INDEX IF NOT EXISTS idx_app_truth_materialization_run_ledger_type
+  ON app_truth_materialization_run_ledger (materialization_type, completed_at_utc DESC);

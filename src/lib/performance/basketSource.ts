@@ -31,6 +31,7 @@ import { resolveSentimentDirections } from "@/lib/sentiment/resolver";
 import { readCanonicalStrengthDirections } from "@/lib/strength/canonicalDirection";
 import { deriveCotReportDate } from "@/lib/dataSectionWeeks";
 import type { AssetClass } from "@/lib/cotMarkets";
+import { readFrozenSourceLedgerWeek } from "@/lib/sourceFreeze/sourceLedger";
 
 // ─── Public types ───────────────────────────────────────────────
 
@@ -170,6 +171,10 @@ async function resolveStrengthBasket(
         latestSnapshotUtc: row.latestSnapshotUtc,
         raw1w: row.raw1w,
         raw1m: row.raw1m,
+        missingStoredPriorWeeks: row.missingStoredPriorWeeks,
+        providerFallbackAttempted: row.providerFallbackAttempted,
+        providerFallbackUsed: row.providerFallbackUsed,
+        fallbackBranch: row.fallbackBranch,
       },
     }));
   } catch {
@@ -200,6 +205,14 @@ async function resolveStrengthBasket(
 export async function getCanonicalBasketWeek(
   weekOpenUtc: string,
 ): Promise<CanonicalBasketWeek> {
+  const frozenLedger = await readFrozenSourceLedgerWeek(weekOpenUtc);
+  if (frozenLedger) {
+    return {
+      weekOpenUtc: frozenLedger.weekOpenUtc,
+      signals: frozenLedger.signals,
+    };
+  }
+
   const [dealer, commercial, sentiment, strength] = await Promise.all([
     resolveCotBasket("dealer", weekOpenUtc),
     resolveCotBasket("commercial", weekOpenUtc),

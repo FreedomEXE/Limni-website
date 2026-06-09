@@ -46,14 +46,17 @@ function computeWindowStatsFromPath(
 
   const baseline = points[0]?.equity_pct ?? 0;
   const shiftedReturns = points.map((point) => point.equity_pct - baseline);
+  const shiftedAdverseReturns = points.map((point) => (point.adverse_equity_pct ?? point.equity_pct) - baseline);
   const returnPct = shiftedReturns.at(-1) ?? 0;
   let peak = 0;
   let maxDrawdownPct = 0;
-  for (const value of shiftedReturns) {
+  for (let index = 0; index < shiftedReturns.length; index += 1) {
+    const value = shiftedReturns[index] ?? 0;
+    const adverseValue = shiftedAdverseReturns[index] ?? value;
     peak = Math.max(peak, value);
     const drawdownPct = (100 + peak) <= 0
       ? 100
-      : Math.abs((((100 + value) / (100 + peak)) - 1) * 100);
+      : Math.abs((((100 + adverseValue) / (100 + peak)) - 1) * 100);
     maxDrawdownPct = Math.max(maxDrawdownPct, drawdownPct);
   }
 
@@ -87,10 +90,14 @@ export default function RollingPerformanceWindows({
 
   const windows = WINDOWS
     .filter((size) => sorted.length >= size)
-    .map((size) => ({
-      size,
-      stats: computeWindowStatsFromPath(sorted.slice(-size), series) ?? computeWindowStats(sorted.slice(-size)),
-    }));
+    .map((size) => {
+      const pathStats = computeWindowStatsFromPath(sorted.slice(-size), series);
+      return {
+        size,
+        stats: pathStats ?? computeWindowStats(sorted.slice(-size)),
+        drawdownLabel: pathStats ? "Path DD" : "Close DD",
+      };
+    });
 
   if (windows.length === 0) return null;
 
@@ -102,7 +109,7 @@ export default function RollingPerformanceWindows({
         Rolling Windows
       </h3>
       <div className="grid gap-3 md:grid-cols-3">
-        {windows.map(({ size, stats }) => (
+        {windows.map(({ size, stats, drawdownLabel }) => (
           <div
             key={size}
             className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/50 p-3"
@@ -117,7 +124,7 @@ export default function RollingPerformanceWindows({
             <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--muted)]">
-                  Max DD
+                  {drawdownLabel}
                 </div>
                 <div className="font-bold text-red-400">{stats.maxDrawdownPct.toFixed(2)}%</div>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { LimniSpinner } from "@/components/LimniLoading";
 import {
@@ -20,6 +20,7 @@ import {
   startStrategySessionPreload,
   usePreloadStatus,
 } from "@/lib/performance/strategySessionStore";
+import { prefetchVisibleStrategyPayloads } from "@/lib/performance/strategyClientCache";
 
 function isBypassedRoute(pathname: string | null) {
   return (
@@ -39,45 +40,78 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
   const canonPreload = useCanonPreloadStatus();
   const canonKernel = useCanonKernelStatus();
   const preload = usePreloadStatus();
-  const bypassGate = isBypassedRoute(pathname);
-  const strategyParam = searchParams?.get("strategy") ?? searchParams?.get("bias") ?? "";
+  const backgroundWarmKeyRef = useRef<string | null>(null);
+  const [hasReleasedAppGate, setHasReleasedAppGate] = useState(false);
+  const [isSlowGate, setIsSlowGate] = useState(false);
+  const performanceKernelRoute = isKernelRoute(pathname);
+  const bypassGate = isBypassedRoute(pathname) || !performanceKernelRoute;
+  const strategyParam = performanceKernelRoute ? searchParams?.get("strategy") ?? "" : "";
   const f1Param = searchParams?.get("f1") ?? searchParams?.get("filter") ?? "";
   const f2Param = searchParams?.get("f2") ?? "";
   const activeSelection = useMemo(
     () => {
+      if (!performanceKernelRoute) return null;
       const params = new URLSearchParams();
       if (strategyParam) params.set("strategy", strategyParam);
       if (f1Param) params.set("f1", f1Param);
       if (f2Param) params.set("f2", f2Param);
       return deriveActiveSelectionFromParams(params);
     },
-    [f1Param, f2Param, strategyParam],
+    [f1Param, f2Param, performanceKernelRoute, strategyParam],
   );
   const activeKernelSelection = useMemo(
-    () => activeSelection ?? (isKernelRoute(pathname) ? FALLBACK_DEFAULT_SELECTION : null),
-    [activeSelection, pathname],
+    () => activeSelection ?? (performanceKernelRoute ? FALLBACK_DEFAULT_SELECTION : null),
+    [activeSelection, performanceKernelRoute],
   );
   const kernelReady = Boolean(activeKernelSelection && canonKernel.status === "ready");
-  const shouldUseLegacyCanonGate = !activeKernelSelection
+  const useStrategyKernelPayload = Boolean(activeKernelSelection && performanceKernelRoute);
+  const kernelTerminalFailure = performanceKernelRoute
+    && (canonKernel.status === "error" || canonKernel.status === "degraded" || canonPreload.status === "error");
+  const shouldUseLegacyCanonGate = performanceKernelRoute && (!activeKernelSelection
     || canonKernel.status === "degraded"
-    || canonKernel.status === "error";
-  const appHistoricalReady = canonPreload.status === "ready" || kernelReady;
+    || canonKernel.status === "error");
+  const appHistoricalReady = performanceKernelRoute || canonPreload.status === "ready" || kernelReady || kernelTerminalFailure;
+  const appGateReleased = hasReleasedAppGate || appHistoricalReady;
+
+  useEffect(() => {
+    if (!hasReleasedAppGate && appHistoricalReady) {
+      const timeout = window.setTimeout(() => setHasReleasedAppGate(true), 0);
+      return () => window.clearTimeout(timeout);
+    }
+  }, [appHistoricalReady, hasReleasedAppGate]);
+
+  useEffect(() => {
+    const resetTimeout = window.setTimeout(() => setIsSlowGate(false), 0);
+    if (bypassGate || appGateReleased) {
+      return () => window.clearTimeout(resetTimeout);
+    }
+    const timeout = window.setTimeout(() => setIsSlowGate(true), 15_000);
+    return () => {
+      window.clearTimeout(resetTimeout);
+      window.clearTimeout(timeout);
+    };
+  }, [activeKernelSelection, appGateReleased, bypassGate, pathname]);
 
   useEffect(() => {
     if (bypassGate) return;
+    if (appGateReleased) return;
+    if (!performanceKernelRoute) return;
     if (!activeKernelSelection) return;
     void startCanonKernelSync(activeKernelSelection);
-  }, [activeKernelSelection, bypassGate]);
+  }, [activeKernelSelection, appGateReleased, bypassGate, performanceKernelRoute]);
 
   useEffect(() => {
     if (bypassGate) return;
-    if (canonPreload.status === "ready") return;
+    if (appGateReleased) return;
+    if (!performanceKernelRoute) return;
+    if (canonPreload.status === "ready" || canonPreload.status === "loading" || canonPreload.status === "error") return;
     if (!shouldUseLegacyCanonGate) return;
     void startCanonPreload();
-  }, [bypassGate, canonPreload.status, shouldUseLegacyCanonGate]);
+  }, [appGateReleased, bypassGate, canonPreload.status, performanceKernelRoute, shouldUseLegacyCanonGate]);
 
   useEffect(() => {
     if (bypassGate) return;
+    if (!performanceKernelRoute) return;
     if (!appHistoricalReady) return;
     if (!activeKernelSelection) return;
     if (preload.completedOnce || preload.status === "ready") return;
@@ -85,8 +119,8 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
     const run = () => {
       void startStrategySessionPreload(manifest, {
         trustGlobalStamp: !kernelReady,
-        includeBackgroundStrategyTasks: !kernelReady,
-        useKernelPayload: kernelReady,
+        includeBackgroundStrategyTasks: !useStrategyKernelPayload && !kernelReady,
+        useKernelPayload: useStrategyKernelPayload,
       });
     };
     if (preload.status !== "partial") {
@@ -100,11 +134,35 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
     appHistoricalReady,
     bypassGate,
     kernelReady,
+    performanceKernelRoute,
     preload.completedOnce,
     preload.status,
+    useStrategyKernelPayload,
   ]);
 
-  if (bypassGate || appHistoricalReady) {
+  useEffect(() => {
+    if (bypassGate) return;
+    if (!performanceKernelRoute) return;
+    if (!appHistoricalReady || !kernelReady) return;
+    const warmKey = `${canonKernel.cacheNamespace ?? "unknown"}:visible-strategy-artifacts`;
+    if (backgroundWarmKeyRef.current === warmKey) return;
+    backgroundWarmKeyRef.current = warmKey;
+    void prefetchVisibleStrategyPayloads({
+      currentSelection: activeKernelSelection ?? undefined,
+      concurrency: 1,
+      delayMs: 1200,
+      scope: "full",
+    });
+  }, [
+    activeKernelSelection,
+    appHistoricalReady,
+    bypassGate,
+    canonKernel.cacheNamespace,
+    kernelReady,
+    performanceKernelRoute,
+  ]);
+
+  if (bypassGate || appGateReleased) {
     return <>{children}</>;
   }
 
@@ -133,6 +191,16 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
   const label = progress
     ? `${phaseLabel} (${progress})`
     : phaseLabel;
+  const debugLines = [
+    `route=${pathname ?? "unknown"}`,
+    activeKernelSelection ? `variant=${activeKernelSelection.strategy}-${activeKernelSelection.f1}-${activeKernelSelection.f2}` : "variant=none",
+    shouldUseLegacyCanonGate
+      ? `legacyPhase=${canonPreload.phase}:${canonPreload.status}`
+      : `kernelPhase=${canonKernel.phase}:${canonKernel.status}`,
+    shouldUseLegacyCanonGate
+      ? "blockedEndpoint=/api/canon/v2/historical"
+      : "blockedEndpoint=/api/canon/v2/week",
+  ];
 
   return (
     <div
@@ -170,6 +238,16 @@ export default function AppPreloadGate({ children }: { children: ReactNode }) {
                 )}%`,
               }}
             />
+          </div>
+        ) : null}
+        {isSlowGate ? (
+          <div
+            className="max-w-xl space-y-1 rounded-md border border-[var(--panel-border)] bg-[var(--panel)] px-4 py-3 text-left text-[11px]"
+            style={{ color: "var(--muted, #6b7280)" }}
+          >
+            {debugLines.map((line) => (
+              <div key={line}>{line}</div>
+            ))}
           </div>
         ) : null}
       </div>

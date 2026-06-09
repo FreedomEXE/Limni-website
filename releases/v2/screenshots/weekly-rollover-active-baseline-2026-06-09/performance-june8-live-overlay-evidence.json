@@ -1,0 +1,100 @@
+{
+  "checkedAtUtc": "2026-06-09T17:12:39.794Z",
+  "route": "http://127.0.0.1:3001/performance",
+  "screenshotPath": "C:\\Users\\User\\Documents\\GitHub\\limni-website\\releases\\v2\\screenshots\\weekly-rollover-active-baseline-2026-06-09\\performance-june8-live-overlay.png",
+  "ui": {
+    "hasJune8Text": true,
+    "hasJune1Text": true,
+    "has15WeeksText": true,
+    "hasRuntimeNotReadyText": false,
+    "hasClean14Text": false,
+    "sampleText": "LIMNI LABS\nPERFORMANCE\nBACK\nSIGNAL MODEL\nTandem\nTiered\nAgreement\nSelector\nEXECUTION\nWeekly Hold\nADR Grid\nRISK OVERLAY\nNone\nPair Fill Cap\nAPPLIED\nTANDEM · ADR GRID · PAIR FILL CAP\n15 WEEKS TRACKED\n+279.91%\nTOTAL RETURN\nWEEKLY WR\n66.7%\nMAX DD\n149.00%\nPATH SHARPE\n0.30\nPATH SORTINO\n0.27\nTRADE PF\n1.18\nPATH CALMAR\n6.51\nAVG WEEKLY\n+18.66%\nTOTAL TRADES\n11496\nTRADE EXP\n+0.02%\nTRADE AVG W/L\n+0.2 / -0.8\nBEST STREAK\n4W\nWORST STREAK\n2L\nDARK MODE\nSign Out\nPerformance\n\nTANDEM · ADR GRID · PAIR FILL CAP\n\nVIEW MODE\n\nRETURNS MEASURED FROM EXECUTION OPEN (MON 00:00 UTC)\n\nMETRIC\nADR-norm\nRaw %\nWEEK\nALL TIME\nJUN 08 2026\nJUN 01 2026\nMAY 25 2026\nMAY 18 2026\nMAY 11 2026\nMAY 04 2026\nAPR 27 2026\nAPR 20 2026\nAPR 13 2026\nAPR 06 2026\nMAR 30 2026\nMAR 23 2026\nMAR 16 2026\nMAR 09 2026\nMAR 02 2026\nFEB 23 2026\nSCOPE\nALL\nFX\nINDICES\nCOMMODITIES\nCRYPTO\nSUMMARY\nKey metrics and model ranking.\nSIMULATION\nTrailing-stop and sizing perspective.\nBASKET\nSee every pair, direction, and return.\nRESEARCH\nDiagnostics and pair-level distribution.\nNOTES\nWeekly observations and takeaways.\n+++\n\nDEALER PORTFOLIO\n\n+140.62%\nTOTAL RETURN\nWIN RATE\n87%\nSHARPE (WK)\n0.69\nMAX DD\n48.90%\nPROFIT FACTOR\n4.27\n87%\n\nRETURN SPREAD\n\n*** High Confidence\n+++\n\nCOMMERCIAL PORTFOLIO\n\n+59.54%\nTOTAL RETURN\nWIN RATE\n67%\nSHARPE (WK)\n0.17\nMAX DD\n42.49%\nPROFIT FACTOR\n1.53\n67%\n\nRETURN SPREAD\n\n*** High Confidence\n+\n\nSENTIMENT PORTFOLIO\n\n+24.86%\nTOTAL RETURN\nWIN "
+  },
+  "kernelPayload": {
+    "status": 200,
+    "weekOptions": [
+      "all",
+      "2026-06-07T23:00:00.000Z",
+      "2026-05-31T23:00:00.000Z",
+      "2026-05-24T23:00:00.000Z",
+      "2026-05-17T23:00:00.000Z",
+      "2026-05-10T23:00:00.000Z",
+      "2026-05-03T23:00:00.000Z",
+      "2026-04-26T23:00:00.000Z",
+      "2026-04-19T23:00:00.000Z",
+      "2026-04-12T23:00:00.000Z",
+      "2026-04-05T23:00:00.000Z",
+      "2026-03-29T23:00:00.000Z",
+      "2026-03-22T23:00:00.000Z",
+      "2026-03-15T23:00:00.000Z",
+      "2026-03-08T23:00:00.000Z",
+      "2026-03-02T00:00:00.000Z",
+      "2026-02-23T00:00:00.000Z"
+    ],
+    "currentWeekOpenUtc": "2026-06-07T23:00:00.000Z",
+    "artifactMeta": {
+      "status": "hit",
+      "selectionKey": "tandem:adr_grid:pair_fill_cap",
+      "cachedAtUtc": "2026-06-09T16:42:47.898Z",
+      "refreshedWeeks": [],
+      "removedWeeks": [],
+      "missingWeeks": [],
+      "historyWindow": "active-baseline",
+      "expectedWeeks": 15,
+      "stale": false,
+      "staleReason": null,
+      "engineVersion": "strategy-artifact-v34:selector-engine-v6:adr-grid-canonical-weekly-anchor-v9-reset-close-contract:risk-overlay-pair-fill-cap-v1:path-simulation-v11-grid-reset-close:source-fingerprint-v6-frozen-ledger"
+    },
+    "hasCurrentWeekResult": false,
+    "hasCurrentWeekGrid": false
+  },
+  "currentWeekPayload": {
+    "status": 200,
+    "ok": true,
+    "weekOptions": [
+      "all",
+      "2026-06-07T23:00:00.000Z",
+      "2026-05-31T23:00:00.000Z",
+      "2026-05-24T23:00:00.000Z",
+      "2026-05-17T23:00:00.000Z",
+      "2026-05-10T23:00:00.000Z",
+      "2026-05-03T23:00:00.000Z",
+      "2026-04-26T23:00:00.000Z",
+      "2026-04-19T23:00:00.000Z",
+      "2026-04-12T23:00:00.000Z",
+      "2026-04-05T23:00:00.000Z",
+      "2026-03-29T23:00:00.000Z",
+      "2026-03-22T23:00:00.000Z",
+      "2026-03-15T23:00:00.000Z",
+      "2026-03-08T23:00:00.000Z",
+      "2026-03-02T00:00:00.000Z",
+      "2026-02-23T00:00:00.000Z"
+    ],
+    "currentWeekOpenUtc": "2026-06-07T23:00:00.000Z",
+    "artifactMeta": {
+      "status": "hit",
+      "selectionKey": "tandem:adr_grid:pair_fill_cap",
+      "cachedAtUtc": "2026-06-09T16:42:47.898Z",
+      "refreshedWeeks": [],
+      "removedWeeks": [],
+      "missingWeeks": [],
+      "historyWindow": "active-baseline",
+      "expectedWeeks": 15,
+      "stale": false,
+      "staleReason": null,
+      "engineVersion": "strategy-artifact-v34:selector-engine-v6:adr-grid-canonical-weekly-anchor-v9-reset-close-contract:risk-overlay-pair-fill-cap-v1:path-simulation-v11-grid-reset-close:source-fingerprint-v6-frozen-ledger"
+    },
+    "currentWeekTradeCount": 305,
+    "currentWeekTotalReturnPct": 40.09394112093695,
+    "hasCurrentWeekResult": true,
+    "hasCurrentWeekGrid": true,
+    "error": null
+  },
+  "performanceRequests": [
+    "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=active-baseline",
+    "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=active-baseline",
+    "http://127.0.0.1:3001/api/performance/strategy-current-week?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&forceEvidence=1"
+  ],
+  "failedRequests": [],
+  "consoleErrors": []
+}

@@ -25,6 +25,7 @@ type BasePreloadTask = {
 export type StrategyPreloadTask = BasePreloadTask & {
   domain: "strategy";
   selection: RuntimeStrategySelection;
+  loadCurrentWeek?: boolean;
 };
 
 export type PreloadTask =
@@ -46,7 +47,7 @@ export function deriveActiveSelectionFromParams(
   searchParams: URLSearchParams | null,
 ): RuntimeStrategySelection | null {
   if (!searchParams) return null;
-  const strategyParam = searchParams.get("strategy") ?? searchParams.get("bias");
+  const strategyParam = searchParams.get("strategy");
   const f1Param = searchParams.get("f1") ?? searchParams.get("filter");
   const f2Param = searchParams.get("f2");
   if (!strategyParam && !f1Param && !f2Param) return null;
@@ -80,6 +81,7 @@ export function buildPreloadManifest(
       id: key,
       domain: "strategy",
       selection: runtimeSelection,
+      loadCurrentWeek: false,
       priority: key === activeKey ? "active" : "background",
       run: (options) => ensureStrategySession(runtimeSelection, {
         currentWeek: false,
@@ -94,6 +96,7 @@ export function buildPreloadManifest(
       id: activeKey,
       domain: "strategy",
       selection: active,
+      loadCurrentWeek: false,
       priority: "active",
       run: (options) => ensureStrategySession(active, {
         currentWeek: false,
@@ -107,7 +110,7 @@ export function buildPreloadManifest(
     id: "market-intelligence",
     domain: "market-intelligence",
     priority: "active",
-    run: () => fetchAndSeedMarketIntelligence(),
+    run: () => fetchAndSeedMarketIntelligence("all", null, { includeAllReports: true }),
   });
 
   tasks.push({

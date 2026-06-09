@@ -13,8 +13,12 @@
 
 # Bootstrap UI Architecture
 
+> Historical rule set. This document remains useful for local selection-speed discipline, but it is superseded for app truth, route readiness, active baseline, domain cache, and preload decisions by `docs/architecture/APP_TRUTH_ARCHITECTURE_V1_SPEC_2026-06-08.md` and `docs/architecture/APP_TRUTH_ARCHITECTURE_INDEX.md`.
+>
+> If this file conflicts with RouteTruthContract, ActiveBaselineManifest, WeeklyLifecycleLedger, domain-owned truth, or Status diagnostics, the App Truth Architecture wins.
+
 Date: 2026-03-29
-Status: ACTIVE RULESET
+Status: HISTORICAL RULESET - local selection-speed reference only
 Related: `docs/SESSION_BOOTSTRAP_LOADER_SPEC_2026-03-28.md`
 
 ## Purpose

@@ -19,13 +19,18 @@ import MissingReturnCell from "@/components/common/MissingReturnCell";
 import { formatDateLabel, formatSignedPercent } from "@/components/common/trade-list/formatters";
 import type { TradeListNode } from "@/components/common/trade-list/types";
 import { buildBasketTradeListNodes } from "@/lib/basket/buildBasketTradeListNodes";
-import { basketDataSource } from "@/lib/basket/basketDataSource";
 import { resolveBasketHierarchy } from "@/lib/basket/basketHierarchy";
-import type { ClosedHistoryRow } from "@/lib/basket/basketSummaryTypes";
+import type { ClosedHistoryBundle, ClosedHistoryRow } from "@/lib/basket/basketSummaryTypes";
+import { useCanonKernelStatus } from "@/lib/canon/canonKernelStore";
+import { useCanonPreloadStatus } from "@/lib/canon/canonStore";
 import type { AssetClass } from "@/lib/cotMarkets";
-import type { PerformanceAssetSelection } from "@/lib/performance/performanceAssetScope";
+import {
+  normalizePerformanceAssetSelection,
+  type PerformanceAssetSelection,
+} from "@/lib/performance/performanceAssetScope";
 import { getStrategy, resolveStrategyId } from "@/lib/performance/strategyConfig";
 import type { TradeStrategyFamily } from "@/lib/trades/tradeTypes";
+import { resolveDisplayDrawdown } from "@/lib/viewMode/resolveDisplayValue";
 import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
 
 type BasketHierarchyProps = {
@@ -35,6 +40,15 @@ type BasketHierarchyProps = {
   currentWeek?: string;
   scope: PerformanceAssetSelection;
   viewMode: ViewMode;
+  authoritativeMetrics?: BasketAuthoritativeMetrics | null;
+  selectedTradeRowsBundle?: ClosedHistoryBundle | null;
+};
+
+export type BasketAuthoritativeMetrics = {
+  returnPct?: number | null;
+  maxDrawdownPct?: number | null;
+  tradeCount?: number | null;
+  hasActivity?: boolean;
 };
 
 function sourceLabelMap(strategyId: string) {
@@ -49,6 +63,17 @@ function sourceLabelMap(strategyId: string) {
 function rowsForNode(node: TradeListNode): ClosedHistoryRow[] {
   const rows = node.values.rows;
   return Array.isArray(rows) ? rows as ClosedHistoryRow[] : [];
+}
+
+function scopeBundle(bundle: ClosedHistoryBundle | null | undefined, scope: PerformanceAssetSelection) {
+  if (!bundle) return null;
+  const normalizedScope = normalizePerformanceAssetSelection(scope);
+  const selected = new Set(normalizedScope);
+  return {
+    ...bundle,
+    scope: normalizedScope,
+    rows: bundle.rows.filter((row) => selected.has(row.assetClass)),
+  };
 }
 
 function primaryRow(node: TradeListNode) {
@@ -68,6 +93,18 @@ function pctTone(value: unknown) {
     return "text-[color:var(--muted)]";
   }
   return value > 0 ? "text-lime-500" : "text-rose-500";
+}
+
+function finiteMetric(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function materiallyDifferent(left: number | null, right: number | null, tolerance = 0.05) {
+  return left !== null && right !== null && Math.abs(left - right) > tolerance;
+}
+
+function riskTone(value: number | null) {
+  return value !== null && value > 0.005 ? "text-rose-500" : "text-[color:var(--muted)]";
 }
 
 function directionTone(direction: ClosedHistoryRow["direction"]) {
@@ -94,6 +131,7 @@ function AssetClassBadge({ assetClass }: { assetClass: AssetClass }) {
 }
 
 function titleForLevel(node: TradeListNode) {
+  if (node.level === "level") return node.label;
   if (node.level === "fill") {
     const displayFillSeq = node.values.displayFillSeq;
     return `Fill ${typeof displayFillSeq === "number" ? displayFillSeq : "--"}`;
@@ -124,7 +162,11 @@ function childCountSummary(node: TradeListNode) {
     if (trades > 0) return `${trades} ${trades === 1 ? "trade" : "trades"}`;
   }
   if (node.level === "grid") {
-    const fills = node.children?.length ?? rows.filter((row) => row.rowKind === "fill").length;
+    const fills = rows.filter((row) => row.rowKind === "fill").length;
+    return `${fills} ${fills === 1 ? "fill" : "fills"}`;
+  }
+  if (node.level === "level") {
+    const fills = rows.filter((row) => row.rowKind === "fill").length;
     return `${fills} ${fills === 1 ? "fill" : "fills"}`;
   }
   return "";
@@ -134,7 +176,10 @@ function nodeLeafRows(node: TradeListNode) {
   return rowsForNode(node).filter((row) => row.rowKind === "fill" || row.rowKind === "trade");
 }
 
-function nodeWinLoss(node: TradeListNode, viewMode: ViewMode) {
+function nodeWinLoss(node: TradeListNode, viewMode: ViewMode, suppressReturnValues = false) {
+  if (suppressReturnValues) {
+    return { total: 0, wins: 0, losses: 0 };
+  }
   const unitRows = nodeLeafRows(node);
   const values = unitRows
     .map((row) => resolvedRowReturn(row, viewMode))
@@ -147,12 +192,12 @@ function nodeWinLoss(node: TradeListNode, viewMode: ViewMode) {
   };
 }
 
-function rowSummarySegments(node: TradeListNode, viewMode: ViewMode) {
+function rowSummarySegments(node: TradeListNode, viewMode: ViewMode, suppressReturnValues = false) {
   const segments: ReactNode[] = [];
   const countSummary = childCountSummary(node);
   if (countSummary) segments.push(countSummary);
 
-  const winLoss = nodeWinLoss(node, viewMode);
+  const winLoss = nodeWinLoss(node, viewMode, suppressReturnValues);
   if (winLoss.total > 0) {
     segments.push(
       <span key="wins" className="font-semibold text-lime-500">{winLoss.wins}W</span>,
@@ -172,6 +217,72 @@ function rowSummarySegments(node: TradeListNode, viewMode: ViewMode) {
   }
 
   return segments;
+}
+
+function HeaderMetric({
+  label,
+  value,
+  tone,
+  dash = false,
+}: {
+  label: string;
+  value: ReactNode;
+  tone?: string;
+  dash?: boolean;
+}) {
+  return (
+    <span className={`inline-flex items-baseline gap-1 ${tone ?? "text-[color:var(--muted)]"}`}>
+      <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">{label}</span>
+      <span className={`${dash ? "font-semibold" : "font-bold"}`}>{value}</span>
+    </span>
+  );
+}
+
+function NodeHeaderMetrics({
+  node,
+  warnings,
+  suppressReturnValues = false,
+}: {
+  node: TradeListNode;
+  warnings: string[];
+  suppressReturnValues?: boolean;
+}) {
+  const returnPct = suppressReturnValues ? null : finiteMetric(node.values.returnPct);
+  const maxPathDrawdownPct = finiteMetric(node.values.maxPathDrawdownPct);
+  const maxMaePct = finiteMetric(node.values.maxMaePct);
+  const isGrid = node.level === "grid";
+  const isLeaf = node.level === "fill" || node.level === "trade";
+
+  return (
+    <div className="ml-3 flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs">
+      <HeaderMetric
+        label="P/L"
+        value={returnPct !== null
+          ? formatSignedPercent(returnPct, 2)
+          : warnings.length > 0
+            ? <MissingReturnCell reason={warnings[0] ?? "Missing return"} />
+            : "--"}
+        tone={pctTone(returnPct)}
+        dash={returnPct === null}
+      />
+      {maxPathDrawdownPct !== null ? (
+        <HeaderMetric
+          label={isGrid ? "Grid DD" : "Max DD"}
+          value={formatSignedPercent(-maxPathDrawdownPct, 2)}
+          tone={riskTone(maxPathDrawdownPct)}
+        />
+      ) : isGrid ? (
+        <HeaderMetric label="Grid DD" value="--" dash />
+      ) : null}
+      {maxMaePct !== null ? (
+        <HeaderMetric
+          label={isLeaf ? "MAE" : "Max MAE"}
+          value={formatSignedPercent(-maxMaePct, 2)}
+          tone={riskTone(maxMaePct)}
+        />
+      ) : null}
+    </div>
+  );
 }
 
 type BasketVisibleStats = {
@@ -301,18 +412,6 @@ function resolvedRowReturn(row: ClosedHistoryRow, viewMode: ViewMode) {
   return raw;
 }
 
-function simplePathDrawdown(values: number[]) {
-  let cumulative = 0;
-  let peak = 0;
-  let maxDrawdown = 0;
-  for (const value of values) {
-    cumulative += value;
-    peak = Math.max(peak, cumulative);
-    maxDrawdown = Math.max(maxDrawdown, peak - cumulative);
-  }
-  return maxDrawdown;
-}
-
 function DetailMetric({ label, value, tone }: { label: string; value: ReactNode; tone?: string }) {
   return (
     <div>
@@ -335,12 +434,19 @@ function InlineGridDetail({ node, viewMode }: { node: TradeListNode; viewMode: V
   const fills = node.children ?? [];
   if (!row) return null;
   const fillRows = fills
-    .map((fillNode) => primaryRow(fillNode))
+    .flatMap((fillNode) => {
+      if (fillNode.level === "level") {
+        return rowsForNode(fillNode).filter((fillRow) => fillRow.rowKind === "fill");
+      }
+      return [primaryRow(fillNode)].filter(Boolean) as ClosedHistoryRow[];
+    })
     .filter((fillRow): fillRow is ClosedHistoryRow => Boolean(fillRow));
-  const returns = fillRows
-    .map((fillRow) => resolvedRowReturn(fillRow, viewMode))
-    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-  const pathDrawdown = returns.length > 0 ? simplePathDrawdown(returns) : null;
+  const gridPathDrawdown = resolveDisplayDrawdown(row.riskMatrix, viewMode, "pathDrawdown");
+  const maxFillMae = fillRows.reduce<number | null>((max, fillRow) => {
+    const mae = resolveDisplayDrawdown(fillRow.riskMatrix, viewMode, "mae");
+    if (mae === null) return max;
+    return max === null ? mae : Math.max(max, mae);
+  }, resolveDisplayDrawdown(row.riskMatrix, viewMode, "mae"));
   const violations = fillRows.filter((fillRow) => fillRow.capViolated).length;
   const maxActiveFills = Math.max(0, ...fillRows.map((fillRow) => fillRow.capActiveFillsAtEntry ?? 0));
   const capThreshold = row.capThresholdAtEntry
@@ -348,39 +454,54 @@ function InlineGridDetail({ node, viewMode }: { node: TradeListNode; viewMode: V
     ?? "--";
 
   return (
-    <div className="grid gap-3 rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/60 px-4 py-3 text-[11px] sm:grid-cols-2 lg:grid-cols-6">
+    <div className="grid gap-3 rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/60 px-4 py-3 text-[11px] sm:grid-cols-2 lg:grid-cols-7">
       <DetailMetric label="Window" value={`${formatDateTimeLabel(row.entryUtc)} -> ${formatDateTimeLabel(row.exitUtc)}`} />
       <DetailMetric label="Duration" value={formatDuration(row.entryUtc, row.exitUtc)} />
       <DetailMetric label="Entry / Exit" value={`${formatPrice(row.entryPrice)} -> ${formatPrice(row.exitPrice)}`} />
-      <DetailMetric label="Path DD (fills)" value={pathDrawdown === null ? "--" : formatSignedPercent(-pathDrawdown, 2)} tone="text-rose-500" />
+      <DetailMetric label="Grid DD" value={gridPathDrawdown === null ? "--" : formatSignedPercent(-gridPathDrawdown, 2)} tone="text-rose-500" />
+      <DetailMetric label="Max fill MAE" value={maxFillMae === null ? "--" : formatSignedPercent(-maxFillMae, 2)} tone="text-rose-500" />
       <DetailMetric label="Cap" value={`${maxActiveFills}/${capThreshold} max active`} />
       <DetailMetric label="Violations" value={violations} tone={violations > 0 ? "text-rose-500" : "text-lime-500"} />
     </div>
   );
 }
 
-function InlineTradeDetail({ node, viewMode }: { node: TradeListNode; viewMode: ViewMode }) {
+function InlineTradeDetail({
+  node,
+  viewMode,
+  suppressReturnValues = false,
+}: {
+  node: TradeListNode;
+  viewMode: ViewMode;
+  suppressReturnValues?: boolean;
+}) {
   const row = primaryRow(node);
   if (!row) return null;
   const tradeId = row.executionTradeId ?? row.canonicalTradeId ?? "--";
   const activeRaw = viewMode.anchor === "canonical"
     ? row.returnMatrix.canonical?.rawPct
     : row.returnMatrix.execution?.rawPct;
-  const displayReturn = resolvedRowReturn(row, viewMode);
+  const displayReturn = suppressReturnValues ? null : resolvedRowReturn(row, viewMode);
   const activeRawLabel = viewMode.anchor === "canonical" ? "Canonical Raw" : "Execution Raw";
   const displayLabel = viewMode.normalization === "adr_normalized" ? "Displayed ADR-norm" : "Displayed Raw";
   const showNormalizationContext = viewMode.normalization === "adr_normalized";
+  const displayMae = resolveDisplayDrawdown(row.riskMatrix, viewMode, "mae");
 
   return (
     <div className="rounded-lg border border-[var(--panel-border)]/60 bg-[var(--panel)]/60 px-4 py-3 text-[11px]">
       <div className="mb-3 grid gap-3 rounded-md border border-[var(--panel-border)]/50 bg-black/[0.04] px-3 py-2 sm:grid-cols-3">
-        <DetailMetric label={displayLabel} value={displayReturn === null ? "--" : formatSignedPercent(displayReturn, 4)} tone={pctTone(displayReturn)} />
-        {showNormalizationContext ? (
+        <DetailMetric
+          label={displayLabel}
+          value={suppressReturnValues ? "Ledger projection pending" : displayReturn === null ? "--" : formatSignedPercent(displayReturn, 4)}
+          tone={suppressReturnValues ? "text-[color:var(--muted)]" : pctTone(displayReturn)}
+        />
+        {showNormalizationContext && !suppressReturnValues ? (
           <DetailMetric label={activeRawLabel} value={typeof activeRaw === "number" ? formatSignedPercent(activeRaw, 4) : "--"} tone={pctTone(activeRaw)} />
         ) : null}
-        {showNormalizationContext ? (
+        {showNormalizationContext && !suppressReturnValues ? (
           <DetailMetric label="ADR Used" value={row.returnMatrix.adrPct === null ? "--" : `${row.returnMatrix.adrPct.toFixed(4)}%`} />
         ) : null}
+        <DetailMetric label="MAE" value={displayMae === null ? "--" : formatSignedPercent(-displayMae, 4)} tone="text-rose-500" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <DetailMetric label="Entry" value={formatDateTimeLabel(row.entryUtc)} />
@@ -406,21 +527,22 @@ function BasketNodeRow({
   depth = 0,
   viewMode,
   dimmed = false,
+  suppressReturnValues = false,
   onFocusChange,
 }: {
   node: TradeListNode;
   depth?: number;
   viewMode: ViewMode;
   dimmed?: boolean;
+  suppressReturnValues?: boolean;
   onFocusChange?: (nodeId: string | null) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [focusedChildId, setFocusedChildId] = useState<string | null>(null);
   const hasChildren = Boolean(node.children?.length);
   const row = primaryRow(node);
-  const value = node.values.returnPct;
   const warnings = rowWarnings(node);
-  const summarySegments = rowSummarySegments(node, viewMode);
+  const summarySegments = rowSummarySegments(node, viewMode, suppressReturnValues);
   const isLeaf = node.level === "fill" || node.level === "trade";
   const isGrid = node.level === "grid";
   const flattenedGrid = node.level === "symbol" && node.children?.length === 1 && node.children[0]?.level === "grid"
@@ -430,12 +552,10 @@ function BasketNodeRow({
   const canExpand = hasChildren || isLeaf;
   const handleToggle = () => {
     if (!canExpand) return;
-    setExpanded((current) => {
-      const next = !current;
-      onFocusChange?.(next ? node.id : null);
-      if (!next) setFocusedChildId(null);
-      return next;
-    });
+    const next = !expanded;
+    setExpanded(next);
+    onFocusChange?.(next ? node.id : null);
+    if (!next) setFocusedChildId(null);
   };
 
   return (
@@ -443,7 +563,7 @@ function BasketNodeRow({
       <button
         type="button"
         onClick={handleToggle}
-        className={`flex w-full items-center justify-between rounded-lg border px-4 py-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
+        className={`flex w-full items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${
           expanded
             ? "border-[var(--accent)]/35 bg-[var(--accent)]/[0.06]"
             : "border-[var(--panel-border)] bg-[var(--panel)]/70 hover:border-[var(--accent)]/30"
@@ -452,7 +572,7 @@ function BasketNodeRow({
         aria-expanded={canExpand ? expanded : undefined}
         data-testid="basket-canon-row"
       >
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <span className="w-4 shrink-0 text-[10px] text-[color:var(--muted)]">
             {canExpand ? expanded ? "▾" : "▸" : ""}
           </span>
@@ -478,13 +598,7 @@ function BasketNodeRow({
             </span>
           ) : null}
         </div>
-        <span className={`ml-4 shrink-0 text-sm font-semibold ${pctTone(value)}`}>
-          {typeof value === "number" && Number.isFinite(value)
-            ? formatSignedPercent(value, 2)
-            : warnings.length > 0
-              ? <MissingReturnCell reason={warnings[0] ?? "Missing return"} />
-              : "--"}
-        </span>
+        <NodeHeaderMetrics node={node} warnings={warnings} suppressReturnValues={suppressReturnValues} />
       </button>
 
       {expanded && hasChildren ? (
@@ -498,6 +612,7 @@ function BasketNodeRow({
               depth={depth + 1}
               viewMode={viewMode}
               dimmed={focusedChildId !== null && focusedChildId !== child.id}
+              suppressReturnValues={suppressReturnValues}
               onFocusChange={setFocusedChildId}
             />
           ))}
@@ -505,7 +620,7 @@ function BasketNodeRow({
       ) : null}
       {expanded && !hasChildren && isLeaf ? (
         <ExpandedBranchPanel>
-          <InlineTradeDetail node={node} viewMode={viewMode} />
+          <InlineTradeDetail node={node} viewMode={viewMode} suppressReturnValues={suppressReturnValues} />
         </ExpandedBranchPanel>
       ) : null}
     </div>
@@ -517,14 +632,20 @@ export default function BasketHierarchy({
   selectedWeek,
   scope,
   viewMode,
+  authoritativeMetrics = null,
+  selectedTradeRowsBundle = null,
 }: BasketHierarchyProps) {
+  const canonKernel = useCanonKernelStatus();
+  const canonPreload = useCanonPreloadStatus();
   const strategyId = resolveStrategyId(strategyVariant.split("-")[0] ?? strategyVariant);
   const strategy = getStrategy(strategyId);
   if (!strategy) {
     throw new Error(`Unknown strategy config for basket hierarchy: ${strategyId}`);
   }
   const levels = resolveBasketHierarchy(strategy, strategyVariant);
-  const bundle = basketDataSource.getClosedHistorySnapshot?.({ strategyVariant, scope }) ?? null;
+  const selectedRuntimeBundle = scopeBundle(selectedTradeRowsBundle, scope);
+  const bundle = selectedRuntimeBundle;
+  const ledgerIdentity = bundle?.ledgerIdentity ?? null;
 
   // The canon tree can be large; keep this memoized even though strategy config
   // is an imported object that the React compiler cannot prove immutable.
@@ -548,13 +669,48 @@ export default function BasketHierarchy({
     const value = node.values.returnPct;
     return sum + (typeof value === "number" && Number.isFinite(value) ? value : 0);
   }, 0);
+  const totalMaxPathDrawdown = nodes.reduce<number | null>((max, node) => {
+    const value = finiteMetric(node.values.maxPathDrawdownPct);
+    if (value === null) return max;
+    return max === null ? value : Math.max(max, value);
+  }, null);
+  const authoritativeReturn = finiteMetric(authoritativeMetrics?.returnPct);
+  const authoritativeMaxDrawdown = finiteMetric(authoritativeMetrics?.maxDrawdownPct);
+  const authoritativeTradeCount = finiteMetric(authoritativeMetrics?.tradeCount);
+  const headerReturn = authoritativeReturn ?? totalReturn;
+  const headerMaxPathDrawdown = authoritativeMaxDrawdown ?? totalMaxPathDrawdown;
+  const totalMaxMae = nodes.reduce<number | null>((max, node) => {
+    const value = finiteMetric(node.values.maxMaePct);
+    if (value === null) return max;
+    return max === null ? value : Math.max(max, value);
+  }, null);
   const periodLabel = selectedWeek === "all" ? "All closed weeks" : formatDateLabel(selectedWeek);
   const segments = headerSegments(stats, selectedWeek, levels);
   const [focusedRootId, setFocusedRootId] = useState<string | null>(null);
+  const expectsActivity = Boolean(authoritativeMetrics?.hasActivity)
+    || (authoritativeTradeCount !== null && authoritativeTradeCount > 0)
+    || authoritativeReturn !== null;
+  const basketHasRows = nodes.length > 0;
+  const basketLooksIncomplete = Boolean(bundle)
+    && expectsActivity
+    && (
+      !basketHasRows
+      || (selectedWeek === "all" && stats.weekCount === 0)
+      || (stats.fillCount === 0 && stats.tradeCount === 0)
+    );
+  const kernelStatusText = canonKernel.status === "ready"
+    ? `ready ${canonKernel.readyWeeks}/${canonKernel.totalWeeks}`
+    : canonKernel.status;
+  const preloadStatusText = canonPreload.status;
+  const returnMismatch = materiallyDifferent(authoritativeReturn, totalReturn);
 
   return (
     <section
       data-testid="basket-hierarchy"
+      data-basket-source={bundle ? "selected-trade-rows" : "missing-selected-trade-rows"}
+      data-selected-execution-ledger-id={ledgerIdentity?.executionLedgerId ?? "missing"}
+      data-selected-trade-row-ledger-id={ledgerIdentity?.tradeRowLedgerId ?? "missing"}
+      data-selected-trade-row-count={ledgerIdentity?.rowCount ?? 0}
       className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm"
     >
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -567,16 +723,45 @@ export default function BasketHierarchy({
           {segments.map((segment) => (
             <span key={segment} className="text-[color:var(--muted)]">{segment}</span>
           ))}
-          <span className="font-semibold text-lime-500">{stats.wins}W</span>
-          <span className="font-semibold text-rose-500">{stats.losses}L</span>
-          <span className={`font-bold ${pctTone(totalReturn)}`}>{formatSignedPercent(totalReturn, 2)}</span>
+          {!returnMismatch ? (
+            <>
+              <span className="font-semibold text-lime-500">{stats.wins}W</span>
+              <span className="font-semibold text-rose-500">{stats.losses}L</span>
+            </>
+          ) : null}
+          {authoritativeTradeCount !== null ? (
+            <HeaderMetric label="Engine trades" value={authoritativeTradeCount.toFixed(0)} />
+          ) : null}
+          <HeaderMetric label="P/L" value={formatSignedPercent(headerReturn, 2)} tone={pctTone(headerReturn)} />
+          {headerMaxPathDrawdown !== null ? (
+            <HeaderMetric label="Max DD" value={formatSignedPercent(-headerMaxPathDrawdown, 2)} tone={riskTone(headerMaxPathDrawdown)} />
+          ) : null}
+          {totalMaxMae !== null ? (
+            <HeaderMetric label="Max MAE" value={formatSignedPercent(-totalMaxMae, 2)} tone={riskTone(totalMaxMae)} />
+          ) : null}
         </div>
       </div>
+
+      {returnMismatch ? (
+        <div
+          data-testid="basket-ledger-mismatch"
+          className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-200"
+        >
+          Basket header is using the engine ledger P/L. Drilldown row totals currently sum to {formatSignedPercent(totalReturn, 2)}.
+        </div>
+      ) : null}
 
       <div className="max-h-[65vh] space-y-1.5 overflow-y-auto">
         {!bundle ? (
           <div className="rounded-lg border border-dashed border-[var(--panel-border)] px-3 py-3 text-xs text-[color:var(--muted)]">
-            Canon bundle is not loaded. Refresh the app to rerun the v2 preload.
+            Basket selected trade-row ledger is syncing. Kernel: {kernelStatusText}. Preload: {preloadStatusText}.
+          </div>
+        ) : basketLooksIncomplete ? (
+          <div
+            data-testid="basket-syncing"
+            className="rounded-lg border border-dashed border-[var(--panel-border)] px-3 py-3 text-xs text-[color:var(--muted)]"
+          >
+            Basket drilldown is still syncing for this strategy, week, and scope. Engine totals above are loaded.
           </div>
         ) : nodes.length === 0 ? (
           <div className="rounded-lg border border-dashed border-[var(--panel-border)] px-3 py-3 text-xs text-[color:var(--muted)]">
@@ -589,6 +774,7 @@ export default function BasketHierarchy({
               node={node}
               viewMode={viewMode}
               dimmed={focusedRootId !== null && focusedRootId !== node.id}
+              suppressReturnValues={returnMismatch}
               onFocusChange={setFocusedRootId}
             />
           ))

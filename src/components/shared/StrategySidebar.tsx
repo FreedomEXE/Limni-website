@@ -16,7 +16,10 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import StrategySelector from "@/components/shared/StrategySelector";
+import StrategySelector, {
+  readSelectionFromParams,
+  selectionLabel,
+} from "@/components/shared/StrategySelector";
 import { getEntryStyle, getRiskOverlay } from "@/lib/performance/strategyConfig";
 import type { EngineSidebarStats } from "@/lib/performance/engineAdapter";
 import {
@@ -30,7 +33,6 @@ import {
   computeProfitFactorFromTradeReturns,
   computeReturnSortino,
 } from "@/lib/performance/performanceMetricBasis";
-import { readSelectionFromParams } from "@/components/shared/StrategySelector";
 
 function formatRatio(value: number | null | undefined, digits = 2): string {
   if (value == null || Number.isNaN(value) || !Number.isFinite(value)) return "—";
@@ -87,7 +89,9 @@ function EngineSidebarStatsCard() {
     const onSelectionCommit = (event: Event) => {
       const custom = event as CustomEvent<StrategySelectionCommitDetail>;
       setActiveSelection(custom.detail.selection);
+      setAllTimeStats(null);
       setWeekStats(null);
+      setLoading(true);
     };
     const onSidebarStats = (event: Event) => {
       const custom = event as CustomEvent<StrategySidebarStatsDetail>;
@@ -131,6 +135,19 @@ function EngineSidebarStatsCard() {
     return (
       <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
         <div className="text-xs text-[color:var(--muted)]">Computing stats...</div>
+      </div>
+    );
+  }
+
+  if (!allTimeStats) {
+    return (
+      <div className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel)]/80 p-4">
+        <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--accent-strong)]">
+          {selectionLabel(activeSelection)}
+        </div>
+        <div className="mt-3 rounded-lg border border-dashed border-[var(--panel-border)] px-3 py-2 text-xs text-[color:var(--muted)]">
+          Selected runtime unavailable.
+        </div>
       </div>
     );
   }

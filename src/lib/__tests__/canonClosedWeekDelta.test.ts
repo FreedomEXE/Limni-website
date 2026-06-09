@@ -44,6 +44,9 @@ const manifest = {
     executionDerivationVersion: "v1_execution_monday_utc",
   },
   canon: {
+    artifactStatus: "valid",
+    validForEngineVersion: "strategy-artifact-v28",
+    requiresEngineVersion: "strategy-artifact-v28",
     generatedAt: "2026-05-30T00:00:00.000Z",
     sourceLedgerRowCount: 2,
     sourceHash: "sha256:source",
@@ -185,7 +188,7 @@ describe("closed-week delta shards", () => {
               anchorPrice: 1.1,
               tpPrice: 1.2,
               adrPct: 0.5,
-              maePct: null,
+              maePct: 0.125,
             },
           }],
           totalReturnPct: 0.5,
@@ -217,5 +220,11 @@ describe("closed-week delta shards", () => {
     expect(weeks[0].rowCounts.rows).toBe(2);
     expect(shard?.metadata.source).toBe("closed-week-delta");
     expect(shard?.payload.closedHistoryRows.map((item) => item.rowKind).sort()).toEqual(["fill", "grid"]);
+    const fill = shard?.payload.closedHistoryRows.find((item) => item.rowKind === "fill");
+    const grid = shard?.payload.closedHistoryRows.find((item) => item.rowKind === "grid");
+    expect(fill?.riskMatrix?.execution?.maeRawPct).toBe(0.125);
+    expect(fill?.riskMatrix?.execution?.pathDrawdownRawPct).toBeNull();
+    expect(grid?.riskMatrix?.execution?.maeRawPct).toBe(0.125);
+    expect(grid?.riskMatrix?.execution?.pathDrawdownRawPct).toBeNull();
   });
 });

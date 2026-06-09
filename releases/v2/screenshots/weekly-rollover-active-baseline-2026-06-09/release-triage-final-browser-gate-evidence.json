@@ -1,0 +1,70 @@
+{
+  "schema": "v2.0.3-release-triage-browser-gate-v1",
+  "capturedAtUtc": "2026-06-09T21:26:19.873Z",
+  "baseUrl": "http://127.0.0.1:3013",
+  "results": [
+    {
+      "route": "/status",
+      "screenshot": "releases/v2/screenshots/weekly-rollover-active-baseline-2026-06-09/status-release-triage-final.png",
+      "checks": [
+        {
+          "label": "has Active Baseline text",
+          "pass": true
+        },
+        {
+          "label": "has Weekly Lifecycle text",
+          "pass": true
+        },
+        {
+          "label": "does not show clean14",
+          "pass": true
+        }
+      ],
+      "failedRequests": [],
+      "badResponses": [],
+      "consoleErrors": []
+    },
+    {
+      "route": "/dashboard",
+      "screenshot": "releases/v2/screenshots/weekly-rollover-active-baseline-2026-06-09/dashboard-release-triage-final.png",
+      "checks": [
+        {
+          "label": "shows Jun 08 live/source week",
+          "pass": true
+        },
+        {
+          "label": "shows Jun 01 closed week",
+          "pass": true
+        },
+        {
+          "label": "does not show clean14",
+          "pass": true
+        }
+      ],
+      "failedRequests": [],
+      "badResponses": [],
+      "consoleErrors": []
+    },
+    {
+      "route": "/performance?week=2026-06-07T23%3A00%3A00.000Z&view=summary",
+      "screenshot": "releases/v2/screenshots/weekly-rollover-active-baseline-2026-06-09/performance-release-triage-final.png",
+      "checks": [
+        {
+          "label": "shows Jun 08 live overlay week",
+          "pass": true
+        },
+        {
+          "label": "does not show runtime-not-ready text",
+          "pass": true
+        },
+        {
+          "label": "does not show clean14",
+          "pass": true
+        }
+      ],
+      "failedRequests": [],
+      "badResponses": [],
+      "consoleErrors": []
+    }
+  ]
+}

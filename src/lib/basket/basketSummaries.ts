@@ -27,6 +27,7 @@ type MergeDraft = Omit<ClosedHistoryRow, "canonicalTradeId" | "executionTradeId"
   canonicalTradeId: string | null;
   executionTradeId: string | null;
   returnMatrix: ClosedHistoryRow["returnMatrix"];
+  riskMatrix: NonNullable<ClosedHistoryRow["riskMatrix"]>;
   warnings: Set<string>;
 };
 
@@ -110,6 +111,11 @@ function baseDraft(trade: Trade, rowKind: BasketRowKind, parentNaturalRef: strin
       execution: null,
       adrPct: trade.adrPct,
     },
+    riskMatrix: {
+      canonical: null,
+      execution: null,
+      adrPct: trade.adrPct,
+    },
     exitReason: trade.exitReason,
     capActiveFillsAtEntry: trade.activeFillsAtEntry,
     capThresholdAtEntry: trade.capThresholdAtEntry,
@@ -122,11 +128,20 @@ function mergeAnchorTrade(draft: MergeDraft, trade: Trade, anchorType: AnchorTyp
   if (anchorType === "canonical") {
     draft.canonicalTradeId = trade.tradeId;
     draft.returnMatrix.canonical = trade.rawPct === null ? null : { rawPct: trade.rawPct };
+    draft.riskMatrix.canonical = {
+      maeRawPct: null,
+      pathDrawdownRawPct: null,
+    };
   } else {
     draft.executionTradeId = trade.tradeId;
     draft.returnMatrix.execution = trade.rawPct === null ? null : { rawPct: trade.rawPct };
+    draft.riskMatrix.execution = {
+      maeRawPct: null,
+      pathDrawdownRawPct: null,
+    };
   }
   draft.returnMatrix.adrPct = draft.returnMatrix.adrPct ?? trade.adrPct;
+  draft.riskMatrix.adrPct = draft.riskMatrix.adrPct ?? trade.adrPct;
   draft.entryUtc = draft.entryUtc ?? trade.entryUtc;
   draft.exitUtc = draft.exitUtc ?? trade.exitUtc;
   draft.entryPrice = draft.entryPrice ?? trade.entryPrice;

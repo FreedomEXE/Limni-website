@@ -33,6 +33,19 @@ import type { WeekReturn } from "@/components/performance/ReturnsCalendar";
 import type { MaeTrade } from "@/components/performance/MaeScatterPlot";
 import PerformanceNotesPad from "@/components/performance/PerformanceNotesPad";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
+import type { ClosedHistoryBundle } from "@/lib/basket/basketSummaryTypes";
+import {
+  buildSelectedLedgerStats,
+} from "@/lib/appTruth/selectedLedgerStats";
+import {
+  applySelectedLedgerStatsToGridProps,
+  buildSelectedLedgerAssetContributionViews,
+  buildSelectedLedgerBasketMetrics,
+  buildSelectedLedgerMaeTradeViews,
+  buildSelectedLedgerSidebarStats,
+  buildSelectedLedgerSimulationProjection,
+  buildSelectedLedgerWeekReturnViews,
+} from "@/lib/appTruth/selectedLedgerMetricViews";
 import {
   resolveActiveStrategyEntry,
   resolveDisplayModelsForEntry,
@@ -59,10 +72,15 @@ import {
   buildResolvedAssetContributions,
   buildResolvedWeekReturns,
   resolveStrategyTradeReturn,
+  scopedStrategyDisplayTrades,
   scopedStrategyTrades,
   scopedStrategyWeekReturn,
 } from "@/lib/performance/resolvedPerformanceMetrics";
-import { normalizeWeekOpenUtc } from "@/lib/weekAnchor";
+import {
+  formatTradingWeekLabelDate,
+  formatTradingWeekLabelIsoDate,
+  normalizeWeekOpenUtc,
+} from "@/lib/weekAnchor";
 import {
   STRATEGY_SIDEBAR_STATS_EVENT,
   type RuntimeStrategySelection,
@@ -81,11 +99,35 @@ type GridModel = GridSection["models"][number];
 type GridReturn = GridModel["returns"][number];
 
 type WeeklyPerformanceFamily = Exclude<PerformanceStrategyFamily, "katarakti">;
-type RawReturnTradeDetail = { rawReturnPct?: number };
+type DisplayTradeDetail = {
+  rawReturnPct?: number;
+  normalizedReturnPct?: number;
+  displayReturnPct?: number;
+  adrPct?: number | null;
+  maePct?: number | null;
+  gridPathDrawdownRawPct?: number | null;
+  capActiveFillsAtEntry?: number | null;
+  capThresholdAtEntry?: number | null;
+  capViolated?: boolean;
+  tradeNumber?: number;
+};
 
 function readRawReturnPct(tradeDetail: unknown): number | null {
-  const rawReturnPct = (tradeDetail as RawReturnTradeDetail | null | undefined)?.rawReturnPct;
+  const rawReturnPct = (tradeDetail as DisplayTradeDetail | null | undefined)?.rawReturnPct;
   return typeof rawReturnPct === "number" ? rawReturnPct : null;
+}
+
+function readProjectedTradeReturnPct(tradeDetail: unknown, viewMode: ViewMode): number | null {
+  const detail = tradeDetail as DisplayTradeDetail | null | undefined;
+  if (!detail) return null;
+  const rawReturnPct = typeof detail.rawReturnPct === "number" ? detail.rawReturnPct : null;
+  if (viewMode.normalization === "raw") return rawReturnPct;
+  if (rawReturnPct !== null && typeof detail.adrPct === "number" && detail.adrPct > 0) {
+    return rawReturnPct / detail.adrPct;
+  }
+  if (typeof detail.normalizedReturnPct === "number") return detail.normalizedReturnPct;
+  if (typeof detail.displayReturnPct === "number") return detail.displayReturnPct;
+  return null;
 }
 
 function formatPct(value: number | null): string {
@@ -132,15 +174,31 @@ function sortLiveTradeChildren<T extends { tradeDetail?: { entryTimeUtc: string 
   });
 }
 
-function TradeDetailRow({ detail }: { detail: { entryPrice: number; exitPrice: number | null; tpPrice: number | null; adrPct: number | null; maePct: number | null; exitReason: string | null; entryTimeUtc: string | null; tradeNumber: number } }) {
+function TradeDetailRow({ detail }: { detail: { entryPrice: number; exitPrice: number | null; tpPrice: number | null; adrPct: number | null; maePct: number | null; exitReason: string | null; entryTimeUtc: string | null; tradeNumber: number; rawReturnPct?: number; normalizedReturnPct?: number; displayReturnPct?: number; capActiveFillsAtEntry?: number | null; capThresholdAtEntry?: number | null; capViolated?: boolean } }) {
+  const resultValue =
+    typeof detail.displayReturnPct === "number"
+      ? detail.displayReturnPct
+      : typeof detail.normalizedReturnPct === "number"
+        ? detail.normalizedReturnPct
+        : typeof detail.rawReturnPct === "number"
+          ? detail.rawReturnPct
+          : null;
+  const resultColor = resultValue === null
+    ? "text-[color:var(--muted)]"
+    : resultValue > 0
+      ? "text-lime-400"
+      : resultValue < 0
+        ? "text-red-400"
+        : "text-[color:var(--muted)]";
   return (
     <div className="mt-1.5 grid grid-cols-4 gap-x-4 gap-y-1 text-[10px] text-[color:var(--muted)]">
       <span>Entry: <strong className="text-[var(--foreground)]">{detail.entryPrice.toFixed(5)}</strong></span>
       <span>Exit: <strong className="text-[var(--foreground)]">{detail.exitPrice?.toFixed(5) ?? "—"}</strong></span>
       <span>TP: <strong className="text-[var(--foreground)]">{detail.tpPrice?.toFixed(5) ?? "—"}</strong></span>
-      <span>Result: <strong className={detail.exitReason === "tp" ? "text-lime-400" : "text-red-400"}>{detail.exitReason?.toUpperCase() ?? "—"}</strong></span>
+      <span>Result: <strong className={resultColor}>{detail.exitReason?.toUpperCase() ?? "—"}</strong></span>
       {detail.adrPct != null && <span>ADR: <strong className="text-[var(--foreground)]">{detail.adrPct.toFixed(2)}%</strong></span>}
       {detail.maePct != null && <span>MAE: <strong className="text-red-400">{detail.maePct.toFixed(2)}%</strong></span>}
+      {detail.capThresholdAtEntry != null && <span>Cap: <strong className={detail.capViolated ? "text-red-400" : "text-[var(--foreground)]"}>{detail.capActiveFillsAtEntry ?? "—"}/{detail.capThresholdAtEntry}</strong></span>}
     </div>
   );
 }
@@ -161,27 +219,26 @@ function resolveGridDetailPercent(
   },
   viewMode: ViewMode,
 ) {
-  if (viewMode.normalization !== "raw") return detail.percent;
   if (detail.children && detail.children.length > 0) {
     return detail.children.reduce((sum, child) => (
-      sum + (readRawReturnPct(child.tradeDetail) ?? child.percent ?? 0)
+      sum + (readProjectedTradeReturnPct(child.tradeDetail, viewMode) ?? child.percent ?? 0)
     ), 0);
   }
-  return readRawReturnPct(detail.tradeDetail) ?? detail.percent;
+  return readProjectedTradeReturnPct(detail.tradeDetail, viewMode) ?? detail.percent;
 }
 
 function projectGridPropsForViewMode<T extends { combined: EngineGridProps["combined"]; perAsset: EngineGridProps["perAsset"] }>(
   gridProps: T | null,
   viewMode: ViewMode,
 ): T | null {
-  if (!gridProps || viewMode.normalization !== "raw") return gridProps;
+  if (!gridProps) return gridProps;
   const projectSection = (section: EngineGridProps["combined"]) => ({
     ...section,
     models: section.models.map((model) => {
       const pairDetails = model.pair_details.map((detail) => {
         const children = detail.children?.map((child) => ({
           ...child,
-          percent: readRawReturnPct(child.tradeDetail) ?? child.percent,
+          percent: readProjectedTradeReturnPct(child.tradeDetail, viewMode) ?? child.percent,
         }));
         const percent = resolveGridDetailPercent({ ...detail, children }, viewMode);
         return { ...detail, children, percent };
@@ -194,6 +251,12 @@ function projectGridPropsForViewMode<T extends { combined: EngineGridProps["comb
         pair_details: pairDetails,
         returns,
         percent: returns.reduce((sum, item) => sum + item.percent, 0),
+        stats: computeGridReturnStats(returns),
+        diagnostics: {
+          ...model.diagnostics,
+          max_drawdown: maxDrawdownFromReturns(returns),
+          profit_factor: profitFactorFromReturns(returns),
+        },
       };
     }),
   });
@@ -318,7 +381,7 @@ function resolveAllTimeSectionForViewMode(
           0,
         );
         return {
-          pair: `Week of ${week.weekOpenUtc.split("T")[0]}`,
+          pair: `Week of ${formatTradingWeekLabelIsoDate(week.weekOpenUtc)}`,
           percent,
         };
       });
@@ -419,6 +482,10 @@ function enrichGridPropsWithWeekRawTradeMeta<T extends EngineGridProps>(
     displayReturnPct: trade.displayReturnPct ?? trade.returnPct,
     adrMultiplier: trade.adrMultiplier ?? null,
     returnMode: trade.returnMode,
+    gridPathDrawdownRawPct: trade.detail?.gridPathDrawdownRawPct ?? null,
+    capActiveFillsAtEntry: trade.detail?.capActiveFillsAtEntry ?? null,
+    capThresholdAtEntry: trade.detail?.capThresholdAtEntry ?? null,
+    capViolated: trade.detail?.capViolated ?? false,
   });
 
   const enrichSection = (section: EngineGridProps["combined"]) => ({
@@ -426,10 +493,30 @@ function enrichGridPropsWithWeekRawTradeMeta<T extends EngineGridProps>(
     models: section.models.map((model) => ({
       ...model,
       pair_details: model.pair_details.map((detail) => {
-        if (readRawReturnPct(detail.tradeDetail) !== null || detail.children?.length) {
+        const candidates = (bySymbolDirection.get(`${detail.pair}|${detail.direction}`) ?? [])
+          .filter((trade) => trade.source === model.model)
+          .sort((left, right) => (left.detail?.tradeNumber ?? 0) - (right.detail?.tradeNumber ?? 0));
+        if (detail.children?.length) {
+          const children = detail.children.map((child, index) => {
+            const childDetail = child.tradeDetail as DisplayTradeDetail | undefined;
+            if (
+              readRawReturnPct(childDetail) !== null &&
+              childDetail?.capThresholdAtEntry !== undefined &&
+              childDetail?.gridPathDrawdownRawPct !== undefined
+            ) {
+              return child;
+            }
+            const tradeNumber = childDetail?.tradeNumber;
+            const matched = typeof tradeNumber === "number"
+              ? candidates.find((trade) => trade.detail?.tradeNumber === tradeNumber)
+              : candidates[index];
+            return matched ? { ...child, tradeDetail: tradeToDetail(matched) } : child;
+          });
+          return { ...detail, children };
+        }
+        if (readRawReturnPct(detail.tradeDetail) !== null) {
           return detail;
         }
-        const candidates = bySymbolDirection.get(`${detail.pair}|${detail.direction}`) ?? [];
         const matched =
           candidates.find((trade) => trade.source === model.model) ??
           (candidates.length === 1 ? candidates[0] : undefined);
@@ -498,6 +585,8 @@ function computeScopedSidebarStats(
       ? weekResults[selectedWeek] ?? sortedWeeks.at(-1) ?? null
       : sortedWeeks.at(-1) ?? null;
   const selectedTrades = selectedResult ? scopedStrategyTrades(selectedResult, scope) : [];
+  const selectedWinCount = selectedTrades.filter((trade) => resolveStrategyTradeReturn(trade, viewMode) > 0).length;
+  const selectedLossCount = selectedTrades.filter((trade) => resolveStrategyTradeReturn(trade, viewMode) < 0).length;
   const totalTrades = weeklyRows.reduce((sum, week) => sum + (week.trades ?? 0), 0);
   const allTimeBasis = computeSidebarAllTimeMetricBasis({
     weeklyReturns,
@@ -511,11 +600,11 @@ function computeScopedSidebarStats(
     weekOpenUtc: selectedResult?.weekOpenUtc ?? baseStats.weekOpenUtc,
     weekReturnPct: selectedResult ? scopedStrategyWeekReturn(selectedResult, scope, viewMode) : 0,
     tradeCount: selectedTrades.length,
-    winCount: selectedTrades.filter((trade) => resolveStrategyTradeReturn(trade, viewMode) > 0).length,
-    lossCount: selectedTrades.filter((trade) => resolveStrategyTradeReturn(trade, viewMode) < 0).length,
+    winCount: selectedWinCount,
+    lossCount: selectedLossCount,
     winRate:
       selectedTrades.length > 0
-        ? (selectedTrades.filter((trade) => resolveStrategyTradeReturn(trade, viewMode) > 0).length / selectedTrades.length) * 100
+        ? (selectedWinCount / selectedTrades.length) * 100
         : 0,
     maxDrawdownPct: selectedWeek === "all" ? allTimeBasis.maxDrawdownPct : baseStats.maxDrawdownPct,
     trades: selectedTrades.map((trade) => ({
@@ -528,6 +617,47 @@ function computeScopedSidebarStats(
   };
 }
 
+function buildCanonicalWeekReturnsFromPayload(
+  simulationMap: Record<string, EngineSimulationGroup> | null | undefined,
+  weekResults: Record<string, WeeklyHoldResult> | null | undefined,
+  scope: PerformanceAssetSelection,
+  viewMode: ViewMode,
+): WeekReturn[] {
+  if (!simulationMap) return [];
+
+  const fallbackRows = new Map(
+    buildResolvedWeekReturns(weekResults, scope, viewMode)
+      .map((week) => [week.weekOpenUtc, week]),
+  );
+
+  return Object.entries(simulationMap)
+    .filter(([key]) => key !== "all")
+    .map(([key, entry]) => {
+      const fallback = fallbackRows.get(key);
+      const hasSelectedPath = viewMode.normalization !== "raw" || Boolean(entry.returnModes?.raw);
+      const resolvedEntry = hasSelectedPath
+        ? resolveSimulationGroupForViewMode(entry, viewMode)
+        : null;
+      const metrics = resolvedEntry
+        ? deriveScopedSimulationMetrics(resolvedEntry, scope)
+        : null;
+      const result = weekResults?.[key] ?? null;
+      const fallbackReturn = fallback?.returnPct
+        ?? (result ? scopedStrategyWeekReturn(result, scope, viewMode) : entry.metrics.returnPct);
+      const fallbackTrades = fallback?.trades
+        ?? (result ? scopedStrategyDisplayTrades(result, scope).length : entry.metrics.trades);
+
+      return {
+        weekOpenUtc: key,
+        returnPct: metrics?.returnPct ?? fallbackReturn ?? 0,
+        maxDrawdownPct: metrics?.maxDrawdownPct ?? resolvedEntry?.metrics.maxDrawdownPct ?? fallback?.maxDrawdownPct ?? null,
+        trades: metrics?.trades ?? fallbackTrades ?? null,
+      };
+    })
+    .filter((week) => Number.isFinite(week.returnPct))
+    .sort((a, b) => a.weekOpenUtc.localeCompare(b.weekOpenUtc));
+}
+
 function applySimulationMetricsToSidebarStats(
   stats: EngineSidebarStats | null,
   selectedMetrics: { returnPct: number | null; maxDrawdownPct: number | null; trades: number | null } | null,
@@ -537,7 +667,9 @@ function applySimulationMetricsToSidebarStats(
   if (!stats) return stats;
 
   const maxDrawdownPct = selectedMetrics?.maxDrawdownPct ?? stats.maxDrawdownPct;
-  const tradeCount = selectedMetrics?.trades ?? stats.tradeCount;
+  const tradeCount = selectedWeek === "all"
+    ? selectedMetrics?.trades ?? stats.tradeCount
+    : stats.tradeCount;
   const weekReturnPct = selectedWeek === "all"
     ? stats.weekReturnPct
     : selectedMetrics?.returnPct ?? stats.weekReturnPct;
@@ -561,34 +693,11 @@ function applySimulationMetricsToSidebarStats(
 function parseWeekKeyFromBasketLabel(label: string): string | null {
   const match = label.match(/\bweek of\s+(\d{4}-\d{2}-\d{2})\b/i);
   if (!match) return null;
-  return `${match[1]}T00:00:00.000Z`;
+  return normalizeWeekOpenUtc(`${match[1]}T00:00:00.000Z`) ?? `${match[1]}T00:00:00.000Z`;
 }
 
 function formatWeekBasketLabel(weekOpenUtc: string) {
-  const date = new Date(weekOpenUtc);
-  return `Week of ${date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    timeZone: "UTC",
-  })}`;
-}
-
-function BasketHierarchyContainmentNotice() {
-  return (
-    <section
-      data-testid="basket-containment-notice"
-      className="rounded-2xl border border-(--panel-border) bg-(--panel) px-5 py-4 shadow-sm"
-    >
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-(--foreground)">
-        Basket
-      </p>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-(--muted)">
-        Basket view is being rebuilt for v2.0.0. Pair-level data still available via
-        Performance Summary and Simulation tabs.
-      </p>
-    </section>
-  );
+  return `Week of ${formatTradingWeekLabelDate(weekOpenUtc)}`;
 }
 
 function EngineBasketView({
@@ -599,6 +708,8 @@ function EngineBasketView({
   currentWeek,
   scope,
   viewMode,
+  authoritativeMetrics,
+  selectedTradeRowsBundle,
   isAllTime = false,
 }: {
   gridProps: EngineGridProps;
@@ -608,6 +719,8 @@ function EngineBasketView({
   currentWeek?: string;
   scope: PerformanceAssetSelection;
   viewMode: ViewMode;
+  authoritativeMetrics?: ComponentProps<typeof BasketHierarchy>["authoritativeMetrics"];
+  selectedTradeRowsBundle?: ClosedHistoryBundle | null;
   isAllTime?: boolean;
 }) {
   const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
@@ -641,6 +754,8 @@ function EngineBasketView({
         currentWeek={currentWeek}
         scope={scope}
         viewMode={viewMode}
+        authoritativeMetrics={authoritativeMetrics}
+        selectedTradeRowsBundle={selectedTradeRowsBundle}
       />
     );
   }
@@ -765,21 +880,25 @@ function EngineBasketView({
   const sorted = [...allTrades].sort((a, b) => {
     const directionDiff = directionSortValue(a.direction) - directionSortValue(b.direction);
     if (directionDiff !== 0) return directionDiff;
-    const percentDiff = (b.percent ?? 0) - (a.percent ?? 0);
-    if (percentDiff !== 0) return percentDiff;
     return a.pair.localeCompare(b.pair);
   });
+  const isAdrGridFamily = strategyFamily === "adr_grid";
+  const parentUnitLabel = isAdrGridFamily ? "grid" : "trade";
 
-  // Count total individual trades (children count as separate trades)
-  const totalTradeCount = sorted.reduce((s, t) => s + (t.children?.length ?? 1), 0);
+  // ADR Grid parent rows are grid baskets; child rows are fills.
+  const totalTradeCount = isAdrGridFamily
+    ? sorted.length
+    : sorted.reduce((s, t) => s + (t.children?.length ?? 1), 0);
   const totalReturn = sorted.reduce((s, t) => s + (t.percent ?? 0), 0);
-  const tradeUnitReturns = sorted.flatMap((trade) => (
-    trade.children?.length
-      ? trade.children.map((child) => child.percent ?? 0)
-      : [trade.percent ?? 0]
-  ));
+  const tradeUnitReturns = isAdrGridFamily
+    ? sorted.map((trade) => trade.percent ?? 0)
+    : sorted.flatMap((trade) => (
+        trade.children?.length
+          ? trade.children.map((child) => child.percent ?? 0)
+          : [trade.percent ?? 0]
+      ));
   const wins = tradeUnitReturns.filter((value) => value > 0).length;
-  const losses = tradeUnitReturns.length - wins;
+  const losses = tradeUnitReturns.filter((value) => value < 0).length;
   const slotGroups = new Map<string, typeof sorted>();
   for (const trade of sorted) {
     const label = trade.slotLabel || "Basket";
@@ -787,12 +906,7 @@ function EngineBasketView({
     slotGroups.get(label)!.push(trade);
   }
   const showSlotGroups = slotGroups.size > 1;
-  const sectionLabel = `${gridProps.combined.description}${weekOpenUtc ? ` · ${new Date(weekOpenUtc).toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    timeZone: "UTC",
-  })}` : ""}`;
+  const sectionLabel = `${gridProps.combined.description}${weekOpenUtc ? ` · ${formatTradingWeekLabelDate(weekOpenUtc)}` : ""}`;
 
   return (
     <section className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
@@ -804,7 +918,9 @@ function EngineBasketView({
         </div>
         <div className="flex flex-wrap items-center justify-end gap-4 text-xs">
           <div className="flex items-center gap-4">
-            <span className="text-[color:var(--muted)]">{totalTradeCount} trades</span>
+            <span className="text-[color:var(--muted)]">
+              {totalTradeCount} {totalTradeCount === 1 ? parentUnitLabel : `${parentUnitLabel}s`}
+            </span>
             <span className="text-lime-400">{wins}W</span>
             <span className="text-red-400">{losses}L</span>
             <span className={totalReturn >= 0 ? "font-bold text-lime-400" : "font-bold text-red-400"}>
@@ -822,15 +938,20 @@ function EngineBasketView({
         ) : (
           [...slotGroups.entries()].map(([slotLabel, slotTrades]) => {
             const slotReturn = slotTrades.reduce((sum, trade) => sum + (trade.percent ?? 0), 0);
-            const slotUnitReturns = slotTrades.flatMap((trade) => (
-              trade.children?.length
-                ? trade.children.map((child) => child.percent ?? 0)
-                : [trade.percent ?? 0]
-            ));
+            const slotUnitReturns = isAdrGridFamily
+              ? slotTrades.map((trade) => trade.percent ?? 0)
+              : slotTrades.flatMap((trade) => (
+                  trade.children?.length
+                    ? trade.children.map((child) => child.percent ?? 0)
+                    : [trade.percent ?? 0]
+                ));
             const slotWins = slotUnitReturns.filter((value) => value > 0).length;
+            const slotLosses = slotUnitReturns.filter((value) => value < 0).length;
             const slotKey = `live-slot-${slotLabel}`;
             const slotExpanded = expandedPairs.has(slotKey) || !showSlotGroups;
-            const slotTradeCount = slotTrades.reduce((sum, trade) => sum + (trade.children?.length ?? 1), 0);
+            const slotTradeCount = isAdrGridFamily
+              ? slotTrades.length
+              : slotTrades.reduce((sum, trade) => sum + (trade.children?.length ?? 1), 0);
 
             return (
               <div key={slotKey} className="space-y-1">
@@ -845,10 +966,10 @@ function EngineBasketView({
                       <span className="w-4 text-[10px] text-[color:var(--muted)]">{slotExpanded ? "▾" : "▸"}</span>
                       <span className="min-w-[9rem] text-sm font-semibold text-[var(--foreground)]">{slotLabel}</span>
                       <span className="text-[10px] text-[color:var(--muted)]">
-                        {slotTradeCount} {slotTradeCount === 1 ? "trade" : "trades"}
+                        {slotTradeCount} {slotTradeCount === 1 ? parentUnitLabel : `${parentUnitLabel}s`}
                       </span>
                       <span className="text-[10px] text-lime-500">{slotWins}W</span>
-                      <span className="text-[10px] text-rose-500">{slotTradeCount - slotWins}L</span>
+                      <span className="text-[10px] text-rose-500">{slotLosses}L</span>
                     </div>
                     <span className={`text-sm font-semibold ${slotReturn > 0 ? "text-lime-400" : slotReturn < 0 ? "text-red-400" : "text-[color:var(--muted)]"}`}>
                       {formatPct(slotReturn)}
@@ -861,14 +982,17 @@ function EngineBasketView({
                     {slotTrades.map((trade, index) => {
                       const hasChildren = Boolean(trade.children?.length);
                       const sortedChildren = hasChildren ? sortLiveTradeChildren(trade.children!) : [];
-                      const isAdrGridTrade = strategyFamily === "adr_grid";
+                      const isAdrGridTrade = isAdrGridFamily;
                       const rowKey = `${slotKey}-${trade.pair}-${trade.direction}-${index}`;
                       const isExpanded = expandedPairs.has(rowKey);
-                      const tradeCount = sortedChildren.length || 1;
-                      const tradeUnitReturns = sortedChildren.length > 0
+                      const tradeCount = isAdrGridTrade ? sortedChildren.length : sortedChildren.length || 1;
+                      const tradeUnitReturns = isAdrGridTrade
                         ? sortedChildren.map((child) => child.percent ?? 0)
-                        : [trade.percent ?? 0];
+                        : sortedChildren.length > 0
+                          ? sortedChildren.map((child) => child.percent ?? 0)
+                          : [trade.percent ?? 0];
                       const tradeWins = tradeUnitReturns.filter((value) => value > 0).length;
+                      const tradeLosses = tradeUnitReturns.filter((value) => value < 0).length;
                       return (
                         <div key={rowKey} className="space-y-1">
                           <button
@@ -899,7 +1023,7 @@ function EngineBasketView({
                                   : "1 trade"}
                               </span>
                               <span className="text-[10px] font-semibold text-lime-500">{tradeWins}W</span>
-                              <span className="text-[10px] font-semibold text-rose-500">{tradeUnitReturns.length - tradeWins}L</span>
+                              <span className="text-[10px] font-semibold text-rose-500">{tradeLosses}L</span>
                             </div>
                             <span className={`ml-4 shrink-0 text-sm font-semibold ${(trade.percent ?? 0) > 0 ? "text-lime-400" : (trade.percent ?? 0) < 0 ? "text-red-400" : "text-[color:var(--muted)]"}`}>
                               {formatPct(trade.percent)}
@@ -913,7 +1037,12 @@ function EngineBasketView({
                                   <TradeDetailRow detail={trade.tradeDetail} />
                                 </div>
                               ) : null}
-                              {!hasChildren && trade.tradeDetail && isAdrGridTrade ? (
+                              {!hasChildren && isAdrGridTrade ? (
+                                <div className="rounded-lg border border-[var(--panel-border)]/50 bg-[var(--panel)]/50 px-4 py-2 text-xs text-[color:var(--muted)]">
+                                  No fills yet.
+                                </div>
+                              ) : null}
+                              {!hasChildren && trade.tradeDetail && isAdrGridTrade && tradeCount > 0 ? (
                                 <div className="rounded-lg border border-[var(--panel-border)]/50 bg-[var(--panel)]/50 px-4 py-2">
                                   <div className="flex items-center justify-between">
                                     <div className="flex min-w-0 items-center gap-3">
@@ -1018,6 +1147,7 @@ type PerformanceViewSectionProps = {
   /** Initial selected week (from URL) */
   initialWeek?: string;
   initialAssetScope?: PerformanceAssetSelection;
+  selectedTradeRowsBundle?: ClosedHistoryBundle | null;
   strategyDescription?: string | null;
   notesStorageKey?: string;
 };
@@ -1042,6 +1172,7 @@ export default function PerformanceViewSection({
   currentWeek,
   initialWeek,
   initialAssetScope,
+  selectedTradeRowsBundle,
   strategyDescription,
   notesStorageKey,
 }: PerformanceViewSectionProps) {
@@ -1084,6 +1215,30 @@ export default function PerformanceViewSection({
     }
   }, [selectedWeek, selectedWeekKey]);
 
+  const selectedWeekUsesClosedLedger = selectedWeekKey === "all" || selectedWeekKey !== currentWeek;
+  const selectedLedgerStats = useMemo(() => (
+    selectedWeekUsesClosedLedger
+      ? buildSelectedLedgerStats({
+          bundle: selectedTradeRowsBundle,
+          selectedWeek: selectedWeekKey,
+          scope: assetScope,
+          viewMode: performanceViewMode,
+        })
+      : null
+  ), [assetScope, performanceViewMode, selectedTradeRowsBundle, selectedWeekKey, selectedWeekUsesClosedLedger]);
+  const selectedLedgerAllStats = useMemo(() => (
+    selectedTradeRowsBundle
+      ? buildSelectedLedgerStats({
+          bundle: selectedTradeRowsBundle,
+          selectedWeek: "all",
+          scope: assetScope,
+          viewMode: performanceViewMode,
+        })
+      : null
+  ), [assetScope, performanceViewMode, selectedTradeRowsBundle]);
+  const selectedLedgerAvailable = selectedLedgerStats?.status === "available" && Boolean(selectedLedgerStats.summary);
+  const selectedLedgerAllAvailable = selectedLedgerAllStats?.status === "available" && Boolean(selectedLedgerAllStats.summary);
+
   useEffect(() => {
     if (!engineWeekMap || typeof window === "undefined") return;
     const url = new URL(window.location.href);
@@ -1099,6 +1254,21 @@ export default function PerformanceViewSection({
   // Dispatch week change events so sidebar can react
   useEffect(() => {
     if (!engineWeekMap) return;
+    if (selectedWeekUsesClosedLedger) {
+      const summary = selectedLedgerStats?.summary;
+      window.dispatchEvent(new CustomEvent("performance-week-stats", {
+        detail: {
+          weekKey: selectedWeekKey,
+          returnPct: summary?.returnPct ?? 0,
+          tradeCount: summary?.tradeCount ?? 0,
+          winCount: summary?.winCount ?? 0,
+          lossCount: summary?.lossCount ?? 0,
+          winRate: summary?.winRate ?? 0,
+          empty: !summary,
+        },
+      }));
+      return;
+    }
     const rawGridProps = selectedWeekKey === "all"
       ? engineWeekMap["all"]
       : engineWeekMap[selectedWeekKey];
@@ -1129,18 +1299,30 @@ export default function PerformanceViewSection({
       : gridProps.combined.models.reduce((s, m) => {
           return s + m.returns.filter((r) => r.percent > 0).length;
         }, 0);
+    const totalLosses = weekResult
+      ? scopedTrades.filter((trade) => resolveStrategyTradeReturn(trade, performanceViewMode) < 0).length
+      : totalTrades - totalWins;
     window.dispatchEvent(new CustomEvent("performance-week-stats", {
       detail: {
         weekKey: selectedWeekKey,
         returnPct: totalReturn,
         tradeCount: totalTrades,
         winCount: totalWins,
-        lossCount: totalTrades - totalWins,
+        lossCount: totalLosses,
         winRate: totalTrades > 0 ? (totalWins / totalTrades) * 100 : 0,
         empty: !hasActivity,
       },
     }));
-  }, [assetScope, selectedWeekKey, engineWeekMap, engineWeekResults, performanceViewMode, selection]);
+  }, [
+    assetScope,
+    selectedWeekKey,
+    engineWeekMap,
+    engineWeekResults,
+    performanceViewMode,
+    selectedLedgerStats,
+    selectedWeekUsesClosedLedger,
+    selection,
+  ]);
 
   const sidebarSelectedSimulation = selectedWeekKey === "all"
     ? engineSimMap?.["all"] ?? null
@@ -1152,24 +1334,30 @@ export default function PerformanceViewSection({
   const resolvedSidebarAllTimeSimulation = useMemo(() => (
     resolveSimulationGroupForViewMode(sidebarAllTimeSimulation, performanceViewMode)
   ), [performanceViewMode, sidebarAllTimeSimulation]);
+  const sidebarSelectedSimulationMetrics = useMemo(() => (
+    deriveScopedSimulationMetrics(resolvedSidebarSelectedSimulation, assetScope)
+  ), [assetScope, resolvedSidebarSelectedSimulation]);
+  const sidebarAllTimeSimulationMetrics = useMemo(() => (
+    deriveScopedSimulationMetrics(resolvedSidebarAllTimeSimulation, assetScope)
+  ), [assetScope, resolvedSidebarAllTimeSimulation]);
 
   useEffect(() => {
     if (!selection) return;
-    const simulationMetrics = deriveScopedSimulationMetrics(resolvedSidebarSelectedSimulation, assetScope);
-    const allTimeSimulationMetrics = deriveScopedSimulationMetrics(resolvedSidebarAllTimeSimulation, assetScope);
-    const stats = applySimulationMetricsToSidebarStats(
-      computeScopedSidebarStats(
-        sidebarStats,
-        engineWeekResults,
-        selectedWeekKey,
-        assetScope,
-        performanceViewMode,
-        resolvedSidebarAllTimeSimulation,
-      ),
-      simulationMetrics,
-      allTimeSimulationMetrics,
-      selectedWeekKey,
-    );
+    const stats = selectedWeekUsesClosedLedger
+      ? buildSelectedLedgerSidebarStats(sidebarStats, selectedLedgerStats, selectedLedgerAllStats, performanceViewMode)
+      : applySimulationMetricsToSidebarStats(
+          computeScopedSidebarStats(
+            sidebarStats,
+            engineWeekResults,
+            selectedWeekKey,
+            assetScope,
+            performanceViewMode,
+            resolvedSidebarAllTimeSimulation,
+          ),
+          sidebarSelectedSimulationMetrics,
+          sidebarAllTimeSimulationMetrics,
+          selectedWeekKey,
+        );
     const detail: StrategySidebarStatsDetail = {
       selection,
       stats,
@@ -1181,9 +1369,13 @@ export default function PerformanceViewSection({
     selectedWeekKey,
     selection,
     resolvedSidebarAllTimeSimulation,
-    resolvedSidebarSelectedSimulation,
+    sidebarAllTimeSimulationMetrics,
+    sidebarSelectedSimulationMetrics,
     sidebarStats,
     performanceViewMode,
+    selectedLedgerAllStats,
+    selectedLedgerStats,
+    selectedWeekUsesClosedLedger,
   ]);
 
   // ─── Legacy path (fallback) ───────────────────────────────────
@@ -1251,34 +1443,22 @@ export default function PerformanceViewSection({
   }, [mode, flagshipSimulation, style, system, tieredSimulationBySystem, universalSimulationBySystem]);
 
   const weeklyReturns = useMemo<WeekReturn[]>(() => {
-    if (!engineSimMap) return [];
-    if (performanceViewMode.normalization === "raw") {
-      return buildResolvedWeekReturns(engineWeekResults, assetScope, performanceViewMode);
-    }
-    return Object.entries(engineSimMap)
-      .filter(([key]) => key !== "all")
-      .map(([key, entry]) => {
-        const fallbackReturn = engineWeekResults?.[key]
-          ? scopedStrategyWeekReturn(engineWeekResults[key], assetScope, performanceViewMode)
-          : entry.metrics.returnPct;
-        const metrics = performanceViewMode.normalization === "raw"
-          ? null
-          : deriveScopedSimulationMetrics(entry, assetScope);
-        const fallbackTrades = engineWeekResults?.[key]
-          ? scopedStrategyTrades(engineWeekResults[key], assetScope).length
-          : entry.metrics.trades;
-        return {
-          weekOpenUtc: key,
-          returnPct: metrics?.returnPct ?? fallbackReturn ?? 0,
-          maxDrawdownPct: metrics?.maxDrawdownPct ?? entry.metrics.maxDrawdownPct ?? null,
-          trades: metrics?.trades ?? fallbackTrades ?? null,
-        };
-      })
-      .filter((week) => Number.isFinite(week.returnPct))
-      .sort((a, b) => a.weekOpenUtc.localeCompare(b.weekOpenUtc));
-  }, [assetScope, engineSimMap, engineWeekResults, performanceViewMode]);
+    const ledgerWeeks = buildSelectedLedgerWeekReturnViews(selectedLedgerAllStats);
+    if (ledgerWeeks.length > 0) return ledgerWeeks;
+    if (selectedWeekUsesClosedLedger) return [];
+    return buildCanonicalWeekReturnsFromPayload(
+      engineSimMap,
+      engineWeekResults,
+      assetScope,
+      performanceViewMode,
+    );
+  }, [assetScope, engineSimMap, engineWeekResults, performanceViewMode, selectedLedgerAllStats, selectedWeekUsesClosedLedger]);
 
   const maeTrades = useMemo<MaeTrade[]>(() => {
+    if (selectedWeekUsesClosedLedger && selectedLedgerAllAvailable) {
+      return buildSelectedLedgerMaeTradeViews(selectedLedgerAllStats);
+    }
+    if (selectedWeekUsesClosedLedger) return [];
     if (!engineWeekMap) return [];
     const allGrid = engineWeekMap["all"];
     if (!allGrid) return [];
@@ -1287,11 +1467,10 @@ export default function PerformanceViewSection({
       for (const pd of model.pair_details) {
         if (pd.tradeDetail?.maePct != null && pd.percent != null) {
           if (!symbolMatchesPerformanceScope(pd.pair, assetScope)) continue;
+          const returnPct = readProjectedTradeReturnPct(pd.tradeDetail, performanceViewMode) ?? pd.percent;
           trades.push({
             pair: pd.pair,
-            returnPct: performanceViewMode.normalization === "raw"
-              ? readRawReturnPct(pd.tradeDetail) ?? pd.percent
-              : pd.percent,
+            returnPct,
             maePct: pd.tradeDetail.maePct,
           });
         }
@@ -1299,11 +1478,10 @@ export default function PerformanceViewSection({
           for (const child of pd.children) {
             if (child.tradeDetail?.maePct != null && child.percent != null) {
               if (!symbolMatchesPerformanceScope(child.pair, assetScope)) continue;
+              const returnPct = readProjectedTradeReturnPct(child.tradeDetail, performanceViewMode) ?? child.percent;
               trades.push({
                 pair: child.pair,
-                returnPct: performanceViewMode.normalization === "raw"
-                  ? readRawReturnPct(child.tradeDetail) ?? child.percent
-                  : child.percent,
+                returnPct,
                 maePct: child.tradeDetail.maePct,
               });
             }
@@ -1312,16 +1490,20 @@ export default function PerformanceViewSection({
       }
     }
     return trades;
-  }, [assetScope, engineWeekMap, performanceViewMode]);
+  }, [assetScope, engineWeekMap, performanceViewMode, selectedLedgerAllAvailable, selectedLedgerAllStats, selectedWeekUsesClosedLedger]);
 
   const assetContributions = useMemo(() => (
-    buildResolvedAssetContributions(
-      engineWeekResults,
-      assetScope,
-      performanceViewMode,
-      selectedWeekKey,
-    )
-  ), [assetScope, engineWeekResults, performanceViewMode, selectedWeekKey]);
+    selectedWeekUsesClosedLedger && selectedLedgerAvailable
+      ? buildSelectedLedgerAssetContributionViews(selectedLedgerStats)
+      : selectedWeekUsesClosedLedger
+        ? []
+      : buildResolvedAssetContributions(
+          engineWeekResults,
+          assetScope,
+          performanceViewMode,
+          selectedWeekKey,
+        )
+  ), [assetScope, engineWeekResults, performanceViewMode, selectedLedgerAvailable, selectedLedgerStats, selectedWeekKey, selectedWeekUsesClosedLedger]);
 
   // ─── Engine-driven path (instant week switching) ──────────────
   if (engineWeekMap && weekOptions) {
@@ -1335,7 +1517,7 @@ export default function PerformanceViewSection({
     const filteredGridProps = filterGridPropsByPerformanceScope(enrichedGridProps, assetScope, {
       allTimeMode: selectedWeekKey === "all",
     });
-    const gridProps = selectedWeekKey === "all"
+    const baseGridPropsForSelection = selectedWeekKey === "all"
       ? resolveAllTimeGridPropsForViewMode(
           filteredGridProps,
           engineWeekResults,
@@ -1344,15 +1526,44 @@ export default function PerformanceViewSection({
           selection,
         )
       : projectGridPropsForViewMode(filteredGridProps, performanceViewMode);
-    const simulation = selectedWeekKey === "all"
+    const strategy = selection ? getStrategy(selection.strategy) ?? null : null;
+    const gridProps = selectedWeekUsesClosedLedger
+      ? selectedLedgerAvailable
+        ? applySelectedLedgerStatsToGridProps(
+            baseGridPropsForSelection,
+            selectedLedgerStats,
+            selectedLedgerAllStats,
+            strategy,
+            performanceViewMode,
+          )
+        : null
+      : baseGridPropsForSelection;
+    const runtimeSimulation = selectedWeekKey === "all"
       ? engineSimMap?.["all"] ?? null
       : engineSimMap?.[selectedWeekKey] ?? null;
+    const simulation = selectedWeekUsesClosedLedger
+      ? selectedLedgerAvailable
+        ? buildSelectedLedgerSimulationProjection(selectedLedgerStats, runtimeSimulation)
+        : null
+      : runtimeSimulation;
     const gridHasActivity = selectedWeekKey === "all" || hasGridActivity(gridProps);
     const simulationWeeklyReturns = selectedWeekKey === "all"
       ? weeklyReturns
-      : performanceViewMode.normalization === "raw"
+      : selectedWeekUsesClosedLedger
+        ? buildSelectedLedgerWeekReturnViews(selectedLedgerStats)
+        : performanceViewMode.normalization === "raw"
         ? weeklyReturns.filter((week) => week.weekOpenUtc === selectedWeekKey)
         : undefined;
+    const gridReturnFallback = gridProps?.combined.models.reduce((sum, model) => sum + model.percent, 0) ?? null;
+    const gridTradeFallback = gridProps?.combined.models.reduce((sum, model) => sum + model.total, 0) ?? null;
+    const basketAuthoritativeMetrics: ComponentProps<typeof BasketHierarchy>["authoritativeMetrics"] = selectedWeekUsesClosedLedger
+      ? buildSelectedLedgerBasketMetrics(selectedLedgerStats)
+      : {
+          returnPct: sidebarSelectedSimulationMetrics?.returnPct ?? gridReturnFallback,
+          maxDrawdownPct: sidebarSelectedSimulationMetrics?.maxDrawdownPct ?? null,
+          tradeCount: sidebarSelectedSimulationMetrics?.trades ?? gridTradeFallback,
+          hasActivity: gridHasActivity,
+        };
 
     return (
       <>
@@ -1421,6 +1632,8 @@ export default function PerformanceViewSection({
             currentWeek={currentWeek}
             scope={assetScope}
             viewMode={performanceViewMode}
+            authoritativeMetrics={basketAuthoritativeMetrics}
+            selectedTradeRowsBundle={selectedTradeRowsBundle}
             isAllTime={selectedWeekKey === "all"}
           />
         ) : gridProps ? (

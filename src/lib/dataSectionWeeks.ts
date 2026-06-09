@@ -10,8 +10,10 @@
 -----------------------------------------------*/
 
 import { DateTime } from "luxon";
+import { getActiveBaselineWeeks } from "@/lib/appTruth/activeBaseline";
 import { query } from "./db";
 import { getOrSetRuntimeCache } from "./runtimeCache";
+import { getFridayFreezeDisplayWeekOpenUtc } from "@/lib/sourceFreeze/fridayFreeze";
 import { normalizeWeekOpenUtc } from "./weekAnchor";
 
 const DATA_SECTION_WEEKS_CACHE_TTL_MS = Number(
@@ -33,6 +35,18 @@ export type DataSectionWeekEntry = {
   cotReportDate: string;
 };
 
+function normalizeDataSectionWeek(weekOpenUtc: string) {
+  return normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
+}
+
+function entriesFromWeeks(weeks: readonly string[]): DataSectionWeekEntry[] {
+  return Array.from(new Set(weeks.map(normalizeDataSectionWeek).filter(Boolean)))
+    .map((weekOpenUtc) => ({
+      weekOpenUtc,
+      cotReportDate: deriveCotReportDate(weekOpenUtc),
+    }));
+}
+
 export function deriveCotReportDate(weekOpenUtc: string) {
   const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
   if (!weekOpen.isValid) {
@@ -44,6 +58,26 @@ export function deriveCotReportDate(weekOpenUtc: string) {
     .setZone("America/New_York")
     .minus({ days: 5 })
     .toISODate() ?? weekOpenUtc.slice(0, 10);
+}
+
+export function listActiveDataSectionWeekEntries(
+  currentWeekOpenUtc?: string,
+): DataSectionWeekEntry[] {
+  return entriesFromWeeks(getActiveBaselineWeeks(currentWeekOpenUtc));
+}
+
+export function listActiveDataSectionSelectableWeekEntries(options: {
+  currentWeekOpenUtc?: string;
+  closedCurrentWeekOpenUtc?: string;
+} = {}): DataSectionWeekEntry[] {
+  const currentWeekOpenUtc = normalizeDataSectionWeek(
+    options.currentWeekOpenUtc ?? getFridayFreezeDisplayWeekOpenUtc(),
+  );
+  return entriesFromWeeks([
+    currentWeekOpenUtc,
+    ...getActiveBaselineWeeks(options.closedCurrentWeekOpenUtc)
+      .filter((weekOpenUtc) => weekOpenUtc !== currentWeekOpenUtc),
+  ]);
 }
 
 export async function listDataSectionWeekEntries(): Promise<DataSectionWeekEntry[]> {

@@ -149,13 +149,16 @@ export default async function SentimentPanel({
   }
 
   let myfxbookPositioningBySymbol: Record<string, MyfxbookPositioning | undefined> = {};
-  try {
-    const myfxbookSnapshots = await getLatestSnapshotsByProvider("MYFXBOOK", Array.from(symbols));
-    myfxbookPositioningBySymbol = myfxbookSnapshots.reduce<Record<string, MyfxbookPositioning | undefined>>((acc, snapshot) => {
-      acc[snapshot.symbol] = parseMyfxbookPositioning(snapshot.raw_payload, snapshot.timestamp_utc) ?? undefined;
-      return acc;
-    }, {});
-  } catch {}
+  const isLiveWeek = !weekOpenUtc || weekOpenUtc === currentWeekOpenUtc;
+  if (isLiveWeek) {
+    try {
+      const myfxbookSnapshots = await getLatestSnapshotsByProvider("MYFXBOOK", Array.from(symbols));
+      myfxbookPositioningBySymbol = myfxbookSnapshots.reduce<Record<string, MyfxbookPositioning | undefined>>((acc, snapshot) => {
+        acc[snapshot.symbol] = parseMyfxbookPositioning(snapshot.raw_payload, snapshot.timestamp_utc) ?? undefined;
+        return acc;
+      }, {});
+    } catch {}
+  }
 
   return (
     <>

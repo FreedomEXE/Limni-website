@@ -60,6 +60,7 @@ const RELEASE_DOC_ORDER = [
   "file-audit.md",
   "quarantined.md",
   "verification.md",
+  "handoff.md",
   "known-issues.md",
 ];
 
@@ -137,6 +138,7 @@ function MarkdownBlock({ body }: { body: string }) {
   let list: string[] = [];
   let paragraph: string[] = [];
   let code: string[] = [];
+  let table: string[][] = [];
   let inCode = false;
 
   const flushParagraph = () => {
@@ -176,6 +178,52 @@ function MarkdownBlock({ body }: { body: string }) {
     code = [];
   };
 
+  const flushTable = () => {
+    if (table.length === 0) return;
+    const [header, ...rows] = table;
+    blocks.push(
+      <div key={`table-${blocks.length}`} className="overflow-x-auto rounded-xl border border-[var(--panel-border)]">
+        <table className="min-w-full divide-y divide-[var(--panel-border)] text-left text-sm">
+          <thead className="bg-[var(--background)]">
+            <tr>
+              {header.map((cell, cellIndex) => (
+                <th key={`${cellIndex}-${cell}`} className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--muted)]">
+                  {cell}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--panel-border)]">
+            {rows.map((row, rowIndex) => (
+              <tr key={`${rowIndex}-${row.join("|")}`}>
+                {row.map((cell, cellIndex) => (
+                  <td key={`${cellIndex}-${cell}`} className="px-3 py-2 text-[color:var(--muted)]">
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>,
+    );
+    table = [];
+  };
+
+  const isMarkdownTableLine = (line: string) => {
+    const trimmed = line.trim();
+    return trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.includes("|", 1);
+  };
+
+  const parseMarkdownTableRow = (line: string) => (
+    line
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((cell) => cell.trim())
+  );
+
   for (const rawLine of lines) {
     const line = rawLine.trimEnd();
     if (line.startsWith("```")) {
@@ -185,6 +233,7 @@ function MarkdownBlock({ body }: { body: string }) {
       } else {
         flushParagraph();
         flushList();
+        flushTable();
         inCode = true;
       }
       continue;
@@ -196,11 +245,21 @@ function MarkdownBlock({ body }: { body: string }) {
     if (!line.trim()) {
       flushParagraph();
       flushList();
+      flushTable();
+      continue;
+    }
+    if (isMarkdownTableLine(line)) {
+      flushParagraph();
+      flushList();
+      const row = parseMarkdownTableRow(line);
+      const isSeparator = row.every((cell) => /^:?-{3,}:?$/.test(cell));
+      if (!isSeparator) table.push(row);
       continue;
     }
     if (line.startsWith("# ")) {
       flushParagraph();
       flushList();
+      flushTable();
       blocks.push(
         <h1 key={`h1-${blocks.length}`} className="text-2xl font-semibold text-[var(--foreground)]">
           {line.replace(/^# /, "")}
@@ -211,6 +270,7 @@ function MarkdownBlock({ body }: { body: string }) {
     if (line.startsWith("## ")) {
       flushParagraph();
       flushList();
+      flushTable();
       blocks.push(
         <h2 key={`h2-${blocks.length}`} className="pt-2 text-lg font-semibold text-[var(--foreground)]">
           {line.replace(/^## /, "")}
@@ -221,6 +281,7 @@ function MarkdownBlock({ body }: { body: string }) {
     if (line.startsWith("### ")) {
       flushParagraph();
       flushList();
+      flushTable();
       blocks.push(
         <h3 key={`h3-${blocks.length}`} className="pt-1 text-sm font-semibold uppercase tracking-[0.16em] text-[color:var(--muted)]">
           {line.replace(/^### /, "")}
@@ -230,13 +291,16 @@ function MarkdownBlock({ body }: { body: string }) {
     }
     if (/^- /.test(line)) {
       flushParagraph();
+      flushTable();
       list.push(line.replace(/^- /, ""));
       continue;
     }
+    flushTable();
     paragraph.push(line);
   }
   flushParagraph();
   flushList();
+  flushTable();
   flushCode();
 
   return <div className="space-y-4">{blocks}</div>;

@@ -15,6 +15,12 @@
 
 import { listDataSectionWeeks } from "@/lib/dataSectionWeeks";
 import {
+  ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW,
+  ACTIVE_BASELINE_SEED_HISTORY_WINDOW,
+  getActiveBaselineWeeks,
+} from "@/lib/appTruth/activeBaseline";
+import { V203_CLEAN_14W_FREEZE_WEEKS } from "@/lib/sourceFreeze/fridayFreeze";
+import {
   multiWeekToGridProps,
   multiWeekPathToSimulation,
   multiWeekToSimulation,
@@ -138,6 +144,7 @@ export type StrategyPageData = {
   sidebarStats: EngineSidebarStats;
   biasSource: BiasSourceConfig;
   entryStyle: EntryStyleConfig | undefined;
+  riskOverlay: RiskOverlayConfig | undefined;
   weekOptions: string[];
   currentWeekOpenUtc: string;
   artifactMeta?: {
@@ -147,15 +154,20 @@ export type StrategyPageData = {
     refreshedWeeks: string[];
     removedWeeks: string[];
     missingWeeks: string[];
+    historyWindow?: StrategyHistoryWindow;
+    expectedWeeks?: number;
     stale?: boolean;
     staleReason?: string | null;
     engineVersion?: string;
   };
 };
 
+export type StrategyHistoryWindow = "data-section" | "active-baseline" | "seed-window";
+
 type LoadStrategyPageDataOptions = {
   includeCurrentWeek?: boolean;
   repairAllMissingWeeks?: boolean;
+  historyWindow?: StrategyHistoryWindow;
 };
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -455,7 +467,9 @@ function reconstructWeekPathResult(options: {
     resolution: CANONICAL_PATH_RESOLUTION,
     points: equitySeries.points.map((point) => ({
       tsUtc: point.ts_utc,
+      balancePct: point.balance_pct ?? point.equity_pct,
       equityPct: point.equity_pct,
+      adverseEquityPct: point.adverse_equity_pct ?? point.equity_pct,
       peakPct: point.peak_pct ?? 0,
       drawdownPct: point.drawdown_pct ?? 0,
       activePositions: point.active_positions ?? summary.maxActivePositions,
@@ -484,15 +498,16 @@ function summarizeSimulationPoints(points: EngineSimulationGroup["series"][numbe
   let maxActivePositions = 0;
   for (const point of points) {
     const equityPct = point.equity_pct;
+    const adverseEquityPct = point.adverse_equity_pct ?? equityPct;
     peakPct = Math.max(peakPct, equityPct);
-    troughPct = Math.min(troughPct, equityPct);
+    troughPct = Math.min(troughPct, adverseEquityPct);
     runningPeak = Math.max(runningPeak, equityPct);
     const drawdownPct =
       typeof point.drawdown_pct === "number"
         ? point.drawdown_pct
         : (100 + runningPeak) <= 0
           ? -100
-          : (((100 + equityPct) / (100 + runningPeak)) - 1) * 100;
+          : (((100 + adverseEquityPct) / (100 + runningPeak)) - 1) * 100;
     maxDrawdownPct = Math.max(maxDrawdownPct, Math.abs(drawdownPct));
     maxActivePositions = Math.max(maxActivePositions, point.active_positions ?? 0);
   }
@@ -540,7 +555,9 @@ function reconstructWeekPathResultFromSeries(options: {
             : (((100 + point.equity_pct) / (100 + peakPct)) - 1) * 100;
       return {
         tsUtc: point.ts_utc,
+        balancePct: point.balance_pct ?? point.equity_pct,
         equityPct: point.equity_pct,
+        adverseEquityPct: point.adverse_equity_pct ?? point.equity_pct,
         peakPct,
         drawdownPct,
         activePositions: point.active_positions ?? 0,
@@ -667,6 +684,7 @@ function assembleStrategyPageData(options: {
     }),
     biasSource,
     entryStyle,
+    riskOverlay,
     weekOptions,
     currentWeekOpenUtc,
     artifactMeta,
@@ -682,6 +700,7 @@ type ShardNativeSelectionContext = {
   currentWeekOpenUtc: string;
   previousWeekOpenUtc: string;
   historicalWeekOptions: string[];
+  historyWindow: StrategyHistoryWindow;
   sourceFingerprints: Record<string, string>;
   selectionLabel: string;
 };
@@ -689,10 +708,22 @@ type ShardNativeSelectionContext = {
 type EnsureHistoricalWeekShardsOptions = {
   onlyPreviousWeek?: boolean;
   timeBudgetMs?: number;
+  historyWindow?: StrategyHistoryWindow;
 };
+
+async function listHistoricalWeeksForWindow(historyWindow: StrategyHistoryWindow) {
+  if (historyWindow === ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW) {
+    return getActiveBaselineWeeks();
+  }
+  if (historyWindow === ACTIVE_BASELINE_SEED_HISTORY_WINDOW) {
+    return Array.from(V203_CLEAN_14W_FREEZE_WEEKS);
+  }
+  return listDataSectionWeeks();
+}
 
 async function buildShardNativeSelectionContext(
   selection: StrategySelection,
+  options: { historyWindow?: StrategyHistoryWindow } = {},
 ): Promise<ShardNativeSelectionContext | null> {
   const selectionKey = buildStrategySelectionKey(selection);
   const biasSource = getStrategy(selection.strategyId);
@@ -701,8 +732,9 @@ async function buildShardNativeSelectionContext(
   const entryStyle = getEntryStyle(selection.f1);
   const riskOverlay = getRiskOverlay(selection.f2);
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
+  const historyWindow = options.historyWindow ?? "data-section";
   const historicalWeekOptions = buildDataWeekOptions({
-    historicalWeeks: await listDataSectionWeeks(),
+    historicalWeeks: await listHistoricalWeeksForWindow(historyWindow),
     currentWeekOpenUtc,
   }).filter((weekOpenUtc): weekOpenUtc is string =>
     typeof weekOpenUtc === "string" &&
@@ -722,6 +754,7 @@ async function buildShardNativeSelectionContext(
     currentWeekOpenUtc,
     previousWeekOpenUtc: getPreviousWeekOpenUtc(currentWeekOpenUtc),
     historicalWeekOptions,
+    historyWindow,
     sourceFingerprints,
     selectionLabel: buildSelectionLabel(entryStyle, riskOverlay),
   };
@@ -768,7 +801,9 @@ export async function ensureHistoricalWeekShardsForSelection(
   missingWeeks: string[];
   errors: Record<string, string>;
 } | null> {
-  const context = await buildShardNativeSelectionContext(selection);
+  const context = await buildShardNativeSelectionContext(selection, {
+    historyWindow: options.historyWindow,
+  });
   if (!context) return null;
 
   const startedAt = Date.now();
@@ -826,6 +861,7 @@ export async function loadStrategyPageData(
   try {
     const prepared = await ensureHistoricalWeekShardsForSelection(selection, {
       onlyPreviousWeek: false,
+      historyWindow: options.historyWindow,
       timeBudgetMs: options.repairAllMissingWeeks
         ? getShardBuildTimeBudgetMs()
         : getPageLoadShardBudgetMs(),
@@ -855,6 +891,8 @@ export async function loadStrategyPageData(
       refreshedWeeks: computedWeeks,
       removedWeeks: [],
       missingWeeks,
+      historyWindow: context.historyWindow,
+      expectedWeeks: context.historicalWeekOptions.length,
       stale: false,
       staleReason: null,
       engineVersion: context.engineVersion,

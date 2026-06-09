@@ -35,6 +35,9 @@ const manifest = {
     executionDerivationVersion: "v1_execution_monday_utc",
   },
   canon: {
+    artifactStatus: "valid",
+    validForEngineVersion: "strategy-artifact-v28",
+    requiresEngineVersion: "strategy-artifact-v28",
     generatedAt: "2026-05-30T00:00:00.000Z",
     sourceLedgerRowCount: 2,
     sourceHash: "sha256:source",

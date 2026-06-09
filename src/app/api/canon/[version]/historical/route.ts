@@ -14,6 +14,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  canonArtifactStatusHeaders,
+  isCanonArtifactStale,
+  staleCanonErrorMessage,
+} from "@/lib/canon/canonArtifactStatus";
 import { canonFileNameForStrategyVariant, type CanonArtifact } from "@/lib/canon/canonArtifact";
 import { releaseManifest } from "@/lib/version/releaseManifest";
 
@@ -46,6 +51,20 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: `Canon variant not found: ${strategyVariant}` }, { status: 404 });
   }
 
+  if (isCanonArtifactStale(releaseManifest)) {
+    return NextResponse.json(
+      { error: staleCanonErrorMessage(releaseManifest), canon: releaseManifest.canon },
+      {
+        status: 409,
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Limni-Canon-Version": version,
+          ...canonArtifactStatusHeaders(releaseManifest),
+        },
+      },
+    );
+  }
+
   const fileName = canonFileNameForStrategyVariant(strategyVariant);
   if (fileName !== manifestEntry.file) {
     return NextResponse.json({ error: "Canon manifest file mapping mismatch" }, { status: 500 });
@@ -61,6 +80,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         "Cache-Control": "public, max-age=31536000, immutable",
         "X-Limni-Canon-Version": version,
         "X-Limni-Canon-Hash": manifestEntry.sha256,
+        ...canonArtifactStatusHeaders(releaseManifest),
       },
     },
   );

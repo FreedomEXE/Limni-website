@@ -173,6 +173,7 @@ function mergeRecordPayload(
     ),
     currentWeekOpenUtc: next.currentWeekOpenUtc ?? previous.currentWeekOpenUtc,
     artifactMeta: next.artifactMeta ?? previous.artifactMeta,
+    selectedTradeRowsBundle: next.selectedTradeRowsBundle ?? previous.selectedTradeRowsBundle ?? null,
   };
 }
 
@@ -194,7 +195,8 @@ function hasFullPayload(payload: StrategyClientPayload | null) {
   return Boolean(
     (payload?.engineWeekMap || payload?.engineSimMap) &&
     payload?.engineWeekResults &&
-    hasHistoricalStrategyPayload(payload)
+    hasHistoricalStrategyPayload(payload) &&
+    payload.selectedTradeRowsBundle?.ledgerIdentity
   );
 }
 
@@ -340,7 +342,7 @@ export function ensureStrategySession(
 
   const request = (async () => {
     try {
-      let payload = getStrategyClientPayload(selection, "full") ?? null;
+      let payload = options.kernel ? null : getStrategyClientPayload(selection, "full") ?? null;
       if (options.force || !payload || !hasFullPayload(payload)) {
         const fetchPayload = options.kernel ? fetchStrategyKernelPayload : fetchStrategyClientPayload;
         payload = await fetchPayload(selection, "full", {
@@ -792,7 +794,7 @@ async function runPreload(
       }
     }
 
-    if (activeTask) {
+    if (activeTask && activeTask.loadCurrentWeek !== false) {
       state = {
         ...state,
         preload: {
@@ -831,8 +833,10 @@ async function runPreload(
     };
     emit();
 
-    if (!activeFailed && options.useKernelPayload !== true) {
-      writeGlobalPreloadStamp();
+    if (!activeFailed) {
+      if (options.useKernelPayload !== true) {
+        writeGlobalPreloadStamp();
+      }
       void runPostGatePreloadTasks(manifest, repairKeys, options);
     }
   } finally {
@@ -915,7 +919,7 @@ export function ensureWeeklyReturns(weekOpenUtc: string | null) {
 
 export function useStrategySession(
   selection: RuntimeStrategySelection,
-  options: { kernel?: boolean } = {},
+  options: { kernel?: boolean; currentWeek?: boolean } = {},
 ) {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const key = selectionKey(selection);
@@ -924,10 +928,18 @@ export function useStrategySession(
   useEffect(() => {
     const activeSelection = { strategy, f1, f2 };
     setActiveStrategySessionSelection(activeSelection);
-    void ensureStrategySession(activeSelection, { kernel: options.kernel === true });
+    const loadCurrentWeek = options.currentWeek !== false;
+    void ensureStrategySession(activeSelection, {
+      currentWeek: loadCurrentWeek,
+      kernel: options.kernel === true,
+    });
+    if (!loadCurrentWeek) {
+      clearHourlyCurrentWeekRefresh();
+      return () => {};
+    }
     scheduleHourlyCurrentWeekRefresh(activeSelection);
     return () => clearHourlyCurrentWeekRefresh();
-  }, [f1, f2, options.kernel, strategy]);
+  }, [f1, f2, options.currentWeek, options.kernel, strategy]);
 
   return snapshot.records[key] ?? emptyRecord(selection);
 }

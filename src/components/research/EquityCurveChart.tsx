@@ -4,7 +4,9 @@ import { useId, useMemo, useState } from "react";
 
 type EquityPoint = {
   ts_utc: string;
+  balance_pct?: number;
   equity_pct: number;
+  adverse_equity_pct?: number;
   lock_pct: number | null;
   equity_usd?: number;
   static_baseline_usd?: number | null;
@@ -125,14 +127,31 @@ export default function EquityCurveChart({
   );
   const resolvedUnitMode = unitMode === "usd" && !canShowUsd ? "pct" : unitMode;
   const valueForPoint = (point: EquityPoint) => {
+    const pctValue = point.equity_pct;
     if (resolvedUnitMode === "pct") return point.equity_pct;
     if (Number.isFinite(Number(point.equity_usd))) return Number(point.equity_usd);
     const base = Number(referenceEquityUsd);
     if (Number.isFinite(base) && base > 0) {
-      return base * (1 + point.equity_pct / 100);
+      return base * (1 + pctValue / 100);
     }
     return point.equity_pct;
   };
+  const valueForPct = (point: EquityPoint, pctValue: number) => {
+    if (resolvedUnitMode === "pct") return pctValue;
+    const base = Number(referenceEquityUsd);
+    if (Number.isFinite(base) && base > 0) {
+      return base * (1 + pctValue / 100);
+    }
+    if (Number.isFinite(Number(point.equity_usd))) {
+      const equityPct = Number.isFinite(point.equity_pct) ? point.equity_pct : pctValue;
+      const impliedBase = equityPct === -100 ? Number.NaN : Number(point.equity_usd) / (1 + equityPct / 100);
+      if (Number.isFinite(impliedBase) && impliedBase > 0) {
+        return impliedBase * (1 + pctValue / 100);
+      }
+    }
+    return pctValue;
+  };
+  const balanceValueForPoint = (point: EquityPoint) => valueForPct(point, point.balance_pct ?? point.equity_pct);
 
   const primary = displaySeries[0].points;
   const hasDrawdownData = primary.some((p) => typeof p.drawdown_pct === "number" && p.drawdown_pct < 0);
@@ -153,7 +172,13 @@ export default function EquityCurveChart({
   const toXFromTs = (tsMs: number) => paddingX + ((tsMs - startTs) / tsSpan) * chartW;
   const toXFromIndex = (index: number) => toXFromTs(new Date(primary[index].ts_utc).getTime());
 
-  const allValues = normalized.flatMap((row) => row.points.map((p) => valueForPoint(p)));
+  const allValues = normalized.flatMap((row) => row.points.flatMap((p) => {
+    const values = [valueForPoint(p)];
+    if (typeof p.balance_pct === "number" && Number.isFinite(p.balance_pct)) {
+      values.push(balanceValueForPoint(p));
+    }
+    return values;
+  }));
   const minValue = Math.min(...allValues);
   const maxValue = Math.max(...allValues);
   const span = Math.max(maxValue - minValue, 1e-6);
@@ -272,6 +297,21 @@ export default function EquityCurveChart({
       return `${i === 0 ? "M" : "L"} ${toXFromTs(tsMs).toFixed(2)} ${toY(valueForPoint(p)).toFixed(2)}`;
     })
     .join(" ");
+  const balancePathForSeries = (pts: EquityPoint[]) => {
+    const hasBalancePath = pts.some((point) => (
+      typeof point.balance_pct === "number" &&
+      Number.isFinite(point.balance_pct) &&
+      Math.abs(point.balance_pct - point.equity_pct) > 1e-9
+    ));
+    if (!hasBalancePath) return "";
+    return pts
+      .map((p, i) => {
+        const tsMs = new Date(p.ts_utc).getTime();
+        return `${i === 0 ? "M" : "L"} ${toXFromTs(tsMs).toFixed(2)} ${toY(balanceValueForPoint(p)).toFixed(2)}`;
+      })
+      .join(" ");
+  };
+  const hasPrimaryBalancePath = balancePathForSeries(primary).length > 0;
   const areaPath = `${primaryLinePath} L ${toXFromTs(endTs).toFixed(2)} ${baselineY.toFixed(2)} L ${toXFromTs(startTs).toFixed(2)} ${baselineY.toFixed(2)} Z`;
 
   const toggleSeries = (id: string) => {
@@ -355,6 +395,18 @@ export default function EquityCurveChart({
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {hasPrimaryBalancePath ? (
+            <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-[color:var(--muted)]">
+              <span className="flex items-center gap-1.5">
+                <span className="h-0.5 w-4 rounded-full bg-white" />
+                Equity
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-0.5 w-4 border-t border-dashed border-amber-400" />
+                Balance
+              </span>
+            </div>
+          ) : null}
           {normalized.map((row) => {
             const active = resolvedVisible.includes(row.id);
             return (
@@ -470,17 +522,31 @@ export default function EquityCurveChart({
               .join(" ");
             if (!path) return null;
             const stroke = row.color ?? SERIES_COLORS[rowIndex % SERIES_COLORS.length];
+            const balancePath = balancePathForSeries(row.points);
             return (
-              <path
-                key={row.id}
-                d={path}
-                fill="none"
-                stroke={stroke}
-                strokeWidth={rowIndex === 0 ? 3 : 2.2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity={rowIndex === 0 ? 1 : 0.9}
-              />
+              <g key={row.id}>
+                {balancePath ? (
+                  <path
+                    d={balancePath}
+                    fill="none"
+                    stroke={rowIndex === 0 ? "#f59e0b" : stroke}
+                    strokeWidth={rowIndex === 0 ? 2 : 1.6}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeDasharray="7 5"
+                    opacity={rowIndex === 0 ? 0.95 : 0.5}
+                  />
+                ) : null}
+                <path
+                  d={path}
+                  fill="none"
+                  stroke={stroke}
+                  strokeWidth={rowIndex === 0 ? 3 : 2.2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity={rowIndex === 0 ? 1 : 0.9}
+                />
+              </g>
             );
           })}
 
@@ -532,6 +598,10 @@ export default function EquityCurveChart({
                 const value = valueForPoint(point);
                 const x = toXFromTs(new Date(point.ts_utc).getTime());
                 const y = toY(value);
+                const balancePct = point.balance_pct;
+                const balanceValue = typeof balancePct === "number" && Number.isFinite(balancePct)
+                  ? balanceValueForPoint(point)
+                  : null;
                 return (
                   <g key={`${row.id}-hover`}>
                     <circle cx={x} cy={y} r="4.5" fill={row.color ?? SERIES_COLORS[idx % SERIES_COLORS.length]} />
@@ -545,6 +615,18 @@ export default function EquityCurveChart({
                         ? `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`
                         : `${value.toFixed(2)}%`}
                     </text>
+                    {idx === 0 && balanceValue !== null && Math.abs(balanceValue - value) > 1e-9 ? (
+                      <text
+                        x={x + 6}
+                        y={y + 8}
+                        fill="#f59e0b"
+                        fontSize="9"
+                      >
+                        Bal {resolvedUnitMode === "usd"
+                          ? `$${balanceValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}`
+                          : `${balanceValue.toFixed(2)}%`}
+                      </text>
+                    ) : null}
                   </g>
                 );
               })}

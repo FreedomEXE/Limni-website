@@ -20,7 +20,9 @@ import type { PositionLeg, WeekPositionLedger } from "@/lib/performance/position
 
 export type BasketPathPoint = {
   tsUtc: string;
+  balancePct: number;
   equityPct: number;
+  adverseEquityPct: number;
   peakPct: number;
   drawdownPct: number;
   activePositions: number;
@@ -51,8 +53,16 @@ export type BasketPathReturnMode = "normalized" | "raw" | "display";
 type PricePoint = {
   tsUtc: string;
   tsMs: number;
+  highPrice: number;
+  lowPrice: number;
   closePrice: number;
   qualityStatus: string;
+};
+
+type CarriedPricePoint = {
+  closePrice: number;
+  highPrice: number;
+  lowPrice: number;
 };
 
 function buildCanonicalHourlyGrid(weekOpenUtc: string, weekCloseUtc: string) {
@@ -77,6 +87,8 @@ function buildPriceSeries(bars: CanonicalPriceBar[]) {
     .map<PricePoint>((bar) => ({
       tsUtc: bar.barCloseUtc,
       tsMs: DateTime.fromISO(bar.barCloseUtc, { zone: "utc" }).toMillis(),
+      highPrice: bar.highPrice,
+      lowPrice: bar.lowPrice,
       closePrice: bar.closePrice,
       qualityStatus: bar.qualityStatus,
     }))
@@ -85,20 +97,31 @@ function buildPriceSeries(bars: CanonicalPriceBar[]) {
 }
 
 function buildCarriedPriceSeries(series: PricePoint[], gridMs: number[]) {
-  const prices = new Array<number>(gridMs.length).fill(Number.NaN);
+  const prices = new Array<CarriedPricePoint>(gridMs.length);
   let cursor = 0;
   let lastPrice = Number.NaN;
 
   for (let gridIndex = 0; gridIndex < gridMs.length; gridIndex += 1) {
     const tsMs = gridMs[gridIndex] ?? Number.NaN;
+    let barForGrid: PricePoint | null = null;
     while (cursor < series.length && (series[cursor]?.tsMs ?? Number.POSITIVE_INFINITY) <= tsMs) {
-      const nextPrice = series[cursor]?.closePrice ?? Number.NaN;
+      const point = series[cursor] ?? null;
+      const nextPrice = point?.closePrice ?? Number.NaN;
       if (Number.isFinite(nextPrice) && nextPrice > 0) {
         lastPrice = nextPrice;
+        barForGrid = point;
       }
       cursor += 1;
     }
-    prices[gridIndex] = lastPrice;
+    prices[gridIndex] = {
+      closePrice: lastPrice,
+      highPrice: Number.isFinite(barForGrid?.highPrice) && (barForGrid?.highPrice ?? 0) > 0
+        ? Number(barForGrid?.highPrice)
+        : lastPrice,
+      lowPrice: Number.isFinite(barForGrid?.lowPrice) && (barForGrid?.lowPrice ?? 0) > 0
+        ? Number(barForGrid?.lowPrice)
+        : lastPrice,
+    };
   }
 
   return prices;
@@ -166,7 +189,9 @@ function summarizePoints(points: BasketPathPoint[]): BasketPathSummary {
 function buildPathResultFromArrays(
   ledger: WeekPositionLedger,
   grid: string[],
+  balanceByIndex: number[],
   equityByIndex: number[],
+  adverseEquityByIndex: number[],
   activeByIndex: number[],
   returnMode: BasketPathReturnMode,
 ): BasketPathResult {
@@ -175,16 +200,20 @@ function buildPathResultFromArrays(
 
   for (let index = 0; index < grid.length; index += 1) {
     const tsUtc = grid[index] ?? ledger.weekOpenUtc;
+    const basketBalancePct = balanceByIndex[index] ?? 0;
     const basketEquityPct = equityByIndex[index] ?? 0;
+    const basketAdverseEquityPct = adverseEquityByIndex[index] ?? basketEquityPct;
     const activePositions = activeByIndex[index] ?? 0;
     runningPeakPct = Math.max(runningPeakPct, basketEquityPct);
     points.push({
       tsUtc,
+      balancePct: basketBalancePct,
       equityPct: basketEquityPct,
+      adverseEquityPct: basketAdverseEquityPct,
       peakPct: runningPeakPct,
       drawdownPct: (100 + runningPeakPct) <= 0
         ? -100
-        : (((100 + basketEquityPct) / (100 + runningPeakPct)) - 1) * 100,
+        : (((100 + basketAdverseEquityPct) / (100 + runningPeakPct)) - 1) * 100,
       activePositions,
     });
   }
@@ -207,7 +236,9 @@ function emptyPathResult(
 ): BasketPathResult {
   const points = grid.slice(0, 1).map((tsUtc) => ({
     tsUtc,
+    balancePct: 0,
     equityPct: 0,
+    adverseEquityPct: 0,
     peakPct: 0,
     drawdownPct: 0,
     activePositions: 0,
@@ -234,15 +265,19 @@ function computeBasketPathArrays(
   if (ledger.legs.length === 0) {
     return {
       grid,
+      balanceByIndex: new Array<number>(grid.length).fill(0),
       equityByIndex: new Array<number>(grid.length).fill(0),
+      adverseEquityByIndex: new Array<number>(grid.length).fill(0),
       activeByIndex: new Array<number>(grid.length).fill(0),
+      slotBalanceByIndex: Array.from({ length: slotCount }, () => new Array<number>(grid.length).fill(0)),
       slotEquityByIndex: Array.from({ length: slotCount }, () => new Array<number>(grid.length).fill(0)),
+      slotAdverseEquityByIndex: Array.from({ length: slotCount }, () => new Array<number>(grid.length).fill(0)),
       slotActiveByIndex: Array.from({ length: slotCount }, () => new Array<number>(grid.length).fill(0)),
     };
   }
 
   const gridMs = grid.map((tsUtc) => DateTime.fromISO(tsUtc, { zone: "utc" }).toMillis());
-  const priceSeriesBySymbol = new Map<string, number[]>();
+  const priceSeriesBySymbol = new Map<string, CarriedPricePoint[]>();
   for (const leg of ledger.legs) {
     if (priceSeriesBySymbol.has(leg.symbol)) continue;
     priceSeriesBySymbol.set(
@@ -251,9 +286,13 @@ function computeBasketPathArrays(
     );
   }
 
+  const balanceByIndex = new Array<number>(grid.length).fill(0);
   const equityByIndex = new Array<number>(grid.length).fill(0);
+  const adverseEquityByIndex = new Array<number>(grid.length).fill(0);
   const activeByIndex = new Array<number>(grid.length).fill(0);
+  const slotBalanceByIndex = Array.from({ length: slotCount }, () => new Array<number>(grid.length).fill(0));
   const slotEquityByIndex = Array.from({ length: slotCount }, () => new Array<number>(grid.length).fill(0));
+  const slotAdverseEquityByIndex = Array.from({ length: slotCount }, () => new Array<number>(grid.length).fill(0));
   const slotActiveByIndex = Array.from({ length: slotCount }, () => new Array<number>(grid.length).fill(0));
 
   for (const leg of ledger.legs) {
@@ -268,7 +307,9 @@ function computeBasketPathArrays(
 
     const prices = priceSeriesBySymbol.get(leg.symbol) ?? [];
     const slotIndex = slotFn ? slotFn(leg) : -1;
+    const slotBalance = slotIndex >= 0 && slotIndex < slotCount ? slotBalanceByIndex[slotIndex] : null;
     const slotEquity = slotIndex >= 0 && slotIndex < slotCount ? slotEquityByIndex[slotIndex] : null;
+    const slotAdverseEquity = slotIndex >= 0 && slotIndex < slotCount ? slotAdverseEquityByIndex[slotIndex] : null;
     const slotActive = slotIndex >= 0 && slotIndex < slotCount ? slotActiveByIndex[slotIndex] : null;
     const exitRawReturnPct = ((leg.exitPrice - leg.entryPrice) / leg.entryPrice) * 100;
     const exitDirectedReturnPct = leg.direction === "SHORT" ? -exitRawReturnPct : exitRawReturnPct;
@@ -289,11 +330,12 @@ function computeBasketPathArrays(
 
     for (let index = startIndex; index <= endIndex; index += 1) {
       const tsMs = gridMs[index] ?? Number.NaN;
-      let markPrice = prices[index] ?? Number.NaN;
-      if (tsMs === entryMs) {
-        markPrice = leg.entryPrice;
-      } else if (tsMs === exitMs) {
+      const barPrices = prices[index] ?? null;
+      let markPrice = barPrices?.closePrice ?? Number.NaN;
+      if (tsMs === exitMs) {
         markPrice = leg.exitPrice;
+      } else if (tsMs === entryMs) {
+        markPrice = leg.entryPrice;
       } else if (!Number.isFinite(markPrice) || markPrice <= 0) {
         markPrice = leg.entryPrice;
       }
@@ -304,29 +346,49 @@ function computeBasketPathArrays(
       const rawReturnPct = ((markPrice - leg.entryPrice) / leg.entryPrice) * 100;
       const directedReturnPct = leg.direction === "SHORT" ? -rawReturnPct : rawReturnPct;
       const legPnlPct = pnlScale * directedReturnPct;
+      const adversePrice = leg.direction === "SHORT"
+        ? (Number.isFinite(barPrices?.highPrice) && (barPrices?.highPrice ?? 0) > 0 ? Number(barPrices?.highPrice) : markPrice)
+        : (Number.isFinite(barPrices?.lowPrice) && (barPrices?.lowPrice ?? 0) > 0 ? Number(barPrices?.lowPrice) : markPrice);
+      const adverseRawReturnPct = ((adversePrice - leg.entryPrice) / leg.entryPrice) * 100;
+      const adverseDirectedReturnPct = leg.direction === "SHORT" ? -adverseRawReturnPct : adverseRawReturnPct;
+      const adverseLegPnlPct = pnlScale * adverseDirectedReturnPct;
       equityByIndex[index] = (equityByIndex[index] ?? 0) + legPnlPct;
-      if (slotEquity && slotActive) {
+      adverseEquityByIndex[index] = (adverseEquityByIndex[index] ?? 0) + adverseLegPnlPct;
+      if (slotEquity && slotAdverseEquity && slotActive) {
         slotEquity[index] = (slotEquity[index] ?? 0) + legPnlPct;
+        slotAdverseEquity[index] = (slotAdverseEquity[index] ?? 0) + adverseLegPnlPct;
         slotActive[index] = (slotActive[index] ?? 0) + 1;
       }
     }
 
-    // Closed trades remain part of portfolio equity after their exit. Without
+    // Closed trades remain part of portfolio balance/equity after their exit. Without
     // this carry-forward, fast close/rearm systems drop realized P/L from the
     // curve as soon as the fill closes.
-    for (let index = endIndex + 1; index < grid.length; index += 1) {
-      equityByIndex[index] = (equityByIndex[index] ?? 0) + realizedLegPnlPct;
-      if (slotEquity) {
+    for (let index = endIndex; index < grid.length; index += 1) {
+      balanceByIndex[index] = (balanceByIndex[index] ?? 0) + realizedLegPnlPct;
+      if (slotBalance) {
+        slotBalance[index] = (slotBalance[index] ?? 0) + realizedLegPnlPct;
+      }
+      if (index > endIndex) {
+        equityByIndex[index] = (equityByIndex[index] ?? 0) + realizedLegPnlPct;
+        adverseEquityByIndex[index] = (adverseEquityByIndex[index] ?? 0) + realizedLegPnlPct;
+      }
+      if (slotEquity && slotAdverseEquity && index > endIndex) {
         slotEquity[index] = (slotEquity[index] ?? 0) + realizedLegPnlPct;
+        slotAdverseEquity[index] = (slotAdverseEquity[index] ?? 0) + realizedLegPnlPct;
       }
     }
   }
 
   return {
     grid,
+    balanceByIndex,
     equityByIndex,
+    adverseEquityByIndex,
     activeByIndex,
+    slotBalanceByIndex,
     slotEquityByIndex,
+    slotAdverseEquityByIndex,
     slotActiveByIndex,
   };
 }
@@ -341,7 +403,15 @@ export function computeBasketPath(
   if (ledger.legs.length === 0) {
     return emptyPathResult(ledger, arrays.grid, returnMode);
   }
-  return buildPathResultFromArrays(ledger, arrays.grid, arrays.equityByIndex, arrays.activeByIndex, returnMode);
+  return buildPathResultFromArrays(
+    ledger,
+    arrays.grid,
+    arrays.balanceByIndex,
+    arrays.equityByIndex,
+    arrays.adverseEquityByIndex,
+    arrays.activeByIndex,
+    returnMode,
+  );
 }
 
 export function computeBasketPathWithSlots(
@@ -355,12 +425,22 @@ export function computeBasketPathWithSlots(
   const arrays = computeBasketPathArrays(ledger, bars, slotFn, slotCount, returnMode);
   const path = ledger.legs.length === 0
     ? emptyPathResult(ledger, arrays.grid, returnMode)
-    : buildPathResultFromArrays(ledger, arrays.grid, arrays.equityByIndex, arrays.activeByIndex, returnMode);
+    : buildPathResultFromArrays(
+      ledger,
+      arrays.grid,
+      arrays.balanceByIndex,
+      arrays.equityByIndex,
+      arrays.adverseEquityByIndex,
+      arrays.activeByIndex,
+      returnMode,
+    );
   const slotPaths = arrays.slotEquityByIndex.map((slotEquity, slotIndex) =>
     buildPathResultFromArrays(
       ledger,
       arrays.grid,
+      arrays.slotBalanceByIndex[slotIndex] ?? new Array<number>(arrays.grid.length).fill(0),
       slotEquity,
+      arrays.slotAdverseEquityByIndex[slotIndex] ?? slotEquity,
       arrays.slotActiveByIndex[slotIndex] ?? new Array<number>(arrays.grid.length).fill(0),
       returnMode,
     ),
@@ -377,6 +457,7 @@ export function computeMultiWeekBasketPath(
   const sorted = [...weekResults].sort((left, right) => left.weekOpenUtc.localeCompare(right.weekOpenUtc));
   const points: BasketPathPoint[] = [];
   let carryoverEquityPct = 0;
+  let carryoverBalancePct = 0;
   let runningPeakPct = 0;
 
   for (let weekIndex = 0; weekIndex < sorted.length; weekIndex += 1) {
@@ -387,20 +468,25 @@ export function computeMultiWeekBasketPath(
       if (weekIndex > 0 && pointIndex === 0) continue;
       const point = week.points[pointIndex];
       if (!point) continue;
+      const shiftedBalancePct = carryoverBalancePct + point.balancePct;
       const shiftedEquityPct = carryoverEquityPct + point.equityPct;
+      const shiftedAdverseEquityPct = carryoverEquityPct + point.adverseEquityPct;
       runningPeakPct = Math.max(runningPeakPct, shiftedEquityPct);
       points.push({
         tsUtc: point.tsUtc,
+        balancePct: shiftedBalancePct,
         equityPct: shiftedEquityPct,
+        adverseEquityPct: shiftedAdverseEquityPct,
         peakPct: runningPeakPct,
         drawdownPct: (100 + runningPeakPct) <= 0
           ? -100
-          : (((100 + shiftedEquityPct) / (100 + runningPeakPct)) - 1) * 100,
+          : (((100 + shiftedAdverseEquityPct) / (100 + runningPeakPct)) - 1) * 100,
         activePositions: point.activePositions,
       });
     }
 
     carryoverEquityPct += week.summary.totalReturnPct;
+    carryoverBalancePct += week.summary.totalReturnPct;
   }
 
   return {

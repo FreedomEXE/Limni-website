@@ -15,6 +15,7 @@
 
 import { DateTime } from "luxon";
 
+import { dbTimestampValueToIsoUtc } from "../dbUtcTimestamp";
 import { getPool } from "../db";
 
 export type DailySentimentDirection = "LONG" | "SHORT" | "NEUTRAL";
@@ -35,7 +36,7 @@ export type DailySentimentRow = {
 
 type AggregateCandidateRow = {
   symbol: string;
-  timestamp_utc: Date | string;
+  timestamp_utc: string;
   agg_long_pct: string | number;
   agg_short_pct: string | number;
   agg_net: string | number;
@@ -45,8 +46,8 @@ type AggregateCandidateRow = {
 };
 
 type DailySnapshotRow = {
-  snapshot_date_utc: Date | string;
-  snapshot_time_utc: Date | string;
+  snapshot_date_utc: string;
+  snapshot_time_utc: string;
   symbol: string;
   agg_long_pct: string | number;
   agg_short_pct: string | number;
@@ -64,14 +65,7 @@ function toNumber(value: string | number): number {
 }
 
 function toIsoUtc(value: Date | string): string {
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  const parsed = DateTime.fromISO(String(value), { zone: "utc" });
-  if (parsed.isValid) {
-    return parsed.toISO() ?? String(value);
-  }
-  return String(value);
+  return dbTimestampValueToIsoUtc(value) ?? String(value);
 }
 
 function toDateOnly(value: Date | string): string {
@@ -142,7 +136,7 @@ export async function buildDailySentimentLock(
     `
       SELECT DISTINCT ON (symbol)
         symbol,
-        timestamp_utc,
+        timestamp_utc::text AS timestamp_utc,
         agg_long_pct,
         agg_short_pct,
         agg_net,
@@ -150,7 +144,7 @@ export async function buildDailySentimentLock(
         crowding_state,
         flip_state
       FROM sentiment_aggregates
-      WHERE timestamp_utc <= $1::timestamp
+      WHERE timestamp_utc <= ($1::timestamptz AT TIME ZONE 'UTC')
       ORDER BY symbol, timestamp_utc DESC
     `,
     [asOf.toISO()],
@@ -214,7 +208,7 @@ export async function writeDailySentimentLock(
           )
           VALUES (
             $1::date,
-            $2::timestamp,
+            ($2::timestamptz AT TIME ZONE 'UTC'),
             $3,
             $4,
             $5,
@@ -270,7 +264,7 @@ export async function readLatestDailySentimentLock(): Promise<
   const pool = getPool();
   const latest = await pool.query<{ snapshot_date_utc: Date | string }>(
     `
-      SELECT snapshot_date_utc
+      SELECT snapshot_date_utc::text AS snapshot_date_utc
       FROM sentiment_daily_snapshots
       ORDER BY snapshot_date_utc DESC
       LIMIT 1
@@ -291,8 +285,8 @@ export async function readDailySentimentLockByDate(
   const response = await pool.query<DailySnapshotRow>(
     `
       SELECT
-        snapshot_date_utc,
-        snapshot_time_utc,
+        snapshot_date_utc::text AS snapshot_date_utc,
+        snapshot_time_utc::text AS snapshot_time_utc,
         symbol,
         agg_long_pct,
         agg_short_pct,
@@ -327,8 +321,8 @@ export async function readDailySentimentHistory(
   const response = await pool.query<DailySnapshotRow>(
     `
       SELECT
-        snapshot_date_utc,
-        snapshot_time_utc,
+        snapshot_date_utc::text AS snapshot_date_utc,
+        snapshot_time_utc::text AS snapshot_time_utc,
         symbol,
         agg_long_pct,
         agg_short_pct,

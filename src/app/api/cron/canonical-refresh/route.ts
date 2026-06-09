@@ -16,6 +16,11 @@
 
 import { NextResponse } from "next/server";
 import { DateTime } from "luxon";
+import {
+  finishSchedulerRunReceipt,
+  recordMaterializationRunReceipt,
+  startSchedulerRunReceipt,
+} from "@/lib/appTruth/runLedger";
 import { query } from "@/lib/db";
 import { isCronAuthorized } from "@/lib/cronAuth";
 import { revalidatePath } from "next/cache";
@@ -29,6 +34,7 @@ import { loadCanonicalWeeklyReturnFromHourlyBars } from "@/lib/canonicalWeeklyRe
 import {
   loadExecutionWeeklyReturnFromHourlyBars,
 } from "@/lib/executionWeeklyReturns";
+import { EXECUTION_ANCHOR_VERSION } from "@/lib/executionPriceWindows";
 import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
 import { fetchOandaDailySeries } from "@/lib/oandaPrices";
 
@@ -114,12 +120,33 @@ export async function GET(request: Request) {
   }
 
   const startedAt = Date.now();
+  const startedAtUtc = new Date().toISOString();
   const nowUtc = DateTime.utc();
   const url = new URL(request.url);
   const includeHourly = ["1", "true", "yes"].includes(
     (url.searchParams.get("includeHourly") ?? "").toLowerCase(),
   );
   const activeInstruments = CANONICAL_INSTRUMENTS.filter((instrument) => instrument.isActive);
+  let schedulerRunId: string | null = null;
+  let materializationRunId: string | null = null;
+  const ledgerErrors: string[] = [];
+
+  try {
+    const receipt = await startSchedulerRunReceipt({
+      jobId: "canonical-refresh",
+      jobType: "price_materialization",
+      triggerType: "schedule",
+      routePath: "/api/cron/canonical-refresh?includeHourly=1",
+      schedule: "30 * * * *",
+      startedAtUtc,
+      inputArtifacts: ["provider price candles"],
+      requiredInputs: ["active canonical instruments", "provider daily/hourly bars"],
+      metadata: { includeHourly, activeInstruments: activeInstruments.length },
+    });
+    schedulerRunId = receipt.runId;
+  } catch (error) {
+    ledgerErrors.push(error instanceof Error ? error.message : String(error));
+  }
 
   // Determine which weeks need refreshing: current + previous
   const currentWeekOpen = getCanonicalWeekOpenUtc(nowUtc);
@@ -132,10 +159,29 @@ export async function GET(request: Request) {
   const weeklyTargetWeeks = targetWeeks.filter((weekOpenUtc) => weekOpenUtc !== currentWeekOpen);
 
   if (targetWeeks.length === 0) {
+    const finishedAt = new Date().toISOString();
+    if (schedulerRunId) {
+      try {
+        await finishSchedulerRunReceipt({
+          runId: schedulerRunId,
+          completedAtUtc: finishedAt,
+          status: "skipped",
+          degradedReasons: ["No canonical weeks to refresh."],
+          metadata: { currentWeekOpen, includeHourly },
+        });
+      } catch (error) {
+        ledgerErrors.push(error instanceof Error ? error.message : String(error));
+      }
+    }
     return NextResponse.json({
       ok: true,
       message: "No canonical weeks to refresh",
       currentWeekOpen,
+      appTruthLedger: {
+        schedulerRunId,
+        materializationRunId,
+        errors: ledgerErrors.length > 0 ? ledgerErrors : undefined,
+      },
     });
   }
 
@@ -399,10 +445,78 @@ export async function GET(request: Request) {
   });
   const executionCoverageGaps = await checkWeeklyReturnCoverage(weeklyTargetWeeks, activeInstruments, {
     anchorType: "execution",
-    anchorVersion: "execution_monday_utc_v1",
+    anchorVersion: EXECUTION_ANCHOR_VERSION,
   });
   const coverageGaps = [...canonicalCoverageGaps, ...executionCoverageGaps];
   const ok = errors.length === 0 && coverageGaps.length === 0;
+  const finishedAt = new Date().toISOString();
+  const materializedRows =
+    barsUpserted +
+    hourlyBarsUpserted +
+    canonicalWeeklyReturnsUpserted +
+    executionWeeklyReturnsUpserted;
+
+  if (schedulerRunId) {
+    const degradedReasons = [
+      ...errors,
+      ...coverageGaps.map((gap) => `${gap.weekOpenUtc}: ${gap.actualCount}/${gap.expectedCount} ${gap.missingSymbols.join(",")}`),
+    ];
+    try {
+      await finishSchedulerRunReceipt({
+        runId: schedulerRunId,
+        completedAtUtc: finishedAt,
+        outputArtifacts: [
+          `canonical_price_bars:${barsUpserted + hourlyBarsUpserted}`,
+          `pair_period_returns:${canonicalWeeklyReturnsUpserted + executionWeeklyReturnsUpserted}`,
+        ],
+        missingInputs: coverageGaps.map((gap) => `${gap.weekOpenUtc}:${gap.missingSymbols.join(",")}`),
+        namespaceProduced: "canonical_price_bars/pair_period_returns",
+        status: ok ? "succeeded" : "degraded",
+        degradedReasons,
+        metadata: {
+          targetWeeks,
+          weeklyTargetWeeks,
+          includeHourly,
+          instruments: activeInstruments.length,
+          barsUpserted,
+          hourlyBarsUpserted,
+          canonicalWeeklyReturnsUpserted,
+          executionWeeklyReturnsUpserted,
+        },
+      });
+    } catch (error) {
+      ledgerErrors.push(error instanceof Error ? error.message : String(error));
+    }
+    try {
+      const receipt = await recordMaterializationRunReceipt({
+        schedulerRunId,
+        materializationType: "canonical_price_and_weekly_returns",
+        domain: "data",
+        weekWindow: targetWeeks,
+        rowsTouched: materializedRows,
+        inputArtifacts: ["provider price candles"],
+        outputArtifacts: ["canonical_price_bars", "pair_period_returns"],
+        namespaceProduced: "canonical_price_bars/pair_period_returns",
+        status: ok ? "succeeded" : "degraded",
+        missingInputs: coverageGaps.map((gap) => `${gap.weekOpenUtc}:${gap.missingSymbols.join(",")}`),
+        degradedReasons,
+        startedAtUtc,
+        completedAtUtc: finishedAt,
+        metadata: {
+          weeklyTargetWeeks,
+          includeHourly,
+          instruments: activeInstruments.length,
+          barsUpserted,
+          hourlyBarsUpserted,
+          canonicalWeeklyReturnsUpserted,
+          executionWeeklyReturnsUpserted,
+        },
+      });
+      materializationRunId = receipt.runId;
+    } catch (error) {
+      ledgerErrors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
 
   return NextResponse.json(
     {
@@ -419,6 +533,11 @@ export async function GET(request: Request) {
       canonicalCoverageGaps: canonicalCoverageGaps.length > 0 ? canonicalCoverageGaps : undefined,
       executionCoverageGaps: executionCoverageGaps.length > 0 ? executionCoverageGaps : undefined,
       errors: errors.length > 0 ? errors : undefined,
+      appTruthLedger: {
+        schedulerRunId,
+        materializationRunId,
+        errors: ledgerErrors.length > 0 ? ledgerErrors : undefined,
+      },
     },
     { status: ok ? 200 : 500 },
   );

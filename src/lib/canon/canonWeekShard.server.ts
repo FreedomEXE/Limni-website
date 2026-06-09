@@ -44,6 +44,10 @@ type ReleaseCanonArtifact = CanonArtifact & {
   };
 };
 
+const releaseCanonArtifactCache = new Map<string, Promise<ReleaseCanonArtifact>>();
+const deltaWeeksCache = new Map<string, Promise<CanonVariantInventory["deltaWeeks"]>>();
+const inventoryManifestCache = new Map<string, Promise<CanonInventoryManifest>>();
+
 function sha256(value: string): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
@@ -66,6 +70,12 @@ function weekCloseUtc(weekOpenUtc: string) {
   const millis = Date.parse(weekOpenUtc);
   if (!Number.isFinite(millis)) return weekOpenUtc;
   return new Date(millis + 7 * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function previousClosedWeekOpenUtc(currentWeekOpenUtc: string) {
+  const millis = Date.parse(currentWeekOpenUtc);
+  if (!Number.isFinite(millis)) return null;
+  return new Date(millis - 7 * 24 * 60 * 60 * 1000).toISOString();
 }
 
 function rowKindOrder(rowKind: ClosedHistoryRow["rowKind"]) {
@@ -174,6 +184,32 @@ function artifactTradeKey(weekOpenUtc: string, trade: WeeklyHoldTrade) {
   ].join("|");
 }
 
+function finiteOrNull(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function riskMatrixFromRisk(
+  maeRawPct: number | null,
+  pathDrawdownRawPct: number | null,
+  adrPct: number | null,
+): ClosedHistoryRow["riskMatrix"] {
+  return {
+    canonical: {
+      maeRawPct,
+      pathDrawdownRawPct,
+    },
+    execution: {
+      maeRawPct,
+      pathDrawdownRawPct,
+    },
+    adrPct,
+  };
+}
+
+function riskMatrixFromMae(maeRawPct: number | null, adrPct: number | null): ClosedHistoryRow["riskMatrix"] {
+  return riskMatrixFromRisk(maeRawPct, null, adrPct);
+}
+
 function closedRowsFromStrategyTrades(options: {
   strategyVariant: string;
   weekOpenUtc: string;
@@ -188,6 +224,8 @@ function closedRowsFromStrategyTrades(options: {
     const rawPct = typeof trade.rawReturnPct === "number" && Number.isFinite(trade.rawReturnPct)
       ? trade.rawReturnPct
       : trade.returnPct;
+    const adrPct = finiteOrNull(trade.adrPct);
+    const maeRawPct = finiteOrNull(trade.detail?.maePct);
     const rowKind = strategyFamily === "adr_grid" ? "fill" : "trade";
     const parentNaturalRef = strategyFamily === "adr_grid"
       ? parentNaturalRefForArtifactTrade({
@@ -224,12 +262,13 @@ function closedRowsFromStrategyTrades(options: {
       returnMatrix: {
         canonical: { rawPct },
         execution: { rawPct },
-        adrPct: trade.adrPct ?? null,
+        adrPct,
       },
+      riskMatrix: riskMatrixFromRisk(maeRawPct, null, adrPct),
       exitReason: trade.detail?.exitReason ?? null,
-      capActiveFillsAtEntry: null,
-      capThresholdAtEntry: null,
-      capViolated: false,
+      capActiveFillsAtEntry: trade.detail?.capActiveFillsAtEntry ?? null,
+      capThresholdAtEntry: trade.detail?.capThresholdAtEntry ?? null,
+      capViolated: trade.detail?.capViolated ?? false,
       warnings: [],
     });
 
@@ -250,6 +289,24 @@ function closedRowsFromStrategyTrades(options: {
         : trade.returnPct;
       return sum + value;
     }, 0);
+    const adrPct = finiteOrNull(first.adrPct);
+    const maxFillMaeRawPct = trades.reduce<number | null>((max, trade) => {
+      const mae = finiteOrNull(trade.detail?.maePct);
+      if (mae === null) return max;
+      return max === null ? mae : Math.max(max, mae);
+    }, null);
+    const maxPathDrawdownRawPct = trades.reduce<number | null>((max, trade) => {
+      const drawdown = finiteOrNull(trade.detail?.gridPathDrawdownRawPct);
+      if (drawdown === null) return max;
+      return max === null ? drawdown : Math.max(max, drawdown);
+    }, null);
+    const maxActiveFillsAtEntry = trades.reduce<number | null>((max, trade) => {
+      const active = finiteOrNull(trade.detail?.capActiveFillsAtEntry);
+      if (active === null) return max;
+      return max === null ? active : Math.max(max, active);
+    }, null);
+    const capThresholdAtEntry = trades.find((trade) => trade.detail?.capThresholdAtEntry != null)
+      ?.detail?.capThresholdAtEntry ?? null;
     const stableTradeId = [
       "strategy-artifact-delta",
       options.strategyVariant,
@@ -282,12 +339,13 @@ function closedRowsFromStrategyTrades(options: {
       returnMatrix: {
         canonical: { rawPct },
         execution: { rawPct },
-        adrPct: first.adrPct ?? null,
+        adrPct,
       },
+      riskMatrix: riskMatrixFromRisk(maxFillMaeRawPct, maxPathDrawdownRawPct, adrPct),
       exitReason: null,
-      capActiveFillsAtEntry: null,
-      capThresholdAtEntry: null,
-      capViolated: false,
+      capActiveFillsAtEntry: maxActiveFillsAtEntry,
+      capThresholdAtEntry,
+      capViolated: trades.some((trade) => trade.detail?.capViolated),
       warnings: [],
     });
 
@@ -299,6 +357,118 @@ function closedRowsFromStrategyTrades(options: {
   }
 
   return rows;
+}
+
+function strategyVariantNeedsArtifactCorrection(strategyVariant: string) {
+  return strategyVariant.includes("-adr_grid-");
+}
+
+async function buildStrategyArtifactRowsForWeek(options: {
+  strategyVariant: string;
+  weekOpenUtc: string;
+  currentWeekOpenUtc: string;
+}) {
+  if (!strategyVariantNeedsArtifactCorrection(options.strategyVariant)) return [];
+  if (options.weekOpenUtc >= options.currentWeekOpenUtc) return [];
+  const data = await loadStrategyPageData(strategySelectionFromVariant(options.strategyVariant), {
+    includeCurrentWeek: false,
+  });
+  const result = data?.weekResults?.[options.weekOpenUtc];
+  if (!result?.isRealized || result.trades.length === 0) return [];
+  return closedRowsFromStrategyTrades({
+    strategyVariant: options.strategyVariant,
+    weekOpenUtc: options.weekOpenUtc,
+    trades: result.trades,
+  });
+}
+
+export async function buildStrategyArtifactCorrectionShard(options: {
+  manifest: ReleaseManifest;
+  strategyVariant: string;
+  weekOpenUtc: string;
+  currentWeekOpenUtc: string;
+}): Promise<CanonWeekShard | null> {
+  const rows = sortRows(await buildStrategyArtifactRowsForWeek({
+    strategyVariant: options.strategyVariant,
+    weekOpenUtc: options.weekOpenUtc,
+    currentWeekOpenUtc: options.currentWeekOpenUtc,
+  }));
+  if (rows.length === 0) return null;
+  const sourceHash = sha256(stableJson({
+    source: "strategy-artifact-correction",
+    strategyVariant: options.strategyVariant,
+    weekOpenUtc: options.weekOpenUtc,
+    rows,
+  }));
+  const artifact = artifactForRows({
+    manifest: options.manifest,
+    strategyVariant: options.strategyVariant,
+    rows,
+    sourceHash,
+    generatedAtUtc: new Date().toISOString(),
+  });
+  return buildCanonWeekShard({
+    manifest: options.manifest,
+    artifact,
+    strategyVariant: options.strategyVariant,
+    weekOpenUtc: options.weekOpenUtc,
+    source: "strategy-artifact-correction",
+  });
+}
+
+async function buildStrategyArtifactCorrectionWeeks(options: {
+  manifest: ReleaseManifest;
+  strategyVariant: string;
+  weekOpenUtcs: string[];
+  currentWeekOpenUtc: string;
+}): Promise<CanonVariantInventory["deltaWeeks"]> {
+  if (!strategyVariantNeedsArtifactCorrection(options.strategyVariant)) return [];
+  const entries: CanonVariantInventory["deltaWeeks"] = [];
+  const data = await loadStrategyPageData(strategySelectionFromVariant(options.strategyVariant), {
+    includeCurrentWeek: false,
+  });
+  for (const weekOpenUtc of options.weekOpenUtcs) {
+    if (weekOpenUtc >= options.currentWeekOpenUtc) continue;
+    const result = data?.weekResults?.[weekOpenUtc];
+    if (!result?.isRealized || result.trades.length === 0) continue;
+    const rows = sortRows(closedRowsFromStrategyTrades({
+      strategyVariant: options.strategyVariant,
+      weekOpenUtc,
+      trades: result.trades,
+    }));
+    if (rows.length === 0) continue;
+    const sourceHash = sha256(stableJson({
+      source: "strategy-artifact-correction",
+      strategyVariant: options.strategyVariant,
+      weekOpenUtc,
+      rows,
+    }));
+    const artifact = artifactForRows({
+      manifest: options.manifest,
+      strategyVariant: options.strategyVariant,
+      rows,
+      sourceHash,
+      generatedAtUtc: new Date().toISOString(),
+    });
+    const shard = buildCanonWeekShard({
+      manifest: options.manifest,
+      artifact,
+      strategyVariant: options.strategyVariant,
+      weekOpenUtc,
+      source: "strategy-artifact-correction",
+    });
+    const payloadRaw = stableJson(shard.payload);
+    entries.push({
+      weekOpenUtc,
+      source: "strategy-artifact-correction",
+      schemaVersion: CANON_WEEK_SHARD_SCHEMA_VERSION,
+      sha256: shard.metadata.payloadHash,
+      sizeBytes: Buffer.byteLength(payloadRaw, "utf8"),
+      generatedAtUtc: shard.metadata.generatedAtUtc,
+      rowCounts: rowCounts(shard.payload.closedHistoryRows),
+    });
+  }
+  return entries;
 }
 
 async function buildStrategyArtifactDeltaRows(options: {
@@ -488,6 +658,35 @@ export async function buildDeltaWeeksForVariant(options: {
   baselineLatestClosedWeekOpenUtc: string | null;
   currentWeekOpenUtc: string;
 }) {
+  const latestClosedWeekOpenUtc = previousClosedWeekOpenUtc(options.currentWeekOpenUtc);
+  if (options.baselineLatestClosedWeekOpenUtc && latestClosedWeekOpenUtc) {
+    const baselineMillis = Date.parse(options.baselineLatestClosedWeekOpenUtc);
+    const latestClosedMillis = Date.parse(latestClosedWeekOpenUtc);
+    if (Number.isFinite(baselineMillis) && Number.isFinite(latestClosedMillis) && baselineMillis >= latestClosedMillis) {
+      return [];
+    }
+  }
+
+  const cacheKey = [
+    options.manifest.cacheNamespace,
+    options.strategyVariant,
+    options.baselineLatestClosedWeekOpenUtc ?? "none",
+    options.currentWeekOpenUtc,
+  ].join(":");
+  const cached = deltaWeeksCache.get(cacheKey);
+  if (cached) return cached;
+
+  const request = buildDeltaWeeksForVariantUncached(options);
+  deltaWeeksCache.set(cacheKey, request);
+  return request;
+}
+
+async function buildDeltaWeeksForVariantUncached(options: {
+  manifest: ReleaseManifest;
+  strategyVariant: string;
+  baselineLatestClosedWeekOpenUtc: string | null;
+  currentWeekOpenUtc: string;
+}): Promise<CanonVariantInventory["deltaWeeks"]> {
   const bundle = await buildClosedHistoryBundle({
     strategyVariant: options.strategyVariant,
     scope: ALL_PERFORMANCE_ASSET_SELECTION,
@@ -553,16 +752,44 @@ export async function readReleaseCanonArtifact(
   if (!manifestEntry) {
     throw new Error(`Canon variant not found: ${strategyVariant}`);
   }
+  const cacheKey = `${manifest.canonVersion}:${strategyVariant}:${manifestEntry.sha256}`;
+  const cached = releaseCanonArtifactCache.get(cacheKey);
+  if (cached) return cached;
+
   const fileName = canonFileNameForStrategyVariant(strategyVariant);
   if (fileName !== manifestEntry.file) {
     throw new Error(`Canon manifest file mapping mismatch for ${strategyVariant}`);
   }
   const filePath = path.join(process.cwd(), "releases", manifest.canonVersion, "canon", fileName);
-  const raw = await readFile(filePath, "utf8");
-  return JSON.parse(raw) as ReleaseCanonArtifact;
+  const request = readFile(filePath, "utf8")
+    .then((raw) => JSON.parse(raw) as ReleaseCanonArtifact);
+  releaseCanonArtifactCache.set(cacheKey, request);
+  return request;
 }
 
 export async function buildCanonInventoryManifest(options: {
+  manifest: ReleaseManifest;
+  currentWeekOpenUtc: string;
+  strategyVariants?: string[];
+}): Promise<CanonInventoryManifest> {
+  const requestedVariants = new Set(options.strategyVariants?.filter(Boolean) ?? []);
+  const variantKey = requestedVariants.size > 0
+    ? Array.from(requestedVariants).sort().join(",")
+    : "all";
+  const cacheKey = `${options.manifest.cacheNamespace}:${options.currentWeekOpenUtc}:${variantKey}`;
+  const cached = inventoryManifestCache.get(cacheKey);
+  if (cached) return cached;
+
+  const request = buildCanonInventoryManifestUncached({
+    manifest: options.manifest,
+    currentWeekOpenUtc: options.currentWeekOpenUtc,
+    strategyVariants: Array.from(requestedVariants),
+  });
+  inventoryManifestCache.set(cacheKey, request);
+  return request;
+}
+
+async function buildCanonInventoryManifestUncached(options: {
   manifest: ReleaseManifest;
   currentWeekOpenUtc: string;
   strategyVariants?: string[];
@@ -579,12 +806,24 @@ export async function buildCanonInventoryManifest(options: {
       artifact,
       strategyVariant: variant.strategyVariant,
     });
+    const correctedBaselineWeeks = await buildStrategyArtifactCorrectionWeeks({
+      manifest: options.manifest,
+      strategyVariant: variant.strategyVariant,
+      weekOpenUtcs: inventory.baselineWeeks.map((week) => week.weekOpenUtc),
+      currentWeekOpenUtc: options.currentWeekOpenUtc,
+    });
+    const correctedBaselineSet = new Set(correctedBaselineWeeks.map((week) => week.weekOpenUtc));
+    if (correctedBaselineSet.size > 0) {
+      inventory.baselineWeeks = inventory.baselineWeeks.filter((week) => !correctedBaselineSet.has(week.weekOpenUtc));
+    }
     inventory.deltaWeeks = await buildDeltaWeeksForVariant({
       manifest: options.manifest,
       strategyVariant: variant.strategyVariant,
       baselineLatestClosedWeekOpenUtc: inventory.latestClosedWeekOpenUtc,
       currentWeekOpenUtc: options.currentWeekOpenUtc,
     });
+    inventory.deltaWeeks = [...correctedBaselineWeeks, ...inventory.deltaWeeks]
+      .sort((left, right) => left.weekOpenUtc.localeCompare(right.weekOpenUtc));
     inventory.latestClosedWeekOpenUtc =
       inventory.deltaWeeks.at(-1)?.weekOpenUtc ?? inventory.latestClosedWeekOpenUtc;
     variants[variant.strategyVariant] = inventory;

@@ -15,7 +15,11 @@ import type { ClosedHistoryRow } from "@/lib/basket/basketSummaryTypes";
 import { hierarchyWithoutWeek, resolveBasketHierarchy } from "@/lib/basket/basketHierarchy";
 import type { StrategyConfig } from "@/lib/performance/strategyConfig";
 import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
-import { resolveDisplayReturn, type ReturnMatrix } from "@/lib/viewMode/resolveDisplayValue";
+import {
+  resolveDisplayDrawdown,
+  resolveDisplayReturn,
+  type ReturnMatrix,
+} from "@/lib/viewMode/resolveDisplayValue";
 import type { TradeListNode, SortState } from "@/components/common/trade-list/types";
 
 type BuildBasketTradeListNodesOptions = {
@@ -52,11 +56,26 @@ function returnValue(rows: ClosedHistoryRow[], viewMode: ViewMode) {
     .map((row): ReturnMatrix => ({
       canonical: row.returnMatrix.canonical,
       execution: row.returnMatrix.execution,
-      adrPct: row.returnMatrix.adrPct ?? 0,
+      adrPct: row.returnMatrix.adrPct,
     }))
     .map((matrix) => resolveDisplayReturn(matrix, viewMode))
     .filter((value): value is number => value !== null);
   return values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0);
+}
+
+function formatLevelPrice(value: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "--";
+  if (Math.abs(value) >= 1000) return value.toFixed(2);
+  if (Math.abs(value) >= 100) return value.toFixed(3);
+  if (Math.abs(value) >= 10) return value.toFixed(4);
+  return value.toFixed(5);
+}
+
+function maxRiskValue(rows: ClosedHistoryRow[], viewMode: ViewMode, field: "mae" | "pathDrawdown") {
+  const values = rows
+    .map((row) => resolveDisplayDrawdown(row.riskMatrix, viewMode, field))
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return values.length === 0 ? null : Math.max(...values);
 }
 
 function formatWeekLabel(weekOpenUtc: string) {
@@ -165,7 +184,9 @@ function node(
     label,
     values: {
       ...values,
-      returnPct: returnValue(level === "fill" || level === "trade" ? rows : aggregateRows(rows), viewMode),
+      returnPct: returnValue(level === "fill" || level === "trade" || level === "level" ? rows : aggregateRows(rows), viewMode),
+      maxMaePct: maxRiskValue(rows, viewMode, "mae"),
+      maxPathDrawdownPct: maxRiskValue(rows, viewMode, "pathDrawdown"),
       rows,
     },
     assetClass: level === "symbol" ? rows[0]?.assetClass : undefined,
@@ -217,6 +238,42 @@ export function buildBasketTradeListNodes({
         },
       ));
 
+  const buildLevels = (fillRows: ClosedHistoryRow[], parentId: string) =>
+    [...groupBy(
+      fillRows,
+      (row) => [
+        formatLevelPrice(row.entryPrice),
+        formatLevelPrice(row.exitPrice),
+        row.exitReason ?? "",
+      ].join("|"),
+    ).entries()]
+      .sort((left, right) => {
+        const leftEntry = left[1][0]?.entryPrice ?? Number.POSITIVE_INFINITY;
+        const rightEntry = right[1][0]?.entryPrice ?? Number.POSITIVE_INFINITY;
+        if (leftEntry !== rightEntry) return rightEntry - leftEntry;
+        return compareTradeOrder(left[1][0]!, right[1][0]!);
+      })
+      .map(([levelKey, rowsForLevel], index) => {
+        const first = rowsForLevel[0] ?? null;
+        const label = first
+          ? `${formatLevelPrice(first.entryPrice)} -> ${formatLevelPrice(first.exitPrice)}`
+          : `Level ${index + 1}`;
+        return node(
+          `${parentId}|level|${levelKey}`,
+          "level",
+          label,
+          rowsForLevel,
+          viewMode,
+          {
+            date: first?.entryUtc ?? null,
+            count: `${rowsForLevel.length}F`,
+            row: first,
+            parentRow: first,
+          },
+          buildLeaves(rowsForLevel, `${parentId}|level|${levelKey}`),
+        );
+      });
+
   const buildGrids = (gridRows: ClosedHistoryRow[], parentId: string) => {
     const fillsByParentRef = groupBy(
       gridRows.filter((row) => row.rowKind === "fill" && row.parentNaturalRef),
@@ -241,7 +298,7 @@ export function buildBasketTradeListNodes({
             row: grid,
             parentRow: grid,
           },
-          buildLeaves(fills, `${parentId}|grid|${grid.canonicalTradeId ?? grid.executionTradeId ?? index}`),
+          buildLevels(fills, `${parentId}|grid|${grid.canonicalTradeId ?? grid.executionTradeId ?? index}`),
         );
       });
   };

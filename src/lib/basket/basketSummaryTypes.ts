@@ -22,6 +22,18 @@ export type BasketReturnMatrix = {
   adrPct: number | null;
 };
 
+export type BasketRiskMatrix = {
+  canonical: {
+    maeRawPct: number | null;
+    pathDrawdownRawPct: number | null;
+  } | null;
+  execution: {
+    maeRawPct: number | null;
+    pathDrawdownRawPct: number | null;
+  } | null;
+  adrPct: number | null;
+};
+
 export type ClosedHistoryRow = {
   rowKind: BasketRowKind;
   origin: TradeOrigin;
@@ -42,6 +54,7 @@ export type ClosedHistoryRow = {
   entryPrice: number | null;
   exitPrice: number | null;
   returnMatrix: BasketReturnMatrix;
+  riskMatrix?: BasketRiskMatrix;
   exitReason: string | null;
   capActiveFillsAtEntry: number | null;
   capThresholdAtEntry: number | null;
@@ -49,11 +62,19 @@ export type ClosedHistoryRow = {
   warnings: string[];
 };
 
+export type ClosedHistoryLedgerIdentity = {
+  executionLedgerId: string;
+  tradeRowLedgerId: string;
+  rowCount: number;
+  generatedFrom: "strategy-runtime";
+};
+
 export type ClosedHistoryBundle = {
   rows: ClosedHistoryRow[];
   strategyVariant: string;
   scope: AssetClass[];
   generatedAt: string;
+  ledgerIdentity?: ClosedHistoryLedgerIdentity;
 };
 
 export type CurrentWeekSlice = {

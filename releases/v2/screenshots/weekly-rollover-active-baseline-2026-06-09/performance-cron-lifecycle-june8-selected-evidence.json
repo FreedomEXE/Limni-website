@@ -1,0 +1,68 @@
+{
+  "route": "/performance?week=2026-06-07T23:00:00.000Z&view=summary",
+  "url": "http://127.0.0.1:3001/performance?week=2026-06-07T23%3A00%3A00.000Z&view=summary",
+  "checks": {
+    "selectedWeekReady": true,
+    "hasJune8": true,
+    "hasJune1": true,
+    "hasClean14": false,
+    "hasBadPerformanceNumber": false,
+    "hasWeekReturn4634": true,
+    "hasWinRate709": true,
+    "hasTrades309": true,
+    "hasWins219": true,
+    "hasLosses25": true,
+    "hasLosses91": false
+  },
+  "selectedBlock": [
+    "APPLIED",
+    "TANDEM · ADR GRID · PAIR FILL CAP",
+    "SELECTED WEEK",
+    "+46.34%",
+    "WEEK RETURN",
+    "WIN RATE",
+    "70.9%",
+    "MAX DD",
+    "19.99%",
+    "TRADES",
+    "309",
+    "SORTINO",
+    "0.34",
+    "TRADE PF",
+    "6.90",
+    "PATH CALMAR",
+    "2.32",
+    "WINS",
+    "219",
+    "LOSSES",
+    "25",
+    "DARK MODE",
+    "Sign Out",
+    "Performance",
+    "TANDEM · ADR GRID · PAIR FILL CAP",
+    "VIEW MODE",
+    "RETURNS MEASURED FROM EXECUTION OPEN (MON 00:00 UTC)",
+    "METRIC",
+    "ADR-norm",
+    "Raw %",
+    "WEEK",
+    "ALL TIME",
+    "JUN 08 2026",
+    "JUN 01 2026",
+    "MAY 25 2026",
+    "MAY 18 2026"
+  ],
+  "apiResponses": [
+    {
+      "url": "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=active-baseline",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:3001/api/performance/strategy-current-week?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&hour=2026-06-09T19",
+      "status": 200
+    }
+  ],
+  "failedRequests": [],
+  "consoleMessages": [],
+  "bodyLength": 1547
+}

@@ -41,7 +41,9 @@ export type PerformanceSimulationSeries = {
   trades?: number;
   points: Array<{
     ts_utc: string;
+    balance_pct?: number;
     equity_pct: number;
+    adverse_equity_pct?: number;
     lock_pct: number | null;
     peak_pct?: number;
     drawdown_pct?: number;
@@ -110,26 +112,34 @@ function computeMixedSeries(series: PerformanceSimulationSeries[]): PerformanceS
   const timestamps = Array.from(new Set(series.flatMap((item) => item.points.map((point) => point.ts_utc))))
     .sort((left, right) => Date.parse(left) - Date.parse(right));
   const pointMaps = series.map((item) => new Map(item.points.map((point) => [point.ts_utc, point])));
+  const lastBalanceBySeries = new Array<number>(series.length).fill(0);
   const lastEquityBySeries = new Array<number>(series.length).fill(0);
+  const lastAdverseEquityBySeries = new Array<number>(series.length).fill(0);
   const lastActiveBySeries = new Array<number>(series.length).fill(0);
   let runningPeakPct = 0;
   const points = timestamps.map((tsUtc) => {
     for (let index = 0; index < pointMaps.length; index += 1) {
       const point = pointMaps[index]?.get(tsUtc);
       if (point) {
+        lastBalanceBySeries[index] = point.balance_pct ?? point.equity_pct;
         lastEquityBySeries[index] = point.equity_pct;
+        lastAdverseEquityBySeries[index] = point.adverse_equity_pct ?? point.equity_pct;
         lastActiveBySeries[index] = point.active_positions ?? 0;
       }
     }
+    const balancePct = lastBalanceBySeries.reduce((sum, value) => sum + value, 0);
     const equityPct = lastEquityBySeries.reduce((sum, value) => sum + value, 0);
+    const adverseEquityPct = lastAdverseEquityBySeries.reduce((sum, value) => sum + value, 0);
     const activePositions = lastActiveBySeries.reduce((sum, value) => sum + value, 0);
     runningPeakPct = Math.max(runningPeakPct, equityPct);
     const drawdownPct = (100 + runningPeakPct) <= 0
       ? -100
-      : (((100 + equityPct) / (100 + runningPeakPct)) - 1) * 100;
+      : (((100 + adverseEquityPct) / (100 + runningPeakPct)) - 1) * 100;
     return {
       ts_utc: tsUtc,
+      balance_pct: balancePct,
       equity_pct: equityPct,
+      adverse_equity_pct: adverseEquityPct,
       lock_pct: null,
       peak_pct: runningPeakPct,
       drawdown_pct: drawdownPct,
@@ -203,14 +213,18 @@ export default function PerformanceSimulationSection({
   const includeWeekends = allSleevesSelected
     ? sleeveSeries.some((series) => series.id === "asset:crypto")
     : activeSleeves.some((series) => series.id === "asset:crypto");
-  const mixedSeries = allSleevesSelected && totalSeries
+  const mixedSeries = sleeveSeries.length === 0 && totalSeries
     ? totalSeries
-    : computeMixedSeries(activeSleeves.length > 0 ? activeSleeves : sleeveSeries);
+    : allSleevesSelected && totalSeries
+      ? totalSeries
+      : computeMixedSeries(activeSleeves.length > 0 ? activeSleeves : sleeveSeries);
   const sleeveTradeCount = activeSleeves.reduce(
     (sum, series) => sum + (series.trades ?? 0),
     0,
   );
-  const resolvedTrades = allSleevesSelected
+  const resolvedTrades = sleeveSeries.length === 0
+    ? resolvedGroup?.metrics.trades ?? null
+    : allSleevesSelected
     ? resolvedGroup?.metrics.trades ?? sleeveTradeCount
     : sleeveTradeCount;
   const hasRawHourlyPath = viewMode.normalization === "raw" && Boolean(group?.returnModes?.raw);
@@ -224,6 +238,7 @@ export default function PerformanceSimulationSection({
   const chartSeries = viewMode.normalization === "raw" && !hasRawHourlyPath && resolvedWeeklySeries
     ? resolvedWeeklySeries
     : mixedSeries;
+  const usesWeeklyCloseFallback = chartSeries === resolvedWeeklySeries;
   const mixedMetrics = viewMode.normalization === "raw" && !hasRawHourlyPath && weeklyReturns && weeklyReturns.length > 0
     ? summarizeResolvedWeekReturns(weeklyReturns)
     : summarizeMixedSeries(mixedSeries, resolvedTrades, includeWeekends);
@@ -342,14 +357,19 @@ export default function PerformanceSimulationSection({
 
       {weeklyReturns && weeklyReturns.length > 0 && (
         <>
-          <RollingPerformanceWindows weeks={weeklyReturns} series={chartSeries} />
+          <RollingPerformanceWindows weeks={weeklyReturns} series={usesWeeklyCloseFallback ? null : chartSeries} />
           <AssetContributionChart
             series={activeSleeves.length > 0 ? activeSleeves : sleeveSeries}
             bars={viewMode.normalization === "raw" ? assetContributions : undefined}
           />
           <ReturnDistribution weeks={weeklyReturns} />
           {maeTrades && maeTrades.length > 0 && <MaeScatterPlot trades={maeTrades} />}
-          <ReturnsCalendar weeks={weeklyReturns} series={chartSeries} includeWeekends={includeWeekends} />
+          <ReturnsCalendar
+            weeks={weeklyReturns}
+            series={chartSeries}
+            seriesPrecision={usesWeeklyCloseFallback ? "weekly_close" : "intraday_path"}
+            includeWeekends={includeWeekends}
+          />
         </>
       )}
 

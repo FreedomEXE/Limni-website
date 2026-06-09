@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  finishSchedulerRunReceipt,
+  recordMaterializationRunReceipt,
+  startSchedulerRunReceipt,
+} from "@/lib/appTruth/runLedger";
+import { ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW } from "@/lib/appTruth/activeBaseline";
 import { isCronAuthorized } from "@/lib/cronAuth";
 import { ensureHistoricalWeekShardsForSelection } from "@/lib/performance/strategyPageData";
 import { buildStrategySelectionKey, listVisibleStrategyBootstrapSelections } from "@/lib/performance/strategySelection";
@@ -23,6 +29,32 @@ export async function GET(request: Request) {
   const onlyKey = url.searchParams.get("key");
   const selections = listVisibleStrategyBootstrapSelections()
     .filter((selection) => !onlyKey || buildStrategySelectionKey(selection) === onlyKey);
+  let schedulerRunId: string | null = null;
+  let materializationRunId: string | null = null;
+  const ledgerErrors: string[] = [];
+
+  try {
+    const receipt = await startSchedulerRunReceipt({
+      jobId: "strategy-artifacts",
+      jobType: "performance_materialization",
+      triggerType: onlyKey ? "manual" : "schedule",
+      routePath: "/api/cron/strategy-artifacts",
+      schedule: onlyKey ? null : "40 * * * *",
+      startedAtUtc,
+      inputArtifacts: ["source fingerprints", "strategy selection config", "pair_period_returns"],
+      requiredInputs: ["active baseline weeks", "source fingerprints", "execution weekly returns"],
+      metadata: {
+        requestedMode,
+        onlyKey,
+        queuedSelections: selections.length,
+        historyWindow: ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW,
+      },
+    });
+    schedulerRunId = receipt.runId;
+  } catch (error) {
+    ledgerErrors.push(error instanceof Error ? error.message : String(error));
+  }
+
   const readiness = await listStrategyArtifactReadiness(selections);
 
   const warmed: Array<{
@@ -55,6 +87,7 @@ export async function GET(request: Request) {
     try {
       const result = await ensureHistoricalWeekShardsForSelection(selection, {
         onlyPreviousWeek: false,
+        historyWindow: ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW,
         timeBudgetMs: perSelectionBudgetMs,
       });
       if ((result?.computedWeeks.length ?? 0) > 0) {
@@ -79,6 +112,68 @@ export async function GET(request: Request) {
   }
 
   const after = await listStrategyArtifactReadiness(selections);
+  const finishedAtUtc = new Date().toISOString();
+  const finalizedWeeks = Array.from(new Set(warmed.flatMap((item) => item.finalizedWeeks))).sort();
+  const warmedErrors = warmed
+    .filter((item) => !item.ok)
+    .map((item) => `${item.key}: ${item.error ?? "artifact finalization degraded"}`);
+  const runStatus = timedOut || warmedErrors.length > 0 ? "degraded" : "succeeded";
+
+  if (schedulerRunId) {
+    try {
+      await finishSchedulerRunReceipt({
+        runId: schedulerRunId,
+        completedAtUtc: finishedAtUtc,
+        outputArtifacts: [`strategy_week_shards:${finalizedWeeks.length}`],
+        namespaceProduced: "strategy_week_shards",
+        status: runStatus,
+        degradedReasons: [
+          ...warmedErrors,
+          timedOut ? "Cron route budget reached before all selections were checked." : null,
+        ].filter((value): value is string => Boolean(value)),
+        metadata: {
+          requestedMode,
+          onlyKey,
+          timedOut,
+          queuedSelections: selections.length,
+          warmedSelections: warmed.length,
+          finalizedWeeks,
+          historyWindow: ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW,
+          beforeReady: readiness.filter((artifact) => artifact.ready).length,
+          afterReady: after.filter((artifact) => artifact.ready).length,
+        },
+      });
+    } catch (error) {
+      ledgerErrors.push(error instanceof Error ? error.message : String(error));
+    }
+    try {
+      const receipt = await recordMaterializationRunReceipt({
+        schedulerRunId,
+        materializationType: "strategy_week_shards",
+        domain: "performance",
+        weekWindow: finalizedWeeks,
+        rowsTouched: finalizedWeeks.length,
+        inputArtifacts: ["source fingerprints", "strategy selection config", "pair_period_returns"],
+        outputArtifacts: ["strategy_week_shards"],
+        namespaceProduced: "strategy_week_shards",
+        status: runStatus,
+        degradedReasons: warmedErrors,
+        startedAtUtc,
+        completedAtUtc: finishedAtUtc,
+        metadata: {
+          requestedMode,
+          onlyKey,
+          timedOut,
+          queuedSelections: selections.length,
+          warmedSelections: warmed.length,
+          historyWindow: ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW,
+        },
+      });
+      materializationRunId = receipt.runId;
+    } catch (error) {
+      ledgerErrors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
 
   return NextResponse.json({
     ok: warmed.every((item) => item.ok),
@@ -103,5 +198,10 @@ export async function GET(request: Request) {
       total: after.length,
     },
     prunedOldShards: 0,
+    appTruthLedger: {
+      schedulerRunId,
+      materializationRunId,
+      errors: ledgerErrors.length > 0 ? ledgerErrors : undefined,
+    },
   });
 }

@@ -184,6 +184,10 @@ function toDetailMeta(t: WeeklyHoldTrade): TradeDetailMeta | undefined {
       displayReturnPct: t.displayReturnPct ?? t.returnPct,
       adrMultiplier: t.adrMultiplier ?? null,
       returnMode: t.returnMode,
+      gridPathDrawdownRawPct: null,
+      capActiveFillsAtEntry: null,
+      capThresholdAtEntry: null,
+      capViolated: false,
     };
   }
   return {
@@ -200,6 +204,10 @@ function toDetailMeta(t: WeeklyHoldTrade): TradeDetailMeta | undefined {
     displayReturnPct: t.displayReturnPct ?? t.returnPct,
     adrMultiplier: t.adrMultiplier ?? null,
     returnMode: t.returnMode,
+    gridPathDrawdownRawPct: t.detail.gridPathDrawdownRawPct ?? null,
+    capActiveFillsAtEntry: t.detail.capActiveFillsAtEntry ?? null,
+    capThresholdAtEntry: t.detail.capThresholdAtEntry ?? null,
+    capViolated: t.detail.capViolated ?? false,
   };
 }
 
@@ -224,12 +232,101 @@ function buildReasonLines(t: WeeklyHoldTrade): string[] {
   ];
 }
 
+function compareTradesForDisplay(a: WeeklyHoldTrade, b: WeeklyHoldTrade) {
+  const symbolDiff = a.symbol.localeCompare(b.symbol);
+  if (symbolDiff !== 0) return symbolDiff;
+  const sourceDiff = a.source.localeCompare(b.source);
+  if (sourceDiff !== 0) return sourceDiff;
+  return (a.tier ?? 0) - (b.tier ?? 0);
+}
+
+function tradeDisplayKey(t: WeeklyHoldTrade) {
+  return `${t.symbol}|${t.direction}|${t.source}|${t.tier ?? ""}`;
+}
+
+function gridDisplayTradesToModelPerformance(
+  slot: PerformanceModel,
+  plannedTrades: WeeklyHoldTrade[],
+  actualTrades: WeeklyHoldTrade[],
+  note: string,
+  maxDrawdownPct: number | null,
+): ModelPerformance {
+  const actualByKey = new Map<string, WeeklyHoldTrade[]>();
+  for (const trade of actualTrades) {
+    const key = tradeDisplayKey(trade);
+    if (!actualByKey.has(key)) actualByKey.set(key, []);
+    actualByKey.get(key)!.push(trade);
+  }
+
+  const sortedPlanned = [...plannedTrades].sort(compareTradesForDisplay);
+  const pairDetails: ModelPerformance["pair_details"] = sortedPlanned.map((planned) => {
+    const fills = [...(actualByKey.get(tradeDisplayKey(planned)) ?? [])].sort((a, b) => {
+      const aNumber = a.detail?.tradeNumber ?? 0;
+      const bNumber = b.detail?.tradeNumber ?? 0;
+      if (aNumber !== bNumber) return aNumber - bNumber;
+      return (a.detail?.entryTimeUtc ?? "").localeCompare(b.detail?.entryTimeUtc ?? "");
+    });
+    const totalReturn = fills.reduce((sum, trade) => sum + trade.returnPct, 0);
+    const wins = fills.filter((trade) => trade.returnPct > 0).length;
+    return {
+      pair: planned.symbol,
+      direction: planned.direction,
+      reason: [
+        `${fills.length} ${fills.length === 1 ? "fill" : "fills"}`,
+        fills.length > 0 ? `${wins}W ${fills.length - wins}L` : "No fills yet",
+        `${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(2)}%`,
+      ],
+      percent: totalReturn,
+      tradeDetail: fills.length === 0 ? toDetailMeta(planned) : undefined,
+      children: fills.length > 0
+        ? fills.map((fill) => ({
+            pair: fill.symbol,
+            direction: fill.direction,
+            reason: buildReasonLines(fill),
+            percent: fill.returnPct,
+            tradeDetail: toDetailMeta(fill),
+          }))
+        : undefined,
+    };
+  });
+  const returns = pairDetails.map((detail) => ({
+    pair: detail.pair,
+    percent: detail.percent ?? 0,
+  }));
+
+  return {
+    model: slot,
+    percent: returns.reduce((sum, item) => sum + item.percent, 0),
+    priced: sortedPlanned.length,
+    total: sortedPlanned.length,
+    note,
+    returns,
+    pair_details: pairDetails,
+    stats: computeReturnStats(returns),
+    diagnostics: { max_drawdown: maxDrawdownPct, profit_factor: null },
+  };
+}
+
 function tradesToModelPerformance(
   slot: PerformanceModel,
   trades: WeeklyHoldTrade[],
   note: string,
   maxDrawdownPct: number | null = null,
+  options: {
+    displayUnit?: WeeklyHoldResult["displayUnit"];
+    actualTrades?: WeeklyHoldTrade[];
+  } = {},
 ): ModelPerformance {
+  if (options.displayUnit === "grids") {
+    return gridDisplayTradesToModelPerformance(
+      slot,
+      trades,
+      options.actualTrades ?? [],
+      note,
+      maxDrawdownPct,
+    );
+  }
+
   const returns = trades.map((t) => ({ pair: t.symbol, percent: t.returnPct }));
 
   // Group trades by symbol for expandable view
@@ -241,7 +338,7 @@ function tradesToModelPerformance(
   }
 
   const pairDetails: ModelPerformance["pair_details"] = [];
-  for (const [symbol, group] of bySymbol) {
+  for (const [symbol, group] of Array.from(bySymbol.entries()).sort(([left], [right]) => left.localeCompare(right))) {
     if (group.length === 1) {
       // Single trade — flat row with detail
       const t = group[0]!;
@@ -346,9 +443,17 @@ export function weeklyHoldToGridProps(
   pathDiagnostics?: EnginePathDiagnostics,
 ): EngineGridProps {
   const { trades } = result;
+  const usePlannedGridDisplay =
+    result.displayUnit === "grids" &&
+    !result.isRealized &&
+    Array.isArray(result.plannedTrades) &&
+    result.plannedTrades.length > 0;
+  const displayTrades = usePlannedGridDisplay ? result.plannedTrades! : trades;
+  const displayUnit = usePlannedGridDisplay ? result.displayUnit : "trades";
   const cardSlots = resolveCardSlots(biasSource);
   const labels = getStrategyLabels(biasSource);
-  const slotted = slotTrades(trades, biasSource.cardBreakdown, cardSlots);
+  const slotted = slotTrades(displayTrades, biasSource.cardBreakdown, cardSlots);
+  const actualSlotted = slotTrades(trades, biasSource.cardBreakdown, cardSlots);
 
   const slotLabels = cardSlots.map((slot) => labels[slot]);
 
@@ -358,19 +463,34 @@ export function weeklyHoldToGridProps(
       slotted[i] ?? [],
       `${slotLabels[i]} contribution for ${weekLabel}.`,
       pathDiagnostics?.slotMaxDrawdownPct?.[slot] ?? null,
+      {
+        displayUnit,
+        actualTrades: actualSlotted[i] ?? [],
+      },
     ),
   );
 
   const perAsset: EngineGridProps["perAsset"] = [];
   for (const ac of ASSET_SECTIONS) {
     const acTrades = trades.filter((t) => t.assetClass === ac.id);
-    const acSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
+    const acDisplayTrades = displayTrades.filter((t) => t.assetClass === ac.id);
+    const acSlotted = slotTrades(acDisplayTrades, biasSource.cardBreakdown, cardSlots);
+    const acActualSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
     perAsset.push({
       id: ac.id,
       label: ac.label,
       description: `${ac.label} contribution`,
       models: cardSlots.map((slot, i) =>
-        tradesToModelPerformance(slot, acSlotted[i] ?? [], `${slotLabels[i]} — ${ac.label}.`),
+        tradesToModelPerformance(
+          slot,
+          acSlotted[i] ?? [],
+          `${slotLabels[i]} — ${ac.label}.`,
+          null,
+          {
+            displayUnit,
+            actualTrades: acActualSlotted[i] ?? [],
+          },
+        ),
       ),
     });
   }
@@ -554,7 +674,9 @@ export type EngineSimulationGroup = {
     trades?: number;
     points: Array<{
       ts_utc: string;
+      balance_pct?: number;
       equity_pct: number;
+      adverse_equity_pct?: number;
       lock_pct: number | null;
       peak_pct?: number;
       drawdown_pct?: number;
@@ -579,13 +701,16 @@ function withSeriesDrawdowns<T extends EngineSimulationGroup["series"][number]>(
     ...series,
     points: series.points.map((point) => {
       runningPeakPct = Math.max(runningPeakPct, point.equity_pct);
+      const drawdownEquityPct = point.adverse_equity_pct ?? point.equity_pct;
       const drawdownPct = (100 + runningPeakPct) <= 0
         ? -100
-        : (((100 + point.equity_pct) / (100 + runningPeakPct)) - 1) * 100;
+        : (((100 + drawdownEquityPct) / (100 + runningPeakPct)) - 1) * 100;
       return {
         ...point,
         peak_pct: point.peak_pct ?? runningPeakPct,
         drawdown_pct: point.drawdown_pct ?? drawdownPct,
+        balance_pct: point.balance_pct,
+        adverse_equity_pct: point.adverse_equity_pct,
       };
     }),
   };
@@ -850,7 +975,9 @@ function finalSeriesReturn(series: EngineSimulationGroup["series"][number]) {
 function pathPointsToSimulationPoints(points: BasketPathPoint[]) {
   return points.map((point) => ({
     ts_utc: point.tsUtc,
+    balance_pct: point.balancePct,
     equity_pct: point.equityPct,
+    adverse_equity_pct: point.adverseEquityPct,
     lock_pct: null,
     peak_pct: point.peakPct,
     drawdown_pct: point.drawdownPct,
@@ -1205,6 +1332,13 @@ export function weeklyHoldToSidebarStatsWithPath(
   const multiWeek = options?.multiWeek;
   const currentWeekPathSummary = options?.currentWeekPathSummary ?? null;
   const multiWeekPathSummary = options?.multiWeekPathSummary ?? null;
+  const displayTrades =
+    result.displayUnit === "grids" &&
+    !result.isRealized &&
+    result.plannedTrades &&
+    result.plannedTrades.length > 0
+      ? result.plannedTrades
+      : result.trades;
   let allTime: EngineSidebarStats["allTime"] = null;
   if (multiWeek && multiWeek.weeks.length > 0) {
     const weeklyReturns = multiWeek.weeks.map((w) => w.totalReturnPct);
@@ -1236,10 +1370,10 @@ export function weeklyHoldToSidebarStatsWithPath(
     biasSourceLabel: biasSource.label,
     weekOpenUtc: result.weekOpenUtc,
     weekReturnPct: result.totalReturnPct,
-    tradeCount: result.tradeCount,
+    tradeCount: displayTrades.length,
     winCount: result.winCount,
     lossCount: result.lossCount,
-    winRate: result.winRate,
+    winRate: displayTrades.length > 0 ? (result.winCount / displayTrades.length) * 100 : 0,
     allTime,
     maxDrawdownPct: currentWeekPathSummary?.maxDrawdownPct ?? 0,
     trades: result.trades.map((t) => ({
