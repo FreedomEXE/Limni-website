@@ -1,4 +1,73 @@
-# TODO
+# Project Backlog
+
+Status: backlog inventory. Verify against repo evidence, current session state,
+and active process docs before treating any entry as current work.
+
+## ADR Grid + Weekly Hold Research Queue
+- Latest research memo:
+  - `docs/research/ADR_GRID_RUNNER_COST_RESEARCH_2026-06-02.md`
+  - `docs/research/WEEKLY_HOLD_ADR_EXIT_RESEARCH_2026-06-02.md`
+- Current ADR Grid conclusion:
+  - Current app close/rearm remains best among tested no-cost and cost-sensitivity variants.
+  - Runner/refill, half-runner trailing, and whole-fill trailing did not beat current app on capped Tandem by return, path DD, return/DD, or path Sharpe.
+- Completed ADR Grid follow-up:
+  - Tested true **seeded current-app ADR Grid**: initial execution/week-open grid trade with existing full close/rearm behavior.
+  - Result, app-aligned 19-week window: did not beat capped Tandem current app baseline (`+632.67%`, `6.26%` DD, `10.05` Sharpe). Seeded current app returned `+631.08%`, raised DD to `8.72%`, and slightly lowered Sharpe to `10.02`.
+  - Cost-adjusted note: seed can improve path Sharpe under moderate simulated costs, but still lowers return, so keep it as research-only for now.
+- Completed Weekly Hold exit test:
+  - Tested baseline Weekly Hold, full close at `+1x ADR`, and trailing after `+1x ADR` with `0.20`, `0.40`, and `1.00 ADR` trail distances.
+  - Best first-pass result was `Trail after +1x, 0.40 ADR`.
+  - Tandem improved from `+214.05%` return / `31.50%` DD / `1.67` Sharpe to `+311.44%` return / `24.89%` DD / `2.32` Sharpe.
+  - Tiered improved from `+91.99%` return / `15.57%` DD / `2.42` Sharpe to `+99.97%` return / `9.63%` DD / `3.69` Sharpe.
+  - Agreement improved from `+53.66%` return / `29.18%` DD / `1.07` Sharpe to `+68.59%` return / `15.81%` DD / `1.73` Sharpe.
+  - Selector improved from `+19.65%` return / `53.99%` DD / `0.33` Sharpe to `+45.12%` return / `39.03%` DD / `0.83` Sharpe.
+  - Weekly win-rate snapshot for `Trail after +1x, 0.40 ADR`: Tandem `57.9%`, Tiered `84.2%`, Agreement `63.2%`, Selector `57.9%`.
+- Weekly Hold app candidate naming:
+  - Working app label: `Weekly Hold + Trailing Stop`.
+  - Exact rule copy: `Trail after +1x ADR, 0.40 ADR`.
+  - Proposed internal id: `weekly_hold_trail_1x_adr_040`.
+  - Keep this visibly separate from baseline Weekly Hold if it graduates into v2.0.3 or later.
+- Active indicator work:
+  - Revamp `scripts/pinescript/limni-adr-verifier.pine` ADR Grid mode to match the current app close-and-rearm model.
+  - Show level activation count with colored grid lines, capped visually at `3+` for Pair Fill Cap.
+  - Use aggregate red DD, green realized-TP, and light-green favorable-excursion boxes.
+  - Use compact entry markers at fill levels and TP markers at the actual fill TP price; avoid partial-close or runner visuals.
+  - Resume EURUSD ADR Grid 3-week parity after the visual/source-of-truth cleanup: Market Truth Raw, Market Truth ADR Normalized, Execution Raw, Execution ADR Normalized.
+- Next single test:
+  - Run Weekly Hold `Trail after +1x, 0.40 ADR` cost sensitivity and FX-only / asset-class split.
+  - If it holds up, evaluate a hybrid where Weekly Hold offsets commission drag from smaller ADR Grid trades while ADR Grid harvests intraday movement.
+
+## Weekly Hold Close Buffer / Broker-Safe Liquidation
+- Add a future research + automation pass for weekly-hold exit timing.
+- Current app research uses market/session close windows:
+  - FX market-truth weekly window closes around Friday 5pm ET.
+  - Indices/commodities use their configured market windows, but broker-specific early closes can differ.
+  - Execution anchor opens Monday 00:00 UTC, while close still follows the market window.
+- Risk:
+  - A live weekly-hold bot should never depend on exact market close liquidity or assume all brokers keep every symbol tradable until the nominal close.
+  - Indices and commodities can have earlier Friday closes, holidays, half days, or broker-specific session gaps.
+- Proposed future upgrade:
+  - Introduce a configurable liquidation buffer, e.g. Friday 4:30pm ET for FX by default, with per-asset/per-broker overrides.
+  - Use the same close-buffer policy in app research, TradingView verifier, and automation when apples-to-apples automation validation begins.
+  - Preserve current historical market-close results as the baseline research track unless/until the buffered close materially changes results.
+- Priority:
+  - Not blocking current Weekly Hold indicator sanity check.
+  - Important before live weekly-hold automation; less likely to matter for ADR Grid because grid exits are intraday/trigger-driven.
+
+## Database Storage Management / Retention
+- Add a future database retention and compaction pass before strategy history expands materially beyond the current 19-week window.
+- Current risk:
+  - Render Postgres hit the storage ceiling during data-verification work, causing connection termination and failed index writes.
+  - Strategy week shards, historical path artifacts, verification exports, and backtest ledger rows can grow faster than normal app data.
+- Proposed future upgrade:
+  - Add a DB storage report script covering table size, index size, dead tuples, oldest artifact versions, and per-engine row counts.
+  - Define retention rules for superseded `strategy_week_shards` engine versions and old verification-only ledger rows.
+  - Archive large immutable artifacts to release JSON/object storage instead of keeping every historical recalculation in Postgres.
+  - Add small-batch cleanup and `VACUUM/REINDEX` guidance for Render so cleanup does not trigger another out-of-space failure.
+  - Track monthly storage growth after each closed week and alert before 80-90% capacity.
+- Priority:
+  - Not blocking current TradingView parity once Render is available again.
+  - Important before adding more weeks, more symbols, or more strategy artifact variants.
 
 ## Positioning Risk Gate + HTF Structure Re-Evaluation
 - Spec doc:
