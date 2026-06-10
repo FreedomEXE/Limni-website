@@ -66,3 +66,40 @@ Roadmap:
 - Compare app vs indicator trade-by-trade, system-by-system.
 - Verify pair, direction, entry, exit, fill order, return, grid grouping, weekly totals, and all-time totals.
 - Resolve discrepancies before selecting the first automation candidate.
+
+## Data Verification Started Locally
+
+Current working track:
+
+- `v2.0.3 candidate - data verification`
+- Runtime version/release manifest not bumped yet.
+- `releases/v2/canon/` remains immutable and must stay untouched unless Freedom explicitly approves a canon rematerialization.
+
+New verification docs:
+
+- `docs/data-verification/APP_TRADINGVIEW_VERIFICATION_WORKFLOW.md`
+- `docs/data-verification/APP_TRADINGVIEW_EXECUTION_MATRIX.md`
+
+First manual result:
+
+- Scenario `WH-FX-LIVE-MT-RAW-001`
+- EURUSD Weekly Hold SHORT, current live week, Market Truth, Raw.
+- TradingView realtime screenshot showed entry `1.16543`, exit near `1.16295`, P/L `+0.21%`, max DD `-0.09%`.
+- App Data after local live-window patch showed Market Truth completed-H1 entry `1.16543`, exit `1.16315`, SHORT raw `+0.1956%`, max DD `-0.0901%`.
+- Classification: pass with live-candle caveat. Entry/drawdown/rule direction hold; exit delta is realtime TradingView candle vs completed OANDA H1 candle.
+
+Local app fix made during verification:
+
+- Current-week Data-section canonical live rows now use `getCanonicalWeekWindow(...)` for Market Truth instead of opening from the display week key.
+- This is app behavior change and should be treated as patch-candidate work, not as an undocumented v2.0.2 mutation.
+
+Next manual test:
+
+- Baseline matrix is 12 configurations: 3 mode/cap groups (`Weekly Hold`, `ADR Grid`, `ADR Grid + Pair Fill Cap`) times 4 anchor/basis combinations (`Market Truth Raw`, `Market Truth ADR Normalized`, `Execution Raw`, `Execution ADR Normalized`).
+- EURUSD target is 3 weekly samples per configuration, so the first baseline pass is 36 EURUSD checks.
+- Raw Market Truth has now passed for EURUSD Weekly Hold SHORT at `Weeks Back = 1` and `Weeks Back = 2`, plus one current-live caveat case.
+- `CFG-WH-MT-RAW` is accepted as passed for rule parity; confirmed-only coverage is 2/3 if the stricter baseline requires three closed weeks.
+- ADR-normalized Market Truth now has three EURUSD samples: `Weeks Back = 2` at 90% parity, `Weeks Back = 1` at 90% parity, and current week at 95% parity with live-candle caveat. Entry/exit/raw math agrees; remaining drift is ADR denominator/source. `CFG-WH-MT-ADR` is usable, confirmed-only coverage 2/3.
+- First resolve or document ADR source policy before marking ADR-normalized configurations as passed.
+- Then proceed to scenario `WH-FX-CLOSED-EXE-RAW-001`: EURUSD Weekly Hold SHORT, last closed week, Execution, Raw, `Live Bar = Confirmed`, `Weeks Back = 1`.
+- This is the first clean Data-vs-Performance overlap because Performance is execution-anchored.
