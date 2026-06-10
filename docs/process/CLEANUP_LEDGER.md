@@ -3,7 +3,7 @@
 No file moves or deletions happen in this document. This ledger only classifies
 paths for later approval.
 
-Last inventory: 2026-06-09.
+Last inventory: 2026-06-10.
 
 Inventory command: `git status --short --untracked-files=all`.
 
@@ -17,6 +17,37 @@ Observed dirty tree:
 
 Gate 2 decision: classify only. Do not stage, move, delete, regenerate release
 canon, or change app behavior from this ledger.
+
+## Root Audit 2026-06-10
+
+Current committed cleanup reduced the visible dirty tree to frozen canon plus one
+DB migration script. The repo still needs folder-specific cleanup gates; do not
+treat the root pass as complete until these are handled or intentionally
+deferred.
+
+### Root State
+
+| Area | State | Next Action |
+|---|---|---|
+| Root files | Mostly config/manifests/env examples. `nul` remains ignored Windows artifact. | Keep root limited to config/manifests. Do not touch `nul` casually. |
+| `docs/REPO_STRUCTURE.md` | Added as active root map. | Keep current when folders move. |
+| `Limni SVG Pack/` | Moved to `docs/archive/assets/limni-svg-pack/`. | No root action left. |
+| Local/generated roots | `.codex*`, `.claude`, `.next-dev-logs`, `tmp`, `test-results`, `playwright-report`, release screenshot logs now ignored explicitly. | Delete only with explicit approval or after confirming no active process/evidence dependency. |
+| `releases/v2/canon/*.json` | 12 modified tracked files, huge diff, frozen. | Dedicated canon decision gate only. Do not stage. |
+| `scripts/migrate-trades-to-unified-ledger.ts` | Modified DB mutator with delete/update/insert behavior. | Dedicated DB migration safety review only. |
+
+### Top-Level Folder Classification
+
+| Folder | Classification | Notes |
+|---|---|---|
+| `src/` | runtime app | Clean during app-surface gates, not broad cleanup. |
+| `scripts/` | tooling, verification, legacy research | Needs taxonomy gate. Do not move root scripts blindly because relative imports and `package.json` refs can break. |
+| `releases/` | official release/evidence/canon | Keep top-level. Canon frozen. |
+| `reports/` | generated/evidence outputs | Needs generated-output archive rules; root has many direct report files. |
+| `research/` | non-binding research workspace | Keep top-level, but generated `output*` and Python caches need research-specific cleanup. |
+| `sports/` | separate sports research workspace | Keep until a sports-specific decision; do not mix with Limni app cleanup. |
+| `scraper/` | sentiment scraper sidecar | Keep for now; possible future `services/sentiment-scraper/` gate. |
+| `data/` | local data workspace | Ignored local data; do not clean casually because research paths depend on it. |
 
 ## Freeze
 

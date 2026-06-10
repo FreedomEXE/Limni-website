@@ -8,9 +8,10 @@ stale rule dump.
 
 1. [Operating Rules](docs/process/OPERATING_RULES.md)
 2. [Project Profile](docs/process/PROJECT_PROFILE.md)
-3. [Release Template](docs/process/RELEASE_TEMPLATE.md)
-4. [Cleanup Ledger](docs/process/CLEANUP_LEDGER.md) when doing repo cleanup
-5. [Backtest Canonical Protocol](docs/BACKTEST_CANONICAL_PROTOCOL.md) before
+3. [Repo Structure](docs/REPO_STRUCTURE.md)
+4. [Release Template](docs/process/RELEASE_TEMPLATE.md)
+5. [Cleanup Ledger](docs/process/CLEANUP_LEDGER.md) when doing repo cleanup
+6. [Backtest Canonical Protocol](docs/BACKTEST_CANONICAL_PROTOCOL.md) before
    strategy research, backtests, reconstruction, or strategy comparison
 
 ## Chat Recovery
