@@ -1,0 +1,9 @@
+{
+  "ms": 8614,
+  "hasSourceFreezeLedger": true,
+  "hasFreezeTarget": false,
+  "hasRawEvidenceMissing": false,
+  "hasKernel": true,
+  "hasCaptured": false,
+  "url": "http://localhost:3001/status"
+}

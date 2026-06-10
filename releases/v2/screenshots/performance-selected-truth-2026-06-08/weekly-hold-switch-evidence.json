@@ -1,0 +1,23 @@
+{
+  "capturedAt": "2026-06-09T00:26:42.041Z",
+  "route": "/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&view=summary",
+  "badResponses": [],
+  "failedRequests": [],
+  "console": [],
+  "pageErrors": [],
+  "observations": {
+    "Weekly Hold": true,
+    "ADR Grid": true,
+    "14 WEEKS TRACKED": true,
+    "Clean14 Performance runtime is not ready": false,
+    "missing weeks: 10": false,
+    "TOTAL TRADES": true,
+    "+308.18%": true,
+    "No canonical component breakdown": false,
+    "Basket data is syncing": false,
+    "bodyExcerpt": "LIMNI LABS\nPERFORMANCE\nBACK\nSIGNAL MODEL\nTandem\nTiered\nAgreement\nSelector\nEXECUTION\nWeekly Hold\nADR Grid\nRISK OVERLAY\nNone\nAPPLIED\nTANDEM · WEEKLY HOLD\n14 WEEKS TRACKED\n+308.18%\nTOTAL RETURN\nWEEKLY WR\n71.4%\nMAX DD\n78.25%\nPATH SHARPE\n2.25\nPATH SORTINO\n2.81\nTRADE PF\n1.21\nPATH CALMAR\n14.63\nAVG WEEKLY\n+22.01%\nTOTAL TRADES\n11139\nTRADE EXP\n+0.03%\nTRADE AVG W/L\n+0.2 / -0.8\nBEST STREAK\n4W\nWORST STREAK\n2L\nDARK MODE\nSign Out\n\nLOADING PERFORMANCE PAGE...\n\nV2V2.0.3 PENDING"
+  },
+  "screenshots": [
+    "C:/Users/User/Documents/GitHub/limni-website/releases/v2/screenshots/performance-selected-truth-2026-06-08/performance-weekly-hold-switch-current-state.png"
+  ]
+}

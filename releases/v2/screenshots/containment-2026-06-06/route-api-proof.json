@@ -1,0 +1,128 @@
+{
+  "generatedAtUtc": "2026-06-06T01:20:14.966Z",
+  "dashboardAllReports": {
+    "route": "/api/dashboard/payload?asset=all&allReports=1",
+    "status": 200,
+    "ms": 201,
+    "bytes": 3223977,
+    "summary": {
+      "reportOptions": 24,
+      "currentReport": {
+        "value": "2026-06-02",
+        "label": "Jun 08 2026",
+        "cotReportLabel": "Jun 02 2026",
+        "fridayFreezeLabel": "Jun 05 2026 5:00 PM EDT",
+        "fridayFreezeUtc": "2026-06-05T21:00:00.000Z",
+        "freezeStatusLabel": "Freeze ledger missing; legacy fallback",
+        "freezeLedgerReady": false
+      },
+      "reportKeys": 24,
+      "cotReportKeys": 24,
+      "sentimentReportKeys": 24,
+      "strengthReportKeys": 24,
+      "futureSnapshotUtcCount": 0,
+      "futureSnapshots": [],
+      "currentProvenance": {
+        "weekOpenUtc": "2026-06-07T23:00:00.000Z",
+        "cot": {
+          "label": "COT",
+          "snapshotUtc": null,
+          "source": "cot_snapshots",
+          "status": "invalid_future",
+          "invalidReason": "Source timestamp is later than the current app/server time."
+        },
+        "sentiment": {
+          "label": "Sentiment",
+          "snapshotUtc": null,
+          "source": "sentiment_aggregates_legacy",
+          "status": "invalid_future",
+          "invalidReason": "Source timestamp is later than the current app/server time."
+        },
+        "strength": {
+          "label": "Strength",
+          "snapshotUtc": null,
+          "source": "strength_snapshots_legacy",
+          "status": "invalid_future",
+          "invalidReason": "Source timestamp is later than the current app/server time."
+        }
+      }
+    }
+  },
+  "dashboardOneReport": {
+    "route": "/api/dashboard/payload?asset=all",
+    "status": 200,
+    "ms": 22,
+    "bytes": 14156,
+    "summary": {
+      "reportOptions": 24,
+      "currentReport": {
+        "value": "2026-06-02",
+        "label": "Jun 08 2026",
+        "cotReportLabel": "Jun 02 2026",
+        "fridayFreezeLabel": "Jun 05 2026 5:00 PM EDT",
+        "fridayFreezeUtc": "2026-06-05T21:00:00.000Z",
+        "freezeStatusLabel": "Freeze ledger missing; legacy fallback",
+        "freezeLedgerReady": false
+      },
+      "reportKeys": 1,
+      "cotReportKeys": 1,
+      "sentimentReportKeys": 1,
+      "strengthReportKeys": 1,
+      "futureSnapshotUtcCount": 0,
+      "futureSnapshots": [],
+      "currentProvenance": {
+        "weekOpenUtc": "2026-06-07T23:00:00.000Z",
+        "cot": {
+          "label": "COT",
+          "snapshotUtc": null,
+          "source": "cot_snapshots",
+          "status": "invalid_future",
+          "invalidReason": "Source timestamp is later than the current app/server time."
+        },
+        "sentiment": {
+          "label": "Sentiment",
+          "snapshotUtc": null,
+          "source": "sentiment_aggregates_legacy",
+          "status": "invalid_future",
+          "invalidReason": "Source timestamp is later than the current app/server time."
+        },
+        "strength": {
+          "label": "Strength",
+          "snapshotUtc": null,
+          "source": "strength_snapshots_legacy",
+          "status": "invalid_future",
+          "invalidReason": "Source timestamp is later than the current app/server time."
+        }
+      }
+    }
+  },
+  "performancePairFillCapArtifactStatus": {
+    "route": "/api/performance/strategy-artifacts/status?key=tiered_4w%3Aadr_grid%3Apair_fill_cap",
+    "status": 200,
+    "ms": 2779,
+    "bytes": 834,
+    "body": {
+      "generatedAtUtc": "2026-06-06T01:20:14.964Z",
+      "readyCount": 1,
+      "totalCount": 1,
+      "artifacts": [
+        {
+          "key": "tiered_4w:adr_grid:pair_fill_cap",
+          "label": "Tiered · ADR Grid · Pair Fill Cap",
+          "strategy": "tiered_4w",
+          "f1": "adr_grid",
+          "f2": "pair_fill_cap",
+          "expectedEngineVersion": "strategy-artifact-v33:selector-engine-v6:adr-grid-canonical-weekly-anchor-v9-reset-close-contract:risk-overlay-pair-fill-cap-v1:path-simulation-v11-grid-reset-close:source-fingerprint-v5-crypto-sun20",
+          "actualEngineVersion": "strategy-artifact-v33:selector-engine-v6:adr-grid-canonical-weekly-anchor-v9-reset-close-contract:risk-overlay-pair-fill-cap-v1:path-simulation-v11-grid-reset-close:source-fingerprint-v5-crypto-sun20",
+          "ready": true,
+          "reason": "ready",
+          "cachedAtUtc": "2026-06-06T01:16:40.952Z",
+          "payloadBytes": null,
+          "shardProgress": null,
+          "missingWeeks": [],
+          "staleWeeks": []
+        }
+      ]
+    }
+  }
+}

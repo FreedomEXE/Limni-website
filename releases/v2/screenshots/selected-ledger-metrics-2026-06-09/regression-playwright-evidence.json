@@ -1,0 +1,34 @@
+{
+  "baseUrl": "http://127.0.0.1:3001",
+  "generatedAt": "2026-06-09T04:54:46.422Z",
+  "routes": {
+    "dashboard": {
+      "ready": "true",
+      "baseline": "v2.0.3-clean14",
+      "readyWeeks": "14",
+      "expectedWeeks": "14"
+    },
+    "performance": {
+      "ready": "true",
+      "baseline": "v2.0.3-clean14",
+      "readyWeeks": "14",
+      "expectedWeeks": "14"
+    },
+    "status": {
+      "hasReadyText": true,
+      "hasStaleNotImplementedText": false
+    },
+    "basket": {
+      "source": "selected-trade-rows",
+      "selectedExecutionLedgerId": "execution-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+      "selectedTradeRowLedgerId": "trade-row-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+      "selectedTradeRowCount": "13111"
+    }
+  },
+  "closedHistoryRequests": [],
+  "consoleMessages": [],
+  "pageErrors": [],
+  "failedRequests": [],
+  "badResponses": [],
+  "pass": true
+}

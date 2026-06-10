@@ -1,0 +1,1009 @@
+{
+  "base": "http://127.0.0.1:3001",
+  "checkedAt": "2026-06-09T15:08:46.948Z",
+  "receiptPath": "C:\\Users\\User\\Documents\\GitHub\\limni-website\\reports\\data-verification\\selected-ledger\\tandem-adr_grid-pair_fill_cap-v2.0.3-clean14-all-execution-adr_normalized-selected-ledger-metrics.json",
+  "receiptWeeklyWindow": {
+    "count": 14,
+    "first": "2026-02-23T00:00:00.000Z",
+    "last": "2026-05-24T23:00:00.000Z",
+    "totalReturnPct": 308.18256678789936,
+    "tradeCount": 11139,
+    "selectedTradeRowLedgerId": "trade-row-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68"
+  },
+  "expectedFreshWeeks": {
+    "lastClosedWeekOpenUtc": "2026-05-31T23:00:00.000Z",
+    "currentWeekOpenUtc": "2026-06-07T23:00:00.000Z"
+  },
+  "inspections": [
+    {
+      "name": "dashboard",
+      "route": "/dashboard",
+      "screenshot": "visual-inspection-dashboard-2026-06-09.png",
+      "url": "http://127.0.0.1:3001/dashboard?asset=all&report=2026-05-19&bias=dealer&view=heatmap",
+      "routeReady": [
+        {
+          "testId": "app-truth-data-ready",
+          "ready": "true",
+          "baseline": "v2.0.3-clean14",
+          "readyWeeks": "14",
+          "expectedWeeks": "14"
+        }
+      ],
+      "basketAttrs": null,
+      "datePatterns": {
+        "may25Text": true,
+        "june1Text": false,
+        "june8Text": false,
+        "isoJune1Control": false,
+        "isoJune8Control": false
+      },
+      "bodyDateHits": [
+        "MAY 22, 2026",
+        "MAY 25",
+        "MAY 18",
+        "MAY 11",
+        "MAY 04",
+        "APR 27",
+        "APR 20",
+        "APR 13",
+        "APR 06",
+        "MAR 30",
+        "MAR 23",
+        "MAR 16",
+        "MAR 09",
+        "MAR 02",
+        "FEB 23",
+        "MAY 22",
+        "MAY 19"
+      ],
+      "controls": [
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Market truth",
+          "title": "Returns from true market open per asset class",
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "May 25 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "May 18 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "May 11 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "May 04 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Apr 27 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Apr 20 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Apr 13 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Apr 06 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Mar 30 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Mar 23 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Mar 16 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Mar 09 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Mar 02 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Feb 23 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "",
+          "title": null,
+          "ariaLabel": "Scroll weeks right",
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "select",
+          "role": null,
+          "testId": null,
+          "text": "ALLFXIndicesCryptoCommodities",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "option",
+          "role": null,
+          "testId": null,
+          "text": "ALL",
+          "title": null,
+          "ariaLabel": null,
+          "value": "all",
+          "weekOpenUtc": null
+        }
+      ],
+      "allWeekAttrs": [
+        {
+          "tag": "div",
+          "testId": "app-truth-data-ready",
+          "name": "data-app-truth-route-ready",
+          "value": "true",
+          "text": "DealerSnapshot May 22, 2026, 3:40 PM ETAnchorExecutionMarket truthMetricADR-normRaw %Pairs tracked36"
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-data-ready",
+          "name": "data-app-truth-baseline",
+          "value": "v2.0.3-clean14",
+          "text": "DealerSnapshot May 22, 2026, 3:40 PM ETAnchorExecutionMarket truthMetricADR-normRaw %Pairs tracked36"
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-data-ready",
+          "name": "data-app-truth-ready-weeks",
+          "value": "14",
+          "text": "DealerSnapshot May 22, 2026, 3:40 PM ETAnchorExecutionMarket truthMetricADR-normRaw %Pairs tracked36"
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-data-ready",
+          "name": "data-app-truth-expected-weeks",
+          "value": "14",
+          "text": "DealerSnapshot May 22, 2026, 3:40 PM ETAnchorExecutionMarket truthMetricADR-normRaw %Pairs tracked36"
+        }
+      ],
+      "keyTextPresent": {
+        "selectedLedgerSummary": false,
+        "simulationReturn": false,
+        "simulationTrades": false,
+        "activeBaseline": false,
+        "receiptLifecycle": false,
+        "materializationMissing": false
+      },
+      "requests": {
+        "closedHistory": [],
+        "failedRequests": [],
+        "ignoredFailures": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "bodySample": "LIMNI LABS NAVIGATION L Performance I Data M Accounts N Automation I Research Lab L Documents A Agents B News S Status DARK MODE Sign Out Dealer SNAPSHOT MAY 22, 2026, 3:40 PM ET ANCHOR Execution Market truth METRIC ADR-norm Raw % PAIRS TRACKED 36 LONG SIGNALS 24 SHORT SIGNALS 12 NEUTRAL/IGNORED 0 FLIPS 7 BIAS DEALER COMMERCIAL SENTIMENT STRENGTH ACTIVE BASELINE V2.0.3-CLEAN14 | 14 WEEKS | ARCHIVE SEPARATE TRADING WE"
+    },
+    {
+      "name": "performance-summary",
+      "route": "/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap",
+      "screenshot": "visual-inspection-performance-summary-2026-06-09.png",
+      "url": "http://127.0.0.1:3001/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap",
+      "routeReady": [
+        {
+          "testId": "app-truth-performance-ready",
+          "ready": "true",
+          "baseline": "v2.0.3-clean14",
+          "readyWeeks": "14",
+          "expectedWeeks": "14"
+        }
+      ],
+      "basketAttrs": null,
+      "datePatterns": {
+        "may25Text": false,
+        "june1Text": false,
+        "june8Text": false,
+        "isoJune1Control": false,
+        "isoJune8Control": false
+      },
+      "bodyDateHits": [],
+      "controls": [
+        {
+          "tag": "select",
+          "role": null,
+          "testId": null,
+          "text": "Weekly HoldADR Grid",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "option",
+          "role": null,
+          "testId": null,
+          "text": "Weekly Hold",
+          "title": null,
+          "ariaLabel": null,
+          "value": "weekly_hold",
+          "weekOpenUtc": null
+        }
+      ],
+      "allWeekAttrs": [
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-route-ready",
+          "value": "true",
+          "text": "Loading Performance Page..."
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-baseline",
+          "value": "v2.0.3-clean14",
+          "text": "Loading Performance Page..."
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-ready-weeks",
+          "value": "14",
+          "text": "Loading Performance Page..."
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-expected-weeks",
+          "value": "14",
+          "text": "Loading Performance Page..."
+        }
+      ],
+      "keyTextPresent": {
+        "selectedLedgerSummary": false,
+        "simulationReturn": false,
+        "simulationTrades": false,
+        "activeBaseline": false,
+        "receiptLifecycle": false,
+        "materializationMissing": false
+      },
+      "requests": {
+        "closedHistory": [],
+        "failedRequests": [],
+        "ignoredFailures": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "bodySample": "LIMNI LABS PERFORMANCE BACK SIGNAL MODEL Tandem Tiered Agreement Selector EXECUTION Weekly Hold ADR Grid RISK OVERLAY None Pair Fill Cap APPLIED Computing stats... DARK MODE Sign Out LOADING PERFORMANCE PAGE... V2V2.0.3 PENDING"
+    },
+    {
+      "name": "performance-simulation",
+      "route": "/performance?view=simulation&strategy=tandem&f1=adr_grid&f2=pair_fill_cap",
+      "screenshot": "visual-inspection-performance-simulation-2026-06-09.png",
+      "url": "http://127.0.0.1:3001/performance?view=simulation&strategy=tandem&f1=adr_grid&f2=pair_fill_cap",
+      "routeReady": [
+        {
+          "testId": "app-truth-performance-ready",
+          "ready": "true",
+          "baseline": "v2.0.3-clean14",
+          "readyWeeks": "14",
+          "expectedWeeks": "14"
+        }
+      ],
+      "basketAttrs": null,
+      "datePatterns": {
+        "may25Text": false,
+        "june1Text": false,
+        "june8Text": false,
+        "isoJune1Control": false,
+        "isoJune8Control": false
+      },
+      "bodyDateHits": [],
+      "controls": [
+        {
+          "tag": "select",
+          "role": null,
+          "testId": null,
+          "text": "Weekly HoldADR Grid",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "option",
+          "role": null,
+          "testId": null,
+          "text": "Weekly Hold",
+          "title": null,
+          "ariaLabel": null,
+          "value": "weekly_hold",
+          "weekOpenUtc": null
+        }
+      ],
+      "allWeekAttrs": [
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-route-ready",
+          "value": "true",
+          "text": "Loading Performance Page..."
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-baseline",
+          "value": "v2.0.3-clean14",
+          "text": "Loading Performance Page..."
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-ready-weeks",
+          "value": "14",
+          "text": "Loading Performance Page..."
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-expected-weeks",
+          "value": "14",
+          "text": "Loading Performance Page..."
+        }
+      ],
+      "keyTextPresent": {
+        "selectedLedgerSummary": false,
+        "simulationReturn": false,
+        "simulationTrades": false,
+        "activeBaseline": false,
+        "receiptLifecycle": false,
+        "materializationMissing": false
+      },
+      "requests": {
+        "closedHistory": [],
+        "failedRequests": [],
+        "ignoredFailures": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "bodySample": "LIMNI LABS PERFORMANCE BACK SIGNAL MODEL Tandem Tiered Agreement Selector EXECUTION Weekly Hold ADR Grid RISK OVERLAY None Pair Fill Cap APPLIED Computing stats... DARK MODE Sign Out LOADING PERFORMANCE PAGE... V2V2.0.3 PENDING"
+    },
+    {
+      "name": "performance-basket",
+      "route": "/performance?view=basket&strategy=tandem&f1=adr_grid&f2=pair_fill_cap",
+      "screenshot": "visual-inspection-performance-basket-2026-06-09.png",
+      "url": "http://127.0.0.1:3001/performance?view=basket&strategy=tandem&f1=adr_grid&f2=pair_fill_cap",
+      "routeReady": [
+        {
+          "testId": "app-truth-performance-ready",
+          "ready": "true",
+          "baseline": "v2.0.3-clean14",
+          "readyWeeks": "14",
+          "expectedWeeks": "14"
+        }
+      ],
+      "basketAttrs": {
+        "source": "selected-trade-rows",
+        "selectedExecutionLedgerId": "execution-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+        "selectedTradeRowLedgerId": "trade-row-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+        "selectedTradeRowCount": "13111"
+      },
+      "datePatterns": {
+        "may25Text": true,
+        "june1Text": false,
+        "june8Text": false,
+        "isoJune1Control": false,
+        "isoJune8Control": false
+      },
+      "bodyDateHits": [
+        "MAR\n7",
+        "MAY 25",
+        "MAY 18",
+        "MAY 11",
+        "MAY 04",
+        "APR 27",
+        "APR 20",
+        "APR 13",
+        "APR 06",
+        "MAR 30",
+        "MAR 23",
+        "MAR 16",
+        "MAR 09",
+        "MAR 02",
+        "FEB 23",
+        "May 24, 2026",
+        "May 17, 2026",
+        "May 10, 2026",
+        "May 03, 2026",
+        "Apr 26, 2026",
+        "Apr 19, 2026",
+        "Apr 12, 2026",
+        "Apr 05, 2026",
+        "Mar 29, 2026",
+        "Mar 22, 2026",
+        "Mar 15, 2026",
+        "Mar 08, 2026",
+        "Mar 02, 2026",
+        "Feb 23, 2026"
+      ],
+      "controls": [
+        {
+          "tag": "select",
+          "role": null,
+          "testId": null,
+          "text": "Weekly HoldADR Grid",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "option",
+          "role": null,
+          "testId": null,
+          "text": "Weekly Hold",
+          "title": null,
+          "ariaLabel": null,
+          "value": "weekly_hold",
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "All Time",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "May 25 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "May 18 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "May 11 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "May 04 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Apr 27 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Apr 20 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Apr 13 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Apr 06 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Mar 30 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Mar 23 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Mar 16 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Mar 09 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Mar 02 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "Feb 23 2026",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "",
+          "title": null,
+          "ariaLabel": "Scroll weeks right",
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "All",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "SummaryKey metrics and model ranking.",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": null,
+          "text": "NotesWeekly observations and takeaways.",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of May 24, 20264 portfolios616W116LP/L+66.11%Max DD-7.06%Max MAE-2.60%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of May 17, 20264 portfolios679W149LP/L+17.46%Max DD-7.71%Max MAE-2.77%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of May 10, 20264 portfolios634W151LP/L-19.57%Max DD-6.74%Max MAE-2.51%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of May 03, 20264 portfolios688W114LP/L+40.30%Max DD-10.81%Max MAE-3.82%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of Apr 26, 20264 portfolios522W144LP/L+31.77%Max DD-6.56%Max MAE-2.57%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of Apr 19, 20264 portfolios879W151LP/L+76.94%Max DD-7.55%Max MAE-2.71%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of Apr 12, 20264 portfolios441W189LP/L-131.21%Max DD-9.22%Max MAE-3.29%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of Apr 05, 20264 portfolios796W156LP/L-17.79%Max DD-10.26%Max MAE-3.69%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of Mar 29, 20264 portfolios735W157LP/L+75.63%Max DD-6.21%Max MAE-2.27%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of Mar 22, 20264 portfolios487W89LP/L+44.16%Max DD-5.30%Max MAE-2.00%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of Mar 15, 20264 portfolios800W121LP/L+86.57%Max DD-13.85%Max MAE-4.92%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of Mar 08, 20264 portfolios581W136LP/L+27.54%Max DD-5.79%Max MAE-2.13%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of Mar 02, 20264 portfolios437W133LP/L-71.94%Max DD-12.21%Max MAE-4.33%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        },
+        {
+          "tag": "button",
+          "role": null,
+          "testId": "basket-canon-row",
+          "text": "▸Week of Feb 23, 20264 portfolios933W105LP/L+82.22%Max DD-11.58%Max MAE-4.07%",
+          "title": null,
+          "ariaLabel": null,
+          "value": null,
+          "weekOpenUtc": null
+        }
+      ],
+      "allWeekAttrs": [
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-route-ready",
+          "value": "true",
+          "text": "PerformanceTandem · ADR Grid · Pair Fill CapView modeReturns measured from execution open (Mon 00:00"
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-baseline",
+          "value": "v2.0.3-clean14",
+          "text": "PerformanceTandem · ADR Grid · Pair Fill CapView modeReturns measured from execution open (Mon 00:00"
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-ready-weeks",
+          "value": "14",
+          "text": "PerformanceTandem · ADR Grid · Pair Fill CapView modeReturns measured from execution open (Mon 00:00"
+        },
+        {
+          "tag": "div",
+          "testId": "app-truth-performance-ready",
+          "name": "data-app-truth-expected-weeks",
+          "value": "14",
+          "text": "PerformanceTandem · ADR Grid · Pair Fill CapView modeReturns measured from execution open (Mon 00:00"
+        },
+        {
+          "tag": "section",
+          "testId": "basket-hierarchy",
+          "name": "data-selected-execution-ledger-id",
+          "value": "execution-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+          "text": "tandem · adr_grid · pair_fill_cap · All closed weeks14 weeks56 portfolios1972 grids11139 fills9228W1"
+        },
+        {
+          "tag": "section",
+          "testId": "basket-hierarchy",
+          "name": "data-selected-trade-row-ledger-id",
+          "value": "trade-row-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+          "text": "tandem · adr_grid · pair_fill_cap · All closed weeks14 weeks56 portfolios1972 grids11139 fills9228W1"
+        }
+      ],
+      "keyTextPresent": {
+        "selectedLedgerSummary": false,
+        "simulationReturn": true,
+        "simulationTrades": true,
+        "activeBaseline": false,
+        "receiptLifecycle": false,
+        "materializationMissing": false
+      },
+      "requests": {
+        "closedHistory": [],
+        "failedRequests": [],
+        "ignoredFailures": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "bodySample": "LIMNI LABS PERFORMANCE BACK SIGNAL MODEL Tandem Tiered Agreement Selector EXECUTION Weekly Hold ADR Grid RISK OVERLAY None Pair Fill Cap APPLIED TANDEM · ADR GRID · PAIR FILL CAP 14 WEEKS TRACKED +308.18% TOTAL RETURN WEEKLY WR 71.4% MAX DD 149.00% PATH SHARPE 0.35 PATH SORTINO 0.29 TRADE PF 1.21 PATH CALMAR 7.68 AVG WEEKLY +22.01% TOTAL TRADES 11139 TRADE EXP +0.03% TRADE AVG W/L +0.2 / -0.8 BEST STREAK 4W WORST STR"
+    },
+    {
+      "name": "status",
+      "route": "/status",
+      "screenshot": "visual-inspection-status-2026-06-09.png",
+      "url": "http://127.0.0.1:3001/status",
+      "routeReady": [],
+      "basketAttrs": null,
+      "datePatterns": {
+        "may25Text": false,
+        "june1Text": false,
+        "june8Text": false,
+        "isoJune1Control": false,
+        "isoJune8Control": false
+      },
+      "bodyDateHits": [
+        "JUN 09, 2026",
+        "May 24, 2026",
+        "Jun 07, 2026",
+        "Jun 08, 2026",
+        "Feb 22, 2026",
+        "Mar 01, 2026",
+        "Mar 08, 2026",
+        "Mar 15, 2026",
+        "Mar 22, 2026",
+        "Mar 29, 2026",
+        "Apr 05, 2026",
+        "Apr 12, 2026",
+        "Apr 19, 2026",
+        "Apr 26, 2026",
+        "May 03, 2026",
+        "May 10, 2026",
+        "May 17, 2026"
+      ],
+      "controls": [],
+      "allWeekAttrs": [],
+      "keyTextPresent": {
+        "selectedLedgerSummary": false,
+        "simulationReturn": false,
+        "simulationTrades": false,
+        "activeBaseline": true,
+        "receiptLifecycle": true,
+        "materializationMissing": false
+      },
+      "requests": {
+        "closedHistory": [],
+        "failedRequests": [],
+        "ignoredFailures": [],
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "bodySample": "LIMNI LABS NAVIGATION L Performance I Data M Accounts N Automation I Research Lab L Documents A Agents B News S Status DARK MODE Sign Out System Status Operational health for canonical data, live feeds, account sync, and workspace surfaces. LAST REFRESH JUN 09, 2026, 3:05 PM ET Database OK Connection OK Canonical data OK Canonical bars, returns, and reconstruction report are available. Data Integrity OK Audit clean a"
+    }
+  ],
+  "summary": {
+    "selectedLedgerReceiptStillClean": true,
+    "allRouteGatesClean14Ready": true,
+    "dashboardShowsJune1": false,
+    "dashboardShowsJune8": false,
+    "performanceShowsJune1": false,
+    "performanceShowsJune8": false,
+    "statusMentionsJune1": false,
+    "statusMentionsJune8": false,
+    "closedHistoryRequests": 0,
+    "failedRequests": 0,
+    "consoleErrors": 0
+  }
+}

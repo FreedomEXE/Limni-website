@@ -1,0 +1,38 @@
+{
+  "capturedAt": "2026-06-09T00:57:14.806Z",
+  "baseUrl": "http://127.0.0.1:3001",
+  "route": "/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&view=summary",
+  "observations": {
+    "url": "http://127.0.0.1:3001/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&view=summary",
+    "has14Weeks": true,
+    "hasCheckingVersion": false,
+    "hasBlockedEndpoint": false,
+    "hasRuntimeNotReady": false,
+    "hasLoading": false,
+    "excerpt": "LIMNI LABS\nPERFORMANCE\nBACK\nSIGNAL MODEL\nTandem\nTiered\nAgreement\nSelector\nEXECUTION\nWeekly Hold\nADR Grid\nRISK OVERLAY\nNone\nPair Fill Cap\nAPPLIED\nTANDEM · ADR GRID · PAIR FILL CAP\n14 WEEKS TRACKED\n+308.18%\nTOTAL RETURN\nWEEKLY WR\n71.4%\nMAX DD\n78.25%\nPATH SHARPE\n2.25\nPATH SORTINO\n2.81\nTRADE PF\n1.21\nPATH CALMAR\n14.63\nAVG WEEKLY\n+22.01%\nTOTAL TRADES\n11139\nTRADE EXP\n+0.03%\nTRADE AVG W/L\n+0.2 / -0.8\nBEST STREAK\n4W\nWORST STREAK\n2L\nDARK MODE\nSign Out\nPerformance\n\nTANDEM · ADR GRID · PAIR FILL CAP\n\nVIEW MODE\n\nRETURNS MEASURED FROM EXECUTION OPEN (MON 00:00 UTC)\n\nMETRIC\nADR-norm\nRaw %\nWEEK\nALL TIME\nMAY 25 2026\nMAY 18 2026\nMAY 11 2026\nMAY 04 2026\nAPR 27 2026\nAPR 20 2026\nAPR 13 2026\nAPR 06 2026\nMAR 30 2026\nMAR 23 2026\nMAR 16 2026\nMAR 09 2026\nMAR 02 2026\nFEB 23 2026\nSCOPE\nALL\nFX\nINDICES\nCOMMODITIES\nCRYPTO\nSUMMARY\nKey metrics and model ranking.\nSIMULATION\nTrailing-stop and sizing perspective.\nBASKET\nSee every pair, direction, and return.\nRESEARCH\nDiagnostics and pair-level distribution.\nNOTES\nWeekly observations and takeaways.\n+++\n\nDEALER PORTFOLIO\n\n+130.47%\nTOTAL RETURN\nWIN RATE\n86%\nSHARPE (WK)\n0.66\nMAX DD\n26.37%\nPROFIT FACTOR\n4.03\n86%\n\nRETURN SPREAD\n\n*** High Confidence\n+++\n\nCOMMERCIAL PORTFOLIO\n\n+66.04%\nTOTAL RETURN\nWIN RATE\n71%\nSHARPE (WK)\n0.20\nMAX DD\n75.74%\nPROFIT FACTOR\n1.62\n71%\n\nRETURN SPREAD\n\n*** High Confidence\n++\n\nSENTIMENT PORTFOLIO\n\n+40.34%\nTOTAL RETURN\nWIN RATE\n57%\nSHARPE (WK)\n0.17\nMAX DD\n36.56%\nPROFIT FACTOR\n1.54\n57%\n\nRETURN SPREAD\n\n*** High Confidence\n+++\n\nSTRENGTH PORTFOLIO\n\n+71.33%\nTOTAL RETURN\nWIN RATE\n64%\nSHARPE (WK)\n0.39\nMAX DD\n31.65%\nPROFIT FACTOR\n2.45\n64%\n\nRETURN SPREAD\n\n*** High Confidence\nV2V2.0.3 PENDING"
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:3001/api/version/current",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=clean14",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:3001/api/version/current",
+      "resourceType": "fetch"
+    }
+  ],
+  "badResponses": [],
+  "failedRequests": [],
+  "console": [],
+  "pageErrors": [],
+  "screenshots": [
+    "C:\\Users\\User\\Documents\\GitHub\\limni-website\\releases\\v2\\screenshots\\performance-selected-truth-2026-06-08\\performance-basket-inline-drilldown-audit-timeout-state.png"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-06-09T00:39:56.849Z",
+  "badResponses": [],
+  "failedRequests": [],
+  "console": [],
+  "pageErrors": [],
+  "observations": {
+    "rows": 14,
+    "has14Weeks": true,
+    "has11139Fills": true,
+    "hasEngineTrades11139": true,
+    "hasPnl30818": true,
+    "hasSyncWarning": false,
+    "hasLedgerMismatchWarning": false,
+    "hasZeroTradesLabel": false,
+    "excerpt": "LIMNI LABS\nPERFORMANCE\nBACK\nSIGNAL MODEL\nTandem\nTiered\nAgreement\nSelector\nEXECUTION\nWeekly Hold\nADR Grid\nRISK OVERLAY\nNone\nPair Fill Cap\nAPPLIED\nTANDEM · ADR GRID · PAIR FILL CAP\n14 WEEKS TRACKED\n+308.18%\nTOTAL RETURN\nWEEKLY WR\n71.4%\nMAX DD\n78.25%\nPATH SHARPE\n2.25\nPATH SORTINO\n2.81\nTRADE PF\n1.21\nPATH CALMAR\n14.63\nAVG WEEKLY\n+22.01%\nTOTAL TRADES\n11139\nTRADE EXP\n+0.03%\nTRADE AVG W/L\n+0.2 / -0.8\nBEST STREAK\n4W\nWORST STREAK\n2L\nDARK MODE\nSign Out\nPerformance\n\nTANDEM · ADR GRID · PAIR FILL CAP\n\nVIEW MODE\n\nRETURNS MEASURED FROM EXECUTION OPEN (MON 00:00 UTC)\n\nMETRIC\nADR-norm\nRaw %\nWEEK\nALL TIME\nMAY 25 2026\nMAY 18 2026\nMAY 11 2026\nMAY 04 2026\nAPR 27 2026\nAPR 20 2026\nAPR 13 2026\nAPR 06 2026\nMAR 30 2026\nMAR 23 2026\nMAR 16 2026\nMAR 09 2026\nMAR 02 2026\nFEB 23 2026\nSCOPE\nALL\nFX\nINDICES\nCOMMODITIES\nCRYPTO\nSUMMARY\nKey metrics and model ranking.\nSIMULATION\nTrailing-stop and sizing perspective.\nBASKET\nSee every pair, direction, and return.\nRESEARCH\nDiagnostics and pair-level distribution.\nNOTES\nWeekly observations and takeaways.\n\nTANDEM · ADR_GRID · PAIR_FILL_CAP · ALL CLOSED WEEKS\n\n14 weeks\n56 portfolios\n1972 grids\n11139 fills\n9228W\n1911L\nENGINE TRADES\n11139\nP/L\n+308.18%\nMAX DD\n-78.25%\nMAX MAE\n-4.92%\n▸\nWeek of May 24, 2026\n4 portfolios\n616W\n116L\nP/L\n+66.11%\nMAX DD\n-7.06%\nMAX MAE\n-2.60%\n▸\nWeek of May 17, 2026\n4 portfolios\n679W\n149L\nP/L\n+17.46%\nMAX DD\n-7.71%\nMAX MAE\n-2.77%\n▸\nWeek of May 10, 2026\n4 portfolios\n634W\n151L\nP/L\n-19.57%\nMAX DD\n-6.74%\nMAX MAE\n-2.51%\n▸\nWeek of May 03, 2026\n4 portfolios\n688W\n114L\nP/L\n+40.30%\nMAX DD\n-10.81%\nMAX MAE\n-3.82%\n▸\nWeek of Apr 26, 2026\n4 portfolios\n522W\n144L\nP/L\n+31.77%\nMAX DD\n-6.56%\nMAX MAE\n-2.57%\n▸\nWeek of Apr 19, 2026\n4 portfolios\n879W\n151L\nP/L\n+76.94%\nMAX DD\n-7.55%\nMAX MAE\n-2.71%\n▸\nWeek of Apr 12, 2026\n4 portfolios\n441W\n189L\nP/L\n-131.21%\nMAX DD\n-9.22%\nMAX MAE\n-3.29%\n▸\nWeek of Apr 05, 2026\n4 portfolios\n796W\n156L\nP/L\n-17.79%\nMAX DD\n-10.26%\nMAX MAE\n-3.69%\n▸\nWeek of Mar 29, 2026\n4 portfolios\n735W\n157L\nP/L\n+75.63%\nMAX DD\n-6.21%\nMAX MAE\n-2.27%\n▸\nWeek of Mar 22, 2026\n4 portfolios\n487W\n89L\nP/L\n+44.16%\nMAX DD\n-5.30%\nMAX MAE\n-2.00%\n▸\nWeek of Mar 15, 2026\n4 portfolios\n800W\n121L\nP/L\n+86.57%\nMAX DD\n-13.85%\nMAX MAE\n-4.92%\n▸\nWeek of Mar 08, 2026\n4 portfolios\n581W\n136L\nP/L\n+27.54%\nMAX DD\n-5.79%\nMAX MAE\n-2.13%\n▸\nWeek of Mar 02, 2026\n4 portfolios\n437W\n133L\nP/L\n-71.94%\nMAX DD\n-12.21%\nMAX MAE\n-4.33%\n▸\nWeek of Feb 23, 2026\n4 portfolios\n933W\n105L\nP/L\n+82.22%\nMAX DD\n-11.58%\nMAX MAE\n-4.07%\nV2V2.0.3 PENDING"
+  },
+  "screenshots": [
+    "C:/Users/User/Documents/GitHub/limni-website/releases/v2/screenshots/performance-selected-truth-2026-06-08/performance-basket-final-selected-runtime.png"
+  ]
+}

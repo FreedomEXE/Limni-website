@@ -1,0 +1,21 @@
+{
+  "url": "http://127.0.0.1:3001/status",
+  "capturedAtUtc": "2026-06-09T03:19:31.033Z",
+  "checks": {
+    "appTruthControlPlaneVisible": true,
+    "activeBaselinePerformanceKernelMatchVisible": true,
+    "weeklyLifecycleVisible": true,
+    "receiptBackedVisible": true,
+    "closedReady14Visible": true,
+    "receiptBackedReadyDetailVisible": true,
+    "sourceFreezeReceiptVisible": true,
+    "dataMaterializationReceiptVisible": true,
+    "performanceMaterializationReceiptVisible": true
+  },
+  "events": {
+    "console": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "badResponses": []
+  }
+}

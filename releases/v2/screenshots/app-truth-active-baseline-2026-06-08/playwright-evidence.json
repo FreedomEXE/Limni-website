@@ -1,0 +1,19 @@
+{
+  "generatedUtc": "2026-06-08T23:41:36.720Z",
+  "baseUrl": "http://127.0.0.1:3001",
+  "route": "/status",
+  "screenshots": [
+    "status-active-baseline-full-page.png",
+    "status-active-baseline-section.png"
+  ],
+  "checks": {
+    "hasAppTruthControlPlane": true,
+    "hasActiveBaselineId": true,
+    "hasBaselineLatestMay24": true,
+    "hasSourceLedgerCoverage": true,
+    "hasPerformanceCoverageMismatch": true,
+    "hasActiveWeeks": true
+  },
+  "sectionTextSample": "App Truth Control Plane Phase 1 read-only route truth projection. This reports current evidence and missing contracts without changing route behavior. Release Identity READY LIVE v2.0.2 CANDIDATE v2.0.3 CACHE NAMESPACE v2.0.3-clean14-friday-runtime Active Baseline BLOCKED v2.0.3-clean14 14 closed week(s); latest closed May 24, 2026; live week Jun 07, 2026. APPROVAL under review SOURCE WINDOW v2.0.3-clean-14w PERFORMANCE WINDOW v2.0.3-clean14 ARCHIVE MODE separate Source ledger: match Source-freeze ledger matches the active baseline: 14/14 active week(s). Performance kernel: partial 14/14 active week(s) matched; 0 missing, 6 extra. Active weeks (14) Weekly Lifecycle MISSING CONTRACT WeeklyLifecycleLedger is not implemented yet; Status is showing kernel/source-freeze evidence only. Ledger state: partial Scheduler Receipts MISSING CONTRACT SchedulerRunLedger and MaterializationRunLedger are not implemented yet. Jobs must publish run receipts before cron success can be treated as app truth. Data /DASHBOARD MISSING CONTRACT ActiveBaselineManifest PRESENT Read-only v2.0.3-clean14 contract is defined with 14 active week(s); approval under review. Data DomainManifest NOT IMPLEMENTED Data still uses route/page payload ownership. FrozenSourceLedger PRESENT 14/14 active baseline source-freeze week(s) complete and trusted. WeeklyLifecycleLedger NOT IMPLEMENTED Weekly rollover/freeze/materialization lifecycle is not implemented yet. Blockers: Data DomainManifest missing. | WeeklyLifecycleLedger missing. | Active baseline evidence does not fully match the clean14 contract. Performance /PERFORMANCE MISSING CONTRACT ActiveBaselineManifest PRESENT Read-only v2.0.3-clean14 contract is defined with 14 active week(s); approval under review. Perfo",
+  "events": []
+}

@@ -1,0 +1,20 @@
+{
+  "ms": 6657,
+  "finalUrl": "http://localhost:3001/dashboard?asset=all&bias=strength&view=heatmap&report=2026-05-19",
+  "initialHasInvalidFutureLabel": true,
+  "initialHasFreezeMissing": true,
+  "may25DealerSelected": true,
+  "may25DealerPairs36": true,
+  "may25SentimentSelected": true,
+  "may25SentimentPairs36": true,
+  "may25StrengthSelected": true,
+  "may25StrengthPairs36": true,
+  "finalSnapBackToCurrent": false,
+  "blankNoDataAfterClosedWeekSwitch": false,
+  "canonRequestCount": 0,
+  "dashboardPayloadRequestCount": 0,
+  "requests": [],
+  "screenshots": {
+    "final": "releases\\v2\\screenshots\\containment-2026-06-06\\data-click-switch-may25-strength.png"
+  }
+}

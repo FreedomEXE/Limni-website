@@ -1,0 +1,37 @@
+{
+  "generatedUtc": "2026-06-08T23:45:37.285Z",
+  "route": "http://127.0.0.1:3001/dashboard?bias=dealer&asset=all&report=2026-06-02&view=heatmap",
+  "renderMs": 4124,
+  "screenshot": "dashboard-before-active-baseline-full-page.png",
+  "textSample": "LIMNI LABS NAVIGATION L Performance I Data M Accounts N Automation I Research Lab L Documents A Agents B News S Status DARK MODE Sign Out Dealer SNAPSHOT JUN 05, 2026, 3:40 PM ET ANCHOR Execution Market truth METRIC ADR-norm Raw % PAIRS TRACKED 36 LONG SIGNALS 24 SHORT SIGNALS 12 NEUTRAL/IGNORED 0 FLIPS 3 BIAS DEALER COMMERCIAL SENTIMENT STRENGTH TRADING WEEK JUN 08 2026 JUN 01 2026 MAY 25 2026 MAY 18 2026 MAY 11 2026 MAY 04 2026 APR 27 2026 APR 20 2026 APR 13 2026 APR 06 2026 MAR 30 2026 MAR 23 2026 MAR 16 2026 MAR 09 2026 MAR 02 2026 FEB 23 2026 FEB 16 2026 FEB 09 2026 FEB 02 2026 JAN 26 2026 JAN 19 2026 JAN 12 2026 JAN 05 2026 DEC 29 2025 DEC 22 2025 TRADING WEEK JUN 08 2026 | FRIDAY FREEZE JUN 05 2026 5:00 PM EDT | COT REPORT JUN 02 2026 | FREEZE LEDGER MISSING; LEGACY FALLBACK ASSET CLASS ALL FX Indices Crypto Commodities heatmap list Bias Heatmap COT positioning bias across pairs SHOW NEUTRAL PAIRS AUDCAD AUDCAD LONG FX +0.09% AUDCHF AUDCHF LONG FX +0.20% AUDJPY AUDJPY LONG FX -0.07% AUDNZD AUDNZD LONG FX -0.19% AUDUSD AUDUSD SHORT FX +0.03% BTCUSD BTCUSD SHORT Crypto +0.18% CADCHF CADCHF SHORT FX +0.11% CADJPY CADJPY LONG ",
+  "selects": [
+    {
+      "id": null,
+      "name": null,
+      "value": "all",
+      "options": [
+        {
+          "value": "all",
+          "text": "ALL"
+        },
+        {
+          "value": "fx",
+          "text": "FX"
+        },
+        {
+          "value": "indices",
+          "text": "Indices"
+        },
+        {
+          "value": "crypto",
+          "text": "Crypto"
+        },
+        {
+          "value": "commodities",
+          "text": "Commodities"
+        }
+      ]
+    }
+  ],
+  "events": []
+}

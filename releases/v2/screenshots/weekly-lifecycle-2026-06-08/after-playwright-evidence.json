@@ -1,0 +1,22 @@
+{
+  "capturedAt": "2026-06-09T01:09:22.039Z",
+  "observations": {
+    "hasAppTruth": true,
+    "hasWeeklyLifecycle": true,
+    "hasClosedReadyCount": true,
+    "hasCurrentLiveOverlay": true,
+    "hasClosedReadyRows": true,
+    "hasCurrentOpenWeek": true,
+    "hasExtraPerformanceWeeks": true,
+    "hasCurrentWeekCannotSatisfyClosed": true,
+    "excerpt": "Weekly Lifecycle\n\nDEGRADED\n\nFormal WeeklyLifecycleLedger is not implemented yet; read-only Status projection shows all active closed weeks ready and current week isolated as live overlay.\n\nLEDGER STATE\npartial\nCLOSED READY\n14/14\n\nCurrent/open week Jun 07, 2026\n\nCURRENT LIVE OVERLAY\n\nCurrent/open week is a live overlay candidate and does not satisfy closed-week readiness.\n\nClosed week lifecycle (14)\nFeb 22, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze Feb 20, 2026, 5:00 PM ET\n\nMar 01, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze Feb 27, 2026, 5:00 PM ET\n\nMar 08, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze Mar 06, 2026, 5:00 PM ET\n\nMar 15, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze Mar 13, 2026, 5:00 PM ET\n\nMar 22, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze Mar 20, 2026, 5:00 PM ET\n\nMar 29, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze Mar 27, 2026, 5:00 PM ET\n\nApr 05, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze Apr 03, 2026, 5:00 PM ET\n\nApr 12, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze Apr 10, 2026, 5:00 PM ET\n\nApr 19, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze Apr 17, 2026, 5:00 PM ET\n\nApr 26, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze Apr 24, 2026, 5:00 PM ET\n\nMay 03, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze May 01, 2026, 5:00 PM ET\n\nMay 10, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze May 08, 2026, 5:00 PM ET\n\nMay 17, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze May 15, 2026, 5:00 PM ET\n\nMay 24, 2026\nCLOSED READY\n\nClosed week has trusted source-freeze evidence and Performance kernel coverage.\n\nSource ready | Performance ready | Freeze May 22, 2026, 5:00 PM ET\n\nExtra Performance kernel weeks (6)\nJan 18, 2026\nJan 25, 2026\nFeb 01, 2026\nFeb 08, 2026\nFeb 15, 2026\nMay 31, 2026\n\nScheduler Receipts\n\nMISSING CONTRACT\n\nSchedulerRunLedger and MaterializationRunLedger are not implemented yet.\n\nJobs must publish run receipts before cron success can be treated as app truth.\n\nData\n\n/DASHBOARD\n\nMISSING C"
+  },
+  "badResponses": [],
+  "failedRequests": [],
+  "console": [],
+  "pageErrors": [],
+  "screenshots": [
+    "C:\\Users\\User\\Documents\\GitHub\\limni-website\\releases\\v2\\screenshots\\weekly-lifecycle-2026-06-08\\status-weekly-lifecycle-after-section.png",
+    "C:\\Users\\User\\Documents\\GitHub\\limni-website\\releases\\v2\\screenshots\\weekly-lifecycle-2026-06-08\\status-weekly-lifecycle-after-full-page.png"
+  ]
+}

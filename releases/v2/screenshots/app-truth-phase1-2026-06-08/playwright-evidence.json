@@ -1,0 +1,39 @@
+{
+  "generatedUtc": "2026-06-08T22:38:36.103Z",
+  "baseUrl": "http://127.0.0.1:3001",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "screenshots": [
+    {
+      "name": "dashboard-after-route-aware-gate.png",
+      "url": "http://127.0.0.1:3001/dashboard?bias=dealer&asset=all&report=2026-06-02&view=heatmap"
+    },
+    {
+      "name": "status-full-page-app-truth.png",
+      "url": "http://127.0.0.1:3001/status"
+    },
+    {
+      "name": "status-app-truth-section.png",
+      "url": "http://127.0.0.1:3001/status",
+      "focused": "App Truth Control Plane section"
+    },
+    {
+      "name": "performance-summary-no-app-version-wall.png",
+      "url": "http://127.0.0.1:3001/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&view=summary"
+    }
+  ],
+  "finalPerformanceTextSample": "LIMNI LABS PERFORMANCE BACK SIGNAL MODEL Tandem Tiered Agreement Selector EXECUTION Weekly Hold ADR Grid RISK OVERLAY None Pair Fill Cap APPLIED Computing stats... DARK MODE Sign Out LOADING PERFORMANCE PAGE... V2V2.0.3 PENDING",
+  "events": [
+    {
+      "type": "console-error",
+      "message": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <SegmentViewNode type=\"page\" pagePath=\"dashboard/...\">\n      <SegmentTrieNode>\n      <DashboardPage>\n        <DashboardLayout>\n          <div className=\"relative f...\">\n            <aside>\n            <div>\n            <main className=\"flex-1 ove...\">\n              <div className=\"mx-auto ma...\">\n                <CotModeBanner>\n                <DashboardViewSection assetOptions={[...]} selectedAsset=\"all\" reportOptions={[...]} ...>\n                  <div className=\"space-y-8\">\n                    <header>\n                    <div>\n                    <section data-cot-surface=\"true\" className=\"rounded-2x...\">\n                      <div>\n                      <div className=\"mt-6\">\n                        <PairHeatmap rows={[...]} view=\"heatmap\" title={undefined} description={undefined} ...>\n                          <PairSignalSurface title=\"Bias Heatmap\" description=\"COT positi...\" items={[...]} ...>\n                            <div className=\"rounded-2x...\">\n                              <div className=\"mb-4 flex ...\">\n                                <div>\n                                <label className=\"inline-fle...\">\n                                  <input\n                                    type=\"checkbox\"\n                                    checked={false}\n                                    onChange={function onChange}\n                                    className=\"size-3 accent-[var(--accent)]\"\n-                                   style={{caret-color:\"transparent\"}}\n                                  >\n                                  ...\n                              ...\n                      ...\n    ...\n"
+    },
+    {
+      "type": "request-failed",
+      "error": "net::ERR_ABORTED",
+      "url": "http://127.0.0.1:3001/api/system/mode"
+    }
+  ]
+}

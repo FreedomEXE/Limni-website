@@ -1,0 +1,18 @@
+{
+  "capturedAt": "2026-06-09T01:11:01.497Z",
+  "observations": {
+    "dashboardHasActiveBaseline": true,
+    "dashboardHasCheckingVersion": false,
+    "performanceHas14Weeks": true,
+    "performanceHasCheckingVersion": false
+  },
+  "badResponses": [],
+  "failedRequests": [],
+  "console": [
+    {
+      "type": "error",
+      "text": "A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\n%s%s https://react.dev/link/hydration-mismatch \n\n  ...\n    <SegmentViewNode type=\"page\" pagePath=\"dashboard/...\">\n      <SegmentTrieNode>\n      <DashboardPage>\n        <DashboardLayout>\n          <div className=\"relative f...\">\n            <aside>\n            <div>\n            <main className=\"flex-1 ove...\">\n              <div className=\"mx-auto ma...\">\n                <CotModeBanner>\n                <DashboardViewSection assetOptions={[...]} selectedAsset=\"all\" reportOptions={[...]} ...>\n                  <div className=\"space-y-8\">\n                    <header>\n                    <div>\n                    <section data-cot-surface=\"true\" className=\"rounded-2x...\">\n                      <div>\n                      <div className=\"mt-6\">\n                        <PairHeatmap rows={[...]} view=\"heatmap\" title={undefined} description={undefined} ...>\n                          <PairSignalSurface title=\"Bias Heatmap\" description=\"COT positi...\" items={[...]} ...>\n                            <div className=\"rounded-2x...\">\n                              <div className=\"mb-4 flex ...\">\n                                <div>\n                                <label className=\"inline-fle...\">\n                                  <input\n                                    type=\"checkbox\"\n                                    checked={false}\n                                    onChange={function onChange}\n                                    className=\"size-3 accent-[var(--accent)]\"\n-                                   style={{caret-color:\"transparent\"}}\n                                  >\n                                  ...\n                              ...\n                      ...\n    ...\n"
+    }
+  ],
+  "pageErrors": []
+}

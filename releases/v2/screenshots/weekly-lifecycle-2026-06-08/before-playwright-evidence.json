@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-06-09T01:05:29.666Z",
+  "observations": {
+    "hasAppTruth": true,
+    "hasWeeklyLifecycle": true,
+    "hasSchedulerReceipts": true,
+    "hasCurrentWeekLifecycleRows": true,
+    "excerpt": "App Truth Control Plane\n\nPhase 1 read-only route truth projection. This reports current evidence and missing contracts without changing route behavior.\n\nRelease Identity\n\nREADY\nLIVE\nv2.0.2\nCANDIDATE\nv2.0.3\nCACHE NAMESPACE\nv2.0.3-clean14-friday-runtime\n\nActive Baseline\n\nBLOCKED\n\nv2.0.3-clean14\n\n14 closed week(s); latest closed May 24, 2026; live week Jun 07, 2026.\n\nAPPROVAL\nunder review\nSOURCE WINDOW\nv2.0.3-clean-14w\nPERFORMANCE WINDOW\nv2.0.3-clean14\nARCHIVE MODE\nseparate\n\nSource ledger: match\n\nSource-freeze ledger matches the active baseline: 14/14 active week(s).\n\nPerformance kernel: partial\n\n14/14 active week(s) matched; 0 missing, 6 extra.\n\nActive weeks (14)\n\nWeekly Lifecycle\n\nMISSING CONTRACT\n\nWeeklyLifecycleLedger is not implemented yet; Status is showing kernel/source-freeze evidence only.\n\nLedger state: partial\n\nScheduler Receipts\n\nMISSING CONTRACT\n\nSchedulerRunLedger and MaterializationRunLedger are not implemented yet.\n\nJobs must publish run receipts before cron success can be treated as app truth.\n\nData\n\n/DASHBOARD\n\nMISSING CONTRACT\n\nActiveBaselineManifest\n\nPRESENT\n\nRead-only v2.0.3-clean14 contract is defined with 14 active week(s); approval under review.\n\nData DomainManifest\n\nNOT IMPLEMENTED\n\nData still uses route/page payload ownership.\n\nFrozenSourceLedger\n\nPRESENT\n\n14/14 active baseline source-freeze week(s) complete and trusted.\n\nWeeklyLifecycleLedger\n\nNOT IMPLEMENTED\n\nWeekly rollover/freeze/materialization lifecycle is not implemented yet.\n\nBlockers: Data DomainManifest missing. | WeeklyLifecycleLedger missing. | Active baseline evidence does not fully match the clean14 contract.\n\nPerformance\n\n/PERFORMANCE\n\nMISSING CONTRACT\n\nActiveBaselineManifest\n\nPRESENT\n\nRead-only v2.0.3-clean14 contract is defined with 14 active week(s); approval under review.\n\nPerformance DomainManifest\n\nNOT IMPLEMENTED\n\nPerformance still has split kernel/session/payload ownership.\n\nKernel inventory\n\nPRESENT\n\n20 closed week shard(s), 20,160 row(s), tandem-adr_grid-pair_fill_cap.\n\nSelected ExecutionLedger\n\nNOT IMPLEMENTED\n\nSelected execution ledger identity is not exposed as route truth yet.\n\nSelected TradeRowLedger\n\nNOT IMPLEMENTED\n\nSummary, Basket, export, and drilldown do "
+  },
+  "badResponses": [],
+  "failedRequests": [],
+  "console": [],
+  "pageErrors": []
+}

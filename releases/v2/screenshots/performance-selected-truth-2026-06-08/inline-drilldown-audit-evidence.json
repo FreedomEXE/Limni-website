@@ -1,0 +1,34 @@
+{
+  "capturedAt": "2026-06-09T01:00:44.942Z",
+  "baseUrl": "http://127.0.0.1:3001",
+  "route": "/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&view=summary",
+  "observations": {
+    "hasBasketHierarchy": true,
+    "hasBasketAllTimeBrowser": false,
+    "hasTradeDrilldownDialog": false,
+    "hasTradeDrilldownText": false,
+    "hasInlineTradeId": true,
+    "hasInlineGridDetail": true,
+    "hasRuntimeTradeIds": true,
+    "hasSyncWarning": false,
+    "hasLedgerMismatchWarning": false,
+    "watchedRequestCount": 0,
+    "watchedRequests": [],
+    "requestCount": 1,
+    "excerpt": "LIMNI LABS\nPERFORMANCE\nBACK\nSIGNAL MODEL\nTandem\nTiered\nAgreement\nSelector\nEXECUTION\nWeekly Hold\nADR Grid\nRISK OVERLAY\nNone\nPair Fill Cap\nAPPLIED\nTANDEM · ADR GRID · PAIR FILL CAP\n14 WEEKS TRACKED\n+308.18%\nTOTAL RETURN\nWEEKLY WR\n71.4%\nMAX DD\n78.25%\nPATH SHARPE\n2.25\nPATH SORTINO\n2.81\nTRADE PF\n1.21\nPATH CALMAR\n14.63\nAVG WEEKLY\n+22.01%\nTOTAL TRADES\n11139\nTRADE EXP\n+0.03%\nTRADE AVG W/L\n+0.2 / -0.8\nBEST STREAK\n4W\nWORST STREAK\n2L\nDARK MODE\nSign Out\nPerformance\n\nTANDEM · ADR GRID · PAIR FILL CAP\n\nVIEW MODE\n\nRETURNS MEASURED FROM EXECUTION OPEN (MON 00:00 UTC)\n\nMETRIC\nADR-norm\nRaw %\nWEEK\nALL TIME\nMAY 25 2026\nMAY 18 2026\nMAY 11 2026\nMAY 04 2026\nAPR 27 2026\nAPR 20 2026\nAPR 13 2026\nAPR 06 2026\nMAR 30 2026\nMAR 23 2026\nMAR 16 2026\nMAR 09 2026\nMAR 02 2026\nFEB 23 2026\nSCOPE\nALL\nFX\nINDICES\nCOMMODITIES\nCRYPTO\nSUMMARY\nKey metrics and model ranking.\nSIMULATION\nTrailing-stop and sizing perspective.\nBASKET\nSee every pair, direction, and return.\nRESEARCH\nDiagnostics and pair-level distribution.\nNOTES\nWeekly observations and takeaways.\n\nTANDEM · ADR_GRID · PAIR_FILL_CAP · ALL CLOSED WEEKS\n\n14 weeks\n56 portfolios\n1972 grids\n11139 fills\n9228W\n1911L\nENGINE TRADES\n11139\nP/L\n+308.18%\nMAX DD\n-78.25%\nMAX MAE\n-4.92%\n▾\nWeek of May 24, 2026\n4 portfolios\n616W\n116L\nP/L\n+66.11%\nMAX DD\n-7.06%\nMAX MAE\n-2.60%\n▾\nCommercial\n34 grids\n151W\n36L\nP/L\n+13.69%\nMAX DD\n-5.26%\nMAX MAE\n-2.03%\n▾\nAUDCAD\nFX\n1 grid\n7W\n0L\nP/L\n+1.40%\nMAX DD\n-0.40%\nMAX MAE\n-0.30%\nWINDOW\nMay 25, 02:00 -> May 28, 04:00\nDURATION\n3d 2h\nENTRY / EXIT\n0.99062 -> 0.98576\nGRID DD\n-0.40%\nMAX FILL MAE\n-0.30%\nCAP\n2/3 max active\nVIOLATIONS\n0\n▾\n0.99062 -> 0.98940\n3 fills\n3W\n0L\nP/L\n+0.60%\nMAX MAE\n-0.10%\n▾\nFill 1\nSHORT\n1W\n0L\nsource #179\ncommercial\nP/L\n+0.20%\nMAE\n-0.04%\nDISPLAYED ADR-NORM\n+0.2000%\nEXECUTION RAW\n+0.1231%\nADR USED\n0.6155%\nMAE\n-0.0389%\nENTRY\nMay 25, 12:00\nEXIT\nMay 26, 01:00\nDURATION\n13h 0m\nENTRY PRICE\n0.99062\nEXIT PRICE\n0.98940\nEXIT REASON\ngrid_tp\nCAP AT ENTRY\n2 / 3\nTRADE ID\nstrategy-runtime|tandem-adr_grid-pair_fill_cap|2026-05-24T23:00:00.000Z|AUDCAD|commercial|-1|SHORT|179|execution\n▾\nFill 2\nSHORT\n1W\n0L\nsource #276\ncommercial\nP/L\n+0.20%\nMAE\n-0.09%\nDISPLAYED ADR-NORM\n+0.2000%\nEXECUTION RAW\n+0.1231%\nADR USED\n0.6155%\nMAE\n-0.0914%\nENTRY\nMay 26, 13:00\nEXIT\nMay 26, 14:00\nDURATION\n1h 0m\nENTRY PRICE\n0.99062\nEXIT PRICE\n0.98940\nEXIT REASON\ngrid_tp\nCAP AT ENTRY\n2 / 3\nTRADE ID\nstrategy-runtime|tandem-adr_grid-pair_fill_cap|2026-05-24T23:00:00.000Z|AUDCAD|commercial|-1|SHORT|276|execution\n▾\nFill 3\nSHORT\n1W\n0L\nsource #370\ncommercial\nP/L\n+0.20%\nMAE\n-0.10%\nDISPLAYED ADR-NORM\n+0.2000%\nEXECUTION RAW\n+0.1231%\nADR USED\n0.6155%\nMAE\n-0.0979%\nENTRY\nMay 27, 01:00\nEXIT\nMay 27, 02:00\nDURATION\n1h 0m\nENTRY PRICE\n0.99062\nEXIT PRICE\n0.98940\nEXIT REASON\ngrid_tp\nCAP AT ENTRY\n2 / 3\nTRADE ID\nstrategy-runtime|tandem-adr_grid-pair_fill_cap|2026-05-24T23:00:00.000Z|AUDCAD|commercial|-1|SHORT|370|execution\n▾\n0.98941 -> 0.98819\n2 fills\n2W\n0L\nP/L\n+0.40%\nMAX MAE\n-0.30%\n▾\nFill 1\nSHORT\n1W\n0L\nsource #369\ncommercial\nP/L\n+0.20%\nMAE\n-0.30%\nDISPLAYED ADR-NORM\n+0.2000%\nEXECUTION RAW\n+0.1231%\nADR USED\n0.6155%\nMAE\n-0.2978%\nENTRY\nMay 25, 02:00\nEXIT\nMay 27, 02:00\nDURATION\n2d 0h\nENTRY PRICE\n0.98941\nEXIT PRICE\n0.98819\nEXIT REASON\ngrid_tp\nCAP AT ENTRY\n1 / 3\nTRADE ID\nstrate"
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=clean14",
+      "resourceType": "fetch"
+    }
+  ],
+  "badResponses": [],
+  "failedRequests": [],
+  "console": [],
+  "pageErrors": [],
+  "screenshots": [
+    "C:\\Users\\User\\Documents\\GitHub\\limni-website\\releases\\v2\\screenshots\\performance-selected-truth-2026-06-08\\performance-basket-inline-drilldown-audit.png"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "base": "http://127.0.0.1:3001",
+  "checkedAt": "2026-06-09T15:12:15.534Z",
+  "results": [
+    {
+      "route": "/performance?view=summary&strategy=tandem&f1=adr_grid&f2=pair_fill_cap",
+      "name": "performance-summary",
+      "waited": true,
+      "screenshot": "visual-inspection-performance-summary-settled-2026-06-09.png",
+      "stillLoading": false,
+      "expectedPresent": {
+        "+130.47%": true,
+        "+66.04%": true,
+        "+40.34%": true,
+        "+71.33%": true
+      },
+      "bodySample": "LIMNI LABS PERFORMANCE BACK SIGNAL MODEL Tandem Tiered Agreement Selector EXECUTION Weekly Hold ADR Grid RISK OVERLAY None Pair Fill Cap APPLIED TANDEM · ADR GRID · PAIR FILL CAP 14 WEEKS TRACKED +308.18% TOTAL RETURN WEEKLY WR 71.4% MAX DD 149.00% PATH SHARPE 0.35 PATH SORTINO 0.29 TRADE PF 1.21 PATH CALMAR 7.68 AVG WEEKLY +22.01% TOTAL TRADES 11139 TRADE EXP +0.03% TRADE AVG W/L +0.2 / -0.8 BEST STREAK 4W WORST STREAK 2L DARK MODE Sign Out Performance TANDEM · ADR GRID · PAIR FILL CAP VIEW MODE RETURNS MEASURED FROM EXECUTION OPEN (MON 00:00 UTC) METRIC ADR-norm Raw % WEEK ALL TIME MAY 25 20",
+      "consoleErrors": [],
+      "failedRequests": []
+    },
+    {
+      "route": "/performance?view=simulation&strategy=tandem&f1=adr_grid&f2=pair_fill_cap",
+      "name": "performance-simulation",
+      "waited": true,
+      "screenshot": "visual-inspection-performance-simulation-settled-2026-06-09.png",
+      "stillLoading": false,
+      "expectedPresent": {
+        "11139": true,
+        "+308.18%": true
+      },
+      "bodySample": "LIMNI LABS PERFORMANCE BACK SIGNAL MODEL Tandem Tiered Agreement Selector EXECUTION Weekly Hold ADR Grid RISK OVERLAY None Pair Fill Cap APPLIED TANDEM · ADR GRID · PAIR FILL CAP 14 WEEKS TRACKED +308.18% TOTAL RETURN WEEKLY WR 71.4% MAX DD 149.00% PATH SHARPE 0.35 PATH SORTINO 0.29 TRADE PF 1.21 PATH CALMAR 7.68 AVG WEEKLY +22.01% TOTAL TRADES 11139 TRADE EXP +0.03% TRADE AVG W/L +0.2 / -0.8 BEST STREAK 4W WORST STREAK 2L DARK MODE Sign Out Performance TANDEM · ADR GRID · PAIR FILL CAP VIEW MODE RETURNS MEASURED FROM EXECUTION OPEN (MON 00:00 UTC) METRIC ADR-norm Raw % WEEK ALL TIME MAY 25 20",
+      "consoleErrors": [],
+      "failedRequests": []
+    }
+  ]
+}

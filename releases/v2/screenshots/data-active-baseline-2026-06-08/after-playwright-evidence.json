@@ -1,0 +1,36 @@
+{
+  "generatedUtc": "2026-06-08T23:55:04.431Z",
+  "route": "http://127.0.0.1:3001/dashboard?bias=dealer&asset=all&report=2026-05-19&view=heatmap",
+  "renderMs": 27524,
+  "screenshot": "dashboard-after-active-baseline-full-page.png",
+  "checks": {
+    "hasActiveBaselineLabel": true,
+    "hasFourteenWeekLabel": true,
+    "hidesCurrentJun08": true,
+    "hidesJun01Extra": true,
+    "hidesArchiveDec22": true,
+    "keepsClean14LatestMay25": true,
+    "keepsClean14EarliestFeb23": true
+  },
+  "baselineLabel": "ACTIVE BASELINE V2.0.3-CLEAN14 | 14 WEEKS | ARCHIVE SEPARATE",
+  "weekLabels": [
+    "MAY 25 2026",
+    "MAY 18 2026",
+    "MAY 11 2026",
+    "MAY 04 2026",
+    "APR 27 2026",
+    "APR 20 2026",
+    "APR 13 2026",
+    "APR 06 2026",
+    "MAR 30 2026",
+    "MAR 23 2026",
+    "MAR 16 2026",
+    "MAR 09 2026",
+    "MAR 02 2026",
+    "FEB 23 2026",
+    "MAY 22 2026",
+    "MAY 19 2026"
+  ],
+  "textSample": "LIMNI LABS NAVIGATION L Performance I Data M Accounts N Automation I Research Lab L Documents A Agents B News S Status DARK MODE Sign Out Dealer SNAPSHOT MAY 22, 2026, 3:40 PM ET ANCHOR Execution Market truth METRIC ADR-norm Raw % PAIRS TRACKED 36 LONG SIGNALS 24 SHORT SIGNALS 12 NEUTRAL/IGNORED 0 FLIPS 7 BIAS DEALER COMMERCIAL SENTIMENT STRENGTH ACTIVE BASELINE V2.0.3-CLEAN14 | 14 WEEKS | ARCHIVE SEPARATE TRADING WEEK MAY 25 2026 MAY 18 2026 MAY 11 2026 MAY 04 2026 APR 27 2026 APR 20 2026 APR 13 2026 APR 06 2026 MAR 30 2026 MAR 23 2026 MAR 16 2026 MAR 09 2026 MAR 02 2026 FEB 23 2026 TRADING WEEK MAY 25 2026 | FRIDAY FREEZE MAY 22 2026 5:00 PM EDT | COT REPORT MAY 19 2026 | FREEZE LEDGER READY ASSET CLASS ALL FX Indices Crypto Commodities heatmap list Bias Heatmap COT positioning bias across pairs SHOW NEUTRAL PAIRS AUDCAD AUDCAD LONG FX +0.33% AUDCHF AUDCHF LONG FX +0.46% AUDJPY AUDJPY LONG FX +0.66% AUDNZD AUDNZD LONG FX -1.40% AUDUSD AUDUSD SHORT FX +0.52% BTCUSD BTCUSD SHORT Crypto -5.15% CADCHF CADCHF SHORT FX +0.13% CADJPY CADJPY SHORT FX +0.34% CHFJPY CHFJPY LONG FX +0.21% ETHUSD ETHUSD SHORT Crypto -4.67% EURAUD EURAUD LONG FX -0.29% EURCAD EURCAD LONG FX +0.04% EURCHF EURCHF LONG FX +0.17% EURGBP EURGBP LONG FX +0.26% EURJPY EURJPY LONG FX +0.38% EURNZD EURNZD LONG FX -1.68%",
+  "events": []
+}

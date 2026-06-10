@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-06-09T00:28:16.605Z",
+  "observations": {
+    "LOADING PERFORMANCE PAGE": false,
+    "Clean14 Performance runtime is not ready": true,
+    "14 WEEKS TRACKED": true,
+    "+308.18%": true,
+    "TOTAL TRADES": true,
+    "TANDEM · WEEKLY HOLD": true,
+    "TANDEM · ADR GRID": false,
+    "No canonical component breakdown": false,
+    "bodyExcerpt": "LIMNI LABS\nPERFORMANCE\nBACK\nSIGNAL MODEL\nTandem\nTiered\nAgreement\nSelector\nEXECUTION\nWeekly Hold\nADR Grid\nRISK OVERLAY\nNone\nAPPLIED\nTANDEM · WEEKLY HOLD\n14 WEEKS TRACKED\n+308.18%\nTOTAL RETURN\nWEEKLY WR\n71.4%\nMAX DD\n78.25%\nPATH SHARPE\n2.25\nPATH SORTINO\n2.81\nTRADE PF\n1.21\nPATH CALMAR\n14.63\nAVG WEEKLY\n+22.01%\nTOTAL TRADES\n11139\nTRADE EXP\n+0.03%\nTRADE AVG W/L\n+0.2 / -0.8\nBEST STREAK\n4W\nWORST STREAK\n2L\nDARK MODE\nSign Out\nPerformance\n\nTANDEM · WEEKLY HOLD\n\nClean14 Performance runtime is not ready.\n\nPerformance canon stale: v33 regeneration required. Release canon artifacts are stale pending regeneration. validFor=strategy-artifact-v32 requires=strategy-artifact-v34\n\nActive runtime window: v2.0.3-clean14; expected weeks: 14; missing weeks: 4. Current app comparison baseline is the frozen v2.0.3-clean14 source ledger. Do not treat deprecated broad-history Performance data as v2.0.3 canon.\n\nV2V2.0.3 PENDING"
+  },
+  "badResponses": [],
+  "failedRequests": [],
+  "console": [],
+  "pageErrors": [],
+  "screenshots": [
+    "C:/Users/User/Documents/GitHub/limni-website/releases/v2/screenshots/performance-selected-truth-2026-06-08/performance-weekly-hold-switch-final-state.png"
+  ]
+}

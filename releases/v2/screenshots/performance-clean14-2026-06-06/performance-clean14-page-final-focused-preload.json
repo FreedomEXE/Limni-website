@@ -1,0 +1,27 @@
+{
+  "capturedAtUtc": "2026-06-06T19:16:00.000Z",
+  "url": "http://127.0.0.1:3001/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap",
+  "screenshot": "releases/v2/screenshots/performance-clean14-2026-06-06/performance-clean14-page-final-preload-state.png",
+  "result": {
+    "elapsedMs": 18357,
+    "hasCheckingForUpdates": false,
+    "hasNotReadyBanner": false,
+    "hasNoDataText": false,
+    "has14WeeksTracked": true,
+    "performanceRequests": [
+      "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=clean14"
+    ],
+    "canonRequests": [],
+    "responses": [
+      {
+        "url": "http://127.0.0.1:3001/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=clean14",
+        "status": 200
+      }
+    ]
+  },
+  "notes": [
+    "Performance page rendered the clean14 runtime view with 14 weeks tracked.",
+    "No route-level update overlay, stale-canon blocker, current-week strategy request, broad background strategy preload, or canon API request appeared in the isolated Playwright trace.",
+    "Remaining debt: active full payload is still large and first load was about 19 seconds in Playwright; this is viewable but not yet a final speed architecture."
+  ]
+}

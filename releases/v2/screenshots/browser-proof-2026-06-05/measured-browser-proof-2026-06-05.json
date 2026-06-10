@@ -1,0 +1,51 @@
+{
+  "generatedAtUtc": "2026-06-05T23:16:55.388Z",
+  "data": {
+    "coldRouteMs": 4095,
+    "initialHtml": {
+      "status": 200,
+      "ms": 3556,
+      "bytes": 297052
+    },
+    "apiPayload": {
+      "status": 200,
+      "ms": 713,
+      "bytes": 170843,
+      "reportOptions": 24,
+      "cotReportsLoaded": 1,
+      "sentimentReportsLoaded": 1,
+      "strengthReportsLoaded": 1
+    },
+    "reportOptionsVisible": 24,
+    "weekSwitchMs": 987,
+    "sentimentBiasSwitchMs": 1146,
+    "strengthBiasSwitchMs": 610,
+    "dashboardCanonRequests": 0,
+    "dashboardPayloadRequests": 1,
+    "hasFreezeContext": true,
+    "freezeContextVerifiedText": "TRADING WEEK MAY 04 2026 | FRIDAY FREEZE MAY 01 2026 5:00 PM EDT | COT REPORT APR 28 2026",
+    "hasStatusOnlyLedgerLabels": false,
+    "hasCheckingUpdates": false
+  },
+  "performance": {
+    "navigationFromDataMs": 784,
+    "versionCurrentRequestsDuringDataToPerformance": 1,
+    "totalVersionCurrentRequestsObserved": 4,
+    "canonRequestsObserved": 0,
+    "url": "http://localhost:3001/performance",
+    "hasPerformanceSurface": true,
+    "hasStaleCanonLabel": true,
+    "hasDeprecatedWarning": true,
+    "weeksTrackedMatch": null,
+    "hasCheckingUpdates": false
+  },
+  "screenshots": {
+    "dataDefault": "releases/v2/screenshots/data/v2.0.3-data-default-loaded.png",
+    "dataMay04Freeze": "releases/v2/screenshots/data/v2.0.3-data-weekstrip-may04-freeze-may01.png",
+    "dataSentiment": "releases/v2/screenshots/data/v2.0.3-data-sentiment-loaded.png",
+    "dataStrength": "releases/v2/screenshots/data/v2.0.3-data-strength-loaded.png",
+    "statusSourceFreeze": "releases/v2/screenshots/status/v2.0.3-status-source-freeze-diagnostics.png",
+    "performanceAfterDataNavigation": "releases/v2/screenshots/performance/v2.0.3-performance-after-data-navigation.png",
+    "performanceBaselineLabel": "releases/v2/screenshots/performance/v2.0.3-performance-baseline-stale-canon-label.png"
+  }
+}

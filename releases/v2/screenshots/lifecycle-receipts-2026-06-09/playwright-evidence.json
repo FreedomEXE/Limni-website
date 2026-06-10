@@ -1,0 +1,24 @@
+{
+  "checkedAtUtc": "2026-06-09T02:35:55.485Z",
+  "route": "/status",
+  "baseUrl": "http://127.0.0.1:3001",
+  "visible": {
+    "appTruthControlPlane": true,
+    "weeklyLifecycle": true,
+    "legacyEvidence": true,
+    "receiptBacked": true,
+    "sourceFreezeReceipt": true,
+    "dataMaterializationReceipt": true,
+    "performanceMaterializationReceipt": true,
+    "receiptsMissingState": true
+  },
+  "consoleMessages": [],
+  "pageErrors": [],
+  "failedRequests": [],
+  "badResponses": [],
+  "screenshots": [
+    "status-lifecycle-receipt-card.png",
+    "status-lifecycle-receipt-details.png",
+    "status-lifecycle-receipts-full-page.png"
+  ]
+}

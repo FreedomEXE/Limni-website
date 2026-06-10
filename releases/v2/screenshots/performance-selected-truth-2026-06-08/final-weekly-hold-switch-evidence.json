@@ -1,0 +1,20 @@
+{
+  "capturedAt": "2026-06-09T00:42:16.179Z",
+  "badResponses": [],
+  "failedRequests": [],
+  "console": [],
+  "pageErrors": [],
+  "observations": {
+    "hasUnavailable": false,
+    "hasSelectedRuntimeUnavailableSidebar": false,
+    "hasOldReturn30818": false,
+    "hasOldTrades11139": false,
+    "hasLoading": false,
+    "hasWeeklyHoldLabel": true,
+    "hasAdrGridLabel": false,
+    "excerpt": "LIMNI LABS\nPERFORMANCE\nBACK\nSIGNAL MODEL\nTandem\nTiered\nAgreement\nSelector\nEXECUTION\nWeekly Hold\nADR Grid\nRISK OVERLAY\nNone\nAPPLIED\nTANDEM · WEEKLY HOLD\n14 WEEKS TRACKED\n-42.07%\nTOTAL RETURN\nWEEKLY WR\n50.0%\nMAX DD\n108.79%\nPATH SHARPE\n-0.68\nPATH SORTINO\n-0.65\nTRADE PF\n0.96\nPATH CALMAR\n-1.44\nAVG WEEKLY\n-3.00%\nTOTAL TRADES\n2016\nTRADE EXP\n-0.02%\nTRADE AVG W/L\n+1.0 / -1.1\nBEST STREAK\n2W\nWORST STREAK\n3L\nDARK MODE\nSign Out\nPerformance\n\nTANDEM · WEEKLY HOLD\n\nVIEW MODE\n\nRETURNS MEASURED FROM EXECUTION OPEN (MON 00:00 UTC)\n\nMETRIC\nADR-norm\nRaw %\nWEEK\nALL TIME\nMAY 25 2026\nMAY 18 2026\nMAY 11 2026\nMAY 04 2026\nAPR 27 2026\nAPR 20 2026\nAPR 13 2026\nAPR 06 2026\nMAR 30 2026\nMAR 23 2026\nMAR 16 2026\nMAR 09 2026\nMAR 02 2026\nFEB 23 2026\nSCOPE\nALL\nFX\nINDICES\nCOMMODITIES\nCRYPTO\nSUMMARY\nKey metrics and model ranking.\nSIMULATION\nTrailing-stop and sizing perspective.\nBASKET\nSee every pair, direction, and return.\nRESEARCH\nDiagnostics and pair-level distribution.\nNOTES\nWeekly observations and takeaways.\n++\n\nDEALER PORTFOLIO\n\n+41.06%\nTOTAL RETURN\nWIN RATE\n57%\nSHARPE (WK)\n0.29\nMAX DD\n26.91%\nPROFIT FACTOR\n2.07\n57%\n\nRETURN SPREAD\n\n*** High Confidence\n-\n\nCOMMERCIAL PORTFOLIO\n\n+12.59%\nTOTAL RETURN\nWIN RATE\n50%\nSHARPE (WK)\n0.11\nMAX DD\n26.98%\nPROFIT FACTOR\n1.28\n50%\n\nRETURN SPREAD\n\n** Medium Confidence\n--\n\nSENTIMENT PORTFOLIO\n\n-63.30%\nTOTAL RETURN\nWIN RATE\n36%\nSHARPE (WK)\n-0.42\nMAX DD\n83.08%\nPROFIT FACTOR\n0.32\n36%\n\nRETURN SPREAD\n\n* Low Confidence\n--\n\nSTRENGTH PORTFOLIO\n\n-32.42%\nTOTAL RETURN\nWIN RATE\n50%\nSHARPE (WK)\n-0.26\nMAX DD\n48.88%\nPROFIT FACTOR\n0.50\n50%\n\nRETURN SPREAD\n\n* Low Confidence\nV2V2.0.3 PENDING"
+  },
+  "screenshots": [
+    "C:/Users/User/Documents/GitHub/limni-website/releases/v2/screenshots/performance-selected-truth-2026-06-08/performance-weekly-hold-switch-final-contained.png"
+  ]
+}

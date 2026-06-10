@@ -1,0 +1,20 @@
+{
+  "capturedAt": "2026-06-09T00:44:56.975Z",
+  "badResponses": [],
+  "failedRequests": [],
+  "console": [],
+  "pageErrors": [],
+  "observations": {
+    "hasWeeklyHold": true,
+    "has2016Trades": true,
+    "hasPnlMinus4207": true,
+    "hasSyncWarning": false,
+    "hasLedgerMismatchWarning": false,
+    "hasUnavailable": false,
+    "rows": 14,
+    "excerpt": "LIMNI LABS\nPERFORMANCE\nBACK\nSIGNAL MODEL\nTandem\nTiered\nAgreement\nSelector\nEXECUTION\nWeekly Hold\nADR Grid\nRISK OVERLAY\nNone\nAPPLIED\nTANDEM · WEEKLY HOLD\n14 WEEKS TRACKED\n-42.07%\nTOTAL RETURN\nWEEKLY WR\n50.0%\nMAX DD\n108.79%\nPATH SHARPE\n-0.68\nPATH SORTINO\n-0.65\nTRADE PF\n0.96\nPATH CALMAR\n-1.44\nAVG WEEKLY\n-3.00%\nTOTAL TRADES\n2016\nTRADE EXP\n-0.02%\nTRADE AVG W/L\n+1.0 / -1.1\nBEST STREAK\n2W\nWORST STREAK\n3L\nDARK MODE\nSign Out\nPerformance\n\nTANDEM · WEEKLY HOLD\n\nVIEW MODE\n\nRETURNS MEASURED FROM EXECUTION OPEN (MON 00:00 UTC)\n\nMETRIC\nADR-norm\nRaw %\nWEEK\nALL TIME\nMAY 25 2026\nMAY 18 2026\nMAY 11 2026\nMAY 04 2026\nAPR 27 2026\nAPR 20 2026\nAPR 13 2026\nAPR 06 2026\nMAR 30 2026\nMAR 23 2026\nMAR 16 2026\nMAR 09 2026\nMAR 02 2026\nFEB 23 2026\nSCOPE\nALL\nFX\nINDICES\nCOMMODITIES\nCRYPTO\nSUMMARY\nKey metrics and model ranking.\nSIMULATION\nTrailing-stop and sizing perspective.\nBASKET\nSee every pair, direction, and return.\nRESEARCH\nDiagnostics and pair-level distribution.\nNOTES\nWeekly observations and takeaways.\n\nTANDEM · WEEKLY_HOLD · NONE · ALL CLOSED WEEKS\n\n14 weeks\n56 portfolios\n2016 trades\n1022W\n994L\nENGINE TRADES\n2016\nP/L\n-42.07%\nMAX DD\n-108.79%\n▸\nWeek of May 24, 2026\n4 portfolios\n76W\n68L\nP/L\n+4.70%\n▸\nWeek of May 17, 2026\n4 portfolios\n76W\n68L\nP/L\n-17.72%\n▸\nWeek of May 10, 2026\n4 portfolios\n61W\n83L\nP/L\n-20.56%\n▸\nWeek of May 03, 2026\n4 portfolios\n78W\n66L\nP/L\n+10.96%\n▸\nWeek of Apr 26, 2026\n4 portfolios\n74W\n70L\nP/L\n-6.85%\n▸\nWeek of Apr 19, 2026\n4 portfolios\n72W\n72L\nP/L\n-5.93%\n▸\nWeek of Apr 12, 2026\n4 portfolios\n72W\n72L\nP/L\n-13.52%\n▸\nWeek of Apr 05, 2026\n4 portfolios\n71W\n73L\nP/L\n+0.66%\n▸\nWeek of Mar 29, 2026\n4 portfolios\n76W\n68L\nP/L\n+14.14%\n▸\nWeek of Mar 22, 2026\n4 portfolios\n72W\n72L\nP/L\n-9.45%\n▸\nWeek of Mar 15, 2026\n4 portfolios\n67W\n77L\nP/L\n+0.55%\n▸\nWeek of Mar 08, 2026\n4 portfolios\n77W\n67L\nP/L\n+15.21%\n▸\nWeek of Mar 02, 2026\n4 portfolios\n57W\n87L\nP/L\n-44.61%\n▸\nWeek of Feb 23, 2026\n4 portfolios\n93W\n51L\nP/L\n+30.35%\nV2V2.0.3 PENDING"
+  },
+  "screenshots": [
+    "C:/Users/User/Documents/GitHub/limni-website/releases/v2/screenshots/performance-selected-truth-2026-06-08/performance-weekly-hold-basket-final-selected-runtime.png"
+  ]
+}

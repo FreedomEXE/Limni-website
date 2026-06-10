@@ -1,0 +1,101 @@
+{
+  "baseUrl": "http://localhost:3001",
+  "generatedAtUtc": "2026-06-06T01:01:49.949Z",
+  "dashboard": {
+    "initialMs": 2930,
+    "initialUrl": "http://localhost:3001/dashboard?asset=all&bias=dealer&view=heatmap&report=2026-06-02",
+    "initialHasInvalidFutureLabel": true,
+    "initialHasFreezeMissing": true,
+    "initialHasFutureTimeStrings": false,
+    "may04Url": "http://localhost:3001/dashboard?asset=all&bias=dealer&view=heatmap&report=2026-04-28",
+    "may04HasPairs36": true,
+    "may04Blank": false,
+    "may04PendingBanner": false,
+    "may25Url": "http://localhost:3001/dashboard?asset=all&bias=dealer&view=heatmap&report=2026-05-19",
+    "may25HasPairs36": true,
+    "may25Blank": false,
+    "may25SentimentUrl": "http://localhost:3001/dashboard?asset=all&bias=sentiment&view=heatmap&report=2026-05-19",
+    "may25SentimentHasPairs36": true,
+    "may25SentimentBlank": false,
+    "may25StrengthUrl": "http://localhost:3001/dashboard?asset=all&bias=strength&view=heatmap&report=2026-05-19",
+    "may25StrengthHasPairs36": true,
+    "may25StrengthBlank": false,
+    "canonRequestCount": 0,
+    "dashboardPayloadRequestCount": 0,
+    "versionRequestCount": 1,
+    "noSnapBack": true,
+    "noFutureTimeStringsAfterSwitching": true
+  },
+  "performance": {
+    "ms": 1502,
+    "hasStaleCanonWarning": true,
+    "blocksDeprecated19Or23": true,
+    "url": "http://localhost:3001/performance"
+  },
+  "status": {
+    "ms": 12183,
+    "hasSourceFreezeLedger": true,
+    "hasFreezeTarget": false,
+    "hasRawEvidenceMissing": false,
+    "hasKernel": true,
+    "url": "http://localhost:3001/status"
+  },
+  "totalRequests": 98,
+  "requestSummary": {
+    "canon": 0,
+    "dashboardPayload": 0,
+    "versionCurrent": 4
+  },
+  "responses": [
+    {
+      "url": "http://localhost:3001/api/version/current",
+      "status": 200,
+      "at": 1780707711976
+    },
+    {
+      "url": "http://localhost:3001/api/system/mode",
+      "status": 200,
+      "at": 1780707712298
+    },
+    {
+      "url": "http://localhost:3001/performance",
+      "status": 200,
+      "at": 1780707717721
+    },
+    {
+      "url": "http://localhost:3001/api/version/current",
+      "status": 200,
+      "at": 1780707717968
+    },
+    {
+      "url": "http://localhost:3001/api/version/current",
+      "status": 200,
+      "at": 1780707717993
+    },
+    {
+      "url": "http://localhost:3001/api/system/mode",
+      "status": 200,
+      "at": 1780707718096
+    },
+    {
+      "url": "http://localhost:3001/api/system/mode",
+      "status": 200,
+      "at": 1780707718112
+    },
+    {
+      "url": "http://localhost:3001/status",
+      "status": 200,
+      "at": 1780707719338
+    },
+    {
+      "url": "http://localhost:3001/api/version/current",
+      "status": 200,
+      "at": 1780707719586
+    },
+    {
+      "url": "http://localhost:3001/api/system/mode",
+      "status": 200,
+      "at": 1780707730579
+    }
+  ]
+}

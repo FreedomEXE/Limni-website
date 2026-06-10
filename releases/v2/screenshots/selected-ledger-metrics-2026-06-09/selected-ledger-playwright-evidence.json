@@ -1,0 +1,80 @@
+{
+  "base": "http://127.0.0.1:3001",
+  "checkedAt": "2026-06-09T06:25:52.728Z",
+  "routes": {
+    "dashboard": {
+      "ready": "true",
+      "baseline": "v2.0.3-clean14",
+      "readyWeeks": "14",
+      "expectedWeeks": "14"
+    },
+    "performance": {
+      "ready": "true",
+      "baseline": "v2.0.3-clean14",
+      "readyWeeks": "14",
+      "expectedWeeks": "14"
+    },
+    "status": {
+      "staleLifecycleTextAbsent": true,
+      "receiptLifecycleTextPresent": true
+    },
+    "summary": {
+      "cards": {
+        "Dealer Portfolio": {
+          "visible": "+130.47%",
+          "expected": "+130.47%",
+          "matches": true
+        },
+        "Commercial Portfolio": {
+          "visible": "+66.04%",
+          "expected": "+66.04%",
+          "matches": true
+        },
+        "Sentiment Portfolio": {
+          "visible": "+40.34%",
+          "expected": "+40.34%",
+          "matches": true
+        },
+        "Strength Portfolio": {
+          "visible": "+71.33%",
+          "expected": "+71.33%",
+          "matches": true
+        }
+      }
+    },
+    "simulation": {
+      "returnPct": {
+        "visible": "+308.18%",
+        "expected": "+308.18%",
+        "matches": true
+      },
+      "trades": {
+        "visible": "11139",
+        "expected": "11139",
+        "matches": true
+      },
+      "unavailableTextVisible": false
+    },
+    "basket": {
+      "source": "selected-trade-rows",
+      "selectedExecutionLedgerId": "execution-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+      "selectedTradeRowLedgerId": "trade-row-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+      "selectedTradeRowCount": "13111",
+      "closedHistoryRequestCount": 0
+    }
+  },
+  "consoleErrors": [],
+  "failedRequests": [],
+  "closedHistoryRequests": [],
+  "ignoredRequestFailures": [],
+  "pass": {
+    "dashboardReady": true,
+    "performanceReady": true,
+    "statusLifecycleClean": true,
+    "summaryCardsMatch": true,
+    "simulationMatches": true,
+    "basketSelectedRows": true,
+    "noConsoleErrors": true,
+    "noFailedRequests": true
+  }
+}

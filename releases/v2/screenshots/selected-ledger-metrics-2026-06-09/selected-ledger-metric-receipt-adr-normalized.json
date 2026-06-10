@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "kind": "selected-ledger-metric-receipt",
+  "generatedAtUtc": "2026-06-09T14:43:24.177Z",
+  "statVersion": "selected-ledger-stat-v1",
+  "selection": {
+    "strategy": "tandem",
+    "f1": "adr_grid",
+    "f2": "pair_fill_cap"
+  },
+  "strategyLabel": "Tandem",
+  "historyWindow": "v2.0.3-clean14",
+  "selectedWeek": "all",
+  "scope": [
+    "fx",
+    "indices",
+    "commodities",
+    "crypto"
+  ],
+  "viewMode": {
+    "anchor": "execution",
+    "normalization": "adr_normalized"
+  },
+  "status": "available",
+  "reason": null,
+  "ledger": {
+    "selectedExecutionLedgerId": "execution-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+    "selectedTradeRowLedgerId": "trade-row-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+    "sourceRowCount": 13111,
+    "selectedRowCount": 13111,
+    "metricRowCount": 1972,
+    "leafRowCount": 11139
+  },
+  "summary": {
+    "returnPct": 308.18256678789936,
+    "maxDrawdownPct": 149.0043916173197,
+    "tradeCount": 11139,
+    "winCount": 9228,
+    "lossCount": 1911,
+    "winRate": 82.84406140587126
+  },
+  "weekly": {
+    "count": 14,
+    "returnPctSum": 308.1825667879003,
+    "tradeCount": 11139,
+    "rows": [
+      {
+        "weekOpenUtc": "2026-02-23T00:00:00.000Z",
+        "returnPct": 82.21832637607228,
+        "maxDrawdownPct": 11.582699505689893,
+        "trades": 1038
+      },
+      {
+        "weekOpenUtc": "2026-03-02T00:00:00.000Z",
+        "returnPct": -71.93643139199757,
+        "maxDrawdownPct": 71.93643139199757,
+        "trades": 570
+      },
+      {
+        "weekOpenUtc": "2026-03-08T23:00:00.000Z",
+        "returnPct": 27.53681158856214,
+        "maxDrawdownPct": 5.792870538387663,
+        "trades": 717
+      },
+      {
+        "weekOpenUtc": "2026-03-15T23:00:00.000Z",
+        "returnPct": 86.56836497834536,
+        "maxDrawdownPct": 13.852285507103081,
+        "trades": 921
+      },
+      {
+        "weekOpenUtc": "2026-03-22T23:00:00.000Z",
+        "returnPct": 44.16061610545154,
+        "maxDrawdownPct": 5.2952002925556165,
+        "trades": 576
+      },
+      {
+        "weekOpenUtc": "2026-03-29T23:00:00.000Z",
+        "returnPct": 75.63076071246553,
+        "maxDrawdownPct": 6.209632189632535,
+        "trades": 892
+      },
+      {
+        "weekOpenUtc": "2026-04-05T23:00:00.000Z",
+        "returnPct": -17.78981468241766,
+        "maxDrawdownPct": 17.78981468241766,
+        "trades": 952
+      },
+      {
+        "weekOpenUtc": "2026-04-12T23:00:00.000Z",
+        "returnPct": -131.21457693490203,
+        "maxDrawdownPct": 131.21457693490203,
+        "trades": 630
+      },
+      {
+        "weekOpenUtc": "2026-04-19T23:00:00.000Z",
+        "returnPct": 76.93914701741569,
+        "maxDrawdownPct": 7.549318628136469,
+        "trades": 1030
+      },
+      {
+        "weekOpenUtc": "2026-04-26T23:00:00.000Z",
+        "returnPct": 31.76529527746953,
+        "maxDrawdownPct": 6.560123279629046,
+        "trades": 666
+      },
+      {
+        "weekOpenUtc": "2026-05-03T23:00:00.000Z",
+        "returnPct": 40.30138691857216,
+        "maxDrawdownPct": 10.811275362918519,
+        "trades": 802
+      },
+      {
+        "weekOpenUtc": "2026-05-10T23:00:00.000Z",
+        "returnPct": -19.570295354283314,
+        "maxDrawdownPct": 19.570295354283314,
+        "trades": 785
+      },
+      {
+        "weekOpenUtc": "2026-05-17T23:00:00.000Z",
+        "returnPct": 17.46048622159053,
+        "maxDrawdownPct": 7.708112657349619,
+        "trades": 828
+      },
+      {
+        "weekOpenUtc": "2026-05-24T23:00:00.000Z",
+        "returnPct": 66.11248995555611,
+        "maxDrawdownPct": 7.057574653192173,
+        "trades": 732
+      }
+    ]
+  },
+  "summaryCards": [
+    {
+      "model": "dealer",
+      "returnPct": 130.47247251348347,
+      "metricRowCount": 495,
+      "leafRowCount": 2751
+    },
+    {
+      "model": "commercial",
+      "returnPct": 66.04312152111022,
+      "metricRowCount": 493,
+      "leafRowCount": 2778
+    },
+    {
+      "model": "sentiment",
+      "returnPct": 40.33833730578655,
+      "metricRowCount": 493,
+      "leafRowCount": 2817
+    },
+    {
+      "model": "strength",
+      "returnPct": 71.32863544751994,
+      "metricRowCount": 491,
+      "leafRowCount": 2793
+    }
+  ],
+  "simulation": {
+    "returnPct": 308.18256678789936,
+    "maxDrawdownPct": 149.0043916173197,
+    "tradeCount": 11139,
+    "pathPointCount": 1972
+  },
+  "basket": {
+    "returnPct": 308.18256678789936,
+    "maxDrawdownPct": 149.0043916173197,
+    "tradeCount": 11139,
+    "hasActivity": true
+  },
+  "exportContract": {
+    "rowExportsRemainRowOnly": true,
+    "metricReceiptSource": "selected-ledger-stat-v1"
+  },
+  "parity": {
+    "tolerancePct": 0.000001,
+    "summaryMatchesWeeklySum": true,
+    "summaryCardsMatchSummary": true,
+    "simulationMatchesSummary": true,
+    "basketMatchesSummary": true,
+    "tradeCountsMatch": true,
+    "passed": true
+  }
+}

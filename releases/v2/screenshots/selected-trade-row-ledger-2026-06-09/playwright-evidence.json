@@ -1,0 +1,13 @@
+{
+  "path": "/performance?view=basket&strategy=tandem&f1=adr_grid&f2=pair_fill_cap",
+  "status": 200,
+  "routeReady": "true",
+  "basketSource": "selected-trade-rows",
+  "executionLedgerId": "execution-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+  "tradeRowLedgerId": "trade-row-ledger:strategy-runtime:tandem-adr_grid-pair_fill_cap:13111:aebc5c68",
+  "tradeRowCount": 13111,
+  "basketFallbackRequests": 0,
+  "consoleErrors": 0,
+  "failedRequests": 0,
+  "screenshot": "releases/v2/screenshots/selected-trade-row-ledger-2026-06-09/performance-basket-selected-ledger.png"
+}

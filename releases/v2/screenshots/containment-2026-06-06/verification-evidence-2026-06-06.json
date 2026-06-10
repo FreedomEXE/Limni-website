@@ -1,0 +1,126 @@
+{
+  "generatedAtUtc": "2026-06-06T01:18:24.207Z",
+  "baseUrl": "http://localhost:3001",
+  "routeApiTimings": {
+    "dashboardAllReports": {
+      "route": "/api/dashboard/payload?asset=all&allReports=1",
+      "status": 200,
+      "ms": 26477,
+      "bytes": 3223977,
+      "json": {
+        "reportOptions": 24,
+        "currentReport": {
+          "value": "2026-06-02",
+          "label": "Jun 08 2026",
+          "cotReportLabel": "Jun 02 2026",
+          "fridayFreezeLabel": "Jun 05 2026 5:00 PM EDT",
+          "fridayFreezeUtc": "2026-06-05T21:00:00.000Z",
+          "freezeStatusLabel": "Freeze ledger missing; legacy fallback",
+          "freezeLedgerReady": false
+        },
+        "reportKeys": 0,
+        "futureSourceTimestampCount": 42,
+        "cotRowsCurrent": null,
+        "sentimentRowsCurrent": null,
+        "strengthRowsCurrent": null
+      }
+    },
+    "dashboardOneReport": {
+      "route": "/api/dashboard/payload?asset=all",
+      "status": 200,
+      "ms": 4160,
+      "bytes": 14156,
+      "json": {
+        "reportOptions": 24,
+        "currentReport": {
+          "value": "2026-06-02",
+          "label": "Jun 08 2026",
+          "cotReportLabel": "Jun 02 2026",
+          "fridayFreezeLabel": "Jun 05 2026 5:00 PM EDT",
+          "fridayFreezeUtc": "2026-06-05T21:00:00.000Z",
+          "freezeStatusLabel": "Freeze ledger missing; legacy fallback",
+          "freezeLedgerReady": false
+        },
+        "reportKeys": 0,
+        "futureSourceTimestampCount": 38,
+        "cotRowsCurrent": null,
+        "sentimentRowsCurrent": null,
+        "strengthRowsCurrent": null
+      }
+    },
+    "performanceArtifactStatus": {
+      "route": "/api/performance/strategy-artifacts/status?key=tiered_4w%3Aadr_grid%3Apair_fill_cap",
+      "status": 200,
+      "ms": 2837,
+      "bytes": 834,
+      "json": {
+        "generatedAtUtc": "2026-06-06T01:17:59.603Z",
+        "readyCount": 1,
+        "totalCount": 1,
+        "artifacts": [
+          {
+            "key": "tiered_4w:adr_grid:pair_fill_cap",
+            "label": "Tiered · ADR Grid · Pair Fill Cap",
+            "strategy": "tiered_4w",
+            "f1": "adr_grid",
+            "f2": "pair_fill_cap",
+            "expectedEngineVersion": "strategy-artifact-v33:selector-engine-v6:adr-grid-canonical-weekly-anchor-v9-reset-close-contract:risk-overlay-pair-fill-cap-v1:path-simulation-v11-grid-reset-close:source-fingerprint-v5-crypto-sun20",
+            "actualEngineVersion": "strategy-artifact-v33:selector-engine-v6:adr-grid-canonical-weekly-anchor-v9-reset-close-contract:risk-overlay-pair-fill-cap-v1:path-simulation-v11-grid-reset-close:source-fingerprint-v5-crypto-sun20",
+            "ready": true,
+            "reason": "ready",
+            "cachedAtUtc": "2026-06-06T01:16:40.952Z",
+            "payloadBytes": null,
+            "shardProgress": null,
+            "missingWeeks": [],
+            "staleWeeks": []
+          }
+        ]
+      }
+    }
+  },
+  "browserProof": {
+    "dashboard": {
+      "ms": 11035,
+      "noSnapBack": true,
+      "currentInvalidFutureLabel": false,
+      "currentFreezeMissing": false,
+      "may04HasPairs36": false,
+      "may25DealerHasPairs36": false,
+      "may25SentimentHasPairs36": false,
+      "may25StrengthHasPairs36": false,
+      "blankStates": {
+        "may04": false,
+        "may25Dealer": false,
+        "may25Sentiment": false,
+        "may25Strength": false
+      }
+    },
+    "performance": {
+      "ms": 2820,
+      "staleCanonBlocked": true,
+      "deprecated19Or23Warning": true,
+      "eurUsdRowsVisible": false
+    },
+    "status": {
+      "ms": 10457,
+      "hasSourceFreezeLedger": true,
+      "firstWeekHasFreezeTarget": true,
+      "firstWeekHasCaptured": true,
+      "firstWeekHasRawEvidenceMissing": true,
+      "firstWeekTextSample": "Trading week May 24, 2026 source readiness\n\nCommercial\n\ncot_report_date_v1\n\n36/36\nFREEZE TARGET\nMay 22, 2026, 9:00 PM ET\nCAPTURED\nMay 29, 2026, 11:30 PM ET to May 29, 2026, 11:30 PM ET\nLAG\n10230m after freeze\nEVIDENCE / TRUST\ncot_snapshot / trusted_raw\nINCIDENTS\n0 incident(s) across 0 row(s)\nRAW PROVIDER EVIDENCE MISSING\n0\n\nDealer\n\ncot_report_date_v1\n\n36/36\nFREEZE TARGET\nMay 22, 2026, 9:00 PM ET\nCAPTURED\nMay 29, 2026, 11:30 PM ET to May 29, 2026, 11:30 PM ET\nLAG\n10230m after freeze\nEVIDENCE / TRUST\ncot_snapshot / trusted_raw\nINCIDENTS\n0 incident(s) across 0 row(s)\nRAW PROVIDER EVIDENCE MISSING\n0\n\nSentiment\n\nsentiment_friday_close_v1\n\n36/36\nFREEZE TARGET\nMay 22, 2026, 9:00 PM ET\nCAPTURED\nMay 23, 2026, 12:10 AM ET to May 23, 2026, 12:10 AM ET\nLAG\n190m after freeze\nEVIDENCE / TRUST\naggregate_derived / trusted_aggregate_derived\nINCIDENTS\n36 incident(s) across 36 row(s)\nRAW PROVIDER EVIDENCE MISSING\n36\n\nStrength\n\nstrength_friday_close_v1\n\n36/36\nFREEZE TARGET\nMay 22, 2026, 9:00 PM ET\nCAPTURED\nMay 23, 2026, 1:00 AM ET\nLAG\n240m after freeze\nEVIDENCE / TRUST\ncomputed_price_strength / trusted_computed\nINCIDENTS\n0 incident(s) across 0 row(s)\nRAW PROVIDER EVIDENCE MISSING\n0"
+    },
+    "requests": {
+      "total": 0,
+      "canon": 0,
+      "dashboardPayload": 0,
+      "performance": 0,
+      "entries": []
+    }
+  },
+  "screenshots": {
+    "dataCurrentInvalid": "releases\\v2\\screenshots\\containment-2026-06-06\\data-current-invalid-consolidated.png",
+    "dataMay25Dealer": "releases\\v2\\screenshots\\containment-2026-06-06\\data-may25-dealer-consolidated.png",
+    "performancePairFillCapBlocked": "releases\\v2\\screenshots\\containment-2026-06-06\\performance-pair-fill-cap-blocked-consolidated.png",
+    "statusSourceFreezeDiagnostics": "releases\\v2\\screenshots\\containment-2026-06-06\\status-source-freeze-diagnostics-consolidated.png"
+  }
+}

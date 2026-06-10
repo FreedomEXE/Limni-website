@@ -1,0 +1,35 @@
+[
+  {
+    "path": "/dashboard",
+    "status": 200,
+    "readyAttr": "true",
+    "baseline": "v2.0.3-clean14",
+    "readyWeeks": "14",
+    "expectedWeeks": "14",
+    "consoleErrors": 0,
+    "failedRequests": 0,
+    "screenshot": "releases/v2/screenshots/route-readiness-2026-06-09/dashboard.png"
+  },
+  {
+    "path": "/performance",
+    "status": 200,
+    "readyAttr": "true",
+    "baseline": "v2.0.3-clean14",
+    "readyWeeks": "14",
+    "expectedWeeks": "14",
+    "consoleErrors": 0,
+    "failedRequests": 0,
+    "screenshot": "releases/v2/screenshots/route-readiness-2026-06-09/performance.png"
+  },
+  {
+    "path": "/status",
+    "status": 200,
+    "readyAttr": null,
+    "baseline": null,
+    "readyWeeks": null,
+    "expectedWeeks": null,
+    "consoleErrors": 0,
+    "failedRequests": 0,
+    "screenshot": "releases/v2/screenshots/route-readiness-2026-06-09/status.png"
+  }
+]

@@ -1,0 +1,37 @@
+{
+  "generatedUtc": "2026-06-08T23:59:53.446Z",
+  "urls": {
+    "rootRedirectUrl": "http://127.0.0.1:3001/dashboard?bias=dealer",
+    "statusUrl": "http://127.0.0.1:3001/status",
+    "performanceUrl": "http://127.0.0.1:3001/performance?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&view=summary"
+  },
+  "screenshots": [
+    "smoke-performance-after-data-baseline.png"
+  ],
+  "checks": {
+    "rootRedirectedToDashboard": true,
+    "dashboardHadActiveBaseline": true,
+    "dashboardHiddenArchiveDec22": true,
+    "statusHadAppTruth": true,
+    "statusHadActiveBaseline": true,
+    "performanceNoAppVersionWall": true
+  },
+  "finalPerformanceTextSample": "LIMNI LABS PERFORMANCE BACK SIGNAL MODEL Tandem Tiered Agreement Selector EXECUTION Weekly Hold ADR Grid RISK OVERLAY None Pair Fill Cap APPLIED Computing stats... DARK MODE Sign Out LOADING PERFORMANCE PAGE... V2V2.0.3 PENDING",
+  "events": [
+    {
+      "type": "request-failed",
+      "error": "net::ERR_ABORTED",
+      "url": "http://127.0.0.1:3001/__nextjs_font/geist-latin.woff2"
+    },
+    {
+      "type": "request-failed",
+      "error": "net::ERR_ABORTED",
+      "url": "http://127.0.0.1:3001/api/system/mode"
+    },
+    {
+      "type": "request-failed",
+      "error": "net::ERR_ABORTED",
+      "url": "http://127.0.0.1:3001/api/system/mode"
+    }
+  ]
+}

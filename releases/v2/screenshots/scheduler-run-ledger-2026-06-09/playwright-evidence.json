@@ -1,0 +1,21 @@
+{
+  "checkedAtUtc": "2026-06-09T01:54:24.026Z",
+  "route": "/status",
+  "baseUrl": "http://127.0.0.1:3001",
+  "visible": {
+    "appTruthControlPlane": true,
+    "schedulerReceiptsCard": true,
+    "runReceiptsSection": true,
+    "scheduledCronRegister": true,
+    "schedulerRunLedgerLabel": true,
+    "materializationRunLedgerLabel": true
+  },
+  "consoleMessages": [],
+  "pageErrors": [],
+  "failedRequests": [],
+  "badResponses": [],
+  "screenshots": [
+    "status-run-ledger-full-page.png",
+    "status-run-ledger-section.png"
+  ]
+}
