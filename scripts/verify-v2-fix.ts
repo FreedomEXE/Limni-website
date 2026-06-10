@@ -1,6 +1,3 @@
-// Set DATABASE_URL before any imports
-process.env.DATABASE_URL = process.env.DATABASE_URL ||
-  "postgresql://limni_db_user:K8zK9exIEbZ4YzyV4jxFYHpZO0Rq1X36@dpg-d5jucsmr433s73baeg1g-a.oregon-postgres.render.com/limni_db";
 
 import { Pool } from "pg";
 
@@ -8,7 +5,7 @@ const DATABASE_URL = process.env.DATABASE_URL;
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
-  ssl: DATABASE_URL.includes("render.com") ? { rejectUnauthorized: false } : false,
+  ssl: DATABASE_URL?.includes("render.com") ? { rejectUnauthorized: false } : false,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,

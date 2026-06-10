@@ -1,6 +1,4 @@
 // Individual basket performance analysis
-process.env.DATABASE_URL = process.env.DATABASE_URL ||
-  "postgresql://limni_db_user:K8zK9exIEbZ4YzyV4jxFYHpZO0Rq1X36@dpg-d5jucsmr433s73baeg1g-a.oregon-postgres.render.com/limni_db";
 
 import { Pool } from "pg";
 import { DateTime } from "luxon";
