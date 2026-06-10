@@ -37,7 +37,7 @@ canon, or change app behavior from this ledger.
 | `docs/data-verification/*.md` | Durable verification workflow/spec material for App vs TradingView parity. |
 | `README.md` | Adds pointer to app-parity testing and focused Performance regression command. |
 | `reports/TEST_CATALOG.md` | Adds pointer that test catalog is not current dashboard truth. |
-| `check-schema.js`, `query-market-state.js`, `scripts/adr-debug.js`, `scripts/asset-class-breakdown.js`, `scripts/check-diagnostics.mjs`, `scripts/check-sentiment*.js`, `scripts/day-analysis.js`, `scripts/losers-by-day.js`, `scripts/m5-parity-test*.js` | Security cleanup: hardcoded database URL replaced with `process.env.DATABASE_URL`; keep, but commit separately from release docs. |
+| `scripts/db/check-schema.js`, `scripts/db/query-market-state.js`, `scripts/adr-debug.js`, `scripts/asset-class-breakdown.js`, `scripts/check-diagnostics.mjs`, `scripts/check-sentiment*.js`, `scripts/day-analysis.js`, `scripts/losers-by-day.js`, `scripts/m5-parity-test*.js` | Security cleanup: hardcoded database URL replaced with `process.env.DATABASE_URL`; keep, but commit separately from release docs. Root DB probes were moved under `scripts/db/` during cleanup. |
 | `scripts/analyze-katarakti*.ts`, `scripts/backfill-v3-performance.ts`, `scripts/backtest-universal-v3-report.ts`, `scripts/basket-drawdown-from-snapshots.ts`, `scripts/compare-*.ts`, `scripts/eightcap-*.ts`, `scripts/fiveers-*.ts`, `scripts/individual-basket-performance.ts`, `scripts/katarakti-phase1-backtest.ts`, `scripts/refresh-v2-snapshots.ts`, `scripts/verify-v2-fix.ts` | Security cleanup on tracked research/backtest scripts; keep the credential removal, then decide later whether these scripts belong in `scripts/`, `research/`, or archive. |
 | `scripts/notify-complete-modern.ps1`, `scripts/notify-response.ps1` | Voice reliability and Codex/Ryan default updates; keep as tooling if voice scripts remain supported. |
 | `scripts/pinescript/limni-adr-verifier.pine` | TradingView verifier tool; keep as verification tooling unless a later verification-tooling gate replaces it. |
@@ -53,6 +53,7 @@ canon, or change app behavior from this ledger.
 | `releases/v2/screenshots/data/*`, `releases/v2/screenshots/performance/*`, `releases/v2/screenshots/status/*` | Future normalized release package screenshot folders | Loose page folders should be grouped under the release-template structure when release docs are normalized. |
 | `scripts/adr-grid-weekly-anchor-ab.ts`, `scripts/backtest-adr-grid-runner-refill.ts`, `scripts/backtest-weekly-hold-adr-exits.ts`, `scripts/audit-clean14-sentiment-regime.ts`, `scripts/compare-snapshot-regimes.ts`, `scripts/report-corrected-path-metrics.ts` | `research/scripts/` or `scripts/research/` | Research-only scripts should not read like production tooling. Target folder should be approved before moving. |
 | `reports/snapshot-regime-comparison/*.md` | `docs/research/` if decision-grade; otherwise archive | These are research reports, not active runtime truth. |
+| `analyze-exit-research.js` | `scripts/research/analyze-exit-research.js` | Root research helper moved under scripts research cleanup. |
 
 ## Archive
 
