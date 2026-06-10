@@ -43,6 +43,7 @@ data/
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
@@ -81,12 +82,20 @@ reports/universal-v1-funded-policy-sim-*.md
 # Screenshots and temp files
 screenshots/
 temp/
+tmp/
+test-results/
+playwright-report/
+.next-dev-logs/
+.codex/
+.codex-logs/
+.codex-run/
 nul
 *.png
 *.jpeg
 *.jpg
 !releases/v2/screenshots/
 !releases/v2/screenshots/**
+releases/v2/screenshots/**/*.log
 
 # Poseidon runtime state
 docs/ai/poseidon/state/conversations.json
