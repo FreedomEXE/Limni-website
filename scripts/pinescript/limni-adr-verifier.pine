@@ -1,0 +1,2127 @@
+// This Pine Script™ source code is subject to the terms of the Mozilla Public License 2.0
+// https://mozilla.org/MPL/2.0/
+// Property of Freedom_EXE (c) 2026
+
+//@version=6
+indicator("Limni ADR Verifier", shorttitle="Limni Verify", overlay=true, format=format.price, max_boxes_count=500, max_lines_count=500, max_labels_count=500)
+
+// ── Inputs ──────────────────────────────────────────────────────────────────
+adrLookback   = input.int(10, "ADR Lookback (days)", minval=1, maxval=50)
+adrMinDays    = input.int(5, "ADR Min Required Days", minval=1, maxval=50)
+adrSource     = input.string("TradingView Daily", "ADR Source", options=["TradingView Daily", "Synthetic App Window", "Manual App ADR %"])
+adrRangeBasis = input.string("High-Low (App)", "ADR Range Basis", options=["High-Low (App)", "Open-Extreme"])
+manualAdrPct  = input.float(0.60, "Manual App ADR %", minval=0.01, maxval=20.0, step=0.0001)
+adrRolloverHourUtc = input.int(21, "Synthetic ADR Rollover Hour UTC", minval=0, maxval=23)
+entryMultiple = input.float(1.0, "ADR Entry Multiple", minval=0.1, step=0.05)
+tpMultiple    = input.float(0.20, "TP/Grid ADR Multiple", minval=0.05, step=0.05)
+longPairs     = input.text_area("", "LONG Pairs (comma/newline)")
+shortPairs    = input.text_area("", "SHORT Pairs (comma/newline)")
+showTable     = input.bool(true, "Show Info Table")
+showBoxes     = input.bool(true, "Show Trade Boxes")
+showGridAreas = input.bool(true, "Show Grid Profit/DD Areas")
+showTradeLog  = input.bool(true, "Show Trade Breakdown")
+targetWeeksBack = input.int(0, "Weeks Back (0=current)", minval=0, maxval=52)
+
+verifierMode  = input.string("Weekly Hold", "Mode", options=["Weekly Hold", "ADR Grid"], group="Verification")
+anchorMode    = input.string("Market Truth", "Weekly Hold Anchor", options=["Market Truth", "Execution"], group="Verification")
+returnBasis   = input.string("Raw", "Return Basis", options=["Raw", "ADR Normalized"], group="Verification")
+liveBarMode   = input.string("Confirmed", "Live Bar", options=["Confirmed", "Realtime"], group="Verification")
+gridCapMode   = input.string("Off", "Grid Cap", options=["Off", "Pair Fill Cap"], group="Verification")
+gridCapValue  = input.int(3, "Pair Fill Cap Value", minval=1, maxval=20, group="Verification")
+gridBarSource = input.string("Confirmed 1H", "ADR Grid Price Bars", options=["Confirmed 1H", "Chart / 1m"], group="Verification", tooltip="Confirmed 1H matches the app's historical grid executor. Chart / 1m uses the chart's bars; use a 1m chart for lower-timeframe exploratory replay.")
+gridFullCloseBufferAdr = input.float(0.20, "Grid Full ADR Entry Buffer", minval=0.0, maxval=1.0, step=0.05, group="Verification", tooltip="Skips opening a new grid fill when its entry is less than this ADR distance from the full 1x ADR close.")
+showAuditRows = input.bool(true, "Show Audit Rows", group="Verification")
+auditPage = input.int(0, "Audit Page", minval=0, maxval=100, group="Verification", tooltip="Pages through on-chart audit rows when Pine Logs/alerts are unavailable.")
+auditRowsPerPage = input.int(4, "Audit Rows/Page", minval=1, maxval=12, group="Verification")
+logAuditRows = input.bool(true, "Log Audit Rows", group="Verification")
+logHeartbeat = input.bool(true, "Log Heartbeat", group="Verification", tooltip="Emits a small warning-level line so Pine Logs can confirm this script instance is running.")
+alertAuditExport = input.bool(false, "Alert Audit Export", group="Verification", tooltip="Sends the current audit block through alert() so it can be copied from TradingView's Alerts Log.")
+auditSystem = input.string("tiered", "Audit System", options=["tiered", "tandem", "agreement", "selector"], group="Verification")
+auditSourceModel = input.string("tiered_4w", "Audit Source Model", group="Verification")
+auditTier = input.int(1, "Audit Tier", minval=0, maxval=10, group="Verification")
+
+periodBoxBg      = input.color(color.new(#2a2e39, 70), "Period Box Fill")
+periodBoxBorder  = input.color(color.new(color.gray, 60), "Period Box Border")
+profitBoxBg      = input.color(color.new(color.green, 75), "Profit Box Fill")
+ddBoxBg          = input.color(color.new(color.red, 75), "Drawdown Box Fill")
+tableBgColor     = input.color(color.new(color.black, 15), "Table Background")
+tableTextColor   = input.color(color.white, "Table Text")
+tableBorderColor = input.color(color.new(color.white, 45), "Table Border")
+
+// Fresh Start re-entry: after TP, anchor resets and starts tracking from next bar
+
+// ── Pair helpers ────────────────────────────────────────────────────────────
+canonicalizePair(_s) =>
+    string x = str.upper(_s)
+    x := str.replace_all(x, "OANDA:", "")
+    x := str.replace_all(x, "FX:", "")
+    x := str.replace_all(x, "FOREXCOM:", "")
+    x := str.replace_all(x, "PEPPERSTONE:", "")
+    x := str.replace_all(x, "EIGHTCAP:", "")
+    x := str.replace_all(x, "CAPITALCOM:", "")
+    x := str.replace_all(x, "BLACKBULL:", "")
+    x := str.replace_all(x, "ICMARKETS:", "")
+    x := str.replace_all(x, "INDEX:", "")
+    x := str.replace_all(x, "/", "")
+    x := str.replace_all(x, ".", "")
+    x := str.replace_all(x, "_", "")
+    x := str.replace_all(x, "-", "")
+    if x == "NIKKEI" or x == "NIK225" or x == "JP225" or x == "NIKKEI225" or x == "JAPAN225" or x == "JP225USD" or x == "JPN225USD" or x == "NIKKEIUSD"
+        x := "JPN225"
+    if x == "SP500" or x == "US500" or x == "SPXUSD" or x == "SPX500USD" or x == "US500USD"
+        x := "SPX500"
+    if x == "NAS100" or x == "US100" or x == "NDXUSD" or x == "NDX100USD" or x == "NAS100USD" or x == "US100USD"
+        x := "NDX100"
+    if x == "USOIL" or x == "USOUSD" or x == "XTIUSD"
+        x := "WTIUSD"
+    if x == "BTCUSDT"
+        x := "BTCUSD"
+    if x == "ETHUSDT"
+        x := "ETHUSD"
+    x
+
+normalizePairList(_raw) =>
+    string cleaned = str.upper(_raw)
+    cleaned := str.replace_all(cleaned, " ", "")
+    cleaned := str.replace_all(cleaned, "\r", ",")
+    cleaned := str.replace_all(cleaned, "\n", ",")
+    cleaned := str.replace_all(cleaned, ";", ",")
+    cleaned := str.replace_all(cleaned, "/", "")
+    cleaned := str.replace_all(cleaned, ".", "")
+    cleaned := str.replace_all(cleaned, "_", "")
+    cleaned := str.replace_all(cleaned, "-", "")
+    cleaned := str.replace_all(cleaned, "NIKKEIUSD", "JPN225")
+    cleaned := str.replace_all(cleaned, "NIKKEI225", "JPN225")
+    cleaned := str.replace_all(cleaned, "NIK225", "JPN225")
+    cleaned := str.replace_all(cleaned, "JP225USD", "JPN225")
+    cleaned := str.replace_all(cleaned, "JPN225USD", "JPN225")
+    cleaned := str.replace_all(cleaned, "JP225", "JPN225")
+    cleaned := str.replace_all(cleaned, "JAPAN225", "JPN225")
+    cleaned := str.replace_all(cleaned, "SPX500USD", "SPX500")
+    cleaned := str.replace_all(cleaned, "US500USD", "SPX500")
+    cleaned := str.replace_all(cleaned, "SP500", "SPX500")
+    cleaned := str.replace_all(cleaned, "US500", "SPX500")
+    cleaned := str.replace_all(cleaned, "SPXUSD", "SPX500")
+    cleaned := str.replace_all(cleaned, "NAS100USD", "NDX100")
+    cleaned := str.replace_all(cleaned, "NDX100USD", "NDX100")
+    cleaned := str.replace_all(cleaned, "US100USD", "NDX100")
+    cleaned := str.replace_all(cleaned, "NAS100", "NDX100")
+    cleaned := str.replace_all(cleaned, "US100", "NDX100")
+    cleaned := str.replace_all(cleaned, "NDXUSD", "NDX100")
+    cleaned := str.replace_all(cleaned, "USOIL", "WTIUSD")
+    cleaned := str.replace_all(cleaned, "USOUSD", "WTIUSD")
+    cleaned := str.replace_all(cleaned, "XTIUSD", "WTIUSD")
+    cleaned := str.replace_all(cleaned, "BTCUSDT", "BTCUSD")
+    cleaned := str.replace_all(cleaned, "ETHUSDT", "ETHUSD")
+    cleaned
+
+listContainsPair(_list, _pair) =>
+    string wrappedList = "," + normalizePairList(_list) + ","
+    string cleanPair = canonicalizePair(_pair)
+    string wrappedPair = "," + cleanPair + ","
+    str.length(cleanPair) > 0 and str.contains(wrappedList, wrappedPair)
+
+getManualBias(_pair) =>
+    bool inLong = listContainsPair(longPairs, _pair)
+    bool inShort = listContainsPair(shortPairs, _pair)
+    string result = "NEUTRAL"
+    if inLong and not inShort
+        result := "LONG"
+    else if inShort and not inLong
+        result := "SHORT"
+    result
+
+// ── ADR calculation ─────────────────────────────────────────────────────────
+calcAdrStats() =>
+    float absRangeSum = 0.0
+    float pctRangeSum = 0.0
+    float validCnt = 0.0
+    for i = 1 to adrLookback
+        bool ok = not na(high[i]) and not na(low[i]) and not na(open[i]) and high[i] > 0 and low[i] > 0 and open[i] > 0
+        if ok
+            float absRange = adrRangeBasis == "Open-Extreme" ? math.max(math.abs(high[i] - open[i]), math.abs(open[i] - low[i])) : high[i] - low[i]
+            absRangeSum += absRange
+            pctRangeSum += (absRange / open[i]) * 100
+            validCnt += 1
+    [absRangeSum, pctRangeSum, validCnt]
+
+[dailyAdrAbsSum, dailyAdrPctSum, dailyAdrCount] = request.security(syminfo.tickerid, "D", calcAdrStats(), lookahead=barmerge.lookahead_off)
+
+// Synthetic App Window ADR builds completed daily bars from the chart feed with
+// an explicit rollover. It matches the app formula and lookback policy more
+// closely than TradingView's native daily candles, while still using TV OHLC.
+int adrDayMs = 24 * 60 * 60 * 1000
+int adrRolloverMs = adrRolloverHourUtc * 60 * 60 * 1000
+int syntheticAdrDay = int(math.floor((time - adrRolloverMs) / adrDayMs))
+var int syntheticAdrCurrentDay = na
+var float syntheticAdrDayOpen = na
+var float syntheticAdrDayHigh = na
+var float syntheticAdrDayLow = na
+var float[] syntheticAdrAbsRanges = array.new_float(0)
+var float[] syntheticAdrPctRanges = array.new_float(0)
+var float syntheticAdrAbs = na
+var float syntheticAdrPct = na
+var float syntheticAdrCount = 0.0
+
+if na(syntheticAdrCurrentDay)
+    syntheticAdrCurrentDay := syntheticAdrDay
+    syntheticAdrDayOpen := open
+    syntheticAdrDayHigh := high
+    syntheticAdrDayLow := low
+else if syntheticAdrDay != syntheticAdrCurrentDay
+    bool syntheticAdrOk = not na(syntheticAdrDayOpen) and not na(syntheticAdrDayHigh) and not na(syntheticAdrDayLow) and syntheticAdrDayOpen > 0 and syntheticAdrDayHigh > 0 and syntheticAdrDayLow > 0
+    if syntheticAdrOk
+        float syntheticAdrRange = adrRangeBasis == "Open-Extreme" ? math.max(math.abs(syntheticAdrDayHigh - syntheticAdrDayOpen), math.abs(syntheticAdrDayOpen - syntheticAdrDayLow)) : syntheticAdrDayHigh - syntheticAdrDayLow
+        array.unshift(syntheticAdrAbsRanges, syntheticAdrRange)
+        array.unshift(syntheticAdrPctRanges, (syntheticAdrRange / syntheticAdrDayOpen) * 100)
+        while array.size(syntheticAdrAbsRanges) > adrLookback
+            array.pop(syntheticAdrAbsRanges)
+        while array.size(syntheticAdrPctRanges) > adrLookback
+            array.pop(syntheticAdrPctRanges)
+    syntheticAdrCurrentDay := syntheticAdrDay
+    syntheticAdrDayOpen := open
+    syntheticAdrDayHigh := high
+    syntheticAdrDayLow := low
+else
+    syntheticAdrDayHigh := math.max(syntheticAdrDayHigh, high)
+    syntheticAdrDayLow := math.min(syntheticAdrDayLow, low)
+
+float syntheticAdrAbsSum = 0.0
+float syntheticAdrPctSum = 0.0
+float syntheticAdrValid = 0.0
+if array.size(syntheticAdrAbsRanges) > 0
+    for i = 0 to array.size(syntheticAdrAbsRanges) - 1
+        float absRange = array.get(syntheticAdrAbsRanges, i)
+        float pctRange = array.get(syntheticAdrPctRanges, i)
+        if not na(absRange) and not na(pctRange)
+            syntheticAdrAbsSum += absRange
+            syntheticAdrPctSum += pctRange
+            syntheticAdrValid += 1
+
+syntheticAdrCount := syntheticAdrValid
+syntheticAdrAbs := syntheticAdrValid >= adrMinDays ? syntheticAdrAbsSum / syntheticAdrValid : na
+syntheticAdrPct := syntheticAdrValid >= adrMinDays ? syntheticAdrPctSum / syntheticAdrValid : na
+
+bool useSyntheticAdr = adrSource == "Synthetic App Window"
+bool useManualAdr = adrSource == "Manual App ADR %"
+float currentAdrDistance = useManualAdr ? close * manualAdrPct / 100 : useSyntheticAdr ? syntheticAdrAbs : dailyAdrCount >= adrMinDays ? dailyAdrAbsSum / dailyAdrCount : na
+float currentAdrPct = useManualAdr ? manualAdrPct : useSyntheticAdr ? syntheticAdrPct : dailyAdrCount >= adrMinDays ? dailyAdrPctSum / dailyAdrCount : na
+
+// ── Weekly state ────────────────────────────────────────────────────────────
+bool isNewWeek = ta.change(time("W")) != 0
+bool isChart5m = timeframe.period == "5"
+bool isWeeklyHoldMode = verifierMode == "Weekly Hold"
+bool isGridMode = verifierMode == "ADR Grid"
+string tickerUpper = canonicalizePair(syminfo.ticker)
+string chartSource = str.length(syminfo.prefix) > 0 ? syminfo.prefix + ":" + syminfo.ticker : syminfo.tickerid
+bool isCrypto = syminfo.type == "crypto"
+bool isFxChart = syminfo.type == "forex"
+bool isGoldChart = str.contains(tickerUpper, "XAU")
+bool isSilverChart = str.contains(tickerUpper, "XAG")
+bool isOilChart = tickerUpper == "WTIUSD" or str.contains(tickerUpper, "USOIL") or str.contains(tickerUpper, "BCOUSD")
+bool isKnownIndexChart = tickerUpper == "JPN225" or tickerUpper == "SPX500" or tickerUpper == "NDX100" or str.contains(tickerUpper, "JP225") or str.contains(tickerUpper, "US500") or str.contains(tickerUpper, "US100") or str.contains(tickerUpper, "NAS") or str.contains(tickerUpper, "SPX")
+bool isIndexOrCommodityChart = syminfo.type == "index" or isKnownIndexChart or isGoldChart or isSilverChart or isOilChart
+int msPerDay = 24 * 60 * 60 * 1000
+
+// Target week selection: 0=current, 1=last week, 2=two weeks ago, etc.
+int msPerWeek = 7 * 24 * 60 * 60 * 1000
+int targetTs = timenow - targetWeeksBack * msPerWeek
+int weekOpenTs = time("W")
+int weekCloseTsRaw = time_close("W")
+int weekCloseTs = not na(weekCloseTsRaw) and weekCloseTsRaw > weekOpenTs ? weekCloseTsRaw : weekOpenTs + msPerWeek
+
+// Shared weekly windows use New York local time so DST does not shift the
+// intended session boundaries. Market truth opens by asset class; strategy
+// execution starts Sunday 8pm NY, blocks new entries Friday 9am NY, and
+// force-closes Friday 11am NY. Canonical market truth remains separate.
+string sessionTimezone = "America/New_York"
+int weekOpenDowNy = dayofweek(weekOpenTs, sessionTimezone)
+int daysFromSunday = weekOpenDowNy == dayofweek.monday ? 1 : weekOpenDowNy == dayofweek.tuesday ? 2 : weekOpenDowNy == dayofweek.wednesday ? 3 : weekOpenDowNy == dayofweek.thursday ? 4 : weekOpenDowNy == dayofweek.friday ? 5 : weekOpenDowNy == dayofweek.saturday ? 6 : 0
+int sessionSundayRefTs = weekOpenTs - daysFromSunday * msPerDay
+int sessionSundayYear = year(sessionSundayRefTs, sessionTimezone)
+int sessionSundayMonth = month(sessionSundayRefTs, sessionTimezone)
+int sessionSundayDay = dayofmonth(sessionSundayRefTs, sessionTimezone)
+int marketOpenHourNy = isCrypto ? 20 : isFxChart ? 18 : isIndexOrCommodityChart ? 19 : 19
+int marketOpenTs = timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay, marketOpenHourNy, 0)
+int executionOpenTs = timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay, 20, 0)
+int executionEntryCutoffTs = timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay + 5, 9, 0)
+int executionCloseTs = timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay + 5, 11, 0)
+int canonicalCloseTs = isCrypto ? timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay + 7, 20, 0) : timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay + 5, 17, 0)
+int weeklyHoldOpenTs = anchorMode == "Execution" ? executionOpenTs : marketOpenTs
+int weeklyHoldCloseTs = isCrypto ? canonicalCloseTs : executionCloseTs
+int gridAnchorOpenTs = marketOpenTs
+int gridFillOpenTs = executionOpenTs
+int gridEntryCutoffTs = isCrypto ? canonicalCloseTs : executionEntryCutoffTs
+int gridCloseTs = isCrypto ? canonicalCloseTs : executionCloseTs
+bool inTargetWeek = weekOpenTs <= targetTs and weekCloseTs > targetTs
+bool showVisuals = inTargetWeek
+
+// Snapshot vars for past week display (continuously updated while in target week)
+var int snapTrades = 0
+var int snapTpHits = 0
+var int snapResetCloses = 0
+var int snapWeekCloses = 0
+var float snapMaxDDAdr = 0.0
+var float snapCurrentDDAdr = 0.0
+var float snapGridPLPct = 0.0
+var float snapGridPLAdrPct = 0.0
+var float snapWeekAdr = na
+var float snapWeekAdrPct = na
+var string[] snapTradeIds = array.new_string(0)
+var string[] snapTradeDetails = array.new_string(0)
+var string[] snapLevelKeys = array.new_string(0)
+var string[] snapLevelDetails = array.new_string(0)
+var int[] snapLevelIndexes = array.new_int(0)
+var bool snapWhHasTrade = false
+var float snapWhEntryPrice = na
+var float snapWhExitPrice = na
+var float snapWhRawReturnPct = na
+var float snapWhAdrReturnPct = na
+var float snapWhMaxDDRawPct = na
+var float snapWhMaxDDAdrPct = na
+var int snapWhEntryTs = na
+var int snapWhExitTs = na
+
+var float weekAdr = na
+var float weekAdrPct = na
+var float weekOpenPrice = na
+
+// weekHigh/weekLow: true week range (for period box, always cumulative)
+var float weekHigh = na
+var float weekLow  = na
+
+// anchorHigh/anchorLow: entry anchor (resets in Fresh mode after TP)
+var float anchorHigh = na
+var float anchorLow  = na
+var int barsInAnchor = 0
+var bool weekWindowSeeded = false
+
+if barstate.isfirst or isNewWeek
+    weekAdr := na
+    weekAdrPct := na
+    weekOpenPrice := na
+    weekHigh := na
+    weekLow := na
+    anchorHigh := na
+    anchorLow := na
+    barsInAnchor := 0
+    weekWindowSeeded := false
+
+bool seedWeeklyWindow = not weekWindowSeeded and time >= marketOpenTs
+if seedWeeklyWindow
+    weekAdr := useManualAdr and not na(currentAdrPct) ? open * currentAdrPct / 100 : currentAdrDistance
+    weekAdrPct := currentAdrPct
+    weekOpenPrice := open
+    weekHigh := high
+    weekLow := low
+    anchorHigh := high
+    anchorLow := low
+    barsInAnchor := 0
+    weekWindowSeeded := true
+else if weekWindowSeeded
+    barsInAnchor += 1
+    weekHigh   := math.max(weekHigh, high)
+    weekLow    := math.min(weekLow, low)
+
+// Snapshot anchor BEFORE updating with current bar — prevents circular dependency
+// where current bar's low/high influences anchor AND triggers on the same bar
+float prevAnchorHigh = anchorHigh
+float prevAnchorLow  = anchorLow
+
+// Now update anchor with current bar
+if weekWindowSeeded and not seedWeeklyWindow
+    anchorHigh := math.max(anchorHigh, high)
+    anchorLow  := math.min(anchorLow, low)
+
+// ── Bias ────────────────────────────────────────────────────────────────────
+string resolvedBias = getManualBias(tickerUpper)
+
+string btcBias = getManualBias("BTCUSD")
+string ethBias = getManualBias("ETHUSD")
+string cryptoRegime = "NEUTRAL"
+if btcBias == "LONG" and ethBias == "LONG"
+    cryptoRegime := "LONG"
+else if btcBias == "SHORT" and ethBias == "SHORT"
+    cryptoRegime := "SHORT"
+
+bool isMajorCrypto = tickerUpper == "BTCUSD" or tickerUpper == "ETHUSD"
+if isCrypto and not isMajorCrypto
+    resolvedBias := cryptoRegime
+
+bool showLong  = resolvedBias == "LONG"
+bool showShort = resolvedBias == "SHORT"
+
+// ── Trade ID components ─────────────────────────────────────────────────────
+bool isGoldId   = str.contains(tickerUpper, "XAU")
+bool isSilverId = str.contains(tickerUpper, "XAG")
+bool isOilId    = tickerUpper == "WTIUSD" or str.contains(tickerUpper, "USOIL") or str.contains(tickerUpper, "BCOUSD")
+string assetCode = isCrypto ? (isMajorCrypto ? "CR" : "CA") : syminfo.type == "forex" ? "FX" : (isGoldId or isSilverId or isOilId) ? "CM" : "IX"
+string dirCode   = showLong ? "L" : showShort ? "S" : "N"
+string dateCode  = str.tostring(year) + str.tostring(month, "00") + str.tostring(dayofmonth, "00")
+
+makeTradeId(int tradeNum) =>
+    "IADR-" + assetCode + "-" + dirCode + "-" + tickerUpper + "-" + str.substring(dateCode, 2) + "-" + str.tostring(tradeNum, "000")
+
+// ── Dynamic entry / TP levels (from PREVIOUS bar's anchor) ──────────────────
+// Using prevAnchor ensures entry level isn't influenced by current bar's own high/low
+// This makes the indicator timeframe-independent
+bool adrReady = not na(weekAdr) and not na(prevAnchorHigh) and not na(prevAnchorLow) and barsInAnchor >= 1
+
+float longEntry  = adrReady ? prevAnchorHigh - (weekAdr * entryMultiple) : na
+float longTp     = adrReady ? longEntry + (weekAdr * tpMultiple)         : na
+float shortEntry = adrReady ? prevAnchorLow  + (weekAdr * entryMultiple) : na
+float shortTp    = adrReady ? shortEntry - (weekAdr * tpMultiple)        : na
+
+// ── Pip calculations ────────────────────────────────────────────────────────
+bool isJpyPair = str.contains(tickerUpper, "JPY")
+bool isGold    = str.contains(tickerUpper, "XAU")
+bool isSilver  = str.contains(tickerUpper, "XAG")
+bool isOil     = tickerUpper == "WTIUSD" or str.contains(tickerUpper, "USOIL") or str.contains(tickerUpper, "BCOUSD")
+float pipSize  = syminfo.type == "forex" ? (isJpyPair ? 0.01 : 0.0001) : isGold ? 0.01 : isSilver ? 0.001 : isOil ? 0.01 : syminfo.mintick
+float adrPips  = adrReady and pipSize > 0 ? weekAdr / pipSize : na
+float adrPctPips = not na(weekAdrPct) and pipSize > 0 ? (close * weekAdrPct / 100) / pipSize : na
+
+// ── Weekly Hold verifier state ──────────────────────────────────────────────
+weeklyHoldRawReturn(_dir, _entry, _exit) =>
+    float result = na
+    if not na(_entry) and not na(_exit) and _entry > 0
+        float rawMove = ((_exit - _entry) / _entry) * 100
+        result := _dir == "SHORT" ? -rawMove : rawMove
+    result
+
+weeklyHoldAdrReturn(_rawPct, _adrPct) =>
+    float result = na
+    if not na(_rawPct) and not na(_adrPct) and _adrPct > 0
+        result := _rawPct / _adrPct
+    result
+
+gridReturnForBasis(_rawPct, _adrPct) =>
+    returnBasis == "ADR Normalized" ? weeklyHoldAdrReturn(_rawPct, _adrPct) : _rawPct
+
+gridDrawdownForBasis(_ddAdr, _adrPct) =>
+    float result = _ddAdr
+    if returnBasis == "Raw" and not na(_ddAdr) and not na(_adrPct)
+        result := _ddAdr * _adrPct
+    result
+
+gridReturnText(_rawPct, _adrPct) =>
+    float value = gridReturnForBasis(_rawPct, _adrPct)
+    not na(value) ? (value >= 0 ? "+" : "") + str.tostring(value, "#.##") + "%" : "-"
+
+signedPctText(_value) =>
+    not na(_value) ? (_value >= 0 ? "+" : "") + str.tostring(_value, "#.##") + "%" : "-"
+
+ddPctText(_value) =>
+    not na(_value) and _value > 0 ? "-" + str.tostring(_value, "#.##") + "%" : "-"
+
+auditTimeText(_ts) =>
+    not na(_ts) ? str.format("{0,date,MM-dd HH:mm}", _ts) : "-"
+
+auditTimeCsv(_ts) =>
+    not na(_ts) ? str.tostring(_ts) : ""
+
+var bool whHasTrade = false
+var bool whActive = false
+var float whEntryPrice = na
+var float whExitPrice = na
+var float whRawReturnPct = na
+var float whAdrReturnPct = na
+var float whMaxDDRawPct = 0.0
+var float whMaxDDAdrPct = 0.0
+var int whEntryBar = na
+var int whEntryTs = na
+var int whExitTs = na
+var label whEntryLabel = na
+var box whReturnBox = na
+var box whDDBox = na
+var float whDDWorstPrice = na
+var box whPeakBox = na
+var float whPeakPrice = na
+
+if barstate.isfirst or isNewWeek
+    if targetWeeksBack == 0 and not na(whEntryLabel)
+        label.delete(whEntryLabel)
+    if targetWeeksBack == 0 and not na(whReturnBox)
+        box.delete(whReturnBox)
+    if targetWeeksBack == 0 and not na(whDDBox)
+        box.delete(whDDBox)
+    if targetWeeksBack == 0 and not na(whPeakBox)
+        box.delete(whPeakBox)
+    whHasTrade := false
+    whActive := false
+    whEntryPrice := na
+    whExitPrice := na
+    whRawReturnPct := na
+    whAdrReturnPct := na
+    whMaxDDRawPct := 0.0
+    whMaxDDAdrPct := 0.0
+    whEntryBar := na
+    whEntryTs := na
+    whExitTs := na
+    whEntryLabel := na
+    whReturnBox := na
+    whDDBox := na
+    whDDWorstPrice := na
+    whPeakBox := na
+    whPeakPrice := na
+
+bool whBiasActive = isWeeklyHoldMode and (showLong or showShort)
+bool whInWindow = time >= weeklyHoldOpenTs and time < weeklyHoldCloseTs
+bool whUpdateBar = liveBarMode == "Realtime" or barstate.isconfirmed
+bool whEntryNow = whBiasActive and whInWindow and not whHasTrade
+
+if whEntryNow
+    whHasTrade := true
+    whActive := true
+    whEntryPrice := open
+    whExitPrice := whUpdateBar ? close : na
+    whEntryBar := bar_index
+    whEntryTs := time
+    whExitTs := whUpdateBar ? time_close : na
+    whRawReturnPct := weeklyHoldRawReturn(resolvedBias, whEntryPrice, whExitPrice)
+    whAdrReturnPct := weeklyHoldAdrReturn(whRawReturnPct, weekAdrPct)
+    if showBoxes and showVisuals
+        color whColor = resolvedBias == "LONG" ? color.new(color.lime, 55) : color.new(color.red, 55)
+        whEntryLabel := label.new(bar_index, whEntryPrice, "WH " + resolvedBias, tooltip="Weekly Hold " + resolvedBias + "\nEntry: " + str.tostring(whEntryPrice, format.mintick) + "\nAnchor: " + anchorMode, style=resolvedBias == "LONG" ? label.style_label_up : label.style_label_down, color=whColor, textcolor=color.white, size=size.small)
+        whPeakBox := box.new(bar_index, whEntryPrice, bar_index, whEntryPrice, bgcolor=color.new(color.lime, 90), border_color=color.new(color.lime, 70), border_width=1)
+        whReturnBox := box.new(bar_index, whEntryPrice, bar_index, whEntryPrice, bgcolor=color.new(color.gray, 88), border_color=whColor, border_width=1)
+        whDDWorstPrice := whEntryPrice
+    whPeakPrice := resolvedBias == "LONG" ? high : resolvedBias == "SHORT" ? low : whEntryPrice
+
+if whActive and whHasTrade and whInWindow and whUpdateBar
+    whExitPrice := close
+    whExitTs := time_close
+    whRawReturnPct := weeklyHoldRawReturn(resolvedBias, whEntryPrice, whExitPrice)
+    whAdrReturnPct := weeklyHoldAdrReturn(whRawReturnPct, weekAdrPct)
+    float favorablePrice = resolvedBias == "LONG" ? high : resolvedBias == "SHORT" ? low : na
+    bool newPeak = not na(favorablePrice) and (na(whPeakPrice) or (resolvedBias == "LONG" ? favorablePrice > whPeakPrice : favorablePrice < whPeakPrice))
+    if newPeak
+        whPeakPrice := favorablePrice
+    float adverseRaw = na
+    if resolvedBias == "LONG" and not na(whEntryPrice) and whEntryPrice > 0
+        adverseRaw := math.max(0.0, ((whEntryPrice - low) / whEntryPrice) * 100)
+    if resolvedBias == "SHORT" and not na(whEntryPrice) and whEntryPrice > 0
+        adverseRaw := math.max(0.0, ((high - whEntryPrice) / whEntryPrice) * 100)
+    if not na(adverseRaw)
+        whMaxDDRawPct := math.max(whMaxDDRawPct, adverseRaw)
+        float adverseAdr = weeklyHoldAdrReturn(adverseRaw, weekAdrPct)
+        if not na(adverseAdr)
+            whMaxDDAdrPct := math.max(whMaxDDAdrPct, adverseAdr)
+        if adverseRaw > 0 and showBoxes and showVisuals
+            float currentAdversePrice = resolvedBias == "LONG" ? low : high
+            bool newWorst = na(whDDWorstPrice) or (resolvedBias == "LONG" ? currentAdversePrice < whDDWorstPrice : currentAdversePrice > whDDWorstPrice)
+            if newWorst
+                whDDWorstPrice := currentAdversePrice
+            float ddTop = math.max(whEntryPrice, whDDWorstPrice)
+            float ddBottom = math.min(whEntryPrice, whDDWorstPrice)
+            if na(whDDBox)
+                whDDBox := box.new(nz(whEntryBar, bar_index), ddTop, bar_index, ddBottom, bgcolor=color.new(color.red, 82), border_color=color.new(color.red, 45), border_width=1)
+            else
+                box.set_left(whDDBox, nz(whEntryBar, bar_index))
+                box.set_top(whDDBox, ddTop)
+                box.set_bottom(whDDBox, ddBottom)
+                box.set_right(whDDBox, bar_index)
+    if not na(whPeakBox) and showBoxes and showVisuals and not na(whPeakPrice)
+        bool hasFavorableMove = resolvedBias == "LONG" ? whPeakPrice > whEntryPrice : whPeakPrice < whEntryPrice
+        if hasFavorableMove
+            float peakTop = math.max(whEntryPrice, whPeakPrice)
+            float peakBottom = math.min(whEntryPrice, whPeakPrice)
+            box.set_left(whPeakBox, nz(whEntryBar, bar_index))
+            box.set_right(whPeakBox, bar_index)
+            box.set_top(whPeakBox, peakTop)
+            box.set_bottom(whPeakBox, peakBottom)
+            box.set_bgcolor(whPeakBox, color.new(color.lime, 90))
+            box.set_border_color(whPeakBox, color.new(color.lime, 70))
+    if not na(whReturnBox) and showBoxes and showVisuals
+        float boxTop = math.max(whEntryPrice, whExitPrice)
+        float boxBottom = math.min(whEntryPrice, whExitPrice)
+        box.set_right(whReturnBox, bar_index)
+        box.set_top(whReturnBox, boxTop)
+        box.set_bottom(whReturnBox, boxBottom)
+        box.set_bgcolor(whReturnBox, nz(whRawReturnPct) >= 0 ? color.new(color.lime, 82) : color.new(color.red, 82))
+    if not na(whDDBox) and showBoxes and showVisuals
+        box.set_right(whDDBox, bar_index)
+
+if whActive and whHasTrade and time_close >= weeklyHoldCloseTs
+    whActive := false
+
+// ── Trade state machine ─────────────────────────────────────────────────────
+// States: 0 = waiting, 1 = triggered (in trade)
+// Fresh: anchor resets after TP, starts tracking from next bar
+var int longState  = 0
+var int shortState = 0
+var float frozenLongEntry  = na
+var float frozenLongTp     = na
+var float frozenShortEntry = na
+var float frozenShortTp    = na
+var float lastGridTradeEntry = na
+var float lastGridTradeTp = na
+var int lastGridTradeDir = 0
+var int lastGridTradeNum = 0
+
+// Weekly trade counters
+var int weekTrades = 0
+var int weekTpHits = 0
+
+if barstate.isfirst or isNewWeek
+    longState  := 0
+    shortState := 0
+    frozenLongEntry  := na
+    frozenLongTp     := na
+    frozenShortEntry := na
+    frozenShortTp    := na
+    lastGridTradeEntry := na
+    lastGridTradeTp := na
+    lastGridTradeDir := 0
+    lastGridTradeNum := 0
+    weekTrades := 0
+    weekTpHits := 0
+
+bool longTpHit = false
+bool shortTpHit = false
+bool gridInWindow = time >= gridFillOpenTs and time < gridEntryCutoffTs
+bool gridCapAllowsEntry = gridCapMode == "Off" or weekTrades < gridCapValue
+bool legacyFreshGridEngine = false
+
+if legacyFreshGridEngine and longState == 1
+    if not na(frozenLongTp) and high >= frozenLongTp
+        longTpHit := true
+        longState := 0
+        frozenLongEntry := na
+        frozenLongTp    := na
+        anchorHigh   := na
+        anchorLow    := na
+        barsInAnchor := -1
+        weekTpHits += 1
+else if legacyFreshGridEngine and gridInWindow and gridCapAllowsEntry and longState == 0 and adrReady and showLong and not na(longEntry) and low <= longEntry
+    longState := 1
+    frozenLongEntry := longEntry
+    frozenLongTp    := longTp
+    weekTrades += 1
+    lastGridTradeEntry := frozenLongEntry
+    lastGridTradeTp := frozenLongTp
+    lastGridTradeDir := 1
+    lastGridTradeNum := weekTrades
+
+if legacyFreshGridEngine and shortState == 1
+    if not na(frozenShortTp) and low <= frozenShortTp
+        shortTpHit := true
+        shortState := 0
+        frozenShortEntry := na
+        frozenShortTp    := na
+        anchorHigh   := na
+        anchorLow    := na
+        barsInAnchor := -1
+        weekTpHits += 1
+else if legacyFreshGridEngine and gridInWindow and gridCapAllowsEntry and shortState == 0 and adrReady and showShort and not na(shortEntry) and high >= shortEntry
+    shortState := 1
+    frozenShortEntry := shortEntry
+    frozenShortTp    := shortTp
+    weekTrades += 1
+    lastGridTradeEntry := frozenShortEntry
+    lastGridTradeTp := frozenShortTp
+    lastGridTradeDir := -1
+    lastGridTradeNum := weekTrades
+
+// Seed anchor from current bar after reset
+if na(anchorHigh)
+    anchorHigh   := high
+    anchorLow    := low
+    barsInAnchor := 0
+if na(anchorLow)
+    anchorLow    := low
+    barsInAnchor := 0
+
+// Shared visual object registries. Declared before the grid engine because both
+// app-style grid visuals and legacy box drawing register objects for cleanup.
+var box[] weekTradeBoxes = array.new<box>()
+var label[] weekTradeLabels = array.new<label>()
+
+// ── App-style ADR Grid (0.20 ADR close-and-rearm levels) ────────────────────
+// The app's ADR Grid is not the older 1 ADR Fresh Start pullback. It arms
+// independent levels every grid multiple from the anchor open, closes each fill
+// at the next grid step, then rearms that level on the following bar.
+int appGridLevelsPerSide = 50
+
+gridLevelNumber(int _levelIndex) =>
+    _levelIndex < appGridLevelsPerSide ? _levelIndex + 1 : _levelIndex - appGridLevelsPerSide + 1
+
+gridLevelKind(int _levelIndex) =>
+    _levelIndex < appGridLevelsPerSide ? "FAV" : "ADV"
+
+gridLevelColor(int _levelIndex) =>
+    int levelNumber = gridLevelNumber(_levelIndex)
+    color result = color.new(#00897b, 0)
+    if levelNumber == 2
+        result := color.new(#1976d2, 0)
+    else if levelNumber == 3
+        result := color.new(#7b1fa2, 0)
+    else if levelNumber == 4
+        result := color.new(#f57c00, 0)
+    else if levelNumber >= 5
+        result := color.new(#6d4c41, 0)
+    result
+
+gridLevelRowBg(int _levelIndex) =>
+    color.new(gridLevelColor(_levelIndex), 82)
+
+gridLineWidth() =>
+    3
+
+gridActivationLabel(int _fillCount) =>
+    _fillCount <= 1 ? "first fill" : _fillCount == 2 ? "second fill" : "3+ fills"
+
+gridFullCloseTarget(_isShort, _cycleHigh, _cycleLow, _adrPct) =>
+    float resetMovePct = _adrPct / 100
+    _isShort ? _cycleHigh * (1 - resetMovePct) : _cycleLow * (1 + resetMovePct)
+
+gridEntryTooCloseToFullClose(_isShort, _entryPrice, _fullCloseTarget, _adrPct, _bufferAdr) =>
+    float bufferPct = (_bufferAdr * _adrPct) / 100
+    float bufferDistance = _entryPrice * bufferPct
+    float fullCloseDistance = _isShort ? _entryPrice - _fullCloseTarget : _fullCloseTarget - _entryPrice
+    fullCloseDistance <= 0 or fullCloseDistance < bufferDistance * 0.999
+
+bool isChartGridTf = timeframe.isintraday
+bool useGridConfirmed1H = gridBarSource == "Confirmed 1H"
+[grid1hTime, grid1hOpen, grid1hHigh, grid1hLow, grid1hClose] = request.security(syminfo.tickerid, "60", [time[1], open[1], high[1], low[1], close[1]], lookahead=barmerge.lookahead_off)
+bool gridSourcePulse = useGridConfirmed1H ? ta.change(time("60")) != 0 : true
+bool gridSourceReady = not useGridConfirmed1H or not na(grid1hTime)
+int gridSourceTime = useGridConfirmed1H ? int(grid1hTime) : time
+int gridSourceCloseTime = useGridConfirmed1H ? int(grid1hTime + 60 * 60 * 1000) : time_close
+float gridSourceHigh = useGridConfirmed1H ? grid1hHigh : high
+float gridSourceLow = useGridConfirmed1H ? grid1hLow : low
+float gridSourceClose = useGridConfirmed1H ? grid1hClose : close
+var bool appGridStarted = false
+var bool appGridClosedForWeek = false
+var bool appGridWeekClosedForWeek = false
+var bool appGridEntriesStoppedForWeek = false
+var int appGridResetStops = 0
+var float appGridOpenPrice = na
+var float appGridStepPct = na
+var float appGridCycleHigh = na
+var float appGridCycleLow = na
+var int appGridStartBar = na
+var int appGridEntries = 0
+var int appGridTpHits = 0
+var float appGridPLPct = 0.0
+var float appGridPLAdrPct = 0.0
+var float appGridCurrentDDAdr = 0.0
+var float appGridMaxDDAdr = 0.0
+var float appGridBestTpPrice = na
+var float appGridCapturedPrice = na
+var bool[] appGridLevelArmed = array.new_bool(0)
+var int[] appGridLevelRearmBar = array.new_int(0)
+var bool[] appGridLevelRequiresRetouch = array.new_bool(0)
+var int[] appGridActiveLevels = array.new_int(0)
+var float[] appGridActiveEntries = array.new_float(0)
+var int[] appGridActiveEntryBars = array.new_int(0)
+var int[] appGridActiveTradeNums = array.new_int(0)
+var int[] appGridActiveLevelFillCounts = array.new_int(0)
+var float[] appGridActiveMaxDDAdr = array.new_float(0)
+var float[] appGridActiveAdversePrices = array.new_float(0)
+var float[] appGridTradeEntries = array.new_float(0)
+var float[] appGridTradeTargets = array.new_float(0)
+var int[] appGridTradeLevels = array.new_int(0)
+var float[] appGridTradeRawReturns = array.new_float(0)
+var float[] appGridTradeAdrReturns = array.new_float(0)
+var int[] appGridTradeEntryTimes = array.new_int(0)
+var int[] appGridTradeExitTimes = array.new_int(0)
+var float[] appGridTradeExitPrices = array.new_float(0)
+var string[] appGridTradeExitReasons = array.new_string(0)
+var float[] appGridTradeMaxDDAdr = array.new_float(0)
+var int[] appGridTradeLevelFillCounts = array.new_int(0)
+var int[] appGridTradeActiveCountsAtEntry = array.new_int(0)
+var label[] appGridActiveLabels = array.new<label>()
+var line[] appGridLevelLines = array.new<line>()
+var line[] appGridLevelLineRefs = array.new<line>()
+var bool[] appGridLevelLineDrawn = array.new_bool(0)
+var int[] appGridLevelFillCounts = array.new_int(0)
+var line[] appGridResetLines = array.new<line>()
+var label[] appGridResetLabels = array.new<label>()
+var int[] appGridWeekClosedTradeNums = array.new_int(0)
+var float[] appGridWeekClosedEntries = array.new_float(0)
+var float[] appGridWeekClosedExits = array.new_float(0)
+var box appGridBasketDDBox = na
+var box appGridFavorableBox = na
+var box appGridTpBox = na
+var float appGridMaxDDEntryPrice = na
+var float appGridMaxDDAdversePrice = na
+var int appGridMaxDDStartBar = na
+var int appGridMaxDDEndBar = na
+
+gridTradeAuditDetail(int _idx) =>
+    string result = "-"
+    if _idx >= 0 and _idx < array.size(appGridTradeEntries)
+        float entry = array.get(appGridTradeEntries, _idx)
+        float targetPrice = _idx < array.size(appGridTradeTargets) ? array.get(appGridTradeTargets, _idx) : na
+        float exitPrice = _idx < array.size(appGridTradeExitPrices) ? array.get(appGridTradeExitPrices, _idx) : na
+        exitPrice := na(exitPrice) ? targetPrice : exitPrice
+        float rawReturn = _idx < array.size(appGridTradeRawReturns) ? array.get(appGridTradeRawReturns, _idx) : na
+        float adrReturn = _idx < array.size(appGridTradeAdrReturns) ? array.get(appGridTradeAdrReturns, _idx) : na
+        float displayReturn = returnBasis == "ADR Normalized" ? adrReturn : rawReturn
+        float maxDDAdr = _idx < array.size(appGridTradeMaxDDAdr) ? array.get(appGridTradeMaxDDAdr, _idx) : na
+        float displayDD = gridDrawdownForBasis(maxDDAdr, weekAdrPct)
+        int entryTs = _idx < array.size(appGridTradeEntryTimes) ? array.get(appGridTradeEntryTimes, _idx) : int(na)
+        int exitTs = _idx < array.size(appGridTradeExitTimes) ? array.get(appGridTradeExitTimes, _idx) : int(na)
+        string reason = _idx < array.size(appGridTradeExitReasons) ? array.get(appGridTradeExitReasons, _idx) : "ACTIVE"
+        int levelIndex = _idx < array.size(appGridTradeLevels) ? array.get(appGridTradeLevels, _idx) : 0
+        int fillCount = _idx < array.size(appGridTradeLevelFillCounts) ? array.get(appGridTradeLevelFillCounts, _idx) : 1
+        int activeAtEntry = _idx < array.size(appGridTradeActiveCountsAtEntry) ? array.get(appGridTradeActiveCountsAtEntry, _idx) : 0
+        string levelText = gridLevelKind(levelIndex) + str.tostring(gridLevelNumber(levelIndex))
+        string exitText = reason == "ACTIVE" ? "ACTIVE" : reason
+        result := str.tostring(entry, format.mintick) + " -> " + str.tostring(exitPrice, format.mintick) + " " + exitText + " " + signedPctText(displayReturn) + " DD " + ddPctText(displayDD) + " " + auditTimeText(entryTs) + "->" + auditTimeText(exitTs) + " " + levelText + "." + str.tostring(fillCount) + " act " + str.tostring(activeAtEntry)
+    result
+
+if barstate.isfirst or isNewWeek
+    if isNewWeek and not barstate.isfirst and targetWeeksBack == 0
+        if array.size(appGridLevelLines) > 0
+            for gridLine in appGridLevelLines
+                line.delete(gridLine)
+        if array.size(appGridResetLines) > 0
+            for resetLine in appGridResetLines
+                line.delete(resetLine)
+        if array.size(appGridResetLabels) > 0
+            for resetLabel in appGridResetLabels
+                label.delete(resetLabel)
+    appGridStarted := false
+    appGridClosedForWeek := false
+    appGridWeekClosedForWeek := false
+    appGridEntriesStoppedForWeek := false
+    appGridResetStops := 0
+    appGridOpenPrice := na
+    appGridStepPct := na
+    appGridCycleHigh := na
+    appGridCycleLow := na
+    appGridStartBar := na
+    appGridEntries := 0
+    appGridTpHits := 0
+    appGridPLPct := 0.0
+    appGridPLAdrPct := 0.0
+    appGridCurrentDDAdr := 0.0
+    appGridMaxDDAdr := 0.0
+    appGridBestTpPrice := na
+    appGridCapturedPrice := na
+    array.clear(appGridLevelArmed)
+    array.clear(appGridLevelRearmBar)
+    array.clear(appGridLevelRequiresRetouch)
+    array.clear(appGridActiveLevels)
+    array.clear(appGridActiveEntries)
+    array.clear(appGridActiveEntryBars)
+    array.clear(appGridActiveTradeNums)
+    array.clear(appGridActiveLevelFillCounts)
+    array.clear(appGridActiveMaxDDAdr)
+    array.clear(appGridActiveAdversePrices)
+    array.clear(appGridTradeEntries)
+    array.clear(appGridTradeTargets)
+    array.clear(appGridTradeLevels)
+    array.clear(appGridTradeRawReturns)
+    array.clear(appGridTradeAdrReturns)
+    array.clear(appGridTradeEntryTimes)
+    array.clear(appGridTradeExitTimes)
+    array.clear(appGridTradeExitPrices)
+    array.clear(appGridTradeExitReasons)
+    array.clear(appGridTradeMaxDDAdr)
+    array.clear(appGridTradeLevelFillCounts)
+    array.clear(appGridTradeActiveCountsAtEntry)
+    array.clear(appGridActiveLabels)
+    array.clear(appGridLevelLines)
+    array.clear(appGridLevelLineRefs)
+    array.clear(appGridLevelLineDrawn)
+    array.clear(appGridLevelFillCounts)
+    array.clear(appGridResetLines)
+    array.clear(appGridResetLabels)
+    array.clear(appGridWeekClosedTradeNums)
+    array.clear(appGridWeekClosedEntries)
+    array.clear(appGridWeekClosedExits)
+    appGridBasketDDBox := na
+    appGridFavorableBox := na
+    appGridTpBox := na
+    appGridMaxDDEntryPrice := na
+    appGridMaxDDAdversePrice := na
+    appGridMaxDDStartBar := na
+    appGridMaxDDEndBar := na
+    for i = 0 to appGridLevelsPerSide * 2 - 1
+        array.push(appGridLevelArmed, true)
+        array.push(appGridLevelRearmBar, -1)
+        array.push(appGridLevelRequiresRetouch, false)
+        array.push(appGridLevelLineRefs, na)
+        array.push(appGridLevelLineDrawn, false)
+        array.push(appGridLevelFillCounts, 0)
+
+bool appGridBiasActive = isGridMode and (showLong or showShort)
+bool appGridCanStart = gridSourceReady and gridSourcePulse and appGridBiasActive and not appGridStarted and gridSourceTime >= gridFillOpenTs and gridSourceTime < gridEntryCutoffTs and not na(weekOpenPrice) and not na(weekAdrPct) and weekAdrPct > 0
+if appGridCanStart
+    appGridStarted := true
+    appGridOpenPrice := weekOpenPrice
+    appGridStepPct := (tpMultiple * weekAdrPct) / 100
+    appGridCycleHigh := weekOpenPrice
+    appGridCycleLow := weekOpenPrice
+    appGridStartBar := bar_index
+
+bool appGridCanTrack = gridSourceReady and gridSourcePulse and appGridBiasActive and appGridStarted and not appGridClosedForWeek and gridSourceTime >= gridFillOpenTs and gridSourceTime < gridCloseTs and not na(appGridOpenPrice)
+if appGridCanTrack
+    appGridCycleHigh := math.max(appGridCycleHigh, gridSourceHigh)
+    appGridCycleLow := math.min(appGridCycleLow, gridSourceLow)
+
+    if showBoxes and showGridAreas and showVisuals and isChartGridTf
+        if not na(appGridCapturedPrice)
+            float capturedTop = math.max(appGridOpenPrice, appGridCapturedPrice)
+            float capturedBottom = math.min(appGridOpenPrice, appGridCapturedPrice)
+            if na(appGridTpBox)
+                appGridTpBox := box.new(nz(appGridStartBar, bar_index), capturedTop, bar_index, capturedBottom, bgcolor=color.new(color.lime, 84), border_color=color.new(color.lime, 48), border_width=1)
+                array.push(weekTradeBoxes, appGridTpBox)
+            else
+                box.set_left(appGridTpBox, nz(appGridStartBar, bar_index))
+                box.set_right(appGridTpBox, bar_index)
+                box.set_top(appGridTpBox, capturedTop)
+                box.set_bottom(appGridTpBox, capturedBottom)
+
+bool appGridCanProcess = gridSourceReady and gridSourcePulse and appGridBiasActive and appGridStarted and not appGridClosedForWeek and gridSourceTime >= gridFillOpenTs and gridSourceTime < gridCloseTs and not na(appGridOpenPrice) and not na(appGridStepPct) and appGridStepPct > 0
+if appGridCanProcess
+    float appGridFullCloseTarget = gridFullCloseTarget(showShort, appGridCycleHigh, appGridCycleLow, weekAdrPct)
+    bool appGridResetHitThisBar = not appGridEntriesStoppedForWeek and (showShort ? gridSourceLow <= appGridFullCloseTarget : gridSourceHigh >= appGridFullCloseTarget)
+    int appGridResetFillCountAtHit = appGridResetHitThisBar ? array.size(appGridActiveEntries) : 0
+
+    if showBoxes and showVisuals and isChartGridTf
+        for levelIndex = 0 to appGridLevelsPerSide * 2 - 1
+            bool lineAlreadyDrawn = array.get(appGridLevelLineDrawn, levelIndex)
+            if not lineAlreadyDrawn
+                bool isFavorable = levelIndex < appGridLevelsPerSide
+                int levelNumber = isFavorable ? levelIndex + 1 : levelIndex - appGridLevelsPerSide + 1
+                float levelPrice = na
+                if showLong
+                    levelPrice := appGridOpenPrice * (isFavorable ? 1 - levelNumber * appGridStepPct : 1 + levelNumber * appGridStepPct)
+                else
+                    levelPrice := appGridOpenPrice * (isFavorable ? 1 + levelNumber * appGridStepPct : 1 - levelNumber * appGridStepPct)
+                bool inObservedWeekRange = levelPrice >= appGridCycleLow and levelPrice <= appGridCycleHigh
+                if inObservedWeekRange
+                    color levelColor = gridLevelColor(levelIndex)
+                    int levelWidth = gridLineWidth()
+                    line gridLine = line.new(gridFillOpenTs, levelPrice, gridCloseTs, levelPrice, xloc=xloc.bar_time, color=levelColor, style=line.style_dotted, width=levelWidth)
+                    array.push(appGridLevelLines, gridLine)
+                    array.set(appGridLevelLineRefs, levelIndex, gridLine)
+                    array.set(appGridLevelLineDrawn, levelIndex, true)
+
+    int activeFillCount = array.size(appGridActiveEntries)
+    bool appGridCapAllows = gridCapMode == "Off" or activeFillCount < gridCapValue
+    bool appGridEntriesAllowed = gridSourceTime < gridEntryCutoffTs and not appGridEntriesStoppedForWeek and not appGridResetHitThisBar
+    if appGridCapAllows and appGridEntriesAllowed
+        for levelIndex = 0 to appGridLevelsPerSide * 2 - 1
+            bool levelArmed = array.get(appGridLevelArmed, levelIndex)
+            int rearmBar = array.get(appGridLevelRearmBar, levelIndex)
+            if levelArmed and rearmBar < bar_index and (gridCapMode == "Off" or array.size(appGridActiveEntries) < gridCapValue)
+                bool requiresRetouch = array.get(appGridLevelRequiresRetouch, levelIndex)
+                bool isFavorable = levelIndex < appGridLevelsPerSide
+                int levelNumber = isFavorable ? levelIndex + 1 : levelIndex - appGridLevelsPerSide + 1
+                float triggerPrice = na
+                if showLong
+                    triggerPrice := appGridOpenPrice * (isFavorable ? 1 - levelNumber * appGridStepPct : 1 + levelNumber * appGridStepPct)
+                else
+                    triggerPrice := appGridOpenPrice * (isFavorable ? 1 + levelNumber * appGridStepPct : 1 - levelNumber * appGridStepPct)
+                bool initialTriggered = isFavorable ? (showLong ? gridSourceLow <= triggerPrice : gridSourceHigh >= triggerPrice) : (showLong ? gridSourceHigh >= triggerPrice : gridSourceLow <= triggerPrice)
+                bool retouchTriggered = showLong ? gridSourceLow <= triggerPrice : gridSourceHigh >= triggerPrice
+                bool triggered = requiresRetouch ? retouchTriggered : initialTriggered
+                if triggered
+                    bool tooCloseToFullClose = gridEntryTooCloseToFullClose(showShort, triggerPrice, appGridFullCloseTarget, weekAdrPct, gridFullCloseBufferAdr)
+                    if tooCloseToFullClose
+                        continue
+                    int levelFillCount = array.get(appGridLevelFillCounts, levelIndex) + 1
+                    array.set(appGridLevelFillCounts, levelIndex, levelFillCount)
+                    line activationLine = array.get(appGridLevelLineRefs, levelIndex)
+                    if not na(activationLine)
+                        line.set_color(activationLine, gridLevelColor(levelIndex))
+                        line.set_width(activationLine, gridLineWidth())
+                    int activeCountAtEntry = array.size(appGridActiveEntries)
+                    array.push(appGridActiveLevels, levelIndex)
+                    array.push(appGridActiveEntries, triggerPrice)
+                    array.push(appGridActiveEntryBars, bar_index)
+                    array.push(appGridActiveTradeNums, appGridEntries + 1)
+                    array.push(appGridActiveLevelFillCounts, levelFillCount)
+                    array.push(appGridActiveMaxDDAdr, 0.0)
+                    array.push(appGridActiveAdversePrices, triggerPrice)
+                    array.set(appGridLevelArmed, levelIndex, false)
+                    array.set(appGridLevelRequiresRetouch, levelIndex, false)
+                    appGridEntries += 1
+                    lastGridTradeEntry := triggerPrice
+                    lastGridTradeTp := showShort ? triggerPrice * (1 - appGridStepPct) : triggerPrice * (1 + appGridStepPct)
+                    array.push(appGridTradeEntries, triggerPrice)
+                    array.push(appGridTradeTargets, lastGridTradeTp)
+                    array.push(appGridTradeLevels, levelIndex)
+                    array.push(appGridTradeRawReturns, float(na))
+                    array.push(appGridTradeAdrReturns, float(na))
+                    array.push(appGridTradeEntryTimes, gridSourceTime)
+                    array.push(appGridTradeExitTimes, int(na))
+                    array.push(appGridTradeExitPrices, float(na))
+                    array.push(appGridTradeExitReasons, "ACTIVE")
+                    array.push(appGridTradeMaxDDAdr, 0.0)
+                    array.push(appGridTradeLevelFillCounts, levelFillCount)
+                    array.push(appGridTradeActiveCountsAtEntry, activeCountAtEntry)
+                    lastGridTradeDir := showShort ? -1 : 1
+                    lastGridTradeNum := appGridEntries
+                    if showLong
+                        frozenLongEntry := triggerPrice
+                        frozenLongTp := lastGridTradeTp
+                    else
+                        frozenShortEntry := triggerPrice
+                        frozenShortTp := lastGridTradeTp
+                    label fillLabel = na
+                    if showBoxes and showVisuals and isChartGridTf
+                        string fillText = (showLong ? "L" : "S") + str.tostring(appGridEntries)
+                        string reEntryText = "\nLevel activation: " + gridActivationLabel(levelFillCount) + "\nLevel fills: " + str.tostring(levelFillCount)
+                        string fillTip = makeTradeId(appGridEntries) + "\nStatus: ACTIVE\nGrid Entry: " + str.tostring(triggerPrice, format.mintick) + "\nTP: " + str.tostring(lastGridTradeTp, format.mintick) + "\nLevel: " + str.tostring(levelNumber) + reEntryText + "\nCurrent DD: 0.00 ADR\nMax DD: 0.00 ADR"
+                        fillLabel := label.new(bar_index, triggerPrice, fillText, tooltip=fillTip, style=showLong ? label.style_label_up : label.style_label_down, color=color.new(gridLevelColor(levelIndex), 20), textcolor=color.white, size=size.tiny)
+                        array.push(weekTradeLabels, fillLabel)
+                    array.push(appGridActiveLabels, fillLabel)
+
+    float appGridBasketAdverseAdr = 0.0
+    int fillIdx = array.size(appGridActiveEntries) - 1
+    while fillIdx >= 0
+        float fillEntry = array.get(appGridActiveEntries, fillIdx)
+        int fillEntryBar = array.get(appGridActiveEntryBars, fillIdx)
+        int fillLevel = array.get(appGridActiveLevels, fillIdx)
+        int fillTradeNum = array.get(appGridActiveTradeNums, fillIdx)
+        int fillLevelCount = array.get(appGridActiveLevelFillCounts, fillIdx)
+        float fillTp = showShort ? fillEntry * (1 - appGridStepPct) : fillEntry * (1 + appGridStepPct)
+        bool fillTpHit = bar_index > fillEntryBar and (showShort ? gridSourceLow <= fillTp : gridSourceHigh >= fillTp)
+        float adverseAdr = showLong ? math.max(0.0, (fillEntry - gridSourceLow) / (fillEntry * weekAdrPct / 100)) : math.max(0.0, (gridSourceHigh - fillEntry) / (fillEntry * weekAdrPct / 100))
+        appGridBasketAdverseAdr += adverseAdr
+        float previousFillMaxDDAdr = array.get(appGridActiveMaxDDAdr, fillIdx)
+        float fillMaxDDAdr = math.max(previousFillMaxDDAdr, adverseAdr)
+        array.set(appGridActiveMaxDDAdr, fillIdx, fillMaxDDAdr)
+        int activeReturnIdx = fillTradeNum - 1
+        if activeReturnIdx >= 0 and activeReturnIdx < array.size(appGridTradeMaxDDAdr)
+            array.set(appGridTradeMaxDDAdr, activeReturnIdx, fillMaxDDAdr)
+        if adverseAdr > previousFillMaxDDAdr
+            appGridMaxDDEntryPrice := fillEntry
+            appGridMaxDDAdversePrice := showLong ? gridSourceLow : gridSourceHigh
+            appGridMaxDDStartBar := fillEntryBar
+            appGridMaxDDEndBar := bar_index
+        if showBoxes and showVisuals and isChartGridTf
+            float adversePrice = array.get(appGridActiveAdversePrices, fillIdx)
+            adversePrice := showLong ? math.min(adversePrice, gridSourceLow) : math.max(adversePrice, gridSourceHigh)
+            array.set(appGridActiveAdversePrices, fillIdx, adversePrice)
+            label activeLabel = array.get(appGridActiveLabels, fillIdx)
+            if not na(activeLabel)
+                string activeReEntryText = "\nLevel activation: " + gridActivationLabel(fillLevelCount) + "\nLevel fills: " + str.tostring(fillLevelCount)
+                string activeTip = makeTradeId(fillTradeNum) + "\nStatus: ACTIVE\nGrid Entry: " + str.tostring(fillEntry, format.mintick) + "\nTP: " + str.tostring(fillTp, format.mintick) + activeReEntryText + "\nCurrent DD: " + str.tostring(adverseAdr, "#.##") + " ADR\nMax DD: " + str.tostring(fillMaxDDAdr, "#.##") + " ADR"
+                label.set_tooltip(activeLabel, activeTip)
+        if appGridResetHitThisBar
+            float resetRawReturn = weeklyHoldRawReturn(resolvedBias, fillEntry, appGridFullCloseTarget)
+            float resetAdrReturn = weeklyHoldAdrReturn(resetRawReturn, weekAdrPct)
+            float resetTpRawReturn = weeklyHoldRawReturn(resolvedBias, fillEntry, fillTp)
+            bool resetUseTpCap = fillTpHit and not na(resetRawReturn) and not na(resetTpRawReturn) and resetRawReturn >= resetTpRawReturn
+            float resetExitPrice = resetUseTpCap ? fillTp : appGridFullCloseTarget
+            string resetExitReason = resetUseTpCap ? "grid_tp" : "grid_reset"
+            float resetDisplayRawReturn = resetUseTpCap ? resetTpRawReturn : resetRawReturn
+            float resetDisplayAdrReturn = resetUseTpCap ? weeklyHoldAdrReturn(resetTpRawReturn, weekAdrPct) : resetAdrReturn
+            appGridPLPct += nz(resetDisplayRawReturn)
+            appGridPLAdrPct += nz(resetDisplayAdrReturn)
+            if resetUseTpCap
+                appGridTpHits += 1
+                appGridBestTpPrice := na(appGridBestTpPrice) ? fillTp : (showShort ? math.min(appGridBestTpPrice, fillTp) : math.max(appGridBestTpPrice, fillTp))
+                appGridCapturedPrice := appGridBestTpPrice
+            int resetReturnIdx = fillTradeNum - 1
+            if resetReturnIdx >= 0 and resetReturnIdx < array.size(appGridTradeRawReturns)
+                array.set(appGridTradeRawReturns, resetReturnIdx, resetDisplayRawReturn)
+            if resetReturnIdx >= 0 and resetReturnIdx < array.size(appGridTradeAdrReturns)
+                array.set(appGridTradeAdrReturns, resetReturnIdx, resetDisplayAdrReturn)
+            if resetReturnIdx >= 0 and resetReturnIdx < array.size(appGridTradeExitTimes)
+                array.set(appGridTradeExitTimes, resetReturnIdx, gridSourceTime)
+            if resetReturnIdx >= 0 and resetReturnIdx < array.size(appGridTradeExitPrices)
+                array.set(appGridTradeExitPrices, resetReturnIdx, resetExitPrice)
+            if resetReturnIdx >= 0 and resetReturnIdx < array.size(appGridTradeExitReasons)
+                array.set(appGridTradeExitReasons, resetReturnIdx, resetExitReason)
+            if resetReturnIdx >= 0 and resetReturnIdx < array.size(appGridTradeMaxDDAdr)
+                array.set(appGridTradeMaxDDAdr, resetReturnIdx, fillMaxDDAdr)
+            if showBoxes and showVisuals and isChartGridTf
+                label resetTradeLabel = array.get(appGridActiveLabels, fillIdx)
+                string resetStatus = resetUseTpCap ? "TP HIT ON RESET BAR" : "GRID RESET"
+                string resetReEntryText = "\nLevel activation: " + gridActivationLabel(fillLevelCount) + "\nLevel fills: " + str.tostring(fillLevelCount)
+                string resetTip = makeTradeId(fillTradeNum) + "\nStatus: " + resetStatus + "\nGrid Entry: " + str.tostring(fillEntry, format.mintick) + "\nTP: " + str.tostring(fillTp, format.mintick) + "\nExit: " + str.tostring(resetExitPrice, format.mintick) + resetReEntryText + "\nFinal DD: " + str.tostring(adverseAdr, "#.##") + " ADR\nMax DD: " + str.tostring(fillMaxDDAdr, "#.##") + " ADR\nReturn: " + signedPctText(returnBasis == "ADR Normalized" ? resetDisplayAdrReturn : resetDisplayRawReturn)
+                color resetTradeColor = nz(resetDisplayRawReturn) > 0 ? color.new(color.lime, 35) : nz(resetDisplayRawReturn) < 0 ? color.new(color.red, 35) : color.new(color.gray, 35)
+                if not na(resetTradeLabel)
+                    label.set_text(resetTradeLabel, (showLong ? "L" : "S") + str.tostring(fillTradeNum) + (resetUseTpCap ? " TP" : " RESET"))
+                    label.set_tooltip(resetTradeLabel, resetTip)
+                    label.set_color(resetTradeLabel, resetTradeColor)
+                label resetCloseLabel = label.new(bar_index, resetExitPrice, (showLong ? "L" : "S") + str.tostring(fillTradeNum) + (resetUseTpCap ? " TP" : " RESET"), tooltip=resetTip, style=showShort ? label.style_label_up : label.style_label_down, color=resetTradeColor, textcolor=color.white, size=size.tiny)
+                array.push(weekTradeLabels, resetCloseLabel)
+            array.remove(appGridActiveLevels, fillIdx)
+            array.remove(appGridActiveEntries, fillIdx)
+            array.remove(appGridActiveEntryBars, fillIdx)
+            array.remove(appGridActiveTradeNums, fillIdx)
+            array.remove(appGridActiveLevelFillCounts, fillIdx)
+            array.remove(appGridActiveMaxDDAdr, fillIdx)
+            array.remove(appGridActiveAdversePrices, fillIdx)
+            array.remove(appGridActiveLabels, fillIdx)
+            longTpHit := resetUseTpCap and showLong
+            shortTpHit := resetUseTpCap and showShort
+        else if fillTpHit
+            float rawReturn = weeklyHoldRawReturn(resolvedBias, fillEntry, fillTp)
+            float adrReturn = weeklyHoldAdrReturn(rawReturn, weekAdrPct)
+            appGridPLPct += nz(rawReturn)
+            appGridPLAdrPct += nz(adrReturn)
+            appGridTpHits += 1
+            int returnIdx = fillTradeNum - 1
+            if returnIdx >= 0 and returnIdx < array.size(appGridTradeRawReturns)
+                array.set(appGridTradeRawReturns, returnIdx, rawReturn)
+            if returnIdx >= 0 and returnIdx < array.size(appGridTradeAdrReturns)
+                array.set(appGridTradeAdrReturns, returnIdx, adrReturn)
+            if returnIdx >= 0 and returnIdx < array.size(appGridTradeExitTimes)
+                array.set(appGridTradeExitTimes, returnIdx, gridSourceTime)
+            if returnIdx >= 0 and returnIdx < array.size(appGridTradeExitPrices)
+                array.set(appGridTradeExitPrices, returnIdx, fillTp)
+            if returnIdx >= 0 and returnIdx < array.size(appGridTradeExitReasons)
+                array.set(appGridTradeExitReasons, returnIdx, "grid_tp")
+            if returnIdx >= 0 and returnIdx < array.size(appGridTradeMaxDDAdr)
+                array.set(appGridTradeMaxDDAdr, returnIdx, fillMaxDDAdr)
+            appGridBestTpPrice := na(appGridBestTpPrice) ? fillTp : (showShort ? math.min(appGridBestTpPrice, fillTp) : math.max(appGridBestTpPrice, fillTp))
+            appGridCapturedPrice := appGridBestTpPrice
+            if showBoxes and showVisuals and isChartGridTf
+                if showGridAreas
+                    float hitTpTop = math.max(appGridOpenPrice, appGridBestTpPrice)
+                    float hitTpBottom = math.min(appGridOpenPrice, appGridBestTpPrice)
+                    if na(appGridTpBox)
+                        appGridTpBox := box.new(nz(appGridStartBar, bar_index), hitTpTop, bar_index, hitTpBottom, bgcolor=color.new(color.lime, 86), border_color=color.new(color.lime, 45), border_width=1)
+                        array.push(weekTradeBoxes, appGridTpBox)
+                    else
+                        box.set_left(appGridTpBox, nz(appGridStartBar, bar_index))
+                        box.set_right(appGridTpBox, bar_index)
+                        box.set_top(appGridTpBox, hitTpTop)
+                        box.set_bottom(appGridTpBox, hitTpBottom)
+                label tpLabel = array.get(appGridActiveLabels, fillIdx)
+                if not na(tpLabel)
+                    string tpReEntryText = "\nLevel activation: " + gridActivationLabel(fillLevelCount) + "\nLevel fills: " + str.tostring(fillLevelCount)
+                    string tpTip = makeTradeId(fillTradeNum) + "\nStatus: TP HIT\nGrid Entry: " + str.tostring(fillEntry, format.mintick) + "\nTP: " + str.tostring(fillTp, format.mintick) + tpReEntryText + "\nFinal DD: " + str.tostring(adverseAdr, "#.##") + " ADR\nMax DD: " + str.tostring(fillMaxDDAdr, "#.##") + " ADR"
+                    label.set_tooltip(tpLabel, tpTip)
+                    label.set_color(tpLabel, color.new(gridLevelColor(fillLevel), 55))
+                label tpCloseLabel = label.new(bar_index, fillTp, (showLong ? "L" : "S") + str.tostring(fillTradeNum) + " TP", tooltip=makeTradeId(fillTradeNum) + "\nTP level: " + str.tostring(fillTp, format.mintick), style=showShort ? label.style_label_up : label.style_label_down, color=color.new(color.lime, 35), textcolor=color.white, size=size.tiny)
+                array.push(weekTradeLabels, tpCloseLabel)
+            array.set(appGridLevelArmed, fillLevel, true)
+            array.set(appGridLevelRearmBar, fillLevel, bar_index)
+            array.set(appGridLevelRequiresRetouch, fillLevel, true)
+            array.remove(appGridActiveLevels, fillIdx)
+            array.remove(appGridActiveEntries, fillIdx)
+            array.remove(appGridActiveEntryBars, fillIdx)
+            array.remove(appGridActiveTradeNums, fillIdx)
+            array.remove(appGridActiveLevelFillCounts, fillIdx)
+            array.remove(appGridActiveMaxDDAdr, fillIdx)
+            array.remove(appGridActiveAdversePrices, fillIdx)
+            array.remove(appGridActiveLabels, fillIdx)
+            longTpHit := showLong
+            shortTpHit := showShort
+        fillIdx -= 1
+    appGridCurrentDDAdr := appGridBasketAdverseAdr
+    if appGridCurrentDDAdr > appGridMaxDDAdr and not na(appGridOpenPrice) and not na(weekAdrPct)
+        appGridMaxDDStartBar := nz(appGridStartBar, bar_index)
+        appGridMaxDDEndBar := bar_index
+        float totalDDEquivalentMove = appGridOpenPrice * ((appGridCurrentDDAdr * weekAdrPct) / 100)
+        appGridMaxDDEntryPrice := appGridOpenPrice
+        appGridMaxDDAdversePrice := showShort ? appGridOpenPrice + totalDDEquivalentMove : appGridOpenPrice - totalDDEquivalentMove
+        if showBoxes and showGridAreas and showVisuals and isChartGridTf
+            float ddVisualTop = math.max(appGridMaxDDEntryPrice, appGridMaxDDAdversePrice)
+            float ddVisualBottom = math.min(appGridMaxDDEntryPrice, appGridMaxDDAdversePrice)
+            if na(appGridBasketDDBox)
+                appGridBasketDDBox := box.new(appGridMaxDDStartBar, ddVisualTop, appGridMaxDDEndBar, ddVisualBottom, bgcolor=color.new(color.red, 84), border_color=color.new(color.red, 50), border_width=1)
+                array.push(weekTradeBoxes, appGridBasketDDBox)
+            else
+                box.set_left(appGridBasketDDBox, appGridMaxDDStartBar)
+                box.set_right(appGridBasketDDBox, appGridMaxDDEndBar)
+                box.set_top(appGridBasketDDBox, ddVisualTop)
+                box.set_bottom(appGridBasketDDBox, ddVisualBottom)
+    appGridMaxDDAdr := math.max(appGridMaxDDAdr, appGridCurrentDDAdr)
+
+    if appGridResetHitThisBar
+        appGridMaxDDAdr := math.max(appGridMaxDDAdr, appGridCurrentDDAdr)
+        appGridEntriesStoppedForWeek := true
+        appGridClosedForWeek := true
+        appGridCurrentDDAdr := 0.0
+        appGridResetStops += 1
+        if not na(appGridBasketDDBox)
+            box.set_right(appGridBasketDDBox, bar_index)
+        if not na(appGridTpBox)
+            box.set_right(appGridTpBox, bar_index)
+        if not na(appGridFavorableBox)
+            box.set_right(appGridFavorableBox, bar_index)
+        if array.size(appGridLevelLines) > 0
+            for gridLine in appGridLevelLines
+                line.set_x2(gridLine, gridSourceTime)
+        if showBoxes and showVisuals and isChartGridTf
+            line resetLine = line.new(bar_index - 1, appGridFullCloseTarget, bar_index + 1, appGridFullCloseTarget, color=color.new(color.yellow, 0), style=line.style_solid, width=2)
+            label resetLabel = label.new(bar_index, appGridFullCloseTarget, "RESET", tooltip="Full ADR reset stop\nPrice: " + str.tostring(appGridFullCloseTarget, format.mintick) + "\nNew entries stopped for week\nActive fills closed at reset or TP cap\nActive fills: " + str.tostring(appGridResetFillCountAtHit), style=showShort ? label.style_label_up : label.style_label_down, color=color.new(color.yellow, 15), textcolor=color.black, size=size.small)
+            array.push(appGridResetLines, resetLine)
+            array.push(appGridResetLabels, resetLabel)
+
+bool gridSourceWeekCloseHit = useGridConfirmed1H and gridSourceReady and gridSourcePulse and gridSourceCloseTime >= gridCloseTs and not na(gridSourceClose)
+bool chartWeekCloseHit = not useGridConfirmed1H and time_close >= gridCloseTs and (liveBarMode == "Realtime" or barstate.isconfirmed)
+bool appGridCanWeekClose = appGridBiasActive and appGridStarted and not appGridClosedForWeek and (gridSourceWeekCloseHit or chartWeekCloseHit)
+float chartWeekClosePrice = time >= gridCloseTs ? open : close
+float appGridWeekClosePrice = gridSourceWeekCloseHit ? gridSourceClose : chartWeekClosePrice
+if appGridCanWeekClose
+    int weekCloseFillCount = array.size(appGridActiveEntries)
+    if weekCloseFillCount > 0
+        int weekCloseIdx = array.size(appGridActiveEntries) - 1
+        while weekCloseIdx >= 0
+            float weekCloseEntry = array.get(appGridActiveEntries, weekCloseIdx)
+            int weekCloseTradeNum = array.get(appGridActiveTradeNums, weekCloseIdx)
+            int weekCloseLevelCount = array.get(appGridActiveLevelFillCounts, weekCloseIdx)
+            float weekCloseMaxDDAdr = array.get(appGridActiveMaxDDAdr, weekCloseIdx)
+            float weekCloseReturn = weeklyHoldRawReturn(resolvedBias, weekCloseEntry, appGridWeekClosePrice)
+            float weekCloseAdrReturn = weeklyHoldAdrReturn(weekCloseReturn, weekAdrPct)
+            string weekCloseReEntryText = "\nLevel activation: " + gridActivationLabel(weekCloseLevelCount) + "\nLevel fills: " + str.tostring(weekCloseLevelCount)
+            string weekCloseTip = makeTradeId(weekCloseTradeNum) + "\nStatus: WEEK CLOSE\nGrid Entry: " + str.tostring(weekCloseEntry, format.mintick) + "\nClose: " + str.tostring(appGridWeekClosePrice, format.mintick) + weekCloseReEntryText + "\nMax DD: " + str.tostring(weekCloseMaxDDAdr, "#.##") + " ADR\nReturn: " + str.tostring(weekCloseReturn, "#.##") + "%"
+            appGridPLPct += nz(weekCloseReturn)
+            appGridPLAdrPct += nz(weekCloseAdrReturn)
+            int weekCloseReturnIdx = weekCloseTradeNum - 1
+            if weekCloseReturnIdx >= 0 and weekCloseReturnIdx < array.size(appGridTradeRawReturns)
+                array.set(appGridTradeRawReturns, weekCloseReturnIdx, weekCloseReturn)
+            if weekCloseReturnIdx >= 0 and weekCloseReturnIdx < array.size(appGridTradeAdrReturns)
+                array.set(appGridTradeAdrReturns, weekCloseReturnIdx, weekCloseAdrReturn)
+            if weekCloseReturnIdx >= 0 and weekCloseReturnIdx < array.size(appGridTradeExitTimes)
+                array.set(appGridTradeExitTimes, weekCloseReturnIdx, gridSourceCloseTime)
+            if weekCloseReturnIdx >= 0 and weekCloseReturnIdx < array.size(appGridTradeExitPrices)
+                array.set(appGridTradeExitPrices, weekCloseReturnIdx, appGridWeekClosePrice)
+            if weekCloseReturnIdx >= 0 and weekCloseReturnIdx < array.size(appGridTradeExitReasons)
+                array.set(appGridTradeExitReasons, weekCloseReturnIdx, "week_close")
+            if weekCloseReturnIdx >= 0 and weekCloseReturnIdx < array.size(appGridTradeMaxDDAdr)
+                array.set(appGridTradeMaxDDAdr, weekCloseReturnIdx, weekCloseMaxDDAdr)
+            array.push(appGridWeekClosedTradeNums, weekCloseTradeNum)
+            array.push(appGridWeekClosedEntries, weekCloseEntry)
+            array.push(appGridWeekClosedExits, appGridWeekClosePrice)
+            if showBoxes and showVisuals and isChartGridTf
+                color weekCloseColor = nz(weekCloseReturn) > 0 ? color.new(color.lime, 35) : nz(weekCloseReturn) < 0 ? color.new(color.red, 35) : color.new(color.gray, 35)
+                label weekClosedLabel = array.get(appGridActiveLabels, weekCloseIdx)
+                if not na(weekClosedLabel)
+                    label.set_text(weekClosedLabel, (showLong ? "L" : "S") + str.tostring(weekCloseTradeNum) + " CLOSE")
+                    label.set_tooltip(weekClosedLabel, weekCloseTip)
+                    label.set_color(weekClosedLabel, weekCloseColor)
+                label weekCloseLossLabel = label.new(bar_index, appGridWeekClosePrice, (showLong ? "L" : "S") + str.tostring(weekCloseTradeNum) + " CLOSE", tooltip=weekCloseTip, style=showShort ? label.style_label_up : label.style_label_down, color=weekCloseColor, textcolor=color.white, size=size.tiny)
+                array.push(weekTradeLabels, weekCloseLossLabel)
+            array.remove(appGridActiveLevels, weekCloseIdx)
+            array.remove(appGridActiveEntries, weekCloseIdx)
+            array.remove(appGridActiveEntryBars, weekCloseIdx)
+            array.remove(appGridActiveTradeNums, weekCloseIdx)
+            array.remove(appGridActiveLevelFillCounts, weekCloseIdx)
+            array.remove(appGridActiveMaxDDAdr, weekCloseIdx)
+            array.remove(appGridActiveAdversePrices, weekCloseIdx)
+            array.remove(appGridActiveLabels, weekCloseIdx)
+            weekCloseIdx -= 1
+    appGridMaxDDAdr := math.max(appGridMaxDDAdr, appGridCurrentDDAdr)
+    appGridCurrentDDAdr := 0.0
+    appGridClosedForWeek := true
+    appGridWeekClosedForWeek := true
+    if not na(appGridBasketDDBox)
+        box.set_right(appGridBasketDDBox, bar_index)
+    if not na(appGridTpBox)
+        box.set_right(appGridTpBox, bar_index)
+    if not na(appGridFavorableBox)
+        box.set_right(appGridFavorableBox, bar_index)
+    if array.size(appGridLevelLines) > 0
+        for gridLine in appGridLevelLines
+            line.set_x2(gridLine, gridCloseTs)
+
+int appGridActiveDisplay = array.size(appGridActiveEntries)
+if isGridMode
+    weekTrades := appGridEntries
+    weekTpHits := appGridTpHits
+    longState := showLong and appGridActiveDisplay > 0 ? 1 : 0
+    shortState := showShort and appGridActiveDisplay > 0 ? 1 : 0
+
+// Detect state transitions (for box drawing at chart-bar positions). On higher
+// chart TFs, the 5M engine can open and close inside one chart bar, so trade
+// count changes are also treated as trigger events.
+bool gridTradeCountIncreased = weekTrades > nz(weekTrades[1])
+bool longTriggeredNow  = (longState == 1 and nz(longState[1]) != 1) or (gridTradeCountIncreased and lastGridTradeDir == 1)
+bool shortTriggeredNow = (shortState == 1 and nz(shortState[1]) != 1) or (gridTradeCountIncreased and lastGridTradeDir == -1)
+// TP from state transitions: non-5M only (on 5M, local TP detection is authoritative)
+// Guard against isNewWeek false positives (state reset ≠ TP exit)
+bool longTpHit2  = not isChart5m and not isNewWeek and longState == 0 and nz(longState[1]) == 1
+bool shortTpHit2 = not isChart5m and not isNewWeek and shortState == 0 and nz(shortState[1]) == 1
+longTpHit  := longTpHit or longTpHit2
+shortTpHit := shortTpHit or shortTpHit2
+
+// ── Weekly stats ────────────────────────────────────────────────────────────
+// Fresh Start P/L uses the simple ADR risk model. ADR Grid P/L uses the app's
+// weighted raw close-and-rearm return accumulator.
+var string[] tradeIds       = array.new_string(0)
+var string[] tradeDetails   = array.new_string(0)
+var string[] levelSummaryKeys = array.new_string(0)
+var string[] levelSummaryDetails = array.new_string(0)
+var float[] levelSummaryEntryPrices = array.new_float(0)
+var int[] levelSummaryLevelIndexes = array.new_int(0)
+var int[] levelSummaryFills = array.new_int(0)
+var int[] levelSummaryTps = array.new_int(0)
+var int[] levelSummaryLosses = array.new_int(0)
+var int[] levelSummaryActives = array.new_int(0)
+var float[] levelSummaryRawPL = array.new_float(0)
+var float[] levelSummaryAdrPL = array.new_float(0)
+var float[] levelSummaryMaxDDAdr = array.new_float(0)
+var int   loggedTrades      = 0
+var int   loggedTpHits      = 0
+var float currentTradeDDAdr = 0.0  // current trade DD in ADR units
+var float weekMaxDDAdr      = 0.0  // worst DD across all trades (ADR units)
+
+if barstate.isfirst or isNewWeek
+    array.clear(tradeIds)
+    array.clear(tradeDetails)
+    array.clear(levelSummaryKeys)
+    array.clear(levelSummaryDetails)
+    array.clear(levelSummaryEntryPrices)
+    array.clear(levelSummaryLevelIndexes)
+    array.clear(levelSummaryFills)
+    array.clear(levelSummaryTps)
+    array.clear(levelSummaryLosses)
+    array.clear(levelSummaryActives)
+    array.clear(levelSummaryRawPL)
+    array.clear(levelSummaryAdrPL)
+    array.clear(levelSummaryMaxDDAdr)
+    loggedTrades      := 0
+    loggedTpHits      := 0
+    currentTradeDDAdr := 0.0
+    weekMaxDDAdr      := 0.0
+
+// Track drawdown in ADR units while in trade
+if longState == 1 and not na(frozenLongEntry) and not na(weekAdr) and weekAdr > 0
+    float dd = (frozenLongEntry - low) / weekAdr
+    if dd > 0
+        currentTradeDDAdr := math.max(currentTradeDDAdr, dd)
+
+if shortState == 1 and not na(frozenShortEntry) and not na(weekAdr) and weekAdr > 0
+    float dd = (high - frozenShortEntry) / weekAdr
+    if dd > 0
+        currentTradeDDAdr := math.max(currentTradeDDAdr, dd)
+
+// On TP hit: record max DD then reset for next trade
+if longTpHit or shortTpHit
+    weekMaxDDAdr      := math.max(weekMaxDDAdr, currentTradeDDAdr)
+    currentTradeDDAdr := 0.0
+
+// Guard: reset trade log if security override caused desync at week boundary
+if weekTrades < loggedTrades
+    loggedTrades      := 0
+    loggedTpHits      := 0
+    array.clear(tradeIds)
+    array.clear(tradeDetails)
+
+// Log new fills with P/L markers.
+float tpReturnPct = tpMultiple
+if weekTrades > loggedTrades
+    for tradeNum = loggedTrades + 1 to weekTrades
+        int tradeHistoryIdx = tradeNum - 1
+        bool hasTradeHistoryDetails = tradeHistoryIdx >= 0 and tradeHistoryIdx < array.size(appGridTradeEntries) and tradeHistoryIdx < array.size(appGridTradeTargets)
+        string tid = makeTradeId(tradeNum)
+        string detail = hasTradeHistoryDetails ? str.tostring(array.get(appGridTradeEntries, tradeHistoryIdx), format.mintick) + " → " + str.tostring(array.get(appGridTradeTargets, tradeHistoryIdx), format.mintick) : "Grid fill"
+        float tradeRawReturn = hasTradeHistoryDetails ? weeklyHoldRawReturn(resolvedBias, array.get(appGridTradeEntries, tradeHistoryIdx), array.get(appGridTradeTargets, tradeHistoryIdx)) : na
+        string stateText = tradeNum <= weekTpHits ? gridReturnText(tradeRawReturn, weekAdrPct) : "ACTIVE"
+        array.push(tradeIds, tid)
+        array.push(tradeDetails, detail + " " + stateText)
+    loggedTrades := weekTrades
+
+if weekTpHits > loggedTpHits and array.size(tradeDetails) > 0
+    int tpDelta = weekTpHits - loggedTpHits
+    int endIdx = array.size(tradeDetails) - 1
+    int startIdx = math.max(0, endIdx - tpDelta + 1)
+    for idx = startIdx to endIdx
+        string oldDetail = array.get(tradeDetails, idx)
+        bool hasTradeHistoryDetails = idx >= 0 and idx < array.size(appGridTradeEntries) and idx < array.size(appGridTradeTargets)
+        float tradeRawReturn = hasTradeHistoryDetails ? weeklyHoldRawReturn(resolvedBias, array.get(appGridTradeEntries, idx), array.get(appGridTradeTargets, idx)) : na
+        string tpText = gridReturnText(tradeRawReturn, weekAdrPct)
+        if str.contains(oldDetail, "ACTIVE")
+            array.set(tradeDetails, idx, str.replace_all(oldDetail, "ACTIVE", tpText))
+        else if not str.contains(oldDetail, "+")
+            array.set(tradeDetails, idx, oldDetail + " " + tpText)
+    loggedTpHits := weekTpHits
+
+if isGridMode and array.size(appGridWeekClosedTradeNums) > 0 and array.size(tradeDetails) > 0
+    for weekCloseLogIdx = 0 to array.size(appGridWeekClosedTradeNums) - 1
+        int weekCloseTradeNum = array.get(appGridWeekClosedTradeNums, weekCloseLogIdx)
+        int detailIdx = weekCloseTradeNum - 1
+        if detailIdx >= 0 and detailIdx < array.size(tradeDetails)
+            float weekCloseEntry = array.get(appGridWeekClosedEntries, weekCloseLogIdx)
+            float weekCloseExit = array.get(appGridWeekClosedExits, weekCloseLogIdx)
+            float weekCloseRaw = detailIdx < array.size(appGridTradeRawReturns) ? array.get(appGridTradeRawReturns, detailIdx) : weeklyHoldRawReturn(resolvedBias, weekCloseEntry, weekCloseExit)
+            float weekCloseAdr = detailIdx < array.size(appGridTradeAdrReturns) ? array.get(appGridTradeAdrReturns, detailIdx) : weeklyHoldAdrReturn(weekCloseRaw, weekAdrPct)
+            float weekCloseDisplay = returnBasis == "ADR Normalized" ? weekCloseAdr : weekCloseRaw
+            string weekCloseDetail = str.tostring(weekCloseEntry, format.mintick) + " -> " + str.tostring(weekCloseExit, format.mintick) + " week_close " + (weekCloseDisplay >= 0 ? "+" : "") + str.tostring(weekCloseDisplay, "#.##") + "%"
+            array.set(tradeDetails, detailIdx, weekCloseDetail)
+
+if isGridMode
+    currentTradeDDAdr := appGridCurrentDDAdr
+    weekMaxDDAdr := appGridMaxDDAdr
+
+// Build a compact per-level summary for the table. Trade labels/tooltips keep
+// individual fill details; this table view is for quick level-by-level audits.
+if isGridMode
+    array.clear(levelSummaryKeys)
+    array.clear(levelSummaryDetails)
+    array.clear(levelSummaryEntryPrices)
+    array.clear(levelSummaryLevelIndexes)
+    array.clear(levelSummaryFills)
+    array.clear(levelSummaryTps)
+    array.clear(levelSummaryLosses)
+    array.clear(levelSummaryActives)
+    array.clear(levelSummaryRawPL)
+    array.clear(levelSummaryAdrPL)
+    array.clear(levelSummaryMaxDDAdr)
+    int tradeHistorySize = array.size(appGridTradeEntries)
+    if tradeHistorySize > 0
+        for i = 0 to tradeHistorySize - 1
+            float summaryEntry = array.get(appGridTradeEntries, i)
+            float summaryTarget = i < array.size(appGridTradeTargets) ? array.get(appGridTradeTargets, i) : na
+            int summaryLevelIndex = i < array.size(appGridTradeLevels) ? array.get(appGridTradeLevels, i) : 0
+            string levelKey = str.tostring(summaryEntry, format.mintick) + " -> " + str.tostring(summaryTarget, format.mintick)
+            int levelIdx = array.indexof(levelSummaryKeys, levelKey)
+            if levelIdx == -1
+                int insertAt = array.size(levelSummaryKeys)
+                if array.size(levelSummaryEntryPrices) > 0
+                    for j = 0 to array.size(levelSummaryEntryPrices) - 1
+                        if summaryEntry > array.get(levelSummaryEntryPrices, j)
+                            insertAt := j
+                            break
+                array.insert(levelSummaryKeys, insertAt, levelKey)
+                array.insert(levelSummaryDetails, insertAt, "")
+                array.insert(levelSummaryEntryPrices, insertAt, summaryEntry)
+                array.insert(levelSummaryLevelIndexes, insertAt, summaryLevelIndex)
+                array.insert(levelSummaryFills, insertAt, 0)
+                array.insert(levelSummaryTps, insertAt, 0)
+                array.insert(levelSummaryLosses, insertAt, 0)
+                array.insert(levelSummaryActives, insertAt, 0)
+                array.insert(levelSummaryRawPL, insertAt, 0.0)
+                array.insert(levelSummaryAdrPL, insertAt, 0.0)
+                array.insert(levelSummaryMaxDDAdr, insertAt, 0.0)
+                levelIdx := insertAt
+            array.set(levelSummaryFills, levelIdx, array.get(levelSummaryFills, levelIdx) + 1)
+            int summaryTradeNum = i + 1
+            string summaryExitReason = i < array.size(appGridTradeExitReasons) ? array.get(appGridTradeExitReasons, i) : "ACTIVE"
+            bool summaryIsWeekClose = array.indexof(appGridWeekClosedTradeNums, summaryTradeNum) != -1
+            bool summaryIsActive = array.indexof(appGridActiveTradeNums, summaryTradeNum) != -1
+            bool summaryIsResetClose = summaryExitReason == "grid_reset"
+            bool summaryIsTpClose = summaryExitReason == "grid_tp"
+            if summaryIsWeekClose or summaryIsResetClose
+                array.set(levelSummaryLosses, levelIdx, array.get(levelSummaryLosses, levelIdx) + 1)
+            else if summaryIsActive
+                array.set(levelSummaryActives, levelIdx, array.get(levelSummaryActives, levelIdx) + 1)
+            else if summaryIsTpClose
+                array.set(levelSummaryTps, levelIdx, array.get(levelSummaryTps, levelIdx) + 1)
+            float summaryRawReturn = i < array.size(appGridTradeRawReturns) ? array.get(appGridTradeRawReturns, i) : na
+            float summaryAdrReturn = i < array.size(appGridTradeAdrReturns) ? array.get(appGridTradeAdrReturns, i) : na
+            if not na(summaryRawReturn)
+                array.set(levelSummaryRawPL, levelIdx, array.get(levelSummaryRawPL, levelIdx) + summaryRawReturn)
+            if not na(summaryAdrReturn)
+                array.set(levelSummaryAdrPL, levelIdx, array.get(levelSummaryAdrPL, levelIdx) + summaryAdrReturn)
+            float summaryMaxDDAdr = i < array.size(appGridTradeMaxDDAdr) ? array.get(appGridTradeMaxDDAdr, i) : na
+            if not na(summaryMaxDDAdr)
+                array.set(levelSummaryMaxDDAdr, levelIdx, math.max(array.get(levelSummaryMaxDDAdr, levelIdx), summaryMaxDDAdr))
+    if array.size(levelSummaryKeys) > 0
+        for i = 0 to array.size(levelSummaryKeys) - 1
+            int fills = array.get(levelSummaryFills, i)
+            int tps = array.get(levelSummaryTps, i)
+            int losses = array.get(levelSummaryLosses, i)
+            int actives = array.get(levelSummaryActives, i)
+            string summary = str.tostring(fills) + " fills / " + str.tostring(tps) + " TP"
+            if losses > 0
+                summary += " / " + str.tostring(losses) + " close"
+            if actives > 0
+                summary += " / " + str.tostring(actives) + " active"
+            float summaryPL = returnBasis == "ADR Normalized" ? array.get(levelSummaryAdrPL, i) : array.get(levelSummaryRawPL, i)
+            float summaryDD = gridDrawdownForBasis(array.get(levelSummaryMaxDDAdr, i), weekAdrPct)
+            summary += " / " + signedPctText(summaryPL) + " / DD " + ddPctText(summaryDD)
+            array.set(levelSummaryDetails, i, summary)
+
+if isGridMode and array.size(tradeDetails) > 0
+    for i = 0 to array.size(tradeDetails) - 1
+        array.set(tradeDetails, i, gridTradeAuditDetail(i))
+
+// Computed stats (1 ADR = 1%, so ADR units = percentage directly)
+float weekPLPct    = isGridMode ? appGridPLPct : weekTpHits * tpReturnPct
+float weekPLAdrPct = isGridMode ? appGridPLAdrPct : weekTpHits * tpReturnPct
+float weekMaxDDPct = math.max(weekMaxDDAdr, currentTradeDDAdr)
+float displayGridPLPct = returnBasis == "ADR Normalized" ? weekPLAdrPct : weekPLPct
+float displayGridMaxDDPct = gridDrawdownForBasis(weekMaxDDPct, weekAdrPct)
+
+// Capture target week snapshot (updated every bar while in target week)
+if targetWeeksBack > 0 and inTargetWeek
+    snapTrades := weekTrades
+    snapTpHits := weekTpHits
+    snapResetCloses := appGridResetStops
+    snapWeekCloses := array.size(appGridWeekClosedTradeNums)
+    snapMaxDDAdr := weekMaxDDAdr
+    snapCurrentDDAdr := currentTradeDDAdr
+    snapGridPLPct := weekPLPct
+    snapGridPLAdrPct := weekPLAdrPct
+    snapWeekAdr := weekAdr
+    snapWeekAdrPct := weekAdrPct
+    array.clear(snapTradeIds)
+    array.clear(snapTradeDetails)
+    if array.size(tradeIds) > 0
+        for i = 0 to array.size(tradeIds) - 1
+            array.push(snapTradeIds, array.get(tradeIds, i))
+            array.push(snapTradeDetails, array.get(tradeDetails, i))
+    array.clear(snapLevelKeys)
+    array.clear(snapLevelDetails)
+    array.clear(snapLevelIndexes)
+    if array.size(levelSummaryKeys) > 0
+        for i = 0 to array.size(levelSummaryKeys) - 1
+            array.push(snapLevelKeys, array.get(levelSummaryKeys, i))
+            array.push(snapLevelDetails, array.get(levelSummaryDetails, i))
+            array.push(snapLevelIndexes, array.get(levelSummaryLevelIndexes, i))
+    snapWhHasTrade := whHasTrade
+    snapWhEntryPrice := whEntryPrice
+    snapWhExitPrice := whExitPrice
+    snapWhRawReturnPct := whRawReturnPct
+    snapWhAdrReturnPct := whAdrReturnPct
+    snapWhMaxDDRawPct := whMaxDDRawPct
+    snapWhMaxDDAdrPct := whMaxDDAdrPct
+    snapWhEntryTs := whEntryTs
+    snapWhExitTs := whExitTs
+
+// ── Period box with header/footer bars ───────────────────────────────────────
+var box periodBox   = na
+var box topBar      = na
+var box bottomBar   = na
+var float periodHigh = na
+var float periodLow  = na
+
+// Daily separators inside the period box
+daySepColor = input.color(color.new(color.black, 50), "Day Separator Color")
+showDaySeps = input.bool(true, "Show Daily Separators")
+var line[] daySepLines  = array.new<line>()
+var label[] dayLabels   = array.new<label>()
+var label weekLabel     = na
+var label currentDayLabel = na
+var line executionStartLine = na
+var label executionStartLabel = na
+var int executionStartLineTs = na
+var line executionCloseLine = na
+var label executionCloseLabel = na
+var int executionCloseLineTs = na
+var int lastSepBarIdx   = 0
+var int weekStartBarIdx = 0
+int dayMs       = 24 * 60 * 60 * 1000
+int weekStartTs = gridAnchorOpenTs
+int weekEndTs   = canonicalCloseTs
+int weekMidTs   = int(math.round(math.avg(weekStartTs, weekEndTs)))
+int executionStartVisualTs = executionOpenTs
+int executionCloseVisualTs = isWeeklyHoldMode ? weeklyHoldCloseTs : gridCloseTs
+int executionStartMarkerTs = int(math.max(executionStartVisualTs, weekStartTs))
+int executionCloseMarkerTs = int(math.min(executionCloseVisualTs, weekEndTs))
+
+// Detect day changes in New York local time so DST does not shift separators.
+int nyDay = dayofmonth(time, sessionTimezone)
+int prevNyDay = dayofmonth(time[1], sessionTimezone)
+bool isNewDay = na(time[1]) ? false : nyDay != prevNyDay
+int nyDow = dayofweek(time, sessionTimezone)
+
+// Bar height for header/footer = 12% of the weekly price range
+float barHeightPct = 0.12
+
+// Half-day merging logic using New York day of week.
+// Only SUNMON is merged (partial sessions bookending the week boundary)
+// Crypto periods: SUNMON | TUE | WED | THU | FRI | SAT | SUN
+// CFD periods:    SUNMON | TUE | WED | THU | FRI
+bool skipSeparator = false
+if isNewDay
+    // Monday is merged with Sunday as SUNMON.
+    if nyDow == dayofweek.monday
+        skipSeparator := true
+
+if (barstate.isfirst or isNewWeek) and showBoxes and showVisuals
+    // Delete previous week's visuals so only one week shows at a time
+    if isNewWeek and not barstate.isfirst and targetWeeksBack == 0
+        if not na(periodBox)
+            box.delete(periodBox)
+        if not na(topBar)
+            box.delete(topBar)
+        if not na(bottomBar)
+            box.delete(bottomBar)
+        if not na(weekLabel)
+            label.delete(weekLabel)
+        if not na(executionStartLine)
+            line.delete(executionStartLine)
+        if not na(executionStartLabel)
+            label.delete(executionStartLabel)
+        if not na(executionCloseLine)
+            line.delete(executionCloseLine)
+        if not na(executionCloseLabel)
+            label.delete(executionCloseLabel)
+        for ln in daySepLines
+            line.delete(ln)
+        for lb in dayLabels
+            label.delete(lb)
+        executionStartLine := na
+        executionStartLabel := na
+        executionStartLineTs := na
+        executionCloseLine := na
+        executionCloseLabel := na
+        executionCloseLineTs := na
+    periodHigh := high
+    periodLow  := low
+    float priceSpan = math.max(high - low, high * 0.01)
+    float barH  = priceSpan * barHeightPct
+    // Draw the full week immediately so the panel keeps its original width/spacing.
+    periodBox := box.new(weekStartTs, high, weekEndTs, low, xloc=xloc.bar_time, bgcolor=periodBoxBg, border_color=periodBoxBorder, border_width=1, border_style=line.style_dotted)
+    topBar := box.new(weekStartTs, high + barH, weekEndTs, high, xloc=xloc.bar_time, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
+    bottomBar := box.new(weekStartTs, low, weekEndTs, low - barH, xloc=xloc.bar_time, bgcolor=color.new(color.white, 80), border_color=color.new(color.black, 50), border_width=1, border_style=line.style_solid)
+    // Clear tracking arrays for new week
+    array.clear(daySepLines)
+    array.clear(dayLabels)
+    weekStartBarIdx := bar_index
+    lastSepBarIdx   := bar_index
+    // Week label centered in top bar
+    string weekStr = str.format("WEEK OF {0,date,MMM dd yyyy}", weekStartTs)
+    weekLabel := label.new(weekMidTs, high + barH / 2, weekStr, xloc=xloc.bar_time, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.black, size=size.huge, textalign=text.align_center)
+    // New York midnight boundaries. timestamp() handles DST transitions.
+    int tueStartTs = timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay + 2, 0, 0)
+    int wedStartTs = timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay + 3, 0, 0)
+    int thuStartTs = timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay + 4, 0, 0)
+    int friStartTs = timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay + 5, 0, 0)
+    int satStartTs = timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay + 6, 0, 0)
+    int sunStartTs = timestamp(sessionTimezone, sessionSundayYear, sessionSundayMonth, sessionSundayDay + 7, 0, 0)
+
+    int sunMonEndTs = int(math.min(tueStartTs, weekEndTs))
+    if sunMonEndTs > weekStartTs
+        currentDayLabel := label.new(int(math.round(math.avg(weekStartTs, sunMonEndTs))), low - barH / 2, "SUNMON", xloc=xloc.bar_time, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal)
+        array.push(dayLabels, currentDayLabel)
+
+    if showDaySeps
+        if tueStartTs > weekStartTs and tueStartTs < weekEndTs
+            array.push(daySepLines, line.new(tueStartTs, low, tueStartTs, high, xloc=xloc.bar_time, color=daySepColor, style=line.style_dotted, width=2))
+        if wedStartTs > weekStartTs and wedStartTs < weekEndTs
+            array.push(daySepLines, line.new(wedStartTs, low, wedStartTs, high, xloc=xloc.bar_time, color=daySepColor, style=line.style_dotted, width=2))
+        if thuStartTs > weekStartTs and thuStartTs < weekEndTs
+            array.push(daySepLines, line.new(thuStartTs, low, thuStartTs, high, xloc=xloc.bar_time, color=daySepColor, style=line.style_dotted, width=2))
+        if friStartTs > weekStartTs and friStartTs < weekEndTs
+            array.push(daySepLines, line.new(friStartTs, low, friStartTs, high, xloc=xloc.bar_time, color=daySepColor, style=line.style_dotted, width=2))
+        if isCrypto and satStartTs > weekStartTs and satStartTs < weekEndTs
+            array.push(daySepLines, line.new(satStartTs, low, satStartTs, high, xloc=xloc.bar_time, color=daySepColor, style=line.style_dotted, width=2))
+        if isCrypto and sunStartTs > weekStartTs and sunStartTs < weekEndTs
+            array.push(daySepLines, line.new(sunStartTs, low, sunStartTs, high, xloc=xloc.bar_time, color=daySepColor, style=line.style_dotted, width=2))
+
+    int tueEndTs = int(math.min(wedStartTs, weekEndTs))
+    if tueStartTs < weekEndTs and tueEndTs > tueStartTs
+        array.push(dayLabels, label.new(int(math.round(math.avg(tueStartTs, tueEndTs))), low - barH / 2, "TUE", xloc=xloc.bar_time, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal))
+
+    int wedEndTs = int(math.min(thuStartTs, weekEndTs))
+    if wedStartTs < weekEndTs and wedEndTs > wedStartTs
+        array.push(dayLabels, label.new(int(math.round(math.avg(wedStartTs, wedEndTs))), low - barH / 2, "WED", xloc=xloc.bar_time, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal))
+
+    int thuEndTs = int(math.min(friStartTs, weekEndTs))
+    if thuStartTs < weekEndTs and thuEndTs > thuStartTs
+        array.push(dayLabels, label.new(int(math.round(math.avg(thuStartTs, thuEndTs))), low - barH / 2, "THU", xloc=xloc.bar_time, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal))
+
+    int friEndTs = int(math.min(isCrypto ? satStartTs : weekEndTs, weekEndTs))
+    if friStartTs < weekEndTs and friEndTs > friStartTs
+        array.push(dayLabels, label.new(int(math.round(math.avg(friStartTs, friEndTs))), low - barH / 2, "FRI", xloc=xloc.bar_time, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal))
+
+    if isCrypto
+        int satEndTs = int(math.min(sunStartTs, weekEndTs))
+        if satStartTs < weekEndTs and satEndTs > satStartTs
+            array.push(dayLabels, label.new(int(math.round(math.avg(satStartTs, satEndTs))), low - barH / 2, "SAT", xloc=xloc.bar_time, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal))
+        if sunStartTs < weekEndTs
+            array.push(dayLabels, label.new(int(math.round(math.avg(sunStartTs, weekEndTs))), low - barH / 2, "SUN", xloc=xloc.bar_time, style=label.style_label_center, color=color.new(color.black, 100), textcolor=color.new(color.black, 20), size=size.normal))
+
+if not na(periodBox) and showBoxes and showVisuals
+    periodHigh := math.max(periodHigh, high)
+    periodLow  := math.min(periodLow, low)
+    float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = priceSpan * barHeightPct
+    // Update middle box
+    box.set_top(periodBox, periodHigh)
+    box.set_bottom(periodBox, periodLow)
+    box.set_left(periodBox, weekStartTs)
+    box.set_right(periodBox, weekEndTs)
+    // Update top bar
+    if not na(topBar)
+        box.set_left(topBar, weekStartTs)
+        box.set_right(topBar, weekEndTs)
+        box.set_bottom(topBar, periodHigh)
+        box.set_top(topBar, periodHigh + barH)
+    // Update bottom bar
+    if not na(bottomBar)
+        box.set_left(bottomBar, weekStartTs)
+        box.set_right(bottomBar, weekEndTs)
+        box.set_top(bottomBar, periodLow)
+        box.set_bottom(bottomBar, periodLow - barH)
+    // Keep week label centered in top bar
+    if not na(weekLabel)
+        label.set_y(weekLabel, periodHigh + barH / 2)
+        label.set_x(weekLabel, weekMidTs)
+
+// Update: separator lines and day labels track the live price range
+if showDaySeps and showBoxes and showVisuals and not na(periodBox)
+    float priceSpan = math.max(periodHigh - periodLow, periodHigh * 0.01)
+    float barH  = priceSpan * barHeightPct
+    for ln in daySepLines
+        line.set_y1(ln, periodLow)
+        line.set_y2(ln, periodHigh)
+    for lb in dayLabels
+        label.set_y(lb, periodLow - barH / 2)
+
+float markerHigh = not na(periodHigh) ? periodHigh : weekHigh
+float markerLow = not na(periodLow) ? periodLow : weekLow
+
+if showBoxes and showVisuals and not na(markerHigh) and not na(markerLow)
+    float priceSpan = math.max(markerHigh - markerLow, markerHigh * 0.01)
+    float markerLabelY = markerHigh - priceSpan * 0.08
+    string startLabelText = "EXEC START"
+    string startTip = startLabelText + "\nNY: Sunday 20:00\nNew entries stop Friday 09:00 NY"
+    if na(executionStartLine) or executionStartLineTs != executionStartMarkerTs
+        if not na(executionStartLine)
+            line.delete(executionStartLine)
+        if not na(executionStartLabel)
+            label.delete(executionStartLabel)
+        executionStartLine := line.new(executionStartMarkerTs, markerLow, executionStartMarkerTs, markerHigh, xloc=xloc.bar_time, color=color.new(color.black, 0), style=line.style_solid, width=4)
+        executionStartLabel := label.new(executionStartMarkerTs, markerLabelY, "START", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.black, 15), textcolor=color.white, size=size.tiny, tooltip=startTip)
+        executionStartLineTs := executionStartMarkerTs
+    else
+        line.set_x1(executionStartLine, executionStartMarkerTs)
+        line.set_x2(executionStartLine, executionStartMarkerTs)
+        line.set_y1(executionStartLine, markerLow)
+        line.set_y2(executionStartLine, markerHigh)
+        if not na(executionStartLabel)
+            label.set_x(executionStartLabel, executionStartMarkerTs)
+            label.set_y(executionStartLabel, markerLabelY)
+            label.set_text(executionStartLabel, "START")
+            label.set_tooltip(executionStartLabel, startTip)
+    string closeLabelText = isWeeklyHoldMode ? "WH CLOSE" : "GRID CLOSE"
+    string closeTip = closeLabelText + "\nNY: Friday 11:00\nForced close happens at 11:00, not after the 11:00 hour"
+    if na(executionCloseLine) or executionCloseLineTs != executionCloseMarkerTs
+        if not na(executionCloseLine)
+            line.delete(executionCloseLine)
+        if not na(executionCloseLabel)
+            label.delete(executionCloseLabel)
+        executionCloseLine := line.new(executionCloseMarkerTs, markerLow, executionCloseMarkerTs, markerHigh, xloc=xloc.bar_time, color=color.new(color.black, 0), style=line.style_solid, width=4)
+        executionCloseLabel := label.new(executionCloseMarkerTs, markerLabelY, "STOP", xloc=xloc.bar_time, style=label.style_label_down, color=color.new(color.black, 15), textcolor=color.white, size=size.tiny, tooltip=closeTip)
+        executionCloseLineTs := executionCloseMarkerTs
+    else
+        line.set_x1(executionCloseLine, executionCloseMarkerTs)
+        line.set_x2(executionCloseLine, executionCloseMarkerTs)
+        line.set_y1(executionCloseLine, markerLow)
+        line.set_y2(executionCloseLine, markerHigh)
+        if not na(executionCloseLabel)
+            label.set_x(executionCloseLabel, executionCloseMarkerTs)
+            label.set_y(executionCloseLabel, markerLabelY)
+            label.set_text(executionCloseLabel, "STOP")
+            label.set_tooltip(executionCloseLabel, closeTip)
+else if targetWeeksBack == 0
+    if not na(executionStartLine)
+        line.delete(executionStartLine)
+    if not na(executionStartLabel)
+        label.delete(executionStartLabel)
+    if not na(executionCloseLine)
+        line.delete(executionCloseLine)
+    if not na(executionCloseLabel)
+        label.delete(executionCloseLabel)
+    executionStartLine := na
+    executionStartLabel := na
+    executionStartLineTs := na
+    executionCloseLine := na
+    executionCloseLabel := na
+    executionCloseLineTs := na
+
+// ── Trade boxes (profit + drawdown — detach on TP for re-entry) ─────────────
+var box longProfBox = na
+var box longDDBox = na
+var float longDDLow = na
+var box shortProfBox = na
+var box shortDDBox = na
+var float shortDDHigh = na
+
+if barstate.isfirst
+    array.clear(weekTradeBoxes)
+    array.clear(weekTradeLabels)
+
+if isNewWeek and targetWeeksBack == 0
+    if array.size(weekTradeBoxes) > 0
+        for bx in weekTradeBoxes
+            box.delete(bx)
+    if array.size(weekTradeLabels) > 0
+        for lb in weekTradeLabels
+            label.delete(lb)
+    array.clear(weekTradeBoxes)
+    array.clear(weekTradeLabels)
+
+if barstate.isfirst or isNewWeek
+    longProfBox  := na
+    longDDBox    := na
+    longDDLow    := na
+    shortProfBox := na
+    shortDDBox   := na
+    shortDDHigh  := na
+
+if longTpHit
+    longProfBox := na
+    longDDBox   := na
+    longDDLow   := na
+
+if shortTpHit
+    shortProfBox := na
+    shortDDBox   := na
+    shortDDHigh  := na
+
+float drawLongEntry = not na(frozenLongEntry) ? frozenLongEntry : lastGridTradeDir == 1 ? lastGridTradeEntry : na
+float drawLongTp = not na(frozenLongTp) ? frozenLongTp : lastGridTradeDir == 1 ? lastGridTradeTp : na
+float drawShortEntry = not na(frozenShortEntry) ? frozenShortEntry : lastGridTradeDir == -1 ? lastGridTradeEntry : na
+float drawShortTp = not na(frozenShortTp) ? frozenShortTp : lastGridTradeDir == -1 ? lastGridTradeTp : na
+int drawTradeNum = lastGridTradeNum > 0 ? lastGridTradeNum : weekTrades
+
+if not isGridMode and longTriggeredNow and showBoxes and showVisuals and not na(drawLongEntry) and not na(drawLongTp)
+    longProfBox := box.new(bar_index, drawLongTp, bar_index, drawLongEntry, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
+    array.push(weekTradeBoxes, longProfBox)
+    string tid = makeTradeId(drawTradeNum)
+    string ttip = tid + "\nLONG Entry: " + str.tostring(drawLongEntry, format.mintick) + "\nTP: " + str.tostring(drawLongTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%" + "\nRisk: " + str.tostring(entryMultiple, "#.##") + "% (1 ADR)"
+    label longTradeLabel = label.new(bar_index, drawLongTp, "L" + str.tostring(drawTradeNum), tooltip=ttip, style=label.style_label_down, color=color.new(color.lime, 60), textcolor=color.white, size=size.tiny)
+    array.push(weekTradeLabels, longTradeLabel)
+    longDDBox   := na
+    longDDLow   := low
+
+if not isGridMode and longState == 1 and not na(longProfBox)
+    box.set_right(longProfBox, bar_index)
+
+if not isGridMode and longState == 1
+    longDDLow := na(longDDLow) ? low : math.min(longDDLow, low)
+    if not na(frozenLongEntry) and not na(longDDLow) and longDDLow < frozenLongEntry
+        if na(longDDBox) and showBoxes and showVisuals
+            longDDBox := box.new(bar_index, frozenLongEntry, bar_index, longDDLow, bgcolor=ddBoxBg, border_color=color.red, border_width=1)
+            array.push(weekTradeBoxes, longDDBox)
+        else if not na(longDDBox)
+            box.set_right(longDDBox, bar_index)
+            box.set_bottom(longDDBox, longDDLow)
+
+if not isGridMode and shortTriggeredNow and showBoxes and showVisuals and not na(drawShortEntry) and not na(drawShortTp)
+    shortProfBox := box.new(bar_index, drawShortEntry, bar_index, drawShortTp, bgcolor=profitBoxBg, border_color=color.lime, border_width=2)
+    array.push(weekTradeBoxes, shortProfBox)
+    string tid = makeTradeId(drawTradeNum)
+    string ttip = tid + "\nSHORT Entry: " + str.tostring(drawShortEntry, format.mintick) + "\nTP: " + str.tostring(drawShortTp, format.mintick) + "\nTarget: +" + str.tostring(tpReturnPct, "#.##") + "%" + "\nRisk: " + str.tostring(entryMultiple, "#.##") + "% (1 ADR)"
+    label shortTradeLabel = label.new(bar_index, drawShortTp, "S" + str.tostring(drawTradeNum), tooltip=ttip, style=label.style_label_up, color=color.new(color.red, 60), textcolor=color.white, size=size.tiny)
+    array.push(weekTradeLabels, shortTradeLabel)
+    shortDDBox   := na
+    shortDDHigh  := high
+
+if not isGridMode and shortState == 1 and not na(shortProfBox)
+    box.set_right(shortProfBox, bar_index)
+
+if not isGridMode and shortState == 1
+    shortDDHigh := na(shortDDHigh) ? high : math.max(shortDDHigh, high)
+    if not na(frozenShortEntry) and not na(shortDDHigh) and shortDDHigh > frozenShortEntry
+        if na(shortDDBox) and showBoxes and showVisuals
+            shortDDBox := box.new(bar_index, shortDDHigh, bar_index, frozenShortEntry, bgcolor=ddBoxBg, border_color=color.red, border_width=1)
+            array.push(weekTradeBoxes, shortDDBox)
+        else if not na(shortDDBox)
+            box.set_right(shortDDBox, bar_index)
+            box.set_top(shortDDBox, shortDDHigh)
+
+// ── Pending entry zone (shows where the next trade will trigger) ─────────────
+// Green box between Entry and TP, visible when waiting (not yet triggered).
+// Moves with the recalculating 5M levels so you can see where to place pending orders.
+var box pendingZoneBox = na
+var label pendingZoneLabel = na
+
+// Delete and redraw each bar to track moving levels
+if not na(pendingZoneBox)
+    box.delete(pendingZoneBox)
+    pendingZoneBox := na
+if not na(pendingZoneLabel)
+    label.delete(pendingZoneLabel)
+    pendingZoneLabel := na
+
+bool pendingLong  = false
+bool pendingShort = false
+
+if showBoxes and showVisuals
+    if pendingLong
+        pendingZoneBox   := box.new(bar_index - 1, longTp, bar_index + 10, longEntry, bgcolor=color.new(color.lime, 85), border_color=color.new(color.lime, 50), border_width=1, border_style=line.style_dashed)
+        pendingZoneLabel := label.new(bar_index + 5, longTp, "PENDING LONG", style=label.style_label_down, color=color.new(color.lime, 80), textcolor=color.white, size=size.tiny)
+    else if pendingShort
+        pendingZoneBox   := box.new(bar_index - 1, shortEntry, bar_index + 10, shortTp, bgcolor=color.new(color.red, 85), border_color=color.new(color.red, 50), border_width=1, border_style=line.style_dashed)
+        pendingZoneLabel := label.new(bar_index + 5, shortEntry, "PENDING SHORT", style=label.style_label_down, color=color.new(color.red, 80), textcolor=color.white, size=size.tiny)
+
+// ── Data Window (hover any bar to see current values) ───────────────────────
+float displayEntry = isWeeklyHoldMode ? whEntryPrice : isGridMode ? lastGridTradeEntry : showLong ? longEntry : showShort ? shortEntry : na
+float displayTp    = isWeeklyHoldMode ? whExitPrice : isGridMode ? lastGridTradeTp : showLong ? longTp : showShort ? shortTp : na
+float displayState = isWeeklyHoldMode ? (whActive ? 1.0 : 0.0) : (longState == 1 or shortState == 1 ? 1.0 : 0.0)
+float displayReturnPct = isWeeklyHoldMode ? (returnBasis == "ADR Normalized" ? whAdrReturnPct : whRawReturnPct) : displayGridPLPct
+plot(displayEntry, "Entry", display=display.data_window)
+plot(displayTp, "TP", display=display.data_window)
+plot(adrReady ? adrPips : na, "ADR (pips)", display=display.data_window)
+plot(displayState, "In Trade", display=display.data_window)
+plot(weekTrades * 1.0, "Trades", display=display.data_window)
+plot(weekTpHits * 1.0, "TP Hits", display=display.data_window)
+plot(displayReturnPct, "P/L %", display=display.data_window)
+plot(isGridMode ? displayGridMaxDDPct : weekMaxDDPct, "Max DD %", display=display.data_window)
+plot(currentTradeDDAdr, "Current DD (ADR)", display=display.data_window)
+
+// ── Info table (single panel, dynamic rows — no gaps) ───────────────────────
+var table infoTable = table.new(position.top_right, 2, 40, border_width=1, border_color=tableBorderColor, bgcolor=tableBgColor)
+
+if showTable and barstate.islast
+    table.clear(infoTable, 0, 0, 1, 39)
+
+    // Select live or snapshot values based on week selector
+    bool isPast = targetWeeksBack > 0
+    int dTrades = isPast ? snapTrades : weekTrades
+    int dTpHits = isPast ? snapTpHits : weekTpHits
+    int dResetCloses = isPast ? snapResetCloses : appGridResetStops
+    int dWeekCloses = isPast ? snapWeekCloses : array.size(appGridWeekClosedTradeNums)
+    float dPLRaw = isGridMode ? (isPast ? snapGridPLPct : weekPLPct) : dTpHits * tpReturnPct
+    float dPLAdr = isGridMode ? (isPast ? snapGridPLAdrPct : weekPLAdrPct) : dTpHits * tpReturnPct
+    float dDDAdr = isPast ? math.max(snapMaxDDAdr, snapCurrentDDAdr) : weekMaxDDPct
+    float dWeekAdr = isPast ? snapWeekAdr : weekAdr
+    float dWeekAdrPct = isPast ? snapWeekAdrPct : weekAdrPct
+    float dPL = isGridMode ? (returnBasis == "ADR Normalized" ? dPLAdr : dPLRaw) : dPLRaw
+    float dDD = isGridMode ? gridDrawdownForBasis(dDDAdr, dWeekAdrPct) : dDDAdr
+    float dAdrPips = not na(dWeekAdr) and pipSize > 0 ? dWeekAdr / pipSize : na
+    float dAdrTpPips = not na(dWeekAdr) and pipSize > 0 ? (dWeekAdr * tpMultiple) / pipSize : na
+    string[] dTradeIds = isPast ? snapTradeIds : tradeIds
+    string[] dTradeDetails = isPast ? snapTradeDetails : tradeDetails
+    string[] dLevelKeys = isPast ? snapLevelKeys : levelSummaryKeys
+    string[] dLevelDetails = isPast ? snapLevelDetails : levelSummaryDetails
+    int[] dLevelIndexes = isPast ? snapLevelIndexes : levelSummaryLevelIndexes
+    bool dWhHasTrade = isPast ? snapWhHasTrade : whHasTrade
+    float dWhEntryPrice = isPast ? snapWhEntryPrice : whEntryPrice
+    float dWhExitPrice = isPast ? snapWhExitPrice : whExitPrice
+    float dAdrPctPips = not na(dWeekAdrPct) and pipSize > 0 and not na(dWhEntryPrice) and dWhEntryPrice > 0 ? (dWhEntryPrice * dWeekAdrPct / 100) / pipSize : not na(dWeekAdrPct) and pipSize > 0 ? (close * dWeekAdrPct / 100) / pipSize : na
+    float dWhRawReturnPct = isPast ? snapWhRawReturnPct : whRawReturnPct
+    float dWhAdrReturnPct = isPast ? snapWhAdrReturnPct : whAdrReturnPct
+    float dWhMaxDDRawPct = isPast ? snapWhMaxDDRawPct : whMaxDDRawPct
+    float dWhMaxDDAdrPct = isPast ? snapWhMaxDDAdrPct : whMaxDDAdrPct
+    float dWhReturnPct = returnBasis == "ADR Normalized" ? dWhAdrReturnPct : dWhRawReturnPct
+    float dWhDDPct = returnBasis == "ADR Normalized" ? dWhMaxDDAdrPct : dWhMaxDDRawPct
+    string dWhReturnText = not na(dWhReturnPct) ? (dWhReturnPct >= 0 ? "+" : "") + str.tostring(dWhReturnPct, "#.##") + "%" : "-"
+
+    color biasColor = resolvedBias == "LONG" ? color.lime : resolvedBias == "SHORT" ? color.red : tableTextColor
+    color entryColor = showLong ? color.lime : color.red
+    string gridStatusText = isPast ? "Completed" : appGridWeekClosedForWeek ? "WEEK CLOSED" : (longState == 1 or shortState == 1) ? "TRIGGERED" : appGridEntriesStoppedForWeek ? "RESET STOP" : showLong ? (longTpHit ? "TP Hit" : "Waiting") : showShort ? (shortTpHit ? "TP Hit" : "Waiting") : "NEUTRAL"
+    string whStatusText = not whBiasActive ? "NEUTRAL" : dWhHasTrade ? (whActive and not isPast ? "ACTIVE" : "CLOSED") : "Waiting"
+    string statusText = isWeeklyHoldMode ? whStatusText : gridStatusText
+    color statusColor = isWeeklyHoldMode ? (whActive and not isPast ? color.yellow : tableTextColor) : (isPast ? tableTextColor : (longState == 1 or shortState == 1 ? color.yellow : tableTextColor))
+    string weekLabel2 = isPast ? "Week -" + str.tostring(targetWeeksBack) : "This Week"
+    string gridSummaryText = str.tostring(dTrades) + " fills / " + str.tostring(dTpHits) + " TP" + (dWeekCloses > 0 ? " / " + str.tostring(dWeekCloses) + " week close" : "") + (dResetCloses > 0 ? " / " + str.tostring(dResetCloses) + " stop" : "")
+    int dAuditRowsTotal = math.min(array.size(dTradeIds), array.size(dTradeDetails))
+    int dAuditPageStart = math.min(dAuditRowsTotal, auditPage * auditRowsPerPage)
+    int dAuditPageEnd = math.min(dAuditRowsTotal, dAuditPageStart + auditRowsPerPage)
+    string auditPageText = dAuditRowsTotal > 0 ? str.tostring(dAuditPageStart + 1) + "-" + str.tostring(dAuditPageEnd) + " / " + str.tostring(dAuditRowsTotal) : "0 / 0"
+
+    int r = 0
+    table.cell(infoTable, 0, r, "Limni Verify", text_color=tableTextColor, bgcolor=color.new(color.white, 85))
+    table.cell(infoTable, 1, r, syminfo.ticker + (isPast ? "  (-" + str.tostring(targetWeeksBack) + "w)" : ""), text_color=tableTextColor, bgcolor=color.new(color.white, 85))
+    r += 1
+    table.cell(infoTable, 0, r, "Bias", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, resolvedBias, text_color=biasColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "Mode", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, verifierMode, text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, isGridMode ? "Anchor" : "WH Anchor", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, isGridMode ? "Week Open" : anchorMode, text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "Basis", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, returnBasis, text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "Live Bar", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, liveBarMode, text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "ADR Source", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, useManualAdr ? "Manual " + str.tostring(manualAdrPct, "#.####") + "%" : useSyntheticAdr ? "Synthetic " + str.tostring(adrRolloverHourUtc) + ":00 UTC" : "TV Daily", text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "Chart Feed", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, chartSource, text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    if isGridMode
+        table.cell(infoTable, 0, r, "Fill Window", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, "Sun 20:00 -> Fri 09:00 NY", text_color=tableTextColor, bgcolor=tableBgColor)
+        r += 1
+        table.cell(infoTable, 0, r, "Force Close", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, "Fri 11:00 NY", text_color=tableTextColor, bgcolor=tableBgColor)
+        r += 1
+        table.cell(infoTable, 0, r, "Grid Bars", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, gridBarSource, text_color=tableTextColor, bgcolor=tableBgColor)
+        r += 1
+        table.cell(infoTable, 0, r, "Grid Cap", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, gridCapMode == "Pair Fill Cap" ? "Pair Fill Cap " + str.tostring(gridCapValue) : "Off", text_color=tableTextColor, bgcolor=tableBgColor)
+        r += 1
+        table.cell(infoTable, 0, r, "Audit Rows", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, "Page " + str.tostring(auditPage) + "  " + auditPageText, text_color=tableTextColor, bgcolor=tableBgColor)
+        r += 1
+    table.cell(infoTable, 0, r, "Status", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, statusText, text_color=statusColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "ADR", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, not na(dAdrPctPips) ? str.tostring(dAdrPctPips, "#.#") + "p / " + str.tostring(dWeekAdrPct, "#.##") + "%" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "ADR Dist", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, not na(dAdrPips) ? str.tostring(dAdrPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "ADR TP", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, not na(dAdrTpPips) ? str.tostring(dAdrTpPips, "#.#") + " pips" : "-", text_color=tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    if isWeeklyHoldMode
+        table.cell(infoTable, 0, r, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, dWhHasTrade and not na(dWhEntryPrice) ? str.tostring(dWhEntryPrice, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+        r += 1
+        table.cell(infoTable, 0, r, "Exit", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, dWhHasTrade and not na(dWhExitPrice) ? str.tostring(dWhExitPrice, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+        r += 1
+    else
+        if not isPast
+            table.cell(infoTable, 0, r, "Entry", text_color=tableTextColor, bgcolor=tableBgColor)
+            table.cell(infoTable, 1, r, not na(displayEntry) ? str.tostring(displayEntry, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+            r += 1
+            table.cell(infoTable, 0, r, "TP", text_color=tableTextColor, bgcolor=tableBgColor)
+            table.cell(infoTable, 1, r, not na(displayTp) ? str.tostring(displayTp, format.mintick) : "-", text_color=entryColor, bgcolor=tableBgColor)
+            r += 1
+    // Week summary section
+    table.cell(infoTable, 0, r, weekLabel2, text_color=tableTextColor, bgcolor=color.new(color.white, 90))
+    table.cell(infoTable, 1, r, isWeeklyHoldMode ? (dWhHasTrade ? "1 trade" : "0 trades") : gridSummaryText, text_color=isWeeklyHoldMode ? (dWhHasTrade ? color.lime : tableTextColor) : (dTpHits > 0 or dResetCloses > 0 ? color.lime : tableTextColor), bgcolor=color.new(color.white, 90))
+    r += 1
+    table.cell(infoTable, 0, r, "P/L", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, isWeeklyHoldMode ? dWhReturnText : (dPL >= 0 ? "+" : "") + str.tostring(dPL, "#.##") + "%", text_color=isWeeklyHoldMode ? (nz(dWhReturnPct) >= 0 ? color.lime : color.red) : (dPL > 0 ? color.lime : dPL < 0 ? color.red : tableTextColor), bgcolor=tableBgColor)
+    r += 1
+    table.cell(infoTable, 0, r, "Max DD", text_color=tableTextColor, bgcolor=tableBgColor)
+    table.cell(infoTable, 1, r, isWeeklyHoldMode ? (dWhDDPct > 0 ? "-" + str.tostring(dWhDDPct, "#.##") + "%" : "-") : (dDD > 0 ? "-" + str.tostring(dDD, "#.##") + "%" : "-"), text_color=(isWeeklyHoldMode ? dWhDDPct : dDD) > 0 ? color.red : tableTextColor, bgcolor=tableBgColor)
+    r += 1
+    // Crypto regime (only for crypto pairs)
+    if isCrypto
+        color cryptoColor = cryptoRegime == "LONG" ? color.lime : cryptoRegime == "SHORT" ? color.red : tableTextColor
+        table.cell(infoTable, 0, r, "Crypto", text_color=tableTextColor, bgcolor=tableBgColor)
+        table.cell(infoTable, 1, r, cryptoRegime, text_color=cryptoColor, bgcolor=tableBgColor)
+        r += 1
+    // Grid mode shows level summaries; individual fill details remain on labels/tooltips.
+    if showTradeLog
+        if isGridMode
+            int rowsRemaining = math.max(0, 40 - r)
+            int auditRowsAvailableOnPage = showAuditRows ? math.max(0, dAuditPageEnd - dAuditPageStart) : 0
+            int desiredAuditRows = math.min(auditRowsAvailableOnPage, auditRowsPerPage)
+            int maxLevelRows = math.max(0, rowsRemaining - desiredAuditRows)
+            int numLevels = math.min(math.min(array.size(dLevelKeys), array.size(dLevelDetails)), maxLevelRows)
+            if numLevels > 0
+                for i = 0 to numLevels - 1
+                    color rowBg = i < array.size(dLevelIndexes) ? gridLevelRowBg(array.get(dLevelIndexes, i)) : tableBgColor
+                    table.cell(infoTable, 0, r + i, array.get(dLevelKeys, i), text_color=tableTextColor, text_size=size.small, bgcolor=rowBg)
+                    table.cell(infoTable, 1, r + i, array.get(dLevelDetails, i), text_color=tableTextColor, text_size=size.small, bgcolor=rowBg)
+            int auditStartRow = r + numLevels
+            int maxAuditRows = showAuditRows ? math.max(0, 40 - auditStartRow) : 0
+            int numAuditTrades = math.min(auditRowsAvailableOnPage, maxAuditRows)
+            if numAuditTrades > 0
+                for i = 0 to numAuditTrades - 1
+                    int auditIdx = dAuditPageStart + i
+                    table.cell(infoTable, 0, auditStartRow + i, array.get(dTradeIds, auditIdx), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+                    table.cell(infoTable, 1, auditStartRow + i, array.get(dTradeDetails, auditIdx), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+        else
+            int numTrades = math.min(math.min(array.size(dTradeIds), array.size(dTradeDetails)), 10)
+            if numTrades > 0
+                for i = 0 to numTrades - 1
+                    table.cell(infoTable, 0, r + i, array.get(dTradeIds, i), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+                    table.cell(infoTable, 1, r + i, array.get(dTradeDetails, i), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+
+    // Audit mode replaces the normal info panel with a dense on-chart export.
+    if isGridMode and showAuditRows
+        table.clear(infoTable, 0, 0, 1, 39)
+        r := 0
+        table.cell(infoTable, 0, r, "TVAUDIT", text_color=tableTextColor, bgcolor=color.new(color.white, 85), text_size=size.small)
+        table.cell(infoTable, 1, r, syminfo.ticker + (isPast ? " (-" + str.tostring(targetWeeksBack) + "w)" : ""), text_color=tableTextColor, bgcolor=color.new(color.white, 85), text_size=size.small)
+        r += 1
+        table.cell(infoTable, 0, r, "CONFIG", text_color=tableTextColor, bgcolor=tableBgColor, text_size=size.small)
+        table.cell(infoTable, 1, r, auditSystem + "|" + auditSourceModel + "|tier=" + str.tostring(auditTier) + "|" + resolvedBias, text_color=tableTextColor, bgcolor=tableBgColor, text_size=size.small)
+        r += 1
+        table.cell(infoTable, 0, r, "GRID", text_color=tableTextColor, bgcolor=tableBgColor, text_size=size.small)
+        table.cell(infoTable, 1, r, gridBarSource + "|cap=" + (gridCapMode == "Pair Fill Cap" ? str.tostring(gridCapValue) : "off") + "|basis=" + returnBasis, text_color=tableTextColor, bgcolor=tableBgColor, text_size=size.small)
+        r += 1
+        table.cell(infoTable, 0, r, "ADR", text_color=tableTextColor, bgcolor=tableBgColor, text_size=size.small)
+        table.cell(infoTable, 1, r, str.tostring(dWeekAdrPct, "#.####") + "%|" + str.tostring(dAdrPips, "#.#") + "p|tp=" + str.tostring(dAdrTpPips, "#.#") + "p", text_color=tableTextColor, bgcolor=tableBgColor, text_size=size.small)
+        r += 1
+        table.cell(infoTable, 0, r, "SUMMARY", text_color=tableTextColor, bgcolor=color.new(color.white, 90), text_size=size.small)
+        table.cell(infoTable, 1, r, str.tostring(dTrades) + " fills|" + str.tostring(dTpHits) + " tp|" + str.tostring(dWeekCloses) + " week_close|" + str.tostring(dResetCloses) + " stop|PL " + signedPctText(dPL) + "|DD " + ddPctText(dDD), text_color=tableTextColor, bgcolor=color.new(color.white, 90), text_size=size.small)
+        r += 1
+        table.cell(infoTable, 0, r, "PAGE", text_color=tableTextColor, bgcolor=tableBgColor, text_size=size.small)
+        table.cell(infoTable, 1, r, str.tostring(auditPage) + "|" + auditPageText + "|rows/page=" + str.tostring(auditRowsPerPage), text_color=tableTextColor, bgcolor=tableBgColor, text_size=size.small)
+        r += 1
+        int auditLevelRows = math.min(math.min(array.size(dLevelKeys), array.size(dLevelDetails)), 3)
+        if auditLevelRows > 0
+            table.cell(infoTable, 0, r, "LEVELS", text_color=tableTextColor, bgcolor=color.new(color.white, 92), text_size=size.small)
+            table.cell(infoTable, 1, r, "entry->target|counts|pl|dd", text_color=tableTextColor, bgcolor=color.new(color.white, 92), text_size=size.small)
+            r += 1
+            for auditLevelIdx = 0 to auditLevelRows - 1
+                color rowBg = auditLevelIdx < array.size(dLevelIndexes) ? gridLevelRowBg(array.get(dLevelIndexes, auditLevelIdx)) : tableBgColor
+                table.cell(infoTable, 0, r, array.get(dLevelKeys, auditLevelIdx), text_color=tableTextColor, text_size=size.small, bgcolor=rowBg)
+                table.cell(infoTable, 1, r, array.get(dLevelDetails, auditLevelIdx), text_color=tableTextColor, text_size=size.small, bgcolor=rowBg)
+                r += 1
+        table.cell(infoTable, 0, r, "FILLS", text_color=tableTextColor, bgcolor=color.new(color.white, 92), text_size=size.small)
+        table.cell(infoTable, 1, r, "id|entry->exit|reason|pl|dd|time|level|act", text_color=tableTextColor, bgcolor=color.new(color.white, 92), text_size=size.small)
+        r += 1
+        int auditFillRowsAvailable = math.max(0, dAuditPageEnd - dAuditPageStart)
+        int auditFillRows = math.min(auditFillRowsAvailable, math.max(0, 40 - r))
+        if auditFillRows > 0
+            for auditFillRow = 0 to auditFillRows - 1
+                int auditFillIdx = dAuditPageStart + auditFillRow
+                table.cell(infoTable, 0, r + auditFillRow, array.get(dTradeIds, auditFillIdx), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+                table.cell(infoTable, 1, r + auditFillRow, array.get(dTradeDetails, auditFillIdx), text_color=tableTextColor, text_size=size.small, bgcolor=tableBgColor)
+
+if not showTable and barstate.islast
+    table.clear(infoTable, 0, 0, 1, 39)
+
+// ── Log output (copyable from View > Pine Logs) ────────────────────────────
+// Pine Logs are the copy/paste audit channel, so emit on realtime last bars too.
+if barstate.islast
+    if logHeartbeat
+        log.warning("TVAUDIT|HEARTBEAT|script=Limni ADR Verifier|pair=" + tickerUpper + "|mode=" + verifierMode + "|weekBack=" + str.tostring(targetWeeksBack) + "|bias=" + resolvedBias)
+    bool lp = targetWeeksBack > 0
+    int lTrades = lp ? snapTrades : weekTrades
+    int lTpHits = lp ? snapTpHits : weekTpHits
+    int lResetCloses = lp ? snapResetCloses : appGridResetStops
+    int lWeekCloses = lp ? snapWeekCloses : array.size(appGridWeekClosedTradeNums)
+    float lPL = isGridMode ? (lp ? snapGridPLPct : weekPLPct) : lTpHits * tpReturnPct
+    float lPLAdr = isGridMode ? (lp ? snapGridPLAdrPct : weekPLAdrPct) : lTpHits * tpReturnPct
+    float lDD = lp ? math.max(snapMaxDDAdr, snapCurrentDDAdr) : weekMaxDDPct
+    bool lWhHasTrade = lp ? snapWhHasTrade : whHasTrade
+    float lWhEntry = lp ? snapWhEntryPrice : whEntryPrice
+    float lWhExit = lp ? snapWhExitPrice : whExitPrice
+    float lWhRaw = lp ? snapWhRawReturnPct : whRawReturnPct
+    float lWhAdr = lp ? snapWhAdrReturnPct : whAdrReturnPct
+    float lWhDDRaw = lp ? snapWhMaxDDRawPct : whMaxDDRawPct
+    float lWhDDAdr = lp ? snapWhMaxDDAdrPct : whMaxDDAdrPct
+    float lWhPL = returnBasis == "ADR Normalized" ? lWhAdr : lWhRaw
+    float lWhDD = returnBasis == "ADR Normalized" ? lWhDDAdr : lWhDDRaw
+    float lAdrPct = lp ? snapWeekAdrPct : weekAdrPct
+    float lGridPL = isGridMode ? (returnBasis == "ADR Normalized" ? lPLAdr : lPL) : lPL
+    float lGridDD = isGridMode ? gridDrawdownForBasis(lDD, lAdrPct) : lDD
+    string[] lIds = lp ? snapTradeIds : tradeIds
+    string[] lDetails = lp ? snapTradeDetails : tradeDetails
+    string weekTag = lp ? " (-" + str.tostring(targetWeeksBack) + "w)" : ""
+    string lr = syminfo.ticker + weekTag + " | " + verifierMode + " | " + (isGridMode ? "Anchor: Week Open | Fill Window: Sun 20:00 -> Fri 09:00 NY | Force Close: Fri 11:00 NY" : "WH Anchor: " + anchorMode + " | Force Close: Fri 11:00 NY") + " | " + returnBasis + " | " + resolvedBias
+    if isGridMode
+        lr += " | Grid Bars: " + gridBarSource
+    lr += " | ADR Source: " + (useManualAdr ? "Manual " + str.tostring(manualAdrPct, "#.####") + "%" : useSyntheticAdr ? "Synthetic " + str.tostring(adrRolloverHourUtc) + ":00 UTC" : "TV Daily")
+    lr += " | Chart Feed: " + chartSource
+    float lAdrPrice = isGridMode ? (lp ? na : appGridOpenPrice) : lWhEntry
+    float lAdrPctPips = not na(lAdrPct) and pipSize > 0 and not na(lAdrPrice) and lAdrPrice > 0 ? (lAdrPrice * lAdrPct / 100) / pipSize : na
+    lr += " | ADR%: " + str.tostring(lAdrPct, "#.####") + " (" + str.tostring(lAdrPctPips, "#.#") + "p)"
+    lr += " | ADR Dist: " + str.tostring(lp ? (not na(snapWeekAdr) and pipSize > 0 ? snapWeekAdr / pipSize : na) : adrPips, "#.#") + "p"
+    if isWeeklyHoldMode
+        lr += " | " + (lWhHasTrade ? "1 trade" : "0 trades")
+        lr += " | P/L: " + (not na(lWhPL) ? (lWhPL >= 0 ? "+" : "") + str.tostring(lWhPL, "#.##") + "%" : "-")
+        lr += " | DD: " + (lWhDD > 0 ? "-" + str.tostring(lWhDD, "#.##") + "%" : "-")
+        lr += " | E:" + str.tostring(lWhEntry, format.mintick) + " X:" + str.tostring(lWhExit, format.mintick)
+    else
+        lr += " | " + str.tostring(lTrades) + " fills / " + str.tostring(lTpHits) + " TP" + (lWeekCloses > 0 ? " / " + str.tostring(lWeekCloses) + " week close" : "") + (lResetCloses > 0 ? " / " + str.tostring(lResetCloses) + " stop" : "")
+        lr += " | P/L: " + (lGridPL >= 0 ? "+" : "") + str.tostring(lGridPL, "#.##") + "% | DD: -" + str.tostring(lGridDD, "#.##") + "%"
+        if not lp
+            lr += " | E:" + str.tostring(displayEntry, format.mintick) + " T:" + str.tostring(displayTp, format.mintick)
+    log.info(lr)
+    if array.size(lIds) > 0
+        for i = 0 to array.size(lIds) - 1
+            log.info(array.get(lIds, i) + " " + array.get(lDetails, i))
+    if alertAuditExport
+        string alertText = "TVAUDIT|EXPORT\n" + lr
+        int alertRows = math.min(math.min(array.size(lIds), array.size(lDetails)), 8)
+        if alertRows > 0
+            for i = 0 to alertRows - 1
+                alertText += "\n" + array.get(lIds, i) + " " + array.get(lDetails, i)
+        alert(alertText, alert.freq_once_per_bar)
+    if isGridMode and logAuditRows
+        string auditCap = gridCapMode == "Pair Fill Cap" ? "pair_fill_cap_" + str.tostring(gridCapValue) : "none"
+        string auditVariant = auditSystem + "-adr_grid-" + auditCap
+        string auditSummary = "TVAUDIT|SUMMARY|pair=" + tickerUpper + "|system=" + auditSystem + "|variant=" + auditVariant + "|sourceModel=" + auditSourceModel + "|tier=" + str.tostring(auditTier) + "|weekBack=" + str.tostring(targetWeeksBack) + "|bias=" + resolvedBias + "|gridBars=" + gridBarSource + "|returnBasis=" + returnBasis + "|fills=" + str.tostring(lTrades) + "|tp=" + str.tostring(lTpHits) + "|resetStop=" + str.tostring(lResetCloses) + "|weekClose=" + str.tostring(lWeekCloses) + "|pl=" + signedPctText(lGridPL) + "|dd=" + ddPctText(lGridDD) + "|adrPct=" + str.tostring(lAdrPct, "#.####")
+        log.info(auditSummary)
+        if array.size(lIds) > 0
+            for i = 0 to array.size(lIds) - 1
+                log.info("TVAUDIT|FILL|pair=" + tickerUpper + "|tradeId=" + array.get(lIds, i) + "|detail=" + array.get(lDetails, i))
