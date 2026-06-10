@@ -3,6 +3,10 @@
 Canonical registry for recent research tests with explicit rules and short outcomes.  
 Machine-readable source: `reports/test-catalog.json`.
 
+For app-parity tests and exact Performance/ADR Grid reproduction commands, use
+`docs/testing/APP_PARITY_TESTING.md`. This catalog records research outcomes; it
+is not the source of truth for current dashboard metrics.
+
 ## Universal
 
 | Test ID | Rule Descriptor | Key Outcome |

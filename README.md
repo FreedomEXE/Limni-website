@@ -170,3 +170,14 @@ Sentiment data is stored in:
 ```bash
 npm test
 ```
+
+For Performance, ADR Grid, and TradingView verifier work, use the app-parity
+testing guide before comparing numbers:
+
+- `docs/testing/APP_PARITY_TESTING.md`
+
+Focused Performance regression:
+
+```bash
+npm test -- src/lib/__tests__/engineAdapter.test.ts src/lib/__tests__/strategyConfigSelectionNormalization.test.ts src/lib/__tests__/tradeDrilldownRoute.test.ts src/lib/__tests__/canonWeekShard.test.ts src/lib/__tests__/canonClosedWeekDelta.test.ts
+```
