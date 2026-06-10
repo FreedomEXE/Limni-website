@@ -1,7 +1,7 @@
 # Task Completion Notification with Modern Neural TTS (edge-tts)
 param(
     [string]$Message = "Task completed",
-    [string]$Voice = "en-GB-LibbyNeural"  # Options: LibbyNeural, MaisieNeural, SoniaNeural
+    [string]$Voice = "en-GB-RyanNeural"  # Codex default. Options: RyanNeural, LibbyNeural, MaisieNeural, SoniaNeural
 )
 
 # Random greeting selection
@@ -34,25 +34,25 @@ try {
         # Convert to absolute path for URI
         $absolutePath = (Resolve-Path $tempAudio).Path
         $mediaPlayer.Open([uri]$absolutePath)
-        $mediaPlayer.Play()
 
-        # Get actual MP3 duration using Shell COM object (no dependencies)
-        $shell = New-Object -ComObject Shell.Application
-        $folder = $shell.Namespace((Split-Path $absolutePath))
-        $file = $folder.ParseName((Split-Path $absolutePath -Leaf))
-        $durationStr = $folder.GetDetailsOf($file, 27)  # Property 27 = Duration
-
-        if ($durationStr -match '(\d+):(\d+):(\d+)') {
-            $actualSeconds = [int]$Matches[1] * 3600 + [int]$Matches[2] * 60 + [int]$Matches[3]
-        } elseif ($durationStr -match '(\d+):(\d+)') {
-            $actualSeconds = [int]$Matches[1] * 60 + [int]$Matches[2]
-        } else {
-            # Fallback: conservative estimate at ~10 chars/sec with 50% buffer
-            $actualSeconds = [Math]::Ceiling(($fullMessage.Length / 10) * 1.5)
+        # MediaPlayer opens files asynchronously. Wait briefly so duration and
+        # playback are ready before starting; otherwise short greetings can play
+        # and the process may stop before the rest of the message is heard.
+        for ($i = 0; $i -lt 30 -and -not $mediaPlayer.NaturalDuration.HasTimeSpan; $i++) {
+            Start-Sleep -Milliseconds 100
         }
 
-        # Add generous buffer (3 seconds) to ensure full playback
-        $waitDuration = [Math]::Max(5, $actualSeconds + 3)
+        $mediaPlayer.Play()
+
+        if ($mediaPlayer.NaturalDuration.HasTimeSpan) {
+            $actualSeconds = [Math]::Ceiling($mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds)
+        } else {
+            # Conservative fallback for neural TTS pace when metadata is unavailable.
+            $actualSeconds = [Math]::Ceiling($fullMessage.Length / 8)
+        }
+
+        # Add a larger buffer so async playback never gets cut off mid-message.
+        $waitDuration = [Math]::Max(10, $actualSeconds + 8)
         Start-Sleep -Seconds $waitDuration
 
         $mediaPlayer.Stop()
