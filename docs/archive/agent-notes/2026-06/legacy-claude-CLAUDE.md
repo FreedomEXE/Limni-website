@@ -93,7 +93,7 @@ powershell -ExecutionPolicy Bypass -File "scripts/notify-complete.ps1" -Message 
 - Summarize what was accomplished
 - Mention key deliverables or changes
 - End with next steps or status
-- **DO NOT set timeout** — let voice complete naturally
+- **Do not rely on default command timeouts** — shell/tool defaults can cut neural voice playback off after the greeting. Use at least `60000` ms for response notifications and `120000` ms for longer completion summaries.
 
 ## Voice Response Protocol
 
@@ -102,6 +102,10 @@ powershell -ExecutionPolicy Bypass -File "scripts/notify-complete.ps1" -Message 
 ```powershell
 powershell -ExecutionPolicy Bypass -File "scripts/notify-response.ps1" -Message "Your response summary"
 ```
+
+If the tool runner exposes a timeout field, set it explicitly for voice commands. Example for Codex shell calls: `timeout_ms: 60000` for normal voice updates and `timeout_ms: 120000` for longer completion summaries.
+
+Prefer a direct shell/tool call with the explicit timeout over `Start-Process` for normal voice responses. Detached `Start-Process` calls can return before playback is stable and have cut off after the greeting in Codex sessions.
 
 ### When to Use:
 - **EVERY TIME** you respond to the user (MANDATORY)
@@ -124,6 +128,7 @@ powershell -ExecutionPolicy Bypass -File "scripts/notify-response.ps1" -Message 
 - Brief summary of your response (1-2 sentences)
 - Use "Freedom" when addressing the user
 - Can be conversational and engaging
+- Keep spoken text concise; put long technical detail in chat and split long spoken updates into separate short notifications.
 
 ## Code Quality Standards
 
