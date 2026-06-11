@@ -15,29 +15,37 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 - Archive completed or stale notes under `archive/` using mirrored repo paths.
 - Do not start coding until the active gate is named.
 - For broad issue sets, classify first, then patch one gate at a time.
+- Gate labels use a sequence number plus a scope slug. The slug is the real
+  boundary; the number is only a recovery handle.
 
 ## Active Gate
 
-Gate 27: docs workflow cleanup.
+Gate 28: versioning-documents-popover.
 
 Goal:
 
-- Keep `docs/` active and scannable.
-- Move loose historical docs out of active `docs/`.
-- Establish one root `archive/` that mirrors repo ownership paths.
-- Define a simple forever workflow before app work resumes.
+- Make future version updates behave and look the same in Documents.
+- Align v1 and v2 document/release structure so old versions do not drift into
+  a separate pattern.
+- Simplify the version popover to current live and next dev version only.
+- Keep runtime version truth to `liveVersion` and `devVersion`; do not use
+  `pendingRelease` as UI truth.
+- Inspect existing docs/code first, then patch narrowly.
 
 ## Next Gates
 
-1. Versioning / Documents / version-popover readiness.
-2. Weekly Hold engine verification.
-3. ADR Grid data-truth audit.
+1. Weekly Hold engine verification.
+2. ADR Grid data-truth audit.
 
 ## Active Context
 
 - Version UI should use `liveVersion` and `devVersion` only.
-- `pendingRelease` must not be runtime UI truth.
+- Current live version is `2.0.3`.
+- `pendingRelease` must not be runtime UI truth or visible as a separate
+  runtime state.
 - Documents/release docs should use one simple structure across versions.
+- Version popover should be compact: live is the current public version; dev is
+  the new working version.
 - Data page baseline copy should be derived from data/config, not hardcoded or
   release-branded.
 - Weekly Hold manual checks mostly matched the indicator, but the repo still
