@@ -1,196 +1,64 @@
-# Limni COT Bias Dashboard
+# Limni
 
-MVP dashboard and API to compute weekly COT dealer bias and expose a stable JSON snapshot for the MT5 EA.
+Limni is the Poseidon-controlled finance app for COT bias, strategy research,
+performance evidence, automation, and MT5/Bitget/OANDA workflows.
 
-## Repo map
+## Root Map
 
-Before changing files, read the active repo map:
+Committed root folders are intentionally few:
 
-- `docs/REPO_STRUCTURE.md`
-- `poseidon/README.md`
+| Path | Purpose |
+|---|---|
+| `app/` | Next.js app, app assets, scripts, services, research, reports, and release evidence. |
+| `database/` | Database schema, migrations, and data contracts. |
+| `docs/` | Durable repo documentation, process docs, architecture, backlog, and archive. |
+| `poseidon/` | Project profile and Poseidon control-plane notes. |
+| `config/` | Config documentation for files that cannot safely leave root yet. |
 
-Most top-level folders also include a local `README.md` manifest. Read the local
-manifest before changing files in that folder.
+Hidden workflow folders, such as `.github/` and `.husky/`, stay at root because
+Git and GitHub discover them there. Local-only artifacts belong under ignored
+`Local Environment/`.
 
-Local-only IDE, agent, cache, build, screenshot, and temp artifacts belong under
-ignored `Local Environment/`, not as loose root folders.
+Read [docs/REPO_STRUCTURE.md](docs/REPO_STRUCTURE.md) before moving files.
 
-## Setup
-
-1) Install dependencies:
+## App Commands
 
 ```bash
 npm install
+npm run dev
+npm run build
+npm test
 ```
 
-2) Create `.env` from `.env.example`:
+Open `http://localhost:3000/dashboard` after `npm run dev`.
+
+Focused Performance regression:
+
+```bash
+npm test -- app/src/lib/__tests__/engineAdapter.test.ts app/src/lib/__tests__/strategyConfigSelectionNormalization.test.ts app/src/lib/__tests__/tradeDrilldownRoute.test.ts app/src/lib/__tests__/canonWeekShard.test.ts app/src/lib/__tests__/canonClosedWeekDelta.test.ts
+```
+
+## Environment
+
+Create `.env` from `.env.example` and keep local secrets out of git.
 
 ```bash
 copy .env.example .env
 ```
 
-3) Run the dev server:
+The root `.env` and `.env.local` files are intentional toolchain anchors because
+Next.js and repo scripts read them from the working directory.
 
-```bash
-npm run dev
-```
+## Important Paths
 
-Open `http://localhost:3000/dashboard`.
+- App source: `app/src/`
+- Public app assets: `app/public/`
+- App scripts and verification tools: `app/scripts/`
+- Automation services: `app/services/`
+- Research workspace: `app/research/`
+- Generated/evidence reports: `app/reports/`
+- Release evidence and canon: `app/releases/`
+- Database schema and migrations: `database/`
 
-## Refresh the data
-
-Refresh is protected by `ADMIN_TOKEN`.
-
-```bash
-curl -X POST http://localhost:3000/api/cot/refresh ^
-  -H "x-admin-token: YOUR_TOKEN"
-```
-
-The dashboard also has a manual refresh panel (requires the same token).
-
-## API
-
-### `GET /api/cot/latest`
-
-Returns the latest stored snapshot plus `trading_allowed` and `reason`.
-
-Example:
-
-```json
-{
-  "report_date": "2026-01-06",
-  "last_refresh_utc": "2026-01-07T01:22:33.000Z",
-  "trading_allowed": true,
-  "reason": "fresh",
-  "currencies": {
-    "AUD": {
-      "dealer_long": 41249,
-      "dealer_short": 75619,
-      "net": 34370,
-      "bias": "BULLISH"
-    }
-  },
-  "pairs": {
-    "AUDUSD": {
-      "direction": "LONG",
-      "base_bias": "BULLISH",
-      "quote_bias": "BEARISH"
-    }
-  }
-}
-```
-
-### `POST /api/cot/refresh`
-
-Fetches the latest CFTC TFF data, recomputes bias, and persists the snapshot.
-
-## Data source
-
-Uses the official CFTC public reporting dataset: `udgc-27he` (TFF_All).
-
-The `COT_VARIANT` env var controls which rows are used:
-
-- `FutOnly` (default)
-- `Combined`
-
-## Price performance (optional)
-
-Pair performance uses Twelve Data hourly candles for the 7 FX majors, then
-derives all crosses to measure change from the most recent Sunday 7:00 PM ET
-open. Set `OANDA_API_KEY` and `OANDA_ACCOUNT_ID` to enable it.
-
-Majors fetched:
-- EURUSD, GBPUSD, AUDUSD, NZDUSD, USDJPY, USDCHF, USDCAD
-
-Optional tuning:
-
-- `PRICE_CACHE_SECONDS` (default: 300) to reduce API calls.
-
-Refresh prices manually (this does not run automatically):
-
-```bash
-curl -X POST http://localhost:3000/api/prices/refresh ^
-  -H "x-admin-token: YOUR_TOKEN"
-```
-
-## Storage
-
-Snapshots are stored in `data/cot_snapshot.json`. For serverless deployments, use a persistent disk or swap this for a hosted database.
-
-## Sentiment Module
-
-The sentiment aggregator collects retail positioning data from **IG**, **OANDA**, and **Myfxbook** to identify crowding and path risk across FX pairs.
-
-### Environment Variables
-
-Optional sentiment provider credentials (IG requires API credentials, others scrape public pages):
-
-```bash
-IG_API_KEY=your_ig_api_key
-IG_USERNAME=your_ig_username
-IG_PASSWORD=your_ig_password
-
-SENTIMENT_POLL_INTERVAL_SEC=300  # 5 minutes (default)
-SENTIMENT_API_URL=http://localhost:3000
-```
-
-### Running the Sentiment Poller
-
-The sentiment poller fetches data from providers every 5 minutes (configurable).
-
-Start the poller in a separate terminal:
-
-```bash
-npm run sentiment:poll
-```
-
-Or manually trigger a refresh:
-
-```bash
-curl -X POST http://localhost:3000/api/sentiment/refresh ^
-  -H "x-admin-token: YOUR_TOKEN"
-```
-
-### Sentiment API Endpoints
-
-**`GET /api/sentiment/latest?symbols=EURUSD,GBPJPY`**
-
-Returns the latest aggregated sentiment data for specified symbols (or all if omitted).
-
-**`GET /api/sentiment/history?symbol=EURUSD&range=24h`**
-
-Returns historical sentiment snapshots for a symbol. Range can be `24h`, `7d`, `1w`, etc.
-
-**`GET /api/sentiment/health`**
-
-Returns source health status, coverage stats, and recent data counts.
-
-### UI
-
-- **`/sentiment`** - Full sentiment dashboard with heatmap, crowding indicators, and source health
-- Heatmap shows crowding state (red = crowded long, green = crowded short, gray = neutral)
-- Flip indicators show recent sentiment reversals
-
-### Storage
-
-Sentiment data is stored in:
-- `data/sentiment_snapshots.json` (raw provider data, 24h retention)
-- `data/sentiment_aggregates.json` (aggregated scores, 7d retention)
-- `data/sentiment_sources.json` (provider health status)
-
-## Tests
-
-```bash
-npm test
-```
-
-For Performance, ADR Grid, and TradingView verifier work, use the app-parity
-testing guide before comparing numbers:
-
-- `docs/testing/APP_PARITY_TESTING.md`
-
-Focused Performance regression:
-
-```bash
-npm test -- src/lib/__tests__/engineAdapter.test.ts src/lib/__tests__/strategyConfigSelectionNormalization.test.ts src/lib/__tests__/tradeDrilldownRoute.test.ts src/lib/__tests__/canonWeekShard.test.ts src/lib/__tests__/canonClosedWeekDelta.test.ts
-```
+Release canon JSON under `app/releases/v2/canon/` is frozen unless an explicit
+canon gate is approved.

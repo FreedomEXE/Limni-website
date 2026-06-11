@@ -5,8 +5,8 @@ node_modules/
 
 # Testing
 coverage/
-!src/app/api/performance/coverage/
-!src/app/api/performance/coverage/**
+!app/src/app/api/performance/coverage/
+!app/src/app/api/performance/coverage/**
 
 # Next.js
 .next/
@@ -37,8 +37,9 @@ data/
 !package.json
 !package-lock.json
 !tsconfig.json
-!contracts/*.json
-!src/lib/performance/embedded/data-integrity-audit.json
+!app/tsconfig.json
+!database/contracts/*.json
+!app/src/lib/performance/embedded/data-integrity-audit.json
 
 # IDE
 .vscode/
@@ -53,12 +54,12 @@ data/
 Thumbs.db
 
 # MT5 compiled files
-mt5/Experts/*.ex5
-public/downloads/*.mq5
+app/services/mt5/Experts/*.ex5
+app/public/downloads/*.mq5
 
 # Scraper
-scraper/node_modules/
-scraper/*.log
+app/services/sentiment-scraper/node_modules/
+app/services/sentiment-scraper/*.log
 
 # Debug
 *.tsbuildinfo
@@ -70,14 +71,14 @@ __pycache__/
 *.pyd
 
 # Research outputs
-research/scalp_bot/output*/
+app/research/scalp_bot/output*/
 
 # Local MT5 sizing audit exports
-scripts/LimniSizingAudit_*.csv
+app/scripts/LimniSizingAudit_*.csv
 
 # Generated funded-policy simulation reports
-reports/universal-v1-funded-policy-sim-latest.md
-reports/universal-v1-funded-policy-sim-*.md
+app/reports/universal-v1-funded-policy-sim-latest.md
+app/reports/universal-v1-funded-policy-sim-*.md
 
 # Screenshots and temp files
 Local Environment/
@@ -94,9 +95,9 @@ nul
 *.png
 *.jpeg
 *.jpg
-!releases/v2/screenshots/
-!releases/v2/screenshots/**
-releases/v2/screenshots/**/*.log
+!app/releases/v2/screenshots/
+!app/releases/v2/screenshots/**
+app/releases/v2/screenshots/**/*.log
 
 # Poseidon runtime state
 poseidon/state/conversations.json
@@ -108,10 +109,10 @@ poseidon/state/missed_turns.json
 !poseidon/state/PROTEUS_STATE.md
 
 # Python helper scripts
-scripts/*.py
+app/scripts/*.py
 
 .vercel
 
 # MenthorQ browser-capture artifacts
-reports/bias-gate/menthorq-captures/
-reports/bias-gate/menthorq-gamma-daily.csv
+app/reports/bias-gate/menthorq-captures/
+app/reports/bias-gate/menthorq-gamma-daily.csv

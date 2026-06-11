@@ -19,16 +19,16 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./app/src/*"]
     }
   },
   "include": [
-    "next-env.d.ts",
+    "app/next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
+    "app/.next/types/**/*.ts",
+    "app/.next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "scripts/**/*.ts", "scripts/**/*.mts"]
+  "exclude": ["node_modules", "app/scripts/**/*.ts", "app/scripts/**/*.mts"]
 }

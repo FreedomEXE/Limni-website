@@ -52,15 +52,15 @@ to pull the work back to the north star.
 
 ## 3. Repository Contracts
 
-`src/` is runtime app code only.
+`app/src/` is runtime app code only.
 
-`public/` is runtime public assets only.
+`app/public/` is runtime public assets only.
 
-`db/`, `migrations/`, and `contracts/` are durable app infrastructure. Treat them
-as production-sensitive.
+`database/db/`, `database/migrations/`, and `database/contracts/` are durable app
+infrastructure. Treat them as production-sensitive.
 
-`releases/` is the official home for release history, release canon, evidence,
-screenshots, and release notes.
+`app/releases/` is the official home for release history, release canon,
+evidence, screenshots, and release notes.
 
 `docs/` is durable documentation only. Do not leave stale handoffs, scratch
 notes, crisis notes, prompts, or temporary plans at the root.
@@ -73,14 +73,14 @@ notes, crisis notes, prompts, or temporary plans at the root.
 
 `docs/research/` supports decisions but does not bind runtime behavior.
 
-`research/` is a broader non-binding research workspace unless promoted into
-`docs/` or `releases/`.
+`app/research/` is a broader non-binding research workspace unless promoted into
+`docs/` or `app/releases/`.
 
-`reports/` is generated output unless explicitly promoted into `docs/` or
-`releases/`.
+`app/reports/` is generated output unless explicitly promoted into `docs/` or
+`app/releases/`.
 
-`scripts/` is tooling. Scripts must be classified before being moved, deleted, or
-treated as production tooling.
+`app/scripts/` is tooling. Scripts must be classified before being moved,
+deleted, or treated as production tooling.
 
 `temp/`, `tmp/`, loose screenshots, logs, caches, and root artifacts are not
 active repo truth.
@@ -97,11 +97,11 @@ Use only:
 Do not use `pendingRelease` as runtime UI truth.
 
 The app may display the live version or a clearly labeled dev version. Release
-narratives belong in `releases/`, not inside UI logic.
+narratives belong in `app/releases/`, not inside UI logic.
 
 ## 5. Release Canon
 
-`releases/v2/canon/*.json` is frozen.
+`app/releases/v2/canon/*.json` is frozen.
 
 Do not stage, regenerate, move, clean, or rewrite release canon unless Freedom
 explicitly approves that exact gate.
@@ -176,7 +176,7 @@ Manual browser review is for product judgment or taste, not basic browser proof.
 
 For strategy research, backtests, reconstruction, or strategy comparison, first
 read `docs/BACKTEST_CANONICAL_PROTOCOL.md` and verify parity against
-`src/lib/performance/basketSource.ts`.
+`app/src/lib/performance/basketSource.ts`.
 
 If a new script cannot reproduce canonical app baselines using the approved
 closed-week window, stop research and fix parity first.
@@ -219,8 +219,8 @@ the rule.
 Permanent memory should preserve operating preferences, not stale release crisis
 details.
 
-Old handoffs and release history belong in `docs/`, `releases/`, or archive, not
-permanent memory.
+Old handoffs and release history belong in `docs/`, `app/releases/`, or
+`docs/archive/`, not permanent memory.
 
 Subagents are bounded sensors or reviewers unless a gate explicitly grants a
 disjoint write scope. They do not stage, commit, delete, deploy, or change

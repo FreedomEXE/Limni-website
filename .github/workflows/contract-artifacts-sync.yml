@@ -6,17 +6,17 @@ name: Contract Artifacts Sync
 on:
   push:
     paths:
-      - "contracts/**"
-      - "scripts/generate-contracts.ts"
-      - "src/lib/mt5/**"
-      - "mt5/Experts/Include/Generated/**"
+      - "database/contracts/**"
+      - "app/scripts/generate-contracts.ts"
+      - "app/src/lib/mt5/**"
+      - "app/services/mt5/Experts/Include/Generated/**"
       - ".github/workflows/contract-artifacts-sync.yml"
   pull_request:
     paths:
-      - "contracts/**"
-      - "scripts/generate-contracts.ts"
-      - "src/lib/mt5/**"
-      - "mt5/Experts/Include/Generated/**"
+      - "database/contracts/**"
+      - "app/scripts/generate-contracts.ts"
+      - "app/src/lib/mt5/**"
+      - "app/services/mt5/Experts/Include/Generated/**"
       - ".github/workflows/contract-artifacts-sync.yml"
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
         run: npm ci
 
       - name: Regenerate contracts
-        run: npx tsx scripts/generate-contracts.ts
+        run: npx tsx app/scripts/generate-contracts.ts
 
       - name: Verify generated artifacts are committed
-        run: git diff --exit-code -- src/lib/mt5/contracts.ts mt5/Experts/Include/Generated/Contract.mqh
+        run: git diff --exit-code -- app/src/lib/mt5/contracts.ts app/services/mt5/Experts/Include/Generated/Contract.mqh

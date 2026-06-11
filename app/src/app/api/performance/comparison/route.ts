@@ -1,0 +1,1415 @@
+/*-----------------------------------------------
+  Property of Freedom_EXE  (c) 2026
+-----------------------------------------------*/
+/**
+ * File: src/app/api/performance/comparison/route.ts
+ *
+ * Description:
+ * Legacy mixed-source comparison API for Universal, Tiered, and Katarakti.
+ * Kept only for older/internal research surfaces while the app migrates to
+ * canonical report-backed endpoints.
+ */
+/*-----------------------------------------------
+  Manifested by Freedom_EXE
+-----------------------------------------------*/
+// LEGACY: This route is preserved for backward compatibility. New consumers should use /api/performance/report or /api/research/strategies.
+import { NextRequest, NextResponse } from "next/server";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { readAllPerformanceSnapshots } from "@/lib/performanceSnapshots";
+import { appPath, repoPath } from "@/lib/server/repoPaths";
+import { getCanonicalWeekOpenUtc, normalizeWeekOpenUtc } from "@/lib/weekAnchor";
+import { DateTime } from "luxon";
+import { computeModelPerformance, type PerformanceModel } from "@/lib/performanceLab";
+import {
+  PERFORMANCE_V1_MODELS,
+  PERFORMANCE_V2_MODELS,
+  PERFORMANCE_V3_MODELS,
+} from "@/lib/performance/modelConfig";
+import { computeTieredForWeeksAllSystems } from "@/lib/performance/tiered";
+import {
+  readKataraktiMarketSnapshotsByVariant,
+  type KataraktiMarketSnapshot,
+} from "@/lib/performance/kataraktiHistory";
+import { buildKataraktiPeriodMetrics } from "@/lib/performance/kataraktiMetrics";
+import {
+  listPerformanceStrategyEntries,
+  resolveComparisonSourceKey,
+  resolveStrategySummarySourcePolicy,
+  type PerformanceComparisonSourceKey,
+  type PerformanceStrategyEntry,
+  type StrategySummarySourcePolicy,
+} from "@/lib/performance/strategyRegistry";
+import { readStrategyBacktestWeeklySeries } from "@/lib/performance/strategyBacktestHistory";
+import { DEFAULT_GATE_OVERLAY_REPORT } from "@/lib/performance/gateOverlayDefault";
+import { listAssetClasses } from "@/lib/cotMarkets";
+import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
+import type { PairSnapshot } from "@/lib/cotTypes";
+import { readSnapshot } from "@/lib/cotStore";
+import { getPairPerformance } from "@/lib/pricePerformance";
+import { getAggregatesForWeekStartWithBackfill } from "@/lib/sentiment/store";
+import { computeMaxDrawdownFromPercentReturns } from "@/lib/performance/drawdown";
+import { loadWeeklyReturnDisplayRows, type WeeklyReturnDisplayRow } from "@/lib/weeklyReturnDisplay";
+
+const V1_MODELS: PerformanceModel[] = PERFORMANCE_V1_MODELS;
+const V2_MODELS: PerformanceModel[] = PERFORMANCE_V2_MODELS;
+const V3_MODELS: PerformanceModel[] = PERFORMANCE_V3_MODELS;
+const SNAPSHOT_SCAN_LIMIT = 1200;
+const ANNUALIZATION_FACTOR = Math.sqrt(52);
+
+type ComparisonMetrics = {
+  totalReturn: number;
+  weeks: number;
+  winRate: number;
+  sharpe: number;
+  sharpeAnnualized?: boolean;
+  avgWeekly: number;
+  maxDrawdown: number | null;
+  trades: number;
+  tradeWinRate: number;
+  avgTrade: number | null;
+  profitFactor: number | null;
+  profitFactorInfinite?: boolean;
+};
+
+type SnapshotRow = Awaited<ReturnType<typeof readAllPerformanceSnapshots>>[number];
+type ComparisonSourceMeta = {
+  mode:
+    | "strategy_backtest_db"
+    | "performance_snapshots"
+    | "tiered_derived"
+    | "strategy_comparison_report"
+    | "katarakti_snapshot"
+    | "unavailable";
+  sourcePath: string;
+  fallbackLabel?: string | null;
+  fallbackToAllTime?: boolean;
+};
+type StrategyComparisonEntry = {
+  entryId: string;
+  metrics: ComparisonMetrics;
+  source: ComparisonSourceMeta;
+  weeklyReturnDisplayRows?: WeeklyReturnDisplayRow[];
+};
+
+type GateOverlayStrategyMetrics = {
+  standard: ComparisonMetrics;
+  gated: ComparisonMetrics;
+  delta: {
+    totalReturnPct: number;
+    maxDrawdownPct: number;
+    winRatePct: number;
+    tradeWinRatePct: number;
+    trades: number;
+  };
+  gateActivity: {
+    skippedTrades: number;
+    reducedTrades: number;
+    passedOrNoDataTrades: number;
+  } | null;
+};
+
+type GateOverlayPayload = {
+  available: boolean;
+  sourcePath: string | null;
+  generatedUtc: string | null;
+  weeksUsed: number | null;
+  weekOpenUtc: string[];
+  reduceMode: string | null;
+  byStrategy: Record<string, GateOverlayStrategyMetrics>;
+};
+
+function buildUnavailableGateOverlayPayload(): GateOverlayPayload {
+  return {
+    available: false,
+    sourcePath: null,
+    generatedUtc: null,
+    weeksUsed: null,
+    weekOpenUtc: [],
+    reduceMode: null,
+    byStrategy: {},
+  };
+}
+
+export type PerformanceComparisonPayload = {
+  strategies: Record<string, StrategyComparisonEntry>;
+  v1: ComparisonMetrics;
+  v2: ComparisonMetrics;
+  v3: ComparisonMetrics;
+  universal: {
+    v1: ComparisonMetrics;
+    v2: ComparisonMetrics;
+    v3: ComparisonMetrics;
+  };
+  tiered: {
+    v1: ComparisonMetrics;
+    v2: ComparisonMetrics;
+    v3: ComparisonMetrics;
+  };
+  katarakti: {
+    core: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+    lite: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+    v3: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+  };
+  sources: {
+    universal: {
+      v1: ComparisonSourceMeta;
+      v2: ComparisonSourceMeta;
+      v3: ComparisonSourceMeta;
+    };
+    tiered: {
+      v1: ComparisonSourceMeta;
+      v2: ComparisonSourceMeta;
+      v3: ComparisonSourceMeta;
+    };
+    katarakti: {
+      core: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+      lite: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+      v3: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+    };
+  };
+  gating: GateOverlayPayload;
+  weeksAnalyzed: number;
+  weeklyReturnDisplayRows: WeeklyReturnDisplayRow[];
+};
+
+function buildAllPairs(assetId: string): Record<string, PairSnapshot> {
+  const pairDefs = PAIRS_BY_ASSET_CLASS[assetId as keyof typeof PAIRS_BY_ASSET_CLASS] ?? [];
+  const pairs: Record<string, PairSnapshot> = {};
+  for (const pair of pairDefs) {
+    pairs[pair.pair] = {
+      direction: "LONG",
+      base_bias: "NEUTRAL",
+      quote_bias: "NEUTRAL",
+    };
+  }
+  return pairs;
+}
+
+async function getPerformanceSentimentForWeek(weekOpenUtc: string) {
+  const weekOpen = DateTime.fromISO(weekOpenUtc, { zone: "utc" });
+  const weekClose = weekOpen.isValid
+    ? weekOpen.plus({ days: 7 }).toUTC().toISO()
+    : null;
+  if (!weekClose) {
+    return [];
+  }
+  return getAggregatesForWeekStartWithBackfill(weekOpenUtc, weekClose);
+}
+
+async function buildFallbackSnapshotsForRequestedWeek(
+  requestedWeek: string,
+  currentWeekMillis: number,
+): Promise<SnapshotRow[]> {
+  const weekMillis = DateTime.fromISO(requestedWeek, { zone: "utc" }).toMillis();
+  if (!Number.isFinite(weekMillis)) {
+    return [];
+  }
+  const isFutureWeek = weekMillis > currentWeekMillis;
+  const models = Array.from(new Set<PerformanceModel>([
+    ...V1_MODELS,
+    ...V2_MODELS,
+    ...V3_MODELS,
+  ]));
+  const assetClasses = listAssetClasses();
+  const sentiment = await getPerformanceSentimentForWeek(requestedWeek);
+  const out: SnapshotRow[] = [];
+
+  for (const asset of assetClasses) {
+    const snapshot = await readSnapshot({ assetClass: asset.id });
+    if (!snapshot) {
+      continue;
+    }
+
+    const performance = await getPairPerformance(buildAllPairs(asset.id), {
+      assetClass: asset.id,
+      reportDate: snapshot.report_date,
+      isLatestReport: !isFutureWeek,
+    });
+
+    for (const model of models) {
+      const computed = await computeModelPerformance({
+        model,
+        assetClass: asset.id,
+        snapshot,
+        sentiment,
+        performance,
+        weekOpenUtc: requestedWeek,
+      });
+      out.push({
+        week_open_utc: requestedWeek,
+        asset_class: asset.id,
+        model,
+        report_date: snapshot.report_date,
+        percent: computed.percent,
+        priced: computed.priced,
+        total: computed.total,
+        returns: computed.returns,
+        pair_details: computed.pair_details,
+        stats: computed.stats,
+      });
+    }
+  }
+
+  return out;
+}
+
+function isClosedSnapshot(snapshot: SnapshotRow, currentWeekMillis: number): boolean {
+  const weekMillis = DateTime.fromISO(snapshot.week_open_utc, { zone: "utc" }).toMillis();
+  return Number.isFinite(weekMillis) && weekMillis < currentWeekMillis;
+}
+
+function pickClosedWeeks(
+  snapshots: SnapshotRow[],
+  currentWeekMillis: number,
+): string[] {
+  const weekByKey = new Map<string, number>();
+
+  for (const snapshot of snapshots) {
+    if (!isClosedSnapshot(snapshot, currentWeekMillis)) {
+      continue;
+    }
+    const key = normalizeWeekOpenUtc(snapshot.week_open_utc) ?? snapshot.week_open_utc;
+    const weekMillis = DateTime.fromISO(snapshot.week_open_utc, { zone: "utc" }).toMillis();
+    if (!Number.isFinite(weekMillis)) {
+      continue;
+    }
+    const existing = weekByKey.get(key);
+    if (existing === undefined || weekMillis > existing) {
+      weekByKey.set(key, weekMillis);
+    }
+  }
+
+  return Array.from(weekByKey.entries())
+    .sort((a, b) => a[1] - b[1])
+    .map(([key]) => key);
+}
+
+function pickAllWeeks(snapshots: SnapshotRow[]): string[] {
+  const weekByKey = new Map<string, number>();
+
+  for (const snapshot of snapshots) {
+    const key = normalizeWeekOpenUtc(snapshot.week_open_utc) ?? snapshot.week_open_utc;
+    const weekMillis = DateTime.fromISO(snapshot.week_open_utc, { zone: "utc" }).toMillis();
+    if (!Number.isFinite(weekMillis)) {
+      continue;
+    }
+    const existing = weekByKey.get(key);
+    if (existing === undefined || weekMillis > existing) {
+      weekByKey.set(key, weekMillis);
+    }
+  }
+
+  return Array.from(weekByKey.entries())
+    .sort((a, b) => a[1] - b[1])
+    .map(([key]) => key);
+}
+
+function computeSharpe(returns: number[]) {
+  const count = returns.length;
+  if (count <= 1) return 0;
+  const avg = returns.reduce((sum, value) => sum + value, 0) / count;
+  if (avg === 0) return 0;
+  const variance =
+    returns.reduce((sum, value) => {
+      const diff = value - avg;
+      return sum + diff * diff;
+    }, 0) / (count - 1);
+  const stdDev = Math.sqrt(variance);
+  return stdDev > 0 ? avg / stdDev : 0;
+}
+
+function computeSharpeWithSingleWeekFallback(
+  weeklyReturns: number[],
+  fallbackReturns: number[],
+) {
+  if (weeklyReturns.length > 1) {
+    return computeSharpe(weeklyReturns);
+  }
+  if (fallbackReturns.length > 1) {
+    return computeSharpe(fallbackReturns);
+  }
+  return computeSharpe(weeklyReturns);
+}
+
+function computeProfitFactorFromReturns(returns: number[]): number | null {
+  const grossProfit = returns.filter((value) => value > 0).reduce((sum, value) => sum + value, 0);
+  const grossLoss = Math.abs(
+    returns.filter((value) => value < 0).reduce((sum, value) => sum + value, 0),
+  );
+  if (grossLoss > 0) return grossProfit / grossLoss;
+  return null;
+}
+
+function computeCumulativeMaxDrawdownFromWeeklyReturns(returns: number[]): number {
+  return computeMaxDrawdownFromPercentReturns(returns);
+}
+
+function computeCompoundedTotalReturnFromWeeklyReturns(returns: number[]) {
+  if (returns.length === 0) return 0;
+  let equity = 1;
+  for (const value of returns) {
+    if (!Number.isFinite(value)) continue;
+    const multiplier = 1 + value / 100;
+    if (multiplier <= 0) {
+      return -100;
+    }
+    equity *= multiplier;
+  }
+  return (equity - 1) * 100;
+}
+
+function buildComparisonMetricsFromWeeklySeries(options: {
+  weekReturns: number[];
+  sharpeFallbackReturns?: number[];
+  trades: number;
+  wins: number;
+  avgTrade: number | null;
+  profitFactor: number | null;
+  maxDrawdown: number | null;
+}): ComparisonMetrics {
+  const totalReturn = computeCompoundedTotalReturnFromWeeklyReturns(options.weekReturns);
+  const weeks = options.weekReturns.length;
+  const weeklyWins = options.weekReturns.filter((value) => value > 0).length;
+  const weeklyWinRate = weeks > 0 ? (weeklyWins / weeks) * 100 : 0;
+  const avgWeekly =
+    weeks > 0
+      ? options.weekReturns.reduce((sum, value) => sum + value, 0) / weeks
+      : 0;
+  const tradeWinRate = options.trades > 0 ? (options.wins / options.trades) * 100 : 0;
+  return {
+    totalReturn,
+    weeks,
+    winRate: weeklyWinRate,
+    sharpe: computeSharpeWithSingleWeekFallback(
+      options.weekReturns,
+      options.sharpeFallbackReturns ?? [],
+    ),
+    avgWeekly,
+    maxDrawdown: options.maxDrawdown ?? computeCumulativeMaxDrawdownFromWeeklyReturns(options.weekReturns),
+    trades: options.trades,
+    tradeWinRate,
+    avgTrade: options.avgTrade,
+    profitFactor: options.profitFactor ?? computeProfitFactorFromReturns(options.weekReturns),
+  };
+}
+
+function computeMetrics(
+  snapshots: SnapshotRow[],
+  models: PerformanceModel[],
+  selectedWeeks: Set<string>,
+): ComparisonMetrics {
+  const weekModelTotals = new Map<string, Map<PerformanceModel, number>>();
+  const tradeReturns: number[] = [];
+  let fallbackPricedTrades = 0;
+  let fallbackEstimatedWins = 0;
+
+  for (const snapshot of snapshots) {
+    if (!models.includes(snapshot.model)) {
+      continue;
+    }
+    const weekKey = normalizeWeekOpenUtc(snapshot.week_open_utc) ?? snapshot.week_open_utc;
+    if (!selectedWeeks.has(weekKey)) {
+      continue;
+    }
+    const byModel = weekModelTotals.get(weekKey) ?? new Map<PerformanceModel, number>();
+    const modelTotal = byModel.get(snapshot.model) ?? 0;
+    byModel.set(snapshot.model, modelTotal + snapshot.percent);
+    weekModelTotals.set(weekKey, byModel);
+    fallbackPricedTrades += Number.isFinite(snapshot.priced) ? snapshot.priced : 0;
+    for (const trade of snapshot.returns ?? []) {
+      if (!trade || !Number.isFinite(trade.percent)) {
+        continue;
+      }
+      tradeReturns.push(trade.percent);
+    }
+    if ((snapshot.returns?.length ?? 0) === 0) {
+      const winRate = Number(snapshot.stats?.win_rate);
+      if (Number.isFinite(winRate) && snapshot.priced > 0) {
+        fallbackEstimatedWins += Math.round((snapshot.priced * winRate) / 100);
+      }
+    }
+  }
+
+  const weekReturns = Array.from(weekModelTotals.entries())
+    .sort(
+      (a, b) =>
+        DateTime.fromISO(a[0], { zone: "utc" }).toMillis() -
+        DateTime.fromISO(b[0], { zone: "utc" }).toMillis(),
+    )
+    .map(([, modelTotals]) => {
+      const participatingModels = models.filter((model) => modelTotals.has(model));
+      const denominator = participatingModels.length > 0 ? participatingModels.length : Math.max(models.length, 1);
+      const summed = Array.from(modelTotals.values()).reduce((sum, value) => sum + value, 0);
+      return summed / denominator;
+    });
+  const weeklyDrawdown = computeCumulativeMaxDrawdownFromWeeklyReturns(weekReturns);
+  const trades = tradeReturns.length > 0 ? tradeReturns.length : fallbackPricedTrades;
+  const wins =
+    tradeReturns.length > 0
+      ? tradeReturns.filter((value) => value > 0).length
+      : fallbackEstimatedWins;
+  return buildComparisonMetricsFromWeeklySeries({
+    weekReturns,
+    sharpeFallbackReturns: tradeReturns,
+    trades,
+    wins,
+    avgTrade:
+      tradeReturns.length > 0
+        ? tradeReturns.reduce((sum, value) => sum + value, 0) / tradeReturns.length
+        : null,
+    profitFactor: tradeReturns.length > 0 ? computeProfitFactorFromReturns(tradeReturns) : null,
+    maxDrawdown: weeklyDrawdown,
+  });
+}
+
+function computeMetricsFromWeeklyRows(
+  weeklyRows: Array<{
+    week_open_utc: string;
+    return_percent: number;
+    priced_trades: number;
+    wins: number;
+    trade_returns: number[];
+    week_max_drawdown: number | null;
+    gross_profit_pct?: number | null;
+    gross_loss_pct?: number | null;
+  }>,
+): ComparisonMetrics {
+  const sortedRows = [...weeklyRows].sort(
+    (a, b) =>
+      DateTime.fromISO(a.week_open_utc, { zone: "utc" }).toMillis() -
+      DateTime.fromISO(b.week_open_utc, { zone: "utc" }).toMillis(),
+  );
+  const weekReturns = sortedRows.map((row) => row.return_percent);
+  const tradeReturns = sortedRows.flatMap((row) =>
+    row.trade_returns.filter((value) => Number.isFinite(value)),
+  );
+  const totalTrades =
+    tradeReturns.length > 0
+      ? tradeReturns.length
+      : sortedRows.reduce((sum, row) => sum + row.priced_trades, 0);
+  const wins =
+    tradeReturns.length > 0
+      ? tradeReturns.filter((value) => value > 0).length
+      : sortedRows.reduce((sum, row) => sum + row.wins, 0);
+  const totalReturn = computeCompoundedTotalReturnFromWeeklyReturns(weekReturns);
+  const weeklyCurveDrawdown = computeCumulativeMaxDrawdownFromWeeklyReturns(weekReturns);
+  // Week-level curve drawdown is the authoritative portfolio-level DD metric.
+  // Static per-week DD from legacy rows can be over-counted when basket legs offset.
+  const staticMaxDrawdown = sortedRows.length > 0
+    ? sortedRows.reduce((max, row) => {
+        const value =
+          typeof row.week_max_drawdown === "number" && Number.isFinite(row.week_max_drawdown)
+            ? row.week_max_drawdown
+            : 0;
+        return Math.max(max, value);
+      }, 0)
+    : 0;
+  const maxDrawdown = weekReturns.length > 0 ? weeklyCurveDrawdown : staticMaxDrawdown;
+  const grossProfitPct = sortedRows.reduce(
+    (sum, row) => sum + (Number.isFinite(row.gross_profit_pct) ? (row.gross_profit_pct as number) : 0),
+    0,
+  );
+  const grossLossPct = sortedRows.reduce(
+    (sum, row) => sum + (Number.isFinite(row.gross_loss_pct) ? (row.gross_loss_pct as number) : 0),
+    0,
+  );
+  const grossProfitFactor =
+    grossLossPct > 0
+      ? grossProfitPct / grossLossPct
+      : grossProfitPct > 0
+        ? Number.POSITIVE_INFINITY
+        : null;
+  return buildComparisonMetricsFromWeeklySeries({
+    weekReturns,
+    sharpeFallbackReturns: tradeReturns,
+    trades: totalTrades,
+    wins,
+    avgTrade:
+      tradeReturns.length > 0
+        ? tradeReturns.reduce((sum, value) => sum + value, 0) / tradeReturns.length
+        : totalTrades > 0
+          ? totalReturn / totalTrades
+          : null,
+    profitFactor:
+      tradeReturns.length > 0
+        ? computeProfitFactorFromReturns(tradeReturns)
+        : grossProfitFactor,
+    maxDrawdown,
+  });
+}
+
+function finalizeComparisonMetrics(
+  metrics: ComparisonMetrics,
+  options: {
+    annualizeSharpe: boolean;
+    sharpeAlreadyAnnualized?: boolean;
+  },
+): ComparisonMetrics {
+  const sharpe =
+    options.annualizeSharpe && !options.sharpeAlreadyAnnualized
+      ? metrics.sharpe * ANNUALIZATION_FACTOR
+      : metrics.sharpe;
+  const profitFactorInfinite = metrics.profitFactor !== null && !Number.isFinite(metrics.profitFactor);
+  return {
+    ...metrics,
+    sharpe,
+    sharpeAnnualized: options.annualizeSharpe,
+    profitFactor: profitFactorInfinite ? null : metrics.profitFactor,
+    profitFactorInfinite,
+  };
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toInteger(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.trunc(parsed));
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function buildMetricsFromGateReportMode(options: {
+  modeRecord: Record<string, unknown>;
+  weeklyReturns: number[];
+  annualizeSharpe: boolean;
+}): ComparisonMetrics {
+  const totalReturn =
+    options.weeklyReturns.length > 0
+      ? computeCompoundedTotalReturnFromWeeklyReturns(options.weeklyReturns)
+      : (toFiniteNumber(options.modeRecord.totalReturn) ?? 0);
+  const weeks =
+    toInteger(options.modeRecord.weeks) || options.weeklyReturns.length;
+  const winRate =
+    toFiniteNumber(options.modeRecord.winRatePct) ??
+    (weeks > 0
+      ? (options.weeklyReturns.filter((value) => value > 0).length / weeks) * 100
+      : 0);
+  const avgWeekly =
+    toFiniteNumber(options.modeRecord.avgWeeklyPct) ??
+    (weeks > 0 ? totalReturn / weeks : 0);
+  const maxDrawdown =
+    toFiniteNumber(options.modeRecord.maxDrawdownPct) ??
+    computeCumulativeMaxDrawdownFromWeeklyReturns(options.weeklyReturns);
+  const trades = toInteger(options.modeRecord.trades);
+  const tradeWinRate = toFiniteNumber(options.modeRecord.tradeWinRatePct) ?? 0;
+
+  const rawMetrics: ComparisonMetrics = {
+    totalReturn,
+    weeks,
+    winRate,
+    sharpe: computeSharpeWithSingleWeekFallback(options.weeklyReturns, []),
+    avgWeekly,
+    maxDrawdown,
+    trades,
+    tradeWinRate,
+    avgTrade: null,
+    profitFactor: computeProfitFactorFromReturns(options.weeklyReturns),
+  };
+
+  return finalizeComparisonMetrics(rawMetrics, {
+    annualizeSharpe: options.annualizeSharpe,
+  });
+}
+
+function readGateOverlayPayload(annualizeSharpe: boolean): GateOverlayPayload {
+  const envPath = process.env.PERFORMANCE_GATE_COMPARISON_PATH?.trim();
+  const skipOnlyMode = process.env.PERFORMANCE_GATE_SKIP_ONLY !== "0";
+  const defaultReportCandidates = skipOnlyMode
+    ? [
+        appPath("reports", "bias-gate", "strategy-comparison-reduce-as-skip.json"),
+        appPath("reports", "bias-gate", "strategy-comparison-latest.json"),
+        appPath("reports", "bias-gate", "strategy-comparison-standard-reduce.json"),
+      ]
+    : [
+        appPath("reports", "bias-gate", "strategy-comparison-latest.json"),
+        appPath("reports", "bias-gate", "strategy-comparison-standard-reduce.json"),
+        appPath("reports", "bias-gate", "strategy-comparison-reduce-as-skip.json"),
+      ];
+  const candidates = [
+    envPath ? repoPath(envPath) : null,
+    ...defaultReportCandidates,
+  ].filter((value): value is string => Boolean(value));
+
+  let selectedPath: string | null = null;
+  let payloadRaw: Record<string, unknown> | null = null;
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(candidate, "utf8")) as Record<string, unknown>;
+      if (Array.isArray(parsed.comparisons)) {
+        selectedPath = candidate;
+        payloadRaw = parsed;
+        break;
+      }
+    } catch {
+      // Ignore parse errors and continue candidate probing.
+    }
+  }
+
+  if (!payloadRaw || !selectedPath) {
+    const embeddedPayload = DEFAULT_GATE_OVERLAY_REPORT as unknown as Record<string, unknown>;
+    if (Array.isArray(embeddedPayload.comparisons)) {
+      payloadRaw = embeddedPayload;
+      selectedPath = "embedded:src/lib/performance/gateOverlayDefault.ts";
+    }
+  }
+
+  if (!payloadRaw || !selectedPath) {
+    return buildUnavailableGateOverlayPayload();
+  }
+
+  const comparisons = asArray(payloadRaw.comparisons);
+  const byStrategy: Record<string, GateOverlayStrategyMetrics> = {};
+
+  for (const raw of comparisons) {
+    const row = asRecord(raw);
+    const strategy = String(row.strategy ?? "").trim();
+    if (!strategy) continue;
+
+    const baseline = asRecord(row.baseline);
+    const gated = asRecord(row.gated);
+    const weekly = asArray(row.weekly);
+    const baselineWeeklyReturns = weekly
+      .map((item) => toFiniteNumber(asRecord(item).baselineReturn))
+      .filter((value): value is number => value !== null);
+    const gatedWeeklyReturns = weekly
+      .map((item) => toFiniteNumber(asRecord(item).gatedReturn))
+      .filter((value): value is number => value !== null);
+
+    const standardMetrics = buildMetricsFromGateReportMode({
+      modeRecord: baseline,
+      weeklyReturns: baselineWeeklyReturns,
+      annualizeSharpe,
+    });
+    const gatedMetrics = buildMetricsFromGateReportMode({
+      modeRecord: gated,
+      weeklyReturns: gatedWeeklyReturns,
+      annualizeSharpe,
+    });
+
+    const deltaRaw = asRecord(row.delta);
+    const gateActivityRaw = asRecord(row.gateActivity);
+    const gateActivity =
+      Object.keys(gateActivityRaw).length > 0
+        ? {
+            skippedTrades: toInteger(gateActivityRaw.skippedTrades),
+            reducedTrades: toInteger(gateActivityRaw.reducedTrades),
+            passedOrNoDataTrades: toInteger(gateActivityRaw.passedOrNoDataTrades),
+          }
+        : null;
+    const deltaMaxDrawdown =
+      toFiniteNumber(deltaRaw.maxDrawdownPct)
+      ?? (gatedMetrics.maxDrawdown !== null && standardMetrics.maxDrawdown !== null
+        ? gatedMetrics.maxDrawdown - standardMetrics.maxDrawdown
+        : 0);
+
+    byStrategy[strategy] = {
+      standard: standardMetrics,
+      gated: gatedMetrics,
+      delta: {
+        totalReturnPct:
+          toFiniteNumber(deltaRaw.totalReturnPct) ??
+          gatedMetrics.totalReturn - standardMetrics.totalReturn,
+        maxDrawdownPct: deltaMaxDrawdown,
+        winRatePct:
+          toFiniteNumber(deltaRaw.winRatePct) ??
+          gatedMetrics.winRate - standardMetrics.winRate,
+        tradeWinRatePct:
+          toFiniteNumber(deltaRaw.tradeWinRatePct) ??
+          gatedMetrics.tradeWinRate - standardMetrics.tradeWinRate,
+        trades:
+          toFiniteNumber(deltaRaw.trades) ??
+          gatedMetrics.trades - standardMetrics.trades,
+      },
+      gateActivity,
+    };
+  }
+
+  const scope = asRecord(payloadRaw.scope);
+  const weekOpenUtc = asArray(scope.week_open_utc).map((item) => String(item)).filter(Boolean);
+  const weeksUsed = toFiniteNumber(scope.weeks_used);
+  const assumptions = asRecord(payloadRaw.assumptions);
+  const reduceModeRaw = assumptions.reduce_mode;
+  const reduceMode = typeof reduceModeRaw === "string" ? reduceModeRaw : null;
+  const generatedRaw = payloadRaw.generated_utc;
+  const generatedUtc = typeof generatedRaw === "string" ? generatedRaw : null;
+
+  return {
+    available: Object.keys(byStrategy).length > 0,
+    sourcePath: selectedPath,
+    generatedUtc,
+    weeksUsed: weeksUsed === null ? null : Math.trunc(weeksUsed),
+    weekOpenUtc,
+    reduceMode,
+    byStrategy,
+  };
+}
+
+function scoreMetricsCoverage(metrics: ComparisonMetrics) {
+  return metrics.weeks * 1_000_000 + metrics.trades;
+}
+
+function shouldPreferUniversalV1Backtest(options: {
+  requestedWeek: string | null;
+  dbMetrics: ComparisonMetrics;
+  snapshotMetrics: ComparisonMetrics;
+  dbFellBackToAllTime: boolean;
+  sourcePolicy: StrategySummarySourcePolicy;
+}) {
+  if (options.sourcePolicy === "prefer_snapshots") return false;
+  if (options.sourcePolicy === "prefer_db") return options.dbMetrics.weeks > 0;
+  if (options.dbMetrics.weeks <= 0) return false;
+  if (options.snapshotMetrics.weeks <= 0) return true;
+  if (options.requestedWeek !== null) {
+    if (options.dbFellBackToAllTime) return false;
+    return scoreMetricsCoverage(options.dbMetrics) >= scoreMetricsCoverage(options.snapshotMetrics);
+  }
+  return scoreMetricsCoverage(options.dbMetrics) >= scoreMetricsCoverage(options.snapshotMetrics);
+}
+
+function toKataraktiComparisonMetrics(
+  metrics: ReturnType<typeof buildKataraktiPeriodMetrics> | null,
+): ComparisonMetrics | null {
+  if (!metrics) return null;
+  return {
+    totalReturn: metrics.totalReturnPct,
+    weeks: metrics.weeks,
+    winRate: metrics.weeklyWinRatePct,
+    sharpe: metrics.sharpe,
+    avgWeekly: metrics.avgWeeklyPct,
+    maxDrawdown: metrics.maxDrawdownPct,
+    trades: metrics.trades,
+    tradeWinRate: metrics.tradeWinRatePct,
+    avgTrade: metrics.avgTradePct,
+    profitFactor: metrics.profitFactor,
+  };
+}
+
+function resolveKataraktiMetricsWithFallback(options: {
+  snapshot: KataraktiMarketSnapshot;
+  requestedWeek: string | null;
+}) {
+  const primary = buildKataraktiPeriodMetrics(
+    options.snapshot,
+    options.requestedWeek ?? "all",
+  );
+  if (
+    options.requestedWeek !== null &&
+    primary.weeks === 0 &&
+    options.snapshot.weekly.length > 0
+  ) {
+    return buildKataraktiPeriodMetrics(options.snapshot, "all");
+  }
+  return primary;
+}
+
+function buildKataraktiSourceMeta(snapshot: KataraktiMarketSnapshot | null): ComparisonSourceMeta {
+  if (!snapshot) {
+    return {
+      mode: "unavailable",
+      sourcePath: "unavailable",
+      fallbackLabel: null,
+      fallbackToAllTime: false,
+    };
+  }
+  return {
+    mode: "katarakti_snapshot",
+    sourcePath: snapshot.sourcePath,
+    fallbackLabel: snapshot.fallbackLabel ?? null,
+    fallbackToAllTime: false,
+  };
+}
+
+function resolveMetricsFromSourceKey(
+  sourceKey: PerformanceComparisonSourceKey,
+  options: {
+    universalMetrics: {
+      v1: ComparisonMetrics;
+      v2: ComparisonMetrics;
+      v3: ComparisonMetrics;
+    };
+    tieredMetrics: {
+      v1: ComparisonMetrics;
+      v2: ComparisonMetrics;
+      v3: ComparisonMetrics;
+    };
+    kataraktiMetrics: {
+      core: {
+        crypto_futures: ComparisonMetrics;
+        mt5_forex: ComparisonMetrics;
+      };
+      lite: {
+        crypto_futures: ComparisonMetrics;
+        mt5_forex: ComparisonMetrics;
+      };
+      v3: {
+        crypto_futures: ComparisonMetrics;
+        mt5_forex: ComparisonMetrics;
+      };
+    };
+  },
+) {
+  if (sourceKey.family === "universal" && sourceKey.systemVersion) {
+    return options.universalMetrics[sourceKey.systemVersion] ?? null;
+  }
+  if (sourceKey.family === "tiered" && sourceKey.systemVersion) {
+    return options.tieredMetrics[sourceKey.systemVersion] ?? null;
+  }
+  if (sourceKey.family === "katarakti" && sourceKey.kataraktiVariant && sourceKey.kataraktiMarket) {
+    return options.kataraktiMetrics[sourceKey.kataraktiVariant]?.[sourceKey.kataraktiMarket] ?? null;
+  }
+  return null;
+}
+
+function resolveSourceFromSourceKey(
+  sourceKey: PerformanceComparisonSourceKey,
+  options: {
+    universalSources: {
+      v1: ComparisonSourceMeta;
+      v2: ComparisonSourceMeta;
+      v3: ComparisonSourceMeta;
+    };
+    tieredSources: {
+      v1: ComparisonSourceMeta;
+      v2: ComparisonSourceMeta;
+      v3: ComparisonSourceMeta;
+    };
+    kataraktiSources: {
+      core: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+      lite: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+      v3: {
+        crypto_futures: ComparisonSourceMeta;
+        mt5_forex: ComparisonSourceMeta;
+      };
+    };
+  },
+) {
+  if (sourceKey.family === "universal" && sourceKey.systemVersion) {
+    return options.universalSources[sourceKey.systemVersion] ?? null;
+  }
+  if (sourceKey.family === "tiered" && sourceKey.systemVersion) {
+    return options.tieredSources[sourceKey.systemVersion] ?? null;
+  }
+  if (sourceKey.family === "katarakti" && sourceKey.kataraktiVariant && sourceKey.kataraktiMarket) {
+    return options.kataraktiSources[sourceKey.kataraktiVariant]?.[sourceKey.kataraktiMarket] ?? null;
+  }
+  return null;
+}
+
+function buildStrategiesMap(options: {
+  entries: PerformanceStrategyEntry[];
+  emptyMetrics: ComparisonMetrics;
+  universalMetrics: {
+    v1: ComparisonMetrics;
+    v2: ComparisonMetrics;
+    v3: ComparisonMetrics;
+  };
+  tieredMetrics: {
+    v1: ComparisonMetrics;
+    v2: ComparisonMetrics;
+    v3: ComparisonMetrics;
+  };
+  kataraktiMetrics: {
+    core: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+    lite: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+    v3: {
+      crypto_futures: ComparisonMetrics;
+      mt5_forex: ComparisonMetrics;
+    };
+  };
+  universalSources: {
+    v1: ComparisonSourceMeta;
+    v2: ComparisonSourceMeta;
+    v3: ComparisonSourceMeta;
+  };
+  tieredSources: {
+    v1: ComparisonSourceMeta;
+    v2: ComparisonSourceMeta;
+    v3: ComparisonSourceMeta;
+  };
+  kataraktiSources: {
+    core: {
+      crypto_futures: ComparisonSourceMeta;
+      mt5_forex: ComparisonSourceMeta;
+    };
+    lite: {
+      crypto_futures: ComparisonSourceMeta;
+      mt5_forex: ComparisonSourceMeta;
+    };
+    v3: {
+      crypto_futures: ComparisonSourceMeta;
+      mt5_forex: ComparisonSourceMeta;
+    };
+  };
+  weeklyReturnDisplayRows?: WeeklyReturnDisplayRow[];
+}) {
+  const strategies: Record<string, StrategyComparisonEntry> = {};
+  for (const entry of options.entries) {
+    const sourceKey = resolveComparisonSourceKey(entry);
+    if (!sourceKey) continue;
+    const metrics =
+      resolveMetricsFromSourceKey(sourceKey, {
+        universalMetrics: options.universalMetrics,
+        tieredMetrics: options.tieredMetrics,
+        kataraktiMetrics: options.kataraktiMetrics,
+      }) ?? options.emptyMetrics;
+    const source =
+      resolveSourceFromSourceKey(sourceKey, {
+        universalSources: options.universalSources,
+        tieredSources: options.tieredSources,
+        kataraktiSources: options.kataraktiSources,
+      }) ?? {
+        mode: "unavailable",
+        sourcePath: "unavailable",
+      };
+    strategies[entry.entryId] = {
+      entryId: entry.entryId,
+      metrics,
+      source,
+      weeklyReturnDisplayRows: options.weeklyReturnDisplayRows,
+    };
+  }
+  return strategies;
+}
+
+async function buildPerformanceComparisonPayload(
+  weekParam: string | null,
+): Promise<PerformanceComparisonPayload> {
+  const requestedWeek =
+    weekParam && weekParam !== "all"
+      ? (normalizeWeekOpenUtc(weekParam) ?? weekParam)
+      : null;
+    const currentWeekOpenUtc = getCanonicalWeekOpenUtc();
+    const currentWeekMillis = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" }).toMillis();
+
+    // Scan a wide enough history window to reliably backfill the selected weeks.
+    const snapshots = await readAllPerformanceSnapshots(SNAPSHOT_SCAN_LIMIT);
+    const closedWeeks = pickClosedWeeks(snapshots, currentWeekMillis);
+    const allWeeks = pickAllWeeks(snapshots);
+    let comparisonSnapshots = snapshots;
+    let selectedWeekList = requestedWeek
+      ? allWeeks.filter((week) => week === requestedWeek)
+      : closedWeeks;
+    if (requestedWeek && selectedWeekList.length === 0) {
+      const fallbackSnapshots = await buildFallbackSnapshotsForRequestedWeek(
+        requestedWeek,
+        currentWeekMillis,
+      );
+      if (fallbackSnapshots.length > 0) {
+        comparisonSnapshots = [...snapshots, ...fallbackSnapshots];
+        selectedWeekList = [requestedWeek];
+      }
+    }
+    const selectedWeeks = new Set(selectedWeekList);
+    const annualizeSharpe = requestedWeek === null;
+    const weeklyReturnDisplayRows = requestedWeek
+      ? await loadWeeklyReturnDisplayRows(requestedWeek)
+      : [];
+
+    const universalV1Backtest = await readStrategyBacktestWeeklySeries({
+      botId: "universal_v1_tp1_friday_carry_aligned",
+      variant: "v1",
+      market: "multi_asset",
+      requestedWeek,
+      fallbackToAllTime: true,
+    });
+
+    const v1SnapshotMetrics = finalizeComparisonMetrics(
+      computeMetrics(comparisonSnapshots, V1_MODELS, selectedWeeks),
+      { annualizeSharpe },
+    );
+    const v1BacktestMetrics = universalV1Backtest && universalV1Backtest.rows.length > 0
+      ? finalizeComparisonMetrics(
+          computeMetricsFromWeeklyRows(universalV1Backtest.rows),
+          { annualizeSharpe },
+        )
+      : null;
+    const useBacktestV1 = v1BacktestMetrics
+      ? shouldPreferUniversalV1Backtest({
+          requestedWeek,
+          dbMetrics: v1BacktestMetrics,
+          snapshotMetrics: v1SnapshotMetrics,
+          dbFellBackToAllTime: universalV1Backtest?.fellBackToAllTime ?? false,
+          sourcePolicy: resolveStrategySummarySourcePolicy("universal_v1"),
+        })
+      : false;
+    const v1Metrics = useBacktestV1 && v1BacktestMetrics ? v1BacktestMetrics : v1SnapshotMetrics;
+    const v2Metrics = finalizeComparisonMetrics(
+      computeMetrics(comparisonSnapshots, V2_MODELS, selectedWeeks),
+      { annualizeSharpe },
+    );
+    const v3Metrics = finalizeComparisonMetrics(
+      computeMetrics(comparisonSnapshots, V3_MODELS, selectedWeeks),
+      { annualizeSharpe },
+    );
+
+    const selectedWeekOpens = selectedWeekList.sort(
+      (a, b) =>
+        DateTime.fromISO(a, { zone: "utc" }).toMillis() -
+        DateTime.fromISO(b, { zone: "utc" }).toMillis(),
+    );
+
+    const tieredWeeklyBySystem = await computeTieredForWeeksAllSystems({
+      weeks: selectedWeekOpens,
+    });
+    const tiered = {
+      v1: finalizeComparisonMetrics(computeMetricsFromWeeklyRows(
+        tieredWeeklyBySystem.v1.map((row) => ({
+          week_open_utc: row.week_open_utc,
+          return_percent: row.summary.return_percent,
+          priced_trades: row.summary.priced_trades,
+          wins: row.summary.wins,
+          trade_returns: row.combined.flatMap((model) =>
+            (model.returns ?? [])
+              .map((entry) => entry.percent)
+              .filter((value) => Number.isFinite(value)),
+          ),
+          week_max_drawdown: null,
+        })),
+      ), { annualizeSharpe }),
+      v2: finalizeComparisonMetrics(computeMetricsFromWeeklyRows(
+        tieredWeeklyBySystem.v2.map((row) => ({
+          week_open_utc: row.week_open_utc,
+          return_percent: row.summary.return_percent,
+          priced_trades: row.summary.priced_trades,
+          wins: row.summary.wins,
+          trade_returns: row.combined.flatMap((model) =>
+            (model.returns ?? [])
+              .map((entry) => entry.percent)
+              .filter((value) => Number.isFinite(value)),
+          ),
+          week_max_drawdown: null,
+        })),
+      ), { annualizeSharpe }),
+      v3: finalizeComparisonMetrics(computeMetricsFromWeeklyRows(
+        tieredWeeklyBySystem.v3.map((row) => ({
+          week_open_utc: row.week_open_utc,
+          return_percent: row.summary.return_percent,
+          priced_trades: row.summary.priced_trades,
+          wins: row.summary.wins,
+          trade_returns: row.combined.flatMap((model) =>
+            (model.returns ?? [])
+              .map((entry) => entry.percent)
+              .filter((value) => Number.isFinite(value)),
+          ),
+          week_max_drawdown: null,
+        })),
+      ), { annualizeSharpe }),
+    };
+
+    const [coreSnapshotsByMarket, liteSnapshotsByMarket, v3SnapshotsByMarket] = await Promise.all([
+      readKataraktiMarketSnapshotsByVariant("core"),
+      readKataraktiMarketSnapshotsByVariant("lite"),
+      readKataraktiMarketSnapshotsByVariant("v3"),
+    ]);
+
+    const emptyKataraktiMetrics: ComparisonMetrics = {
+      totalReturn: 0,
+      weeks: 0,
+      winRate: 0,
+      sharpe: 0,
+      sharpeAnnualized: false,
+      avgWeekly: 0,
+      maxDrawdown: null,
+      trades: 0,
+      tradeWinRate: 0,
+      avgTrade: null,
+      profitFactor: null,
+      profitFactorInfinite: false,
+    };
+
+    const universal = {
+      v1: v1Metrics,
+      v2: v2Metrics,
+      v3: v3Metrics,
+    };
+    const katarakti = {
+      core: {
+        crypto_futures: coreSnapshotsByMarket.crypto_futures
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                resolveKataraktiMetricsWithFallback({
+                  snapshot: coreSnapshotsByMarket.crypto_futures,
+                  requestedWeek,
+                }),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                // buildKataraktiPeriodMetrics annualizes when period is "all".
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+        mt5_forex: coreSnapshotsByMarket.mt5_forex
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                resolveKataraktiMetricsWithFallback({
+                  snapshot: coreSnapshotsByMarket.mt5_forex,
+                  requestedWeek,
+                }),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                // buildKataraktiPeriodMetrics annualizes when period is "all".
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+      },
+      lite: {
+        crypto_futures: liteSnapshotsByMarket.crypto_futures
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                resolveKataraktiMetricsWithFallback({
+                  snapshot: liteSnapshotsByMarket.crypto_futures,
+                  requestedWeek,
+                }),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                // buildKataraktiPeriodMetrics annualizes when period is "all".
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+        mt5_forex: liteSnapshotsByMarket.mt5_forex
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                resolveKataraktiMetricsWithFallback({
+                  snapshot: liteSnapshotsByMarket.mt5_forex,
+                  requestedWeek,
+                }),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                // buildKataraktiPeriodMetrics annualizes when period is "all".
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+      },
+      v3: {
+        crypto_futures: v3SnapshotsByMarket.crypto_futures
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                resolveKataraktiMetricsWithFallback({
+                  snapshot: v3SnapshotsByMarket.crypto_futures,
+                  requestedWeek,
+                }),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+        mt5_forex: v3SnapshotsByMarket.mt5_forex
+          ? finalizeComparisonMetrics(
+              toKataraktiComparisonMetrics(
+                buildKataraktiPeriodMetrics(v3SnapshotsByMarket.mt5_forex, requestedWeek ?? "all"),
+              ) ?? emptyKataraktiMetrics,
+              {
+                annualizeSharpe,
+                sharpeAlreadyAnnualized: annualizeSharpe,
+              },
+            )
+          : emptyKataraktiMetrics,
+      },
+    };
+    const sources: {
+      universal: {
+        v1: ComparisonSourceMeta;
+        v2: ComparisonSourceMeta;
+        v3: ComparisonSourceMeta;
+      };
+      tiered: {
+        v1: ComparisonSourceMeta;
+        v2: ComparisonSourceMeta;
+        v3: ComparisonSourceMeta;
+      };
+      katarakti: {
+        core: {
+          crypto_futures: ComparisonSourceMeta;
+          mt5_forex: ComparisonSourceMeta;
+        };
+        lite: {
+          crypto_futures: ComparisonSourceMeta;
+          mt5_forex: ComparisonSourceMeta;
+        };
+        v3: {
+          crypto_futures: ComparisonSourceMeta;
+          mt5_forex: ComparisonSourceMeta;
+        };
+      };
+    } = {
+      universal: {
+        v1: useBacktestV1 && universalV1Backtest && universalV1Backtest.rows.length > 0
+          ? {
+              mode: "strategy_backtest_db",
+              sourcePath: universalV1Backtest.sourcePath,
+              fallbackToAllTime: universalV1Backtest.fellBackToAllTime,
+              fallbackLabel: null,
+            }
+          : {
+              mode: "performance_snapshots",
+              sourcePath: "db:performance_snapshots",
+              fallbackToAllTime: false,
+              fallbackLabel: null,
+            },
+        v2: {
+          mode: "performance_snapshots",
+          sourcePath: "db:performance_snapshots",
+          fallbackToAllTime: false,
+          fallbackLabel: null,
+        },
+        v3: {
+          mode: "performance_snapshots",
+          sourcePath: "db:performance_snapshots",
+          fallbackToAllTime: false,
+          fallbackLabel: null,
+        },
+      },
+      tiered: {
+        v1: {
+          mode: "tiered_derived",
+          sourcePath: "derived:performance_snapshots+tiered",
+          fallbackToAllTime: false,
+          fallbackLabel: null,
+        },
+        v2: {
+          mode: "tiered_derived",
+          sourcePath: "derived:performance_snapshots+tiered",
+          fallbackToAllTime: false,
+          fallbackLabel: null,
+        },
+        v3: {
+          mode: "tiered_derived",
+          sourcePath: "derived:performance_snapshots+tiered",
+          fallbackToAllTime: false,
+          fallbackLabel: null,
+        },
+      },
+      katarakti: {
+        core: {
+          crypto_futures: buildKataraktiSourceMeta(coreSnapshotsByMarket.crypto_futures),
+          mt5_forex: buildKataraktiSourceMeta(coreSnapshotsByMarket.mt5_forex),
+        },
+        lite: {
+          crypto_futures: buildKataraktiSourceMeta(liteSnapshotsByMarket.crypto_futures),
+          mt5_forex: buildKataraktiSourceMeta(liteSnapshotsByMarket.mt5_forex),
+        },
+        v3: {
+          crypto_futures: buildKataraktiSourceMeta(v3SnapshotsByMarket.crypto_futures),
+          mt5_forex: buildKataraktiSourceMeta(v3SnapshotsByMarket.mt5_forex),
+        },
+      },
+    };
+    const gating = requestedWeek === null
+      ? readGateOverlayPayload(annualizeSharpe)
+      : buildUnavailableGateOverlayPayload();
+
+    const applyGateBaseline = (entryId: string): ComparisonMetrics | null =>
+      gating.available ? (gating.byStrategy[entryId]?.standard ?? null) : null;
+
+    const gateV1 = applyGateBaseline("universal_v1");
+    const gateV2 = applyGateBaseline("universal_v2");
+    const gateV3 = applyGateBaseline("universal_v3");
+    const gateT1 = applyGateBaseline("tiered_v1");
+    const gateT2 = applyGateBaseline("tiered_v2");
+    const gateT3 = applyGateBaseline("tiered_v3");
+
+    // Keep gate-overlay metrics supplemental only. They remain available in the
+    // `gating` payload, but should not replace the canonical strategy metrics
+    // used by Performance surfaces.
+    void gateV1;
+    void gateV2;
+    void gateV3;
+    void gateT1;
+    void gateT2;
+    void gateT3;
+
+    const strategies = buildStrategiesMap({
+      entries: listPerformanceStrategyEntries(),
+      emptyMetrics: emptyKataraktiMetrics,
+      universalMetrics: universal,
+      tieredMetrics: tiered,
+      kataraktiMetrics: katarakti,
+      universalSources: sources.universal,
+      tieredSources: sources.tiered,
+      kataraktiSources: sources.katarakti,
+      weeklyReturnDisplayRows,
+    });
+
+    return {
+      strategies,
+      v1: universal.v1,
+      v2: universal.v2,
+      v3: universal.v3,
+      universal,
+      tiered,
+      katarakti,
+      sources,
+      gating,
+      weeksAnalyzed: selectedWeekList.length,
+      weeklyReturnDisplayRows,
+    };
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const payload = await buildPerformanceComparisonPayload(
+      request.nextUrl.searchParams.get("week"),
+    );
+    return NextResponse.json(payload);
+  } catch (error) {
+    console.error("Performance comparison API error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to fetch comparison data" },
+      { status: 500 },
+    );
+  }
+}

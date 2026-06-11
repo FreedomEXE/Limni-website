@@ -1,25 +1,13 @@
 # Config
 
-Target home for movable repo configuration and config documentation.
+Documentation home for repo configuration.
 
-Many config files must remain at repo root because tools discover them there by
-default:
+Most config files still stay at root because npm, Next.js, TypeScript, Vercel,
+Render, Vitest, Playwright, Git, and GitHub discover them there by default.
 
-- `package.json`
-- `package-lock.json`
-- `tsconfig.json`
-- `next.config.ts`
-- `eslint.config.mjs`
-- `playwright.config.ts`
-- `vitest.config.ts`
-- `postcss.config.mjs`
-- `vercel.json`
-- `render.yaml`
-- `.gitignore`
-- `.env.example`
+Current root config/toolchain anchors include `package.json`, `package-lock.json`,
+`tsconfig.json`, `eslint.config.mjs`, `playwright.config.ts`, `vitest.config.ts`,
+`vercel.json`, `render.yaml`, `.gitignore`, `.vercelignore`, and `.env.example`.
 
-Move config files here only when the owning tool supports that location and the
-command/deployment path is updated in the same gate.
-
-Do not move `package.json` or `package-lock.json` as simple cleanup. npm, Next,
-Vercel, Render, and GitHub Actions all discover them from repo root today.
+Move a config file here only when the owning tool and every command path are
+updated in the same gate.

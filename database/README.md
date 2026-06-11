@@ -1,17 +1,12 @@
 # Database
 
-Target home for database-owned assets.
+Home for database-owned assets.
 
-Current database roots remain in place until a dedicated database migration
-gate:
+## Contents
 
-- `db/`
-- `migrations/`
-- `contracts/`
+- `db/` - SQL schema and database helper scripts.
+- `migrations/` - Durable migrations.
+- `contracts/` - Data and integration contracts.
 
-These paths are referenced by package scripts, workflows, contract generation,
-and documentation. Moving them requires updating those references and proving
-the migration/contract commands still work.
-
-Production-sensitive scripts, especially
-`scripts/migrate-trades-to-unified-ledger.ts`, require their own safety review.
+Production-sensitive migration scripts require their own review gate before
+execution or commit.

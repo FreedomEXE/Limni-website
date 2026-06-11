@@ -43,7 +43,7 @@ update with `en-GB-RyanNeural`; keep detailed technical content in chat.
 - Do not treat old docs, handoffs, prompts, or agent memory as current truth.
 - Versioning uses `liveVersion` and `devVersion` only.
 - `pendingRelease` must not be runtime UI truth.
-- Release evidence belongs under `releases/`.
+- Release evidence belongs under `app/releases/`.
 - Baseline datasets must not be release-branded.
 - UI counts must be derived from data.
 - `AGENTS.md` is a manifest, not the operating rulebook.

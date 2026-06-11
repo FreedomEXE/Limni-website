@@ -1,20 +1,17 @@
 # App
 
-Target home for the Limni application workspace.
+Home for app-owned code and evidence.
 
-This folder is intentionally a staging manifest for now. Runtime Next.js files
-still live at the repo root (`src/`, `public/`, `tests/`, and related root
-config) because moving them requires a dedicated build-system migration gate.
+## Contents
 
-## Target Contents
+- `src/` - Next.js app routes, API routes, UI, app libraries, and unit tests.
+- `public/` - Runtime public assets served by the app.
+- `scripts/` - App tooling, verification scripts, research runners, and maintenance commands.
+- `services/` - Deployable non-Next services and automation integrations.
+- `research/` - Non-binding research workspaces and prototypes.
+- `reports/` - Generated reports and evidence outputs.
+- `releases/` - Release notes, screenshots, evidence, and release canon.
+- `tests/` - Playwright end-to-end tests.
 
-Future app gates may move or map:
-
-- `src/`
-- `public/`
-- app-facing tests
-- app-facing scripts
-- app-facing reports and research that are active product inputs
-
-Do not move runtime app folders here without updating Next.js, TypeScript,
-package scripts, imports, tests, and deployment config in the same gate.
+Do not add new loose root app folders. Put app-owned work here and update this
+manifest only when a new durable app subfolder is introduced.

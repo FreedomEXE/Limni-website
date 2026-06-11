@@ -1,20 +1,19 @@
 /data/
 /Local Environment/
-/sports/
-/research/
+/app/research/
 /screenshots/
 /temp/
-/contracts/
-/db/
-/mt5/
+/database/contracts/
+/database/db/
+/app/services/mt5/
 
-/public/scalp-bot/
+/app/public/scalp-bot/
 
-/reports/
-!/reports/bias-gate/
-!/reports/bias-gate/*.json
-!/reports/bias-gate/*.md
+/app/reports/
+!/app/reports/bias-gate/
+!/app/reports/bias-gate/*.json
+!/app/reports/bias-gate/*.md
 
-/reports/bias-gate/menthorq-captures/
+/app/reports/bias-gate/menthorq-captures/
 
-/archive/
+/docs/archive/

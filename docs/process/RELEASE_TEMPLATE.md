@@ -6,7 +6,7 @@ release-doc shape per version.
 ## Target Folder Shape
 
 ```txt
-releases/
+app/releases/
   vX/
     vX.Y.Z/
       README.md
@@ -59,7 +59,7 @@ Required sections:
 - Latest releases appear first in index views.
 - Screenshots must be grouped by page or workflow.
 - Screenshots should be expandable in the app Documents UI.
-- Evidence screenshots belong under `releases/`, not loose root folders.
+- Evidence screenshots belong under `app/releases/`, not loose root folders.
 
 ## Runtime UI Rules
 
