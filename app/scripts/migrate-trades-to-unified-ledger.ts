@@ -15,10 +15,15 @@
 import { loadEnvConfig } from "@next/env";
 loadEnvConfig(process.cwd());
 
-import { getPool, query } from "@/lib/db";
+import { getPool, query, transaction } from "@/lib/db";
 import { deriveLegacyTradeIdWithoutDirectionV1, deriveTradeId } from "@/lib/trades/tradeIdentity";
 import type { AnchorType, TradeDirection, TradeNaturalKey, TradeOrigin } from "@/lib/trades/tradeTypes";
 import type { WeeklyHoldResult, WeeklyHoldTrade } from "@/lib/performance/weeklyHoldEngine";
+import { STRATEGY_SHARD_ENGINE_VERSION } from "@/lib/performance/strategyArtifactVersions";
+
+type DbExecutor = {
+  query: (text: string, params?: unknown[]) => Promise<{ rows: unknown[]; rowCount: number | null }>;
+};
 
 type ShardRow = {
   selection_key: string;
@@ -71,8 +76,24 @@ type LedgerRow = {
   warnings: string[];
 };
 
-const ENGINE_VERSION_PREFIX = process.env.TRADE_LEDGER_ENGINE_VERSION_PREFIX ?? "strategy-artifact-v27";
+const ENGINE_VERSION_PREFIX =
+  process.env.TRADE_LEDGER_ENGINE_VERSION_PREFIX
+  ?? process.env.STRATEGY_SHARD_ENGINE_VERSION
+  ?? STRATEGY_SHARD_ENGINE_VERSION;
 const PAIR_FILL_CAP_THRESHOLD = 3;
+const VARIANT_FILTER = (process.env.TRADE_LEDGER_VARIANTS ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const WEEK_FILTER = (process.env.TRADE_LEDGER_WEEKS ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean)
+  .map(normalizeIso);
+const SYMBOL_FILTER = (process.env.TRADE_LEDGER_SYMBOLS ?? "")
+  .split(",")
+  .map((value) => value.trim().toUpperCase())
+  .filter(Boolean);
 
 function normalizeIso(value: string | Date) {
   const parsed = value instanceof Date ? value : new Date(value);
@@ -348,9 +369,48 @@ async function readCurrentShards() {
   );
 }
 
-async function upsertLedgerRows(rows: LedgerRow[]) {
+async function replaceExistingBacktestRowsForVariants(rows: LedgerRow[], executor: DbExecutor = getPool()) {
+  const variants = Array.from(new Set(rows.map((row) => row.strategyVariant))).sort();
+  const engineVersions = Array.from(new Set(rows.map((row) => row.engineVersion))).sort();
+  if (variants.length === 0 || engineVersions.length === 0) {
+    return { deletedRows: 0, variants: [] as string[], engineVersions: [] as string[] };
+  }
+
+  const clauses = [
+    "origin = 'backtest'",
+    "strategy_variant = ANY($1::text[])",
+    "engine_version = ANY($2::text[])",
+  ];
+  const params: unknown[] = [variants, engineVersions];
+
+  if (WEEK_FILTER.length > 0) {
+    const weeks = Array.from(new Set(rows.map((row) => row.weekOpenUtc))).sort();
+    params.push(weeks);
+    clauses.push(`week_open_utc = ANY($${params.length}::timestamptz[])`);
+  }
+
+  if (SYMBOL_FILTER.length > 0) {
+    const symbols = Array.from(new Set(rows.map((row) => row.symbol))).sort();
+    params.push(symbols);
+    clauses.push(`symbol = ANY($${params.length}::text[])`);
+  }
+
+  const result = await executor.query(
+    `DELETE FROM trades
+      WHERE ${clauses.join("\n        AND ")}`,
+    params,
+  );
+
+  return {
+    deletedRows: result.rowCount ?? 0,
+    variants,
+    engineVersions,
+  };
+}
+
+async function upsertLedgerRows(rows: LedgerRow[], executor: DbExecutor = getPool()) {
   let changedTradeIds = 0;
-  const batchSize = 500;
+  const batchSize = 100;
   for (let offset = 0; offset < rows.length; offset += batchSize) {
     const batch = rows.slice(offset, offset + batchSize);
     const identityUpdates = batch.filter((row) => row.legacyTradeId !== row.tradeId);
@@ -361,7 +421,7 @@ async function upsertLedgerRows(rows: LedgerRow[]) {
         updateParams.push(row.tradeId, row.legacyTradeId, row.parentTradeId);
         return `($${base + 1}::uuid, $${base + 2}::uuid, $${base + 3}::uuid)`;
       });
-      const updateResult = await query<{ changed: string }>(
+      const updateResult = await executor.query(
         `WITH identity_updates(new_trade_id, legacy_trade_id, parent_trade_id) AS (
            VALUES ${updateValues.join(",")}
          ),
@@ -379,7 +439,7 @@ async function upsertLedgerRows(rows: LedgerRow[]) {
          SELECT COUNT(*)::text AS changed FROM updated`,
         updateParams,
       );
-      changedTradeIds += Number(updateResult[0]?.changed ?? 0);
+      changedTradeIds += Number((updateResult.rows[0] as { changed?: string } | undefined)?.changed ?? 0);
     }
 
     const params: unknown[] = [];
@@ -423,7 +483,7 @@ async function upsertLedgerRows(rows: LedgerRow[]) {
         $${base + 27}, $${base + 28}::jsonb)`;
     });
 
-    await query(
+    await executor.query(
       `INSERT INTO trades (
          trade_id, origin, strategy_family, strategy_variant, engine_version,
          anchor_type, anchor_version, symbol, asset_class, direction, source_model, tier,
@@ -488,11 +548,31 @@ async function main() {
     }
   }
 
-  const migrationResult = await upsertLedgerRows(rows);
+  const filteredRows = rows.filter((row) => (
+    (VARIANT_FILTER.length === 0 || VARIANT_FILTER.includes(row.strategyVariant)) &&
+    (WEEK_FILTER.length === 0 || WEEK_FILTER.includes(row.weekOpenUtc)) &&
+    (SYMBOL_FILTER.length === 0 || SYMBOL_FILTER.includes(row.symbol))
+  ));
+
+  if (VARIANT_FILTER.length > 0 && filteredRows.length === 0) {
+    throw new Error(`No ledger rows matched TRADE_LEDGER_VARIANTS=${VARIANT_FILTER.join(",")}`);
+  }
+  if (WEEK_FILTER.length > 0 && filteredRows.length === 0) {
+    throw new Error(`No ledger rows matched TRADE_LEDGER_WEEKS=${WEEK_FILTER.join(",")}`);
+  }
+  if (SYMBOL_FILTER.length > 0 && filteredRows.length === 0) {
+    throw new Error(`No ledger rows matched TRADE_LEDGER_SYMBOLS=${SYMBOL_FILTER.join(",")}`);
+  }
+
+  const { replacementResult, migrationResult } = await transaction(async (client) => {
+    const replacementResult = await replaceExistingBacktestRowsForVariants(filteredRows, client);
+    const migrationResult = await upsertLedgerRows(filteredRows, client);
+    return { replacementResult, migrationResult };
+  });
 
   const counts = new Map<string, number>();
   let warnings = 0;
-  for (const row of rows) {
+  for (const row of filteredRows) {
     addCount(counts, `${row.origin} × ${row.strategyFamily} × ${row.anchorType}`);
     if (row.warnings.length > 0) warnings += 1;
   }
@@ -505,8 +585,15 @@ async function main() {
   );
 
   console.log("Universal trade ledger migration complete");
+  console.log(`Engine prefix: ${ENGINE_VERSION_PREFIX}`);
+  console.log(`Variant filter: ${VARIANT_FILTER.length > 0 ? VARIANT_FILTER.join(", ") : "none"}`);
+  console.log(`Week filter: ${WEEK_FILTER.length > 0 ? WEEK_FILTER.join(", ") : "none"}`);
+  console.log(`Symbol filter: ${SYMBOL_FILTER.length > 0 ? SYMBOL_FILTER.join(", ") : "none"}`);
   console.log(`Source shards: ${shards.length}`);
-  console.log(`Rows upserted: ${rows.length}`);
+  console.log(`Variants replaced: ${replacementResult.variants.length}`);
+  console.log(`Engine versions replaced: ${replacementResult.engineVersions.length}`);
+  console.log(`Existing backtest rows deleted: ${replacementResult.deletedRows}`);
+  console.log(`Rows upserted: ${filteredRows.length}`);
   console.log(`Trade UUIDs changed: ${migrationResult.changedTradeIds}`);
   for (const [key, value] of [...counts.entries()].sort()) {
     console.log(`- ${key}: ${value}`);
