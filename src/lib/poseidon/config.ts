@@ -70,8 +70,8 @@ export const config = {
     process.env.MAX_CONVERSATION_HISTORY?.trim() || "20",
     "MAX_CONVERSATION_HISTORY",
   ),
-  memoryDir: process.env.POSEIDON_MEMORY_DIR?.trim() || "./docs/ai/poseidon/memory",
-  stateDir: process.env.POSEIDON_STATE_DIR?.trim() || "./docs/ai/poseidon/state",
+  memoryDir: process.env.POSEIDON_MEMORY_DIR?.trim() || "./poseidon/memory",
+  stateDir: process.env.POSEIDON_STATE_DIR?.trim() || "./poseidon/state",
 } as const;
 
 export type PoseidonBehaviorKey =

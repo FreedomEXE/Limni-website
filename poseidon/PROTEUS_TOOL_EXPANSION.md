@@ -599,7 +599,7 @@ When Freedom asks about any of these domains, use the appropriate tool. Never sa
 
 When ready to implement, give Codex the following directive:
 
-> Implement all 18 new tools defined in `docs/ai/poseidon/PROTEUS_TOOL_EXPANSION.md`.
+> Implement all 18 new tools defined in `poseidon/PROTEUS_TOOL_EXPANSION.md`.
 > Phase 1 tools reuse existing query functions from `nereus-queries.ts`, `connectedAccounts.ts`,
 > and `cronStatus.ts`. Phase 2 tools need new SQL queries — follow the SQL patterns shown in
 > the spec. All tools are read-only. Never expose encrypted secrets. Add entries to both

@@ -7,6 +7,7 @@ MVP dashboard and API to compute weekly COT dealer bias and expose a stable JSON
 Before changing files, read the active repo map:
 
 - `docs/REPO_STRUCTURE.md`
+- `poseidon/README.md`
 
 ## Setup
 

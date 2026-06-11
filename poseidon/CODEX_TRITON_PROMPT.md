@@ -36,7 +36,7 @@ Every 30 seconds:
 
 ### State Tracking
 
-Triton maintains an in-memory state object that tracks last-seen values for each monitored field. On startup, it initializes from the DB (no false alerts on restart). State is also persisted to `docs/ai/poseidon/state/triton_state.json` for crash recovery.
+Triton maintains an in-memory state object that tracks last-seen values for each monitored field. On startup, it initializes from the DB (no false alerts on restart). State is also persisted to `poseidon/state/triton_state.json` for crash recovery.
 
 ---
 
@@ -393,7 +393,7 @@ Rewrite the existing `triton.ts` to be the Triton engine. It should:
 3. Run a `setInterval` every 30 seconds that calls all monitors
 4. Filter alerts through dedup
 5. Send via Telegram with `formatTritonAlert()`
-6. Persist state to `docs/ai/poseidon/state/triton_state.json` every 5 minutes (crash recovery)
+6. Persist state to `poseidon/state/triton_state.json` every 5 minutes (crash recovery)
 7. Export `stopTriton()` for graceful shutdown
 
 ```typescript
@@ -478,7 +478,7 @@ Keep the old `AlertStyle` type and `ALERT_LABELS` for backwards compatibility bu
 
 ## Behavior Configuration
 
-Triton respects the existing behavior flags in `docs/ai/poseidon/state/behavior.json`:
+Triton respects the existing behavior flags in `poseidon/state/behavior.json`:
 
 ```json
 {
@@ -506,7 +506,7 @@ If `verboseMode` is true, also send LOW priority alerts that are normally suppre
 - `src/lib/poseidon/config.ts` — leave as-is (add new config fields if needed)
 - `src/lib/poseidon/behavior.ts` — leave as-is (read behavior flags, don't change the schema)
 - `src/lib/poseidon/state.ts` — leave as-is
-- `docs/ai/poseidon/memory/*` — leave as-is
+- `poseidon/memory/*` — leave as-is
 - Any files in `src/` outside of `src/lib/poseidon/` — DO NOT TOUCH
 - Database schema — DO NOT add tables or triggers. Read-only queries only.
 
@@ -524,7 +524,7 @@ If `verboseMode` is true, also send LOW priority alerts that are normally suppre
 8. Alert formatting matches the examples above (clean, no box borders, mobile-readable)
 9. Behavior flags are respected (alertsEnabled, milestoneAlerts, etc.)
 10. State is persisted to `triton_state.json` for crash recovery
-11. No files outside `src/lib/poseidon/` and `docs/ai/poseidon/` are modified
+11. No files outside `src/lib/poseidon/` and `poseidon/` are modified
 12. All existing Proteus functionality (chat, /start, /health, /status, /clear) still works
 
 ---

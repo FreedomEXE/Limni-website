@@ -6,12 +6,13 @@ stale rule dump.
 
 ## Read First
 
-1. [Operating Rules](docs/process/OPERATING_RULES.md)
-2. [Project Profile](docs/process/PROJECT_PROFILE.md)
-3. [Repo Structure](docs/REPO_STRUCTURE.md)
-4. [Release Template](docs/process/RELEASE_TEMPLATE.md)
-5. [Cleanup Ledger](docs/process/CLEANUP_LEDGER.md) when doing repo cleanup
-6. [Backtest Canonical Protocol](docs/BACKTEST_CANONICAL_PROTOCOL.md) before
+1. [Poseidon Profile](poseidon/README.md)
+2. [Operating Rules](docs/process/OPERATING_RULES.md)
+3. [Project Profile](docs/process/PROJECT_PROFILE.md)
+4. [Repo Structure](docs/REPO_STRUCTURE.md)
+5. [Release Template](docs/process/RELEASE_TEMPLATE.md)
+6. [Cleanup Ledger](docs/process/CLEANUP_LEDGER.md) when doing repo cleanup
+7. [Backtest Canonical Protocol](docs/BACKTEST_CANONICAL_PROTOCOL.md) before
    strategy research, backtests, reconstruction, or strategy comparison
 
 ## Chat Recovery

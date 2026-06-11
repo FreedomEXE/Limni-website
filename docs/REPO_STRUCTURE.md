@@ -2,15 +2,39 @@
 
 Status: active root map. Repo evidence overrides this file when they conflict.
 
+## Target Root Model
+
+| Path | Owner / Purpose |
+|---|---|
+| `poseidon/` | Finance-sector control layer, project profile, Poseidon memory, and Poseidon-local state seeds. Codex remains the underlying repo driver. |
+| `app/` | Target home for Limni app code and app-facing assets. Transitional manifest only until a build-system migration gate moves runtime folders. |
+| `services/` | Target home for deployable non-Next services. Transitional manifest only until automation-specific migration gates move service roots. |
+| `database/` | Target home for database-owned assets. Transitional manifest only until DB and contract paths are migrated together. |
+| `docs/` | Active durable documentation. Archive stale docs under `archive/docs/`. |
+| `archive/` | Inactive material that is no longer current truth. |
+| `releases/` | Release history, evidence, screenshots, release notes, and release canon. Keep at root. |
+| `config/` | Target home for movable config documentation. Most tool-discovered config files stay at root. |
+
 ## Runtime App
 
 | Path | Owner / Purpose |
 |---|---|
-| `src/` | Next.js app, API routes, UI, app data logic, and tests under `src/lib/__tests__`. Clean during app-surface gates, not broad repo cleanup gates. |
-| `public/` | Runtime public assets. Only assets served by the app belong here. |
+| `src/` | Next.js app, API routes, UI, app data logic, and tests under `src/lib/__tests__`. Transitional root until an app build-system migration gate. |
+| `public/` | Runtime public assets. Transitional root until an app build-system migration gate. Only assets served by the app belong here. |
 | `db/`, `migrations/`, `contracts/` | Durable database and data contracts. Treat as production-sensitive. |
-| `bots/`, `mt5/` | Trading automation and MT5 integration surfaces. Clean only in automation-specific gates. |
-| `tests/` | Playwright E2E tests. Unit tests currently run from `src/lib/__tests__` through `vitest.config.ts`. |
+| `bots/`, `mt5/`, `scraper/` | Trading automation, MT5 integration, and capture services. Transitional roots until service migration gates. |
+| `tests/` | Playwright E2E tests. Transitional root until an app build-system migration gate. Unit tests currently run from `src/lib/__tests__` through `vitest.config.ts`. |
+
+## Workflow And Deploy Anchors
+
+| Path | Anchor |
+|---|---|
+| `.github/workflows/contract-artifacts-sync.yml` | Active GitHub workflow. Watches `contracts/**`, `src/lib/mt5/**`, and `mt5/Experts/Include/Generated/**`; moving contracts or MT5 requires updating this workflow and proving contract generation. |
+| `.github/workflows/performance-coverage-nightly.yml` | Active scheduled workflow. Runs `npm run performance:coverage:check`; moving `scripts/` or performance report paths requires updating this job. |
+| `.github/workflows/force-vercel-deploy.yml` | Active manual workflow. Does not block folder moves by itself, but still relies on Vercel deploy configuration. |
+| `render.yaml` | Starts bots through `npm run bot:bitget` and `npm run bot:oanda`; moving `bots/` requires package script updates. |
+| `.vercelignore` | Excludes root data/research/report/database/contract/MT5 payloads from Vercel. Moving those roots changes deploy contents unless this file moves with them. |
+| `.husky/pre-commit` | Checks staged MT5 source paths. Moving `mt5/` requires updating the hook. |
 
 ## Tooling And Evidence
 
@@ -29,7 +53,6 @@ Status: active root map. Repo evidence overrides this file when they conflict.
 |---|---|
 | `research/` | Non-binding research workspace. Promote durable decisions into `docs/research/` or release evidence. |
 | `sports/` | Sports research and forward-test workspace. Separate from Limni app runtime unless explicitly integrated. |
-| `scraper/` | Browser/data capture workspace with its own dependency tree. Do not mix with app cleanup. |
 | `data/` | Local/tracked data artifacts. New generated data is ignored by default; verify ownership before committing. |
 
 ## Durable Documentation
@@ -42,7 +65,7 @@ Status: active root map. Repo evidence overrides this file when they conflict.
 | `docs/testing/` | Testing and app-parity protocols. |
 | `docs/research/` | Durable research memos that support decisions but do not bind runtime behavior. |
 | `docs/backlog/` | Backlog inventory. Verify entries before treating them as active work. |
-| `docs/archive/` | Stale handoffs, legacy agent notes, old planning material, and archived assets. |
+| `archive/docs/` | Stale handoffs, legacy agent notes, old planning material, and archived assets. |
 
 ## Local / Generated Folders
 

@@ -13,7 +13,7 @@ Build the Poseidon Telegram bot — Phase 1 MVP. This is a Telegram bot that ser
 
 ## Project Setup
 
-Poseidon lives **inside the existing limni-website codebase** — same repo, same DB, same infrastructure. The bot modules go under `src/lib/poseidon/` and the memory/state files go under `docs/ai/poseidon/`.
+Poseidon lives **inside the existing limni-website codebase** — same repo, same DB, same infrastructure. The bot modules go under `src/lib/poseidon/` and the memory/state files go under `poseidon/`.
 
 ### Additional Dependencies to Add
 
@@ -34,7 +34,7 @@ Poseidon modules live inside the existing limni-website project:
 
 ```
 limni-website/
-├── docs/ai/poseidon/
+├── poseidon/
 │   ├── memory/
 │   │   ├── PROTEUS_CORE.md           (already written)
 │   │   ├── TRADING_FRAMEWORK.md      (already written)
@@ -377,8 +377,8 @@ TELEGRAM_BOT_TOKEN=              # From @BotFather
 TELEGRAM_OWNER_ID=               # Freedom's Telegram user ID
 PROTEUS_MODEL=claude-sonnet-4-5-20250929
 MAX_CONVERSATION_HISTORY=50
-POSEIDON_MEMORY_DIR=./docs/ai/poseidon/memory
-POSEIDON_STATE_DIR=./docs/ai/poseidon/state
+POSEIDON_MEMORY_DIR=./poseidon/memory
+POSEIDON_STATE_DIR=./poseidon/state
 ```
 
 ### 11. Running the Bot

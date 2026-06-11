@@ -81,7 +81,7 @@ Poseidon lives inside the limni-website codebase — same repo, same DB, same in
 
 ```
 limni-website/
-├── docs/ai/poseidon/
+├── poseidon/
 │   ├── memory/
 │   │   ├── PROTEUS_CORE.md          — Identity, personality, communication style
 │   │   ├── TRADING_FRAMEWORK.md     — COT bias, session ranges, entry logic, risk management
@@ -478,7 +478,7 @@ All architectural questions have been answered by Freedom. These are locked in f
 | 2 | **Alert granularity** | Skip +2% (too noisy). Alert on +5%, +10%, breakeven. Trade open/close always alert. |
 | 3 | **Nereus schedule** | Two briefings: Pre-Asia (23:30 UTC) + Pre-NY (12:30 UTC). Timed before the two major sessions. |
 | 4 | **Claude Code replacement** | Separate future project. A personal AI assistant that oversees ALL projects. Poseidon is Limni-specific only. |
-| 5 | **Repo structure** | Inside limni-website repo. Code at `src/lib/poseidon/`, memory/state at `docs/ai/poseidon/`. Runs as a separate Render Worker service alongside the Next.js app. Personal AI assistant (future) will be a separate project. |
+| 5 | **Repo structure** | Inside limni-website repo. Code at `src/lib/poseidon/`, memory/state at `poseidon/`. Runs as a separate Render Worker service alongside the Next.js app. Personal AI assistant (future) will be a separate project. |
 | 6 | **Model choice** | Sonnet 4.5 (`claude-sonnet-4-5-20250929`) — same as Jarvis. Ran for weeks on Will's max plan with zero issues. Token-efficient. Haiku 4.5 for Nereus triage. |
 
 ---
@@ -488,7 +488,7 @@ All architectural questions have been answered by Freedom. These are locked in f
 1. ~~Freedom reviews this architecture doc~~ **DONE**
 2. ~~Iterate on open questions~~ **DONE** (see Section 14)
 3. ~~Write knowledge base files~~ **DONE** (PROTEUS_CORE.md, TRADING_FRAMEWORK.md, BOT_OPERATIONS.md, MARKET_KNOWLEDGE.md)
-4. ~~Write Codex Phase 1 prompt~~ **DONE** (docs/ai/poseidon/CODEX_PHASE1_PROMPT.md)
+4. ~~Write Codex Phase 1 prompt~~ **DONE** (poseidon/CODEX_PHASE1_PROMPT.md)
 5. Send Codex prompt → build Phase 1 MVP (Proteus core + Triton alerts) inside limni-website
 6. Create Telegram bot via @BotFather, add env vars
 7. Deploy Poseidon as Render Worker service (same repo, separate process)

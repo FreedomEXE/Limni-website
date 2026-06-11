@@ -95,7 +95,7 @@ These updates do **not** change the final institutional readiness decision: crit
 | | Claude | Codex |
 |---|--------|-------|
 | **Finding** | Poseidon scheduler paths are implemented, but production scheduler reliability is not yet proven/operationalized | "Self-discovery only" requirement conflicts with documented prompt-memory curation patterns and unclear authority boundaries |
-| **Evidence** | Startup flow invokes Triton/Nereus/Poseidon scheduling; previous incident context indicated runtime issues on Render | plan.md L104, poseidon-architecture.md L110, PROTEUS_CORE.md L110, CODEX_MEMORY_ARCHITECTURE.md L77, plus DB-backed state implementation |
+| **Evidence** | Startup flow invokes Triton/Nereus/Poseidon scheduling; previous incident context indicated runtime issues on Render | plan.md L104, ARCHITECTURE.md L110, PROTEUS_CORE.md L110, CODEX_MEMORY_ARCHITECTURE.md L77, plus DB-backed state implementation |
 | **Impact** | Without runtime reliability evidence, autonomous monitoring cannot be trusted. Without clear authority boundaries, ops context can drift between queryable state and curated memory | Both: The "if I died it would run itself" vision cannot work |
 
 **Unified Assessment:** The gap is now framed as **proof and governance**, not just feature existence. Scheduler startup paths exist; institutional readiness still requires runtime SLO evidence, alerting evidence, and a hard rule that operational truth comes from queryable APIs/DB contracts.

@@ -475,7 +475,7 @@ The 1.09 level lines up with a weekly liquidity void too. Good eye.
 | `src/lib/poseidon/group-memory.ts` | Group context load/save, conversation isolation |
 | `src/lib/poseidon/group-scoring.ts` | Batch scoring logic, aggregation, prediction tracking |
 | `src/lib/poseidon/group-commands.ts` | Freedom-only DM commands for group management |
-| `docs/ai/poseidon/memory/PROTEUS_GROUP_CORE.md` | Group persona system prompt |
+| `poseidon/memory/PROTEUS_GROUP_CORE.md` | Group persona system prompt |
 
 ### Modified Files
 

@@ -195,8 +195,8 @@ Note: Node.js is single-threaded so true reentrancy in the pthread sense doesn't
 Add to `.gitignore`:
 ```
 # Poseidon runtime state (sensitive — lives on server only)
-docs/ai/poseidon/state/
-docs/ai/poseidon/archives/
+poseidon/state/
+poseidon/archives/
 ```
 
 If `PROTEUS_STATE.md` is already tracked by git, run `git rm --cached` on it after adding to gitignore.

@@ -346,7 +346,7 @@ export function buildNereusHeader(sessionType: string, dateStr: string, timeStr:
 - `src/lib/poseidon/conversations.ts` — leave as-is
 - `src/lib/poseidon/triton-alerts.ts` — leave as-is (Nereus sends via Telegram directly, not through Triton)
 - `src/lib/poseidon/triton-monitors.ts` — leave as-is
-- `docs/ai/poseidon/memory/*` — leave as-is
+- `poseidon/memory/*` — leave as-is
 - Any files in `src/` outside of `src/lib/poseidon/` — DO NOT TOUCH
 - Database schema — DO NOT modify. Read-only queries only.
 
@@ -364,7 +364,7 @@ export function buildNereusHeader(sessionType: string, dateStr: string, timeStr:
 8. Nereus header uses the scroll-style box with session type and date
 9. Config includes `nereus` model ID
 10. Wired into `index.ts` via `scheduleNereus()`
-11. No files outside `src/lib/poseidon/` and `docs/ai/poseidon/` modified
+11. No files outside `src/lib/poseidon/` and `poseidon/` modified
 12. All existing functionality (Proteus chat, Triton alerts, commands) still works
 
 ---

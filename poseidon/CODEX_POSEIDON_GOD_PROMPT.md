@@ -355,7 +355,7 @@ models: {
 - `src/lib/poseidon/triton-monitors.ts` — leave as-is
 - `src/lib/poseidon/nereus.ts` — leave as-is
 - `src/lib/poseidon/nereus-queries.ts` — leave as-is (Poseidon can import and reuse query functions)
-- `docs/ai/poseidon/memory/*` — leave as-is
+- `poseidon/memory/*` — leave as-is
 - Any files in `src/` outside of `src/lib/poseidon/` — DO NOT TOUCH
 
 ---
@@ -371,7 +371,7 @@ models: {
 7. Poseidon animation is slow (800ms frames) with the ═══ border style
 8. Config includes `poseidon` model ID (Opus 4)
 9. Wired into `index.ts`
-10. No files outside `src/lib/poseidon/` and `docs/ai/poseidon/` modified
+10. No files outside `src/lib/poseidon/` and `poseidon/` modified
 11. All existing functionality (Proteus, Triton, Nereus) still works
 
 ---

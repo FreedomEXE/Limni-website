@@ -64,9 +64,9 @@ When asked "What about Limni's other systems?", Proteus says "I don't have detai
 
 ### 1. `src/lib/poseidon/memory.ts` — Remove hardcoded preamble, add LIMNI_PLATFORM.md
 
-### 2. `docs/ai/poseidon/memory/PROTEUS_CORE.md` — Full personality rewrite
+### 2. `poseidon/memory/PROTEUS_CORE.md` — Full personality rewrite
 
-### 3. `docs/ai/poseidon/memory/LIMNI_PLATFORM.md` — NEW FILE: Full Limni platform knowledge
+### 3. `poseidon/memory/LIMNI_PLATFORM.md` — NEW FILE: Full Limni platform knowledge
 
 ### 4. `src/lib/poseidon/conversations.ts` — Add message buffering (Jarvis pattern)
 
@@ -116,7 +116,7 @@ The `loadSystemPrompt()` function should:
 4. Keep the session state protocol instructions but make them concise
 5. Total budget: 22K chars max (unchanged)
 
-### 2. `docs/ai/poseidon/memory/PROTEUS_CORE.md` — Full Personality Rewrite
+### 2. `poseidon/memory/PROTEUS_CORE.md` — Full Personality Rewrite
 
 Replace the entire file with this content:
 
@@ -249,7 +249,7 @@ You work alongside Nereus (session briefings, Haiku — Phase 2) and Triton (tem
 You are the conversational layer — always available, always sharp.
 ```
 
-### 3. `docs/ai/poseidon/memory/LIMNI_PLATFORM.md` — NEW FILE
+### 3. `poseidon/memory/LIMNI_PLATFORM.md` — NEW FILE
 
 Create this file with comprehensive Limni platform knowledge. Proteus needs to know the ENTIRE platform, not just the Bitget bot. This is what makes him "Freedom's digital twin" when it comes to Limni knowledge.
 
@@ -533,15 +533,15 @@ bot.command("start", async (ctx) => {
 2. Use `response.persistText` for `addMessage()`
 3. On the very first message of a new conversation (empty history), add a hint to the system prompt: `"This is the start of a new conversation. Greet Freedom briefly. Do NOT call any tools unless he asks for specific data."`
 
-Also add an `update_session_state` tool to the tools list (if not already present). This tool writes to `docs/ai/poseidon/state/PROTEUS_STATE.md` and is how Proteus persists long-term memory.
+Also add an `update_session_state` tool to the tools list (if not already present). This tool writes to `poseidon/state/PROTEUS_STATE.md` and is how Proteus persists long-term memory.
 
 ---
 
 ## Files NOT to Modify
 
-- `docs/ai/poseidon/memory/TRADING_FRAMEWORK.md` — leave as-is (already good)
-- `docs/ai/poseidon/memory/BOT_OPERATIONS.md` — leave as-is (already good)
-- `docs/ai/poseidon/memory/MARKET_KNOWLEDGE.md` — leave as-is (already good)
+- `poseidon/memory/TRADING_FRAMEWORK.md` — leave as-is (already good)
+- `poseidon/memory/BOT_OPERATIONS.md` — leave as-is (already good)
+- `poseidon/memory/MARKET_KNOWLEDGE.md` — leave as-is (already good)
 - `src/lib/poseidon/triton.ts` — leave as-is
 - `src/lib/poseidon/tools.ts` — leave as-is (unless adding update_session_state)
 - `src/lib/poseidon/behavior.ts` — leave as-is
@@ -563,7 +563,7 @@ Also add an `update_session_state` tool to the tools list (if not already presen
 7. `index.ts` handles the new return type correctly
 8. First message behavior: Proteus greets briefly without calling tools or dumping data
 9. `/start` command runs the boot animation (frame-by-frame + branded banner) followed by a personality-driven Claude-generated greeting — NOT a hardcoded string
-10. No files outside `src/lib/poseidon/` and `docs/ai/poseidon/` are modified
+10. No files outside `src/lib/poseidon/` and `poseidon/` are modified
 11. All existing tools and commands (/health, /status, /clear, /start) still work
 
 ---

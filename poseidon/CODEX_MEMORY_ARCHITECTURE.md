@@ -22,7 +22,7 @@ Proteus is live and functional but has two categories of problems:
 To resolve prior policy conflicts across Poseidon docs:
 
 - Authoritative runtime state is database-backed in `poseidon_kv`.
-- Files under `docs/ai/poseidon/state/` are seed/fallback artifacts only.
+- Files under `poseidon/state/` are seed/fallback artifacts only.
 - `PROTEUS_STATE.md` remains a committed seed template.
 - Runtime JSON files (`conversations.json`, `behavior.json`, `heartbeat.json`) are non-authoritative and should not be treated as source-of-truth.
 
@@ -77,7 +77,7 @@ Proteus needs old context?
 ### 1.2 File Structure
 
 ```
-docs/ai/poseidon/
+poseidon/
 ├── memory/                          (identity + knowledge — unchanged)
 │   ├── PROTEUS_CORE.md
 │   ├── LIMNI_PLATFORM.md
@@ -131,7 +131,7 @@ export async function getStateSize(): Promise<number> {
 
 ### 1.4 Monthly Archives
 
-**Location:** `docs/ai/poseidon/archives/YYYY-MM.md`
+**Location:** `poseidon/archives/YYYY-MM.md`
 
 **Format for each monthly archive:**
 
@@ -205,7 +205,7 @@ At ~4 chars per token, 50K chars = ~12.5K tokens. Claude Sonnet 4.5 has a 200K t
    After loading the system prompt, if `PROTEUS_STATE.md` alone exceeds `STATE_SOFT_LIMIT_CHARS` (40K), log a warning and set a curation flag.
 
    **Flag specification:**
-   - **Storage:** `docs/ai/poseidon/state/curation_flag.json`
+   - **Storage:** `poseidon/state/curation_flag.json`
    - **Schema:** `{ "requested": boolean, "reason": string, "setAt": string (ISO timestamp) }`
    - **Writer:** `loadSystemPrompt()` in `memory.ts` sets `requested: true` when state exceeds threshold
    - **Consumer:** Poseidon's daily curation in `poseidon-god.ts` checks the flag before running. If `requested: true`, curation runs with elevated priority (processes more aggressively). If `requested: false`, curation still runs daily but with normal threshold logic.
@@ -729,7 +729,7 @@ Archives and state should be committed to git for durability. This should be a p
 
 **Option B (future): Automated.** Add a post-curation step that runs:
 ```bash
-git add docs/ai/poseidon/state/PROTEUS_STATE.md docs/ai/poseidon/archives/
+git add poseidon/state/PROTEUS_STATE.md poseidon/archives/
 git commit -m "poseidon: archive curation $(date -u +%Y-%m-%d)"
 git push
 ```
@@ -973,7 +973,7 @@ The god should know what his lieutenants reported.
 
 A lightweight append-only log that Triton and Nereus write to whenever they fire. Poseidon reads it during the Daily Reckoning, then resets it.
 
-**File:** `docs/ai/poseidon/state/activity_log.json`
+**File:** `poseidon/state/activity_log.json`
 
 **Schema:**
 ```typescript
@@ -1200,7 +1200,7 @@ await resetActivityLog().catch(e => console.warn("[poseidon] Failed to reset act
 - `src/lib/poseidon/behavior.ts` — leave as-is
 - `src/lib/poseidon/animations.ts` — leave as-is
 - All memory `.md` files — leave as-is
-- Any files outside `src/lib/poseidon/` and `docs/ai/poseidon/` — DO NOT TOUCH
+- Any files outside `src/lib/poseidon/` and `poseidon/` — DO NOT TOUCH
 
 ---
 
@@ -1253,7 +1253,7 @@ After building:
 3. Send several messages to build up conversation context
 4. Verify `PROTEUS_STATE.md` can grow beyond 3000 chars
 5. Manually trigger curation: ask Proteus to call `request_poseidon_curation()`
-6. Verify archive file created in `docs/ai/poseidon/archives/YYYY-MM.md`
+6. Verify archive file created in `poseidon/archives/YYYY-MM.md`
 7. Verify archived content was removed from `PROTEUS_STATE.md`
 8. Ask Proteus to recall archived content — should call `get_session_archive` and find it
 9. Verify crash resilience: kill DB connection mid-conversation, bot should recover gracefully

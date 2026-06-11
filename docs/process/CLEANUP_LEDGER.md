@@ -31,10 +31,22 @@ deferred.
 |---|---|---|
 | Root files | Mostly config/manifests/env examples. `nul` remains ignored Windows artifact. | Keep root limited to config/manifests. Do not touch `nul` casually. |
 | `docs/REPO_STRUCTURE.md` | Added as active root map. | Keep current when folders move. |
-| `Limni SVG Pack/` | Moved to `docs/archive/assets/limni-svg-pack/`. | No root action left. |
+| `Limni SVG Pack/` | Moved to `archive/docs/assets/limni-svg-pack/`. | No root action left. |
+| `poseidon/` | Promoted from `docs/ai/poseidon/` to top-level finance-sector control layer. | Keep as active project profile/memory, not general docs or app code. |
+| `app/`, `services/`, `database/`, `config/` | Added as target root manifests only. | Do not move runtime folders into them until dedicated migration gates update package scripts, workflows, deploy config, imports, tests, and docs together. |
 | Local/generated roots | `.codex*`, `.claude`, `.next-dev-logs`, `tmp`, `test-results`, `playwright-report`, release screenshot logs now ignored explicitly. | Delete only with explicit approval or after confirming no active process/evidence dependency. |
 | `releases/v2/canon/*.json` | 12 modified tracked files, huge diff, frozen. | Dedicated canon decision gate only. Do not stage. |
 | `scripts/migrate-trades-to-unified-ledger.ts` | Modified DB mutator with delete/update/insert behavior. | Dedicated DB migration safety review only. |
+
+### Workflow / Deploy Check 2026-06-10
+
+GitHub Actions API showed all three workflows are active:
+
+| Workflow | Latest Runs | Root Cleanup Impact |
+|---|---:|---|
+| `Performance Coverage Nightly` | 99 total; latest scheduled run on 2026-06-10 failed. | Active enough to preserve. Moving `scripts/`, performance scripts, or report paths needs workflow proof. |
+| `Contract Artifacts Sync` | 3 total; latest push run on 2026-05-31 failed. | Still active and path-triggered. Moving `contracts/` or `mt5/` needs workflow, generator, hook, and deploy updates. |
+| `Force Vercel Deploy` | 1 manual run on 2026-02-18 failed. | Does not block folder moves directly, but Vercel deploy config must stay coherent. |
 
 ### Top-Level Folder Classification
 
@@ -79,7 +91,7 @@ deferred.
 | Current Path | Target Path | Reason |
 |---|---|---|
 | `docs/TODO.md` research/backlog additions | `docs/research/` or a future `docs/backlog/` target | `docs/TODO.md` is becoming a junk drawer; keep durable items, but move them into named docs. |
-| `docs/handoffs/*.md` stale handoffs | `docs/archive/handoffs/2026-06/` | v2.0.3 has shipped; handoffs should not remain active truth unless specifically re-opened. |
+| `docs/handoffs/*.md` stale handoffs | `archive/docs/handoffs/2026-06/` | v2.0.3 has shipped; handoffs should not remain active truth unless specifically re-opened. |
 | `docs/handoffs/V2_0_2_TO_DATA_VERIFICATION_HANDOFF.md` new appended verification state | Extract durable content to `docs/data-verification/` or archive with the handoff | Active decisions belong in durable verification docs or session, not old v2.0.2 handoff appendices. |
 | `releases/v2/screenshots/data/*`, `releases/v2/screenshots/performance/*`, `releases/v2/screenshots/status/*` | Future normalized release package screenshot folders | Loose page folders should be grouped under the release-template structure when release docs are normalized. |
 | `scripts/adr-grid-weekly-anchor-ab.ts`, `scripts/backtest-adr-grid-runner-refill.ts`, `scripts/backtest-weekly-hold-adr-exits.ts`, `scripts/audit-clean14-sentiment-regime.ts`, `scripts/compare-snapshot-regimes.ts`, `scripts/report-corrected-path-metrics.ts` | `research/scripts/` or `scripts/research/` | Research-only scripts should not read like production tooling. Target folder should be approved before moving. |
@@ -90,9 +102,9 @@ deferred.
 
 | Path | Target Archive | Reason |
 |---|---|---|
-| `.claude/AGENTS.md`, `.claude/CLAUDE.md` after migrating any useful rules | `docs/archive/agent-notes/` or keep as legacy agent-local docs | These are legacy Claude/Nyx agent files and should not become Limni's active operating rulebook. |
-| `releases/v2/*.md` that are backlog/roadmap/research rather than release evidence | Future `docs/archive/release-planning/2026-06/` or `docs/research/` | `releases/` should hold release history/evidence, not a mixed planning notebook. |
-| `reports/data-verification/**/*.csv` after promotion decision | `docs/archive/reports/2026-06/` or external evidence storage | Generated CSV exports are evidence only if tied to a named release/gate. |
+| `.claude/AGENTS.md`, `.claude/CLAUDE.md` after migrating any useful rules | `archive/docs/agent-notes/` or keep as legacy agent-local docs | These are legacy Claude/Nyx agent files and should not become Limni's active operating rulebook. |
+| `releases/v2/*.md` that are backlog/roadmap/research rather than release evidence | Future `archive/docs/release-planning/2026-06/` or `docs/research/` | `releases/` should hold release history/evidence, not a mixed planning notebook. |
+| `reports/data-verification/**/*.csv` after promotion decision | `archive/docs/reports/2026-06/` or external evidence storage | Generated CSV exports are evidence only if tied to a named release/gate. |
 
 ## Ignore
 
