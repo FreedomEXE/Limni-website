@@ -20,3 +20,6 @@ default:
 
 Move config files here only when the owning tool supports that location and the
 command/deployment path is updated in the same gate.
+
+Do not move `package.json` or `package-lock.json` as simple cleanup. npm, Next,
+Vercel, Render, and GitHub Actions all discover them from repo root today.

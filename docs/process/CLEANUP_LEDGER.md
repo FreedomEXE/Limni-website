@@ -35,7 +35,7 @@ deferred.
 | `poseidon/` | Promoted from `docs/ai/poseidon/` to top-level finance-sector control layer. | Keep as active project profile/memory, not general docs or app code. |
 | `app/`, `services/`, `database/`, `config/` | Added as target root manifests only. | Do not move runtime folders into them until dedicated migration gates update package scripts, workflows, deploy config, imports, tests, and docs together. |
 | Root folder READMEs | Added concise manifests to active root folders that remain in place. | Read the local manifest before changing files in that folder. Keep manifests current as cleanup/app work proceeds. |
-| Local/generated roots | `.codex*`, `.claude`, `.next-dev-logs`, `tmp`, `test-results`, `playwright-report`, release screenshot logs now ignored explicitly. | Delete only with explicit approval or after confirming no active process/evidence dependency. |
+| Local/generated roots | Moved current local-only roots into ignored `Local Environment/`. `.codex-logs` and `.codex-run` now sit under `Local Environment/.codex/`. | Keep local-only artifacts out of root. Old scripts may recreate `.cache/` or `temp/`; normalize those as they are touched. |
 | `releases/v2/canon/*.json` | 12 modified tracked files, huge diff, frozen. | Dedicated canon decision gate only. Do not stage. |
 | `scripts/migrate-trades-to-unified-ledger.ts` | Modified DB mutator with delete/update/insert behavior. | Dedicated DB migration safety review only. |
 

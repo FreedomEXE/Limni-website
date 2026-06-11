@@ -12,6 +12,9 @@ Before changing files, read the active repo map:
 Most top-level folders also include a local `README.md` manifest. Read the local
 manifest before changing files in that folder.
 
+Local-only IDE, agent, cache, build, screenshot, and temp artifacts belong under
+ignored `Local Environment/`, not as loose root folders.
+
 ## Setup
 
 1) Install dependencies:
