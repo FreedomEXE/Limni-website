@@ -1,19 +1,26 @@
 # Response Notification with Modern Neural TTS (edge-tts)
 param(
     [string]$Message = "Response ready",
-    [string]$Voice = "en-GB-RyanNeural"  # Codex default. Options: RyanNeural, LibbyNeural, MaisieNeural, SoniaNeural
+    [string]$Voice = "en-GB-RyanNeural",  # Codex default. Options: RyanNeural, LibbyNeural, MaisieNeural, SoniaNeural
+    [ValidateSet("Codex", "Freedom", "System")]
+    [string]$Speaker = "Codex",
+    [switch]$NoGreeting
 )
 
-# Random greeting selection
-$greetings = @(
-    "Hello Freedom",
-    "Hey Freedom",
-    "Hi Freedom",
-    "Greetings Freedom",
-    "What's up Freedom"
-)
-$greeting = $greetings | Get-Random
-$fullMessage = "$greeting. $Message"
+if ($NoGreeting) {
+    $fullMessage = "$Speaker summary. $Message"
+} else {
+    # Random greeting selection
+    $greetings = @(
+        "Hello Freedom",
+        "Hey Freedom",
+        "Hi Freedom",
+        "Greetings Freedom",
+        "What's up Freedom"
+    )
+    $greeting = $greetings | Get-Random
+    $fullMessage = "$greeting. $Message"
+}
 
 Write-Host "[Voice] Using modern neural voice: $Voice" -ForegroundColor Cyan
 Write-Host "[Speaking] $fullMessage" -ForegroundColor Green
@@ -52,7 +59,7 @@ try {
         }
 
         # Add a larger buffer so async playback never gets cut off mid-message.
-        $waitDuration = [Math]::Max(10, $actualSeconds + 8)
+        $waitDuration = [Math]::Max(12, $actualSeconds + 10)
         Start-Sleep -Seconds $waitDuration
 
         $mediaPlayer.Stop()

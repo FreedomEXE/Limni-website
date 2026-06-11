@@ -9,6 +9,7 @@ app behavior is correct.
 
 Committed visible root folders are:
 
+- `archive/`
 - `app/`
 - `database/`
 - `docs/`
@@ -41,6 +42,11 @@ Moved database-owned folders under `database/`:
 
 Moved inactive archive material under `docs/archive/`.
 
+Gate 27 corrected the archive model: active folders should not each carry local
+archive trees. Historical material now belongs under root `archive/`, mirrored by
+original repo ownership path. Existing `docs/archive/` was moved to
+`archive/docs/`.
+
 Updated package scripts, TypeScript/Vitest/Playwright config, GitHub workflow
 paths, Vercel ignores, MT5 hook paths, runtime release/report readers, app
 script report outputs, and local cache/data defaults.
@@ -59,8 +65,10 @@ script report outputs, and local cache/data defaults.
 - New app code, scripts, reports, research, services, releases, and public assets
   go under `app/`.
 - New database schema, migrations, and contracts go under `database/`.
-- Durable documentation goes under `docs/`; stale docs go under `docs/archive/`.
+- Durable documentation goes under `docs/`; stale docs go under `archive/docs/`.
 - Poseidon profile/control-plane material goes under `poseidon/`.
+- Stale material from any active folder goes under root `archive/`, mirroring its
+  original ownership path, such as `archive/app/src/` or `archive/config/`.
 - Local-only caches, agent state, logs, screenshots, temporary files, and local
   data go under ignored `Local Environment/`.
 - Do not create new loose root folders.

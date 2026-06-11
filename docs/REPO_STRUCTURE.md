@@ -8,9 +8,10 @@ Status: active map. Repo evidence overrides this file when they conflict.
 |---|---|
 | `app/` | App-owned code, assets, scripts, services, research, reports, releases, and tests. |
 | `database/` | Schema, migrations, and data/integration contracts. |
-| `docs/` | Durable documentation, process, architecture, backlog, and archive. |
+| `docs/` | Durable documentation, process, architecture, and backlog. |
 | `poseidon/` | Limni/Poseidon project profile and control-plane notes. |
 | `config/` | Config documentation for root-discovered tool files. |
+| `archive/` | Historical material mirrored by original repo ownership path. |
 
 Hidden roots `.github/` and `.husky/` are workflow hooks and remain at root.
 Ignored local roots such as `Local Environment/` and `node_modules/` are not repo
@@ -56,6 +57,11 @@ Root files are limited to repo manifests, package/config files, env examples,
 and platform config. New scratch notes, screenshots, logs, prompts, reports, and
 research outputs should go into `app/`, `docs/`, `database/`, `poseidon/`, or
 ignored `Local Environment/`.
+
+Historical material goes under root `archive/`, mirrored by original ownership
+path. Examples: `archive/docs/...`, `archive/app/src/...`,
+`archive/database/...`. Do not create per-folder archive trees inside active
+areas.
 
 `.env` and `.env.local` stay root-local because Next.js and scripts read them
 there. Do not commit local secrets.

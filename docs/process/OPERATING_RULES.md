@@ -219,8 +219,18 @@ the rule.
 Permanent memory should preserve operating preferences, not stale release crisis
 details.
 
-Old handoffs and release history belong in `docs/`, `app/releases/`, or
-`docs/archive/`, not permanent memory.
+Old handoffs and release history belong in `docs/`, `app/releases/`, or root
+`archive/` with mirrored repo paths, not permanent memory.
+
+Use at most three active running surfaces:
+
+- `CODEX_SESSION.md` for hot recovery and frozen areas.
+- `docs/backlog/CURRENT_WORK.md` for the active checklist.
+- One focused gate/release doc only when the active gate needs durable detail.
+
+Do not create per-folder archive trees inside active areas. Archive stale
+material under root `archive/` using mirrored paths such as `archive/docs/`,
+`archive/app/src/`, `archive/database/`, or `archive/config/`.
 
 Subagents are bounded sensors or reviewers unless a gate explicitly grants a
 disjoint write scope. They do not stage, commit, delete, deploy, or change
@@ -229,6 +239,11 @@ release state.
 Codex voice calls must use `en-GB-RyanNeural` unless Freedom explicitly asks for
 a different Codex voice. Voice script calls should use explicit timeouts:
 `60000` ms for short responses and `120000` ms for longer completion summaries.
+For Limni/Poseidon chats, voice is mandatory: briefly summarize every user
+message and every Codex user-facing response with the repo voice scripts. Use
+`app/scripts/notify-response.ps1` for short summaries and
+`app/scripts/notify-complete-modern.ps1` for completion summaries. Do not send a
+silent final answer.
 
 ## 12. Chat Transition
 

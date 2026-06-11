@@ -12,7 +12,8 @@ stale rule dump.
 4. [Repo Structure](docs/REPO_STRUCTURE.md)
 5. [Release Template](docs/process/RELEASE_TEMPLATE.md)
 6. [Cleanup Ledger](docs/process/CLEANUP_LEDGER.md) when doing repo cleanup
-7. [Backtest Canonical Protocol](docs/BACKTEST_CANONICAL_PROTOCOL.md) before
+7. [Current Work](docs/backlog/CURRENT_WORK.md) for the active checklist
+8. [Backtest Canonical Protocol](docs/BACKTEST_CANONICAL_PROTOCOL.md) before
    strategy research, backtests, reconstruction, or strategy comparison
 
 ## Chat Recovery
@@ -30,6 +31,9 @@ Before any substantive answer, identify yourself in the active project voice,
 name the current objective, active or next gate, frozen areas, and the
 recommended next action. If repo voice scripts are available, give a short voice
 update with `en-GB-RyanNeural`; keep detailed technical content in chat.
+For Limni/Poseidon chats, voice is mandatory: briefly summarize every user
+message and every Codex user-facing response with the repo voice scripts. Do not
+send a silent final answer.
 
 ## Hard Rules
 
@@ -44,6 +48,9 @@ update with `en-GB-RyanNeural`; keep detailed technical content in chat.
 - Versioning uses `liveVersion` and `devVersion` only.
 - `pendingRelease` must not be runtime UI truth.
 - Release evidence belongs under `app/releases/`.
+- Historical/stale material belongs under root `archive/`, mirrored by original
+  repo ownership path. Do not create per-folder archive trees inside active
+  areas.
 - Baseline datasets must not be release-branded.
 - UI counts must be derived from data.
 - `AGENTS.md` is a manifest, not the operating rulebook.
