@@ -9,6 +9,9 @@ Before changing files, read the active repo map:
 - `docs/REPO_STRUCTURE.md`
 - `poseidon/README.md`
 
+Most top-level folders also include a local `README.md` manifest. Read the local
+manifest before changing files in that folder.
+
 ## Setup
 
 1) Install dependencies:
