@@ -1,0 +1,136 @@
+{
+  "currentBasket": {
+    "hierarchyCount": 1,
+    "source": "selected-trade-rows",
+    "gridCounts": [
+      144,
+      36,
+      36,
+      36,
+      36
+    ],
+    "portfolioRows": [
+      "▸Commercial36 grids69W10LP/L+15.05%Max DD-3.10%Max MAE-1.37%",
+      "▸Dealer36 grids68W16LP/L+7.37%Max DD-3.60%Max MAE-1.54%",
+      "▸Sentiment36 grids71W18LP/L+11.16%Max DD-3.97%Max MAE-1.52%",
+      "▸Strength36 grids67W20LP/L+9.86%Max DD-3.97%Max MAE-1.54%"
+    ],
+    "firstRows": [
+      "▸Commercial36 grids69W10LP/L+15.05%Max DD-3.10%Max MAE-1.37%",
+      "▸Dealer36 grids68W16LP/L+7.37%Max DD-3.60%Max MAE-1.54%",
+      "▸Sentiment36 grids71W18LP/L+11.16%Max DD-3.97%Max MAE-1.52%",
+      "▸Strength36 grids67W20LP/L+9.86%Max DD-3.97%Max MAE-1.54%"
+    ],
+    "hasSentimentOnlyMode": false,
+    "hasAwaitingCftc": false,
+    "url": "http://localhost:3000/performance?view=basket&week=2026-06-07T23%3A00%3A00.000Z"
+  },
+  "currentSummaryCards": [
+    {
+      "label": "Dealer Portfolio",
+      "classes": "relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in border-[var(--accent)]/30 bg-[var(--accent)]/10",
+      "returnText": "+7.37%"
+    },
+    {
+      "label": "Commercial Portfolio",
+      "classes": "relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in border-[var(--accent)]/30 bg-[var(--accent)]/10",
+      "returnText": "+15.05%"
+    },
+    {
+      "label": "Sentiment Portfolio",
+      "classes": "relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in border-[var(--accent)]/30 bg-[var(--accent)]/10",
+      "returnText": "+11.16%"
+    },
+    {
+      "label": "Strength Portfolio",
+      "classes": "relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in border-[var(--accent)]/30 bg-[var(--accent)]/10",
+      "returnText": "+9.86%"
+    }
+  ],
+  "jun01Basket": {
+    "hierarchyCount": 1,
+    "source": "selected-trade-rows",
+    "gridCounts": [
+      144,
+      36,
+      36,
+      36,
+      36
+    ],
+    "portfolioRows": [
+      "▸Commercial36 grids62W33LP/L-6.50%Max DD-6.99%Max MAE-2.52%",
+      "▸Dealer36 grids73W15LP/L+10.14%Max DD-1.70%Max MAE-0.90%",
+      "▸Sentiment36 grids57W30LP/L-15.48%Max DD-7.43%Max MAE-2.68%",
+      "▸Strength36 grids55W32LP/L-16.43%Max DD-7.43%Max MAE-2.68%"
+    ],
+    "firstRows": [
+      "▸Commercial36 grids62W33LP/L-6.50%Max DD-6.99%Max MAE-2.52%",
+      "▸Dealer36 grids73W15LP/L+10.14%Max DD-1.70%Max MAE-0.90%",
+      "▸Sentiment36 grids57W30LP/L-15.48%Max DD-7.43%Max MAE-2.68%",
+      "▸Strength36 grids55W32LP/L-16.43%Max DD-7.43%Max MAE-2.68%"
+    ],
+    "hasSentimentOnlyMode": false,
+    "hasAwaitingCftc": false,
+    "url": "http://localhost:3000/performance?view=basket&week=2026-05-31T23%3A00%3A00.000Z"
+  },
+  "may25Basket": {
+    "hierarchyCount": 1,
+    "source": "selected-trade-rows",
+    "gridCounts": [
+      144,
+      36,
+      36,
+      36,
+      36
+    ],
+    "portfolioRows": [
+      "▸Commercial36 grids151W36LP/L+13.69%Max DD-5.26%Max MAE-2.03%",
+      "▸Dealer36 grids158W23LP/L+20.46%Max DD-5.88%Max MAE-2.28%",
+      "▸Sentiment36 grids156W25LP/L+15.86%Max DD-7.06%Max MAE-2.60%",
+      "▸Strength36 grids151W32LP/L+16.10%Max DD-5.26%Max MAE-1.96%"
+    ],
+    "firstRows": [
+      "▸Commercial36 grids151W36LP/L+13.69%Max DD-5.26%Max MAE-2.03%",
+      "▸Dealer36 grids158W23LP/L+20.46%Max DD-5.88%Max MAE-2.28%",
+      "▸Sentiment36 grids156W25LP/L+15.86%Max DD-7.06%Max MAE-2.60%",
+      "▸Strength36 grids151W32LP/L+16.10%Max DD-5.26%Max MAE-1.96%"
+    ],
+    "hasSentimentOnlyMode": false,
+    "hasAwaitingCftc": false,
+    "url": "http://localhost:3000/performance?view=basket&week=2026-05-24T23%3A00%3A00.000Z"
+  },
+  "jun01Simulation": {
+    "hasBalance": true,
+    "hasEquity": true,
+    "hasTotal": true,
+    "url": "http://localhost:3000/performance?view=simulation&week=2026-05-31T23%3A00%3A00.000Z"
+  },
+  "allSimulation": {
+    "hasBalance": true,
+    "hasEquity": true,
+    "hasTotal": true,
+    "url": "http://localhost:3000/performance?view=simulation"
+  },
+  "allSummaryCards": [
+    {
+      "label": "Dealer Portfolio",
+      "classes": "relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in border-[var(--accent)]/30 bg-[var(--accent)]/10",
+      "returnText": "+140.62%"
+    },
+    {
+      "label": "Commercial Portfolio",
+      "classes": "relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in border-[var(--accent)]/30 bg-[var(--accent)]/10",
+      "returnText": "+59.54%"
+    },
+    {
+      "label": "Sentiment Portfolio",
+      "classes": "relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in border-[var(--accent)]/30 bg-[var(--accent)]/10",
+      "returnText": "+24.86%"
+    },
+    {
+      "label": "Strength Portfolio",
+      "classes": "relative rounded-2xl border-2 p-4 text-left transition duration-300 animate-fade-in border-[var(--accent)]/30 bg-[var(--accent)]/10",
+      "returnText": "+54.90%"
+    }
+  ]
+}

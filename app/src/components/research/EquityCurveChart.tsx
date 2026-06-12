@@ -42,6 +42,21 @@ function nearestIndexByTs(points: EquityPoint[], tsMs: number) {
 }
 
 const SERIES_COLORS = ["#10b981", "#38bdf8", "#f59e0b", "#a78bfa", "#f43f5e"];
+const TOTAL_SERIES_COLOR = "var(--accent-strong)";
+
+function resolveSeriesColor(color: string | undefined, fallback: string) {
+  if (!color) return fallback;
+  const normalized = color.trim().toLowerCase().replace(/\s+/g, "");
+  if (
+    normalized === "#fff" ||
+    normalized === "#ffffff" ||
+    normalized === "white" ||
+    normalized === "rgb(255,255,255)"
+  ) {
+    return TOTAL_SERIES_COLOR;
+  }
+  return color;
+}
 
 function isWeekendPoint(tsUtc: string): boolean {
   const d = new Date(tsUtc);
@@ -90,12 +105,12 @@ export default function EquityCurveChart({
         .map((row, idx) => ({
           ...row,
           points: applyFilter(row.points),
-          color: row.color ?? SERIES_COLORS[idx % SERIES_COLORS.length],
+          color: resolveSeriesColor(row.color, SERIES_COLORS[idx % SERIES_COLORS.length]),
         }))
         .filter((row) => row.points.length > 0);
     }
     if (points && points.length > 0) {
-      return [{ id: "primary", label: "Equity", color: SERIES_COLORS[0], points: applyFilter(points) }];
+      return [{ id: "primary", label: "Equity", color: TOTAL_SERIES_COLOR, points: applyFilter(points) }];
     }
     return [];
   }, [points, series, skipWeekends]);
@@ -154,6 +169,7 @@ export default function EquityCurveChart({
   const balanceValueForPoint = (point: EquityPoint) => valueForPct(point, point.balance_pct ?? point.equity_pct);
 
   const primary = displaySeries[0].points;
+  const primarySeriesColor = displaySeries[0].color ?? SERIES_COLORS[0];
   const hasDrawdownData = primary.some((p) => typeof p.drawdown_pct === "number" && p.drawdown_pct < 0);
   const ddZoneH = hasDrawdownData ? 90 : 0;
   const ddGap = hasDrawdownData ? 10 : 0;
@@ -398,7 +414,7 @@ export default function EquityCurveChart({
           {hasPrimaryBalancePath ? (
             <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-[color:var(--muted)]">
               <span className="flex items-center gap-1.5">
-                <span className="h-0.5 w-4 rounded-full bg-white" />
+                <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: primarySeriesColor }} />
                 Equity
               </span>
               <span className="flex items-center gap-1.5">

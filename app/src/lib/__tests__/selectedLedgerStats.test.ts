@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ClosedHistoryBundle, ClosedHistoryRow } from "@/lib/basket/basketSummaryTypes";
+import { buildClosedHistoryBundleFromStrategyResults } from "@/lib/basket/strategyRuntimeRows";
 import { buildSelectedLedgerStats } from "@/lib/appTruth/selectedLedgerStats";
+import type { WeeklyHoldResult } from "@/lib/performance/weeklyHoldEngine";
 import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
 
 const executionRaw: ViewMode = {
@@ -102,6 +104,126 @@ describe("selectedLedgerStats", () => {
         trades: 2,
       }),
     ]);
+  });
+
+  it("keeps planned ADR grid rows in selected ledgers without counting them as fills", () => {
+    const result: WeeklyHoldResult = {
+      weekOpenUtc: "2026-01-05T00:00:00.000Z",
+      biasSourceId: "dealer",
+      trades: [
+        {
+          symbol: "EURUSD",
+          assetClass: "fx",
+          direction: "LONG",
+          openPrice: 1.1,
+          closePrice: 1.12,
+          returnPct: 1.5,
+          rawReturnPct: 1.5,
+          source: "dealer",
+          tier: 1,
+          detail: {
+            tradeNumber: 1,
+            entryTimeUtc: "2026-01-05T01:00:00.000Z",
+            exitTimeUtc: "2026-01-05T02:00:00.000Z",
+            exitReason: "grid_tp",
+            anchorPrice: 1.1,
+            tpPrice: 1.12,
+            adrPct: 2,
+            maePct: 0.1,
+            gridPathDrawdownRawPct: 0.2,
+            capActiveFillsAtEntry: 1,
+            capThresholdAtEntry: 3,
+            capViolated: false,
+          },
+        },
+      ],
+      totalReturnPct: 1.5,
+      winCount: 1,
+      lossCount: 0,
+      winRate: 100,
+      tradeCount: 1,
+      plannedTrades: [
+        {
+          symbol: "AUDUSD",
+          assetClass: "fx",
+          direction: "SHORT",
+          openPrice: 0.66,
+          closePrice: 0.66,
+          returnPct: 0,
+          rawReturnPct: 0,
+          source: "dealer",
+          tier: 1,
+          adrPct: 2,
+          detail: {
+            tradeNumber: 1,
+            entryTimeUtc: "2026-01-05T00:00:00.000Z",
+            exitTimeUtc: null,
+            exitReason: "grid_planned",
+            anchorPrice: 0.66,
+            tpPrice: null,
+            adrPct: 2,
+            maePct: null,
+            gridPathDrawdownRawPct: null,
+            capActiveFillsAtEntry: null,
+            capThresholdAtEntry: null,
+            capViolated: false,
+          },
+        },
+        {
+          symbol: "EURUSD",
+          assetClass: "fx",
+          direction: "LONG",
+          openPrice: 1.1,
+          closePrice: 1.1,
+          returnPct: 0,
+          rawReturnPct: 0,
+          source: "dealer",
+          tier: 1,
+          adrPct: 2,
+          detail: {
+            tradeNumber: 2,
+            entryTimeUtc: "2026-01-05T00:00:00.000Z",
+            exitTimeUtc: null,
+            exitReason: "grid_planned",
+            anchorPrice: 1.1,
+            tpPrice: null,
+            adrPct: 2,
+            maePct: null,
+            gridPathDrawdownRawPct: null,
+            capActiveFillsAtEntry: null,
+            capThresholdAtEntry: null,
+            capViolated: false,
+          },
+        },
+      ],
+      displayUnit: "grids",
+      signals: [],
+      isRealized: true,
+    };
+
+    const closedBundle = buildClosedHistoryBundleFromStrategyResults({
+      strategyVariant: "tandem-adr_grid-pair_fill_cap",
+      weekResults: { [result.weekOpenUtc]: result },
+      generatedAt: "2026-01-06T00:00:00.000Z",
+    });
+    const gridRows = closedBundle.rows.filter((closedRow) => closedRow.rowKind === "grid");
+    const fillRows = closedBundle.rows.filter((closedRow) => closedRow.rowKind === "fill");
+
+    expect(gridRows.map((closedRow) => closedRow.symbol)).toEqual(["AUDUSD", "EURUSD"]);
+    expect(fillRows).toHaveLength(1);
+    expect(gridRows.find((closedRow) => closedRow.symbol === "AUDUSD")?.returnMatrix.execution?.rawPct).toBe(0);
+
+    const stats = buildSelectedLedgerStats({
+      bundle: closedBundle,
+      selectedWeek: result.weekOpenUtc,
+      scope: ["fx"],
+      viewMode: executionRaw,
+    });
+
+    expect(stats.summary?.returnPct).toBe(1.5);
+    expect(stats.summary?.tradeCount).toBe(1);
+    expect(stats.metricRowCount).toBe(2);
+    expect(stats.leafRowCount).toBe(1);
   });
 
   it("filters by selected scope without replacing missing rows with zero metrics", () => {

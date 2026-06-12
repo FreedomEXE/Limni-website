@@ -20,27 +20,29 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 28: versioning-documents-popover.
+Gate 29: performance-data-correctness.
 
-Status: completed and pushed as v2.0.4.
+Status: completed and packaged as v2.0.5.
 
 Goal:
 
-- Make future version updates behave and look the same in Documents.
-- Align v1 and v2 document/release structure so old versions do not drift into
-  a separate pattern.
-- Simplify the version popover to current live and next dev version only.
-- Keep runtime version truth to `liveVersion` and `devVersion`; do not use
-  `pendingRelease` as UI truth.
-- Inspect existing docs/code first, then patch narrowly.
+- Align current-week and stored-week Performance UI behavior without changing
+  untrusted strategy numbers.
+- Keep Basket counts data-derived and consistent across current, previous, and
+  all-time views.
+- Preserve equity-vs-balance path visibility for stored weeks.
+- Keep current-week Summary card tone consistent with stored weeks.
+- Do not start strategy optimization, Pair Fill Cap redesign, or sentiment
+  decisions until ADR Grid numbers are trusted.
 
 ## Next Gates
 
-Recommended Gate 29: `adr-grid-parity`.
+Recommended next data gate: `Gate 30: adr-grid-parity`.
 
 1. ADR Grid app-vs-indicator parity audit.
 2. Weekly Hold engine verification.
 3. Sentiment decision gate.
+4. Rollover/status UX audit for COT, sentiment, and strength source readiness.
 
 ## Repo Size / Consolidation WIP
 
@@ -60,7 +62,7 @@ only when they simplify ownership enough to retire older paths.
 ## Active Context
 
 - Version UI should use `liveVersion` and `devVersion` only.
-- Current live version is `v2.0.4`.
+- Current live version is `v2.0.5`.
 - `pendingRelease` must not be runtime UI truth or visible as a separate
   runtime state.
 - Documents/release docs should use one simple structure across versions.
@@ -78,6 +80,45 @@ only when they simplify ownership enough to retire older paths.
 - Strategy work is three layers: baseline/data direction, ADR Grid execution,
   and risk management.
 - Do not optimize trading logic until current numbers are trusted.
+
+## Gate 29 Notes
+
+- Current-week Summary card shading is visually accepted.
+- Basket behavior is visually consistent across current and previous weeks.
+- Jun 08, Jun 01, and May 25 Basket views show 144 total grids and 36 grids per
+  portfolio after the selected trade-row path was shared.
+- Stored-week Simulation now shows Equity and Balance. The shared
+  `EquityCurveChart` should not render Total/Equity as white in light mode.
+- No-fill current-week grids still show `P/L 0.00%`; changing that is strategy
+  math and belongs in ADR Grid indicator parity.
+- `/api/system/mode` can report normal/fresh COT while the missing warning
+  banner leaves the user unsure whether new data has arrived. Rollover/status
+  should show source freshness clearly without reviving "sentiment-only" copy.
+- Dealer/Commercial COT may be fresh while Sentiment/Strength update later.
+  Rollover logic should distinguish partial source readiness instead of making
+  the app feel blocked on every source.
+
+## Gate 29 Result
+
+Packaged as `v2.0.5`:
+
+- Runtime manifests now use `liveVersion: v2.0.5` and
+  `cacheNamespace: v2.0.5-gate29-performance-data-correctness`.
+- Current, stored, and all-time Basket views share the selected trade-row
+  hierarchy.
+- Planned ADR grid rows are present for Basket count parity without counting as
+  fills or changing P/L.
+- Stored-week Simulation keeps Equity, Balance, and Total path visibility.
+- Summary portfolio cards shade from signed return across current and stored
+  weeks.
+- The stale COT banner copy no longer exposes old sentiment-only mode language.
+- Equity/Total chart colours are theme-safe in light and dark mode.
+- Release evidence lives under
+  `app/releases/v2/screenshots/performance-data-correctness-2026-06-12/`.
+- No `app/releases/v2/canon/*.json` files were changed.
+
+Next chat should not reopen Gate 29 unless Freedom explicitly asks. Start with
+`Gate 30: adr-grid-parity` unless Freedom redirects.
 
 ## Gate 28 Result
 

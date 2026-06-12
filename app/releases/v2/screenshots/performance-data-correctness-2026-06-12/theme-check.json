@@ -1,0 +1,66 @@
+{
+  "light": {
+    "htmlTheme": "light",
+    "hasEquityLabel": false,
+    "hasBalanceLabel": false,
+    "swatches": [
+      {
+        "text": "Equity",
+        "background": "rgb(0, 82, 71)"
+      },
+      {
+        "text": "Total",
+        "background": "rgb(0, 82, 71)"
+      }
+    ],
+    "uniqueStrokes": [
+      "currentColor",
+      "none",
+      "rgba(244,63,94,0.6)",
+      "#f59e0b",
+      "var(--accent-strong)"
+    ],
+    "dashedPaths": [
+      {
+        "strokeAttr": "#f59e0b",
+        "stroke": "rgb(245, 158, 11)",
+        "fillAttr": "none",
+        "fill": "none",
+        "dash": "7 5"
+      }
+    ],
+    "hasWhiteStroke": false
+  },
+  "dark": {
+    "htmlTheme": "dark",
+    "hasEquityLabel": false,
+    "hasBalanceLabel": false,
+    "swatches": [
+      {
+        "text": "Equity",
+        "background": "rgb(0, 196, 160)"
+      },
+      {
+        "text": "Total",
+        "background": "rgb(0, 196, 160)"
+      }
+    ],
+    "uniqueStrokes": [
+      "currentColor",
+      "none",
+      "rgba(244,63,94,0.6)",
+      "#f59e0b",
+      "var(--accent-strong)"
+    ],
+    "dashedPaths": [
+      {
+        "strokeAttr": "#f59e0b",
+        "stroke": "rgb(245, 158, 11)",
+        "fillAttr": "none",
+        "fill": "none",
+        "dash": "7 5"
+      }
+    ],
+    "hasWhiteStroke": false
+  }
+}

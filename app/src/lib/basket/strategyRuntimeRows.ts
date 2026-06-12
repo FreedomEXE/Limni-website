@@ -142,10 +142,12 @@ export function closedRowsFromStrategyTrades(options: {
   strategyVariant: string;
   weekOpenUtc: string;
   trades: WeeklyHoldTrade[];
+  plannedTrades?: WeeklyHoldTrade[];
 }): ClosedHistoryRow[] {
   const strategyFamily = options.strategyVariant.includes("-adr_grid-") ? "adr_grid" : "weekly_hold";
   const rows: ClosedHistoryRow[] = [];
   const gridGroups = new Map<string, WeeklyHoldTrade[]>();
+  const gridRowKeys = new Set<string>();
 
   for (const trade of options.trades) {
     const assetClass = normalizeAssetClass(trade.assetClass);
@@ -245,6 +247,7 @@ export function closedRowsFromStrategyTrades(options: {
       first.direction,
       "grid",
     ].join("|");
+    gridRowKeys.add(stableTradeId);
 
     rows.push({
       rowKind: "grid",
@@ -279,6 +282,59 @@ export function closedRowsFromStrategyTrades(options: {
     });
   }
 
+  if (strategyFamily === "adr_grid") {
+    for (const planned of options.plannedTrades ?? []) {
+      const stableTradeId = [
+        "strategy-runtime",
+        options.strategyVariant,
+        options.weekOpenUtc,
+        planned.symbol,
+        planned.source,
+        planned.tier ?? -1,
+        planned.direction,
+        "grid",
+      ].join("|");
+      if (gridRowKeys.has(stableTradeId)) continue;
+      gridRowKeys.add(stableTradeId);
+      const rawPct = typeof planned.rawReturnPct === "number" && Number.isFinite(planned.rawReturnPct)
+        ? planned.rawReturnPct
+        : planned.returnPct;
+      const adrPct = finiteOrNull(planned.adrPct ?? planned.detail?.adrPct);
+
+      rows.push({
+        rowKind: "grid",
+        origin: "backtest",
+        strategyFamily: "adr_grid",
+        strategyVariant: options.strategyVariant,
+        symbol: planned.symbol,
+        assetClass: normalizeAssetClass(planned.assetClass),
+        weekOpenUtc: options.weekOpenUtc,
+        sourceModel: planned.source,
+        tier: planned.tier,
+        direction: planned.direction,
+        fillSeq: null,
+        parentNaturalRef: null,
+        canonicalTradeId: `${stableTradeId}|canonical`,
+        executionTradeId: `${stableTradeId}|execution`,
+        entryUtc: planned.detail?.entryTimeUtc ?? null,
+        exitUtc: planned.detail?.exitTimeUtc ?? null,
+        entryPrice: planned.openPrice,
+        exitPrice: planned.closePrice,
+        returnMatrix: {
+          canonical: { rawPct },
+          execution: { rawPct },
+          adrPct,
+        },
+        riskMatrix: riskMatrixFromRisk(null, null, adrPct),
+        exitReason: planned.detail?.exitReason ?? "grid_planned",
+        capActiveFillsAtEntry: planned.detail?.capActiveFillsAtEntry ?? null,
+        capThresholdAtEntry: planned.detail?.capThresholdAtEntry ?? null,
+        capViolated: planned.detail?.capViolated ?? false,
+        warnings: [],
+      });
+    }
+  }
+
   return sortRows(rows);
 }
 
@@ -286,14 +342,19 @@ export function buildClosedHistoryBundleFromStrategyResults(options: {
   strategyVariant: string;
   weekResults: Record<string, WeeklyHoldResult>;
   generatedAt?: string;
+  includeUnrealized?: boolean;
 }): ClosedHistoryBundle {
   const rows = sortRows(
     Object.values(options.weekResults)
-      .filter((result) => result.isRealized && result.trades.length > 0)
+      .filter((result) => (
+        (options.includeUnrealized || result.isRealized) &&
+        (result.trades.length > 0 || (result.plannedTrades?.length ?? 0) > 0)
+      ))
       .flatMap((result) => closedRowsFromStrategyTrades({
         strategyVariant: options.strategyVariant,
         weekOpenUtc: result.weekOpenUtc,
         trades: result.trades,
+        plannedTrades: result.plannedTrades,
       })),
   );
 

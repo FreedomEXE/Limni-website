@@ -274,34 +274,18 @@ type PerformanceTier = {
   emoji: string;
 };
 
-function getPerformanceTier(percent: number, winRate: number): PerformanceTier {
-  if (percent > 5 && winRate > 60) {
+function getPerformanceTier(percent: number, _winRate: number): PerformanceTier {
+  if (percent > 0) {
     return {
-      label: "Exceptional",
+      label: percent > 5 ? "Exceptional" : "Positive",
       accent: "text-[var(--accent-strong)]",
       card: "border-[var(--accent)]/30 bg-[var(--accent)]/10",
-      emoji: "+++",
+      emoji: percent > 5 ? "+++" : "+",
     };
   }
-  if (percent > 3 && winRate > 55) {
+  if (percent === 0) {
     return {
-      label: "Strong",
-      accent: "text-[var(--foreground)]",
-      card: "border-[var(--panel-border)] bg-[var(--panel)]",
-      emoji: "++",
-    };
-  }
-  if (percent > 0 && winRate > 50) {
-    return {
-      label: "Positive",
-      accent: "text-[var(--accent-strong)]",
-      card: "border-[var(--panel-border)] bg-[var(--panel)]/80",
-      emoji: "+",
-    };
-  }
-  if (percent > -2) {
-    return {
-      label: "Neutral",
+      label: "Flat",
       accent: "text-[color:var(--muted)]",
       card: "border-[var(--panel-border)] bg-[var(--panel)]/70",
       emoji: "-",

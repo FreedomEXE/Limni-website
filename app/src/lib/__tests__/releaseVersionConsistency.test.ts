@@ -48,7 +48,7 @@ describe("release version consistency", () => {
   it("keeps runtime live/dev versions split from published release history", () => {
     const releaseLineManifest = readReleaseLineManifest();
 
-    expect(releaseManifest.liveVersion).toBe("v2.0.4");
+    expect(releaseManifest.liveVersion).toBe("v2.0.5");
     expect(releaseManifest.devVersion).toBeUndefined();
     expect("pendingRelease" in releaseManifest).toBe(false);
 
@@ -63,7 +63,7 @@ describe("release version consistency", () => {
       expect(manifest.components.anchorVersion).toBe(EXECUTION_ANCHOR_VERSION);
       expect(manifest.components.preloadCacheVersion).toBe(GLOBAL_PRELOAD_CACHE_VERSION);
       expect(manifest.components.executionDerivationVersion).toBe(EXECUTION_WEEKLY_RETURN_DERIVATION_VERSION);
-      expect(manifest.cacheNamespace).toContain("v2.0.4");
+      expect(manifest.cacheNamespace).toContain("v2.0.5");
     }
   });
 

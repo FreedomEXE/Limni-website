@@ -59,7 +59,7 @@ export default function CotModeBanner() {
     if (payload.stale_asset_classes.length === 0) {
       return "";
     }
-    return `Stale COT: ${payload.stale_asset_classes.join(", ").toUpperCase()}`;
+    return `Pending COT: ${payload.stale_asset_classes.join(", ").toUpperCase()}`;
   }, [payload]);
 
   if (!payload || payload.mode !== "sentiment_only") {

@@ -21,7 +21,6 @@ import { formatTradingWeekLabelDate } from "@/lib/weekAnchor";
 import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
 import {
   resolveSelectedLedgerReturn,
-  type SelectedLedgerPathPoint,
   type SelectedLedgerStats,
   type SelectedLedgerSummaryStat,
 } from "@/lib/appTruth/selectedLedgerStats";
@@ -73,22 +72,7 @@ export type SelectedLedgerBasketMetricView = {
   hasActivity: boolean;
 };
 
-export type SelectedLedgerSimulationProjection = {
-  title: string;
-  description: string;
-  metrics: {
-    returnPct: number | null;
-    maxDrawdownPct: number | null;
-    trades: number | null;
-  };
-  series: Array<{
-    id: string;
-    label: string;
-    color: string;
-    trades?: number;
-    points: SelectedLedgerPathPoint[];
-  }>;
-};
+export type SelectedLedgerSimulationProjection = EngineSimulationGroup;
 
 export type SelectedLedgerAllTimeRowView = {
   model: PerformanceModel;
@@ -111,10 +95,25 @@ export function buildSelectedLedgerSimulationProjection(
   fallbackGroup: EngineSimulationGroup | null | undefined,
 ): SelectedLedgerSimulationProjection | null {
   if (!stats || stats.status !== "available" || !stats.summary) return null;
+  const metrics = summaryToSimulationMetrics(stats.summary);
+  if (fallbackGroup?.series.length) {
+    return {
+      ...fallbackGroup,
+      metrics,
+      returnModes: fallbackGroup.returnModes
+        ? Object.fromEntries(
+            Object.entries(fallbackGroup.returnModes).map(([key, value]) => [
+              key,
+              value ? { ...value, metrics } : value,
+            ]),
+          ) as EngineSimulationGroup["returnModes"]
+        : undefined,
+    };
+  }
   return {
     title: fallbackGroup?.title ?? "Selected Performance",
     description: fallbackGroup?.description ?? "",
-    metrics: summaryToSimulationMetrics(stats.summary),
+    metrics,
     series: [{
       id: "equity",
       label: fallbackGroup?.series.find((series) => series.id === "equity" || series.id === "total")?.label ?? "Equity",

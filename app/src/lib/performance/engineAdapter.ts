@@ -652,6 +652,7 @@ export function multiWeekToGridProps(
 // ─── Simulation equity curve from multi-week ────────────────────
 
 const SERIES_COLORS = ["#10b981", "#38bdf8", "#f59e0b", "#a78bfa", "#f43f5e", "#ef4444"];
+const TOTAL_SERIES_COLOR = "var(--accent-strong)";
 const WEEK_SIMULATION_WINDOW_MS = 5 * 24 * 60 * 60 * 1000;
 
 function cappedSingleWeekEndUtc(weekStartUtc: string) {
@@ -758,7 +759,7 @@ export function singleWeekToSimulation(
   const totalSeries = {
     id: "total",
     label: "Total",
-    color: "#ffffff",
+    color: TOTAL_SERIES_COLOR,
     trades: result.tradeCount,
     points: [
       { ts_utc: weekStart, equity_pct: 0, lock_pct: null },
@@ -834,7 +835,7 @@ export function multiWeekToSimulation(
   const totalSeries = {
     id: "total",
     label: "Total",
-    color: "#ffffff",
+    color: TOTAL_SERIES_COLOR,
     trades: result.totalTrades,
     points: chronologicalWeeks.map((week) => {
       totalCum += week.totalReturnPct;
@@ -1101,7 +1102,7 @@ export function singleWeekPathToSimulation(
   const totalSeries = {
     id: "equity",
     label: "Total",
-    color: "#ffffff",
+    color: TOTAL_SERIES_COLOR,
     trades: result.tradeCount,
     points: pathPointsToSimulationPoints(path.points),
   };
@@ -1149,7 +1150,7 @@ export function multiWeekPathToSimulation(
   const totalSeries = {
     id: "equity",
     label: "Total",
-    color: "#ffffff",
+    color: TOTAL_SERIES_COLOR,
     trades: result.totalTrades,
     points: pathPointsToSimulationPoints(path.points),
   };

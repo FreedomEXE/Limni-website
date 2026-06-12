@@ -1,14 +1,14 @@
 {
   "releaseLine": "v2",
   "displayVersion": "v2",
-  "liveVersion": "v2.0.4",
+  "liveVersion": "v2.0.5",
   "canonVersion": "v2",
-  "cacheNamespace": "v2.0.4-gate28-runtime",
+  "cacheNamespace": "v2.0.5-gate29-performance-data-correctness",
   "preparedAt": "2026-06-12T00:00:00.000Z",
   "releasedAt": "2026-06-12",
   "anchorCommit": "v2",
   "previousVersion": {
-    "liveVersion": "v2.0.3"
+    "liveVersion": "v2.0.4"
   },
   "components": {
     "engineVersion": "strategy-artifact-v34",
@@ -122,9 +122,17 @@
     "Added deterministic shard derivation tests so Phase 1 can validate per-week hashes before client cutover.",
     "Bumped cacheNamespace to v2.0.2 for the new kernel contract surface while keeping canonVersion at v2.",
     "Prepared v2.0.3 institutional-seed runtime metadata, source-freeze/certification lifecycle gates, active-baseline route readiness, and live-week overlay separation while keeping canonVersion at v2.",
-    "Released v2.0.4 Gate 28 runtime readiness: shared loading ownership, strict live/dev version separation, modular Documents release index, root env recovery, and Data/Performance/Status route readiness fixes without mutating v2 canon artifacts."
+    "Released v2.0.4 Gate 28 runtime readiness: shared loading ownership, strict live/dev version separation, modular Documents release index, root env recovery, and Data/Performance/Status route readiness fixes without mutating v2 canon artifacts.",
+    "Released v2.0.5 Gate 29 performance data correctness: shared current/stored Basket hierarchy, planned ADR grid rows for 36-grid parity, selected-ledger Simulation equity-vs-balance preservation, signed Summary card tone, COT pending copy cleanup, and theme-safe Equity/Total chart colour without mutating v2 canon artifacts."
   ],
   "versionHistory": [
+    {
+      "appVersion": "v2.0.5",
+      "date": "2026-06-12",
+      "type": "patch",
+      "summary": "Gate 29 performance data correctness: current/stored Basket parity, selected-ledger Simulation Equity/Balance, signed Summary card tone, COT copy cleanup, and theme-safe chart colours.",
+      "file": "releases/v2/patches/v2.0.5.md"
+    },
     {
       "appVersion": "v2.0.4",
       "date": "2026-06-12",
@@ -173,6 +181,30 @@
     {
       "file": "screenshots/weekly-rollover-active-baseline-2026-06-09/performance-june8-freeze-ledger-live-overlay.png",
       "description": "Performance route showing Jun 08 live overlay after source-freeze readiness without counting it as closed certified history."
+    },
+    {
+      "file": "screenshots/performance-data-correctness-2026-06-12/v2.0.5-jun08-current-summary.png",
+      "description": "Current Jun 08 Summary view showing signed positive card shading shared with stored weeks."
+    },
+    {
+      "file": "screenshots/performance-data-correctness-2026-06-12/v2.0.5-jun08-current-basket.png",
+      "description": "Current Jun 08 Basket view using the shared selected trade-row hierarchy with 144 total grids and 36 grids per portfolio."
+    },
+    {
+      "file": "screenshots/performance-data-correctness-2026-06-12/v2.0.5-jun01-basket.png",
+      "description": "Stored Jun 01 Basket view showing the same hierarchy and 36-grid portfolio counts as current week."
+    },
+    {
+      "file": "screenshots/performance-data-correctness-2026-06-12/v2.0.5-may25-basket.png",
+      "description": "Stored May 25 Basket view showing planned ADR grid rows restored for 36-grid portfolio parity."
+    },
+    {
+      "file": "screenshots/performance-data-correctness-2026-06-12/v2.0.5-jun01-simulation-light.png",
+      "description": "Light-mode stored-week Simulation view with Equity, Balance, and Total visible without white-on-light chart strokes."
+    },
+    {
+      "file": "screenshots/performance-data-correctness-2026-06-12/v2.0.5-jun01-simulation-dark.png",
+      "description": "Dark-mode stored-week Simulation view with theme-safe Equity and Total chart colours."
     }
   ],
   "changelogMarkdown": null

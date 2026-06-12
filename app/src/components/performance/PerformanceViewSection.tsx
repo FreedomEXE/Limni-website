@@ -34,6 +34,7 @@ import type { MaeTrade } from "@/components/performance/MaeScatterPlot";
 import PerformanceNotesPad from "@/components/performance/PerformanceNotesPad";
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
 import type { ClosedHistoryBundle } from "@/lib/basket/basketSummaryTypes";
+import { buildClosedHistoryBundleFromStrategyResults } from "@/lib/basket/strategyRuntimeRows";
 import {
   buildSelectedLedgerStats,
 } from "@/lib/appTruth/selectedLedgerStats";
@@ -739,11 +740,10 @@ function EngineBasketView({
     ? `${selection.strategy}-${selection.f1}-${selection.f2}`
     : "tandem-weekly_hold-none";
 
-  const canUseHierarchy = Boolean(selection);
+  const canUseHierarchy = Boolean(selection && selectedTradeRowsBundle);
   const hierarchySelectedWeek = isAllTime ? "all" : weekOpenUtc ?? null;
   const shouldUseClosedHistoryHierarchy = canUseHierarchy
-    && hierarchySelectedWeek !== null
-    && (hierarchySelectedWeek === "all" || hierarchySelectedWeek !== currentWeek);
+    && hierarchySelectedWeek !== null;
 
   if (shouldUseClosedHistoryHierarchy && hierarchySelectedWeek) {
     return (
@@ -1238,6 +1238,22 @@ export default function PerformanceViewSection({
   ), [assetScope, performanceViewMode, selectedTradeRowsBundle]);
   const selectedLedgerAvailable = selectedLedgerStats?.status === "available" && Boolean(selectedLedgerStats.summary);
   const selectedLedgerAllAvailable = selectedLedgerAllStats?.status === "available" && Boolean(selectedLedgerAllStats.summary);
+  const currentWeekTradeRowsBundle = useMemo(() => {
+    if (!selection || !engineWeekResults || selectedWeekKey === "all" || selectedWeekKey !== currentWeek) {
+      return null;
+    }
+    const result = engineWeekResults[selectedWeekKey];
+    if (!result) return null;
+    return buildClosedHistoryBundleFromStrategyResults({
+      strategyVariant: `${selection.strategy}-${selection.f1}-${selection.f2}`,
+      weekResults: { [selectedWeekKey]: result },
+      generatedAt: result.weekOpenUtc,
+      includeUnrealized: true,
+    });
+  }, [currentWeek, engineWeekResults, selectedWeekKey, selection]);
+  const basketTradeRowsBundle = selectedWeekUsesClosedLedger
+    ? selectedTradeRowsBundle
+    : currentWeekTradeRowsBundle;
 
   useEffect(() => {
     if (!engineWeekMap || typeof window === "undefined") return;
@@ -1633,7 +1649,7 @@ export default function PerformanceViewSection({
             scope={assetScope}
             viewMode={performanceViewMode}
             authoritativeMetrics={basketAuthoritativeMetrics}
-            selectedTradeRowsBundle={selectedTradeRowsBundle}
+            selectedTradeRowsBundle={basketTradeRowsBundle}
             isAllTime={selectedWeekKey === "all"}
           />
         ) : gridProps ? (

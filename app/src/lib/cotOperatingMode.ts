@@ -27,7 +27,7 @@ export async function getCotOperatingModeSummary(): Promise<CotOperatingModeSumm
       "COT reporting halt manually enabled.";
     return {
       mode: "sentiment_only",
-      label: "Sentiment-only mode",
+      label: "Awaiting CFTC update",
       reason,
       updated_at_utc: updatedAt,
       stale_asset_classes: listAssetClasses().map((asset) => asset.id),
@@ -99,7 +99,7 @@ export async function getCotOperatingModeSummary(): Promise<CotOperatingModeSumm
 
     return {
       mode: "sentiment_only",
-      label: "Sentiment-only mode",
+      label: "Awaiting CFTC update",
       reason,
       updated_at_utc: updatedAt,
       stale_asset_classes: staleAssetClasses,
