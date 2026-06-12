@@ -49,7 +49,7 @@ describe("release version consistency", () => {
     const releaseLineManifest = readReleaseLineManifest();
 
     expect(releaseManifest.liveVersion).toBe("v2.0.4");
-    expect(releaseManifest.devVersion).toBe("v2.0.4");
+    expect(releaseManifest.devVersion).toBeUndefined();
     expect("pendingRelease" in releaseManifest).toBe(false);
 
     expect(releaseLineManifest.liveVersion).toBe(releaseManifest.liveVersion);

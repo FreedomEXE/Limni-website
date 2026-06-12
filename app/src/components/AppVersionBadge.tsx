@@ -40,7 +40,8 @@ export function fetchVersionManifest() {
 }
 
 export function versionForChannel(manifest: ReleaseManifest, channel: RuntimeChannel) {
-  return channel === "live" ? manifest.liveVersion : manifest.devVersion;
+  if (channel === "live") return manifest.liveVersion;
+  return manifest.devVersion ?? "Unversioned";
 }
 
 function channelLabel(channel: RuntimeChannel) {
@@ -48,9 +49,15 @@ function channelLabel(channel: RuntimeChannel) {
 }
 
 function channelDescription(channel: RuntimeChannel) {
-  return channel === "live"
-    ? "Public runtime"
-    : "Local development runtime";
+  if (channel === "live") return "Public runtime";
+  return "Local development runtime";
+}
+
+function runtimeDescription(manifest: ReleaseManifest, channel: RuntimeChannel) {
+  if (channel === "live") return channelDescription(channel);
+  return manifest.devVersion
+    ? channelDescription(channel)
+    : "No active dev release train";
 }
 
 export default function AppVersionBadge() {
@@ -134,7 +141,7 @@ export default function AppVersionBadge() {
                   {channelLabel(RUNTIME_CHANNEL)} · {activeVersion}
                 </dd>
                 <dd className="mt-1 text-[11px] text-[color:var(--muted)]">
-                  {channelDescription(RUNTIME_CHANNEL)}
+                  {runtimeDescription(manifest, RUNTIME_CHANNEL)}
                 </dd>
               </div>
             </dl>

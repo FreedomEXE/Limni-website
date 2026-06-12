@@ -319,7 +319,7 @@ export type SchedulerMaterializationSnapshot = {
 
 export type AppTruthReleaseSnapshot = {
   liveReleaseId: string;
-  devReleaseId: string;
+  devReleaseId: string | null;
   cacheNamespace: string;
   canonVersion: string;
   engineVersion: string;

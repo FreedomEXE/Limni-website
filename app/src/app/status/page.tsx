@@ -1472,7 +1472,7 @@ function AppTruthStatusSection({ projection }: { projection: AppTruthStatusProje
             <div>
               <dt className="uppercase tracking-[0.16em]">Dev</dt>
               <dd className="mt-1 font-semibold text-[var(--foreground)]">
-                {projection.release.devReleaseId}
+                {projection.release.devReleaseId ?? "No active dev release"}
               </dd>
             </div>
             <div>

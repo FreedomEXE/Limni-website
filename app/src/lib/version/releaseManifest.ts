@@ -24,7 +24,7 @@ const releaseManifestRawSchema = z.object({
   releaseLine: z.string().regex(/^v\d+$/),
   displayVersion: z.string().regex(/^v\d+$/),
   liveVersion: runtimeVersionSchema,
-  devVersion: runtimeVersionSchema,
+  devVersion: runtimeVersionSchema.nullable().optional(),
   canonVersion: runtimeVersionSchema,
   cacheNamespace: z.string().min(1),
   preparedAt: z.string().min(1),
