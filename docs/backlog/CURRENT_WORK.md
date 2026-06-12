@@ -22,7 +22,7 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 Gate 28: versioning-documents-popover.
 
-Status: v2.0.4 final checks passed; commit/push pending in this turn.
+Status: completed and pushed as v2.0.4.
 
 Goal:
 
@@ -36,8 +36,11 @@ Goal:
 
 ## Next Gates
 
-1. Weekly Hold engine verification.
-2. ADR Grid data-truth audit.
+Recommended Gate 29: `adr-grid-parity`.
+
+1. ADR Grid app-vs-indicator parity audit.
+2. Weekly Hold engine verification.
+3. Sentiment decision gate.
 
 ## Repo Size / Consolidation WIP
 
@@ -57,7 +60,7 @@ only when they simplify ownership enough to retire older paths.
 ## Active Context
 
 - Version UI should use `liveVersion` and `devVersion` only.
-- Current live version is being promoted to `v2.0.4`.
+- Current live version is `v2.0.4`.
 - `pendingRelease` must not be runtime UI truth or visible as a separate
   runtime state.
 - Documents/release docs should use one simple structure across versions.
@@ -78,7 +81,11 @@ only when they simplify ownership enough to retire older paths.
 
 ## Gate 28 Result
 
-Corrective pass is in the working tree and approved for v2.0.4 packaging:
+Corrective pass was committed and pushed:
+
+- Commit: `4651a37 Gate 28: finalize v2.0.4 readiness`
+- Remote: `origin/main`
+- Full SHA: `4651a37f9e1020c3ed36c94f5d8addf012ccba49`
 
 - Version popover is active-runtime only in dev and does not show the public
   live version in the dev popover.
