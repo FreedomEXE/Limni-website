@@ -9,16 +9,16 @@ import type { ReleaseManifest } from "@/lib/version/releaseManifest";
 const manifest = {
   releaseLine: "v2",
   displayVersion: "v2",
-  appVersion: "v2.0.2",
+  liveVersion: "v2.0.2",
   semanticVersion: "2.0.2",
+  devVersion: "v2.0.3",
   canonVersion: "v2",
   cacheNamespace: "v2.0.2",
   preparedAt: "2026-06-01T00:00:00.000Z",
   releasedAt: null,
   anchorCommit: "v2",
   previousVersion: {
-    appVersion: "v2.0.1",
-    semanticVersion: "2.0.1",
+    liveVersion: "v2.0.1",
   },
   components: {
     engineVersion: "strategy-artifact-v28",

@@ -2,7 +2,7 @@
 
 Documented: 2026-06-03
 
-This file records the v2 active UI surfaces and the v2.0.3 candidate verification state.
+This file records the v2 active UI surfaces and the v2.0.3 release verification state.
 
 ## Performance
 
@@ -16,7 +16,7 @@ Key components:
 - [`src/components/shared/StrategySidebar.tsx`](../../src/components/shared/StrategySidebar.tsx)
 - [`src/components/shared/StrategySelector.tsx`](../../src/components/shared/StrategySelector.tsx)
 
-v2.0.3 candidate verified:
+v2.0.3 verified:
 
 - Performance loads after active kernel gate release.
 - Strategy selector can switch from Tandem Pair Fill Cap to Tiered no-cap and back.
@@ -31,7 +31,7 @@ Key components:
 - [`src/app/dashboard/page.tsx`](../../src/app/dashboard/page.tsx)
 - [`src/components/dashboard/DashboardViewSection.tsx`](../../src/components/dashboard/DashboardViewSection.tsx)
 
-v2.0.3 candidate verified:
+v2.0.3 verified:
 
 - SPA navigation from Performance to Data works after app gate release.
 - No global preloader appears during that route change.
@@ -46,7 +46,7 @@ Key components:
 - [`src/app/accounts/page.tsx`](../../src/app/accounts/page.tsx)
 - [`src/components/accounts/AccountsPageClient.tsx`](../../src/components/accounts/AccountsPageClient.tsx)
 
-v2.0.3 candidate verified:
+v2.0.3 verified:
 
 - SPA navigation Data to Accounts is fast after app gate release.
 - No global preloader appears during that route change.
@@ -69,7 +69,7 @@ Key page:
 
 - [`src/app/documents/page.tsx`](../../src/app/documents/page.tsx)
 
-v2.0.3 candidate update:
+v2.0.3 update:
 
 - Documents now allows `handoff.md` in release docs.
 - v2 release folder now has architecture, active systems, contracts, API surface, UI surfaces, verification, and handoff docs.

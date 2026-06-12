@@ -1,6 +1,7 @@
 {
-  "appVersion": "v1",
-  "semanticVersion": "1.0.0",
+  "releaseLine": "v1",
+  "displayVersion": "v1",
+  "liveVersion": "v1.0.0",
   "releasedAt": "2026-05-22",
   "anchorCommit": "a424b04",
   "baselineDocumentedAt": "2026-05-30",
@@ -16,7 +17,18 @@
     "canonicalDerivationVersion": "v2_intraday_weekly",
     "executionDerivationVersion": "v1_execution_monday_utc"
   },
-  "changes": [],
+  "changes": [
+    "Documented the v1 baseline and pre-v2 state for future release comparison."
+  ],
+  "versionHistory": [
+    {
+      "appVersion": "v1.0.0",
+      "date": "2026-05-22",
+      "type": "major",
+      "summary": "Pre-v2 baseline anchor and release evidence snapshot.",
+      "file": "README.md"
+    }
+  ],
   "previousVersion": null,
   "screenshots": [
     {

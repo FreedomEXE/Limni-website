@@ -13,45 +13,43 @@ type NavItem = {
   href: string;
   label: string;
   letter: string;
+  matchPrefixes: string[];
 };
 
-const TOP_LEVEL: NavItem[] = [
-  { key: "performance", href: "/performance", label: "Performance", letter: "L" },
-  { key: "data", href: "/dashboard?bias=dealer", label: "Data", letter: "I" },
-  { key: "accounts", href: "/accounts", label: "Accounts", letter: "M" },
-  { key: "automation", href: "/automation", label: "Automation", letter: "N" },
-  { key: "research", href: "/research", label: "Research Lab", letter: "I" },
-  { key: "documents", href: "/documents", label: "Documents", letter: "L" },
-  { key: "agents", href: "/agents", label: "Agents", letter: "A" },
-  { key: "news", href: "/news", label: "News", letter: "B" },
-  { key: "status", href: "/status", label: "Status", letter: "S" },
+export const TOP_LEVEL: NavItem[] = [
+  { key: "performance", href: "/performance", label: "Performance", letter: "L", matchPrefixes: ["/performance"] },
+  { key: "data", href: "/dashboard?bias=dealer", label: "Data", letter: "I", matchPrefixes: ["/dashboard"] },
+  { key: "accounts", href: "/accounts", label: "Accounts", letter: "M", matchPrefixes: ["/accounts"] },
+  { key: "automation", href: "/automation", label: "Automation", letter: "N", matchPrefixes: ["/automation"] },
+  { key: "research", href: "/research", label: "Research Lab", letter: "I", matchPrefixes: ["/research"] },
+  { key: "documents", href: "/documents", label: "Documents", letter: "L", matchPrefixes: ["/documents"] },
+  { key: "agents", href: "/agents", label: "Agents", letter: "A", matchPrefixes: ["/agents"] },
+  { key: "news", href: "/news", label: "News", letter: "B", matchPrefixes: ["/news"] },
+  { key: "status", href: "/status", label: "Status", letter: "S", matchPrefixes: ["/status"] },
 ];
 
-const SECTION_LABELS: Record<string, string> = {
-  data: "Data",
-  performance: "Performance",
-  automation: "Automation",
-  accounts: "Accounts",
-  research: "Research Lab",
-  documents: "Documents",
-  agents: "Agents",
-  news: "News",
-  status: "Status",
-};
+export const SECTION_LABELS: Record<string, string> = Object.fromEntries(
+  TOP_LEVEL.map((item) => [item.key, item.label]),
+);
 
-function resolveSection(pathname: string) {
-  if (pathname.startsWith("/dashboard")) {
-    return "data";
-  }
-  if (pathname.startsWith("/performance")) return "performance";
-  if (pathname.startsWith("/research")) return "research";
-  if (pathname.startsWith("/documents")) return "documents";
-  if (pathname.startsWith("/agents")) return "agents";
-  if (pathname.startsWith("/automation")) return "automation";
-  if (pathname.startsWith("/accounts")) return "accounts";
-  if (pathname.startsWith("/status")) return "status";
-  if (pathname.startsWith("/news")) return "news";
-  return null;
+export function resolveSection(pathname: string) {
+  return TOP_LEVEL.find((item) => item.matchPrefixes.some((prefix) => pathname.startsWith(prefix)))?.key ?? null;
+}
+
+function labelFromPathname(pathname: string) {
+  const [firstSegment] = pathname.replace(/^\/+/, "").split("/");
+  if (!firstSegment) return "Limni";
+  return firstSegment
+    .split("-")
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+export function appSectionLabelForPathname(pathname: string | null) {
+  if (!pathname || pathname === "/") return "Limni";
+  const section = resolveSection(pathname);
+  return section ? SECTION_LABELS[section] : labelFromPathname(pathname);
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {

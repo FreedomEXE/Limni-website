@@ -1,15 +1,36 @@
 import { Pool, type PoolClient } from "pg";
 
+import { rootServerEnv } from "@/lib/server/rootEnv";
+
 let pool: Pool | null = null;
 let poolResetPromise: Promise<void> | null = null;
-const DB_QUERY_RETRY_LIMIT = Number(process.env.DB_QUERY_RETRY_LIMIT ?? "2");
+
+function numberEnv(name: string, fallback: number) {
+  const raw = rootServerEnv(name);
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+const DB_QUERY_RETRY_LIMIT = numberEnv(
+  "DB_QUERY_RETRY_LIMIT",
+  process.env.NODE_ENV === "production" ? 2 : 0,
+);
+const DB_CONNECTION_TIMEOUT_MS = numberEnv(
+  "DB_CONNECTION_TIMEOUT_MS",
+  process.env.NODE_ENV === "production" ? 10000 : 4000,
+);
+const DB_POOL_MAX = numberEnv(
+  "DB_POOL_MAX",
+  process.env.NODE_ENV === "production" ? 10 : 4,
+);
 
 /**
  * Get the database connection pool (singleton pattern)
  */
 export function getPool(): Pool {
   if (!pool) {
-    const databaseUrl = process.env.DATABASE_URL;
+    const databaseUrl = rootServerEnv("DATABASE_URL");
 
     if (!databaseUrl) {
       throw new Error("DATABASE_URL environment variable not set");
@@ -23,9 +44,9 @@ export function getPool(): Pool {
     pool = new Pool({
       connectionString: databaseUrl,
       ssl: requiresSsl ? { rejectUnauthorized: false } : false,
-      max: 10, // Maximum number of clients in the pool
+      max: DB_POOL_MAX,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      connectionTimeoutMillis: DB_CONNECTION_TIMEOUT_MS,
     });
 
     pool.on("error", (err) => {

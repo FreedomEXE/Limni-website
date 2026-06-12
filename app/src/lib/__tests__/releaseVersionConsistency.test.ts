@@ -18,9 +18,14 @@ import {
 } from "@/lib/performance/strategyArtifactVersions";
 import { releaseManifest } from "@/lib/version/releaseManifest";
 
+type PublishedReleaseManifest = Omit<typeof releaseManifest, "devVersion" | "semanticVersion"> & {
+  devVersion?: string;
+  semanticVersion?: string;
+};
+
 function readReleaseLineManifest() {
   const manifestPath = appPath("releases", "v2", "manifest.json");
-  return JSON.parse(fs.readFileSync(manifestPath, "utf8")) as typeof releaseManifest;
+  return JSON.parse(fs.readFileSync(manifestPath, "utf8")) as PublishedReleaseManifest;
 }
 
 function readCanonMetadata(file: string) {
@@ -40,8 +45,16 @@ function readCanonMetadata(file: string) {
 }
 
 describe("release version consistency", () => {
-  it("keeps runtime version constants, preload stamp, and release manifests aligned", () => {
+  it("keeps runtime live/dev versions split from published release history", () => {
     const releaseLineManifest = readReleaseLineManifest();
+
+    expect(releaseManifest.liveVersion).toBe("v2.0.4");
+    expect(releaseManifest.devVersion).toBe("v2.0.4");
+    expect("pendingRelease" in releaseManifest).toBe(false);
+
+    expect(releaseLineManifest.liveVersion).toBe(releaseManifest.liveVersion);
+    expect("devVersion" in releaseLineManifest).toBe(false);
+    expect("pendingRelease" in releaseLineManifest).toBe(false);
 
     for (const manifest of [releaseManifest, releaseLineManifest]) {
       expect(manifest.components.engineVersion).toBe(STRATEGY_SHARD_ENGINE_VERSION);
@@ -50,11 +63,11 @@ describe("release version consistency", () => {
       expect(manifest.components.anchorVersion).toBe(EXECUTION_ANCHOR_VERSION);
       expect(manifest.components.preloadCacheVersion).toBe(GLOBAL_PRELOAD_CACHE_VERSION);
       expect(manifest.components.executionDerivationVersion).toBe(EXECUTION_WEEKLY_RETURN_DERIVATION_VERSION);
-      expect(manifest.cacheNamespace).toContain("v2.0.3");
+      expect(manifest.cacheNamespace).toContain("v2.0.4");
     }
   });
 
-  it("does not present stale canon artifacts as valid for the pending engine", () => {
+  it("does not present stale canon artifacts as valid for the live engine", () => {
     const releaseLineManifest = readReleaseLineManifest();
 
     for (const manifest of [releaseManifest, releaseLineManifest]) {
@@ -73,7 +86,7 @@ describe("release version consistency", () => {
         expect(canonMetadata.appVersion).toBeTruthy();
         expect(canonMetadata.canonGeneratedAt).toBeTruthy();
 
-        if (manifest.pendingRelease && canonMetadata.appVersion !== manifest.pendingRelease.appVersion) {
+        if (canonMetadata.appVersion !== manifest.liveVersion) {
           expect(manifest.canon.artifactStatus).toBe("stale_pending_regeneration");
         }
       }

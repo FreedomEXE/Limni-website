@@ -263,7 +263,7 @@ async function runKernelSync(selection: RuntimeStrategySelection) {
     clearAllComposedBundles();
   }
   setState({
-    appVersion: manifest.appVersion,
+    appVersion: manifest.liveVersion,
     canonVersion: manifest.canonVersion,
     cacheNamespace: manifest.cacheNamespace,
   });
@@ -274,7 +274,7 @@ async function runKernelSync(selection: RuntimeStrategySelection) {
       phase: "error",
       status: "error",
       activeStrategyVariant,
-      appVersion: manifest.appVersion,
+      appVersion: manifest.liveVersion,
       canonVersion: manifest.canonVersion,
       cacheNamespace: manifest.cacheNamespace,
       totalWeeks: 0,

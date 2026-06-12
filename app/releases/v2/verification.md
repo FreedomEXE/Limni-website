@@ -3,11 +3,11 @@
 Documented: 2026-06-03
 Updated: 2026-06-09
 
-This file records the verification state for the v2.0.3 candidate.
+This file records the verification state for the v2.0.3 live release.
 
 ## Current v2.0.3 Gate - Institutional Seed
 
-The current v2.0.3 candidate is the institutional-seed runtime, not the earlier
+The current v2.0.3 release is the institutional-seed runtime, not the earlier
 TradingView/data-verification lane.
 
 Recorded final gate result:
@@ -62,7 +62,7 @@ Notes:
 Server:
 
 - Fresh production server on `http://localhost:3111`
-- Built from local workspace after v2.0.3 candidate changes.
+- Built from local workspace after v2.0.3 release changes.
 
 Flow tested:
 
@@ -100,9 +100,9 @@ Screenshots promoted to app-visible release archive:
 
 Status update after ADR Grid P/L unit review:
 
-- The v2.0.3 local screenshots above are now classified as earlier candidate evidence.
+- The v2.0.3 local screenshots above are now classified as earlier local evidence.
 - They predate the ADR Grid P/L unit fix and the planned drawdown/MAE contract.
-- Keep them as historical weekly-anchor/preloader evidence, but replace them before go-live approval.
+- Keep them as historical weekly-anchor/preloader evidence, and replace them in the next release package if those corrected surfaces are promoted.
 - Replacement screenshots must include corrected ADR Grid P/L, unified drawdown labels, and expanded basket evidence.
 - Replacement screenshots are not complete until they are both saved in the release screenshot archive and listed in the selected release manifest's `screenshots` array for Documents-page rendering.
 
@@ -159,7 +159,7 @@ App-visible Tandem / ADR Grid / Pair Fill Cap screenshot result:
 | Version / model | Anchor | Return | Path DD | Trades |
 |---|---|---:|---:|---:|
 | v2.0.2 behavior | Legacy execution anchor | +632.67% | 6.26% | 27,529 |
-| v2.0.3 candidate | Weekly market anchor | +866.33% | 5.82% | 32,270 |
+| v2.0.3 anchor run | Weekly market anchor | +866.33% | 5.82% | 32,270 |
 
 Delta:
 
@@ -314,7 +314,7 @@ Resolution order for this blocker:
 
 ### 2026-06-04 May 18 Capped Grid Fix Update
 
-The May 18 capped-grid return display regression has been corrected locally and is now part of the v2.0.3 verification candidate:
+The May 18 capped-grid return display regression has been corrected locally and is now part of the v2.0.3 verification record:
 
 - ADR-normalized grid TP rows now use the stored ADR-normalized fill return, so a `0.20` ADR TP displays as `+0.20%` instead of the bad `+0.04%` raw-shaped value.
 - Raw grid return remains price-return based and was rechecked in the same code path; raw mode is not flattened into ADR-normalized units.
@@ -414,6 +414,6 @@ Before promoting a system from paper configuration to automation candidate:
 ## Known Caveats
 
 - Pine cannot be locally compiled by Codex; paste/compile in TradingView is required.
-- Current v2.0.3 local app version badge still shows pending release until release approval.
+- Gate 28 removes the old pending-release badge state; runtime version UI now exposes only live and dev versions.
 - Data first-load time is separate from the global release preloader.
 - Existing local working tree contains unrelated dirty/untracked files. Do not treat all dirty files as part of v2.0.3.

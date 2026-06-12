@@ -2,7 +2,7 @@
 
 Documented: 2026-06-03
 
-This file records the active strategy and app systems for v2 through the local `v2.0.3` candidate.
+This file records the active strategy and app systems for v2 through the `v2.0.3` live release.
 
 Canonical rule definitions for source systems, execution styles, return modes, ADR Grid reset behavior, Favorable Gap, Pair Fill Cap, and 1H ambiguity handling live in [`strategy-execution-spec.md`](strategy-execution-spec.md). This file is a high-level active-systems index only.
 

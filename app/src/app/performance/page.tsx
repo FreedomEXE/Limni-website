@@ -65,20 +65,6 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
     routeReadinessError = errorMessage(error);
   }
 
-  if (!routeReadiness?.performance.ready || routeReadinessError) {
-    return (
-      <DashboardLayout>
-        <AppTruthRouteGate
-          route="performance"
-          readiness={routeReadiness}
-          readinessError={routeReadinessError}
-        >
-          {null}
-        </AppTruthRouteGate>
-      </DashboardLayout>
-    );
-  }
-
   const currentWeekOpenUtc = getDisplayWeekOpenUtc();
   const selectableWeeks = getActiveBaselineSelectableWeeks(currentWeekOpenUtc);
   const initialStrategySelection = {
@@ -88,7 +74,11 @@ export default async function PerformancePage({ searchParams }: PerformancePageP
   };
   return (
     <DashboardLayout>
-      <AppTruthRouteGate route="performance" readiness={routeReadiness}>
+      <AppTruthRouteGate
+        route="performance"
+        readiness={routeReadiness}
+        readinessError={routeReadinessError}
+      >
         <div className="space-y-8">
           <PerformanceStrategyViewSection
             initialMode="legacy"

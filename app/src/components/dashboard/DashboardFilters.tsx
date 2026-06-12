@@ -1,7 +1,6 @@
 "use client";
 
 import ScrollableWeekStrip from "@/components/shared/ScrollableWeekStrip";
-import type { MarketIntelligencePayload } from "@/lib/dashboard/marketIntelligencePayload";
 import { DateTime } from "luxon";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -15,13 +14,7 @@ type DashboardFiltersProps = {
   reportOptions: Array<{
     value: string;
     label: string;
-    cotReportLabel?: string;
-    fridayFreezeLabel?: string;
-    fridayFreezeUtc?: string;
-    freezeStatusLabel?: string;
-    freezeLedgerReady?: boolean;
   }>;
-  activeBaseline?: MarketIntelligencePayload["activeBaseline"];
   selectedAsset: string;
   selectedReport: string;
   selectedBias: "dealer" | "commercial" | "sentiment" | "strength";
@@ -35,7 +28,6 @@ type DashboardFiltersProps = {
 export default function DashboardFilters({
   assetOptions,
   reportOptions,
-  activeBaseline,
   selectedAsset,
   selectedReport,
   selectedBias,
@@ -51,7 +43,6 @@ export default function DashboardFilters({
   const reportLabelByValue = new Map(
     reportOptions.map((option) => [option.value, option.label]),
   );
-  const selectedReportOption = reportOptions.find((option) => option.value === selectedReport) ?? reportOptions[0] ?? null;
   const isCurrentReportOption = (value: string) => {
     if (!currentWeekOpenUtc) return false;
     const report = DateTime.fromISO(value, { zone: "America/New_York" });
@@ -87,9 +78,6 @@ export default function DashboardFilters({
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          Bias
-        </label>
         {([
           { value: "dealer", label: "Dealer" },
           { value: "commercial", label: "Commercial" },
@@ -121,20 +109,11 @@ export default function DashboardFilters({
       </div>
 
       {reportOptions.length > 0 ? (
-        <div className="space-y-1">
-          {activeBaseline ? (
-            <p
-              className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--muted)]"
-              data-testid="data-active-baseline-label"
-            >
-              Active baseline {activeBaseline.id} | {activeBaseline.activeWeekCount} weeks
-              {activeBaseline.archiveAvailable ? " | Archive separate" : ""}
-            </p>
-          ) : null}
+        <div>
           <ScrollableWeekStrip
             options={reportOptions.map((option) => option.value)}
             selected={selectedReport || reportOptions[0]?.value || ""}
-            label="Trading week"
+            label={null}
             paramName="report"
             preserveParams={["asset", "bias", "view"]}
             labelFormatter={(value) => reportLabelByValue.get(String(value)) ?? String(value)}
@@ -142,21 +121,10 @@ export default function DashboardFilters({
             onChange={onReportChange ? (value) => onReportChange(String(value)) : undefined}
             className="w-full"
           />
-          {selectedReportOption ? (
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--muted)]">
-              Trading week {selectedReportOption.label}
-              {selectedReportOption.fridayFreezeLabel ? ` | Friday freeze ${selectedReportOption.fridayFreezeLabel}` : ""}
-              {selectedReportOption.cotReportLabel ? ` | COT report ${selectedReportOption.cotReportLabel}` : ""}
-              {selectedReportOption.freezeStatusLabel ? ` | ${selectedReportOption.freezeStatusLabel}` : ""}
-            </p>
-          ) : null}
         </div>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-          Asset class
-        </label>
         <select
           value={selectedAsset}
           onChange={(event) => {

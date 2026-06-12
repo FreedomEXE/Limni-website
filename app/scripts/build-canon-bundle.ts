@@ -130,7 +130,7 @@ async function main() {
     const sourceHash = sha256(stableJson(frozenBundle.rows));
     const artifact: CanonArtifact = {
       metadata: {
-        appVersion: manifest.appVersion,
+        appVersion: manifest.liveVersion,
         semanticVersion: manifest.semanticVersion,
         releaseLine: manifest.releaseLine,
         canonVersion: manifest.canonVersion,
@@ -167,10 +167,11 @@ async function main() {
       variants: manifestVariants,
     },
   };
-  releaseManifestSchema.parse(nextManifest);
-  await writeJson(manifestPath, nextManifest);
+  const { semanticVersion: _derivedSemanticVersion, ...rawNextManifest } = nextManifest;
+  releaseManifestSchema.parse(rawNextManifest);
+  await writeJson(manifestPath, rawNextManifest);
   await mkdir(releaseDir, { recursive: true });
-  await writeJson(path.join(releaseDir, "manifest.json"), nextManifest);
+  await writeJson(path.join(releaseDir, "manifest.json"), rawNextManifest);
   console.log(`Materialized ${manifestVariants.length} canon artifacts in ${canonDir}`);
 }
 

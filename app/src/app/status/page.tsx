@@ -543,7 +543,7 @@ export default async function StatusPage({ searchParams }: StatusPageProps) {
       kernelDiagnostics = {
         status: "missing",
         activeStrategyVariant: kernelActiveStrategyVariant,
-        appVersion: releaseManifest.appVersion,
+        appVersion: releaseManifest.liveVersion,
         cacheNamespace: releaseManifest.cacheNamespace,
         canonVersion: releaseManifest.canonVersion,
         baselineWeeks: 0,
@@ -565,7 +565,7 @@ export default async function StatusPage({ searchParams }: StatusPageProps) {
       kernelDiagnostics = {
         status: variant.deltaWeeks.length > 0 ? "fresh" : "provisional",
         activeStrategyVariant: kernelActiveStrategyVariant,
-        appVersion: releaseManifest.appVersion,
+        appVersion: releaseManifest.liveVersion,
         cacheNamespace: releaseManifest.cacheNamespace,
         canonVersion: releaseManifest.canonVersion,
         baselineWeeks: variant.baselineWeeks.length,
@@ -583,7 +583,7 @@ export default async function StatusPage({ searchParams }: StatusPageProps) {
     kernelDiagnostics = {
       status: "missing",
       activeStrategyVariant: kernelActiveStrategyVariant,
-      appVersion: releaseManifest.appVersion,
+      appVersion: releaseManifest.liveVersion,
       cacheNamespace: releaseManifest.cacheNamespace,
       canonVersion: releaseManifest.canonVersion,
       baselineWeeks: 0,
@@ -1470,9 +1470,9 @@ function AppTruthStatusSection({ projection }: { projection: AppTruthStatusProje
               <dd className="mt-1 font-semibold text-[var(--foreground)]">{projection.release.liveReleaseId}</dd>
             </div>
             <div>
-              <dt className="uppercase tracking-[0.16em]">Candidate</dt>
+              <dt className="uppercase tracking-[0.16em]">Dev</dt>
               <dd className="mt-1 font-semibold text-[var(--foreground)]">
-                {projection.release.candidateReleaseId ?? "None declared"}
+                {projection.release.devReleaseId}
               </dd>
             </div>
             <div>

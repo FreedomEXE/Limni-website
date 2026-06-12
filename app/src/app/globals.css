@@ -128,3 +128,11 @@ html[data-cot-mode="sentiment_only"] [data-cot-surface="true"] {
   background: var(--panel-border);
   border-radius: 999px;
 }
+
+.release-lightbox {
+  display: none;
+}
+
+.release-lightbox:target {
+  display: flex;
+}

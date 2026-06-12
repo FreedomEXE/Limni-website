@@ -509,7 +509,7 @@ function artifactForRows(options: {
   return {
     metadata: {
       releaseLine: options.manifest.releaseLine,
-      appVersion: options.manifest.appVersion,
+      appVersion: options.manifest.liveVersion,
       semanticVersion: options.manifest.semanticVersion,
       canonVersion: options.manifest.canonVersion,
       preparedAt: options.manifest.preparedAt,
@@ -837,7 +837,7 @@ async function buildCanonInventoryManifestUncached(options: {
   return {
     schemaVersion: CANON_INVENTORY_SCHEMA_VERSION,
     releaseLine: options.manifest.releaseLine,
-    appVersion: options.manifest.appVersion,
+    appVersion: options.manifest.liveVersion,
     canonVersion: options.manifest.canonVersion,
     cacheNamespace: options.manifest.cacheNamespace,
     currentWeekOpenUtc: options.currentWeekOpenUtc,

@@ -1,8 +1,26 @@
 # v2 Changes
 
-## v2.0.3 - Unreleased - Institutional Seed Candidate
+## v2.0.4 - 2026-06-12 - Gate 28 Runtime Readiness
 
-v2.0.3 is the institutional seed runtime candidate. The old clean14 lane is now
+v2.0.4 closes the Gate 28 corrective pass. It promotes the public runtime
+metadata to `liveVersion: v2.0.4`, keeps dev/live rendering separated by
+channel, bumps the runtime cache namespace to `v2.0.4-gate28-runtime`, and keeps
+`canonVersion: v2`.
+
+This patch ships shared loading ownership, strict version-badge popover
+separation, a modular Documents release index, click-to-enlarge evidence
+screenshots, repo-root auth/database environment recovery, Data/Performance
+fail-open readiness, and Data filter/shell cleanup. No `releases/v2/canon/*.json`
+files are regenerated or promoted in this patch.
+
+Verification covered TypeScript, focused release/canon tests, production build,
+and a Playwright route sweep across the active app routes. Dynamic account detail
+routes were skipped because the local account payload had no connected accounts.
+See `patches/v2.0.4.md` for the focused release note.
+
+## v2.0.3 - 2026-06-09 - Institutional Seed
+
+v2.0.3 is the institutional seed runtime release. The old clean14 lane is now
 historical evidence only. The active baseline id is
 `v2.0.3-institutional-seed`: 15 receipt-backed closed weeks through the week
 displayed as Jun 01 2026, with the week displayed as Jun 08 2026 visible only
@@ -12,7 +30,7 @@ This patch adds the app-truth control layer, active-baseline certification,
 route readiness, scheduler/materialization run ledgers, source-freeze lifecycle
 scripts, source-freeze and active-baseline cron routes, selected-ledger receipt
 checks, and runtime naming/cache namespaces for the institutional-seed
-candidate. Data, Performance, and Status now share the same active-baseline
+release. Data, Performance, and Status now share the same active-baseline
 contract instead of mixing old clean14/seed-window assumptions with broader
 historical data.
 

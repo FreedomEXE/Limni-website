@@ -126,7 +126,7 @@ function writeManifestSummary(manifest: ReleaseManifest) {
     window.localStorage.setItem(
       MANIFEST_STORAGE_KEY,
       JSON.stringify({
-        appVersion: manifest.appVersion,
+        appVersion: manifest.liveVersion,
         displayVersion: manifest.displayVersion,
         semanticVersion: manifest.semanticVersion,
         canonVersion: manifest.canonVersion,
@@ -160,7 +160,7 @@ async function fetchCanonBundle(canonVersion: string, strategyVariant: string) {
 function canonMetaFromManifest(manifest: ReleaseManifest): CanonMeta {
   return {
     releaseLine: manifest.releaseLine,
-    appVersion: manifest.appVersion,
+    appVersion: manifest.liveVersion,
     semanticVersion: manifest.semanticVersion,
     canonVersion: manifest.canonVersion,
     cacheNamespace: manifest.cacheNamespace,
@@ -178,7 +178,7 @@ function canonMetaFromManifest(manifest: ReleaseManifest): CanonMeta {
 function canonMetaMatchesManifest(meta: CanonMeta | null, manifest: ReleaseManifest) {
   if (!meta) return false;
   if (meta.releaseLine !== manifest.releaseLine) return false;
-  if (meta.appVersion !== manifest.appVersion) return false;
+  if (meta.appVersion !== manifest.liveVersion) return false;
   if (meta.semanticVersion !== manifest.semanticVersion) return false;
   if (meta.canonVersion !== manifest.canonVersion) return false;
   if (meta.cacheNamespace !== manifest.cacheNamespace) return false;
@@ -221,7 +221,7 @@ async function fetchAndPersistBundles(manifest: ReleaseManifest) {
   setState({
     phase: "updating-app-version",
     status: "loading",
-    appVersion: manifest.appVersion,
+    appVersion: manifest.liveVersion,
     total: variants.length,
     completed: 0,
     error: null,
@@ -272,7 +272,7 @@ export function startCanonPreload() {
         setState({
           phase: "stale-canon",
           status: "error",
-          appVersion: manifest.appVersion,
+          appVersion: manifest.liveVersion,
           total: keys.length,
           completed: 0,
           error: staleCanonErrorMessage(manifest),
@@ -284,7 +284,7 @@ export function startCanonPreload() {
         setState({
           phase: cacheNamespaceChanged ? "updating-app-version" : "loading-cache",
           status: "loading",
-          appVersion: manifest.appVersion,
+          appVersion: manifest.liveVersion,
           total: keys.length,
           completed: 0,
           error: null,
@@ -295,7 +295,7 @@ export function startCanonPreload() {
         setState({
           phase: "ready",
           status: "ready",
-          appVersion: manifest.appVersion,
+          appVersion: manifest.liveVersion,
           total: keys.length,
           completed: keys.length,
           error: null,
@@ -307,7 +307,7 @@ export function startCanonPreload() {
       setState({
         phase: "ready",
         status: "ready",
-        appVersion: manifest.appVersion,
+        appVersion: manifest.liveVersion,
         total: keys.length,
         completed: keys.length,
         error: null,

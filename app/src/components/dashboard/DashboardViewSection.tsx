@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatDateTimeET } from "@/lib/time";
 import type { Direction } from "@/lib/cotTypes";
 import type { AssetClass } from "@/lib/cotMarkets";
@@ -252,17 +252,8 @@ function selectedSourceProvenance(
   return provenance.cot;
 }
 
-function hasLoadedEveryReport(payload: MarketIntelligencePayload) {
-  return payload.reportOptions.every((option) => (
-    Boolean(payload.cotDataByReport[option.value])
-      && Boolean(payload.sentimentDataByReport[option.value])
-      && Boolean(payload.strengthDataByReport[option.value])
-  ));
-}
-
 export default function DashboardViewSection(props: DashboardViewSectionProps) {
   const store = useMarketIntelligence();
-  const requestedAllReportsRef = useRef(false);
   const initialPayload = useMemo<MarketIntelligencePayload>(() => ({
     assetOptions: props.assetOptions,
     reportOptions: props.reportOptions,
@@ -287,7 +278,6 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
   );
   const assetOptions = projectedPayload.assetOptions;
   const reportOptions = projectedPayload.reportOptions;
-  const activeBaseline = projectedPayload.activeBaseline;
   const currentWeekOpenUtc = projectedPayload.currentWeekOpenUtc;
   const cotDataByReport = projectedPayload.cotDataByReport;
   const sentimentDataByReport = projectedPayload.sentimentDataByReport;
@@ -303,14 +293,6 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
   useEffect(() => {
     seedMarketIntelligence(initialPayload);
   }, [initialPayload]);
-
-  useEffect(() => {
-    if (requestedAllReportsRef.current || hasLoadedEveryReport(basePayload)) {
-      return;
-    }
-    requestedAllReportsRef.current = true;
-    void fetchAndSeedMarketIntelligence("all", null, { includeAllReports: true });
-  }, [basePayload]);
 
   useEffect(() => {
     scheduleMarketIntelligenceRefresh("all", selectedReport);
@@ -509,6 +491,7 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
       {selectedBias === "sentiment" ? (
         <SummaryCards
           title="Sentiment"
+          centered={true}
           cards={[
             {
               id: "pairs",
@@ -635,7 +618,6 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
           <DashboardFilters
             assetOptions={assetOptions}
             reportOptions={reportOptions}
-            activeBaseline={activeBaseline}
             selectedAsset={selectedAsset}
             selectedReport={selectedReport}
             selectedBias={selectedBias}

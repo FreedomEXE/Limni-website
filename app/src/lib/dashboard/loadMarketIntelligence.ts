@@ -1038,10 +1038,17 @@ export async function loadMarketIntelligence(
   const snapshotHistories = await mapWithConcurrency(
     assetsToLoad,
     MARKET_INTELLIGENCE_LOAD_CONCURRENCY,
-    async (assetId) => [
-      assetId,
-      await readSnapshotHistory(assetId, Math.max(orderedDates.length + 1, payloadDates.length + 1)),
-    ] as const,
+    async (assetId) => {
+      try {
+        return [
+          assetId,
+          await readSnapshotHistory(assetId, Math.max(orderedDates.length + 1, payloadDates.length + 1)),
+        ] as const;
+      } catch (error) {
+        console.error("Dashboard COT history load failed:", error);
+        return [assetId, [] as CotSnapshot[]] as const;
+      }
+    },
   );
   snapshotHistories.forEach(([assetId, snapshots]) => {
     snapshotMapsByAsset.set(

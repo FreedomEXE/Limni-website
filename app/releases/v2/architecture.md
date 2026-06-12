@@ -2,7 +2,7 @@
 
 Documented: 2026-06-03
 
-This file is the v2 institutional architecture snapshot. It complements the v1 baseline files and records what changed through the local `v2.0.3` release candidate without treating the candidate as shipped.
+This file is the v2 institutional architecture snapshot. It complements the v1 baseline files and records what changed through the `v2.0.3` release.
 
 ## Release Identity
 
@@ -14,7 +14,7 @@ v2 introduced a runtime release manifest and visible version badge:
 - Version route: [`src/app/api/version/current/route.ts`](../../src/app/api/version/current/route.ts)
 - Version badge: [`src/components/AppVersionBadge.tsx`](../../src/components/AppVersionBadge.tsx)
 
-`v2.0.3` is currently a pending local candidate. It keeps `canonVersion: v2`; frozen release canon files under `releases/v2/canon/` are not mutated.
+`v2.0.3` is the current live patch. It keeps `canonVersion: v2`; frozen release canon files under `releases/v2/canon/` are not mutated.
 
 ## Historical Canon Kernel
 
@@ -42,7 +42,7 @@ Key files:
 
 The global app preloader is a release-history gate, not a page-switch gate.
 
-v2.0.3 candidate behavior:
+v2.0.3 behavior:
 
 - First load may hydrate missing active release history and current strategy payload.
 - If the release baseline already covers the latest closed week, inventory returns without rebuilding strategy deltas.
@@ -58,7 +58,7 @@ Key files:
 
 ## Strategy Execution Layer
 
-v2.0.3 candidate keeps the current app ADR Grid source-of-truth after research rejected a runner/refill interpretation for this pass.
+v2.0.3 keeps the current app ADR Grid source-of-truth after research rejected a runner/refill interpretation for this pass.
 
 Active execution styles:
 
@@ -85,7 +85,7 @@ Key files:
 
 ## Weekly Anchor Contract
 
-The v2.0.3 ADR Grid candidate aligns execution with the canonical display week anchor for historical comparison. The A/B harness showed this as the correct app-vs-indicator reconciliation path.
+The v2.0.3 ADR Grid anchor decision aligns execution with the canonical display week anchor for historical comparison. The A/B harness showed this as the correct app-vs-indicator reconciliation path.
 
 Key files:
 

@@ -151,11 +151,12 @@ UI counts must be derived from data, not hardcoded into copy.
 
 UI shows product truth, not internal architecture drama.
 
-The version popover shows the current version and a brief summary for that exact
-version only. Full release detail belongs in Documents.
+The version popover shows only the compact live/dev version pair. Full release
+detail belongs in Documents.
 
-Documents should show latest releases first and use the same release structure
-for every release.
+Documents should show latest published releases first, use the same release
+structure for every release, and not expose local dev-version metadata as
+published history.
 
 Screenshots should be grouped by release, page or workflow, and gate/state.
 

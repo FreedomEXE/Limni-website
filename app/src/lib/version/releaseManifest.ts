@@ -14,27 +14,25 @@
 import { z } from "zod";
 import rawManifest from "../../../../release-manifest.json";
 
-export const releaseManifestSchema = z.object({
+const runtimeVersionSchema = z.string().regex(/^v\d+(?:\.\d+){0,2}$/);
+
+function semanticVersionFrom(version: string) {
+  return version.replace(/^v/, "");
+}
+
+const releaseManifestRawSchema = z.object({
   releaseLine: z.string().regex(/^v\d+$/),
   displayVersion: z.string().regex(/^v\d+$/),
-  appVersion: z.string().regex(/^v\d+(?:\.\d+){0,2}$/),
-  semanticVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
-  canonVersion: z.string().regex(/^v\d+(?:\.\d+){0,2}$/),
+  liveVersion: runtimeVersionSchema,
+  devVersion: runtimeVersionSchema,
+  canonVersion: runtimeVersionSchema,
   cacheNamespace: z.string().min(1),
   preparedAt: z.string().min(1),
   releasedAt: z.string().min(1).nullable(),
-  pendingRelease: z.object({
-    appVersion: z.string().regex(/^v\d+(?:\.\d+){0,2}$/),
-    semanticVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
-    label: z.string().min(1),
-    status: z.string().min(1),
-    file: z.string().min(1),
-  }).nullable().optional(),
   anchorCommit: z.string().min(1),
   previousVersion: z.object({
-    appVersion: z.string().regex(/^v\d+(?:\.\d+){0,2}$/),
-    semanticVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
-  }).nullable(),
+    liveVersion: runtimeVersionSchema,
+  }).strict().nullable(),
   components: z.object({
     engineVersion: z.string().min(1),
     assemblyVersion: z.string().min(1).optional(),
@@ -69,9 +67,14 @@ export const releaseManifestSchema = z.object({
     file: z.string().min(1),
   })).optional(),
   changelogMarkdown: z.string().nullable().optional(),
-});
+}).strict();
 
-export type ReleaseManifest = z.infer<typeof releaseManifestSchema>;
+export const releaseManifestSchema = releaseManifestRawSchema.transform((manifest) => ({
+  ...manifest,
+  semanticVersion: semanticVersionFrom(manifest.liveVersion),
+}));
+
+export type ReleaseManifest = z.output<typeof releaseManifestSchema>;
 export type ReleaseCanonVariant = ReleaseManifest["canon"]["variants"][number];
 
 export const releaseManifest: ReleaseManifest = releaseManifestSchema.parse(rawManifest);

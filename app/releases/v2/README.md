@@ -2,9 +2,7 @@
 
 v2 is the first active app-level version after the documented v1 baseline.
 
-Current shipped patch: `v2.0.2`.
-
-Pending local candidate: `v2.0.3`.
+Current live patch: `v2.0.4`.
 
 ## Scope
 
@@ -17,7 +15,8 @@ Pending local candidate: `v2.0.3`.
 - Kernel Phase 1/3 read-only canon inventory, week/delta shard contracts, active sync, closed-history composition, active strategy kernel payload, active Performance kernel gate, active-selection Status diagnostics, and active-only strategy boot on kernel routes.
 - Matrix active flow remains quarantined/provisional and outside the v2.0.2 kernel readiness gate.
 - Performance summary-card modal click handlers quarantined.
-- v2.0.3 institutional-seed candidate docs, screenshots, source-freeze/certification receipts, and app-truth architecture records.
+- v2.0.3 institutional-seed docs, screenshots, source-freeze/certification receipts, and app-truth architecture records.
+- v2.0.4 Gate 28 runtime-readiness docs, release-index structure, loading/version UI, and route-readiness fixes.
 - Data, Performance, and Status share the same active-baseline contract: 15 closed certified weeks through Jun 01 2026, with Jun 08 2026 exposed only as current live overlay.
 
 ## Institutional Docs
@@ -30,16 +29,17 @@ The v2 Documents page should expose these records together so the release can be
 - [`../../docs/architecture/APP_TRUTH_CRON_REGISTER_2026-06-08.md`](../../docs/architecture/APP_TRUTH_CRON_REGISTER_2026-06-08.md) - current source-freeze and active-baseline scheduler register.
 - [`active-systems.md`](active-systems.md) - active strategies, execution styles, risk overlays, and verification systems.
 - [`strategy-execution-spec.md`](strategy-execution-spec.md) - source-system, Weekly Hold, ADR Grid, Favorable Gap, reset, cap, return-mode, and ambiguity definitions.
-- [`patches/v2.0.3.md`](patches/v2.0.3.md) - final v2.0.3 institutional-seed candidate boundary, evidence ledger, and explicit exclusions.
+- [`patches/v2.0.4.md`](patches/v2.0.4.md) - Gate 28 runtime readiness, loading/version/Documents fixes, and verification summary.
+- [`patches/v2.0.3.md`](patches/v2.0.3.md) - final v2.0.3 institutional-seed boundary, evidence ledger, and explicit exclusions.
 - [`data-contracts.md`](data-contracts.md) - release manifest, canon inventory, payload, week-key, ADR Grid P/L, drawdown/MAE, verification trust, and screenshot contracts.
 - [`api-surface.md`](api-surface.md) - release, canon, Performance, Data, Status, and cron/warm API surfaces.
-- [`ui-surfaces.md`](ui-surfaces.md) - Performance, Data, Accounts, Status, Documents, Matrix, and release-candidate UI behavior.
+- [`ui-surfaces.md`](ui-surfaces.md) - Performance, Data, Accounts, Status, Documents, Matrix, and release UI behavior.
 - [`verification.md`](verification.md) - test/build/browser evidence and indicator parity checkpoint.
-- [`handoff.md`](handoff.md) - next-chat handoff and release-candidate continuation instructions.
+- [`handoff.md`](handoff.md) - next-chat handoff and release continuation instructions.
 
 Older clean14 comparisons, TradingView/Pine research, source-gap investigations,
 database-institutionalization backlog, and strategy-research notes are retained
-as historical working-tree evidence but are not part of the v2.0.3 runtime
+as historical working-tree evidence but are not part of the v2.0.4 runtime
 release package.
 
 ## Canon Freeze Policy

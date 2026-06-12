@@ -1,23 +1,14 @@
 {
   "releaseLine": "v2",
   "displayVersion": "v2",
-  "appVersion": "v2.0.2",
-  "semanticVersion": "2.0.2",
+  "liveVersion": "v2.0.4",
   "canonVersion": "v2",
-  "cacheNamespace": "v2.0.3-institutional-seed-runtime",
-  "preparedAt": "2026-06-01T13:51:33.950Z",
-  "releasedAt": null,
-  "pendingRelease": {
-    "appVersion": "v2.0.3",
-    "semanticVersion": "2.0.3",
-    "label": "v2.0.3 candidate",
-    "status": "Local pending release",
-    "file": "releases/v2/patches/v2.0.3.md"
-  },
+  "cacheNamespace": "v2.0.4-gate28-runtime",
+  "preparedAt": "2026-06-12T00:00:00.000Z",
+  "releasedAt": "2026-06-12",
   "anchorCommit": "v2",
   "previousVersion": {
-    "appVersion": "v2.0.1",
-    "semanticVersion": "2.0.1"
+    "liveVersion": "v2.0.3"
   },
   "components": {
     "engineVersion": "strategy-artifact-v34",
@@ -130,9 +121,17 @@
     "Unified Basket drilldown row context across all periods, preserved current-week grid details for active full payloads including single-fill grids, and normalized per-grid fill display ordering for sparse delta sequences.",
     "Added deterministic shard derivation tests so Phase 1 can validate per-week hashes before client cutover.",
     "Bumped cacheNamespace to v2.0.2 for the new kernel contract surface while keeping canonVersion at v2.",
-    "Prepared v2.0.3 institutional-seed runtime metadata, source-freeze/certification lifecycle gates, active-baseline route readiness, and live-week overlay separation while keeping canonVersion at v2."
+    "Prepared v2.0.3 institutional-seed runtime metadata, source-freeze/certification lifecycle gates, active-baseline route readiness, and live-week overlay separation while keeping canonVersion at v2.",
+    "Released v2.0.4 Gate 28 runtime readiness: shared loading ownership, strict live/dev version separation, modular Documents release index, root env recovery, and Data/Performance/Status route readiness fixes without mutating v2 canon artifacts."
   ],
   "versionHistory": [
+    {
+      "appVersion": "v2.0.4",
+      "date": "2026-06-12",
+      "type": "patch",
+      "summary": "Gate 28 runtime readiness: shared loading ownership, live/dev version separation, modular Documents index, env recovery, and route readiness fixes.",
+      "file": "releases/v2/patches/v2.0.4.md"
+    },
     {
       "appVersion": "v2.0.3",
       "date": "2026-06-09",

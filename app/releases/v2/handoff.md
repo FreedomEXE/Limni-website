@@ -1,12 +1,13 @@
-# v2.0.3 Release Candidate Handoff
+# v2.0.3 Historical Handoff
 
 Date: 2026-06-03
 
-This is the release handoff for the next chat. Continue from this state; do not restart the investigation.
+This preserves the pre-promotion release handoff. Current runtime version truth
+now lives in `release-manifest.json` and `app/releases/v2/manifest.json`.
 
 ## Current State
 
-The local workspace has a staged v2.0.3 candidate focused on:
+The pre-promotion workspace had v2.0.3 work focused on:
 
 - ADR Grid weekly anchor reconciliation.
 - ADR Grid P/L unit correction.
@@ -53,7 +54,7 @@ Kernel and loading:
 Documentation:
 
 - v2 release docs now mirror v1's institutional structure.
-- v2.0.3 Playwright screenshots were promoted into `releases/v2/screenshots/...`, but are now earlier candidate evidence from before the ADR Grid P/L unit fix.
+- v2.0.3 Playwright screenshots were promoted into `releases/v2/screenshots/...`, but are now earlier local evidence from before the ADR Grid P/L unit fix.
 - `handoff.md` is now allowed in Documents page release rendering.
 - Drawdown/P&L scope expansion is documented in `docs/data-verification/ADR_GRID_DRAWDOWN_UNIFICATION_SPEC_2026-06-03.md`.
 

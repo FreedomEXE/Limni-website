@@ -1,3 +1,5 @@
+import { ensureRootServerEnvLoaded } from "@/lib/server/rootEnv";
+
 export type StatusIssue = {
   severity: "error" | "warning";
   title: string;
@@ -29,6 +31,8 @@ function getDatabaseHost(value: string) {
 }
 
 export function getAppDiagnostics(options: DiagnosticsOptions = {}): StatusIssue[] {
+  ensureRootServerEnvLoaded();
+
   const issues: StatusIssue[] = [];
   const dbUrl = process.env.DATABASE_URL ?? "";
   const adminToken = process.env.ADMIN_TOKEN ?? "";

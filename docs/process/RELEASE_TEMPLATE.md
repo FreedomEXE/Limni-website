@@ -63,8 +63,9 @@ Required sections:
 
 ## Runtime UI Rules
 
-- The version popover shows the current version and a brief summary for that
-  exact version only.
+- The version popover shows only the compact live/dev version pair.
 - Full release details belong in Documents.
+- Documents render a published release index and must not expose local dev
+  metadata as release history.
 - Runtime UI must not carry historical release narratives.
 - Runtime UI must not use `pendingRelease` as product truth.

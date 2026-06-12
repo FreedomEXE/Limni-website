@@ -28,8 +28,8 @@ type ScrollableWeekStripProps = {
   selected: WeekOption;
   /** Optional: current live week ISO for badge annotation. */
   currentWeek?: string;
-  /** Label shown before the strip. Default "Week". */
-  label?: string;
+  /** Label shown before the strip. Default "Week"; pass null to hide it. */
+  label?: string | null;
   /** Controls how week dates are displayed. */
   labelMode?: "week_open_utc" | "monday_et";
   /** Optional custom label formatter — overrides labelMode when provided. */
@@ -257,9 +257,11 @@ export default function ScrollableWeekStrip({
 
   return (
     <div className={`flex min-w-0 flex-1 items-center gap-2 ${className}`}>
-      <span className="shrink-0 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-        {label}
-      </span>
+      {label ? (
+        <span className="shrink-0 text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
+          {label}
+        </span>
+      ) : null}
 
       <div className="relative min-w-0 flex-1">
         {showScrollLeft ? (

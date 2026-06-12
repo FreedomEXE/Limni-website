@@ -2,11 +2,11 @@
 
 Documented: 2026-06-03
 
-This file records the high-signal v2 API routes involved in the v2.0.2 kernel and v2.0.3 verification candidate.
+This file records the high-signal v2 API routes involved in the v2.0.2 kernel and v2.0.3 verification release.
 
 ## Release And Version
 
-- `/api/version/current`: runtime release manifest and pending release metadata.
+- `/api/version/current`: runtime release manifest with the current public `liveVersion`.
 - `/api/release-assets/[...path]`: serves release screenshot assets to the Documents page.
 
 ## Canon Kernel

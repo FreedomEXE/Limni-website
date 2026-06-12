@@ -38,23 +38,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     routeReadinessError = errorMessage(error);
   }
 
-  if (!routeReadiness?.data.ready || routeReadinessError) {
-    return (
-      <DashboardLayout>
-        <AppTruthRouteGate
-          route="data"
-          readiness={routeReadiness}
-          readinessError={routeReadinessError}
-        >
-          {null}
-        </AppTruthRouteGate>
-      </DashboardLayout>
-    );
-  }
-
   const payload = await loadCachedMarketIntelligence("all", {
     reportDate: reportParam,
-    includeAllReports: true,
   });
 
   const reportValues = new Set(payload.reportOptions.map((option) => option.value));
@@ -67,7 +52,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <DashboardLayout>
-      <AppTruthRouteGate route="data" readiness={routeReadiness}>
+      <AppTruthRouteGate
+        route="data"
+        readiness={routeReadiness}
+        readinessError={routeReadinessError}
+      >
         <DashboardViewSection
           {...payload}
           initialAsset={rawAsset ?? "all"}

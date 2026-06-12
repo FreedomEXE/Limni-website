@@ -2,7 +2,7 @@
 
 Documented: 2026-06-03
 
-This file records the active v2 data contracts and the `v2.0.3` candidate changes.
+This file records the active v2 data contracts and the `v2.0.3` live changes.
 
 ## Release Manifest
 
@@ -11,12 +11,12 @@ Runtime release identity comes from [`release-manifest.json`](../../release-mani
 Important fields:
 
 - `releaseLine`: `v2`
-- `appVersion`: currently shipped `v2.0.2`
-- `pendingRelease`: local `v2.0.3` candidate
+- `liveVersion`: current public version, `v2.0.3`
 - `canonVersion`: `v2`
 - `cacheNamespace`: current runtime namespace
 
-The app must not treat a pending release as shipped until Freedom approves bump, push, deploy, and tagging.
+The root runtime manifest may also carry the local development channel version.
+Published release-line manifests and Documents history stay live-only.
 
 ## Canon Inventory
 
@@ -34,7 +34,7 @@ Shard sources:
 - `release-canon`: immutable release baseline derived from `releases/v2/canon/*.json`.
 - `closed-week-delta`: post-release closed week, derived server-side without mutating frozen canon.
 
-v2.0.3 candidate hardening:
+v2.0.3 hardening:
 
 - Server memoizes release artifact reads, delta inventory, and inventory manifests.
 - Inventory skips dynamic delta build if the release baseline already covers the latest closed week.
@@ -201,4 +201,4 @@ Until that graduation is complete, TradingView evidence is authoritative for sam
 
 App-visible screenshots live under `releases/v2/screenshots/...` and must be listed in `releases/v2/manifest.json`. Temporary verification screenshots may live in `docs/research`, but they are not app-visible unless promoted.
 
-The current v2.0.3 screenshots are earlier candidate evidence for the weekly-anchor/preloader phase. They predate the ADR Grid P/L unit fix and drawdown/MAE contract and must be replaced before go-live.
+The current v2.0.3 screenshots include earlier weekly-anchor/preloader evidence. They predate the ADR Grid P/L unit fix and drawdown/MAE contract and should be replaced in the next release package if those corrected surfaces are promoted.

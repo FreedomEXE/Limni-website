@@ -14,11 +14,17 @@
 
 import { cookies } from "next/headers";
 
+import { rootServerEnv } from "@/lib/server/rootEnv";
+
 const SESSION_COOKIE_NAME = "limni_session";
 const SESSION_USER_COOKIE_NAME = "limni_user";
 const SESSION_SECRET_ADMIN = "admin";
 
 export type UserRole = "admin";
+
+function authCredential(key: "AUTH_USERNAME" | "AUTH_PASSWORD") {
+  return rootServerEnv(key);
+}
 
 function isAuthBypassed() {
   return process.env.AUTH_BYPASS === "true";
@@ -59,8 +65,8 @@ export async function login(username: string, password: string): Promise<boolean
     return true;
   }
 
-  const validUsername = process.env.AUTH_USERNAME || "admin";
-  const validPassword = process.env.AUTH_PASSWORD || "password";
+  const validUsername = authCredential("AUTH_USERNAME") || "admin";
+  const validPassword = authCredential("AUTH_PASSWORD") || "password";
 
   if (username === validUsername && password === validPassword) {
     const cookieStore = await cookies();

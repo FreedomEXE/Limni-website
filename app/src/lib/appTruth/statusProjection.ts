@@ -733,8 +733,8 @@ export function buildStatusAppTruthProjection(
   return {
     generatedAtUtc,
     release: {
-      liveReleaseId: options.manifest.appVersion,
-      candidateReleaseId: options.manifest.pendingRelease?.appVersion ?? null,
+      liveReleaseId: options.manifest.liveVersion,
+      devReleaseId: options.manifest.devVersion,
       cacheNamespace: options.manifest.cacheNamespace,
       canonVersion: options.manifest.canonVersion,
       engineVersion: options.manifest.components.engineVersion,

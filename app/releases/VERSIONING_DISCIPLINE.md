@@ -7,10 +7,18 @@
 
 - `releaseLine`: major product line, for example `v2`.
 - `displayVersion`: compact UI label, usually the release line (`v2`).
-- `appVersion`: exact runtime release, for example `v2.0.1`.
-- `semanticVersion`: SemVer equivalent, for example `2.0.1`.
+- `liveVersion`: current public release, for example `v2.0.3`.
+- `devVersion`: next working release, for example `v2.0.4`.
 - `canonVersion`: immutable canon artifact identity, for example `v2`.
-- `cacheNamespace`: client cache invalidation namespace. Defaults to `appVersion`.
+- `cacheNamespace`: client cache invalidation namespace. Defaults to `liveVersion`.
+
+Do not use `pendingRelease` as runtime truth. Local release-candidate detail
+belongs in gate notes or handoff memory until it becomes published release
+history; it does not belong in the runtime manifest, version popover, or
+published Documents index.
+Published release-line manifests under `app/releases/vN/manifest.json` should
+record published release history only; development channel state belongs in the
+root runtime manifest.
 
 ## Timestamp Semantics
 

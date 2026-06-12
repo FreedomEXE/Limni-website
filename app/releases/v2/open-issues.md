@@ -8,7 +8,7 @@
 - **Opened:** 2026-05-31 19:45 America/Toronto
 - **Reported by:** Freedom
 - **Severity:** High
-- **Status:** Fixed locally in the v2.0.3 institutional-seed candidate; monitor next production rollover after promotion
+- **Status:** Fixed in the v2.0.3 institutional-seed release; monitor next production rollover
 - **Surface:** Performance
 - **Affected context:** Tandem / ADR Grid, Summary view, current and most-recent week selection
 
@@ -90,7 +90,7 @@ Implement a modular week-transition contract rather than patching individual vie
 - 2026-06-01: Added non-blocking active-variant kernel sync and closed-history bundle composition. Browser smoke verified first fill to `Kernel: ready (18/18 weeks)` for `tandem-weekly_hold-none`, then reload reused IndexedDB shards with one inventory request and zero week-shard requests. Basket closed-history snapshots now prefer kernel-composed bundles with legacy canon fallback. The issue remains open until full strategy rendering composes from the kernel and closed-week delta materialization is implemented.
 - 2026-06-01: Implemented server-derived `closed-week-delta` entries in the canon inventory and `/api/canon/v2/week` fallback. Post-release closed weeks are now eligible for active-variant delta fetch without mutating `releases/v2/canon/`. The issue remains open until rollover browser verification proves the active page consumes the delta path end to end.
 - 2026-06-01: Added active Performance kernel payload routing so the active page consumes the release-canon plus closed-week-delta server path through `/api/performance/strategy-kernel-payload`. Status page diagnostics now expose the active shard inventory and closed/live boundary. The issue remains open pending final browser inspection and the next rollover monitoring window.
-- 2026-06-09: v2.0.3 institutional-seed candidate fixed the broader weekly rollover failure mode. Active closed history now contains 15 receipt-backed weeks through Jun 01 2026, while Jun 08 2026 is visible as live overlay only. Source-freeze and active-baseline certification receipts are materialized and visible in Status. Data and Performance route readiness report `15/15`. Browser evidence is saved under `screenshots/weekly-rollover-active-baseline-2026-06-09/`.
+- 2026-06-09: v2.0.3 institutional-seed release fixed the broader weekly rollover failure mode. Active closed history now contains 15 receipt-backed weeks through Jun 01 2026, while Jun 08 2026 is visible as live overlay only. Source-freeze and active-baseline certification receipts are materialized and visible in Status. Data and Performance route readiness report `15/15`. Browser evidence is saved under `screenshots/weekly-rollover-active-baseline-2026-06-09/`.
 
 ## 1a. Current-Week Basket Legacy Renderer Regression
 
@@ -121,7 +121,7 @@ The Basket path intentionally avoided the canon-backed `BasketHierarchy` for `se
 - **Opened:** 2026-06-04
 - **Reported by:** Freedom
 - **Severity:** High
-- **Status:** Fix candidate browser-verified locally; keep open for final parity/approval gate
+- **Status:** Fix browser-verified locally; keep open for final parity gate
 - **Surface:** Performance Basket, Simulation, sidebar
 - **Affected context:** Tiered / ADR Grid / Pair Fill Cap, FX-only scope, week `May 18 2026`
 

@@ -4,7 +4,6 @@ import Script from "next/script";
 import { Suspense } from "react";
 import AppPreloadGate from "@/components/AppPreloadGate";
 import AppVersionBadge from "@/components/AppVersionBadge";
-import LimniLoading from "@/components/LimniLoading";
 import "./globals.css";
 
 const sourceSans = Source_Sans_3({
@@ -73,7 +72,7 @@ export default function RootLayout({
         <Script id="theme-init" strategy="beforeInteractive">
           {THEME_INIT_SCRIPT}
         </Script>
-        <Suspense fallback={<LimniLoading label="Checking for updates..." />}>
+        <Suspense fallback={null}>
           <AppPreloadGate>{children}</AppPreloadGate>
         </Suspense>
         <AppVersionBadge />
