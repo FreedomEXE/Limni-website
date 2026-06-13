@@ -20,26 +20,24 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 32: performance-speed-release-readiness.
+Gate 33: weekly-hold-engine-parity.
 
-Status: Gates 30-32 are patched locally on top of pushed Gate 29 and are pending
-external review before any commit/push.
+Status: next recommended data-verification gate after v2.0.5 Gates 30-32 were
+pushed.
 
 Goal:
 
-- Review Gate 30 Friday rollover/source readiness.
-- Review Gate 31 Basket expansion parity.
-- Review Gate 32 Performance speed/cache and v2.0.5 release-doc truth.
-- Keep this stack local until Freedom approves push. Do not start Weekly Hold
-  engine parity, ADR Grid parity, strategy optimization, or risk-overlay
-  redesign inside this gate.
-
-Gate 30 `friday-rollover-source-readiness` and Gate 31
-`basket-expansion-parity` remain uncommitted and pending app review.
+- Verify Weekly Hold engine numbers before any ADR Grid candidate promotion.
+- Reconcile app Weekly Hold output against reproducible source rows for weekly
+  directions, returns, W/L, drawdown, basket counts, and current-vs-stored week
+  behavior.
+- Keep this as data verification, not optimization. Do not start ADR Grid
+  parity, Pair Fill Cap redesign, or strategy tuning until Weekly Hold numbers
+  are trusted.
 
 ## Next Gates
 
-Recommended next data gate after v2.0.5 Gates 30-32 review:
+Recommended next data gates:
 
 1. `Gate 33: weekly-hold-engine-parity`.
 2. `Gate 34: weekly-hold-signal-qualification`.
@@ -98,8 +96,8 @@ only when they simplify ownership enough to retire older paths.
   flattening, week-switch focus reset, and ADR Grid header identity.
 - Validation passed: TypeScript, focused basket/ledger tests, `npm run build`,
   and `git diff --check`.
-- No new tracked files were added, no release canon files changed, no commit,
-  and no push.
+- Pushed as part of `831a99f Gate 30-32: finalize v2.0.5 readiness`.
+- No `app/releases/v2/canon/*.json` files changed.
 
 ## Gate 32 Notes
 
@@ -121,7 +119,22 @@ only when they simplify ownership enough to retire older paths.
   folder.
 - Validation passed: TypeScript, focused basket/ledger/release tests,
   `npm run build`, and `git diff --check`.
-- No `app/releases/v2/canon/*.json` files changed, no commit, and no push.
+- Pushed as part of `831a99f Gate 30-32: finalize v2.0.5 readiness`.
+- No `app/releases/v2/canon/*.json` files changed.
+
+## Gate 30-32 Result
+
+Pushed as v2.0.5 readiness completion:
+
+- Commit: `831a99f Gate 30-32: finalize v2.0.5 readiness`
+- Remote: `origin/main`
+- Scope: Friday rollover/source readiness, Basket expansion parity,
+  Performance speed/cache, release docs truth, and evidence receipts.
+- Verification before push: `git diff --check`, `git diff --cached --check`,
+  `npx tsc --noEmit --project app/tsconfig.json --pretty false`, focused
+  basket/ledger/release Vitest suite, `npm run build`, browser speed receipt,
+  and screenshot evidence.
+- No `app/releases/v2/canon/*.json` files changed.
 
 ## Gate 29 Notes
 
