@@ -1,8 +1,9 @@
 # v2 API Surface
 
-Documented: 2026-06-03
+Documented: 2026-06-12
 
-This file records the high-signal v2 API routes involved in the v2.0.2 kernel and v2.0.3 verification release.
+This file records the high-signal v2 API routes involved in the active release
+line. The current live patch is read from the release manifests.
 
 ## Release And Version
 
@@ -15,7 +16,7 @@ This file records the high-signal v2 API routes involved in the v2.0.2 kernel an
 - `/api/canon/[version]/week`: single week shard fetch for a strategy variant/week.
 - `/api/performance/strategy-kernel-payload`: active Performance payload from kernel-composed history plus live week.
 
-v2.0.3 hardening is in the server helpers used by those routes:
+Current hardening is in the server helpers used by those routes:
 
 - [`src/lib/canon/canonWeekShard.server.ts`](../../src/lib/canon/canonWeekShard.server.ts)
 
@@ -28,7 +29,10 @@ v2.0.3 hardening is in the server helpers used by those routes:
 - `/api/performance/strategy-artifacts/request-warm`: warm request endpoint.
 - `/api/performance/strategy-artifacts/request-bulk-warm`: bulk warm request endpoint.
 
-v2.0.3 expectation: strategy switches may call strategy endpoints, but must not rerun the global release preloader after app gate release.
+Current expectation: strategy switches may call strategy endpoints, but must not
+rerun the global release preloader after app gate release. Reopening
+Performance should reuse the existing client cache when the strategy payload is
+still valid.
 
 ## Data Section
 

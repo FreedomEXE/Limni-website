@@ -450,6 +450,10 @@ export async function fetchStrategyKernelPayload(
     `&scope=${scope}` +
     `&history=active-baseline` +
     `${options.force ? "&repair=1" : ""}`;
+  const persistentPayload = options.force
+    ? null
+    : await readPersistentPayload(url, selection, scope);
+  if (!options.force && persistentPayload) return persistentPayload;
 
   const request = (async () => {
     const maxAttempts = 3;
@@ -475,6 +479,7 @@ export async function fetchStrategyKernelPayload(
           throw new Error("Unexpected strategy kernel payload shape");
         }
         payloadCache.set(cacheKey, mergeStrategyClientPayload(payloadCache.get(cacheKey) ?? null, data));
+        await writePersistentPayload(url, data);
         return payloadCache.get(cacheKey) ?? data;
       } catch (error) {
         if (attempt === maxAttempts) {

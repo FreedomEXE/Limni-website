@@ -309,20 +309,28 @@ export function buildBasketTradeListNodes({
       sort,
       viewMode,
       ([left], [right]) => left.localeCompare(right),
-    ).map(([symbol, rowsForSymbol]) => node(
-      `${parentId}|symbol|${symbol}`,
-      "symbol",
-      symbol,
-      rowsForSymbol,
-      viewMode,
-      {
-        date: rowsForSymbol[0]?.weekOpenUtc ?? null,
-        count: countPreview(rowsForSymbol, hasGrid),
-      },
-      hasGrid
-        ? buildGrids(rowsForSymbol, `${parentId}|symbol|${symbol}`)
-        : buildLeaves(rowsForSymbol.filter((row) => row.rowKind === "trade"), `${parentId}|symbol|${symbol}`),
-    ));
+    ).map(([symbol, rowsForSymbol]) => {
+      const symbolId = `${parentId}|symbol|${symbol}`;
+      const tradeRows = rowsForSymbol.filter((row) => row.rowKind === "trade");
+      const singleTrade = !hasGrid && tradeRows.length === 1 ? tradeRows[0] : null;
+      return node(
+        symbolId,
+        "symbol",
+        symbol,
+        rowsForSymbol,
+        viewMode,
+        {
+          date: rowsForSymbol[0]?.weekOpenUtc ?? null,
+          count: countPreview(rowsForSymbol, hasGrid),
+          row: singleTrade,
+        },
+        hasGrid
+          ? buildGrids(rowsForSymbol, symbolId)
+          : singleTrade
+            ? undefined
+            : buildLeaves(tradeRows, symbolId),
+      );
+    });
 
   const buildTiers = (tierRows: ClosedHistoryRow[], parentId: string) =>
     [...groupBy(tierRows, (row) => String(row.tier ?? 0)).entries()]

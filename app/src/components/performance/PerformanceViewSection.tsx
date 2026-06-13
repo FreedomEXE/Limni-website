@@ -14,7 +14,7 @@
 -----------------------------------------------*/
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
 import type { PerformanceSystem } from "@/lib/performance/modelConfig";
 import type { PerformanceView } from "@/lib/performance/pageState";
 import type { EngineGridProps, EngineSidebarStats, EngineSimulationGroup } from "@/lib/performance/engineAdapter";
@@ -90,6 +90,8 @@ import {
 import { useViewMode } from "@/lib/viewMode/viewModeStore";
 import type { ViewMode } from "@/lib/viewMode/viewModeTypes";
 import type { TradeStrategyFamily } from "@/lib/trades/tradeTypes";
+
+const MemoPerformanceSimulationSection = memo(PerformanceSimulationSection);
 
 type GridProps = Omit<ComponentProps<typeof PerformanceGrid>, "view" | "combined" | "perAsset"> & {
   combined: ComponentProps<typeof PerformanceGrid>["combined"];
@@ -208,6 +210,7 @@ function hasGridActivity(gridProps: EngineGridProps | null | undefined) {
   return Boolean(gridProps?.combined.models.some((model) => (
     model.total > 0 ||
     model.returns.length > 0 ||
+    model.pair_details.length > 0 ||
     Math.abs(model.percent) > 1e-9
   )));
 }
@@ -739,8 +742,13 @@ function EngineBasketView({
   const strategyVariant = selection
     ? `${selection.strategy}-${selection.f1}-${selection.f2}`
     : "tandem-weekly_hold-none";
+  const resetKey = `${strategyVariant}|${weekOpenUtc ?? "all"}|${isAllTime ? "all" : "week"}|${formatPerformanceAssetSelection(scope)}|${viewMode.anchor}|${viewMode.normalization}`;
 
-  const canUseHierarchy = Boolean(selection && selectedTradeRowsBundle);
+  useEffect(() => {
+    setExpandedPairs(new Set());
+  }, [resetKey]);
+
+  const canUseHierarchy = Boolean(selection && selectedTradeRowsBundle?.rows.length);
   const hierarchySelectedWeek = isAllTime ? "all" : weekOpenUtc ?? null;
   const shouldUseClosedHistoryHierarchy = canUseHierarchy
     && hierarchySelectedWeek !== null;
@@ -883,7 +891,12 @@ function EngineBasketView({
     return a.pair.localeCompare(b.pair);
   });
   const isAdrGridFamily = strategyFamily === "adr_grid";
-  const parentUnitLabel = isAdrGridFamily ? "grid" : "trade";
+  const signalOnlyRows = sorted.length > 0 && sorted.every((trade) => (
+    !trade.children?.length &&
+    (trade.percent ?? 0) === 0 &&
+    trade.reason?.includes("No fills yet")
+  ));
+  const parentUnitLabel = isAdrGridFamily ? "grid" : signalOnlyRows ? "direction" : "trade";
 
   // ADR Grid parent rows are grid baskets; child rows are fills.
   const totalTradeCount = isAdrGridFamily
@@ -1020,7 +1033,9 @@ function EngineBasketView({
                               <span className="text-[10px] text-[color:var(--muted)]">
                                 {isAdrGridTrade
                                   ? `${tradeCount} ${tradeCount === 1 ? "fill" : "fills"}`
-                                  : "1 trade"}
+                                  : signalOnlyRows
+                                    ? `${tradeCount} ${tradeCount === 1 ? "direction" : "directions"}`
+                                    : "1 trade"}
                               </span>
                               <span className="text-[10px] font-semibold text-lime-500">{tradeWins}W</span>
                               <span className="text-[10px] font-semibold text-rose-500">{tradeLosses}L</span>
@@ -1120,6 +1135,8 @@ function EngineBasketView({
   );
 }
 
+const MemoEngineBasketView = memo(EngineBasketView);
+
 type PerformanceViewSectionProps = {
   initialMode: "flagship" | "legacy";
   initialView: PerformanceView;
@@ -1178,6 +1195,7 @@ export default function PerformanceViewSection({
 }: PerformanceViewSectionProps) {
   const [performanceViewMode] = useViewMode("performance");
   const [view, setView] = useState<PerformanceView>(initialView);
+  const [mountedViews, setMountedViews] = useState<Set<PerformanceView>>(() => new Set([initialView]));
   const [selectedWeek, setSelectedWeek] = useState(initialWeek ?? "all");
   const [assetScope, setAssetScope] = useState<PerformanceAssetSelection>(() =>
     normalizePerformanceAssetSelection(initialAssetScope ?? ALL_PERFORMANCE_ASSET_SELECTION),
@@ -1191,7 +1209,19 @@ export default function PerformanceViewSection({
   const [system, setSystem] = useState<PerformanceSystem>(initialSystem);
   const [style, setStyle] = useState<WeeklyPerformanceFamily>(initialStyle);
 
-  useEffect(() => { setView(initialView); }, [initialView]);
+  useEffect(() => {
+    setView(initialView);
+    setMountedViews(new Set([initialView]));
+  }, [initialView]);
+  const activateView = useCallback((nextView: PerformanceView) => {
+    setMountedViews((previous) => {
+      if (previous.has(nextView)) return previous;
+      const next = new Set(previous);
+      next.add(nextView);
+      return next;
+    });
+    setView(nextView);
+  }, []);
   useEffect(() => { setMode(initialMode); }, [initialMode]);
   useEffect(() => { setSystem(initialSystem); }, [initialSystem]);
   useEffect(() => { setStyle(initialStyle); }, [initialStyle]);
@@ -1521,8 +1551,8 @@ export default function PerformanceViewSection({
         )
   ), [assetScope, engineWeekResults, performanceViewMode, selectedLedgerAvailable, selectedLedgerStats, selectedWeekKey, selectedWeekUsesClosedLedger]);
 
-  // ─── Engine-driven path (instant week switching) ──────────────
-  if (engineWeekMap && weekOptions) {
+  const engineViewModel = useMemo(() => {
+    if (!engineWeekMap || !weekOptions) return null;
     const rawGridProps = selectedWeekKey === "all"
       ? engineWeekMap["all"]
       : engineWeekMap[selectedWeekKey] ?? null;
@@ -1580,7 +1610,56 @@ export default function PerformanceViewSection({
           tradeCount: sidebarSelectedSimulationMetrics?.trades ?? gridTradeFallback,
           hasActivity: gridHasActivity,
         };
+    return {
+      basketAuthoritativeMetrics,
+      gridHasActivity,
+      gridProps,
+      simulation,
+      simulationWeeklyReturns,
+      weekOptions,
+    };
+  }, [
+    assetScope,
+    engineSimMap,
+    engineWeekMap,
+    engineWeekResults,
+    performanceViewMode,
+    selectedLedgerAllStats,
+    selectedLedgerAvailable,
+    selectedLedgerStats,
+    selectedWeekKey,
+    selectedWeekUsesClosedLedger,
+    selection,
+    sidebarSelectedSimulationMetrics,
+    weeklyReturns,
+    weekOptions,
+  ]);
 
+  useEffect(() => {
+    if (!engineViewModel) return;
+    const warmTimer = window.setTimeout(() => {
+      setMountedViews((previous) => {
+        const next = new Set(previous);
+        next.add("summary");
+        next.add("simulation");
+        next.add("basket");
+        return next.size === previous.size ? previous : next;
+      });
+    }, 250);
+    return () => window.clearTimeout(warmTimer);
+  }, [engineViewModel]);
+
+  // ─── Engine-driven path (instant week switching) ──────────────
+  if (engineViewModel) {
+    const {
+      basketAuthoritativeMetrics,
+      gridHasActivity,
+      gridProps,
+      simulation,
+      simulationWeeklyReturns,
+      weekOptions: engineWeekOptions,
+    } = engineViewModel;
+    const gridView = view !== "notes" && view !== "simulation" && view !== "basket" ? view : "summary";
     return (
       <>
         <div className="space-y-4 rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)]/70 p-4">
@@ -1594,7 +1673,7 @@ export default function PerformanceViewSection({
             <ViewModeControls surface="performance" size="sm" />
           </div>
           <ScrollableWeekStrip
-            options={weekOptions}
+            options={engineWeekOptions}
             selected={selectedWeekKey}
             currentWeek={currentWeek}
             label="Week"
@@ -1608,7 +1687,7 @@ export default function PerformanceViewSection({
 
         <PerformanceViewCards
           activeView={view}
-          onViewChange={setView}
+          onViewChange={activateView}
           views={PERFORMANCE_VIEW_CARDS}
         />
         {view === "notes" ? (
@@ -1617,62 +1696,82 @@ export default function PerformanceViewSection({
             strategyDescription={strategyDescription ?? null}
             notesStorageKey={notesStorageKey ?? "performance"}
           />
-        ) : view === "simulation" ? (
-          simulation ? (
-            <PerformanceSimulationSection
-              group={simulation}
-              weeklyReturns={simulationWeeklyReturns}
-              maeTrades={selectedWeekKey === "all" ? maeTrades : undefined}
-              assetContributions={assetContributions}
-              assetScope={assetScope}
-              onAssetScopeChange={setNormalizedAssetScope}
-              showAssetControls={false}
-            />
-          ) : (
-            <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
-              No simulation data for the selected week.
-            </div>
-          )
-        ) : !gridHasActivity ? (
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
-            {selectedWeekKey === currentWeek
-              ? "Current week in progress — no realized fills yet. Switch to Simulation view to see the equity path."
-              : "No realized performance data for the selected week."}
+        ) : null}
+
+        {(mountedViews.has("simulation") || view === "simulation") ? (
+          <div className={view === "simulation" ? undefined : "hidden"}>
+            {simulation ? (
+              <MemoPerformanceSimulationSection
+                group={simulation}
+                weeklyReturns={simulationWeeklyReturns}
+                maeTrades={selectedWeekKey === "all" ? maeTrades : undefined}
+                assetContributions={assetContributions}
+                assetScope={assetScope}
+                onAssetScopeChange={setNormalizedAssetScope}
+                showAssetControls={false}
+              />
+            ) : (
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+                No simulation data for the selected week.
+              </div>
+            )}
           </div>
-        ) : view === "basket" && gridProps ? (
-          <EngineBasketView
-            gridProps={gridProps}
-            weeklyReturns={selectedWeekKey === "all" ? weeklyReturns : undefined}
-            selection={selection}
-            weekOpenUtc={selectedWeekKey === "all" ? null : selectedWeekKey}
-            currentWeek={currentWeek}
-            scope={assetScope}
-            viewMode={performanceViewMode}
-            authoritativeMetrics={basketAuthoritativeMetrics}
-            selectedTradeRowsBundle={basketTradeRowsBundle}
-            isAllTime={selectedWeekKey === "all"}
-          />
-        ) : gridProps ? (
-          /*
-           * QUARANTINED 2026-05-30 - legacy showSectionTabs strategy special case.
-           * Previous active prop:
-           *   showSectionTabs={selection?.strategy !== "agree_3of4"}
-           * The in-grid tabs are now disabled inside PerformanceGrid; the
-           * top-level PerformanceScopeControl is the canonical scope control.
-           * See docs/QUARANTINED_CODE_INVENTORY.md.
-           */
-          <PerformanceGrid
-            {...gridProps}
-            combined={gridProps.combined}
-            perAsset={gridProps.perAsset}
-            view={view}
-            showSectionTabs={false}
-          />
-        ) : (
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
-            No data for the selected week.
+        ) : null}
+
+        {(mountedViews.has("basket") || view === "basket") ? (
+          <div className={view === "basket" ? undefined : "hidden"}>
+            {gridProps ? (
+              <MemoEngineBasketView
+                gridProps={gridProps}
+                weeklyReturns={selectedWeekKey === "all" ? weeklyReturns : undefined}
+                selection={selection}
+                weekOpenUtc={selectedWeekKey === "all" ? null : selectedWeekKey}
+                currentWeek={currentWeek}
+                scope={assetScope}
+                viewMode={performanceViewMode}
+                authoritativeMetrics={basketAuthoritativeMetrics}
+                selectedTradeRowsBundle={basketTradeRowsBundle}
+                isAllTime={selectedWeekKey === "all"}
+              />
+            ) : (
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+                No data for the selected week.
+              </div>
+            )}
           </div>
-        )}
+        ) : null}
+
+        {mountedViews.has("summary") || view !== "notes" && view !== "simulation" && view !== "basket" ? (
+          <div className={view !== "notes" && view !== "simulation" && view !== "basket" ? undefined : "hidden"}>
+            {!gridHasActivity ? (
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+                {selectedWeekKey === currentWeek
+                  ? "Current week in progress — no realized fills yet. Switch to Simulation view to see the equity path."
+                  : "No realized performance data for the selected week."}
+              </div>
+            ) : gridProps ? (
+              /*
+               * QUARANTINED 2026-05-30 - legacy showSectionTabs strategy special case.
+               * Previous active prop:
+               *   showSectionTabs={selection?.strategy !== "agree_3of4"}
+               * The in-grid tabs are now disabled inside PerformanceGrid; the
+               * top-level PerformanceScopeControl is the canonical scope control.
+               * See docs/QUARANTINED_CODE_INVENTORY.md.
+               */
+              <PerformanceGrid
+                {...gridProps}
+                combined={gridProps.combined}
+                perAsset={gridProps.perAsset}
+                view={gridView}
+                showSectionTabs={false}
+              />
+            ) : (
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel)] px-5 py-4 text-sm text-[color:var(--muted)] shadow-sm">
+                No data for the selected week.
+              </div>
+            )}
+          </div>
+        ) : null}
       </>
     );
   }

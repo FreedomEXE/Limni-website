@@ -1,8 +1,11 @@
 # v2 Architecture Snapshot
 
-Documented: 2026-06-03
+Documented: 2026-06-12
 
-This file is the v2 institutional architecture snapshot. It complements the v1 baseline files and records what changed through the `v2.0.3` release.
+This file is the v2 institutional architecture snapshot. It complements the v1
+baseline files and records current architecture for the v2 release line. The
+active patch is always read from the release manifests; dated patch sections
+remain historical evidence.
 
 ## Release Identity
 
@@ -14,11 +17,15 @@ v2 introduced a runtime release manifest and visible version badge:
 - Version route: [`src/app/api/version/current/route.ts`](../../src/app/api/version/current/route.ts)
 - Version badge: [`src/components/AppVersionBadge.tsx`](../../src/components/AppVersionBadge.tsx)
 
-`v2.0.3` is the current live patch. It keeps `canonVersion: v2`; frozen release canon files under `releases/v2/canon/` are not mutated.
+The current live patch is manifest-driven. At this update the manifests publish
+`liveVersion: v2.0.5` and keep `canonVersion: v2`; frozen release canon files
+under `releases/v2/canon/` are not mutated.
 
 ## Historical Canon Kernel
 
-v2.0.2 added the read-only kernel layer over frozen release canon plus closed-week deltas. v2.0.3 hardens that kernel for release usage.
+v2.0.2 added the read-only kernel layer over frozen release canon plus
+closed-week deltas. Later v2 patches harden that kernel for release usage
+without mutating frozen canon.
 
 Key behavior:
 
@@ -42,12 +49,16 @@ Key files:
 
 The global app preloader is a release-history gate, not a page-switch gate.
 
-v2.0.3 behavior:
+Current behavior:
 
 - First load may hydrate missing active release history and current strategy payload.
 - If the release baseline already covers the latest closed week, inventory returns without rebuilding strategy deltas.
 - If one closed week is missing from the release baseline, inventory can build that delta once and memoize it in-process.
 - After release, route changes to Data, Performance, Accounts, and strategy changes must stay interactive.
+- The active Performance strategy kernel payload can be reused from the existing
+  persistent client cache when the selection and payload metadata still match.
+- The client router cache follows the hourly cron cadence so revisiting a page
+  after short idle time does not force avoidable rehydration.
 
 Key files:
 
@@ -58,7 +69,8 @@ Key files:
 
 ## Strategy Execution Layer
 
-v2.0.3 keeps the current app ADR Grid source-of-truth after research rejected a runner/refill interpretation for this pass.
+The v2 line keeps the current app ADR Grid source-of-truth after research
+rejected a runner/refill interpretation for this release line.
 
 Active execution styles:
 
@@ -85,7 +97,9 @@ Key files:
 
 ## Weekly Anchor Contract
 
-The v2.0.3 ADR Grid anchor decision aligns execution with the canonical display week anchor for historical comparison. The A/B harness showed this as the correct app-vs-indicator reconciliation path.
+The v2 ADR Grid anchor decision aligns execution with the canonical display week
+anchor for historical comparison. The A/B harness showed this as the correct
+app-vs-indicator reconciliation path for the current app source-of-truth.
 
 Key files:
 
@@ -106,4 +120,6 @@ The Documents page renders release folders, not arbitrary research folders. v2 i
 - `releases/v2/verification.md`
 - `releases/v2/handoff.md`
 
-Screenshots must be registered in `releases/v2/manifest.json` and stored under `releases/v2/screenshots/...` to appear in the app.
+Screenshots are stored under `releases/v2/screenshots/...` and discovered by
+the Documents release index. The `screenshots` array in `manifest.json` supplies
+high-signal captions for promoted release evidence.

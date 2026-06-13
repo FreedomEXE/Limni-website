@@ -1,8 +1,10 @@
 # v2 Data Contracts
 
-Documented: 2026-06-03
+Documented: 2026-06-12
 
-This file records the active v2 data contracts and the `v2.0.3` live changes.
+This file records the active v2 data contracts. The current live patch is read
+from the release manifests; dated sections remain historical implementation
+notes.
 
 ## Release Manifest
 
@@ -11,7 +13,8 @@ Runtime release identity comes from [`release-manifest.json`](../../release-mani
 Important fields:
 
 - `releaseLine`: `v2`
-- `liveVersion`: current public version, `v2.0.3`
+- `liveVersion`: current public version from the manifest; at this update,
+  `v2.0.5`
 - `canonVersion`: `v2`
 - `cacheNamespace`: current runtime namespace
 
@@ -34,7 +37,7 @@ Shard sources:
 - `release-canon`: immutable release baseline derived from `releases/v2/canon/*.json`.
 - `closed-week-delta`: post-release closed week, derived server-side without mutating frozen canon.
 
-v2.0.3 hardening:
+Current hardening:
 
 - Server memoizes release artifact reads, delta inventory, and inventory manifests.
 - Inventory skips dynamic delta build if the release baseline already covers the latest closed week.
@@ -64,10 +67,9 @@ Canonical week keys use display week open UTC semantics:
 - `getDisplayWeekOpenUtc()`
 - `normalizeWeekOpenUtc()`
 
-Current observed week at verification time:
-
-- Current display week: `2026-05-31T23:00:00.000Z`
-- Latest closed week: `2026-05-24T23:00:00.000Z`
+Observed week state is runtime-derived. Do not hardcode a current or latest
+closed week in this contract; use source-freeze, lifecycle, and Performance
+runtime evidence.
 
 ## Return Matrix
 
@@ -201,4 +203,7 @@ Until that graduation is complete, TradingView evidence is authoritative for sam
 
 App-visible screenshots live under `releases/v2/screenshots/...` and must be listed in `releases/v2/manifest.json`. Temporary verification screenshots may live in `docs/research`, but they are not app-visible unless promoted.
 
-The current v2.0.3 screenshots include earlier weekly-anchor/preloader evidence. They predate the ADR Grid P/L unit fix and drawdown/MAE contract and should be replaced in the next release package if those corrected surfaces are promoted.
+The earlier v2.0.3 screenshots include weekly-anchor/preloader evidence. They
+predate the ADR Grid P/L unit fix and drawdown/MAE contract and should be
+treated as historical evidence unless a later patch explicitly promotes
+replacement screenshots.

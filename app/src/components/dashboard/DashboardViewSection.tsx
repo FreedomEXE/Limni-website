@@ -433,11 +433,7 @@ export default function DashboardViewSection(props: DashboardViewSectionProps) {
         return "Snapshot invalid: future source timestamp";
       }
       if (source?.snapshotUtc) {
-        const suffix =
-          source.status === "legacy_fallback" && (selectedBias === "sentiment" || selectedBias === "strength")
-            ? " (legacy fallback)"
-            : "";
-        return `Snapshot ${formatDateTimeET(source.snapshotUtc)}${suffix}`;
+        return `Snapshot ${formatDateTimeET(source.snapshotUtc)}`;
       }
       return source?.status === "missing"
         ? "No valid snapshot"

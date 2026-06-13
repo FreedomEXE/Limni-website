@@ -35,7 +35,7 @@ import {
   loadExecutionWeeklyReturnFromHourlyBars,
 } from "@/lib/executionWeeklyReturns";
 import { EXECUTION_ANCHOR_VERSION } from "@/lib/executionPriceWindows";
-import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
+import { getCanonicalWeekOpenUtc, getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 import { fetchOandaDailySeries } from "@/lib/oandaPrices";
 
 export const dynamic = "force-dynamic";
@@ -150,13 +150,14 @@ export async function GET(request: Request) {
 
   // Determine which weeks need refreshing: current + previous
   const currentWeekOpen = getCanonicalWeekOpenUtc(nowUtc);
+  const displayWeekOpen = getDisplayWeekOpenUtc(nowUtc);
   const prevWeekOpen = getCanonicalWeekOpenUtc(
     nowUtc.minus({ weeks: 1 }),
   );
   const targetWeeks = [prevWeekOpen, currentWeekOpen].filter(
     (w) => CANONICAL_WEEKS.includes(w),
   );
-  const weeklyTargetWeeks = targetWeeks.filter((weekOpenUtc) => weekOpenUtc !== currentWeekOpen);
+  const weeklyTargetWeeks = targetWeeks.filter((weekOpenUtc) => weekOpenUtc !== displayWeekOpen);
 
   if (targetWeeks.length === 0) {
     const finishedAt = new Date().toISOString();
@@ -167,7 +168,7 @@ export async function GET(request: Request) {
           completedAtUtc: finishedAt,
           status: "skipped",
           degradedReasons: ["No canonical weeks to refresh."],
-          metadata: { currentWeekOpen, includeHourly },
+          metadata: { currentWeekOpen, displayWeekOpen, includeHourly },
         });
       } catch (error) {
         ledgerErrors.push(error instanceof Error ? error.message : String(error));
@@ -177,6 +178,7 @@ export async function GET(request: Request) {
       ok: true,
       message: "No canonical weeks to refresh",
       currentWeekOpen,
+      displayWeekOpen,
       appTruthLedger: {
         schedulerRunId,
         materializationRunId,
@@ -203,6 +205,20 @@ export async function GET(request: Request) {
   let canonicalWeeklyReturnsUpserted = 0;
   let executionWeeklyReturnsUpserted = 0;
   const errors: string[] = [];
+  const initialCanonicalCoverageGaps = await checkWeeklyReturnCoverage(weeklyTargetWeeks, activeInstruments, {
+    anchorType: "canonical",
+    anchorVersion: "canonical_weekly_v2",
+  });
+  const initialExecutionCoverageGaps = await checkWeeklyReturnCoverage(weeklyTargetWeeks, activeInstruments, {
+    anchorType: "execution",
+    anchorVersion: EXECUTION_ANCHOR_VERSION,
+  });
+  const hourlyTargetsByWeek = new Map<string, Set<string>>();
+  for (const gap of [...initialCanonicalCoverageGaps, ...initialExecutionCoverageGaps]) {
+    const symbols = hourlyTargetsByWeek.get(gap.weekOpenUtc) ?? new Set<string>();
+    for (const symbol of gap.missingSymbols) symbols.add(symbol.toUpperCase());
+    hourlyTargetsByWeek.set(gap.weekOpenUtc, symbols);
+  }
 
   for (const instrument of CANONICAL_INSTRUMENTS) {
     if (!instrument.isActive) continue;
@@ -305,7 +321,10 @@ export async function GET(request: Request) {
       }
 
       if (includeHourly) {
-        for (const weekOpenUtc of targetWeeks) {
+        for (const weekOpenUtc of weeklyTargetWeeks) {
+          if (!hourlyTargetsByWeek.get(weekOpenUtc)?.has(instrument.symbol.toUpperCase())) {
+            continue;
+          }
           const result = await upsertCanonicalHourlyBarsForInstrument({
             instrument,
             weekOpenUtc,
@@ -476,6 +495,7 @@ export async function GET(request: Request) {
         metadata: {
           targetWeeks,
           weeklyTargetWeeks,
+          displayWeekOpen,
           includeHourly,
           instruments: activeInstruments.length,
           barsUpserted,
@@ -523,6 +543,9 @@ export async function GET(request: Request) {
       ok,
       durationMs: Date.now() - startedAt,
       targetWeeks,
+      currentWeekOpen,
+      displayWeekOpen,
+      weeklyTargetWeeks,
       barsUpserted,
       hourlyBarsUpserted,
       weeklyReturnsUpserted: canonicalWeeklyReturnsUpserted + executionWeeklyReturnsUpserted,

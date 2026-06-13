@@ -77,7 +77,9 @@ const ASSET_SECTIONS = [
 
 // ─── Trade grouping ─────────────────────────────────────────────
 
-function groupByAssetClass(trades: WeeklyHoldTrade[]): WeeklyHoldTrade[][] {
+type DirectionDisplayRow = Pick<WeeklyHoldTrade, "symbol" | "assetClass" | "direction" | "source" | "tier">;
+
+function groupByAssetClass<T extends DirectionDisplayRow>(trades: T[]): T[][] {
   return [
     trades.filter((t) => t.assetClass === "fx"),
     trades.filter((t) => t.assetClass === "commodities" || t.assetClass === "indices"),
@@ -85,7 +87,7 @@ function groupByAssetClass(trades: WeeklyHoldTrade[]): WeeklyHoldTrade[][] {
   ];
 }
 
-function groupByTier(trades: WeeklyHoldTrade[]): WeeklyHoldTrade[][] {
+function groupByTier<T extends DirectionDisplayRow>(trades: T[]): T[][] {
   return [
     trades.filter((t) => t.tier === 1),
     trades.filter((t) => t.tier === 2),
@@ -93,18 +95,18 @@ function groupByTier(trades: WeeklyHoldTrade[]): WeeklyHoldTrade[][] {
   ];
 }
 
-function groupByModel(
-  trades: WeeklyHoldTrade[],
+function groupByModel<T extends DirectionDisplayRow>(
+  trades: T[],
   models: readonly PerformanceModel[],
-): WeeklyHoldTrade[][] {
+): T[][] {
   return models.map((model) => trades.filter((t) => t.source === model));
 }
 
-function slotTrades(
-  trades: WeeklyHoldTrade[],
+function slotTrades<T extends DirectionDisplayRow>(
+  trades: T[],
   breakdown: BiasSourceConfig["cardBreakdown"],
   models: readonly PerformanceModel[],
-): WeeklyHoldTrade[][] {
+): T[][] {
   switch (breakdown) {
     case "asset_class":
       return groupByAssetClass(trades);
@@ -240,8 +242,47 @@ function compareTradesForDisplay(a: WeeklyHoldTrade, b: WeeklyHoldTrade) {
   return (a.tier ?? 0) - (b.tier ?? 0);
 }
 
+function compareDirectionRowsForDisplay(a: DirectionDisplayRow, b: DirectionDisplayRow) {
+  const symbolDiff = a.symbol.localeCompare(b.symbol);
+  if (symbolDiff !== 0) return symbolDiff;
+  const sourceDiff = a.source.localeCompare(b.source);
+  if (sourceDiff !== 0) return sourceDiff;
+  return (a.tier ?? 0) - (b.tier ?? 0);
+}
+
 function tradeDisplayKey(t: WeeklyHoldTrade) {
   return `${t.symbol}|${t.direction}|${t.source}|${t.tier ?? ""}`;
+}
+
+function signalsToModelPerformance(
+  slot: PerformanceModel,
+  signals: DirectionDisplayRow[],
+  note: string,
+  maxDrawdownPct: number | null,
+): ModelPerformance {
+  const sortedSignals = [...signals].sort(compareDirectionRowsForDisplay);
+  const pairDetails: ModelPerformance["pair_details"] = sortedSignals.map((signal) => ({
+    pair: signal.symbol,
+    direction: signal.direction,
+    reason: [
+      signal.tier ? `Tier ${signal.tier}` : `${signal.source} direction`,
+      "No fills yet",
+      "0.00%",
+    ],
+    percent: 0,
+  }));
+
+  return {
+    model: slot,
+    percent: 0,
+    priced: 0,
+    total: 0,
+    note,
+    returns: [],
+    pair_details: pairDetails,
+    stats: computeReturnStats([]),
+    diagnostics: { max_drawdown: maxDrawdownPct, profit_factor: null },
+  };
 }
 
 function gridDisplayTradesToModelPerformance(
@@ -448,49 +489,73 @@ export function weeklyHoldToGridProps(
     !result.isRealized &&
     Array.isArray(result.plannedTrades) &&
     result.plannedTrades.length > 0;
+  const useSignalDisplay =
+    !usePlannedGridDisplay &&
+    !result.isRealized &&
+    trades.length === 0 &&
+    Array.isArray(result.signals) &&
+    result.signals.length > 0;
   const displayTrades = usePlannedGridDisplay ? result.plannedTrades! : trades;
+  const displaySignals = useSignalDisplay ? result.signals : [];
   const displayUnit = usePlannedGridDisplay ? result.displayUnit : "trades";
   const cardSlots = resolveCardSlots(biasSource);
   const labels = getStrategyLabels(biasSource);
   const slotted = slotTrades(displayTrades, biasSource.cardBreakdown, cardSlots);
+  const slottedSignals = slotTrades(displaySignals, biasSource.cardBreakdown, cardSlots);
   const actualSlotted = slotTrades(trades, biasSource.cardBreakdown, cardSlots);
 
   const slotLabels = cardSlots.map((slot) => labels[slot]);
 
   const models: ModelPerformance[] = cardSlots.map((slot, i) =>
-    tradesToModelPerformance(
-      slot,
-      slotted[i] ?? [],
-      `${slotLabels[i]} contribution for ${weekLabel}.`,
-      pathDiagnostics?.slotMaxDrawdownPct?.[slot] ?? null,
-      {
-        displayUnit,
-        actualTrades: actualSlotted[i] ?? [],
-      },
-    ),
+    useSignalDisplay
+      ? signalsToModelPerformance(
+          slot,
+          slottedSignals[i] ?? [],
+          `${slotLabels[i]} directions for ${weekLabel}.`,
+          pathDiagnostics?.slotMaxDrawdownPct?.[slot] ?? null,
+        )
+      : tradesToModelPerformance(
+          slot,
+          slotted[i] ?? [],
+          `${slotLabels[i]} contribution for ${weekLabel}.`,
+          pathDiagnostics?.slotMaxDrawdownPct?.[slot] ?? null,
+          {
+            displayUnit,
+            actualTrades: actualSlotted[i] ?? [],
+          },
+        ),
   );
 
   const perAsset: EngineGridProps["perAsset"] = [];
   for (const ac of ASSET_SECTIONS) {
     const acTrades = trades.filter((t) => t.assetClass === ac.id);
     const acDisplayTrades = displayTrades.filter((t) => t.assetClass === ac.id);
+    const acDisplaySignals = displaySignals.filter((signal) => signal.assetClass === ac.id);
     const acSlotted = slotTrades(acDisplayTrades, biasSource.cardBreakdown, cardSlots);
+    const acSlottedSignals = slotTrades(acDisplaySignals, biasSource.cardBreakdown, cardSlots);
     const acActualSlotted = slotTrades(acTrades, biasSource.cardBreakdown, cardSlots);
     perAsset.push({
       id: ac.id,
       label: ac.label,
       description: `${ac.label} contribution`,
       models: cardSlots.map((slot, i) =>
-        tradesToModelPerformance(
-          slot,
-          acSlotted[i] ?? [],
-          `${slotLabels[i]} — ${ac.label}.`,
-          null,
-          {
-            displayUnit,
-            actualTrades: acActualSlotted[i] ?? [],
-          },
-        ),
+        useSignalDisplay
+          ? signalsToModelPerformance(
+              slot,
+              acSlottedSignals[i] ?? [],
+              `${slotLabels[i]} — ${ac.label}.`,
+              null,
+            )
+          : tradesToModelPerformance(
+              slot,
+              acSlotted[i] ?? [],
+              `${slotLabels[i]} — ${ac.label}.`,
+              null,
+              {
+                displayUnit,
+                actualTrades: acActualSlotted[i] ?? [],
+              },
+            ),
       ),
     });
   }

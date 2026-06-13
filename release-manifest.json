@@ -123,14 +123,14 @@
     "Bumped cacheNamespace to v2.0.2 for the new kernel contract surface while keeping canonVersion at v2.",
     "Prepared v2.0.3 institutional-seed runtime metadata, source-freeze/certification lifecycle gates, active-baseline route readiness, and live-week overlay separation while keeping canonVersion at v2.",
     "Released v2.0.4 Gate 28 runtime readiness: shared loading ownership, strict live/dev version separation, modular Documents release index, root env recovery, and Data/Performance/Status route readiness fixes without mutating v2 canon artifacts.",
-    "Released v2.0.5 Gate 29 performance data correctness: shared current/stored Basket hierarchy, planned ADR grid rows for 36-grid parity, selected-ledger Simulation equity-vs-balance preservation, signed Summary card tone, COT pending copy cleanup, and theme-safe Equity/Total chart colour without mutating v2 canon artifacts."
+    "Released v2.0.5 Gates 29-32 performance readiness: Performance data correctness, Friday rollover/source readiness, Basket expansion parity, and Performance speed/cache behavior without mutating v2 canon artifacts."
   ],
   "versionHistory": [
     {
       "appVersion": "v2.0.5",
       "date": "2026-06-12",
       "type": "patch",
-      "summary": "Gate 29 performance data correctness: current/stored Basket parity, selected-ledger Simulation Equity/Balance, signed Summary card tone, COT copy cleanup, and theme-safe chart colours.",
+      "summary": "Gates 29-32 performance readiness: data correctness, Friday rollover/source readiness, Basket expansion parity, and Performance speed/cache behavior.",
       "file": "releases/v2/patches/v2.0.5.md"
     },
     {

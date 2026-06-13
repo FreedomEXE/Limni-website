@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import MissingReturnCell from "@/components/common/MissingReturnCell";
 import { formatDateLabel, formatSignedPercent } from "@/components/common/trade-list/formatters";
 import type { TradeListNode } from "@/components/common/trade-list/types";
@@ -79,7 +79,11 @@ function scopeBundle(bundle: ClosedHistoryBundle | null | undefined, scope: Perf
 function primaryRow(node: TradeListNode) {
   const row = node.values.row;
   if (row && typeof row === "object") return row as ClosedHistoryRow;
-  return rowsForNode(node)[0] ?? null;
+  const rows = rowsForNode(node);
+  return rows.find((candidate) => candidate.rowKind === "grid")
+    ?? rows.find((candidate) => candidate.rowKind === "trade")
+    ?? rows[0]
+    ?? null;
 }
 
 function rowWarnings(node: TradeListNode) {
@@ -327,15 +331,18 @@ function mergeStats(left: BasketVisibleStats, right: BasketVisibleStats) {
 function visibleStats(nodes: TradeListNode[]): BasketVisibleStats {
   const stats = emptyStats();
   for (const node of nodes) {
+    const inlineTradeRow = node.level === "symbol"
+      && !node.children?.length
+      && primaryRow(node)?.rowKind === "trade";
     if (node.level === "week") stats.weekCount += 1;
     if (node.level === "portfolio") stats.portfolioCount += 1;
     if (node.level === "tier") stats.tierCount += 1;
     if (node.level === "symbol") stats.symbolCount += 1;
     if (node.level === "grid") stats.gridCount += 1;
     if (node.level === "fill") stats.fillCount += 1;
-    if (node.level === "trade") stats.tradeCount += 1;
+    if (node.level === "trade" || inlineTradeRow) stats.tradeCount += 1;
 
-    if (node.level === "fill" || node.level === "trade") {
+    if (node.level === "fill" || node.level === "trade" || inlineTradeRow) {
       const value = node.values.returnPct;
       if (typeof value === "number" && Number.isFinite(value)) {
         if (value > 0) stats.wins += 1;
@@ -545,11 +552,13 @@ function BasketNodeRow({
   const summarySegments = rowSummarySegments(node, viewMode, suppressReturnValues);
   const isLeaf = node.level === "fill" || node.level === "trade";
   const isGrid = node.level === "grid";
+  const inlineTradeRow = !hasChildren && row?.rowKind === "trade";
+  const showHeaderIdentity = inlineTradeRow || isGrid || isLeaf || node.level === "symbol";
   const flattenedGrid = node.level === "symbol" && node.children?.length === 1 && node.children[0]?.level === "grid"
     ? node.children[0]
     : null;
   const branchChildren = flattenedGrid?.children ?? node.children;
-  const canExpand = hasChildren || isLeaf;
+  const canExpand = hasChildren || isLeaf || inlineTradeRow;
   const handleToggle = () => {
     if (!canExpand) return;
     const next = !expanded;
@@ -579,7 +588,7 @@ function BasketNodeRow({
           <span className={`${node.level === "symbol" || isLeaf ? "font-mono" : ""} min-w-[9rem] max-w-[20rem] truncate text-sm font-semibold text-[var(--foreground)]`}>
             {titleForLevel(node)}
           </span>
-          {row?.direction && isLeaf ? (
+          {row?.direction && showHeaderIdentity ? (
             <span className={`text-[10px] font-bold uppercase tracking-[0.08em] ${directionTone(row.direction)}`}>
               {row.direction}
             </span>
@@ -592,7 +601,7 @@ function BasketNodeRow({
               {segment}
             </span>
           ))}
-          {row?.sourceModel && isLeaf ? (
+          {row?.sourceModel && showHeaderIdentity ? (
             <span className="text-[10px] text-[color:var(--muted)]">
               {row.sourceModel}
             </span>
@@ -618,7 +627,7 @@ function BasketNodeRow({
           ))}
         </ExpandedBranchPanel>
       ) : null}
-      {expanded && !hasChildren && isLeaf ? (
+      {expanded && !hasChildren && (isLeaf || inlineTradeRow) ? (
         <ExpandedBranchPanel>
           <InlineTradeDetail node={node} viewMode={viewMode} suppressReturnValues={suppressReturnValues} />
         </ExpandedBranchPanel>
@@ -687,6 +696,10 @@ export default function BasketHierarchy({
   const periodLabel = selectedWeek === "all" ? "All closed weeks" : formatDateLabel(selectedWeek);
   const segments = headerSegments(stats, selectedWeek, levels);
   const [focusedRootId, setFocusedRootId] = useState<string | null>(null);
+  const scopeKey = normalizePerformanceAssetSelection(scope).join("|");
+  useEffect(() => {
+    setFocusedRootId(null);
+  }, [ledgerIdentity?.tradeRowLedgerId, scopeKey, selectedWeek, strategyVariant, viewMode.anchor, viewMode.normalization]);
   const expectsActivity = Boolean(authoritativeMetrics?.hasActivity)
     || (authoritativeTradeCount !== null && authoritativeTradeCount > 0)
     || authoritativeReturn !== null;

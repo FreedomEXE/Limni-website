@@ -1,8 +1,10 @@
 # v2 Active Systems
 
-Documented: 2026-06-03
+Documented: 2026-06-12
 
-This file records the active strategy and app systems for v2 through the `v2.0.3` live release.
+This file records the active strategy and app systems for the v2 release line.
+The current live patch is read from `manifest.json`; dated rejection notes below
+remain historical design decisions.
 
 Canonical rule definitions for source systems, execution styles, return modes, ADR Grid reset behavior, Favorable Gap, Pair Fill Cap, and 1H ambiguity handling live in [`strategy-execution-spec.md`](strategy-execution-spec.md). This file is a high-level active-systems index only.
 
@@ -22,7 +24,7 @@ Single-source entries such as Dealer, Commercial, Sentiment, and Strength normal
 - `weekly_hold`: baseline weekly open-to-close model.
 - `adr_grid`: app close-and-rearm `0.20 ADR` grid with Favorable Gap and conservative 1H ambiguity handling.
 
-Rejected for v2.0.3:
+Rejected in the current v2 app source-of-truth:
 
 - Initial seeded grid position at market-truth week open.
 - Partial-close runner/refill model.
@@ -45,7 +47,8 @@ The user-visible regression to watch for: ADR Grid must not force Pair Fill Cap 
 - Status: kernel diagnostics and release/data health.
 - Documents: release history, architecture docs, screenshots, and version notes.
 
-Matrix remains provisional/degraded and is outside the v2.0.2/v2.0.3 Performance kernel readiness gate.
+Matrix remains provisional/degraded and is outside the active v2 Performance
+kernel readiness gate.
 
 ## Active Verifier
 

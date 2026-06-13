@@ -1,13 +1,42 @@
 # v2 Verification
 
 Documented: 2026-06-03
-Updated: 2026-06-09
+Updated: 2026-06-12
 
-This file records the verification state for the v2.0.3 live release.
+This file records verification state for the v2 release line. The current live
+patch is read from the release manifests; older sections are dated evidence.
 
-## Current v2.0.3 Gate - Institutional Seed
+## Current v2.0.5 Gate 29-32 - Readiness Patch
 
-The current v2.0.3 release is the institutional-seed runtime, not the earlier
+The current v2.0.5 pass covers Performance data correctness, Friday
+rollover/source readiness, Basket expansion parity, and Performance speed/cache
+behavior. It keeps `canonVersion: v2` and does not mutate
+`releases/v2/canon/*.json`.
+
+Recorded gate result before external review:
+
+- Gate 29: selected-ledger Simulation and Basket data correctness restored.
+- Gate 30: Friday rollover/source readiness materializes the just-closed week
+  while exposing the new display week consistently in Data and Performance.
+- Gate 31: Weekly Hold and ADR Grid Basket expansion behavior is shared,
+  flattened where appropriate, and resets cleanly on week/view changes.
+- Gate 32: Performance tab switches reuse memoized derived projections and the
+  strategy kernel payload can reuse the persistent client cache.
+
+Evidence:
+
+- `npx tsc --noEmit --project app/tsconfig.json --pretty false`
+- `npm test -- --run src/lib/__tests__/basketTradeListNodes.test.ts src/lib/__tests__/selectedLedgerStats.test.ts src/lib/__tests__/selectedLedgerMetricReceipt.test.ts src/lib/__tests__/engineAdapter.test.ts src/lib/__tests__/releaseVersionConsistency.test.ts`
+- `npm run build`
+- `git diff --check`
+- Browser proof: Performance Summary/Simulation/Basket tab switches measured
+  sub-second after initial payload hydration, with repeat Performance visits
+  avoiding the heavy `strategy-kernel-payload` request when the persistent
+  payload cache is valid.
+
+## Historical v2.0.3 Gate - Institutional Seed
+
+The v2.0.3 release was the institutional-seed runtime, not the earlier
 TradingView/data-verification lane.
 
 Recorded final gate result:

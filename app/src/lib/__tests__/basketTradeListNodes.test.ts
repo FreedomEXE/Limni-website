@@ -229,13 +229,15 @@ describe("basket trade-list node builder", () => {
       viewMode: adrViewMode,
     });
 
+    const symbolNode = findNode(nodes, (node) => node.level === "symbol");
     const tradeNode = findNode(nodes, (node) => node.level === "trade");
     const gridNode = findNode(nodes, (node) => node.level === "grid");
     const weekNode = findNode(nodes, (node) => node.level === "week");
 
     expect(gridNode).toBeNull();
-    expect(tradeNode?.values.maxMaePct).toBeCloseTo(0.2);
-    expect(tradeNode?.values.maxPathDrawdownPct).toBeCloseTo(0.125);
+    expect(tradeNode).toBeNull();
+    expect(symbolNode?.values.maxMaePct).toBeCloseTo(0.2);
+    expect(symbolNode?.values.maxPathDrawdownPct).toBeCloseTo(0.125);
     expect(weekNode?.values.maxMaePct).toBeCloseTo(0.2);
     expect(weekNode?.values.maxPathDrawdownPct).toBeCloseTo(0.125);
   });

@@ -24,7 +24,7 @@ export type SourceProvenance = {
   label: string;
   snapshotUtc: string | null;
   source: string;
-  status: "frozen" | "legacy_fallback" | "missing" | "invalid_future";
+  status: "frozen" | "source_snapshot" | "missing" | "invalid_future";
   invalidReason?: string | null;
 };
 
@@ -81,7 +81,7 @@ function buildSourceProvenance({
       label,
       snapshotUtc: validLegacySnapshotUtc,
       source: legacySource,
-      status: "legacy_fallback",
+      status: "source_snapshot",
     };
   }
 

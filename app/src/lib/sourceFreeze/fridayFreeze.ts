@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { getCanonicalWeekOpenUtc } from "@/lib/weekAnchor";
+import { getCanonicalWeekOpenUtc, getDisplayWeekOpenUtc } from "@/lib/weekAnchor";
 
 export const SOURCE_FREEZE_ZONE = "America/New_York";
 export const SOURCE_FREEZE_LOCAL_HOUR = 17;
@@ -42,18 +42,5 @@ export function getFridayFreezeTargetUtc(weekOpenUtc: string): string {
 }
 
 export function getFridayFreezeDisplayWeekOpenUtc(now = DateTime.utc()): string {
-  const currentWeekOpenUtc = getCanonicalWeekOpenUtc(now);
-  const currentWeekOpen = DateTime.fromISO(currentWeekOpenUtc, { zone: "utc" });
-  if (!currentWeekOpen.isValid) {
-    return currentWeekOpenUtc;
-  }
-
-  const nextWeekOpen = currentWeekOpen.setZone(SOURCE_FREEZE_ZONE).plus({ weeks: 1 });
-  const nextWeekOpenUtc = nextWeekOpen.toUTC().toISO() ?? currentWeekOpenUtc;
-  const nextFreezeTarget = DateTime.fromISO(getFridayFreezeTargetUtc(nextWeekOpenUtc), { zone: "utc" });
-  if (nextFreezeTarget.isValid && now.toUTC().toMillis() >= nextFreezeTarget.toMillis()) {
-    return nextWeekOpenUtc;
-  }
-
-  return currentWeekOpenUtc;
+  return getDisplayWeekOpenUtc(now);
 }

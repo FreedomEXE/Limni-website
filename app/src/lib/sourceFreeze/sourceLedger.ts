@@ -491,7 +491,7 @@ async function buildStrengthSignals(
 ): Promise<{ signals: FrozenSourceSignal[]; summary: FrozenSourceSummary }> {
   const rows = await readCanonicalStrengthDirectionsAtCutoff(weekOpenUtc, freezeTargetUtc);
   const signals = rows.map((row): FrozenSourceSignal => {
-    const complete = row.availableWindows === 3 && row.missingStoredPriorWeeks.length === 0 && !row.providerFallbackUsed;
+    const complete = row.availableWindows === 3 && Boolean(row.latestSnapshotUtc);
     return {
       weekOpenUtc,
       ledgerVersion: FRIDAY_FREEZE_LEDGER_VERSION,
@@ -509,8 +509,7 @@ async function buildStrengthSignals(
       trustedForFreeze: complete,
       incidents: [
         row.availableWindows < 3 ? `missing_strength_windows:${row.availableWindows}/3` : null,
-        row.missingStoredPriorWeeks.length > 0 ? `missing_prior_returns:${row.missingStoredPriorWeeks.join(",")}` : null,
-        row.providerFallbackUsed ? "provider_fallback_used" : null,
+        row.latestSnapshotUtc ? null : "missing_strength_snapshot",
       ].filter((value): value is string => Boolean(value)),
       metadata: {
         availableWindows: row.availableWindows,

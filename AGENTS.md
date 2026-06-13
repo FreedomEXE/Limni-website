@@ -38,6 +38,10 @@ send a silent final answer.
 ## Hard Rules
 
 - Work in one named gate at a time.
+- KISS first: keep simple issues simple. Prefer the smallest readable in-place
+  fix; do not add abstractions, files, or 100-line structures when a targeted
+  20-line edit solves the problem. Abstract only when the simple path is proven
+  insufficient.
 - Do not mix repo cleanup, app code, versioning repair, baseline repair, release
   docs, or UI behavior in one gate.
 - Do not expand scope without naming a new gate.

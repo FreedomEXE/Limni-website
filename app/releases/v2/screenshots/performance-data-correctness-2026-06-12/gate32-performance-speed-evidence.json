@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-06-13T03:21:38.951Z",
+  "baseUrl": "http://localhost:3000",
+  "assertions": {
+    "initialLoadReachedNetworkIdle": true,
+    "repeatLoadReachedNetworkIdle": true,
+    "repeatLoadAvoidedKernelPayload": true,
+    "initialLoadHitKernelPayload": true
+  },
+  "timings": {
+    "initialPerformanceLoadMs": 15470,
+    "repeatPerformanceLoadAfterDataMs": 9575,
+    "simulationMs": 838,
+    "basketMs": 584,
+    "summaryMs": 519,
+    "simulationRepeatMs": 835,
+    "basketRepeatMs": 829
+  },
+  "network": {
+    "initialPerformanceResponses": [
+      {
+        "url": "http://localhost:3000/api/performance/strategy-kernel-payload?strategy=tandem&f1=adr_grid&f2=pair_fill_cap&scope=full&history=active-baseline",
+        "status": 200
+      }
+    ],
+    "repeatPerformanceResponses": [
+      {
+        "url": "http://localhost:3000/api/performance/strategy-artifacts/status?key=tandem%3Aadr_grid%3Apair_fill_cap",
+        "status": 200
+      }
+    ]
+  }
+}

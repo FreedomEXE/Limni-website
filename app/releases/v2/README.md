@@ -2,7 +2,9 @@
 
 v2 is the first active app-level version after the documented v1 baseline.
 
-Current live patch: `v2.0.4`.
+Current live patch is manifest-driven. Use [`manifest.json`](manifest.json) and
+[`../../release-manifest.json`](../../release-manifest.json) for runtime truth;
+at this update they publish `v2.0.5`.
 
 ## Scope
 
@@ -17,7 +19,8 @@ Current live patch: `v2.0.4`.
 - Performance summary-card modal click handlers quarantined.
 - v2.0.3 institutional-seed docs, screenshots, source-freeze/certification receipts, and app-truth architecture records.
 - v2.0.4 Gate 28 runtime-readiness docs, release-index structure, loading/version UI, and route-readiness fixes.
-- Data, Performance, and Status share the same active-baseline contract: 15 closed certified weeks through Jun 01 2026, with Jun 08 2026 exposed only as current live overlay.
+- v2.0.5 Gate 29-32 readiness docs for Performance data correctness, Friday rollover/source readiness, Basket expansion parity, and Performance speed/cache behavior.
+- Data, Performance, and Status share the same release manifest and runtime ledgers. Exact current/closed week state comes from source-freeze, lifecycle, and Performance runtime evidence, not from this README.
 
 ## Institutional Docs
 
@@ -29,6 +32,7 @@ The v2 Documents page should expose these records together so the release can be
 - [`../../docs/architecture/APP_TRUTH_CRON_REGISTER_2026-06-08.md`](../../docs/architecture/APP_TRUTH_CRON_REGISTER_2026-06-08.md) - current source-freeze and active-baseline scheduler register.
 - [`active-systems.md`](active-systems.md) - active strategies, execution styles, risk overlays, and verification systems.
 - [`strategy-execution-spec.md`](strategy-execution-spec.md) - source-system, Weekly Hold, ADR Grid, Favorable Gap, reset, cap, return-mode, and ambiguity definitions.
+- [`patches/v2.0.5.md`](patches/v2.0.5.md) - Gate 29-32 Performance correctness, rollover, Basket, speed/cache, and verification summary.
 - [`patches/v2.0.4.md`](patches/v2.0.4.md) - Gate 28 runtime readiness, loading/version/Documents fixes, and verification summary.
 - [`patches/v2.0.3.md`](patches/v2.0.3.md) - final v2.0.3 institutional-seed boundary, evidence ledger, and explicit exclusions.
 - [`data-contracts.md`](data-contracts.md) - release manifest, canon inventory, payload, week-key, ADR Grid P/L, drawdown/MAE, verification trust, and screenshot contracts.
@@ -39,7 +43,7 @@ The v2 Documents page should expose these records together so the release can be
 
 Older clean14 comparisons, TradingView/Pine research, source-gap investigations,
 database-institutionalization backlog, and strategy-research notes are retained
-as historical working-tree evidence but are not part of the v2.0.4 runtime
+as historical working-tree evidence but are not part of the current live runtime
 release package.
 
 ## Canon Freeze Policy
@@ -59,4 +63,5 @@ Active post-launch issues are tracked in [`open-issues.md`](open-issues.md).
 ## Version History
 
 Patch-level changes inside the v2 line are tracked in [`changes.md`](changes.md)
-and focused patch notes under [`patches/`](patches/).
+and focused patch notes under [`patches/`](patches/). The ordered current
+history shown in the app is sourced from `manifest.json` `versionHistory`.

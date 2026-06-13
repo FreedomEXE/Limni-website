@@ -20,29 +20,31 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 29: performance-data-correctness.
+Gate 32: performance-speed-release-readiness.
 
-Status: completed and packaged as v2.0.5.
+Status: Gates 30-32 are patched locally on top of pushed Gate 29 and are pending
+external review before any commit/push.
 
 Goal:
 
-- Align current-week and stored-week Performance UI behavior without changing
-  untrusted strategy numbers.
-- Keep Basket counts data-derived and consistent across current, previous, and
-  all-time views.
-- Preserve equity-vs-balance path visibility for stored weeks.
-- Keep current-week Summary card tone consistent with stored weeks.
-- Do not start strategy optimization, Pair Fill Cap redesign, or sentiment
-  decisions until ADR Grid numbers are trusted.
+- Review Gate 30 Friday rollover/source readiness.
+- Review Gate 31 Basket expansion parity.
+- Review Gate 32 Performance speed/cache and v2.0.5 release-doc truth.
+- Keep this stack local until Freedom approves push. Do not start Weekly Hold
+  engine parity, ADR Grid parity, strategy optimization, or risk-overlay
+  redesign inside this gate.
+
+Gate 30 `friday-rollover-source-readiness` and Gate 31
+`basket-expansion-parity` remain uncommitted and pending app review.
 
 ## Next Gates
 
-Recommended next data gate: `Gate 30: adr-grid-parity`.
+Recommended next data gate after v2.0.5 Gates 30-32 review:
 
-1. ADR Grid app-vs-indicator parity audit.
-2. Weekly Hold engine verification.
-3. Sentiment decision gate.
-4. Rollover/status UX audit for COT, sentiment, and strength source readiness.
+1. `Gate 33: weekly-hold-engine-parity`.
+2. `Gate 34: weekly-hold-signal-qualification`.
+3. `Gate 35: adr-grid-parity`.
+4. Later: risk-overlay / Pair Fill Cap replacement or redesign.
 
 ## Repo Size / Consolidation WIP
 
@@ -81,6 +83,46 @@ only when they simplify ownership enough to retire older paths.
   and risk management.
 - Do not optimize trading logic until current numbers are trusted.
 
+## Gate 31 Notes
+
+- Current-week Weekly Hold portfolio rows now expand and collapse instead of
+  being forced open for signal-only direction rows.
+- Stored Weekly Hold single-trade symbols flatten to one row, e.g.
+  `Commercial > AUDCAD`, with direction, asset class, trade count, W/L, source,
+  and P/L in the header.
+- Stored ADR Grid symbol/grid headers now show direction and source/sleeve in
+  the header.
+- Basket focused/dimmed state resets when week, scope, strategy, or view mode
+  changes.
+- Browser proof on port 3000 covered current-week collapse, stored Weekly Hold
+  flattening, week-switch focus reset, and ADR Grid header identity.
+- Validation passed: TypeScript, focused basket/ledger tests, `npm run build`,
+  and `git diff --check`.
+- No new tracked files were added, no release canon files changed, no commit,
+  and no push.
+
+## Gate 32 Notes
+
+- Performance repeat visits now reuse the existing persistent strategy kernel
+  payload cache when metadata matches.
+- Client router cache stale time now follows the hourly cron cadence instead of
+  expiring after a short idle window.
+- Performance keeps warmed Summary, Simulation, and Basket sections mounted so
+  tab switches do not remount the heavy chart/Basket trees.
+- Browser speed receipt:
+  `app/releases/v2/screenshots/performance-data-correctness-2026-06-12/gate32-performance-speed-evidence.json`.
+  It showed initial Performance hydration hit `strategy-kernel-payload`, repeat
+  Performance after Data avoided it, and warmed Summary/Simulation/Basket tab
+  switches were sub-second in headless verification.
+- v2 release docs now use `manifest.json`/`release-manifest.json` as current
+  version truth and record v2.0.5 as cumulative Gates 29-32 readiness.
+- Added visible release screenshots for Jun 15 Weekly Hold current directions
+  and Jun 01 flattened Weekly Hold drilldown under the existing v2.0.5 evidence
+  folder.
+- Validation passed: TypeScript, focused basket/ledger/release tests,
+  `npm run build`, and `git diff --check`.
+- No `app/releases/v2/canon/*.json` files changed, no commit, and no push.
+
 ## Gate 29 Notes
 
 - Current-week Summary card shading is visually accepted.
@@ -117,8 +159,8 @@ Packaged as `v2.0.5`:
   `app/releases/v2/screenshots/performance-data-correctness-2026-06-12/`.
 - No `app/releases/v2/canon/*.json` files were changed.
 
-Next chat should not reopen Gate 29 unless Freedom explicitly asks. Start with
-`Gate 30: adr-grid-parity` unless Freedom redirects.
+Next chat should not reopen Gate 29 unless Freedom explicitly asks. Gate 30 is
+the active Friday rollover/source-readiness review.
 
 ## Gate 28 Result
 

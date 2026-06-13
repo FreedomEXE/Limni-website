@@ -981,12 +981,12 @@ export async function loadMarketIntelligence(
           weekOpenUtc,
           ledger
             ? { ready: true, label: "Freeze ledger ready" }
-            : { ready: false, label: "Freeze ledger missing; legacy fallback" },
+            : { ready: false, label: "Freeze ledger not recorded" },
         ] as const;
       } catch {
         return [
           weekOpenUtc,
-          { ready: false, label: "Freeze ledger unavailable; legacy fallback" },
+          { ready: false, label: "Freeze ledger unavailable" },
         ] as const;
       }
     },

@@ -1,5 +1,37 @@
 # v2 Changes
 
+Current release truth is manifest-driven. Use [`manifest.json`](manifest.json)
+and [`../../release-manifest.json`](../../release-manifest.json) for the active
+`liveVersion`; entries below are dated release history.
+
+## v2.0.5 - 2026-06-12 - Gates 29-32 Performance, Rollover, Basket, Speed
+
+v2.0.5 is the cumulative readiness patch for Gates 29-32. It keeps
+`liveVersion: v2.0.5`, keeps `canonVersion: v2`, and does not regenerate or
+promote `releases/v2/canon/*.json`.
+
+This patch covers:
+
+- Gate 29 Performance data correctness: current/stored Basket hierarchy parity,
+  planned ADR Grid rows for 36-grid portfolio parity, selected-ledger Simulation
+  Equity/Balance preservation, signed Summary card tone, COT copy cleanup, and
+  theme-safe chart colours.
+- Gate 30 Friday rollover/source readiness: after the Friday readiness cutoff,
+  the just-closed week materializes through source-freeze/certification while
+  the new display week appears consistently in Data and Performance.
+- Gate 31 Basket expansion parity: Weekly Hold and ADR Grid share expandable
+  Basket behavior, symbol headers carry direction/source context, single-trade
+  Weekly Hold rows are flattened, and stale expansion state resets on week/view
+  changes.
+- Gate 32 Performance speed/cache: heavy Performance view projections are
+  memoized, the strategy kernel payload reuses the existing persistent client
+  cache, and the client router cache matches the hourly cron cadence instead of
+  expiring after a short UI idle window.
+
+Verification covered TypeScript, focused Basket/selected-ledger/release tests,
+production build, browser rollover/Basket checks, and browser speed timing for
+Performance tab switches. See `patches/v2.0.5.md` for the focused release note.
+
 ## v2.0.4 - 2026-06-12 - Gate 28 Runtime Readiness
 
 v2.0.4 closes the Gate 28 corrective pass. It promotes the public runtime
