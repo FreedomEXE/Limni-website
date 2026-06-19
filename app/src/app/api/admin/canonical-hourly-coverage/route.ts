@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { CanonicalPathBackfillTimeframe } from "@/lib/canonicalHourlyBars";
 import { getCanonicalHourlyCoverage } from "@/lib/canonicalHourlyBars";
 import type { AssetClass } from "@/lib/cotMarkets";
 
@@ -17,6 +18,12 @@ function parseAsset(value: string | null): AssetClass | "all" {
     return value;
   }
   return "all";
+}
+
+function parseTimeframe(value: string | null): CanonicalPathBackfillTimeframe {
+  const raw = (value ?? "1h").trim().toLowerCase();
+  if (raw === "1m" || raw === "m1") return "1m";
+  return "1h";
 }
 
 export async function GET(request: Request) {
@@ -41,6 +48,7 @@ export async function GET(request: Request) {
       weeks,
       fromWeek: url.searchParams.get("fromWeek") ?? undefined,
       toWeek: url.searchParams.get("toWeek") ?? undefined,
+      timeframe: parseTimeframe(url.searchParams.get("timeframe")),
     });
 
     return NextResponse.json(coverage);
