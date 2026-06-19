@@ -54,6 +54,12 @@ export type PairReturnRow = {
   derivationVersion: string;
 };
 
+export type PairReturnLookupValue = {
+  returnPct: number;
+  openPrice: number;
+  closePrice: number;
+};
+
 const PAIR_RETURNS_CACHE_TTL_MS = Number(process.env.PAIR_RETURNS_CACHE_TTL_MS ?? "15000");
 const LIVE_PAIR_RETURNS_CACHE_TTL_MS = Number(process.env.LIVE_PAIR_RETURNS_CACHE_TTL_MS ?? "45000");
 
@@ -111,6 +117,14 @@ function mapPairReturnRow(row: {
 
 function isCurrentDisplayWeek(weekOpenUtc: string) {
   return weekOpenUtc === getDisplayWeekOpenUtc();
+}
+
+export function pairReturnPeriodKey(symbol: string, periodOpenUtc: string) {
+  const parsed = DateTime.fromISO(periodOpenUtc, { zone: "utc" });
+  const normalizedPeriodOpenUtc = parsed.isValid
+    ? parsed.toUTC().toISO() ?? periodOpenUtc
+    : periodOpenUtc;
+  return `${symbol.trim().toUpperCase()}|${normalizedPeriodOpenUtc}`;
 }
 
 async function readStoredWeeklyPairReturns(
@@ -338,6 +352,71 @@ export async function getPairReturn(
       closePrice: mapped.closePrice,
     };
   });
+}
+
+export async function getPairReturnsForPeriods(
+  symbols: string[],
+  periodType: PeriodType,
+  periodOpenUtcs: string[],
+): Promise<Map<string, PairReturnLookupValue>> {
+  const normalizedSymbols = Array.from(new Set(
+    symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean),
+  ));
+  const normalizedPeriodOpenUtcs = Array.from(new Set(
+    periodOpenUtcs
+      .map((value) => {
+        const parsed = DateTime.fromISO(value, { zone: "utc" });
+        return parsed.isValid ? parsed.toUTC().toISO() ?? value : value;
+      })
+      .filter(Boolean),
+  ));
+  if (normalizedSymbols.length === 0 || normalizedPeriodOpenUtcs.length === 0) {
+    return new Map();
+  }
+
+  const rows = await query<{
+    symbol: string;
+    asset_class: AssetClass;
+    period_type: PeriodType;
+    anchor_type: AnchorType;
+    anchor_version: string;
+    period_open_utc: Date;
+    period_close_utc: Date;
+    window_open_utc: Date | null;
+    window_close_utc: Date | null;
+    return_pct: number | string;
+    open_price: number | string;
+    close_price: number | string;
+    high_price: number | string | null;
+    low_price: number | string | null;
+    source: string;
+    derived_from_timeframe: string;
+    derivation_version: string;
+  }>(
+    `SELECT symbol, asset_class, period_type, anchor_type, anchor_version,
+            period_open_utc, period_close_utc, window_open_utc, window_close_utc,
+            return_pct, open_price, close_price, high_price, low_price,
+            source, derived_from_timeframe, derivation_version
+       FROM pair_period_returns
+      WHERE symbol = ANY($1::text[])
+        AND period_type = $2
+        AND period_open_utc = ANY($3::timestamptz[])
+        AND anchor_type = 'canonical'
+        AND anchor_version = $4`,
+    [normalizedSymbols, periodType, normalizedPeriodOpenUtcs, CANONICAL_ANCHOR_VERSION],
+  );
+
+  return new Map(rows.map((row) => {
+    const mapped = mapPairReturnRow(row);
+    return [
+      pairReturnPeriodKey(mapped.symbol, mapped.periodOpenUtc),
+      {
+        returnPct: mapped.returnPct,
+        openPrice: mapped.openPrice,
+        closePrice: mapped.closePrice,
+      },
+    ] as const;
+  }));
 }
 
 /**

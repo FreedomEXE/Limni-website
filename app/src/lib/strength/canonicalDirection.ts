@@ -18,7 +18,12 @@ import { DateTime } from "luxon";
 import type { AssetClass } from "@/lib/cotMarkets";
 import type { Direction } from "@/lib/cotTypes";
 import { PAIRS_BY_ASSET_CLASS } from "@/lib/cotPairs";
-import { getPairReturn } from "@/lib/pairReturns";
+import {
+  getPairReturn,
+  getPairReturnsForPeriods,
+  pairReturnPeriodKey,
+  type PairReturnLookupValue,
+} from "@/lib/pairReturns";
 import { getCanonicalInstrument } from "@/lib/canonicalInstruments";
 import { getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
 import { fetchOandaCandleSeries } from "@/lib/oandaPrices";
@@ -147,6 +152,7 @@ async function loadStrengthLookback(
   assetClass: AssetClass,
   weekOpenUtc: string,
   mode: "stored_only" | "fill_missing_with_provider",
+  storedPriorReturns?: Map<string, PairReturnLookupValue>,
 ): Promise<StrengthLookback> {
   const cacheKey = `${mode}:${symbol}:${assetClass}:${weekOpenUtc}`;
   const cached = strengthLookbackCache.get(cacheKey);
@@ -169,7 +175,9 @@ async function loadStrengthLookback(
 
     const exactPriorWeeks = await Promise.all(
       derivePriorStrengthWeekOpenUtcs(weekOpenUtc).map(async (priorWeekOpenUtc) => {
-        const stored = await readStoredExactPriorWeeklyReturn(symbol, priorWeekOpenUtc);
+        const stored = storedPriorReturns
+          ? storedPriorReturns.get(pairReturnPeriodKey(symbol, priorWeekOpenUtc))?.returnPct ?? null
+          : await readStoredExactPriorWeeklyReturn(symbol, priorWeekOpenUtc);
         if (stored !== null || mode === "stored_only") {
           return {
             weekOpenUtc: priorWeekOpenUtc,
@@ -312,16 +320,35 @@ function resolveStrengthHybridFallback(
 async function resolveCanonicalStrengthDirectionsFromPairStrengths(
   weekOpenUtc: string,
   rows: WeeklyPairStrength[],
+  expectedPairs?: string[],
 ): Promise<CanonicalStrengthDirection[]> {
   const normalizedWeekOpenUtc = normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
   const rowMap = new Map(rows.map((row) => [row.pair.toUpperCase(), row] as const));
   const resolved: CanonicalStrengthDirection[] = [];
+  const wantedPairs = expectedPairs
+    ? new Set(expectedPairs.map((pair) => pair.trim().toUpperCase()).filter(Boolean))
+    : null;
+  const pairEntries = (Object.keys(PAIRS_BY_ASSET_CLASS) as AssetClass[])
+    .flatMap((assetClass) =>
+      PAIRS_BY_ASSET_CLASS[assetClass].map((pairDef) => ({ assetClass, pairDef })))
+    .filter((entry) => !wantedPairs || wantedPairs.has(entry.pairDef.pair.toUpperCase()));
+  const expectedPairSymbols = pairEntries.map((entry) => entry.pairDef.pair.toUpperCase());
+  const storedPriorReturns = await getPairReturnsForPeriods(
+    expectedPairSymbols,
+    "weekly",
+    derivePriorStrengthWeekOpenUtcs(normalizedWeekOpenUtc),
+  );
 
-  for (const assetClass of Object.keys(PAIRS_BY_ASSET_CLASS) as AssetClass[]) {
-    for (const pairDef of PAIRS_BY_ASSET_CLASS[assetClass]) {
+  for (const { assetClass, pairDef } of pairEntries) {
       const pair = pairDef.pair.toUpperCase();
       const ps = rowMap.get(pair) ?? null;
-      let lookback = await loadStrengthLookback(pair, assetClass, normalizedWeekOpenUtc, "stored_only");
+      let lookback = await loadStrengthLookback(
+        pair,
+        assetClass,
+        normalizedWeekOpenUtc,
+        "stored_only",
+        storedPriorReturns,
+      );
       let direction = resolveStrengthHybrid(ps, lookback);
       let fallbackBranch: StrengthResolutionBranch = "hybrid_stored";
       if (!direction) {
@@ -330,6 +357,7 @@ async function resolveCanonicalStrengthDirectionsFromPairStrengths(
           assetClass,
           normalizedWeekOpenUtc,
           "fill_missing_with_provider",
+          storedPriorReturns,
         );
         const resolved = resolveStrengthHybridFallback(ps, lookback);
         direction = resolved.direction;
@@ -349,7 +377,6 @@ async function resolveCanonicalStrengthDirectionsFromPairStrengths(
         providerFallbackUsed: lookback.providerFallbackUsed,
         fallbackBranch,
       });
-    }
   }
 
   return resolved;
@@ -365,6 +392,23 @@ export async function readCanonicalStrengthDirections(
     async () => {
       const rows = await readWeeklyPairStrengths(normalizedWeekOpenUtc);
       return resolveCanonicalStrengthDirectionsFromPairStrengths(normalizedWeekOpenUtc, rows);
+    },
+  );
+}
+
+export async function readCanonicalStrengthDirectionsForPairs(
+  weekOpenUtc: string,
+  expectedPairs: string[],
+): Promise<CanonicalStrengthDirection[]> {
+  const normalizedWeekOpenUtc = normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc;
+  const normalizedPairs = [...new Set(expectedPairs.map((pair) => pair.trim().toUpperCase()).filter(Boolean))]
+    .sort();
+  return getOrSetRuntimeCache(
+    `canonicalStrength:${normalizedWeekOpenUtc}:pairs:${normalizedPairs.join(",")}`,
+    CANONICAL_STRENGTH_CACHE_TTL_MS,
+    async () => {
+      const rows = await readWeeklyPairStrengths(normalizedWeekOpenUtc);
+      return resolveCanonicalStrengthDirectionsFromPairStrengths(normalizedWeekOpenUtc, rows, normalizedPairs);
     },
   );
 }

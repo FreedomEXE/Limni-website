@@ -2,6 +2,7 @@ import { loadEnvConfig } from "@next/env";
 import { DateTime } from "luxon";
 import {
   backfillCanonicalHourlyBars,
+  type CanonicalPathBackfillTimeframe,
   getCanonicalHourlyCoverage,
   upsertCanonicalHourlyBarsForInstrument,
 } from "../src/lib/canonicalHourlyBars";
@@ -17,6 +18,7 @@ type CliOptions = {
   weeks: string[];
   fromWeek?: string;
   toWeek?: string;
+  timeframe: CanonicalPathBackfillTimeframe;
   dryRun: boolean;
   coverageOnly: boolean;
   onlyGaps: boolean;
@@ -59,6 +61,13 @@ function parseIsoWeeks(value?: string) {
     .filter((week): week is string => Boolean(week));
 }
 
+function parseTimeframe(value?: string): CanonicalPathBackfillTimeframe {
+  const raw = (value ?? "1h").trim().toLowerCase();
+  if (raw === "1h" || raw === "h1") return "1h";
+  if (raw === "1m" || raw === "m1") return "1m";
+  throw new Error(`Unsupported --timeframe=${value}`);
+}
+
 function parseCli(): CliOptions {
   return {
     assetClass: parseAssetClass(readArg("asset")),
@@ -69,6 +78,7 @@ function parseCli(): CliOptions {
     weeks: parseIsoWeeks(readArg("weeks")),
     fromWeek: parseIsoWeek(readArg("from-week") ?? readArg("from")),
     toWeek: parseIsoWeek(readArg("to-week") ?? readArg("to")),
+    timeframe: parseTimeframe(readArg("timeframe")),
     dryRun: hasFlag("dry-run"),
     coverageOnly: hasFlag("coverage-only"),
     onlyGaps: hasFlag("only-gaps"),
@@ -90,13 +100,14 @@ async function main() {
         weeks: options.weeks,
         fromWeek: options.fromWeek,
         toWeek: options.toWeek,
+        timeframe: options.timeframe,
       });
     const gaps = coverage.rows.filter(
       (row) => row.status === "missing" || row.status === "partial",
     );
 
     console.log(
-      `Starting gap-only canonical hourly backfill: gaps=${gaps.length} dryRun=${options.dryRun}`,
+      `Starting gap-only canonical path-bar backfill: timeframe=${options.timeframe} gaps=${gaps.length} dryRun=${options.dryRun}`,
     );
 
     let barsFetched = 0;
@@ -112,6 +123,7 @@ async function main() {
         const result = await upsertCanonicalHourlyBarsForInstrument({
           instrument,
           weekOpenUtc: gap.weekOpenUtc,
+          timeframe: options.timeframe,
           dryRun: options.dryRun,
         });
         barsFetched += result.barsFetched;
@@ -137,7 +149,8 @@ async function main() {
   } else if (!options.coverageOnly) {
     console.log(
       [
-        "Starting canonical hourly backfill",
+        "Starting canonical path-bar backfill",
+        `timeframe=${options.timeframe}`,
         `asset=${options.assetClass}`,
         options.symbols.length ? `symbols=${options.symbols.join(",")}` : "symbols=all",
         options.weeks.length ? `weeks=${options.weeks.join(",")}` : "weeks=canonical range",
@@ -154,6 +167,7 @@ async function main() {
       weeks: options.weeks,
       fromWeek: options.fromWeek,
       toWeek: options.toWeek,
+      timeframe: options.timeframe,
       dryRun: options.dryRun,
       delayMs: options.delayMs,
       onProgress: (event) => {
@@ -176,6 +190,7 @@ async function main() {
     weeks: options.weeks,
     fromWeek: options.fromWeek,
     toWeek: options.toWeek,
+    timeframe: options.timeframe,
   });
 
   console.log(
