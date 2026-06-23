@@ -31,7 +31,7 @@ const RRP_DATASET = {
 };
 const SUPPORTING_RECEIPTS = {
   lifecycleUniqueness:
-    "app/reports/data-verification/macro-regime/gate50-lifecycle-uniqueness-20260623.json",
+    "app/reports/data-verification/macro-regime/gate50-lifecycle-uniqueness-control-repaired-20260623.json",
   rrpSealedJoin:
     "app/reports/data-verification/macro-regime/gate50-rrp-boundary-repaired-sealed-join-20260623.json",
 };
@@ -446,16 +446,13 @@ function activeClone(manifest: ManifestRow) {
   };
 }
 
-function aggregateRevocationProof(manifest: ManifestRow, weekPairs: MatrixContextRow[]) {
-  const active = activeClone(manifest);
-  const revoked = {
-    ...active,
-    revoked_at_utc: "2026-06-23T00:00:00.000Z",
-  };
-  const quarantined = {
-    ...active,
-    snapshot_state: "QUARANTINED" as MacroSnapshotState,
-  };
+function aggregateRevocationProof(options: {
+  revokedManifest: ManifestRow;
+  quarantinedManifest: ManifestRow;
+  weekPairs: MatrixContextRow[];
+}) {
+  const revoked = options.revokedManifest;
+  const quarantined = options.quarantinedManifest;
   const revokedState = validateMacroSnapshotConsumptionState({
     snapshotState: revoked.snapshot_state,
     revokedAtUtc: revoked.revoked_at_utc,
@@ -464,12 +461,14 @@ function aggregateRevocationProof(manifest: ManifestRow, weekPairs: MatrixContex
     snapshotState: quarantined.snapshot_state,
     revokedAtUtc: quarantined.revoked_at_utc,
   });
-  const revokedBlocked = revokedState.ok ? [] : weekPairs.map((row) => row.symbol);
-  const quarantinedBlocked = quarantinedState.ok ? [] : weekPairs.map((row) => row.symbol);
+  const revokedBlocked = revokedState.ok ? [] : options.weekPairs.map((row) => row.symbol);
+  const quarantinedBlocked = quarantinedState.ok ? [] : options.weekPairs.map((row) => row.symbol);
 
   return {
-    macroWeekId: manifest.macro_week_id,
-    expectedPairWeeks: weekPairs.length,
+    macroWeekId: revoked.macro_week_id,
+    expectedPairWeeks: options.weekPairs.length,
+    persistedRevokedSnapshotId: revoked.snapshot_id,
+    persistedQuarantinedSnapshotId: quarantined.snapshot_id,
     revokedBlockedPairWeeks: revokedBlocked.length,
     quarantinedBlockedPairWeeks: quarantinedBlocked.length,
     revokedState,
@@ -561,17 +560,18 @@ function passReceiptInvalidationProof(manifest: ManifestRow) {
     selectedSnapshotHash: manifest.snapshot_hash,
     resolvedContentJoinMapHash: EXPECTED_RESOLVED_CONTENT_JOIN_MAP_HASH,
   };
-  const revokedState = validateMacroSnapshotConsumptionState({
-    snapshotState: "ACTIVE",
-    revokedAtUtc: "2026-06-23T00:00:00.000Z",
+  const persistedState = validateMacroSnapshotConsumptionState({
+    snapshotState: manifest.snapshot_state,
+    revokedAtUtc: manifest.revoked_at_utc,
+    supersededBySnapshotId: manifest.superseded_by_snapshot_id,
   });
   return {
     syntheticPassReceipt,
     receiptUsableAfterRevocation: syntheticPassReceipt.joinReceiptStatus === "PASS"
       && syntheticPassReceipt.diagnosticOnly === false
       && syntheticPassReceipt.promotionEligible === true
-      && revokedState.ok,
-    invalidationBlockers: revokedState.blockers,
+      && persistedState.ok,
+    invalidationBlockers: persistedState.blockers,
   };
 }
 
@@ -741,25 +741,42 @@ async function main() {
     throw new Error(`No ${targetCurrency} real-rate-pressure snapshot found for revocation proof.`);
   }
 
-  const aggregateProof = aggregateRevocationProof(sourceManifest, weekPairs);
+  if (!persistedLifecycleRows.revoked || !persistedLifecycleRows.quarantined || !persistedLifecycleRows.supersededOriginal) {
+    throw new Error("Persisted disposable lifecycle rows were not available for revocation proof.");
+  }
+
+  const aggregateProof = aggregateRevocationProof({
+    revokedManifest: persistedLifecycleRows.revoked,
+    quarantinedManifest: persistedLifecycleRows.quarantined,
+    weekPairs,
+  });
   const currencyProof = currencyRevocationProof({ targetCurrency, targetSnapshot, weekPairs });
-  const passInvalidation = passReceiptInvalidationProof(sourceManifest);
+  const passInvalidation = passReceiptInvalidationProof(persistedLifecycleRows.revoked);
   const supersession = supersessionProof(sourceManifest);
   const reactivationProof = {
     revokedToActiveAllowed: isMacroSnapshotStateTransitionAllowed("REVOKED", "ACTIVE"),
     quarantinedToActiveAllowed: isMacroSnapshotStateTransitionAllowed("QUARANTINED", "ACTIVE"),
   };
   const readGuards = {
-    active: validateMacroSnapshotConsumptionState({ snapshotState: "ACTIVE", revokedAtUtc: null }),
-    revoked: validateMacroSnapshotConsumptionState({
-      snapshotState: "ACTIVE",
-      revokedAtUtc: "2026-06-23T00:00:00.000Z",
+    active: validateMacroSnapshotConsumptionState({
+      snapshotState: persistedLifecycleRows.superseding?.snapshot_state ?? null,
+      revokedAtUtc: persistedLifecycleRows.superseding?.revoked_at_utc ?? null,
+      supersededBySnapshotId: persistedLifecycleRows.superseding?.superseded_by_snapshot_id ?? null,
     }),
-    quarantined: validateMacroSnapshotConsumptionState({ snapshotState: "QUARANTINED", revokedAtUtc: null }),
+    revoked: validateMacroSnapshotConsumptionState({
+      snapshotState: persistedLifecycleRows.revoked.snapshot_state,
+      revokedAtUtc: persistedLifecycleRows.revoked.revoked_at_utc,
+      supersededBySnapshotId: persistedLifecycleRows.revoked.superseded_by_snapshot_id,
+    }),
+    quarantined: validateMacroSnapshotConsumptionState({
+      snapshotState: persistedLifecycleRows.quarantined.snapshot_state,
+      revokedAtUtc: persistedLifecycleRows.quarantined.revoked_at_utc,
+      supersededBySnapshotId: persistedLifecycleRows.quarantined.superseded_by_snapshot_id,
+    }),
     superseded: validateMacroSnapshotConsumptionState({
-      snapshotState: "ACTIVE",
-      revokedAtUtc: null,
-      supersededBySnapshotId: supersession.supersedingSnapshotId,
+      snapshotState: persistedLifecycleRows.supersededOriginal.snapshot_state,
+      revokedAtUtc: persistedLifecycleRows.supersededOriginal.revoked_at_utc,
+      supersededBySnapshotId: persistedLifecycleRows.supersededOriginal.superseded_by_snapshot_id,
     }),
   };
   const contentAfter = {

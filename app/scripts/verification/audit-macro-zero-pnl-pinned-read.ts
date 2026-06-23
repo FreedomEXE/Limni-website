@@ -21,6 +21,7 @@ const EXECUTION_RUN_ID = process.env.GATE50_EXECUTION_RUN_ID
   ?? `gate50_zero_pnl_exact_pinned_read_${DateTime.utc().toFormat("yyyyLLddHHmmss")}`;
 const EXPECTED_RESOLVED_CONTENT_JOIN_MAP_HASH =
   "fca281b77d508b3ed806fcd59c595dff1cb8e1e4dda82eea178610c1d056f391";
+const GATE44_MATRIX_DATASET_ID = "479624d1-f6a2-4928-82f1-981137762bdc";
 const RRP_DATASET = {
   datasetId: "220fd5fd-d017-4db2-bdde-524a3c664c72",
   datasetHash: "5a1d4c7e15d928bc76b0c169b04f3b391b484ef45ab5bdd62dedb49716326742",
@@ -34,7 +35,7 @@ const PARENT_APPROVED_ROOT = {
 };
 const SUPPORTING_RECEIPTS = {
   historicalActivation:
-    "app/reports/data-verification/macro-regime/gate50-historical-activation-control-amended-20260623.json",
+    "app/reports/data-verification/macro-regime/gate50-historical-activation-control-repaired-20260623.json",
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -123,8 +124,36 @@ function isoTextToMillis(value: string | null) {
   return DateTime.fromISO(value.replace(" ", "T").replace("+00", "Z"), { zone: "utc" }).toMillis();
 }
 
-function decisionAtFor(row: ActiveManifestRow) {
-  return `${row.macro_week_id.replace("macro_week_", "")}T00:00:00.000Z`;
+function normalizeDbTimestamp(value: string) {
+  return DateTime.fromISO(value.replace(" ", "T").replace("+00", "Z"), { zone: "utc" }).toUTC().toISO({ suppressMilliseconds: false })!;
+}
+
+function macroWeekIdFor(weekOpenUtc: string) {
+  return `macro_week_${DateTime.fromISO(weekOpenUtc, { zone: "utc" }).toUTC().toFormat("yyyy-LL-dd")}`;
+}
+
+async function readExactEffectiveTimeMap() {
+  const rows = await query<{ week_open_utc: string }>(
+    `
+      SELECT DISTINCT week_open_utc::text
+      FROM research_matrix_source_contexts
+      WHERE dataset_id = $1::uuid
+      ORDER BY week_open_utc
+    `,
+    [GATE44_MATRIX_DATASET_ID],
+  );
+  return new Map(rows.map((row) => {
+    const weekOpenUtc = normalizeDbTimestamp(row.week_open_utc);
+    return [macroWeekIdFor(weekOpenUtc), weekOpenUtc];
+  }));
+}
+
+function decisionAtFor(row: ActiveManifestRow, effectiveTimeMap: Map<string, string>) {
+  const exact = effectiveTimeMap.get(row.macro_week_id);
+  if (!exact) {
+    throw new Error(`Missing exact effective timestamp for ${row.macro_week_id}`);
+  }
+  return exact;
 }
 
 async function readJsonReceipt(relativePath: string) {
@@ -180,10 +209,14 @@ async function readActiveManifests() {
   );
 }
 
-async function writeExecutionReceipts(rows: ActiveManifestRow[], snapshotReadAtUtc: string) {
+async function writeExecutionReceipts(
+  rows: ActiveManifestRow[],
+  snapshotReadAtUtc: string,
+  effectiveTimeMap: Map<string, string>,
+) {
   const payload = rows.map((row) => ({
     execution_run_id: EXECUTION_RUN_ID,
-    decision_at_utc: decisionAtFor(row),
+    decision_at_utc: decisionAtFor(row, effectiveTimeMap),
     macro_week_id: row.macro_week_id,
     promotion_manifest_id: row.promotion_manifest_id,
     snapshot_id: row.snapshot_id,
@@ -254,7 +287,14 @@ async function writeExecutionReceipts(rows: ActiveManifestRow[], snapshotReadAtU
           COALESCE(flags, '{}'::jsonb)
         FROM incoming
         ON CONFLICT (regime_dataset_id, execution_run_id, macro_week_id, promotion_manifest_id)
-        DO NOTHING
+        DO UPDATE SET
+          decision_at_utc = EXCLUDED.decision_at_utc,
+          snapshot_id = EXCLUDED.snapshot_id,
+          snapshot_hash = EXCLUDED.snapshot_hash,
+          snapshot_state_observed = EXCLUDED.snapshot_state_observed,
+          snapshot_read_at_utc = EXCLUDED.snapshot_read_at_utc,
+          coverage = EXCLUDED.coverage,
+          flags = EXCLUDED.flags
       `,
       [RRP_DATASET.datasetId, JSON.stringify(payload)],
     );
@@ -274,7 +314,7 @@ async function receiptCount() {
   return Number(rows[0]?.rows ?? 0);
 }
 
-function exactReadChecks(rows: ActiveManifestRow[]) {
+function exactReadChecks(rows: ActiveManifestRow[], effectiveTimeMap: Map<string, string>) {
   const invalidPinnedReads = rows.filter((row) => !validatePinnedMacroExecutionReadRequest({
     regimeDatasetId: RRP_DATASET.datasetId,
     promotionManifestId: row.promotion_manifest_id,
@@ -292,7 +332,7 @@ function exactReadChecks(rows: ActiveManifestRow[]) {
     supersededBySnapshotId: row.superseded_by_snapshot_id,
   }).ok);
   const effectiveTimeFailures = rows.filter((row) => {
-    const decisionAt = DateTime.fromISO(decisionAtFor(row), { zone: "utc" }).toMillis();
+    const decisionAt = DateTime.fromISO(decisionAtFor(row, effectiveTimeMap), { zone: "utc" }).toMillis();
     const effectiveFrom = isoTextToMillis(row.effective_from_utc);
     const effectiveTo = row.effective_to_utc ? isoTextToMillis(row.effective_to_utc) : Number.POSITIVE_INFINITY;
     return Number.isNaN(effectiveFrom) || decisionAt < effectiveFrom || decisionAt >= effectiveTo;
@@ -425,10 +465,11 @@ async function main() {
   const generatedAtUtc = DateTime.utc().toISO({ suppressMilliseconds: false }) ?? new Date().toISOString();
   const activationReceipt = await readJsonReceipt(SUPPORTING_RECEIPTS.historicalActivation);
   const activationSummary = asRecord(activationReceipt.json.summary);
+  const effectiveTimeMap = await readExactEffectiveTimeMap();
   const activeRows = await readActiveManifests();
-  const exactChecks = exactReadChecks(activeRows);
+  const exactChecks = exactReadChecks(activeRows, effectiveTimeMap);
   const negativeChecks = activeRows[0] ? negativeReadChecks(activeRows[0]) : null;
-  await writeExecutionReceipts(activeRows, generatedAtUtc);
+  await writeExecutionReceipts(activeRows, generatedAtUtc, effectiveTimeMap);
   const executionReceiptsWritten = await receiptCount();
 
   const assertions = [
@@ -500,6 +541,7 @@ async function main() {
     summary: {
       status: pass ? "PASS_ZERO_PNL_PINNED_READ" : "FAIL_ZERO_PNL_PINNED_READ",
       activeManifestsRead: activeRows.length,
+      exactEffectiveTimeMapRows: effectiveTimeMap.size,
       executionRunId: EXECUTION_RUN_ID,
       executionReceiptsWritten,
       negativeReadGuardProof: assertions.find((row) => row.id === "negative_read_guards_reject_invalid_inputs")?.status ?? "FAIL",

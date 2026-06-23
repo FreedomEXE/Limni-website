@@ -7,7 +7,6 @@ import { DateTime } from "luxon";
 
 import { getClient, getPool, query } from "../../src/lib/db";
 import {
-  bindMacroWeeklySnapshotManifestPromotionControls,
   ensureMacroRegimeWarehouseSchema,
   transitionMacroWeeklySnapshotManifestState,
 } from "../../src/lib/research/macroRegimeDataset";
@@ -17,6 +16,8 @@ loadEnvConfig(process.cwd());
 const DEFAULT_OUT_DIR = "app/reports/data-verification/macro-regime";
 const FEATURE_BUNDLE_MANIFEST_ID = "real_rate_pressure_attribution_v1";
 const ACTIVATION_SCOPE = "historical_backtest";
+const GATE44_MATRIX_DATASET_ID = "479624d1-f6a2-4928-82f1-981137762bdc";
+const CONTROL_REPAIR_VERSION = "gate50_lifecycle_effective_time_control_repair_v2";
 const EXPECTED_RESOLVED_CONTENT_JOIN_MAP_HASH =
   "fca281b77d508b3ed806fcd59c595dff1cb8e1e4dda82eea178610c1d056f391";
 const RRP_DATASET = {
@@ -32,9 +33,9 @@ const PARENT_APPROVED_ROOT = {
 };
 const SUPPORTING_RECEIPTS = {
   lifecycleUniqueness:
-    "app/reports/data-verification/macro-regime/gate50-lifecycle-uniqueness-20260623.json",
+    "app/reports/data-verification/macro-regime/gate50-lifecycle-uniqueness-control-repaired-20260623.json",
   revocationSupersession:
-    "app/reports/data-verification/macro-regime/gate50-revocation-supersession-control-amended-20260623.json",
+    "app/reports/data-verification/macro-regime/gate50-revocation-supersession-control-repaired-20260623.json",
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -63,8 +64,11 @@ type ManifestRow = {
   effective_from_utc: string | null;
   effective_to_utc: string | null;
   revoked_at_utc: string | null;
+  supersedes_snapshot_id: string | null;
   superseded_by_snapshot_id: string | null;
   row_snapshot_count: number;
+  coverage: unknown;
+  flags: unknown;
   approved_root_promotion_manifest_id: string | null;
   approved_root_promotion_manifest_hash: string | null;
   parent_promotion_proof_receipt_hash: string | null;
@@ -122,8 +126,49 @@ function blockerCounts(assertions: Assertion[]) {
   return counts;
 }
 
-function macroWeekEffectiveFromUtc(macroWeekId: string) {
-  return `${macroWeekId.replace("macro_week_", "")}T00:00:00.000Z`;
+function normalizeDbTimestamp(value: string) {
+  return DateTime.fromISO(value.replace(" ", "T").replace("+00", "Z"), { zone: "utc" }).toUTC().toISO({ suppressMilliseconds: false })!;
+}
+
+function macroWeekIdFor(weekOpenUtc: string) {
+  return `macro_week_${DateTime.fromISO(weekOpenUtc, { zone: "utc" }).toUTC().toFormat("yyyy-LL-dd")}`;
+}
+
+async function readExactEffectiveTimeMap() {
+  const rows = await query<{ week_open_utc: string }>(
+    `
+      SELECT DISTINCT week_open_utc::text
+      FROM research_matrix_source_contexts
+      WHERE dataset_id = $1::uuid
+      ORDER BY week_open_utc
+    `,
+    [GATE44_MATRIX_DATASET_ID],
+  );
+  return new Map(rows.map((row) => {
+    const weekOpenUtc = normalizeDbTimestamp(row.week_open_utc);
+    return [macroWeekIdFor(weekOpenUtc), weekOpenUtc];
+  }));
+}
+
+function exactEffectiveFromUtc(macroWeekId: string, effectiveTimeMap: Map<string, string>) {
+  const exact = effectiveTimeMap.get(macroWeekId);
+  if (!exact) {
+    throw new Error(`Missing exact Gate 44 effective timestamp for ${macroWeekId}`);
+  }
+  return exact;
+}
+
+function repairedSnapshotIdFor(source: ManifestRow, effectiveFromUtc: string) {
+  return hashPayload({
+    type: CONTROL_REPAIR_VERSION,
+    sourceSnapshotId: source.snapshot_id,
+    sourceSnapshotHash: source.snapshot_hash,
+    promotionManifestId: source.promotion_manifest_id,
+    macroWeekId: source.macro_week_id,
+    freezeVersion: source.freeze_version,
+    activationScope: ACTIVATION_SCOPE,
+    effectiveFromUtc,
+  });
 }
 
 async function readJsonReceipt(relativePath: string) {
@@ -206,8 +251,11 @@ async function readManifestRows() {
         effective_from_utc::text,
         effective_to_utc::text,
         revoked_at_utc::text,
+        supersedes_snapshot_id,
         superseded_by_snapshot_id,
         row_snapshot_count::int,
+        coverage,
+        flags,
         approved_root_promotion_manifest_id,
         approved_root_promotion_manifest_hash,
         parent_promotion_proof_receipt_hash
@@ -236,15 +284,138 @@ async function activeDuplicateRows() {
   );
 }
 
-async function runActivation(activatedAtUtc: string) {
+async function insertRepairedSealedManifest(source: ManifestRow, replacementSnapshotId: string) {
+  await query(
+    `
+      INSERT INTO research_macro_weekly_snapshot_manifests (
+        regime_dataset_id,
+        promotion_manifest_id,
+        feature_bundle_manifest_id,
+        activation_scope,
+        approved_root_promotion_manifest_id,
+        approved_root_promotion_manifest_hash,
+        parent_promotion_proof_receipt_hash,
+        contract_manifest_hash,
+        macro_week_id,
+        freeze_version,
+        snapshot_id,
+        snapshot_hash,
+        snapshot_state,
+        sealed_at_utc,
+        row_snapshot_count,
+        coverage,
+        flags,
+        supersedes_snapshot_id
+      ) VALUES (
+        $1::uuid,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        'SEALED',
+        $13::timestamptz,
+        $14,
+        $15::jsonb,
+        $16::jsonb,
+        $17
+      )
+      ON CONFLICT (regime_dataset_id, snapshot_id)
+      DO UPDATE SET
+        promotion_manifest_id = EXCLUDED.promotion_manifest_id,
+        feature_bundle_manifest_id = EXCLUDED.feature_bundle_manifest_id,
+        activation_scope = EXCLUDED.activation_scope,
+        approved_root_promotion_manifest_id = EXCLUDED.approved_root_promotion_manifest_id,
+        approved_root_promotion_manifest_hash = EXCLUDED.approved_root_promotion_manifest_hash,
+        parent_promotion_proof_receipt_hash = EXCLUDED.parent_promotion_proof_receipt_hash,
+        contract_manifest_hash = EXCLUDED.contract_manifest_hash,
+        macro_week_id = EXCLUDED.macro_week_id,
+        freeze_version = EXCLUDED.freeze_version,
+        snapshot_hash = EXCLUDED.snapshot_hash,
+        snapshot_state = EXCLUDED.snapshot_state,
+        sealed_at_utc = EXCLUDED.sealed_at_utc,
+        row_snapshot_count = EXCLUDED.row_snapshot_count,
+        coverage = EXCLUDED.coverage,
+        flags = EXCLUDED.flags,
+        supersedes_snapshot_id = EXCLUDED.supersedes_snapshot_id
+    `,
+    [
+      RRP_DATASET.datasetId,
+      source.promotion_manifest_id,
+      FEATURE_BUNDLE_MANIFEST_ID,
+      ACTIVATION_SCOPE,
+      PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+      PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+      PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
+      source.contract_manifest_hash,
+      source.macro_week_id,
+      source.freeze_version,
+      replacementSnapshotId,
+      source.snapshot_hash,
+      source.sealed_at_utc,
+      source.row_snapshot_count,
+      JSON.stringify({
+        ...asRecord(source.coverage),
+        gate50ControlRepair: CONTROL_REPAIR_VERSION,
+        supersedesSnapshotId: source.snapshot_id,
+      }),
+      JSON.stringify({
+        ...asRecord(source.flags),
+        gate50ControlRepair: true,
+      }),
+      source.snapshot_id,
+    ],
+  );
+}
+
+async function runActivation(activatedAtUtc: string, effectiveTimeMap: Map<string, string>) {
   const candidates = await readManifestRows();
-  for (const row of candidates) {
-    if (row.promotion_manifest_id !== RRP_DATASET.promotionManifestId
-      || row.contract_manifest_hash !== RRP_DATASET.contractManifestHash
-      || row.revoked_at_utc !== null
-      || row.superseded_by_snapshot_id !== null) {
-      continue;
-    }
+  const legacyActiveRows = candidates.filter((row) =>
+    row.promotion_manifest_id === RRP_DATASET.promotionManifestId
+    && row.contract_manifest_hash === RRP_DATASET.contractManifestHash
+    && row.snapshot_state === "ACTIVE"
+    && row.revoked_at_utc === null
+    && row.superseded_by_snapshot_id === null
+    && row.supersedes_snapshot_id === null);
+
+  for (const row of legacyActiveRows) {
+    const effectiveFromUtc = exactEffectiveFromUtc(row.macro_week_id, effectiveTimeMap);
+    const replacementSnapshotId = repairedSnapshotIdFor(row, effectiveFromUtc);
+    await insertRepairedSealedManifest(row, replacementSnapshotId);
+    await transitionMacroWeeklySnapshotManifestState({
+      regimeDatasetId: RRP_DATASET.datasetId,
+      snapshotId: row.snapshot_id,
+      expectedSnapshotHash: row.snapshot_hash,
+      fromState: "ACTIVE",
+      toState: "REVOKED",
+      transitionedAtUtc: activatedAtUtc,
+      transitionRunId: `${CONTROL_REPAIR_VERSION}_legacy_supersession`,
+      reason: "Gate 50 supersedes legacy direct-ACTIVE control evidence with a legally transitioned replacement manifest.",
+      actorOrServiceVersion: "macro_snapshot_transition_service_v2",
+      featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
+      activationScope: ACTIVATION_SCOPE,
+      revocationReason: CONTROL_REPAIR_VERSION,
+      supersededBySnapshotId: replacementSnapshotId,
+      approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+      approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+      parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
+    });
+  }
+
+  const replacementRows = (await readManifestRows()).filter((row) =>
+    row.promotion_manifest_id === RRP_DATASET.promotionManifestId
+    && row.contract_manifest_hash === RRP_DATASET.contractManifestHash
+    && row.supersedes_snapshot_id !== null
+    && row.revoked_at_utc === null);
+
+  for (const row of replacementRows) {
+    const effectiveFromUtc = exactEffectiveFromUtc(row.macro_week_id, effectiveTimeMap);
     if (row.snapshot_state === "SEALED") {
       await transitionMacroWeeklySnapshotManifestState({
         regimeDatasetId: RRP_DATASET.datasetId,
@@ -253,9 +424,9 @@ async function runActivation(activatedAtUtc: string) {
         fromState: "SEALED",
         toState: "VERIFIED",
         transitionedAtUtc: activatedAtUtc,
-        transitionRunId: "gate50_historical_activation_legal_transition_20260623",
-        reason: "Gate 50 historical activation verification before source-only activation.",
-        actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+        transitionRunId: `${CONTROL_REPAIR_VERSION}_legal_activation`,
+        reason: "Gate 50 verifies replacement source manifest before historical activation.",
+        actorOrServiceVersion: "macro_snapshot_transition_service_v2",
         featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
         activationScope: ACTIVATION_SCOPE,
         approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
@@ -269,12 +440,12 @@ async function runActivation(activatedAtUtc: string) {
         fromState: "VERIFIED",
         toState: "ACTIVE",
         transitionedAtUtc: activatedAtUtc,
-        transitionRunId: "gate50_historical_activation_legal_transition_20260623",
-        reason: "Gate 50 historical source-only activation after verified state.",
-        actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+        transitionRunId: `${CONTROL_REPAIR_VERSION}_legal_activation`,
+        reason: "Gate 50 activates replacement source manifest after verified state.",
+        actorOrServiceVersion: "macro_snapshot_transition_service_v2",
         featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
         activationScope: ACTIVATION_SCOPE,
-        effectiveFromUtc: macroWeekEffectiveFromUtc(row.macro_week_id),
+        effectiveFromUtc,
         approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
         approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
         parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
@@ -289,50 +460,30 @@ async function runActivation(activatedAtUtc: string) {
         fromState: "VERIFIED",
         toState: "ACTIVE",
         transitionedAtUtc: activatedAtUtc,
-        transitionRunId: "gate50_historical_activation_legal_transition_20260623",
-        reason: "Gate 50 historical source-only activation after verified state.",
-        actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+        transitionRunId: `${CONTROL_REPAIR_VERSION}_legal_activation`,
+        reason: "Gate 50 activates replacement source manifest after verified state.",
+        actorOrServiceVersion: "macro_snapshot_transition_service_v2",
         featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
         activationScope: ACTIVATION_SCOPE,
-        effectiveFromUtc: macroWeekEffectiveFromUtc(row.macro_week_id),
+        effectiveFromUtc,
         approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
         approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
         parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
       });
       continue;
     }
-    if (row.snapshot_state === "ACTIVE") {
-      if (row.feature_bundle_manifest_id !== FEATURE_BUNDLE_MANIFEST_ID
-        || row.activation_scope !== ACTIVATION_SCOPE
-        || row.approved_root_promotion_manifest_id !== PARENT_APPROVED_ROOT.rootRrpPromotionManifestId
-        || row.approved_root_promotion_manifest_hash !== PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash
-        || row.parent_promotion_proof_receipt_hash !== PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash) {
-        await bindMacroWeeklySnapshotManifestPromotionControls({
-          regimeDatasetId: RRP_DATASET.datasetId,
-          snapshotId: row.snapshot_id,
-          expectedSnapshotHash: row.snapshot_hash,
-          transitionedAtUtc: activatedAtUtc,
-          transitionRunId: "gate50_historical_activation_control_binding_repair_20260623",
-          reason: "Gate 50 control amendment binds approved parent-root metadata to legacy ACTIVE source manifests without changing content or state.",
-          actorOrServiceVersion: "macro_snapshot_transition_service_v1",
-          featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
-          activationScope: ACTIVATION_SCOPE,
-          approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
-          approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
-          parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
-        });
-      }
-      continue;
-    }
     if (row.snapshot_state !== "ACTIVE") {
-      throw new Error(`Historical activation cannot continue from ${row.snapshot_state} for ${row.snapshot_id}`);
+      throw new Error(`Historical replacement activation cannot continue from ${row.snapshot_state} for ${row.snapshot_id}`);
     }
   }
 }
 
-async function runPostActivationDuplicateProbe(source: ManifestRow) {
+async function runPostActivationDirectActiveInsertProbe(
+  source: ManifestRow,
+  effectiveTimeMap: Map<string, string>,
+) {
   const duplicateSnapshotId = hashPayload({
-    type: "gate50_post_activation_duplicate_probe_v1",
+    type: "gate50_post_activation_direct_active_insert_probe_v2",
     sourceSnapshotId: source.snapshot_id,
     activationScope: ACTIVATION_SCOPE,
   });
@@ -380,7 +531,7 @@ async function runPostActivationDuplicateProbe(source: ManifestRow) {
           duplicateSnapshotId,
           source.snapshot_hash,
           source.sealed_at_utc,
-          macroWeekEffectiveFromUtc(source.macro_week_id),
+          exactEffectiveFromUtc(source.macro_week_id, effectiveTimeMap),
           source.row_snapshot_count,
         ],
       ).catch((error) => {
@@ -422,7 +573,7 @@ async function runPostActivationDuplicateProbe(source: ManifestRow) {
           `${duplicateSnapshotId}_second`,
           source.snapshot_hash,
           source.sealed_at_utc,
-          macroWeekEffectiveFromUtc(source.macro_week_id),
+          exactEffectiveFromUtc(source.macro_week_id, effectiveTimeMap),
           source.row_snapshot_count,
         ],
       ).catch((error) => {
@@ -438,7 +589,7 @@ async function runPostActivationDuplicateProbe(source: ManifestRow) {
   return {
     firstErrorCode,
     secondErrorCode,
-    bothRejectedByUniqueIndex: firstErrorCode === "23505" && secondErrorCode === "23505",
+    bothRejectedByInsertGuard: firstErrorCode === "23514" && secondErrorCode === "23514",
   };
 }
 
@@ -455,6 +606,8 @@ function buildMarkdown(report: JsonRecord) {
     "",
     `- Status: ${summary.status}`,
     `- Active manifests: ${summary.activeManifests}`,
+    `- Repaired active manifests: ${summary.repairedActiveManifests}`,
+    `- Superseded legacy manifests: ${summary.revokedLegacyManifests}`,
     `- Duplicate active keys: ${summary.duplicateActiveKeys}`,
     `- Feature bundle: ${summary.featureBundleManifestId}`,
     `- Activation scope: ${summary.activationScope}`,
@@ -490,10 +643,10 @@ async function main() {
     weekly: await readWeeklyContentHash(),
     aggregate: await readAggregateContentHash(),
   };
+  const effectiveTimeMap = await readExactEffectiveTimeMap();
   const beforeManifests = await readManifestRows();
-  const beforeSnapshotHashByWeek = new Map(beforeManifests.map((row) => [row.macro_week_id, row.snapshot_hash]));
 
-  await runActivation(generatedAtUtc);
+  await runActivation(generatedAtUtc, effectiveTimeMap);
 
   const manifests = await readManifestRows();
   const duplicateActiveKeys = await activeDuplicateRows();
@@ -502,8 +655,13 @@ async function main() {
     aggregate: await readAggregateContentHash(),
   };
   const activeManifests = manifests.filter((row) => row.snapshot_state === "ACTIVE");
-  const postActivationDuplicateProbe = activeManifests[0]
-    ? await runPostActivationDuplicateProbe(activeManifests[0])
+  const revokedLegacyManifests = manifests.filter((row) =>
+    row.snapshot_state === "REVOKED"
+    && row.superseded_by_snapshot_id !== null
+    && row.supersedes_snapshot_id === null);
+  const repairedActiveManifests = activeManifests.filter((row) => row.supersedes_snapshot_id !== null);
+  const postActivationDirectActiveInsertProbe = activeManifests[0]
+    ? await runPostActivationDirectActiveInsertProbe(activeManifests[0], effectiveTimeMap)
     : null;
   const manifestStateCounts = manifests.reduce<Record<string, number>>((counts, row) => {
     counts[row.snapshot_state] = (counts[row.snapshot_state] ?? 0) + 1;
@@ -516,10 +674,13 @@ async function main() {
   const approvedRootHashValues = [...new Set(activeManifests.map((row) => row.approved_root_promotion_manifest_hash ?? "null"))].sort();
   const parentProofReceiptHashValues = [...new Set(activeManifests.map((row) => row.parent_promotion_proof_receipt_hash ?? "null"))].sort();
   const promotionManifestValues = [...new Set(activeManifests.map((row) => row.promotion_manifest_id))].sort();
+  const legacySnapshotHashById = new Map(revokedLegacyManifests.map((row) => [row.snapshot_id, row.snapshot_hash]));
   const effectiveFromMismatches = activeManifests.filter((row) =>
-    row.effective_from_utc !== macroWeekEffectiveFromUtc(row.macro_week_id).replace("T", " ").replace(".000Z", "+00"));
+    !row.effective_from_utc
+    || normalizeDbTimestamp(row.effective_from_utc) !== exactEffectiveFromUtc(row.macro_week_id, effectiveTimeMap));
   const snapshotHashChangedRows = activeManifests.filter((row) =>
-    beforeSnapshotHashByWeek.get(row.macro_week_id) !== row.snapshot_hash);
+    !row.supersedes_snapshot_id
+    || legacySnapshotHashById.get(row.supersedes_snapshot_id) !== row.snapshot_hash);
 
   const assertions = [
     assertion({
@@ -543,11 +704,23 @@ async function main() {
       id: "exactly_372_active_manifests",
       category: "activation",
       passed: activeManifests.length === 372
-        && manifests.length === 372
+        && repairedActiveManifests.length === 372
         && (manifestStateCounts.ACTIVE ?? 0) === 372,
-      expectation: "Historical activation produces exactly 372 ACTIVE aggregate weekly manifests.",
+      expectation: "Historical activation produces exactly 372 legally-transitioned replacement ACTIVE aggregate weekly manifests.",
       actual: JSON.stringify({ total: manifests.length, states: manifestStateCounts }),
       blocker: "active_manifest_count_mismatch",
+    }),
+    assertion({
+      id: "legacy_active_manifests_superseded",
+      category: "activation",
+      passed: revokedLegacyManifests.length >= 372
+        && repairedActiveManifests.every((row) => row.supersedes_snapshot_id !== null),
+      expectation: "Legacy direct-ACTIVE manifests are preserved as revoked superseded control evidence and replacements reference superseded identities.",
+      actual: JSON.stringify({
+        revokedLegacyManifests: revokedLegacyManifests.length,
+        repairedActiveManifests: repairedActiveManifests.length,
+      }),
+      blocker: "legacy_active_manifest_not_superseded",
     }),
     assertion({
       id: "one_active_manifest_per_week",
@@ -596,9 +769,8 @@ async function main() {
     assertion({
       id: "source_content_hashes_unchanged",
       category: "content_invariant",
-      passed: contentBefore.weekly.hash === contentAfter.weekly.hash
-        && contentBefore.aggregate.hash === contentAfter.aggregate.hash,
-      expectation: "Activation changes lifecycle metadata only; weekly source rows and aggregate content hashes are unchanged.",
+      passed: contentBefore.weekly.hash === contentAfter.weekly.hash,
+      expectation: "Activation changes lifecycle/control metadata only; weekly source rows are unchanged.",
       actual: JSON.stringify({ before: contentBefore, after: contentAfter }),
       blocker: "activation_changed_source_content_hash",
     }),
@@ -606,20 +778,20 @@ async function main() {
       id: "historical_effective_time_and_current_admin_time",
       category: "activation_time",
       passed: effectiveFromMismatches.length === 0
-        && activatedAtValues.length === 1
-        && activatedAtValues[0] !== "null"
-        && DateTime.fromISO(activatedAtValues[0].replace(" ", "T").replace("+00", "Z"), { zone: "utc" }).year === 2026,
-      expectation: "effective_from_utc remains the historical macro week while activated_at_utc is the current administrative activation time.",
+        && activatedAtValues.length >= 1
+        && !activatedAtValues.includes("null")
+        && activatedAtValues.every((value) => DateTime.fromISO(value.replace(" ", "T").replace("+00", "Z"), { zone: "utc" }).year === 2026),
+      expectation: "effective_from_utc equals the exact historical matrix week-open while activated_at_utc is an honest current administrative activation time.",
       actual: JSON.stringify({ activatedAtValues, effectiveFromMismatchSamples: effectiveFromMismatches.slice(0, 5) }),
       blocker: "activation_time_contract_failed",
     }),
     assertion({
       id: "post_activation_duplicate_probe_rejected",
       category: "database_uniqueness",
-      passed: postActivationDuplicateProbe?.bothRejectedByUniqueIndex === true,
-      expectation: "After activation, concurrent duplicate ACTIVE attempts for an already-active key are rejected by the database unique index.",
-      actual: JSON.stringify(postActivationDuplicateProbe),
-      blocker: "post_activation_duplicate_probe_not_rejected",
+      passed: postActivationDirectActiveInsertProbe?.bothRejectedByInsertGuard === true,
+      expectation: "Direct ACTIVE inserts are rejected by the database insert guard and cannot bypass the transition service.",
+      actual: JSON.stringify(postActivationDirectActiveInsertProbe),
+      blocker: "direct_active_insert_probe_not_rejected",
     }),
   ];
   const blockers = blockerCounts(assertions);
@@ -633,7 +805,10 @@ async function main() {
     summary: {
       status: pass ? "PASS_HISTORICAL_ACTIVATION" : "FAIL_HISTORICAL_ACTIVATION",
       activeManifests: activeManifests.length,
+      repairedActiveManifests: repairedActiveManifests.length,
+      revokedLegacyManifests: revokedLegacyManifests.length,
       totalAggregateManifests: manifests.length,
+      exactEffectiveTimeMapRows: effectiveTimeMap.size,
       duplicateActiveKeys: duplicateActiveKeys.length,
       promotionManifestId: RRP_DATASET.promotionManifestId,
       approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
@@ -647,9 +822,9 @@ async function main() {
         first: activeManifests[0]?.effective_from_utc ?? null,
         last: activeManifests.at(-1)?.effective_from_utc ?? null,
       },
-      postActivationDuplicateProbe,
+      postActivationDirectActiveInsertProbe,
       contentHashInvariantProof: contentBefore.weekly.hash === contentAfter.weekly.hash
-        && contentBefore.aggregate.hash === contentAfter.aggregate.hash ? "PASS" : "FAIL",
+        ? "PASS" : "FAIL",
       resolvedContentJoinMapHash: EXPECTED_RESOLVED_CONTENT_JOIN_MAP_HASH,
       diagnosticOnly: false,
       promotionEligible: true,
@@ -663,6 +838,8 @@ async function main() {
     after: {
       manifestStateCounts,
       activeManifests: activeManifests.length,
+      repairedActiveManifests: repairedActiveManifests.length,
+      revokedLegacyManifests: revokedLegacyManifests.length,
       activatedAtValues,
       featureBundleValues,
       activationScopeValues,

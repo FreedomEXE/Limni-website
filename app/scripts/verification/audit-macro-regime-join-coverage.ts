@@ -759,6 +759,12 @@ function auditWeekManifests(options: {
       ...(selected && options.cli.allowedSnapshotStates.includes("ACTIVE") && selected.effective_from_utc === null
         ? ["active_manifest_missing_effective_from_utc"]
         : []),
+      ...(selected
+        && options.cli.allowedSnapshotStates.includes("ACTIVE")
+        && selected.effective_from_utc !== null
+        && isoUtc(selected.effective_from_utc) !== weekOpenUtc
+        ? ["active_manifest_effective_from_not_exact_week_open"]
+        : []),
       ...(selected && options.cli.allowedSnapshotStates.includes("ACTIVE") && selected.activated_at_utc === null
         ? ["active_manifest_missing_activated_at_utc"]
         : []),

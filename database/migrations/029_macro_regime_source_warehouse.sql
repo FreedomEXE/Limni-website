@@ -286,7 +286,7 @@ CREATE INDEX IF NOT EXISTS idx_research_macro_execution_receipts_snapshot
 CREATE OR REPLACE FUNCTION research_macro_reject_non_identical_update()
 RETURNS trigger AS $$
 BEGIN
-  IF (to_jsonb(NEW) - 'created_at') IS DISTINCT FROM (to_jsonb(OLD) - 'created_at') THEN
+  IF (to_jsonb(NEW) - 'created_at' - 'completed_at') IS DISTINCT FROM (to_jsonb(OLD) - 'created_at' - 'completed_at') THEN
     RAISE EXCEPTION 'research macro immutable row conflict on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
       USING ERRCODE = '23514';
   END IF;
@@ -294,10 +294,44 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION research_macro_reject_mutation()
+RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'research macro append-only row mutation rejected on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+    USING ERRCODE = '23514';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION research_macro_snapshot_transition_allowed(from_state TEXT, to_state TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN CASE from_state
+    WHEN 'BUILDING' THEN to_state IN ('VALIDATED', 'REJECTED', 'SETTLEMENT_FAILED')
+    WHEN 'VALIDATED' THEN to_state IN ('SEALED', 'REJECTED', 'SETTLEMENT_FAILED')
+    WHEN 'SEALED' THEN to_state IN ('VERIFIED', 'REVOKED', 'QUARANTINED', 'VERIFICATION_FAILED')
+    WHEN 'VERIFIED' THEN to_state IN ('ACTIVE', 'REVOKED', 'QUARANTINED')
+    WHEN 'ACTIVE' THEN to_state IN ('REVOKED', 'QUARANTINED')
+    ELSE FALSE
+  END;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION research_macro_guard_weekly_manifest_insert()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.snapshot_state IN ('VERIFIED', 'ACTIVE', 'REVOKED', 'QUARANTINED') THEN
+    RAISE EXCEPTION 'research macro manifest direct insert into lifecycle state % rejected', NEW.snapshot_state
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION research_macro_guard_weekly_manifest_update()
 RETURNS trigger AS $$
 DECLARE
   transition_service_enabled BOOLEAN;
+  matching_transition_count INTEGER;
 BEGIN
   transition_service_enabled := COALESCE(current_setting('limni.macro_transition_service', true), '') = 'on';
 
@@ -336,6 +370,69 @@ BEGIN
       RAISE EXCEPTION 'research macro manifest content update rejected on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
         USING ERRCODE = '23514';
     END IF;
+
+    IF OLD.feature_bundle_manifest_id IS NOT NULL
+       AND NEW.feature_bundle_manifest_id IS DISTINCT FROM OLD.feature_bundle_manifest_id THEN
+      RAISE EXCEPTION 'research macro manifest feature bundle rebinding rejected on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+        USING ERRCODE = '23514';
+    END IF;
+    IF OLD.activation_scope IS NOT NULL
+       AND NEW.activation_scope IS DISTINCT FROM OLD.activation_scope THEN
+      RAISE EXCEPTION 'research macro manifest activation scope rebinding rejected on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+        USING ERRCODE = '23514';
+    END IF;
+    IF OLD.approved_root_promotion_manifest_id IS NOT NULL
+       AND NEW.approved_root_promotion_manifest_id IS DISTINCT FROM OLD.approved_root_promotion_manifest_id THEN
+      RAISE EXCEPTION 'research macro manifest root promotion id rebinding rejected on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+        USING ERRCODE = '23514';
+    END IF;
+    IF OLD.approved_root_promotion_manifest_hash IS NOT NULL
+       AND NEW.approved_root_promotion_manifest_hash IS DISTINCT FROM OLD.approved_root_promotion_manifest_hash THEN
+      RAISE EXCEPTION 'research macro manifest root promotion hash rebinding rejected on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+        USING ERRCODE = '23514';
+    END IF;
+    IF OLD.parent_promotion_proof_receipt_hash IS NOT NULL
+       AND NEW.parent_promotion_proof_receipt_hash IS DISTINCT FROM OLD.parent_promotion_proof_receipt_hash THEN
+      RAISE EXCEPTION 'research macro manifest parent proof hash rebinding rejected on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+        USING ERRCODE = '23514';
+    END IF;
+
+    IF NEW.snapshot_state IS DISTINCT FROM OLD.snapshot_state THEN
+      IF NOT research_macro_snapshot_transition_allowed(OLD.snapshot_state, NEW.snapshot_state) THEN
+        RAISE EXCEPTION 'research macro illegal manifest transition % -> % rejected', OLD.snapshot_state, NEW.snapshot_state
+          USING ERRCODE = '23514';
+      END IF;
+
+      SELECT COUNT(*) INTO matching_transition_count
+      FROM research_macro_snapshot_state_transitions
+      WHERE regime_dataset_id = NEW.regime_dataset_id
+        AND snapshot_id = NEW.snapshot_id
+        AND snapshot_hash = NEW.snapshot_hash
+        AND from_state = OLD.snapshot_state
+        AND to_state = NEW.snapshot_state;
+
+      IF matching_transition_count = 0 THEN
+        RAISE EXCEPTION 'research macro manifest transition % -> % missing append-only ledger row', OLD.snapshot_state, NEW.snapshot_state
+        USING ERRCODE = '23514';
+      END IF;
+    ELSIF NEW.feature_bundle_manifest_id IS DISTINCT FROM OLD.feature_bundle_manifest_id
+       OR NEW.activation_scope IS DISTINCT FROM OLD.activation_scope
+       OR NEW.approved_root_promotion_manifest_id IS DISTINCT FROM OLD.approved_root_promotion_manifest_id
+       OR NEW.approved_root_promotion_manifest_hash IS DISTINCT FROM OLD.approved_root_promotion_manifest_hash
+       OR NEW.parent_promotion_proof_receipt_hash IS DISTINCT FROM OLD.parent_promotion_proof_receipt_hash THEN
+      SELECT COUNT(*) INTO matching_transition_count
+      FROM research_macro_snapshot_state_transitions
+      WHERE regime_dataset_id = NEW.regime_dataset_id
+        AND snapshot_id = NEW.snapshot_id
+        AND snapshot_hash = NEW.snapshot_hash
+        AND from_state = OLD.snapshot_state
+        AND to_state = NEW.snapshot_state;
+
+      IF matching_transition_count = 0 THEN
+        RAISE EXCEPTION 'research macro manifest promotion-control binding missing append-only ledger row'
+          USING ERRCODE = '23514';
+      END IF;
+    END IF;
     RETURN NEW;
   END IF;
 
@@ -346,6 +443,12 @@ BEGIN
   RETURN OLD;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_research_macro_regime_datasets_immutable
+  ON research_macro_regime_datasets;
+CREATE TRIGGER trg_research_macro_regime_datasets_immutable
+  BEFORE UPDATE ON research_macro_regime_datasets
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();
 
 DROP TRIGGER IF EXISTS trg_research_macro_source_artifacts_immutable
   ON research_macro_source_artifacts;
@@ -364,6 +467,18 @@ DROP TRIGGER IF EXISTS trg_research_macro_weekly_snapshot_manifests_guard
 CREATE TRIGGER trg_research_macro_weekly_snapshot_manifests_guard
   BEFORE UPDATE ON research_macro_weekly_snapshot_manifests
   FOR EACH ROW EXECUTE FUNCTION research_macro_guard_weekly_manifest_update();
+
+DROP TRIGGER IF EXISTS trg_research_macro_weekly_snapshot_manifests_insert_guard
+  ON research_macro_weekly_snapshot_manifests;
+CREATE TRIGGER trg_research_macro_weekly_snapshot_manifests_insert_guard
+  BEFORE INSERT ON research_macro_weekly_snapshot_manifests
+  FOR EACH ROW EXECUTE FUNCTION research_macro_guard_weekly_manifest_insert();
+
+DROP TRIGGER IF EXISTS trg_research_macro_snapshot_state_transitions_append_only
+  ON research_macro_snapshot_state_transitions;
+CREATE TRIGGER trg_research_macro_snapshot_state_transitions_append_only
+  BEFORE UPDATE OR DELETE ON research_macro_snapshot_state_transitions
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_mutation();
 
 DROP TRIGGER IF EXISTS trg_research_macro_execution_receipts_immutable
   ON research_macro_execution_receipts;

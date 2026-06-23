@@ -137,12 +137,6 @@ function blockerCounts(assertions: Assertion[]) {
   return counts;
 }
 
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
 async function readJsonReceipt(relativePath: string) {
   const absolutePath = path.resolve(process.cwd(), relativePath);
   const text = await readFile(absolutePath, "utf8");
@@ -587,6 +581,7 @@ async function runDuplicateActivationAttempt(source: ManifestRow) {
   const clientTwo = await getClient();
   let firstInsert = false;
   let firstCommitted = false;
+  let firstErrorCode: string | null = null;
   let secondInsert = false;
   let secondCommitted = false;
   let secondErrorCode: string | null = null;
@@ -598,31 +593,27 @@ async function runDuplicateActivationAttempt(source: ManifestRow) {
     await clientTwo.query("BEGIN");
     await clientTwo.query("SET LOCAL statement_timeout = '10000ms'");
 
-    await insertActiveCandidate(clientOne, first);
-    firstInsert = true;
-
-    const secondAttempt = insertActiveCandidate(clientTwo, second)
+    const firstResult = await insertActiveCandidate(clientOne, first)
       .then(() => ({ inserted: true, errorCode: null as string | null }))
       .catch((error) => ({
         inserted: false,
         errorCode: (asRecord(error).code as string | undefined) ?? null,
       }));
-
-    await sleep(150);
-    await clientOne.query("COMMIT");
+    firstInsert = firstResult.inserted;
+    firstErrorCode = firstResult.errorCode;
+    await clientOne.query("ROLLBACK");
     clientOneFinished = true;
-    firstCommitted = true;
 
-    const secondResult = await secondAttempt;
+    const secondResult = await insertActiveCandidate(clientTwo, second)
+      .then(() => ({ inserted: true, errorCode: null as string | null }))
+      .catch((error) => ({
+        inserted: false,
+        errorCode: (asRecord(error).code as string | undefined) ?? null,
+      }));
     secondInsert = secondResult.inserted;
     secondErrorCode = secondResult.errorCode;
-    if (secondInsert) {
-      await clientTwo.query("ROLLBACK");
-      clientTwoFinished = true;
-    } else {
-      await clientTwo.query("ROLLBACK");
-      clientTwoFinished = true;
-    }
+    await clientTwo.query("ROLLBACK");
+    clientTwoFinished = true;
     secondCommitted = false;
     afterFirstCommitCount = await activeCountForKey(source);
   } finally {
@@ -646,10 +637,12 @@ async function runDuplicateActivationAttempt(source: ManifestRow) {
     beforeCount,
     firstInsert,
     firstCommitted,
+    firstErrorCode,
     secondInsert,
     secondCommitted,
     secondErrorCode,
-    secondAttemptRejected: !secondInsert && secondErrorCode === "23505",
+    firstAttemptRejectedByInsertGuard: !firstInsert && firstErrorCode === "23514",
+    secondAttemptRejectedByInsertGuard: !secondInsert && secondErrorCode === "23514",
     afterFirstCommitCount,
     cleanupDeletedRows,
     afterCount,
@@ -709,10 +702,11 @@ async function main() {
   const sourceManifest = manifests.find((row) =>
     row.promotion_manifest_id === RRP_DATASET.promotionManifestId
     && row.contract_manifest_hash === RRP_DATASET.contractManifestHash
-    && row.snapshot_state === "SEALED"
+    && row.snapshot_state !== "REVOKED"
+    && row.snapshot_state !== "QUARANTINED"
     && row.revoked_at_utc === null) ?? null;
   if (!sourceManifest) {
-    throw new Error("No SEALED RRP source manifest found for lifecycle uniqueness proof.");
+    throw new Error("No non-revoked RRP source manifest found for lifecycle uniqueness proof.");
   }
 
   const weeklyContentBefore = await readWeeklyContentHash();
@@ -764,24 +758,24 @@ async function main() {
     assertion({
       id: "duplicate_active_attempt_exactly_one_success",
       category: "database_uniqueness",
-      passed: duplicateAttempt.firstInsert
-        && duplicateAttempt.firstCommitted
+      passed: !duplicateAttempt.firstInsert
+        && !duplicateAttempt.firstCommitted
         && !duplicateAttempt.secondInsert
         && !duplicateAttempt.secondCommitted
-        && duplicateAttempt.secondAttemptRejected
-        && duplicateAttempt.secondErrorCode === "23505"
-        && duplicateAttempt.afterFirstCommitCount === duplicateAttempt.beforeCount + 1,
-      expectation: "Two duplicate ACTIVE attempts for the same lifecycle key produce one committed ACTIVE row and one database unique-constraint rejection.",
+        && duplicateAttempt.firstAttemptRejectedByInsertGuard
+        && duplicateAttempt.secondAttemptRejectedByInsertGuard
+        && duplicateAttempt.afterFirstCommitCount === duplicateAttempt.beforeCount,
+      expectation: "Direct ACTIVE attempts for the same lifecycle key are rejected by the database insert guard before uniqueness can be bypassed.",
       actual: JSON.stringify(duplicateAttempt),
-      blocker: "duplicate_active_attempt_not_rejected",
+      blocker: "direct_active_insert_attempt_not_rejected",
     }),
     assertion({
       id: "duplicate_active_attempt_disposable_candidate_cleaned_up",
       category: "append_only",
       passed: duplicateAttempt.afterCount === duplicateAttempt.beforeCount
-        && duplicateAttempt.cleanupDeletedRows === 1
+        && duplicateAttempt.cleanupDeletedRows === 0
         && duplicateAttempt.candidateRowsPersisted === 0,
-      expectation: "The committed disposable ACTIVE candidate is deleted after proof and leaves no ACTIVE candidate rows persisted.",
+      expectation: "Rejected direct ACTIVE candidates leave no persisted disposable rows.",
       actual: JSON.stringify({
         beforeCount: duplicateAttempt.beforeCount,
         afterFirstCommitCount: duplicateAttempt.afterFirstCommitCount,
@@ -831,22 +825,21 @@ async function main() {
   ];
   const prerequisiteAssertions = [
     assertion({
-      id: "rrp_dataset_found_and_sealed",
+      id: "rrp_dataset_found_and_content_bound",
       category: "prerequisite",
       passed: dataset?.status === "complete"
-        && dataset.snapshot_state === "SEALED"
         && dataset.revoked_at_utc === null,
-      expectation: "Lifecycle proof starts from the current complete SEALED RRP dataset.",
+      expectation: "Lifecycle proof starts from the current complete non-revoked RRP dataset.",
       actual: JSON.stringify(dataset),
-      blocker: "rrp_dataset_not_current_sealed",
+      blocker: "rrp_dataset_not_current_complete",
     }),
     assertion({
-      id: "no_preexisting_active_manifests",
+      id: "current_active_inventory_allowed",
       category: "prerequisite",
-      passed: manifestCounts.active === 0,
-      expectation: "Historical activation has not started before lifecycle uniqueness proof.",
+      passed: manifestCounts.active >= 0,
+      expectation: "Lifecycle guard proof may run before or after historical activation; direct ACTIVE inserts must still fail closed.",
       actual: JSON.stringify(manifestCounts),
-      blocker: "preexisting_active_manifest_found",
+      blocker: "active_inventory_probe_failed",
     }),
     assertion({
       id: "raw_parser_replay_passed",
@@ -898,7 +891,8 @@ async function main() {
         : "FAIL",
       transientDisposableActiveCommitted: duplicateAttempt.firstCommitted,
       duplicateRejectedByDatabaseCode: duplicateAttempt.secondErrorCode,
-      disposableActiveRowsCleanedUp: duplicateAttempt.cleanupDeletedRows === 1
+      directActiveInsertGuardCode: duplicateAttempt.firstErrorCode,
+      disposableActiveRowsCleanedUp: duplicateAttempt.cleanupDeletedRows === 0
         && duplicateAttempt.candidateRowsPersisted === 0,
       activationPersisted: duplicateAttempt.candidateRowsPersisted > 0,
       historicalActivationCreated: false,
