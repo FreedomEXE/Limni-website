@@ -1,0 +1,32 @@
+{
+  "generatedAtUtc": "2026-06-22T20:35:38.143Z",
+  "gate": "Gate 50: macro-source-promotion-proof",
+  "purpose": "Boundary proof for rebuilt rate_3m_market_family_v1 latest-eligible vintage snapshots.",
+  "controls": {
+    "noPnlComputed": true,
+    "noStrategyFilterComputed": true,
+    "noMacroSignalComputed": true,
+    "noActiveManifestBuilt": true,
+    "diagnosticOnly": true
+  },
+  "summary": {
+    "status": "PASS",
+    "regimeDatasetId": "ee1f1611-5d6d-41cf-86fe-c06c66cb16bb",
+    "datasetHash": "eef3689856712225b2b1288e3a6005c8c11e8ec1271331aaf565581cc15c01cd",
+    "snapshotsAudited": 2976,
+    "auditedStaleRowsReconciled": 139,
+    "legitimateRevisionRows": 92,
+    "legitimateRevisionBoundaryViolations": 0,
+    "validCarryRows": 47,
+    "validCarryViolations": 0,
+    "staleSnapshots": 0,
+    "missingSnapshots": 0,
+    "selectionOrStalenessRuleMismatches": 0,
+    "selectionRuleVersion": "latest_eligible_vintage_as_of_weekly_freeze",
+    "stalenessRuleVersion": "rate_3m_market_release_aware_carry_v1",
+    "proofRule": "compare selected observation/value with as-of freeze value; require selected vintage date <= freeze date and selected real-time period containing freeze date"
+  },
+  "revisionViolations": [],
+  "carryViolations": [],
+  "stableReceiptHash": "7ee1449a41bf46598b375650beb354af41e512857b21a430e2f2583567e49a45"
+}

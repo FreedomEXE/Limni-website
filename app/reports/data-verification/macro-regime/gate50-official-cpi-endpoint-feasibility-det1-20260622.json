@@ -1,0 +1,493 @@
+{
+  "generatedAtUtc": "2026-06-22T18:27:48.321Z",
+  "gate": "Gate 50: macro-source-promotion-proof",
+  "purpose": "Bounded endpoint/sample feasibility audit for official CPI source contracts.",
+  "controls": {
+    "noPnlComputed": true,
+    "noStrategyFilterComputed": true,
+    "noMacroSignalComputed": true,
+    "noWarehouseWrites": true,
+    "noActiveManifestBuilt": true,
+    "credentialsRedacted": true
+  },
+  "requiredCurrencySet": [
+    "AUD",
+    "CAD",
+    "CHF",
+    "EUR",
+    "GBP",
+    "JPY",
+    "NZD",
+    "USD"
+  ],
+  "probes": [
+    {
+      "currency": "USD",
+      "provider": "Bureau of Labor Statistics",
+      "sourceContractId": "cpi_usd_bls_cpi_u_all_items_us_city_average_nsa_v1",
+      "semanticTarget": "CPI-U, U.S. city average, all items, not seasonally adjusted",
+      "nativeFrequency": "monthly",
+      "endpointMode": "public_json_api",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.bls.gov/publicAPI/v2/timeseries/data/CUUR0000SA0?startyear=2019&endyear=2026"
+      },
+      "officialEvidenceUrls": [
+        "https://www.bls.gov/bls/api_features.htm",
+        "https://www.bls.gov/cpi/factsheets/cpi-series-ids.htm"
+      ],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/json",
+        "payloadBytes": 8053,
+        "payloadSha256": "deb5560f553eeaea01524a34238766d516a0e686d777513c25015c2e926e2021"
+      },
+      "observations": {
+        "parsedCount": 88,
+        "firstPeriod": "2019-01",
+        "lastPeriod": "2026-05",
+        "latestValue": 335.123,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "1982-84=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Release-calendar and revision-policy proof still required before CPI family promotion."
+      ],
+      "notes": [
+        "BLS basic public API sample is reachable without a registration key."
+      ]
+    },
+    {
+      "currency": "CAD",
+      "provider": "Statistics Canada",
+      "sourceContractId": "cpi_cad_statcan_table_1810000401_all_items_canada_nsa_v1",
+      "semanticTarget": "Table 18-10-0004-01, Canada all-items CPI, not seasonally adjusted",
+      "nativeFrequency": "monthly",
+      "endpointMode": "public_wds_json_api",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://www150.statcan.gc.ca/t1/wds/rest/getDataFromVectorsAndLatestNPeriods",
+        "sanitizedBody": [
+          {
+            "vectorId": 41690973,
+            "latestN": 120
+          }
+        ]
+      },
+      "officialEvidenceUrls": [
+        "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1810000401",
+        "https://www.statcan.gc.ca/en/developers/wds/user-guide"
+      ],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/json",
+        "payloadBytes": 27632,
+        "payloadSha256": "0ad2a8c1f0b4770cb38b16caaf4c05203d0d4bb3e2ac59400826d9672cc3851e"
+      },
+      "observations": {
+        "parsedCount": 120,
+        "firstPeriod": "2016-06",
+        "lastPeriod": "2026-05",
+        "latestValue": 169.6,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "2002=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Vector 41690973 must be pinned to the final source contract with table-dimension evidence.",
+        "Release-calendar and revision-policy proof still required before CPI family promotion."
+      ],
+      "notes": [
+        "WDS vector sample covers the seven-year window and latest 2026 sample without an account."
+      ]
+    },
+    {
+      "currency": "GBP",
+      "provider": "Office for National Statistics",
+      "sourceContractId": "cpi_gbp_ons_d7bt_cpi_all_items_2015_100_v1",
+      "semanticTarget": "D7BT CPI INDEX 00: ALL ITEMS 2015=100",
+      "nativeFrequency": "monthly",
+      "endpointMode": "public_ons_time_series_json",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23/data"
+      },
+      "officialEvidenceUrls": [
+        "https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/d7bt/mm23",
+        "https://www.ons.gov.uk/economy/inflationandpriceindices/datasets/consumerpriceindices"
+      ],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/json;charset=utf-8",
+        "payloadBytes": 124726,
+        "payloadSha256": "54fb5c5be963841a74635d42e680364a13711a883529438eac6ba7f5c9ed8185"
+      },
+      "observations": {
+        "parsedCount": 461,
+        "firstPeriod": "1988-01",
+        "lastPeriod": "2026-05",
+        "latestValue": 142.4,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "2015=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "ONS version-history/release-artifact proof still required before CPI family promotion."
+      ],
+      "notes": [
+        "ONS D7BT public JSON sample covers the seven-year window and latest 2026 sample."
+      ]
+    },
+    {
+      "currency": "EUR",
+      "provider": "Eurostat",
+      "sourceContractId": "cpi_eur_eurostat_prc_hicp_minr_ea_total_i25_v1",
+      "semanticTarget": "HICP ECOICOP v2 monthly index, total, dynamic euro-area aggregate, 2025=100",
+      "nativeFrequency": "monthly",
+      "endpointMode": "public_eurostat_json_api",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_minr?format=JSON&lang=en&freq=M&unit=I25&coicop18=TOTAL&geo=EA"
+      },
+      "officialEvidenceUrls": [
+        "https://ec.europa.eu/eurostat/databrowser/product/view/prc_hicp_midx",
+        "https://ec.europa.eu/eurostat/web/hicp/database"
+      ],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/json",
+        "payloadBytes": 21090,
+        "payloadSha256": "16b34834a875e576becb11163128204bbb3cee07017dc318ea95635b2689be74"
+      },
+      "observations": {
+        "parsedCount": 365,
+        "firstPeriod": "1996-01",
+        "lastPeriod": "2026-05",
+        "latestValue": 103.13,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "2025=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Eurostat archived prc_hicp_midx must be formally superseded by prc_hicp_minr ECOICOP v2 in the final continuity contract.",
+        "Dynamic euro-area aggregate geo=EA must be explicitly accepted or replaced with a fixed-composition area in the source contract.",
+        "Release-calendar and revision-policy proof still required before CPI family promotion."
+      ],
+      "notes": [
+        "Eurostat ECOICOP v2 endpoint replaces the archived pre-2026 prc_hicp_midx branch and reaches the current 2026 sample."
+      ]
+    },
+    {
+      "currency": "JPY",
+      "provider": "Statistics Bureau of Japan / e-Stat",
+      "sourceContractId": "cpi_jpy_estat_table_1_1_all_items_japan_2020_base_v1",
+      "semanticTarget": "CPI Table 1-1 subgroup index, Japan all-items, 2020-base",
+      "nativeFrequency": "monthly",
+      "endpointMode": "estat_json_api",
+      "credential": {
+        "required": true,
+        "used": true,
+        "variableName": "ESTAT_APP_ID"
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://api.e-stat.go.jp/rest/3.0/app/json/getStatsData",
+        "sanitizedParams": {
+          "appId": "REDACTED",
+          "statsDataId": "0003427113",
+          "cdArea": "00000",
+          "cdCat01": "0001",
+          "cdTab": "1",
+          "limit": "10000",
+          "metaGetFlg": "Y",
+          "cntGetFlg": "N",
+          "sectionHeaderFlg": "1"
+        }
+      },
+      "officialEvidenceUrls": [
+        "https://www.stat.go.jp/english/data/cpi/1581-z.html",
+        "https://www.e-stat.go.jp/en/stat-search/files?cycle=1&layout=datalist&month=12040604&page=1&result_back=1&tclass1=000001150149&tclass2val=0&toukei=00200573&tstat=000001150147&year=20250"
+      ],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/json; charset=utf-8",
+        "payloadBytes": 131217,
+        "payloadSha256": "292adbb13f418c1a0bd494ef53ab2a8bad3efe71e58240d99ec874ffd5b341cc"
+      },
+      "observations": {
+        "parsedCount": 677,
+        "firstPeriod": "1970-01",
+        "lastPeriod": "2026-05",
+        "latestValue": 113.5,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "2020=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Japan 2015/2020/2025 base-continuity decision and release-calendar proof still required before CPI family promotion."
+      ],
+      "notes": [
+        "e-Stat Table 1-1 all-items sample is credentialed, parsed, and covers the seven-year window."
+      ]
+    },
+    {
+      "currency": "AUD",
+      "provider": "Australian Bureau of Statistics",
+      "sourceContractId": "cpi_aud_abs_cpi_all_groups_weighted_average_8_capitals_quarterly_v1",
+      "semanticTarget": "CPI all groups / headline index, weighted average of eight capital cities",
+      "nativeFrequency": "mixed",
+      "endpointMode": "public_abs_sdmx_csv_api",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://data.api.abs.gov.au/rest/data/CPI/1.10001.10.1.Q?startPeriod=2019-Q1&format=csvfile"
+      },
+      "officialEvidenceUrls": [
+        "https://www.abs.gov.au/statistics/application-programming-interfaces-apis/data-api-user-guide",
+        "https://www.abs.gov.au/statistics/economy/price-indexes-and-inflation/consumer-price-index-australia/latest-release",
+        "https://www.abs.gov.au/about/key-priorities/big-data-timely-insights-phase-2/complete-monthly-measure-cpi/monthly-and-quarterly-data-series"
+      ],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/vnd.sdmx.data+csv; charset=utf-8",
+        "payloadBytes": 1685,
+        "payloadSha256": "f60b21f74c15939a5859ebba44631b928b6417d17041d7687ec5b8697a7a8a57"
+      },
+      "observations": {
+        "parsedCount": 29,
+        "firstPeriod": "2019-Q1",
+        "lastPeriod": "2026-Q1",
+        "latestValue": 101.81,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "2025=100 candidate branch"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-Q1",
+        "minimumCurrentPeriodSeen": "2026-Q1",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "ABS quarterly-to-monthly headline transition needs an explicit continuity/version decision before promotion.",
+        "Release-calendar and revision-policy proof still required before CPI family promotion."
+      ],
+      "notes": [
+        "ABS Data API is public and machine-readable, but this candidate branch is not yet the full CPI family contract."
+      ]
+    },
+    {
+      "currency": "NZD",
+      "provider": "Stats NZ",
+      "sourceContractId": "cpi_nzd_statsnz_cpiq_se9ns1160_all_groups_nsa_v1",
+      "semanticTarget": "Consumers price index, all groups CPI, seasonally unadjusted",
+      "nativeFrequency": "quarterly",
+      "endpointMode": "public_infoshare_export_direct_csv",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "POST",
+        "url": "https://infoshare.stats.govt.nz/ExportDirect.aspx",
+        "sanitizedBody": {
+          "searchFileSeriesIdentifiers": [
+            "CPIQ.SE9NS1160"
+          ],
+          "selectedPeriods": "2019M01-2026M06",
+          "csvFormat": "rows"
+        }
+      },
+      "officialEvidenceUrls": [
+        "https://www.stats.govt.nz/indicators/consumers-price-index-cpi/",
+        "https://www.stats.govt.nz/tools/stats-infoshare/",
+        "https://www.stats.govt.nz/tools/we-are-changing-our-data-tools/",
+        "https://infoshare.stats.govt.nz/Help/export-direct.asp"
+      ],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "text/csv; charset=utf-8",
+        "payloadBytes": 725,
+        "payloadSha256": "6acc52b43f1cc618cb1dad26f43ebececf887b0fe20381c3d11426b4ebb9c27f"
+      },
+      "observations": {
+        "parsedCount": 29,
+        "firstPeriod": "2019-Q1",
+        "lastPeriod": "2026-Q1",
+        "latestValue": 1339,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "index reference pending final source contract"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-Q1",
+        "minimumCurrentPeriodSeen": "2026-Q1",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Infoshare Export Direct .sch-file contract must be formalized in the final source contract.",
+        "Release-calendar and revision-policy proof still required before CPI family promotion."
+      ],
+      "notes": [
+        "Stats NZ Infoshare Export Direct returns the all-groups quarterly CPI series from a .sch file without an account."
+      ]
+    },
+    {
+      "currency": "CHF",
+      "provider": "Swiss Federal Statistical Office",
+      "sourceContractId": "cpi_chf_fso_lik25b25_total_dec2025_100_v1",
+      "semanticTarget": "Swiss CPI total / all-items, LIK25B25 detailed results since 1982, December 2025=100",
+      "nativeFrequency": "monthly",
+      "endpointMode": "public_open_data_xlsx_asset",
+      "credential": {
+        "required": false,
+        "used": false,
+        "variableName": null
+      },
+      "request": {
+        "method": "GET",
+        "url": "https://dam-api.bfs.admin.ch/hub/api/dam/assets/36669836/master"
+      },
+      "officialEvidenceUrls": [
+        "https://www.bfs.admin.ch/bfs/en/home/statistics/prices/consumer-price-index.html",
+        "https://opendata.swiss/en/dataset/lik-dezember-2025100-detailresultate-seit-1982-warenkorbstruktur-2025-inkl-sondergliederungen-l",
+        "https://www.bfs.admin.ch/asset/en/su-e-05.02.66"
+      ],
+      "response": {
+        "ok": true,
+        "status": 200,
+        "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "payloadBytes": 5561298,
+        "payloadSha256": "4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda"
+      },
+      "observations": {
+        "parsedCount": 522,
+        "firstPeriod": "1982-12",
+        "lastPeriod": "2026-05",
+        "latestValue": 101.2587,
+        "unit": "index",
+        "seasonalAdjustment": "not_seasonally_adjusted",
+        "baseOrReferencePeriod": "December 2025=100"
+      },
+      "coverage": {
+        "requiredStartPeriod": "2019-01",
+        "minimumCurrentPeriodSeen": "2026-01",
+        "coversRequiredStart": true,
+        "reachesCurrentSample": true
+      },
+      "sampleStatus": "sample_pass_continuity_pending",
+      "promotionEligible": false,
+      "blockers": [
+        "Swiss FSO XLSX parser must be locked to LIK25B25 INDEX_m row 5 and monitored for workbook layout drift.",
+        "Release-calendar and revision-policy proof still required before CPI family promotion."
+      ],
+      "notes": [
+        "Swiss FSO current LIK25B25 workbook is public and parsable through the open-data XLSX artifact."
+      ]
+    }
+  ],
+  "summary": {
+    "overallStatus": "FAIL_CPI_FAMILY_ENDPOINT_CONTRACT_INCOMPLETE",
+    "promotionEligible": false,
+    "fullWindowCoverageBranches": 8,
+    "fullWindowCandidates": 0,
+    "pendingBranches": 8,
+    "statusCounts": {
+      "sample_pass_continuity_pending": 8
+    },
+    "currencyStatus": {
+      "USD": "sample_pass_continuity_pending",
+      "CAD": "sample_pass_continuity_pending",
+      "GBP": "sample_pass_continuity_pending",
+      "EUR": "sample_pass_continuity_pending",
+      "JPY": "sample_pass_continuity_pending",
+      "AUD": "sample_pass_continuity_pending",
+      "NZD": "sample_pass_continuity_pending",
+      "CHF": "sample_pass_continuity_pending"
+    },
+    "receiptHash": "de503488926f8b6e38102e92c829d7da4640e0d456ca7ee57db38f3da1f6e9aa",
+    "livePayloadSetHash": "4168a37c275c3dcaa2995ea137256cd7be59cef406ef6dcc600ce650409b4120"
+  },
+  "files": {
+    "jsonPath": "app/reports/data-verification/macro-regime/gate50-official-cpi-endpoint-feasibility-det1-20260622.json",
+    "mdPath": "app/reports/data-verification/macro-regime/gate50-official-cpi-endpoint-feasibility-det1-20260622.md"
+  }
+}

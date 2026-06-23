@@ -1,0 +1,137 @@
+{
+  "generatedAtUtc": "2026-06-23T03:28:32.315Z",
+  "write": true,
+  "datasetHash": "3db4b84238dbf5c656a9ebaf2ff73219cc1efd2a6e1ff70842983945c4d23612",
+  "promotionManifestId": "12f04bd4bec599e37fdfdf926d0d39bd73902319654993baa71ce879bb8eecb5",
+  "contractManifestHash": "92f93545c05b067bc204678e17283607207d59d212783eb913292ac5eef52556",
+  "regimeDatasetId": "dcdc850a-80a2-4178-8d08-dd759be6afb8",
+  "range": {
+    "fromWeekOpenUtc": "2019-01-07T00:00:00.000Z",
+    "toWeekOpenUtc": "2026-06-07T23:00:00.000Z",
+    "weeks": 372
+  },
+  "currencies": [
+    "AUD",
+    "CAD",
+    "CHF",
+    "EUR",
+    "GBP",
+    "JPY",
+    "NZD",
+    "USD"
+  ],
+  "observations": {
+    "total": 2886,
+    "bpr": 0,
+    "rate": 2886,
+    "inflation": 0,
+    "valuation": 0
+  },
+  "artifacts": {
+    "total": 40,
+    "endpoints": {
+      "fred_alfred_series_observations_realtime_period": 40
+    },
+    "payloadBytes": 296130
+  },
+  "availabilityEvents": {
+    "total": 2886,
+    "precision": {
+      "date": 2886
+    },
+    "retrievalCapabilities": {
+      "as_of_queryable": 2886
+    },
+    "eligibilityPolicies": {
+      "first_freeze_strictly_after_date": 2886
+    }
+  },
+  "weeklySnapshots": {
+    "total": 2976,
+    "manifests": 372,
+    "bpr": 0,
+    "rate": 2976,
+    "inflation": 0,
+    "valuation": 0,
+    "realRatePressure": 0,
+    "stale": 0,
+    "missing": 0,
+    "missingByCurrency": {},
+    "missingBySourceId": {}
+  },
+  "bpr": {
+    "attemptedReports": 0,
+    "fetchedReports": 0,
+    "archiveFetchedReports": 0,
+    "failedReports": 0,
+    "localFetchBlockedReports": 0,
+    "failedReportKeys": [],
+    "reportTypes": [
+      "f",
+      "o"
+    ],
+    "exceptionCalendarVersion": "cftc_bpr_exception_calendar_v2_2019_2025_lapse_holiday",
+    "availabilityModes": {},
+    "exceptionOrDelayObservations": 0,
+    "promotionBlockedUntilExactPublicationDateObservations": 0,
+    "availabilitySamples": []
+  },
+  "rates": {
+    "sources": 8,
+    "observations": 2886,
+    "latestBySource": {
+      "fred_IR3TIB01AUM156N": "2026-05-01",
+      "fred_IR3TIB01CAM156N": "2026-05-01",
+      "fred_IR3TIB01CHM156N": "2026-05-01",
+      "fred_IR3TIB01EZM156N": "2026-01-01",
+      "fred_IR3TIB01GBM156N": "2026-01-01",
+      "fred_IR3TIB01JPM156N": "2026-04-01",
+      "fred_IR3TIB01NZM156N": "2026-05-01",
+      "fred_IR3TIB01USM156N": "2026-05-01"
+    },
+    "selectionRuleVersion": "latest_eligible_vintage_as_of_weekly_freeze_date_only_strict_v2",
+    "stalenessRuleVersion": "rate_3m_market_release_aware_carry_v1",
+    "availabilityTimestampMode": "fred_alfred_real_time_period_as_of_weekly_freeze"
+  },
+  "inflation": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {}
+  },
+  "valuation": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {},
+    "weeklySnapshots": 0,
+    "available": 0,
+    "stale": 0,
+    "missing": 0
+  },
+  "realRatePressure": {
+    "sources": 0,
+    "weeklySnapshots": 0,
+    "available": 0,
+    "stale": 0,
+    "missing": 0,
+    "composition": null
+  },
+  "persistedCounts": {
+    "artifacts": 40,
+    "availabilityEvents": 2886,
+    "observations": 2886,
+    "weeklySnapshotManifests": 372,
+    "weeklySnapshots": 2976
+  },
+  "notes": [
+    "Gate 50 source-contract materialization only. No BPR/rate/inflation/real-rate-pressure regime interpretation, pair filter, stop policy, TP, runner, or grid-entry logic is encoded.",
+    "Weekly snapshots are frozen at the macro weekly signal freeze target, currently week_open_utc; raw rows released after that cutoff are stored but first become eligible in the next weekly snapshot.",
+    "Date-only or approximate availability remains exploratory/latest-vintage research and must roll forward at exact-boundary ties before promotion.",
+    "Canonical rate rows use FRED/ALFRED output_type=1 real-time periods, latest eligible vintage selection, and release-aware carry in SEALED diagnostic mode.",
+    "Official CPI rows use the Gate 50 source contracts and remain SEALED diagnostic evidence until CPI-only and RRP promotion proofs pass.",
+    "BPR report fetches use canonical CFTC artifacts; archived canonical CFTC pages are internal replay evidence for historical fills, not runtime provider fallback.",
+    "Inflation rows compute CPI YoY from native-frequency index levels and preserve current and lag parent observation metadata, artifacts, and availability events.",
+    "Valuation rows store OECD annual PPP/exchange-rate inputs and BIS monthly broad NEER/REER inputs only; no PPP gap, support/oppose state, or combined regime logic is derived here.",
+    "Real-rate-pressure rows are derived weekly from 3-month interbank rate minus CPI YoY; BPR remains a separate positioning source.",
+    "Japan CPI uses official Statistics Bureau/e-Stat Table 1-1 all-items; Table 4-1 remains validation-only evidence and is never runtime fallback under this contract."
+  ]
+}

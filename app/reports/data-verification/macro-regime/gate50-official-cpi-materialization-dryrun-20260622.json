@@ -1,0 +1,141 @@
+{
+  "generatedAtUtc": "2026-06-22T21:31:45.311Z",
+  "write": false,
+  "datasetHash": "d641fe04ab886296f0ad39402231bd5a60ebdd659ee5de4f62df1c4b255f6091",
+  "promotionManifestId": "d6831acfe5df0d07fdd8d551cc8cb8a3b69605afdb227346ee66e4183cbea9b5",
+  "contractManifestHash": "3ff7a511821f20f0b81c65f6589dad85965540c68687843688128e1a7b87fa7c",
+  "regimeDatasetId": null,
+  "range": {
+    "fromWeekOpenUtc": "2019-01-07T00:00:00.000Z",
+    "toWeekOpenUtc": "2026-06-07T23:00:00.000Z",
+    "weeks": 372
+  },
+  "currencies": [
+    "AUD",
+    "CAD",
+    "CHF",
+    "EUR",
+    "GBP",
+    "JPY",
+    "NZD",
+    "USD"
+  ],
+  "observations": {
+    "total": 2255,
+    "bpr": 0,
+    "rate": 0,
+    "inflation": 2255,
+    "valuation": 0
+  },
+  "artifacts": {
+    "total": 10,
+    "endpoints": {
+      "abs_cpi_quarterly_sdmx_csv": 1,
+      "abs_cpi_monthly_sdmx_csv": 1,
+      "statcan_wds_vector_latest_periods": 1,
+      "swiss_fso_lik25b25_xlsx_master": 1,
+      "eurostat_prc_hicp_minr_jsonstat": 1,
+      "ons_mm23_d7bt_timeseries_json": 1,
+      "estat_get_stats_data_table_1_1_cpi_json": 1,
+      "statsnz_infoshare_exportdirect_form": 1,
+      "statsnz_infoshare_exportdirect_sch": 1,
+      "bls_public_timeseries_html_table": 1
+    },
+    "payloadBytes": 6108447
+  },
+  "availabilityEvents": {
+    "total": 2255,
+    "precision": {
+      "exact_timestamp": 1608,
+      "date": 647
+    },
+    "retrievalCapabilities": {
+      "release_event_filterable": 2255
+    },
+    "eligibilityPolicies": {
+      "eligible_at_or_before_freeze": 1608,
+      "first_freeze_strictly_after_date": 647
+    }
+  },
+  "weeklySnapshots": {
+    "total": 2976,
+    "manifests": 372,
+    "bpr": 0,
+    "rate": 0,
+    "inflation": 2976,
+    "valuation": 0,
+    "realRatePressure": 0,
+    "stale": 0,
+    "missing": 0,
+    "missingByCurrency": {},
+    "missingBySourceId": {}
+  },
+  "bpr": {
+    "attemptedReports": 0,
+    "fetchedReports": 0,
+    "archiveFetchedReports": 0,
+    "failedReports": 0,
+    "localFetchBlockedReports": 0,
+    "failedReportKeys": [],
+    "reportTypes": [
+      "f",
+      "o"
+    ],
+    "exceptionCalendarVersion": "cftc_bpr_exception_calendar_v2_2019_2025_lapse_holiday",
+    "availabilityModes": {},
+    "exceptionOrDelayObservations": 0,
+    "promotionBlockedUntilExactPublicationDateObservations": 0,
+    "availabilitySamples": []
+  },
+  "rates": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {},
+    "selectionRuleVersion": "latest_eligible_vintage_as_of_weekly_freeze",
+    "stalenessRuleVersion": "rate_3m_market_release_aware_carry_v1",
+    "availabilityTimestampMode": "fred_alfred_real_time_period_as_of_weekly_freeze"
+  },
+  "inflation": {
+    "sources": 8,
+    "observations": 2255,
+    "latestBySource": {
+      "cpi_aud_abs_cpi_all_groups_headline_native_frequency_v1": "2026-04-01",
+      "cpi_cad_statcan_table_1810000401_all_items_canada_nsa_v1": "2026-05-01",
+      "cpi_chf_fso_lik25b25_total_dec2025_100_v1": "2026-05-01",
+      "cpi_eur_eurostat_prc_hicp_minr_ea_total_i25_v1": "2026-05-01",
+      "cpi_gbp_ons_d7bt_cpi_all_items_2015_100_v1": "2026-05-01",
+      "cpi_jpy_estat_table_1_1_all_items_japan_2020_base_v1": "2026-05-01",
+      "cpi_nzd_statsnz_cpiq_se9ns1160_all_groups_nsa_v1": "2026-01-01",
+      "cpi_usd_bls_cpi_u_all_items_us_city_average_nsa_v1": "2026-05-01"
+    }
+  },
+  "valuation": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {},
+    "weeklySnapshots": 0,
+    "available": 0,
+    "stale": 0,
+    "missing": 0
+  },
+  "realRatePressure": {
+    "sources": 0,
+    "weeklySnapshots": 0,
+    "available": 0,
+    "stale": 0,
+    "missing": 0
+  },
+  "persistedCounts": null,
+  "notes": [
+    "Gate 50 source-contract materialization only. No BPR/rate/inflation/real-rate-pressure regime interpretation, pair filter, stop policy, TP, runner, or grid-entry logic is encoded.",
+    "Weekly snapshots are frozen at the macro weekly signal freeze target, currently week_open_utc; raw rows released after that cutoff are stored but first become eligible in the next weekly snapshot.",
+    "Date-only or approximate availability remains exploratory/latest-vintage research and must roll forward at exact-boundary ties before promotion.",
+    "Canonical rate rows use FRED/ALFRED output_type=1 real-time periods, latest eligible vintage selection, and release-aware carry in SEALED diagnostic mode.",
+    "Official CPI rows use the Gate 50 source contracts and remain SEALED diagnostic evidence until CPI-only and RRP promotion proofs pass.",
+    "BPR report fetches use canonical CFTC artifacts; archived canonical CFTC pages are internal replay evidence for historical fills, not runtime provider fallback.",
+    "Inflation rows compute CPI YoY from native-frequency index levels and preserve current and lag parent observation metadata, artifacts, and availability events.",
+    "Valuation rows store OECD annual PPP/exchange-rate inputs and BIS monthly broad NEER/REER inputs only; no PPP gap, support/oppose state, or combined regime logic is derived here.",
+    "Real-rate-pressure rows are derived weekly from 3-month interbank rate minus CPI YoY; BPR remains a separate positioning source.",
+    "Japan CPI uses official Statistics Bureau/e-Stat Table 1-1 all-items; Table 4-1 remains validation-only evidence and is never runtime fallback under this contract."
+  ]
+}

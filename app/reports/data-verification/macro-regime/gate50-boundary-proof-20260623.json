@@ -1,0 +1,425 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-06-23T02:59:14.021Z",
+  "gate": "Gate 50: macro-source-promotion-proof",
+  "purpose": "Combined freeze, revision, carry, transition, timezone, exception, and derived-parent boundary proof for current SEALED diagnostic source content.",
+  "scope": {
+    "diagnosticOnly": true,
+    "promotionEligible": false,
+    "activationEligible": false,
+    "outcomeConsumable": false,
+    "noPnlComputed": true,
+    "noStrategyDecisionComputed": true
+  },
+  "datasets": {
+    "matrix": {
+      "datasetId": "479624d1-f6a2-4928-82f1-981137762bdc"
+    },
+    "rate": {
+      "datasetId": "ee1f1611-5d6d-41cf-86fe-c06c66cb16bb",
+      "datasetHash": "eef3689856712225b2b1288e3a6005c8c11e8ec1271331aaf565581cc15c01cd"
+    },
+    "cpi": {
+      "datasetId": "b4cbb08f-d564-452f-8c67-7e47f0ec40d6",
+      "datasetHash": "e8a508f0436408cdcbdd4c0ccd50acb73180c9b7321679db33e918ac4104c30b"
+    },
+    "rrp": {
+      "datasetId": "27542abe-6ce7-4e44-a7d2-f071ed258c73",
+      "datasetHash": "a8f3b360b972059941126f6791af1d103d7aa00be85082fff76893396a5b9603"
+    }
+  },
+  "expectedResolvedContentJoinMapHash": "12f3bb76d9fb2862b4072f2def7498fe413f3cc4c036f89fc7956996c806546e",
+  "summary": {
+    "status": "FAIL_BOUNDARY_PROOF",
+    "assertionCount": 16,
+    "passCount": 14,
+    "failCount": 2,
+    "diagnosticOnly": true,
+    "promotionEligible": false,
+    "activationEligible": false,
+    "outcomeConsumable": false
+  },
+  "assertions": [
+    {
+      "id": "exact_timestamp_immediately_before_freeze_is_eligible",
+      "category": "freeze_timestamp",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "An exact timestamp immediately before the weekly freeze selects the current freeze.",
+      "actual": "target=2022-07-31T22:59:59.999Z selected=2022-07-31T23:00:00.000Z freeze=2022-07-31T23:00:00.000Z",
+      "blocker": null
+    },
+    {
+      "id": "exact_timestamp_equal_freeze_follows_inclusive_equality_rule",
+      "category": "freeze_timestamp",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "An exact timestamp equal to the weekly freeze follows eligible_at_or_before_freeze.",
+      "actual": "target=2022-07-31T23:00:00.000Z selected=2022-07-31T23:00:00.000Z freeze=2022-07-31T23:00:00.000Z",
+      "blocker": null
+    },
+    {
+      "id": "exact_timestamp_after_freeze_rolls_to_next_week",
+      "category": "freeze_timestamp",
+      "polarity": "negative",
+      "status": "PASS",
+      "expectation": "An exact timestamp after a weekly freeze is not eligible until the next canonical week.",
+      "actual": "target=2022-07-31T23:00:00.001Z selected=2022-08-07T23:00:00.000Z next=2022-08-07T23:00:00.000Z",
+      "blocker": null
+    },
+    {
+      "id": "date_only_alfred_vintage_rolls_to_first_strictly_later_freeze",
+      "category": "rate_vintage_boundary",
+      "polarity": "negative",
+      "status": "FAIL",
+      "expectation": "Date-only ALFRED vintages are not eligible on a same-date weekly freeze; they roll to the first strictly later canonical freeze.",
+      "actual": "datePrecisionRows=2976 sameDaySelected=31 sameDayEligible=31",
+      "blocker": "rate_date_only_vintage_same_freeze_eligible",
+      "evidence": {
+        "samples": [
+          {
+            "week_open_utc": "2023-02-13T00:00:00.000Z",
+            "currency": "AUD",
+            "source_observation_date": "2023-01-01",
+            "available_at_utc": "2023-02-13 00:00:00+00",
+            "selected_vintage_date": "2023-02-13",
+            "eligible_from_week_open_utc": "2023-02-13T00:00:00.000Z",
+            "eligibility_policy": "eligible_at_or_before_freeze"
+          },
+          {
+            "week_open_utc": "2023-02-13T00:00:00.000Z",
+            "currency": "CAD",
+            "source_observation_date": "2023-01-01",
+            "available_at_utc": "2023-02-13 00:00:00+00",
+            "selected_vintage_date": "2023-02-13",
+            "eligible_from_week_open_utc": "2023-02-13T00:00:00.000Z",
+            "eligibility_policy": "eligible_at_or_before_freeze"
+          },
+          {
+            "week_open_utc": "2023-02-13T00:00:00.000Z",
+            "currency": "EUR",
+            "source_observation_date": "2023-01-01",
+            "available_at_utc": "2023-02-13 00:00:00+00",
+            "selected_vintage_date": "2023-02-13",
+            "eligible_from_week_open_utc": "2023-02-13T00:00:00.000Z",
+            "eligibility_policy": "eligible_at_or_before_freeze"
+          },
+          {
+            "week_open_utc": "2023-02-13T00:00:00.000Z",
+            "currency": "GBP",
+            "source_observation_date": "2023-01-01",
+            "available_at_utc": "2023-02-13 00:00:00+00",
+            "selected_vintage_date": "2023-02-13",
+            "eligible_from_week_open_utc": "2023-02-13T00:00:00.000Z",
+            "eligibility_policy": "eligible_at_or_before_freeze"
+          },
+          {
+            "week_open_utc": "2023-02-13T00:00:00.000Z",
+            "currency": "JPY",
+            "source_observation_date": "2022-12-01",
+            "available_at_utc": "2023-02-13 00:00:00+00",
+            "selected_vintage_date": "2023-02-13",
+            "eligible_from_week_open_utc": "2023-02-13T00:00:00.000Z",
+            "eligibility_policy": "eligible_at_or_before_freeze"
+          },
+          {
+            "week_open_utc": "2023-02-13T00:00:00.000Z",
+            "currency": "NZD",
+            "source_observation_date": "2023-01-01",
+            "available_at_utc": "2023-02-13 00:00:00+00",
+            "selected_vintage_date": "2023-02-13",
+            "eligible_from_week_open_utc": "2023-02-13T00:00:00.000Z",
+            "eligibility_policy": "eligible_at_or_before_freeze"
+          },
+          {
+            "week_open_utc": "2023-02-13T00:00:00.000Z",
+            "currency": "USD",
+            "source_observation_date": "2023-01-01",
+            "available_at_utc": "2023-02-13 00:00:00+00",
+            "selected_vintage_date": "2023-02-13",
+            "eligible_from_week_open_utc": "2023-02-13T00:00:00.000Z",
+            "eligibility_policy": "eligible_at_or_before_freeze"
+          },
+          {
+            "week_open_utc": "2024-12-16T00:00:00.000Z",
+            "currency": "AUD",
+            "source_observation_date": "2024-11-01",
+            "available_at_utc": "2024-12-16 00:00:00+00",
+            "selected_vintage_date": "2024-12-16",
+            "eligible_from_week_open_utc": "2024-12-16T00:00:00.000Z",
+            "eligibility_policy": "eligible_at_or_before_freeze"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rate_latest_vintage_never_uses_future_vintage_after_freeze_date",
+      "category": "rate_revision_boundary",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "No selected rate vintage has a vintage date after the weekly freeze date.",
+      "actual": "futureVintageRows=0",
+      "blocker": null
+    },
+    {
+      "id": "rate_revision_switches_are_retained_as_distinct_vintages",
+      "category": "rate_revision_boundary",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "Revised rate observations appear as distinct vintages so earlier weekly snapshots can retain older content and later snapshots can switch.",
+      "actual": "revisedObservationKeys=30 latestVintageSwitches=31",
+      "blocker": null,
+      "evidence": {
+        "samples": [
+          {
+            "week_open_utc": "2019-03-17T23:00:00.000Z",
+            "currency": "CHF",
+            "source_observation_date": "2018-12-01",
+            "selected_vintage_date": "2019-02-13",
+            "selected_observation_identity": "c4b68962f871b4efe9400412b5f0921edb4380bb873c60f491adea19ca87bbb2",
+            "previous_selected_observation_identity": "e0a332d403666a138969c35709e35c43b15f2feb90601c5b3cf07d34a9a69479",
+            "normalized_value_json": {
+              "rateDecimal": -0.007134000000000001,
+              "ratePercent": -0.7134
+            }
+          },
+          {
+            "week_open_utc": "2020-11-09T00:00:00.000Z",
+            "currency": "AUD",
+            "source_observation_date": "2020-09-01",
+            "selected_vintage_date": "2020-11-07",
+            "selected_observation_identity": "629e512c87bb5fde671ff922a260ca49f9ba225bf4a8121c501bd675393d6000",
+            "previous_selected_observation_identity": "8a2adf8a5c4a9bef6b63f19036bf63a819d7ead067bcea07f8a710b2a111b0a9",
+            "normalized_value_json": {
+              "rateDecimal": 0.0009,
+              "ratePercent": 0.09
+            }
+          },
+          {
+            "week_open_utc": "2020-11-09T00:00:00.000Z",
+            "currency": "CAD",
+            "source_observation_date": "2020-09-01",
+            "selected_vintage_date": "2020-11-07",
+            "selected_observation_identity": "847bc954118d59458044b37edfad13d2ad620e732a70cab021f65e8155afa2bf",
+            "previous_selected_observation_identity": "c4473059287d438ee4c83559075bb2822ebd593b9b5c933029f6a1a435a91972",
+            "normalized_value_json": {
+              "rateDecimal": 0.0025,
+              "ratePercent": 0.25
+            }
+          },
+          {
+            "week_open_utc": "2020-11-09T00:00:00.000Z",
+            "currency": "CHF",
+            "source_observation_date": "2020-09-01",
+            "selected_vintage_date": "2020-11-07",
+            "selected_observation_identity": "3dcfde442f295bc5c925a188c0ee97f6926e507c76b0483e7761a55555df68a2",
+            "previous_selected_observation_identity": "24131782a4d96a909df5e86726c694a3f36674d57788d0623c5a0149ae45e5e0",
+            "normalized_value_json": {
+              "rateDecimal": -0.0078000000000000005,
+              "ratePercent": -0.78
+            }
+          },
+          {
+            "week_open_utc": "2020-11-09T00:00:00.000Z",
+            "currency": "EUR",
+            "source_observation_date": "2020-09-01",
+            "selected_vintage_date": "2020-11-07",
+            "selected_observation_identity": "a5648437c8db0fa30898add7e2da6c1ae8d4e39452e5aa14a5acac260dfba3f8",
+            "previous_selected_observation_identity": "6c4c6ce0b6532e5a4dd2cbeadbdfd9f3e816f97f623acb80a32d979213492ede",
+            "normalized_value_json": {
+              "rateDecimal": -0.00491,
+              "ratePercent": -0.491
+            }
+          },
+          {
+            "week_open_utc": "2020-11-09T00:00:00.000Z",
+            "currency": "GBP",
+            "source_observation_date": "2020-09-01",
+            "selected_vintage_date": "2020-11-07",
+            "selected_observation_identity": "2e795d82f35e6b805e61e54a72a873e00287c15cb1c2aa1d2952a89e6634454b",
+            "previous_selected_observation_identity": "d029113c9141b75ff53dab40ce83f58bfc87e5b241f9448a11e5b0b87ae0f786",
+            "normalized_value_json": {
+              "rateDecimal": 0.0006,
+              "ratePercent": 0.06
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "cpi_revision_rebasing_version_bound_to_weekly_rows",
+      "category": "cpi_revision_rebasing",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "Every CPI weekly row is SEALED/non-ACTIVE and carries an explicit revision/rebasing version.",
+      "actual": "rows=2976 missingRevisionRebasingVersion=0 activeRows=0",
+      "blocker": null
+    },
+    {
+      "id": "quarterly_cpi_expected_carry_is_valid_and_not_stale",
+      "category": "cpi_release_aware_carry",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "Quarterly CPI rows, including NZD, carry under the release-aware rule without premature stale flags.",
+      "actual": "quarterlyCarryRows=744 nzdQuarterlyCarryRows=372 quarterlyStaleRows=0",
+      "blocker": null
+    },
+    {
+      "id": "aud_no_retrospective_monthly_before_transition",
+      "category": "aud_cpi_transition",
+      "polarity": "negative",
+      "status": "PASS",
+      "expectation": "AUD CPI does not use monthly rows before the contracted October 2025 transition.",
+      "actual": "preTransitionMonthlyRows=0",
+      "blocker": null
+    },
+    {
+      "id": "aud_monthly_source_used_after_transition",
+      "category": "aud_cpi_transition",
+      "polarity": "positive",
+      "status": "FAIL",
+      "expectation": "The first available control weeks after the October 2025 AUD transition use monthly CPI parents.",
+      "actual": "postTransitionRows=23 monthly=0 quarterly=23",
+      "blocker": "aud_monthly_transition_not_materialized",
+      "evidence": {
+        "samples": [
+          {
+            "week_open_utc": "2026-01-05T00:00:00.000Z",
+            "native_frequency": "quarterly",
+            "current_native_frequency": "quarterly",
+            "current_observation_period": "2025-Q3",
+            "lag_native_frequency": "quarterly",
+            "lag_observation_period": "2024-Q3",
+            "continuity_decision_id": "aud_quarterly_through_2025q3_monthly_from_2025m10_no_interpolation_v1"
+          },
+          {
+            "week_open_utc": "2026-01-12T00:00:00.000Z",
+            "native_frequency": "quarterly",
+            "current_native_frequency": "quarterly",
+            "current_observation_period": "2025-Q3",
+            "lag_native_frequency": "quarterly",
+            "lag_observation_period": "2024-Q3",
+            "continuity_decision_id": "aud_quarterly_through_2025q3_monthly_from_2025m10_no_interpolation_v1"
+          },
+          {
+            "week_open_utc": "2026-01-19T00:00:00.000Z",
+            "native_frequency": "quarterly",
+            "current_native_frequency": "quarterly",
+            "current_observation_period": "2025-Q3",
+            "lag_native_frequency": "quarterly",
+            "lag_observation_period": "2024-Q3",
+            "continuity_decision_id": "aud_quarterly_through_2025q3_monthly_from_2025m10_no_interpolation_v1"
+          },
+          {
+            "week_open_utc": "2026-01-26T00:00:00.000Z",
+            "native_frequency": "quarterly",
+            "current_native_frequency": "quarterly",
+            "current_observation_period": "2025-Q3",
+            "lag_native_frequency": "quarterly",
+            "lag_observation_period": "2024-Q3",
+            "continuity_decision_id": "aud_quarterly_through_2025q3_monthly_from_2025m10_no_interpolation_v1"
+          },
+          {
+            "week_open_utc": "2026-02-02T00:00:00.000Z",
+            "native_frequency": "quarterly",
+            "current_native_frequency": "quarterly",
+            "current_observation_period": "2025-Q3",
+            "lag_native_frequency": "quarterly",
+            "lag_observation_period": "2024-Q3",
+            "continuity_decision_id": "aud_quarterly_through_2025q3_monthly_from_2025m10_no_interpolation_v1"
+          },
+          {
+            "week_open_utc": "2026-02-09T00:00:00.000Z",
+            "native_frequency": "quarterly",
+            "current_native_frequency": "quarterly",
+            "current_observation_period": "2025-Q3",
+            "lag_native_frequency": "quarterly",
+            "lag_observation_period": "2024-Q3",
+            "continuity_decision_id": "aud_quarterly_through_2025q3_monthly_from_2025m10_no_interpolation_v1"
+          },
+          {
+            "week_open_utc": "2026-02-16T00:00:00.000Z",
+            "native_frequency": "quarterly",
+            "current_native_frequency": "quarterly",
+            "current_observation_period": "2025-Q3",
+            "lag_native_frequency": "quarterly",
+            "lag_observation_period": "2024-Q3",
+            "continuity_decision_id": "aud_quarterly_through_2025q3_monthly_from_2025m10_no_interpolation_v1"
+          },
+          {
+            "week_open_utc": "2026-02-23T00:00:00.000Z",
+            "native_frequency": "quarterly",
+            "current_native_frequency": "quarterly",
+            "current_observation_period": "2025-Q3",
+            "lag_native_frequency": "quarterly",
+            "lag_observation_period": "2024-Q3",
+            "continuity_decision_id": "aud_quarterly_through_2025q3_monthly_from_2025m10_no_interpolation_v1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eur_ea20_to_ea21_composition_transition",
+      "category": "eur_cpi_transition",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "EUR CPI stays EA20 through 2025 observation periods and uses EA21 for 2026 observation periods.",
+      "actual": "pre2026ObsEa21Rows=0 post2026Rows=16 post2026Ea21Rows=16 missingDecisionRows=0",
+      "blocker": null
+    },
+    {
+      "id": "rrp_derived_eligibility_equals_latest_parent_eligibility",
+      "category": "rrp_parent_boundary",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "RRP eligibility equals the latest eligibility among rate, current CPI, and lag CPI as represented by the CPI parent snapshot.",
+      "actual": "rows=2976 missingParentSnapshots=0 derivedEligibilityMismatches=0",
+      "blocker": null
+    },
+    {
+      "id": "rrp_sealed_diagnostic_join_remains_complete",
+      "category": "rrp_join_boundary",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "The current SEALED diagnostic RRP parent chain remains complete at 10,416 pair-weeks with zero stale or missing rows.",
+      "actual": "rrpRows=2976 joinablePairWeeks=10416 staleRows=0 missingRows=0",
+      "blocker": null
+    },
+    {
+      "id": "new_york_dst_release_time_conversion",
+      "category": "timezone_boundary",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "New York source-local release timestamps convert differently across EST and EDT.",
+      "actual": "winter=2025-01-03T20:30:00.000Z summer=2025-07-04T19:30:00.000Z",
+      "blocker": null
+    },
+    {
+      "id": "sydney_dst_release_time_conversion",
+      "category": "timezone_boundary",
+      "polarity": "positive",
+      "status": "PASS",
+      "expectation": "Sydney source-local release timestamps convert through AEDT before weekly freeze comparison.",
+      "actual": "sydney=2025-11-26T00:30:00.000Z",
+      "blocker": null
+    },
+    {
+      "id": "delayed_release_exception_overrides_normal_schedule",
+      "category": "exception_release_boundary",
+      "polarity": "negative",
+      "status": "PASS",
+      "expectation": "A delayed actual source release must map to a later eligible week than the normal schedule would imply.",
+      "actual": "normalRelease=2019-01-06T23:59:59.999Z normalEligibleWeek=2019-01-07T00:00:00.000Z actualRelease=2019-01-07T00:00:00.001Z actualEligibleWeek=2019-01-14T00:00:00.000Z nextInventoryWeek=2019-01-14T00:00:00.000Z",
+      "blocker": null
+    }
+  ],
+  "blockers": {
+    "rate_date_only_vintage_same_freeze_eligible": 1,
+    "aud_monthly_transition_not_materialized": 1
+  },
+  "receiptHash": "86f158730c6e704fbe34e27dda99f65bba2ef28c0a9ff989581ea7fdeae13801",
+  "files": {
+    "jsonPath": "app/reports/data-verification/macro-regime/gate50-boundary-proof-20260623.json",
+    "mdPath": "app/reports/data-verification/macro-regime/gate50-boundary-proof-20260623.md"
+  }
+}

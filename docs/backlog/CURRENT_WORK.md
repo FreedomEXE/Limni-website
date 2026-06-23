@@ -20,6 +20,699 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
+Gate 50: macro-source-promotion-proof.
+
+Status: active. This gate is source-only promotion proof, not architecture
+review and not strategy testing. The macro source layer must prove
+promotion-grade weekly frozen snapshots for the same seven-year test window and
+future live settlement path. A macro row can affect a displayed week only when
+its `available_at_utc` is at or before that week snapshot's
+`freeze_target_utc`; for the first seven-year test the freeze target is the
+canonical `week_open_utc`. Any source release after that cutoff is stored as a
+raw observation but first becomes eligible in the next weekly snapshot. Do not
+run combined BPR/rate/CPI logic, signal tests, stop/TP/runner/grid tuning,
+release-canon edits, or Pine verifier work in this gate.
+
+Latest state as of 2026-06-23 boundary repair: the prior boundary proof blocker
+is repaired in SEALED diagnostic mode. Repaired parent datasets are rate v6
+`dcdc850a-80a2-4178-8d08-dd759be6afb8`
+(`3db4b84238dbf5c656a9ebaf2ff73219cc1efd2a6e1ff70842983945c4d23612`) and
+CPI v7 `37b4081b-880e-4ae6-8d53-20ba900dff07`
+(`0817b0ec5b4c03c2d01ddc5c014601a2b7028c78203d07f95b3393235c70cc17`).
+Rebuilt RRP v8 is `220fd5fd-d017-4db2-bdde-524a3c664c72`
+(`5a1d4c7e15d928bc76b0c169b04f3b391b484ef45ab5bdd62dedb49716326742`).
+New SEALED diagnostic join is `10,416/10,416`, `PASS_DIAGNOSTIC`, with
+`resolvedContentJoinMapHash`
+`fca281b77d508b3ed806fcd59c595dff1cb8e1e4dda82eea178610c1d056f391`.
+Boundary proof now passes `16/16` with receipt
+`app/reports/data-verification/macro-regime/gate50-boundary-proof-boundary-repaired-20260623.{json,md}`;
+receipt hash `c6abb67d1ddbf49248897cac8212afbd809a8a834a9ee81afa907008844cb7e1`.
+ALFRED repair evidence: `31` original same-date date-only anomaly rows, `0`
+same-freeze selections after repair, `31` first-later-freeze admissions, `0`
+missing, `0` stale. AUD transition evidence: `23` post-transition monthly rows,
+`0` quarterly rows after monthly eligibility, `0` interpolation/overlap, and no
+monthly backfill eligibility before the ABS 2025-11-26 11:30 AEDT release.
+Parent proof is `PASS_PARENT_APPROVED_NOT_ACTIVE` in
+`gate50-parent-promotion-proof-boundary-repaired-20260623.{json,md}` with root
+RRP promotion manifest
+`6656b5da3d5552811b3f0f7c10b14d4af1dfbe191fb508231967a9e54d98414c`.
+Warehouse canonical rebuild is `PASS` in
+`gate50-warehouse-canonical-rebuild-proof-boundary-repaired-20260623.{json,md}`.
+Raw artifact parser replay first failed closed as
+`FAIL_RAW_ARTIFACT_PAYLOAD_INCOMPLETE` in
+`app/reports/data-verification/macro-regime/gate50-raw-artifact-parser-replay-20260623.{json,md}`:
+the current CPI parent had one CHF Swiss FSO LIK25B25 XLSX source artifact with
+hash/size lineage but no archived workbook bytes. Exact bytes were recovered
+from an existing local temp cache, verified against SHA-256
+`4e6ee83f40ab85db7f3e44ff7ab0c2f136945df1242daecf898afa4cc6949cda` and size
+`5561298`, and archived immutably in
+`research_macro_source_artifact_byte_archives` without mutating the original
+artifact record. Repair receipt:
+`app/reports/data-verification/macro-regime/gate50-artifact-byte-archive-repair-20260623.{json,md}`;
+status `PASS_ARTIFACT_BYTE_ARCHIVE_REPAIR`, `networkUsedForRecovery=false`,
+`originalArtifactRecordMutated=false`. Post-repair completeness preflight:
+`app/reports/data-verification/macro-regime/gate50-raw-artifact-parser-replay-after-byte-archive-20260623.{json,md}`;
+status `READY_RAW_ARTIFACT_PARSER_REPLAY`, raw artifact archive completeness
+`PASS`, `networkAccessUsed=false`, stored normalized rows, availability events,
+weekly snapshots, and derived rows were not used as replay inputs. Full offline
+parser replay and fail-closed negative tests now pass in
+`app/reports/data-verification/macro-regime/gate50-raw-artifact-parser-replay-full-20260623.{json,md}`;
+status `PASS_RAW_ARTIFACT_PARSER_REPLAY`, parser replay `PASS`, negative tests
+`PASS` (`13/13`), `overallPromotionRebuildStatus=RAW_REPLAY_AND_NEGATIVE_TESTS_PASS`,
+RRP weekly rows `2,976`, stale `0`, missing `0`, joinable pair-weeks
+`10,416`, and `resolvedContentJoinMapHash`
+`fca281b77d508b3ed806fcd59c595dff1cb8e1e4dda82eea178610c1d056f391`.
+Lifecycle uniqueness now passes in
+`app/reports/data-verification/macro-regime/gate50-lifecycle-uniqueness-20260623.{json,md}`;
+status `PASS_LIFECYCLE_UNIQUENESS`, transition proof `PASS`, DB ACTIVE
+uniqueness proof `PASS`, application guard proof `PASS`, duplicate activation
+attempts `PASS`, `activationPersisted=false`, `historicalActivationCreated=false`,
+manifest counts `372` SEALED / `0` ACTIVE / `0` revoked, transient disposable
+ACTIVE commit `true`, duplicate rejected by DB code `23505`, disposable ACTIVE
+rows cleaned up `true`, `candidateRowsPersisted=0`, and
+`resolvedContentJoinMapHash`
+`fca281b77d508b3ed806fcd59c595dff1cb8e1e4dda82eea178610c1d056f391`
+unchanged. The lifecycle uniqueness key is now explicitly
+`promotion_manifest_id`, `feature_bundle_manifest_id`, `macro_week_id`,
+`freeze_version`, and `activation_scope`.
+Revocation/quarantine/supersession proof now passes in
+`app/reports/data-verification/macro-regime/gate50-revocation-supersession-20260623.{json,md}`;
+status `PASS_REVOCATION_SUPERSESSION`, aggregate revoked blocks `28/28`
+pair-week contexts for the selected week, aggregate quarantined blocks `28/28`,
+required USD currency revocation blocks `7/7` affected pair contexts, prior
+PASS receipt invalidation `true`, supersession identity proof `PASS`,
+reactivation guard proof `PASS`, content hash invariant `PASS`, and
+`resolvedContentJoinMapHash`
+`fca281b77d508b3ed806fcd59c595dff1cb8e1e4dda82eea178610c1d056f391`
+unchanged. Historical activation now passes in
+`app/reports/data-verification/macro-regime/gate50-historical-activation-20260623.{json,md}`;
+status `PASS_HISTORICAL_ACTIVATION`, active aggregate manifests `372`,
+duplicate active keys `0`, activation scope `historical_backtest`, feature
+bundle `real_rate_pressure_attribution_v1`, historical activation claim
+`false`, content hash invariant `PASS`, post-activation duplicate probe rejected
+by DB code `23505`, and `resolvedContentJoinMapHash` unchanged. Zero-P&L
+exact pinned-read proof now passes in
+`app/reports/data-verification/macro-regime/gate50-zero-pnl-pinned-read-20260623.{json,md}`;
+status `PASS_ZERO_PNL_PINNED_READ`, active manifests read `372`, execution-read
+receipts written `372`, negative read guard proof `PASS`, effective-time proof
+`PASS`, `noPnlComputed=true`, and `noStrategyDecisionComputed=true`. Final
+ACTIVE join now passes in
+`app/reports/data-verification/macro-regime/gate50-rrp-active-join-20260623.{json,md}`;
+`joinReceiptStatus=PASS`, `diagnosticOnly=false`, `promotionEligible=true`,
+`joinablePairWeeks=10,416`, `blockedPairWeeks=0`, `snapshotState=ACTIVE`, and
+`resolvedContentJoinMapHash`
+`fca281b77d508b3ed806fcd59c595dff1cb8e1e4dda82eea178610c1d056f391`
+unchanged. Outcome logic remains closed until Gate 51 is formally defined.
+Next step is read-only Gate 50 repo verification and lock.
+
+Gate 50 revised direction confirmed by external review on 2026-06-22: keep the
+gate number and source-only scope, keep the `50A`-`50E` implementation
+workstreams, but amend the governing data model to a two-axis macro contract
+matrix. Rows are currency/economic-area macro bundles; columns are source
+families with shared semantics and validation. Neither axis replaces the other.
+The source-proof workstreams remain: `50A` BPR source proof, `50B` rate source
+proof, `50C` CPI source proof, `50D` derived real-rate-pressure proof, and
+`50E` aggregate composition and join proof.
+
+The target hierarchy is: atomic source contracts -> family validation manifests
+-> currency macro bundle manifests -> feature bundle manifest -> weekly currency
+snapshots -> aggregate weekly manifest -> pair-week join. Atomic contracts are
+the smallest independently versioned units, such as one exact CPI, rate, BPR,
+PPP, NEER, or REER statistic for one currency/economic area through one
+endpoint. Family manifests enforce cross-currency comparability, such as
+`cpi_all_items_family_v1`, `rate_3m_market_family_v1`,
+`bpr_bank_participation_family_v1`, `ppp_family_v1`,
+`neer_broad_family_v1`, and `reer_broad_family_v1`. Currency macro bundle
+manifests reference the selected promoted contracts for a currency or economic
+area; they do not duplicate raw artifacts.
+
+The CPI pivot is a family-column repair, not the top-level architecture. CPI
+should move toward official direct producer contracts if an eight-currency
+feasibility audit proves coverage, release timing, revision/rebasing behavior,
+stable retrieval, and future live viability: `AUD` ABS, `CAD` Statistics
+Canada, `CHF` Swiss FSO, `EUR` Eurostat, `GBP` ONS, `JPY` Statistics
+Bureau/e-Stat, `NZD` Stats NZ, and `USD` BLS. FRED/ALFRED can remain CPI
+shadow validation and migration evidence, but not promoted CPI truth if
+official source contracts pass. The common CPI layer must normalize into one
+observation schema while preserving country lineage: currency, observation
+period, index level, unit, native frequency, seasonal adjustment,
+availability/vintage evidence, source contract id, artifact id, parser version,
+release-calendar version, staleness version, and continuity decision.
+
+Native frequency remains intact: monthly stays monthly, quarterly stays
+quarterly, weekly snapshots carry the newest still-valid official observation,
+CPI YoY uses `t/t-12 - 1` for monthly and `t/t-4 - 1` for quarterly, and there
+is no fake monthly interpolation. Do not splice FRED history to
+national-source tails; prefer one official source contract per currency for the
+entire feature version, with explicit versioned continuity decisions for base
+transitions such as Japan 2015/2020/2025 or Australia's quarterly/monthly
+headline transition.
+
+BPR, OECD, and BIS are logical bundle components, not per-currency downloads.
+CFTC may publish one BPR report containing many currencies; Limni should archive
+the artifact once, parse currency-specific BPR observations, and let each
+currency bundle reference its own observation. The same principle applies to
+OECD PPP and BIS NEER/REER: one institutional artifact or response can produce
+multiple currency observations. BPR remains a currency-specific source-family
+observation from global CFTC reports. PPP remains an independent harmonized
+valuation family candidate, likely OECD. NEER and REER remain independent BIS
+competitiveness families unless a future gate changes the economic objective.
+Avoid one generic `valuation` dependency because PPP, NEER, and REER are not
+interchangeable.
+
+Rates must not be swept into the CPI pivot automatically. The canonical rate
+family should be named exactly, such as `3m_market_rate` or `3m_interbank_rate`;
+policy, overnight, and government-yield rows remain separate shadow families
+unless a future feature version explicitly changes the economic instrument.
+Direct official or benchmark-administrator rate sources require a separate
+feasibility and instrument-equivalence audit before replacement. Real-rate
+pressure is a derived family, not an external source family; it is computed
+inside Limni from the promoted 3m nominal-rate parent, current CPI parent, and
+lag CPI parent, while retaining complete parent lineage.
+
+New source identities to formalize before implementation:
+`currency_macro_bundle_id`, `currency_macro_bundle_hash`, `economic_area_id`,
+`required_currency_set_hash`, `family_manifest_id`, `family_manifest_hash`,
+`feature_bundle_manifest_id`, `required_dependency_set_hash`,
+`root_macro_promotion_manifest_id`, and `root_macro_promotion_manifest_hash`.
+The root promotion manifest must bind required currencies, selected currency
+bundles, relevant family manifests, feature bundle, source map, availability and
+staleness rules, calendar version, selector version, and reconstruction/build
+versions. A ninth currency should require registering atomic contracts,
+validating them under family manifests, creating its currency macro bundle,
+updating the required-currency set and root manifest, then rerunning downstream
+source proof without changing the shared schema.
+
+Gate 50E must prove both axes before activation: every required family passes
+across the required currencies, and every required currency/economic-area bundle
+contains exact promotion-approved dependencies with complete lineage, valid
+promotion states, deterministic bundle hashes, and no revoked or stale required
+rows. Feature-bundle requirements stay independent. For example,
+`real_rate_pressure_attribution_v1` requires only its frozen rate, current CPI,
+lag CPI, and derived real-rate-pressure dependencies; it must not block because
+PPP, NEER, REER, or unrelated BPR rows are unavailable when they are outside the
+feature bundle.
+
+Immediate pre-build order: (1) rate/ALFRED differential reconstruction
+diagnosis for currently stale three-month-rate rows, (2) bounded official CPI
+feasibility audit across the eight required currencies/economic areas, (3) if
+CPI passes, define the new official CPI source map and rebuild a new macro
+dataset rather than rewriting `01a3b789-2928-4886-a627-eaf5ae689790`, (4) keep
+the failed FRED/OECD CPI dataset as immutable failed source-map evidence, and
+(5) do not create ACTIVE manifests until SEALED diagnostic join proof reaches
+`10,416/10,416`.
+
+Gate 50 credential state as of the current 2026-06-22 run: Freedom supplied
+FRED/ALFRED and e-Stat credentials in chat, but the current shell and local
+`.env` files do not expose `FRED_API_KEY`, `ALFRED_API_KEY`, or `ESTAT_APP_ID`.
+Do not paste these keys into command lines. Credential-bound promotion fills and
+rate/e-Stat reconstruction must fail closed until the credentials are configured
+out of band in a local environment surface that is not committed, logged,
+hashed, or copied into receipts. Prior credentialed exploratory evidence remains
+useful for diagnosis: the FRED/OECD CPI mirror dataset failed source promotion
+because several CPI mirrors stop before the locked matrix window ends, while
+rate staleness still needs separate ALFRED reconstruction diagnosis.
+
+Gate 50 rate/ALFRED differential reconstruction scaffold added on 2026-06-22:
+`app/scripts/verification/audit-macro-rate-differential-reconstruction.ts` plus
+package script `verification:audit-macro-rate-differential`. It is a
+source-only receipt for stale canonical 3m-rate rows in sealed dataset
+`01a3b789-2928-4886-a627-eaf5ae689790`; it compares selected rows against FRED
+as-of-freeze (`output_type=1`), initial-release rows (`output_type=4`), and
+vintage-date windows, then classifies stale rows under the frozen rate rule:
+latest eligible FRED/ALFRED vintage known at each weekly freeze.
+
+Gate 50 credential preflight passed after local `.env.local` was corrected to
+canonical names `FRED_API_KEY` and `ESTAT_APP_ID`; no credential values may be
+written to source, receipts, logs, docs, command lines, or hashes. Final
+rate/ALFRED differential receipt:
+`app/reports/data-verification/macro-regime/gate50-rate-alfred-differential-reconstruction-20260622.{json,md}`.
+It audited `139` stale three-month-rate rows from sealed dataset
+`01a3b789-2928-4886-a627-eaf5ae689790` across `8` FRED/OECD series with
+receipt hash
+`8cbc4b565e6ccd8ea30942ec3dbacc9c5a72baa5abf6d23f44b90b2674092989`.
+Classification counts: `92` `legitimate_revision`, `47`
+`valid_carry_incorrectly_marked_stale`, `0` `wrong_vintage`, `0`
+`reconstruction_defect`, and `0` `genuine_missing_observation`. The prior
+single no-observation case was resolved by widening the reconstruction query
+window so it includes the selected observation and eligible vintages through the
+freeze; it is now classified as a legitimate CHF revision. The receipt preserves
+that original anomaly in `rateReconciliationRepairHistory` as
+`no_as_of_observation`, root cause `query-window defect`, repair version
+`rate_vintage_reconciliation_query_window_repair_v1`, and post-repair
+classification `legitimate_revision`. The rate receipt emits sealed diagnostic
+non-ACTIVE `rate_3m_market_family_v1` and eight `RATE_DIAGNOSTIC` currency
+bundle branches. Rate family manifest hash:
+`c1befe5d6711265a3c2b55191eec19f9dec8b8e3e0316b48ea01a1e723eeb219`.
+
+Gate 50 rate materialization completed on 2026-06-22 in SEALED diagnostic mode.
+The source-fill path now uses `latest_eligible_vintage_as_of_weekly_freeze`,
+FRED/ALFRED `fred/series/observations output_type=1`, and
+`rate_3m_market_release_aware_carry_v1` for the canonical eight
+`oecd_3m_interbank_rate` branches. Dataset version is now
+`macro_regime_source_dataset_v3`; the warehouse source-observation key now
+includes `source_observation_id` so multiple vintages for the same observation
+date can coexist. Rate-only dataset:
+`ee1f1611-5d6d-41cf-86fe-c06c66cb16bb` / hash
+`eef3689856712225b2b1288e3a6005c8c11e8ec1271331aaf565581cc15c01cd`,
+promotion manifest
+`4f187897b9e60a79865e371daa2415d2654ef72aef18a2afd63609260b840947`,
+contract manifest
+`9d5f6d859a2f409f45a41a15f71994203ae3411fd36603aa1c40ab360ff8f774`.
+Write receipt:
+`app/reports/data-verification/macro-regime/gate50-rate-latest-eligible-write-20260622.json`.
+Counts: `8` rate sources, `2,886` source observations, `40` real-time-period
+artifacts, `2,886` availability events, `2,976` SEALED weekly rate snapshots
+(`372 x 8`), `0` stale, `0` missing. SEALED rate join receipt:
+`app/reports/data-verification/macro-regime/gate50-rate-latest-eligible-join-coverage-20260622.{json,md}`
+with `joinReceiptStatus=PASS_DIAGNOSTIC`, `diagnosticOnly=true`,
+`promotionEligible=false`, and `10,416/10,416` joinable pair-week contexts for
+`rate_attribution_v1`. Boundary receipt:
+`app/reports/data-verification/macro-regime/gate50-rate-latest-eligible-boundary-proof-20260622.{json,md}`,
+stable hash
+`7ee1449a41bf46598b375650beb354af41e512857b21a430e2f2583567e49a45`,
+proves `92/92` legitimate revisions have no boundary violation, `47/47`
+previous valid carries are no longer stale and remain inside the FRED real-time
+period, with `0` stale snapshots, `0` missing snapshots, and `0`
+selection/staleness rule mismatches. This is still diagnostic-only; no ACTIVE
+manifest, outcome, signal, stop, TP, runner, grid, or real-rate-pressure
+activation was computed.
+
+Gate 50 official CPI feasibility audit started on 2026-06-22:
+`docs/research/GATE50_OFFICIAL_CPI_FEASIBILITY_AUDIT_2026-06-22.md`.
+Preliminary conclusion: do not create eight accounts up front. Most candidate
+official CPI paths appear public; only e-Stat is a confirmed configured
+credential requirement so far. BLS registration is optional for expanded access,
+and ABS Indicator API requires a key, but the ABS Data API should be audited
+first because it may avoid another credential. Next CPI proof is endpoint/sample
+proof across all eight official producer contracts, not source fill or ACTIVE
+promotion.
+
+Gate 50 official CPI endpoint receipt now exists:
+`app/scripts/verification/audit-official-cpi-endpoint-feasibility.ts` plus
+package script `verification:audit-official-cpi-endpoints`. Final receipt:
+`app/reports/data-verification/macro-regime/gate50-official-cpi-endpoint-feasibility-20260622.{json,md}`.
+Receipt hash:
+`0f70d9412af1e458260e73f06586222c471c1458236a57c2b3d122a185f8eeed`.
+Overall status is `CPI_FAMILY_MANIFEST_BUILT_DIAGNOSTIC`,
+`overallPromotionStatus=FAIL_CLOSED`, `promotionEligible=false`,
+`outcomeConsumable=false`, and blocking reason
+`RRP_COMPOSITION_PENDING_FOR_PROMOTION`. All eight branches now have
+observed required-window endpoint samples: `USD`, `CAD`, `GBP`, `EUR`, `JPY`,
+`AUD`, `NZD`, and `CHF`. The same receipt records `8/8` release-calendar
+proofs, `8/8` revision/rebasing proofs, `8/8` locked continuity decisions,
+`8/8` parser contracts, `8/8` normalized CPI schema branches, `8/8`
+source-family validation pass branches, and `8/8` diagnostic manifest-built
+branches. CPI family manifest hash:
+`1e078c3f1648b13e2bfceb1278ed154a77c4065458b0956ca30e4015de73418c`.
+Locked decisions include Eurostat `prc_hicp_minr` ECOICOP v2 `TOTAL` / `I25`
+with evolving official euro-area composition (`EA20` through `2025-12`, `EA21`
+from `2026-01`), Stats NZ Infoshare Export Direct `.sch` series
+`CPIQ.SE9NS1160`, Swiss FSO `LIK25B25` `INDEX_m` all-items row parser with
+layout-drift fail-closed, Japan 2020-base Table `1-1` until a future 2025-base
+supersession audit, and Australia segmented native headline continuity:
+quarterly through `2025-Q3`, monthly from `2025-10` with first monthly
+eligibility after `2025-11-26 11:30 Australia/Sydney`, no interpolation. No
+warehouse writes, ACTIVE manifests, real-rate-pressure derivation, P&L, or
+macro outcomes were computed. The emitted currency bundles are CPI-only
+`PARTIAL_SEALED` diagnostics and must not be labelled complete RRP bundles.
+
+Gate 50 official CPI materialization completed on 2026-06-22 in SEALED
+diagnostic mode. The source-fill path now uses official CPI contracts for all
+eight currencies, preserves current and lag CPI parent observation IDs,
+availability events, artifacts, native frequency, formula version, parser
+version, release-calendar version, revision/rebasing version, continuity
+decision, and release-aware carry. Future writes use
+`macro_regime_source_dataset_v4_official_cpi`; the passed rate dataset remains
+immutable v3 evidence and was not rewritten. CPI-only dataset:
+`b4cbb08f-d564-452f-8c67-7e47f0ec40d6` / hash
+`e8a508f0436408cdcbdd4c0ccd50acb73180c9b7321679db33e918ac4104c30b`,
+promotion manifest
+`d6831acfe5df0d07fdd8d551cc8cb8a3b69605afdb227346ee66e4183cbea9b5`,
+contract manifest
+`3ff7a511821f20f0b81c65f6589dad85965540c68687843688128e1a7b87fa7c`.
+Write receipt:
+`app/reports/data-verification/macro-regime/gate50-official-cpi-materialization-write-20260622.json`.
+Counts: `10` official endpoint artifacts, `2,255` CPI YoY observations,
+`2,255` availability events, `2,976` SEALED weekly CPI snapshots (`372 x 8`),
+`0` stale, `0` missing. CPI-only SEALED join receipt:
+`app/reports/data-verification/macro-regime/gate50-official-cpi-materialization-join-coverage-20260622.{json,md}`
+with `joinReceiptStatus=PASS_DIAGNOSTIC`, `diagnosticOnly=true`,
+`promotionEligible=false`, and `10,416/10,416` joinable pair-week contexts for
+`inflation_attribution_v1`. Required verification passed:
+`npm run verification:audit-official-cpi-endpoints`,
+`npx tsc --noEmit --project app/tsconfig.json --pretty false`, and
+`git diff --check -- . ':!app/releases/v2/canon/*.json'` with only existing
+LF/CRLF warnings in dirty docs/package files.
+
+Gate 50 lineage-enhanced RRP composition completed on 2026-06-23 in SEALED
+diagnostic mode. It supersedes the earlier same-day RRP diagnostic by binding
+parent weekly snapshot IDs/hashes plus parent `macro_week_id`, freeze target,
+freeze version, calendar version, and immutable parent selector versions. The
+new RRP dataset composes immutable rate v3 dataset
+`ee1f1611-5d6d-41cf-86fe-c06c66cb16bb` /
+`eef3689856712225b2b1288e3a6005c8c11e8ec1271331aaf565581cc15c01cd` with CPI
+v4 dataset `b4cbb08f-d564-452f-8c67-7e47f0ec40d6` /
+`e8a508f0436408cdcbdd4c0ccd50acb73180c9b7321679db33e918ac4104c30b`; it does
+not refetch or rewrite either parent. RRP dataset:
+`27542abe-6ce7-4e44-a7d2-f071ed258c73` / hash
+`a8f3b360b972059941126f6791af1d103d7aa00be85082fff76893396a5b9603`,
+promotion manifest
+`205b52529b049f7fe648a9b57e52a3734566855f54959f5b78b8ee0d239b6c07`,
+contract manifest
+`714317f9c754278774fb79c9b758359a28a939b5fc56a139b6a7977fd9e621ff`.
+Write receipt:
+`app/reports/data-verification/macro-regime/gate50-rrp-composition-lineage-write-20260623.json`.
+Counts: `8` complete RRP currency bundles, `2,976` SEALED weekly RRP
+snapshots, `0` stale, `0` missing. SEALED RRP join receipt:
+`app/reports/data-verification/macro-regime/gate50-rrp-composition-lineage-join-coverage-20260623.{json,md}`
+has `joinReceiptStatus=PASS_DIAGNOSTIC`, `diagnosticOnly=true`,
+`promotionEligible=false`, resolved join-map hash
+`a817baf10745ed7411f0065cfb1143cdb93fdbbeaa89df96e13f30db73020085`,
+resolved content join-map hash
+`12f3bb76d9fb2862b4072f2def7498fe413f3cc4c036f89fc7956996c806546e`, and
+`10,416/10,416` joinable pair-week contexts for
+`real_rate_pressure_attribution_v1`. The join audit now treats the derived RRP
+row as the joinable unit and fails closed unless embedded rate/CPI parent
+lineage includes parent dataset IDs/hashes, family hashes, selected rate row,
+selected current and lag CPI parents, parent availability events, artifact IDs,
+parent weekly snapshot IDs/hashes, parent macro week/freeze identity, formula
+version, and currency-bundle hash. Required verification passed:
+`npm run verification:audit-official-cpi-endpoints`,
+`npx tsc --noEmit --project app/tsconfig.json --pretty false`, and
+`git diff --check -- . ':!app/releases/v2/canon/*.json'` with only existing
+LF/CRLF warnings in dirty docs/package files.
+
+Gate 50 parent-promotion proof completed on 2026-06-23 for the current SEALED
+RRP checkpoint. The diagnostic RRP promotion manifest was not mutated. New
+receipt:
+`app/reports/data-verification/macro-regime/gate50-parent-promotion-proof-20260623.{json,md}`.
+Status is `PASS_PARENT_APPROVED_NOT_ACTIVE`, `diagnosticOnly=true`,
+`promotionEligible=false`, `activationEligible=false`, and
+`outcomeConsumable=false`. Root RRP promotion manifest id:
+`f6c4a3e3223ee4e54f7dfd6bbc7bb2bd29d17d7a98b59440b8e0f9bcfad9b619`;
+root manifest hash:
+`85e76ca98a34553d0b1d29535f5c271b485eafc4b271df7136151a3b0800004d`.
+Parent proof hashes: rate
+`453d14a2bbb6d9f1e64eae3c150554eff7227466b43f0cd42cd60864e6950d99`,
+CPI `c836614277f41c755150dd3de21cc14dd8692231b20b84d537d2a02e08e04709`.
+The pinned `resolvedContentJoinMapHash` remains
+`12f3bb76d9fb2862b4072f2def7498fe413f3cc4c036f89fc7956996c806546e` and must
+remain unchanged through deterministic rebuild, historical activation,
+lifecycle transitions, and final ACTIVE join unless a superseding dataset or
+manifest explicitly explains the change. Outcome logic remains prohibited as of
+this checkpoint.
+
+Gate 50 deterministic rebuild proof completed on 2026-06-23. New script:
+`app/scripts/verification/audit-macro-deterministic-rebuild-proof.ts`; package
+script: `verification:audit-macro-deterministic-rebuild-proof`. Receipt:
+`app/reports/data-verification/macro-regime/gate50-deterministic-rebuild-proof-20260623.{json,md}`.
+Status is `PASS_DETERMINISTIC_REBUILD`; parent-to-RRP rebuild is `PASS`;
+receipt hash
+`5ff451fc40ddd29c6376e7359b3430d23cee8d1dd7a86cbb74bf79cc336e6c89`.
+The receipt now explicitly scopes the proof as
+`STORED_CANONICAL_WAREHOUSE_CONTENT_WITH_ARCHIVED_ARTIFACT_HASH_VALIDATION`:
+`storedNormalizedRowsUsedAsInputs=true`, `storedWeeklySnapshotsUsedAsInputs=true`,
+`rawArchivedArtifactsReparsed=false`, `comparisonTarget=STORED_CANONICAL_CONTENT`,
+and `rawArtifactReparseStatus=PENDING_FULL_PARSER_REPLAY`. Do not describe this
+as a full raw archived artifact parser replay until a separate frozen-parser
+replay proof exists.
+The proof binds rate parent dataset
+`ee1f1611-5d6d-41cf-86fe-c06c66cb16bb` /
+`eef3689856712225b2b1288e3a6005c8c11e8ec1271331aaf565581cc15c01cd`, CPI
+parent dataset `b4cbb08f-d564-452f-8c67-7e47f0ec40d6` /
+`e8a508f0436408cdcbdd4c0ccd50acb73180c9b7321679db33e918ac4104c30b`, and RRP
+dataset `27542abe-6ce7-4e44-a7d2-f071ed258c73` /
+`a8f3b360b972059941126f6791af1d103d7aa00be85082fff76893396a5b9603`. It
+recomputed stable canonical content identities for artifact payload sets,
+normalized observations, availability events, weekly parent snapshots,
+aggregate manifests, RRP rows, and RRP currency bundles. Rate proof counts:
+`40` text artifacts, `2,886` observations, `2,886` availability events,
+`2,976` weekly rows, and `372` aggregate manifests. CPI proof counts: `10`
+artifacts (`9` text, `1` binary hash-only workbook), `2,255` observations,
+`2,255` availability events, `2,976` weekly rows, and `372` aggregate
+manifests. RRP proof counts: `2,976` rows, `8` currency bundles, `0` stale,
+`0` missing. Parent lineage mismatches are all `0`, and the recomputed
+`resolvedContentJoinMapHash` remains
+`12f3bb76d9fb2862b4072f2def7498fe413f3cc4c036f89fc7956996c806546e`.
+Canonical proof excludes database UUIDs, build/generated timestamps, local file
+paths, raw receipt-generation times, non-semantic HTTP response headers, and
+binary payload bytes when the warehouse stores hash/size only. No ACTIVE state,
+P&L, macro outcome, strategy decision, stop, TP, runner, grid, or correlation
+logic was opened.
+
+Gate 50 combined boundary proof is now the active blocker. New script:
+`app/scripts/verification/audit-macro-boundary-proof.ts`; package script:
+`verification:audit-macro-boundary-proof`. Receipt:
+`app/reports/data-verification/macro-regime/gate50-boundary-proof-20260623.{json,md}`.
+Status is `FAIL_BOUNDARY_PROOF`; receipt hash
+`86f158730c6e704fbe34e27dda99f65bba2ef28c0a9ff989581ea7fdeae13801`.
+Boundary assertions passed `14/16`. Passing assertions include exact
+before/equal/after freeze behavior, rate future-vintage rejection, rate revision
+vintage switching, CPI revision/rebasing version binding, NZD quarterly carry,
+AUD no-retrospective-monthly before transition, EUR EA20/EA21 transition, RRP
+derived eligibility equal to latest parent eligibility, SEALED diagnostic
+`10,416/10,416` join, New York/Sydney DST conversion, and delayed-release
+exception rollover simulation. Blocking assertions:
+`rate_date_only_vintage_same_freeze_eligible` because `31` date-precision
+ALFRED rows are selected and eligible on the same weekly freeze date, and
+`aud_monthly_transition_not_materialized` because `23` AUD CPI rows after the
+October 2025 transition remain quarterly (`0` monthly, `23` quarterly). Do not
+continue to uniqueness/lifecycle, revocation, historical activation, zero-P&L
+execution-read, or final ACTIVE join until these two boundary blockers are
+resolved or a versioned reviewer-approved contract supersedes the invariant.
+
+Gate 50 first slice completed: BPR availability now uses
+`cftc_bpr_exception_calendar_v2_2019_2025_lapse_holiday`; normal BPR release
+timestamps are corrected to Friday 15:30 America/New_York; first-Tuesday
+federal-holiday report-date handling is explicit; 2019 January/February lapse
+reports use the official February 8 and February 22 catch-up release dates;
+December 2025 uses the official December 17 catch-up release; October/November
+2025 are conservative not-before rows and are promotion-blocked until an exact
+BPR catch-up date is sourced.
+
+Gate 50 proof after that slice: `npx tsc --noEmit --project app/tsconfig.json
+--pretty false` passed; no-source dry-run wrote `2` weekly manifests and zero
+writes; BPR-only 2019 delay-window dry-run fetched `10/10` live CFTC reports
+with `90` BPR observations, `10` artifacts, `90` availability events, `36`
+exact exception observations, and `0` promotion-blocked observations; BPR-only
+2025 lapse-window dry-run fetched `10/10` live CFTC reports with `90` BPR
+observations, `10` artifacts, `90` availability events, `54` exception
+observations, and `36` promotion-blocked not-before observations; FRED rate
+dry-run without a key failed closed as intended; `git diff --check` passed with
+only existing LF/CRLF warnings. Ignored receipts:
+`app/reports/data-verification/macro-regime/gate50-no-source-dry-run-20260620.json`,
+`app/reports/data-verification/macro-regime/gate50-bpr-exception-calendar-2019-dry-run-20260620.json`,
+and
+`app/reports/data-verification/macro-regime/gate50-bpr-exception-calendar-2025-dry-run-20260620.json`.
+
+Gate 50 join-proof scaffold added:
+`app/scripts/verification/audit-macro-regime-join-coverage.ts` and package
+script `verification:audit-macro-regime-join-coverage`. It is zero-P&L and
+binds macro weekly snapshots to the locked Gate 44 control dataset
+`479624d1-f6a2-4928-82f1-981137762bdc` /
+`cb3dfbd8b4725da3b4c3fdf60e3326810261f7d1334402dcac8a0391b1cadc36`.
+The current proof confirms the matrix side is clean: `372` exact weeks, `28`
+FX pairs, `10,416` source-context rows, and week-id hash
+`54e26e0cc3718d86b53496fc977dfcdd7c9d8841bbaa21defdb3fc4832ba21aa`. The
+audit fails closed by default when promotion blockers remain. Pinned
+exploratory macro dataset `a403b126-9f65-4a35-b353-0b9dcc986bd0` fails join
+promotion: no `promotion_manifest_id`, no `contract_manifest_hash`, no
+aggregate weekly manifests, missing `real_rate_pressure` and `valuation`, and
+legacy `real_value` source-family rows. Ignored receipts:
+`app/reports/data-verification/macro-regime/gate50-macro-join-coverage-current-20260620.json`,
+`app/reports/data-verification/macro-regime/gate50-macro-join-coverage-pinned-full-exploratory-20260620.json`,
+and
+`app/reports/data-verification/macro-regime/gate50-macro-join-coverage-fail-closed-20260620.json`.
+
+Codex Pro reviewed the Gate 50 packet and returned `PASS WITH CAVEATS` for the
+proof design; the current exploratory macro dataset remains a correct `FAIL`.
+Immediate caveats implemented in the join audit: `--feature-bundle-id` is now
+required; dependency blocking is bundle-specific rather than all-family by
+default; receipts include `joinReceiptStatus`, `diagnosticOnly`,
+`promotionEligible`, `featureBundleManifestId`, `requiredDependencySetHash`,
+`resolvedJoinMapHash`, pair/week key hashes, and derived source-lineage hashes;
+future outcome runners must require a non-diagnostic PASS receipt and pinned
+`resolvedJoinMapHash`. New bundle-aware diagnostic receipt for
+`real_rate_pressure_attribution_v1` still fails correctly at `0/10,416`:
+missing `promotion_manifest_id`, missing `contract_manifest_hash`, missing
+`real_rate_pressure`, legacy `real_value`, no aggregate manifests, `372`
+missing weekly manifests, and incomplete pair-week join coverage. Ignored
+receipt:
+`app/reports/data-verification/macro-regime/gate50-macro-join-coverage-feature-bundle-rrp-20260620.json`.
+Review response doc:
+`docs/research/GATE50_CODEX_PRO_REVIEW_RESPONSE_2026-06-20.md`.
+
+Remaining Gate 50 blockers are operational/source proof, not another
+architecture review: failed FRED/OECD CPI mirror suitability, official CPI
+family feasibility, FRED/ALFRED point-in-time rate reconstruction,
+source-disposition receipts, source-only promotion fill receipts,
+rebuild-to-identical snapshot hashes, boundary tests, one-active-snapshot
+tests, revocation/fail-closed tests, and forward settlement/activation/
+execution-read receipts. JPY CPI Table 1-1 API acquisition is no longer the
+main blocker, but base-vintage continuity remains part of the official CPI
+family proof.
+
+External-review disposition: keep `week_open_utc`, reject Friday `21:00 UTC` as
+the v1 default, and separate source freeze from weekend settlement. The
+settlement layer must ingest, build, seal, report, and verify the weekly macro
+snapshot before the `20:00 America/New_York` execution layer; if not ready,
+live execution fails closed. Metadata alone does not cure modeled
+`available_at_utc`: FRED/OECD rate and CPI rows need ALFRED/FRED point-in-time
+vintage reconstruction before promotion, or Gate 50 must be labelled
+latest-vintage exploratory research. JPY CPI primary target is e-Stat Table
+`1-1` monthly Subgroup Index for Japan all-items, with Table `4-1` all-items as
+validation-only evidence. The derived family name is now `real_rate_pressure`,
+not `real_value`.
+
+Gate 49 final hardening slice: the macro source fill now fails closed for
+promotion-bound FRED/OECD rate and CPI rows unless `FRED_API_KEY` or
+`ALFRED_API_KEY` is available. With the key, FRED/ALFRED observations use
+initial-release point-in-time rows (`output_type=4`) instead of latest-vintage
+graph CSV. Latest-vintage CSV is allowed only with explicit
+`--allow-exploratory-source-fallback`. JPY CPI is a new e-Stat source id
+(`estat_japan_cpi_table_1_1_all_items_2020_base`), requires `ESTAT_APP_ID`,
+and no longer silently uses stale FRED/OECD Japan CPI. Local credential check on
+2026-06-19 found no `FRED_API_KEY`/`ALFRED_API_KEY` and no `ESTAT_APP_ID`, so a
+promotion-grade fill cannot run on this machine until those are configured.
+The five-layer source architecture is now represented in code, not only docs:
+`sourceVersions.sourceRegistry` records economic authority, compiler/harmonizer,
+dissemination endpoint, promoted endpoint, availability contract, revision and
+rebasing policy, exception status, and promotion state per source. The warehouse
+now includes `research_macro_source_artifacts` for immutable endpoint evidence:
+sanitized request, response headers, HTTP status, raw payload hash/size/text,
+and artifact metadata. Source observations and weekly snapshots carry
+`rawArtifactId`/`rawArtifactIds` alongside `rawObservationId`, parent lineage,
+snapshot hash, and dataset manifest hash. This is still source-contract
+plumbing only; no regime direction, overlay, or signal result has been run.
+Verification after this slice: `npx tsc --noEmit --project app/tsconfig.json
+--pretty false` passed; a no-source dry-run passed; a one-week BPR-only dry-run
+captured `3` live CFTC HTML artifacts / `291,604` payload bytes with zero
+writes.
+
+Codex Pro high-level architecture review returned `approve with amendments`.
+The two blocking amendments are now represented as Gate 49 contract plumbing:
+
+- endpoint capability is split into `retrieval_capability`,
+  `availability_precision`, and `eligibility_policy`. BPR is
+  `release_event_filterable` / `scheduled_window` /
+  `eligible_at_or_before_freeze`; FRED/ALFRED is `as_of_queryable` / `date` /
+  `first_freeze_strictly_after_date`; capture-only valuation inputs remain
+  shadow-only; derived `real_rate_pressure` inherits parent eligibility;
+- four clocks plus completion/activation are explicit:
+  `freeze_target_utc`, `settlement_deadline_utc`,
+  `settlement_completed_at_utc`, `sealed_at_utc`, `verified_at_utc`,
+  `activated_at_utc`, and `effective_from_utc`;
+- datasets now have lifecycle fields for `snapshot_state`,
+  `promotion_manifest_id`, `contract_manifest_hash`,
+  `settlement_deadline_utc`, `settlement_completed_at_utc`, `sealed_at_utc`,
+  `verified_at_utc`, `activated_at_utc`, `effective_from_utc`,
+  `effective_to_utc`, revocation/supersession fields, `verification_run_id`,
+  reconstruction mode, calendar version, selector version, validation contract
+  version, and build version;
+- `research_macro_availability_events` records availability basis, retrieval
+  capability, precision, eligibility policy, timezone, confidence,
+  promotion-eligible availability bases, exception/eligibility calendar
+  versions, evidence artifact, rule version, and first eligible freeze per
+  source observation;
+- `research_macro_weekly_snapshot_manifests` is the aggregate weekly snapshot
+  identity. A partial unique index allows exactly one `ACTIVE` row per
+  `(promotion_manifest_id, macro_week_id, freeze_version)`. Row-level weekly
+  currency snapshots stay sealed source evidence, not executable trading truth;
+- `research_macro_snapshot_state_transitions` and
+  `research_macro_execution_receipts` scaffold post-activation revocation and
+  future execution-read proof;
+- the weekly selector is deterministic under `macro_weekly_snapshot_selector_v1`:
+  newest eligible observation period, latest eligible vintage, allowed prelim/
+  final state, then deterministic raw-observation-id tie-break;
+- the source registry includes semantic/provider hashes, schema hash, segment
+  id, continuity decision, unit-conversion version, normalization version, and
+  drift action;
+- CFTC historical archive language is corrected to internal replay evidence for
+  canonical CFTC artifacts, not runtime provider fallback;
+- JPY Table `4-1` is validation-only under this contract; Table `1-1` failure
+  must fail closed unless a new source contract and full backfill are approved.
+
+Gate 49 baseline verification before Gate 50:
+`npx tsc --noEmit --project app/tsconfig.json --pretty false` passed; a narrow
+no-source `--dry-run` passed with `2` weekly manifests and zero writes; a
+narrow BPR-only `--dry-run` passed with `3` live CFTC HTML artifacts, `27` BPR
+observations/events, `2` weekly manifests, and all availability events
+classified as `release_event_filterable` / `scheduled_window` /
+`eligible_at_or_before_freeze`; a promotion-bound FRED rate dry-run without
+`FRED_API_KEY`/`ALFRED_API_KEY` failed closed as intended.
+
+Gate 49 handoff blockers became the Gate 50 work queue: credentials, JPY
+base-vintage continuity, BPR delayed-report exception calendar, source-only
+promotion fill receipts, rebuild-to-identical snapshot hashes, boundary tests,
+one-active-snapshot tests, revocation/fail-closed tests, and forward
+settlement/activation/execution-read receipts. The first BPR exception-calendar
+slice above reduces that queue but does not make the macro source layer
+promotion-grade yet.
+
+Gate 47 source-foundation evidence: the prior source-row gate filled BPR and
+rates source rows with source URLs, cadence, availability timestamps,
+stale/missing flags, and weekly currency snapshots before deciding how
+BPR/rates should be used. Do not encode fade/extreme/combined real-rate-pressure logic
+yet. Local v2 warehouse fill passed on `2026-06-19` as dataset
+`a403b126-9f65-4a35-b353-0b9dcc986bd0` /
+`b184c49fbedc202dad061366ca6dbc25478470230549847fe56b420aa8647ca8`:
+`12,058` raw observations and `19,788` weekly snapshots across `388` weeks.
+The data foundation now stores raw `bpr`, `rate`, and `inflation` source
+families plus derived weekly `real_rate_pressure` rows. BPR report coverage is closed:
+`184/184` monthly futures/options reports fetched, `106` from live CFTC routes
+and `78` via Wayback CFTC archive fallback, `0` failed. Rates rows are
+populated from FRED/OECD and FRED daily policy/reference series. CPI rows are
+computed from FRED index levels as YoY inflation with source, lag date, cadence,
+and availability metadata. Derived real-rate rows use
+`3m interbank rate - CPI YoY`; this is a stored feature row, not a regime
+decision. Direct DB readback: BPR snapshots `6,208` rows / `2,103` available /
+`4,105` missing; rate snapshots `7,372` rows / `7,372` available / `207` stale;
+inflation snapshots `3,104` rows / `3,104` available / `486` stale; real-rate-pressure
+snapshots `3,104` rows / `3,104` available / `497` stale. Japan CPI is the
+known weak v0 source: FRED/OECD Japan CPI ends at `2021-06-01`, making JPY
+real-rate-pressure rows stale for `245/388` weeks. Source hardening then mapped CPI
+replacement candidates by currency, confirmed BIS monthly broad REER/NEER
+availability for all eight FX currencies, and rejected OECD monthly comparative
+price levels for seven-year parity because the audited API pull was
+current-period only. The first valuation fill slice used OECD annual Table 4
+PPP household final consumption plus annual average exchange-rate rows as raw
+valuation inputs only. It persisted dataset
+`5cd8e166-772a-4d1c-868a-582e70567558` /
+`60ba3840779b5ea62443fe8b94fc19c272bbe903595cdf0ba0ff7430ce58284d`:
+`136` raw valuation observations and `6,208` weekly valuation snapshots, all
+available with `0` stale and `0` missing. Next action: pin the JPY e-Stat CPI
+replacement path and BIS REER/NEER ingestion path before any read-only overlay
+or signal test. BIS ingestion is now pinned to the official v2 SDMX API and a
+second valuation slice persisted dataset
+`97266ab2-6feb-4962-936b-a47d73c06684` /
+`3131935ee881bfde850440a272fec06f1de5d3c3710a50e64d23552a0fed4cc0`:
+`1,608` raw valuation observations and `12,416` weekly valuation snapshots
+across OECD annual PPP/exchange-rate and BIS monthly broad NEER/REER rows, all
+available with `0` stale and `0` missing. Next action: pin the JPY e-Stat CPI
+replacement path before any read-only overlay or signal test. JPY CPI official
+path is now pinned to Statistics Bureau/e-Stat CPI 2020-base Table `4-1`,
+`Indices of Items for Japan Monthly`, item `総合` / all items. Example probed
+stat/file id: `000040276983`; API path requires `ESTAT_APP_ID`, while the
+official Excel fallback is accessible but needs a reviewed XLSX parser before
+promotion. No replacement JPY CPI rows were filled in this slice. Next action:
+choose env-gated e-Stat API fill or a tiny versioned XLSX parser, then backfill
+JPY CPI as a new source id/dataset version before any overlay or signal test.
+
+Live/test parity rule: the promoted regime algo must use only the feature
+contract that the seven-year backtest can reproduce. Better live-only sources
+can be collected as shadow enrichment, but they cannot drive live decisions
+until they are backfilled with defensible as-of timestamps or promoted as a new
+versioned regime candidate with a fresh retest.
+Immediate continuation is still source hardening, not signal testing: upgrade
+weak CPI sources, keep richer live-only data shadow-only until
+backfilled/versioned, then run a read-only overlay against Gate 44 pair
+decisions.
+
+Gate 44 below is prior matrix context, not the active implementation gate.
+
+## Prior Gate Context
+
 Gate 44: reusable-seven-year-matrix-dataset.
 
 Status: active. Gate 43 created the M1-backed Strength history/context layer

@@ -1,0 +1,243 @@
+{
+  "generatedAtUtc": "2026-06-20T04:12:50.232Z",
+  "write": false,
+  "datasetHash": "247eb210d23a272857c85fbb257c5534fedd00125c9f27a5146e1e77c6dffca5",
+  "promotionManifestId": "c4ab9b08d70bf270743c2291068e08e721463147daf14cd6369982fb0fad91b5",
+  "contractManifestHash": "6408660a52dc15e0081580a52e3e8ca9128aa19bc0b45ee9022956177487d3a7",
+  "regimeDatasetId": null,
+  "range": {
+    "fromWeekOpenUtc": "2025-10-06T00:00:00.000Z",
+    "toWeekOpenUtc": "2025-12-22T00:00:00.000Z",
+    "weeks": 12
+  },
+  "currencies": [
+    "AUD",
+    "CAD",
+    "CHF",
+    "EUR",
+    "GBP",
+    "JPY",
+    "NZD",
+    "USD"
+  ],
+  "observations": {
+    "total": 90,
+    "bpr": 90,
+    "rate": 0,
+    "inflation": 0,
+    "valuation": 0
+  },
+  "artifacts": {
+    "total": 10,
+    "endpoints": {
+      "cftc_bpr_live_html": 10
+    },
+    "payloadBytes": 1955642
+  },
+  "availabilityEvents": {
+    "total": 90,
+    "precision": {
+      "inferred": 36,
+      "scheduled_window": 54
+    },
+    "retrievalCapabilities": {
+      "capture_before_freeze_required": 36,
+      "release_event_filterable": 54
+    },
+    "eligibilityPolicies": {
+      "first_freeze_strictly_after_date": 36,
+      "eligible_at_or_before_freeze": 54
+    }
+  },
+  "weeklySnapshots": {
+    "total": 192,
+    "manifests": 12,
+    "bpr": 192,
+    "rate": 0,
+    "inflation": 0,
+    "valuation": 0,
+    "realRatePressure": 0,
+    "stale": 64,
+    "missing": 102
+  },
+  "bpr": {
+    "attemptedReports": 10,
+    "fetchedReports": 10,
+    "archiveFetchedReports": 0,
+    "failedReports": 0,
+    "localFetchBlockedReports": 0,
+    "failedReportKeys": [],
+    "reportTypes": [
+      "f",
+      "o"
+    ],
+    "exceptionCalendarVersion": "cftc_bpr_exception_calendar_v2_2019_2025_lapse_holiday",
+    "availabilityModes": {
+      "computed_from_cftc_bpr_report_date_friday_1530_new_york": 36,
+      "computed_from_cftc_bpr_exception_calendar_not_before_1530_new_york": 36,
+      "computed_from_cftc_bpr_exception_calendar_release_date_1530_new_york": 18
+    },
+    "exceptionOrDelayObservations": 54,
+    "promotionBlockedUntilExactPublicationDateObservations": 36,
+    "availabilitySamples": [
+      {
+        "reportType": "f",
+        "year": 2025,
+        "month": 8,
+        "reportDate": "2025-08-05",
+        "availableAtUtc": "2025-08-08T19:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_report_date_friday_1530_new_york",
+        "exceptionOrDelayFlag": false,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "normal_schedule",
+        "releaseDateReason": null
+      },
+      {
+        "reportType": "f",
+        "year": 2025,
+        "month": 9,
+        "reportDate": "2025-09-02",
+        "availableAtUtc": "2025-09-05T19:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_report_date_friday_1530_new_york",
+        "exceptionOrDelayFlag": false,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "normal_schedule",
+        "releaseDateReason": null
+      },
+      {
+        "reportType": "f",
+        "year": 2025,
+        "month": 10,
+        "reportDate": "2025-10-07",
+        "availableAtUtc": "2025-11-19T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_exception_calendar_not_before_1530_new_york",
+        "exceptionOrDelayFlag": true,
+        "promotionBlockedUntilExactPublicationDate": true,
+        "releaseDateConfidence": "official_interruption_not_before_conservative",
+        "releaseDateReason": "CFTC says BPR publication was interrupted from October 1 through November 12, 2025 and resumed chronologically after normal operations returned; exact BPR catch-up date is not exposed in the current source page"
+      },
+      {
+        "reportType": "f",
+        "year": 2025,
+        "month": 11,
+        "reportDate": "2025-11-04",
+        "availableAtUtc": "2025-11-19T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_exception_calendar_not_before_1530_new_york",
+        "exceptionOrDelayFlag": true,
+        "promotionBlockedUntilExactPublicationDate": true,
+        "releaseDateConfidence": "official_interruption_not_before_conservative",
+        "releaseDateReason": "CFTC says BPR publication was interrupted from October 1 through November 12, 2025 and resumed chronologically after normal operations returned; exact BPR catch-up date is not exposed in the current source page"
+      },
+      {
+        "reportType": "f",
+        "year": 2025,
+        "month": 12,
+        "reportDate": "2025-12-02",
+        "availableAtUtc": "2025-12-17T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_exception_calendar_release_date_1530_new_york",
+        "exceptionOrDelayFlag": true,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "official_exception_schedule",
+        "releaseDateReason": "CFTC BPR release schedule marks December 2025 as a catch-up release due to the 2025 lapse in appropriations"
+      },
+      {
+        "reportType": "o",
+        "year": 2025,
+        "month": 8,
+        "reportDate": "2025-08-05",
+        "availableAtUtc": "2025-08-08T19:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_report_date_friday_1530_new_york",
+        "exceptionOrDelayFlag": false,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "normal_schedule",
+        "releaseDateReason": null
+      },
+      {
+        "reportType": "o",
+        "year": 2025,
+        "month": 9,
+        "reportDate": "2025-09-02",
+        "availableAtUtc": "2025-09-05T19:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_report_date_friday_1530_new_york",
+        "exceptionOrDelayFlag": false,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "normal_schedule",
+        "releaseDateReason": null
+      },
+      {
+        "reportType": "o",
+        "year": 2025,
+        "month": 10,
+        "reportDate": "2025-10-07",
+        "availableAtUtc": "2025-11-19T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_exception_calendar_not_before_1530_new_york",
+        "exceptionOrDelayFlag": true,
+        "promotionBlockedUntilExactPublicationDate": true,
+        "releaseDateConfidence": "official_interruption_not_before_conservative",
+        "releaseDateReason": "CFTC says BPR publication was interrupted from October 1 through November 12, 2025 and resumed chronologically after normal operations returned; exact BPR catch-up date is not exposed in the current source page"
+      },
+      {
+        "reportType": "o",
+        "year": 2025,
+        "month": 11,
+        "reportDate": "2025-11-04",
+        "availableAtUtc": "2025-11-19T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_exception_calendar_not_before_1530_new_york",
+        "exceptionOrDelayFlag": true,
+        "promotionBlockedUntilExactPublicationDate": true,
+        "releaseDateConfidence": "official_interruption_not_before_conservative",
+        "releaseDateReason": "CFTC says BPR publication was interrupted from October 1 through November 12, 2025 and resumed chronologically after normal operations returned; exact BPR catch-up date is not exposed in the current source page"
+      },
+      {
+        "reportType": "o",
+        "year": 2025,
+        "month": 12,
+        "reportDate": "2025-12-02",
+        "availableAtUtc": "2025-12-17T20:30:00.000Z",
+        "availableAtMode": "computed_from_cftc_bpr_exception_calendar_release_date_1530_new_york",
+        "exceptionOrDelayFlag": true,
+        "promotionBlockedUntilExactPublicationDate": false,
+        "releaseDateConfidence": "official_exception_schedule",
+        "releaseDateReason": "CFTC BPR release schedule marks December 2025 as a catch-up release due to the 2025 lapse in appropriations"
+      }
+    ]
+  },
+  "rates": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {}
+  },
+  "inflation": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {}
+  },
+  "valuation": {
+    "sources": 0,
+    "observations": 0,
+    "latestBySource": {},
+    "weeklySnapshots": 0,
+    "available": 0,
+    "stale": 0,
+    "missing": 0
+  },
+  "realRatePressure": {
+    "sources": 0,
+    "weeklySnapshots": 0,
+    "available": 0,
+    "stale": 0,
+    "missing": 0
+  },
+  "persistedCounts": null,
+  "notes": [
+    "Gate 49 source-contract hardening only. No BPR/rate/inflation/real-rate-pressure regime interpretation, pair filter, stop policy, TP, runner, or grid-entry logic is encoded.",
+    "Weekly snapshots are frozen at the macro weekly signal freeze target, currently week_open_utc; raw rows released after that cutoff are stored but first become eligible in the next weekly snapshot.",
+    "Date-only or approximate availability remains exploratory/latest-vintage research and must roll forward at exact-boundary ties before promotion.",
+    "FRED rate and CPI rows remain promotion-blocked until ALFRED/FRED real-time vintage reconstruction replaces modeled availability.",
+    "BPR report fetches use canonical CFTC artifacts; archived canonical CFTC pages are internal replay evidence for historical fills, not runtime provider fallback.",
+    "Inflation rows compute CPI YoY from index levels and preserve lag observation metadata.",
+    "Valuation rows store OECD annual PPP/exchange-rate inputs and BIS monthly broad NEER/REER inputs only; no PPP gap, support/oppose state, or combined regime logic is derived here.",
+    "Real-rate-pressure rows are derived weekly from 3-month interbank rate minus CPI YoY; BPR remains a separate positioning source.",
+    "Japan CPI is a known v0 source weakness because the FRED/OECD Japan CPI series is stale locally; official Statistics Bureau/e-Stat Table 1-1 all-items is the primary future source, with Table 4-1 all-items as validation-only evidence."
+  ]
+}
