@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "generatedAtUtc": "2026-06-23T12:03:00.650Z",
+  "generatedAtUtc": "2026-06-23T15:38:28.455Z",
   "gate": "Gate 50: macro-source-promotion-proof",
   "purpose": "Zero-PnL source-only exact pinned-read proof for ACTIVE historical-backtest macro manifests.",
   "summary": {
     "status": "PASS_ZERO_PNL_PINNED_READ",
     "activeManifestsRead": 372,
     "exactEffectiveTimeMapRows": 372,
-    "executionRunId": "gate50_zero_pnl_exact_pinned_read_20260623120259",
+    "executionRunId": "gate50_zero_pnl_exact_pinned_read_20260623153826",
     "executionReceiptsWritten": 372,
     "negativeReadGuardProof": "PASS",
     "effectiveTimeProof": "PASS",
@@ -13638,7 +13638,7 @@
     }
   ],
   "blockers": {},
-  "receiptHash": "0d72f5c21c5223efbef479bd575436dc22d8eb1757a094e6ad79dc6d8e2aa9f9",
+  "receiptHash": "74ed97dcb2a058ad2786ca03b84615da7551e6945b64a8df0c12bb3cea3280fc",
   "files": {
     "jsonPath": "app/reports/data-verification/macro-regime/gate50-zero-pnl-pinned-read-control-repaired-20260623.json",
     "mdPath": "app/reports/data-verification/macro-regime/gate50-zero-pnl-pinned-read-control-repaired-20260623.md"
