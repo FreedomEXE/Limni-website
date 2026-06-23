@@ -7,6 +7,7 @@ import { DateTime } from "luxon";
 
 import { getPool, query, transaction } from "../../src/lib/db";
 import {
+  ensureMacroRegimeWarehouseSchema,
   validateMacroSnapshotConsumptionState,
   validatePinnedMacroExecutionReadRequest,
 } from "../../src/lib/research/macroRegimeDataset";
@@ -16,7 +17,8 @@ loadEnvConfig(process.cwd());
 const DEFAULT_OUT_DIR = "app/reports/data-verification/macro-regime";
 const FEATURE_BUNDLE_MANIFEST_ID = "real_rate_pressure_attribution_v1";
 const ACTIVATION_SCOPE = "historical_backtest";
-const EXECUTION_RUN_ID = "gate50_zero_pnl_exact_pinned_read_20260623";
+const EXECUTION_RUN_ID = process.env.GATE50_EXECUTION_RUN_ID
+  ?? `gate50_zero_pnl_exact_pinned_read_${DateTime.utc().toFormat("yyyyLLddHHmmss")}`;
 const EXPECTED_RESOLVED_CONTENT_JOIN_MAP_HASH =
   "fca281b77d508b3ed806fcd59c595dff1cb8e1e4dda82eea178610c1d056f391";
 const RRP_DATASET = {
@@ -25,9 +27,14 @@ const RRP_DATASET = {
   promotionManifestId: "5f0049dc6dac1470c55309caf922996171b2250f3ee35df2be21cd84b1599def",
   contractManifestHash: "8b168a89bf2f1e812ab4f4b1d60ab9cc06af93802d37d7ed191829bee7d4ace4",
 };
+const PARENT_APPROVED_ROOT = {
+  rootRrpPromotionManifestId: "6656b5da3d5552811b3f0f7c10b14d4af1dfbe191fb508231967a9e54d98414c",
+  rootRrpPromotionManifestHash: "12a22849ff794ce62ca6d618461a74f21e8967f518b82834aaebbc66ff172275",
+  parentPromotionProofReceiptHash: "0e625be7126c90ce7748847b9ebdf6872ffbeb099caafa7e69348fe482f8409c",
+};
 const SUPPORTING_RECEIPTS = {
   historicalActivation:
-    "app/reports/data-verification/macro-regime/gate50-historical-activation-20260623.json",
+    "app/reports/data-verification/macro-regime/gate50-historical-activation-control-amended-20260623.json",
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -44,6 +51,9 @@ type ActiveManifestRow = {
   promotion_manifest_id: string;
   feature_bundle_manifest_id: string | null;
   activation_scope: string | null;
+  approved_root_promotion_manifest_id: string | null;
+  approved_root_promotion_manifest_hash: string | null;
+  parent_promotion_proof_receipt_hash: string | null;
   macro_week_id: string;
   freeze_version: string;
   snapshot_id: string;
@@ -134,6 +144,9 @@ async function readActiveManifests() {
         promotion_manifest_id,
         feature_bundle_manifest_id,
         activation_scope,
+        approved_root_promotion_manifest_id,
+        approved_root_promotion_manifest_hash,
+        parent_promotion_proof_receipt_hash,
         macro_week_id,
         freeze_version,
         snapshot_id,
@@ -147,9 +160,23 @@ async function readActiveManifests() {
       FROM research_macro_weekly_snapshot_manifests
       WHERE regime_dataset_id = $1::uuid
         AND snapshot_state = 'ACTIVE'
+        AND promotion_manifest_id = $2
+        AND feature_bundle_manifest_id = $3
+        AND activation_scope = $4
+        AND approved_root_promotion_manifest_id = $5
+        AND approved_root_promotion_manifest_hash = $6
+        AND parent_promotion_proof_receipt_hash = $7
       ORDER BY macro_week_id
     `,
-    [RRP_DATASET.datasetId],
+    [
+      RRP_DATASET.datasetId,
+      RRP_DATASET.promotionManifestId,
+      FEATURE_BUNDLE_MANIFEST_ID,
+      ACTIVATION_SCOPE,
+      PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+      PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+      PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
+    ],
   );
 }
 
@@ -166,6 +193,9 @@ async function writeExecutionReceipts(rows: ActiveManifestRow[], snapshotReadAtU
     coverage: {
       featureBundleManifestId: row.feature_bundle_manifest_id,
       activationScope: row.activation_scope,
+      approvedRootPromotionManifestId: row.approved_root_promotion_manifest_id,
+      approvedRootPromotionManifestHash: row.approved_root_promotion_manifest_hash,
+      parentPromotionProofReceiptHash: row.parent_promotion_proof_receipt_hash,
       exactPinnedRead: true,
       effectiveFromUtc: row.effective_from_utc,
       effectiveToUtc: row.effective_to_utc,
@@ -224,14 +254,7 @@ async function writeExecutionReceipts(rows: ActiveManifestRow[], snapshotReadAtU
           COALESCE(flags, '{}'::jsonb)
         FROM incoming
         ON CONFLICT (regime_dataset_id, execution_run_id, macro_week_id, promotion_manifest_id)
-        DO UPDATE SET
-          decision_at_utc = EXCLUDED.decision_at_utc,
-          snapshot_id = EXCLUDED.snapshot_id,
-          snapshot_hash = EXCLUDED.snapshot_hash,
-          snapshot_state_observed = EXCLUDED.snapshot_state_observed,
-          snapshot_read_at_utc = EXCLUDED.snapshot_read_at_utc,
-          coverage = EXCLUDED.coverage,
-          flags = EXCLUDED.flags
+        DO NOTHING
       `,
       [RRP_DATASET.datasetId, JSON.stringify(payload)],
     );
@@ -398,6 +421,7 @@ async function main() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is required for zero-PnL pinned read proof.");
   }
+  await ensureMacroRegimeWarehouseSchema();
   const generatedAtUtc = DateTime.utc().toISO({ suppressMilliseconds: false }) ?? new Date().toISOString();
   const activationReceipt = await readJsonReceipt(SUPPORTING_RECEIPTS.historicalActivation);
   const activationSummary = asRecord(activationReceipt.json.summary);

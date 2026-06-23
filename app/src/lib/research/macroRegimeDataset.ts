@@ -272,6 +272,9 @@ export type MacroWeeklySnapshotManifest = {
   promotionManifestId: string;
   featureBundleManifestId?: string | null;
   activationScope?: MacroActivationScope | string | null;
+  approvedRootPromotionManifestId?: string | null;
+  approvedRootPromotionManifestHash?: string | null;
+  parentPromotionProofReceiptHash?: string | null;
   contractManifestHash: string;
   macroWeekId: string;
   freezeVersion: string;
@@ -292,6 +295,42 @@ export type MacroWeeklySnapshotManifest = {
   rowSnapshotCount: number;
   coverage: Record<string, unknown>;
   flags: Record<string, unknown>;
+};
+
+export type MacroSnapshotTransitionInput = {
+  regimeDatasetId: string;
+  snapshotId: string;
+  expectedSnapshotHash: string;
+  fromState: MacroSnapshotState;
+  toState: MacroSnapshotState;
+  transitionedAtUtc: string;
+  transitionRunId: string;
+  reason: string;
+  actorOrServiceVersion: string;
+  featureBundleManifestId?: string | null;
+  activationScope?: MacroActivationScope | string | null;
+  effectiveFromUtc?: string | null;
+  effectiveToUtc?: string | null;
+  revocationReason?: string | null;
+  supersededBySnapshotId?: string | null;
+  approvedRootPromotionManifestId?: string | null;
+  approvedRootPromotionManifestHash?: string | null;
+  parentPromotionProofReceiptHash?: string | null;
+};
+
+export type MacroSnapshotPromotionControlBindingInput = {
+  regimeDatasetId: string;
+  snapshotId: string;
+  expectedSnapshotHash: string;
+  transitionedAtUtc: string;
+  transitionRunId: string;
+  reason: string;
+  actorOrServiceVersion: string;
+  featureBundleManifestId: string;
+  activationScope: MacroActivationScope | string;
+  approvedRootPromotionManifestId: string;
+  approvedRootPromotionManifestHash: string;
+  parentPromotionProofReceiptHash: string;
 };
 
 export type MacroRegimePersistCounts = {
@@ -479,6 +518,9 @@ CREATE TABLE IF NOT EXISTS research_macro_weekly_snapshot_manifests (
   promotion_manifest_id TEXT NOT NULL,
   feature_bundle_manifest_id TEXT,
   activation_scope TEXT,
+  approved_root_promotion_manifest_id TEXT,
+  approved_root_promotion_manifest_hash TEXT,
+  parent_promotion_proof_receipt_hash TEXT,
   contract_manifest_hash TEXT NOT NULL,
   macro_week_id TEXT NOT NULL,
   freeze_version TEXT NOT NULL,
@@ -505,7 +547,10 @@ CREATE TABLE IF NOT EXISTS research_macro_weekly_snapshot_manifests (
 
 ALTER TABLE research_macro_weekly_snapshot_manifests
   ADD COLUMN IF NOT EXISTS feature_bundle_manifest_id TEXT,
-  ADD COLUMN IF NOT EXISTS activation_scope TEXT;
+  ADD COLUMN IF NOT EXISTS activation_scope TEXT,
+  ADD COLUMN IF NOT EXISTS approved_root_promotion_manifest_id TEXT,
+  ADD COLUMN IF NOT EXISTS approved_root_promotion_manifest_hash TEXT,
+  ADD COLUMN IF NOT EXISTS parent_promotion_proof_receipt_hash TEXT;
 
 DROP INDEX IF EXISTS idx_research_macro_weekly_snapshot_manifests_week;
 
@@ -533,6 +578,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_research_macro_weekly_snapshot_manifests_o
 CREATE TABLE IF NOT EXISTS research_macro_snapshot_state_transitions (
   regime_dataset_id UUID NOT NULL REFERENCES research_macro_regime_datasets(regime_dataset_id) ON DELETE CASCADE,
   snapshot_id TEXT NOT NULL,
+  snapshot_hash TEXT NOT NULL,
+  promotion_manifest_id TEXT,
+  feature_bundle_manifest_id TEXT,
+  activation_scope TEXT,
+  contract_manifest_hash TEXT,
+  approved_root_promotion_manifest_id TEXT,
+  approved_root_promotion_manifest_hash TEXT,
+  parent_promotion_proof_receipt_hash TEXT,
   from_state TEXT,
   to_state TEXT NOT NULL,
   transitioned_at_utc TIMESTAMPTZ NOT NULL,
@@ -544,6 +597,16 @@ CREATE TABLE IF NOT EXISTS research_macro_snapshot_state_transitions (
 
 CREATE INDEX IF NOT EXISTS idx_research_macro_snapshot_state_transitions_snapshot
   ON research_macro_snapshot_state_transitions (regime_dataset_id, snapshot_id, transitioned_at_utc);
+
+ALTER TABLE research_macro_snapshot_state_transitions
+  ADD COLUMN IF NOT EXISTS snapshot_hash TEXT,
+  ADD COLUMN IF NOT EXISTS promotion_manifest_id TEXT,
+  ADD COLUMN IF NOT EXISTS feature_bundle_manifest_id TEXT,
+  ADD COLUMN IF NOT EXISTS activation_scope TEXT,
+  ADD COLUMN IF NOT EXISTS contract_manifest_hash TEXT,
+  ADD COLUMN IF NOT EXISTS approved_root_promotion_manifest_id TEXT,
+  ADD COLUMN IF NOT EXISTS approved_root_promotion_manifest_hash TEXT,
+  ADD COLUMN IF NOT EXISTS parent_promotion_proof_receipt_hash TEXT;
 
 CREATE TABLE IF NOT EXISTS research_macro_execution_receipts (
   regime_dataset_id UUID NOT NULL REFERENCES research_macro_regime_datasets(regime_dataset_id) ON DELETE CASCADE,
@@ -563,6 +626,94 @@ CREATE TABLE IF NOT EXISTS research_macro_execution_receipts (
 
 CREATE INDEX IF NOT EXISTS idx_research_macro_execution_receipts_snapshot
   ON research_macro_execution_receipts (promotion_manifest_id, macro_week_id, snapshot_id);
+
+CREATE OR REPLACE FUNCTION research_macro_reject_non_identical_update()
+RETURNS trigger AS $$
+BEGIN
+  IF (to_jsonb(NEW) - 'created_at') IS DISTINCT FROM (to_jsonb(OLD) - 'created_at') THEN
+    RAISE EXCEPTION 'research macro immutable row conflict on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION research_macro_guard_weekly_manifest_update()
+RETURNS trigger AS $$
+DECLARE
+  transition_service_enabled BOOLEAN;
+BEGIN
+  transition_service_enabled := COALESCE(current_setting('limni.macro_transition_service', true), '') = 'on';
+
+  IF transition_service_enabled THEN
+    IF (to_jsonb(NEW)
+        - 'snapshot_state'
+        - 'verified_at_utc'
+        - 'activated_at_utc'
+        - 'effective_from_utc'
+        - 'effective_to_utc'
+        - 'revoked_at_utc'
+        - 'revocation_reason'
+        - 'superseded_by_snapshot_id'
+        - 'feature_bundle_manifest_id'
+        - 'activation_scope'
+        - 'approved_root_promotion_manifest_id'
+        - 'approved_root_promotion_manifest_hash'
+        - 'parent_promotion_proof_receipt_hash'
+        - 'created_at')
+       IS DISTINCT FROM
+       (to_jsonb(OLD)
+        - 'snapshot_state'
+        - 'verified_at_utc'
+        - 'activated_at_utc'
+        - 'effective_from_utc'
+        - 'effective_to_utc'
+        - 'revoked_at_utc'
+        - 'revocation_reason'
+        - 'superseded_by_snapshot_id'
+        - 'feature_bundle_manifest_id'
+        - 'activation_scope'
+        - 'approved_root_promotion_manifest_id'
+        - 'approved_root_promotion_manifest_hash'
+        - 'parent_promotion_proof_receipt_hash'
+        - 'created_at') THEN
+      RAISE EXCEPTION 'research macro manifest content update rejected on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+        USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF (to_jsonb(NEW) - 'created_at') IS DISTINCT FROM (to_jsonb(OLD) - 'created_at') THEN
+    RAISE EXCEPTION 'research macro manifest update must use transition service on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_research_macro_source_artifacts_immutable
+  ON research_macro_source_artifacts;
+CREATE TRIGGER trg_research_macro_source_artifacts_immutable
+  BEFORE UPDATE ON research_macro_source_artifacts
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();
+
+DROP TRIGGER IF EXISTS trg_research_macro_availability_events_immutable
+  ON research_macro_availability_events;
+CREATE TRIGGER trg_research_macro_availability_events_immutable
+  BEFORE UPDATE ON research_macro_availability_events
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();
+
+DROP TRIGGER IF EXISTS trg_research_macro_weekly_snapshot_manifests_guard
+  ON research_macro_weekly_snapshot_manifests;
+CREATE TRIGGER trg_research_macro_weekly_snapshot_manifests_guard
+  BEFORE UPDATE ON research_macro_weekly_snapshot_manifests
+  FOR EACH ROW EXECUTE FUNCTION research_macro_guard_weekly_manifest_update();
+
+DROP TRIGGER IF EXISTS trg_research_macro_execution_receipts_immutable
+  ON research_macro_execution_receipts;
+CREATE TRIGGER trg_research_macro_execution_receipts_immutable
+  BEFORE UPDATE ON research_macro_execution_receipts
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();
 
 CREATE TABLE IF NOT EXISTS research_macro_source_observations (
   regime_dataset_id UUID NOT NULL REFERENCES research_macro_regime_datasets(regime_dataset_id) ON DELETE CASCADE,
@@ -705,6 +856,18 @@ CREATE INDEX IF NOT EXISTS idx_research_macro_weekly_currency_snapshots_source
     currency,
     week_open_utc
   );
+
+DROP TRIGGER IF EXISTS trg_research_macro_source_observations_immutable
+  ON research_macro_source_observations;
+CREATE TRIGGER trg_research_macro_source_observations_immutable
+  BEFORE UPDATE ON research_macro_source_observations
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();
+
+DROP TRIGGER IF EXISTS trg_research_macro_weekly_currency_snapshots_immutable
+  ON research_macro_weekly_currency_snapshots;
+CREATE TRIGGER trg_research_macro_weekly_currency_snapshots_immutable
+  BEFORE UPDATE ON research_macro_weekly_currency_snapshots
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();
 `;
 
 const BULK_JSON_CHUNK_SIZE = 1_000;
@@ -741,6 +904,297 @@ export function hashMacroRegimePayload(payload: unknown) {
 
 export async function ensureMacroRegimeWarehouseSchema() {
   await query(MACRO_REGIME_WAREHOUSE_SCHEMA_SQL);
+}
+
+export async function transitionMacroWeeklySnapshotManifestState(
+  input: MacroSnapshotTransitionInput,
+) {
+  await transaction(async (client) => {
+    const rows = await client.query<{
+      promotion_manifest_id: string;
+      feature_bundle_manifest_id: string | null;
+      activation_scope: string | null;
+      contract_manifest_hash: string;
+      snapshot_hash: string;
+      snapshot_state: MacroSnapshotState;
+      approved_root_promotion_manifest_id: string | null;
+      approved_root_promotion_manifest_hash: string | null;
+      parent_promotion_proof_receipt_hash: string | null;
+    }>(
+      `
+        SELECT
+          promotion_manifest_id,
+          feature_bundle_manifest_id,
+          activation_scope,
+          contract_manifest_hash,
+          snapshot_hash,
+          snapshot_state,
+          approved_root_promotion_manifest_id,
+          approved_root_promotion_manifest_hash,
+          parent_promotion_proof_receipt_hash
+        FROM research_macro_weekly_snapshot_manifests
+        WHERE regime_dataset_id = $1::uuid
+          AND snapshot_id = $2
+        FOR UPDATE
+      `,
+      [input.regimeDatasetId, input.snapshotId],
+    );
+    const row = rows.rows[0];
+    if (!row) {
+      throw new Error(`Macro snapshot manifest not found for transition: ${input.snapshotId}`);
+    }
+    if (row.snapshot_hash !== input.expectedSnapshotHash) {
+      throw new Error(`Macro snapshot hash mismatch for transition: ${input.snapshotId}`);
+    }
+    if (row.snapshot_state !== input.fromState) {
+      throw new Error(
+        `Macro snapshot state mismatch for transition ${input.snapshotId}: expected ${input.fromState}, found ${row.snapshot_state}`,
+      );
+    }
+    if (!isMacroSnapshotStateTransitionAllowed(input.fromState, input.toState)) {
+      throw new Error(`Illegal macro snapshot transition rejected: ${input.fromState} -> ${input.toState}`);
+    }
+
+    await client.query(
+      "SELECT set_config('limni.macro_transition_service', 'on', true)",
+    );
+    await client.query(
+      `
+        INSERT INTO research_macro_snapshot_state_transitions (
+          regime_dataset_id,
+          snapshot_id,
+          snapshot_hash,
+          promotion_manifest_id,
+          feature_bundle_manifest_id,
+          activation_scope,
+          contract_manifest_hash,
+          approved_root_promotion_manifest_id,
+          approved_root_promotion_manifest_hash,
+          parent_promotion_proof_receipt_hash,
+          from_state,
+          to_state,
+          transitioned_at_utc,
+          transition_run_id,
+          reason,
+          actor_or_service_version
+        ) VALUES (
+          $1::uuid,
+          $2,
+          $3,
+          $4,
+          COALESCE($5, $6),
+          COALESCE($7, $8),
+          $9,
+          COALESCE($10, $11),
+          COALESCE($12, $13),
+          COALESCE($14, $15),
+          $16,
+          $17,
+          $18::timestamptz,
+          $19,
+          $20,
+          $21
+        )
+      `,
+      [
+        input.regimeDatasetId,
+        input.snapshotId,
+        row.snapshot_hash,
+        row.promotion_manifest_id,
+        input.featureBundleManifestId ?? null,
+        row.feature_bundle_manifest_id,
+        input.activationScope ?? null,
+        row.activation_scope,
+        row.contract_manifest_hash,
+        input.approvedRootPromotionManifestId ?? null,
+        row.approved_root_promotion_manifest_id,
+        input.approvedRootPromotionManifestHash ?? null,
+        row.approved_root_promotion_manifest_hash,
+        input.parentPromotionProofReceiptHash ?? null,
+        row.parent_promotion_proof_receipt_hash,
+        input.fromState,
+        input.toState,
+        input.transitionedAtUtc,
+        input.transitionRunId,
+        input.reason,
+        input.actorOrServiceVersion,
+      ],
+    );
+    await client.query(
+      `
+        UPDATE research_macro_weekly_snapshot_manifests
+        SET snapshot_state = $3,
+            feature_bundle_manifest_id = COALESCE($4, feature_bundle_manifest_id),
+            activation_scope = COALESCE($5, activation_scope),
+            verified_at_utc = CASE
+              WHEN $3 = 'VERIFIED' THEN $6::timestamptz
+              ELSE verified_at_utc
+            END,
+            activated_at_utc = CASE
+              WHEN $3 = 'ACTIVE' THEN $6::timestamptz
+              ELSE activated_at_utc
+            END,
+            effective_from_utc = CASE
+              WHEN $3 = 'ACTIVE' THEN COALESCE($7::timestamptz, effective_from_utc)
+              ELSE effective_from_utc
+            END,
+            effective_to_utc = COALESCE($8::timestamptz, effective_to_utc),
+            revoked_at_utc = CASE
+              WHEN $3 = 'REVOKED' THEN $6::timestamptz
+              ELSE revoked_at_utc
+            END,
+            revocation_reason = CASE
+              WHEN $3 = 'REVOKED' THEN COALESCE($9, revocation_reason)
+              ELSE revocation_reason
+            END,
+            superseded_by_snapshot_id = COALESCE($10, superseded_by_snapshot_id),
+            approved_root_promotion_manifest_id = COALESCE($11, approved_root_promotion_manifest_id),
+            approved_root_promotion_manifest_hash = COALESCE($12, approved_root_promotion_manifest_hash),
+            parent_promotion_proof_receipt_hash = COALESCE($13, parent_promotion_proof_receipt_hash)
+        WHERE regime_dataset_id = $1::uuid
+          AND snapshot_id = $2
+      `,
+      [
+        input.regimeDatasetId,
+        input.snapshotId,
+        input.toState,
+        input.featureBundleManifestId ?? null,
+        input.activationScope ?? null,
+        input.transitionedAtUtc,
+        input.effectiveFromUtc ?? null,
+        input.effectiveToUtc ?? null,
+        input.revocationReason ?? null,
+        input.supersededBySnapshotId ?? null,
+        input.approvedRootPromotionManifestId ?? null,
+        input.approvedRootPromotionManifestHash ?? null,
+        input.parentPromotionProofReceiptHash ?? null,
+      ],
+    );
+  });
+}
+
+export async function bindMacroWeeklySnapshotManifestPromotionControls(
+  input: MacroSnapshotPromotionControlBindingInput,
+) {
+  await transaction(async (client) => {
+    const rows = await client.query<{
+      promotion_manifest_id: string;
+      feature_bundle_manifest_id: string | null;
+      activation_scope: string | null;
+      contract_manifest_hash: string;
+      snapshot_hash: string;
+      snapshot_state: MacroSnapshotState;
+      approved_root_promotion_manifest_id: string | null;
+      approved_root_promotion_manifest_hash: string | null;
+      parent_promotion_proof_receipt_hash: string | null;
+    }>(
+      `
+        SELECT
+          promotion_manifest_id,
+          feature_bundle_manifest_id,
+          activation_scope,
+          contract_manifest_hash,
+          snapshot_hash,
+          snapshot_state,
+          approved_root_promotion_manifest_id,
+          approved_root_promotion_manifest_hash,
+          parent_promotion_proof_receipt_hash
+        FROM research_macro_weekly_snapshot_manifests
+        WHERE regime_dataset_id = $1::uuid
+          AND snapshot_id = $2
+        FOR UPDATE
+      `,
+      [input.regimeDatasetId, input.snapshotId],
+    );
+    const row = rows.rows[0];
+    if (!row) {
+      throw new Error(`Macro snapshot manifest not found for promotion-control binding: ${input.snapshotId}`);
+    }
+    if (row.snapshot_hash !== input.expectedSnapshotHash) {
+      throw new Error(`Macro snapshot hash mismatch for promotion-control binding: ${input.snapshotId}`);
+    }
+
+    await client.query(
+      "SELECT set_config('limni.macro_transition_service', 'on', true)",
+    );
+    await client.query(
+      `
+        INSERT INTO research_macro_snapshot_state_transitions (
+          regime_dataset_id,
+          snapshot_id,
+          snapshot_hash,
+          promotion_manifest_id,
+          feature_bundle_manifest_id,
+          activation_scope,
+          contract_manifest_hash,
+          approved_root_promotion_manifest_id,
+          approved_root_promotion_manifest_hash,
+          parent_promotion_proof_receipt_hash,
+          from_state,
+          to_state,
+          transitioned_at_utc,
+          transition_run_id,
+          reason,
+          actor_or_service_version
+        ) VALUES (
+          $1::uuid,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7,
+          $8,
+          $9,
+          $10,
+          $11,
+          $11,
+          $12::timestamptz,
+          $13,
+          $14,
+          $15
+        )
+      `,
+      [
+        input.regimeDatasetId,
+        input.snapshotId,
+        row.snapshot_hash,
+        row.promotion_manifest_id,
+        input.featureBundleManifestId,
+        input.activationScope,
+        row.contract_manifest_hash,
+        input.approvedRootPromotionManifestId,
+        input.approvedRootPromotionManifestHash,
+        input.parentPromotionProofReceiptHash,
+        row.snapshot_state,
+        input.transitionedAtUtc,
+        input.transitionRunId,
+        input.reason,
+        input.actorOrServiceVersion,
+      ],
+    );
+    await client.query(
+      `
+        UPDATE research_macro_weekly_snapshot_manifests
+        SET feature_bundle_manifest_id = $3,
+            activation_scope = $4,
+            approved_root_promotion_manifest_id = $5,
+            approved_root_promotion_manifest_hash = $6,
+            parent_promotion_proof_receipt_hash = $7
+        WHERE regime_dataset_id = $1::uuid
+          AND snapshot_id = $2
+      `,
+      [
+        input.regimeDatasetId,
+        input.snapshotId,
+        input.featureBundleManifestId,
+        input.activationScope,
+        input.approvedRootPromotionManifestId,
+        input.approvedRootPromotionManifestHash,
+        input.parentPromotionProofReceiptHash,
+      ],
+    );
+  });
 }
 
 export async function upsertMacroRegimeDataset(
@@ -1523,6 +1977,9 @@ export async function persistMacroWeeklySnapshotManifests(options: {
         promotion_manifest_id: row.promotionManifestId,
         feature_bundle_manifest_id: row.featureBundleManifestId ?? null,
         activation_scope: row.activationScope ?? null,
+        approved_root_promotion_manifest_id: row.approvedRootPromotionManifestId ?? null,
+        approved_root_promotion_manifest_hash: row.approvedRootPromotionManifestHash ?? null,
+        parent_promotion_proof_receipt_hash: row.parentPromotionProofReceiptHash ?? null,
         contract_manifest_hash: row.contractManifestHash,
         macro_week_id: row.macroWeekId,
         freeze_version: row.freezeVersion,
@@ -1552,6 +2009,9 @@ export async function persistMacroWeeklySnapshotManifests(options: {
               promotion_manifest_id TEXT,
               feature_bundle_manifest_id TEXT,
               activation_scope TEXT,
+              approved_root_promotion_manifest_id TEXT,
+              approved_root_promotion_manifest_hash TEXT,
+              parent_promotion_proof_receipt_hash TEXT,
               contract_manifest_hash TEXT,
               macro_week_id TEXT,
               freeze_version TEXT,
@@ -1579,6 +2039,9 @@ export async function persistMacroWeeklySnapshotManifests(options: {
             promotion_manifest_id,
             feature_bundle_manifest_id,
             activation_scope,
+            approved_root_promotion_manifest_id,
+            approved_root_promotion_manifest_hash,
+            parent_promotion_proof_receipt_hash,
             contract_manifest_hash,
             macro_week_id,
             freeze_version,
@@ -1605,6 +2068,9 @@ export async function persistMacroWeeklySnapshotManifests(options: {
             promotion_manifest_id,
             feature_bundle_manifest_id,
             activation_scope,
+            approved_root_promotion_manifest_id,
+            approved_root_promotion_manifest_hash,
+            parent_promotion_proof_receipt_hash,
             contract_manifest_hash,
             macro_week_id,
             freeze_version,
@@ -1631,6 +2097,9 @@ export async function persistMacroWeeklySnapshotManifests(options: {
             promotion_manifest_id = EXCLUDED.promotion_manifest_id,
             feature_bundle_manifest_id = EXCLUDED.feature_bundle_manifest_id,
             activation_scope = EXCLUDED.activation_scope,
+            approved_root_promotion_manifest_id = EXCLUDED.approved_root_promotion_manifest_id,
+            approved_root_promotion_manifest_hash = EXCLUDED.approved_root_promotion_manifest_hash,
+            parent_promotion_proof_receipt_hash = EXCLUDED.parent_promotion_proof_receipt_hash,
             contract_manifest_hash = EXCLUDED.contract_manifest_hash,
             macro_week_id = EXCLUDED.macro_week_id,
             freeze_version = EXCLUDED.freeze_version,

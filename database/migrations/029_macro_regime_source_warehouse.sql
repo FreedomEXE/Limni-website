@@ -174,6 +174,9 @@ CREATE TABLE IF NOT EXISTS research_macro_weekly_snapshot_manifests (
   promotion_manifest_id TEXT NOT NULL,
   feature_bundle_manifest_id TEXT,
   activation_scope TEXT,
+  approved_root_promotion_manifest_id TEXT,
+  approved_root_promotion_manifest_hash TEXT,
+  parent_promotion_proof_receipt_hash TEXT,
   contract_manifest_hash TEXT NOT NULL,
   macro_week_id TEXT NOT NULL,
   freeze_version TEXT NOT NULL,
@@ -200,7 +203,10 @@ CREATE TABLE IF NOT EXISTS research_macro_weekly_snapshot_manifests (
 
 ALTER TABLE research_macro_weekly_snapshot_manifests
   ADD COLUMN IF NOT EXISTS feature_bundle_manifest_id TEXT,
-  ADD COLUMN IF NOT EXISTS activation_scope TEXT;
+  ADD COLUMN IF NOT EXISTS activation_scope TEXT,
+  ADD COLUMN IF NOT EXISTS approved_root_promotion_manifest_id TEXT,
+  ADD COLUMN IF NOT EXISTS approved_root_promotion_manifest_hash TEXT,
+  ADD COLUMN IF NOT EXISTS parent_promotion_proof_receipt_hash TEXT;
 
 DROP INDEX IF EXISTS idx_research_macro_weekly_snapshot_manifests_week;
 
@@ -228,6 +234,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_research_macro_weekly_snapshot_manifests_o
 CREATE TABLE IF NOT EXISTS research_macro_snapshot_state_transitions (
   regime_dataset_id UUID NOT NULL REFERENCES research_macro_regime_datasets(regime_dataset_id) ON DELETE CASCADE,
   snapshot_id TEXT NOT NULL,
+  snapshot_hash TEXT NOT NULL,
+  promotion_manifest_id TEXT,
+  feature_bundle_manifest_id TEXT,
+  activation_scope TEXT,
+  contract_manifest_hash TEXT,
+  approved_root_promotion_manifest_id TEXT,
+  approved_root_promotion_manifest_hash TEXT,
+  parent_promotion_proof_receipt_hash TEXT,
   from_state TEXT,
   to_state TEXT NOT NULL,
   transitioned_at_utc TIMESTAMPTZ NOT NULL,
@@ -239,6 +253,16 @@ CREATE TABLE IF NOT EXISTS research_macro_snapshot_state_transitions (
 
 CREATE INDEX IF NOT EXISTS idx_research_macro_snapshot_state_transitions_snapshot
   ON research_macro_snapshot_state_transitions (regime_dataset_id, snapshot_id, transitioned_at_utc);
+
+ALTER TABLE research_macro_snapshot_state_transitions
+  ADD COLUMN IF NOT EXISTS snapshot_hash TEXT,
+  ADD COLUMN IF NOT EXISTS promotion_manifest_id TEXT,
+  ADD COLUMN IF NOT EXISTS feature_bundle_manifest_id TEXT,
+  ADD COLUMN IF NOT EXISTS activation_scope TEXT,
+  ADD COLUMN IF NOT EXISTS contract_manifest_hash TEXT,
+  ADD COLUMN IF NOT EXISTS approved_root_promotion_manifest_id TEXT,
+  ADD COLUMN IF NOT EXISTS approved_root_promotion_manifest_hash TEXT,
+  ADD COLUMN IF NOT EXISTS parent_promotion_proof_receipt_hash TEXT;
 
 CREATE TABLE IF NOT EXISTS research_macro_execution_receipts (
   regime_dataset_id UUID NOT NULL REFERENCES research_macro_regime_datasets(regime_dataset_id) ON DELETE CASCADE,
@@ -258,6 +282,94 @@ CREATE TABLE IF NOT EXISTS research_macro_execution_receipts (
 
 CREATE INDEX IF NOT EXISTS idx_research_macro_execution_receipts_snapshot
   ON research_macro_execution_receipts (promotion_manifest_id, macro_week_id, snapshot_id);
+
+CREATE OR REPLACE FUNCTION research_macro_reject_non_identical_update()
+RETURNS trigger AS $$
+BEGIN
+  IF (to_jsonb(NEW) - 'created_at') IS DISTINCT FROM (to_jsonb(OLD) - 'created_at') THEN
+    RAISE EXCEPTION 'research macro immutable row conflict on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION research_macro_guard_weekly_manifest_update()
+RETURNS trigger AS $$
+DECLARE
+  transition_service_enabled BOOLEAN;
+BEGIN
+  transition_service_enabled := COALESCE(current_setting('limni.macro_transition_service', true), '') = 'on';
+
+  IF transition_service_enabled THEN
+    IF (to_jsonb(NEW)
+        - 'snapshot_state'
+        - 'verified_at_utc'
+        - 'activated_at_utc'
+        - 'effective_from_utc'
+        - 'effective_to_utc'
+        - 'revoked_at_utc'
+        - 'revocation_reason'
+        - 'superseded_by_snapshot_id'
+        - 'feature_bundle_manifest_id'
+        - 'activation_scope'
+        - 'approved_root_promotion_manifest_id'
+        - 'approved_root_promotion_manifest_hash'
+        - 'parent_promotion_proof_receipt_hash'
+        - 'created_at')
+       IS DISTINCT FROM
+       (to_jsonb(OLD)
+        - 'snapshot_state'
+        - 'verified_at_utc'
+        - 'activated_at_utc'
+        - 'effective_from_utc'
+        - 'effective_to_utc'
+        - 'revoked_at_utc'
+        - 'revocation_reason'
+        - 'superseded_by_snapshot_id'
+        - 'feature_bundle_manifest_id'
+        - 'activation_scope'
+        - 'approved_root_promotion_manifest_id'
+        - 'approved_root_promotion_manifest_hash'
+        - 'parent_promotion_proof_receipt_hash'
+        - 'created_at') THEN
+      RAISE EXCEPTION 'research macro manifest content update rejected on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+        USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF (to_jsonb(NEW) - 'created_at') IS DISTINCT FROM (to_jsonb(OLD) - 'created_at') THEN
+    RAISE EXCEPTION 'research macro manifest update must use transition service on %.%', TG_TABLE_SCHEMA, TG_TABLE_NAME
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_research_macro_source_artifacts_immutable
+  ON research_macro_source_artifacts;
+CREATE TRIGGER trg_research_macro_source_artifacts_immutable
+  BEFORE UPDATE ON research_macro_source_artifacts
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();
+
+DROP TRIGGER IF EXISTS trg_research_macro_availability_events_immutable
+  ON research_macro_availability_events;
+CREATE TRIGGER trg_research_macro_availability_events_immutable
+  BEFORE UPDATE ON research_macro_availability_events
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();
+
+DROP TRIGGER IF EXISTS trg_research_macro_weekly_snapshot_manifests_guard
+  ON research_macro_weekly_snapshot_manifests;
+CREATE TRIGGER trg_research_macro_weekly_snapshot_manifests_guard
+  BEFORE UPDATE ON research_macro_weekly_snapshot_manifests
+  FOR EACH ROW EXECUTE FUNCTION research_macro_guard_weekly_manifest_update();
+
+DROP TRIGGER IF EXISTS trg_research_macro_execution_receipts_immutable
+  ON research_macro_execution_receipts;
+CREATE TRIGGER trg_research_macro_execution_receipts_immutable
+  BEFORE UPDATE ON research_macro_execution_receipts
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();
 
 CREATE TABLE IF NOT EXISTS research_macro_source_observations (
   regime_dataset_id UUID NOT NULL REFERENCES research_macro_regime_datasets(regime_dataset_id) ON DELETE CASCADE,
@@ -400,3 +512,15 @@ CREATE INDEX IF NOT EXISTS idx_research_macro_weekly_currency_snapshots_source
     currency,
     week_open_utc
   );
+
+DROP TRIGGER IF EXISTS trg_research_macro_source_observations_immutable
+  ON research_macro_source_observations;
+CREATE TRIGGER trg_research_macro_source_observations_immutable
+  BEFORE UPDATE ON research_macro_source_observations
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();
+
+DROP TRIGGER IF EXISTS trg_research_macro_weekly_currency_snapshots_immutable
+  ON research_macro_weekly_currency_snapshots;
+CREATE TRIGGER trg_research_macro_weekly_currency_snapshots_immutable
+  BEFORE UPDATE ON research_macro_weekly_currency_snapshots
+  FOR EACH ROW EXECUTE FUNCTION research_macro_reject_non_identical_update();

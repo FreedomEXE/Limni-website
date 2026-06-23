@@ -6,6 +6,11 @@ import { loadEnvConfig } from "@next/env";
 import { DateTime } from "luxon";
 
 import { getClient, getPool, query } from "../../src/lib/db";
+import {
+  bindMacroWeeklySnapshotManifestPromotionControls,
+  ensureMacroRegimeWarehouseSchema,
+  transitionMacroWeeklySnapshotManifestState,
+} from "../../src/lib/research/macroRegimeDataset";
 
 loadEnvConfig(process.cwd());
 
@@ -23,12 +28,13 @@ const RRP_DATASET = {
 const PARENT_APPROVED_ROOT = {
   rootRrpPromotionManifestId: "6656b5da3d5552811b3f0f7c10b14d4af1dfbe191fb508231967a9e54d98414c",
   rootRrpPromotionManifestHash: "12a22849ff794ce62ca6d618461a74f21e8967f518b82834aaebbc66ff172275",
+  parentPromotionProofReceiptHash: "0e625be7126c90ce7748847b9ebdf6872ffbeb099caafa7e69348fe482f8409c",
 };
 const SUPPORTING_RECEIPTS = {
   lifecycleUniqueness:
     "app/reports/data-verification/macro-regime/gate50-lifecycle-uniqueness-20260623.json",
   revocationSupersession:
-    "app/reports/data-verification/macro-regime/gate50-revocation-supersession-20260623.json",
+    "app/reports/data-verification/macro-regime/gate50-revocation-supersession-control-amended-20260623.json",
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -59,6 +65,9 @@ type ManifestRow = {
   revoked_at_utc: string | null;
   superseded_by_snapshot_id: string | null;
   row_snapshot_count: number;
+  approved_root_promotion_manifest_id: string | null;
+  approved_root_promotion_manifest_hash: string | null;
+  parent_promotion_proof_receipt_hash: string | null;
 };
 
 function argValue(name: string) {
@@ -198,12 +207,16 @@ async function readManifestRows() {
         effective_to_utc::text,
         revoked_at_utc::text,
         superseded_by_snapshot_id,
-        row_snapshot_count::int
+        row_snapshot_count::int,
+        approved_root_promotion_manifest_id,
+        approved_root_promotion_manifest_hash,
+        parent_promotion_proof_receipt_hash
       FROM research_macro_weekly_snapshot_manifests
       WHERE regime_dataset_id = $1::uuid
+        AND promotion_manifest_id = $2
       ORDER BY macro_week_id, snapshot_id
     `,
-    [RRP_DATASET.datasetId],
+    [RRP_DATASET.datasetId, RRP_DATASET.promotionManifestId],
   );
 }
 
@@ -213,69 +226,107 @@ async function activeDuplicateRows() {
       SELECT macro_week_id, COUNT(*) AS rows
       FROM research_macro_weekly_snapshot_manifests
       WHERE regime_dataset_id = $1::uuid
+        AND promotion_manifest_id = $2
         AND snapshot_state = 'ACTIVE'
       GROUP BY promotion_manifest_id, feature_bundle_manifest_id, macro_week_id, freeze_version, activation_scope
       HAVING COUNT(*) > 1
       ORDER BY macro_week_id
     `,
-    [RRP_DATASET.datasetId],
+    [RRP_DATASET.datasetId, RRP_DATASET.promotionManifestId],
   );
 }
 
 async function runActivation(activatedAtUtc: string) {
-  const client = await getClient();
-  try {
-    await client.query("BEGIN");
-    await client.query(
-      `
-        UPDATE research_macro_weekly_snapshot_manifests
-        SET snapshot_state = 'ACTIVE',
-            feature_bundle_manifest_id = $2,
-            activation_scope = $3,
-            verified_at_utc = COALESCE(verified_at_utc, $4::timestamptz),
-            activated_at_utc = COALESCE(activated_at_utc, $4::timestamptz),
-            effective_from_utc = COALESCE(
-              effective_from_utc,
-              (replace(macro_week_id, 'macro_week_', '')::date::timestamp AT TIME ZONE 'UTC')
-            )
-        WHERE regime_dataset_id = $1::uuid
-          AND promotion_manifest_id = $5
-          AND contract_manifest_hash = $6
-          AND revoked_at_utc IS NULL
-          AND superseded_by_snapshot_id IS NULL
-      `,
-      [
-        RRP_DATASET.datasetId,
-        FEATURE_BUNDLE_MANIFEST_ID,
-        ACTIVATION_SCOPE,
-        activatedAtUtc,
-        RRP_DATASET.promotionManifestId,
-        RRP_DATASET.contractManifestHash,
-      ],
-    );
-    await client.query(
-      `
-        UPDATE research_macro_regime_datasets
-        SET snapshot_state = 'ACTIVE',
-            verified_at_utc = COALESCE(verified_at_utc, $3::timestamptz),
-            activated_at_utc = COALESCE(activated_at_utc, $3::timestamptz),
-            effective_from_utc = COALESCE(effective_from_utc, $4::timestamptz)
-        WHERE regime_dataset_id = $1::uuid
-          AND dataset_hash = $2
-      `,
-      [
-        RRP_DATASET.datasetId,
-        RRP_DATASET.datasetHash,
-        activatedAtUtc,
-        "2019-01-07T00:00:00.000Z",
-      ],
-    );
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK").catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
+  const candidates = await readManifestRows();
+  for (const row of candidates) {
+    if (row.promotion_manifest_id !== RRP_DATASET.promotionManifestId
+      || row.contract_manifest_hash !== RRP_DATASET.contractManifestHash
+      || row.revoked_at_utc !== null
+      || row.superseded_by_snapshot_id !== null) {
+      continue;
+    }
+    if (row.snapshot_state === "SEALED") {
+      await transitionMacroWeeklySnapshotManifestState({
+        regimeDatasetId: RRP_DATASET.datasetId,
+        snapshotId: row.snapshot_id,
+        expectedSnapshotHash: row.snapshot_hash,
+        fromState: "SEALED",
+        toState: "VERIFIED",
+        transitionedAtUtc: activatedAtUtc,
+        transitionRunId: "gate50_historical_activation_legal_transition_20260623",
+        reason: "Gate 50 historical activation verification before source-only activation.",
+        actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+        featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
+        activationScope: ACTIVATION_SCOPE,
+        approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+        approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+        parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
+      });
+      await transitionMacroWeeklySnapshotManifestState({
+        regimeDatasetId: RRP_DATASET.datasetId,
+        snapshotId: row.snapshot_id,
+        expectedSnapshotHash: row.snapshot_hash,
+        fromState: "VERIFIED",
+        toState: "ACTIVE",
+        transitionedAtUtc: activatedAtUtc,
+        transitionRunId: "gate50_historical_activation_legal_transition_20260623",
+        reason: "Gate 50 historical source-only activation after verified state.",
+        actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+        featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
+        activationScope: ACTIVATION_SCOPE,
+        effectiveFromUtc: macroWeekEffectiveFromUtc(row.macro_week_id),
+        approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+        approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+        parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
+      });
+      continue;
+    }
+    if (row.snapshot_state === "VERIFIED") {
+      await transitionMacroWeeklySnapshotManifestState({
+        regimeDatasetId: RRP_DATASET.datasetId,
+        snapshotId: row.snapshot_id,
+        expectedSnapshotHash: row.snapshot_hash,
+        fromState: "VERIFIED",
+        toState: "ACTIVE",
+        transitionedAtUtc: activatedAtUtc,
+        transitionRunId: "gate50_historical_activation_legal_transition_20260623",
+        reason: "Gate 50 historical source-only activation after verified state.",
+        actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+        featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
+        activationScope: ACTIVATION_SCOPE,
+        effectiveFromUtc: macroWeekEffectiveFromUtc(row.macro_week_id),
+        approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+        approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+        parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
+      });
+      continue;
+    }
+    if (row.snapshot_state === "ACTIVE") {
+      if (row.feature_bundle_manifest_id !== FEATURE_BUNDLE_MANIFEST_ID
+        || row.activation_scope !== ACTIVATION_SCOPE
+        || row.approved_root_promotion_manifest_id !== PARENT_APPROVED_ROOT.rootRrpPromotionManifestId
+        || row.approved_root_promotion_manifest_hash !== PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash
+        || row.parent_promotion_proof_receipt_hash !== PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash) {
+        await bindMacroWeeklySnapshotManifestPromotionControls({
+          regimeDatasetId: RRP_DATASET.datasetId,
+          snapshotId: row.snapshot_id,
+          expectedSnapshotHash: row.snapshot_hash,
+          transitionedAtUtc: activatedAtUtc,
+          transitionRunId: "gate50_historical_activation_control_binding_repair_20260623",
+          reason: "Gate 50 control amendment binds approved parent-root metadata to legacy ACTIVE source manifests without changing content or state.",
+          actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+          featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
+          activationScope: ACTIVATION_SCOPE,
+          approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+          approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+          parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
+        });
+      }
+      continue;
+    }
+    if (row.snapshot_state !== "ACTIVE") {
+      throw new Error(`Historical activation cannot continue from ${row.snapshot_state} for ${row.snapshot_id}`);
+    }
   }
 }
 
@@ -427,6 +478,7 @@ async function main() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is required for historical activation.");
   }
+  await ensureMacroRegimeWarehouseSchema();
   const generatedAtUtc = DateTime.utc().toISO({ suppressMilliseconds: false }) ?? new Date().toISOString();
   const [lifecycleReceipt, revocationReceipt] = await Promise.all([
     readJsonReceipt(SUPPORTING_RECEIPTS.lifecycleUniqueness),
@@ -460,6 +512,9 @@ async function main() {
   const activatedAtValues = [...new Set(activeManifests.map((row) => row.activated_at_utc ?? "null"))].sort();
   const featureBundleValues = [...new Set(activeManifests.map((row) => row.feature_bundle_manifest_id ?? "null"))].sort();
   const activationScopeValues = [...new Set(activeManifests.map((row) => row.activation_scope ?? "null"))].sort();
+  const approvedRootIdValues = [...new Set(activeManifests.map((row) => row.approved_root_promotion_manifest_id ?? "null"))].sort();
+  const approvedRootHashValues = [...new Set(activeManifests.map((row) => row.approved_root_promotion_manifest_hash ?? "null"))].sort();
+  const parentProofReceiptHashValues = [...new Set(activeManifests.map((row) => row.parent_promotion_proof_receipt_hash ?? "null"))].sort();
   const promotionManifestValues = [...new Set(activeManifests.map((row) => row.promotion_manifest_id))].sort();
   const effectiveFromMismatches = activeManifests.filter((row) =>
     row.effective_from_utc !== macroWeekEffectiveFromUtc(row.macro_week_id).replace("T", " ").replace(".000Z", "+00"));
@@ -519,10 +574,15 @@ async function main() {
     assertion({
       id: "approved_root_parent_manifest_bound",
       category: "activation",
-      passed: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId === "6656b5da3d5552811b3f0f7c10b14d4af1dfbe191fb508231967a9e54d98414c"
+      passed: approvedRootIdValues.length === 1
+        && approvedRootIdValues[0] === PARENT_APPROVED_ROOT.rootRrpPromotionManifestId
+        && approvedRootHashValues.length === 1
+        && approvedRootHashValues[0] === PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash
+        && parentProofReceiptHashValues.length === 1
+        && parentProofReceiptHashValues[0] === PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash
         && String(lifecycleSummary.resolvedContentJoinMapHash ?? "") === EXPECTED_RESOLVED_CONTENT_JOIN_MAP_HASH,
       expectation: "Historical activation is bound to the already-approved parent root manifest evidence without changing the source content identity.",
-      actual: JSON.stringify(PARENT_APPROVED_ROOT),
+      actual: JSON.stringify({ PARENT_APPROVED_ROOT, approvedRootIdValues, approvedRootHashValues, parentProofReceiptHashValues }),
       blocker: "approved_root_parent_manifest_not_bound",
     }),
     assertion({
@@ -577,6 +637,8 @@ async function main() {
       duplicateActiveKeys: duplicateActiveKeys.length,
       promotionManifestId: RRP_DATASET.promotionManifestId,
       approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+      approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+      parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
       featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
       activationScope: ACTIVATION_SCOPE,
       administrativeActivatedAtUtc: activatedAtValues[0] ?? null,
@@ -604,6 +666,9 @@ async function main() {
       activatedAtValues,
       featureBundleValues,
       activationScopeValues,
+      approvedRootIdValues,
+      approvedRootHashValues,
+      parentProofReceiptHashValues,
       promotionManifestValues,
       duplicateActiveKeys,
       content: contentAfter,

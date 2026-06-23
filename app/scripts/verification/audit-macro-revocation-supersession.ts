@@ -8,7 +8,9 @@ import { DateTime } from "luxon";
 import { PAIRS_BY_ASSET_CLASS } from "../../src/lib/cotPairs";
 import { getPool, query } from "../../src/lib/db";
 import {
+  ensureMacroRegimeWarehouseSchema,
   isMacroSnapshotStateTransitionAllowed,
+  transitionMacroWeeklySnapshotManifestState,
   validateMacroSnapshotConsumptionState,
   type MacroSnapshotState,
 } from "../../src/lib/research/macroRegimeDataset";
@@ -32,6 +34,11 @@ const SUPPORTING_RECEIPTS = {
     "app/reports/data-verification/macro-regime/gate50-lifecycle-uniqueness-20260623.json",
   rrpSealedJoin:
     "app/reports/data-verification/macro-regime/gate50-rrp-boundary-repaired-sealed-join-20260623.json",
+};
+const PARENT_APPROVED_ROOT = {
+  rootRrpPromotionManifestId: "6656b5da3d5552811b3f0f7c10b14d4af1dfbe191fb508231967a9e54d98414c",
+  rootRrpPromotionManifestHash: "12a22849ff794ce62ca6d618461a74f21e8967f518b82834aaebbc66ff172275",
+  parentPromotionProofReceiptHash: "0e625be7126c90ce7748847b9ebdf6872ffbeb099caafa7e69348fe482f8409c",
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -263,11 +270,160 @@ async function readAggregateContentHash() {
         flags
       FROM research_macro_weekly_snapshot_manifests
       WHERE regime_dataset_id = $1::uuid
+        AND promotion_manifest_id = $2
       ORDER BY macro_week_id, snapshot_id
     `,
-    [RRP_DATASET.datasetId],
+    [RRP_DATASET.datasetId, RRP_DATASET.promotionManifestId],
   );
   return { rows: rows.length, hash: hashPayload(rows) };
+}
+
+async function insertDisposableManifest(options: {
+  source: ManifestRow;
+  promotionManifestId: string;
+  activationScope: string;
+  snapshotId: string;
+  snapshotHash: string;
+  supersedesSnapshotId?: string | null;
+}) {
+  await query(
+    `
+      INSERT INTO research_macro_weekly_snapshot_manifests (
+        regime_dataset_id,
+        promotion_manifest_id,
+        feature_bundle_manifest_id,
+        activation_scope,
+        approved_root_promotion_manifest_id,
+        approved_root_promotion_manifest_hash,
+        parent_promotion_proof_receipt_hash,
+        contract_manifest_hash,
+        macro_week_id,
+        freeze_version,
+        snapshot_id,
+        snapshot_hash,
+        snapshot_state,
+        sealed_at_utc,
+        effective_from_utc,
+        supersedes_snapshot_id,
+        row_snapshot_count,
+        coverage,
+        flags
+      ) VALUES (
+        $1::uuid,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        'SEALED',
+        $13::timestamptz,
+        $14::timestamptz,
+        $15,
+        $16,
+        COALESCE($17::jsonb, '{}'::jsonb),
+        COALESCE($18::jsonb, '{}'::jsonb)
+      )
+      ON CONFLICT (regime_dataset_id, snapshot_id) DO NOTHING
+    `,
+    [
+      RRP_DATASET.datasetId,
+      options.promotionManifestId,
+      FEATURE_BUNDLE_MANIFEST_ID,
+      options.activationScope,
+      PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+      PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+      PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
+      options.source.contract_manifest_hash,
+      options.source.macro_week_id,
+      options.source.freeze_version,
+      options.snapshotId,
+      options.snapshotHash,
+      options.source.sealed_at_utc,
+      `${options.source.macro_week_id.replace("macro_week_", "")}T00:00:00.000Z`,
+      options.supersedesSnapshotId ?? null,
+      options.source.row_snapshot_count,
+      JSON.stringify(options.source.coverage ?? {}),
+      JSON.stringify(options.source.flags ?? {}),
+    ],
+  );
+}
+
+async function readManifestBySnapshotId(snapshotId: string) {
+  const rows = await query<ManifestRow>(
+    `
+      SELECT
+        promotion_manifest_id,
+        feature_bundle_manifest_id,
+        activation_scope,
+        contract_manifest_hash,
+        macro_week_id,
+        freeze_version,
+        snapshot_id,
+        snapshot_hash,
+        snapshot_state,
+        sealed_at_utc::text,
+        revoked_at_utc::text,
+        supersedes_snapshot_id,
+        superseded_by_snapshot_id,
+        row_snapshot_count::int,
+        coverage,
+        flags
+      FROM research_macro_weekly_snapshot_manifests
+      WHERE regime_dataset_id = $1::uuid
+        AND snapshot_id = $2
+    `,
+    [RRP_DATASET.datasetId, snapshotId],
+  );
+  return rows[0] ?? null;
+}
+
+async function transitionDisposableToActive(options: {
+  source: ManifestRow;
+  snapshotId: string;
+  snapshotHash: string;
+  transitionRunId: string;
+  transitionedAtUtc: string;
+  activationScope: string;
+}) {
+  await transitionMacroWeeklySnapshotManifestState({
+    regimeDatasetId: RRP_DATASET.datasetId,
+    snapshotId: options.snapshotId,
+    expectedSnapshotHash: options.snapshotHash,
+    fromState: "SEALED",
+    toState: "VERIFIED",
+    transitionedAtUtc: options.transitionedAtUtc,
+    transitionRunId: options.transitionRunId,
+    reason: "Gate 50 disposable revocation proof verifies manifest before activation.",
+    actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+    featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
+    activationScope: options.activationScope,
+    approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+    approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+    parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
+  });
+  await transitionMacroWeeklySnapshotManifestState({
+    regimeDatasetId: RRP_DATASET.datasetId,
+    snapshotId: options.snapshotId,
+    expectedSnapshotHash: options.snapshotHash,
+    fromState: "VERIFIED",
+    toState: "ACTIVE",
+    transitionedAtUtc: options.transitionedAtUtc,
+    transitionRunId: options.transitionRunId,
+    reason: "Gate 50 disposable revocation proof activates manifest before terminal lifecycle test.",
+    actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+    featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
+    activationScope: options.activationScope,
+    effectiveFromUtc: `${options.source.macro_week_id.replace("macro_week_", "")}T00:00:00.000Z`,
+    approvedRootPromotionManifestId: PARENT_APPROVED_ROOT.rootRrpPromotionManifestId,
+    approvedRootPromotionManifestHash: PARENT_APPROVED_ROOT.rootRrpPromotionManifestHash,
+    parentPromotionProofReceiptHash: PARENT_APPROVED_ROOT.parentPromotionProofReceiptHash,
+  });
 }
 
 function pairsForWeek(matrixContexts: MatrixContextRow[], macroWeekId: string) {
@@ -457,6 +613,7 @@ async function main() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is required for revocation/supersession proof.");
   }
+  await ensureMacroRegimeWarehouseSchema();
   const generatedAtUtc = DateTime.utc().toISO({ suppressMilliseconds: false }) ?? new Date().toISOString();
   const [lifecycleReceipt, rrpJoinReceipt] = await Promise.all([
     readJsonReceipt(SUPPORTING_RECEIPTS.lifecycleUniqueness),
@@ -477,11 +634,99 @@ async function main() {
   const sourceManifest = manifests.find((row) =>
     row.promotion_manifest_id === RRP_DATASET.promotionManifestId
     && row.contract_manifest_hash === RRP_DATASET.contractManifestHash
-    && row.snapshot_state === "SEALED"
+    && row.snapshot_state === "ACTIVE"
     && row.revoked_at_utc === null) ?? null;
   if (!sourceManifest) {
-    throw new Error("No current SEALED RRP manifest found for revocation proof.");
+    throw new Error("No current ACTIVE RRP manifest found for revocation proof.");
   }
+  const disposablePrefix = hashPayload({
+    type: "gate50_persisted_revocation_disposable_v1",
+    generatedAtUtc,
+    sourceSnapshotId: sourceManifest.snapshot_id,
+  }).slice(0, 16);
+  const disposablePromotionManifestId = `gate50_disposable_revocation_${disposablePrefix}`;
+  const disposableActivationScope = `gate50_disposable_${disposablePrefix}`;
+  const revokedSnapshotId = `gate50_disposable_revoked_${disposablePrefix}`;
+  const quarantinedSnapshotId = `gate50_disposable_quarantined_${disposablePrefix}`;
+  const supersededOriginalSnapshotId = `gate50_disposable_superseded_original_${disposablePrefix}`;
+  const supersedingSnapshotId = `gate50_disposable_superseding_${disposablePrefix}`;
+  const supersedingSnapshotHash = hashPayload({
+    type: "gate50_disposable_superseding_hash_v1",
+    sourceSnapshotHash: sourceManifest.snapshot_hash,
+    disposablePrefix,
+  });
+  const disposableRows = [
+    { snapshotId: revokedSnapshotId, snapshotHash: sourceManifest.snapshot_hash, supersedesSnapshotId: null, scope: `${disposableActivationScope}_revoked` },
+    { snapshotId: quarantinedSnapshotId, snapshotHash: sourceManifest.snapshot_hash, supersedesSnapshotId: null, scope: `${disposableActivationScope}_quarantined` },
+    { snapshotId: supersededOriginalSnapshotId, snapshotHash: sourceManifest.snapshot_hash, supersedesSnapshotId: null, scope: `${disposableActivationScope}_superseded` },
+    { snapshotId: supersedingSnapshotId, snapshotHash: supersedingSnapshotHash, supersedesSnapshotId: supersededOriginalSnapshotId, scope: `${disposableActivationScope}_superseding` },
+  ];
+  for (const row of disposableRows) {
+    await insertDisposableManifest({
+      source: sourceManifest,
+      promotionManifestId: disposablePromotionManifestId,
+      activationScope: row.scope,
+      snapshotId: row.snapshotId,
+      snapshotHash: row.snapshotHash,
+      supersedesSnapshotId: row.supersedesSnapshotId,
+    });
+    await transitionDisposableToActive({
+      source: sourceManifest,
+      snapshotId: row.snapshotId,
+      snapshotHash: row.snapshotHash,
+      transitionRunId: `gate50_persisted_revocation_${disposablePrefix}`,
+      transitionedAtUtc: generatedAtUtc,
+      activationScope: row.scope,
+    });
+  }
+  await transitionMacroWeeklySnapshotManifestState({
+    regimeDatasetId: RRP_DATASET.datasetId,
+    snapshotId: revokedSnapshotId,
+    expectedSnapshotHash: sourceManifest.snapshot_hash,
+    fromState: "ACTIVE",
+    toState: "REVOKED",
+    transitionedAtUtc: generatedAtUtc,
+    transitionRunId: `gate50_persisted_revocation_${disposablePrefix}`,
+    reason: "Gate 50 persisted disposable aggregate revocation proof.",
+    actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+    featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
+    activationScope: `${disposableActivationScope}_revoked`,
+    revocationReason: "gate50_disposable_revocation_proof",
+  });
+  await transitionMacroWeeklySnapshotManifestState({
+    regimeDatasetId: RRP_DATASET.datasetId,
+    snapshotId: quarantinedSnapshotId,
+    expectedSnapshotHash: sourceManifest.snapshot_hash,
+    fromState: "ACTIVE",
+    toState: "QUARANTINED",
+    transitionedAtUtc: generatedAtUtc,
+    transitionRunId: `gate50_persisted_quarantine_${disposablePrefix}`,
+    reason: "Gate 50 persisted disposable aggregate quarantine proof.",
+    actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+    featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
+    activationScope: `${disposableActivationScope}_quarantined`,
+  });
+  await transitionMacroWeeklySnapshotManifestState({
+    regimeDatasetId: RRP_DATASET.datasetId,
+    snapshotId: supersededOriginalSnapshotId,
+    expectedSnapshotHash: sourceManifest.snapshot_hash,
+    fromState: "ACTIVE",
+    toState: "REVOKED",
+    transitionedAtUtc: generatedAtUtc,
+    transitionRunId: `gate50_persisted_supersession_${disposablePrefix}`,
+    reason: "Gate 50 persisted disposable supersession proof.",
+    actorOrServiceVersion: "macro_snapshot_transition_service_v1",
+    featureBundleManifestId: FEATURE_BUNDLE_MANIFEST_ID,
+    activationScope: `${disposableActivationScope}_superseded`,
+    revocationReason: "gate50_disposable_superseded_by_new_identity",
+    supersededBySnapshotId: supersedingSnapshotId,
+  });
+  const persistedLifecycleRows = {
+    revoked: await readManifestBySnapshotId(revokedSnapshotId),
+    quarantined: await readManifestBySnapshotId(quarantinedSnapshotId),
+    supersededOriginal: await readManifestBySnapshotId(supersededOriginalSnapshotId),
+    superseding: await readManifestBySnapshotId(supersedingSnapshotId),
+  };
   const weekPairs = pairsForWeek(matrixContexts, sourceManifest.macro_week_id);
   const targetCurrency = snapshots.some((row) =>
     macroWeekIdFor(row.week_open_utc) === sourceManifest.macro_week_id
@@ -550,6 +795,20 @@ async function main() {
       expectation: "Revoking one aggregate weekly manifest blocks all 28 pair-week contexts for that macro week.",
       actual: JSON.stringify(aggregateProof),
       blocker: "aggregate_revocation_not_blocking_all_pairs",
+    }),
+    assertion({
+      id: "persisted_disposable_lifecycle_transitions_passed",
+      category: "persisted_lifecycle",
+      passed: persistedLifecycleRows.revoked?.snapshot_state === "REVOKED"
+        && persistedLifecycleRows.revoked.revoked_at_utc !== null
+        && persistedLifecycleRows.quarantined?.snapshot_state === "QUARANTINED"
+        && persistedLifecycleRows.supersededOriginal?.snapshot_state === "REVOKED"
+        && persistedLifecycleRows.supersededOriginal.superseded_by_snapshot_id === supersedingSnapshotId
+        && persistedLifecycleRows.superseding?.snapshot_state === "ACTIVE"
+        && persistedLifecycleRows.superseding.supersedes_snapshot_id === supersededOriginalSnapshotId,
+      expectation: "Disposable manifests persist real ACTIVE -> REVOKED, ACTIVE -> QUARANTINED, and supersession transitions through the lifecycle service.",
+      actual: JSON.stringify(persistedLifecycleRows),
+      blocker: "persisted_disposable_lifecycle_transition_failed",
     }),
     assertion({
       id: "aggregate_quarantine_blocks_all_pairs_for_week",
@@ -628,7 +887,7 @@ async function main() {
     generatedAtUtc,
     gate: "Gate 50: macro-source-promotion-proof",
     purpose:
-      "Diagnostic revocation, quarantine, and supersession proof for current repaired RRP source bundle. Does not persist lifecycle changes or open outcome consumption.",
+      "Diagnostic revocation, quarantine, and supersession proof for current repaired RRP source bundle. Persists disposable lifecycle evidence and does not open outcome consumption.",
     summary: {
       status: pass ? "PASS_REVOCATION_SUPERSESSION" : "FAIL_REVOCATION_SUPERSESSION",
       aggregateRevokedBlockedPairWeeks: aggregateProof.revokedBlockedPairWeeks,
@@ -645,6 +904,8 @@ async function main() {
       promotionEligible: false,
       activationEligible: false,
       outcomeConsumable: false,
+      persistedDisposablePromotionManifestId: disposablePromotionManifestId,
+      persistedDisposableSnapshots: persistedLifecycleRows,
       rrpDatasetId: RRP_DATASET.datasetId,
       rrpDatasetHash: RRP_DATASET.datasetHash,
       promotionManifestId: RRP_DATASET.promotionManifestId,

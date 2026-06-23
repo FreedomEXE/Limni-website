@@ -7,6 +7,7 @@ import { DateTime } from "luxon";
 
 import { PAIRS_BY_ASSET_CLASS } from "../../src/lib/cotPairs";
 import { getPool, query } from "../../src/lib/db";
+import { ensureMacroRegimeWarehouseSchema } from "../../src/lib/research/macroRegimeDataset";
 
 loadEnvConfig(process.cwd());
 
@@ -14,6 +15,14 @@ const GATE44_MATRIX_DATASET_ID = "479624d1-f6a2-4928-82f1-981137762bdc";
 const GATE44_MATRIX_DATASET_HASH = "cb3dfbd8b4725da3b4c3fdf60e3326810261f7d1334402dcac8a0391b1cadc36";
 const CANONICAL_MACRO_SOURCE_FAMILIES = ["bpr", "rate", "inflation", "real_rate_pressure", "valuation"];
 const DEFAULT_OUT_DIR = "app/reports/data-verification/macro-regime";
+const GATE50_APPROVED_ROOT_PROMOTION_MANIFEST_ID =
+  "6656b5da3d5552811b3f0f7c10b14d4af1dfbe191fb508231967a9e54d98414c";
+const GATE50_APPROVED_ROOT_PROMOTION_MANIFEST_HASH =
+  "12a22849ff794ce62ca6d618461a74f21e8967f518b82834aaebbc66ff172275";
+const GATE50_PARENT_PROMOTION_PROOF_RECEIPT_HASH =
+  "0e625be7126c90ce7748847b9ebdf6872ffbeb099caafa7e69348fe482f8409c";
+const GATE50_RRP_SOURCE_CONTENT_JOIN_MAP_HASH =
+  "fca281b77d508b3ed806fcd59c595dff1cb8e1e4dda82eea178610c1d056f391";
 
 const FEATURE_BUNDLES = {
   bpr_attribution_v1: {
@@ -91,7 +100,12 @@ type MacroDatasetRow = {
 
 type MacroManifestRow = {
   promotion_manifest_id: string;
+  feature_bundle_manifest_id: string | null;
+  activation_scope: string | null;
   contract_manifest_hash: string;
+  approved_root_promotion_manifest_id: string | null;
+  approved_root_promotion_manifest_hash: string | null;
+  parent_promotion_proof_receipt_hash: string | null;
   macro_week_id: string;
   freeze_version: string;
   snapshot_id: string;
@@ -147,6 +161,10 @@ type CliOptions = {
   allowedSnapshotStates: string[];
   featureBundleId: FeatureBundleId;
   featureBundle: FeatureBundleDefinition;
+  activationScope: string | null;
+  approvedRootPromotionManifestId: string | null;
+  approvedRootPromotionManifestHash: string | null;
+  parentPromotionProofReceiptHash: string | null;
   requiredSourceFamilies: string[];
   outDir: string;
   jsonOut: string | null;
@@ -170,6 +188,11 @@ type WeekManifestAudit = {
   allowedStateManifests: number;
   selectedSnapshotId: string | null;
   selectedSnapshotState: string | null;
+  featureBundleManifestId: string | null;
+  activationScope: string | null;
+  approvedRootPromotionManifestId: string | null;
+  approvedRootPromotionManifestHash: string | null;
+  parentPromotionProofReceiptHash: string | null;
   rowSnapshotCountExpected: number | null;
   rowSnapshotCountObserved: number;
   effectiveFromUtc: string | null;
@@ -258,6 +281,16 @@ function parseCli(): CliOptions {
     allowedSnapshotStates: parseCsvArg("allowed-snapshot-states", ["ACTIVE"]).map((value) => value.toUpperCase()),
     featureBundleId,
     featureBundle,
+    activationScope: argValue("activation-scope")
+      ?? (parseCsvArg("allowed-snapshot-states", ["ACTIVE"]).map((value) => value.toUpperCase()).includes("ACTIVE")
+        ? "historical_backtest"
+        : null),
+    approvedRootPromotionManifestId: argValue("approved-root-promotion-manifest-id")
+      ?? GATE50_APPROVED_ROOT_PROMOTION_MANIFEST_ID,
+    approvedRootPromotionManifestHash: argValue("approved-root-promotion-manifest-hash")
+      ?? GATE50_APPROVED_ROOT_PROMOTION_MANIFEST_HASH,
+    parentPromotionProofReceiptHash: argValue("parent-promotion-proof-receipt-hash")
+      ?? GATE50_PARENT_PROMOTION_PROOF_RECEIPT_HASH,
     requiredSourceFamilies,
     outDir,
     jsonOut: argValue("json-out"),
@@ -554,7 +587,12 @@ async function readMacroManifests(options: {
     `
       SELECT
         promotion_manifest_id,
+        feature_bundle_manifest_id,
+        activation_scope,
         contract_manifest_hash,
+        approved_root_promotion_manifest_id,
+        approved_root_promotion_manifest_hash,
+        parent_promotion_proof_receipt_hash,
         macro_week_id,
         freeze_version,
         snapshot_id,
@@ -621,7 +659,15 @@ function filterManifests(rows: MacroManifestRow[], options: CliOptions) {
   return rows.filter((row) =>
     (!options.promotionManifestId || row.promotion_manifest_id === options.promotionManifestId)
     && (!options.contractManifestHash || row.contract_manifest_hash === options.contractManifestHash)
-    && (!options.freezeVersion || row.freeze_version === options.freezeVersion));
+    && (!options.freezeVersion || row.freeze_version === options.freezeVersion)
+    && row.feature_bundle_manifest_id === options.featureBundle.featureBundleManifestId
+    && (!options.activationScope || row.activation_scope === options.activationScope)
+    && (!options.approvedRootPromotionManifestId
+      || row.approved_root_promotion_manifest_id === options.approvedRootPromotionManifestId)
+    && (!options.approvedRootPromotionManifestHash
+      || row.approved_root_promotion_manifest_hash === options.approvedRootPromotionManifestHash)
+    && (!options.parentPromotionProofReceiptHash
+      || row.parent_promotion_proof_receipt_hash === options.parentPromotionProofReceiptHash));
 }
 
 function filterSnapshots(rows: MacroSnapshotRow[], options: CliOptions) {
@@ -717,6 +763,24 @@ function auditWeekManifests(options: {
         ? ["active_manifest_missing_activated_at_utc"]
         : []),
       ...(selected && selected.revoked_at_utc !== null ? ["selected_manifest_revoked"] : []),
+      ...(selected && selected.feature_bundle_manifest_id !== options.cli.featureBundle.featureBundleManifestId
+        ? ["selected_manifest_feature_bundle_mismatch"]
+        : []),
+      ...(selected && options.cli.activationScope && selected.activation_scope !== options.cli.activationScope
+        ? ["selected_manifest_activation_scope_mismatch"]
+        : []),
+      ...(selected && options.cli.approvedRootPromotionManifestId
+        && selected.approved_root_promotion_manifest_id !== options.cli.approvedRootPromotionManifestId
+        ? ["selected_manifest_approved_root_id_mismatch"]
+        : []),
+      ...(selected && options.cli.approvedRootPromotionManifestHash
+        && selected.approved_root_promotion_manifest_hash !== options.cli.approvedRootPromotionManifestHash
+        ? ["selected_manifest_approved_root_hash_mismatch"]
+        : []),
+      ...(selected && options.cli.parentPromotionProofReceiptHash
+        && selected.parent_promotion_proof_receipt_hash !== options.cli.parentPromotionProofReceiptHash
+        ? ["selected_manifest_parent_proof_receipt_hash_mismatch"]
+        : []),
       ...(selected && selected.row_snapshot_count !== snapshotRows.length
         ? ["manifest_row_snapshot_count_mismatch"]
         : []),
@@ -728,6 +792,11 @@ function auditWeekManifests(options: {
       allowedStateManifests: allowed.length,
       selectedSnapshotId: selected?.snapshot_id ?? null,
       selectedSnapshotState: selected?.snapshot_state ?? null,
+      featureBundleManifestId: selected?.feature_bundle_manifest_id ?? null,
+      activationScope: selected?.activation_scope ?? null,
+      approvedRootPromotionManifestId: selected?.approved_root_promotion_manifest_id ?? null,
+      approvedRootPromotionManifestHash: selected?.approved_root_promotion_manifest_hash ?? null,
+      parentPromotionProofReceiptHash: selected?.parent_promotion_proof_receipt_hash ?? null,
       rowSnapshotCountExpected: selected?.row_snapshot_count ?? null,
       rowSnapshotCountObserved: snapshotRows.length,
       effectiveFromUtc: selected?.effective_from_utc ? isoUtc(selected.effective_from_utc) : null,
@@ -905,6 +974,11 @@ function buildResolvedJoinMap(options: {
       quote: pair?.quote ?? null,
       macroWeeklyManifestId: manifest?.selectedSnapshotId ?? null,
       macroWeeklyManifestState: manifest?.selectedSnapshotState ?? null,
+      featureBundleManifestId: manifest?.featureBundleManifestId ?? null,
+      activationScope: manifest?.activationScope ?? null,
+      approvedRootPromotionManifestId: manifest?.approvedRootPromotionManifestId ?? null,
+      approvedRootPromotionManifestHash: manifest?.approvedRootPromotionManifestHash ?? null,
+      parentPromotionProofReceiptHash: manifest?.parentPromotionProofReceiptHash ?? null,
       selectedSnapshots,
     };
   });
@@ -916,6 +990,11 @@ function buildResolvedJoinMap(options: {
     base: row.base,
     quote: row.quote,
     macroWeeklyManifestId: row.macroWeeklyManifestId,
+    featureBundleManifestId: row.featureBundleManifestId,
+    activationScope: row.activationScope,
+    approvedRootPromotionManifestId: row.approvedRootPromotionManifestId,
+    approvedRootPromotionManifestHash: row.approvedRootPromotionManifestHash,
+    parentPromotionProofReceiptHash: row.parentPromotionProofReceiptHash,
     selectedSnapshots: row.selectedSnapshots.map((snapshot) => ({
       currency: snapshot.currency,
       requiredSnapshotKey: snapshot.requiredSnapshotKey,
@@ -977,6 +1056,7 @@ function buildMarkdown(report: JsonRecord) {
     `- Pair-week contexts blocked: ${summary.blockedPairWeeks}`,
     `- Resolved join-map hash: ${summary.resolvedJoinMapHash}`,
     `- Resolved content join-map hash: ${summary.resolvedContentJoinMapHash}`,
+    `- Source-content invariant hash: ${summary.sourceContentInvariantHash}`,
     `- Required source families: ${Array.isArray(summary.requiredSourceFamilies) ? summary.requiredSourceFamilies.join(", ") : ""}`,
     "",
     "## Matrix Control",
@@ -1025,6 +1105,7 @@ async function main() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is required for macro join coverage audit.");
   }
+  await ensureMacroRegimeWarehouseSchema();
 
   const matrixDataset = await readMatrixDataset(cli);
   if (!matrixDataset) {
@@ -1180,7 +1261,12 @@ async function main() {
       blockedPairWeeks: pairJoin.blockedPairWeeks,
       resolvedJoinMapHash: resolvedJoinMap.resolvedJoinMapHash,
       resolvedContentJoinMapHash: resolvedJoinMap.resolvedContentJoinMapHash,
+      sourceContentInvariantHash: GATE50_RRP_SOURCE_CONTENT_JOIN_MAP_HASH,
       featureBundleManifestId: cli.featureBundle.featureBundleManifestId,
+      activationScope: cli.activationScope,
+      approvedRootPromotionManifestId: cli.approvedRootPromotionManifestId,
+      approvedRootPromotionManifestHash: cli.approvedRootPromotionManifestHash,
+      parentPromotionProofReceiptHash: cli.parentPromotionProofReceiptHash,
       requiredDependencySetHash: hashPayload(cli.featureBundle.requiredDependencySet),
       requiredSourceFamilies: cli.requiredSourceFamilies,
       sourceFamiliesPresent,
@@ -1203,6 +1289,10 @@ async function main() {
       allowedSnapshotStates: cli.allowedSnapshotStates,
       featureBundleId: cli.featureBundleId,
       featureBundle: cli.featureBundle,
+      activationScope: cli.activationScope,
+      approvedRootPromotionManifestId: cli.approvedRootPromotionManifestId,
+      approvedRootPromotionManifestHash: cli.approvedRootPromotionManifestHash,
+      parentPromotionProofReceiptHash: cli.parentPromotionProofReceiptHash,
       requiredSourceFamilies: cli.requiredSourceFamilies,
     },
     matrix: {
