@@ -17,7 +17,7 @@
 import { loadEnvConfig } from "@next/env";
 loadEnvConfig(process.cwd());
 
-import { ASSET_CLASS_ORDER } from "../src/lib/cotMarkets";
+import { ASSET_CLASS_ORDER, type AssetClass } from "../src/lib/cotMarkets";
 import { fetchAvailableReportDates } from "../src/lib/cotFetch";
 import {
   listSnapshotDates,
@@ -29,6 +29,46 @@ const HARD_CAP = Number(process.env.COT_DEEP_HISTORY_CAP ?? "260");
 const API_DISCOVERY_LIMIT = Number(process.env.COT_API_DATE_LIMIT ?? "5000");
 const REFRESH_DELAY_MS = Number(process.env.COT_BACKFILL_DELAY_MS ?? "350");
 const RETRY_COUNT = Number(process.env.COT_BACKFILL_RETRIES ?? "3");
+
+function argValue(name: string): string | null {
+  const prefix = `--${name}=`;
+  return process.argv.slice(2).find((arg) => arg.startsWith(prefix))?.slice(prefix.length) ?? null;
+}
+
+function hasFlag(name: string) {
+  return process.argv.slice(2).includes(`--${name}`);
+}
+
+function numericArg(name: string, fallback: number) {
+  const raw = argValue(name);
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+function dateArg(name: string) {
+  const raw = argValue(name);
+  return raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+}
+
+function parseAssetClasses(): AssetClass[] {
+  const raw = argValue("asset-classes") ?? argValue("asset-class");
+  if (!raw) return ASSET_CLASS_ORDER;
+  const requested = raw.split(",").map((value) => value.trim()).filter(Boolean);
+  const valid = requested.filter((value): value is AssetClass =>
+    (ASSET_CLASS_ORDER as string[]).includes(value),
+  );
+  if (valid.length === 0) {
+    throw new Error(`No valid asset classes in --asset-classes=${raw}`);
+  }
+  return valid;
+}
+
+function filterDateRange(dates: string[], from: string | null, to: string | null) {
+  return dates.filter((date) =>
+    (!from || date >= from) &&
+    (!to || date <= to));
+}
 
 function sleep(ms: number) {
   if (!Number.isFinite(ms) || ms <= 0) {
@@ -95,7 +135,7 @@ async function printFxVerification(dates: string[]) {
   }
 }
 
-async function refreshWithRetry(assetClass: (typeof ASSET_CLASS_ORDER)[number], date: string) {
+async function refreshWithRetry(assetClass: AssetClass, date: string) {
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= RETRY_COUNT; attempt++) {
     try {
@@ -117,31 +157,46 @@ async function main() {
   console.log("╔══════════════════════════════════════════════════════════════════╗");
   console.log("║   COT Deep History Backfill                                    ║");
   console.log("╚══════════════════════════════════════════════════════════════════╝");
+  const assetClasses = parseAssetClasses();
+  const fromDate = dateArg("from");
+  const toDate = dateArg("to");
+  const cap = numericArg("cap", HARD_CAP);
+  const dryRun = hasFlag("dry-run");
+  const missingOnly = hasFlag("missing-only");
 
   const discovered = await fetchAvailableReportDates("tff", API_DISCOVERY_LIMIT);
   if (discovered.length === 0) {
     throw new Error("No TFF report dates discovered from CFTC API.");
   }
 
-  const targetDates =
-    discovered.length > 500 ? discovered.slice(-HARD_CAP) : discovered;
-  const storedBefore = await listSnapshotDates("fx");
-  const storedBeforeAsc = [...storedBefore].sort((left, right) => left.localeCompare(right));
-  const missingDates = targetDates.filter((date) => !storedBefore.includes(date));
+  const rangedDates = filterDateRange(discovered, fromDate, toDate);
+  const targetDates = rangedDates.length > cap ? rangedDates.slice(-cap) : rangedDates;
 
   console.log(`Discovered TFF dates: ${discovered.length} (${formatRange(discovered)})`);
+  console.log(`Requested date range: ${fromDate ?? "earliest"} -> ${toDate ?? "latest"}`);
+  console.log(`Requested asset classes: ${assetClasses.join(", ")}`);
+  console.log(`Dry run: ${dryRun}`);
+  console.log(`Missing only: ${missingOnly}`);
+  console.log(`Target cap: ${cap}`);
   console.log(`Target backfill dates: ${targetDates.length} (${formatRange(targetDates)})`);
-  console.log(`Stored FX dates before: ${storedBefore.length} (${formatRange(storedBeforeAsc)})`);
-  console.log(`Missing FX dates within target window: ${missingDates.length}`);
   console.log(`Refresh delay: ${REFRESH_DELAY_MS}ms`);
 
   const failures: Array<{ assetClass: string; date: string; error: string }> = [];
 
-  for (const assetClass of ASSET_CLASS_ORDER) {
-    console.log(`\n[${assetClass}] refreshing ${targetDates.length} dates`);
-    for (let index = 0; index < targetDates.length; index++) {
-      const date = targetDates[index]!;
-      console.log(`[${assetClass}] ${index + 1}/${targetDates.length} ${date}`);
+  for (const assetClass of assetClasses) {
+    const storedBefore = await listSnapshotDates(assetClass);
+    const storedBeforeAsc = [...storedBefore].sort((left, right) => left.localeCompare(right));
+    const missingDates = targetDates.filter((date) => !storedBefore.includes(date));
+    console.log(`\n[${assetClass}] stored before: ${storedBefore.length} (${formatRange(storedBeforeAsc)})`);
+    console.log(`[${assetClass}] missing dates within target window: ${missingDates.length}`);
+    const refreshDates = missingOnly ? missingDates : targetDates;
+    if (dryRun) {
+      continue;
+    }
+    console.log(`\n[${assetClass}] refreshing ${refreshDates.length} dates`);
+    for (let index = 0; index < refreshDates.length; index++) {
+      const date = refreshDates[index]!;
+      console.log(`[${assetClass}] ${index + 1}/${refreshDates.length} ${date}`);
       const error = await refreshWithRetry(assetClass, date);
       if (error) {
         failures.push({

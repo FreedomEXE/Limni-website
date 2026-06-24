@@ -31,7 +31,16 @@ $tempAudio = [System.IO.Path]::GetTempFileName() -replace '\.tmp$', '.mp3'
 try {
     # Generate speech with edge-tts (using SSL-bypass script)
     $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-    python "$scriptDir/edge-tts-fix.py" $Voice $fullMessage $tempAudio 2>&1 | Out-Null
+    $ttsOutput = & python "$scriptDir/edge-tts-fix.py" $Voice $fullMessage $tempAudio 2>&1
+    $ttsExitCode = $LASTEXITCODE
+
+    if ($ttsExitCode -ne 0 -or -not (Test-Path $tempAudio) -or (Get-Item $tempAudio).Length -le 0) {
+        $errorText = ($ttsOutput | Out-String).Trim()
+        if ([string]::IsNullOrWhiteSpace($errorText)) {
+            $errorText = "edge-tts exited with code $ttsExitCode and did not produce audio."
+        }
+        throw $errorText
+    }
 
     if (Test-Path $tempAudio) {
         # Play audio (Windows Media Player)
@@ -64,18 +73,10 @@ try {
 
         $mediaPlayer.Stop()
         $mediaPlayer.Close()
-
-        # Play system sound after speech
-        [System.Media.SystemSounds]::Asterisk.Play()
-    } else {
-        Write-Host "[ERROR] Failed to generate speech" -ForegroundColor Red
-        # Fallback to system beep
-        [console]::beep(800, 300)
     }
 } catch {
     Write-Host "[ERROR] $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "[INFO] Make sure Python and edge-tts are installed. Run: .\scripts\setup-modern-voice.ps1" -ForegroundColor Yellow
-    [console]::beep(800, 300)
 } finally {
     # Cleanup
     if (Test-Path $tempAudio) {

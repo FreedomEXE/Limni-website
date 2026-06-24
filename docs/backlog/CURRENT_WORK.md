@@ -20,18 +20,312 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
+Gate 54I: raw-signal-review-packet.
+
+Status: ready for outside/raw-number review. Receipt:
+`docs/research/GATE54I_RAW_SIGNAL_REVIEW_PACKET_2026-06-23.md`.
+Outside review prompt:
+`docs/research/GATE54_COT_BASELINE_OUTSIDE_REVIEW_PROMPT_2026-06-23.md`.
+
+Working policy accepted by Freedom:
+
+```text
+CLP tie-break = carry_previous_clp_side
+```
+
+Reason: it is simpler and outperformed raw underlying COT spread on the legacy
+ADR Grid matrix score. Raw COT spread performed better on simple weekly hold
+and remains a review caveat, not the working policy.
+
+Gate 54I review focus:
+
+- CLP carry-forward + carry-previous tie fill: `10,864` rows, `388` full
+  weeks, `0` partial weeks, ADR Grid `+1176.4520` ADR / DD `-358.9404` /
+  R/DD `3.2776`, simple weekly hold `+339.4126` ADR / DD `-151.9313` /
+  R/DD `2.2340`.
+- Friday Strength standalone: ADR Grid `+1223.2949` ADR but simple weekly hold
+  `-144.3625` ADR, so Strength should not be added as a plain confirm layer
+  without separate selected-vs-fade review.
+
+Next authorized work: outside/raw-number review of Gate 54I. If accepted, run a
+narrow Friday Strength fade diagnostic. Still forbidden: final Signal Model
+selection, broad optimization, outcome grid expansion, BPR/RRP retests,
+PPP/NEER/REER work, execution/risk-overlay changes, MT5/live, production, or
+promotion claims.
+
+Gate 54H: clp-tie-break-comparison.
+
+Status: accepted as working tie policy. Receipt:
+`docs/research/GATE54H_CLP_TIE_BREAK_COMPARISON_2026-06-23.md`.
+Result: `PASS_CLP_TIE_BREAK_COMPARISON_READY_FOR_REVIEW`. Receipt hash:
+`8E2FCBB05C62948FECD6F518446518611574C5B54C76EC766CDD37366B63DE37`.
+
+Gate 54H asks:
+
+```text
+For the 71 tied CLP pair rows across 60 weeks, does carry-previous CLP side or
+raw underlying COT spread perform better as the deterministic tie-break policy?
+```
+
+Gate 54H outputs:
+
+- Ties are source-complete, not missing-data rows: `71` tied pair rows across
+  `60` weeks, with `0` missing lifecycle pair rows.
+- Both policies resolve all `71` tied rows. They agree on `34` rows and
+  disagree on `37` rows.
+- Tie-only simple weekly hold favors raw underlying COT spread:
+  raw `+0.98` ADR vs carry-previous `-7.67` ADR, delta
+  carry-minus-raw `-8.6506` ADR.
+- Tie-only ADR Grid scoring favors carry-previous CLP side:
+  carry `+38.53` ADR vs raw `+19.59` ADR, delta carry-minus-raw
+  `+18.9421` ADR.
+- Full-system context after tie fill:
+  carry-previous `10,864` rows, simple hold `+339.41` ADR, ADR Grid
+  `+1176.45` ADR; raw-spread `10,864` rows, simple hold `+348.06` ADR,
+  ADR Grid `+1157.51` ADR.
+- Institutional read: mixed result. Because ADR Grid remains the legacy matrix
+  scoring path and weekly hold is context, carry-previous is the cleaner
+  temporary tie-fill policy for the existing matrix; raw-spread remains a
+  caveat to review before final Signal Model selection.
+
+Frozen for Gate 54H: no final Signal Model selection, no optimization beyond
+this deterministic tie-break comparison, no outcome grid expansion, no BPR/RRP
+retests, no source refetch/rebuild, no PPP/NEER/REER work, no execution,
+risk-overlay, MT5/live, production, or promotion claim.
+
+Next authorized work: raw-number review of Gate 54F/G/H outputs, then decide
+whether to run the separate Friday Strength fade diagnostic.
+
+Gate 54G: cot-warmup-carry-forward.
+
+Status: completed for review. Receipt:
+`docs/research/GATE54G_COT_WARMUP_CARRY_FORWARD_PROOF_2026-06-23.md`.
+Result: `PASS_COT_WARMUP_CARRY_FORWARD_READY_FOR_REVIEW`. Receipt hash:
+`559855706524CE23EB6B55814FE24015857CC00DFBDB689CF286C9402C276058`.
+
+Gate 54G asks:
+
+```text
+Can CLP use 2016 warmup history and live-style no-lookahead COT carry-forward
+so missing or late COT reports do not create false no-trade weeks or lookahead
+bias?
+```
+
+Gate 54G outputs:
+
+- COT warmup backfill completed before the proof with FX-only missing-date
+  scope: `157` missing COT report dates inserted, stored FX COT report dates
+  now `546`, range `2016-01-05 -> 2026-06-16`, failures `0`.
+- CLP lifecycle now has `156` report lookback, first lifecycle report date
+  `2018-12-24`, and `0` missing metric windows.
+- No-lookahead carry-forward policy: exact COT report date when available;
+  holiday-adjusted report date when exact date is shifted; otherwise latest
+  prior report date. Known 2025 lapse/catch-up rows are not allowed into
+  earlier weeks by report date alone.
+- Carry-forward coverage across `388` expected weeks: `10,793` selected rows,
+  `328` full `28/28` weeks, `60` partial weeks, `0` no-signal weeks, `71` tie
+  rows, and `0` missing lifecycle pair rows.
+- Non-exact COT weeks: `3` holiday-adjusted weeks and `13` 2025 lapse weeks.
+  The 2025 lapse weeks carry forward `2025-09-23` with ages from `7` to `91`
+  days, avoiding lookahead from later catch-up rows.
+- Simple weekly-hold context under carry-forward CLP: `+347.0824` ADR, max DD
+  `-149.0153`, R/DD `2.3292`, profit factor `1.1887`, with `308` missing
+  price rows.
+
+Related Gate 54F receipt was regenerated after warmup:
+`docs/research/GATE54F_STANDALONE_SIGNAL_BASELINES_AND_SOURCE_AVAILABILITY_2026-06-23.md`,
+result `PASS_BASELINE_CONTEXT_READY_FOR_REVIEW`, receipt hash
+`4D79E80013628EA7CB95FC9AA8E3409DCE195ED57480C0E9C04134AA11953FDE`.
+Warmup rows are now `0`. CLP-only exact/matrix-gated diagnostic is now
+`10,262` rows, `310` full weeks, ADR Grid `+1246.4123` ADR / max DD
+`-372.4695` / R/DD `3.3463`, simple weekly hold `+350.0062` ADR / max DD
+`-149.0153` / R/DD `2.3488`.
+
+Frozen for Gate 54G: no final Signal Model selection, no optimization, no
+outcome grid expansion, no BPR/RRP retest, no source refetch/rebuild beyond the
+already completed FX COT warmup insert, no PPP/NEER/REER work, no live,
+production, promotion, MT5 bot, or portfolio/risk-overlay work.
+
+Superseded next step: Gate 54H tie-break comparison is now complete. Use the
+Gate 54H block above as the active next-step pointer.
+
+External Value Regime parking lot for later source-governance gates:
+
+- PPP deviation / fair-value gap.
+- NEER trend / deviation.
+- REER trend / deviation.
+
+### Superseded Historical Gate 51 Notes
+
+Gate 51: rrp-regime-filter-research-suite.
+
+Status: active at Gate 51B COT-lifecycle/RRP interaction stage. Gate 51 tests promoted
+RRP as a diagnostic-only regime filter against the frozen Gate 44 seven-year
+matrix. It must not claim the full COT/Strength/ADR Grid stack is
+institutionally source-governed. Current boundary receipt:
+`app/reports/data-verification/macro-regime/gate51-evidence-boundary-manifest-20260623.{json,md}`.
+Allowed claim: promoted RRP appears useful or not useful against the frozen
+legacy matrix. Forbidden claims: live, ACTIVE, production-ready, portfolio-ready,
+full-stack source-promoted, BPR/PPP/NEER/REER tested, or combined macro-regime
+validated.
+
+Frozen for Gate 51: no Gate 50 source refetch/rebuild, no CPI/rate/RRP source
+contract changes, no lifecycle/promotion-control edits, no release-canon edits,
+no live execution, no production P&L path, no BPR/PPP/NEER/REER/valuation
+combination, and no Gate 52 work.
+
+Gate 51A first diagnostic run completed with
+`npm run verification:gate51-rrp-regime-filter -- --mode=full --thresholds=0,0.25,0.5,1 --top=20`.
+Receipt:
+`app/reports/data-verification/macro-regime/gate51-rrp-regime-filter-diagnostic-full-20260623T164940.{json,md}`;
+receipt hash `8b266ac9d883e06f8d26a6164abe9b70166f700e68f2e51c4d9804a535cb8f96`.
+The run attributed all `183,879` selected pair decisions across `35` variants,
+`372` weeks, and `2,976` promoted RRP currency rows. Blockers: `0` missing
+week results and `0` missing RRP rows; warning: `283` selected rows had no
+stored pair contribution and were zero-filled. First read: RRP is not a broad
+return enhancer when simply blocking fades. It shows narrower diagnostic value
+around Dealer/Commercial plus Strength agreement, especially
+`dealer_commercial_agreement_open_friday_strength_agree` at `1.00` RRP
+percentage-point threshold, where confirm/fade spread was `+0.3761` ADR per
+pair and block-fade delta was `+88.49` ADR. Treat this as diagnostic-only
+against the frozen legacy matrix, not a production filter.
+
+Gate 51A fixed-candidate validation addendum completed with
+`npm run verification:gate51-rrp-regime-filter -- --mode=full --variant-ids=dealer_commercial_agreement_open_friday_strength_agree --thresholds=1 --validation-addendum --candidate-threshold=1 --top=20`.
+Receipt:
+`app/reports/data-verification/macro-regime/gate51-rrp-candidate-validation-addendum-full-20260623T170954.{json,md}`;
+receipt hash `41a077af97b27d4c4050161107c125b65064c05ac209de8f5755bd34059072f2`.
+File SHA-256: JSON
+`28679ae721039d6cafd9e74c6e9d10d45e858059949b344ffc18f37617746183`,
+Markdown
+`c3c7b7fe93fcd4c52979e1e12c000320c455f804b83e0131553b3d37233488da`.
+All reported outcomes are ADR-normalized, not raw returns. For the fixed
+`dealer_commercial_agreement_open_friday_strength_agree` candidate at `1.00`
+RRP threshold, no-RRP baseline was `+125.75` ADR, max DD `-195.65`, R/DD
+`0.64`, path Sharpe `0.24`, profit factor `1.20`; block-fade was `+214.24`
+ADR, max DD `-152.64`, R/DD `1.40`, path Sharpe `0.60`, profit factor `1.65`.
+Fade-only was `-88.49` ADR with path Sharpe `-0.26` and profit factor `0.74`.
+Weak-only carried most of the positive result (`+200.55` ADR, R/DD `2.60`,
+path Sharpe `0.99`, profit factor `2.09`), while confirm-only was weak
+(`+13.69` ADR, R/DD `0.15`, path Sharpe `0.07`). Zero-fill sensitivity is
+immaterial for the candidate: `4` total zero-filled rows, and a `-1` ADR per
+zero-fill stress still leaves block-fade at `+211.24` ADR. Institutional read:
+useful diagnostic evidence for fade suppression, not a confirmed regime model;
+next validation should freeze this candidate and test out-of-sample/year
+stability and placebo controls before any promotion discussion.
+
+Gate 51A cross-variant fixed-threshold comparison completed with
+`npm run verification:gate51-rrp-regime-filter -- --mode=full --thresholds=1 --top=50`.
+Receipt:
+`app/reports/data-verification/macro-regime/gate51-rrp-regime-filter-diagnostic-full-20260623T171820.{json,md}`;
+receipt hash `32bd32224ec15b11eb8075c919f6a007bd44fc72c4bc2cf4f5941a42b45cd22d`.
+File SHA-256: JSON
+`5c663bec2498af9081d7f7dbd1faa8ecfed9aff984d4a2efc27c4892c9aa7150`,
+Markdown
+`a41304d006635c06e12f49edfa2b2d3bef859f5cf4ce25391f31f41c0ca0a381`.
+This is not a new threshold search; it applies the fixed `1.00` RRP threshold
+across all `35` existing Gate 44 variants. Cross-variant read: COT Faces
+variants are usually stronger raw baselines than the Dealer/Commercial
+candidate, but the simple RRP block-fade overlay usually reduces their total
+ADR. Examples: `cot_faces_v1_forced_selected` fell from `+1068.88` to
+`+511.06` ADR; `cot_faces_v1_commercial_delta_contrarian_selected` fell from
+`+1174.87` to `+599.56` ADR. The best COT Faces pocket after block-fade was
+`cot_faces_v1_forced_strength_friday_snapshot_disagree_strength`, which moved
+from `+744.11` to `+682.63` ADR, while R/DD improved from `1.80` to `2.82`,
+path Sharpe from `0.67` to `0.78`, and profit factor from `1.30` to `1.35`.
+So RRP is not a broad overlay for the more complex COT algorithms; at best it
+may act as a risk-quality filter in specific already-strong COT/Strength
+disagreement pockets.
+
+Gate 51B COT-lifecycle/RRP interaction diagnostic completed after repairing a
+CLI parser issue where omitted non-negative numeric flags were read as `0`
+instead of using documented defaults. Valid noncommercial receipt:
+`app/reports/data-verification/macro-regime/gate51-cot-lifecycle-rrp-interaction-noncomm_net-20260623T174919.{json,md}`;
+receipt hash `8db1238b61bd010c71373eb6d24aa2f4755c7c33dfb0625bd5bc0f64f5014ed2`.
+Leveraged-money sensitivity receipt:
+`app/reports/data-verification/macro-regime/gate51-cot-lifecycle-rrp-interaction-lev_money_net-20260623T175256.{json,md}`;
+receipt hash `8faabd31cd73da1e8bc9bedc2e531dd1f09b451df4517d06f09610ddfacb5eb5`.
+Both receipts are ADR-normalized diagnostics against frozen Gate 44 decisions
+and promoted Gate 50 RRP. They do not rerun ADR Grid execution, refetch COT/RRP,
+touch lifecycle controls, or make live/production/promotion claims.
+
+Gate 51B institutional read: COT lifecycle polarity is the stronger COT
+research baseline candidate; RRP is useful as a cross-check inside that
+lifecycle frame, especially when the selected side goes with a crowded COT
+extreme and RRP also confirms that side. For
+`cot_faces_v1_commercial_delta_contrarian_selected` using `noncomm_net`, the
+overall post-warmup baseline was `+1025.78` ADR, R/DD `1.59`, path Sharpe
+`0.64`, profit factor `1.41`. Lifecycle `fade_lean` was strong at `+326.88`
+ADR, `+0.4793` ADR/pair; lifecycle `with_extreme` was bad at `-215.41` ADR,
+`-0.6119` ADR/pair. Inside `with_extreme`, RRP-confirm was the worst pocket:
+`120` rows, `-154.83` ADR, `-1.2902` ADR/pair, R/DD `-0.89`, path Sharpe
+`-0.39`, profit factor `0.38`. Inside `with_lean`, RRP-confirm was also
+negative (`-134.19` ADR), while weak RRP carried the positive result
+(`+416.61` ADR, R/DD `7.66`, path Sharpe `1.62`, profit factor `2.55`).
+The leveraged-money sensitivity broadly confirms the same warning: selected
+sides that go with the lifecycle lean and are RRP-confirmed are negative,
+while `fade_lean` plus RRP-confirm is strong. Caveat: the Gate 51B script is
+formula-compatible with Gate 46, but its bucket counts do not exactly reproduce
+the prior Gate 46 published counts; treat COT lifecycle as a locked research
+baseline candidate only, not a promoted source algorithm, until a later COT
+source-governance/promotion gate audits and locks it.
+
+Gate 51C selector-candidate lockdown completed with
+`npm run verification:gate51-selector-lockdown`. Binding receipt:
+`app/reports/data-verification/macro-regime/gate51-selector-candidate-lockdown-20260623T182917.{json,md}`;
+receipt hash `bd438c8d003ca01193943d4c05dc68b1dc8c44c553e96be04e0a9d43d4ec9418`.
+This receipt is ADR-normalized and uses cached Gate 44/Gate 51 evidence only:
+no source refetch/rebuild, no ADR execution rerun, no live path, and no
+production/promotion claim. It pins Gate 44 matrix identity, Gate 50 RRP
+dataset identity, `sourceContentInvariantHash`
+`fca281b77d508b3ed806fcd59c595dff1cb8e1e4dda82eea178610c1d056f391`,
+and final ACTIVE join hash
+`08723c62e089eddab7cde243a64283c9dd6bc0ebee01a070cfb32e4cb27fdbc7`.
+
+Locked selector candidates for the remainder of Gate 51:
+
+- COT research candidate:
+  `COT Lifecycle Polarity (CLP)`, id
+  `cot_lifecycle_polarity_v0_noncomm_primary`. This means COT lifecycle
+  polarity is the only COT candidate to pair with RRP for now. The legacy
+  `cot_faces_v1_commercial_delta_contrarian_selected` variant remains only the
+  frozen Gate 44 directional harness until a pure lifecycle runner exists.
+  `cot_faces_v1_forced` and `dealer_commercial_agreement` are benchmarks only,
+  not active COT candidates.
+- Strength research candidate:
+  `Strength Fade Accord (SFA)`, id
+  `strength_friday_snapshot_open_canonical_fade_agree`. Full-window metrics:
+  `4,618` rows, `+698.41` ADR, max DD `-208.98`, R/DD `3.34`, path Sharpe
+  `0.67`, profit factor `1.30`, active-week win rate `0.71`, worst year
+  `2020` at `-20.51` ADR. This beat `strength_friday_snapshot_selected`
+  on risk quality (`+1223.29` ADR, DD `-519.96`, R/DD `2.35`, Sharpe `0.61`,
+  PF `1.27`) and beat the derived same-direction Friday+open agreement
+  (`+439.35` ADR, DD `-377.91`, R/DD `1.16`, Sharpe `0.34`, PF `1.17`).
+  `strength_open_canonical_selected` is rejected for now (`R/DD 0.94`,
+  Sharpe `0.33`, DD `-815.21`).
+- Retained simple Strength anchor:
+  `Friday Strength Anchor (FSA)`, id `strength_friday_snapshot_selected`.
+  Keep this as the broad/simple Strength benchmark and future review candidate
+  because the logic is easier to defend than Sunday/Monday open-fade behavior.
+  It is not a second optimization branch during Gate 51, and no promotion claim
+  is made. Its full-window metrics are `10,292` rows, `+1223.29` ADR, DD
+  `-519.96`, R/DD `2.35`, path Sharpe `0.61`, profit factor `1.27`, active
+  win rate `0.67`, and worst year `2024` at `-211.67` ADR.
+
+Gate 51C freeze: do not expand COT Faces, Dealer/Commercial, Strength open-only,
+or new Strength composites during Gate 51 unless this selector-lockdown gate is
+explicitly reopened. Next RRP work should pair only
+`cot_lifecycle_polarity_v0_noncomm_primary` and
+`strength_friday_snapshot_open_canonical_fade_agree`, with
+`strength_friday_snapshot_selected` retained as a simple benchmark/anchor,
+before any BPR/PPP/NEER/REER/valuation or combined-regime gate.
+
+### Locked Previous Gate
+
 Gate 50: macro-source-promotion-proof.
 
-Status: active. This gate is source-only promotion proof, not architecture
-review and not strategy testing. The macro source layer must prove
-promotion-grade weekly frozen snapshots for the same seven-year test window and
-future live settlement path. A macro row can affect a displayed week only when
-its `available_at_utc` is at or before that week snapshot's
-`freeze_target_utc`; for the first seven-year test the freeze target is the
-canonical `week_open_utc`. Any source release after that cutoff is stored as a
-raw observation but first becomes eligible in the next weekly snapshot. Do not
-run combined BPR/rate/CPI logic, signal tests, stop/TP/runner/grid tuning,
-release-canon edits, or Pine verifier work in this gate.
+Status: complete/locked. Historical Gate 50 notes are retained below as source
+evidence only; do not reopen them unless repo evidence contradicts the lock.
 
 Latest state as of 2026-06-23 boundary repair: the prior boundary proof blocker
 is repaired in SEALED diagnostic mode. Repaired parent datasets are rate v6
