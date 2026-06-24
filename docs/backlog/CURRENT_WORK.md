@@ -20,6 +20,33 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
+Gate 55: Friday Strength selected-vs-fade baseline diagnostic.
+
+Status: ready to open in next chat. Handoff prompt:
+`docs/research/GATE55_STRENGTH_BASELINE_HANDOFF_PROMPT_2026-06-23.md`.
+
+Gate 54 decision:
+
+```text
+Gate 54: CLOSE WITH CAVEATS
+Accepted COT baseline: CLP carry-forward + carry-previous tie fill
+Classification: accepted raw COT Signal Model candidate baseline
+Not: final system, live system, MT5 system, production, investor, or promotion claim
+```
+
+Gate 55 first question:
+
+```text
+Does Friday Strength contain broad repeatable directional information, and does
+it work better as selected direction, fade direction, or neither?
+```
+
+Gate 55 hard locks: no COT+Strength combination, no regime filters, no BPR/RRP
+retests, no PPP/NEER/REER work, no execution optimization, no risk overlay, no
+MT5/live/bot work, no final system selection, no outcome-grid expansion, and no
+source refetch/rebuild unless a narrowly scoped Strength source audit proves it
+is required.
+
 Gate 54I: raw-signal-review-packet.
 
 Status: ready for outside/raw-number review. Receipt:
