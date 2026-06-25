@@ -62,6 +62,17 @@ function parseWeekOpenUtc(weekOpenUtc: string) {
   return parsed;
 }
 
+function getFxWeekOpenEt(weekKey: DateTime) {
+  return weekKey
+    .setZone("America/New_York")
+    .set({
+      hour: 17,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    });
+}
+
 export function getCanonicalWeekKeyUtc(value: string | DateTime) {
   const date = typeof value === "string"
     ? DateTime.fromISO(value, { zone: "utc" })
@@ -80,10 +91,12 @@ export function getCanonicalWeekWindow(
   const weekKey = parseWeekOpenUtc(canonicalWeekOpenUtc);
 
   if (assetClass === "fx") {
+    const openEt = getFxWeekOpenEt(weekKey);
+    const closeEt = openEt.plus({ days: 5 });
     return {
       periodOpenUtc: canonicalWeekOpenUtc,
-      openUtc: weekKey.minus({ hours: 2 }),
-      closeUtc: weekKey.plus({ hours: 118 }),
+      openUtc: openEt.toUTC(),
+      closeUtc: closeEt.toUTC(),
     };
   }
 
@@ -143,6 +156,20 @@ export function listCanonicalDailyWindowsForWeek(
   assetClass: AssetClass,
 ): CanonicalPriceWindow[] {
   const weekly = getCanonicalWeekWindow(weekOpenUtc, assetClass);
+  if (assetClass === "fx") {
+    const weekKey = parseWeekOpenUtc(normalizeWeekOpenUtc(weekOpenUtc) ?? weekOpenUtc);
+    const weekOpenEt = getFxWeekOpenEt(weekKey);
+    return Array.from({ length: 5 }, (_, index) => {
+      const openUtc = weekOpenEt.plus({ days: index }).toUTC();
+      const closeUtc = weekOpenEt.plus({ days: index + 1 }).toUTC();
+      return {
+        periodOpenUtc: openUtc.toISO() ?? weekly.periodOpenUtc,
+        openUtc,
+        closeUtc: closeUtc > weekly.closeUtc ? weekly.closeUtc : closeUtc,
+      };
+    });
+  }
+
   const count = assetClass === "crypto" ? 7 : 5;
   const closeOffsetHours = assetClass === "indices" || assetClass === "commodities" ? 23 : 24;
   const windows: CanonicalPriceWindow[] = [];

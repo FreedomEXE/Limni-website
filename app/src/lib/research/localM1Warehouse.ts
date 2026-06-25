@@ -54,6 +54,8 @@ export type LocalStrengthSnapshotRow = {
   derivationVersion: string;
 };
 
+const LOCAL_M1_COMPLETE_COVERAGE_PCT = 100;
+
 type LocalM1DbRow = {
   symbol: string;
   asset_class: AssetClass;
@@ -563,7 +565,7 @@ function coverageStatus(row: {
     return "in_progress" as const;
   }
   if (row.actualBars === 0) return "missing" as const;
-  if (row.coveragePct >= 90) return "complete" as const;
+  if (row.coveragePct >= LOCAL_M1_COMPLETE_COVERAGE_PCT) return "complete" as const;
   return "partial" as const;
 }
 

@@ -49,6 +49,7 @@ type Args = {
   continueOnError: boolean;
   weeks: string[] | null;
   allClosedWeeks: boolean;
+  assetClass: AssetClass | "all";
 };
 
 function parseArgs(): Args {
@@ -60,6 +61,10 @@ function parseArgs(): Args {
     return index >= 0 ? args[index + 1] ?? null : null;
   };
   const weeksArg = valueFor("weeks");
+  const assetClassArg = (valueFor("asset-class") ?? "all").trim().toLowerCase();
+  if (!["all", "fx", "indices", "commodities", "crypto"].includes(assetClassArg)) {
+    throw new Error("--asset-class must be all, fx, indices, commodities, or crypto.");
+  }
   return {
     skipPairReturns: args.includes("--skip-pair-returns"),
     skipStrategyShards: args.includes("--skip-strategy-shards"),
@@ -69,6 +74,7 @@ function parseArgs(): Args {
       ? weeksArg.split(",").map((value) => value.trim()).filter(Boolean)
       : null,
     allClosedWeeks: args.includes("--all-closed-weeks"),
+    assetClass: assetClassArg as AssetClass | "all",
   };
 }
 
@@ -186,8 +192,10 @@ async function upsertExecutionWeeklyReturn(options: {
   return { ok: true, reason: null };
 }
 
-async function refreshPairReturns(weeks: string[]) {
-  const activeInstruments = CANONICAL_INSTRUMENTS.filter((instrument) => instrument.isActive);
+async function refreshPairReturns(weeks: string[], assetClass: AssetClass | "all") {
+  const activeInstruments = CANONICAL_INSTRUMENTS.filter((instrument) => (
+    instrument.isActive && (assetClass === "all" || instrument.assetClass === assetClass)
+  ));
   let canonicalUpserted = 0;
   let executionUpserted = 0;
   const missing: string[] = [];
@@ -281,11 +289,12 @@ async function main() {
     generatedAtUtc: new Date().toISOString(),
     executionAnchorVersion: EXECUTION_ANCHOR_VERSION,
     historyWindow: args.allClosedWeeks ? "all-closed-weeks" : ACTIVE_BASELINE_PERFORMANCE_HISTORY_WINDOW,
+    assetClass: args.assetClass,
     weeks,
   };
 
   if (!args.skipPairReturns) {
-    report.pairReturns = await refreshPairReturns(weeks);
+    report.pairReturns = await refreshPairReturns(weeks, args.assetClass);
   }
 
   if (!args.skipStrategyShards) {

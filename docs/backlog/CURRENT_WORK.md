@@ -20,65 +20,251 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 55: Friday Strength selected-vs-fade baseline diagnostic.
+Gate 55: Friday Strength selected-vs-fade baseline lock.
 
-Status: ready to open in next chat. Handoff prompt:
-`docs/research/GATE55_STRENGTH_BASELINE_HANDOFF_PROMPT_2026-06-23.md`.
+Status: baseline lock ready for review. Gate 55A legacy selected-vs-fade
+diagnostic is closed as blocked by Strength source/coverage. Gate 55E closed
+the Frozen Canonical Price Bundle v1 blocker, Gate 55F closed the canonical
+Strength source-context blocker, and Gate 55G completed the canonical 1m
+Friday Strength selected-vs-fade diagnostic.
 
-Gate 54 decision:
-
-```text
-Gate 54: CLOSE WITH CAVEATS
-Accepted COT baseline: CLP carry-forward + carry-previous tie fill
-Classification: accepted raw COT Signal Model candidate baseline
-Not: final system, live system, MT5 system, production, investor, or promotion claim
-```
-
-Gate 55 first question:
+Gate 55G lock interpretation:
 
 ```text
-Does Friday Strength contain broad repeatable directional information, and does
-it work better as selected direction, fade direction, or neither?
+STRENGTH BASELINE LOCK FOR ADR GRID: Friday Strength selected
 ```
 
-Gate 55 hard locks: no COT+Strength combination, no regime filters, no BPR/RRP
-retests, no PPP/NEER/REER work, no execution optimization, no risk overlay, no
-MT5/live/bot work, no final system selection, no outcome-grid expansion, and no
-source refetch/rebuild unless a narrowly scoped Strength source audit proves it
-is required.
+Required caveat: Friday Strength is execution-sensitive. Selected wins the
+canonical 1m ADR Grid diagnostic, while fade wins simple weekly hold. This does
+not authorize COT+Strength combination, regime overlays, execution
+optimization, risk overlays, live/MT5, or final combined system selection.
 
-Gate 54I: raw-signal-review-packet.
+Active Gate 55 artifacts:
 
-Status: ready for outside/raw-number review. Receipt:
-`docs/research/GATE54I_RAW_SIGNAL_REVIEW_PACKET_2026-06-23.md`.
-Outside review prompt:
-`docs/research/GATE54_COT_BASELINE_OUTSIDE_REVIEW_PROMPT_2026-06-23.md`.
+- Gate 55A receipt:
+  `docs/research/GATE55A_LEGACY_FRIDAY_STRENGTH_DIAGNOSTIC_RECEIPT_2026-06-24.md`
+- Gate 55B plan:
+  `docs/research/GATE55B_STRENGTH_SOURCE_FEATURE_CONTRACT_REBUILD_PLAN_2026-06-24.md`
+- Gate 55B source-owner inventory:
+  `docs/research/GATE55B_STRENGTH_SOURCE_OWNER_INVENTORY_2026-06-24.md`
+- Gate 55B backfill feasibility receipt:
+  `docs/research/GATE55B_STRENGTH_BACKFILL_FEASIBILITY_RECEIPT_2026-06-24.md`
+- Gate 55B M1 warmup repair plan:
+  `docs/research/GATE55B_M1_WARMUP_REPAIR_PLAN_2026-06-24.md`
+- Gate 55B local M1 warmup repair receipt:
+  `docs/research/GATE55B_LOCAL_M1_WARMUP_REPAIR_RECEIPT_2026-06-24.md`
+- Gate 55C holiday/session-aware coverage rule:
+  `docs/research/GATE55C_HOLIDAY_SESSION_STRENGTH_COVERAGE_RULE_2026-06-24.md`
+- Gate 55D institutional price-truth boundary gap:
+  `docs/research/GATE55D_INSTITUTIONAL_PRICE_TRUTH_BOUNDARY_GAP_2026-06-24.md`
+- Gate 55E frozen canonical price bundle v1 receipt:
+  `docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md`
+- Gate 55F canonical Strength source-context proof:
+  `docs/research/GATE55F_CANONICAL_STRENGTH_SOURCE_CONTEXT_PROOF_2026-06-25.md`
+- Gate 55G canonical Friday Strength selected-vs-fade baseline:
+  `docs/research/GATE55G_CANONICAL_FRIDAY_STRENGTH_SELECTED_VS_FADE_BASELINE_2026-06-25.md`
+- Legacy smoke command:
+  `npm run verification:gate55-friday-strength-baseline -- --no-doc-copy --out-dir=temp/gate55-strength-baseline-final-smoke`
+- Legacy smoke receipt hash:
+  `8F2804C7593E9AF14D406BB27C4C46A63B51BEA5870ECEFBFD2E3E791421B6AE`
 
-Working policy accepted by Freedom:
+Gate 55A decision:
 
 ```text
-CLP tie-break = carry_previous_clp_side
+Status: BLOCKED_BY_STRENGTH_SOURCE_OR_COVERAGE
+Secondary classification: EXECUTION_SENSITIVE_LEGACY_DIAGNOSTIC
 ```
 
-Reason: it is simpler and outperformed raw underlying COT spread on the legacy
-ADR Grid matrix score. Raw COT spread performed better on simple weekly hold
-and remains a review caveat, not the working policy.
+Gate 55 does not fail Strength as a concept. It fails the current Friday
+Strength artifact as an institutional-grade feature contract.
 
-Gate 54I review focus:
+Gate 55A evidence:
 
-- CLP carry-forward + carry-previous tie fill: `10,864` rows, `388` full
-  weeks, `0` partial weeks, ADR Grid `+1176.4520` ADR / DD `-358.9404` /
-  R/DD `3.2776`, simple weekly hold `+339.4126` ADR / DD `-151.9313` /
-  R/DD `2.2340`.
-- Friday Strength standalone: ADR Grid `+1223.2949` ADR but simple weekly hold
-  `-144.3625` ADR, so Strength should not be added as a plain confirm layer
-  without separate selected-vs-fade review.
+- Native Friday Strength rows: `10,292` directional, `124` missing, `0`
+  neutral/tie rows.
+- Carry policy tested: `carry_previous_friday_strength_side`.
+- Carry result: `10,836` rows, `544` carry-filled rows, `28` unresolved rows,
+  `387` full weeks, `0` partial weeks.
+- Remaining unresolved block: `2019-01-07`, all `28` pair rows. Filling it
+  requires approved pre-window Strength warmup/backfill or explicit fallback.
+- Source observability gap: deeper Strength tables do not cover the historical
+  matrix window. `strength_history_snapshots` begins `2024-12-30`, while
+  `currency_strength_snapshots` and `strength_weekly_snapshots` begin
+  `2026-01-19`.
+- Selected carry: ADR Grid `+1223.1925` ADR, R/DD `2.4064`, PF `1.2677`;
+  weekly hold `-143.4070` ADR, PF `0.9283`.
+- Fade carry: ADR Grid `+573.7539` ADR, R/DD `0.8484`, PF `1.1115`;
+  weekly hold `+143.4070` ADR, PF `1.0772`.
 
-Next authorized work: outside/raw-number review of Gate 54I. If accepted, run a
-narrow Friday Strength fade diagnostic. Still forbidden: final Signal Model
-selection, broad optimization, outcome grid expansion, BPR/RRP retests,
-PPP/NEER/REER work, execution/risk-overlay changes, MT5/live, production, or
-promotion claims.
+Gate 55B active scope:
+
+- Define Strength raw inputs and availability.
+- Define point-in-time rules.
+- Define historical backfill/warmup requirements before `2019-01-07`.
+- Define immutable source hashes and lineage receipts.
+- Define weekly 28-pair completeness rules.
+- Define missing, neutral, tie, stale, and fallback policy.
+- Define daily, weekly, and monthly Strength horizons.
+- Define raw strength values, pair-relative deltas, ranks, z-scores,
+  percentile ranks, trend, and acceleration fields.
+- Define COT-style Strength buckets: follow-strength, fade-overextension, and
+  neutral/no-edge.
+- Define pass/fail receipts required before selected-vs-fade testing reopens.
+
+Gate 55B source-owner inventory result:
+
+```text
+Status: SOURCE_OWNERS_MAPPED_REBUILD_REQUIRED
+Preferred rebuild base: app/src/lib/strength/historicalStrength.ts
+Current derivation candidate: fx_m1_currency_strength_v1
+No-write estimate smoke passed with --week=2019-01-07 --estimate-only --windows=1h,4h,24h,1w,1m
+Seven-year 15m estimate for those five horizons: 6,988,800 currency rows; pair spreads should be computed from the index, not materialized.
+```
+
+Gate 55B backfill feasibility result:
+
+```text
+Status: BACKFILL_FEASIBILITY_BLOCKED_BY_2018_M1_WARMUP
+Local SQLite M1: 2018-12-17, 2018-12-24, and 2018-12-31 are all 0/28 complete; 2019-01-07 is 28/28 complete.
+Postgres canonical M1: 2018-12-17, 2018-12-24, and 2018-12-31 are all 0/28 complete; 2019-01-07 is 11 complete, 1 partial, 16 missing.
+Existing Strength history: readExisting rows=0 for 2019-01-07; weekly context available=0/28 for both Friday-close and market-open points.
+```
+
+Next Gate 55B decision: approve or reject a no-outcome M1 warmup/backfill plan
+for `2018-12-17` through `2019-01-07`, including source identity, storage
+target, and hash receipts. Do not reopen selected-vs-fade testing until this
+source coverage and feature lineage passes.
+
+Gate 55B M1 warmup repair plan:
+
+```text
+Status: EXECUTED_LOCAL_M1_WRITE
+Recommended target: local SQLite data/canonical-m1/canonical-m1.sqlite
+Repair weeks: 2018-12-17, 2018-12-24, 2018-12-31 only
+Reason: local SQLite already has 2019-01-07 at 28/28; Postgres is missing the same warmup and is also incomplete for 2019-01-07.
+Executed command after Freedom said continue:
+npx tsx app/scripts/verification/plan-local-m1-backfill.ts --from-year=2018 --to-year=2019 --latest-display-week=2019-01-07 --chunk-weeks=1 --from-chunk=51 --to-chunk=53 --execute --concurrency=2 --write
+```
+
+Gate 55B local M1 warmup repair result:
+
+```text
+Status: LOCAL_M1_WARMUP_REPAIRED_WITH_MONTHLY_COVERAGE_CAVEAT
+Local missing rows fixed: chunks 51..54 now have missing=0.
+Post-write local coverage: 2018-12-17 complete=27 partial=1; 2018-12-24 complete=0 partial=28; 2018-12-31 complete=0 partial=28; 2019-01-07 complete=28 partial=0.
+Reason for partial: generic helper expects 7,200 calendar minutes per FX week; Christmas/New Year provider bars are lower.
+No-write Strength context using LIMNI_M1_WAREHOUSE=sqlite: friday_close available=28/28, long=13, short=15; market_open_confirmation available=28/28, long=20, short=8.
+Raw local M1 proof window: 709,380 rows; SHA-256 83C604B68A1A2D6B1228BA09F9AEB87CAD3BE6FC290E90A94658DB093BFC3B36.
+Coverage manifest SHA-256: E150099E55D83D7B20D3A7471777B55BBEF3EE5EB18A867F5DB1EF793CB00E65.
+```
+
+Gate 55E has closed the canonical M1 price-layer blocker. Gate 55F has closed
+the canonical Friday Strength source-context blocker.
+
+Gate 55G result:
+
+```text
+Status: PASS_CANONICAL_FRIDAY_STRENGTH_SELECTED_VS_FADE_READY_FOR_BASELINE_LOCK_REVIEW
+Receipt: app/reports/data-verification/gate55/gate55g-friday-strength-selected-vs-fade-20260625T052431Z.json
+Receipt hash: 144CE30D67D587D8682958BF55B97F204C6950504A60556C525DED8C7AD8188F
+JSON SHA-256: D55EF89A1926FD454225E21A33E238DF7AE15AFEDBFBC0E1857EDF09C50F22B2
+Markdown SHA-256: 49FAE2FEA18D0717DA5B3E3F1CA0297DF83ACF2FD1C464C8D1A9EB344D167061
+Weeks: 387
+Rows: 10,836/10,836 retained; 0 removed; 387/387 full source weeks; 0 missing grid price rows; 0 missing hold price rows.
+Selected ADR Grid: +1311.8526 ADR; DD -698.5889; R/DD 1.8779; PF 1.2674; fills 119,147.
+Fade ADR Grid: +988.7181 ADR; DD -653.5674; R/DD 1.5128; PF 1.1794; fills 118,460.
+Selected weekly hold: -315.1911 ADR; DD -377.0083; R/DD -0.8360; PF 0.8666.
+Fade weekly hold: +315.1911 ADR; DD -230.8041; R/DD 1.3656; PF 1.1540.
+Read: selected is the ADR Grid Strength baseline lock; fade remains weekly-hold context/sensitivity.
+```
+
+Gate 55F result:
+
+```text
+Status: PASS_CANONICAL_STRENGTH_SOURCE_CONTEXT_28_28_FULL_HORIZON
+Receipt: app/reports/data-verification/gate55/gate55f-strength-source-context-20260625T024725Z.json
+Receipt hash: 6A1E553CE7F5F1014F75A545FB0000B6C6238AB22813DF597766BDF14D9F9959
+JSON SHA-256: 1CBB0F7A65575ABE89A5322B7A548BD4A7604DBD6FC606959F6384374E6E228F
+Markdown SHA-256: 52A88F35A249530C961B0B11C0FF08D3361B432197263EDB4FF929D834D11753
+Weeks: 387
+Friday close: retained 10,836/10,836; full signal weeks 387/387; full horizon weeks 387/387; missing window lookups 0.
+Market-open confirmation: retained 10,836/10,836; full signal weeks 387/387; full horizon weeks 387/387; missing window lookups 0.
+```
+
+Gate 55C holiday/session-aware coverage rule:
+
+```text
+Status: SUPERSEDED_BY_GATE55E_100_PERCENT_SOURCE_STANDARD
+Corrected receipt hash: 3B70BAEADA910E6E2E8DFAB0C1962A30378A993FCA844BC3A1B4D4401332F63C
+Reviewed rule: expected coverage uses observed tradable session minutes, not idealized calendar minutes.
+Superseded denominator: the old `14/28` quorum rule is not the active standard.
+Gate 55E now defines an active FX minute as any canonical OANDA provider-minute
+inside the approved New York 5pm FX session window; all 28 pairs must have a
+canonical row for every active minute.
+Correction: the current code's 90% threshold is not accepted as final institutional governance.
+Freedom requires 100% M1 source quality for institutional evidence unless a separate explicit waiver is approved.
+Prior 99% proof on repaired local warehouse already failed: 2018-12-17 pass/fail 17/11, 2018-12-24 9/19, 2018-12-31 13/15, 2019-01-07 15/13, Friday monthly lookback 12/16, market-open monthly lookback 14/14.
+The later Gate 55E canonical Postgres repair resolved the pair-minute gaps for
+the frozen FX M1 bundle.
+Selected-vs-fade testing is authorized only after Strength source context is
+rebuilt/regenerated from the frozen Gate 55E bundle.
+```
+
+Next Gate 55 step: run canonical Friday Strength selected-vs-fade under ADR
+Grid and simple weekly hold using the Gate 55E price bundle and Gate 55F
+source-context rule. Do not use the legacy Gate 44 source-context rows as final
+evidence.
+
+Gate 55D institutional price-truth boundary gap:
+
+```text
+Status: HIGH_SEVERITY_PRICE_TRUTH_BOUNDARY_GAP_ACKNOWLEDGED
+Classification: architectural evidence-boundary gap.
+Core issue: COT outcomes, Strength staging, ADR Grid, weekly hold, path bars, pair-period returns, and future MT5 parity are not yet bound by one frozen price_bundle_id.
+Gate 54 preserved with caveats: it locked the COT raw Signal Model candidate baseline under the then-current outcome price layer, not permanent COT performance across future price-bundle rebuilds.
+Gate 55 expanded: Strength cannot be judged institutionally until source construction is valid and Strength/COT outcomes are evaluated against the same audited price truth.
+Allowed now: local staging audits, M1 gap audit, price_bundle_id proposal, canonical price bundle contract, restatement rules.
+Not allowed: institutional COT-vs-Strength comparison, COT+Strength combination, final selected-vs-fade claim, execution/risk/live/system selection.
+```
+
+Gate 55E Frozen Canonical Price Bundle v1:
+
+```text
+Status: PASS_CANONICAL_FX_M1_100_PERCENT
+Frozen bundle label: gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953
+Architecture decision: do not build a new backtest engine or warehouse.
+Canonical bars: canonical_price_bars is the shared bar source.
+Canonical M1 rule: institutional M1 coverage is 100% of expected tradable session bars unless Freedom explicitly approves a named waiver.
+Fast artifacts: pair_period_returns, ADR maps, path bars, Weekly Hold outcomes, Strength snapshots, regime joins, execution logs, risk overlays, and future MT5 parity receipts must trace to the same price_bundle_id.
+Local SQLite: staging/import repair only, not final institutional evidence unless promoted into canonical_price_bars and included in the bundle hash.
+Receipt rule: any price-derived institutional result without price_bundle_id is diagnostic-only / not promotion-eligible.
+Smoke result: existing canonical FX 1h bars can repair weekly outcome rows without changing the backtest engine; four smoke weeks now have 28/28 canonical and 28/28 execution FX weekly pair_period_returns.
+Canonical M1 warmup promotion: four early FX weeks were promoted from local OANDA staging into canonical_price_bars with provider rows preserved and no-tick session gaps filled as derived_no_tick_forward_fill_v1.
+Canonical M1 coverage smoke: npm run performance:backfill-hourly -- --coverage-only --asset=fx --timeframe=1m --weeks=2018-12-17T00:00:00.000Z,2018-12-24T00:00:00.000Z,2018-12-31T00:00:00.000Z,2019-01-07T00:00:00.000Z -> complete=112, partial=0, missing=0, lowest=100.00%.
+Strength source-contract smoke after session-aware denominator plus warmup guard: 2018-12-17 Friday close 0/28 and market open 28/28 with warmup-limited windows; 2018-12-24 and 2018-12-31 both 28/28 but 4/5-window warmup-limited; 2019-01-07 is the first clean full-horizon week with Friday close 28/28, market-open 28/28, and displayed pairs at 5/5 windows.
+Code locks: Strength M1 pair-window default is 100%; canonical 1m coverage status requires 100%; local staging coverage status also requires 100%; Strength window coverage now uses canonical session minutes plus a warmup guard so early missing history cannot pass as complete.
+Final full audit: 391 weeks, 10,948/10,948 complete pair-weeks, 0 partial pair-weeks, 0 source-gap weeks, 78,149,792/78,149,792 active pair-minute rows, lowest coverage 100.000000%.
+Final receipt: app/reports/data-verification/gate55/gate55e-canonical-fx-m1-bundle-20260624T232148Z.json
+Final JSON SHA-256: 8E37E953D0748406EE04A0FFF64ACEA778B672ACCF681DEB4B9C7C0BCB0F128F
+Final Gate 55E receipt: docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md
+```
+
+Any Strength selected-vs-fade diagnostic after this point must declare the Gate
+55E bundle label above or a later frozen successor bundle. Local-only Strength
+diagnostics remain staging evidence unless promoted through canonical lineage.
+
+Gate 55B hard locks: no choosing best horizon by PnL, no threshold
+optimization, no pair filtering, no COT+Strength combination, no regime
+overlay, no BPR/RRP retests, no PPP/NEER/REER work, no execution optimization,
+no risk overlay, no MT5/live/bot work, no production/live claims, and no final
+Signal Model selection.
+
+Gate 54 accepted signal baseline remains frozen for later context only:
+CLP carry-forward + carry-previous tie fill. Gate 54 is not reopened by Gate
+55 unless Gate 55 finds a reproducibility defect that directly contradicts the
+accepted COT signal baseline. Gate 54 performance numbers are bound to the
+then-current outcome price layer and may need restatement under a future
+audited price bundle.
 
 Gate 54H: clp-tie-break-comparison.
 

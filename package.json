@@ -64,6 +64,8 @@
     "verification:gate54f-standalone-signal-baselines": "tsx app/scripts/verification/audit-gate54f-standalone-signal-baselines.ts",
     "verification:gate54g-cot-warmup-carry-forward": "tsx app/scripts/verification/audit-gate54g-cot-warmup-carry-forward.ts",
     "verification:gate54h-clp-tie-break-comparison": "tsx app/scripts/verification/audit-gate54h-clp-tie-break-comparison.ts",
+    "verification:gate55-friday-strength-baseline": "tsx app/scripts/verification/audit-gate55-friday-strength-baseline.ts",
+    "verification:gate55f-strength-source-context": "tsx app/scripts/verification/audit-gate55f-strength-source-context.ts",
     "cot:backfill-deep-history": "tsx app/scripts/backfill-cot-deep-history.ts",
     "verification:export-selected-ledger-metrics": "tsx app/scripts/verification/export-selected-ledger-metrics.ts",
     "verification:inspect-adr-grid-week": "tsx app/scripts/verification/inspect-adr-grid-week.ts",

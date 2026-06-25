@@ -112,6 +112,8 @@ type CanonicalPathBarUpsertRow = {
 };
 
 const CANONICAL_PATH_BAR_UPSERT_BATCH_SIZE = 500;
+const CANONICAL_M1_COMPLETE_COVERAGE_PCT = 100;
+const LEGACY_INTRADAY_COMPLETE_COVERAGE_PCT = 90;
 
 function normalizeTimeframe(timeframe?: CanonicalPathBackfillTimeframe): CanonicalPathBackfillTimeframe {
   return timeframe === "1m" ? "1m" : "1h";
@@ -479,6 +481,13 @@ function expectedHourlyBars(
   return Math.ceil(window.closeUtc.diff(window.openUtc, "minutes").minutes / timeframeMinutes(timeframe));
 }
 
+function shouldUseSessionAwareCoverage(
+  assetClass: AssetClass,
+  timeframe: CanonicalPathBackfillTimeframe,
+) {
+  return assetClass === "fx" && timeframe === "1m";
+}
+
 function coverageStatus(row: {
   weekOpenUtc: string;
   assetClass: AssetClass;
@@ -492,7 +501,10 @@ function coverageStatus(row: {
     return "in_progress" as const;
   }
   if (row.actualBars === 0) return "missing" as const;
-  if (row.coveragePct >= 90) return "complete" as const;
+  const completeCoveragePct = row.timeframe === "1m"
+    ? CANONICAL_M1_COMPLETE_COVERAGE_PCT
+    : LEGACY_INTRADAY_COMPLETE_COVERAGE_PCT;
+  if (row.coveragePct >= completeCoveragePct) return "complete" as const;
   return "partial" as const;
 }
 
@@ -605,12 +617,70 @@ export async function getCanonicalHourlyCoverage(
       row,
     ]),
   );
+  const fxM1Symbols = instruments
+    .filter((instrument) => shouldUseSessionAwareCoverage(instrument.assetClass, timeframe))
+    .map((instrument) => instrument.symbol.toUpperCase());
+  const sessionAwareExpectedByWeek = new Map<string, number>();
+  if (fxM1Symbols.length > 0) {
+    const symbolBranches = fxM1Symbols
+      .map((_, index) => `
+         SELECT r.week_open_utc, b.bar_open_utc
+           FROM requested r
+           JOIN canonical_price_bars b
+             ON b.symbol = $${index + 2}
+            AND b.asset_class = 'fx'
+            AND b.timeframe = '1m'
+            AND b.bar_open_utc >= r.open_utc
+            AND b.bar_open_utc < r.close_utc`)
+      .join("\n         UNION ALL\n");
+    const rows = await query<{
+      week_open_utc: string;
+      expected_bars: string | number;
+    }>(
+      `WITH requested AS (
+         SELECT *
+           FROM jsonb_to_recordset($1::jsonb) AS r(
+             week_open_utc text,
+             open_utc timestamptz,
+             close_utc timestamptz
+           )
+       ),
+       active_minutes AS (
+         ${symbolBranches}
+       )
+       SELECT week_open_utc,
+              COUNT(DISTINCT bar_open_utc) AS expected_bars
+         FROM active_minutes
+        GROUP BY week_open_utc`,
+      [
+        JSON.stringify(
+          [...new Set(weeks)].map((weekOpenUtc) => {
+            const window = getCanonicalWeekWindow(weekOpenUtc, "fx");
+            return {
+              week_open_utc: weekOpenUtc,
+              open_utc: window.openUtc.toISO(),
+              close_utc: window.closeUtc.toISO(),
+            };
+          }),
+        ),
+        ...fxM1Symbols,
+      ],
+    );
+    for (const row of rows) {
+      sessionAwareExpectedByWeek.set(row.week_open_utc, Number(row.expected_bars));
+    }
+  }
 
   const rows: CanonicalHourlyCoverageRow[] = [];
   for (const instrument of instruments) {
     for (const weekOpenUtc of weeks) {
       const coverage = coverageByKey.get(`${instrument.symbol.toUpperCase()}|${instrument.assetClass}|${weekOpenUtc}`);
-      const expectedBars = expectedHourlyBars(weekOpenUtc, instrument.assetClass, timeframe);
+      const sessionAwareExpectedBars = shouldUseSessionAwareCoverage(instrument.assetClass, timeframe)
+        ? sessionAwareExpectedByWeek.get(weekOpenUtc) ?? 0
+        : 0;
+      const expectedBars = sessionAwareExpectedBars > 0
+        ? sessionAwareExpectedBars
+        : expectedHourlyBars(weekOpenUtc, instrument.assetClass, timeframe);
       const actualBars = Number(coverage?.actual_bars ?? 0);
       const coveragePct = expectedBars > 0 ? round((actualBars / expectedBars) * 100, 2) : 100;
       const row = {

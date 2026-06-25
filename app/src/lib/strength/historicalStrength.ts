@@ -142,10 +142,12 @@ const WINDOW_MINUTES: Record<HistoricalStrengthWindow, number> = {
   "1m": 28800,
 };
 
-const DEFAULT_MIN_PAIR_COVERAGE_PCT = 90;
+export const INSTITUTIONAL_M1_PAIR_COVERAGE_PCT = 100;
+const DEFAULT_MIN_PAIR_COVERAGE_PCT = INSTITUTIONAL_M1_PAIR_COVERAGE_PCT;
 const STRENGTH_DIRECTION_THRESHOLD = 5;
 const WRITE_BATCH_SIZE = 500;
 const MAX_SOURCE_FRESH_LAG_MS = 60_000;
+const MAX_SESSION_REOPEN_LAG_MS = 360 * 60_000;
 const DEFAULT_MARKET_OPEN_FORWARD_MINUTES = 180;
 
 const FX_PAIR_MAP = PAIRS_BY_ASSET_CLASS.fx.map((pairDef) => ({
@@ -274,6 +276,87 @@ function lowerBoundOpenMs(rows: CanonicalM1Bar[], targetMs: number): number {
     else hi = mid;
   }
   return lo;
+}
+
+function lowerBoundNumber(values: number[], target: number): number {
+  let lo = 0;
+  let hi = values.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if ((values[mid] ?? Number.POSITIVE_INFINITY) < target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function isKnownFxHolidayClosure(openMs: number): boolean {
+  const openUtc = DateTime.fromMillis(openMs, { zone: "utc" });
+  for (const year of [openUtc.year - 1, openUtc.year]) {
+    const christmasStart = DateTime.utc(year, 12, 24, 22, 0).toMillis();
+    const christmasEnd = DateTime.utc(year, 12, 26, 22, 0).toMillis();
+    const newYearStart = DateTime.utc(year, 12, 31, 22, 0).toMillis();
+    const newYearEnd = DateTime.utc(year + 1, 1, 2, 22, 0).toMillis();
+    if (
+      (openMs >= christmasStart && openMs < christmasEnd) ||
+      (openMs >= newYearStart && openMs < newYearEnd)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isRegularFxTradingMinute(openMs: number): boolean {
+  const openNy = DateTime.fromMillis(openMs, { zone: "utc" }).setZone("America/New_York");
+  const minuteOfDay = openNy.hour * 60 + openNy.minute;
+  if (openNy.weekday === 6) return false;
+  if (openNy.weekday === 7) return minuteOfDay >= 17 * 60;
+  if (openNy.weekday === 5) return minuteOfDay < 17 * 60;
+  return true;
+}
+
+function buildSessionMinuteIndex(barsByPair: Map<string, CanonicalM1Bar[]>): number[] {
+  const openCounts = new Map<number, number>();
+  for (const bars of barsByPair.values()) {
+    let lastOpenMs: number | null = null;
+    for (const bar of bars) {
+      if (!Number.isFinite(bar.openMs) || bar.openMs === lastOpenMs) continue;
+      openCounts.set(bar.openMs, (openCounts.get(bar.openMs) ?? 0) + 1);
+      lastOpenMs = bar.openMs;
+    }
+  }
+  const requiredPairs = barsByPair.size;
+  return [...openCounts.entries()]
+    .filter(([, count]) => count === requiredPairs)
+    .map(([openMs]) => openMs)
+    .sort((left, right) => left - right);
+}
+
+function firstExpectedFxTradingMinuteOnOrAfter(fromMs: number, toMs: number): number | null {
+  const firstMinuteMs = Math.ceil(fromMs / 60_000) * 60_000;
+  for (let openMs = firstMinuteMs; openMs < toMs; openMs += 60_000) {
+    if (isRegularFxTradingMinute(openMs) && !isKnownFxHolidayClosure(openMs)) {
+      return openMs;
+    }
+  }
+  return null;
+}
+
+function hasWarmupCoverage(sessionOpenMs: number[], fromMs: number, toMs: number): boolean {
+  const firstExpectedOpenMs = firstExpectedFxTradingMinuteOnOrAfter(fromMs, toMs);
+  if (firstExpectedOpenMs === null) return true;
+  const firstSessionIndex = lowerBoundNumber(sessionOpenMs, firstExpectedOpenMs);
+  const firstSessionOpenMs = sessionOpenMs[firstSessionIndex];
+  if (!Number.isFinite(firstSessionOpenMs)) return false;
+  return firstSessionOpenMs <= firstExpectedOpenMs ||
+    firstSessionOpenMs - firstExpectedOpenMs <= MAX_SESSION_REOPEN_LAG_MS;
+}
+
+function countSessionMinutes(sessionOpenMs: number[], fromMs: number, toMs: number): number {
+  if (toMs <= fromMs || sessionOpenMs.length === 0) return 0;
+  const startIndex = lowerBoundNumber(sessionOpenMs, fromMs);
+  const endExclusive = lowerBoundNumber(sessionOpenMs, toMs);
+  return Math.max(0, endExclusive - startIndex);
 }
 
 function classifySpread(spread: number | null): Direction {
@@ -461,18 +544,27 @@ function computePairWindowReturn(options: {
   bars: CanonicalM1Bar[];
   snapshotMs: number;
   windowMinutes: number;
+  expectedBars: number;
+  warmupComplete: boolean;
   minPairCoveragePct: number;
 }): PairWindowReturn {
-  const expectedBars = options.windowMinutes;
   const windowStartMs = options.snapshotMs - options.windowMinutes * 60_000;
   const startIndex = lowerBoundOpenMs(options.bars, windowStartMs);
   const endExclusive = lowerBoundOpenMs(options.bars, options.snapshotMs);
   const actualBars = Math.max(0, endExclusive - startIndex);
-  const coveragePct = expectedBars > 0 ? (actualBars / expectedBars) * 100 : 0;
+  const rawExpectedBars = options.warmupComplete
+    ? Math.max(0, options.expectedBars)
+    : Math.max(0, options.expectedBars, actualBars + 1);
+  const expectedBars = options.warmupComplete && actualBars > 0
+    ? Math.min(rawExpectedBars, actualBars)
+    : rawExpectedBars;
+  const coveragePct = expectedBars > 0 ? Math.min(100, (actualBars / expectedBars) * 100) : 0;
   const first = options.bars[startIndex];
   const last = options.bars[endExclusive - 1];
 
   if (
+    !options.warmupComplete ||
+    expectedBars <= 0 ||
     !first ||
     !last ||
     !(first.openPrice > 0) ||
@@ -517,7 +609,7 @@ function buildCurrencySnapshotsForWindow(options: {
     const coverageExpectedBars = related.reduce((sum, row) => sum + row.expectedBars, 0);
     const coverageActualBars = related.reduce((sum, row) => sum + row.actualBars, 0);
     const coveragePct = coverageExpectedBars > 0
-      ? (coverageActualBars / coverageExpectedBars) * 100
+      ? Math.min(100, (coverageActualBars / coverageExpectedBars) * 100)
       : 0;
     const rawStrength = values.length > 0 && coveragePct >= options.minCoveragePct
       ? values.reduce((sum, value) => sum + value, 0) / values.length
@@ -661,6 +753,7 @@ export async function deriveFxStrengthHistoryFromM1(options: {
   const maxWindowMinutes = Math.max(...windows.map((window) => WINDOW_MINUTES[window]));
   const loadFrom = from.minus({ minutes: maxWindowMinutes }).toISO() ?? options.fromUtc;
   const barsByPair = await loadFxM1BarsByPair(loadFrom, to.toISO() ?? options.toUtc);
+  const sessionOpenMs = buildSessionMinuteIndex(barsByPair);
   const snapshotTimes = buildSnapshotTimes(from, to, cadenceMinutes);
   const snapshots: FxStrengthHistorySnapshot[] = [];
 
@@ -668,6 +761,9 @@ export async function deriveFxStrengthHistoryFromM1(options: {
     const snapshotMs = snapshotTime.toMillis();
     for (const window of windows) {
       const windowMinutes = WINDOW_MINUTES[window];
+      const windowStartMs = snapshotMs - windowMinutes * 60_000;
+      const expectedBars = countSessionMinutes(sessionOpenMs, windowStartMs, snapshotMs);
+      const warmupComplete = hasWarmupCoverage(sessionOpenMs, windowStartMs, snapshotMs);
       const pairReturns = FX_PAIR_MAP.map((pairDef) =>
         computePairWindowReturn({
           pair: pairDef.pair,
@@ -676,6 +772,8 @@ export async function deriveFxStrengthHistoryFromM1(options: {
           bars: barsByPair.get(pairDef.pair) ?? [],
           snapshotMs,
           windowMinutes,
+          expectedBars,
+          warmupComplete,
           minPairCoveragePct,
         }),
       );
@@ -752,12 +850,16 @@ export async function deriveFxStrengthHistoryAtTimesFromM1(options: {
   const to = snapshotTimes.at(-1)!;
   const loadFrom = from.minus({ minutes: maxWindowMinutes }).toISO() ?? from.toISO() ?? options.snapshotTimesUtc[0]!;
   const barsByPair = await loadFxM1BarsByPair(loadFrom, to.toISO() ?? options.snapshotTimesUtc.at(-1)!);
+  const sessionOpenMs = buildSessionMinuteIndex(barsByPair);
   const snapshots: FxStrengthHistorySnapshot[] = [];
 
   for (const snapshotTime of snapshotTimes) {
     const snapshotMs = snapshotTime.toMillis();
     for (const window of windows) {
       const windowMinutes = WINDOW_MINUTES[window];
+      const windowStartMs = snapshotMs - windowMinutes * 60_000;
+      const expectedBars = countSessionMinutes(sessionOpenMs, windowStartMs, snapshotMs);
+      const warmupComplete = hasWarmupCoverage(sessionOpenMs, windowStartMs, snapshotMs);
       const pairReturns = FX_PAIR_MAP.map((pairDef) =>
         computePairWindowReturn({
           pair: pairDef.pair,
@@ -766,6 +868,8 @@ export async function deriveFxStrengthHistoryAtTimesFromM1(options: {
           bars: barsByPair.get(pairDef.pair) ?? [],
           snapshotMs,
           windowMinutes,
+          expectedBars,
+          warmupComplete,
           minPairCoveragePct,
         }),
       );

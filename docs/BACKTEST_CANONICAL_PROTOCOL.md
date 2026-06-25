@@ -14,6 +14,43 @@ If a new script cannot match canonical app baselines, stop research immediately 
 
 ## Source Of Truth
 
+### Canonical price bundle
+
+All institutional price-derived research must use one shared canonical price
+bundle identity.
+
+Required rule:
+
+- `canonical_price_bars` is the shared bar source.
+- Canonical `1m` bars are the forward price truth for new institutional
+  systems.
+- `pair_period_returns`, ADR maps, ADR Grid/path bars, Weekly Hold outcomes,
+  Strength snapshots, regime-layer joins, execution logs, risk overlays, and
+  future MT5 parity receipts must trace to the same `price_bundle_id`.
+- Local SQLite M1 stores are staging/import repair tools only. They are not
+  final institutional evidence unless their rows have been promoted into the
+  canonical price bundle and included in the bundle hash.
+- Institutional M1 coverage defaults to `100%` of expected tradable session
+  bars. Anything below `100%` is diagnostic-only unless Freedom explicitly
+  approves a named waiver in the active gate receipt.
+- A result that cannot declare its `price_bundle_id` is not promotion-eligible
+  and must be labelled diagnostic-only.
+
+Current frozen FX M1 bundle:
+
+- `price_bundle_id`:
+  `gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953`
+- Gate receipt:
+  `docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md`
+- Final audit receipt:
+  `app/reports/data-verification/gate55/gate55e-canonical-fx-m1-bundle-20260624T232148Z.json`
+- Final audit result: `391` weeks, `10,948/10,948` complete pair-weeks,
+  `0` partial pair-weeks, `0` source-gap weeks, and `100.000000%` lowest
+  coverage.
+
+Do not build a second backtest engine to solve price lineage. Keep the existing
+fast derived artifacts, but bind them to the frozen canonical price bundle.
+
 ### Weekly dealer / commercial / sentiment bias
 
 The canonical weekly base-model source is:
@@ -97,6 +134,11 @@ Every new weekly-bias or intraday backtest must follow this order:
 
 These mistakes invalidate results:
 
+- publishing institutional price-derived results without a `price_bundle_id`
+- using local SQLite M1 as final evidence instead of staging/import repair
+- accepting sub-100% M1 coverage as complete without a named waiver
+- adding a new regime, execution, risk, or signal system that reads a separate
+  price path
 - comparing a forced full-basket experiment to an app weekly-hold baseline without saying they are different experiments
 - using Matrix display output as the research source of truth
 - using UI wording alone to infer sentiment direction
