@@ -5,7 +5,7 @@ import { pipeline } from "node:stream/promises";
 
 import type { Submittable } from "pg";
 
-import { query, transaction } from "@/lib/db";
+import { query, transaction } from "@database/db/client";
 
 const require = createRequire(import.meta.url);
 type CopyFromStream = Submittable & NodeJS.WritableStream;

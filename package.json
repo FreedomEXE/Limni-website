@@ -21,7 +21,7 @@
   "limniScriptSurface": {
     "forwardResearchCommand": "engine:research-manifest:evaluate",
     "evaluatorParityStatus": "pending_gate55g_equivalent_manifest_parity",
-    "researchCommandClassification": "docs/research/gates/gate56/GATE56B_APP_SRC_LIB_OWNERSHIP_AUDIT_2026-06-25.md"
+    "researchCommandClassification": "docs/research/gates/gate56/GATE56C_NEUTRAL_DB_CLIENT_BOUNDARY_2026-06-25.md"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

@@ -70,9 +70,14 @@ Automation can support the app later, but it is not app runtime ownership.
 
 | Path | Owner / Purpose |
 |---|---|
-| `database/db/` | SQL schema and database helpers. |
+| `database/db/` | Neutral DB client, root env loader, SQL schema, and database helpers. |
 | `database/migrations/` | Durable migrations. |
 | `database/contracts/` | Data and integration contracts. |
+
+`database/db/client.ts` owns `getPool`, `query`, `queryOne`, `getClient`, and
+`transaction`. App compatibility imports may re-export it through
+`app/src/lib/db.ts`, but engine code imports it directly through
+`@database/db/client`.
 
 ## Workflow And Deploy Anchors
 

@@ -3,10 +3,10 @@ import path from "node:path";
 
 import Database from "better-sqlite3";
 
+import { getRepoRoot } from "@database/db/rootEnv";
 import type { CanonicalPriceBar } from "@/lib/canonicalPriceBars";
 import type { AssetClass } from "@/lib/cotMarkets";
 import { getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
-import { repoPath } from "@/lib/server/repoPaths";
 
 export type LocalM1WarehouseBar = {
   symbol: string;
@@ -97,6 +97,10 @@ type LocalStrengthSnapshotDbRow = {
 
 let dbCache: Database.Database | null = null;
 let dbCachePath: string | null = null;
+
+function repoPath(...segments: string[]) {
+  return path.join(getRepoRoot(), ...segments);
+}
 
 export function getLocalM1WarehousePath() {
   const configured = process.env.LIMNI_M1_SQLITE_PATH?.trim();

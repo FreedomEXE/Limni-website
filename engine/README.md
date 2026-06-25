@@ -30,7 +30,8 @@ optimize execution, add risk overlays, or promote live/MT5 behavior.
 
 ## Boundary Debt
 
-Some engine adapters still import app-owned non-UI data helpers, especially DB
-and performance path loading code. That is accepted Gate 56B boundary debt. The
-next extraction should move shared database and price/path primitives out of the
-app only when a focused gate proves the replacement path.
+Gate 56C moved shared DB access to `database/db/client.ts`. Remaining accepted
+debt is app-owned non-UI price/path logic imported by the evaluator, especially
+execution windows, ADR lookup, path bar loading, and runtime cache helpers. The
+next extraction should move those shared price/path primitives out of the app
+only when a focused gate proves the replacement path.

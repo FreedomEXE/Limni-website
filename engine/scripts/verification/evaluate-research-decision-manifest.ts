@@ -6,7 +6,7 @@ import { loadEnvConfig } from "@next/env";
 
 loadEnvConfig(process.cwd());
 
-import { getPool } from "@/lib/db";
+import { getPool } from "@database/db/client";
 import {
   attachResearchDecisionManifestHash,
   assertResearchDecisionManifestHash,

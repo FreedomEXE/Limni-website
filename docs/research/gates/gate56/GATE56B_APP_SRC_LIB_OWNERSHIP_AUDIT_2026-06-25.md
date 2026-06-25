@@ -90,7 +90,9 @@ treated as institutional engine truth.
   `app/src/lib/runtimeCache.ts`.
 - `engine/src/price/localM1Warehouse.ts` still imports app-owned canonical price
   and repo-path helpers.
-- `engine/src/warehouse/*` still imports `app/src/lib/db.ts`.
+- `engine/src/warehouse/*` imported `app/src/lib/db.ts` at Gate 56B close; this
+  was resolved in Gate 56C by moving the real DB client to
+  `database/db/client.ts` and patching engine imports to `@database/db/client`.
 - Shared database and price/path primitives should move out of app only in a
   later focused extraction gate.
 - Automation-owned app-lib candidates such as bot, broker, and MT5 page helpers

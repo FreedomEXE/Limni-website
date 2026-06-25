@@ -8,18 +8,19 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 56B: app-lib-ownership-audit.
+Gate 56C: neutral-db-client-boundary.
 
-Objective: finish the public/local split by auditing `app/src/lib`, moving
-obvious institutional research core into `engine/src`, archiving unreferenced
-stale app-lib leftovers, and documenting remaining boundary debt without
-running new research.
+Objective: finish the app/engine shared-infrastructure boundary by moving the
+real DB client and root env loader into neutral `database/db`, keeping app DB
+imports as compatibility re-exports, and preventing engine from importing app
+DB/repo-path helpers.
 
 ## Current Ownership Model
 
 - `app/` keeps only app runtime, public assets, release evidence, and app config.
 - `engine/` owns reusable local institutional research/backtest source code,
   commands, cached data, and generated engine reports.
+- `database/` owns neutral DB access used by app server code and engine code.
 - `automation/` owns MT5 assets, bots, sentiment scraper, voice helpers, and
   Playwright automation.
 - `archive/` owns stale historical reports, research workspaces, and one-off
@@ -53,6 +54,18 @@ running new research.
 - Document boundary debt instead of extracting shared DB/path primitives in this
   gate.
 
+## Gate 56C Checklist
+
+- Move the real DB client from `app/src/lib/db.ts` to
+  `database/db/client.ts`.
+- Move the root env loader from `app/src/lib/server/rootEnv.ts` to
+  `database/db/rootEnv.ts`.
+- Leave app compatibility re-exports at the old app paths.
+- Patch engine DB imports to `@database/db/client`.
+- Remove the engine local M1 adapter dependency on app repo-path helpers.
+- Mark app `backtestEngine.ts` as deprecated mock visualization debt.
+- Do not run new research tests or strategy variants.
+
 ## Frozen Areas
 
 - `app/releases/v2/canon/*.json`
@@ -67,6 +80,8 @@ running new research.
 `docs/research/gates/gate56/PUBLIC_LOCAL_REPO_SPLIT_2026-06-25.md`
 
 `docs/research/gates/gate56/GATE56B_APP_SRC_LIB_OWNERSHIP_AUDIT_2026-06-25.md`
+
+`docs/research/gates/gate56/GATE56C_NEUTRAL_DB_CLIENT_BOUNDARY_2026-06-25.md`
 
 ## Forward Research Command
 

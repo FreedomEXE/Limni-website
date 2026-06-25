@@ -20,7 +20,8 @@
     ],
     "paths": {
       "@/*": ["./app/src/*"],
-      "@engine/*": ["./engine/src/*"]
+      "@engine/*": ["./engine/src/*"],
+      "@database/*": ["./database/*"]
     }
   },
   "include": [

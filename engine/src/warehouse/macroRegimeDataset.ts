@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { query, transaction } from "@/lib/db";
+import { query, transaction } from "@database/db/client";
 
 export const MACRO_REGIME_DATASET_VERSION = "macro_regime_source_dataset_v4_official_cpi";
 
