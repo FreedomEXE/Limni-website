@@ -53,7 +53,8 @@ fast derived artifacts, but bind them to the frozen canonical price bundle.
 
 ### Research decision manifest workflow
 
-Gate 55H defines the blessed workflow for future institutional research:
+Gate 55H defines the candidate forward workflow for future institutional
+research:
 
 ```text
 ResearchDecisionManifest
@@ -62,17 +63,20 @@ ResearchDecisionManifest
 -> append-only research run registry
 ```
 
-Use this path for COT restatement, Strength selected/fade, Strength buckets,
-regime-filtered manifests, and future combined manifests:
+After Gate 55G equivalent-manifest parity is proven, use this path for COT
+restatement, Strength selected/fade, Strength buckets, regime-filtered
+manifests, and future combined manifests:
 
 ```powershell
 npm run verification:research-manifest:evaluate -- --manifest=<manifest.json>
 ```
 
-The evaluator consumes already-derived weekly decision rows. Signal derivation
-belongs upstream in a manifest builder; ADR Grid and weekly-hold scoring belong
-in the shared evaluator. Do not add new Gate-specific scorer functions when a
-frozen decision manifest can be routed through:
+Until that parity receipt exists, evaluator outputs are diagnostic-only and the
+evaluator is not accepted as final shared architecture. The evaluator consumes
+already-derived weekly decision rows. Signal derivation belongs upstream in a
+manifest builder; ADR Grid and weekly-hold scoring belong in the shared
+evaluator. Do not add new Gate-specific scorer functions when a frozen decision
+manifest can be routed through:
 
 - `app/src/lib/research/decisionManifest.ts`
 - `app/src/lib/research/decisionManifestEvaluator.ts`

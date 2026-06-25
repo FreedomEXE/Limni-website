@@ -100,7 +100,7 @@ function parseCsv(raw: string | null) {
 
 function helpText() {
   return `
-Evaluate a ResearchDecisionManifest through the blessed research evaluator.
+Evaluate a ResearchDecisionManifest through the candidate shared research evaluator.
 
 Required:
   --manifest=<path>                 ResearchDecisionManifest JSON.
@@ -114,12 +114,13 @@ Common:
   --status=diagnostic|exploratory|blocked|accepted|superseded|archived
   --rerun-reason=<text>             Required to rerun a materially equivalent input.
   --registry-path=<path>            Default: <out-dir>/registry/research-run-registry.jsonl.
-  --no-registry-write               Writes artifacts without registry append; not blessed for final evidence.
+  --no-registry-write               Writes artifacts without registry append; not promotion-eligible evidence.
   --no-doc-copy                     Do not copy receipt into docs/research/gates/<gate>/receipts.
   --log-progress                    Print per-week scoring progress.
   --clear-runtime-cache-between-weeks
 
 This command does not derive signals. It scores an already frozen decision manifest.
+Evaluator parity is pending Gate 55G equivalent-manifest proof.
 `.trim();
 }
 
@@ -170,6 +171,11 @@ function currentGitCommit() {
 
 function commandText() {
   return process.argv.join(" ");
+}
+
+function toRepoRelative(resolvedPath: string | null) {
+  if (!resolvedPath) return null;
+  return path.relative(process.cwd(), resolvedPath).replace(/\\/g, "/");
 }
 
 async function readManifest(manifestPath: string) {
@@ -274,9 +280,10 @@ async function main() {
 
   const artifactGate = options.artifactGate ?? inferArtifactGate(identity.gate_id);
   const outDir = path.resolve(process.cwd(), options.outDir || path.join("app", "reports", "data-verification", artifactGate));
-  const registryPath = options.noRegistryWrite
+  const registryPathAbs = options.noRegistryWrite
     ? null
     : path.resolve(process.cwd(), options.registryPath ?? path.join(outDir, "registry", "research-run-registry.jsonl"));
+  const registryPathRel = toRepoRelative(registryPathAbs);
 
   const duplicateKey = buildResearchRunEquivalenceKey({
     input_manifest_hash: manifestHash,
@@ -290,8 +297,8 @@ async function main() {
   });
   const equivalenceKeyHash = hashResearchRunEquivalenceKey(duplicateKey);
 
-  if (registryPath && !options.rerunReason) {
-    const registry = await readResearchRunRegistry(registryPath);
+  if (registryPathAbs && !options.rerunReason) {
+    const registry = await readResearchRunRegistry(registryPathAbs);
     const duplicate = findEquivalentResearchRun(registry, duplicateKey);
     if (duplicate) {
       console.log(`Equivalent research run already exists: ${duplicate.run_id}`);
@@ -309,14 +316,18 @@ async function main() {
     manifestHash,
   });
 
-  const manifestPath = path.join(outDir, "manifests", `${runId}.manifest.json`);
-  const resultPath = path.join(outDir, "results", `${runId}.result.json`);
-  const receiptPath = path.join(outDir, "runs", `${runId}.receipt.md`);
-  const hashesPath = path.join(outDir, "hashes", `${runId}.hashes.json`);
+  const manifestPathAbs = path.join(outDir, "manifests", `${runId}.manifest.json`);
+  const resultPathAbs = path.join(outDir, "results", `${runId}.result.json`);
+  const receiptPathAbs = path.join(outDir, "runs", `${runId}.receipt.md`);
+  const hashesPathAbs = path.join(outDir, "hashes", `${runId}.hashes.json`);
+  const manifestPathRel = toRepoRelative(manifestPathAbs) ?? manifestPathAbs;
+  const resultPathRel = toRepoRelative(resultPathAbs) ?? resultPathAbs;
+  const receiptPathRel = toRepoRelative(receiptPathAbs) ?? receiptPathAbs;
+  const hashesPathRel = toRepoRelative(hashesPathAbs) ?? hashesPathAbs;
   const docsReceiptDir = options.docsReceiptDir
     ? path.resolve(process.cwd(), options.docsReceiptDir)
     : path.resolve(process.cwd(), "docs", "research", "gates", artifactGate, "receipts");
-  const docsReceiptPath = options.noDocCopy ? null : path.join(docsReceiptDir, `${runId}.md`);
+  const docsReceiptPathAbs = options.noDocCopy ? null : path.join(docsReceiptDir, `${runId}.md`);
 
   const result = await evaluateResearchDecisionManifest({
     manifest,
@@ -336,10 +347,10 @@ async function main() {
     command: commandText(),
     gitCommit,
     result,
-    manifestPath,
-    resultPath,
-    hashesPath,
-    registryPath,
+    manifestPath: manifestPathRel,
+    resultPath: resultPathRel,
+    hashesPath: hashesPathRel,
+    registryPath: registryPathRel,
     status: options.status,
     rerunReason: options.rerunReason,
   });
@@ -363,22 +374,22 @@ async function main() {
   const hashesText = `${JSON.stringify(hashes, null, 2)}\n`;
 
   await Promise.all([
-    mkdir(path.dirname(manifestPath), { recursive: true }),
-    mkdir(path.dirname(resultPath), { recursive: true }),
-    mkdir(path.dirname(receiptPath), { recursive: true }),
-    mkdir(path.dirname(hashesPath), { recursive: true }),
-    docsReceiptPath ? mkdir(path.dirname(docsReceiptPath), { recursive: true }) : Promise.resolve(),
+    mkdir(path.dirname(manifestPathAbs), { recursive: true }),
+    mkdir(path.dirname(resultPathAbs), { recursive: true }),
+    mkdir(path.dirname(receiptPathAbs), { recursive: true }),
+    mkdir(path.dirname(hashesPathAbs), { recursive: true }),
+    docsReceiptPathAbs ? mkdir(path.dirname(docsReceiptPathAbs), { recursive: true }) : Promise.resolve(),
   ]);
   await Promise.all([
-    writeFile(manifestPath, normalizedManifestText, "utf8"),
-    writeFile(resultPath, resultText, "utf8"),
-    writeFile(receiptPath, receiptText, "utf8"),
-    writeFile(hashesPath, hashesText, "utf8"),
-    docsReceiptPath ? writeFile(docsReceiptPath, receiptText, "utf8") : Promise.resolve(),
+    writeFile(manifestPathAbs, normalizedManifestText, "utf8"),
+    writeFile(resultPathAbs, resultText, "utf8"),
+    writeFile(receiptPathAbs, receiptText, "utf8"),
+    writeFile(hashesPathAbs, hashesText, "utf8"),
+    docsReceiptPathAbs ? writeFile(docsReceiptPathAbs, receiptText, "utf8") : Promise.resolve(),
   ]);
 
-  if (registryPath) {
-    await appendResearchRunRegistryEntry(registryPath, {
+  if (registryPathAbs) {
+    await appendResearchRunRegistryEntry(registryPathAbs, {
       schema_version: 1,
       run_id: runId,
       gate_id: identity.gate_id,
@@ -400,20 +411,20 @@ async function main() {
       superseded_by: null,
       rerun_reason: options.rerunReason,
       equivalence_key_hash: equivalenceKeyHash,
-      manifest_path: manifestPath,
-      result_path: resultPath,
-      receipt_path: receiptPath,
-      hashes_path: hashesPath,
+      manifest_path: manifestPathRel,
+      result_path: resultPathRel,
+      receipt_path: receiptPathRel,
+      hashes_path: hashesPathRel,
       created_at_utc: generatedAtUtc,
     });
   }
 
   console.log(`Research run: ${runId}`);
-  console.log(`Manifest: ${manifestPath}`);
-  console.log(`Result: ${resultPath}`);
-  console.log(`Receipt: ${receiptPath}`);
-  console.log(`Hashes: ${hashesPath}`);
-  console.log(`Registry: ${registryPath ?? "-"}`);
+  console.log(`Manifest: ${manifestPathRel}`);
+  console.log(`Result: ${resultPathRel}`);
+  console.log(`Receipt: ${receiptPathRel}`);
+  console.log(`Hashes: ${hashesPathRel}`);
+  console.log(`Registry: ${registryPathRel ?? "-"}`);
   console.log(`Receipt hash: ${receiptHash}`);
 }
 

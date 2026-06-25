@@ -1,10 +1,13 @@
 # Gate 55 Research Workflow
 
-Status: Gate 55H architecture cleanup.
+Status: Gate 55H architecture cleanup. The manifest/evaluator path is the
+candidate shared research path until a Gate 55G equivalent-manifest parity
+receipt proves it reproduces the frozen selected/fade ADR Grid and weekly-hold
+metrics.
 
-Gate 55H defines the blessed research path for future COT restatement,
-Strength selected/fade, Strength buckets, regime-filtered manifests, and later
-combined manifests:
+Gate 55H defines the forward research path for future COT restatement, Strength
+selected/fade, Strength buckets, regime-filtered manifests, and later combined
+manifests:
 
 ```text
 ResearchDecisionManifest
@@ -30,7 +33,7 @@ not a new backtest engine:
   weekly decision rows.
 - The append-only duplicate-prevention registry lives at
   `app/src/lib/research/researchRunRegistry.ts`.
-- The blessed command is:
+- The candidate shared evaluator command is:
   `npm run verification:research-manifest:evaluate -- --manifest=<manifest.json>`.
 
 Gate-specific receipt scripts such as
@@ -42,13 +45,15 @@ functions when a frozen decision manifest can go through the shared evaluator.
 
 - `docs/research/gates/gate55/manifests/` - reviewed manifest examples and
   manifest standards.
-- `docs/research/gates/gate55/configs/` - blessed command shapes and future run
+- `docs/research/gates/gate55/configs/` - command shapes and future run
   configuration notes.
 - `docs/research/gates/gate55/receipts/` - durable receipts for manifest
   evaluations and architecture cleanup.
 - `docs/research/gates/gate55/registry/` - registry policy and duplicate
   prevention notes.
-- `docs/research/gates/gate55/archive/` - strategy/tester inventory and archive
+- `docs/research/gates/gate55/inventory/` - active cleanup inventories and
+  package command classifications.
+- `archive/docs/research/gates/gate55/` - root archive mirror for archive
   manifests.
 - `app/reports/data-verification/gate55/` - machine artifacts written by the
   evaluator.

@@ -1,4 +1,4 @@
-# Gate 55H Blessed Research Commands
+# Gate 55H Research Command Shapes
 
 Price bundle for Gate 55H command shapes:
 
@@ -18,13 +18,17 @@ npm run verification:research-manifest:evaluate -- `
   --status=diagnostic
 ```
 
-Every blessed run writes:
+Every candidate evaluator run writes:
 
 - normalized manifest copy
 - result JSON
 - Markdown receipt
 - hash JSON
 - registry JSONL entry
+
+Parity status: pending Gate 55G equivalent-manifest proof. Until that receipt
+exists, this is the candidate shared evaluator command and its outputs are
+diagnostic-only, not promotion-eligible final architecture.
 
 ## COT Restatement
 

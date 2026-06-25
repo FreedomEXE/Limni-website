@@ -22,10 +22,11 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 Gate 55H: research-workflow-manifest-registry-cleanup.
 
-Status: architecture cleanup in progress. Gate 55G remains valid as a canonical
-Friday Strength selected-vs-fade diagnostic, but future research must route
-frozen weekly decisions through the Gate 55H manifest/evaluator/registry path
-rather than adding Gate-specific scorer scripts.
+Status: architecture cleanup revision in review. Gate 55G remains valid as a
+canonical Friday Strength selected-vs-fade diagnostic, but the Gate 55H
+manifest/evaluator/registry path is still candidate shared architecture until a
+Gate 55G equivalent-manifest parity receipt proves it reproduces the frozen ADR
+Grid and weekly-hold metrics.
 
 Gate 55G lock interpretation:
 
@@ -44,12 +45,16 @@ Active Gate 55 artifacts:
   `docs/research/gates/gate55/README.md`
 - Gate 55H architecture cleanup receipt:
   `docs/research/gates/gate55/receipts/GATE55H_RESEARCH_WORKFLOW_ARCHITECTURE_CLEANUP_2026-06-25.md`
-- Gate 55H blessed command shapes:
+- Gate 55H command shapes:
   `docs/research/gates/gate55/configs/GATE55H_BLESSED_RESEARCH_COMMANDS_2026-06-25.md`
-- Gate 55H archive inventory:
-  `docs/research/gates/gate55/archive/STRATEGY_TESTER_INVENTORY_2026-06-25.md`
-- Gate 55H archive manifest:
-  `docs/research/gates/gate55/archive/ARCHIVE_MANIFEST_2026-06-25.md`
+- Gate 55H loose artifact inventory:
+  `docs/research/gates/gate55/inventory/LOOSE_ARTIFACT_INVENTORY_2026-06-25.md`
+- Gate 55H package command classification:
+  `docs/research/gates/gate55/inventory/PACKAGE_COMMAND_CLASSIFICATION_2026-06-25.md`
+- Gate 55H superseded strategy/tester inventory note:
+  `docs/research/gates/gate55/inventory/STRATEGY_TESTER_INVENTORY_2026-06-25.md`
+- Gate 55H root archive manifest:
+  `archive/docs/research/gates/gate55/ARCHIVE_MANIFEST_2026-06-25.md`
 - Gate 55A receipt:
   `docs/research/GATE55A_LEGACY_FRIDAY_STRENGTH_DIAGNOSTIC_RECEIPT_2026-06-24.md`
 - Gate 55B plan:
@@ -77,7 +82,7 @@ Active Gate 55 artifacts:
 - Legacy smoke receipt hash:
   `8F2804C7593E9AF14D406BB27C4C46A63B51BEA5870ECEFBFD2E3E791421B6AE`
 
-Blessed future evaluator command:
+Candidate future evaluator command, pending Gate 55G equivalent-manifest parity:
 
 ```text
 npm run verification:research-manifest:evaluate -- --manifest=<manifest.json> --artifact-gate=gate55 --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 --path-resolution=1m --evaluators=adr_grid,weekly_hold --status=diagnostic
@@ -85,7 +90,8 @@ npm run verification:research-manifest:evaluate -- --manifest=<manifest.json> --
 
 Gate 55H hard boundary: no COT restatement, Strength bucket tests, regime
 filters, COT+Strength combination, execution optimization, risk overlays,
-source reconstruction, or legacy script archive moves until explicitly opened.
+source reconstruction, or additional legacy script archive moves until
+explicitly opened.
 
 Gate 55A decision:
 

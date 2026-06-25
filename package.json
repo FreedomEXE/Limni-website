@@ -67,6 +67,7 @@
     "verification:gate55-friday-strength-baseline": "tsx app/scripts/verification/audit-gate55-friday-strength-baseline.ts",
     "verification:gate55f-strength-source-context": "tsx app/scripts/verification/audit-gate55f-strength-source-context.ts",
     "verification:research-manifest:evaluate": "tsx app/scripts/verification/evaluate-research-decision-manifest.ts",
+    "verification:gate55h-inventory": "tsx app/scripts/verification/inventory-loose-research-artifacts.ts",
     "cot:backfill-deep-history": "tsx app/scripts/backfill-cot-deep-history.ts",
     "verification:export-selected-ledger-metrics": "tsx app/scripts/verification/export-selected-ledger-metrics.ts",
     "verification:inspect-adr-grid-week": "tsx app/scripts/verification/inspect-adr-grid-week.ts",
@@ -76,6 +77,11 @@
     "bot:oanda": "tsx app/services/bots/oanda-universal-bot.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
+  },
+  "limniScriptSurface": {
+    "forwardResearchCommand": "verification:research-manifest:evaluate",
+    "evaluatorParityStatus": "pending_gate55g_equivalent_manifest_parity",
+    "researchCommandClassification": "docs/research/gates/gate55/inventory/PACKAGE_COMMAND_CLASSIFICATION_2026-06-25.md"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

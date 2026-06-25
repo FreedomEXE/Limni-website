@@ -6,30 +6,64 @@ Generated: 2026-06-25
 
 PASS WITH CAVEATS.
 
-The repo now has a blessed manifest-based workflow for future research:
+The repo now has a manifest-based candidate shared workflow for future research:
 
 ```text
-decision manifest -> shared evaluator -> result/receipt/hash writer -> registry
+decision manifest -> candidate shared evaluator -> result/receipt/hash writer -> registry
 ```
 
-This is not a new backtest engine. It extracts the reusable Gate 55G scoring
-surface into a shared library and keeps the existing Gate 44 matrix warehouse,
-path loaders, weekly-hold engine, and historical receipt scripts intact.
+This is not a new backtest engine. It wraps existing reusable price/path,
+weekly-hold, and research-matrix infrastructure. The evaluator is not yet
+accepted as final architecture because Gate 55G equivalent-manifest parity is
+still pending.
 
 ## What Changed
 
 - Added `ResearchDecisionManifest` contract:
   `app/src/lib/research/decisionManifest.ts`.
-- Added shared ADR Grid / weekly hold manifest evaluator:
+- Added ADR Grid / weekly hold manifest evaluator:
   `app/src/lib/research/decisionManifestEvaluator.ts`.
 - Added append-only run registry and duplicate-prevention key:
   `app/src/lib/research/researchRunRegistry.ts`.
-- Added blessed CLI:
+- Added candidate evaluator CLI:
   `app/scripts/verification/evaluate-research-decision-manifest.ts`.
 - Added package command:
   `npm run verification:research-manifest:evaluate`.
-- Added Gate 55 folder organization under `docs/research/gates/gate55/`.
-- Added archive inventory and archive manifest with zero moves.
+- Added repo-wide loose artifact inventory generator:
+  `app/scripts/verification/inventory-loose-research-artifacts.ts`.
+- Added file-by-file loose artifact inventory:
+  `docs/research/gates/gate55/inventory/LOOSE_ARTIFACT_INVENTORY_2026-06-25.md`.
+- Added package research/backtest/tester command classification:
+  `docs/research/gates/gate55/inventory/PACKAGE_COMMAND_CLASSIFICATION_2026-06-25.md`.
+- Moved safe deprecated ADR JavaScript backtest scripts with `git mv` into the
+  root archive mirror under `archive/app/scripts/`.
+- Moved the archive manifest into the root archive mirror:
+  `archive/docs/research/gates/gate55/ARCHIVE_MANIFEST_2026-06-25.md`.
+- Moved active inventory documentation under:
+  `docs/research/gates/gate55/inventory/`.
+
+## Cleanup Result
+
+- File-by-file candidate inventory rows: `893`.
+- Deprecated and safe to archive: `9`.
+- Archived with `git mv`: `9`.
+- Active evidence receipts retained: `29`.
+- Historical receipt scripts retained: `31`.
+- Deprecated but referenced files retained with deprecation classification:
+  `247`.
+- Unknown files left for Freedom review: `561`.
+
+Archived files:
+
+- `archive/app/scripts/adr-backtest-agreement.js`
+- `archive/app/scripts/adr-backtest-comparison.js`
+- `archive/app/scripts/adr-backtest-dynamic-tp.js`
+- `archive/app/scripts/adr-backtest-extended.js`
+- `archive/app/scripts/adr-backtest-grid-final.js`
+- `archive/app/scripts/adr-backtest-neutral.js`
+- `archive/app/scripts/adr-backtest-sentiment.js`
+- `archive/app/scripts/adr-backtest-stoch.js`
+- `archive/app/scripts/adr-backtest-tandem.js`
 
 ## What Did Not Run
 
@@ -41,6 +75,7 @@ path loaders, weekly-hold engine, and historical receipt scripts intact.
 - No risk overlays.
 - No source reconstruction.
 - No matrix warehouse DB write.
+- No MT5/live work.
 
 ## Reuse Boundary
 
@@ -59,6 +94,22 @@ Kept reusable infrastructure:
 
 Historical scripts remain historical evidence, including
 `app/scripts/verification/audit-gate55-friday-strength-baseline.ts`.
+
+## Durable Evidence Path Rule
+
+The evaluator now uses absolute paths only for filesystem writes. Registry and
+receipt fields store repo-relative paths for manifest, result, receipt, hash,
+and registry artifacts.
+
+## Parity Status
+
+Gate 55G equivalent-manifest parity is pending. Until a parity receipt proves
+the new evaluator reproduces the frozen Gate 55G selected/fade ADR Grid and
+weekly-hold metrics under the Gate 55E price bundle, the evaluator is a
+candidate shared evaluator and outputs are diagnostic-only.
+
+Parity placeholder:
+`docs/research/gates/gate55/receipts/GATE55H_EVALUATOR_PARITY_PENDING_2026-06-25.md`.
 
 ## Duplicate Prevention
 
@@ -95,4 +146,6 @@ Still blocked until explicitly opened:
 - Combining COT and Strength.
 - Changing COT signal logic or tie policy.
 - Optimizing ADR Grid/execution/risk.
-- Moving legacy scripts without a dedicated reference-migration/archive gate.
+- Running MT5/live work.
+- Moving additional legacy scripts without a dedicated reference-migration or
+  archive review.
