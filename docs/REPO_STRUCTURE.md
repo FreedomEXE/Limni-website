@@ -36,9 +36,12 @@ ownership decision.
 
 | Path | Owner / Purpose |
 |---|---|
+| `engine/src/cache/` | Runtime cache primitives used by engine research and app compatibility re-exports. |
+| `engine/src/contracts/` | Shared non-UI contracts such as asset-class/COT market definitions and week-anchor helpers. |
+| `engine/src/evaluation/` | Shared evaluator support such as execution weekly window helpers. |
 | `engine/scripts/` | Reusable local research and backtest command entry points. |
 | `engine/src/research/` | Research decision manifest contract, shared evaluator, hashing, and append-only run registry. |
-| `engine/src/price/` | Local/cached price adapters such as the SQLite M1 warehouse. |
+| `engine/src/price/` | Canonical price bars/windows, ADR lookup, path bars, path resolution, and local/cached price adapters such as the SQLite M1 warehouse. |
 | `engine/src/warehouse/` | Research matrix and macro regime warehouse helpers. |
 | `engine/data/` | Local/cached research data. Ignored by default. |
 | `engine/reports/` | Generated local engine receipts and run artifacts. Ignored by default unless a gate explicitly promotes selected evidence. |
@@ -52,6 +55,12 @@ npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>
 The app is not the institutional research source of truth. App code may consume
 stable `@engine/*` contracts or read-only adapters, but evaluator/manifest/run
 registry ownership lives in `engine/`.
+
+Current app compatibility paths such as `app/src/lib/canonicalPriceBars.ts`,
+`app/src/lib/executionPriceWindows.ts`, and
+`app/src/lib/performance/pathBarLoader.ts` are re-exports over `@engine/*`.
+Engine code must import the engine-owned paths directly and must not import
+`@/lib/*`.
 
 ## Automation Folders
 

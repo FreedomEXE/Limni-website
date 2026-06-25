@@ -23,5 +23,10 @@ Forward research contracts, evaluators, hashes, local price adapters, and
 warehouse helpers live under `engine/src/` and are imported through `@engine/*`
 when the app needs a stable read-only adapter.
 
+Several existing `app/src/lib/*` price/path/cache files are compatibility
+re-exports over engine-owned modules. Keep those wrappers thin during app
+simplification; do not put evaluator, price truth, or cache policy
+implementations back under app ownership.
+
 `app/src/lib/research/` currently contains only deprecated app research UI/API
 support code. It must not be used as the forward backtest engine.

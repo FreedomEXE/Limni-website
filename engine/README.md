@@ -11,8 +11,11 @@ the app is not the source of institutional research truth.
 
 | Path | Owner / Purpose |
 |---|---|
+| `engine/src/cache/` | Runtime cache primitives shared by engine code and app compatibility re-exports. |
+| `engine/src/contracts/` | Non-UI contracts such as asset classes, COT market definitions, and week-anchor helpers. |
+| `engine/src/evaluation/` | Evaluator support primitives such as execution weekly windows. |
 | `engine/src/research/` | Research decision manifest, shared evaluator, hashing, and append-only run registry. |
-| `engine/src/price/` | Local/cached price adapters such as the SQLite M1 warehouse. |
+| `engine/src/price/` | Canonical price bars/windows, ADR lookup, path bars, path resolution, and local/cached price adapters such as the SQLite M1 warehouse. |
 | `engine/src/warehouse/` | Research matrix and macro regime warehouse helpers. |
 | `engine/scripts/` | Local command entry points. |
 | `engine/data/` | Ignored local/cached data artifacts. |
@@ -28,10 +31,12 @@ This command scores an already frozen decision manifest. It does not derive
 signals, run Strength buckets, run regime filters, combine COT and Strength,
 optimize execution, add risk overlays, or promote live/MT5 behavior.
 
-## Boundary Debt
+## Boundary Rule
 
-Gate 56C moved shared DB access to `database/db/client.ts`. Remaining accepted
-debt is app-owned non-UI price/path logic imported by the evaluator, especially
-execution windows, ADR lookup, path bar loading, and runtime cache helpers. The
-next extraction should move those shared price/path primitives out of the app
-only when a focused gate proves the replacement path.
+Engine code imports engine-owned paths directly. `engine/src` and
+`engine/scripts` must not import `@/lib/*`.
+
+The old app paths for canonical price bars/windows, execution windows, ADR
+lookup, path bars, path resolution, week anchors, COT market definitions, and
+runtime cache are compatibility re-exports for current app code. They are not
+the owner of engine truth.

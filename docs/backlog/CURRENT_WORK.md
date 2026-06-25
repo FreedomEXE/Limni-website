@@ -1,6 +1,6 @@
 # Current Work
 
-Status: active checklist. Keep this short and update it when gates change.
+Status: pending review. Keep this short and update it when gates change.
 
 Persistent memory stays in
 `C:/Users/User/Documents/GitHub/freedom-ops/.codex/`; this file tracks the
@@ -8,12 +8,12 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 56C: neutral-db-client-boundary.
+Gate 56D: engine-price-path-primitive-extraction.
 
-Objective: finish the app/engine shared-infrastructure boundary by moving the
-real DB client and root env loader into neutral `database/db`, keeping app DB
-imports as compatibility re-exports, and preventing engine from importing app
-DB/repo-path helpers.
+Objective: remove the engine evaluator's remaining dependency on app-owned
+price/path/cache primitives by moving reusable non-UI price, path, cache, and
+week-anchor contracts into `engine/`, while keeping current app paths as
+compatibility re-exports.
 
 ## Current Ownership Model
 
@@ -66,6 +66,18 @@ DB/repo-path helpers.
 - Mark app `backtestEngine.ts` as deprecated mock visualization debt.
 - Do not run new research tests or strategy variants.
 
+## Gate 56D Checklist
+
+- Move runtime cache ownership to `engine/src/cache/runtimeCache.ts`.
+- Move COT market constants and week-anchor helpers to `engine/src/contracts`.
+- Move canonical price bars/windows, ADR lookup, path resolution, and path bar
+  loading to `engine/src/price`.
+- Move execution weekly window helpers to `engine/src/evaluation`.
+- Leave compatibility re-exports at the old `app/src/lib/*` paths.
+- Prove `engine/src` and `engine/scripts` contain no `@/lib/` imports.
+- Do not run Gate 55G parity, new research variants, Strength buckets, or regime
+  filters in this cleanup gate.
+
 ## Frozen Areas
 
 - `app/releases/v2/canon/*.json`
@@ -82,6 +94,8 @@ DB/repo-path helpers.
 `docs/research/gates/gate56/GATE56B_APP_SRC_LIB_OWNERSHIP_AUDIT_2026-06-25.md`
 
 `docs/research/gates/gate56/GATE56C_NEUTRAL_DB_CLIENT_BOUNDARY_2026-06-25.md`
+
+`docs/research/gates/gate56/GATE56D_ENGINE_PRICE_PATH_PRIMITIVE_EXTRACTION_2026-06-25.md`
 
 ## Forward Research Command
 

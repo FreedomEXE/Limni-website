@@ -4,9 +4,9 @@ import path from "node:path";
 import Database from "better-sqlite3";
 
 import { getRepoRoot } from "@database/db/rootEnv";
-import type { CanonicalPriceBar } from "@/lib/canonicalPriceBars";
-import type { AssetClass } from "@/lib/cotMarkets";
-import { getCanonicalWeekWindow } from "@/lib/canonicalPriceWindows";
+import type { AssetClass } from "@engine/contracts/cotMarkets";
+import type { CanonicalPriceBar } from "@engine/price/canonicalPriceBars";
+import { getCanonicalWeekWindow } from "@engine/price/canonicalPriceWindows";
 
 export type LocalM1WarehouseBar = {
   symbol: string;
