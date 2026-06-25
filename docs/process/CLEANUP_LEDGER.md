@@ -1,6 +1,6 @@
 # Cleanup Ledger
 
-Status: current as of 2026-06-11.
+Status: current as of 2026-06-25.
 
 This ledger is for cleanup classification and gate history. It is not proof that
 app behavior is correct.
@@ -9,47 +9,43 @@ app behavior is correct.
 
 Committed visible root folders are:
 
-- `archive/`
 - `app/`
+- `engine/`
+- `automation/`
+- `archive/`
 - `database/`
 - `docs/`
 - `poseidon/`
 - `config/`
 
 Hidden workflow roots `.github/` and `.husky/` remain at root because Git and
-GitHub require them. Ignored local roots such as `Local Environment/` and
-`node_modules/` are not repo truth.
+GitHub require them. Ignored local roots such as `Local Environment/`,
+`node_modules/`, `engine/data/`, and `engine/reports/` are not repo truth.
 
-## Gate 23 Root Compression
+## Gate 56 Public / Local Split
 
-Moved app-owned folders under `app/`:
+Gate 56 reverses the old app-folder pileup:
 
-- `src/` -> `app/src/`
-- `public/` -> `app/public/`
-- `tests/` -> `app/tests/`
-- `scripts/` -> `app/scripts/`
-- `reports/` -> `app/reports/`
-- `research/` -> `app/research/`
-- `sports/` -> `app/research/sports/`
-- `releases/` -> `app/releases/`
-- `services/`, `bots/`, `mt5/`, and `scraper/` -> `app/services/`
+- `app/` is for app runtime, public assets, release evidence, and app config.
+- `engine/` is for reusable local institutional research/backtest work.
+- `automation/` is for MT5, bots, sidecars, voice helpers, and Playwright
+  automation.
+- stale reports, research workspaces, and one-off scripts move under
+  `archive/app/...`, mirrored by their original app ownership path.
 
-Moved database-owned folders under `database/`:
+The old nested reports archive tree was flattened into
+`archive/app/reports/legacy/...`. Do not recreate nested archive trees under
+active folders.
 
-- `db/` -> `database/db/`
-- `migrations/` -> `database/migrations/`
-- `contracts/` -> `database/contracts/`
+## Historical Context
 
-Moved inactive archive material under `docs/archive/`.
+Gate 23 compressed many repo folders under `app/`, including scripts, reports,
+research, services, and tests. That was useful then, but by Gate 56 it made the
+app folder look like the whole repo. Gate 56 is the current ownership model.
 
 Gate 27 corrected the archive model: active folders should not each carry local
-archive trees. Historical material now belongs under root `archive/`, mirrored by
-original repo ownership path. Existing `docs/archive/` was moved to
-`archive/docs/`.
-
-Updated package scripts, TypeScript/Vitest/Playwright config, GitHub workflow
-paths, Vercel ignores, MT5 hook paths, runtime release/report readers, app
-script report outputs, and local cache/data defaults.
+archive trees. Historical material belongs under root `archive/`, mirrored by
+original repo ownership path.
 
 ## Frozen / Separate Gates
 
@@ -57,20 +53,24 @@ script report outputs, and local cache/data defaults.
 |---|---|
 | `app/releases/v2/canon/*.json` | Frozen. Do not regenerate or rewrite without an explicit canon gate. |
 | `release-manifest.json` | Root release manifest. Do not rewrite during structure cleanup. |
-| `app/scripts/migrate-trades-to-unified-ledger.ts` | Production-sensitive DB mutator; requires a dedicated DB review gate. |
 | `.env`, `.env.local` | Root-local toolchain anchors; do not commit secrets. |
+| `engine/data/` | Local/cached research data. Ignored unless an explicit data-promotion gate says otherwise. |
+| `engine/reports/` | Local generated engine receipts. Ignored unless a gate promotes selected evidence. |
 
 ## Current Cleanup Rules
 
-- New app code, scripts, reports, research, services, releases, and public assets
-  go under `app/`.
+- New app runtime code and public/release assets go under `app/`.
+- New reusable research/backtest code goes under `engine/`.
+- New MT5, bot, sidecar, voice, or Playwright automation goes under
+  `automation/`.
 - New database schema, migrations, and contracts go under `database/`.
 - Durable documentation goes under `docs/`; stale docs go under `archive/docs/`.
 - Poseidon profile/control-plane material goes under `poseidon/`.
 - Stale material from any active folder goes under root `archive/`, mirroring its
-  original ownership path, such as `archive/app/src/` or `archive/config/`.
+  original ownership path.
 - Local-only caches, agent state, logs, screenshots, temporary files, and local
-  data go under ignored `Local Environment/`.
+  data go under ignored `Local Environment/` or ignored engine data/report
+  folders.
 - Do not create new loose root folders.
 
 ## Final Gate Commands
@@ -85,7 +85,7 @@ git diff --check -- . ':!app/releases/v2/canon/*.json'
 For app/tooling changes:
 
 ```powershell
-npm test
+npx tsc --noEmit --project app/tsconfig.json --pretty false
 npm run build
 ```
 

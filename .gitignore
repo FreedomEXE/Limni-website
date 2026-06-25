@@ -33,6 +33,9 @@ yarn-error.log*
 
 # Data files
 data/
+engine/data/
+engine/reports/
+engine/tmp/
 *.json
 !package.json
 !package-lock.json
@@ -54,12 +57,12 @@ data/
 Thumbs.db
 
 # MT5 compiled files
-app/services/mt5/Experts/*.ex5
+automation/mt5/Experts/*.ex5
 app/public/downloads/*.mq5
 
 # Scraper
-app/services/sentiment-scraper/node_modules/
-app/services/sentiment-scraper/*.log
+automation/sentiment-scraper/node_modules/
+automation/sentiment-scraper/*.log
 
 # Debug
 *.tsbuildinfo
@@ -69,16 +72,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Research outputs
-app/research/scalp_bot/output*/
-
-# Local MT5 sizing audit exports
-app/scripts/LimniSizingAudit_*.csv
-
-# Generated funded-policy simulation reports
-app/reports/universal-v1-funded-policy-sim-latest.md
-app/reports/universal-v1-funded-policy-sim-*.md
 
 # Screenshots and temp files
 Local Environment/
@@ -108,11 +101,8 @@ poseidon/state/activity_log.json
 poseidon/state/missed_turns.json
 !poseidon/state/PROTEUS_STATE.md
 
-# Python helper scripts
-app/scripts/*.py
-
 .vercel
 
 # MenthorQ browser-capture artifacts
-app/reports/bias-gate/menthorq-captures/
-app/reports/bias-gate/menthorq-gamma-daily.csv
+archive/app/reports/bias-gate/menthorq-captures/
+archive/app/reports/bias-gate/menthorq-gamma-daily.csv

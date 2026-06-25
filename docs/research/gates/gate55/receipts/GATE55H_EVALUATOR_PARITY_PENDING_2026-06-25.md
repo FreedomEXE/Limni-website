@@ -20,7 +20,7 @@ Before the evaluator can be called accepted final architecture:
 3. Use price bundle:
    `gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953`.
 4. Score both manifests through:
-   `npm run verification:research-manifest:evaluate -- --manifest=<manifest.json>`.
+   `npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>`.
 5. Prove the evaluator reproduces the frozen Gate 55G metrics:
    - Selected ADR Grid: `+1311.8526` ADR.
    - Fade ADR Grid: `+988.7181` ADR.

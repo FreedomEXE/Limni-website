@@ -3,7 +3,7 @@
 The candidate shared evaluator writes an append-only JSONL registry at:
 
 ```text
-app/reports/data-verification/gate55/registry/research-run-registry.jsonl
+engine/reports/data-verification/gate55/registry/research-run-registry.jsonl
 ```
 
 Each row records:

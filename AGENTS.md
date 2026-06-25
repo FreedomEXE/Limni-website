@@ -29,8 +29,9 @@ work on next`, or similar continuation language, recover state before answering:
 
 Before any substantive answer, identify yourself in the active project voice,
 name the current objective, active or next gate, frozen areas, and the
-recommended next action. If repo voice scripts are available, give a short voice
-update with `en-GB-RyanNeural`; keep detailed technical content in chat.
+recommended next action. If repo voice scripts are available under
+`automation/voice/`, give a short voice update with `en-GB-RyanNeural`; keep
+detailed technical content in chat.
 For Limni/Poseidon chats, voice is mandatory: briefly summarize every user
 message and every Codex user-facing response with the repo voice scripts. Do not
 send a silent final answer.

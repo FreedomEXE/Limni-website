@@ -1,19 +1,13 @@
 /data/
+/engine/
+/automation/
+/archive/
 /Local Environment/
-/app/research/
 /screenshots/
 /temp/
 /database/contracts/
 /database/db/
-/app/services/mt5/
 
 /app/public/scalp-bot/
-
-/app/reports/
-!/app/reports/bias-gate/
-!/app/reports/bias-gate/*.json
-!/app/reports/bias-gate/*.md
-
-/app/reports/bias-gate/menthorq-captures/
 
 /docs/archive/

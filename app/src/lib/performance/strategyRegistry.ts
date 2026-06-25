@@ -113,7 +113,7 @@ const KATARAKTI_STRATEGY_REGISTRY: readonly KataraktiStrategyRegistryEntry[] = [
     backtestBotId: "katarakti_crypto_lite",
     fileFallback: {
       preferredEnvVar: "KATARAKTI_LITE_CRYPTO_REPORT_PATH",
-      candidates: ["app/reports/bitget-lite-entry-latest.json"],
+      candidates: ["archive/app/reports/bitget-lite-entry-latest.json"],
     },
     live: {
       botId: "katarakti_crypto_lite",
@@ -130,8 +130,8 @@ const KATARAKTI_STRATEGY_REGISTRY: readonly KataraktiStrategyRegistryEntry[] = [
     fileFallback: {
       preferredEnvVar: "KATARAKTI_LITE_MT5_REPORT_PATH",
       candidates: [
-        "app/reports/katarakti-lite-parameter-sweep-latest.json",
-        "app/reports/katarakti-lite-ablation-latest.json",
+        "archive/app/reports/katarakti-lite-parameter-sweep-latest.json",
+        "archive/app/reports/katarakti-lite-ablation-latest.json",
       ],
     },
     live: {
@@ -147,7 +147,7 @@ const KATARAKTI_STRATEGY_REGISTRY: readonly KataraktiStrategyRegistryEntry[] = [
     backtestBotId: "katarakti_v3_liq_sweep",
     fileFallback: {
       preferredEnvVar: "KATARAKTI_V3_LIQ_SWEEP_REPORT_PATH",
-      candidates: ["app/reports/bitget-liq-sweep-simple-latest.json"],
+      candidates: ["archive/app/reports/bitget-liq-sweep-simple-latest.json"],
     },
     live: {
       botId: "katarakti_v3_liq_sweep",

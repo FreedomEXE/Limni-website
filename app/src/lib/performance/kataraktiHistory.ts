@@ -206,8 +206,8 @@ const CRYPTO_TRADE_LOG_PATH = "docs/bots/backtest-trade-log.json";
 const DEFAULT_CRYPTO_VARIANT_KEY = "C";
 const PINNED_MT5_VARIANT_ID = "tiered__t1t2__weighted";
 const MT5_REPORT_CANDIDATES = [
-  "app/reports/katarakti-phase1-backtest-latest-phase2_full_atr_nohard.json",
-  "app/reports/katarakti-phase1-backtest-latest.json",
+  "archive/app/reports/katarakti-phase1-backtest-latest-phase2_full_atr_nohard.json",
+  "archive/app/reports/katarakti-phase1-backtest-latest.json",
 ] as const;
 const LITE_PENDING_LABEL = "Lite backtest pending";
 

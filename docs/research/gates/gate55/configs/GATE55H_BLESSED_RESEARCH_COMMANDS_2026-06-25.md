@@ -9,7 +9,7 @@ gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953
 The shared evaluator command is:
 
 ```powershell
-npm run verification:research-manifest:evaluate -- `
+npm run engine:research-manifest:evaluate -- `
   --manifest=<manifest.json> `
   --artifact-gate=gate55 `
   --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 `
@@ -36,7 +36,7 @@ Do not change COT signal logic. Generate a manifest from the locked Gate 54 CLP
 carry-forward plus carry-previous tie-fill decisions, then score it:
 
 ```powershell
-npm run verification:research-manifest:evaluate -- `
+npm run engine:research-manifest:evaluate -- `
   --manifest=docs/research/gates/gate55/manifests/gate54-clp-carry-forward-restatement-gate55e.manifest.json `
   --artifact-gate=gate55 `
   --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 `
@@ -54,7 +54,7 @@ Selected and fade should be two frozen manifests with different `signal_id` and
 decision rows. The evaluator scores both identically:
 
 ```powershell
-npm run verification:research-manifest:evaluate -- `
+npm run engine:research-manifest:evaluate -- `
   --manifest=docs/research/gates/gate55/manifests/gate55-strength-friday-selected.manifest.json `
   --artifact-gate=gate55 `
   --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 `
@@ -64,7 +64,7 @@ npm run verification:research-manifest:evaluate -- `
 ```
 
 ```powershell
-npm run verification:research-manifest:evaluate -- `
+npm run engine:research-manifest:evaluate -- `
   --manifest=docs/research/gates/gate55/manifests/gate55-strength-friday-fade.manifest.json `
   --artifact-gate=gate55 `
   --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 `
@@ -79,7 +79,7 @@ Bucket construction must happen before the evaluator and be represented in
 `decisions[].bucket_id` plus manifest `source_metadata`.
 
 ```powershell
-npm run verification:research-manifest:evaluate -- `
+npm run engine:research-manifest:evaluate -- `
   --manifest=docs/research/gates/gate55/manifests/gate55-strength-bucket-<bucket-id>.manifest.json `
   --artifact-gate=gate55 `
   --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 `
@@ -94,7 +94,7 @@ Regime filters must emit filtered manifests; do not embed regime logic in the
 evaluator.
 
 ```powershell
-npm run verification:research-manifest:evaluate -- `
+npm run engine:research-manifest:evaluate -- `
   --manifest=docs/research/gates/gate55/manifests/gate55-<signal>-regime-<regime-id>.manifest.json `
   --artifact-gate=gate55 `
   --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 `
@@ -110,7 +110,7 @@ declare all contributing `source_context_ids` and a config hash covering the
 combination rule.
 
 ```powershell
-npm run verification:research-manifest:evaluate -- `
+npm run engine:research-manifest:evaluate -- `
   --manifest=docs/research/gates/gate55/manifests/gate55-combined-<rule-id>.manifest.json `
   --artifact-gate=gate55 `
   --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 `

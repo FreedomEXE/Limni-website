@@ -30,5 +30,13 @@
     "app/.next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "app/scripts/**/*.ts", "app/scripts/**/*.mts"]
+  "exclude": [
+    "node_modules",
+    "archive/**",
+    "automation/**/*.ts",
+    "automation/**/*.mts",
+    "engine/scripts/**/*.ts",
+    "engine/scripts/**/*.mts",
+    "engine/reports/**"
+  ]
 }

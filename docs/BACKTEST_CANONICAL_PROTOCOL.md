@@ -43,7 +43,7 @@ Current frozen FX M1 bundle:
 - Gate receipt:
   `docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md`
 - Final audit receipt:
-  `app/reports/data-verification/gate55/gate55e-canonical-fx-m1-bundle-20260624T232148Z.json`
+  `archive/app/reports/data-verification/gate55/gate55e-canonical-fx-m1-bundle-20260624T232148Z.json`
 - Final audit result: `391` weeks, `10,948/10,948` complete pair-weeks,
   `0` partial pair-weeks, `0` source-gap weeks, and `100.000000%` lowest
   coverage.
@@ -68,7 +68,7 @@ restatement, Strength selected/fade, Strength buckets, regime-filtered
 manifests, and future combined manifests:
 
 ```powershell
-npm run verification:research-manifest:evaluate -- --manifest=<manifest.json>
+npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>
 ```
 
 Until that parity receipt exists, evaluator outputs are diagnostic-only and the
@@ -81,7 +81,7 @@ manifest can be routed through:
 - `app/src/lib/research/decisionManifest.ts`
 - `app/src/lib/research/decisionManifestEvaluator.ts`
 - `app/src/lib/research/researchRunRegistry.ts`
-- `app/scripts/verification/evaluate-research-decision-manifest.ts`
+- `engine/scripts/verification/evaluate-research-decision-manifest.ts`
 
 The command must write a normalized manifest copy, result JSON, Markdown
 receipt, hash JSON, and a registry row. Before scoring, it must check the
@@ -92,7 +92,7 @@ rerun reason is supplied.
 
 The canonical weekly base-model source is:
 
-- [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/basketSource.ts)
+- [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/basketSource.ts)
 
 This module is the approved source for:
 
@@ -117,17 +117,17 @@ Do not infer research truth from UI wording alone.
 
 Approved engine path:
 
-- [weeklyHoldEngine.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/weeklyHoldEngine.ts)
-- [strategyPageData.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/strategyPageData.ts)
+- [weeklyHoldEngine.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/weeklyHoldEngine.ts)
+- [strategyPageData.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/strategyPageData.ts)
 
 Approved weekly-bias strategy config:
 
-- [strategyConfig.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/strategyConfig.ts)
+- [strategyConfig.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/strategyConfig.ts)
 
-Approved current app comparison surface:
+Archived historical app comparison scripts:
 
-- [compare-weekly-bias-selector-vs-app-baselines.ts](C:/Users/User/Documents/GitHub/limni-website/scripts/compare-weekly-bias-selector-vs-app-baselines.ts)
-- [rank-current-intraday-strategies.ts](C:/Users/User/Documents/GitHub/limni-website/scripts/rank-current-intraday-strategies.ts)
+- [compare-weekly-bias-selector-vs-app-baselines.ts](C:/Users/User/Documents/GitHub/limni-website/archive/app/scripts/compare-weekly-bias-selector-vs-app-baselines.ts)
+- [rank-current-intraday-strategies.ts](C:/Users/User/Documents/GitHub/limni-website/archive/app/scripts/rank-current-intraday-strategies.ts)
 
 ## Validation Gate
 
@@ -157,7 +157,7 @@ If a new research script cannot match these numbers closely enough, do not use i
 Every new weekly-bias or intraday backtest must follow this order:
 
 1. Identify the exact strategy family and comparison window.
-2. Confirm the script is reading canonical weekly directions from [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/basketSource.ts) or from an engine path that already depends on it.
+2. Confirm the script is reading canonical weekly directions from [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/basketSource.ts) or from an engine path that already depends on it.
 3. Reproduce the relevant canonical baseline first.
 4. Only after parity is confirmed, run the new variant.
 5. Compare the variant against the canonical baseline on the same week set.
@@ -181,7 +181,7 @@ These mistakes invalidate results:
 - using UI wording alone to infer sentiment direction
 - mixing current or future weeks into a closed-week benchmark without explicitly stating it
 - treating a display mismatch as proof of a strategy mismatch before checking the underlying canonical source
-- building dealer, commercial, or sentiment directions independently from raw snapshots when [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/performance/basketSource.ts) already defines them
+- building dealer, commercial, or sentiment directions independently from raw snapshots when [basketSource.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/performance/basketSource.ts) already defines them
 
 ## Practical Notes
 
@@ -195,7 +195,7 @@ Current app logic is contrarian:
 
 That mapping lives in:
 
-- [daily.ts](C:/Users/User/Documents/GitHub/limni-website/src/lib/sentiment/daily.ts)
+- [daily.ts](C:/Users/User/Documents/GitHub/limni-website/app/src/lib/sentiment/daily.ts)
 
 ### March 22 / March 23 lesson
 

@@ -25,12 +25,12 @@ still pending.
   `app/src/lib/research/decisionManifestEvaluator.ts`.
 - Added append-only run registry and duplicate-prevention key:
   `app/src/lib/research/researchRunRegistry.ts`.
-- Added candidate evaluator CLI:
-  `app/scripts/verification/evaluate-research-decision-manifest.ts`.
+- Added candidate evaluator CLI. Gate 56 later moved it to:
+  `engine/scripts/verification/evaluate-research-decision-manifest.ts`.
 - Added package command:
-  `npm run verification:research-manifest:evaluate`.
+  `npm run engine:research-manifest:evaluate`.
 - Added repo-wide loose artifact inventory generator:
-  `app/scripts/verification/inventory-loose-research-artifacts.ts`.
+  `archive/app/scripts/verification/inventory-loose-research-artifacts.ts`.
 - Added file-by-file loose artifact inventory:
   `docs/research/gates/gate55/inventory/LOOSE_ARTIFACT_INVENTORY_2026-06-25.md`.
 - Added package research/backtest/tester command classification:
@@ -93,7 +93,7 @@ Kept reusable infrastructure:
   `app/src/lib/strength/historicalStrength.ts`.
 
 Historical scripts remain historical evidence, including
-`app/scripts/verification/audit-gate55-friday-strength-baseline.ts`.
+`archive/app/scripts/verification/audit-gate55-friday-strength-baseline.ts`.
 
 ## Durable Evidence Path Rule
 

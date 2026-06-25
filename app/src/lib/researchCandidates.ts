@@ -58,7 +58,7 @@ export type StrategyCandidateRegistry = {
   candidates: StrategyCandidateRecord[];
 };
 
-const REGISTRY_PATH = path.join(process.cwd(), "data", "research_strategy_candidates.json");
+const REGISTRY_PATH = path.join(process.cwd(), "engine", "data", "research_strategy_candidates.json");
 
 export async function readStrategyCandidateRegistry(): Promise<StrategyCandidateRegistry> {
   try {

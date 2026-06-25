@@ -34,10 +34,10 @@ not a new backtest engine:
 - The append-only duplicate-prevention registry lives at
   `app/src/lib/research/researchRunRegistry.ts`.
 - The candidate shared evaluator command is:
-  `npm run verification:research-manifest:evaluate -- --manifest=<manifest.json>`.
+  `npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>`.
 
 Gate-specific receipt scripts such as
-`app/scripts/verification/audit-gate55-friday-strength-baseline.ts` remain
+`archive/app/scripts/verification/audit-gate55-friday-strength-baseline.ts` remain
 historical evidence. New research should not add new Gate-specific scorer
 functions when a frozen decision manifest can go through the shared evaluator.
 
@@ -55,7 +55,7 @@ functions when a frozen decision manifest can go through the shared evaluator.
   package command classifications.
 - `archive/docs/research/gates/gate55/` - root archive mirror for archive
   manifests.
-- `app/reports/data-verification/gate55/` - machine artifacts written by the
+- `engine/reports/data-verification/gate55/` - machine artifacts written by the
   evaluator.
 
 ## Current Boundary

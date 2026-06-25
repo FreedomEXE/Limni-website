@@ -255,7 +255,7 @@ export async function certifyActiveBaseline(
     jobId: "active-baseline-certification",
     jobType: "baseline_certification",
     triggerType: options.triggerType ?? "backfill",
-    routePath: options.routePath ?? "app/scripts/app-truth-certify-active-baseline.ts",
+    routePath: options.routePath ?? "archive/app/scripts/app-truth-certify-active-baseline.ts",
     schedule: options.schedule ?? null,
     startedAtUtc,
     inputArtifacts: [

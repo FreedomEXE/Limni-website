@@ -10,7 +10,7 @@ import {
   describeAuditScope,
   type SourceIncident,
   validateResolvedWeeks,
-} from "../../../scripts/verify-source-completion";
+} from "@/lib/sourceCompletionAudit";
 
 function directionalRows(): CanonicalBasketSignal[] {
   return Object.entries(PAIRS_BY_ASSET_CLASS).flatMap(([assetClass, pairs]) =>

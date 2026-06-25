@@ -101,7 +101,7 @@ let dbCachePath: string | null = null;
 export function getLocalM1WarehousePath() {
   const configured = process.env.LIMNI_M1_SQLITE_PATH?.trim();
   if (!configured) {
-    return repoPath("data", "canonical-m1", "canonical-m1.sqlite");
+    return repoPath("engine", "data", "canonical-m1", "canonical-m1.sqlite");
   }
   return path.isAbsolute(configured)
     ? configured

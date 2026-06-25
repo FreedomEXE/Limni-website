@@ -6,7 +6,9 @@ Status: active map. Repo evidence overrides this file when they conflict.
 
 | Path | Owner / Purpose |
 |---|---|
-| `app/` | App-owned code, assets, scripts, services, research, reports, releases, and tests. |
+| `app/` | Public app runtime: Next.js routes, UI, app libraries, public assets, release evidence, and app config. |
+| `engine/` | Local institutional research/backtest engine workspace. Keep reusable engine code here; generated data and reports stay ignored. |
+| `automation/` | MT5 assets, bot workers, sentiment scraper, voice helpers, and Playwright automation. |
 | `database/` | Schema, migrations, and data/integration contracts. |
 | `docs/` | Durable documentation, process, architecture, and backlog. |
 | `poseidon/` | Limni/Poseidon project profile and control-plane notes. |
@@ -23,14 +25,39 @@ truth.
 |---|---|
 | `app/src/` | Next.js routes, API routes, UI, app libraries, and unit tests. |
 | `app/public/` | Runtime public assets. |
-| `app/scripts/` | App tooling, verification scripts, maintenance scripts, and research runners. |
-| `app/services/` | Deployable automation services, MT5 assets, bots, and sidecars. |
-| `app/research/` | Non-binding research workspaces. Promote durable decisions into `docs/` or `app/releases/`. |
-| `app/reports/` | Generated reports and evidence outputs. Treat as evidence unless promoted deliberately. |
 | `app/releases/` | Release history, release evidence, screenshots, release notes, and release canon. |
-| `app/tests/` | Playwright end-to-end tests. |
 
 `app/releases/v2/canon/*.json` remains frozen without an explicit canon gate.
+Do not create `app/scripts/`, `app/reports/`, `app/research/`, `app/services/`,
+or `app/tests/` again unless a later app-refactor gate explicitly reopens that
+ownership decision.
+
+## Engine Folders
+
+| Path | Owner / Purpose |
+|---|---|
+| `engine/scripts/` | Reusable local research and backtest command entry points. |
+| `engine/data/` | Local/cached research data. Ignored by default. |
+| `engine/reports/` | Generated local engine receipts and run artifacts. Ignored by default unless a gate explicitly promotes selected evidence. |
+
+Forward research should route frozen decision manifests through:
+
+```powershell
+npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>
+```
+
+## Automation Folders
+
+| Path | Owner / Purpose |
+|---|---|
+| `automation/mt5/` | MT5 source, templates, generated MQL contracts, and compiled indicator assets already tracked. |
+| `automation/bots/` | OANDA and Bitget bot workers. |
+| `automation/sentiment-scraper/` | Sentiment scraper sidecar. |
+| `automation/scripts/` | Automation command entry points, such as contract generation and coverage checks. |
+| `automation/tests/` | Playwright end-to-end automation. |
+| `automation/voice/` | Poseidon voice helper scripts. |
+
+Automation can support the app later, but it is not app runtime ownership.
 
 ## Database Folders
 
@@ -44,7 +71,7 @@ truth.
 
 | Path | Anchor |
 |---|---|
-| `.github/workflows/contract-artifacts-sync.yml` | Watches `database/contracts/**`, `app/scripts/generate-contracts.ts`, `app/src/lib/mt5/**`, and generated MT5 contract output. |
+| `.github/workflows/contract-artifacts-sync.yml` | Watches `database/contracts/**`, `automation/scripts/generate-contracts.ts`, `app/src/lib/mt5/**`, and generated MT5 contract output. |
 | `.github/workflows/performance-coverage-nightly.yml` | Runs `npm run performance:coverage:check`. |
 | `.github/workflows/force-vercel-deploy.yml` | Manual Vercel deploy hook trigger. |
 | `.husky/pre-commit` | Warns when MT5 source changes lack matching compiled downloads. |
@@ -55,11 +82,11 @@ truth.
 
 Root files are limited to repo manifests, package/config files, env examples,
 and platform config. New scratch notes, screenshots, logs, prompts, reports, and
-research outputs should go into `app/`, `docs/`, `database/`, `poseidon/`, or
-ignored `Local Environment/`.
+research outputs should go into `engine/`, `automation/`, `docs/`, `database/`,
+`poseidon/`, `archive/`, or ignored `Local Environment/`.
 
 Historical material goes under root `archive/`, mirrored by original ownership
-path. Examples: `archive/docs/...`, `archive/app/src/...`,
+path. Examples: `archive/docs/...`, `archive/app/reports/...`,
 `archive/database/...`. Do not create per-folder archive trees inside active
 areas.
 
