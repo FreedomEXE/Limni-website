@@ -12,14 +12,14 @@ import {
   assertResearchDecisionManifestHash,
   getResearchDecisionManifestIdentity,
   type ResearchDecisionManifest,
-} from "@/lib/research/decisionManifest";
+} from "@engine/research/decisionManifest";
 import {
   evaluateResearchDecisionManifest,
   RESEARCH_DECISION_EVALUATOR_VERSION,
   type ResearchDecisionEvaluatorId,
   type ResearchDecisionPathResolution,
-} from "@/lib/research/decisionManifestEvaluator";
-import { sha256Stable, sha256Text } from "@/lib/research/hash";
+} from "@engine/research/decisionManifestEvaluator";
+import { sha256Stable, sha256Text } from "@engine/research/hash";
 import {
   appendResearchRunRegistryEntry,
   buildResearchRunEquivalenceKey,
@@ -27,7 +27,7 @@ import {
   hashResearchRunEquivalenceKey,
   readResearchRunRegistry,
   type ResearchRunRegistryStatus,
-} from "@/lib/research/researchRunRegistry";
+} from "@engine/research/researchRunRegistry";
 
 type CliOptions = {
   manifestPath: string;

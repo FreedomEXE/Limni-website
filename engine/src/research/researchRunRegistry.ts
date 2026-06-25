@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { sha256Stable } from "@/lib/research/hash";
+import { sha256Stable } from "@engine/research/hash";
 
 export type ResearchRunRegistryStatus =
   | "exploratory"

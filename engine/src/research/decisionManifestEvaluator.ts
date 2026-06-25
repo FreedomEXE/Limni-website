@@ -9,12 +9,12 @@ import type {
   ResearchDecisionManifest,
   ResearchDecisionRow,
   ResearchDecisionSide,
-} from "@/lib/research/decisionManifest";
+} from "@engine/research/decisionManifest";
 import {
   attachResearchDecisionManifestHash,
   getResearchDecisionManifestIdentity,
   normalizeResearchDecisionManifest,
-} from "@/lib/research/decisionManifest";
+} from "@engine/research/decisionManifest";
 
 export const RESEARCH_DECISION_EVALUATOR_VERSION = "research_decision_evaluator_adr_grid_weekly_hold_v1";
 

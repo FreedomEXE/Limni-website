@@ -1,4 +1,4 @@
-import { sha256Stable, stableValue } from "@/lib/research/hash";
+import { sha256Stable, stableValue } from "@engine/research/hash";
 
 export const RESEARCH_DECISION_MANIFEST_VERSION = "research_decision_manifest_v1";
 

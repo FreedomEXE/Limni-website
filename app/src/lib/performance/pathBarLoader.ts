@@ -87,7 +87,7 @@ async function tryLoadLocalM1PathBars(
   toUtc: string,
   resolution: string,
 ): Promise<PathBarMap | null> {
-  const warehouse = await import("@/lib/research/localM1Warehouse");
+  const warehouse = await import("@engine/price/localM1Warehouse");
   if (!warehouse.shouldUseLocalM1Warehouse(resolution)) return null;
   return warehouse.readLocalM1Bars(symbols, fromUtc, toUtc, resolution);
 }

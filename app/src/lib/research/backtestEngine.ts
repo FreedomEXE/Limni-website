@@ -1,4 +1,4 @@
-import { hashResearchConfig } from "@/lib/research/hash";
+import { hashResearchConfig } from "@engine/research/hash";
 import type {
   ResearchConfig,
   ResearchModel,

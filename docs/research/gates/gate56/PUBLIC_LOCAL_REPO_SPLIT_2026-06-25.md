@@ -53,6 +53,13 @@ automation routes import it. That is app refactor work, not this cleanup gate.
 
 Forward reusable local research surface:
 
+- `engine/src/research/decisionManifest.ts`
+- `engine/src/research/decisionManifestEvaluator.ts`
+- `engine/src/research/hash.ts`
+- `engine/src/research/researchRunRegistry.ts`
+- `engine/src/price/localM1Warehouse.ts`
+- `engine/src/warehouse/matrixDataset.ts`
+- `engine/src/warehouse/macroRegimeDataset.ts`
 - `engine/scripts/verification/evaluate-research-decision-manifest.ts`
 - `engine/data/` for local cached price/data artifacts, ignored by default
 - `engine/reports/` for generated engine artifacts, ignored by default
@@ -99,8 +106,8 @@ npm run bot:oanda
   Gate 55G equivalent-manifest parity receipt proves identical frozen metrics.
 - Historical archived scripts may still reference old paths. They are evidence,
   not blessed commands.
-- `app/src/lib/research/` still contains app-route support code and should be
-  refactored later only as an app gate.
+- `app/src/lib/research/` still contains deprecated but referenced app research
+  UI/API support code. It is not the forward institutional engine.
 
 ## No-Go List
 

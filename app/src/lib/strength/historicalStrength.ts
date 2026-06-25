@@ -161,7 +161,7 @@ const FX_PAIR_BY_SYMBOL = new Map(FX_PAIR_MAP.map((row) => [row.pair, row]));
 let ensuredStrengthHistorySchema = false;
 
 async function tryLoadLocalFxM1BarsByPair(fromUtc: string, toUtc: string): Promise<Map<string, CanonicalM1Bar[]> | null> {
-  const warehouse = await import("@/lib/research/localM1Warehouse");
+  const warehouse = await import("@engine/price/localM1Warehouse");
   if (!warehouse.shouldUseLocalM1Warehouse("1m")) return null;
   const symbols = FX_PAIR_MAP.map((row) => row.pair);
   const localBars = warehouse.readLocalM1Bars(symbols, fromUtc, toUtc, "1m");
@@ -183,7 +183,7 @@ async function tryLoadLocalFxM1BarsByPair(fromUtc: string, toUtc: string): Promi
 }
 
 async function tryWriteLocalFxStrengthHistorySnapshots(rows: FxStrengthHistorySnapshot[]): Promise<number | null> {
-  const warehouse = await import("@/lib/research/localM1Warehouse");
+  const warehouse = await import("@engine/price/localM1Warehouse");
   if (!warehouse.shouldUseLocalStrengthWarehouse()) return null;
   return warehouse.writeLocalStrengthHistorySnapshots(rows);
 }
@@ -194,7 +194,7 @@ async function tryReadLocalFxStrengthHistoryIndex(options: {
   windows?: HistoricalStrengthWindow[];
   derivationVersion?: string;
 }): Promise<FxStrengthHistoryIndex | null> {
-  const warehouse = await import("@/lib/research/localM1Warehouse");
+  const warehouse = await import("@engine/price/localM1Warehouse");
   if (!warehouse.shouldUseLocalStrengthWarehouse()) return null;
   const windows = normalizeWindows(options.windows);
   const derivationVersion = options.derivationVersion ?? FX_M1_STRENGTH_DERIVATION_VERSION;

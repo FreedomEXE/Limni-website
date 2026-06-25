@@ -37,6 +37,9 @@ ownership decision.
 | Path | Owner / Purpose |
 |---|---|
 | `engine/scripts/` | Reusable local research and backtest command entry points. |
+| `engine/src/research/` | Research decision manifest contract, shared evaluator, hashing, and append-only run registry. |
+| `engine/src/price/` | Local/cached price adapters such as the SQLite M1 warehouse. |
+| `engine/src/warehouse/` | Research matrix and macro regime warehouse helpers. |
 | `engine/data/` | Local/cached research data. Ignored by default. |
 | `engine/reports/` | Generated local engine receipts and run artifacts. Ignored by default unless a gate explicitly promotes selected evidence. |
 
@@ -45,6 +48,10 @@ Forward research should route frozen decision manifests through:
 ```powershell
 npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>
 ```
+
+The app is not the institutional research source of truth. App code may consume
+stable `@engine/*` contracts or read-only adapters, but evaluator/manifest/run
+registry ownership lives in `engine/`.
 
 ## Automation Folders
 

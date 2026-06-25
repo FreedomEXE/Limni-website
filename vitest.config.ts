@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./app/src"),
+      "@engine": path.resolve(__dirname, "./engine/src"),
     },
   },
   test: {

@@ -78,15 +78,19 @@ manifest builder; ADR Grid and weekly-hold scoring belong in the shared
 evaluator. Do not add new Gate-specific scorer functions when a frozen decision
 manifest can be routed through:
 
-- `app/src/lib/research/decisionManifest.ts`
-- `app/src/lib/research/decisionManifestEvaluator.ts`
-- `app/src/lib/research/researchRunRegistry.ts`
+- `engine/src/research/decisionManifest.ts`
+- `engine/src/research/decisionManifestEvaluator.ts`
+- `engine/src/research/researchRunRegistry.ts`
 - `engine/scripts/verification/evaluate-research-decision-manifest.ts`
 
 The command must write a normalized manifest copy, result JSON, Markdown
 receipt, hash JSON, and a registry row. Before scoring, it must check the
 registry for a materially equivalent run and refuse to rerun unless an explicit
 rerun reason is supplied.
+
+Gate 56B moved the institutional research core out of `app/src/lib/research`.
+Any remaining `app/src/lib/research` modules are deprecated app research UI/API
+support, not the forward research engine.
 
 ### Weekly dealer / commercial / sentiment bias
 

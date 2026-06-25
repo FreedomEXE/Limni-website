@@ -27,14 +27,18 @@ not a new backtest engine:
 - Existing app weekly-hold runtime remains in
   `app/src/lib/performance/weeklyHoldEngine.ts`.
 - Existing Gate 44 research matrix warehouse remains in
-  `app/src/lib/research/matrixDataset.ts`.
+  `engine/src/warehouse/matrixDataset.ts`.
 - The manifest evaluator lives at
-  `app/src/lib/research/decisionManifestEvaluator.ts` and consumes arbitrary
+  `engine/src/research/decisionManifestEvaluator.ts` and consumes arbitrary
   weekly decision rows.
 - The append-only duplicate-prevention registry lives at
-  `app/src/lib/research/researchRunRegistry.ts`.
+  `engine/src/research/researchRunRegistry.ts`.
 - The candidate shared evaluator command is:
   `npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>`.
+
+Gate 56B moved manifest/evaluator/hash/registry ownership out of app. Older
+Gate 55H receipts that name `app/src/lib/research/...` are historical path
+evidence and are superseded for forward work.
 
 Gate-specific receipt scripts such as
 `archive/app/scripts/verification/audit-gate55-friday-strength-baseline.ts` remain

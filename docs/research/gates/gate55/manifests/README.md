@@ -2,7 +2,7 @@
 
 Future research starts from a frozen `ResearchDecisionManifest` JSON document.
 The required contract is implemented in
-`app/src/lib/research/decisionManifest.ts`.
+`engine/src/research/decisionManifest.ts`.
 
 Required fields:
 

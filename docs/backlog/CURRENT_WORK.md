@@ -8,16 +8,18 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 56: public-local-repo-split.
+Gate 56B: app-lib-ownership-audit.
 
-Objective: split the repo into a clean public app lane and local engine /
-automation lanes without changing app behavior or reopening research tests.
+Objective: finish the public/local split by auditing `app/src/lib`, moving
+obvious institutional research core into `engine/src`, archiving unreferenced
+stale app-lib leftovers, and documenting remaining boundary debt without
+running new research.
 
 ## Current Ownership Model
 
 - `app/` keeps only app runtime, public assets, release evidence, and app config.
-- `engine/` owns reusable local institutional research/backtest commands,
-  cached data, and generated engine reports.
+- `engine/` owns reusable local institutional research/backtest source code,
+  commands, cached data, and generated engine reports.
 - `automation/` owns MT5 assets, bots, sentiment scraper, voice helpers, and
   Playwright automation.
 - `archive/` owns stale historical reports, research workspaces, and one-off
@@ -38,6 +40,19 @@ automation lanes without changing app behavior or reopening research tests.
 - Do not run new Strength bucket tests, regime filters, COT+Strength tests,
   execution optimization, or research-engine rebuilds in this cleanup gate.
 
+## Gate 56B Checklist
+
+- Inventory every tracked file under `app/src/lib`.
+- Move engine-owned manifest/evaluator/hash/registry code to
+  `engine/src/research`.
+- Move local M1 warehouse ownership to `engine/src/price`.
+- Move research matrix and macro warehouse helpers to `engine/src/warehouse`.
+- Archive obvious unreferenced stale app-lib leftovers under root `archive/`.
+- Keep deprecated but referenced app research UI/API support under
+  `app/src/lib/research` until a later app refactor gate.
+- Document boundary debt instead of extracting shared DB/path primitives in this
+  gate.
+
 ## Frozen Areas
 
 - `app/releases/v2/canon/*.json`
@@ -50,6 +65,8 @@ automation lanes without changing app behavior or reopening research tests.
 ## Active Gate Doc
 
 `docs/research/gates/gate56/PUBLIC_LOCAL_REPO_SPLIT_2026-06-25.md`
+
+`docs/research/gates/gate56/GATE56B_APP_SRC_LIB_OWNERSHIP_AUDIT_2026-06-25.md`
 
 ## Forward Research Command
 
