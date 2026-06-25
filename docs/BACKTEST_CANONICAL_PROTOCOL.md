@@ -51,6 +51,39 @@ Current frozen FX M1 bundle:
 Do not build a second backtest engine to solve price lineage. Keep the existing
 fast derived artifacts, but bind them to the frozen canonical price bundle.
 
+### Research decision manifest workflow
+
+Gate 55H defines the blessed workflow for future institutional research:
+
+```text
+ResearchDecisionManifest
+-> shared decision manifest evaluator
+-> result/receipt/hash writer
+-> append-only research run registry
+```
+
+Use this path for COT restatement, Strength selected/fade, Strength buckets,
+regime-filtered manifests, and future combined manifests:
+
+```powershell
+npm run verification:research-manifest:evaluate -- --manifest=<manifest.json>
+```
+
+The evaluator consumes already-derived weekly decision rows. Signal derivation
+belongs upstream in a manifest builder; ADR Grid and weekly-hold scoring belong
+in the shared evaluator. Do not add new Gate-specific scorer functions when a
+frozen decision manifest can be routed through:
+
+- `app/src/lib/research/decisionManifest.ts`
+- `app/src/lib/research/decisionManifestEvaluator.ts`
+- `app/src/lib/research/researchRunRegistry.ts`
+- `app/scripts/verification/evaluate-research-decision-manifest.ts`
+
+The command must write a normalized manifest copy, result JSON, Markdown
+receipt, hash JSON, and a registry row. Before scoring, it must check the
+registry for a materially equivalent run and refuse to rerun unless an explicit
+rerun reason is supplied.
+
 ### Weekly dealer / commercial / sentiment bias
 
 The canonical weekly base-model source is:

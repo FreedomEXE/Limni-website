@@ -20,13 +20,12 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 55: Friday Strength selected-vs-fade baseline lock.
+Gate 55H: research-workflow-manifest-registry-cleanup.
 
-Status: baseline lock ready for review. Gate 55A legacy selected-vs-fade
-diagnostic is closed as blocked by Strength source/coverage. Gate 55E closed
-the Frozen Canonical Price Bundle v1 blocker, Gate 55F closed the canonical
-Strength source-context blocker, and Gate 55G completed the canonical 1m
-Friday Strength selected-vs-fade diagnostic.
+Status: architecture cleanup in progress. Gate 55G remains valid as a canonical
+Friday Strength selected-vs-fade diagnostic, but future research must route
+frozen weekly decisions through the Gate 55H manifest/evaluator/registry path
+rather than adding Gate-specific scorer scripts.
 
 Gate 55G lock interpretation:
 
@@ -41,6 +40,16 @@ optimization, risk overlays, live/MT5, or final combined system selection.
 
 Active Gate 55 artifacts:
 
+- Gate 55H workflow root:
+  `docs/research/gates/gate55/README.md`
+- Gate 55H architecture cleanup receipt:
+  `docs/research/gates/gate55/receipts/GATE55H_RESEARCH_WORKFLOW_ARCHITECTURE_CLEANUP_2026-06-25.md`
+- Gate 55H blessed command shapes:
+  `docs/research/gates/gate55/configs/GATE55H_BLESSED_RESEARCH_COMMANDS_2026-06-25.md`
+- Gate 55H archive inventory:
+  `docs/research/gates/gate55/archive/STRATEGY_TESTER_INVENTORY_2026-06-25.md`
+- Gate 55H archive manifest:
+  `docs/research/gates/gate55/archive/ARCHIVE_MANIFEST_2026-06-25.md`
 - Gate 55A receipt:
   `docs/research/GATE55A_LEGACY_FRIDAY_STRENGTH_DIAGNOSTIC_RECEIPT_2026-06-24.md`
 - Gate 55B plan:
@@ -67,6 +76,16 @@ Active Gate 55 artifacts:
   `npm run verification:gate55-friday-strength-baseline -- --no-doc-copy --out-dir=temp/gate55-strength-baseline-final-smoke`
 - Legacy smoke receipt hash:
   `8F2804C7593E9AF14D406BB27C4C46A63B51BEA5870ECEFBFD2E3E791421B6AE`
+
+Blessed future evaluator command:
+
+```text
+npm run verification:research-manifest:evaluate -- --manifest=<manifest.json> --artifact-gate=gate55 --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 --path-resolution=1m --evaluators=adr_grid,weekly_hold --status=diagnostic
+```
+
+Gate 55H hard boundary: no COT restatement, Strength bucket tests, regime
+filters, COT+Strength combination, execution optimization, risk overlays,
+source reconstruction, or legacy script archive moves until explicitly opened.
 
 Gate 55A decision:
 

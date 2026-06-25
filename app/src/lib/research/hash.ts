@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-function stableValue(value: unknown): unknown {
+export function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => stableValue(item));
   }
@@ -15,6 +15,14 @@ function stableValue(value: unknown): unknown {
 
 export function stableStringify(value: unknown) {
   return JSON.stringify(stableValue(value));
+}
+
+export function sha256Stable(value: unknown) {
+  return createHash("sha256").update(stableStringify(value)).digest("hex").toUpperCase();
+}
+
+export function sha256Text(value: string | Buffer) {
+  return createHash("sha256").update(value).digest("hex").toUpperCase();
 }
 
 export function hashResearchConfig(value: unknown) {
