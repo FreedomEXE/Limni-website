@@ -8,21 +8,22 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 57A0B: durable-pair-week-path-outcome-warehouse.
+Gate 57B: friday-strength-15w-relative-lifecycle.
 
-Objective: materialize reusable, strategy-agnostic long/short pair-week path
-outcomes from the Gate 55E canonical FX M1 price bundle, so future
-`ResearchDecisionManifest` variants can aggregate frozen outcomes instead of
-rerunning M1 ADR Grid path simulation.
+Objective: test a Friday-only, 15-week, currency-isolated relative Strength
+source through Gate 57A0B warehouse aggregation, then decide whether it is a
+better institutional Strength algorithm or role-limited eligibility layer.
 
-Status: PASS_WITH_RUNTIME_COMMIT_CAVEAT. Gate 56E evidence-hardening is pushed
-at `c7090f1`; Gate 56F is pushed through `0cda44b` and accepted as locked stated
-evidence. Gate 57A0 is pushed at
-`4f39e5e35d9f4b30e2ae593d665027ffc74e37bd`. Gate 57A0B adds the durable
-pair-week outcome warehouse and explicit warehouse aggregation mode only: no
-Strength bucket evaluation, no COT/Strength logic changes, no evaluator
-semantic changes, no COT+Strength, no regimes, no risk overlays, no MT5/live,
-and no app refactor work.
+Status: warehouse-only evaluation is complete and stopped. The FRS15 full
+parent selected signal is alive but does not beat the existing Gate 55G/Gate
+56E selected Strength baseline as a broad directional layer. The useful finding
+is lifecycle/eligibility: `compressed_selected` has the strongest ADR Grid
+quality (`ADR 697.5492`, `DD -118.8741`, `R/DD 5.8680`, `PF 1.5518`, `2,611`
+rows), and `no_extreme_selected` keeps nearly all parent ADR while materially
+improving drawdown and PF. The extreme absolute-spread bucket is weak. No raw
+M1 ADR Grid simulation, no open confirmation, no engine/evaluator semantic
+changes, no COT changes, no regimes, no COT+Strength, no risk overlays, no
+MT5/live, and no app refactor work.
 
 ## Current Ownership Model
 
@@ -149,8 +150,48 @@ and no app refactor work.
   registry rows.
 - [x] Prove duplicate detection returns the existing equivalent warehouse run.
 - [x] Commit final Gate 57A0B evidence state.
-- Do not start Gate 57A Strength context/bucket preflight until explicitly
-  approved.
+- Gate 57A Strength context/bucket preflight is now explicitly opened as the
+  next gate.
+
+## Gate 57A Checklist
+
+- [x] Define fixed Strength selected/fade, strongest quartile, weakest quartile,
+  and rolling 52-week historical-context candidate contracts.
+- [x] Prove candidate decision timestamps and resolved Strength timestamps do
+  not occur after the target trade week opens.
+- [x] Report row counts, week coverage, duplicate counts, and manifest
+  IDs/hashes.
+- [x] Check exact `week_open_utc + symbol + side` coverage against the Gate 57A0B
+  warehouse.
+- [x] Bind candidates to Gate 55E, Gate 55F, Gate 55G, Gate 56E, and Gate 57A0B
+  evidence.
+- [x] Run only the approved warehouse-only evaluation for the five preflighted
+  candidates.
+- [x] Add same-window selected/fade controls for rolling 52-week interpretation.
+- [x] Record ADR Grid and Weekly Hold metrics, runtime cache `0/0/0`, result
+  hashes, receipt hashes, and duplicate detection keys.
+- [x] Stop before more windows, buckets, regimes, COT+Strength, risk overlays,
+  MT5/live, or app work.
+- Do not run raw M1 ADR Grid simulation, regimes, COT+Strength, risk overlays,
+  MT5/live, app work, or evaluator changes.
+
+## Gate 57B Checklist
+
+- [x] Implement a Friday-only 15-week relative Strength manifest builder.
+- [x] Use Gate 55E canonical FX M1 prices only.
+- [x] Use latest 1m bar close at or before Friday freeze; no open confirmation.
+- [x] Isolate each major currency across its seven related FX crosses.
+- [x] Normalize the eight weekly currency scores to 0-100.
+- [x] Emit parent selected/fade plus compressed, middle, extreme, no-extreme,
+  persistent, and flip manifests.
+- [x] Prove coverage, duplicate counts, row counts, manifest hashes, and build
+  receipt hash.
+- [x] Evaluate all eight manifests through Gate 57A0B warehouse aggregation
+  only.
+- [x] Record ADR Grid and Weekly Hold metrics, runtime cache `0/0/0`, result
+  hashes, receipt hashes, and duplicate detection proof.
+- [x] Stop before more windows, buckets, regimes, COT+Strength, risk overlays,
+  MT5/live, app work, or evaluator changes.
 
 ## Frozen Areas
 
@@ -180,6 +221,12 @@ and no app refactor work.
 `docs/research/gates/gate57/GATE57A0_SHARED_PRICE_PATH_RUNTIME_HARDENING_2026-06-26.md`
 
 `docs/research/gates/gate57/GATE57A0B_DURABLE_PAIR_WEEK_PATH_OUTCOME_WAREHOUSE_2026-06-26.md`
+
+`docs/research/gates/gate57/GATE57A_STRENGTH_PREFLIGHT_ROLE_LOCK_2026-06-26.md`
+
+`docs/research/gates/gate57/GATE57A_STRENGTH_WAREHOUSE_ROLE_EVALUATION_2026-06-26.md`
+
+`docs/research/gates/gate57/GATE57B_FRIDAY_STRENGTH_15W_RELATIVE_LIFECYCLE_2026-06-26.md`
 
 ## Forward Research Command
 
