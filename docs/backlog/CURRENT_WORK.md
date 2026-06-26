@@ -15,8 +15,11 @@ accepted Gate 55G selected/fade ADR Grid and weekly-hold metrics under the Gate
 55E price bundle, without running buckets, regimes, COT restatement, COT +
 Strength, or execution/risk/live work.
 
-Status: parity proof complete. Remaining work is validation, commit, push, and
-session update.
+Status: parity proof complete and pushed at
+`aa8a82d6081a14d776b89e02840b7f78252954c4`. External review accepted Gate 56E
+with evidence-hardening caveats. Local amendment added at
+`docs/research/gates/gate56/GATE56E_EVIDENCE_HARDENING_AMENDMENT_2026-06-26.md`;
+do not open the next gate until Freedom accepts or redirects.
 
 ## Current Ownership Model
 
@@ -113,6 +116,8 @@ session update.
 `docs/research/gates/gate56/GATE56D_ENGINE_PRICE_PATH_PRIMITIVE_EXTRACTION_2026-06-25.md`
 
 `docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md`
+
+`docs/research/gates/gate56/GATE56E_EVIDENCE_HARDENING_AMENDMENT_2026-06-26.md`
 
 ## Forward Research Command
 

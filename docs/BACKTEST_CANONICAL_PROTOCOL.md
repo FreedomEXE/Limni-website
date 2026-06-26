@@ -88,6 +88,11 @@ receipt, hash JSON, and a registry row. Before scoring, it must check the
 registry for a materially equivalent run and refuse to rerun unless an explicit
 rerun reason is supplied.
 
+Future engine manifest-build and evaluator receipts must also record the
+run-time git commit, artifact commit under review when different, dirty-tree
+status as `clean`, `dirty`, or `unknown`, and a durable repo-relative command.
+Absolute local command paths are diagnostic detail only.
+
 Gate 56B moved the institutional research core out of `app/src/lib/research`.
 Any remaining `app/src/lib/research` modules are deprecated app research UI/API
 support, not the forward research engine.
