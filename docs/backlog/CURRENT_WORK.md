@@ -8,18 +8,17 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 56E: gate55g-equivalent-manifest-parity.
+Gate 56F: gate54-cot-restatement-through-engine.
 
-Objective: prove the engine-owned manifest/evaluator path can reproduce the
-accepted Gate 55G selected/fade ADR Grid and weekly-hold metrics under the Gate
-55E price bundle, without running buckets, regimes, COT restatement, COT +
-Strength, or execution/risk/live work.
+Objective: prove the locked Gate 54 CLP carry-forward + carry-previous
+tie-fill COT decisions can be emitted as a `ResearchDecisionManifest` and scored
+through the same engine-owned evaluator path proven in Gate 56E.
 
-Status: parity proof complete and pushed at
-`aa8a82d6081a14d776b89e02840b7f78252954c4`. External review accepted Gate 56E
-with evidence-hardening caveats. Local amendment added at
-`docs/research/gates/gate56/GATE56E_EVIDENCE_HARDENING_AMENDMENT_2026-06-26.md`;
-do not open the next gate until Freedom accepts or redirects.
+Status: PASS_WITH_RUNTIME_CAVEAT. Gate 56E evidence-hardening was committed and
+pushed at `c7090f1`. Gate 56F has local, unpushed commits: manifest builder
+`b2801b3`, raw restatement artifacts `f8ab474`, and final receipt committed
+locally. The first evaluator attempt without cache clearing hit Node heap OOM;
+the cache-cleared run passed and duplicate detection worked.
 
 ## Current Ownership Model
 
@@ -96,6 +95,19 @@ do not open the next gate until Freedom accepts or redirects.
 - Do not run Strength buckets, regime filters, COT restatement, COT + Strength,
   execution optimization, risk overlays, MT5/live, or final system selection.
 
+## Gate 56F Checklist
+
+- [x] Locate locked Gate 54 CLP carry-forward + carry-previous tie-fill source truth.
+- [x] Add engine-owned COT manifest builder only; no scorer/evaluator fork.
+- [x] Emit frozen Gate 54 CLP COT `ResearchDecisionManifest`.
+- [x] Validate manifest shape before evaluator scoring.
+- [x] Score through `npm run engine:research-manifest:evaluate`.
+- [x] Rerun the exact evaluator command once to prove duplicate detection.
+- [x] Record old Gate 54 metrics, new engine-restated metrics, hashes, runtime,
+  commits, and runtime caveat.
+- Do not run Strength buckets, regime filters, COT + Strength, execution
+  optimization, risk overlays, MT5/live, or final system selection.
+
 ## Frozen Areas
 
 - `app/releases/v2/canon/*.json`
@@ -118,6 +130,8 @@ do not open the next gate until Freedom accepts or redirects.
 `docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md`
 
 `docs/research/gates/gate56/GATE56E_EVIDENCE_HARDENING_AMENDMENT_2026-06-26.md`
+
+`docs/research/gates/gate56/GATE56F_GATE54_COT_RESTATEMENT_THROUGH_ENGINE_2026-06-26.md`
 
 ## Forward Research Command
 
