@@ -21,6 +21,7 @@ import {
   type ResearchDecisionPathResolution,
 } from "@engine/research/decisionManifestEvaluator";
 import { sha256Stable, sha256Text } from "@engine/research/hash";
+import { evaluateResearchDecisionManifestWithPairWeekOutcomes } from "@engine/research/pairWeekPathOutcomeWarehouse";
 import {
   appendResearchRunRegistryEntry,
   buildResearchRunEquivalenceKey,
@@ -46,6 +47,7 @@ type CliOptions = {
   logProgress: boolean;
   clearRuntimeCacheBetweenWeeks: boolean;
   noRegistryWrite: boolean;
+  pathOutcomeWarehouseId: string | null;
 };
 
 function argValue(name: string): string | null {
@@ -134,6 +136,9 @@ Common:
   --no-doc-copy                     Do not copy receipt into docs/research/gates/<gate>/receipts.
   --log-progress                    Print per-week scoring progress.
   --clear-runtime-cache-between-weeks
+  --path-outcome-warehouse-id=<id>  Aggregate from durable pair-week outcomes.
+                                    Fails if outcomes are missing/hash-invalid;
+                                    does not fall back to M1 path simulation.
 
 This command does not derive signals. It scores an already frozen decision manifest.
 Gate 56E proved Gate 55G equivalent-manifest parity for this evaluator path.
@@ -168,6 +173,7 @@ function parseCli(): CliOptions {
     logProgress: hasFlag("log-progress"),
     clearRuntimeCacheBetweenWeeks: hasFlag("clear-runtime-cache-between-weeks"),
     noRegistryWrite: hasFlag("no-registry-write"),
+    pathOutcomeWarehouseId: argValue("path-outcome-warehouse-id"),
   };
 }
 
@@ -230,6 +236,7 @@ function renderReceipt(options: {
   registryPath: string | null;
   status: ResearchRunRegistryStatus;
   rerunReason: string | null;
+  pathOutcomeWarehouseId: string | null;
 }) {
   const lines = [
     `# ${options.result.manifest.gate_id} Research Decision Manifest Evaluation`,
@@ -263,6 +270,7 @@ function renderReceipt(options: {
     `- Runtime cache entries after run: \`${options.result.runtime.cache.entries}\``,
     `- Runtime cache gets/hits/misses: \`${options.result.runtime.cache.gets}/${options.result.runtime.cache.hits}/${options.result.runtime.cache.misses}\``,
     `- Runtime cache clear-all calls: \`${options.result.runtime.cache.clearAllCalls}\``,
+    `- Path outcome warehouse ID: \`${options.pathOutcomeWarehouseId ?? "-"}\``,
     "",
     "Runtime/cache controls are memory and speed controls only. They are not signal logic, strategy logic, or evaluator semantics.",
     "",
@@ -353,6 +361,7 @@ async function writeRunArtifacts(options: {
     registryPath: options.registryPathRel,
     status: options.cli.status,
     rerunReason: options.cli.rerunReason,
+    pathOutcomeWarehouseId: options.cli.pathOutcomeWarehouseId,
   });
   const receiptHash = sha256Text(receiptWithoutHash);
   const receiptText = `${receiptWithoutHash}Receipt hash: \`${receiptHash}\`\n`;
@@ -370,6 +379,7 @@ async function writeRunArtifacts(options: {
     config_hash: options.prepared.identity.config_hash,
     price_bundle_id: options.prepared.identity.price_bundle_id,
     evaluator_version: RESEARCH_DECISION_EVALUATOR_VERSION,
+    path_outcome_warehouse_id: options.cli.pathOutcomeWarehouseId,
   };
   const hashesText = `${JSON.stringify(hashes, null, 2)}\n`;
 
@@ -491,21 +501,29 @@ async function main() {
 
   if (runsToEvaluate.length === 0) return;
 
-  const results = runsToEvaluate.length === 1
-    ? [await evaluateResearchDecisionManifest({
-      manifest: runsToEvaluate[0]!.manifest,
+  const results = options.pathOutcomeWarehouseId
+    ? await Promise.all(runsToEvaluate.map((run) => evaluateResearchDecisionManifestWithPairWeekOutcomes({
+      manifest: run.manifest,
+      warehouseManifestId: options.pathOutcomeWarehouseId!,
       pathResolution: options.pathResolution,
       evaluators: options.evaluators,
       logProgress: options.logProgress,
-      clearRuntimeCacheBetweenWeeks: options.clearRuntimeCacheBetweenWeeks,
-    })]
-    : await evaluateResearchDecisionManifestBatch({
-      manifests: runsToEvaluate.map((run) => run.manifest),
-      pathResolution: options.pathResolution,
-      evaluators: options.evaluators,
-      logProgress: options.logProgress,
-      clearRuntimeCacheBetweenWeeks: options.clearRuntimeCacheBetweenWeeks,
-    });
+    })))
+    : runsToEvaluate.length === 1
+      ? [await evaluateResearchDecisionManifest({
+        manifest: runsToEvaluate[0]!.manifest,
+        pathResolution: options.pathResolution,
+        evaluators: options.evaluators,
+        logProgress: options.logProgress,
+        clearRuntimeCacheBetweenWeeks: options.clearRuntimeCacheBetweenWeeks,
+      })]
+      : await evaluateResearchDecisionManifestBatch({
+        manifests: runsToEvaluate.map((run) => run.manifest),
+        pathResolution: options.pathResolution,
+        evaluators: options.evaluators,
+        logProgress: options.logProgress,
+        clearRuntimeCacheBetweenWeeks: options.clearRuntimeCacheBetweenWeeks,
+      });
 
   for (const [index, prepared] of runsToEvaluate.entries()) {
     await writeRunArtifacts({

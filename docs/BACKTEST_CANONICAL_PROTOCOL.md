@@ -90,6 +90,35 @@ Gate 56E parity receipt:
 Gate 57A0 runtime-hardening receipt:
 `docs/research/gates/gate57/GATE57A0_SHARED_PRICE_PATH_RUNTIME_HARDENING_2026-06-26.md`.
 
+Gate 57A0B adds the forward durable pair-week path outcome layer:
+
+```text
+Gate 55E price bundle
+-> pair_week_path_outcomes
+-> ResearchDecisionManifest warehouse aggregation
+-> result/receipt/hash/registry
+```
+
+Warehouse rows are strategy-agnostic and keyed by price lineage, symbol, week,
+direction, path resolution, evaluator/path contract, and evaluator parameter
+hash. COT, Strength, bucket, regime, or combo labels belong in manifests, not in
+the pair-week outcome table.
+
+Forward warehouse evaluation is explicit:
+
+```powershell
+npm run engine:research-manifest:evaluate -- --manifest=<manifest.json> --path-outcome-warehouse-id=<warehouse_manifest_id>
+```
+
+When `--path-outcome-warehouse-id` is present, the evaluator must validate the
+warehouse manifest, row hash, price bundle, path resolution, evaluator version,
+path contract, evaluator parameter hash, and requested row coverage. Missing or
+hash-invalid outcomes fail closed. The evaluator must not silently fall back to
+M1 path simulation inside warehouse aggregation mode.
+
+Gate 57A0B durable warehouse receipt:
+`docs/research/gates/gate57/GATE57A0B_DURABLE_PAIR_WEEK_PATH_OUTCOME_WAREHOUSE_2026-06-26.md`.
+
 The evaluator consumes already-derived weekly decision rows. Signal derivation
 belongs upstream in a manifest builder; ADR Grid and weekly-hold scoring belong
 in the shared evaluator. Do not add new Gate-specific scorer functions when a

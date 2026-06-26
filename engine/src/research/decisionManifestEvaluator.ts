@@ -8,7 +8,13 @@ import {
 } from "@engine/cache/runtimeCache";
 import { getExecutionWeekWindow } from "@engine/evaluation/executionPriceWindows";
 import { getAdrPct, loadWeeklyAdrMap } from "@engine/price/adrLookup";
-import { buildPathBarTimelines, loadPathBars, type PathBarPoint } from "@engine/price/pathBarLoader";
+import {
+  buildPathBarTimelines,
+  loadPathBars,
+  type PathBarPoint,
+  type PathBarTimeline,
+  type PathBarTimelineMap,
+} from "@engine/price/pathBarLoader";
 import type {
   ResearchDecisionAssetClass,
   ResearchDecisionManifest,
@@ -22,6 +28,7 @@ import {
 } from "@engine/research/decisionManifest";
 
 export const RESEARCH_DECISION_EVALUATOR_VERSION = "research_decision_evaluator_adr_grid_weekly_hold_v1";
+export const RESEARCH_DECISION_PATH_CONTRACT_ID = "research_decision_pair_week_path_outcome_adr_grid_weekly_hold_v1";
 
 export type ResearchDecisionEvaluatorId = "adr_grid" | "weekly_hold";
 export type ResearchDecisionPathResolution = "1m" | "1h";
@@ -62,9 +69,29 @@ export type ResearchDecisionMetricSummary = {
   week_close?: number;
 };
 
+export type ResearchDecisionPairPathOutcome = {
+  week_open_utc: string;
+  symbol: string;
+  direction: ResearchDecisionSide;
+  adr_grid: {
+    adr: number;
+    fills: number;
+    tp: number;
+    reset: number;
+    week_close: number;
+    missing_price_rows: number;
+    default_adr_rows: number;
+  };
+  weekly_hold: {
+    adr: number;
+    missing_price_rows: number;
+    default_adr_rows: number;
+  };
+};
+
 export type ResearchDecisionRuntimeTelemetry = {
   schema_version: 1;
-  mode: "single_manifest" | "batch_week_major";
+  mode: "single_manifest" | "batch_week_major" | "warehouse_aggregation";
   wall_clock_ms: number;
   wall_clock_seconds: number;
   manifest_count: number;
@@ -154,6 +181,20 @@ const ADR_GRID_SPACING = 0.20;
 const ADR_GRID_RESET_ADR = 1.0;
 const ADR_GRID_ENTRY_RESET_BUFFER_ADR = 0.20;
 const ADR_GRID_MAX_LEVELS_PER_SIDE = 50;
+
+export const RESEARCH_DECISION_EVALUATOR_PARAMS = {
+  adr_grid: {
+    spacing_adr: ADR_GRID_SPACING,
+    reset_adr: ADR_GRID_RESET_ADR,
+    entry_reset_buffer_adr: ADR_GRID_ENTRY_RESET_BUFFER_ADR,
+    max_levels_per_side: ADR_GRID_MAX_LEVELS_PER_SIDE,
+  },
+  weekly_hold: {
+    entry: "first_loaded_path_bar_open",
+    exit: "last_loaded_path_bar_close",
+  },
+  execution_window: "getExecutionWeekWindow",
+} as const;
 
 function round(value: number | null | undefined, places = 4) {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
@@ -285,150 +326,150 @@ function closeFill(options: {
   });
 }
 
-function scoreAdrGridWeek(options: {
+function scoreAdrGridPairOutcome(options: {
   assetClass: ResearchDecisionAssetClass;
-  decisions: ResearchDecisionRow[];
-  symbols: string[];
+  weekOpenUtc: string;
+  symbol: string;
+  direction: ResearchDecisionSide;
   grid: string[];
   entryCutoffUtc: string;
   closeUtc: string;
   barsBySymbol: Awaited<ReturnType<typeof loadPathBars>>;
+  timeline: PathBarTimeline | null;
   adrMap: Awaited<ReturnType<typeof loadWeeklyAdrMap>>;
-}) {
-  const timelines = buildPathBarTimelines(options.symbols, options.barsBySymbol, options.grid);
+}): ResearchDecisionPairPathOutcome["adr_grid"] {
   const entryCutoffGridIndex = findGridIndexAtOrBefore(options.grid, options.entryCutoffUtc);
   const closeGridIndex = findGridIndexAtOrBefore(options.grid, options.closeUtc);
-  const defaultAdrSymbols = new Set<string>();
-  const engines: GridEngine[] = [];
-  let missingPriceRows = 0;
-
-  for (const decision of options.decisions) {
-    const bars = options.barsBySymbol.get(decision.symbol) ?? [];
-    const firstBar = bars.find((bar) => Number.isFinite(bar.openPrice) && bar.openPrice > 0);
-    const hasPathBars = Boolean(timelines.get(decision.symbol)?.exactBars.some((bar) => bar !== null));
-    if (!firstBar || !hasPathBars) {
-      missingPriceRows += 1;
-      continue;
-    }
-    if (!options.adrMap.has(decision.symbol)) defaultAdrSymbols.add(decision.symbol);
-    const pairAdrPct = getAdrPct(options.adrMap, decision.symbol, options.assetClass);
-    const base = {
-      symbol: decision.symbol,
-      direction: decision.side,
-      openPrice: firstBar.openPrice,
-      pairAdrPct,
+  const symbol = options.symbol.trim().toUpperCase();
+  const bars = options.barsBySymbol.get(symbol) ?? [];
+  const firstBar = bars.find((bar) => Number.isFinite(bar.openPrice) && bar.openPrice > 0);
+  const hasPathBars = Boolean(options.timeline?.exactBars.some((bar) => bar !== null));
+  if (!firstBar || !hasPathBars) {
+    return {
+      adr: 0,
+      fills: 0,
+      tp: 0,
+      reset: 0,
+      week_close: 0,
+      missing_price_rows: 1,
+      default_adr_rows: 0,
     };
-    const levels = buildLevels(base);
-    engines.push({
-      ...base,
-      levels,
-      fills: [],
-      levelArmed: levels.map(() => true),
-      levelRearmBarIndex: levels.map(() => -1),
-      levelRequiresRetouch: levels.map(() => false),
-      cycleHighPrice: firstBar.openPrice,
-      cycleLowPrice: firstBar.openPrice,
-      closedForWeek: false,
-      entriesStoppedForWeek: false,
-      entryCutoffGridIndex,
-      closeGridIndex,
-      realizedAdr: 0,
-    });
   }
+  const defaultAdrRows = options.adrMap.has(symbol) ? 0 : 1;
+  const pairAdrPct = getAdrPct(options.adrMap, symbol, options.assetClass);
+  const base = {
+    symbol,
+    direction: options.direction,
+    openPrice: firstBar.openPrice,
+    pairAdrPct,
+  };
+  const levels = buildLevels(base);
+  const engine: GridEngine = {
+    ...base,
+    levels,
+    fills: [],
+    levelArmed: levels.map(() => true),
+    levelRearmBarIndex: levels.map(() => -1),
+    levelRequiresRetouch: levels.map(() => false),
+    cycleHighPrice: firstBar.openPrice,
+    cycleLowPrice: firstBar.openPrice,
+    closedForWeek: false,
+    entriesStoppedForWeek: false,
+    entryCutoffGridIndex,
+    closeGridIndex,
+    realizedAdr: 0,
+  };
 
   const trades: TradeRow[] = [];
 
   for (let barIndex = 0; barIndex < options.grid.length; barIndex += 1) {
     const tsUtc = options.grid[barIndex] ?? options.closeUtc;
-    for (const engine of engines) {
-      if (engine.closedForWeek || barIndex > engine.closeGridIndex) continue;
-      const timeline = timelines.get(engine.symbol);
-      const bar = timeline?.exactBars[barIndex] ?? null;
+    if (engine.closedForWeek || barIndex > engine.closeGridIndex) continue;
+    const bar = options.timeline?.exactBars[barIndex] ?? null;
 
-      if (bar) {
-        engine.cycleHighPrice = Math.max(engine.cycleHighPrice, bar.highPrice);
-        engine.cycleLowPrice = Math.min(engine.cycleLowPrice, bar.lowPrice);
+    if (bar) {
+      engine.cycleHighPrice = Math.max(engine.cycleHighPrice, bar.highPrice);
+      engine.cycleLowPrice = Math.min(engine.cycleLowPrice, bar.lowPrice);
 
-        for (const fill of engine.fills) {
-          if (!fill.active) continue;
-          fill.maxAdverseRawPct = Math.max(fill.maxAdverseRawPct, adrGridAdverseRawPct(engine.direction, fill.entryPrice, bar));
-        }
-
-        const resetTarget = getResetTarget(engine);
-        if (adrGridPriceHit(engine.direction, bar, resetTarget)) {
-          for (const fill of engine.fills) {
-            if (!fill.active) continue;
-            const tpHit = adrGridPriceHit(engine.direction, bar, fill.tpPrice);
-            const resetReturn = directedRawReturnPct(engine.direction, fill.entryPrice, resetTarget);
-            const tpReturn = directedRawReturnPct(engine.direction, fill.entryPrice, fill.tpPrice);
-            const useTp = tpHit && resetReturn >= tpReturn - 1e-9;
-            closeFill({
-              trades,
-              engine,
-              fill,
-              exitPrice: useTp ? fill.tpPrice : resetTarget,
-              exitTimeUtc: tsUtc,
-              exitReason: useTp ? "grid_tp" : "grid_reset",
-            });
-          }
-          engine.entriesStoppedForWeek = true;
-          engine.closedForWeek = true;
-          continue;
-        }
-
-        for (const fill of engine.fills) {
-          if (!fill.active) continue;
-          if (!adrGridPriceHit(engine.direction, bar, fill.tpPrice)) continue;
-          closeFill({ trades, engine, fill, exitPrice: fill.tpPrice, exitTimeUtc: tsUtc, exitReason: "grid_tp" });
-          engine.levelArmed[fill.levelIndex] = true;
-          engine.levelRearmBarIndex[fill.levelIndex] = barIndex;
-          engine.levelRequiresRetouch[fill.levelIndex] = true;
-        }
-
-        if (barIndex < engine.entryCutoffGridIndex && !engine.entriesStoppedForWeek) {
-          for (const level of engine.levels) {
-            if (!engine.levelArmed[level.index]) continue;
-            if ((engine.levelRearmBarIndex[level.index] ?? -1) >= barIndex) continue;
-            const initialTriggered = level.side === "favorable"
-              ? (engine.direction === "LONG" ? bar.lowPrice <= level.triggerPrice : bar.highPrice >= level.triggerPrice)
-              : (engine.direction === "LONG" ? bar.highPrice >= level.triggerPrice : bar.lowPrice <= level.triggerPrice);
-            const retouchTriggered = engine.direction === "LONG"
-              ? bar.lowPrice <= level.triggerPrice
-              : bar.highPrice >= level.triggerPrice;
-            const triggered = engine.levelRequiresRetouch[level.index] ? retouchTriggered : initialTriggered;
-            if (!triggered) continue;
-            if (isEntryTooCloseToReset(engine, level.triggerPrice)) continue;
-            engine.fills.push({
-              levelIndex: level.index,
-              levelSide: level.side,
-              entryPrice: level.triggerPrice,
-              tpPrice: getFillTp(engine, level.triggerPrice),
-              entryTimeUtc: tsUtc,
-              entryBarIndex: barIndex,
-              active: true,
-              maxAdverseRawPct: 0,
-            });
-            engine.levelArmed[level.index] = false;
-            engine.levelRequiresRetouch[level.index] = false;
-          }
-        }
+      for (const fill of engine.fills) {
+        if (!fill.active) continue;
+        fill.maxAdverseRawPct = Math.max(fill.maxAdverseRawPct, adrGridAdverseRawPct(engine.direction, fill.entryPrice, bar));
       }
 
-      if (barIndex === engine.closeGridIndex && !engine.closedForWeek) {
-        const mark = timeline?.markBars[barIndex]?.closePrice ?? engine.openPrice;
+      const resetTarget = getResetTarget(engine);
+      if (adrGridPriceHit(engine.direction, bar, resetTarget)) {
         for (const fill of engine.fills) {
           if (!fill.active) continue;
+          const tpHit = adrGridPriceHit(engine.direction, bar, fill.tpPrice);
+          const resetReturn = directedRawReturnPct(engine.direction, fill.entryPrice, resetTarget);
+          const tpReturn = directedRawReturnPct(engine.direction, fill.entryPrice, fill.tpPrice);
+          const useTp = tpHit && resetReturn >= tpReturn - 1e-9;
           closeFill({
             trades,
             engine,
             fill,
-            exitPrice: mark,
+            exitPrice: useTp ? fill.tpPrice : resetTarget,
             exitTimeUtc: tsUtc,
-            exitReason: "week_close",
+            exitReason: useTp ? "grid_tp" : "grid_reset",
           });
         }
+        engine.entriesStoppedForWeek = true;
         engine.closedForWeek = true;
+        continue;
       }
+
+      for (const fill of engine.fills) {
+        if (!fill.active) continue;
+        if (!adrGridPriceHit(engine.direction, bar, fill.tpPrice)) continue;
+        closeFill({ trades, engine, fill, exitPrice: fill.tpPrice, exitTimeUtc: tsUtc, exitReason: "grid_tp" });
+        engine.levelArmed[fill.levelIndex] = true;
+        engine.levelRearmBarIndex[fill.levelIndex] = barIndex;
+        engine.levelRequiresRetouch[fill.levelIndex] = true;
+      }
+
+      if (barIndex < engine.entryCutoffGridIndex && !engine.entriesStoppedForWeek) {
+        for (const level of engine.levels) {
+          if (!engine.levelArmed[level.index]) continue;
+          if ((engine.levelRearmBarIndex[level.index] ?? -1) >= barIndex) continue;
+          const initialTriggered = level.side === "favorable"
+            ? (engine.direction === "LONG" ? bar.lowPrice <= level.triggerPrice : bar.highPrice >= level.triggerPrice)
+            : (engine.direction === "LONG" ? bar.highPrice >= level.triggerPrice : bar.lowPrice <= level.triggerPrice);
+          const retouchTriggered = engine.direction === "LONG"
+            ? bar.lowPrice <= level.triggerPrice
+            : bar.highPrice >= level.triggerPrice;
+          const triggered = engine.levelRequiresRetouch[level.index] ? retouchTriggered : initialTriggered;
+          if (!triggered) continue;
+          if (isEntryTooCloseToReset(engine, level.triggerPrice)) continue;
+          engine.fills.push({
+            levelIndex: level.index,
+            levelSide: level.side,
+            entryPrice: level.triggerPrice,
+            tpPrice: getFillTp(engine, level.triggerPrice),
+            entryTimeUtc: tsUtc,
+            entryBarIndex: barIndex,
+            active: true,
+            maxAdverseRawPct: 0,
+          });
+          engine.levelArmed[level.index] = false;
+          engine.levelRequiresRetouch[level.index] = false;
+        }
+      }
+    }
+
+    if (barIndex === engine.closeGridIndex && !engine.closedForWeek) {
+      const mark = options.timeline?.markBars[barIndex]?.closePrice ?? engine.openPrice;
+      for (const fill of engine.fills) {
+        if (!fill.active) continue;
+        closeFill({
+          trades,
+          engine,
+          fill,
+          exitPrice: mark,
+          exitTimeUtc: tsUtc,
+          exitReason: "week_close",
+        });
+      }
+      engine.closedForWeek = true;
     }
   }
 
@@ -439,52 +480,90 @@ function scoreAdrGridWeek(options: {
     tp: trades.filter((trade) => trade.exitReason === "grid_tp").length,
     reset: trades.filter((trade) => trade.exitReason === "grid_reset").length,
     week_close: trades.filter((trade) => trade.exitReason === "week_close").length,
-    missing_price_rows: missingPriceRows,
-    default_adr_rows: defaultAdrSymbols.size,
+    missing_price_rows: 0,
+    default_adr_rows: defaultAdrRows,
   };
 }
 
-function scoreSimpleWeeklyHold(options: {
-  assetClass: ResearchDecisionAssetClass;
+function aggregateAdrGridOutcomes(outcomes: ResearchDecisionPairPathOutcome[]) {
+  const adr = outcomes.reduce((sum, outcome) => sum + outcome.adr_grid.adr, 0);
+  return {
+    adr: round(adr, 6) ?? adr,
+    fills: outcomes.reduce((sum, outcome) => sum + outcome.adr_grid.fills, 0),
+    tp: outcomes.reduce((sum, outcome) => sum + outcome.adr_grid.tp, 0),
+    reset: outcomes.reduce((sum, outcome) => sum + outcome.adr_grid.reset, 0),
+    week_close: outcomes.reduce((sum, outcome) => sum + outcome.adr_grid.week_close, 0),
+    missing_price_rows: outcomes.reduce((sum, outcome) => sum + outcome.adr_grid.missing_price_rows, 0),
+    default_adr_rows: outcomes.reduce((sum, outcome) => sum + outcome.adr_grid.default_adr_rows, 0),
+  };
+}
+
+function scoreAdrGridWeek(options: {
   decisions: ResearchDecisionRow[];
+  outcomes: ResearchDecisionPairPathOutcome[];
+}) {
+  const byKey = new Map(options.outcomes.map((outcome) => [
+    `${outcome.week_open_utc}:${outcome.symbol}:${outcome.direction}`,
+    outcome,
+  ]));
+  return aggregateAdrGridOutcomes(options.decisions.map((decision) => {
+    const key = `${decision.week_open_utc}:${decision.symbol}:${decision.side}`;
+    const outcome = byKey.get(key);
+    if (!outcome) throw new Error(`Missing pair path outcome for ${key}`);
+    return outcome;
+  }));
+}
+
+function scoreSimpleWeeklyHoldPairOutcome(options: {
+  assetClass: ResearchDecisionAssetClass;
+  symbol: string;
+  direction: ResearchDecisionSide;
   barsBySymbol: Awaited<ReturnType<typeof loadPathBars>>;
   adrMap: Awaited<ReturnType<typeof loadWeeklyAdrMap>>;
-}) {
-  let totalAdr = 0;
-  let missingPriceRows = 0;
-  const defaultAdrSymbols = new Set<string>();
-
-  for (const decision of options.decisions) {
-    const bars = options.barsBySymbol.get(decision.symbol) ?? [];
-    const first = bars[0];
-    const last = bars[bars.length - 1];
-    if (!first || !last || !Number.isFinite(first.openPrice) || first.openPrice <= 0) {
-      missingPriceRows += 1;
-      continue;
-    }
-    if (!options.adrMap.has(decision.symbol)) defaultAdrSymbols.add(decision.symbol);
-    const pairAdrPct = getAdrPct(options.adrMap, decision.symbol, options.assetClass);
-    const raw = ((last.closePrice - first.openPrice) / first.openPrice) * 100 * directionSign(decision.side);
-    totalAdr += raw / pairAdrPct;
+}): ResearchDecisionPairPathOutcome["weekly_hold"] {
+  const symbol = options.symbol.trim().toUpperCase();
+  const bars = options.barsBySymbol.get(symbol) ?? [];
+  const first = bars[0];
+  const last = bars[bars.length - 1];
+  if (!first || !last || !Number.isFinite(first.openPrice) || first.openPrice <= 0) {
+    return {
+      adr: 0,
+      missing_price_rows: 1,
+      default_adr_rows: 0,
+    };
   }
+  const defaultAdrRows = options.adrMap.has(symbol) ? 0 : 1;
+  const pairAdrPct = getAdrPct(options.adrMap, symbol, options.assetClass);
+  const raw = ((last.closePrice - first.openPrice) / first.openPrice) * 100 * directionSign(options.direction);
+  const adr = raw / pairAdrPct;
 
   return {
-    adr: round(totalAdr, 6) ?? totalAdr,
-    missing_price_rows: missingPriceRows,
-    default_adr_rows: defaultAdrSymbols.size,
+    adr: round(adr, 6) ?? adr,
+    missing_price_rows: 0,
+    default_adr_rows: defaultAdrRows,
   };
 }
 
-type ResearchDecisionWeekScoringContext = {
+function aggregateWeeklyHoldOutcomes(outcomes: ResearchDecisionPairPathOutcome[]) {
+  const adr = outcomes.reduce((sum, outcome) => sum + outcome.weekly_hold.adr, 0);
+  return {
+    adr: round(adr, 6) ?? adr,
+    missing_price_rows: outcomes.reduce((sum, outcome) => sum + outcome.weekly_hold.missing_price_rows, 0),
+    default_adr_rows: outcomes.reduce((sum, outcome) => sum + outcome.weekly_hold.default_adr_rows, 0),
+  };
+}
+
+export type ResearchDecisionWeekScoringContext = {
   grid: string[];
   entryCutoffUtc: string;
   windowCloseUtc: string;
   symbols: string[];
   barsBySymbol: Awaited<ReturnType<typeof loadPathBars>>;
   adrMap: Awaited<ReturnType<typeof loadWeeklyAdrMap>>;
+  timelineBySymbol: PathBarTimelineMap;
 };
 
-async function loadResearchDecisionWeekScoringContext(options: {
+export async function loadResearchDecisionWeekScoringContext(options: {
   assetClass: ResearchDecisionAssetClass;
   priceBundleId: string;
   weekOpenUtc: string;
@@ -501,6 +580,7 @@ async function loadResearchDecisionWeekScoringContext(options: {
     loadPathBars(symbols, windowOpenUtc, windowCloseUtc, options.pathResolution, options.priceBundleId),
     loadWeeklyAdrMap(options.weekOpenUtc, options.priceBundleId),
   ]);
+  const timelineBySymbol = buildPathBarTimelines(symbols, barsBySymbol, grid);
   return {
     grid,
     entryCutoffUtc,
@@ -508,10 +588,45 @@ async function loadResearchDecisionWeekScoringContext(options: {
     symbols,
     barsBySymbol,
     adrMap,
+    timelineBySymbol,
   };
 }
 
-function scoreResearchDecisionWeekWithContext(options: {
+export function scoreResearchDecisionPairPathOutcome(options: {
+  assetClass: ResearchDecisionAssetClass;
+  weekOpenUtc: string;
+  symbol: string;
+  direction: ResearchDecisionSide;
+  context: ResearchDecisionWeekScoringContext;
+}): ResearchDecisionPairPathOutcome {
+  const symbol = options.symbol.trim().toUpperCase();
+  return {
+    week_open_utc: options.weekOpenUtc,
+    symbol,
+    direction: options.direction,
+    adr_grid: scoreAdrGridPairOutcome({
+      assetClass: options.assetClass,
+      weekOpenUtc: options.weekOpenUtc,
+      symbol,
+      direction: options.direction,
+      grid: options.context.grid,
+      entryCutoffUtc: options.context.entryCutoffUtc,
+      closeUtc: options.context.windowCloseUtc,
+      barsBySymbol: options.context.barsBySymbol,
+      timeline: options.context.timelineBySymbol.get(symbol) ?? null,
+      adrMap: options.context.adrMap,
+    }),
+    weekly_hold: scoreSimpleWeeklyHoldPairOutcome({
+      assetClass: options.assetClass,
+      symbol,
+      direction: options.direction,
+      barsBySymbol: options.context.barsBySymbol,
+      adrMap: options.context.adrMap,
+    }),
+  };
+}
+
+export function scoreResearchDecisionWeekWithContext(options: {
   assetClass: ResearchDecisionAssetClass;
   weekOpenUtc: string;
   decisions: ResearchDecisionRow[];
@@ -522,25 +637,21 @@ function scoreResearchDecisionWeekWithContext(options: {
     week_open_utc: options.weekOpenUtc,
     decision_rows: options.decisions.length,
   };
+  const outcomes = options.decisions.map((decision) => scoreResearchDecisionPairPathOutcome({
+    assetClass: options.assetClass,
+    weekOpenUtc: options.weekOpenUtc,
+    symbol: decision.symbol,
+    direction: decision.side,
+    context: options.context,
+  }));
   if (options.evaluators.includes("adr_grid")) {
     score.adr_grid = scoreAdrGridWeek({
-      assetClass: options.assetClass,
       decisions: options.decisions,
-      symbols: options.context.symbols,
-      grid: options.context.grid,
-      entryCutoffUtc: options.context.entryCutoffUtc,
-      closeUtc: options.context.windowCloseUtc,
-      barsBySymbol: options.context.barsBySymbol,
-      adrMap: options.context.adrMap,
+      outcomes,
     });
   }
   if (options.evaluators.includes("weekly_hold")) {
-    score.weekly_hold = scoreSimpleWeeklyHold({
-      assetClass: options.assetClass,
-      decisions: options.decisions,
-      barsBySymbol: options.context.barsBySymbol,
-      adrMap: options.context.adrMap,
-    });
+    score.weekly_hold = aggregateWeeklyHoldOutcomes(outcomes);
   }
   return score;
 }
@@ -581,7 +692,7 @@ function maxDrawdown(values: number[]) {
   return maxDd;
 }
 
-function summarizeScores(evaluator: ResearchDecisionEvaluatorId, scores: ResearchDecisionWeekScore[]): ResearchDecisionMetricSummary {
+export function summarizeScores(evaluator: ResearchDecisionEvaluatorId, scores: ResearchDecisionWeekScore[]): ResearchDecisionMetricSummary {
   const weeklyValues = scores.map((score) => {
     if (evaluator === "adr_grid") return score.adr_grid?.adr ?? 0;
     return score.weekly_hold?.adr ?? 0;
@@ -633,7 +744,7 @@ function groupDecisionsByWeek(decisions: ResearchDecisionRow[]) {
   return byWeek;
 }
 
-function buildRuntimeTelemetry(options: {
+export function buildRuntimeTelemetry(options: {
   mode: ResearchDecisionRuntimeTelemetry["mode"];
   startedAt: number;
   manifestCount: number;
@@ -661,7 +772,7 @@ function buildRuntimeTelemetry(options: {
   };
 }
 
-function buildEvaluationResult(options: {
+export function buildResearchDecisionEvaluationResult(options: {
   manifest: ResearchDecisionManifest;
   evaluators: ResearchDecisionEvaluatorId[];
   pathResolution: ResearchDecisionPathResolution;
@@ -732,7 +843,7 @@ export async function evaluateResearchDecisionManifest(options: {
     }
   }
 
-  return buildEvaluationResult({
+  return buildResearchDecisionEvaluationResult({
     manifest,
     evaluators,
     pathResolution,
@@ -830,7 +941,7 @@ export async function evaluateResearchDecisionManifestBatch(options: {
     logProgress: Boolean(options.logProgress),
   });
 
-  return manifests.map((manifest, index) => buildEvaluationResult({
+  return manifests.map((manifest, index) => buildResearchDecisionEvaluationResult({
     manifest,
     evaluators,
     pathResolution,

@@ -8,18 +8,21 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 57A0: shared-price-path-runtime-hardening.
+Gate 57A0B: durable-pair-week-path-outcome-warehouse.
 
-Objective: harden shared price/path runtime behavior before Strength bucket
-work, so future `ResearchDecisionManifest` variants can reuse the same
-price-bundle path context without creating COT-specific or Strength-specific
-evaluators.
+Objective: materialize reusable, strategy-agnostic long/short pair-week path
+outcomes from the Gate 55E canonical FX M1 price bundle, so future
+`ResearchDecisionManifest` variants can aggregate frozen outcomes instead of
+rerunning M1 ADR Grid path simulation.
 
-Status: PASS_WITH_REMAINING_SIMULATION_BOTTLENECK. Gate 56E evidence-hardening
-is pushed at `c7090f1`; Gate 56F is pushed through `0cda44b` and accepted as
-locked stated evidence. Gate 57A0 is generic engine runtime/cache hardening
-only: no Strength bucket evaluation, no COT/Strength logic changes, no
-evaluator semantics changes, no new backtest engine.
+Status: PASS_WITH_RUNTIME_COMMIT_CAVEAT. Gate 56E evidence-hardening is pushed
+at `c7090f1`; Gate 56F is pushed through `0cda44b` and accepted as locked stated
+evidence. Gate 57A0 is pushed at
+`4f39e5e35d9f4b30e2ae593d665027ffc74e37bd`. Gate 57A0B adds the durable
+pair-week outcome warehouse and explicit warehouse aggregation mode only: no
+Strength bucket evaluation, no COT/Strength logic changes, no evaluator
+semantic changes, no COT+Strength, no regimes, no risk overlays, no MT5/live,
+and no app refactor work.
 
 ## Current Ownership Model
 
@@ -126,6 +129,29 @@ evaluator semantics changes, no new backtest engine.
 - Do not start Gate 57A Strength context/bucket preflight until explicitly
   approved.
 
+## Gate 57A0B Checklist
+
+- [x] Add durable `research_pair_week_path_outcome_manifests` and
+  `research_pair_week_path_outcomes` storage.
+- [x] Materialize Gate 55E long/short FX pair-week outcomes once for `391`
+  weeks, `28` symbols, and `21,896` expected rows.
+- [x] Keep warehouse rows strategy-agnostic; COT/Strength labels remain
+  manifest-level only.
+- [x] Add explicit `--path-outcome-warehouse-id=<id>` aggregation mode.
+- [x] Fail closed on missing/hash-invalid warehouse rows instead of silently
+  rerunning M1 path simulation.
+- [x] Prove Gate 56F COT warehouse canary exactly matches the accepted
+  restatement metrics.
+- [x] Prove Gate 56E Strength selected/fade warehouse canary exactly matches
+  accepted parity metrics.
+- [x] Record cold materialization and warm aggregation runtimes.
+- [x] Record warehouse manifest/hash, canary result/hash JSONs, receipts, and
+  registry rows.
+- [x] Prove duplicate detection returns the existing equivalent warehouse run.
+- [x] Commit final Gate 57A0B evidence state.
+- Do not start Gate 57A Strength context/bucket preflight until explicitly
+  approved.
+
 ## Frozen Areas
 
 - `app/releases/v2/canon/*.json`
@@ -153,6 +179,8 @@ evaluator semantics changes, no new backtest engine.
 
 `docs/research/gates/gate57/GATE57A0_SHARED_PRICE_PATH_RUNTIME_HARDENING_2026-06-26.md`
 
+`docs/research/gates/gate57/GATE57A0B_DURABLE_PAIR_WEEK_PATH_OUTCOME_WAREHOUSE_2026-06-26.md`
+
 ## Forward Research Command
 
 After Gate 56E parity, the shared engine evaluator entry point is:
@@ -163,3 +191,12 @@ npm run engine:research-manifest:evaluate -- --manifest=<manifest.json> --artifa
 
 For multi-manifest ladders, repeat `--manifest=<path>` in the same command to
 use Gate 57A0 week-major batch mode.
+
+For fast manifest aggregation over the durable Gate 57A0B path-outcome
+warehouse, add the explicit warehouse ID. This mode validates the warehouse and
+fails closed if rows are missing or hash-invalid; it does not silently rerun M1
+path simulation:
+
+```powershell
+npm run engine:research-manifest:evaluate -- --manifest=<manifest.json> --artifact-gate=gate57 --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 --path-resolution=1m --evaluators=adr_grid,weekly_hold --status=diagnostic --path-outcome-warehouse-id=gate57a0b_pair_week_path_outcomes_47B8F40AFB3B
+```

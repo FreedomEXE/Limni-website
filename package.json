@@ -14,6 +14,7 @@
     "bot:bitget": "tsx automation/bots/bitget-perp-bot.ts",
     "bot:oanda": "tsx automation/bots/oanda-universal-bot.ts",
     "engine:research-manifest:evaluate": "tsx engine/scripts/verification/evaluate-research-decision-manifest.ts",
+    "engine:path-outcomes:materialize": "tsx engine/scripts/verification/materialize-pair-week-path-outcomes.ts",
     "engine:gate55g:manifests": "tsx engine/scripts/verification/generate-gate55g-equivalent-strength-manifests.ts",
     "engine:gate54:cot-manifest": "tsx engine/scripts/verification/generate-gate54-cot-restatement-manifest.ts",
     "db:migrate": "tsx database/db/migrate.ts",
