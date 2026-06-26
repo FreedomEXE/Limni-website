@@ -8,17 +8,18 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 56F: gate54-cot-restatement-through-engine.
+Gate 57A0: shared-price-path-runtime-hardening.
 
-Objective: prove the locked Gate 54 CLP carry-forward + carry-previous
-tie-fill COT decisions can be emitted as a `ResearchDecisionManifest` and scored
-through the same engine-owned evaluator path proven in Gate 56E.
+Objective: harden shared price/path runtime behavior before Strength bucket
+work, so future `ResearchDecisionManifest` variants can reuse the same
+price-bundle path context without creating COT-specific or Strength-specific
+evaluators.
 
-Status: PASS_WITH_RUNTIME_CAVEAT. Gate 56E evidence-hardening was committed and
-pushed at `c7090f1`. Gate 56F has local, unpushed commits: manifest builder
-`b2801b3`, raw restatement artifacts `f8ab474`, and final receipt committed
-locally. The first evaluator attempt without cache clearing hit Node heap OOM;
-the cache-cleared run passed and duplicate detection worked.
+Status: PASS_WITH_REMAINING_SIMULATION_BOTTLENECK. Gate 56E evidence-hardening
+is pushed at `c7090f1`; Gate 56F is pushed through `0cda44b` and accepted as
+locked stated evidence. Gate 57A0 is generic engine runtime/cache hardening
+only: no Strength bucket evaluation, no COT/Strength logic changes, no
+evaluator semantics changes, no new backtest engine.
 
 ## Current Ownership Model
 
@@ -108,6 +109,23 @@ the cache-cleared run passed and duplicate detection worked.
 - Do not run Strength buckets, regime filters, COT + Strength, execution
   optimization, risk overlays, MT5/live, or final system selection.
 
+## Gate 57A0 Checklist
+
+- [x] Add runtime/cache telemetry to the shared engine runtime cache.
+- [x] Add repeated-`--manifest` batch support to the shared evaluator command.
+- [x] Use week-major batch evaluation for multiple manifests sharing the same
+  price bundle.
+- [x] Scope shared price/path cache keys by `price_bundle_id`.
+- [x] Record cache/runtime settings as runtime controls only.
+- [x] Preserve duplicate detection before scoring.
+- [x] Prove Gate 56E selected/fade metrics remain identical in final-code batch
+  canary.
+- [x] Prove Gate 56F COT restatement metrics remain identical in final-code
+  canary.
+- [x] Run final diff/type/status verification.
+- Do not start Gate 57A Strength context/bucket preflight until explicitly
+  approved.
+
 ## Frozen Areas
 
 - `app/releases/v2/canon/*.json`
@@ -133,6 +151,8 @@ the cache-cleared run passed and duplicate detection worked.
 
 `docs/research/gates/gate56/GATE56F_GATE54_COT_RESTATEMENT_THROUGH_ENGINE_2026-06-26.md`
 
+`docs/research/gates/gate57/GATE57A0_SHARED_PRICE_PATH_RUNTIME_HARDENING_2026-06-26.md`
+
 ## Forward Research Command
 
 After Gate 56E parity, the shared engine evaluator entry point is:
@@ -140,3 +160,6 @@ After Gate 56E parity, the shared engine evaluator entry point is:
 ```powershell
 npm run engine:research-manifest:evaluate -- --manifest=<manifest.json> --artifact-gate=gate55 --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 --path-resolution=1m --evaluators=adr_grid,weekly_hold --status=diagnostic
 ```
+
+For multi-manifest ladders, repeat `--manifest=<path>` in the same command to
+use Gate 57A0 week-major batch mode.

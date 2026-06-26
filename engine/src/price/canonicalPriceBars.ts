@@ -68,9 +68,10 @@ export async function getCanonicalBars(
   timeframe: string,
   fromUtc: string,
   toUtc: string,
+  priceBundleId = "unscoped",
 ): Promise<CanonicalPriceBar[]> {
   const normalizedSymbol = symbol.trim().toUpperCase();
-  const cacheKey = `canonicalPriceBars:getCanonicalBars:${normalizedSymbol}:${timeframe}:${fromUtc}:${toUtc}`;
+  const cacheKey = `canonicalPriceBars:getCanonicalBars:${priceBundleId}:${normalizedSymbol}:${timeframe}:${fromUtc}:${toUtc}`;
   return getOrSetRuntimeCache(cacheKey, getCanonicalPriceBarsCacheTtlMs(), async () => {
     const rows = await query<{
       symbol: string;
@@ -102,9 +103,10 @@ export async function getCanonicalBars(
 export async function getLatestCanonicalBar(
   symbol: string,
   timeframe: string,
+  priceBundleId = "unscoped",
 ): Promise<CanonicalPriceBar | null> {
   const normalizedSymbol = symbol.trim().toUpperCase();
-  const cacheKey = `canonicalPriceBars:getLatestCanonicalBar:${normalizedSymbol}:${timeframe}`;
+  const cacheKey = `canonicalPriceBars:getLatestCanonicalBar:${priceBundleId}:${normalizedSymbol}:${timeframe}`;
   return getOrSetRuntimeCache(cacheKey, getCanonicalPriceBarsCacheTtlMs(), async () => {
     const row = await queryOne<{
       symbol: string;

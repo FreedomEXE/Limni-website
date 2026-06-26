@@ -70,8 +70,25 @@ Strength buckets, regime-filtered manifests, and future combined manifests:
 npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>
 ```
 
+For multiple manifests sharing the same price bundle, the evaluator supports
+repeated `--manifest=<path>` inputs. Multi-manifest runs use week-major batch
+evaluation so the shared price/path context is loaded once per week and reused
+across manifests before optional runtime-cache clearing:
+
+```powershell
+npm run engine:research-manifest:evaluate -- --manifest=<a.json> --manifest=<b.json>
+```
+
+Batch runtime/cache controls are memory and speed controls only. They must not
+be used as signal, strategy, or evaluator variants. Receipts and result JSONs
+must record runtime mode, wall-clock time, manifest count, row count, cache
+statistics, and whether `--clear-runtime-cache-between-weeks` was used.
+
 Gate 56E parity receipt:
 `docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md`.
+
+Gate 57A0 runtime-hardening receipt:
+`docs/research/gates/gate57/GATE57A0_SHARED_PRICE_PATH_RUNTIME_HARDENING_2026-06-26.md`.
 
 The evaluator consumes already-derived weekly decision rows. Signal derivation
 belongs upstream in a manifest builder; ADR Grid and weekly-hold scoring belong
@@ -92,6 +109,12 @@ Future engine manifest-build and evaluator receipts must also record the
 run-time git commit, artifact commit under review when different, dirty-tree
 status as `clean`, `dirty`, or `unknown`, and a durable repo-relative command.
 Absolute local command paths are diagnostic detail only.
+
+Shared price/path cache keys must include all semantics that can change the
+loaded path context, including `price_bundle_id`, path resolution, source/store
+identity, week/window identity, and normalized symbol set. Strategy labels such
+as COT or Strength must not be included in shared price/path cache keys unless
+the cached object is manifest-level rather than price/path-level.
 
 Gate 56B moved the institutional research core out of `app/src/lib/research`.
 Any remaining `app/src/lib/research` modules are deprecated app research UI/API

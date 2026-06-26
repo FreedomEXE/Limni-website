@@ -14,6 +14,7 @@ import {
   type ResearchDecisionManifest,
 } from "@engine/research/decisionManifest";
 import {
+  evaluateResearchDecisionManifestBatch,
   evaluateResearchDecisionManifest,
   RESEARCH_DECISION_EVALUATOR_VERSION,
   type ResearchDecisionEvaluatorId,
@@ -30,7 +31,7 @@ import {
 } from "@engine/research/researchRunRegistry";
 
 type CliOptions = {
-  manifestPath: string;
+  manifestPaths: string[];
   outDir: string;
   docsReceiptDir: string | null;
   noDocCopy: boolean;
@@ -52,6 +53,20 @@ function argValue(name: string): string | null {
   if (direct) return direct.slice(name.length + 3);
   const index = process.argv.indexOf(`--${name}`);
   return index >= 0 ? process.argv[index + 1] ?? null : null;
+}
+
+function argValues(name: string): string[] {
+  const values: string[] = [];
+  for (let index = 0; index < process.argv.length; index += 1) {
+    const arg = process.argv[index] ?? "";
+    if (arg.startsWith(`--${name}=`)) {
+      values.push(arg.slice(name.length + 3));
+    } else if (arg === `--${name}` && process.argv[index + 1]) {
+      values.push(process.argv[index + 1]!);
+      index += 1;
+    }
+  }
+  return values;
 }
 
 function hasFlag(name: string) {
@@ -103,7 +118,8 @@ function helpText() {
 Evaluate a ResearchDecisionManifest through the shared research evaluator.
 
 Required:
-  --manifest=<path>                 ResearchDecisionManifest JSON.
+  --manifest=<path>                 ResearchDecisionManifest JSON. Repeatable
+                                    for week-major batch evaluation.
 
 Common:
   --out-dir=<path>                  Default: engine/reports/data-verification/<gate>
@@ -129,12 +145,15 @@ function parseCli(): CliOptions {
     console.log(helpText());
     process.exit(0);
   }
-  const manifestPath = argValue("manifest");
-  if (!manifestPath) throw new Error("--manifest is required.");
+  const manifestPaths = argValues("manifest")
+    .flatMap((value) => value.split(","))
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (manifestPaths.length === 0) throw new Error("--manifest is required.");
   const artifactGate = argValue("artifact-gate");
   const outDir = argValue("out-dir") ?? "";
   return {
-    manifestPath,
+    manifestPaths,
     outDir,
     docsReceiptDir: argValue("docs-receipt-dir"),
     noDocCopy: hasFlag("no-doc-copy"),
@@ -233,6 +252,20 @@ function renderReceipt(options: {
     `- Git commit: \`${options.gitCommit}\``,
     `- Rerun reason: ${options.rerunReason ?? "-"}`,
     "",
+    "## Runtime Controls",
+    "",
+    `- Runtime mode: \`${options.result.runtime.mode}\``,
+    `- Wall-clock seconds: \`${options.result.runtime.wall_clock_seconds}\``,
+    `- Manifest count evaluated in process: \`${options.result.runtime.manifest_count}\``,
+    `- Union week count: \`${options.result.runtime.union_week_count}\``,
+    `- Row count evaluated in process: \`${options.result.runtime.row_count_evaluated}\``,
+    `- Clear runtime cache between weeks: \`${options.result.runtime.clear_runtime_cache_between_weeks}\``,
+    `- Runtime cache entries after run: \`${options.result.runtime.cache.entries}\``,
+    `- Runtime cache gets/hits/misses: \`${options.result.runtime.cache.gets}/${options.result.runtime.cache.hits}/${options.result.runtime.cache.misses}\``,
+    `- Runtime cache clear-all calls: \`${options.result.runtime.cache.clearAllCalls}\``,
+    "",
+    "Runtime/cache controls are memory and speed controls only. They are not signal logic, strategy logic, or evaluator semantics.",
+    "",
     "## Coverage",
     "",
     `- Weeks: ${options.result.coverage.weeks}`,
@@ -267,92 +300,59 @@ function renderReceipt(options: {
   return `${lines.join("\n")}\n`;
 }
 
-async function main() {
-  const options = parseCli();
-  const manifestInput = await readManifest(options.manifestPath);
-  const manifestHash = assertResearchDecisionManifestHash(manifestInput);
-  const manifest = attachResearchDecisionManifestHash(manifestInput);
-  const identity = getResearchDecisionManifestIdentity(manifest);
+type PreparedRun = {
+  inputManifestPath: string;
+  manifestHash: string;
+  manifest: ResearchDecisionManifest;
+  identity: ReturnType<typeof getResearchDecisionManifestIdentity>;
+  duplicateKey: ReturnType<typeof buildResearchRunEquivalenceKey>;
+  equivalenceKeyHash: string;
+};
 
-  if (options.priceBundleId && options.priceBundleId !== identity.price_bundle_id) {
-    throw new Error(`--price-bundle-id ${options.priceBundleId} does not match manifest price_bundle_id ${identity.price_bundle_id}.`);
-  }
-
-  const artifactGate = options.artifactGate ?? inferArtifactGate(identity.gate_id);
-  const outDir = path.resolve(process.cwd(), options.outDir || path.join("engine", "reports", "data-verification", artifactGate));
-  const registryPathAbs = options.noRegistryWrite
-    ? null
-    : path.resolve(process.cwd(), options.registryPath ?? path.join(outDir, "registry", "research-run-registry.jsonl"));
-  const registryPathRel = toRepoRelative(registryPathAbs);
-
-  const duplicateKey = buildResearchRunEquivalenceKey({
-    input_manifest_hash: manifestHash,
-    price_bundle_id: identity.price_bundle_id,
-    feature_bundle_id: identity.feature_bundle_id,
-    source_context_ids: identity.source_context_ids,
-    evaluator_version: RESEARCH_DECISION_EVALUATOR_VERSION,
-    evaluators: options.evaluators,
-    path_resolution: options.pathResolution,
-    config_hash: identity.config_hash,
-  });
-  const equivalenceKeyHash = hashResearchRunEquivalenceKey(duplicateKey);
-
-  if (registryPathAbs && !options.rerunReason) {
-    const registry = await readResearchRunRegistry(registryPathAbs);
-    const duplicate = findEquivalentResearchRun(registry, duplicateKey);
-    if (duplicate) {
-      console.log(`Equivalent research run already exists: ${duplicate.run_id}`);
-      console.log(`Receipt: ${duplicate.receipt_path}`);
-      console.log(`Result: ${duplicate.result_path}`);
-      console.log(`Equivalence key: ${duplicate.equivalence_key_hash}`);
-      return;
-    }
-  }
-
+async function writeRunArtifacts(options: {
+  cli: CliOptions;
+  prepared: PreparedRun;
+  result: Awaited<ReturnType<typeof evaluateResearchDecisionManifest>>;
+  artifactGate: string;
+  outDir: string;
+  registryPathAbs: string | null;
+  registryPathRel: string | null;
+}) {
   const runId = buildRunId({
-    artifactGate,
-    hypothesisId: identity.hypothesis_id,
-    signalId: identity.signal_id,
-    manifestHash,
+    artifactGate: options.artifactGate,
+    hypothesisId: options.prepared.identity.hypothesis_id,
+    signalId: options.prepared.identity.signal_id,
+    manifestHash: options.prepared.manifestHash,
   });
 
-  const manifestPathAbs = path.join(outDir, "manifests", `${runId}.manifest.json`);
-  const resultPathAbs = path.join(outDir, "results", `${runId}.result.json`);
-  const receiptPathAbs = path.join(outDir, "runs", `${runId}.receipt.md`);
-  const hashesPathAbs = path.join(outDir, "hashes", `${runId}.hashes.json`);
+  const manifestPathAbs = path.join(options.outDir, "manifests", `${runId}.manifest.json`);
+  const resultPathAbs = path.join(options.outDir, "results", `${runId}.result.json`);
+  const receiptPathAbs = path.join(options.outDir, "runs", `${runId}.receipt.md`);
+  const hashesPathAbs = path.join(options.outDir, "hashes", `${runId}.hashes.json`);
   const manifestPathRel = toRepoRelative(manifestPathAbs) ?? manifestPathAbs;
   const resultPathRel = toRepoRelative(resultPathAbs) ?? resultPathAbs;
   const receiptPathRel = toRepoRelative(receiptPathAbs) ?? receiptPathAbs;
   const hashesPathRel = toRepoRelative(hashesPathAbs) ?? hashesPathAbs;
-  const docsReceiptDir = options.docsReceiptDir
-    ? path.resolve(process.cwd(), options.docsReceiptDir)
-    : path.resolve(process.cwd(), "docs", "research", "gates", artifactGate, "receipts");
-  const docsReceiptPathAbs = options.noDocCopy ? null : path.join(docsReceiptDir, `${runId}.md`);
-
-  const result = await evaluateResearchDecisionManifest({
-    manifest,
-    pathResolution: options.pathResolution,
-    evaluators: options.evaluators,
-    logProgress: options.logProgress,
-    clearRuntimeCacheBetweenWeeks: options.clearRuntimeCacheBetweenWeeks,
-  });
-
+  const docsReceiptDir = options.cli.docsReceiptDir
+    ? path.resolve(process.cwd(), options.cli.docsReceiptDir)
+    : path.resolve(process.cwd(), "docs", "research", "gates", options.artifactGate, "receipts");
+  const docsReceiptPathAbs = options.cli.noDocCopy ? null : path.join(docsReceiptDir, `${runId}.md`);
   const gitCommit = currentGitCommit();
   const generatedAtUtc = new Date().toISOString();
-  const normalizedManifestText = `${JSON.stringify(manifest, null, 2)}\n`;
-  const resultText = `${JSON.stringify(result, null, 2)}\n`;
+  const normalizedManifestText = `${JSON.stringify(options.prepared.manifest, null, 2)}\n`;
+  const resultText = `${JSON.stringify(options.result, null, 2)}\n`;
   const receiptWithoutHash = renderReceipt({
     runId,
     generatedAtUtc,
     command: commandText(),
     gitCommit,
-    result,
+    result: options.result,
     manifestPath: manifestPathRel,
     resultPath: resultPathRel,
     hashesPath: hashesPathRel,
-    registryPath: registryPathRel,
-    status: options.status,
-    rerunReason: options.rerunReason,
+    registryPath: options.registryPathRel,
+    status: options.cli.status,
+    rerunReason: options.cli.rerunReason,
   });
   const receiptHash = sha256Text(receiptWithoutHash);
   const receiptText = `${receiptWithoutHash}Receipt hash: \`${receiptHash}\`\n`;
@@ -360,15 +360,15 @@ async function main() {
     schema_version: 1,
     run_id: runId,
     generated_at_utc: generatedAtUtc,
-    equivalence_key_hash: equivalenceKeyHash,
-    manifest_hash: identity.manifest_hash,
+    equivalence_key_hash: options.prepared.equivalenceKeyHash,
+    manifest_hash: options.prepared.identity.manifest_hash,
     manifest_file_sha256: sha256Text(normalizedManifestText),
-    result_hash: sha256Stable(result),
+    result_hash: sha256Stable(options.result),
     result_file_sha256: sha256Text(resultText),
     receipt_hash: receiptHash,
     receipt_file_sha256: sha256Text(receiptText),
-    config_hash: identity.config_hash,
-    price_bundle_id: identity.price_bundle_id,
+    config_hash: options.prepared.identity.config_hash,
+    price_bundle_id: options.prepared.identity.price_bundle_id,
     evaluator_version: RESEARCH_DECISION_EVALUATOR_VERSION,
   };
   const hashesText = `${JSON.stringify(hashes, null, 2)}\n`;
@@ -388,29 +388,29 @@ async function main() {
     docsReceiptPathAbs ? writeFile(docsReceiptPathAbs, receiptText, "utf8") : Promise.resolve(),
   ]);
 
-  if (registryPathAbs) {
-    await appendResearchRunRegistryEntry(registryPathAbs, {
+  if (options.registryPathAbs) {
+    await appendResearchRunRegistryEntry(options.registryPathAbs, {
       schema_version: 1,
       run_id: runId,
-      gate_id: identity.gate_id,
-      hypothesis_id: identity.hypothesis_id,
+      gate_id: options.prepared.identity.gate_id,
+      hypothesis_id: options.prepared.identity.hypothesis_id,
       command: commandText(),
       git_commit: gitCommit,
-      input_manifest_hash: identity.manifest_hash,
-      price_bundle_id: identity.price_bundle_id,
-      feature_bundle_id: identity.feature_bundle_id,
-      source_context_ids: identity.source_context_ids,
+      input_manifest_hash: options.prepared.identity.manifest_hash,
+      price_bundle_id: options.prepared.identity.price_bundle_id,
+      feature_bundle_id: options.prepared.identity.feature_bundle_id,
+      source_context_ids: options.prepared.identity.source_context_ids,
       evaluator_version: RESEARCH_DECISION_EVALUATOR_VERSION,
-      evaluators: options.evaluators,
-      path_resolution: options.pathResolution,
-      config_hash: identity.config_hash,
+      evaluators: options.cli.evaluators,
+      path_resolution: options.cli.pathResolution,
+      config_hash: options.prepared.identity.config_hash,
       output_result_hash: hashes.result_file_sha256,
       receipt_hash: receiptHash,
-      status: options.status,
-      supersedes: options.supersedes,
+      status: options.cli.status,
+      supersedes: options.cli.supersedes,
       superseded_by: null,
-      rerun_reason: options.rerunReason,
-      equivalence_key_hash: equivalenceKeyHash,
+      rerun_reason: options.cli.rerunReason,
+      equivalence_key_hash: options.prepared.equivalenceKeyHash,
       manifest_path: manifestPathRel,
       result_path: resultPathRel,
       receipt_path: receiptPathRel,
@@ -420,12 +420,104 @@ async function main() {
   }
 
   console.log(`Research run: ${runId}`);
+  console.log(`Input manifest: ${options.prepared.inputManifestPath}`);
   console.log(`Manifest: ${manifestPathRel}`);
   console.log(`Result: ${resultPathRel}`);
   console.log(`Receipt: ${receiptPathRel}`);
   console.log(`Hashes: ${hashesPathRel}`);
-  console.log(`Registry: ${registryPathRel ?? "-"}`);
+  console.log(`Registry: ${options.registryPathRel ?? "-"}`);
   console.log(`Receipt hash: ${receiptHash}`);
+}
+
+async function main() {
+  const options = parseCli();
+  const preparedRuns: PreparedRun[] = [];
+
+  for (const manifestPath of options.manifestPaths) {
+    const manifestInput = await readManifest(manifestPath);
+    const manifestHash = assertResearchDecisionManifestHash(manifestInput);
+    const manifest = attachResearchDecisionManifestHash(manifestInput);
+    const identity = getResearchDecisionManifestIdentity(manifest);
+
+    if (options.priceBundleId && options.priceBundleId !== identity.price_bundle_id) {
+      throw new Error(`--price-bundle-id ${options.priceBundleId} does not match manifest price_bundle_id ${identity.price_bundle_id}.`);
+    }
+
+    const duplicateKey = buildResearchRunEquivalenceKey({
+      input_manifest_hash: manifestHash,
+      price_bundle_id: identity.price_bundle_id,
+      feature_bundle_id: identity.feature_bundle_id,
+      source_context_ids: identity.source_context_ids,
+      evaluator_version: RESEARCH_DECISION_EVALUATOR_VERSION,
+      evaluators: options.evaluators,
+      path_resolution: options.pathResolution,
+      config_hash: identity.config_hash,
+    });
+
+    preparedRuns.push({
+      inputManifestPath: manifestPath,
+      manifestHash,
+      manifest,
+      identity,
+      duplicateKey,
+      equivalenceKeyHash: hashResearchRunEquivalenceKey(duplicateKey),
+    });
+  }
+
+  const artifactGate = options.artifactGate ?? inferArtifactGate(preparedRuns[0]!.identity.gate_id);
+  const outDir = path.resolve(process.cwd(), options.outDir || path.join("engine", "reports", "data-verification", artifactGate));
+  const registryPathAbs = options.noRegistryWrite
+    ? null
+    : path.resolve(process.cwd(), options.registryPath ?? path.join(outDir, "registry", "research-run-registry.jsonl"));
+  const registryPathRel = toRepoRelative(registryPathAbs);
+  const registry = registryPathAbs && !options.rerunReason
+    ? await readResearchRunRegistry(registryPathAbs)
+    : [];
+  const runsToEvaluate: PreparedRun[] = [];
+
+  for (const prepared of preparedRuns) {
+    const duplicate = registryPathAbs && !options.rerunReason
+      ? findEquivalentResearchRun(registry, prepared.duplicateKey)
+      : null;
+    if (duplicate) {
+      console.log(`Equivalent research run already exists: ${duplicate.run_id}`);
+      console.log(`Receipt: ${duplicate.receipt_path}`);
+      console.log(`Result: ${duplicate.result_path}`);
+      console.log(`Equivalence key: ${duplicate.equivalence_key_hash}`);
+    } else {
+      runsToEvaluate.push(prepared);
+    }
+  }
+
+  if (runsToEvaluate.length === 0) return;
+
+  const results = runsToEvaluate.length === 1
+    ? [await evaluateResearchDecisionManifest({
+      manifest: runsToEvaluate[0]!.manifest,
+      pathResolution: options.pathResolution,
+      evaluators: options.evaluators,
+      logProgress: options.logProgress,
+      clearRuntimeCacheBetweenWeeks: options.clearRuntimeCacheBetweenWeeks,
+    })]
+    : await evaluateResearchDecisionManifestBatch({
+      manifests: runsToEvaluate.map((run) => run.manifest),
+      pathResolution: options.pathResolution,
+      evaluators: options.evaluators,
+      logProgress: options.logProgress,
+      clearRuntimeCacheBetweenWeeks: options.clearRuntimeCacheBetweenWeeks,
+    });
+
+  for (const [index, prepared] of runsToEvaluate.entries()) {
+    await writeRunArtifacts({
+      cli: options,
+      prepared,
+      result: results[index]!,
+      artifactGate,
+      outDir,
+      registryPathAbs,
+      registryPathRel,
+    });
+  }
 }
 
 main()

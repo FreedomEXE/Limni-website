@@ -36,8 +36,8 @@ export function getTargetAdrPct(): number {
   return TARGET_ADR_PCT;
 }
 
-export async function loadWeeklyAdrMap(weekOpenUtc: string): Promise<AdrMap> {
-  const cacheKey = `adrLookup:weeklyAdr:${weekOpenUtc}`;
+export async function loadWeeklyAdrMap(weekOpenUtc: string, priceBundleId = "unscoped"): Promise<AdrMap> {
+  const cacheKey = `adrLookup:weeklyAdr:${priceBundleId}:${weekOpenUtc}`;
   return getOrSetRuntimeCache(cacheKey, ADR_CACHE_TTL_MS, async () => {
     const map: AdrMap = new Map();
 

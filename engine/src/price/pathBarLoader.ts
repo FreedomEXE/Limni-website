@@ -156,6 +156,7 @@ export async function loadPathBars(
   fromUtc: string,
   toUtc: string,
   resolution = CANONICAL_PATH_RESOLUTION,
+  priceBundleId = "unscoped",
 ): Promise<PathBarMap> {
   const normalizedSymbols = normalizeSymbols(symbols);
   const empty = new Map<string, CanonicalPriceBar[]>();
@@ -169,6 +170,7 @@ export async function loadPathBars(
 
   const cacheKey = [
     "pathBarLoader",
+    priceBundleId,
     pathBarSourceCacheKey(resolution),
     resolution,
     fromUtc,
@@ -293,6 +295,7 @@ export async function loadPathBarTimelines(
   toUtc: string,
   timestampsUtc: string[],
   resolution = CANONICAL_PATH_RESOLUTION,
+  priceBundleId = "unscoped",
 ): Promise<PathBarTimelineMap> {
   const normalizedSymbols = normalizeSymbols(symbols);
   if (normalizedSymbols.length === 0) {
@@ -305,6 +308,7 @@ export async function loadPathBarTimelines(
   const lastTimestamp = normalizedTimestamps[normalizedTimestamps.length - 1] ?? "";
   const cacheKey = [
     "pathBarTimelines",
+    priceBundleId,
     pathBarSourceCacheKey(resolution),
     resolution,
     fromUtc,
@@ -527,6 +531,7 @@ export async function loadPathMarkPriceMatrix(
   toUtc: string,
   timestampsUtc: string[],
   resolution = CANONICAL_PATH_RESOLUTION,
+  priceBundleId = "unscoped",
 ) {
   const normalizedSymbols = normalizeSymbols(symbols);
   if (normalizedSymbols.length === 0) {
@@ -539,6 +544,7 @@ export async function loadPathMarkPriceMatrix(
   const lastTimestamp = normalizedTimestamps[normalizedTimestamps.length - 1] ?? "";
   const cacheKey = [
     "pathMarkPriceMatrix",
+    priceBundleId,
     pathBarSourceCacheKey(resolution),
     resolution,
     fromUtc,

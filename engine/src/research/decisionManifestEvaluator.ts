@@ -1,6 +1,11 @@
 import { DateTime } from "luxon";
 
-import { clearRuntimeCacheAll } from "@engine/cache/runtimeCache";
+import {
+  clearRuntimeCacheAll,
+  getRuntimeCacheStats,
+  resetRuntimeCacheStats,
+  type RuntimeCacheStats,
+} from "@engine/cache/runtimeCache";
 import { getExecutionWeekWindow } from "@engine/evaluation/executionPriceWindows";
 import { getAdrPct, loadWeeklyAdrMap } from "@engine/price/adrLookup";
 import { buildPathBarTimelines, loadPathBars, type PathBarPoint } from "@engine/price/pathBarLoader";
@@ -57,6 +62,23 @@ export type ResearchDecisionMetricSummary = {
   week_close?: number;
 };
 
+export type ResearchDecisionRuntimeTelemetry = {
+  schema_version: 1;
+  mode: "single_manifest" | "batch_week_major";
+  wall_clock_ms: number;
+  wall_clock_seconds: number;
+  manifest_count: number;
+  union_week_count: number;
+  row_count_evaluated: number;
+  clear_runtime_cache_between_weeks: boolean;
+  runtime_controls: {
+    clear_runtime_cache_between_weeks: boolean;
+    log_progress: boolean;
+    batch_week_major: boolean;
+  };
+  cache: RuntimeCacheStats;
+};
+
 export type ResearchDecisionEvaluationResult = {
   schema_version: 1;
   generated_at_utc: string;
@@ -75,6 +97,7 @@ export type ResearchDecisionEvaluationResult = {
   };
   weekly_scores: ResearchDecisionWeekScore[];
   summaries: ResearchDecisionMetricSummary[];
+  runtime: ResearchDecisionRuntimeTelemetry;
 };
 
 type GridLevel = {
@@ -452,24 +475,49 @@ function scoreSimpleWeeklyHold(options: {
   };
 }
 
-async function scoreResearchDecisionWeek(options: {
+type ResearchDecisionWeekScoringContext = {
+  grid: string[];
+  entryCutoffUtc: string;
+  windowCloseUtc: string;
+  symbols: string[];
+  barsBySymbol: Awaited<ReturnType<typeof loadPathBars>>;
+  adrMap: Awaited<ReturnType<typeof loadWeeklyAdrMap>>;
+};
+
+async function loadResearchDecisionWeekScoringContext(options: {
   assetClass: ResearchDecisionAssetClass;
+  priceBundleId: string;
   weekOpenUtc: string;
-  decisions: ResearchDecisionRow[];
+  symbols: string[];
   pathResolution: ResearchDecisionPathResolution;
-  evaluators: ResearchDecisionEvaluatorId[];
-}) {
+}): Promise<ResearchDecisionWeekScoringContext> {
   const executionWindow = getExecutionWeekWindow(options.weekOpenUtc, options.assetClass);
   const windowOpenUtc = executionWindow.windowOpenUtc.toUTC().toISO() ?? options.weekOpenUtc;
   const entryCutoffUtc = executionWindow.entryCutoffUtc.toUTC().toISO() ?? options.weekOpenUtc;
   const windowCloseUtc = executionWindow.windowCloseUtc.toUTC().toISO() ?? options.weekOpenUtc;
   const grid = buildAdrGridTimestamps(windowOpenUtc, windowCloseUtc, options.pathResolution);
-  const symbols = Array.from(new Set(options.decisions.map((decision) => decision.symbol))).sort();
+  const symbols = Array.from(new Set(options.symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean))).sort();
   const [barsBySymbol, adrMap] = await Promise.all([
-    loadPathBars(symbols, windowOpenUtc, windowCloseUtc, options.pathResolution),
-    loadWeeklyAdrMap(options.weekOpenUtc),
+    loadPathBars(symbols, windowOpenUtc, windowCloseUtc, options.pathResolution, options.priceBundleId),
+    loadWeeklyAdrMap(options.weekOpenUtc, options.priceBundleId),
   ]);
+  return {
+    grid,
+    entryCutoffUtc,
+    windowCloseUtc,
+    symbols,
+    barsBySymbol,
+    adrMap,
+  };
+}
 
+function scoreResearchDecisionWeekWithContext(options: {
+  assetClass: ResearchDecisionAssetClass;
+  weekOpenUtc: string;
+  decisions: ResearchDecisionRow[];
+  evaluators: ResearchDecisionEvaluatorId[];
+  context: ResearchDecisionWeekScoringContext;
+}) {
   const score: ResearchDecisionWeekScore = {
     week_open_utc: options.weekOpenUtc,
     decision_rows: options.decisions.length,
@@ -478,23 +526,47 @@ async function scoreResearchDecisionWeek(options: {
     score.adr_grid = scoreAdrGridWeek({
       assetClass: options.assetClass,
       decisions: options.decisions,
-      symbols,
-      grid,
-      entryCutoffUtc,
-      closeUtc: windowCloseUtc,
-      barsBySymbol,
-      adrMap,
+      symbols: options.context.symbols,
+      grid: options.context.grid,
+      entryCutoffUtc: options.context.entryCutoffUtc,
+      closeUtc: options.context.windowCloseUtc,
+      barsBySymbol: options.context.barsBySymbol,
+      adrMap: options.context.adrMap,
     });
   }
   if (options.evaluators.includes("weekly_hold")) {
     score.weekly_hold = scoreSimpleWeeklyHold({
       assetClass: options.assetClass,
       decisions: options.decisions,
-      barsBySymbol,
-      adrMap,
+      barsBySymbol: options.context.barsBySymbol,
+      adrMap: options.context.adrMap,
     });
   }
   return score;
+}
+
+async function scoreResearchDecisionWeek(options: {
+  assetClass: ResearchDecisionAssetClass;
+  priceBundleId: string;
+  weekOpenUtc: string;
+  decisions: ResearchDecisionRow[];
+  pathResolution: ResearchDecisionPathResolution;
+  evaluators: ResearchDecisionEvaluatorId[];
+}) {
+  const context = await loadResearchDecisionWeekScoringContext({
+    assetClass: options.assetClass,
+    priceBundleId: options.priceBundleId,
+    weekOpenUtc: options.weekOpenUtc,
+    symbols: options.decisions.map((decision) => decision.symbol),
+    pathResolution: options.pathResolution,
+  });
+  return scoreResearchDecisionWeekWithContext({
+    assetClass: options.assetClass,
+    weekOpenUtc: options.weekOpenUtc,
+    decisions: options.decisions,
+    evaluators: options.evaluators,
+    context,
+  });
 }
 
 function maxDrawdown(values: number[]) {
@@ -561,6 +633,63 @@ function groupDecisionsByWeek(decisions: ResearchDecisionRow[]) {
   return byWeek;
 }
 
+function buildRuntimeTelemetry(options: {
+  mode: ResearchDecisionRuntimeTelemetry["mode"];
+  startedAt: number;
+  manifestCount: number;
+  unionWeekCount: number;
+  rowCountEvaluated: number;
+  clearRuntimeCacheBetweenWeeks: boolean;
+  logProgress: boolean;
+}): ResearchDecisionRuntimeTelemetry {
+  const wallClockMs = Date.now() - options.startedAt;
+  return {
+    schema_version: 1,
+    mode: options.mode,
+    wall_clock_ms: wallClockMs,
+    wall_clock_seconds: Math.round(wallClockMs / 100) / 10,
+    manifest_count: options.manifestCount,
+    union_week_count: options.unionWeekCount,
+    row_count_evaluated: options.rowCountEvaluated,
+    clear_runtime_cache_between_weeks: options.clearRuntimeCacheBetweenWeeks,
+    runtime_controls: {
+      clear_runtime_cache_between_weeks: options.clearRuntimeCacheBetweenWeeks,
+      log_progress: options.logProgress,
+      batch_week_major: options.mode === "batch_week_major",
+    },
+    cache: getRuntimeCacheStats(),
+  };
+}
+
+function buildEvaluationResult(options: {
+  manifest: ResearchDecisionManifest;
+  evaluators: ResearchDecisionEvaluatorId[];
+  pathResolution: ResearchDecisionPathResolution;
+  weeklyScores: ResearchDecisionWeekScore[];
+  runtime: ResearchDecisionRuntimeTelemetry;
+}): ResearchDecisionEvaluationResult {
+  return {
+    schema_version: 1,
+    generated_at_utc: new Date().toISOString(),
+    manifest: getResearchDecisionManifestIdentity(options.manifest),
+    evaluator: {
+      evaluator_version: RESEARCH_DECISION_EVALUATOR_VERSION,
+      evaluators: options.evaluators,
+      path_resolution: options.pathResolution,
+    },
+    coverage: {
+      weeks: options.weeklyScores.length,
+      universe_symbols: options.manifest.universe.symbols.length,
+      decision_rows: options.manifest.decisions.length,
+      long_rows: options.manifest.decisions.filter((row) => row.side === "LONG").length,
+      short_rows: options.manifest.decisions.filter((row) => row.side === "SHORT").length,
+    },
+    weekly_scores: options.weeklyScores,
+    summaries: options.evaluators.map((evaluator) => summarizeScores(evaluator, options.weeklyScores)),
+    runtime: options.runtime,
+  };
+}
+
 export async function evaluateResearchDecisionManifest(options: {
   manifest: ResearchDecisionManifest;
   pathResolution?: ResearchDecisionPathResolution;
@@ -568,6 +697,8 @@ export async function evaluateResearchDecisionManifest(options: {
   clearRuntimeCacheBetweenWeeks?: boolean;
   logProgress?: boolean;
 }): Promise<ResearchDecisionEvaluationResult> {
+  const startedAt = Date.now();
+  resetRuntimeCacheStats();
   const manifest = attachResearchDecisionManifestHash(normalizeResearchDecisionManifest(options.manifest));
   const evaluators = options.evaluators ?? ["adr_grid", "weekly_hold"];
   const pathResolution = options.pathResolution ?? "1m";
@@ -580,6 +711,7 @@ export async function evaluateResearchDecisionManifest(options: {
     const decisions = byWeek.get(weekOpenUtc) ?? [];
     weeklyScores.push(await scoreResearchDecisionWeek({
       assetClass: manifest.universe.asset_class,
+      priceBundleId: manifest.price_bundle_id,
       weekOpenUtc,
       decisions,
       pathResolution,
@@ -600,23 +732,109 @@ export async function evaluateResearchDecisionManifest(options: {
     }
   }
 
-  return {
-    schema_version: 1,
-    generated_at_utc: new Date().toISOString(),
-    manifest: getResearchDecisionManifestIdentity(manifest),
-    evaluator: {
-      evaluator_version: RESEARCH_DECISION_EVALUATOR_VERSION,
-      evaluators,
-      path_resolution: pathResolution,
-    },
-    coverage: {
-      weeks: weeks.length,
-      universe_symbols: manifest.universe.symbols.length,
-      decision_rows: manifest.decisions.length,
-      long_rows: manifest.decisions.filter((row) => row.side === "LONG").length,
-      short_rows: manifest.decisions.filter((row) => row.side === "SHORT").length,
-    },
-    weekly_scores: weeklyScores,
-    summaries: evaluators.map((evaluator) => summarizeScores(evaluator, weeklyScores)),
-  };
+  return buildEvaluationResult({
+    manifest,
+    evaluators,
+    pathResolution,
+    weeklyScores,
+    runtime: buildRuntimeTelemetry({
+      mode: "single_manifest",
+      startedAt,
+      manifestCount: 1,
+      unionWeekCount: weeks.length,
+      rowCountEvaluated: manifest.decisions.length,
+      clearRuntimeCacheBetweenWeeks: Boolean(options.clearRuntimeCacheBetweenWeeks),
+      logProgress: Boolean(options.logProgress),
+    }),
+  });
+}
+
+export async function evaluateResearchDecisionManifestBatch(options: {
+  manifests: ResearchDecisionManifest[];
+  pathResolution?: ResearchDecisionPathResolution;
+  evaluators?: ResearchDecisionEvaluatorId[];
+  clearRuntimeCacheBetweenWeeks?: boolean;
+  logProgress?: boolean;
+}): Promise<ResearchDecisionEvaluationResult[]> {
+  if (options.manifests.length === 0) return [];
+  const startedAt = Date.now();
+  resetRuntimeCacheStats();
+  const manifests = options.manifests.map((manifest) =>
+    attachResearchDecisionManifestHash(normalizeResearchDecisionManifest(manifest)));
+  const evaluators = options.evaluators ?? ["adr_grid", "weekly_hold"];
+  const pathResolution = options.pathResolution ?? "1m";
+  const first = manifests[0]!;
+  for (const manifest of manifests.slice(1)) {
+    if (manifest.price_bundle_id !== first.price_bundle_id) {
+      throw new Error(`Batch manifests must share price_bundle_id: ${first.price_bundle_id} !== ${manifest.price_bundle_id}`);
+    }
+    if (manifest.universe.asset_class !== first.universe.asset_class) {
+      throw new Error(`Batch manifests must share asset_class: ${first.universe.asset_class} !== ${manifest.universe.asset_class}`);
+    }
+  }
+
+  const byWeekByManifest = manifests.map((manifest) => groupDecisionsByWeek(manifest.decisions));
+  const unionWeeks = Array.from(
+    new Set(byWeekByManifest.flatMap((byWeek) => [...byWeek.keys()])),
+  ).sort();
+  const weeklyScoresByManifest = manifests.map(() => [] as ResearchDecisionWeekScore[]);
+
+  for (const [weekIndex, weekOpenUtc] of unionWeeks.entries()) {
+    const startedWeekAt = Date.now();
+    const weekRowsByManifest = byWeekByManifest.map((byWeek) => byWeek.get(weekOpenUtc) ?? []);
+    const symbols = Array.from(
+      new Set(weekRowsByManifest.flatMap((rows) => rows.map((row) => row.symbol))),
+    ).sort();
+    const context = await loadResearchDecisionWeekScoringContext({
+      assetClass: first.universe.asset_class,
+      priceBundleId: first.price_bundle_id,
+      weekOpenUtc,
+      symbols,
+      pathResolution,
+    });
+
+    for (const [manifestIndex, decisions] of weekRowsByManifest.entries()) {
+      if (decisions.length === 0) continue;
+      weeklyScoresByManifest[manifestIndex]!.push(scoreResearchDecisionWeekWithContext({
+        assetClass: manifests[manifestIndex]!.universe.asset_class,
+        weekOpenUtc,
+        decisions,
+        evaluators,
+        context,
+      }));
+    }
+
+    if (options.clearRuntimeCacheBetweenWeeks) {
+      clearRuntimeCacheAll();
+    }
+    if (options.logProgress) {
+      console.log(
+        [
+          `scoreBatchWeek=${weekIndex + 1}/${unionWeeks.length}`,
+          `week=${weekOpenUtc.slice(0, 10)}`,
+          `manifests=${manifests.length}`,
+          `rows=${weekRowsByManifest.reduce((sum, rows) => sum + rows.length, 0)}`,
+          `elapsed=${((Date.now() - startedWeekAt) / 1000).toFixed(2)}s`,
+        ].join(" | "),
+      );
+    }
+  }
+
+  const runtime = buildRuntimeTelemetry({
+    mode: "batch_week_major",
+    startedAt,
+    manifestCount: manifests.length,
+    unionWeekCount: unionWeeks.length,
+    rowCountEvaluated: manifests.reduce((sum, manifest) => sum + manifest.decisions.length, 0),
+    clearRuntimeCacheBetweenWeeks: Boolean(options.clearRuntimeCacheBetweenWeeks),
+    logProgress: Boolean(options.logProgress),
+  });
+
+  return manifests.map((manifest, index) => buildEvaluationResult({
+    manifest,
+    evaluators,
+    pathResolution,
+    weeklyScores: weeklyScoresByManifest[index] ?? [],
+    runtime,
+  }));
 }
