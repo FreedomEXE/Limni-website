@@ -41,6 +41,7 @@ ownership decision.
 | `engine/src/evaluation/` | Shared evaluator support such as execution weekly window helpers. |
 | `engine/scripts/` | Reusable local research and backtest command entry points. |
 | `engine/src/research/` | Research decision manifest contract, shared evaluator, hashing, and append-only run registry. |
+| `engine/src/signals/` | Signal-specific source/manifest builders that emit frozen decision manifests before scoring. |
 | `engine/src/price/` | Canonical price bars/windows, ADR lookup, path bars, path resolution, and local/cached price adapters such as the SQLite M1 warehouse. |
 | `engine/src/warehouse/` | Research matrix and macro regime warehouse helpers. |
 | `engine/data/` | Local/cached research data. Ignored by default. |

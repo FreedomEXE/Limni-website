@@ -1,0 +1,7035 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-06-26T00:32:10.391Z",
+  "manifest": {
+    "manifest_id": "gate56e_gate55g_friday_strength_fade_equivalent_manifest_v1",
+    "manifest_version": "research_decision_manifest_v1",
+    "gate_id": "Gate 56E: gate55g-equivalent-manifest-parity",
+    "hypothesis_id": "gate55g_friday_strength_selected_vs_fade_equivalent_manifest_parity",
+    "signal_id": "gate55g_friday_strength_fade",
+    "signal_version": "fx_m1_currency_strength_v1_gate55g_friday_close_v1",
+    "decision_scope": "fx_28pair_weekly_friday_strength_fade",
+    "price_bundle_id": "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953",
+    "feature_bundle_id": "gate55f_fx_m1_currency_strength_v1_friday_close_context",
+    "source_context_ids": [
+      "docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md",
+      "docs/research/GATE55F_CANONICAL_STRENGTH_SOURCE_CONTEXT_PROOF_2026-06-25.md",
+      "docs/research/GATE55G_CANONICAL_FRIDAY_STRENGTH_SELECTED_VS_FADE_BASELINE_2026-06-25.md"
+    ],
+    "config_hash": "0B7E09266183EB8983F9B6067CD77952466D47276BDE768978D8C12F1CCA87D0",
+    "manifest_hash": "BB3142AF507A5CEBE6467E8055467C1B2003126BACA896F3827206DB0755ED28"
+  },
+  "evaluator": {
+    "evaluator_version": "research_decision_evaluator_adr_grid_weekly_hold_v1",
+    "evaluators": [
+      "adr_grid",
+      "weekly_hold"
+    ],
+    "path_resolution": "1m"
+  },
+  "coverage": {
+    "weeks": 387,
+    "universe_symbols": 28,
+    "decision_rows": 10836,
+    "long_rows": 5224,
+    "short_rows": 5612
+  },
+  "weekly_scores": [
+    {
+      "week_open_utc": "2019-01-07T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 27.919177,
+        "fills": 294,
+        "tp": 236,
+        "reset": 20,
+        "week_close": 38,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.673834,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-01-14T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 1.475181,
+        "fills": 227,
+        "tp": 165,
+        "reset": 16,
+        "week_close": 46,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.384247,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-01-21T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -45.40143,
+        "fills": 323,
+        "tp": 236,
+        "reset": 27,
+        "week_close": 60,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -4.744829,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-01-28T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.903669,
+        "fills": 267,
+        "tp": 225,
+        "reset": 29,
+        "week_close": 13,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.322757,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-02-04T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -2.105394,
+        "fills": 254,
+        "tp": 190,
+        "reset": 31,
+        "week_close": 33,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -3.036402,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-02-11T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 33.569958,
+        "fills": 198,
+        "tp": 178,
+        "reset": 20,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 21.403002,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-02-18T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 33.932602,
+        "fills": 352,
+        "tp": 294,
+        "reset": 42,
+        "week_close": 16,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.358973,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-02-25T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -50.368463,
+        "fills": 333,
+        "tp": 239,
+        "reset": 53,
+        "week_close": 41,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -14.1021,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-03-04T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 13.498109,
+        "fills": 286,
+        "tp": 235,
+        "reset": 27,
+        "week_close": 24,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 18.598268,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-03-10T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -18.916059,
+        "fills": 362,
+        "tp": 256,
+        "reset": 55,
+        "week_close": 51,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -11.948241,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-03-17T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 30.431197,
+        "fills": 260,
+        "tp": 223,
+        "reset": 37,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 5.216476,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-03-24T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 27.448149,
+        "fills": 240,
+        "tp": 206,
+        "reset": 28,
+        "week_close": 6,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 18.519475,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-03-31T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 25.387076,
+        "fills": 268,
+        "tp": 212,
+        "reset": 32,
+        "week_close": 24,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -7.06648,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-04-07T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -7.874965,
+        "fills": 312,
+        "tp": 230,
+        "reset": 22,
+        "week_close": 60,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -9.452484,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-04-14T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -13.59863,
+        "fills": 302,
+        "tp": 230,
+        "reset": 21,
+        "week_close": 51,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -4.342219,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-04-21T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -17.265717,
+        "fills": 367,
+        "tp": 264,
+        "reset": 83,
+        "week_close": 20,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.105215,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-04-28T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -3.009912,
+        "fills": 340,
+        "tp": 265,
+        "reset": 48,
+        "week_close": 27,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 4.447945,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-05-05T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 28.310963,
+        "fills": 195,
+        "tp": 173,
+        "reset": 16,
+        "week_close": 6,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 6.241983,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-05-12T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -97.490534,
+        "fills": 374,
+        "tp": 243,
+        "reset": 6,
+        "week_close": 125,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -23.295426,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-05-19T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 27.138829,
+        "fills": 329,
+        "tp": 260,
+        "reset": 37,
+        "week_close": 32,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.700807,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-05-26T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 4.980098,
+        "fills": 317,
+        "tp": 249,
+        "reset": 24,
+        "week_close": 44,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -9.695136,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-06-02T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 36.410348,
+        "fills": 316,
+        "tp": 279,
+        "reset": 22,
+        "week_close": 15,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 25.192386,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-06-09T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 20.683122,
+        "fills": 239,
+        "tp": 205,
+        "reset": 14,
+        "week_close": 20,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 27.663317,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-06-16T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -10.930659,
+        "fills": 301,
+        "tp": 223,
+        "reset": 58,
+        "week_close": 20,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 8.314839,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-06-23T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.180207,
+        "fills": 267,
+        "tp": 221,
+        "reset": 29,
+        "week_close": 17,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 9.078488,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-06-30T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -11.2344,
+        "fills": 286,
+        "tp": 218,
+        "reset": 12,
+        "week_close": 56,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 10.512527,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-07-07T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 35.209222,
+        "fills": 227,
+        "tp": 199,
+        "reset": 28,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.367073,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-07-14T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -26.171428,
+        "fills": 392,
+        "tp": 283,
+        "reset": 53,
+        "week_close": 56,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -21.190495,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-07-21T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -9.38976,
+        "fills": 296,
+        "tp": 229,
+        "reset": 42,
+        "week_close": 25,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.856198,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-07-28T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -48.041967,
+        "fills": 468,
+        "tp": 319,
+        "reset": 128,
+        "week_close": 21,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -42.346901,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-08-04T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 30.206676,
+        "fills": 324,
+        "tp": 258,
+        "reset": 66,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -9.87305,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-08-11T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.989848,
+        "fills": 220,
+        "tp": 187,
+        "reset": 25,
+        "week_close": 8,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 17.873153,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-08-18T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 16.124005,
+        "fills": 252,
+        "tp": 198,
+        "reset": 1,
+        "week_close": 53,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.882858,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-08-25T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 30.057745,
+        "fills": 232,
+        "tp": 204,
+        "reset": 28,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 23.807361,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-09-01T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -56.415819,
+        "fills": 359,
+        "tp": 247,
+        "reset": 35,
+        "week_close": 77,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -16.684614,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-09-08T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -14.377547,
+        "fills": 372,
+        "tp": 285,
+        "reset": 39,
+        "week_close": 48,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.777764,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-09-15T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -20.011665,
+        "fills": 398,
+        "tp": 296,
+        "reset": 41,
+        "week_close": 61,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.798523,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-09-22T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 20.85078,
+        "fills": 246,
+        "tp": 203,
+        "reset": 14,
+        "week_close": 29,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 12.612463,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-09-29T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 32.430319,
+        "fills": 278,
+        "tp": 237,
+        "reset": 35,
+        "week_close": 6,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 15.774364,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-10-06T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 42.463458,
+        "fills": 272,
+        "tp": 239,
+        "reset": 29,
+        "week_close": 4,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 5.628881,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-10-13T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -1.806942,
+        "fills": 392,
+        "tp": 305,
+        "reset": 41,
+        "week_close": 46,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -16.580944,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-10-20T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 38.829279,
+        "fills": 247,
+        "tp": 218,
+        "reset": 15,
+        "week_close": 14,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 12.419326,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-10-27T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 39.10059,
+        "fills": 294,
+        "tp": 257,
+        "reset": 31,
+        "week_close": 6,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 29.589658,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-11-04T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.704291,
+        "fills": 256,
+        "tp": 219,
+        "reset": 30,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 12.61973,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-11-11T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 16.651853,
+        "fills": 217,
+        "tp": 183,
+        "reset": 33,
+        "week_close": 1,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 21.356961,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-11-18T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 29.690597,
+        "fills": 289,
+        "tp": 244,
+        "reset": 27,
+        "week_close": 18,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 8.160535,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-11-25T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 29.117017,
+        "fills": 238,
+        "tp": 204,
+        "reset": 6,
+        "week_close": 28,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 6.144356,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-12-02T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -15.202159,
+        "fills": 345,
+        "tp": 257,
+        "reset": 73,
+        "week_close": 15,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.293769,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-12-09T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 7.287779,
+        "fills": 256,
+        "tp": 220,
+        "reset": 30,
+        "week_close": 6,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -6.788508,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-12-16T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.192248,
+        "fills": 200,
+        "tp": 174,
+        "reset": 14,
+        "week_close": 12,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 13.096329,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-12-23T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -16.731712,
+        "fills": 244,
+        "tp": 177,
+        "reset": 4,
+        "week_close": 63,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -0.210986,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2019-12-30T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 37.87336,
+        "fills": 284,
+        "tp": 245,
+        "reset": 35,
+        "week_close": 4,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 34.214583,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-01-06T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -5.802585,
+        "fills": 416,
+        "tp": 316,
+        "reset": 100,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 4.035541,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-01-13T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 15.983268,
+        "fills": 386,
+        "tp": 301,
+        "reset": 48,
+        "week_close": 37,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -14.587273,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-01-20T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 21.809359,
+        "fills": 286,
+        "tp": 243,
+        "reset": 24,
+        "week_close": 19,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 2.730628,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-01-27T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.218297,
+        "fills": 340,
+        "tp": 278,
+        "reset": 47,
+        "week_close": 15,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.092033,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-02-03T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 31.244302,
+        "fills": 211,
+        "tp": 191,
+        "reset": 13,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 22.908762,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-02-10T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.283302,
+        "fills": 248,
+        "tp": 210,
+        "reset": 16,
+        "week_close": 22,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 16.042549,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-02-17T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -56.842412,
+        "fills": 398,
+        "tp": 283,
+        "reset": 81,
+        "week_close": 34,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 4.126327,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-02-24T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -262.558078,
+        "fills": 466,
+        "tp": 317,
+        "reset": 82,
+        "week_close": 67,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -58.991502,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-03-02T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 47.499008,
+        "fills": 317,
+        "tp": 280,
+        "reset": 37,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -6.963499,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-03-08T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -6.782818,
+        "fills": 208,
+        "tp": 142,
+        "reset": 66,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 22.487106,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-03-15T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -137.740903,
+        "fills": 732,
+        "tp": 530,
+        "reset": 194,
+        "week_close": 8,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -19.969148,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-03-22T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 22.126017,
+        "fills": 220,
+        "tp": 191,
+        "reset": 9,
+        "week_close": 20,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 14.118151,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-03-29T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.563357,
+        "fills": 198,
+        "tp": 156,
+        "reset": 5,
+        "week_close": 37,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 9.160637,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-04-05T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 19.175043,
+        "fills": 159,
+        "tp": 135,
+        "reset": 0,
+        "week_close": 24,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 27.449889,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-04-12T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 28.415601,
+        "fills": 228,
+        "tp": 199,
+        "reset": 7,
+        "week_close": 22,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.551117,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-04-19T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.739323,
+        "fills": 198,
+        "tp": 179,
+        "reset": 10,
+        "week_close": 9,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.868293,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-04-26T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 22.369203,
+        "fills": 270,
+        "tp": 218,
+        "reset": 42,
+        "week_close": 10,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -17.693539,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-05-03T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 25.57331,
+        "fills": 246,
+        "tp": 215,
+        "reset": 19,
+        "week_close": 12,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 22.754044,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-05-10T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -22.058664,
+        "fills": 281,
+        "tp": 217,
+        "reset": 9,
+        "week_close": 55,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 14.840198,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-05-17T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.660679,
+        "fills": 225,
+        "tp": 185,
+        "reset": 17,
+        "week_close": 23,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 19.945552,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-05-24T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -0.526502,
+        "fills": 350,
+        "tp": 261,
+        "reset": 69,
+        "week_close": 20,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -6.169916,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-05-31T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -309.476803,
+        "fills": 645,
+        "tp": 392,
+        "reset": 168,
+        "week_close": 85,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -45.852448,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-06-07T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 31.415412,
+        "fills": 176,
+        "tp": 164,
+        "reset": 11,
+        "week_close": 1,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 40.037487,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-06-14T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 34.388554,
+        "fills": 316,
+        "tp": 256,
+        "reset": 39,
+        "week_close": 21,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 2.39361,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-06-21T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 22.350866,
+        "fills": 173,
+        "tp": 156,
+        "reset": 5,
+        "week_close": 12,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 6.817585,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-06-28T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 3.18624,
+        "fills": 248,
+        "tp": 191,
+        "reset": 12,
+        "week_close": 45,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 6.065862,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-07-05T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 19.549805,
+        "fills": 328,
+        "tp": 273,
+        "reset": 11,
+        "week_close": 44,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.038861,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-07-12T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 11.473598,
+        "fills": 221,
+        "tp": 167,
+        "reset": 41,
+        "week_close": 13,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -0.430497,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-07-19T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -79.032983,
+        "fills": 448,
+        "tp": 298,
+        "reset": 122,
+        "week_close": 28,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -11.809209,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-07-26T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -89.721946,
+        "fills": 452,
+        "tp": 315,
+        "reset": 79,
+        "week_close": 58,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -32.646375,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-08-02T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 33.212101,
+        "fills": 312,
+        "tp": 266,
+        "reset": 36,
+        "week_close": 10,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -0.126818,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-08-09T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 7.941036,
+        "fills": 332,
+        "tp": 258,
+        "reset": 21,
+        "week_close": 53,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.462005,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-08-16T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 38.222677,
+        "fills": 258,
+        "tp": 222,
+        "reset": 35,
+        "week_close": 1,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 18.4965,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-08-23T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -25.617523,
+        "fills": 316,
+        "tp": 244,
+        "reset": 22,
+        "week_close": 50,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 15.155571,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-08-30T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 33.478573,
+        "fills": 357,
+        "tp": 286,
+        "reset": 68,
+        "week_close": 3,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 19.75542,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-09-06T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -12.247366,
+        "fills": 253,
+        "tp": 202,
+        "reset": 29,
+        "week_close": 22,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 29.395148,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-09-13T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 28.105009,
+        "fills": 325,
+        "tp": 277,
+        "reset": 18,
+        "week_close": 30,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 11.567564,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-09-20T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -139.406825,
+        "fills": 442,
+        "tp": 297,
+        "reset": 32,
+        "week_close": 113,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -16.364108,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-09-27T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 32.600904,
+        "fills": 178,
+        "tp": 166,
+        "reset": 9,
+        "week_close": 3,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 20.411127,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-10-04T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 38.581633,
+        "fills": 231,
+        "tp": 206,
+        "reset": 23,
+        "week_close": 2,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 13.01142,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-10-11T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.212575,
+        "fills": 173,
+        "tp": 157,
+        "reset": 16,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 22.883366,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-10-18T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -12.89778,
+        "fills": 358,
+        "tp": 240,
+        "reset": 114,
+        "week_close": 4,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -7.87179,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-10-25T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 35.858931,
+        "fills": 245,
+        "tp": 219,
+        "reset": 15,
+        "week_close": 11,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 19.62304,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-11-02T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 33.299838,
+        "fills": 247,
+        "tp": 216,
+        "reset": 31,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 33.204302,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-11-09T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -49.234242,
+        "fills": 424,
+        "tp": 290,
+        "reset": 127,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -13.387499,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-11-16T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 8.703897,
+        "fills": 256,
+        "tp": 193,
+        "reset": 1,
+        "week_close": 62,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.92631,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-11-23T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.860443,
+        "fills": 280,
+        "tp": 231,
+        "reset": 29,
+        "week_close": 20,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -7.599736,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-11-30T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 29.865783,
+        "fills": 385,
+        "tp": 314,
+        "reset": 54,
+        "week_close": 17,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -18.537544,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-12-07T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 27.617646,
+        "fills": 313,
+        "tp": 255,
+        "reset": 46,
+        "week_close": 12,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 4.790284,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-12-14T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 35.27135,
+        "fills": 225,
+        "tp": 206,
+        "reset": 17,
+        "week_close": 2,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 4.265163,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-12-21T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 18.946591,
+        "fills": 250,
+        "tp": 202,
+        "reset": 21,
+        "week_close": 27,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.324939,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2020-12-28T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 12.735045,
+        "fills": 363,
+        "tp": 280,
+        "reset": 31,
+        "week_close": 52,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.603264,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-01-04T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 32.596989,
+        "fills": 274,
+        "tp": 226,
+        "reset": 41,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.085724,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-01-11T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 7.568353,
+        "fills": 366,
+        "tp": 281,
+        "reset": 47,
+        "week_close": 38,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.719826,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-01-18T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 28.493166,
+        "fills": 227,
+        "tp": 196,
+        "reset": 25,
+        "week_close": 6,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 8.659423,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-01-25T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 30.292915,
+        "fills": 303,
+        "tp": 255,
+        "reset": 40,
+        "week_close": 8,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -9.133762,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-02-01T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -0.919485,
+        "fills": 322,
+        "tp": 248,
+        "reset": 11,
+        "week_close": 63,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -6.808573,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-02-08T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -2.836079,
+        "fills": 255,
+        "tp": 187,
+        "reset": 16,
+        "week_close": 52,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.919276,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-02-15T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -12.579997,
+        "fills": 441,
+        "tp": 326,
+        "reset": 69,
+        "week_close": 46,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -40.408101,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-02-22T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -84.628534,
+        "fills": 518,
+        "tp": 360,
+        "reset": 158,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 15.355799,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-03-01T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -5.592193,
+        "fills": 261,
+        "tp": 218,
+        "reset": 9,
+        "week_close": 34,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 6.491183,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-03-08T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -3.772318,
+        "fills": 315,
+        "tp": 235,
+        "reset": 5,
+        "week_close": 75,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -15.664618,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-03-14T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 39.234437,
+        "fills": 232,
+        "tp": 212,
+        "reset": 20,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.66921,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-03-21T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -72.55505,
+        "fills": 397,
+        "tp": 264,
+        "reset": 67,
+        "week_close": 66,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.814026,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-03-28T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 6.255795,
+        "fills": 407,
+        "tp": 309,
+        "reset": 26,
+        "week_close": 72,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -9.720521,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-04-04T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 1.428521,
+        "fills": 229,
+        "tp": 186,
+        "reset": 24,
+        "week_close": 19,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 26.104912,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-04-11T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 34.072357,
+        "fills": 240,
+        "tp": 218,
+        "reset": 8,
+        "week_close": 14,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 18.196297,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-04-18T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.819087,
+        "fills": 351,
+        "tp": 266,
+        "reset": 80,
+        "week_close": 5,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.381429,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-04-25T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -7.440584,
+        "fills": 337,
+        "tp": 261,
+        "reset": 30,
+        "week_close": 46,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 11.063613,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-05-02T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 36.968772,
+        "fills": 249,
+        "tp": 215,
+        "reset": 31,
+        "week_close": 3,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -4.714817,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-05-09T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 15.32052,
+        "fills": 384,
+        "tp": 312,
+        "reset": 47,
+        "week_close": 25,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.804805,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-05-16T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.182004,
+        "fills": 240,
+        "tp": 192,
+        "reset": 27,
+        "week_close": 21,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.915059,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-05-23T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -10.719947,
+        "fills": 297,
+        "tp": 228,
+        "reset": 41,
+        "week_close": 28,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.948938,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-05-30T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 19.483901,
+        "fills": 311,
+        "tp": 256,
+        "reset": 29,
+        "week_close": 26,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.760083,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-06-06T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 34.833961,
+        "fills": 313,
+        "tp": 269,
+        "reset": 22,
+        "week_close": 22,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.814645,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-06-13T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -126.585185,
+        "fills": 428,
+        "tp": 312,
+        "reset": 40,
+        "week_close": 76,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.841153,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-06-20T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 35.771495,
+        "fills": 231,
+        "tp": 206,
+        "reset": 17,
+        "week_close": 8,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 31.492057,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-06-27T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 13.608792,
+        "fills": 297,
+        "tp": 233,
+        "reset": 19,
+        "week_close": 45,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -10.908697,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-07-04T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -23.107651,
+        "fills": 318,
+        "tp": 239,
+        "reset": 79,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.639296,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-07-11T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 40.725331,
+        "fills": 275,
+        "tp": 243,
+        "reset": 20,
+        "week_close": 12,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 9.490068,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-07-18T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 42.959838,
+        "fills": 329,
+        "tp": 264,
+        "reset": 65,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 4.231204,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-07-25T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -31.120553,
+        "fills": 423,
+        "tp": 307,
+        "reset": 17,
+        "week_close": 99,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -17.911525,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-08-01T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 32.845856,
+        "fills": 249,
+        "tp": 209,
+        "reset": 33,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 21.796243,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-08-08T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 28.573193,
+        "fills": 324,
+        "tp": 255,
+        "reset": 54,
+        "week_close": 15,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.380793,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-08-15T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -95.347716,
+        "fills": 469,
+        "tp": 334,
+        "reset": 120,
+        "week_close": 15,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.831254,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-08-22T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 21.692252,
+        "fills": 206,
+        "tp": 177,
+        "reset": 26,
+        "week_close": 3,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 33.794611,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-08-29T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -42.375265,
+        "fills": 308,
+        "tp": 213,
+        "reset": 8,
+        "week_close": 87,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.497336,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-09-05T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.468281,
+        "fills": 278,
+        "tp": 226,
+        "reset": 45,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 2.378486,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-09-12T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 38.843624,
+        "fills": 314,
+        "tp": 272,
+        "reset": 29,
+        "week_close": 13,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.745459,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-09-19T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 39.527408,
+        "fills": 256,
+        "tp": 221,
+        "reset": 35,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 17.932115,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-09-26T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -8.695414,
+        "fills": 463,
+        "tp": 353,
+        "reset": 66,
+        "week_close": 44,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -7.913278,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-10-03T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -15.679226,
+        "fills": 330,
+        "tp": 256,
+        "reset": 17,
+        "week_close": 57,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -3.37469,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-10-10T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -113.856766,
+        "fills": 383,
+        "tp": 248,
+        "reset": 17,
+        "week_close": 118,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -11.016947,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-10-17T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 13.743258,
+        "fills": 386,
+        "tp": 293,
+        "reset": 91,
+        "week_close": 2,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.39013,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-10-24T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 44.7378,
+        "fills": 291,
+        "tp": 263,
+        "reset": 18,
+        "week_close": 10,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -3.809382,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-10-31T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 33.064966,
+        "fills": 204,
+        "tp": 183,
+        "reset": 17,
+        "week_close": 4,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 14.662944,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-11-08T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 23.180056,
+        "fills": 263,
+        "tp": 212,
+        "reset": 23,
+        "week_close": 28,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -4.519673,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-11-15T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -20.28355,
+        "fills": 430,
+        "tp": 309,
+        "reset": 63,
+        "week_close": 58,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -12.902729,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-11-22T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -5.760615,
+        "fills": 342,
+        "tp": 273,
+        "reset": 34,
+        "week_close": 35,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.242388,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-11-29T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 46.597893,
+        "fills": 398,
+        "tp": 328,
+        "reset": 63,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -27.350921,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-12-06T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 28.23276,
+        "fills": 181,
+        "tp": 166,
+        "reset": 12,
+        "week_close": 3,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 26.979369,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-12-13T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 37.338841,
+        "fills": 295,
+        "tp": 248,
+        "reset": 42,
+        "week_close": 5,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -4.303346,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-12-20T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.288173,
+        "fills": 293,
+        "tp": 249,
+        "reset": 13,
+        "week_close": 31,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 17.519251,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2021-12-27T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -12.036669,
+        "fills": 347,
+        "tp": 275,
+        "reset": 13,
+        "week_close": 59,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -21.673546,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-01-03T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 22.022873,
+        "fills": 278,
+        "tp": 237,
+        "reset": 22,
+        "week_close": 19,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -0.813574,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-01-10T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.023155,
+        "fills": 333,
+        "tp": 254,
+        "reset": 70,
+        "week_close": 9,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.715048,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-01-17T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 3.642783,
+        "fills": 311,
+        "tp": 252,
+        "reset": 24,
+        "week_close": 35,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -0.6099,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-01-24T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 16.238153,
+        "fills": 305,
+        "tp": 239,
+        "reset": 44,
+        "week_close": 22,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -13.963044,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-01-31T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 28.817206,
+        "fills": 242,
+        "tp": 213,
+        "reset": 23,
+        "week_close": 6,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 17.947154,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-02-07T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 6.800092,
+        "fills": 348,
+        "tp": 260,
+        "reset": 76,
+        "week_close": 12,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.380861,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-02-14T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 49.295846,
+        "fills": 269,
+        "tp": 257,
+        "reset": 7,
+        "week_close": 5,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 5.214437,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-02-21T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 27.928974,
+        "fills": 375,
+        "tp": 296,
+        "reset": 79,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -11.253631,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-02-28T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -239.029311,
+        "fills": 566,
+        "tp": 383,
+        "reset": 36,
+        "week_close": 147,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -20.197667,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-03-07T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 31.527757,
+        "fills": 212,
+        "tp": 193,
+        "reset": 8,
+        "week_close": 11,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 20.116369,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-03-13T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 4.420209,
+        "fills": 308,
+        "tp": 233,
+        "reset": 36,
+        "week_close": 39,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -17.436149,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-03-20T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -92.0093,
+        "fills": 431,
+        "tp": 266,
+        "reset": 74,
+        "week_close": 91,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -36.812759,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-03-27T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 12.237329,
+        "fills": 277,
+        "tp": 215,
+        "reset": 52,
+        "week_close": 10,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.200825,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-04-03T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -11.51269,
+        "fills": 305,
+        "tp": 195,
+        "reset": 90,
+        "week_close": 20,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.88835,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-04-10T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 11.951464,
+        "fills": 235,
+        "tp": 181,
+        "reset": 26,
+        "week_close": 28,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -9.81346,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-04-17T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -25.819299,
+        "fills": 421,
+        "tp": 307,
+        "reset": 95,
+        "week_close": 19,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -22.077138,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-04-24T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -16.766651,
+        "fills": 365,
+        "tp": 280,
+        "reset": 85,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -9.84193,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-05-01T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 25.950021,
+        "fills": 256,
+        "tp": 231,
+        "reset": 6,
+        "week_close": 19,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 9.708516,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-05-08T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.717908,
+        "fills": 415,
+        "tp": 327,
+        "reset": 65,
+        "week_close": 23,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -12.351049,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-05-15T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.651681,
+        "fills": 301,
+        "tp": 227,
+        "reset": 40,
+        "week_close": 34,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 11.29568,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-05-22T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.116959,
+        "fills": 282,
+        "tp": 231,
+        "reset": 19,
+        "week_close": 32,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -11.824703,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-05-29T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -91.80904,
+        "fills": 368,
+        "tp": 231,
+        "reset": 7,
+        "week_close": 130,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -19.764374,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-06-05T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -27.772111,
+        "fills": 316,
+        "tp": 217,
+        "reset": 99,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -11.575298,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-06-12T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.81597,
+        "fills": 340,
+        "tp": 275,
+        "reset": 65,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -12.119704,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-06-19T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 15.967171,
+        "fills": 322,
+        "tp": 244,
+        "reset": 21,
+        "week_close": 57,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -7.510931,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-06-26T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -21.106359,
+        "fills": 378,
+        "tp": 278,
+        "reset": 24,
+        "week_close": 76,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -12.179659,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-07-03T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -1.963113,
+        "fills": 256,
+        "tp": 199,
+        "reset": 50,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 14.440255,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-07-10T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 41.314678,
+        "fills": 243,
+        "tp": 215,
+        "reset": 28,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -0.985221,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-07-17T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 38.379876,
+        "fills": 330,
+        "tp": 283,
+        "reset": 31,
+        "week_close": 16,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -4.419041,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-07-24T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 9.378567,
+        "fills": 360,
+        "tp": 287,
+        "reset": 50,
+        "week_close": 23,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -12.233453,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-07-31T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 27.089202,
+        "fills": 265,
+        "tp": 219,
+        "reset": 46,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 13.902199,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-08-07T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -8.795479,
+        "fills": 316,
+        "tp": 232,
+        "reset": 27,
+        "week_close": 57,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 12.244089,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-08-14T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 19.712756,
+        "fills": 153,
+        "tp": 135,
+        "reset": 10,
+        "week_close": 8,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 34.716427,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-08-21T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 32.304607,
+        "fills": 290,
+        "tp": 246,
+        "reset": 18,
+        "week_close": 26,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.39946,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-08-28T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 30.193756,
+        "fills": 236,
+        "tp": 207,
+        "reset": 11,
+        "week_close": 18,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 15.745532,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-09-04T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -116.059447,
+        "fills": 394,
+        "tp": 283,
+        "reset": 98,
+        "week_close": 13,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -6.893647,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-09-11T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 8.587776,
+        "fills": 338,
+        "tp": 274,
+        "reset": 27,
+        "week_close": 37,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.660771,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-09-18T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 19.713211,
+        "fills": 346,
+        "tp": 282,
+        "reset": 47,
+        "week_close": 17,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.547258,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-09-25T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 7.204723,
+        "fills": 329,
+        "tp": 237,
+        "reset": 67,
+        "week_close": 25,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 9.455298,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-10-02T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 31.113071,
+        "fills": 176,
+        "tp": 159,
+        "reset": 15,
+        "week_close": 2,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 2.446329,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-10-09T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 25.258976,
+        "fills": 313,
+        "tp": 256,
+        "reset": 45,
+        "week_close": 12,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -10.374507,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-10-16T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 12.367927,
+        "fills": 280,
+        "tp": 225,
+        "reset": 27,
+        "week_close": 28,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 7.634002,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-10-23T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 12.736629,
+        "fills": 273,
+        "tp": 216,
+        "reset": 25,
+        "week_close": 32,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -4.927994,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-10-30T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 33.783468,
+        "fills": 251,
+        "tp": 222,
+        "reset": 22,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 15.595681,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-11-07T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -15.504289,
+        "fills": 300,
+        "tp": 246,
+        "reset": 36,
+        "week_close": 18,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -6.234827,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-11-14T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 30.375463,
+        "fills": 273,
+        "tp": 226,
+        "reset": 37,
+        "week_close": 10,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.892337,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-11-21T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -15.336675,
+        "fills": 293,
+        "tp": 202,
+        "reset": 2,
+        "week_close": 89,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -10.742474,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-11-28T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 4.347761,
+        "fills": 323,
+        "tp": 260,
+        "reset": 40,
+        "week_close": 23,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -10.629253,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-12-05T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -6.836399,
+        "fills": 316,
+        "tp": 238,
+        "reset": 30,
+        "week_close": 48,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -4.170922,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-12-12T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 43.801791,
+        "fills": 297,
+        "tp": 256,
+        "reset": 35,
+        "week_close": 6,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 14.395066,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-12-19T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -38.926326,
+        "fills": 369,
+        "tp": 287,
+        "reset": 53,
+        "week_close": 29,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -13.041916,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2022-12-26T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 33.460869,
+        "fills": 253,
+        "tp": 225,
+        "reset": 6,
+        "week_close": 22,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.824433,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-01-02T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 32.904455,
+        "fills": 277,
+        "tp": 234,
+        "reset": 43,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 4.826503,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-01-09T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -31.354805,
+        "fills": 398,
+        "tp": 315,
+        "reset": 29,
+        "week_close": 54,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.087969,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-01-16T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.903324,
+        "fills": 238,
+        "tp": 198,
+        "reset": 18,
+        "week_close": 22,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 14.818875,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-01-23T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.428734,
+        "fills": 294,
+        "tp": 251,
+        "reset": 16,
+        "week_close": 27,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 5.525653,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-01-30T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.977058,
+        "fills": 243,
+        "tp": 210,
+        "reset": 24,
+        "week_close": 9,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 18.53867,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-02-06T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 19.495024,
+        "fills": 203,
+        "tp": 173,
+        "reset": 15,
+        "week_close": 15,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.750193,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-02-13T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 23.903907,
+        "fills": 239,
+        "tp": 202,
+        "reset": 13,
+        "week_close": 24,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 12.016345,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-02-20T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -0.509982,
+        "fills": 313,
+        "tp": 243,
+        "reset": 30,
+        "week_close": 40,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -0.484529,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-02-27T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.350997,
+        "fills": 283,
+        "tp": 225,
+        "reset": 58,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.809054,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-03-06T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -170.329218,
+        "fills": 489,
+        "tp": 333,
+        "reset": 48,
+        "week_close": 108,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -45.269332,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-03-12T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 43.253042,
+        "fills": 293,
+        "tp": 255,
+        "reset": 38,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 12.464075,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-03-19T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 9.047561,
+        "fills": 292,
+        "tp": 228,
+        "reset": 38,
+        "week_close": 26,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.497036,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-03-26T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 29.438109,
+        "fills": 232,
+        "tp": 201,
+        "reset": 4,
+        "week_close": 27,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 11.253132,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-04-02T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.80711,
+        "fills": 178,
+        "tp": 155,
+        "reset": 23,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 16.290345,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-04-09T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 6.603797,
+        "fills": 252,
+        "tp": 200,
+        "reset": 14,
+        "week_close": 38,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 17.541862,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-04-16T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 19.588789,
+        "fills": 228,
+        "tp": 189,
+        "reset": 11,
+        "week_close": 28,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 5.855751,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-04-23T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -9.014418,
+        "fills": 374,
+        "tp": 279,
+        "reset": 57,
+        "week_close": 38,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -21.889135,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-04-30T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 29.385911,
+        "fills": 198,
+        "tp": 169,
+        "reset": 29,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 10.385012,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-05-07T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.97577,
+        "fills": 289,
+        "tp": 242,
+        "reset": 24,
+        "week_close": 23,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 8.82406,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-05-14T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -16.220558,
+        "fills": 358,
+        "tp": 261,
+        "reset": 11,
+        "week_close": 86,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.140552,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-05-21T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.306278,
+        "fills": 328,
+        "tp": 275,
+        "reset": 17,
+        "week_close": 36,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 22.961693,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-05-28T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 15.402554,
+        "fills": 359,
+        "tp": 296,
+        "reset": 39,
+        "week_close": 24,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 11.131919,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-06-04T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 8.490115,
+        "fills": 330,
+        "tp": 265,
+        "reset": 30,
+        "week_close": 35,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.625098,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-06-11T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -82.941056,
+        "fills": 474,
+        "tp": 352,
+        "reset": 51,
+        "week_close": 71,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -38.796505,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-06-18T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 20.281939,
+        "fills": 255,
+        "tp": 223,
+        "reset": 15,
+        "week_close": 17,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 20.470558,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-06-25T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 23.664517,
+        "fills": 273,
+        "tp": 224,
+        "reset": 32,
+        "week_close": 17,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.115393,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-07-02T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 15.550503,
+        "fills": 359,
+        "tp": 293,
+        "reset": 28,
+        "week_close": 38,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -3.181301,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-07-09T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -221.864953,
+        "fills": 507,
+        "tp": 328,
+        "reset": 91,
+        "week_close": 88,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -21.535469,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-07-16T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 12.191888,
+        "fills": 329,
+        "tp": 268,
+        "reset": 61,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 21.510923,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-07-23T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 25.745528,
+        "fills": 204,
+        "tp": 181,
+        "reset": 23,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 10.670478,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-07-30T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 32.802623,
+        "fills": 259,
+        "tp": 225,
+        "reset": 26,
+        "week_close": 8,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -6.6205,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-08-06T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 15.762128,
+        "fills": 292,
+        "tp": 232,
+        "reset": 14,
+        "week_close": 46,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -0.083587,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-08-13T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 5.894927,
+        "fills": 387,
+        "tp": 303,
+        "reset": 43,
+        "week_close": 41,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -7.604901,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-08-20T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 34.03119,
+        "fills": 230,
+        "tp": 198,
+        "reset": 32,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.582712,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-08-27T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 40.414877,
+        "fills": 233,
+        "tp": 213,
+        "reset": 20,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 11.529358,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-09-03T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 28.991111,
+        "fills": 265,
+        "tp": 224,
+        "reset": 25,
+        "week_close": 16,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.526394,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-09-10T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -27.045464,
+        "fills": 433,
+        "tp": 324,
+        "reset": 25,
+        "week_close": 84,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -18.55609,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-09-17T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 20.080383,
+        "fills": 390,
+        "tp": 307,
+        "reset": 61,
+        "week_close": 22,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -28.431671,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-09-24T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -10.504595,
+        "fills": 494,
+        "tp": 367,
+        "reset": 76,
+        "week_close": 51,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -21.034577,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-10-01T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -28.627909,
+        "fills": 291,
+        "tp": 221,
+        "reset": 61,
+        "week_close": 9,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.573072,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-10-08T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 41.685062,
+        "fills": 304,
+        "tp": 264,
+        "reset": 32,
+        "week_close": 8,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 8.089418,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-10-15T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -120.021219,
+        "fills": 392,
+        "tp": 256,
+        "reset": 20,
+        "week_close": 116,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -19.122264,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-10-22T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.937973,
+        "fills": 266,
+        "tp": 223,
+        "reset": 36,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.485986,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-10-29T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 29.018904,
+        "fills": 233,
+        "tp": 209,
+        "reset": 15,
+        "week_close": 9,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 25.475112,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-11-06T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 12.663699,
+        "fills": 161,
+        "tp": 138,
+        "reset": 0,
+        "week_close": 23,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 28.344484,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-11-13T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -21.172893,
+        "fills": 293,
+        "tp": 213,
+        "reset": 66,
+        "week_close": 14,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 13.826117,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-11-20T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 22.54111,
+        "fills": 311,
+        "tp": 252,
+        "reset": 42,
+        "week_close": 17,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -10.057035,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-11-27T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -14.411057,
+        "fills": 415,
+        "tp": 325,
+        "reset": 60,
+        "week_close": 30,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.107219,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-12-04T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -144.77258,
+        "fills": 372,
+        "tp": 254,
+        "reset": 117,
+        "week_close": 1,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 9.224703,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-12-11T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.055769,
+        "fills": 267,
+        "tp": 224,
+        "reset": 39,
+        "week_close": 4,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.990908,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-12-18T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -6.494254,
+        "fills": 343,
+        "tp": 262,
+        "reset": 6,
+        "week_close": 75,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -3.246621,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2023-12-25T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -43.912053,
+        "fills": 365,
+        "tp": 259,
+        "reset": 97,
+        "week_close": 9,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -13.86799,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-01-01T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -7.234958,
+        "fills": 345,
+        "tp": 259,
+        "reset": 51,
+        "week_close": 35,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.476478,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-01-08T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 47.844917,
+        "fills": 368,
+        "tp": 320,
+        "reset": 17,
+        "week_close": 31,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -4.063041,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-01-15T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -45.332381,
+        "fills": 420,
+        "tp": 293,
+        "reset": 59,
+        "week_close": 68,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -6.407908,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-01-22T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 39.947046,
+        "fills": 244,
+        "tp": 221,
+        "reset": 13,
+        "week_close": 10,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 6.011944,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-01-29T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 44.656712,
+        "fills": 292,
+        "tp": 260,
+        "reset": 27,
+        "week_close": 5,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -4.309791,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-02-05T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 20.836809,
+        "fills": 216,
+        "tp": 185,
+        "reset": 4,
+        "week_close": 27,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 16.895574,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-02-12T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 19.351344,
+        "fills": 248,
+        "tp": 201,
+        "reset": 36,
+        "week_close": 11,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.74912,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-02-19T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 5.595999,
+        "fills": 338,
+        "tp": 261,
+        "reset": 23,
+        "week_close": 54,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -9.686575,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-02-26T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 24.285076,
+        "fills": 277,
+        "tp": 230,
+        "reset": 36,
+        "week_close": 11,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 10.861601,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-03-04T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 1.68194,
+        "fills": 411,
+        "tp": 317,
+        "reset": 70,
+        "week_close": 24,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.209167,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-03-10T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 32.667982,
+        "fills": 287,
+        "tp": 255,
+        "reset": 6,
+        "week_close": 26,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 21.611574,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-03-17T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 0.244497,
+        "fills": 316,
+        "tp": 241,
+        "reset": 75,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -9.703622,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-03-24T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 11.25548,
+        "fills": 304,
+        "tp": 242,
+        "reset": 21,
+        "week_close": 41,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.041275,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-03-31T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 15.48829,
+        "fills": 265,
+        "tp": 209,
+        "reset": 49,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.199792,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-04-07T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 25.224954,
+        "fills": 316,
+        "tp": 253,
+        "reset": 63,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 16.224846,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-04-14T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 29.007263,
+        "fills": 289,
+        "tp": 244,
+        "reset": 35,
+        "week_close": 10,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 4.944466,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-04-21T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -14.98218,
+        "fills": 361,
+        "tp": 265,
+        "reset": 86,
+        "week_close": 10,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -9.470134,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-04-28T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 30.849502,
+        "fills": 249,
+        "tp": 211,
+        "reset": 38,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 26.0092,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-05-05T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 11.726098,
+        "fills": 224,
+        "tp": 171,
+        "reset": 7,
+        "week_close": 46,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.023102,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-05-12T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -31.539872,
+        "fills": 285,
+        "tp": 221,
+        "reset": 16,
+        "week_close": 48,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 2.944587,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-05-19T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 6.946915,
+        "fills": 347,
+        "tp": 280,
+        "reset": 26,
+        "week_close": 41,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -3.107815,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-05-26T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 43.426353,
+        "fills": 236,
+        "tp": 219,
+        "reset": 16,
+        "week_close": 1,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 9.888548,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-06-02T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 12.324811,
+        "fills": 335,
+        "tp": 264,
+        "reset": 66,
+        "week_close": 5,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 19.395707,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-06-09T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 36.557754,
+        "fills": 273,
+        "tp": 243,
+        "reset": 26,
+        "week_close": 4,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.771134,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-06-16T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -38.816779,
+        "fills": 319,
+        "tp": 222,
+        "reset": 24,
+        "week_close": 73,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -7.700982,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-06-23T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 8.038307,
+        "fills": 292,
+        "tp": 235,
+        "reset": 22,
+        "week_close": 35,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.945004,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-06-30T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 9.025639,
+        "fills": 403,
+        "tp": 307,
+        "reset": 39,
+        "week_close": 57,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -18.241884,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-07-07T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -15.110441,
+        "fills": 338,
+        "tp": 250,
+        "reset": 46,
+        "week_close": 42,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.064022,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-07-14T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -18.144733,
+        "fills": 374,
+        "tp": 278,
+        "reset": 89,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -0.590852,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-07-21T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -408.09618,
+        "fills": 636,
+        "tp": 346,
+        "reset": 242,
+        "week_close": 48,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -44.427547,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-07-28T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -56.567576,
+        "fills": 290,
+        "tp": 217,
+        "reset": 55,
+        "week_close": 18,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -47.509956,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-08-04T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -6.246418,
+        "fills": 372,
+        "tp": 237,
+        "reset": 135,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 27.972592,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-08-11T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 20.455466,
+        "fills": 202,
+        "tp": 168,
+        "reset": 2,
+        "week_close": 32,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 8.007183,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-08-18T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -51.21761,
+        "fills": 337,
+        "tp": 233,
+        "reset": 26,
+        "week_close": 78,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -25.834553,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-08-25T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -10.956026,
+        "fills": 336,
+        "tp": 250,
+        "reset": 12,
+        "week_close": 74,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.253664,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-09-01T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.251662,
+        "fills": 206,
+        "tp": 179,
+        "reset": 23,
+        "week_close": 4,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 28.503454,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-09-08T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 23.659938,
+        "fills": 328,
+        "tp": 267,
+        "reset": 49,
+        "week_close": 12,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.647822,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-09-15T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 2.746469,
+        "fills": 248,
+        "tp": 199,
+        "reset": 9,
+        "week_close": 40,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 19.754406,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-09-22T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 34.409465,
+        "fills": 282,
+        "tp": 245,
+        "reset": 33,
+        "week_close": 4,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 17.220075,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-09-29T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -42.41588,
+        "fills": 336,
+        "tp": 258,
+        "reset": 28,
+        "week_close": 50,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 21.281695,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-10-06T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -3.691842,
+        "fills": 339,
+        "tp": 251,
+        "reset": 34,
+        "week_close": 54,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -7.675045,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-10-13T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 35.360065,
+        "fills": 287,
+        "tp": 240,
+        "reset": 31,
+        "week_close": 16,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.987815,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-10-20T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -42.887824,
+        "fills": 396,
+        "tp": 268,
+        "reset": 97,
+        "week_close": 31,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -23.581578,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-10-27T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 40.18885,
+        "fills": 328,
+        "tp": 277,
+        "reset": 43,
+        "week_close": 8,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.236488,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-11-04T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 30.614348,
+        "fills": 311,
+        "tp": 268,
+        "reset": 43,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 5.419339,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-11-11T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -2.786449,
+        "fills": 366,
+        "tp": 275,
+        "reset": 44,
+        "week_close": 47,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -6.385516,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-11-18T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -36.628966,
+        "fills": 330,
+        "tp": 240,
+        "reset": 36,
+        "week_close": 54,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.906019,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-11-25T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -9.980406,
+        "fills": 256,
+        "tp": 198,
+        "reset": 18,
+        "week_close": 40,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 26.336853,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-12-02T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -82.911272,
+        "fills": 342,
+        "tp": 240,
+        "reset": 18,
+        "week_close": 84,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -14.124344,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-12-09T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 1.223302,
+        "fills": 239,
+        "tp": 183,
+        "reset": 30,
+        "week_close": 26,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 5.124331,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-12-16T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -11.747874,
+        "fills": 307,
+        "tp": 227,
+        "reset": 80,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 8.876121,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-12-23T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 2.918992,
+        "fills": 238,
+        "tp": 168,
+        "reset": 0,
+        "week_close": 70,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.532485,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2024-12-30T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 5.950858,
+        "fills": 249,
+        "tp": 198,
+        "reset": 26,
+        "week_close": 25,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 10.210575,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-01-06T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 31.394461,
+        "fills": 279,
+        "tp": 233,
+        "reset": 41,
+        "week_close": 5,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.706245,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-01-13T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 41.131924,
+        "fills": 240,
+        "tp": 224,
+        "reset": 12,
+        "week_close": 4,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 4.57224,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-01-20T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 33.208741,
+        "fills": 209,
+        "tp": 192,
+        "reset": 17,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 21.258009,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-01-27T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 30.664136,
+        "fills": 218,
+        "tp": 192,
+        "reset": 15,
+        "week_close": 11,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 10.093008,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-02-03T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 14.787825,
+        "fills": 282,
+        "tp": 241,
+        "reset": 17,
+        "week_close": 24,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 18.24322,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-02-10T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 6.844766,
+        "fills": 212,
+        "tp": 172,
+        "reset": 22,
+        "week_close": 18,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 5.337489,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-02-17T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.898581,
+        "fills": 326,
+        "tp": 260,
+        "reset": 24,
+        "week_close": 42,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -13.692267,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-02-24T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -154.872614,
+        "fills": 578,
+        "tp": 384,
+        "reset": 60,
+        "week_close": 134,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -27.090376,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-03-03T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -17.876912,
+        "fills": 431,
+        "tp": 318,
+        "reset": 113,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.386789,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-03-09T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 41.663704,
+        "fills": 377,
+        "tp": 311,
+        "reset": 50,
+        "week_close": 16,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 2.348337,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-03-16T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 27.414406,
+        "fills": 257,
+        "tp": 209,
+        "reset": 32,
+        "week_close": 16,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.526578,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-03-23T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 36.748651,
+        "fills": 223,
+        "tp": 199,
+        "reset": 9,
+        "week_close": 15,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.639823,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-03-30T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 46.941552,
+        "fills": 288,
+        "tp": 257,
+        "reset": 31,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -58.026092,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-04-06T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 40.874759,
+        "fills": 260,
+        "tp": 227,
+        "reset": 33,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -3.992329,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-04-13T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 15.589065,
+        "fills": 198,
+        "tp": 146,
+        "reset": 0,
+        "week_close": 52,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.764449,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-04-20T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 21.445062,
+        "fills": 205,
+        "tp": 176,
+        "reset": 2,
+        "week_close": 27,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 8.234917,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-04-27T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 27.629512,
+        "fills": 288,
+        "tp": 242,
+        "reset": 33,
+        "week_close": 13,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -12.226071,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-05-04T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 42.788928,
+        "fills": 236,
+        "tp": 216,
+        "reset": 20,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.40352,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-05-11T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 40.799985,
+        "fills": 311,
+        "tp": 262,
+        "reset": 40,
+        "week_close": 9,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.813009,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-05-18T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 29.518799,
+        "fills": 326,
+        "tp": 269,
+        "reset": 18,
+        "week_close": 39,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.667382,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-05-25T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 32.93303,
+        "fills": 235,
+        "tp": 208,
+        "reset": 22,
+        "week_close": 5,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 13.011671,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-06-01T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 34.439413,
+        "fills": 249,
+        "tp": 215,
+        "reset": 21,
+        "week_close": 13,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 4.998316,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-06-08T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -16.079611,
+        "fills": 452,
+        "tp": 354,
+        "reset": 81,
+        "week_close": 17,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -8.02045,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-06-15T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 28.151347,
+        "fills": 235,
+        "tp": 203,
+        "reset": 18,
+        "week_close": 14,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.686911,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-06-22T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -0.134971,
+        "fills": 278,
+        "tp": 204,
+        "reset": 46,
+        "week_close": 28,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 2.178558,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-06-29T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 8.940299,
+        "fills": 333,
+        "tp": 255,
+        "reset": 52,
+        "week_close": 26,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.650003,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-07-06T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 19.714297,
+        "fills": 308,
+        "tp": 242,
+        "reset": 42,
+        "week_close": 24,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -15.228914,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-07-13T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 42.936775,
+        "fills": 308,
+        "tp": 256,
+        "reset": 52,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.349117,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-07-20T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 31.77657,
+        "fills": 241,
+        "tp": 210,
+        "reset": 20,
+        "week_close": 11,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 2.948856,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-07-27T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 17.737091,
+        "fills": 207,
+        "tp": 180,
+        "reset": 27,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 27.989314,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-08-03T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 8.811029,
+        "fills": 357,
+        "tp": 274,
+        "reset": 18,
+        "week_close": 65,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.837803,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-08-10T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 25.54548,
+        "fills": 310,
+        "tp": 252,
+        "reset": 29,
+        "week_close": 29,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.62278,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-08-17T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -57.627958,
+        "fills": 453,
+        "tp": 319,
+        "reset": 122,
+        "week_close": 12,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -14.031959,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-08-24T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 14.116839,
+        "fills": 285,
+        "tp": 232,
+        "reset": 8,
+        "week_close": 45,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.369474,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-08-31T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.517726,
+        "fills": 330,
+        "tp": 262,
+        "reset": 61,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -0.241124,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-09-07T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -11.938664,
+        "fills": 364,
+        "tp": 281,
+        "reset": 14,
+        "week_close": 69,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -10.957163,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-09-14T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 23.240271,
+        "fills": 222,
+        "tp": 187,
+        "reset": 35,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 14.806002,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-09-21T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -25.892625,
+        "fills": 334,
+        "tp": 247,
+        "reset": 6,
+        "week_close": 81,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -6.52671,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-09-28T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 21.023502,
+        "fills": 314,
+        "tp": 256,
+        "reset": 19,
+        "week_close": 39,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 8.568127,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-10-05T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 22.601518,
+        "fills": 240,
+        "tp": 199,
+        "reset": 41,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 8.666187,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-10-12T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 14.520242,
+        "fills": 302,
+        "tp": 241,
+        "reset": 61,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -36.150173,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2025-10-19T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 20.020836,
+        "fills": 290,
+        "tp": 234,
+        "reset": 31,
+        "week_close": 25,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      },
+      "weekly_hold": {
+        "adr": -4.147542,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      }
+    },
+    {
+      "week_open_utc": "2025-10-26T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -25.59424,
+        "fills": 355,
+        "tp": 260,
+        "reset": 54,
+        "week_close": 41,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      },
+      "weekly_hold": {
+        "adr": -24.808786,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      }
+    },
+    {
+      "week_open_utc": "2025-11-03T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -38.62822,
+        "fills": 366,
+        "tp": 266,
+        "reset": 63,
+        "week_close": 37,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      },
+      "weekly_hold": {
+        "adr": -2.64659,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      }
+    },
+    {
+      "week_open_utc": "2025-11-10T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 5.496203,
+        "fills": 408,
+        "tp": 323,
+        "reset": 47,
+        "week_close": 38,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      },
+      "weekly_hold": {
+        "adr": 6.384206,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      }
+    },
+    {
+      "week_open_utc": "2025-11-17T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 5.047854,
+        "fills": 306,
+        "tp": 239,
+        "reset": 60,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      },
+      "weekly_hold": {
+        "adr": 9.717461,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      }
+    },
+    {
+      "week_open_utc": "2025-11-24T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -28.563819,
+        "fills": 400,
+        "tp": 311,
+        "reset": 28,
+        "week_close": 61,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      },
+      "weekly_hold": {
+        "adr": 3.42214,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      }
+    },
+    {
+      "week_open_utc": "2025-12-01T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -31.764775,
+        "fills": 322,
+        "tp": 235,
+        "reset": 19,
+        "week_close": 68,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      },
+      "weekly_hold": {
+        "adr": -20.51017,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      }
+    },
+    {
+      "week_open_utc": "2025-12-08T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 19.938005,
+        "fills": 306,
+        "tp": 239,
+        "reset": 44,
+        "week_close": 23,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      },
+      "weekly_hold": {
+        "adr": 2.822823,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      }
+    },
+    {
+      "week_open_utc": "2025-12-15T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 31.966571,
+        "fills": 165,
+        "tp": 159,
+        "reset": 5,
+        "week_close": 1,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      },
+      "weekly_hold": {
+        "adr": 5.04584,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      }
+    },
+    {
+      "week_open_utc": "2025-12-22T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -3.737061,
+        "fills": 211,
+        "tp": 158,
+        "reset": 0,
+        "week_close": 53,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      },
+      "weekly_hold": {
+        "adr": 0.119655,
+        "missing_price_rows": 0,
+        "default_adr_rows": 27
+      }
+    },
+    {
+      "week_open_utc": "2025-12-29T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 28.398032,
+        "fills": 290,
+        "tp": 246,
+        "reset": 40,
+        "week_close": 4,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 1.223985,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-01-05T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -4.692659,
+        "fills": 393,
+        "tp": 295,
+        "reset": 91,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.442747,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-01-12T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 18.473419,
+        "fills": 315,
+        "tp": 251,
+        "reset": 54,
+        "week_close": 10,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -3.574814,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-01-19T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -42.889385,
+        "fills": 305,
+        "tp": 223,
+        "reset": 64,
+        "week_close": 18,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 2.396097,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-01-26T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 7.363897,
+        "fills": 459,
+        "tp": 356,
+        "reset": 95,
+        "week_close": 8,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.516969,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-02-02T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 6.044935,
+        "fills": 331,
+        "tp": 242,
+        "reset": 63,
+        "week_close": 26,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -5.871286,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-02-09T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 35.480292,
+        "fills": 256,
+        "tp": 218,
+        "reset": 29,
+        "week_close": 9,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 15.145947,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-02-16T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 31.90206,
+        "fills": 247,
+        "tp": 218,
+        "reset": 13,
+        "week_close": 16,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 7.918467,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-02-23T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 12.740416,
+        "fills": 367,
+        "tp": 295,
+        "reset": 30,
+        "week_close": 42,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -16.212725,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-03-02T00:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 15.269313,
+        "fills": 242,
+        "tp": 191,
+        "reset": 51,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 11.20603,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-03-08T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -0.190989,
+        "fills": 305,
+        "tp": 235,
+        "reset": 45,
+        "week_close": 25,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.6845,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-03-15T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 30.688991,
+        "fills": 249,
+        "tp": 219,
+        "reset": 17,
+        "week_close": 13,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 11.71837,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-03-22T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.391245,
+        "fills": 368,
+        "tp": 302,
+        "reset": 26,
+        "week_close": 40,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -14.375942,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-03-29T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 35.401804,
+        "fills": 273,
+        "tp": 229,
+        "reset": 38,
+        "week_close": 6,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -1.412563,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-04-05T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": -41.872261,
+        "fills": 426,
+        "tp": 311,
+        "reset": 83,
+        "week_close": 32,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 3.57489,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-04-12T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 12.228466,
+        "fills": 233,
+        "tp": 183,
+        "reset": 20,
+        "week_close": 30,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 15.402004,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-04-19T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 26.852228,
+        "fills": 316,
+        "tp": 259,
+        "reset": 20,
+        "week_close": 37,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": -2.775792,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-04-26T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 42.401646,
+        "fills": 267,
+        "tp": 234,
+        "reset": 33,
+        "week_close": 0,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 0.254481,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-05-03T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 36.384629,
+        "fills": 235,
+        "tp": 213,
+        "reset": 14,
+        "week_close": 8,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 13.283626,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-05-10T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 32.411471,
+        "fills": 213,
+        "tp": 190,
+        "reset": 16,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 29.576505,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-05-17T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 31.518063,
+        "fills": 237,
+        "tp": 199,
+        "reset": 33,
+        "week_close": 5,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 14.503854,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-05-24T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 29.325628,
+        "fills": 232,
+        "tp": 192,
+        "reset": 33,
+        "week_close": 7,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 28.328801,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    },
+    {
+      "week_open_utc": "2026-05-31T23:00:00.000Z",
+      "decision_rows": 28,
+      "adr_grid": {
+        "adr": 18.975825,
+        "fills": 221,
+        "tp": 187,
+        "reset": 22,
+        "week_close": 12,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      },
+      "weekly_hold": {
+        "adr": 26.249485,
+        "missing_price_rows": 0,
+        "default_adr_rows": 0
+      }
+    }
+  ],
+  "summaries": [
+    {
+      "evaluator": "adr_grid",
+      "weeks": 387,
+      "decision_rows": 10836,
+      "total_adr": 988.7181,
+      "max_drawdown_adr": -653.5674,
+      "return_to_drawdown": 1.5128,
+      "profit_factor_adr": 1.1794,
+      "weekly_win_rate_active": 0.6848,
+      "missing_price_rows": 0,
+      "default_adr_rows": 270,
+      "fills": 118460,
+      "tp": 93523,
+      "reset": 14643,
+      "week_close": 10294
+    },
+    {
+      "evaluator": "weekly_hold",
+      "weeks": 387,
+      "decision_rows": 10836,
+      "total_adr": 315.1911,
+      "max_drawdown_adr": -230.8041,
+      "return_to_drawdown": 1.3656,
+      "profit_factor_adr": 1.154,
+      "weekly_win_rate_active": 0.5245,
+      "missing_price_rows": 0,
+      "default_adr_rows": 270
+    }
+  ]
+}

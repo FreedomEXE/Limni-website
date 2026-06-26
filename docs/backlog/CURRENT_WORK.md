@@ -1,6 +1,6 @@
 # Current Work
 
-Status: pending review. Keep this short and update it when gates change.
+Status: active checklist. Keep this short and update it when gates change.
 
 Persistent memory stays in
 `C:/Users/User/Documents/GitHub/freedom-ops/.codex/`; this file tracks the
@@ -8,12 +8,15 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 56D: engine-price-path-primitive-extraction.
+Gate 56E: gate55g-equivalent-manifest-parity.
 
-Objective: remove the engine evaluator's remaining dependency on app-owned
-price/path/cache primitives by moving reusable non-UI price, path, cache, and
-week-anchor contracts into `engine/`, while keeping current app paths as
-compatibility re-exports.
+Objective: prove the engine-owned manifest/evaluator path can reproduce the
+accepted Gate 55G selected/fade ADR Grid and weekly-hold metrics under the Gate
+55E price bundle, without running buckets, regimes, COT restatement, COT +
+Strength, or execution/risk/live work.
+
+Status: parity proof complete. Remaining work is validation, commit, push, and
+session update.
 
 ## Current Ownership Model
 
@@ -78,6 +81,18 @@ compatibility re-exports.
 - Do not run Gate 55G parity, new research variants, Strength buckets, or regime
   filters in this cleanup gate.
 
+## Gate 56E Checklist
+
+- [x] Move only the historical Strength source/manifest slice needed for parity into
+  `engine/src/signals/strength`.
+- [x] Generate frozen Gate 55G selected and fade `ResearchDecisionManifest` files.
+- [x] Score both manifests through `npm run engine:research-manifest:evaluate`.
+- [x] Compare selected/fade ADR Grid and weekly-hold metrics against the accepted
+  Gate 55G receipt.
+- [x] Mark evaluator parity pass/fail in a Gate 56E receipt.
+- Do not run Strength buckets, regime filters, COT restatement, COT + Strength,
+  execution optimization, risk overlays, MT5/live, or final system selection.
+
 ## Frozen Areas
 
 - `app/releases/v2/canon/*.json`
@@ -97,10 +112,11 @@ compatibility re-exports.
 
 `docs/research/gates/gate56/GATE56D_ENGINE_PRICE_PATH_PRIMITIVE_EXTRACTION_2026-06-25.md`
 
+`docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md`
+
 ## Forward Research Command
 
-Pending Gate 55G equivalent-manifest parity, the candidate shared evaluator
-entry point is:
+After Gate 56E parity, the shared engine evaluator entry point is:
 
 ```powershell
 npm run engine:research-manifest:evaluate -- --manifest=<manifest.json> --artifact-gate=gate55 --price-bundle-id=gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953 --path-resolution=1m --evaluators=adr_grid,weekly_hold --status=diagnostic

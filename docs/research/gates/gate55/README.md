@@ -1,9 +1,9 @@
 # Gate 55 Research Workflow
 
-Status: Gate 55H architecture cleanup. The manifest/evaluator path is the
-candidate shared research path until a Gate 55G equivalent-manifest parity
-receipt proves it reproduces the frozen selected/fade ADR Grid and weekly-hold
-metrics.
+Status: Gate 55H architecture cleanup superseded by Gate 56E parity. The
+manifest/evaluator path is now the accepted shared research scoring path for
+frozen weekly decision manifests after Gate 56E reproduced the frozen Gate 55G
+selected/fade ADR Grid and weekly-hold metrics exactly.
 
 Gate 55H defines the forward research path for future COT restatement, Strength
 selected/fade, Strength buckets, regime-filtered manifests, and later combined
@@ -22,23 +22,22 @@ not a new backtest engine:
 - Canonical price truth remains `canonical_price_bars` under the Gate 55E
   price bundle ID
   `gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953`.
-- Fast cached price/path loading remains in
-  `app/src/lib/performance/pathBarLoader.ts`.
-- Existing app weekly-hold runtime remains in
-  `app/src/lib/performance/weeklyHoldEngine.ts`.
+- Fast cached price/path loading lives under `engine/src/price/`.
+- ADR Grid and Weekly Hold evaluation lives under
+  `engine/src/research/decisionManifestEvaluator.ts`.
 - Existing Gate 44 research matrix warehouse remains in
   `engine/src/warehouse/matrixDataset.ts`.
-- The manifest evaluator lives at
-  `engine/src/research/decisionManifestEvaluator.ts` and consumes arbitrary
-  weekly decision rows.
+- The manifest evaluator consumes arbitrary weekly decision rows.
 - The append-only duplicate-prevention registry lives at
   `engine/src/research/researchRunRegistry.ts`.
-- The candidate shared evaluator command is:
+- The shared evaluator command is:
   `npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>`.
 
-Gate 56B moved manifest/evaluator/hash/registry ownership out of app. Older
-Gate 55H receipts that name `app/src/lib/research/...` are historical path
-evidence and are superseded for forward work.
+Gate 56B moved manifest/evaluator/hash/registry ownership out of app, Gate 56D
+extracted engine price/path primitives, and Gate 56E proved Gate 55G equivalent
+selected/fade parity. Older Gate 55H receipts that name
+`app/src/lib/research/...` are historical path evidence and are superseded for
+forward work.
 
 Gate-specific receipt scripts such as
 `archive/app/scripts/verification/audit-gate55-friday-strength-baseline.ts` remain

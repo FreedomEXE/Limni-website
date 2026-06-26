@@ -15,6 +15,7 @@ the app is not the source of institutional research truth.
 | `engine/src/contracts/` | Non-UI contracts such as asset classes, COT market definitions, and week-anchor helpers. |
 | `engine/src/evaluation/` | Evaluator support primitives such as execution weekly windows. |
 | `engine/src/research/` | Research decision manifest, shared evaluator, hashing, and append-only run registry. |
+| `engine/src/signals/` | Signal-specific manifest/source builders that produce frozen decision manifests before scoring. |
 | `engine/src/price/` | Canonical price bars/windows, ADR lookup, path bars, path resolution, and local/cached price adapters such as the SQLite M1 warehouse. |
 | `engine/src/warehouse/` | Research matrix and macro regime warehouse helpers. |
 | `engine/scripts/` | Local command entry points. |
@@ -30,6 +31,10 @@ npm run engine:research-manifest:evaluate -- --manifest=<manifest.json>
 This command scores an already frozen decision manifest. It does not derive
 signals, run Strength buckets, run regime filters, combine COT and Strength,
 optimize execution, add risk overlays, or promote live/MT5 behavior.
+
+Gate-specific manifest builders may live under `engine/scripts/verification`
+when they freeze a prior accepted signal into `ResearchDecisionManifest` files.
+Those builders are not scorers; they should feed the shared evaluator command.
 
 ## Boundary Rule
 

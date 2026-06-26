@@ -100,7 +100,7 @@ function parseCsv(raw: string | null) {
 
 function helpText() {
   return `
-Evaluate a ResearchDecisionManifest through the candidate shared research evaluator.
+Evaluate a ResearchDecisionManifest through the shared research evaluator.
 
 Required:
   --manifest=<path>                 ResearchDecisionManifest JSON.
@@ -120,7 +120,7 @@ Common:
   --clear-runtime-cache-between-weeks
 
 This command does not derive signals. It scores an already frozen decision manifest.
-Evaluator parity is pending Gate 55G equivalent-manifest proof.
+Gate 56E proved Gate 55G equivalent-manifest parity for this evaluator path.
 `.trim();
 }
 

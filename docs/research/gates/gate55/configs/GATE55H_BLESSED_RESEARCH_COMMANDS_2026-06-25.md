@@ -26,9 +26,15 @@ Every candidate evaluator run writes:
 - hash JSON
 - registry JSONL entry
 
-Parity status: pending Gate 55G equivalent-manifest proof. Until that receipt
-exists, this is the candidate shared evaluator command and its outputs are
-diagnostic-only, not promotion-eligible final architecture.
+Parity status: accepted by Gate 56E equivalent-manifest proof. The shared
+engine evaluator reproduced Gate 55G selected/fade ADR Grid and weekly-hold
+metrics exactly under the Gate 55E price bundle.
+
+Parity receipt:
+
+```text
+docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md
+```
 
 ## COT Restatement
 

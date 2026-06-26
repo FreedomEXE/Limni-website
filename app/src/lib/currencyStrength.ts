@@ -14,12 +14,13 @@
 
 import { DateTime } from "luxon";
 
+import { MAJOR_CURRENCIES, type MajorCurrency } from "@engine/contracts/currencyStrength";
 import { getPool } from "./db";
 import { PAIRS_BY_ASSET_CLASS } from "./cotPairs";
 import { fetchOandaCandleSeries, type OandaHourlyCandle } from "./oandaPrices";
 
-export const MAJOR_CURRENCIES = ["EUR", "USD", "GBP", "JPY", "AUD", "NZD", "CAD", "CHF"] as const;
-export type MajorCurrency = (typeof MAJOR_CURRENCIES)[number];
+export { MAJOR_CURRENCIES };
+export type { MajorCurrency };
 export type CurrencyStrengthWindow = "1h" | "4h" | "24h";
 
 export type CurrencyStrengthSnapshot = {

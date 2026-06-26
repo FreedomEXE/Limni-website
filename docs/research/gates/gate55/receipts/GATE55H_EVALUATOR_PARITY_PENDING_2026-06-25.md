@@ -4,16 +4,21 @@ Generated: 2026-06-25
 
 ## Status
 
-PENDING_GATE55G_EQUIVALENT_MANIFEST_PARITY.
+SUPERSEDED_BY_GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY.
 
-The Gate 55H manifest evaluator is a candidate shared evaluator. It is not yet
-accepted as final shared architecture because no parity receipt has proven that
-equivalent frozen manifests reproduce the Gate 55G selected/fade ADR Grid and
-weekly-hold metrics.
+Gate 56E proved that equivalent frozen Gate 55G selected/fade manifests
+reproduce the accepted Gate 55G ADR Grid and weekly-hold metrics through the
+engine-owned shared evaluator path.
+
+Superseding receipt:
+
+```text
+docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md
+```
 
 ## Required Parity Proof
 
-Before the evaluator can be called accepted final architecture:
+Completed by Gate 56E:
 
 1. Generate one frozen manifest for Gate 55G Friday Strength selected decisions.
 2. Generate one frozen manifest for Gate 55G Friday Strength fade decisions.
@@ -31,6 +36,6 @@ Before the evaluator can be called accepted final architecture:
 
 ## Hard Boundary
 
-This pending marker does not authorize COT restatement, Strength buckets, regime
-filters, COT+Strength combination, risk overlays, execution optimization,
+This supersession does not authorize COT restatement, Strength buckets, regime
+filters, COT+Strength combination, risk overlays, execution optimization, new
 source reconstruction, or MT5/live work.

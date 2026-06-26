@@ -6,16 +6,20 @@ Generated: 2026-06-25
 
 PASS WITH CAVEATS.
 
-The repo now has a manifest-based candidate shared workflow for future research:
+The repo now has a manifest-based shared workflow for future research. At Gate
+55H it was candidate architecture; Gate 56E later accepted it for Gate 55G
+equivalent-manifest parity:
 
 ```text
-decision manifest -> candidate shared evaluator -> result/receipt/hash writer -> registry
+decision manifest -> shared evaluator -> result/receipt/hash writer -> registry
 ```
 
 This is not a new backtest engine. It wraps existing reusable price/path,
-weekly-hold, and research-matrix infrastructure. The evaluator is not yet
-accepted as final architecture because Gate 55G equivalent-manifest parity is
-still pending.
+weekly-hold, and research-matrix infrastructure.
+
+Gate 56E later superseded the parity caveat by proving exact Gate 55G
+selected/fade equivalent-manifest parity:
+`docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md`.
 
 ## What Changed
 
@@ -103,13 +107,12 @@ and registry artifacts.
 
 ## Parity Status
 
-Gate 55G equivalent-manifest parity is pending. Until a parity receipt proves
-the new evaluator reproduces the frozen Gate 55G selected/fade ADR Grid and
-weekly-hold metrics under the Gate 55E price bundle, the evaluator is a
-candidate shared evaluator and outputs are diagnostic-only.
+Gate 55G equivalent-manifest parity was completed by Gate 56E. The engine-owned
+manifest/evaluator path reproduced the frozen Gate 55G selected/fade ADR Grid
+and weekly-hold metrics exactly under the Gate 55E price bundle.
 
-Parity placeholder:
-`docs/research/gates/gate55/receipts/GATE55H_EVALUATOR_PARITY_PENDING_2026-06-25.md`.
+Superseding parity receipt:
+`docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md`.
 
 ## Duplicate Prevention
 

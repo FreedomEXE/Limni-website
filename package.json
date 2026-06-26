@@ -14,14 +14,15 @@
     "bot:bitget": "tsx automation/bots/bitget-perp-bot.ts",
     "bot:oanda": "tsx automation/bots/oanda-universal-bot.ts",
     "engine:research-manifest:evaluate": "tsx engine/scripts/verification/evaluate-research-decision-manifest.ts",
+    "engine:gate55g:manifests": "tsx engine/scripts/verification/generate-gate55g-equivalent-strength-manifests.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"
   },
   "limniScriptSurface": {
     "forwardResearchCommand": "engine:research-manifest:evaluate",
-    "evaluatorParityStatus": "pending_gate55g_equivalent_manifest_parity",
-    "researchCommandClassification": "docs/research/gates/gate56/GATE56D_ENGINE_PRICE_PATH_PRIMITIVE_EXTRACTION_2026-06-25.md"
+    "evaluatorParityStatus": "accepted_gate56e_gate55g_equivalent_manifest_parity",
+    "researchCommandClassification": "docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

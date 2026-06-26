@@ -1,6 +1,6 @@
 # Gate 55 Research Run Registry
 
-The candidate shared evaluator writes an append-only JSONL registry at:
+The shared evaluator writes an append-only JSONL registry at:
 
 ```text
 engine/reports/data-verification/gate55/registry/research-run-registry.jsonl
