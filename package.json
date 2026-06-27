@@ -38,6 +38,7 @@
     "engine:gate62:regime-cell-standalone-matrix": "tsx engine/scripts/verification/build-gate62-regime-cell-standalone-matrix.ts",
     "engine:gate63:universal-atom-matrix": "tsx engine/scripts/verification/build-gate63-universal-atom-matrix.ts",
     "engine:gate64a:silent-missing-atom-audit": "tsx engine/scripts/verification/build-gate64a-silent-missing-atom-audit.ts",
+    "engine:gate64b:valuation-gap-atom-lock": "tsx engine/scripts/verification/build-gate64b-valuation-gap-atom-lock.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

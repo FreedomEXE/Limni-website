@@ -1,0 +1,13 @@
+gate_id Gate 64B: valuation-gap-atom-lock
+command npm run engine:gate64b:valuation-gap-atom-lock
+generated_at 2026-06-27T21:01:51.651Z
+git_commit f7171fbb013a14dbfbfd1a946483fe68aed2af02
+verdict PASS_VALUATION_GAP_ATOM_LOCK__TWO_FORMULAS_EMITTED__PPP_SPOT_AND_COMPOSITE_FAIL_CLOSED
+formula_contracts FFA24A2DB6E2D998D99307B582671B6E6078EA33C59E0860D54B0697669154F0 docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/valuation-gap-formula-contracts.json
+currency_atom_ledger 151C573A237C0E73CD7124EBDD72B78433FF1FC3EDF9049FC82E4280124FCA53 docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/valuation-gap-currency-atom-ledger.rows.jsonl
+pair_atom_ledger 01F4316895524AA8277769692E6685FF548C24457175AE9B00430845C56C4936 docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/valuation-gap-pair-atom-ledger.rows.jsonl
+lineage_map 429910F7519D8B85C00B4F4C0C9559ED12C79CCA169C475D4831CC1EB0B2A428 docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/valuation-gap-lineage-map.json
+fail_closed_report 243A0EB9988BED2471B49899509C8C04B390172AE467398FAF0FA08DE89F5114 docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/valuation-gap-fail-closed-report.json
+summary_json 9B3FE7C39A55273A65593E2F0FCF2707B6B0F5CCBE4AB504A7F7939E0449F919 docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/gate64b-valuation-gap-atom-lock.summary.json
+report FFDEA38F36C80898A4CDB3A2FE3F67802795364124EDADD67A28C26866B1F568 docs/research/gates/gate64b/GATE64B_VALUATION_GAP_ATOM_LOCK_2026-06-27.md
+content_invariant 8894CCBC6CB7F38A70933C81E0602E085290FB16571D0203F0338F663FC888FC content
