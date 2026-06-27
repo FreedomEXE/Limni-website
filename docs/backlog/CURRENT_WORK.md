@@ -8,40 +8,54 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 58B: cot-strength-directional-hypothesis-confirmation.
+Gate 58C: forced28-cot-strength-directional-arbitration.
 
-Objective: use the completed Gate 58 forensic matrix to test a small,
-predeclared set of COT x Strength directional/eligibility hypotheses without
-opening regimes, risk, execution, app, or live work.
+Objective: convert the Gate 58 COT x Strength forensic matrix into a small,
+predeclared set of full-surface directional systems, forcing exactly `28` pair
+decisions per supported week over the `373`-week Strength/COT intersection.
 
-Status: complete and stopped. Gate 58B consumed the frozen Gate 58 matrix and
-read existing warehouse outcome component rows only. It tested: COT-side weak
-state veto, Gate 57E Strength-side weak state veto, constructive-state
-eligibility, agreement-only, and disagreement-only references. Validation:
-`10,444` matrix rows, `20,888` warehouse directional rows read, `0` missing
-warehouse directional outcomes, `0` duplicate retained week/symbol rows in the
-candidate hypotheses. Verdict:
-`PASS_WITH_CAVEATS_STRENGTH_VETO_ALIVE_NO_LOCK_YEAR_STABILITY_CAVEAT`.
-Durable receipt:
-`docs/research/gates/gate58b/GATE58B_COT_STRENGTH_DIRECTIONAL_HYPOTHESIS_CONFIRMATION_2026-06-27.md`.
-Best alive candidate is `B_gate57e_strength_side_weak_state_veto`: `7,377`
-retained rows, ADR Grid `1469.9312`, DD `-254.3672`, R/DD `5.7788`, PF
-`1.2147`, top-five absolute week share `0.0825`. It beats both COT and Strength
-373-week baselines on aggregate ADR/DD/R-DD/PF, but it has `2` negative ADR Grid
-years (`2019` roughly flat at `-0.7514`, `2023` at `-52.6640`), so it is alive
-but not locked. COT-side weak-state veto fails versus the baselines on aggregate
-ADR/DD/R-DD. No raw M1 ADR Grid simulation, COT source change, Strength
-source/window change, new buckets/windows/thresholds, regime, risk overlay,
-MT5/live/app work, new evaluator/backtest engine, or final combined-system
-promotion was run.
+Status: complete and stopped. Gate 58C used only the existing Gate 58 matrix and
+warehouse long/short outcomes. It did not run raw M1 simulation, write app code,
+change COT source logic, change Strength windows/source, add row vetoes, skip
+pair-weeks, add eligibility filters, exclude pairs/calendar periods, introduce
+regimes, risk overlays, execution changes, market-open confirmation, new
+thresholds, new buckets, or parameter searches. Validation: `10,444` rows,
+`373` full weeks, `28` symbols per week, `0` duplicate week/symbol rows, `0`
+missing COT rows, `0` missing Strength rows, `20,888` warehouse directional rows
+read, and `0` missing warehouse outcomes. Durable report:
+`docs/research/gates/gate58c/GATE58C_FORCED28_COT_STRENGTH_DIRECTIONAL_ARBITRATION_LOCK_TEST_2026-06-27.md`.
+Tracked SHA identity:
+`docs/research/gates/gate58c/artifacts/gate58c-forced28-directional-arbitration/gate58c-forced28-directional-arbitration.sha256.txt`.
+
+Verdict: `PASS_FORCED_28_DIRECTIONAL_LOCK`. Gate 58C is accepted as provisional
+Alpha v1 for forward comparison, not permanent Strength endorsement. The unique
+lock candidate is `C_STRENGTH_HEALTHY_COT_FALLBACK`: use Gate 57E Strength for
+`compressed:persistent`, `compressed:flip`, and `middle:persistent`; otherwise
+fall back to locked COT. Candidate D collapses to the same row-level decisions
+as Candidate C and is reported as a duplicate, not a second lock. Candidate C
+metrics: ADR Grid `1648.2508`, DD `-312.0722`, R/DD `5.2816`, PF `1.1643`,
+Weekly Hold ADR `534.3663`, top-five absolute week share `0.0773`, top absolute
+pair share `0.0844`, `1` negative year with worst year `2019` at `-32.5370`,
+and top positive lifecycle x phase delta from `compressed:flip` (`835` rows,
+`343` weeks, `+215.4996` ADR Grid vs COT), so the lock screen does not depend
+on a tiny cell. COT full `388`-week metrics remain reported separately from the
+direct `373`-week comparison window.
+
+Alpha v1 governance: `ALPHA_V1_COT_PARENT_STRENGTH_HEALTHY_FALLBACK` is frozen
+as the current forced-28 directional comparison baseline. Strength remains
+provisional signal debt; the PF caveat is real; no silent Strength retuning,
+removal, or replacement is allowed inside Regime, risk, execution, MT5/live, or
+app gates. Future Strength change must be a new versioned research gate compared
+against COT-only, Alpha v1, Regime-only forced-28 shadow signal when available,
+and future Alpha v2 arbitration candidates. Alpha layers force 28; risk and
+portfolio layers may later reduce expression, but the shadow ledger must retain
+all 28 signal outcomes.
 
 ## Next Requested Review
 
-Stop after Gate 58B. Do not start regimes in the same run. Next decision is
-human review: either accept the Strength-side weak-state veto as an alive but
-caveated combined-directional candidate for a later lock-confirmation gate, or
-retain COT and Strength as separate baselines and move to regimes without a
-combined directional lock. Do not choose by raw ADR alone.
+Stop after Gate 58C. Do not proceed to regimes, risk overlays, execution work,
+MT5/live, app work, or cleanup in the same run. After Gate 58C packaging/push,
+the next permitted research gate is Gate 59: Alpha v1 atom ledger contract.
 
 ## Current Ownership Model
 
@@ -222,29 +236,11 @@ combined directional lock. Do not choose by raw ADR alone.
 
 ## Active Gate Doc
 
-`docs/research/gates/gate56/PUBLIC_LOCAL_REPO_SPLIT_2026-06-25.md`
+`docs/research/gates/gate58/GATE58_COT_STRENGTH_FORENSIC_MATRIX_2026-06-27.md`
 
-`docs/research/gates/gate56/GATE56B_APP_SRC_LIB_OWNERSHIP_AUDIT_2026-06-25.md`
+`docs/research/gates/gate58b/GATE58B_COT_STRENGTH_DIRECTIONAL_HYPOTHESIS_CONFIRMATION_2026-06-27.md`
 
-`docs/research/gates/gate56/GATE56C_NEUTRAL_DB_CLIENT_BOUNDARY_2026-06-25.md`
-
-`docs/research/gates/gate56/GATE56D_ENGINE_PRICE_PATH_PRIMITIVE_EXTRACTION_2026-06-25.md`
-
-`docs/research/gates/gate56/GATE56E_GATE55G_EQUIVALENT_MANIFEST_PARITY_2026-06-25.md`
-
-`docs/research/gates/gate56/GATE56E_EVIDENCE_HARDENING_AMENDMENT_2026-06-26.md`
-
-`docs/research/gates/gate56/GATE56F_GATE54_COT_RESTATEMENT_THROUGH_ENGINE_2026-06-26.md`
-
-`docs/research/gates/gate57/GATE57A0_SHARED_PRICE_PATH_RUNTIME_HARDENING_2026-06-26.md`
-
-`docs/research/gates/gate57/GATE57A0B_DURABLE_PAIR_WEEK_PATH_OUTCOME_WAREHOUSE_2026-06-26.md`
-
-`docs/research/gates/gate57/GATE57A_STRENGTH_PREFLIGHT_ROLE_LOCK_2026-06-26.md`
-
-`docs/research/gates/gate57/GATE57A_STRENGTH_WAREHOUSE_ROLE_EVALUATION_2026-06-26.md`
-
-`docs/research/gates/gate57/GATE57B_FRIDAY_STRENGTH_15W_RELATIVE_LIFECYCLE_2026-06-26.md`
+`docs/research/gates/gate58c/GATE58C_FORCED28_COT_STRENGTH_DIRECTIONAL_ARBITRATION_LOCK_TEST_2026-06-27.md`
 
 ## Forward Research Command
 
