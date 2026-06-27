@@ -1,0 +1,1647 @@
+{
+  "diagnostic_only": true,
+  "selection_rule": "top 20 by ADR Grid R/DD plus every candidate whose id contains rrp and inverse",
+  "candidate_count": 20,
+  "candidates": [
+    {
+      "candidate_id": "cot_strength_bpr_rrp_inverse_majority_tie_rrp",
+      "family": "cross_atom_composite",
+      "adr_grid": {
+        "adr_sum": 1871.434177,
+        "adr_mean": 0.179187,
+        "max_drawdown": -223.784751,
+        "r_over_drawdown": 8.362653,
+        "row_pf": 1.192983
+      },
+      "weekly_hold": {
+        "adr_sum": 654.974192,
+        "adr_mean": 0.062713,
+        "max_drawdown": -120.855972,
+        "r_over_drawdown": 5.419461,
+        "row_pf": 1.121269
+      },
+      "negative_adr_grid_years": 2,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -130.537912,
+        "weekly_hold_adr": 80.392462
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -130.537912,
+          "weekly_hold_adr": 80.392462
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 357.651787,
+          "weekly_hold_adr": 143.484204
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 407.652284,
+          "weekly_hold_adr": 174.500914
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 304.176751,
+          "weekly_hold_adr": 106.267482
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 323.120508,
+          "weekly_hold_adr": 167.821011
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": -44.74213,
+          "weekly_hold_adr": 19.073786
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 592.726303,
+          "weekly_hold_adr": -33.357263
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 61.386586,
+          "weekly_hold_adr": -3.208404
+        }
+      ]
+    },
+    {
+      "candidate_id": "cot_strength_rrp_inverse_majority",
+      "family": "three_cell_composite",
+      "adr_grid": {
+        "adr_sum": 1938.481292,
+        "adr_mean": 0.185607,
+        "max_drawdown": -258.36132,
+        "r_over_drawdown": 7.502986,
+        "row_pf": 1.20065
+      },
+      "weekly_hold": {
+        "adr_sum": 634.471586,
+        "adr_mean": 0.06075,
+        "max_drawdown": -163.935445,
+        "r_over_drawdown": 3.870253,
+        "row_pf": 1.11725
+      },
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -72.0768,
+        "weekly_hold_adr": 85.33688
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -72.0768,
+          "weekly_hold_adr": 85.33688
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 315.62041,
+          "weekly_hold_adr": 144.394798
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 363.084646,
+          "weekly_hold_adr": 140.73521
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 334.814589,
+          "weekly_hold_adr": 85.719196
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 257.093188,
+          "weekly_hold_adr": 101.210023
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 242.625789,
+          "weekly_hold_adr": 178.129902
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 483.456715,
+          "weekly_hold_adr": -102.836503
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 13.862755,
+          "weekly_hold_adr": 1.78208
+        }
+      ]
+    },
+    {
+      "candidate_id": "cot_strength_regime_best_rrp_inverse",
+      "family": "three_cell_composite",
+      "adr_grid": {
+        "adr_sum": 1938.481292,
+        "adr_mean": 0.185607,
+        "max_drawdown": -258.36132,
+        "r_over_drawdown": 7.502986,
+        "row_pf": 1.20065
+      },
+      "weekly_hold": {
+        "adr_sum": 634.471586,
+        "adr_mean": 0.06075,
+        "max_drawdown": -163.935445,
+        "r_over_drawdown": 3.870253,
+        "row_pf": 1.11725
+      },
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -72.0768,
+        "weekly_hold_adr": 85.33688
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -72.0768,
+          "weekly_hold_adr": 85.33688
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 315.62041,
+          "weekly_hold_adr": 144.394798
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 363.084646,
+          "weekly_hold_adr": 140.73521
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 334.814589,
+          "weekly_hold_adr": 85.719196
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 257.093188,
+          "weekly_hold_adr": 101.210023
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 242.625789,
+          "weekly_hold_adr": 178.129902
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 483.456715,
+          "weekly_hold_adr": -102.836503
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 13.862755,
+          "weekly_hold_adr": 1.78208
+        }
+      ]
+    },
+    {
+      "candidate_id": "regime_cell_gate62_best_rrp_derived_inverse",
+      "family": "single_cell_baseline",
+      "adr_grid": {
+        "adr_sum": 2383.621777,
+        "adr_mean": 0.228229,
+        "max_drawdown": -346.988306,
+        "r_over_drawdown": 6.869459,
+        "row_pf": 1.259757
+      },
+      "weekly_hold": {
+        "adr_sum": 688.316096,
+        "adr_mean": 0.065905,
+        "max_drawdown": -134.375348,
+        "r_over_drawdown": 5.122339,
+        "row_pf": 1.127837
+      },
+      "negative_adr_grid_years": 2,
+      "worst_adr_grid_year": {
+        "year": 2024,
+        "adr_grid_adr": -188.326514,
+        "weekly_hold_adr": -68.645484
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -134.917366,
+          "weekly_hold_adr": 80.840358
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 247.637906,
+          "weekly_hold_adr": 121.050048
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 757.338258,
+          "weekly_hold_adr": 168.064342
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 323.000574,
+          "weekly_hold_adr": 146.33944
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 566.073947,
+          "weekly_hold_adr": 145.832911
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": -188.326514,
+          "weekly_hold_adr": -68.645484
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 766.25008,
+          "weekly_hold_adr": 98.331723
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 46.564892,
+          "weekly_hold_adr": -3.497242
+        }
+      ]
+    },
+    {
+      "candidate_id": "rrp_derived_inverse",
+      "family": "single_regime_atom",
+      "adr_grid": {
+        "adr_sum": 2383.621777,
+        "adr_mean": 0.228229,
+        "max_drawdown": -346.988306,
+        "r_over_drawdown": 6.869459,
+        "row_pf": 1.259757
+      },
+      "weekly_hold": {
+        "adr_sum": 688.316096,
+        "adr_mean": 0.065905,
+        "max_drawdown": -134.375348,
+        "r_over_drawdown": 5.122339,
+        "row_pf": 1.127837
+      },
+      "negative_adr_grid_years": 2,
+      "worst_adr_grid_year": {
+        "year": 2024,
+        "adr_grid_adr": -188.326514,
+        "weekly_hold_adr": -68.645484
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -134.917366,
+          "weekly_hold_adr": 80.840358
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 247.637906,
+          "weekly_hold_adr": 121.050048
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 757.338258,
+          "weekly_hold_adr": 168.064342
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 323.000574,
+          "weekly_hold_adr": 146.33944
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 566.073947,
+          "weekly_hold_adr": 145.832911
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": -188.326514,
+          "weekly_hold_adr": -68.645484
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 766.25008,
+          "weekly_hold_adr": 98.331723
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 46.564892,
+          "weekly_hold_adr": -3.497242
+        }
+      ]
+    },
+    {
+      "candidate_id": "cot_plus_rrp_inverse_tie_rrp",
+      "family": "two_cell_composite",
+      "adr_grid": {
+        "adr_sum": 2383.621777,
+        "adr_mean": 0.228229,
+        "max_drawdown": -346.988306,
+        "r_over_drawdown": 6.869459,
+        "row_pf": 1.259757
+      },
+      "weekly_hold": {
+        "adr_sum": 688.316096,
+        "adr_mean": 0.065905,
+        "max_drawdown": -134.375348,
+        "r_over_drawdown": 5.122339,
+        "row_pf": 1.127837
+      },
+      "negative_adr_grid_years": 2,
+      "worst_adr_grid_year": {
+        "year": 2024,
+        "adr_grid_adr": -188.326514,
+        "weekly_hold_adr": -68.645484
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -134.917366,
+          "weekly_hold_adr": 80.840358
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 247.637906,
+          "weekly_hold_adr": 121.050048
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 757.338258,
+          "weekly_hold_adr": 168.064342
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 323.000574,
+          "weekly_hold_adr": 146.33944
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 566.073947,
+          "weekly_hold_adr": 145.832911
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": -188.326514,
+          "weekly_hold_adr": -68.645484
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 766.25008,
+          "weekly_hold_adr": 98.331723
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 46.564892,
+          "weekly_hold_adr": -3.497242
+        }
+      ]
+    },
+    {
+      "candidate_id": "strength_plus_rrp_inverse_tie_rrp",
+      "family": "two_cell_composite",
+      "adr_grid": {
+        "adr_sum": 2383.621777,
+        "adr_mean": 0.228229,
+        "max_drawdown": -346.988306,
+        "r_over_drawdown": 6.869459,
+        "row_pf": 1.259757
+      },
+      "weekly_hold": {
+        "adr_sum": 688.316096,
+        "adr_mean": 0.065905,
+        "max_drawdown": -134.375348,
+        "r_over_drawdown": 5.122339,
+        "row_pf": 1.127837
+      },
+      "negative_adr_grid_years": 2,
+      "worst_adr_grid_year": {
+        "year": 2024,
+        "adr_grid_adr": -188.326514,
+        "weekly_hold_adr": -68.645484
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -134.917366,
+          "weekly_hold_adr": 80.840358
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 247.637906,
+          "weekly_hold_adr": 121.050048
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 757.338258,
+          "weekly_hold_adr": 168.064342
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 323.000574,
+          "weekly_hold_adr": 146.33944
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 566.073947,
+          "weekly_hold_adr": 145.832911
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": -188.326514,
+          "weekly_hold_adr": -68.645484
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 766.25008,
+          "weekly_hold_adr": 98.331723
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 46.564892,
+          "weekly_hold_adr": -3.497242
+        }
+      ]
+    },
+    {
+      "candidate_id": "alpha_v1_plus_rrp_inverse_tie_rrp",
+      "family": "alpha_regime_composite",
+      "adr_grid": {
+        "adr_sum": 2383.621777,
+        "adr_mean": 0.228229,
+        "max_drawdown": -346.988306,
+        "r_over_drawdown": 6.869459,
+        "row_pf": 1.259757
+      },
+      "weekly_hold": {
+        "adr_sum": 688.316096,
+        "adr_mean": 0.065905,
+        "max_drawdown": -134.375348,
+        "r_over_drawdown": 5.122339,
+        "row_pf": 1.127837
+      },
+      "negative_adr_grid_years": 2,
+      "worst_adr_grid_year": {
+        "year": 2024,
+        "adr_grid_adr": -188.326514,
+        "weekly_hold_adr": -68.645484
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -134.917366,
+          "weekly_hold_adr": 80.840358
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 247.637906,
+          "weekly_hold_adr": 121.050048
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 757.338258,
+          "weekly_hold_adr": 168.064342
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 323.000574,
+          "weekly_hold_adr": 146.33944
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 566.073947,
+          "weekly_hold_adr": 145.832911
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": -188.326514,
+          "weekly_hold_adr": -68.645484
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 766.25008,
+          "weekly_hold_adr": 98.331723
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 46.564892,
+          "weekly_hold_adr": -3.497242
+        }
+      ]
+    },
+    {
+      "candidate_id": "cot_strength_rrp_ppp_reer_inverse_majority",
+      "family": "cross_atom_composite",
+      "adr_grid": {
+        "adr_sum": 2223.570939,
+        "adr_mean": 0.212904,
+        "max_drawdown": -338.570977,
+        "r_over_drawdown": 6.567518,
+        "row_pf": 1.23713
+      },
+      "weekly_hold": {
+        "adr_sum": 829.13383,
+        "adr_mean": 0.079389,
+        "max_drawdown": -123.117691,
+        "r_over_drawdown": 6.734482,
+        "row_pf": 1.15603
+      },
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -24.055963,
+        "weekly_hold_adr": 126.040684
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -24.055963,
+          "weekly_hold_adr": 126.040684
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 372.701792,
+          "weekly_hold_adr": 176.140066
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 375.334914,
+          "weekly_hold_adr": 165.444288
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 170.30918,
+          "weekly_hold_adr": 85.61666
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 372.928461,
+          "weekly_hold_adr": 116.005741
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 341.789069,
+          "weekly_hold_adr": 161.008236
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 607.817691,
+          "weekly_hold_adr": 5.752355
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 6.745795,
+          "weekly_hold_adr": -6.8742
+        }
+      ]
+    },
+    {
+      "candidate_id": "cot_strength_full_regime_inverse_majority",
+      "family": "three_cell_composite",
+      "adr_grid": {
+        "adr_sum": 1696.064942,
+        "adr_mean": 0.162396,
+        "max_drawdown": -265.665025,
+        "r_over_drawdown": 6.384224,
+        "row_pf": 1.170992
+      },
+      "weekly_hold": {
+        "adr_sum": 620.233774,
+        "adr_mean": 0.059387,
+        "max_drawdown": -120.348871,
+        "r_over_drawdown": 5.153632,
+        "row_pf": 1.114468
+      },
+      "negative_adr_grid_years": 0,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": 18.760722,
+        "weekly_hold_adr": 141.99851
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": 18.760722,
+          "weekly_hold_adr": 141.99851
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 232.770058,
+          "weekly_hold_adr": 125.58422
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 142.520149,
+          "weekly_hold_adr": 84.451946
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 202.765369,
+          "weekly_hold_adr": 17.401158
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 282.83778,
+          "weekly_hold_adr": 130.503125
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 228.904848,
+          "weekly_hold_adr": 131.21568
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 545.543301,
+          "weekly_hold_adr": -29.212423
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 41.962715,
+          "weekly_hold_adr": 18.291558
+        }
+      ]
+    },
+    {
+      "candidate_id": "cot_strength_rrp_ppp_neer_reer_inverse_majority",
+      "family": "cross_atom_composite",
+      "adr_grid": {
+        "adr_sum": 1914.594104,
+        "adr_mean": 0.18332,
+        "max_drawdown": -300.48435,
+        "r_over_drawdown": 6.371693,
+        "row_pf": 1.199381
+      },
+      "weekly_hold": {
+        "adr_sum": 839.4598,
+        "adr_mean": 0.080377,
+        "max_drawdown": -150.189588,
+        "r_over_drawdown": 5.589334,
+        "row_pf": 1.158127
+      },
+      "negative_adr_grid_years": 2,
+      "worst_adr_grid_year": {
+        "year": 2024,
+        "adr_grid_adr": -28.586008,
+        "weekly_hold_adr": 62.798562
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -3.683604,
+          "weekly_hold_adr": 189.438476
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 370.696087,
+          "weekly_hold_adr": 195.026012
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 431.910709,
+          "weekly_hold_adr": 188.845102
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 209.206351,
+          "weekly_hold_adr": 118.02998
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 342.729789,
+          "weekly_hold_adr": 96.332727
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": -28.586008,
+          "weekly_hold_adr": 62.798562
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 557.491917,
+          "weekly_hold_adr": -2.582587
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 34.828863,
+          "weekly_hold_adr": -8.428472
+        }
+      ]
+    },
+    {
+      "candidate_id": "cot_strength_reer_inverse_majority",
+      "family": "three_cell_composite",
+      "adr_grid": {
+        "adr_sum": 1692.671866,
+        "adr_mean": 0.162071,
+        "max_drawdown": -277.198413,
+        "r_over_drawdown": 6.106355,
+        "row_pf": 1.17065
+      },
+      "weekly_hold": {
+        "adr_sum": 557.170064,
+        "adr_mean": 0.053348,
+        "max_drawdown": -152.707155,
+        "r_over_drawdown": 3.648618,
+        "row_pf": 1.102235
+      },
+      "negative_adr_grid_years": 0,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": 30.942457,
+        "weekly_hold_adr": 175.426214
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": 30.942457,
+          "weekly_hold_adr": 175.426214
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 261.361519,
+          "weekly_hold_adr": 116.824106
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 176.724347,
+          "weekly_hold_adr": 108.524366
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 121.287622,
+          "weekly_hold_adr": -18.242516
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 267.816389,
+          "weekly_hold_adr": 122.782445
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 248.923376,
+          "weekly_hold_adr": 116.146852
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 552.59008,
+          "weekly_hold_adr": -80.843869
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 33.026076,
+          "weekly_hold_adr": 16.552466
+        }
+      ]
+    },
+    {
+      "candidate_id": "alpha_v1_frozen_final_side",
+      "family": "single_cell_baseline",
+      "adr_grid": {
+        "adr_sum": 1648.250785,
+        "adr_mean": 0.157818,
+        "max_drawdown": -312.072214,
+        "r_over_drawdown": 5.281633,
+        "row_pf": 1.164255
+      },
+      "weekly_hold": {
+        "adr_sum": 534.366308,
+        "adr_mean": 0.051165,
+        "max_drawdown": -122.661557,
+        "r_over_drawdown": 4.356429,
+        "row_pf": 1.097846
+      },
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -32.536985,
+        "weekly_hold_adr": 135.43476
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -32.536985,
+          "weekly_hold_adr": 135.43476
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 194.366963,
+          "weekly_hold_adr": 76.534758
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 185.069741,
+          "weekly_hold_adr": 24.926602
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 291.948057,
+          "weekly_hold_adr": 14.942468
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 13.407149,
+          "weekly_hold_adr": 30.585203
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 314.836643,
+          "weekly_hold_adr": 273.520448
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 522.469811,
+          "weekly_hold_adr": -48.671841
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 158.689406,
+          "weekly_hold_adr": 27.09391
+        }
+      ]
+    },
+    {
+      "candidate_id": "alpha_v1_plus_rrp_inverse_tie_alpha",
+      "family": "alpha_regime_composite",
+      "adr_grid": {
+        "adr_sum": 1648.250785,
+        "adr_mean": 0.157818,
+        "max_drawdown": -312.072214,
+        "r_over_drawdown": 5.281633,
+        "row_pf": 1.164255
+      },
+      "weekly_hold": {
+        "adr_sum": 534.366308,
+        "adr_mean": 0.051165,
+        "max_drawdown": -122.661557,
+        "r_over_drawdown": 4.356429,
+        "row_pf": 1.097846
+      },
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -32.536985,
+        "weekly_hold_adr": 135.43476
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -32.536985,
+          "weekly_hold_adr": 135.43476
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 194.366963,
+          "weekly_hold_adr": 76.534758
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 185.069741,
+          "weekly_hold_adr": 24.926602
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 291.948057,
+          "weekly_hold_adr": 14.942468
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 13.407149,
+          "weekly_hold_adr": 30.585203
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 314.836643,
+          "weekly_hold_adr": 273.520448
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 522.469811,
+          "weekly_hold_adr": -48.671841
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 158.689406,
+          "weekly_hold_adr": 27.09391
+        }
+      ]
+    },
+    {
+      "candidate_id": "cot_strength_ppp_inverse_majority",
+      "family": "three_cell_composite",
+      "adr_grid": {
+        "adr_sum": 1775.335668,
+        "adr_mean": 0.169986,
+        "max_drawdown": -341.144558,
+        "r_over_drawdown": 5.204057,
+        "row_pf": 1.178878
+      },
+      "weekly_hold": {
+        "adr_sum": 572.570716,
+        "adr_mean": 0.054823,
+        "max_drawdown": -100.995161,
+        "r_over_drawdown": 5.669289,
+        "row_pf": 1.105209
+      },
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -15.246283,
+        "weekly_hold_adr": 70.484572
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -15.246283,
+          "weekly_hold_adr": 70.484572
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 34.889921,
+          "weekly_hold_adr": 57.273524
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 342.345596,
+          "weekly_hold_adr": 92.645492
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 319.479361,
+          "weekly_hold_adr": 53.420122
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 126.795046,
+          "weekly_hold_adr": 66.659107
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 321.691172,
+          "weekly_hold_adr": 204.677512
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 530.244214,
+          "weekly_hold_adr": 31.053489
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 115.136641,
+          "weekly_hold_adr": -3.643102
+        }
+      ]
+    },
+    {
+      "candidate_id": "strength_cell_gate57e_side",
+      "family": "single_cell_baseline",
+      "adr_grid": {
+        "adr_sum": 1386.281312,
+        "adr_mean": 0.132735,
+        "max_drawdown": -304.412583,
+        "r_over_drawdown": 4.553955,
+        "row_pf": 1.135607
+      },
+      "weekly_hold": {
+        "adr_sum": 401.524762,
+        "adr_mean": 0.038445,
+        "max_drawdown": -181.589347,
+        "r_over_drawdown": 2.211169,
+        "row_pf": 1.072638
+      },
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2023,
+        "adr_grid_adr": -39.611613,
+        "weekly_hold_adr": -10.371785
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": 17.017094,
+          "weekly_hold_adr": 108.435612
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 136.536341,
+          "weekly_hold_adr": 128.072374
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 160.949064,
+          "weekly_hold_adr": -19.816414
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 275.064988,
+          "weekly_hold_adr": 59.782708
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": -39.611613,
+          "weekly_hold_adr": -10.371785
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 251.970233,
+          "weekly_hold_adr": 240.720328
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 506.590817,
+          "weekly_hold_adr": -99.158193
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 77.764388,
+          "weekly_hold_adr": -6.139868
+        }
+      ]
+    },
+    {
+      "candidate_id": "strength_plus_rrp_inverse_tie_strength",
+      "family": "two_cell_composite",
+      "adr_grid": {
+        "adr_sum": 1386.281312,
+        "adr_mean": 0.132735,
+        "max_drawdown": -304.412583,
+        "r_over_drawdown": 4.553955,
+        "row_pf": 1.135607
+      },
+      "weekly_hold": {
+        "adr_sum": 401.524762,
+        "adr_mean": 0.038445,
+        "max_drawdown": -181.589347,
+        "r_over_drawdown": 2.211169,
+        "row_pf": 1.072638
+      },
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2023,
+        "adr_grid_adr": -39.611613,
+        "weekly_hold_adr": -10.371785
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": 17.017094,
+          "weekly_hold_adr": 108.435612
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 136.536341,
+          "weekly_hold_adr": 128.072374
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 160.949064,
+          "weekly_hold_adr": -19.816414
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 275.064988,
+          "weekly_hold_adr": 59.782708
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": -39.611613,
+          "weekly_hold_adr": -10.371785
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 251.970233,
+          "weekly_hold_adr": 240.720328
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 506.590817,
+          "weekly_hold_adr": -99.158193
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 77.764388,
+          "weekly_hold_adr": -6.139868
+        }
+      ]
+    },
+    {
+      "candidate_id": "cot_cell_locked_cot_side",
+      "family": "single_cell_baseline",
+      "adr_grid": {
+        "adr_sum": 1417.521896,
+        "adr_mean": 0.135726,
+        "max_drawdown": -344.994076,
+        "r_over_drawdown": 4.10883,
+        "row_pf": 1.13874
+      },
+      "weekly_hold": {
+        "adr_sum": 353.969364,
+        "adr_mean": 0.033892,
+        "max_drawdown": -151.931271,
+        "r_over_drawdown": 2.329799,
+        "row_pf": 1.063761
+      },
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -65.90586,
+        "weekly_hold_adr": 56.301112
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -65.90586,
+          "weekly_hold_adr": 56.301112
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 4.122208,
+          "weekly_hold_adr": -5.033512
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 237.993566,
+          "weekly_hold_adr": 163.78338
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 218.735482,
+          "weekly_hold_adr": -99.271742
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 225.792334,
+          "weekly_hold_adr": 121.235883
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 225.700487,
+          "weekly_hold_adr": 117.77011
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 486.752647,
+          "weekly_hold_adr": -24.044015
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 84.331032,
+          "weekly_hold_adr": 23.228148
+        }
+      ]
+    },
+    {
+      "candidate_id": "cot_plus_rrp_inverse_tie_cot",
+      "family": "two_cell_composite",
+      "adr_grid": {
+        "adr_sum": 1417.521896,
+        "adr_mean": 0.135726,
+        "max_drawdown": -344.994076,
+        "r_over_drawdown": 4.10883,
+        "row_pf": 1.13874
+      },
+      "weekly_hold": {
+        "adr_sum": 353.969364,
+        "adr_mean": 0.033892,
+        "max_drawdown": -151.931271,
+        "r_over_drawdown": 2.329799,
+        "row_pf": 1.063761
+      },
+      "negative_adr_grid_years": 1,
+      "worst_adr_grid_year": {
+        "year": 2019,
+        "adr_grid_adr": -65.90586,
+        "weekly_hold_adr": 56.301112
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": -65.90586,
+          "weekly_hold_adr": 56.301112
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 4.122208,
+          "weekly_hold_adr": -5.033512
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 237.993566,
+          "weekly_hold_adr": 163.78338
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 218.735482,
+          "weekly_hold_adr": -99.271742
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 225.792334,
+          "weekly_hold_adr": 121.235883
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": 225.700487,
+          "weekly_hold_adr": 117.77011
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 486.752647,
+          "weekly_hold_adr": -24.044015
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": 84.331032,
+          "weekly_hold_adr": 23.228148
+        }
+      ]
+    },
+    {
+      "candidate_id": "reer_inverse",
+      "family": "single_regime_atom",
+      "adr_grid": {
+        "adr_sum": 1643.629493,
+        "adr_mean": 0.157375,
+        "max_drawdown": -431.714943,
+        "r_over_drawdown": 3.80721,
+        "row_pf": 1.166496
+      },
+      "weekly_hold": {
+        "adr_sum": 507.4308,
+        "adr_mean": 0.048586,
+        "max_drawdown": -195.810255,
+        "r_over_drawdown": 2.591441,
+        "row_pf": 1.092685
+      },
+      "negative_adr_grid_years": 3,
+      "worst_adr_grid_year": {
+        "year": 2024,
+        "adr_grid_adr": -82.068695,
+        "weekly_hold_adr": -37.003846
+      },
+      "annual_summary": [
+        {
+          "year": 2019,
+          "rows": 1064,
+          "weeks": 38,
+          "adr_grid_adr": 182.424946,
+          "weekly_hold_adr": 260.372886
+        },
+        {
+          "year": 2020,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 344.2788,
+          "weekly_hold_adr": 180.76707
+        },
+        {
+          "year": 2021,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 19.027471,
+          "weekly_hold_adr": 85.591684
+        },
+        {
+          "year": 2022,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": -6.023373,
+          "weekly_hold_adr": -13.416108
+        },
+        {
+          "year": 2023,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 499.137863,
+          "weekly_hold_adr": 78.495847
+        },
+        {
+          "year": 2024,
+          "rows": 1484,
+          "weeks": 53,
+          "adr_grid_adr": -82.068695,
+          "weekly_hold_adr": -37.003846
+        },
+        {
+          "year": 2025,
+          "rows": 1456,
+          "weeks": 52,
+          "adr_grid_adr": 746.833724,
+          "weekly_hold_adr": 29.920251
+        },
+        {
+          "year": 2026,
+          "rows": 616,
+          "weeks": 22,
+          "adr_grid_adr": -59.981243,
+          "weekly_hold_adr": -77.296984
+        }
+      ]
+    }
+  ]
+}

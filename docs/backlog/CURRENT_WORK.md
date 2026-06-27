@@ -8,91 +8,88 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 62: regime-cell-standalone-matrix.
+Gate 63: universal-atom-matrix.
 
-Objective: run a standalone Regime-cell discovery matrix after Gate 61A Brain
-architecture refactor and Gate 61B universal cell/atom readiness pass.
+Objective: run a discovery-only universal atom matrix across COT, Strength, and
+Regime cells after Gate 62, preserving forced-28 shape and writing a Brain
+architecture debt map without doing source consolidation or Body design.
 
 Status: complete and ready for review on
 `codex/gate50-macro-source-promotion-proof`.
 
-Verdicts:
+Verdict:
 
-- Gate 61A:
-  `PASS_BRAIN_CELLS_ATOMS_NAMESPACE_LOCKED__BPR_NESTED_UNDER_REGIME__NO_EVIDENCE_MUTATION`
-- Gate 61B:
-  `PASS_UNIVERSAL_CELL_ATOM_READINESS__GATE59_DENOMINATOR_PRESERVED__REGIME_BPR_JOINABLE`
-- Gate 62:
-  `PASS_REGIME_CELL_STANDALONE_MATRIX__FORCED28_PRESERVED__NO_GATE63`
+- Gate 63:
+  `PASS_UNIVERSAL_ATOM_MATRIX__FORCED28_PRESERVED__DISCOVERY_ONLY__NO_BODY`
 
-Commands:
+Command:
 
-- `npm run engine:gate61a:brain-architecture-refactor`
-- `npm run engine:gate61b:universal-cell-atom-readiness`
-- `npm run engine:gate62:regime-cell-standalone-matrix`
+- `npm run engine:gate63:universal-atom-matrix`
 
 Durable artifacts:
 
-- Gate 61A report:
-  `docs/research/gates/gate61a/GATE61A_BRAIN_ARCHITECTURE_REFACTOR_2026-06-27.md`
-- Gate 61A SHA identity:
-  `docs/research/gates/gate61a/artifacts/gate61a-brain-architecture-refactor/gate61a-brain-architecture-refactor.sha256.txt`
-- Gate 61B report:
-  `docs/research/gates/gate61b/GATE61B_UNIVERSAL_CELL_ATOM_READINESS_AUDIT_2026-06-27.md`
-- Gate 61B SHA identity:
-  `docs/research/gates/gate61b/artifacts/gate61b-universal-cell-atom-readiness/gate61b-universal-cell-atom-readiness.sha256.txt`
-- Gate 62 report:
-  `docs/research/gates/gate62/GATE62_REGIME_CELL_STANDALONE_MATRIX_2026-06-27.md`
-- Gate 62 summary:
-  `docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-matrix.summary.json`
-- Gate 62 best-candidates review:
-  `docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-best-candidates.md`
-- Gate 62 SHA identity:
-  `docs/research/gates/gate62/artifacts/gate62-regime-cell-standalone-matrix/gate62-regime-cell-standalone-matrix.sha256.txt`
+- Gate 63 report:
+  `docs/research/gates/gate63/GATE63_UNIVERSAL_ATOM_MATRIX_2026-06-27.md`
+- Gate 63 summary:
+  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-matrix.summary.json`
+- Gate 63 best-candidates review:
+  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-best-candidates.md`
+- Gate 63 year-by-year diagnostics:
+  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-year-by-year-diagnostics.json`
+- Gate 63 RRP inverse diagnostics:
+  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-rrp-inverse-tier-diagnostics.json`
+- Gate 63 cross-cell diagnostics:
+  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-cross-cell-agreement-diagnostics.json`
+- Gate 63 Brain debt map:
+  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-brain-architecture-debt-map.md`
+- Gate 63 SHA identity:
+  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-matrix.sha256.txt`
 
-Gate 62 denominator result:
+Gate 63 denominator result:
 
 - `10,444` Gate 59 rows
 - `373` weeks
 - `28` symbols/week
 - `0` duplicate week/symbol rows
-- `23` Regime-only candidates
+- `32` candidates
+- Candidate kind counts: `13` atom, `4` cell, `15` composite
 - `0` disqualified candidates
-- `0` COT atom usage
-- `0` Strength atom usage
-- `0` source mutation
+- `0` source mutation rows
+- `0` Body algorithm or promotion started
 
-Gate 62 key result surface:
+Gate 63 key result surface:
 
-- Best by ADR Grid R/DD and total ADR: `rrp_derived_inverse`, ADR Grid
+- Best by ADR Grid R/DD:
+  `cot_strength_bpr_rrp_inverse_majority_tie_rrp`, ADR Grid `1871.434177`,
+  DD `-223.784751`, R/DD `8.362653`, PF `1.192983`, Weekly Hold
+  `654.974192`, `5,331` degraded rows, `2` negative ADR Grid years.
+- Best non-degraded simple cross-cell result:
+  `cot_strength_rrp_inverse_majority`, ADR Grid `1938.481292`, DD
+  `-258.36132`, R/DD `7.502986`, PF `1.20065`, Weekly Hold `634.471586`,
+  `0` degraded rows, `1` negative ADR Grid year.
+- Gate 62 best Regime-only result remained `rrp_derived_inverse`: ADR Grid
   `2383.621777`, DD `-346.988306`, R/DD `6.869459`, PF `1.259757`,
   Weekly Hold `688.316096`, `0` degraded rows, `2` negative ADR Grid years.
-- Other high totals: `ppp_inverse` ADR Grid `1930.004196`; `reer_inverse`
-  ADR Grid `1643.629493`; `full_regime_simple_composite_inverse` ADR Grid
-  `1551.056618`; `bpr_plus_valuation_bundle_inverse` ADR Grid `1451.571388`.
-- BPR row-complete matrix candidate remains quality-degraded by governance
-  flags where appropriate; BPR quality cohorts are diagnostic-only and separate
-  from row-complete candidate scoring.
+- RRP inverse binary directions: `5,807` BASE_CURRENCY and `4,637`
+  QUOTE_CURRENCY. Cross-cell counts: COT vs Strength `6,692` agree /
+  `3,752` disagree; COT vs RRP inverse `4,842` agree / `5,602` disagree;
+  Strength vs RRP inverse `4,954` agree / `5,490` disagree.
 
 Key hashes:
 
-- Gate 61A content invariant:
-  `9BB3676612549E2A1F0FC4D9FB4BCF03FF578710005E4C426B6C9EA2C135BD0C`
-- Gate 61B content invariant:
-  `638423B7A2CF5DC12C0C61EE853E43BA25CC124BDEC38EEE289B7FD7256436D3`
-- Gate 62 matrix rows JSONL:
-  `8F1E40D2F1E0266D5C4842EFBFD3C98C2DED4E710EAA0640A4E7E21A660B627C`
-- Gate 62 summary JSON:
-  `5CF902E7B9C6D1E79DC20FE89FBE707BA4DEF31EA443F440FF437ED3B26A137A`
-- Gate 62 content invariant:
-  `E89190F2B3D1B8E2C3F2982BFBA928F49CE95611463204DF17452E52436F5D4E`
+- Gate 63 matrix rows JSONL:
+  `3C43EE0D3C8DA07D137C223C2B98726DAC51F5101AD152A5BE0A229472D70834`
+- Gate 63 summary JSON:
+  `0F70E2B78B73EC63FAAAD5BA91A1F5D612DC6ACCDD2A7F84A54932A1D0CA70D2`
+- Gate 63 content invariant:
+  `245A168BB988AB9E93C7F1D9BB9F9AD31310D0A1935209B3FAF082E1E93050C1`
 
 ## Next Requested Review
 
-Stop after Gate 62. Do not proceed to Gate 63, universal all-atom matrix,
-Alpha v2, final Body algorithm, risk layer, execution work, MT5/live, app work,
-COT retuning, Strength retuning, Gate 59 row changes, macro source row changes,
-or source mutation.
+Stop after Gate 63. Do not proceed to Body design, Alpha v2, risk, exits,
+execution, MT5/live, app/runtime work, source mutation, COT retuning, Strength
+retuning, or broad Brain source refactor unless Freedom explicitly opens the
+next gate.
 
 ## Current Ownership Model
 
