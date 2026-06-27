@@ -1,0 +1,282 @@
+{
+  "cot": {
+    "missing_cot_state_rows": 0,
+    "tie_flag_rows": 68,
+    "carry_forward_flag_rows": 420,
+    "carry_previous_flag_rows": 68,
+    "lifecycle_state_counts": {
+      "carry_forward_2025_lapse_source_ambiguous_no_lookahead": 364,
+      "exact_report_date_available": 10024,
+      "holiday_adjusted_report_date_available": 56
+    }
+  },
+  "strength": {
+    "missing_strength_state_rows": 0,
+    "lifecycle_bucket_counts": {
+      "compressed": 2611,
+      "extreme": 2611,
+      "middle": 5222
+    },
+    "phase_bucket_counts": {
+      "flip": 1299,
+      "initial": 28,
+      "persistent": 9117
+    },
+    "lifecycle_phase_counts": {
+      "compressed:flip": 835,
+      "compressed:initial": 7,
+      "compressed:persistent": 1769,
+      "extreme:flip": 29,
+      "extreme:initial": 7,
+      "extreme:persistent": 2575,
+      "middle:flip": 435,
+      "middle:initial": 14,
+      "middle:persistent": 4773
+    }
+  },
+  "regime": {
+    "bpr_futures": {
+      "rows": 2984,
+      "source_state_counts": {
+        "QUARANTINED": 2984
+      },
+      "status_counts": {
+        "FAIL_CLOSED": 2984
+      },
+      "value_available_rows": 0,
+      "promotion_eligible_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 2984,
+      "source_ambiguous_rows": 2984,
+      "formula_missing_rows": 0,
+      "fail_closed_rows": 2984,
+      "fail_closed_reason_counts": {
+        "gate52a_source_ambiguity_quarantine": 2984
+      }
+    },
+    "bpr_futures_and_options": {
+      "rows": 2984,
+      "source_state_counts": {
+        "QUARANTINED": 2984
+      },
+      "status_counts": {
+        "FAIL_CLOSED": 2984
+      },
+      "value_available_rows": 0,
+      "promotion_eligible_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 2984,
+      "source_ambiguous_rows": 2984,
+      "formula_missing_rows": 0,
+      "fail_closed_rows": 2984,
+      "fail_closed_reason_counts": {
+        "gate52a_source_ambiguity_quarantine": 2984
+      }
+    },
+    "cpi_inflation_yoy": {
+      "rows": 2984,
+      "source_state_counts": {
+        "SEALED": 2984
+      },
+      "status_counts": {
+        "FILLED_POINT_IN_TIME": 2984
+      },
+      "value_available_rows": 2984,
+      "promotion_eligible_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_rows": 0,
+      "fail_closed_reason_counts": {}
+    },
+    "neer": {
+      "rows": 2984,
+      "source_state_counts": {
+        "BUILDING": 2984
+      },
+      "status_counts": {
+        "FILLED_POINT_IN_TIME": 2984
+      },
+      "value_available_rows": 2984,
+      "promotion_eligible_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_rows": 0,
+      "fail_closed_reason_counts": {}
+    },
+    "nominal_rate_3m": {
+      "rows": 2984,
+      "source_state_counts": {
+        "SEALED": 2984
+      },
+      "status_counts": {
+        "FILLED_POINT_IN_TIME": 2984
+      },
+      "value_available_rows": 2984,
+      "promotion_eligible_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_rows": 0,
+      "fail_closed_reason_counts": {}
+    },
+    "ppp": {
+      "rows": 2984,
+      "source_state_counts": {
+        "BUILDING": 2984
+      },
+      "status_counts": {
+        "FILLED_POINT_IN_TIME": 2984
+      },
+      "value_available_rows": 2984,
+      "promotion_eligible_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_rows": 0,
+      "fail_closed_reason_counts": {}
+    },
+    "reer": {
+      "rows": 2984,
+      "source_state_counts": {
+        "BUILDING": 2984
+      },
+      "status_counts": {
+        "FILLED_POINT_IN_TIME": 2984
+      },
+      "value_available_rows": 2984,
+      "promotion_eligible_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_rows": 0,
+      "fail_closed_reason_counts": {}
+    },
+    "rrp_derived": {
+      "rows": 2984,
+      "source_state_counts": {
+        "BUILDING": 2984
+      },
+      "status_counts": {
+        "FILLED_POINT_IN_TIME": 2984
+      },
+      "value_available_rows": 2984,
+      "promotion_eligible_rows": 0,
+      "missing_rows": 0,
+      "stale_rows": 0,
+      "quarantined_rows": 0,
+      "source_ambiguous_rows": 0,
+      "formula_missing_rows": 0,
+      "fail_closed_rows": 0,
+      "fail_closed_reason_counts": {}
+    }
+  },
+  "bpr": {
+    "gate60g_quality_summary": {
+      "currency_state_quality_counts": {
+        "unresolved_no_prior": 375,
+        "raw_present": 1805,
+        "synthetic_usd": 370,
+        "carried_fresh": 131,
+        "carried_stale": 291,
+        "unresolved_source_ambiguous": 5,
+        "timing_blocked_carry": 7
+      },
+      "currency_state_source_state_counts": {
+        "FAIL_CLOSED_UNRESOLVED_STATE": 380,
+        "RAW_PRESENT": 1805,
+        "SYNTHETIC_USD_STATE": 370,
+        "DERIVED_CARRIED_STATE": 429
+      },
+      "promotion_eligible_currency_states": 2034,
+      "promotion_ineligible_currency_states": 950,
+      "pair_direction_counts": {
+        "BASE_CURRENCY": 4403,
+        "QUOTE_CURRENCY": 6041
+      },
+      "pair_direction_rule_counts": {
+        "deterministic_unresolved_currency_rank_fallback": 259,
+        "single_numeric_state_degraded": 2142,
+        "numeric_value_comparison": 8043
+      },
+      "pair_base_quality_counts": {
+        "unresolved_no_prior": 1170,
+        "raw_present": 7082,
+        "synthetic_usd": 1110,
+        "carried_fresh": 369,
+        "carried_stale": 668,
+        "unresolved_source_ambiguous": 20,
+        "timing_blocked_carry": 25
+      },
+      "pair_quote_quality_counts": {
+        "unresolved_no_prior": 1455,
+        "raw_present": 5553,
+        "synthetic_usd": 1480,
+        "carried_fresh": 548,
+        "carried_stale": 1369,
+        "unresolved_source_ambiguous": 15,
+        "timing_blocked_carry": 24
+      },
+      "pair_source_direction_eligible_rows": 8043,
+      "promotion_eligible_pair_direction_rows": 5113,
+      "promotion_ineligible_pair_direction_rows": 5331,
+      "degraded_report_rows": 6281,
+      "gate60f_selected_carry_policy": {
+        "carry_policy_version": "gate60f_bpr_futures_carry_last_valid_clean_futures_until_next_clean_report_stale_after_45d_v1",
+        "raw_present_rows": 1805,
+        "true_absence_rows_carried": 422,
+        "stale_carried_rows": 291,
+        "still_fail_closed_rows": 757,
+        "timing_blocked_rows": 32,
+        "content_hash": "3FBA0D279BDCD75674305E47EB270F1A0AD413FC6EEF389D95D9F17FE160FD61"
+      }
+    },
+    "gate60h_decision_class_counts": {
+      "row_counts_by_class_decision": {
+        "promotion_eligible": 2,
+        "shadow_only": 3,
+        "source_direction_eligible": 1,
+        "fail_closed": 3
+      },
+      "currency_state_rows_by_class_decision": {
+        "source_direction_eligible": 370,
+        "promotion_eligible": 1936,
+        "shadow_only": 298,
+        "fail_closed": 380
+      },
+      "pair_quality_occurrences_by_class_decision": {
+        "source_direction_eligible": 2590,
+        "promotion_eligible": 13552,
+        "shadow_only": 2086,
+        "fail_closed": 2660
+      },
+      "pair_rule_rows_by_class_decision": {
+        "source_direction_eligible": 0,
+        "promotion_eligible": 0,
+        "shadow_only": 2142,
+        "fail_closed": 259
+      }
+    },
+    "gate60h_gate60g_pair_row_counts": {
+      "source_direction_eligible_rows": 8043,
+      "source_direction_ineligible_rows": 2401,
+      "promotion_eligible_pair_direction_rows": 5113,
+      "promotion_ineligible_pair_direction_rows": 5331,
+      "base_currency_direction_rows": 4403,
+      "quote_currency_direction_rows": 6041
+    }
+  }
+}
