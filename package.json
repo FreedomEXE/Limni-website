@@ -31,6 +31,7 @@
     "engine:gate60d:bpr-source-eligibility": "tsx engine/scripts/verification/build-gate60d-bpr-source-eligibility.ts",
     "engine:gate60e:bpr-value-source-contract-rescue": "tsx engine/scripts/verification/build-gate60e-bpr-value-source-contract-rescue.ts",
     "engine:gate60f:bpr-carry-source-policy": "tsx engine/scripts/verification/build-gate60f-bpr-carry-source-policy.ts",
+    "engine:gate60g:bpr-forced28-source-direction-ledger": "tsx engine/scripts/verification/build-gate60g-bpr-forced28-source-direction-ledger.ts",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

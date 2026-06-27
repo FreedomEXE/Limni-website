@@ -8,83 +8,85 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 60F: bpr-carry-source-policy.
+Gate 60G: bpr-forced28-source-direction-ledger.
 
-Objective: design and evaluate BPR futures-only carry-forward source-state
-policies for truly absent CFTC BPR futures rows while keeping raw BPR source
-facts immutable and visible. This gate is BPR-only and source-policy-only.
+Objective: build a BPR forced-28 source-direction ledger against the frozen
+Gate 59 Alpha v1 denominator. This gate is BPR-only and source-direction-only.
 
 Status: complete and ready for review on
 `codex/gate50-macro-source-promotion-proof`.
 
 Verdict:
-`PASS_BPR_FUTURES_CARRY_POLICY_SOURCE_ONLY_COMPARISON__NO_REGIME_SIDE`.
+`PASS_BPR_FORCED28_SOURCE_DIRECTION_LEDGER__DEGRADED_FLAGS_SEPARATE__NO_REGIME_SIDE`.
 
-Gate 60F command:
-`npm run engine:gate60f:bpr-carry-source-policy`.
+Gate 60G command:
+`npm run engine:gate60g:bpr-forced28-source-direction-ledger`.
 
 Durable artifacts:
 
 - Report:
-  `docs/research/gates/gate60f/GATE60F_BPR_CARRY_SOURCE_POLICY_2026-06-27.md`
-- BPR source policy contract v1:
-  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-source-policy-v1.contract.json`
-- NZD alias candidate impact rows:
-  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-nzd-alias-candidate-impact.rows.jsonl`
-- Futures carry policy comparison rows:
-  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-futures-carry-policy-comparison.rows.jsonl`
-- Futures derived carried-state ledger:
-  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-futures-derived-carried-state.rows.jsonl`
-- Futures policy fail-closed ledger:
-  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-futures-policy-fail-closed.rows.jsonl`
-- Summary, query receipt, and SHA identity:
-  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.summary.json`
-  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.summary.md`
-  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.query-receipt.md`
-  `docs/research/gates/gate60f/artifacts/gate60f-bpr-carry-source-policy/gate60f-bpr-carry-source-policy.sha256.txt`
+  `docs/research/gates/gate60g/GATE60G_BPR_FORCED28_SOURCE_DIRECTION_LEDGER_2026-06-27.md`
+- BPR currency-state ledger:
+  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-currency-state-ledger.rows.jsonl`
+- BPR synthetic USD ledger:
+  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-synthetic-usd-ledger.rows.jsonl`
+- BPR pair-direction ledger:
+  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-pair-direction-ledger.rows.jsonl`
+- BPR source-quality summary:
+  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-source-quality-summary.json`
+  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-source-quality-summary.md`
+- BPR unresolved/degraded-state report:
+  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-unresolved-degraded-state-report.rows.jsonl`
+- Query receipt and SHA identity:
+  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-forced28-source-direction-ledger.query-receipt.md`
+  `docs/research/gates/gate60g/artifacts/gate60g-bpr-forced28-source-direction-ledger/gate60g-bpr-forced28-source-direction-ledger.sha256.txt`
 
-Validation: `npm run engine:gate60f:bpr-carry-source-policy` passed; targeted
-ESLint on the Gate 60F verifier passed.
+Validation: `npm run engine:gate60g:bpr-forced28-source-direction-ledger`
+passed. Targeted full-config ESLint on the Gate 60G verifier timed out without
+diagnostics after repeated attempts; Gate 60F targeted ESLint still completed
+normally, and a successful Gate 60G command run remains the executable
+validation proof. `git diff --check` and `git diff --cached --check` should be
+run before commit.
 
 Denominator result: Gate 59 Alpha v1 remained `10,444` rows, `373` weeks, and
-`28` symbols/week. Gate 60F evaluated `2,984` BPR futures required source rows
-and kept `2,984` BPR futures/options rows as shadow-only diagnostics with `0`
-duplicate input, futures, shadow, alias, carried-state, or fail-closed row keys.
+`28` symbols/week. Gate 60G emitted `2,984` BPR currency-state rows, `373`
+synthetic USD rows, and exactly `10,444` BPR pair-direction rows with `0`
+duplicate pair-direction row keys, `0` neutral pair-direction rows, and `0`
+futures/options mixing rows.
 
-Source-policy result: BPR v1 candidate direction is futures-only
+Source-direction result: BPR v1 candidate direction remains futures-only
 (`bpr_futures`). Futures/options remains separate shadow-only
-(`bpr_futures_and_options`). The NZD alias policy has candidate impact only:
-`5` rows for `CME NEW ZEALAND DOLLAR` alias evidence, with no source mutation.
-Carry-forward applies only within the same `cftc_bpr_futures` source contract
-and same currency, never across futures/options, timing-blocked rows, or source
-ambiguity.
+(`bpr_futures_and_options`). Gate 60G adds a derived
+`bpr_futures_carried_state` atom and a versioned
+`bpr_futures_synthetic_usd_state` atom using inverse average of available
+same-week non-USD BPR futures states. Pair rows carry only `BASE_CURRENCY` /
+`QUOTE_CURRENCY` BPR source direction, not LONG/SHORT or Regime side. Quality
+and promotion eligibility stay separate from direction.
 
-Row-count-only carry comparison:
+Quality result:
 
-- `no_carry_fail_closed`: `1,805` raw present rows, `5` alias impact rows, `0`
-  carried rows, `1,179` still fail-closed rows, and `32` timing-blocked rows.
-- `carry_last_valid_clean_futures_45d`: `1,805` raw present rows, `5` alias
-  impact rows, `131` carried true-absence rows, `1,048` still fail-closed rows,
-  and `32` timing-blocked rows.
-- `carry_last_valid_clean_futures_until_next_clean_report_stale_after_45d`:
-  `1,805` raw present rows, `5` alias impact rows, `422` carried true-absence
-  rows, `291` stale carried rows, `757` still fail-closed rows, and `32`
-  timing-blocked rows.
+- Currency-state quality counts:
+  `{"unresolved_no_prior":375,"raw_present":1805,"synthetic_usd":370,"carried_fresh":131,"carried_stale":291,"unresolved_source_ambiguous":5,"timing_blocked_carry":7}`
+- Pair direction rule counts:
+  `{"deterministic_unresolved_currency_rank_fallback":259,"single_numeric_state_degraded":2142,"numeric_value_comparison":8043}`
+- Pair source-direction eligible rows: `8,043`
+- Promotion eligible pair-direction rows: `5,113`
+- Promotion ineligible pair-direction rows: `5,331`
 
 Key hashes:
 
-- BPR source policy contract hash:
-  `3EDA36DB393C8924BA84BD57C1080BA647B6FF4F8FC633CD406B88917CFC2BC6`
-- BPR futures carry comparison hash:
-  `D7F9D23C6B8452DD7ACC5907CE54D11E267B2448DD73EF19F920FF63104C2E40`
-- BPR futures derived carried-state hash:
-  `DAC419527F56BF1CB033DE1FDB4DC1A22185491359300E3E7C3E0C803402501B`
-- BPR source policy content invariant hash:
-  `C64ACACA2BBAD498474BDA92FF4DB0838751CE6FC66CD5EB8968605BF70D0862`
+- BPR currency-state ledger hash:
+  `44AC1DBC4B9DC662004B9273017E44B27FB77B98F30504606A19A9409DA42067`
+- BPR synthetic USD ledger hash:
+  `6420A21421253C65D206E19B117C314A5B54F62AC8CF58949BDDBF11DEAA41DA`
+- BPR pair-direction ledger hash:
+  `15FCBCD62973A889423A328D5C32D72965EAC584034EE202070B636881CB7939`
+- BPR source-direction content invariant hash:
+  `D9225E11FA9E4FC6C740AB6A69D036AE966ECAA608A5FA29425275797688FD58`
 
 ## Next Requested Review
 
-Stop after Gate 60F. Do not proceed to BPR promotion, Regime atom transforms,
+Stop after Gate 60G. Do not proceed to BPR promotion, Regime atom transforms,
 broad matrix, Regime LONG/SHORT side, support/oppose/fade labels, P&L,
 attribution, Alpha v2, risk overlays, execution work, MT5/live, app work, COT
 changes, Strength changes, Alpha v1 changes, Gate 59 row changes, macro source
