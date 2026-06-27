@@ -24,6 +24,9 @@ export const GATE57C_FEATURE_BUNDLE_ID = "gate57c_frs15_binary_lifecycle_rule_v1
 export const GATE57D_GATE_ID = "Gate 57D: frs15-compressed-go-remainder-fade-rule";
 export const GATE57D_HYPOTHESIS_ID = "frs15_compressed_go_remainder_fade_rule";
 export const GATE57D_FEATURE_BUNDLE_ID = "gate57d_frs15_compressed_go_remainder_fade_rule_v1";
+export const GATE57E_GATE_ID = "Gate 57E: frs15-phase-conditioned-remainder-rule";
+export const GATE57E_HYPOTHESIS_ID = "frs15_phase_conditioned_remainder_rule";
+export const GATE57E_FEATURE_BUNDLE_ID = "gate57e_frs15_phase_conditioned_remainder_rule_v1";
 export const GATE55E_PRICE_BUNDLE_ID = "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953";
 export const GATE57B_DEFAULT_FROM_WEEK = "2019-01-07T00:00:00.000Z";
 export const GATE57B_DEFAULT_TO_WEEK_EXCLUSIVE = "2026-06-08T00:00:00.000Z";
@@ -54,7 +57,9 @@ export type Gate57BFrs15ManifestSignalId =
   | "flip_selected"
   | "binary_lifecycle_selected_else_extreme_fade"
   | "compressed_selected_remainder_fade"
-  | "compressed_selected_middle_fade_extreme_selected";
+  | "compressed_selected_middle_fade_extreme_selected"
+  | "phase_conditioned_remainder"
+  | "phase_conditioned_all28";
 
 export type Gate57BFrs15BuildOptions = {
   fromWeek?: string;
@@ -321,6 +326,8 @@ function candidateIncludes(signalId: Gate57BFrs15ManifestSignalId, decision: Gat
     case "binary_lifecycle_selected_else_extreme_fade":
     case "compressed_selected_remainder_fade":
     case "compressed_selected_middle_fade_extreme_selected":
+    case "phase_conditioned_remainder":
+    case "phase_conditioned_all28":
       return true;
     default:
       return false;
@@ -334,7 +341,13 @@ function candidateSide(signalId: Gate57BFrs15ManifestSignalId, decision: Gate57B
     signalId === "extreme_fade" ||
     (signalId === "binary_lifecycle_selected_else_extreme_fade" && decision.lifecycleBucket === "extreme") ||
     (signalId === "compressed_selected_remainder_fade" && decision.lifecycleBucket !== "compressed") ||
-    (signalId === "compressed_selected_middle_fade_extreme_selected" && decision.lifecycleBucket === "middle");
+    (signalId === "compressed_selected_middle_fade_extreme_selected" && decision.lifecycleBucket === "middle") ||
+    (
+      signalId === "phase_conditioned_remainder" &&
+      decision.lifecycleBucket !== "compressed" &&
+      decision.phaseBucket === "persistent"
+    ) ||
+    (signalId === "phase_conditioned_all28" && decision.phaseBucket === "persistent");
   return shouldFade ? opposite(decision.selectedSide) : decision.selectedSide;
 }
 
@@ -372,6 +385,10 @@ function candidateDescription(signalId: Gate57BFrs15ManifestSignalId) {
       return "Forced 28-row rule: compressed selected, middle and extreme faded.";
     case "compressed_selected_middle_fade_extreme_selected":
       return "Forced 28-row sanity rule: compressed and extreme selected, middle faded.";
+    case "phase_conditioned_remainder":
+      return "Forced 28-row phase rule: compressed selected; non-compressed persistent faded; non-compressed initial/flip selected.";
+    case "phase_conditioned_all28":
+      return "Forced 28-row phase rule across all pairs: persistent faded; initial/flip selected.";
     default:
       return signalId;
   }
@@ -469,6 +486,8 @@ function validateShape(
     "binary_lifecycle_selected_else_extreme_fade",
     "compressed_selected_remainder_fade",
     "compressed_selected_middle_fade_extreme_selected",
+    "phase_conditioned_remainder",
+    "phase_conditioned_all28",
   ];
   const nonFullParentWeeks = fullWeekSignals.includes(signalId)
     ? [...rowsByWeek.entries()].filter(([, count]) => count !== 28).map(([week]) => week)

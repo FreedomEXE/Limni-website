@@ -19,6 +19,9 @@ import {
   GATE57D_FEATURE_BUNDLE_ID,
   GATE57D_GATE_ID,
   GATE57D_HYPOTHESIS_ID,
+  GATE57E_FEATURE_BUNDLE_ID,
+  GATE57E_GATE_ID,
+  GATE57E_HYPOTHESIS_ID,
   GATE57B_LOOKBACK_WEEKS,
   type Gate57BFrs15ManifestSignalId,
 } from "@engine/signals/strength/fridayRelativeStrength15wManifest";
@@ -76,6 +79,14 @@ const GATE57D_SIGNAL_IDS: Gate57BFrs15ManifestSignalId[] = [
   "compressed_selected_middle_fade_extreme_selected",
 ];
 
+const GATE57E_SIGNAL_IDS: Gate57BFrs15ManifestSignalId[] = [
+  "parent_selected",
+  "binary_lifecycle_selected_else_extreme_fade",
+  "compressed_selected_remainder_fade",
+  "phase_conditioned_remainder",
+  "phase_conditioned_all28",
+];
+
 function argValue(name: string): string | null {
   const direct = process.argv.find((arg) => arg.startsWith(`--${name}=`));
   if (direct) return direct.slice(name.length + 3);
@@ -110,11 +121,13 @@ function parseSignalIds(value: string | null, fallback: Gate57BFrs15ManifestSign
     "binary_lifecycle_selected_else_extreme_fade",
     "compressed_selected_remainder_fade",
     "compressed_selected_middle_fade_extreme_selected",
+    "phase_conditioned_remainder",
+    "phase_conditioned_all28",
   ]);
   const parsed = value.split(",").map((entry) => entry.trim()).filter(Boolean);
   for (const signalId of parsed) {
     if (!valid.has(signalId as Gate57BFrs15ManifestSignalId)) {
-      throw new Error(`Unknown Gate 57B/57C/57D FRS15 signal id: ${signalId}`);
+      throw new Error(`Unknown Gate 57B/57C/57D/57E FRS15 signal id: ${signalId}`);
     }
   }
   return [...new Set(parsed as Gate57BFrs15ManifestSignalId[])];
@@ -122,10 +135,10 @@ function parseSignalIds(value: string | null, fallback: Gate57BFrs15ManifestSign
 
 function helpText() {
   return `
-Generate Friday-only 15-week relative Strength lifecycle manifests for Gate 57B, Gate 57C, or Gate 57D.
+Generate Friday-only 15-week relative Strength lifecycle manifests for Gate 57B, Gate 57C, Gate 57D, or Gate 57E.
 
 Common:
-  --preset=gate57b|gate57c|gate57d  Default: gate57b
+  --preset=gate57b|gate57c|gate57d|gate57e  Default: gate57b
   --out-dir=<path>                  Default: engine/reports/gate57b-friday-strength15w/manifests
   --summary-path=<path>             Default: engine/reports/gate57b-friday-strength15w/manifest-summary.json
   --receipt-path=<path>             Default: docs/research/gates/gate57/receipts/GATE57B_FRIDAY_STRENGTH_15W_MANIFEST_BUILD_2026-06-26.md
@@ -144,6 +157,9 @@ Default Gate 57C signals:
 Default Gate 57D signals:
   ${GATE57D_SIGNAL_IDS.join(", ")}
 
+Default Gate 57E signals:
+  ${GATE57E_SIGNAL_IDS.join(", ")}
+
 This command derives Friday-only frozen decision manifests. It does not score,
 run raw M1 ADR Grid simulation, use market-open confirmation, retune COT,
 combine COT+Strength, run regimes, add risk overlays, or promote live/MT5 work.
@@ -156,17 +172,22 @@ function parseCli(): CliOptions {
     process.exit(0);
   }
   const preset = argValue("preset") ?? "gate57b";
-  if (preset !== "gate57b" && preset !== "gate57c" && preset !== "gate57d") {
+  if (preset !== "gate57b" && preset !== "gate57c" && preset !== "gate57d" && preset !== "gate57e") {
     throw new Error(`Unsupported preset: ${preset}`);
   }
   const gate57c = preset === "gate57c";
   const gate57d = preset === "gate57d";
-  const defaultOutDir = gate57d
+  const gate57e = preset === "gate57e";
+  const defaultOutDir = gate57e
+    ? path.join("engine", "reports", "gate57e-frs15-phase-conditioned-remainder", "manifests")
+    : gate57d
     ? path.join("engine", "reports", "gate57d-frs15-compressed-remainder-fade", "manifests")
     : gate57c
       ? path.join("engine", "reports", "gate57c-frs15-binary-lifecycle", "manifests")
       : path.join("engine", "reports", "gate57b-friday-strength15w", "manifests");
-  const defaultSummaryPath = gate57d
+  const defaultSummaryPath = gate57e
+    ? path.join("engine", "reports", "gate57e-frs15-phase-conditioned-remainder", "manifest-summary.json")
+    : gate57d
     ? path.join("engine", "reports", "gate57d-frs15-compressed-remainder-fade", "manifest-summary.json")
     : gate57c
       ? path.join("engine", "reports", "gate57c-frs15-binary-lifecycle", "manifest-summary.json")
@@ -177,7 +198,9 @@ function parseCli(): CliOptions {
     "gates",
     "gate57",
     "receipts",
-    gate57d
+    gate57e
+      ? "GATE57E_FRS15_PHASE_CONDITIONED_REMAINDER_MANIFEST_BUILD_2026-06-26.md"
+      : gate57d
       ? "GATE57D_FRS15_COMPRESSED_GO_REMAINDER_FADE_MANIFEST_BUILD_2026-06-26.md"
       : gate57c
         ? "GATE57C_FRS15_BINARY_LIFECYCLE_MANIFEST_BUILD_2026-06-26.md"
@@ -191,27 +214,30 @@ function parseCli(): CliOptions {
     outDir: argValue("out-dir") ?? defaultOutDir,
     summaryPath: argValue("summary-path") ?? defaultSummaryPath,
     receiptPath: argValue("receipt-path") ?? defaultReceiptPath,
-    signalIds: parseSignalIds(argValue("signals"), gate57d ? GATE57D_SIGNAL_IDS : gate57c ? GATE57C_SIGNAL_IDS : DEFAULT_SIGNAL_IDS),
-    gateId: argValue("gate-id") ?? (gate57d ? GATE57D_GATE_ID : gate57c ? GATE57C_GATE_ID : GATE57B_GATE_ID),
+    signalIds: parseSignalIds(
+      argValue("signals"),
+      gate57e ? GATE57E_SIGNAL_IDS : gate57d ? GATE57D_SIGNAL_IDS : gate57c ? GATE57C_SIGNAL_IDS : DEFAULT_SIGNAL_IDS,
+    ),
+    gateId: argValue("gate-id") ?? (gate57e ? GATE57E_GATE_ID : gate57d ? GATE57D_GATE_ID : gate57c ? GATE57C_GATE_ID : GATE57B_GATE_ID),
     hypothesisId: argValue("hypothesis-id") ?? (
-      gate57d ? GATE57D_HYPOTHESIS_ID : gate57c ? GATE57C_HYPOTHESIS_ID : "friday_strength_15w_relative_lifecycle"
+      gate57e ? GATE57E_HYPOTHESIS_ID : gate57d ? GATE57D_HYPOTHESIS_ID : gate57c ? GATE57C_HYPOTHESIS_ID : "friday_strength_15w_relative_lifecycle"
     ),
     featureBundleId: argValue("feature-bundle-id") ?? (
-      gate57d ? GATE57D_FEATURE_BUNDLE_ID : gate57c ? GATE57C_FEATURE_BUNDLE_ID : "gate57b_friday_relative_strength_15w_v1"
+      gate57e ? GATE57E_FEATURE_BUNDLE_ID : gate57d ? GATE57D_FEATURE_BUNDLE_ID : gate57c ? GATE57C_FEATURE_BUNDLE_ID : "gate57b_friday_relative_strength_15w_v1"
     ),
     manifestIdPrefix: argValue("manifest-id-prefix") ?? (
-      gate57d ? "gate57d_frs15_compressed_remainder_fade" : gate57c ? "gate57c_frs15_binary_lifecycle" : "gate57b_friday_relative_strength_15w"
+      gate57e ? "gate57e_frs15_phase_conditioned_remainder" : gate57d ? "gate57d_frs15_compressed_remainder_fade" : gate57c ? "gate57c_frs15_binary_lifecycle" : "gate57b_friday_relative_strength_15w"
     ),
-    signalIdPrefix: argValue("signal-id-prefix") ?? (gate57d ? "gate57d_frs15" : gate57c ? "gate57c_frs15" : "gate57b_frs15"),
-    rowIdPrefix: argValue("row-id-prefix") ?? (gate57d ? "gate57d" : gate57c ? "gate57c" : "gate57b"),
+    signalIdPrefix: argValue("signal-id-prefix") ?? (gate57e ? "gate57e_frs15" : gate57d ? "gate57d_frs15" : gate57c ? "gate57c_frs15" : "gate57b_frs15"),
+    rowIdPrefix: argValue("row-id-prefix") ?? (gate57e ? "gate57e" : gate57d ? "gate57d" : gate57c ? "gate57c" : "gate57b"),
     decisionScopePrefix: argValue("decision-scope-prefix") ?? (
-      gate57d ? "fx_28pair_weekly_frs15_compressed_remainder_fade" : gate57c ? "fx_28pair_weekly_frs15_binary_lifecycle" : "fx_28pair_weekly_friday_relative_strength_15w"
+      gate57e ? "fx_28pair_weekly_frs15_phase_conditioned_remainder" : gate57d ? "fx_28pair_weekly_frs15_compressed_remainder_fade" : gate57c ? "fx_28pair_weekly_frs15_binary_lifecycle" : "fx_28pair_weekly_friday_relative_strength_15w"
     ),
     manifestFilePrefix: argValue("manifest-file-prefix") ?? (
-      gate57d ? "gate57d-frs15-compressed-remainder-fade" : gate57c ? "gate57c-frs15-binary-lifecycle" : "gate57b-friday-relative-strength-15w"
+      gate57e ? "gate57e-frs15-phase-conditioned-remainder" : gate57d ? "gate57d-frs15-compressed-remainder-fade" : gate57c ? "gate57c-frs15-binary-lifecycle" : "gate57b-friday-relative-strength-15w"
     ),
     receiptTitle: argValue("receipt-title") ?? (
-      gate57d ? "Gate 57D FRS15 Compressed-Go Remainder-Fade Manifest Build" : gate57c ? "Gate 57C FRS15 Binary Lifecycle Manifest Build" : "Gate 57B Friday Strength 15W Manifest Build"
+      gate57e ? "Gate 57E FRS15 Phase-Conditioned Remainder Manifest Build" : gate57d ? "Gate 57D FRS15 Compressed-Go Remainder-Fade Manifest Build" : gate57c ? "Gate 57C FRS15 Binary Lifecycle Manifest Build" : "Gate 57B Friday Strength 15W Manifest Build"
     ),
   };
 }
@@ -350,11 +376,14 @@ async function main() {
     sourceContextIds: [
       "docs/research/GATE55E_FROZEN_CANONICAL_PRICE_BUNDLE_V1_RECEIPT_2026-06-24.md",
       "docs/research/gates/gate57/GATE57A0B_DURABLE_PAIR_WEEK_PATH_OUTCOME_WAREHOUSE_2026-06-26.md",
-      ...(cli.gateId === GATE57C_GATE_ID || cli.gateId === GATE57D_GATE_ID
+      ...(cli.gateId === GATE57C_GATE_ID || cli.gateId === GATE57D_GATE_ID || cli.gateId === GATE57E_GATE_ID
         ? ["docs/research/gates/gate57/GATE57B_FRIDAY_STRENGTH_15W_RELATIVE_LIFECYCLE_2026-06-26.md"]
         : []),
-      ...(cli.gateId === GATE57D_GATE_ID
+      ...(cli.gateId === GATE57D_GATE_ID || cli.gateId === GATE57E_GATE_ID
         ? ["docs/research/gates/gate57/GATE57C_FRS15_BINARY_LIFECYCLE_RULE_TEST_2026-06-26.md"]
+        : []),
+      ...(cli.gateId === GATE57E_GATE_ID
+        ? ["docs/research/gates/gate57/GATE57D_FRS15_COMPRESSED_GO_REMAINDER_FADE_RULE_2026-06-26.md"]
         : []),
     ],
   });
