@@ -19,6 +19,7 @@
     "engine:gate54:cot-manifest": "tsx engine/scripts/verification/generate-gate54-cot-restatement-manifest.ts",
     "engine:gate57b:strength15w-manifests": "tsx engine/scripts/verification/generate-gate57b-friday-strength15w-manifests.ts",
     "engine:gate57c:frs15-binary-manifests": "tsx engine/scripts/verification/generate-gate57b-friday-strength15w-manifests.ts --preset=gate57c",
+    "engine:gate57d:frs15-compressed-remainder-fade-manifests": "tsx engine/scripts/verification/generate-gate57b-friday-strength15w-manifests.ts --preset=gate57d",
     "db:migrate": "tsx database/db/migrate.ts",
     "poseidon": "tsx app/src/lib/poseidon/index.ts",
     "poseidon:dev": "tsx watch app/src/lib/poseidon/index.ts"

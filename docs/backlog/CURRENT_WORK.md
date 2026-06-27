@@ -8,23 +8,23 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 57C: frs15-binary-lifecycle-rule-test.
+Gate 57D: frs15-compressed-go-remainder-fade-rule.
 
-Objective: use Gate 57B FRS15 lifecycle buckets diagnostically, then test
-whether Strength can collapse into a simple forced-28 weekly binary rule:
-`compressed + middle = selected`, `extreme = fade`.
+Objective: use the Gate 57C bucket-side diagnostic to test the next simplest
+forced-28 weekly Strength rule: `compressed = selected`, `middle + extreme =
+fade`.
 
-Status: warehouse-only evaluation is complete and stopped. The forced-28 binary
-candidate is mechanically valid (`10,444` rows, `373` weeks, `28` rows/week,
-`0` duplicate week/symbol rows) and improves parent selected quality (`ADR
-1268.1378`, `DD -350.5031`, `R/DD 3.6181`, `PF 1.3035`) versus FRS15 parent
-selected (`ADR 1244.3749`, `DD -691.1957`, `R/DD 1.8003`, `PF 1.2442`).
-However, the required bucket-side diagnostic found a contradiction:
-`middle_fade` beats `middle_selected` (`ADR 643.9703`, `R/DD 2.0418`, `PF
-1.2311` versus `ADR 572.2976`, `R/DD 1.6164`, `PF 1.2028`). Gate 57C therefore
-passes as a diagnostic but does not lock the original binary rule. Durable
-receipt:
-`docs/research/gates/gate57/GATE57C_FRS15_BINARY_LIFECYCLE_RULE_TEST_2026-06-26.md`.
+Status: warehouse-only evaluation is complete and stopped. The compressed
+selected / remainder fade candidate is mechanically valid (`10,444` rows, `373`
+weeks, `28` rows/week, `0` duplicate week/symbol rows) and improves ADR Grid
+ADR, DD, and R/DD versus both parent selected and the Gate 57C original binary:
+`ADR 1339.8105`, `DD -285.5127`, `R/DD 4.6926`, `PF 1.2864`. It does not meet
+the strict lock rule because PF is lower than the Gate 57C original binary
+(`1.2864` vs `1.3035`). The optional sanity candidate has better PF (`1.3211`)
+but much worse DD/R-DD (`DD -564.9370`, `R/DD 2.3295`). Verdict:
+`PASS_WAREHOUSE_ONLY_COMPRESSED_REMAINDER_FADE_ALIVE__NO_LOCK_PF_CAVEAT`.
+Durable receipt:
+`docs/research/gates/gate57/GATE57D_FRS15_COMPRESSED_GO_REMAINDER_FADE_RULE_2026-06-26.md`.
 No raw M1 ADR Grid simulation, no open confirmation, no engine/evaluator
 semantic changes, no COT changes, no regimes, no COT+Strength, no risk overlays,
 no MT5/live, and no app refactor work.

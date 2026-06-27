@@ -21,6 +21,9 @@ export const GATE57B_FEATURE_BUNDLE_ID = "gate57b_friday_relative_strength_15w_v
 export const GATE57C_GATE_ID = "Gate 57C: frs15-binary-lifecycle-rule-test";
 export const GATE57C_HYPOTHESIS_ID = "frs15_binary_lifecycle_rule_test";
 export const GATE57C_FEATURE_BUNDLE_ID = "gate57c_frs15_binary_lifecycle_rule_v1";
+export const GATE57D_GATE_ID = "Gate 57D: frs15-compressed-go-remainder-fade-rule";
+export const GATE57D_HYPOTHESIS_ID = "frs15_compressed_go_remainder_fade_rule";
+export const GATE57D_FEATURE_BUNDLE_ID = "gate57d_frs15_compressed_go_remainder_fade_rule_v1";
 export const GATE55E_PRICE_BUNDLE_ID = "gate55e_fx_m1_oanda_ny5_v1_20181217_20260607_8E37E953";
 export const GATE57B_DEFAULT_FROM_WEEK = "2019-01-07T00:00:00.000Z";
 export const GATE57B_DEFAULT_TO_WEEK_EXCLUSIVE = "2026-06-08T00:00:00.000Z";
@@ -49,7 +52,9 @@ export type Gate57BFrs15ManifestSignalId =
   | "no_extreme_selected"
   | "persistent_selected"
   | "flip_selected"
-  | "binary_lifecycle_selected_else_extreme_fade";
+  | "binary_lifecycle_selected_else_extreme_fade"
+  | "compressed_selected_remainder_fade"
+  | "compressed_selected_middle_fade_extreme_selected";
 
 export type Gate57BFrs15BuildOptions = {
   fromWeek?: string;
@@ -314,6 +319,8 @@ function candidateIncludes(signalId: Gate57BFrs15ManifestSignalId, decision: Gat
     case "flip_selected":
       return decision.phaseBucket === "flip";
     case "binary_lifecycle_selected_else_extreme_fade":
+    case "compressed_selected_remainder_fade":
+    case "compressed_selected_middle_fade_extreme_selected":
       return true;
     default:
       return false;
@@ -325,7 +332,9 @@ function candidateSide(signalId: Gate57BFrs15ManifestSignalId, decision: Gate57B
     signalId === "compressed_fade" ||
     signalId === "middle_fade" ||
     signalId === "extreme_fade" ||
-    (signalId === "binary_lifecycle_selected_else_extreme_fade" && decision.lifecycleBucket === "extreme");
+    (signalId === "binary_lifecycle_selected_else_extreme_fade" && decision.lifecycleBucket === "extreme") ||
+    (signalId === "compressed_selected_remainder_fade" && decision.lifecycleBucket !== "compressed") ||
+    (signalId === "compressed_selected_middle_fade_extreme_selected" && decision.lifecycleBucket === "middle");
   return shouldFade ? opposite(decision.selectedSide) : decision.selectedSide;
 }
 
@@ -359,6 +368,10 @@ function candidateDescription(signalId: Gate57BFrs15ManifestSignalId) {
       return "Rows whose selected side flips versus the previous supported Friday side for the same pair.";
     case "binary_lifecycle_selected_else_extreme_fade":
       return "Forced 28-row binary lifecycle rule: compressed and middle selected, extreme faded.";
+    case "compressed_selected_remainder_fade":
+      return "Forced 28-row rule: compressed selected, middle and extreme faded.";
+    case "compressed_selected_middle_fade_extreme_selected":
+      return "Forced 28-row sanity rule: compressed and extreme selected, middle faded.";
     default:
       return signalId;
   }
@@ -454,6 +467,8 @@ function validateShape(
   const fullWeekSignals: Gate57BFrs15ManifestSignalId[] = [
     ...parentSignals,
     "binary_lifecycle_selected_else_extreme_fade",
+    "compressed_selected_remainder_fade",
+    "compressed_selected_middle_fade_extreme_selected",
   ];
   const nonFullParentWeeks = fullWeekSignals.includes(signalId)
     ? [...rowsByWeek.entries()].filter(([, count]) => count !== 28).map(([week]) => week)
