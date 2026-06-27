@@ -1,8 +1,8 @@
 {
   "gate_id": "Gate 64B: valuation-gap-atom-lock",
   "command": "npm run engine:gate64b:valuation-gap-atom-lock",
-  "generated_at": "2026-06-27T21:01:51.651Z",
-  "git_commit": "f7171fbb013a14dbfbfd1a946483fe68aed2af02",
+  "generated_at": "2026-06-27T21:09:41.956Z",
+  "git_commit": "4c06a3aaddbb4ab5dba062a05cae722c4d8f3cae",
   "verdict": "PASS_VALUATION_GAP_ATOM_LOCK__TWO_FORMULAS_EMITTED__PPP_SPOT_AND_COMPOSITE_FAIL_CLOSED",
   "denominator": {
     "alpha_rows": 10444,

@@ -8,88 +8,134 @@ current Limni work plan so Freedom does not have to reconstruct it from chat.
 
 ## Active Gate
 
-Gate 63: universal-atom-matrix.
+Gate 64C: full-atom-matrix-refresh.
 
-Objective: run a discovery-only universal atom matrix across COT, Strength, and
-Regime cells after Gate 62, preserving forced-28 shape and writing a Brain
-architecture debt map without doing source consolidation or Body design.
+Objective: close the missing Regime atom gap before Body design by auditing
+silent missing atoms, locking supportable valuation_gap atoms from existing
+point-in-time valuation sources, and refreshing the full discovery-only atom
+matrix with valuation_gap included.
 
 Status: complete and ready for review on
 `codex/gate50-macro-source-promotion-proof`.
 
 Verdict:
 
-- Gate 63:
-  `PASS_UNIVERSAL_ATOM_MATRIX__FORCED28_PRESERVED__DISCOVERY_ONLY__NO_BODY`
+- Gate 64A:
+  `PASS_SILENT_MISSING_ATOM_AUDIT__VALUATION_GAP_REQUIRED_FOR_GATE64B__NO_OTHER_REQUIRED_MISSING`
+- Gate 64B:
+  `PASS_VALUATION_GAP_ATOM_LOCK__TWO_FORMULAS_EMITTED__PPP_SPOT_AND_COMPOSITE_FAIL_CLOSED`
+- Gate 64C:
+  `PASS_FULL_ATOM_MATRIX_REFRESH__VALUATION_GAP_INCLUDED__DISCOVERY_ONLY_NO_BODY`
 
-Command:
+Commands:
 
-- `npm run engine:gate63:universal-atom-matrix`
+- `npm run engine:gate64a:silent-missing-atom-audit`
+- `npm run engine:gate64b:valuation-gap-atom-lock`
+- `npm run engine:gate64c:full-atom-matrix-refresh`
 
 Durable artifacts:
 
-- Gate 63 report:
-  `docs/research/gates/gate63/GATE63_UNIVERSAL_ATOM_MATRIX_2026-06-27.md`
-- Gate 63 summary:
-  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-matrix.summary.json`
-- Gate 63 best-candidates review:
-  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-best-candidates.md`
-- Gate 63 year-by-year diagnostics:
-  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-year-by-year-diagnostics.json`
-- Gate 63 RRP inverse diagnostics:
-  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-rrp-inverse-tier-diagnostics.json`
-- Gate 63 cross-cell diagnostics:
-  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-cross-cell-agreement-diagnostics.json`
-- Gate 63 Brain debt map:
-  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-brain-architecture-debt-map.md`
-- Gate 63 SHA identity:
-  `docs/research/gates/gate63/artifacts/gate63-universal-atom-matrix/gate63-universal-atom-matrix.sha256.txt`
+- Gate 64A report:
+  `docs/research/gates/gate64a/GATE64A_SILENT_MISSING_ATOM_AUDIT_2026-06-27.md`
+- Gate 64A summary:
+  `docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/gate64a-silent-missing-atom-audit.summary.json`
+- Gate 64A SHA identity:
+  `docs/research/gates/gate64a/artifacts/gate64a-silent-missing-atom-audit/gate64a-silent-missing-atom-audit.sha256.txt`
+- Gate 64B report:
+  `docs/research/gates/gate64b/GATE64B_VALUATION_GAP_ATOM_LOCK_2026-06-27.md`
+- Gate 64B summary:
+  `docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/gate64b-valuation-gap-atom-lock.summary.json`
+- Gate 64B pair atom ledger:
+  `docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/valuation-gap-pair-atom-ledger.rows.jsonl`
+- Gate 64B SHA identity:
+  `docs/research/gates/gate64b/artifacts/gate64b-valuation-gap-atom-lock/gate64b-valuation-gap-atom-lock.sha256.txt`
+- Gate 64C report:
+  `docs/research/gates/gate64c/GATE64C_FULL_ATOM_MATRIX_REFRESH_2026-06-27.md`
+- Gate 64C summary:
+  `docs/research/gates/gate64c/artifacts/gate64c-full-atom-matrix-refresh/gate64c-summary.json`
+- Gate 64C best-candidates review:
+  `docs/research/gates/gate64c/artifacts/gate64c-full-atom-matrix-refresh/gate64c-best-candidates.md`
+- Gate 64C SHA identity:
+  `docs/research/gates/gate64c/artifacts/gate64c-full-atom-matrix-refresh/gate64c-sha256.txt`
 
-Gate 63 denominator result:
+Gate 64A denominator and result:
 
-- `10,444` Gate 59 rows
-- `373` weeks
-- `28` symbols/week
-- `0` duplicate week/symbol rows
-- `32` candidates
-- Candidate kind counts: `13` atom, `4` cell, `15` composite
-- `0` disqualified candidates
-- `0` source mutation rows
-- `0` Body algorithm or promotion started
+- Expected atom inventory: `32` atoms.
+- Required missing atom: `valuation_gap`.
+- No other required missing atoms.
+- Existing direct Regime atom surface remains BPR, rates, CPI, RRP, PPP, NEER,
+  and REER families.
 
-Gate 63 key result surface:
+Gate 64B valuation_gap lock:
 
-- Best by ADR Grid R/DD:
+- Emitted formula `valuation_gap_reer_deviation_v1`:
+  `reer_broad_index_2020_100 - 100`.
+- Emitted formula `valuation_gap_neer_reer_relative_v1`:
+  `reer_broad_index_2020_100 - neer_broad_index_2020_100`.
+- Fail-closed formula `valuation_gap_ppp_spot`:
+  `missing_hash_bound_point_in_time_spot_or_fair_value_input`.
+- Fail-closed formula `valuation_gap_composite_ppp_neer_reer`:
+  `ppp_xdc_per_usd_not_comparable_with_neer_reer_indices_without_versioned_normalization`.
+- Output shape: `5,968` currency rows, `20,888` pair rows, `0` degraded pair
+  rows.
+
+Gate 64C refreshed matrix:
+
+- `10,444` Gate 59 rows.
+- `373` weeks.
+- `28` symbols/week.
+- `26` predeclared discovery candidates.
+- `20,888` valuation_gap pair rows.
+- `0` duplicate week/symbol rows.
+- `0` disqualified candidates.
+- `0` source mutation rows.
+- `0` Body algorithm or Alpha v2 promotion started.
+
+Gate 64C key result surface:
+
+- Best by ADR Grid R/DD and best valuation-gap enhanced result:
+  `valuation_gap_relative_inverse_extreme_else_rrp_inverse`, ADR Grid
+  `2422.437808`, DD `-271.139895`, R/DD `8.934273`, PF `1.264195`,
+  Weekly Hold `620.140634`, WH DD `-157.534342`, WH R/DD `3.936543`,
+  `0` degraded rows, `3` negative ADR Grid years.
+- Gate 63 comparison reference:
   `cot_strength_bpr_rrp_inverse_majority_tie_rrp`, ADR Grid `1871.434177`,
   DD `-223.784751`, R/DD `8.362653`, PF `1.192983`, Weekly Hold
   `654.974192`, `5,331` degraded rows, `2` negative ADR Grid years.
-- Best non-degraded simple cross-cell result:
-  `cot_strength_rrp_inverse_majority`, ADR Grid `1938.481292`, DD
-  `-258.36132`, R/DD `7.502986`, PF `1.20065`, Weekly Hold `634.471586`,
-  `0` degraded rows, `1` negative ADR Grid year.
-- Gate 62 best Regime-only result remained `rrp_derived_inverse`: ADR Grid
-  `2383.621777`, DD `-346.988306`, R/DD `6.869459`, PF `1.259757`,
-  Weekly Hold `688.316096`, `0` degraded rows, `2` negative ADR Grid years.
-- RRP inverse binary directions: `5,807` BASE_CURRENCY and `4,637`
-  QUOTE_CURRENCY. Cross-cell counts: COT vs Strength `6,692` agree /
-  `3,752` disagree; COT vs RRP inverse `4,842` agree / `5,602` disagree;
-  Strength vs RRP inverse `4,954` agree / `5,490` disagree.
+- Strong non-degraded continuity result:
+  `gate63_cot_strength_rrp_inverse_majority`, ADR Grid `1938.481292`, DD
+  `-258.36132`, R/DD `7.502986`, Weekly Hold `634.471586`, `0` degraded rows,
+  `1` negative ADR Grid year.
+- Strong zero-negative-year candidate:
+  `rrp_inverse_when_agrees_valuation_reer_else_alpha`, ADR Grid `2168.117445`,
+  R/DD `6.101189`, Weekly Hold `831.585556`, `0` degraded rows, `0` negative
+  ADR Grid years.
 
 Key hashes:
 
-- Gate 63 matrix rows JSONL:
-  `3C43EE0D3C8DA07D137C223C2B98726DAC51F5101AD152A5BE0A229472D70834`
-- Gate 63 summary JSON:
-  `0F70E2B78B73EC63FAAAD5BA91A1F5D612DC6ACCDD2A7F84A54932A1D0CA70D2`
-- Gate 63 content invariant:
-  `245A168BB988AB9E93C7F1D9BB9F9AD31310D0A1935209B3FAF082E1E93050C1`
+- Gate 64A summary JSON:
+  `A93599E3B473A42D2A72C84AED8F27C8D45826342DCD8EC35B2ACB5660D02ABF`
+- Gate 64A content invariant:
+  `D17E9E176CF1BCD6C243B39B80E060066507CEDFF8DE82C2FFFFE2961CDA9429`
+- Gate 64B pair atom ledger:
+  `01F4316895524AA8277769692E6685FF548C24457175AE9B00430845C56C4936`
+- Gate 64B summary JSON:
+  `A83E28ED13E9ADDB1045DA03CD5397D9DDF56BA95175C2A9A60563D650AD2E66`
+- Gate 64B content invariant:
+  `8894CCBC6CB7F38A70933C81E0602E085290FB16571D0203F0338F663FC888FC`
+- Gate 64C matrix rows JSONL:
+  `7FEB4A51863B82B2E8FA9CAF9A4F3DFEBC8D195AF4769B740A197517671694F3`
+- Gate 64C summary JSON:
+  `BA8B2E3C6ABA85EA5D482D8EB215C28B2EE16142ACBA69E8F94DCE42D7714E20`
+- Gate 64C content invariant:
+  `0182CB079732532EA01C6D35F587C58EB549F60F20AF1B94038931F2DEE2266A`
 
 ## Next Requested Review
 
-Stop after Gate 63. Do not proceed to Body design, Alpha v2, risk, exits,
+Stop after Gate 64C. Do not proceed to Body design, Alpha v2, risk, exits,
 execution, MT5/live, app/runtime work, source mutation, COT retuning, Strength
-retuning, or broad Brain source refactor unless Freedom explicitly opens the
-next gate.
+retuning, broad Brain source refactor, or optimization unless Freedom explicitly
+opens the next gate.
 
 ## Current Ownership Model
 

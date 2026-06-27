@@ -1,8 +1,8 @@
 {
   "gate_id": "Gate 64C: full-atom-matrix-refresh",
   "command": "npm run engine:gate64c:full-atom-matrix-refresh",
-  "generated_at": "2026-06-27T21:08:49.495Z",
-  "git_commit": "057e51dd939ccbf0ac8ffdade4de30c35e9b673e",
+  "generated_at": "2026-06-27T21:09:50.768Z",
+  "git_commit": "4c06a3aaddbb4ab5dba062a05cae722c4d8f3cae",
   "verdict": "PASS_FULL_ATOM_MATRIX_REFRESH__VALUATION_GAP_INCLUDED__DISCOVERY_ONLY_NO_BODY",
   "denominator": {
     "alpha_rows": 10444,
@@ -1748,8 +1748,8 @@
     "gate60c_currency_atom_ledger": "603C225C4919C7D4F3BC38BBD25C2CB5D24A83938142632CF2D16A8046150F27",
     "gate60g_bpr_pair_direction_ledger": "15FCBCD62973A889423A328D5C32D72965EAC584034EE202070B636881CB7939",
     "gate63_summary": "0F70E2B78B73EC63FAAAD5BA91A1F5D612DC6ACCDD2A7F84A54932A1D0CA70D2",
-    "gate64a_summary": "C0D561490E22DDFCD2F12B0DF1AA9543FA60395EDCA3E0E2563DBCF025B527D2",
-    "gate64b_summary": "9B3FE7C39A55273A65593E2F0FCF2707B6B0F5CCBE4AB504A7F7939E0449F919",
+    "gate64a_summary": "A93599E3B473A42D2A72C84AED8F27C8D45826342DCD8EC35B2ACB5660D02ABF",
+    "gate64b_summary": "A83E28ED13E9ADDB1045DA03CD5397D9DDF56BA95175C2A9A60563D650AD2E66",
     "gate64b_valuation_pair_ledger": "01F4316895524AA8277769692E6685FF548C24457175AE9B00430845C56C4936"
   },
   "stop_line": "Stop after Gate 64C. Do not proceed to Body design, Alpha v2, exit-layer research, risk, execution, MT5/live, app/runtime, source mutation, COT retuning, Strength retuning, or broad Brain source consolidation.",

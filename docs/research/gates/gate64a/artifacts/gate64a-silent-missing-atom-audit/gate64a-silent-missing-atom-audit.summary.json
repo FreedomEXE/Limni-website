@@ -1,8 +1,8 @@
 {
   "gate_id": "Gate 64A: silent-missing-atom-audit",
   "command": "npm run engine:gate64a:silent-missing-atom-audit",
-  "generated_at": "2026-06-27T20:57:44.324Z",
-  "git_commit": "a6c7dc38e3967f38f30f604d813a5538d3e92b58",
+  "generated_at": "2026-06-27T21:09:37.277Z",
+  "git_commit": "4c06a3aaddbb4ab5dba062a05cae722c4d8f3cae",
   "verdict": "PASS_SILENT_MISSING_ATOM_AUDIT__VALUATION_GAP_REQUIRED_FOR_GATE64B__NO_OTHER_REQUIRED_MISSING",
   "denominator": {
     "alpha_rows": 10444,
